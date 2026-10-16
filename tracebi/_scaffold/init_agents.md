@@ -90,6 +90,24 @@ dashboard (`transforms/sample_transform.py`).
 
 ## Authoring a report (the artifact package)
 
+**Two ways to write a page.** `template.html` (below) is HTML with
+`data-tb-*` figures: checkable without running anything, readable with
+JavaScript off. Use it for briefs, long-form, emailed and printed reports,
+and anything written at volume without review. `app.jsx` instead of
+`template.html` is the React lane, for app-like dashboards (navigation,
+drawers, drill-downs, toggles): a component (`export default`) built from a
+fixed kit — `react`, `recharts`, `lucide-react` (import icons by name),
+Tailwind classes (`bg-card text-ink border-rule` follow the page's tokens)
+and the `tracebi` module. No other import builds; it is still one offline
+file. Show numbers through the kit — `<Kpi binding cell format label lead>`,
+`<Value>`, `<Chart binding type x y>`, `<Spark>`, `<Table binding>`, with
+`<Filter>`, `<Search>`, `<Download>` — and give `binding`, `cell`, `x`, `y`
+literal strings: the build reads them as claims and refuses a binding or
+column that does not exist. `useBinding("name")` hands your own components
+the stamped rows; a number your code computes or draws (a Recharts chart, a
+sum) is the app's presentation, not a checked figure, and the page says so.
+`docs/reference/app-jsx.md` has the kit.
+
 Worked example — the framework builds the figure, you place it. Declare it in
 `report.json`, then write `{{ figure("id") }}` where it belongs in `template.html`:
 

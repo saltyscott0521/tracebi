@@ -154,6 +154,78 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
         assert f"--layout {name}" in text
 
 
+_APP_JSX = """import { useState } from "react";
+import { BarChart, Bar } from "recharts";
+import { TrendingUp } from "lucide-react";
+import { Kpi, Chart, Table, useBinding } from "tracebi";
+
+export default function App() {
+  const [view, setView] = useState("Overview");
+  const regions = useBinding("by_region");
+  return (
+    <main className="flex gap-6 p-6">
+      <nav><button onClick={() => setView("Detail")}><TrendingUp size={16} /> Detail</button></nav>
+      {view === "Overview" ? (
+        <div className="tb-grid">
+          <Kpi lead binding="kpis" cell="revenue" format="currency0" label="Revenue" />
+          <Chart binding="by_region" x="dim_region.region" y="revenue" />
+        </div>
+      ) : (
+        <>
+          <Table binding="by_region" sort />
+          <BarChart width={400} height={200} data={regions}><Bar dataKey="revenue" /></BarChart>
+        </>
+      )}
+    </main>
+  );
+}
+"""
+
+
+def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
+    """The React lane: a package whose page is app.jsx builds to one file,
+    records the kit figures as claims, and verifies like any report. An
+    import from outside the kit, or a kit figure naming a binding the
+    report does not declare, fails the build instead of shipping."""
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    pkg = scaffolded / "reports" / "regions_app"
+    pkg.mkdir()
+    (pkg / "report.json").write_text(json.dumps({"name": "Regions App", "data": {
+        "kpis": {"model": "sample_model",
+                 "query": {"fact": "fact_orders", "measures": ["revenue"]}},
+        "by_region": {"model": "sample_model", "query": {
+            "fact": "fact_orders", "measures": ["revenue"],
+            "dimensions": ["dim_region.region"], "order_by": ["-revenue"]}},
+    }}), encoding="utf-8")
+    (pkg / "app.jsx").write_text(_APP_JSX, encoding="utf-8")
+
+    code, out = run_cli("report", "build", "regions_app")
+    assert code == 0, out
+    built = (scaffolded / "output" / "regions_app.html").read_text()
+    assert 'id="tracebi-app"' in built and "TraceBi-credit: Recharts" in built
+    # Only the icons the app imports ride in the page.
+    icons = json.loads(built.split('id="tracebi-icons">', 1)[1].split("</script>", 1)[0])
+    assert list(icons) == ["TrendingUp"]
+    manifest_path = scaffolded / "output" / "regions_app.html.manifest.json"
+    claims = {f["id"]: f["binding"] for f in json.loads(manifest_path.read_text())["figures"]}
+    assert claims == {"fig-value-kpis-revenue": "kpis",
+                      "fig-chart-by_region-revenue": "by_region",
+                      "fig-table-by_region": "by_region"}
+    assert "This page is an app." in built
+    code, out = run_cli("verify", str(manifest_path))
+    assert code == 0, out
+
+    (pkg / "app.jsx").write_text(_APP_JSX.replace('"recharts"', '"chart.js"'), encoding="utf-8")
+    code, out = run_cli("report", "build", "regions_app")
+    assert code != 0 and '"chart.js", which is not in the TraceBi kit' in out
+
+    (pkg / "app.jsx").write_text(_APP_JSX.replace('binding="kpis"', 'binding="kpi"'),
+                                 encoding="utf-8")
+    code, out = run_cli("report", "build", "regions_app")
+    assert code != 0 and "kpi" in out
+
+
 def test_status_and_the_review_snapshot(scaffolded):
     code, out = run_cli("run-transform", "sample_transform")
     assert code == 0, out

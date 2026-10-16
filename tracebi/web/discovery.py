@@ -302,8 +302,7 @@ def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[
         e for e in entries
         if not e.startswith("_")
         and os.path.isdir(os.path.join(path, e))
-        and os.path.isfile(os.path.join(path, e, "report.json"))
-        and os.path.isfile(os.path.join(path, e, "template.html"))
+        and _is_package(os.path.join(path, e))
     }
     for entry in entries:
         full = os.path.join(path, entry)
@@ -347,8 +346,7 @@ def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[
             if not os.path.isdir(full):
                 _outcomes.append({**record, "status": "skipped",
                                   "reason": "not a .py, .ipynb or .json file"})
-            elif (os.path.isfile(os.path.join(full, "report.json"))
-                  and os.path.isfile(os.path.join(full, "template.html"))):
+            elif _is_package(full):
                 # A freeform report package: report.json + template.html in a
                 # subdirectory. Registered like a spec file; other
                 # subdirectories are still skipped below.
@@ -440,8 +438,10 @@ def _scan(path: str, prefix: str, package: Optional[str], strict: bool) -> list[
 
 
 def _is_package(path: str) -> bool:
+    # A page is template.html, or app.jsx for the React lane.
     return (os.path.isfile(os.path.join(path, "report.json"))
-            and os.path.isfile(os.path.join(path, "template.html")))
+            and (os.path.isfile(os.path.join(path, "template.html"))
+                 or os.path.isfile(os.path.join(path, "app.jsx"))))
 
 
 def _report_sources(path: str, prefix: str = "") -> dict[str, str]:
@@ -469,7 +469,8 @@ def _report_sources(path: str, prefix: str = "") -> dict[str, str]:
 
 
 def _file_times(source: str) -> tuple:
-    names = (["report.json", "template.html"] if os.path.isdir(source) else [""])
+    names = (["report.json", "template.html", "app.jsx"] if os.path.isdir(source)
+             else [""])
     out = []
     for name in names:
         try:

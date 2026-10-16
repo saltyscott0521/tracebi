@@ -178,6 +178,9 @@ packages = ["tracebi"]
 # (e.g. a broad *.txt) that would otherwise silently drop a scaffold file.
 artifacts = ["tracebi/web/ui/dist/**", "tracebi/reports/assets/**",
              "tracebi/_scaffold/**", "tracebi/knowledge/lessons/**"]
+# The React kit's sources sit beside its bundles; a local npm install under
+# them is a build input, never package data.
+exclude = ["tracebi/reports/assets/_react_src/node_modules"]
 # The Node workspace itself (web/ui/src, package.json, the lockfile) stays at
 # the repo root and is deliberately not packaged: it is a build input, not a
 # runtime one, and the no-bundle page points a checkout at it by path.

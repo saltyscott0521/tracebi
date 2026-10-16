@@ -61,6 +61,7 @@ vocabulary, so they describe what the code actually accepts.
 
 - [[report-json]] — the package declaration, key by key
 - [[template-html]] — the `data-tb-*` figure grammar
+- [[app-jsx]] — the React lane: an app-like dashboard from the TraceBi kit
 - [[figure-helper]] — `{{ figure("name") }}`: framework-built figures, your layout
 - [[measures]] — every measure kind the semantic layer knows
 - [[model-json]] — a model as data: `models/<name>.yaml` (or `.json`)

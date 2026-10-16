@@ -113,6 +113,47 @@ def figures_config(figures, output_names, badges: bool = True) -> list[dict]:
     return out
 
 
+_LIB_ROLE = {
+    "react": "runs this page's app (app.jsx), compiled in the page",
+    "recharts": "the app's own charts",
+    "tailwind": "the app's utility classes, generated in the page",
+}
+
+#: Before Tailwind's browser build: the TraceBi tokens as Tailwind theme
+#: colours (bg-card, text-ink, border-rule, …), so an app follows the page's
+#: mode and the project theme; and its "not for production" console notice
+#: muted — the page is offline by design, and that is the build it needs.
+_TAILWIND_PRELUDE = '''<style type="text/tailwindcss">
+@theme inline {
+  --font-sans: var(--tb-font);
+  --font-mono: var(--tb-mono);
+  --color-ink: var(--tb-ink);
+  --color-muted: var(--tb-muted);
+  --color-page: var(--tb-page);
+  --color-card: var(--tb-bg);
+  --color-surface: var(--tb-surface);
+  --color-rule: var(--tb-rule);
+  --color-accent: var(--tb-accent);
+  --color-accent-text: var(--tb-accent-text);
+  --color-good: var(--tb-good);
+  --color-bad: var(--tb-bad);
+  --color-chart-1: var(--tb-chart-1);
+  --color-chart-2: var(--tb-chart-2);
+  --color-chart-3: var(--tb-chart-3);
+  --color-chart-4: var(--tb-chart-4);
+  --color-chart-5: var(--tb-chart-5);
+  --color-chart-6: var(--tb-chart-6);
+  --color-chart-7: var(--tb-chart-7);
+  --color-chart-8: var(--tb-chart-8);
+  --radius-panel: var(--tb-radius);
+}
+</style>
+<script>(function(){var w=console.warn;console.warn=function(m){
+if(typeof m==="string"&&m.indexOf("browser build of Tailwind")!==-1)return;
+return w.apply(console,arguments);};})();</script>
+'''
+
+
 @functools.lru_cache(maxsize=None)
 def _lib_credit(lib: str) -> str:
     """"Apache ECharts 6.1.0 (Apache-2.0)" or "D3 7.9.0 (ISC)" from the
@@ -120,6 +161,9 @@ def _lib_credit(lib: str) -> str:
     bundled version."""
     import re
     head = read_lib(lib)[:2000]
+    m = re.search(r"TraceBi-credit: ([^*]+?) \*/", head)
+    if m:
+        return m.group(1)
     m = re.search(r"Apache ECharts ([0-9][0-9.]*)", head)
     if m:
         return f"Apache ECharts {m.group(1)} (Apache-2.0)"
@@ -141,7 +185,7 @@ def libraries_comment(libs) -> str:
         "embedded, fingerprinted data; tabs, filters, receipt drawer",
     ]
     for lib in libs or ():
-        lines.append(f"  {_lib_credit(lib)}: draws the charts")
+        lines.append(f"  {_lib_credit(lib)}: {_LIB_ROLE.get(lib, 'draws the charts')}")
     lines.append("  Report files: style.css and script.js when present; "
                  "fonts and images from the package's assets/ folder")
     return "<!--\n" + "\n".join(lines) + "\n-->\n"
@@ -171,6 +215,8 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
     """The body-end injection: libs → runtime → engine → data → config → author."""
     tail = ""
     for lib in libs or ():
+        if lib == "tailwind":
+            tail += _TAILWIND_PRELUDE
         tail += (f"<!-- {_lib_credit(lib)} -->\n"
                  f"<script>\n{read_lib(lib)}\n</script>\n")
     # The selection worker is a few kilobytes and ships only with a sealed

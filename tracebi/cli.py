@@ -1006,7 +1006,8 @@ def cmd_dev(args: argparse.Namespace) -> int:
     if opened.name_error:
         pkg_dir = reports_dir / args.name
         ready = ((pkg_dir / "report.json").is_file()
-                 and (pkg_dir / "template.html").is_file())
+                 and ((pkg_dir / "template.html").is_file()
+                      or (pkg_dir / "app.jsx").is_file()))
     else:
         pkg_dir = opened.path
         ready = opened.package_dir is not None and opened.has_template

@@ -225,7 +225,8 @@ def _resolve_under_root(root: Path, relative: str) -> tuple[Path, Path, Optional
     has_template = has_spec = False
     if (path / "report.json").is_file():
         package_dir = path
-        has_template = (path / "template.html").is_file()
+        has_template = ((path / "template.html").is_file()
+                        or (path / "app.jsx").is_file())
     has_spec = spec_path.is_file()
     return path, spec_path, package_dir, has_template, has_spec
 

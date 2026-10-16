@@ -295,6 +295,27 @@ def _presentation() -> dict:
                         "changes.",
             },
         },
+        "app": {
+            "what": "The React lane: app.jsx in place of template.html, for app-like "
+                    "dashboards. One component (export default), compiled in the page from "
+                    "a fixed kit; still one offline file with the receipt.",
+            "imports": "react, react-dom, recharts, lucide-react (icons by name; only "
+                       "those are embedded), tracebi. Any other import fails the build.",
+            "kit": "<Kpi binding cell format label context lead>, <Value binding cell "
+                   "format>, <Chart binding type x y valueFormat ...>, <Spark ...> (a "
+                   "sparkline), <Table binding columns sort bars rows>, <Filter binding "
+                   "column>, <Search binding>, <Download binding>; useBinding(name) returns "
+                   "the stamped rows; fmt(value, format).",
+            "claims": "Kit figures are claims: binding, cell, x and y must be literal "
+                      "strings, and the build refuses a binding or column that does not "
+                      "exist. A number the app computes or draws itself is presentation, "
+                      "not a checked figure; the page's About block says so.",
+            "styling": "Tailwind classes, with the TraceBi tokens as colours (bg-page, "
+                       "bg-card, bg-surface, text-ink, text-muted, border-rule, bg-accent, "
+                       "text-good, text-bad, chart-1..8) and the kit's tb-* classes.",
+            "when": "app.jsx for dashboards people work in; template.html for briefs, "
+                    "long-form, emailed and printed pages (they read with JavaScript off).",
+        },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
             "--tb-rule", "--tb-radius", "--tb-space-1..4",

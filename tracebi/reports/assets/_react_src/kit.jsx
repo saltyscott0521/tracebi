@@ -1,0 +1,137 @@
+// The `tracebi` module an app.jsx imports. Each figure component renders the
+// same data-tb-* element a template.html would hold, and the runtime
+// (tracebi.js) fills it from the stamped rows — so a number shown through the
+// kit is formatted, receipted and claimed exactly like one in a template. The
+// build reads these components' literal props out of app.jsx to record the
+// claims (tracebi/reports/app_lane.py mirrors the attribute names and ids).
+import * as React from "react";
+
+const tb = () => window.tracebi;
+
+let pending = false;
+function scheduleRefresh() {
+  if (pending) return;
+  pending = true;
+  const run = () => { pending = false; if (tb() && tb().refresh) tb().refresh(); };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(run);
+  else setTimeout(run, 0);
+}
+
+function useHydrate() {
+  React.useLayoutEffect(() => { scheduleRefresh(); }, []);
+}
+
+const list = (v) => (Array.isArray(v) ? v.join(",") : v);
+const pairs = (v) => (v && typeof v === "object" && !Array.isArray(v)
+  ? Object.keys(v).map((k) => `${k}=${v[k]}`).join("; ") : v);
+const flag = (v) => (v ? "" : undefined);
+
+/** The figure id the build records for a kit figure without an `id` prop. */
+export function figureId(kind, binding, key) {
+  return ["fig", kind, binding, key].filter((p) => p !== undefined && p !== null && p !== "")
+    .join("-").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/-+$/, "");
+}
+
+/** The stamped rows of one report.json binding (copies; never re-queried). */
+export function useBinding(name) {
+  return React.useMemo(() => (tb() ? tb().data(name) : []), [name]);
+}
+
+/** TraceBi's number formatting ("compact", "currency0", "percent", …). */
+export function fmt(value, mode) {
+  return tb() ? tb().fmt(value, mode) : String(value);
+}
+
+export function Value({ binding, cell, format, id, className, ...rest }) {
+  useHydrate();
+  return (
+    <span {...rest} className={className} id={id || figureId("value", binding, cell)}
+      data-tb-figure="value" data-tb-binding={binding} data-tb-cell={cell}
+      data-tb-format={format} />
+  );
+}
+
+export function Kpi({ binding, cell, format, label, context, lead, id, className, children, ...rest }) {
+  useHydrate();
+  const cls = ["tb-kpi", lead ? "tb-kpi--lead" : "", className || ""].filter(Boolean).join(" ");
+  return (
+    <div {...rest} className={cls} id={id || figureId("value", binding, cell)}
+      data-tb-figure="value" data-tb-binding={binding} data-tb-cell={cell}
+      data-tb-format={format}>
+      {label != null && <span className="tb-kpi-label">{label}</span>}
+      <span className="tb-kpi-value" />
+      {context != null && <span className="tb-kpi-context">{context}</span>}
+      {children}
+    </div>
+  );
+}
+
+function chartProps(kind, p) {
+  return {
+    id: p.id || figureId(kind, p.binding, list(p.y)),
+    "data-tb-figure": "chart",
+    "data-tb-binding": p.binding,
+    "data-tb-type": p.type || (kind === "spark" ? "area" : "bar"),
+    "data-tb-x": p.x,
+    "data-tb-y": list(p.y),
+    "data-tb-color": p.color,
+    "data-tb-value-format": p.valueFormat,
+    "data-tb-stack": flag(p.stack),
+    "data-tb-mark": list(p.mark),
+    "data-tb-annotate": pairs(p.annotate),
+    "data-tb-facet": p.facet,
+    "data-tb-unit": p.unit,
+    "data-tb-x-title": p.xTitle,
+    "data-tb-y-title": p.yTitle,
+    "data-tb-palette": list(p.palette),
+  };
+}
+
+export function Chart(props) {
+  useHydrate();
+  const style = props.height ? { height: props.height, ...(props.style || {}) } : props.style;
+  return <div className={props.className} style={style} {...chartProps("chart", props)} />;
+}
+
+/** A line or area chart drawn as a sparkline: the trend's shape under a KPI. */
+export function Spark(props) {
+  useHydrate();
+  return <div className={["tb-spark", props.className || ""].join(" ").trim()}
+    style={props.style} {...chartProps("spark", props)} />;
+}
+
+export function Table({ binding, columns, labels, formats, sort, bars, totals, rows, id, className }) {
+  useHydrate();
+  const n = rows === "all" ? null : Number(rows || 10);
+  // The scroll box is rendered here, not wrapped in by the runtime: React owns
+  // this element's parent and must never find it moved.
+  return (
+    <div className="tb-scroll" style={n ? { maxHeight: `${(n + 1) * 2.6}em` } : undefined}>
+      <table className={className} id={id || figureId("table", binding)}
+        data-tb-figure="table" data-tb-binding={binding}
+        data-tb-columns={list(columns)} data-tb-labels={pairs(labels)}
+        data-tb-formats={pairs(formats)} data-tb-sort={flag(sort)}
+        data-tb-bars={list(bars)} data-tb-totals={totals}
+        data-tb-rows={rows === undefined ? undefined : String(rows)} />
+    </div>
+  );
+}
+
+export function Filter({ binding, column, label, className }) {
+  useHydrate();
+  const select = <select data-tb-filter="" data-tb-binding={binding} data-tb-column={column} />;
+  return label ? <label className={className}>{label} {select}</label> : select;
+}
+
+export function Search({ binding, placeholder, label, className }) {
+  useHydrate();
+  const input = <input data-tb-search="" data-tb-binding={binding}
+    placeholder={placeholder || "Search…"} />;
+  return label ? <label className={className}>{label} {input}</label> : input;
+}
+
+export function Download({ binding, label }) {
+  useHydrate();
+  return <button type="button" data-tb-download="" data-tb-binding={binding}
+    data-tb-label={label || "Download CSV"} />;
+}

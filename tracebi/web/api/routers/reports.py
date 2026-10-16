@@ -155,7 +155,8 @@ def _library_package(name: str) -> tuple[dict | None, str | None, list[str], lis
         manifest = opened.package_dir / "report.json"
         return (
             _schedule_of(manifest),
-            _newer_mtime(manifest, opened.package_dir / "template.html"),
+            _newer_mtime(manifest, opened.package_dir / "template.html",
+                         opened.package_dir / "app.jsx"),
             *_bindings_in(manifest),
         )
     if opened.spec_path is not None and opened.spec_path.is_file():
@@ -740,7 +741,8 @@ def download_report(name: str, format: str = "xlsx"):
 
 #: The files that define a report package, in reading order. Anything else in
 #: the package (assets/, notes) is listed by name only.
-_PACKAGE_SOURCE_FILES = ("report.json", "template.html", "style.css", "script.js", "report.py")
+_PACKAGE_SOURCE_FILES = ("report.json", "template.html", "app.jsx", "style.css",
+                         "script.js", "report.py")
 _SOURCE_LANG, _SOURCE_MAX_BYTES = SOURCE_LANG, SOURCE_MAX_BYTES
 
 

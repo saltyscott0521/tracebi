@@ -99,6 +99,7 @@ TEMPLATE_HTML = "template.html"
 STYLE_CSS = "style.css"
 SCRIPT_JS = "script.js"
 REPORT_PY = "report.py"
+APP_JSX = "app.jsx"
 
 #: Figure kinds ``{{ figure(...) }}`` can build. ``custom`` is deliberately
 #: absent: a custom figure is one the analyst's own script draws, so there is
@@ -463,13 +464,23 @@ class TemplatePackage:
 
         report_json_path = os.path.join(directory, REPORT_JSON)
         template_path = os.path.join(directory, TEMPLATE_HTML)
+        app_path = os.path.join(directory, APP_JSX)
         if not os.path.isfile(report_json_path):
             raise FileNotFoundError(
                 f"Template package '{directory}' has no {REPORT_JSON}."
             )
-        if not os.path.isfile(template_path):
+        has_template = os.path.isfile(template_path)
+        has_app = os.path.isfile(app_path)
+        if has_template and has_app:
+            raise ValueError(
+                f"Package '{directory}' has both {TEMPLATE_HTML} and {APP_JSX}. "
+                f"A page is one or the other: keep {APP_JSX} for an app-like "
+                f"dashboard, {TEMPLATE_HTML} for a report page."
+            )
+        if not has_template and not has_app:
             raise FileNotFoundError(
-                f"Template package '{directory}' has no {TEMPLATE_HTML}."
+                f"Template package '{directory}' has no {TEMPLATE_HTML} "
+                f"(or {APP_JSX})."
             )
 
         with open(report_json_path, encoding="utf-8") as f:
@@ -555,10 +566,24 @@ class TemplatePackage:
         else:
             self.schedule = None
 
+        # The React lane: the page is app.jsx, compiled in the browser from
+        # the fixed kit. The template is a generated shell — a mount point and
+        # the kit figures' claims, read from the source without running it.
+        self.app_source: Optional[str] = None
+        self.app_imports: dict = {}
+        self.app_icons: dict = {}
+        if has_app:
+            from tracebi.reports import app_lane
+            self.app_source = _read_text(app_path)
+            self.app_imports = app_lane.scan_imports(self.app_source)
+            self.app_icons = app_lane.icon_nodes(self.app_imports)
+            app_shell = app_lane.shell_html(
+                self.page_title, app_lane.scan_figures(self.app_source))
+
         # Fonts and images under assets/ are inlined as data: URIs here, at
         # load, so every render path (dev, build, snapshot, web) carries them.
-        self.template_html = inline_package_assets(
-            _read_text(template_path), directory, TEMPLATE_HTML)
+        self.template_html = (app_shell if has_app else inline_package_assets(
+            _read_text(template_path), directory, TEMPLATE_HTML))
         self.style_css = inline_package_assets(
             _read_optional(os.path.join(directory, STYLE_CSS)), directory,
             STYLE_CSS)
@@ -891,7 +916,8 @@ class TemplatePackage:
         # a figure. Stated notes are recorded in the manifest when present.
         model_names = sorted({ref.model for ref in self.bindings.values()})
         page, insert_at = _ensure_about_home(page)
-        about = _about_html(manifest, model_names)
+        about = _about_html(manifest, model_names,
+                            app=self.app_source is not None)
         notes = stated_methodology_block(models, lineages)
         measure_notes = self._measure_notes(models)
         if measure_notes:
@@ -1615,6 +1641,11 @@ class TemplatePackage:
 
         libs: list[str] = []
         seen: set[str] = set()
+        if self.app_source is not None:
+            from tracebi.reports.app_lane import libs_for
+            for lib in libs_for(self.app_imports):
+                libs.append(lib)
+                seen.add(lib)
         for lib in self.libs:
             if lib not in seen:
                 libs.append(lib)
@@ -1650,6 +1681,9 @@ class TemplatePackage:
         """
         from tracebi.reports.stack import apply_stack, project_theme_css
 
+        if self.app_source is not None:
+            from tracebi.reports.app_lane import app_blocks_html
+            extra_blocks_html += app_blocks_html(self.app_source, self.app_icons)
         return apply_stack(
             page,
             libs=self._libs_for_page(page),
@@ -1690,7 +1724,8 @@ def _ensure_about_home(page: str) -> tuple[str, int]:
     return page, insert_at
 
 
-def _about_html(manifest: ReportManifest, model_names: list[str]) -> str:
+def _about_html(manifest: ReportManifest, model_names: list[str],
+                app: bool = False) -> str:
     """Plain-language About this report — who, when, definitions, receipt.
 
     Locked honesty: names what the receipt is for and what it does not
@@ -1730,6 +1765,12 @@ def _about_html(manifest: ReportManifest, model_names: list[str]) -> str:
         "whether those numbers still match the model. The receipt does not "
         "claim the numbers are right.</p>"
     )
+    if app:
+        lines.append(
+            '<p class="tb-about-receipt">This page is an app. The figures it '
+            "shows through the TraceBi kit carry that receipt; anything else "
+            "it draws is the app's own presentation and is not checked.</p>"
+        )
     return "".join(lines)
 
 

@@ -42,7 +42,7 @@ from tracebi.report_paths import library_roots, open_report, report_name_error
 #: Each file a draft holds, in bytes of UTF-8.
 MAX_FILE_BYTES = 512 * 1024
 
-REPORT_FILES = ("report.json", "template.html", "style.css", "script.js")
+REPORT_FILES = ("report.json", "template.html", "app.jsx", "style.css", "script.js")
 
 _KINDS = {"report": "reports", "reports": "reports",
           "model": "models", "models": "models"}
@@ -458,8 +458,9 @@ def _validate_report(where: Path, models: dict):
     """Render the package to check it; returns the build's manifest."""
     from tracebi.reports.template_package import TemplatePackage
 
-    missing = [n for n in ("report.json", "template.html")
-               if not (where / n).is_file()]
+    missing = [n for n in ("report.json",) if not (where / n).is_file()]
+    if not (where / "template.html").is_file() and not (where / "app.jsx").is_file():
+        missing.append("template.html (or app.jsx)")
     if missing:
         raise DraftError(f"the draft has no {' or '.join(missing)}")
     with tempfile.TemporaryDirectory() as tmp:

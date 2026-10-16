@@ -624,6 +624,18 @@
     return Array.prototype.slice.call(document.querySelectorAll(sel));
   }
 
+  /* The elements one hydrator has not seen yet. A page drawn by a React app
+   * mounts figures after load (a view switch, a drawer); refresh() runs the
+   * hydrators again and each touches only what is new, once. */
+  function fresh(els, phase) {
+    return els.filter(function (el) {
+      var seen = el.__tbHydrated || (el.__tbHydrated = {});
+      if (seen[phase]) return false;
+      seen[phase] = 1;
+      return true;
+    });
+  }
+
   /* A value figure's format takes a table column's precedence: the author's
    * data-tb-format, then one the model declares on the measure, then the
    * shape guess — so an unformatted KPI reads 4,846.10, never 4846.1. */
@@ -653,7 +665,7 @@
   }
 
   function hydrateValues() {
-    figureEls("value").forEach(function (el) {
+    fresh(figureEls("value"), "value").forEach(function (el) {
       try {
         var block = readBlock(attr(el, "data-tb-binding"));
         if (!block || !block.rows.length) return;
@@ -1133,7 +1145,7 @@
   }
 
   function hydrateTables() {
-    figureEls("table").forEach(function (el) {
+    fresh(figureEls("table"), "table").forEach(function (el) {
       try {
         if (el.tagName !== "TABLE") return;
         /* An author-rendered table is left alone (and never reactive). A
@@ -2419,7 +2431,7 @@
   function hydrateCharts() {
     if (!root.echarts && !root.d3) return; /* no charting lib on this page */
     var palette = null;
-    figureEls("chart").forEach(function (el) {
+    fresh(figureEls("chart"), "chart").forEach(function (el) {
       try {
         var binding = attr(el, "data-tb-binding");
         var block = readBlock(binding);
@@ -2946,7 +2958,7 @@
   function hydrateControls() {
     if (selectionConfig()) {
       try { hydrateSelectionFilters(); } catch (e) { /* defensive */ }
-    } else controlEls("data-tb-filter").forEach(function (el) {
+    } else fresh(controlEls("data-tb-filter"), "filter").forEach(function (el) {
       try {
         var binding = attr(el, "data-tb-binding");
         var column = attr(el, "data-tb-column");
@@ -2983,7 +2995,7 @@
         });
       } catch (e) { /* defensive */ }
     });
-    controlEls("data-tb-search").forEach(function (el) {
+    fresh(controlEls("data-tb-search"), "search").forEach(function (el) {
       try {
         var binding = attr(el, "data-tb-binding");
         if (!readBlock(binding)) {
@@ -3001,7 +3013,7 @@
   /* ── Download — the binding's embedded canonical CSV, byte-verbatim ──── */
 
   function hydrateDownloads() {
-    controlEls("data-tb-download").forEach(function (el) {
+    fresh(controlEls("data-tb-download"), "download").forEach(function (el) {
       try {
         var binding = attr(el, "data-tb-binding");
         var label = attr(el, "data-tb-label");
@@ -3041,6 +3053,7 @@
     _scrollReady = true;
     _tables.forEach(function (entry) {
       try {
+        if (!fresh([entry.el], "scroll").length) return;
         var el = entry.el;
         var want = attr(el, "data-tb-rows");
         if (want === "all") return; /* the author opted out */
@@ -3551,6 +3564,23 @@
     });
   }
 
+  /* Hydrate figures mounted since the last pass — what a React app calls
+   * after it renders new ones. Entries whose element left the page are
+   * dropped, so a filter never redraws a figure nobody can see. */
+  function refresh() {
+    if (!_dataReady || typeof document === "undefined") return;
+    var on = function (e) { return document.documentElement.contains(e.el); };
+    for (var i = _tables.length - 1; i >= 0; i--) if (!on(_tables[i])) _tables.splice(i, 1);
+    for (var j = _charts.length - 1; j >= 0; j--) if (!on(_charts[j])) _charts.splice(j, 1);
+    try { hydrateValues(); } catch (e) {}
+    try { hydrateTables(); } catch (e) {}
+    try { hydrateCharts(); } catch (e) {}
+    try { hydrateBadges(); } catch (e) {}
+    try { hydrateScroll(); } catch (e) {}
+    try { hydrateControls(); } catch (e) {}
+    try { hydrateDownloads(); } catch (e) {}
+  }
+
   function hydrate() {
     try { bindPrintMode(); } catch (e) {}
     try { hydrateValues(); } catch (e) {}
@@ -3972,6 +4002,7 @@
     draw: draw,
     theme: theme,
     setSelection: setSelection,
+    refresh: refresh,
     /* The scenario evaluator, exposed so tests and authors can check a
      * formula gives what they expect. It computes from the values passed. */
     evaluate: evalFormula

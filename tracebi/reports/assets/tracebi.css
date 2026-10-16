@@ -912,6 +912,22 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 :root[data-tb-mode="dark"] .tb-title[data-tb-title="banner"] .tb-subtitle,
 :root[data-tb-mode="dark"] .tb-title[data-tb-title="banner"] [data-tb-built] { color: rgba(13, 15, 18, 0.8); }
 
+/* ── 12c. App pages (app.jsx) ─────────────────────────────────────────────
+ * The React lane owns the whole window: no reading-width cap, no page
+ * padding. The kit's figures keep every class above; the About footer sits
+ * under the app in the page's own column. */
+:root[data-tb-app] body { max-width: none; margin: 0; padding: 0; }
+/* The app spaces its own panels (gap, space-y); no stacking margin. */
+:root[data-tb-app] .tb-card + .tb-card { margin-top: 0; }
+:root[data-tb-app] .tb-about { max-width: 1120px; margin: var(--tb-space-4) auto;
+  padding: var(--tb-space-3) var(--tb-space-3) var(--tb-space-4); }
+.tb-app-error {
+  margin: var(--tb-space-4); padding: var(--tb-space-3);
+  border: 1px solid var(--tb-bad); border-radius: var(--tb-radius);
+  color: var(--tb-ink); background: var(--tb-bg);
+}
+.tb-app-error pre { white-space: pre-wrap; color: var(--tb-bad); margin: 8px 0 0; }
+
 /* ── 13. Receipt drawer — provenance DISPLAY, never re-colored ─────────── */
 /* Muted like .tb-note. No rule below sets a colour on a badge: the drawer
  * shows the recorded statuses in their own tones, untouched. */

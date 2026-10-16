@@ -1303,8 +1303,9 @@ def _discovery_packages(project_root: str) -> list[str]:
             if entry.startswith((".", "_")) or not os.path.isdir(full):
                 continue
             inside = os.listdir(full)
-            if "report.json" in inside or "template.html" in inside or not any(
-                    os.path.isdir(os.path.join(full, e)) for e in inside):
+            if ("report.json" in inside or "template.html" in inside
+                    or "app.jsx" in inside or not any(
+                    os.path.isdir(os.path.join(full, e)) for e in inside)):
                 found.append(prefix + entry)
             else:
                 walk(full, f"{prefix}{entry}/")

@@ -273,3 +273,33 @@ Licensed under the SIL Open Font License, Version 1.1 (the same licence text as
 Hanken Grotesk above applies, with IBM Corp. as the copyright holder).
 Self-hosted by the web UI only; it is not inlined into generated reports.
 ================================================================================
+
+================================================================================
+React lane bundles (tracebi/reports/assets/react.min.js, recharts.min.js,
+tailwind.min.js, lucide-icons.json) — inlined into a generated report whose
+page is app.jsx. See tracebi/reports/assets/REACT_NOTICE.md.
+
+React 18.3.1 and ReactDOM 18.3.1 — https://react.dev — MIT License,
+    Copyright (c) Meta Platforms, Inc. and affiliates.
+Sucrase 3.35.0 — https://github.com/alangpierce/sucrase — MIT License,
+    Copyright (c) 2012-2018 various contributors.
+Recharts 3.1.2 — https://recharts.org — MIT License,
+    Copyright (c) 2015-present recharts. Bundles MIT and ISC licensed
+    dependencies (Redux Toolkit, Immer, Reselect, eventemitter3, d3 modules).
+Tailwind CSS 4.1.11 (browser build) — https://tailwindcss.com — MIT License,
+    Copyright (c) Tailwind Labs, Inc.
+Lucide 0.468.0 icons — https://lucide.dev — ISC License,
+    Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as
+    part of Feather (MIT). All other copyright (c) for Lucide are held by
+    Lucide Contributors 2022.
+
+    MIT License: Permission is hereby granted, free of charge, to any person
+    obtaining a copy of this software and associated documentation files (the
+    "Software"), to deal in the Software without restriction, including without
+    limitation the rights to use, copy, modify, merge, publish, distribute,
+    sublicense, and/or sell copies of the Software, and to permit persons to
+    whom the Software is furnished to do so, subject to the following
+    conditions: The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software. THE
+    SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+================================================================================
