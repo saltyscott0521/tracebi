@@ -183,6 +183,36 @@ to the top of a sidebar). The runtime fills `data-tb-built` with the build time
 from the receipt — never type a date. A look for every report in the project
 goes in `reports/_theme.css`.
 
+## Editorial
+
+A report written to be read — what `tracebi new-report` writes by default.
+One reading column with a serif body (a system face; nothing is fetched), on
+the card colour rather than the dashboard's grey.
+
+```html
+<article class="tb-article">
+  <header class="tb-article-head">          <!-- data-tb-title="center" to centre it -->
+    <p class="tb-kicker">Revenue</p>
+    <h1><span data-tb-figure="value" data-tb-binding="top" data-tb-cell="dim_region.region"></span>
+        leads on revenue</h1>
+    <p class="tb-dek">What this report finds, and why it matters.</p>
+    <p class="tb-byline">Q3 review · <span data-tb-built></span></p>
+  </header>
+  <p class="tb-lede">… numbers bound as value figures …</p>
+  <h2>A claim, not a topic</h2>
+  <p>…</p>
+  <figure class="tb-figure"> <div data-tb-figure="chart" …></div>
+    <figcaption>Revenue by region, largest first.</figcaption></figure>
+  <aside class="tb-pullstat">
+    <span class="tb-pullstat-value" data-tb-figure="value" …></span>
+    <span class="tb-pullstat-text">the one number to remember, explained</span></aside>
+</article>
+```
+
+Charts, tables, the pull-stat and the About footer keep the sans face, so
+numbers read as data. The writing advice is `tracebi knowledge
+design-editorial-report`.
+
 ## Stage blocks
 
 ```html

@@ -93,20 +93,22 @@ keeps one schema. `--connection` wires `models/_connections/<name>.py` from
 and measures are `# DRAFT: review` comments; foreign keys are not invented.
 An existing model file is kept unless `--force`.
 
-### `tracebi new-transform "Title"` · `new-model` · `new-report` · `new-pipeline`
+### `tracebi new-transform "Title"` · `new-model` · `new-report` · `new-dashboard` · `new-pipeline`
 
 ```bash
 tracebi new-transform "Orders Clean"  [--force] [--transforms-dir DIR]
 tracebi new-model     "Sales Model"   [--force]
 tracebi new-model     "Sales" --from wh --tables fact_sales,dim_customer,dim_product
-tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR] [--layout brief|dashboard|tabbed]
+tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR]
+                      [--layout editorial|brief|tabbed|dashboard]
                       [--mode light|dark|auto] [--density comfortable|compact]
-                      [--nav top|side] [--title-at left|center|banner|nav]
-                      [--theme NAME] [--html]
+                      [--nav top|side] [--title-at left|center|banner|nav] [--theme NAME]
+tracebi new-dashboard "Ops Board"     [--force] [--reports-dir DIR] [--html]
+                      [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
 tracebi new-pipeline  "Sales ETL"     [--force]
 ```
 
-Each scaffolds one file (or, for `new-report`, a package directory) with the
+Each scaffolds one file (or, for `new-report` and `new-dashboard`, a package directory) with the
 title slugified: `"Portfolio Book"` → `portfolio_book`.
 
 `new-report` can put the report in a folder: `"Finance/Month end/Close pack"`
@@ -117,10 +119,19 @@ reports by folder. Two folders can each hold a report of the same name.
 
 All refuse to overwrite without `--force`.
 
-`new-report` writes a dashboard as an **app** by default: `app.jsx`, a React
-component built from the TraceBi kit ([[app-jsx]]). `--html` writes the
-dashboard as `template.html` instead; `--layout brief` and `--layout tabbed`
-are always `template.html` pages.
+**A report is read; a dashboard is worked in.** `new-report` writes a
+`template.html` — by default an **editorial** page: a kicker, a headline that
+states the finding, a standfirst, a byline with the build time, prose with its
+numbers bound, captioned figures, a pull-stat, "What to do" and the
+methodology ([[template-html]] "Editorial"). It reads with JavaScript off,
+prints and emails. `--layout brief` (answer, KPIs, one chart), `tabbed`
+(Overview and Detail tabs) and `dashboard` (the template dashboard) are the
+other pages.
+
+`new-dashboard` writes an **app**: `app.jsx`, a React component built from the
+TraceBi kit ([[app-jsx]]) — a KPI strip with a lead, a chart beside its
+ranking, a filterable detail. `--html` writes the dashboard as `template.html`
+instead (the same page as `new-report --layout dashboard`).
 
 The look flags answer the questions an agent asks before it builds: `--mode`,
 `--density`, `--nav` (top tabs or a sidebar) and `--title-at` (`nav` puts the

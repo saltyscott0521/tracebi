@@ -2191,8 +2191,125 @@ def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
     ]
 
 
+def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
+                           mode: str = "light", density: str = "comfortable",
+                           title_at: str = "left") -> str:
+    """The ``editorial`` page — a report written to be read, top to bottom.
+
+    A kicker, a headline that states the finding, a standfirst, a byline with
+    the build time, then prose with its numbers bound, captioned figures, a
+    pull-stat, and the methodology. ``.tb-article`` sets the measure and the
+    type (tracebi.css "Editorial"). Every number is a value figure: the
+    scaffold has no digits, so the build's numeral lint passes as written.
+    """
+    esc = _html.escape
+    root = []
+    if mode in ("dark", "auto"):
+        root.append(f'data-tb-mode="{mode}"')
+    if density == "compact":
+        root.append('data-tb-density="compact"')
+    m_label = _humanise_label(measure)
+    m_lower = esc(m_label.lower())
+    centered = ' data-tb-title="center"' if title_at == "center" else ""
+    parts = [
+        "<!doctype html>",
+        f'<html lang="en"{"".join(" " + a for a in root)}>',
+        f"<head><meta charset=\"utf-8\"><title>{esc(title)}</title></head>",
+        "<body>",
+        "<!-- An editorial report: written to be read top to bottom. The headline",
+        "     states the finding; every number in the prose is a value figure",
+        "     bound to report.json, so the receipt names it. Never type one in. -->",
+        '<article class="tb-article">',
+        f'  <header class="tb-article-head"{centered}>',
+        f'    <p class="tb-kicker">{esc(m_label)}</p>',
+    ]
+    if dim_ref:
+        parts += [
+            f"    <h1><span data-tb-figure=\"value\" data-tb-binding=\"top\"",
+            f'              data-tb-cell="{esc(dim_ref)}" id="head-top">—</span>',
+            f"        leads on {m_lower}</h1>",
+        ]
+    else:
+        parts.append(f"    <h1>{esc(title)}</h1>")
+    parts += [
+        '    <p class="tb-dek">One or two sentences: what this report finds, and',
+        "      why it matters to the person reading it.</p>",
+        f'    <p class="tb-byline">{esc(title)} · <span data-tb-built></span></p>',
+        "  </header>",
+        "",
+        '  <p class="tb-lede">',
+        f"    Total {m_lower} is",
+        f'    <span data-tb-figure="value" data-tb-binding="totals"',
+        f'          data-tb-cell="{esc(measure)}" id="val-total">—</span>.',
+    ]
+    if dim_ref:
+        d_label = _humanise_label(dim_ref)
+        d_lower = esc(d_label.lower())
+        parts += [
+            "    The largest share comes from",
+            f'    <span data-tb-figure="value" data-tb-binding="top"',
+            f'          data-tb-cell="{esc(dim_ref)}" id="val-top">—</span>, at',
+            f'    <span data-tb-figure="value" data-tb-binding="top"',
+            f'          data-tb-cell="{esc(measure)}" id="val-top-{esc(measure)}">—</span>.',
+            "    Rewrite this paragraph as the finding, in plain words.</p>",
+            "",
+            f"  <h2>Where the {m_lower} comes from</h2>",
+            f"  <p>Say what the reader should see in the chart before they look at",
+            f"    it: which {d_lower} stands out, and against what.</p>",
+            '  <figure class="tb-figure">',
+            f'    <div data-tb-figure="chart" data-tb-binding="breakdown"',
+            f'         data-tb-type="barh" data-tb-x="{esc(dim_ref)}"',
+            f'         data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
+            '         id="chart-breakdown"></div>',
+            f"    <figcaption>{esc(m_label)} by {d_lower}, largest first.</figcaption>",
+            "  </figure>",
+            "",
+            '  <aside class="tb-pullstat">',
+            f'    <span class="tb-pullstat-value" data-tb-figure="value"',
+            f'          data-tb-binding="top" data-tb-cell="{esc(measure)}"',
+            '          id="pull-top">—</span>',
+            f"    <span class=\"tb-pullstat-text\">{esc(m_label)} from the leading",
+            f"      {d_lower} — say why it matters here.</span>",
+            "  </aside>",
+            "",
+            "  <h2>The detail</h2>",
+            "  <p>One paragraph on what the table adds: the rows to look at, and",
+            "    what would change the conclusion.</p>",
+            f'  <table data-tb-figure="table" data-tb-binding="breakdown" data-tb-sort',
+            f'         data-tb-bars="{esc(measure)}" id="tbl-detail"></table>',
+        ]
+    else:
+        parts += [
+            "    Rewrite this paragraph as the finding, in plain words.</p>",
+            '  <table data-tb-figure="table" data-tb-binding="totals" id="tbl-detail"></table>',
+        ]
+    parts += [
+        "",
+        "  <h2>What to do</h2>",
+        "  <p>End with the decision or the next step this report supports.</p>",
+        "",
+        "  <section data-tb-methodology>",
+        "    <h2>How these numbers were made</h2>",
+        "    <p class=\"tb-note\">The build appends the transform's stated",
+        "      methodology (the sink <code>note=</code>) below this line. It is",
+        "      the author's prose — \"the sink satisfied its contract\", never",
+        "      \"the transform was verified\".</p>",
+        "  </section>",
+        "",
+        '  <section data-tb-stage="exploration">',
+        "    <h3>Working notes</h3>",
+        "    <p>Scratch space: this block renders under <code>tracebi dev</code>",
+        "       and is DELETED at the final build.</p>",
+        "  </section>",
+        "</article>",
+        "</body></html>",
+        "",
+    ]
+    return "\n".join(parts)
+
+
 def _report_template_html(title: str, measure: str, dim_ref: "str | None",
-                          layout: str = "dashboard", *, mode: str = "light",
+                          layout: str = "editorial", *, mode: str = "light",
                           density: str = "comfortable", nav: str = "",
                           title_at: str = "left") -> str:
     """A starter ``template.html`` for one named page structure.
@@ -2208,10 +2325,13 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
     bytes — hand-rolling a CSV parser and a chart is exactly the L0 trap a
     scaffold must not teach.
     """
-    if layout not in ("brief", "dashboard", "tabbed"):
+    if layout not in ("editorial", "brief", "dashboard", "tabbed"):
         raise ValueError(
-            f"unknown layout {layout!r}; choose brief, dashboard, or tabbed"
+            f"unknown layout {layout!r}; choose editorial, brief, dashboard, or tabbed"
         )
+    if layout == "editorial" and nav not in ("top", "side"):
+        return _report_editorial_html(title, measure, dim_ref, mode=mode,
+                                      density=density, title_at=title_at)
     # The look (asked of the builder before a dashboard is built): the mode and
     # density are tokens on <html>; navigation picks the tabbed structure, as
     # a top bar or a sidebar; the title is the standard .tb-title block.
@@ -2456,9 +2576,9 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     measure = query["measures"][0]
     dims = query.get("dimensions")
     dim_ref = dims[0] if dims else None
-    # A dashboard is an app (the React lane) unless --html asks for the
-    # template page; a brief and a tabbed page are template pages.
-    app = args.layout == "dashboard" and not args.html
+    # new-dashboard writes an app (the React lane) unless --html asks for the
+    # template page; new-report always writes a template page.
+    app = getattr(args, "kind", "report") == "dashboard" and not args.html
     look = {k: v for k, v in (("mode", args.mode), ("density", args.density))
             if v not in ("light", "comfortable")}
     for stale in ("template.html", "app.jsx"):     # --force switching lanes
@@ -3436,54 +3556,73 @@ def build_parser() -> argparse.ArgumentParser:
     p_list_pipelines = sub.add_parser("list-pipelines", help="List pipeline definition files.")
     p_list_pipelines.set_defaults(func=cmd_list_pipelines)
 
+    def _page_args(p, *, dashboard: bool) -> None:
+        """The flags new-report and new-dashboard share: the title (with a
+        folder path), and the look an agent asks about before it builds."""
+        p.add_argument(
+            "title", help='Free-form title, e.g. "Portfolio Book". Put it in a folder '
+                          'with a path: "Finance/Month end/Close pack" creates '
+                          'reports/finance/month_end/close_pack/.')
+        p.add_argument("--force", action="store_true", help="Overwrite if exists.")
+        p.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
+                       help="Directory holding report packages (default: ./reports).")
+        p.add_argument(
+            "--mode", choices=["light", "dark", "auto"], default="light",
+            help="light (default), dark, or auto (follows the reader's system).")
+        p.add_argument(
+            "--density", choices=["comfortable", "compact"], default="comfortable",
+            help="comfortable (default) or compact spacing.")
+        p.add_argument(
+            "--nav", choices=["top", "side"], default="",
+            help=("Views as top tabs or a sidebar: the app's own navigation "
+                  "(with --html, a tabbed page)." if dashboard else
+                  "Sections as top tabs or a sidebar (makes the page tabbed; "
+                  "a sidebar also uses the full window width)."))
+        p.add_argument(
+            "--title-at", choices=["left", "center", "banner", "nav"], default="left",
+            help="Where the title sits: left (default), center, a banner, or at "
+                 "the top of the sidebar (nav, with --nav side).")
+        from tracebi.reports.stack import named_themes
+        p.add_argument(
+            "--theme", choices=named_themes(), default=None,
+            help="A shipped theme for this page (report.json \"theme\"); the "
+                 "project default is reports/_theme.css (tracebi theme use).")
+
     p_new_report = sub.add_parser(
         "new-report",
-        help="Scaffold a freeform report package (reports/<name>/): report.json "
-             "bindings + a template.html that teaches the data-tb-* figure grammar.",
+        help="Scaffold a report to be read (reports/<name>/): report.json bindings "
+             "+ a template.html. Default: an editorial page — a headline that "
+             "states the finding, numbers bound into the prose, captioned "
+             "figures. Reads with JavaScript off, prints and emails. For a "
+             "dashboard people work in, use new-dashboard.",
     )
-    p_new_report.add_argument(
-        "title", help='Free-form title, e.g. "Portfolio Book". Put it in a folder '
-                      'with a path: "Finance/Month end/Close pack" creates '
-                      'reports/finance/month_end/close_pack/.')
-    p_new_report.add_argument("--force", action="store_true", help="Overwrite if exists.")
-    p_new_report.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
-                              help="Directory holding report packages (default: ./reports).")
+    _page_args(p_new_report, dashboard=False)
     p_new_report.add_argument(
         "--layout",
-        choices=["brief", "dashboard", "tabbed"],
-        default="dashboard",
-        help="Page structure. dashboard (default): an app.jsx React app — "
-             "a KPI strip, a chart beside its ranking, a filterable detail "
-             "(--html for the template.html version). brief: answer sentence, "
-             "KPIs, one chart. tabbed: the same header, then Overview and "
-             "Detail tabs. brief and tabbed are template.html pages.",
+        choices=["editorial", "brief", "tabbed", "dashboard"],
+        default="editorial",
+        help="editorial (default): headline, standfirst, byline, prose with "
+             "bound numbers, captioned figures, a pull-stat, the methodology. "
+             "brief: answer sentence, KPIs, one chart. tabbed: the same "
+             "header, then Overview and Detail tabs. dashboard: the "
+             "template.html dashboard (new-dashboard --html writes the same).",
     )
-    # The look: the same four questions an agent asks before it builds.
-    p_new_report.add_argument(
-        "--mode", choices=["light", "dark", "auto"], default="light",
-        help="light (default), dark, or auto (follows the reader's system).")
-    p_new_report.add_argument(
-        "--density", choices=["comfortable", "compact"], default="comfortable",
-        help="comfortable (default) or compact spacing.")
-    p_new_report.add_argument(
-        "--nav", choices=["top", "side"], default="",
-        help="Views as top tabs or a sidebar. In a dashboard app, the app's "
-             "own navigation; with --html, the tabbed template page (a "
-             "sidebar also uses the full window width).")
-    p_new_report.add_argument(
+    p_new_report.set_defaults(func=cmd_new_report, kind="report", html=True)
+
+    p_new_dashboard = sub.add_parser(
+        "new-dashboard",
+        help="Scaffold a dashboard people work in (reports/<name>/): report.json "
+             "bindings + an app.jsx React app — a KPI strip with a lead, a "
+             "chart beside its ranking, a filterable detail, and top tabs or "
+             "a sidebar when asked. --html writes the template.html version.",
+    )
+    _page_args(p_new_dashboard, dashboard=True)
+    p_new_dashboard.add_argument(
         "--html", action="store_true",
-        help="Write the dashboard as template.html (the data-tb-* page that "
-             "reads with JavaScript off) instead of an app.jsx React app.")
-    p_new_report.add_argument(
-        "--title-at", choices=["left", "center", "banner", "nav"], default="left",
-        help="Where the title sits: left (default), center, a banner, or at "
-             "the top of the sidebar (nav, with --nav side).")
-    from tracebi.reports.stack import named_themes
-    p_new_report.add_argument(
-        "--theme", choices=named_themes(), default=None,
-        help="A shipped theme for this report (report.json \"theme\"); the "
-             "project default is reports/_theme.css (tracebi theme use).")
-    p_new_report.set_defaults(func=cmd_new_report)
+        help="Write the dashboard as template.html (reads with JavaScript off) "
+             "instead of an app.jsx React app.")
+    p_new_dashboard.set_defaults(func=cmd_new_report, kind="dashboard",
+                                 layout="dashboard")
 
     p_theme = sub.add_parser(
         "theme",

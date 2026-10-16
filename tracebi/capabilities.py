@@ -316,9 +316,9 @@ def _presentation() -> dict:
                        "text-good, text-bad, chart-1..8) and the kit's tb-* classes.",
             "when": "app.jsx for dashboards people work in; template.html for briefs, "
                     "long-form, emailed and printed pages (they read with JavaScript off).",
-            "scaffold": "tracebi new-report \"Name\" writes a dashboard app.jsx (the "
-                        "default layout); --nav top|side, --title-at, --mode, --density "
-                        "and --theme shape it.",
+            "scaffold": "tracebi new-dashboard \"Name\" writes a dashboard app.jsx; "
+                        "--nav top|side, --title-at, --mode, --density and --theme "
+                        "shape it. (new-report writes pages to be read.)",
         },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
@@ -338,6 +338,9 @@ def _presentation() -> dict:
             ".tb-table--freeze — the first column stays put while a wide "
             "table scrolls sideways)",
             ".tb-callout", ".tb-note",
+            ".tb-article (an editorial report: .tb-article-head, .tb-kicker, "
+            ".tb-dek, .tb-byline, figure.tb-figure with figcaption, "
+            ".tb-pullstat / .tb-pullstat-value / .tb-pullstat-text)",
             ".tb-good / .tb-bad (direction tones; pair with a sign or word, "
             "never color alone)",
             ".tb-badge (--verified / --derived / --unverified — provenance "
@@ -599,18 +602,30 @@ def _presentation() -> dict:
                          "44px tall, zero-based, hover still reads each "
                          "value",
             "recipes": {
+                "editorial": "A report to be read top to bottom (the default for "
+                             "new-report): <article class=\"tb-article\"> — a "
+                             ".tb-kicker, an <h1> that states the finding, a "
+                             ".tb-dek standfirst, a .tb-byline with "
+                             "<span data-tb-built>, a .tb-lede with its numbers "
+                             "bound, <h2> sections of prose, <figure "
+                             "class=\"tb-figure\"> with a <figcaption> saying "
+                             "what to see, an <aside class=\"tb-pullstat\">, a "
+                             "table, What to do, the methodology. Serif body, "
+                             "reads with JavaScript off, prints and emails. "
+                             "tracebi new-report \"Name\" --layout editorial",
                 "brief": "One finding: answer sentence (.tb-lede), a few "
                          "KPIs (.tb-grid / .tb-kpi), one chart in one "
                          ".tb-card. "
                          "tracebi new-report \"Name\" --layout brief",
-                "dashboard": "An app.jsx (presentation.app): the title, a KPI "
-                             "strip with a lead, a chart beside its ranking, "
-                             "a filterable detail, and the navigation asked "
-                             "for. The default for new-report. --html writes "
-                             "the template.html version instead (brief, then "
+                "dashboard": "A page people work in: tracebi new-dashboard "
+                             "\"Name\" writes an app.jsx (presentation.app) — "
+                             "the title, a KPI strip with a lead, a chart "
+                             "beside its ranking, a filterable detail, and the "
+                             "navigation asked for. new-dashboard --html (or "
+                             "tracebi new-report \"Name\" --layout dashboard) "
+                             "writes the template.html version (brief, then "
                              ".tb-cols-2-1), which is what tracebi init's "
-                             "sample is. "
-                             "tracebi new-report \"Name\" --layout dashboard",
+                             "sample is.",
                 "tabbed": "The same header, then .tb-tabs / data-tb-tab "
                           "(Overview and Detail). "
                           "tracebi new-report \"Name\" --layout tabbed",
@@ -640,10 +655,11 @@ def _presentation() -> dict:
                        "report.json \"look\": {\"mode\": \"dark\"|\"auto\", "
                        "\"density\": \"compact\"}; its navigation and title "
                        "are its own components (the scaffold writes them)",
-                "scaffold": "tracebi new-report \"Name\" --mode light|dark|"
-                            "auto --density comfortable|compact --nav "
+                "scaffold": "tracebi new-dashboard|new-report \"Name\" --mode "
+                            "light|dark|auto --density comfortable|compact --nav "
                             "top|side --title-at left|center|banner|nav "
-                            "--theme <name> [--html]",
+                            "--theme <name> (new-dashboard --html for a "
+                            "template dashboard)",
                 "themes": "Shipped themes, contrast-checked token sets: "
                           + ", ".join(_named_themes()) + ". A report names one in report.json "
                           "\"theme\"; tracebi theme use <name> makes one the "

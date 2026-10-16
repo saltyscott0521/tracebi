@@ -145,17 +145,19 @@ keeps one schema. <code>--connection</code> wires <code>models/_connections/&lt;
 <code>tracebi connect</code> and is refused when that module is missing. Relationships
 and measures are <code># DRAFT: review</code> comments; foreign keys are not invented.
 An existing model file is kept unless <code>--force</code>.</p>
-<h3 id="tracebi-new-transform-title-new-model-new-report-new-pipeline"><code>tracebi new-transform "Title"</code> · <code>new-model</code> · <code>new-report</code> · <code>new-pipeline</code></h3>
+<h3 id="tracebi-new-transform-title-new-model-new-report-new-dashboard-new-pipeline"><code>tracebi new-transform "Title"</code> · <code>new-model</code> · <code>new-report</code> · <code>new-dashboard</code> · <code>new-pipeline</code></h3>
 <pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--transforms-dir DIR]
 tracebi new-model     &quot;Sales Model&quot;   [--force]
 tracebi new-model     &quot;Sales&quot; --from wh --tables fact_sales,dim_customer,dim_product
-tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR] [--layout brief|dashboard|tabbed]
+tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
+                      [--layout editorial|brief|tabbed|dashboard]
                       [--mode light|dark|auto] [--density comfortable|compact]
-                      [--nav top|side] [--title-at left|center|banner|nav]
-                      [--theme NAME] [--html]
+                      [--nav top|side] [--title-at left|center|banner|nav] [--theme NAME]
+tracebi new-dashboard &quot;Ops Board&quot;     [--force] [--reports-dir DIR] [--html]
+                      [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
 tracebi new-pipeline  &quot;Sales ETL&quot;     [--force]
 </code></pre>
-<p>Each scaffolds one file (or, for <code>new-report</code>, a package directory) with the
+<p>Each scaffolds one file (or, for <code>new-report</code> and <code>new-dashboard</code>, a package directory) with the
 title slugified: <code>"Portfolio Book"</code> → <code>portfolio_book</code>.</p>
 <p><code>new-report</code> can put the report in a folder: <code>"Finance/Month end/Close pack"</code>
 creates <code>reports/finance/month_end/close_pack/</code>. A report in a folder is named
@@ -163,10 +165,18 @@ by that path everywhere after: <code>tracebi report build finance/month_end/clos
 <code>output/finance/month_end/close_pack.html</code>, and the app, which groups
 reports by folder. Two folders can each hold a report of the same name.</p>
 <p>All refuse to overwrite without <code>--force</code>.</p>
-<p><code>new-report</code> writes a dashboard as an <strong>app</strong> by default: <code>app.jsx</code>, a React
-component built from the TraceBi kit (<a href="../reference/app-jsx.html">app.jsx — the React lane</a>). <code>--html</code> writes the
-dashboard as <code>template.html</code> instead; <code>--layout brief</code> and <code>--layout tabbed</code>
-are always <code>template.html</code> pages.</p>
+<p><strong>A report is read; a dashboard is worked in.</strong> <code>new-report</code> writes a
+<code>template.html</code> — by default an <strong>editorial</strong> page: a kicker, a headline that
+states the finding, a standfirst, a byline with the build time, prose with its
+numbers bound, captioned figures, a pull-stat, "What to do" and the
+methodology (<a href="../reference/template-html.html">template.html — the figure grammar</a> "Editorial"). It reads with JavaScript off,
+prints and emails. <code>--layout brief</code> (answer, KPIs, one chart), <code>tabbed</code>
+(Overview and Detail tabs) and <code>dashboard</code> (the template dashboard) are the
+other pages.</p>
+<p><code>new-dashboard</code> writes an <strong>app</strong>: <code>app.jsx</code>, a React component built from the
+TraceBi kit (<a href="../reference/app-jsx.html">app.jsx — the React lane</a>) — a KPI strip with a lead, a chart beside its
+ranking, a filterable detail. <code>--html</code> writes the dashboard as <code>template.html</code>
+instead (the same page as <code>new-report --layout dashboard</code>).</p>
 <p>The look flags answer the questions an agent asks before it builds: <code>--mode</code>,
 <code>--density</code>, <code>--nav</code> (top tabs or a sidebar) and <code>--title-at</code> (<code>nav</code> puts the
 title at the top of the sidebar). For an app they shape its navigation and

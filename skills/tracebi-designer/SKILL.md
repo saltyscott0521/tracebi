@@ -64,6 +64,9 @@ memory.
   strip, panels side by side, small labels and big values, quiet chrome.
 - **design-app-dashboards** — in an app.jsx: numbers through the kit,
   colour from tokens, views instead of one long scroll.
+- **design-editorial-report** — a report to read: the headline is the
+  finding, the first paragraph does the whole job, one idea per section, say
+  what to see before a figure, end with what to do.
 - **design-hierarchy-and-emphasis** — one loud element per view; size and
   weight before color; uniform neighbors so the one difference reads.
 - **design-grid-and-spacing** — the layout classes, one set of proportions,

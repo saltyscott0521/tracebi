@@ -1060,8 +1060,8 @@ class TestReportCLI:
         monkeypatch.setattr(cli, "_load_project_models",
                             lambda: {model.name: model})
         reports = tmp_path / "reports"
-        # A dashboard is an app.jsx by default; it teaches the kit.
-        assert cli.main(["new-report", "Regions App",
+        # new-dashboard writes an app.jsx; it teaches the kit.
+        assert cli.main(["new-dashboard", "Regions App",
                          "--reports-dir", str(reports)]) == 0
         app = (reports / "regions_app" / "app.jsx").read_text()
         assert not (reports / "regions_app" / "template.html").exists()
@@ -1069,7 +1069,7 @@ class TestReportCLI:
                        "<Search", "<Download", "<Built", 'from "tracebi"'):
             assert marker in app, f"app scaffold no longer teaches {marker}"
 
-        assert cli.main(["new-report", "Regions Demo", "--html",
+        assert cli.main(["new-dashboard", "Regions Demo", "--html",
                          "--reports-dir", str(reports)]) == 0
 
         pkg = reports / "regions_demo"

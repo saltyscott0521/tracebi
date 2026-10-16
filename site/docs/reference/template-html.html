@@ -271,6 +271,31 @@ they didn't ask for (<code>tracebi context</code> → <code>presentation.layout.
 to the top of a sidebar). The runtime fills <code>data-tb-built</code> with the build time
 from the receipt — never type a date. A look for every report in the project
 goes in <code>reports/_theme.css</code>.</p>
+<h2 id="editorial">Editorial</h2>
+<p>A report written to be read — what <code>tracebi new-report</code> writes by default.
+One reading column with a serif body (a system face; nothing is fetched), on
+the card colour rather than the dashboard's grey.</p>
+<pre><code class="language-html">&lt;article class=&quot;tb-article&quot;&gt;
+  &lt;header class=&quot;tb-article-head&quot;&gt;          &lt;!-- data-tb-title=&quot;center&quot; to centre it --&gt;
+    &lt;p class=&quot;tb-kicker&quot;&gt;Revenue&lt;/p&gt;
+    &lt;h1&gt;&lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_region.region&quot;&gt;&lt;/span&gt;
+        leads on revenue&lt;/h1&gt;
+    &lt;p class=&quot;tb-dek&quot;&gt;What this report finds, and why it matters.&lt;/p&gt;
+    &lt;p class=&quot;tb-byline&quot;&gt;Q3 review · &lt;span data-tb-built&gt;&lt;/span&gt;&lt;/p&gt;
+  &lt;/header&gt;
+  &lt;p class=&quot;tb-lede&quot;&gt;… numbers bound as value figures …&lt;/p&gt;
+  &lt;h2&gt;A claim, not a topic&lt;/h2&gt;
+  &lt;p&gt;…&lt;/p&gt;
+  &lt;figure class=&quot;tb-figure&quot;&gt; &lt;div data-tb-figure=&quot;chart&quot; …&gt;&lt;/div&gt;
+    &lt;figcaption&gt;Revenue by region, largest first.&lt;/figcaption&gt;&lt;/figure&gt;
+  &lt;aside class=&quot;tb-pullstat&quot;&gt;
+    &lt;span class=&quot;tb-pullstat-value&quot; data-tb-figure=&quot;value&quot; …&gt;&lt;/span&gt;
+    &lt;span class=&quot;tb-pullstat-text&quot;&gt;the one number to remember, explained&lt;/span&gt;&lt;/aside&gt;
+&lt;/article&gt;
+</code></pre>
+<p>Charts, tables, the pull-stat and the About footer keep the sans face, so
+numbers read as data. The writing advice is <code>tracebi knowledge
+design-editorial-report</code>.</p>
 <h2 id="stage-blocks">Stage blocks</h2>
 <pre><code class="language-html">&lt;section data-tb-stage=&quot;exploration&quot;&gt; … &lt;/section&gt;
 </code></pre>

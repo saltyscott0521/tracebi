@@ -83,28 +83,42 @@ def test_an_author_previews_pins_and_resolves(dev, scaffolded):
 
 
 def test_layout_recipes_scaffold_and_build(scaffolded):
-    """`--layout` writes a named page, and the default stays the dashboard."""
+    """new-report writes a page to be read (editorial by default, or a named
+    layout); new-dashboard writes an app people work in."""
     code, out = run_cli("run-transform", "sample_transform")
     assert code == 0, out
 
     code, out = run_cli("new-report", "Mosaic", "--layout", "mosaic")
     assert code != 0, out
     assert "mosaic" in out
-    for name in ("brief", "dashboard", "tabbed"):
+    for name in ("editorial", "brief", "dashboard", "tabbed"):
         assert name in out
     assert not (scaffolded / "reports" / "mosaic").exists()
 
     code, out = run_cli("new-report", "Weekly", "--reports-dir",
                         str(scaffolded / "plain"))
     assert code == 0, out
-    code, out = run_cli("new-report", "Weekly", "--layout", "dashboard",
-                        "--reports-dir", str(scaffolded / "dash"))
-    assert code == 0, out
     plain = scaffolded / "plain" / "weekly"
+    # A report is editorial: a headline, a standfirst, the byline's build
+    # time, and numbers bound into the prose — so it builds with no numeral
+    # typed in, and verifies.
+    article = (plain / "template.html").read_text()
+    for marker in ('class="tb-article"', "tb-kicker", "tb-dek", "data-tb-built",
+                   "tb-lede", "<figcaption>", "tb-pullstat", "data-tb-methodology"):
+        assert marker in article, marker
+    assert not (plain / "app.jsx").exists()
+    code, out = run_cli("report", "build", "weekly", "--reports-dir", str(scaffolded / "plain"))
+    assert code == 0, out
+
+    # A dashboard is an app (the React lane).
+    code, out = run_cli("new-dashboard", "Weekly", "--reports-dir",
+                        str(scaffolded / "dash"))
+    assert code == 0, out
     dash = scaffolded / "dash" / "weekly"
-    # The default is the dashboard, and a dashboard is an app (the React lane).
-    assert (plain / "app.jsx").read_bytes() == (dash / "app.jsx").read_bytes()
-    assert (plain / "report.json").read_bytes() == (dash / "report.json").read_bytes()
+    assert "<Kpi lead" in (dash / "app.jsx").read_text()
+    # The same bindings: a report and a dashboard read the same queries.
+    assert (json.loads((plain / "report.json").read_text())["data"]
+            == json.loads((dash / "report.json").read_text())["data"])
     assert not (dash / "template.html").exists()
     assert not (dash / "style.css").exists()
     assert not (dash / "script.js").exists()
@@ -133,7 +147,7 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     # with the title at the top of the sidebar. It builds, and the answers
     # are attributes the runtime and the stylesheet read.
     code, out = run_cli("new-report", "Desk", "--nav", "side", "--mode", "dark",
-                        "--density", "compact", "--title-at", "nav", "--html")
+                        "--density", "compact", "--title-at", "nav")
     assert code == 0, out
     desk = (scaffolded / "reports" / "desk" / "template.html").read_text()
     assert ('<html lang="en" data-tb-mode="dark" data-tb-density="compact" '
@@ -149,7 +163,7 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
 
     # The same answers for an app: its look rides in report.json (an app has
     # no <html> of its own), the sidebar holds the title, and it builds.
-    code, out = run_cli("new-report", "Desk App", "--nav", "side", "--mode", "dark",
+    code, out = run_cli("new-dashboard", "Desk App", "--nav", "side", "--mode", "dark",
                         "--density", "compact", "--title-at", "nav")
     assert code == 0, out
     app_dir = scaffolded / "reports" / "desk_app"
@@ -167,7 +181,7 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     look = payload["presentation"]["layout"]["look"]
     assert "--nav top|side" in look["scaffold"]
     recipes = payload["presentation"]["layout"]["recipes"]
-    assert set(recipes) == {"brief", "dashboard", "tabbed"}
+    assert set(recipes) == {"editorial", "brief", "dashboard", "tabbed"}
     for name, text in recipes.items():
         assert f"--layout {name}" in text
 

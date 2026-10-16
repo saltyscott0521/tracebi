@@ -227,16 +227,21 @@ from `report.json`:
   `data-tb-rows` (default 10). `data-tb-download` buttons export the
   stamped CSV verbatim (`data-tb-label` sets their text). Layout: tabs via `data-tb-tab` sections inside
   `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Pick a page by name instead of
-  inventing one: `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
-  (`presentation.layout` in `tracebi context`). `brief` is one finding — `.tb-lede`, a few
-  `.tb-kpi` cards, one chart in one `.tb-card`. `dashboard` (the default) is an app — an
-  `app.jsx` with a KPI strip, a chart beside its ranking and a filterable detail; `--html`
-  writes it as `template.html` (`brief` plus `.tb-cols-2-1`, as `tracebi init`'s sample). A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
+  inventing one (`presentation.layout` in `tracebi context`). A page someone *reads* —
+  once, emailed, printed — is a report: `tracebi new-report "<Name>"` writes an editorial
+  `template.html` (`<article class="tb-article">`: `.tb-kicker`, an `<h1>` stating the
+  finding, `.tb-dek`, `.tb-byline` with `data-tb-built`, a bound `.tb-lede`, prose sections,
+  `<figure class="tb-figure">` with a `<figcaption>`, `.tb-pullstat`, a table, the
+  methodology; read `tracebi knowledge design-editorial-report`). `--layout brief` is one
+  finding — `.tb-lede`, a few `.tb-kpi` cards, one chart in one `.tb-card`. A page someone
+  *works in* is a dashboard: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with a KPI
+  strip, a chart beside its ranking and a filterable detail; `--html` writes it as
+  `template.html` (`brief` plus `.tb-cols-2-1`, as `tracebi init`'s sample). A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
   number `.tb-kpi--lead`, and give a KPI with a trend a `class="tb-spark"` line or area
   chart (the shape alone, no axes). `.tb-cols-2-1` / `.tb-cols-1-2` put a wide panel
   beside a narrow one.
   `tabbed` is the same header, then `.tb-tabs` / `data-tb-tab` (Overview and Detail).
-  Pick by fit — `brief` for one finding, `dashboard` otherwise, `tabbed` for two jobs —
+  Pick by fit — a report to read, a dashboard to work in, `brief` for one finding —
   and ask only when a person is in the loop and the choice is not obvious. Every built
   page carries the Receipt drawer automatically.
 - Ask how it should look, once, before you build (a person in the loop; otherwise use
@@ -247,7 +252,7 @@ from `report.json`:
   `<div class="tb-tabs" data-tb-nav="side">` with the whole page inside. The title is
   `<header class="tb-title" data-tb-title="left|center|banner|nav">` with the `<h1>`,
   `<p class="tb-subtitle">` and `<span data-tb-built></span>` (the build time, from the
-  receipt; never type a date). `tracebi new-report "<Name>" --mode dark --density
+  receipt; never type a date). `tracebi new-dashboard "<Name>" --mode dark --density
   compact --nav side --title-at nav` writes it — for an app, mode and density go in
   `report.json` `"look"` and the sidebar and title are its own components. Looks never
   change a number. A report may name a shipped theme in `report.json` `"theme"`
@@ -313,10 +318,11 @@ tracebi run-transform <name>                # ① clean + sink + contract —
                                             #   works too for .py)
 tracebi new-model "<Name>"                  # ② scaffold models/<name>.yaml (--python: a .py); edit it
 tracebi migrate model models/<name>.py [--write]  # a Python model → YAML; the .py stays until you delete it
-tracebi new-report "<model>/<Name>" [--layout brief|dashboard|tabbed]
-                                            # ③ scaffold reports/<model>/<name>/ — a report lives in
-                                            #   its model's folder. dashboard is the default; brief
-                                            #   and tabbed are the other recipes
+tracebi new-report "<model>/<Name>" [--layout editorial|brief|tabbed]
+                                            # ③ scaffold reports/<model>/<name>/ — a report to read
+                                            #   (editorial by default), in its model's folder
+tracebi new-dashboard "<model>/<Name>" [--nav top|side]
+                                            # ③ a dashboard to work in: an app.jsx (--html: template)
 tracebi run-pipeline <model>                # ①→③ run the transform, then build the model's reports
 tracebi dev <name>                          # the live loop (see below)
 tracebi report status <name>                # earned state in the terminal (📌 pins)

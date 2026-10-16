@@ -193,17 +193,24 @@ you pick by name instead of inventing one. A value figure needs a one-row
 binding: its own query with no dimensions, or `order_by` plus `limit` 1.
 The cell may be text, such as the top sector's name.
 
-**Pick a structure by name.** `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
-writes that skeleton. `dashboard` (the default) is an **app** — an `app.jsx`
-with the title, a KPI strip with a lead, a chart beside its ranking and a
-filterable detail; `--html` writes it as `template.html` instead (that is
-what `tracebi init`'s sample is: `brief`, then `.tb-cols-2-1`). `brief`: one
-finding — `.tb-lede`, a few `.tb-kpi` cards, one chart in one `.tb-card`.
-`tabbed`: the same header, then `.tb-tabs` / `data-tb-tab` (Overview and
-Detail). `brief` and `tabbed` are `template.html` pages. Pick the one that
-fits — `brief` for one finding, `dashboard` for a page people work in,
-`tabbed` for a document that serves two jobs. Ask only when a person is in
-the loop and the choice is not obvious.
+**A report or a dashboard? Pick by what the reader does.** Someone who
+*reads* it — once, in an email, printed, at a meeting — gets a **report**:
+`tracebi new-report "<Name>"` writes an editorial `template.html` — an
+`<article class="tb-article">` with a `.tb-kicker`, an `<h1>` that states the
+finding, a `.tb-dek` standfirst, a `.tb-byline` with `<span data-tb-built>`,
+a `.tb-lede` with its numbers bound, `<h2>` sections of prose, `<figure
+class="tb-figure">` with a `<figcaption>` that says what to see, an `<aside
+class="tb-pullstat">`, a table, "What to do", and the methodology. Someone
+who *works in* it — checks it daily, switches views, drills in — gets a
+**dashboard**: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with the
+title, a KPI strip with a lead, a chart beside its ranking and a filterable
+detail; `--html` writes it as `template.html` (that is what `tracebi init`'s
+sample is: `brief`, then `.tb-cols-2-1`). Other report layouts:
+`new-report --layout brief` (one finding — `.tb-lede`, a few `.tb-kpi`
+cards, one chart in one `.tb-card`) and `--layout tabbed` (the same header,
+then `.tb-tabs` / `data-tb-tab`). Ask only when a person is in the loop and
+the choice is not obvious. Read `tracebi knowledge design-editorial-report`
+before writing a report.
 
 **Lay it out like a dashboard.** A `.tb-grid` of `.tb-kpi` cells is one
 KPI strip; mark the number the page is about `.tb-kpi--lead` (twice as wide)
@@ -230,15 +237,15 @@ already said. With nobody in the loop, use the defaults. Then:
   `<span data-tb-built></span>`, which shows when the file was built, from
   its receipt (never type a date). `nav` moves it to the top of the sidebar.
 
-`tracebi new-report "<Name>" --mode dark --density compact --nav side
+`tracebi new-dashboard "<Name>" --mode dark --density compact --nav side
 --title-at nav` writes exactly that — as an app, whose mode and density ride
 in `report.json` `"look"` (an `app.jsx` has no `<html>`) and whose sidebar and
-title are its own components; with `--html`, as the template attributes
-above. These change how a page looks, never a number or the receipt's tones.
+title are its own components; `new-report` and `new-dashboard --html` write
+it as the template attributes above. These change how a page looks, never a number or the receipt's tones.
 
 **Themes and the house style.** A report can name a shipped theme in
 `report.json` `"theme"` (`tracebi theme list`: graphite, indigo, midnight,
-ocean, plum, sand; `new-report --theme`). `tracebi theme use <name>` makes
+ocean, plum, sand; `--theme` on `new-report` / `new-dashboard`). `tracebi theme use <name>` makes
 one the project default (`reports/_theme.css`, which restyles every report).
 `reports/_style.md` is the team's house style — `tracebi context` and
 `get_context` return it as `house_style`. Read it before you build and follow

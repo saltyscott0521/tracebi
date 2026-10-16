@@ -24,7 +24,7 @@ attribute (`presentation.layout.look` in `tracebi context`):
   `.tb-subtitle` and `<span data-tb-built></span>`. The build time comes from
   the receipt; never type a date.
 
-`tracebi new-report "<Name>" --mode … --density … --nav … --title-at …` writes
+`tracebi new-dashboard "<Name>" --mode … --density … --nav … --title-at …` writes
 it.
 
 **Then lay it out to be scanned.**
