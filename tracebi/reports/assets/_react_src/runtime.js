@@ -90,6 +90,9 @@ function start() {
     showError(host, err);
     return;
   }
+  // The build's no-JavaScript view (the figures as built) gives way to the
+  // app; it stays only when the app cannot start.
+  while (host.firstChild) host.removeChild(host.firstChild);
   const root = ReactDOMClient.createRoot(host);
   // Synchronous first render: every kit figure exists before the runtime's
   // first hydration pass, so the receipt and the badges find them.

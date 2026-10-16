@@ -343,7 +343,7 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
 /* data-tb-bars: a quiet bar behind the number, proportional to it. The
  * number stays on top and stays the thing you read. */
 .tb-bar-cell { position: relative; isolation: isolate; }
-.tb-bar {
+span.tb-bar {
   position: absolute;
   top: calc(50% - 0.7em);         /* one line tall, even in a wrapped row */
   height: 1.4em;
@@ -353,7 +353,7 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
   border-radius: 2px;
   pointer-events: none;
 }
-.tb-bar--neg {
+span.tb-bar--neg {
   background: rgba(180, 35, 24, 0.16);
   background: color-mix(in srgb, var(--tb-bad) 16%, transparent);
 }
@@ -1025,6 +1025,10 @@ body:has(> .tb-article) { background: var(--tb-bg); }
  * padding. The kit's figures keep every class above; the About footer sits
  * under the app in the page's own column. */
 :root[data-tb-app] body { max-width: none; margin: 0; padding: 0; }
+/* The no-JavaScript view of an app page (an email preview, a file viewer). */
+.tb-app-static { padding: var(--tb-space-4) var(--tb-space-3); }
+.tb-app-static > * + * { margin-top: var(--tb-space-3); }
+.tb-app-static-values { list-style: none; padding: 0; display: grid; gap: var(--tb-space-1); }
 /* The app spaces its own panels (gap, space-y); no stacking margin. */
 :root[data-tb-app] .tb-card + .tb-card { margin-top: 0; }
 :root[data-tb-app] .tb-about { max-width: 1120px; margin: var(--tb-space-4) auto;

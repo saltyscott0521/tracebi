@@ -249,39 +249,61 @@ def figure_id(kind: str, binding: str, key: str = "") -> str:
     return re.sub(r"-+$", "", re.sub(r"[^A-Za-z0-9_-]+", "-", "-".join(parts)))
 
 
+def _humanise(ref: str) -> str:
+    name = re.sub(r"^(dim|fact)_", "", str(ref).split(".")[-1]).replace("_", " ").strip()
+    return name[:1].upper() + name[1:] if name else str(ref)
+
+
 def _claim_element(f: KitFigure) -> str:
+    """The data-tb-* element a kit figure renders, as the build writes it for
+    the page's no-JavaScript view (and reads it as a claim)."""
     p = f.props
     esc = lambda v: html.escape(str(v), quote=True)  # noqa: E731
+
+    def attrs_of(d: dict) -> str:
+        return " ".join(f'{k}="{esc(v)}"' for k, v in d.items()
+                        if isinstance(v, str) and v != "")
     if f.kind == "value":
         fid = p.get("id") or figure_id("value", p["binding"], _join(p.get("cell")))
-        attrs = {"data-tb-figure": "value", "data-tb-binding": p["binding"],
-                 "data-tb-cell": p.get("cell"), "data-tb-format": p.get("format")}
-        tag = "span"
-    elif f.kind == "chart":
+        attrs = attrs_of({"data-tb-figure": "value", "data-tb-binding": p["binding"],
+                          "data-tb-cell": p.get("cell"), "data-tb-format": p.get("format")})
+        if f.tag == "Kpi":
+            label = p.get("label") if isinstance(p.get("label"), str) else \
+                _humanise(_join(p.get("cell")) or p["binding"])
+            context = p.get("context") if isinstance(p.get("context"), str) else ""
+            cls = "tb-kpi tb-kpi--lead" if p.get("lead") is True else "tb-kpi"
+            return (f'<div class="{cls}" id="{esc(fid)}" {attrs}>'
+                    f'<span class="tb-kpi-label">{html.escape(label)}</span>'
+                    '<span class="tb-kpi-value"></span>'
+                    + (f'<span class="tb-kpi-context">{html.escape(context)}</span>'
+                       if context else "") + "</div>")
+        label = _humanise(_join(p.get("cell")) or p["binding"])
+        return (f'<li><span class="tb-kpi-label">{html.escape(label)}</span> '
+                f'<span id="{esc(fid)}" {attrs}></span></li>')
+    if f.kind == "chart":
         kind = "spark" if f.tag == "Spark" else "chart"
         fid = p.get("id") or figure_id(kind, p["binding"], _join(p.get("y")))
-        attrs = {"data-tb-figure": "chart", "data-tb-binding": p["binding"],
-                 "data-tb-type": p.get("type") or ("area" if kind == "spark" else "bar"),
-                 "data-tb-x": p.get("x"), "data-tb-y": p.get("y"),
-                 "data-tb-color": p.get("color"),
-                 "data-tb-value-format": p.get("valueFormat")}
-        tag = "div"
-    else:
-        fid = p.get("id") or figure_id("table", p["binding"])
-        attrs = {"data-tb-figure": "table", "data-tb-binding": p["binding"],
-                 "data-tb-columns": p.get("columns")}
-        tag = "table"
-    body = " ".join(f'{k}="{esc(v)}"' for k, v in attrs.items()
-                    if isinstance(v, str) and v != "")
-    return f'<{tag} id="{esc(fid)}" {body}></{tag}>'
+        attrs = attrs_of({"data-tb-figure": "chart", "data-tb-binding": p["binding"],
+                          "data-tb-type": p.get("type") or ("area" if kind == "spark" else "bar"),
+                          "data-tb-x": p.get("x"), "data-tb-y": p.get("y"),
+                          "data-tb-color": p.get("color"),
+                          "data-tb-value-format": p.get("valueFormat")})
+        spark = ' class="tb-spark"' if kind == "spark" else ""
+        return f'<div id="{esc(fid)}"{spark} {attrs}></div>'
+    fid = p.get("id") or figure_id("table", p["binding"])
+    attrs = attrs_of({"data-tb-figure": "table", "data-tb-binding": p["binding"],
+                      "data-tb-columns": p.get("columns")})
+    return f'<table id="{esc(fid)}" {attrs}></table>'
 
 
-def claims_html(figs: list[KitFigure]) -> str:
-    """The kit figures as inert data-tb-* elements: what the build reads as
-    claims. Inside a <template>, so the page never renders or hydrates them —
-    the app renders the live element with the same id."""
+def static_html(figs: list[KitFigure]) -> str:
+    """The page as a reader without JavaScript sees it — an email preview, a
+    phone's file viewer: the kit figures, filled by the build like any
+    template figure (KPIs, the charts' static pictures, tables). It is also
+    where the build reads the claims. The app replaces it when it starts."""
     seen: dict[str, int] = {}
-    parts = []
+    groups: dict[str, list[str]] = {"kpi": [], "value": [], "chart": [],
+                                    "spark": [], "table": []}
     for f in figs:
         el = _claim_element(f)
         fid = re.search(r'id="([^"]*)"', el).group(1)
@@ -291,9 +313,23 @@ def claims_html(figs: list[KitFigure]) -> str:
                 f"would share the id \"{fid}\". Give one an id=\"…\" — a figure "
                 f"id is the receipt's address for one number.")
         seen[fid] = f.line
-        parts.append(el)
-    return ('<template id="tracebi-app-figures">\n' + "\n".join(parts)
-            + "\n</template>\n") if parts else ""
+        key = ("kpi" if f.tag == "Kpi" else "spark" if f.tag == "Spark"
+               else f.kind)
+        groups[key].append(el)
+    if not seen:
+        return ""
+    out = ['<div class="tb-page tb-app-static">',
+           '<p class="tb-note">This report is an app. Open the file in a browser '
+           "to use it; below are its figures as built.</p>"]
+    if groups["kpi"]:
+        out.append('<div class="tb-grid">' + "".join(groups["kpi"]) + "</div>")
+    if groups["value"]:
+        out.append('<ul class="tb-app-static-values">' + "".join(groups["value"]) + "</ul>")
+    out += [f'<div class="tb-card">{el}</div>' for el in groups["chart"] + groups["table"]]
+    if groups["spark"]:
+        out.append('<div hidden>' + "".join(groups["spark"]) + "</div>")
+    out.append("</div>")
+    return "\n".join(out) + "\n"
 
 
 #: report.json "look" for an app page: the attributes a template would put
@@ -323,7 +359,7 @@ def shell_html(title: str, figs: list[KitFigure], look: dict | None = None) -> s
     return (
         f"<!doctype html>\n<html lang=\"en\" data-tb-app{attrs}>\n<head><meta charset=\"utf-8\">"
         f"<title>{html.escape(title)}</title></head>\n<body>\n"
-        "<div id=\"tb-app\"></div>\n" + claims_html(figs) + "</body></html>\n")
+        "<div id=\"tb-app\">\n" + static_html(figs) + "</div>\n</body></html>\n")
 
 
 def app_blocks_html(source: str, icons: dict) -> str:

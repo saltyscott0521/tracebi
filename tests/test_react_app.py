@@ -127,3 +127,23 @@ def test_a_broken_app_says_so_instead_of_a_blank_page(browser, tmp_path):
     alert = page.locator(".tb-app-error")
     assert alert.count() == 1
     assert "undefinedThing" in alert.inner_text()
+
+
+def test_without_javascript_the_figures_still_read(browser, tmp_path):
+    """An email preview or a phone's file viewer runs no script: the page
+    shows the kit figures as built — the KPI with its label and number, the
+    table's rows — instead of a blank page. With script, the app replaces
+    that view, so no figure id is on the page twice."""
+    html = _build(tmp_path, _APP)
+    still = browser.new_context(java_script_enabled=False).new_page()
+    still.goto(html.as_uri())
+    kpi = still.locator(".tb-app-static .tb-kpi")
+    assert kpi.locator(".tb-kpi-label").inner_text() == "Revenue"
+    assert kpi.locator(".tb-kpi-value").inner_text() == "$5,251"
+    assert still.locator(".tb-app-static #fig-table-by_region tbody tr").count() == 3
+
+    page = _open(browser, html)
+    assert page.locator(".tb-app-static").count() == 0
+    assert page.evaluate(
+        "() => { const ids = [...document.querySelectorAll('[id]')].map(e => e.id);"
+        " return ids.length - new Set(ids).size; }") == 0
