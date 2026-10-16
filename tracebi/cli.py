@@ -567,6 +567,7 @@ Your agent's TraceBi tools are already wired (`.mcp.json` for Claude Code,
 
 
 _INIT_AGENTS_MD = _scaffold_text("init_agents.md")
+_INIT_STYLE_MD = _scaffold_text("init_style.md")
 
 
 # ── Commands ────────────────────────────────────────────────────────────────
@@ -612,6 +613,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             _INIT_SAMPLE_REPORT_JSON,
         target / "reports" / "sample_model" / "sample_dashboard" / "template.html":
             _INIT_SAMPLE_TEMPLATE_HTML,
+        target / "reports" / "_style.md": _INIT_STYLE_MD,
         target / ".mcp.json": _INIT_MCP_JSON,
         target / ".cursor" / "mcp.json": _INIT_MCP_JSON,
     }
@@ -676,6 +678,8 @@ def cmd_context(args: argparse.Namespace) -> int:
     from tracebi.capabilities import describe
 
     payload = describe(brief=getattr(args, "brief", False))
+    from tracebi.reports.stack import project_house_style
+    payload["house_style"] = project_house_style()
     if args.model:
         from tracebi.model_registry import get_model
         try:
@@ -2059,7 +2063,7 @@ def _humanise_label(ref: str) -> str:
 
 
 def _report_json_text(title: str, model: str, query: dict,
-                      look: "dict | None" = None) -> str:
+                      look: "dict | None" = None, theme: "str | None" = None) -> str:
     """Teaching bindings from the derived query: ``totals`` (measures only,
     one row — for KPI cards and bound prose) and, when the model has a
     dimension, ``top`` (the leading member, one row — for the answer-first
@@ -2094,6 +2098,8 @@ def _report_json_text(title: str, model: str, query: dict,
             "edit template.html", "edit app.jsx")
         if look:
             declaration["look"] = look
+    if theme:
+        declaration["theme"] = theme
     return json.dumps(declaration, indent=2) + "\n"
 
 
@@ -2366,6 +2372,36 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
     return "\n".join(parts)
 
 
+def cmd_theme(args: argparse.Namespace) -> int:
+    """List the shipped themes, or copy one to reports/_theme.css — the
+    project default every report stacks over tracebi.css."""
+    from tracebi.reports.stack import named_theme_css, named_themes
+    if args.action == "list":
+        for name in named_themes():
+            first = named_theme_css(name).splitlines()[0]
+            print(f"{name:10} {first.strip('/* ').rstrip(' */').split(' — ', 1)[-1]}")
+        return 0
+    if not args.name:
+        print("tracebi theme use <name>: name one of "
+              + ", ".join(named_themes()), file=sys.stderr)
+        return 2
+    try:
+        css = named_theme_css(args.name)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    target = Path(args.reports_dir) / "_theme.css"
+    if target.exists() and not args.force:
+        print(f"refusing to overwrite {target}; pass --force to replace it",
+              file=sys.stderr)
+        return 1
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(css, encoding="utf-8")
+    print(f"Wrote {target}: every report in the project now uses '{args.name}' "
+          f"unless its report.json names another theme.")
+    return 0
+
+
 def cmd_new_report(args: argparse.Namespace) -> int:
     """
     Scaffold a freeform report package under ``reports/<name>/``.
@@ -2429,7 +2465,8 @@ def cmd_new_report(args: argparse.Namespace) -> int:
         if (pkg_dir / stale).is_file():
             (pkg_dir / stale).unlink()
     (pkg_dir / "report.json").write_text(
-        _report_json_text(args.title, model, query, look=look if app else None),
+        _report_json_text(args.title, model, query, look=look if app else None,
+                          theme=args.theme),
         encoding="utf-8")
     if app:
         from tracebi._app_scaffold import report_app_jsx
@@ -3441,7 +3478,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--title-at", choices=["left", "center", "banner", "nav"], default="left",
         help="Where the title sits: left (default), center, a banner, or at "
              "the top of the sidebar (nav, with --nav side).")
+    from tracebi.reports.stack import named_themes
+    p_new_report.add_argument(
+        "--theme", choices=named_themes(), default=None,
+        help="A shipped theme for this report (report.json \"theme\"); the "
+             "project default is reports/_theme.css (tracebi theme use).")
     p_new_report.set_defaults(func=cmd_new_report)
+
+    p_theme = sub.add_parser(
+        "theme",
+        help="The shipped themes: list them, or make one the project default "
+             "(writes reports/_theme.css).",
+    )
+    p_theme.add_argument("action", choices=["list", "use"])
+    p_theme.add_argument("name", nargs="?", help="The theme for `use`.")
+    p_theme.add_argument("--force", action="store_true",
+                         help="Replace an existing reports/_theme.css.")
+    p_theme.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
+                         help="Directory holding report packages (default: ./reports).")
+    p_theme.set_defaults(func=cmd_theme)
 
     p_report = sub.add_parser(
         "report",

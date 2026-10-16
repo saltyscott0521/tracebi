@@ -62,6 +62,8 @@ memory.
   (title and placement, one page / top tabs / sidebar, light / dark / the
   reader's choice, comfortable / compact), then lay it out to be scanned: KPI
   strip, panels side by side, small labels and big values, quiet chrome.
+- **design-app-dashboards** — in an app.jsx: numbers through the kit,
+  colour from tokens, views instead of one long scroll.
 - **design-hierarchy-and-emphasis** — one loud element per view; size and
   weight before color; uniform neighbors so the one difference reads.
 - **design-grid-and-spacing** — the layout classes, one set of proportions,

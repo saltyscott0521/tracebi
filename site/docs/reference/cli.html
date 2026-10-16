@@ -152,6 +152,7 @@ tracebi new-model     &quot;Sales&quot; --from wh --tables fact_sales,dim_custom
 tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR] [--layout brief|dashboard|tabbed]
                       [--mode light|dark|auto] [--density comfortable|compact]
                       [--nav top|side] [--title-at left|center|banner|nav]
+                      [--theme NAME] [--html]
 tracebi new-pipeline  &quot;Sales ETL&quot;     [--force]
 </code></pre>
 <p>Each scaffolds one file (or, for <code>new-report</code>, a package directory) with the
@@ -162,11 +163,17 @@ by that path everywhere after: <code>tracebi report build finance/month_end/clos
 <code>output/finance/month_end/close_pack.html</code>, and the app, which groups
 reports by folder. Two folders can each hold a report of the same name.</p>
 <p>All refuse to overwrite without <code>--force</code>.</p>
-<p><code>new-report</code>'s look flags answer the questions an agent asks before it builds:
-<code>--mode</code>, <code>--density</code>, <code>--nav</code> (<code>side</code> is a sidebar, full width; either value
-implies the tabbed layout) and <code>--title-at</code> (<code>nav</code> puts the title at the top
-of the sidebar). They set the <code>&lt;html&gt;</code> attributes and the title block
-described in <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
+<p><code>new-report</code> writes a dashboard as an <strong>app</strong> by default: <code>app.jsx</code>, a React
+component built from the TraceBi kit (<a href="../reference/app-jsx.html">app.jsx — the React lane</a>). <code>--html</code> writes the
+dashboard as <code>template.html</code> instead; <code>--layout brief</code> and <code>--layout tabbed</code>
+are always <code>template.html</code> pages.</p>
+<p>The look flags answer the questions an agent asks before it builds: <code>--mode</code>,
+<code>--density</code>, <code>--nav</code> (top tabs or a sidebar) and <code>--title-at</code> (<code>nav</code> puts the
+title at the top of the sidebar). For an app they shape its navigation and
+title components, and the mode and density go in <code>report.json</code> <code>"look"</code>. For
+a template page they set the <code>&lt;html&gt;</code> attributes and the title block described
+in <a href="../reference/template-html.html">template.html — the figure grammar</a> (<code>--nav</code> then implies the tabbed layout). <code>--theme</code> names
+a shipped theme in <code>report.json</code> <code>"theme"</code>.</p>
 <p><code>new-model --from &lt;connection&gt; --tables a,b,c</code> drafts that file from the
 connection <code>tracebi connect</code> wrote, using column metadata only — no row
 scan. A table named <code>fact_*</code>, or one with numeric non-key columns and
@@ -177,9 +184,20 @@ is marked <code># DRAFT: review</code> for a person or an agent to edit. <code>-
 required with <code>--from</code> (prompted on a terminal, otherwise exit 2).</p>
 <p><code>new-report</code> deliberately writes <strong>no</strong> <code>script.js</code> or <code>style.css</code> — the
 runtime draws every figure from the stamped bytes, so hand-rolling a CSV parser
-and a chart is a trap. Its <code>template.html</code> teaches the grammar instead: bound
-prose, a KPI, a chart, and a filter/search/download table.
-See <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
+and a chart is a trap. Its page teaches the grammar instead: bound prose, a
+KPI strip, a chart, and a filter/search/download table — as kit components in
+an <code>app.jsx</code>, or as <code>data-tb-*</code> elements in a <code>template.html</code>.
+See <a href="../reference/app-jsx.html">app.jsx — the React lane</a> and <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
+<h3 id="tracebi-theme"><code>tracebi theme</code></h3>
+<pre><code class="language-bash">tracebi theme list                 # the shipped themes, one line each
+tracebi theme use ocean [--force]  # make one the project default
+</code></pre>
+<p>The shipped themes are contrast-checked token sets (accent, and for <code>sand</code> and
+<code>midnight</code> the page and surfaces too). <code>use</code> writes it to <code>reports/_theme.css</code>,
+which every report in the project stacks over <code>tracebi.css</code>; it refuses to
+replace an existing file without <code>--force</code>. A single report picks one with
+<code>report.json</code> <code>"theme"</code>, which stacks over the project default
+(<a href="../reference/report-json.html">report.json</a>).</p>
 <hr>
 <h2 id="building-and-checking">Building and checking</h2>
 <h3 id="tracebi-update"><code>tracebi update</code></h3>

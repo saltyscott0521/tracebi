@@ -153,6 +153,19 @@ drawn with <code>tracebi.draw</code>. List <code>"echarts"</code> to keep the ol
 for the page's charts (no D3 is then added for them); <code>tracebi.configureChart</code>
 patches apply only there. Each library is inlined once. An unknown value is
 refused at load.</p>
+<h3 id="theme-string-optional"><code>theme</code> — string, optional</h3>
+<p>A shipped theme by name: <code>graphite</code>, <code>indigo</code>, <code>midnight</code> (always dark),
+<code>ocean</code>, <code>plum</code> or <code>sand</code> (<code>tracebi theme list</code>). It stacks over the
+project's <code>reports/_theme.css</code> and under the package's own <code>style.css</code>. An
+unknown name is refused at load.</p>
+<pre><code class="language-json">&quot;theme&quot;: &quot;ocean&quot;
+</code></pre>
+<h3 id="look-object-optional-appjsx-only"><code>look</code> — object, optional (app.jsx only)</h3>
+<p>An <a href="../reference/app-jsx.html">app</a>'s mode and density — the attributes a <code>template.html</code>
+puts on its own <code>&lt;html&gt;</code>: <code>"mode"</code> is <code>light</code>, <code>dark</code> or <code>auto</code> (follows the
+reader's system); <code>"density"</code> is <code>comfortable</code> or <code>compact</code>.</p>
+<pre><code class="language-json">&quot;look&quot;: {&quot;mode&quot;: &quot;dark&quot;, &quot;density&quot;: &quot;compact&quot;}
+</code></pre>
 <h3 id="schedule-object-optional"><code>schedule</code> — object, optional</h3>
 <p>When the report runs and who receives it. Read by <code>tracebi schedule</code> (<a href="../reference/cli.html">CLI reference</a>).
 The build itself ignores it.</p>

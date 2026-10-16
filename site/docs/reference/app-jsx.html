@@ -91,8 +91,12 @@ and compiles <code>app.jsx</code> when it opens. The report's strict CSP still r
   report.json     # the bindings, as for any package
   app.jsx         # export default a component
 </code></pre>
-<p><code>tracebi report build sales_model/revenue_app</code> builds it, and the app
-serves it like any other report.</p>
+<p><code>tracebi new-report "Revenue App"</code> writes one (a dashboard is an app by
+default; <code>--nav top|side</code> adds navigation, <code>--title-at</code> places the title).
+<code>tracebi report build sales_model/revenue_app</code> builds it, and the app serves
+it like any other report. Its mode and density go in <code>report.json</code> <code>"look"</code>
+and a shipped theme in <code>"theme"</code> (<a href="../reference/report-json.html">report.json</a>); the project's house style
+is <code>reports/_style.md</code>, which agents read before building.</p>
 <h2 id="when-to-use-which">When to use which</h2>
 <table>
 <thead>

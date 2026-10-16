@@ -1,0 +1,11 @@
+/* sand — warm paper and a stone accent: reads like a printed report. */
+:root {
+  --tb-ink: #1c1917;
+  --tb-page: #f6f4ef;
+  --tb-surface: #f0ede6;
+  --tb-rule: #e3ded3;
+  --tb-muted: #5f5952;
+  --tb-accent: #44403c;
+  --tb-accent-text: #292524;
+  --tb-surface-accent: #efebe3;
+}

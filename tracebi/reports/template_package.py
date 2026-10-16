@@ -497,6 +497,16 @@ class TemplatePackage:
             else self.name
         )
         self.author = declaration.get("author", "")
+        # A shipped theme by name ("theme": "ocean"): token overrides stacked
+        # over the project's reports/_theme.css.
+        self.theme = declaration.get("theme")
+        self.theme_css = ""
+        if self.theme is not None:
+            from tracebi.reports.stack import named_theme_css
+            try:
+                self.theme_css = named_theme_css(str(self.theme))
+            except ValueError as exc:
+                raise ValueError(f"{report_json_path}: {exc}") from None
         self.description = declaration.get("description", "")
 
         data = declaration.get("data")
@@ -1698,6 +1708,7 @@ class TemplatePackage:
             figures_cfg=figures_cfg,
             report_js=self.script_js,
             app=self.app_source is not None,
+            theme_css=self.theme_css,
         )
 
 

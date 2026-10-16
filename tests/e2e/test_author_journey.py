@@ -244,6 +244,44 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     assert code != 0 and "kpi" in out
 
 
+def test_themes_and_the_house_style(scaffolded):
+    """A report names a shipped theme and the page carries it, over the
+    project default that `theme use` writes; an unknown name fails the
+    build. The house style init writes reaches the agent through context."""
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    code, out = run_cli("theme", "list")
+    assert code == 0 and "ocean" in out and "midnight" in out, out
+
+    code, out = run_cli("theme", "use", "sand")
+    assert code == 0, out
+    assert "--tb-page: #f6f4ef" in (scaffolded / "reports" / "_theme.css").read_text()
+    code, out = run_cli("theme", "use", "ocean")
+    assert code != 0 and "--force" in out
+
+    code, out = run_cli("new-report", "Teal", "--theme", "ocean")
+    assert code == 0, out
+    assert json.loads((scaffolded / "reports" / "teal" / "report.json").read_text())[
+        "theme"] == "ocean"
+    code, out = run_cli("report", "build", "teal")
+    assert code == 0, out
+    page = (scaffolded / "output" / "teal.html").read_text()
+    # The project default first, then the report's theme over it.
+    assert page.index("--tb-page: #f6f4ef") < page.index("--tb-accent: #0e7490")
+
+    decl_path = scaffolded / "reports" / "teal" / "report.json"
+    decl = json.loads(decl_path.read_text())
+    decl["theme"] = "neon"
+    decl_path.write_text(json.dumps(decl))
+    code, out = run_cli("report", "build", "teal")
+    assert code != 0 and "unknown theme 'neon'" in out
+
+    code, out = run_cli("context", "--brief")
+    assert code == 0, out
+    style = json.loads(out)["house_style"]
+    assert style["file"] == "reports/_style.md" and "## Rules" in style["text"]
+
+
 def test_status_and_the_review_snapshot(scaffolded):
     code, out = run_cli("run-transform", "sample_transform")
     assert code == 0, out

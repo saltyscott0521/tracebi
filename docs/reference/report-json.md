@@ -105,6 +105,27 @@ for the page's charts (no D3 is then added for them); `tracebi.configureChart`
 patches apply only there. Each library is inlined once. An unknown value is
 refused at load.
 
+### `theme` — string, optional
+
+A shipped theme by name: `graphite`, `indigo`, `midnight` (always dark),
+`ocean`, `plum` or `sand` (`tracebi theme list`). It stacks over the
+project's `reports/_theme.css` and under the package's own `style.css`. An
+unknown name is refused at load.
+
+```json
+"theme": "ocean"
+```
+
+### `look` — object, optional (app.jsx only)
+
+An [[app-jsx|app]]'s mode and density — the attributes a `template.html`
+puts on its own `<html>`: `"mode"` is `light`, `dark` or `auto` (follows the
+reader's system); `"density"` is `comfortable` or `compact`.
+
+```json
+"look": {"mode": "dark", "density": "compact"}
+```
+
 ### `schedule` — object, optional
 
 When the report runs and who receives it. Read by `tracebi schedule` ([[cli]]).

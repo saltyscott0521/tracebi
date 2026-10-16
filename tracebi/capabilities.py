@@ -315,6 +315,9 @@ def _presentation() -> dict:
                        "text-good, text-bad, chart-1..8) and the kit's tb-* classes.",
             "when": "app.jsx for dashboards people work in; template.html for briefs, "
                     "long-form, emailed and printed pages (they read with JavaScript off).",
+            "scaffold": "tracebi new-report \"Name\" writes a dashboard app.jsx (the "
+                        "default layout); --nav top|side, --title-at, --mode, --density "
+                        "and --theme shape it.",
         },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
@@ -598,10 +601,13 @@ def _presentation() -> dict:
                          "KPIs (.tb-grid / .tb-kpi), one chart in one "
                          ".tb-card. "
                          "tracebi new-report \"Name\" --layout brief",
-                "dashboard": "brief, then .tb-cols-2-1 (a wide chart beside a "
-                             "narrow filterable table). The default — what "
-                             "tracebi init and new-report write when "
-                             "--layout is omitted. "
+                "dashboard": "An app.jsx (presentation.app): the title, a KPI "
+                             "strip with a lead, a chart beside its ranking, "
+                             "a filterable detail, and the navigation asked "
+                             "for. The default for new-report. --html writes "
+                             "the template.html version instead (brief, then "
+                             ".tb-cols-2-1), which is what tracebi init's "
+                             "sample is. "
                              "tracebi new-report \"Name\" --layout dashboard",
                 "tabbed": "The same header, then .tb-tabs / data-tb-tab "
                           "(Overview and Detail). "
@@ -628,12 +634,26 @@ def _presentation() -> dict:
                          "</header> — data-tb-built shows when the file was "
                          "built, from its receipt; nav moves the title to the "
                          "top of a sidebar",
+                "app": "An app.jsx has no <html>: its mode and density are "
+                       "report.json \"look\": {\"mode\": \"dark\"|\"auto\", "
+                       "\"density\": \"compact\"}; its navigation and title "
+                       "are its own components (the scaffold writes them)",
                 "scaffold": "tracebi new-report \"Name\" --mode light|dark|"
                             "auto --density comfortable|compact --nav "
-                            "top|side --title-at left|center|banner|nav",
+                            "top|side --title-at left|center|banner|nav "
+                            "--theme <name> [--html]",
+                "themes": "Shipped themes, contrast-checked token sets: "
+                          + ", ".join(_named_themes()) + ". A report names one in report.json "
+                          "\"theme\"; tracebi theme use <name> makes one the "
+                          "project default (writes reports/_theme.css); "
+                          "tracebi theme list",
                 "for_everyone": "reports/_theme.css restyles every report in "
                                 "the project (token overrides: accent, fonts, "
                                 "spacing)",
+                "house_style": "reports/_style.md is the team's design rules, "
+                               "returned as house_style by tracebi context and "
+                               "get_context. Read it before building and follow "
+                               "its Rules over these defaults",
             },
         },
         "receipt_drawer": (
@@ -999,6 +1019,11 @@ def _analyst_knowledge() -> dict:
                  "tracebi-designer skills).",
         "lessons": index(),
     }
+
+
+def _named_themes() -> list[str]:
+    from tracebi.reports.stack import named_themes
+    return named_themes()
 
 
 def describe(brief: bool = False) -> dict:

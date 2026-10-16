@@ -194,14 +194,16 @@ binding: its own query with no dimensions, or `order_by` plus `limit` 1.
 The cell may be text, such as the top sector's name.
 
 **Pick a structure by name.** `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
-writes that skeleton (omit the flag for `dashboard`, which is also what
-`tracebi init` writes). `brief`: one finding — `.tb-lede`, a few `.tb-kpi`
-cards, one chart in one `.tb-card`. `dashboard`: `brief`, then `.tb-cols-2-1`
-(a wide chart beside a narrow filterable table). `tabbed`: the same header, then
-`.tb-tabs` / `data-tb-tab` (Overview and Detail). Pick the one that fits —
-`brief` for one finding, `dashboard` otherwise, `tabbed` when the page
-serves two jobs. Ask only when a person is in the loop and the choice is
-not obvious.
+writes that skeleton. `dashboard` (the default) is an **app** — an `app.jsx`
+with the title, a KPI strip with a lead, a chart beside its ranking and a
+filterable detail; `--html` writes it as `template.html` instead (that is
+what `tracebi init`'s sample is: `brief`, then `.tb-cols-2-1`). `brief`: one
+finding — `.tb-lede`, a few `.tb-kpi` cards, one chart in one `.tb-card`.
+`tabbed`: the same header, then `.tb-tabs` / `data-tb-tab` (Overview and
+Detail). `brief` and `tabbed` are `template.html` pages. Pick the one that
+fits — `brief` for one finding, `dashboard` for a page people work in,
+`tabbed` for a document that serves two jobs. Ask only when a person is in
+the loop and the choice is not obvious.
 
 **Lay it out like a dashboard.** A `.tb-grid` of `.tb-kpi` cells is one
 KPI strip; mark the number the page is about `.tb-kpi--lead` (twice as wide)
@@ -229,10 +231,20 @@ already said. With nobody in the loop, use the defaults. Then:
   its receipt (never type a date). `nav` moves it to the top of the sidebar.
 
 `tracebi new-report "<Name>" --mode dark --density compact --nav side
---title-at nav` writes exactly that. These change how a page looks, never a
-number or the receipt's tones. To make a look everyone's default, put its
-token overrides in `reports/_theme.css`. Before you build, read
-`tracebi knowledge design-dashboard-feel`.
+--title-at nav` writes exactly that — as an app, whose mode and density ride
+in `report.json` `"look"` (an `app.jsx` has no `<html>`) and whose sidebar and
+title are its own components; with `--html`, as the template attributes
+above. These change how a page looks, never a number or the receipt's tones.
+
+**Themes and the house style.** A report can name a shipped theme in
+`report.json` `"theme"` (`tracebi theme list`: graphite, indigo, midnight,
+ocean, plum, sand; `new-report --theme`). `tracebi theme use <name>` makes
+one the project default (`reports/_theme.css`, which restyles every report).
+`reports/_style.md` is the team's house style — `tracebi context` and
+`get_context` return it as `house_style`. Read it before you build and follow
+its Rules over these defaults. Before you build, read
+`tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an
+app).
 
 **You can also have the framework build the figure for you.** Declare it in
 `report.json` under `figures`, then place it in `template.html` with

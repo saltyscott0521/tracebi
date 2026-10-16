@@ -16,8 +16,12 @@ reports/sales_model/revenue_app/
   app.jsx         # export default a component
 ```
 
-`tracebi report build sales_model/revenue_app` builds it, and the app
-serves it like any other report.
+`tracebi new-report "Revenue App"` writes one (a dashboard is an app by
+default; `--nav top|side` adds navigation, `--title-at` places the title).
+`tracebi report build sales_model/revenue_app` builds it, and the app serves
+it like any other report. Its mode and density go in `report.json` `"look"`
+and a shipped theme in `"theme"` ([[report-json]]); the project's house style
+is `reports/_style.md`, which agents read before building.
 
 ## When to use which
 

@@ -543,6 +543,7 @@ class ContextResult(TypedDict, total=False):
     connect: Any
     analyst_knowledge: Any
     brief: Any  # the omission note; null or absent when brief=false
+    house_style: Any  # reports/_style.md {file, text}; null when the project has none
 
 
 class ModelsResult(TypedDict, total=False):
@@ -697,7 +698,10 @@ def gateway_context(model: Optional[str] = None,
     """
     from tracebi.capabilities import describe
 
+    from tracebi.reports.stack import project_house_style
+
     payload = describe(brief=brief)
+    payload["house_style"] = project_house_style()
     if model:
         payload["model"] = _get_model(model).info()
     return payload
@@ -1749,7 +1753,9 @@ def build_server(token: Optional[str] = None, oauth=None):
             "cheat_sheets, report_sections, and dataset_verbs null or "
             "absent — not requested in this tier; call "
             "get_context(brief=false) for them. On brief=false the brief "
-            "field itself is null or absent."
+            "field itself is null or absent. house_style is the project's "
+            "reports/_style.md (null when there is none): the team's design "
+            "rules — follow them over the defaults when you build a page."
         ),
     )(gateway_context)
     _tool(
@@ -2105,13 +2111,16 @@ def build_server(token: Optional[str] = None, oauth=None):
             "serves two jobs. Ask only if a person is in the loop and the "
             "choice is not obvious. With a shell, "
             "`tracebi new-report \"<Name>\" --layout <recipe>` writes the "
-            "skeleton. With only the gateway, write template.html yourself "
+            "skeleton. With only the gateway, write the page yourself "
             "from that recipe's pieces:\n"
-            "- brief — .tb-lede, a few .tb-kpi cards, one chart in one "
-            ".tb-card. `tracebi new-report \"<Name>\" --layout brief`\n"
-            "- dashboard — brief, then .tb-cols-2-1 (a wide chart beside a "
-            "filterable table). "
-            "`tracebi new-report \"<Name>\" --layout dashboard`\n"
+            "- brief — template.html: .tb-lede, a few .tb-kpi cards, one "
+            "chart in one .tb-card. `tracebi new-report \"<Name>\" --layout brief`\n"
+            "- dashboard — an app.jsx (presentation.app): the title, a KPI "
+            "strip with a lead (<Kpi lead>), a <Chart> beside its <Table> "
+            "ranking, a filterable detail; navigation if asked. For a page "
+            "that must read with JavaScript off (emailed, printed), the "
+            "template.html version: brief, then .tb-cols-2-1. "
+            "`tracebi new-report \"<Name>\"` (--html for the template)\n"
             "- tabbed — the same header, then .tb-tabs / data-tb-tab "
             "(Overview and Detail). "
             "`tracebi new-report \"<Name>\" --layout tabbed`\n\n"
@@ -2125,7 +2134,11 @@ def build_server(token: Optional[str] = None, oauth=None):
             "(presentation.layout.look in get_context): data-tb-mode, "
             "data-tb-density and data-tb-width on <html>, data-tb-nav=\"side\" "
             "on .tb-tabs, and the .tb-title header with data-tb-title and "
-            "data-tb-built. Read the lesson design-dashboard-feel.\n\n"
+            "data-tb-built — or, for an app, report.json \"look\" plus the "
+            "app's own navigation and title. A shipped theme is report.json "
+            "\"theme\". If get_context returns a house_style, it is the "
+            "team's rules: follow them over these defaults. Read the lessons "
+            "design-dashboard-feel and, for an app, design-app-dashboards.\n\n"
             "Follow the loop, and do not skip a step:\n"
             "1. Call get_context (start with brief=true; add the model= you'll "
             "use) to learn the exact facts, dimensions, named measures and "
@@ -2138,8 +2151,9 @@ def build_server(token: Optional[str] = None, oauth=None):
             "object as the value of data.<name> in report.json, and in "
             "template.html give every "
             "number an element with data-tb-figure + data-tb-binding (or "
-            "mark it data-tb-unverified). Never type a number a query "
-            "produced.\n"
+            "mark it data-tb-unverified) — in an app.jsx, show it through "
+            "the tracebi kit (<Kpi>, <Value>, <Chart>, <Table>) with literal "
+            "binding/cell. Never type a number a query produced.\n"
             "4. build_report(report=<the package name>) to publish the "
             "self-contained HTML and its manifest. It returns output_path "
             "and manifest_path. It refuses a figure whose claim does not "

@@ -1,0 +1,6 @@
+/* plum — a purple accent. */
+:root {
+  --tb-accent: #7e22ce;
+  --tb-accent-text: #6b21a8;
+  --tb-surface-accent: #f7f0fd;
+}

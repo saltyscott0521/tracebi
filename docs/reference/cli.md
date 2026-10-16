@@ -102,6 +102,7 @@ tracebi new-model     "Sales" --from wh --tables fact_sales,dim_customer,dim_pro
 tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR] [--layout brief|dashboard|tabbed]
                       [--mode light|dark|auto] [--density comfortable|compact]
                       [--nav top|side] [--title-at left|center|banner|nav]
+                      [--theme NAME] [--html]
 tracebi new-pipeline  "Sales ETL"     [--force]
 ```
 
@@ -116,11 +117,18 @@ reports by folder. Two folders can each hold a report of the same name.
 
 All refuse to overwrite without `--force`.
 
-`new-report`'s look flags answer the questions an agent asks before it builds:
-`--mode`, `--density`, `--nav` (`side` is a sidebar, full width; either value
-implies the tabbed layout) and `--title-at` (`nav` puts the title at the top
-of the sidebar). They set the `<html>` attributes and the title block
-described in [[template-html]].
+`new-report` writes a dashboard as an **app** by default: `app.jsx`, a React
+component built from the TraceBi kit ([[app-jsx]]). `--html` writes the
+dashboard as `template.html` instead; `--layout brief` and `--layout tabbed`
+are always `template.html` pages.
+
+The look flags answer the questions an agent asks before it builds: `--mode`,
+`--density`, `--nav` (top tabs or a sidebar) and `--title-at` (`nav` puts the
+title at the top of the sidebar). For an app they shape its navigation and
+title components, and the mode and density go in `report.json` `"look"`. For
+a template page they set the `<html>` attributes and the title block described
+in [[template-html]] (`--nav` then implies the tabbed layout). `--theme` names
+a shipped theme in `report.json` `"theme"`.
 
 `new-model --from <connection> --tables a,b,c` drafts that file from the
 connection `tracebi connect` wrote, using column metadata only — no row
@@ -133,9 +141,24 @@ required with `--from` (prompted on a terminal, otherwise exit 2).
 
 `new-report` deliberately writes **no** `script.js` or `style.css` — the
 runtime draws every figure from the stamped bytes, so hand-rolling a CSV parser
-and a chart is a trap. Its `template.html` teaches the grammar instead: bound
-prose, a KPI, a chart, and a filter/search/download table.
-See [[template-html]].
+and a chart is a trap. Its page teaches the grammar instead: bound prose, a
+KPI strip, a chart, and a filter/search/download table — as kit components in
+an `app.jsx`, or as `data-tb-*` elements in a `template.html`.
+See [[app-jsx]] and [[template-html]].
+
+### `tracebi theme`
+
+```bash
+tracebi theme list                 # the shipped themes, one line each
+tracebi theme use ocean [--force]  # make one the project default
+```
+
+The shipped themes are contrast-checked token sets (accent, and for `sand` and
+`midnight` the page and surfaces too). `use` writes it to `reports/_theme.css`,
+which every report in the project stacks over `tracebi.css`; it refuses to
+replace an existing file without `--force`. A single report picks one with
+`report.json` `"theme"`, which stacks over the project default
+([[report-json]]).
 
 ---
 

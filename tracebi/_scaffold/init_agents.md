@@ -229,9 +229,9 @@ from `report.json`:
   `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Pick a page by name instead of
   inventing one: `tracebi new-report "<Name>" --layout brief|dashboard|tabbed`
   (`presentation.layout` in `tracebi context`). `brief` is one finding — `.tb-lede`, a few
-  `.tb-kpi` cards, one chart in one `.tb-card`. `dashboard` (the default, also what
-  `tracebi init` writes) is `brief` plus `.tb-cols-2-1`, a wide chart beside a narrow
-  filterable table. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
+  `.tb-kpi` cards, one chart in one `.tb-card`. `dashboard` (the default) is an app — an
+  `app.jsx` with a KPI strip, a chart beside its ranking and a filterable detail; `--html`
+  writes it as `template.html` (`brief` plus `.tb-cols-2-1`, as `tracebi init`'s sample). A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
   number `.tb-kpi--lead`, and give a KPI with a trend a `class="tb-spark"` line or area
   chart (the shape alone, no axes). `.tb-cols-2-1` / `.tb-cols-1-2` put a wide panel
   beside a narrow one.
@@ -248,8 +248,13 @@ from `report.json`:
   `<header class="tb-title" data-tb-title="left|center|banner|nav">` with the `<h1>`,
   `<p class="tb-subtitle">` and `<span data-tb-built></span>` (the build time, from the
   receipt; never type a date). `tracebi new-report "<Name>" --mode dark --density
-  compact --nav side --title-at nav` writes it. Looks never change a number. Everyone's
-  default goes in `reports/_theme.css`. Read `tracebi knowledge design-dashboard-feel`.
+  compact --nav side --title-at nav` writes it — for an app, mode and density go in
+  `report.json` `"look"` and the sidebar and title are its own components. Looks never
+  change a number. A report may name a shipped theme in `report.json` `"theme"`
+  (`tracebi theme list`); `tracebi theme use <name>` makes one everyone's default
+  (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
+  returns it as `house_style` — follow its Rules over the defaults. Read
+  `tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an app).
 - Blocks marked `data-tb-stage="exploration"` are working scratch: they render
   in dev and are DELETED at the final build.
 - Styling: the shipped defaults render well with zero CSS. To restyle, set

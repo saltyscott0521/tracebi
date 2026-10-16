@@ -76,6 +76,42 @@ def font_face_css() -> str:
             f'format("woff2");unicode-range:{_FONT_RANGE}}}')
 
 
+_THEMES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "themes")
+
+
+def named_themes() -> list[str]:
+    """The shipped themes a report.json may name ("theme": "ocean")."""
+    return sorted(f[:-4] for f in os.listdir(_THEMES_DIR) if f.endswith(".css"))
+
+
+def named_theme_css(name: str) -> str:
+    """A shipped theme's CSS: token overrides only, contrast-checked."""
+    if name not in named_themes():
+        raise ValueError(f"unknown theme {name!r}; the shipped themes are "
+                         f"{', '.join(named_themes())}.")
+    with open(os.path.join(_THEMES_DIR, f"{name}.css"), encoding="utf-8") as f:
+        return f.read()
+
+
+#: The house style an agent reads before building (tracebi context, MCP
+#: get_context): the team's rules, written as what differs from the defaults.
+HOUSE_STYLE = "_style.md"
+_HOUSE_STYLE_MAX = 16_000
+
+
+def project_house_style(root: Optional[str] = None) -> Optional[dict]:
+    """``{"file", "text"}`` for ``reports/_style.md`` when it exists."""
+    reports_dir = os.environ.get("TRACEBI_REPORTS_DIR", "reports")
+    path = os.path.join(root or os.getcwd(), reports_dir, HOUSE_STYLE)
+    if not os.path.isfile(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        text = f.read(_HOUSE_STYLE_MAX + 1)
+    if len(text) > _HOUSE_STYLE_MAX:
+        text = text[:_HOUSE_STYLE_MAX] + "\n[… truncated: keep the house style short]"
+    return {"file": f"{reports_dir}/{HOUSE_STYLE}", "text": text}
+
+
 def project_theme_css(root: Optional[str] = None) -> str:
     """The project brand layer: ``reports/_theme.css`` when it exists.
 
@@ -193,7 +229,7 @@ def libraries_comment(libs) -> str:
 
 def stack_head(stage: Optional[str] = None, project_css: str = "",
                report_css: str = "", include_csp: bool = True,
-               libs=None, app: bool = False) -> str:
+               libs=None, app: bool = False, theme_css: str = "") -> str:
     """The head injection, in override order (later wins).
 
     On an app page (app.jsx) tracebi.css goes in a cascade layer between
@@ -213,6 +249,11 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
     if project_css.strip():
         head += ("<!-- reports/_theme.css: the project theme -->\n"
                  f"<style>\n{project_css}\n</style>\n")
+    if theme_css.strip():
+        # The report's named theme: chosen for this report, so it wins over
+        # the project default; its own style.css still wins over both.
+        head += ("<!-- the report's named theme -->\n"
+                 f"<style>\n{theme_css}\n</style>\n")
     if report_css.strip():
         head += ("<!-- style.css: this report's own styles -->\n"
                  f"<style>\n{report_css}\n</style>\n")
@@ -253,7 +294,7 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
 def apply_stack(page: str, *, libs, data_blocks_html: str,
                 stage: Optional[str] = None, project_css: str = "",
                 report_css: str = "", figures_cfg: Optional[dict] = None,
-                report_js: str = "", app: bool = False) -> str:
+                report_js: str = "", app: bool = False, theme_css: str = "") -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
     # The carrier render may already carry the framework CSP meta
     # (html_renderer inserts the same one); a second identical tag is just
@@ -264,7 +305,8 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
     page = insert_before(
         page, "</head>",
         stack_head(stage, project_css, report_css,
-                   include_csp=csp_meta().strip() not in page, libs=libs, app=app))
+                   include_csp=csp_meta().strip() not in page, libs=libs, app=app,
+                   theme_css=theme_css))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))
