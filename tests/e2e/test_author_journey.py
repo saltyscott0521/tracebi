@@ -125,9 +125,29 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     built = (scaffolded / "output" / "weekly.html").read_text()
     assert "tb-tabs" in built and "data-tb-tab" in built
 
+    # The look a builder was asked about: a dark, compact sidebar dashboard
+    # with the title at the top of the sidebar. It builds, and the answers
+    # are attributes the runtime and the stylesheet read.
+    code, out = run_cli("new-report", "Desk", "--nav", "side", "--mode", "dark",
+                        "--density", "compact", "--title-at", "nav")
+    assert code == 0, out
+    desk = (scaffolded / "reports" / "desk" / "template.html").read_text()
+    assert ('<html lang="en" data-tb-mode="dark" data-tb-density="compact" '
+            'data-tb-width="full">') in desk
+    assert '<div class="tb-tabs" data-tb-nav="side">' in desk
+    assert '<header class="tb-title" data-tb-title="nav">' in desk
+    # The whole page sits inside the sidebar's first tab: the KPIs follow it.
+    assert desk.index('data-tb-tab="Overview"') < desk.index('class="tb-kpi"')
+    code, out = run_cli("report", "build", "desk")
+    assert code == 0, out
+    built = (scaffolded / "output" / "desk.html").read_text()
+    assert 'data-tb-mode="dark"' in built and "data-tb-built" in built
+
     code, out = run_cli("context")
     assert code == 0, out
     payload = json.loads(out)
+    look = payload["presentation"]["layout"]["look"]
+    assert "--nav top|side" in look["scaffold"]
     recipes = payload["presentation"]["layout"]["recipes"]
     assert set(recipes) == {"brief", "dashboard", "tabbed"}
     for name, text in recipes.items():

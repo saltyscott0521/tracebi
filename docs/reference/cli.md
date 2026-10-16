@@ -99,7 +99,9 @@ An existing model file is kept unless `--force`.
 tracebi new-transform "Orders Clean"  [--force] [--transforms-dir DIR]
 tracebi new-model     "Sales Model"   [--force]
 tracebi new-model     "Sales" --from wh --tables fact_sales,dim_customer,dim_product
-tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR]
+tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR] [--layout brief|dashboard|tabbed]
+                      [--mode light|dark|auto] [--density comfortable|compact]
+                      [--nav top|side] [--title-at left|center|banner|nav]
 tracebi new-pipeline  "Sales ETL"     [--force]
 ```
 
@@ -113,6 +115,12 @@ by that path everywhere after: `tracebi report build finance/month_end/close_pac
 reports by folder. Two folders can each hold a report of the same name.
 
 All refuse to overwrite without `--force`.
+
+`new-report`'s look flags answer the questions an agent asks before it builds:
+`--mode`, `--density`, `--nav` (`side` is a sidebar, full width; either value
+implies the tabbed layout) and `--title-at` (`nav` puts the title at the top
+of the sidebar). They set the `<html>` attributes and the title block
+described in [[template-html]].
 
 `new-model --from <connection> --tables a,b,c` drafts that file from the
 connection `tracebi connect` wrote, using column metadata only — no row

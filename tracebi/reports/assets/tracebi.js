@@ -3072,14 +3072,16 @@
         if (!sections.length) return;
         var bar = document.createElement("div");
         bar.className = "tb-tab-bar";
+        /* The buttons, not bar.children: a sidebar may also hold the title. */
+        var buttons = [];
         var select = function (idx) {
           for (var j = 0; j < sections.length; j++) {
             if (j === idx) {
               addClass(sections[j], "tb-tab-active");
-              addClass(bar.children[j], "tb-tab-active");
+              addClass(buttons[j], "tb-tab-active");
             } else {
               removeClass(sections[j], "tb-tab-active");
-              removeClass(bar.children[j], "tb-tab-active");
+              removeClass(buttons[j], "tb-tab-active");
             }
           }
           /* A chart hidden at init has no size yet — remeasure them all. */
@@ -3091,6 +3093,7 @@
           btn.className = "tb-tab";
           btn.textContent = attr(sec, "data-tb-tab");
           btn.addEventListener("click", function () { select(idx); });
+          buttons.push(btn);
           bar.appendChild(btn);
         });
         /* CSS hides non-active sections only once the bar exists (sibling
@@ -3100,6 +3103,29 @@
         select(0);
       } catch (e) { /* defensive */ }
     });
+  }
+
+  /* ── The title — when it was built, and where it sits ─────────────────
+   * [data-tb-built] shows when this file was built, read from its own
+   * receipt: a fact about the build, never typed in. A title marked
+   * data-tb-title="nav" moves to the top of a sidebar tab bar. */
+
+  function hydrateTitle() {
+    var el = document.getElementById("tracebi-receipt"), stamp = null, i;
+    if (el) {
+      try { stamp = JSON.parse(el.textContent).rendered_at || null; } catch (e) { stamp = null; }
+    }
+    var when = stamp ? new Date(stamp) : null;
+    if (when && !isNaN(when.getTime())) {
+      var text = "Built " + when.toLocaleString(undefined, {
+        year: "numeric", month: "short", day: "numeric",
+        hour: "numeric", minute: "2-digit" });
+      var built = document.querySelectorAll("[data-tb-built]");
+      for (i = 0; i < built.length; i++) built[i].textContent = text;
+    }
+    var title = document.querySelector('.tb-title[data-tb-title="nav"]');
+    var bar = document.querySelector('.tb-tabs[data-tb-nav="side"] .tb-tab-bar');
+    if (title && bar) bar.insertBefore(title, bar.firstChild);
   }
 
   /* ── The receipt drawer — provenance DISPLAY from #tracebi-receipt ─────
@@ -3528,6 +3554,7 @@
     /* Tabs after charts: sections hide only once the bar exists, so every
      * chart measured its size while still visible. */
     try { hydrateTabs(); } catch (e) {}
+    try { hydrateTitle(); } catch (e) {}
     try { hydrateControls(); } catch (e) {}
     try { hydrateDownloads(); } catch (e) {}
     try { hydrateReceipt(); } catch (e) {}

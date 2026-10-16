@@ -145,6 +145,34 @@ is the in-page find.
 - **Tabs** — `<div class="tb-tabs"><section data-tb-tab="Label">…</section></div>`;
   the runtime builds the tab bar from the labels.
 - **Columns** — `.tb-cols-2` / `.tb-cols-3`, collapsing to one column under 720px.
+- **Sidebar** — `<div class="tb-tabs" data-tb-nav="side">` lays the same tab
+  bar out as a left column (a top bar again under 720px).
+
+### The look
+
+Set on `<html>`; ask the person once, before you build, and leave unset what
+they didn't ask for (`tracebi context` → `presentation.layout.look`).
+
+| Attribute | Values |
+|---|---|
+| `data-tb-mode` | `dark`, or `auto` (follows the reader's system); unset is light |
+| `data-tb-density` | `compact`; unset is comfortable |
+| `data-tb-width` | `full` drops the reading-width cap (a sidebar wants it) |
+
+**The title block** — one standard header:
+
+```html
+<header class="tb-title" data-tb-title="left">
+  <h1>Portfolio Book</h1>
+  <p class="tb-subtitle">One line on what this page is for.</p>
+  <span data-tb-built></span>
+</header>
+```
+
+`data-tb-title` is `left`, `center`, `banner` (accent band) or `nav` (moved
+to the top of a sidebar). The runtime fills `data-tb-built` with the build time
+from the receipt — never type a date. A look for every report in the project
+goes in `reports/_theme.css`.
 
 ## Stage blocks
 

@@ -217,6 +217,17 @@ from `report.json`:
   Pick by fit — `brief` for one finding, `dashboard` otherwise, `tabbed` for two jobs —
   and ask only when a person is in the loop and the choice is not obvious. Every built
   page carries the Receipt drawer automatically.
+- Ask how it should look, once, before you build (a person in the loop; otherwise use
+  the defaults): the title and where it sits, one page / top tabs / a sidebar, light /
+  dark / the reader's choice, comfortable / compact. Offer the look of their last
+  report first. Then on `<html>`: `data-tb-mode="dark"` (or `"auto"`, following the
+  reader's system), `data-tb-density="compact"`, `data-tb-width="full"`. A sidebar is
+  `<div class="tb-tabs" data-tb-nav="side">` with the whole page inside. The title is
+  `<header class="tb-title" data-tb-title="left|center|banner|nav">` with the `<h1>`,
+  `<p class="tb-subtitle">` and `<span data-tb-built></span>` (the build time, from the
+  receipt; never type a date). `tracebi new-report "<Name>" --mode dark --density
+  compact --nav side --title-at nav` writes it. Looks never change a number. Everyone's
+  default goes in `reports/_theme.css`. Read `tracebi knowledge design-dashboard-feel`.
 - Blocks marked `data-tb-stage="exploration"` are working scratch: they render
   in dev and are DELETED at the final build.
 - Styling: the shipped defaults render well with zero CSS. To restyle, set

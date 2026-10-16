@@ -576,6 +576,34 @@ def _presentation() -> dict:
                           "(Overview and Detail). "
                           "tracebi new-report \"Name\" --layout tabbed",
             },
+            "look": {
+                "ask_first": "With a person in the loop, ask once before "
+                             "building, in one message: the title and where "
+                             "it sits, one page / top tabs / sidebar, light / "
+                             "dark / the reader's choice, comfortable / "
+                             "compact. Offer the look of their last report "
+                             "first. No person: use the defaults.",
+                "page": "On <html>: data-tb-mode=\"dark\" (or \"auto\": "
+                        "follows the reader's system; unset is light), "
+                        "data-tb-density=\"compact\", data-tb-width=\"full\" "
+                        "(the whole window, for a dashboard). Tokens only: "
+                        "never a number, never the receipt's tones",
+                "sidebar": "<div class=\"tb-tabs\" data-tb-nav=\"side\"> — "
+                           "the same data-tb-tab sections with the bar as a "
+                           "column; put the whole page inside it",
+                "title": "<header class=\"tb-title\" data-tb-title=\"left|"
+                         "center|banner|nav\"><h1>…</h1><p class=\""
+                         "tb-subtitle\">…</p><span data-tb-built></span>"
+                         "</header> — data-tb-built shows when the file was "
+                         "built, from its receipt; nav moves the title to the "
+                         "top of a sidebar",
+                "scaffold": "tracebi new-report \"Name\" --mode light|dark|"
+                            "auto --density comfortable|compact --nav "
+                            "top|side --title-at left|center|banner|nav",
+                "for_everyone": "reports/_theme.css restyles every report in "
+                                "the project (token overrides: accent, fonts, "
+                                "spacing)",
+            },
         },
         "receipt_drawer": (
             "Every built artifact embeds a tracebi-receipt JSON block — "

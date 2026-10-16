@@ -2178,7 +2178,9 @@ def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
 
 
 def _report_template_html(title: str, measure: str, dim_ref: "str | None",
-                          layout: str = "dashboard") -> str:
+                          layout: str = "dashboard", *, mode: str = "light",
+                          density: str = "comfortable", nav: str = "",
+                          title_at: str = "left") -> str:
     """A starter ``template.html`` for one named page structure.
 
     ``dashboard`` (the default, and what ``tracebi init`` writes) is an answer
@@ -2196,17 +2198,36 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         raise ValueError(
             f"unknown layout {layout!r}; choose brief, dashboard, or tabbed"
         )
+    # The look (asked of the builder before a dashboard is built): the mode and
+    # density are tokens on <html>; navigation picks the tabbed structure, as
+    # a top bar or a sidebar; the title is the standard .tb-title block.
+    if nav in ("top", "side"):
+        layout = "tabbed"
+    root = []
+    if mode in ("dark", "auto"):
+        root.append(f'data-tb-mode="{mode}"')
+    if density == "compact":
+        root.append('data-tb-density="compact"')
+    if nav == "side":
+        root.append('data-tb-width="full"')
     esc = _html.escape
     m_label = _humanise_label(measure)
     table_binding = "breakdown" if dim_ref else "totals"
     parts = [
         "<!doctype html>",
-        '<html lang="en">',
+        f'<html lang="en"{"".join(" " + a for a in root)}>',
         f"<head><meta charset=\"utf-8\"><title>{esc(title)}</title></head>",
         "<body>",
         '<main class="tb-page">',
-        "  <header>",
+        "  <!-- The standard title: placement left | center | banner | nav (nav",
+        "       moves it to the top of a sidebar). data-tb-built shows when this",
+        "       file was built, from its receipt; never type a date in. -->",
+        f'  <header class="tb-title" data-tb-title="{esc(title_at)}">',
         f"    <h1>{esc(title)}</h1>",
+        '    <p class="tb-subtitle">One line on what this page is for.</p>',
+        "    <span data-tb-built></span>",
+        "  </header>",
+        "  <header>",
     ]
     if dim_ref:
         # Lead with the answer: one sentence, numbers bound, under the title.
@@ -2241,6 +2262,16 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         parts += _layout_brief_body(measure, dim_ref, table_binding, esc)
     elif layout == "tabbed":
         parts += _layout_tabbed_body(measure, dim_ref, table_binding, esc)
+        if nav == "side":
+            # A sidebar holds the whole page: the answer, the KPIs and the
+            # first chart move into the first tab, so the column runs from
+            # the top of the page to the bottom.
+            i = max(j for j, line in enumerate(parts) if line == '  <div class="tb-tabs">')
+            start = parts.index("  <header>")
+            moved = ["  " + line if line else line for line in parts[start:i]]
+            first = parts.index('    <section data-tb-tab="Overview">', i)
+            parts = (parts[:start] + ['  <div class="tb-tabs" data-tb-nav="side">']
+                     + parts[i + 1:first + 1] + moved + parts[first + 1:])
     elif dim_ref:
         d_label = _humanise_label(dim_ref)
         parts += [
@@ -2364,10 +2395,16 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     (pkg_dir / "report.json").write_text(
         _report_json_text(args.title, model, query), encoding="utf-8")
     (pkg_dir / "template.html").write_text(
-        _report_template_html(args.title, measure, dim_ref, args.layout),
+        _report_template_html(args.title, measure, dim_ref, args.layout,
+                              mode=args.mode, density=args.density,
+                              nav=args.nav, title_at=args.title_at),
         encoding="utf-8")
 
-    print(f"Created {pkg_dir}/ (report.json, template.html), layout {args.layout}")
+    layout = "tabbed" if args.nav in ("top", "side") else args.layout
+    look = [args.mode, args.density] + ([f"{args.nav} nav"] if args.nav else []) \
+        + [f"title {args.title_at}"]
+    print(f"Created {pkg_dir}/ (report.json, template.html), layout {layout}, "
+          f"{', '.join(look)}")
     if note:
         print(f"  {note}")
     else:
@@ -3335,6 +3372,21 @@ def build_parser() -> argparse.ArgumentParser:
              "dashboard (default): brief, then a chart beside a filterable "
              "table. tabbed: the same header, then Overview and Detail tabs.",
     )
+    # The look: the same four questions an agent asks before it builds.
+    p_new_report.add_argument(
+        "--mode", choices=["light", "dark", "auto"], default="light",
+        help="light (default), dark, or auto (follows the reader's system).")
+    p_new_report.add_argument(
+        "--density", choices=["comfortable", "compact"], default="comfortable",
+        help="comfortable (default) or compact spacing.")
+    p_new_report.add_argument(
+        "--nav", choices=["top", "side"], default="",
+        help="Pages as top tabs or a sidebar (implies the tabbed layout; a "
+             "sidebar also uses the full window width).")
+    p_new_report.add_argument(
+        "--title-at", choices=["left", "center", "banner", "nav"], default="left",
+        help="Where the title sits: left (default), center, a banner, or at "
+             "the top of the sidebar (nav, with --nav side).")
     p_new_report.set_defaults(func=cmd_new_report)
 
     p_report = sub.add_parser(

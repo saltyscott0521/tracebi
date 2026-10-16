@@ -148,7 +148,9 @@ An existing model file is kept unless <code>--force</code>.</p>
 <pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--transforms-dir DIR]
 tracebi new-model     &quot;Sales Model&quot;   [--force]
 tracebi new-model     &quot;Sales&quot; --from wh --tables fact_sales,dim_customer,dim_product
-tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
+tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR] [--layout brief|dashboard|tabbed]
+                      [--mode light|dark|auto] [--density comfortable|compact]
+                      [--nav top|side] [--title-at left|center|banner|nav]
 tracebi new-pipeline  &quot;Sales ETL&quot;     [--force]
 </code></pre>
 <p>Each scaffolds one file (or, for <code>new-report</code>, a package directory) with the
@@ -159,6 +161,11 @@ by that path everywhere after: <code>tracebi report build finance/month_end/clos
 <code>output/finance/month_end/close_pack.html</code>, and the app, which groups
 reports by folder. Two folders can each hold a report of the same name.</p>
 <p>All refuse to overwrite without <code>--force</code>.</p>
+<p><code>new-report</code>'s look flags answer the questions an agent asks before it builds:
+<code>--mode</code>, <code>--density</code>, <code>--nav</code> (<code>side</code> is a sidebar, full width; either value
+implies the tabbed layout) and <code>--title-at</code> (<code>nav</code> puts the title at the top
+of the sidebar). They set the <code>&lt;html&gt;</code> attributes and the title block
+described in <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
 <p><code>new-model --from &lt;connection&gt; --tables a,b,c</code> drafts that file from the
 connection <code>tracebi connect</code> wrote, using column metadata only — no row
 scan. A table named <code>fact_*</code>, or one with numeric non-key columns and

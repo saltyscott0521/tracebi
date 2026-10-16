@@ -654,6 +654,38 @@ out.resized_after = __charts[0].resized;
 process.stdout.write(JSON.stringify(out));
 """
 
+    _SIDEBAR = """
+var title = el('header', { 'class': 'tb-title', 'data-tb-title': 'nav' });
+var built = el('span', { 'data-tb-built': '' }, title);
+var group = el('div', { 'class': 'tb-tabs', 'data-tb-nav': 'side' });
+var s1 = el('section', { 'data-tb-tab': 'One' }, group);
+var s2 = el('section', { 'data-tb-tab': 'Two' }, group);
+var receipt = el('script', { 'id': 'tracebi-receipt', 'type': 'application/json' });
+receipt.textContent = JSON.stringify({ rendered_at: '2026-10-12T18:33:00Z' });
+loadRuntime();
+var bar = group.children[0];
+var buttons = bar.children.filter(function (c) { return c.className.indexOf('tb-tab') === 0 && c !== title; });
+buttons[1]._fire('click');
+process.stdout.write(JSON.stringify({
+  first_in_bar: bar.children[0] === title,
+  labels: buttons.map(function (b) { return b.textContent; }),
+  two_active: hasClass(buttons[1], 'tb-tab-active') && hasClass(s2, 'tb-tab-active'),
+  one_inactive: !hasClass(buttons[0], 'tb-tab-active') && !hasClass(s1, 'tb-tab-active'),
+  built: built.textContent
+}));
+"""
+
+    def test_a_title_in_the_sidebar_keeps_the_tabs_switching(self):
+        """data-tb-title="nav" puts the title at the top of the sidebar. The
+        tabs must still switch the right section: indexing the bar's children
+        would have counted the title as the first button."""
+        out = _run_dom(self._SIDEBAR)
+        assert out["first_in_bar"] is True
+        assert out["labels"] == ["One", "Two"]
+        assert out["two_active"] is True and out["one_inactive"] is True
+        # The build time comes from the file's own receipt, never typed in.
+        assert out["built"].startswith("Built ") and "2026" in out["built"]
+
     def test_tab_bar_built_and_switches(self):
         out = _run_dom(self._SCRIPT)
         # The bar is inserted first, one button per labelled section.

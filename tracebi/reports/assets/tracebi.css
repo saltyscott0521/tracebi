@@ -65,7 +65,8 @@
   --tb-chart-7: #4a3aa7;
   --tb-chart-8: #e34948;
 
-  /* Shipped documents open identically anywhere — one theme, like print. */
+  /* Shipped documents open identically anywhere — one theme, like print —
+   * unless the author asks for data-tb-mode (section 12b). */
   color-scheme: light;
 }
 
@@ -667,6 +668,131 @@ button[data-tb-download]:hover { background: var(--tb-surface); color: var(--tb-
  * combinator) — a page whose script never ran shows every section. */
 .tb-tab-bar ~ [data-tb-tab] { display: none; }
 .tb-tab-bar ~ [data-tb-tab].tb-tab-active { display: block; }
+
+/* ── 12b. Page look: mode, density, width, sidebar tabs, the title ───────
+ * Set on <html> (the runtime and the charts read the tokens from there):
+ *   data-tb-mode="dark"   a dark ground; "auto" follows the reader's system;
+ *                         unset is light, the shipped default
+ *   data-tb-density="compact"   tighter spacing and table rows
+ *   data-tb-width="full"        the page uses the whole window (a dashboard)
+ * Tokens only: a mode changes how the page looks, never a number, and the
+ * receipt's own tones are untouched. */
+
+:root[data-tb-mode="dark"] {
+  --tb-ink: #e8e8ea;
+  --tb-bg: #15171c;
+  --tb-page: #0d0f12;
+  --tb-muted: #9a9ca3;
+  --tb-accent: #7a9cff;
+  --tb-accent-text: #a5bcff;
+  --tb-rule: #2a2d34;
+  --tb-surface: #1c1f25;
+  --tb-surface-accent: rgba(122, 156, 255, 0.12);
+  --tb-good: #6fcf8f;
+  --tb-bad: #ff8a80;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tb-mode="auto"] {
+    --tb-ink: #e8e8ea;
+    --tb-bg: #15171c;
+    --tb-page: #0d0f12;
+    --tb-muted: #9a9ca3;
+    --tb-accent: #7a9cff;
+    --tb-accent-text: #a5bcff;
+    --tb-rule: #2a2d34;
+    --tb-surface: #1c1f25;
+    --tb-surface-accent: rgba(122, 156, 255, 0.12);
+    --tb-good: #6fcf8f;
+    --tb-bad: #ff8a80;
+    color-scheme: dark;
+  }
+}
+
+:root[data-tb-density="compact"] {
+  --tb-space-3: 12px;
+  --tb-space-4: 20px;
+  --tb-cell-pad: 6px 10px;
+}
+:root[data-tb-density="compact"] body { font-size: 14px; padding-top: 20px; }
+:root[data-tb-density="compact"] .tb-card { padding: 14px 16px; }
+:root[data-tb-density="compact"] h2 { margin-top: 24px; }
+
+:root[data-tb-width="full"] body,
+:root[data-tb-width="full"] .tb-page { max-width: none; }
+:root[data-tb-width="full"] body { padding-left: 24px; padding-right: 24px; }
+
+/* Sidebar tabs: <div class="tb-tabs" data-tb-nav="side"> — the same
+ * data-tb-tab sections, the bar as a column beside them. Under 720px it
+ * falls back to the top bar. */
+.tb-tabs[data-tb-nav="side"] {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  column-gap: var(--tb-space-4);
+  align-items: start;
+}
+.tb-tabs[data-tb-nav="side"] > .tb-tab-bar {
+  grid-column: 1;
+  grid-row: 1 / span 99;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 0;
+  border-right: 1px solid var(--tb-rule);
+  padding-right: var(--tb-space-3);
+  margin: 0;
+  position: sticky;
+  top: var(--tb-space-3);
+}
+.tb-tabs[data-tb-nav="side"] > [data-tb-tab] { grid-column: 2; min-width: 0; }
+.tb-tabs[data-tb-nav="side"] .tb-tab {
+  text-align: left;
+  border-bottom: 0;
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+.tb-tabs[data-tb-nav="side"] .tb-tab.tb-tab-active {
+  background: var(--tb-surface-accent);
+  color: var(--tb-ink);
+}
+/* A title moved into the sidebar (data-tb-title="nav") heads the column. */
+.tb-tab-bar > .tb-title { margin: 0 0 var(--tb-space-3); padding: 0 10px; }
+.tb-tab-bar > .tb-title h1 { font-size: 1.15em; letter-spacing: -0.01em; }
+.tb-tab-bar > .tb-title p { font-size: 0.85em; }
+@media (max-width: 720px) {
+  .tb-tabs[data-tb-nav="side"] { display: block; }
+  .tb-tabs[data-tb-nav="side"] > .tb-tab-bar {
+    flex-direction: row; flex-wrap: wrap; position: static;
+    border-right: 0; border-bottom: 1px solid var(--tb-rule);
+    padding: 0; margin-bottom: var(--tb-space-3);
+  }
+}
+
+/* The title: <header class="tb-title" data-tb-title="left|center|banner|nav">
+ * with an <h1>, an optional <p class="tb-subtitle"> and an optional
+ * <span data-tb-built></span>, which the runtime fills with when this file
+ * was built (from its receipt) — a fact about the build, never typed in. */
+.tb-title { margin: 0 0 var(--tb-space-4); }
+.tb-title h1 { margin: 0; }
+.tb-title .tb-subtitle { margin: var(--tb-space-1) 0 0; color: var(--tb-muted); max-width: 72ch; }
+.tb-title [data-tb-built] { display: block; margin-top: var(--tb-space-1);
+                            font-size: 0.8em; color: var(--tb-muted); }
+.tb-title[data-tb-title="left"] {
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--tb-space-3);
+}
+.tb-title[data-tb-title="left"] h1 { font-size: 1.5em; }
+.tb-title[data-tb-title="center"] { text-align: center; }
+.tb-title[data-tb-title="center"] .tb-subtitle { margin-left: auto; margin-right: auto; }
+.tb-title[data-tb-title="banner"] {
+  background: var(--tb-accent);
+  color: #fff;
+  border-radius: var(--tb-radius);
+  padding: var(--tb-space-4) var(--tb-space-4) 28px;
+}
+.tb-title[data-tb-title="banner"] .tb-subtitle,
+.tb-title[data-tb-title="banner"] [data-tb-built] { color: rgba(255, 255, 255, 0.85); }
+:root[data-tb-mode="dark"] .tb-title[data-tb-title="banner"] { color: #0d0f12; }
+:root[data-tb-mode="dark"] .tb-title[data-tb-title="banner"] .tb-subtitle,
+:root[data-tb-mode="dark"] .tb-title[data-tb-title="banner"] [data-tb-built] { color: rgba(13, 15, 18, 0.8); }
 
 /* ── 13. Receipt drawer — provenance DISPLAY, never re-colored ─────────── */
 /* Muted like .tb-note. No rule below sets a colour on a badge: the drawer

@@ -222,7 +222,45 @@ is the in-page find.</p>
 <li><strong>Tabs</strong> — <code>&lt;div class="tb-tabs"&gt;&lt;section data-tb-tab="Label"&gt;…&lt;/section&gt;&lt;/div&gt;</code>;
   the runtime builds the tab bar from the labels.</li>
 <li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, collapsing to one column under 720px.</li>
+<li><strong>Sidebar</strong> — <code>&lt;div class="tb-tabs" data-tb-nav="side"&gt;</code> lays the same tab
+  bar out as a left column (a top bar again under 720px).</li>
 </ul>
+<h3 id="the-look">The look</h3>
+<p>Set on <code>&lt;html&gt;</code>; ask the person once, before you build, and leave unset what
+they didn't ask for (<code>tracebi context</code> → <code>presentation.layout.look</code>).</p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>data-tb-mode</code></td>
+<td><code>dark</code>, or <code>auto</code> (follows the reader's system); unset is light</td>
+</tr>
+<tr>
+<td><code>data-tb-density</code></td>
+<td><code>compact</code>; unset is comfortable</td>
+</tr>
+<tr>
+<td><code>data-tb-width</code></td>
+<td><code>full</code> drops the reading-width cap (a sidebar wants it)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The title block</strong> — one standard header:</p>
+<pre><code class="language-html">&lt;header class=&quot;tb-title&quot; data-tb-title=&quot;left&quot;&gt;
+  &lt;h1&gt;Portfolio Book&lt;/h1&gt;
+  &lt;p class=&quot;tb-subtitle&quot;&gt;One line on what this page is for.&lt;/p&gt;
+  &lt;span data-tb-built&gt;&lt;/span&gt;
+&lt;/header&gt;
+</code></pre>
+<p><code>data-tb-title</code> is <code>left</code>, <code>center</code>, <code>banner</code> (accent band) or <code>nav</code> (moved
+to the top of a sidebar). The runtime fills <code>data-tb-built</code> with the build time
+from the receipt — never type a date. A look for every report in the project
+goes in <code>reports/_theme.css</code>.</p>
 <h2 id="stage-blocks">Stage blocks</h2>
 <pre><code class="language-html">&lt;section data-tb-stage=&quot;exploration&quot;&gt; … &lt;/section&gt;
 </code></pre>

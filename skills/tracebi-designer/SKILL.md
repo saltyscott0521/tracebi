@@ -58,6 +58,10 @@ memory.
   keeps one color and one format; one notation for actual / plan / prior.
 - **design-accessible-by-default** — contrast, colorblind-safe series (the
   default palette is safe for two, not eight), never color alone.
+- **design-dashboard-feel** — before a dashboard, ask once how it should look
+  (title and placement, one page / top tabs / sidebar, light / dark / the
+  reader's choice, comfortable / compact), then lay it out to be scanned: KPI
+  strip, panels side by side, small labels and big values, quiet chrome.
 - **design-hierarchy-and-emphasis** — one loud element per view; size and
   weight before color; uniform neighbors so the one difference reads.
 - **design-grid-and-spacing** — the layout classes, one set of proportions,

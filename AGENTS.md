@@ -185,6 +185,29 @@ cards, one chart in one `.tb-card`. `dashboard`: `brief`, then `.tb-cols-2`
 serves two jobs. Ask only when a person is in the loop and the choice is
 not obvious.
 
+**Ask how it should look, once, before you build.** With a person in the
+loop, ask in one short message: the title and where it sits (left, centred,
+a banner, or at the top of a sidebar); one page, top tabs or a sidebar;
+light, dark or the reader's choice; comfortable or compact. Offer the look
+of their last report first ("same as `sales_book`?") and skip what they
+already said. With nobody in the loop, use the defaults. Then:
+
+- the page: on `<html>`, `data-tb-mode="dark"` (or `"auto"`, which follows
+  the reader's system; unset is light), `data-tb-density="compact"`, and
+  `data-tb-width="full"` for a dashboard that uses the whole window;
+- a sidebar: `<div class="tb-tabs" data-tb-nav="side">` with the same
+  `data-tb-tab` sections, and the whole page inside it;
+- the title: `<header class="tb-title" data-tb-title="left|center|banner|nav">`
+  with the `<h1>`, an optional `<p class="tb-subtitle">`, and
+  `<span data-tb-built></span>`, which shows when the file was built, from
+  its receipt (never type a date). `nav` moves it to the top of the sidebar.
+
+`tracebi new-report "<Name>" --mode dark --density compact --nav side
+--title-at nav` writes exactly that. These change how a page looks, never a
+number or the receipt's tones. To make a look everyone's default, put its
+token overrides in `reports/_theme.css`. Before you build, read
+`tracebi knowledge design-dashboard-feel`.
+
 **You can also have the framework build the figure for you.** Declare it in
 `report.json` under `figures`, then place it in `template.html` with
 `{{ figure("name") }}`:
