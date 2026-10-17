@@ -1561,16 +1561,6 @@
     return true;
   }
 
-  /* Shorten an SVG text node until it fits *room*, ending in an ellipsis. */
-  function fitText(node, room) {
-    var full = node.textContent, n = full.length;
-    try {
-      while (n > 1 && node.getComputedTextLength() > room) {
-        node.textContent = full.slice(0, --n) + "…";
-      }
-    } catch (e) {}
-  }
-
   function textWidth(svg, text, size) {
     var t = svg.append("text").attr("font-size", size).text(text);
     var w = 0;
@@ -1579,8 +1569,116 @@
     return w;
   }
 
-  function tipShow(entry, x, y, title, rows) {
+  /* A category name in at most two lines, split at the space that balances
+   * them. A name is never shortened: what does not fit is set smaller. */
+  function wrapLines(svg, text, size) {
+    var words = String(text).split(/\s+/), best = [String(text)], bw = Infinity;
+    for (var i = 1; i < words.length; i++) {
+      var a = words.slice(0, i).join(" "), b = words.slice(i).join(" ");
+      var w = Math.max(textWidth(svg, a, size), textWidth(svg, b, size));
+      if (w < bw) { bw = w; best = [a, b]; }
+    }
+    return best;
+  }
+
+  function linesWidth(svg, lines, size) {
+    var w = 0;
+    lines.forEach(function (l) { w = Math.max(w, textWidth(svg, l, size)); });
+    return w;
+  }
+
+  /* Write *lines* into an axis label (one tspan each, centred on the tick)
+   * at *size*. */
+  function setLabel(node, lines, size, centred) {
+    var t = root.d3.select(node), x = t.attr("x") || 0;
+    t.text(null);
+    lines.forEach(function (l, i) {
+      t.append("tspan").attr("x", x)
+        .attr("dy", i ? "1.15em" : (lines.length > 1 && centred ? "-0.23em" : t.attr("dy")))
+        .text(l);
+    });
+    t.attr("font-size", size);
+  }
+
+  /* Contrast of two colours (#hex or rgb()), or 0 when either is unreadable. */
+  function rgbOf(c) {
+    var s = trim(String(c || "")), m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
+    if (m) {
+      var h = m[1].length === 3 ? m[1].replace(/(.)/g, "$1$1") : m[1];
+      return [0, 2, 4].map(function (i) { return parseInt(h.slice(i, i + 2), 16); });
+    }
+    m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(s);
+    return m ? [+m[1], +m[2], +m[3]] : null;
+  }
+
+  function contrast(a, b) {
+    var lum = function (rgb) {
+      var c = rgb.map(function (v) {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    };
+    var x = rgbOf(a), y = rgbOf(b);
+    if (!x || !y) return 0;
+    var l1 = lum(x), l2 = lum(y);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }
+
+  /* The measures' own descriptions, from the semantic contract the build
+   * embedded (the manifest's measure definitions): read once. */
+  var _measureAbout = null;
+  function measureAbout(col) {
+    if (_measureAbout === null) {
+      _measureAbout = {};
+      var blocks = typeof document === "undefined" ? []
+        : document.querySelectorAll('script[id^="tb-semantic-contract-"]');
+      for (var i = 0; i < blocks.length; i++) {
+        try {
+          (JSON.parse(blocks[i].textContent).measures || []).forEach(function (m) {
+            if (m && m.name && m.description && !_measureAbout.hasOwnProperty(m.name)) {
+              _measureAbout[m.name] = String(m.description);
+            }
+          });
+        } catch (e) {}
+      }
+    }
+    return _measureAbout.hasOwnProperty(col) ? _measureAbout[col] : null;
+  }
+
+  function receiptRowFor(id) {
+    if (typeof document === "undefined") return null;
+    var rows = document.querySelectorAll(".tb-receipt-row[data-tb-receipt-fig]");
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute("data-tb-receipt-fig") === id) return rows[i];
+    }
+    return null;
+  }
+
+  /* Open the receipt drawer at one figure's record. */
+  function openReceipt(id) {
+    var row = receiptRowFor(String(id));
+    var drawer = row ? row.parentNode : null;
+    if (!drawer) return false;
+    addClass(drawer, "tb-receipt-open");
+    drawer.scrollTop = Math.max(0, row.offsetTop - 12);
+    addClass(row, "tb-receipt-row--here");
+    setTimeout(function () { removeClass(row, "tb-receipt-row--here"); }, 1600);
+    return true;
+  }
+
+  /* The readout stays put while the pointer travels to its Receipt link. */
+  function tipLater(entry) {
+    clearTimeout(entry.hideTimer);
+    entry.hideTimer = setTimeout(function () { tipHide(entry); }, 220);
+  }
+
+  /* about: the measures' descriptions, one line each under the values. */
+  function tipShow(entry, x, y, title, rows, about) {
     var tip = entry.tip, i, row, line;
+    clearTimeout(entry.hideTimer);
+    var same = !tip.hidden && entry.tipTitle === title;
+    entry.tipTitle = title;
     while (tip.firstChild) tip.removeChild(tip.firstChild);
     var head = document.createElement("div");
     head.className = "tb-chart-tip-title";
@@ -1601,12 +1699,39 @@
       row.appendChild(name);
       tip.appendChild(row);
     }
+    (about || []).forEach(function (text) {
+      var d = document.createElement("div");
+      d.className = "tb-chart-tip-about";
+      d.textContent = text;
+      tip.appendChild(d);
+    });
+    var figId = entry.el && entry.el.id;
+    if (figId && receiptRowFor(figId)) {
+      var link = document.createElement("button");
+      link.type = "button";
+      link.className = "tb-chart-tip-receipt";
+      link.textContent = "Receipt →";
+      link.addEventListener("click", function () { tipHide(entry); openReceipt(figId); });
+      link.addEventListener("pointerenter", function () { clearTimeout(entry.hideTimer); });
+      link.addEventListener("pointerleave", function () { tipLater(entry); });
+      link.addEventListener("blur", function (e) {
+        if (e.relatedTarget !== entry.svg.node()) tipHide(entry);
+      });
+      tip.appendChild(link);
+    }
     tip.hidden = false;
+    /* The same readout again (the pointer moving within one category) stays
+     * where it is, so its link can be reached. */
+    if (same) return announce(entry, title, rows);
     var w = entry.surface.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
-    var left = x + 14 + tw > w ? Math.max(0, x - 14 - tw) : x + 14;
-    var top = Math.max(0, y - th - 10);
+    var left = x + 10 + tw > w ? Math.max(0, x - 10 - tw) : x + 10;
+    var top = Math.max(0, y - th + 6);
     tip.style.left = left + "px";
     tip.style.top = top + "px";
+    announce(entry, title, rows);
+  }
+
+  function announce(entry, title, rows) {
     if (entry.live && entry.keyboard) {
       entry.live.textContent = title + ": " + rows.map(function (r) {
         return r.name + " " + r.value;
@@ -1616,10 +1741,12 @@
 
   /* Keyboard readouts are placed in svg coordinates; the legend sits above. */
   function tipHide(entry) {
+    clearTimeout(entry.hideTimer);
     if (entry.tip) entry.tip.hidden = true;
     if (entry.svg) {
       entry.svg.selectAll(".tb-hover").attr("opacity", 0);
       entry.svg.selectAll(".tb-mark").classed("tb-dim", false);
+      entry.svg.selectAll("circle.tb-dot").classed("tb-dot-on", false);
     }
   }
 
@@ -1670,7 +1797,7 @@
       var p = root.d3.pointer(event, entry.surface);
       entry.keyboard = false;
       fn(d, p[0], p[1]);
-    }).on("pointerleave", function () { tipHide(entry); });
+    }).on("pointerleave", function () { tipLater(entry); });
   }
 
   /* Arrow keys walk the marks, Enter filters by the focused one, Escape
@@ -1693,7 +1820,10 @@
       show(entry.focusIndex);
     };
     svgNode.onfocus = function () { entry.keyboard = true; show(entry.focusIndex); };
-    svgNode.onblur = function () { tipHide(entry); };
+    /* Tab from the chart reaches the readout's Receipt link. */
+    svgNode.onblur = function (e) {
+      if (!(e.relatedTarget && entry.tip.contains(e.relatedTarget))) tipHide(entry);
+    };
   }
 
   function transition(entry, sel) {
@@ -1779,24 +1909,50 @@
     var lo = ext[0], hi = ext[1];
     var titleH = opt.title ? 20 : 0;
     var m = { top: 10 + titleH, right: 16, bottom: 28, left: 12 };
-    var catLabelW = 0, rotate = false, every = 1;
+    var catLabelW = 0, rotate = false, every = 1, lines = {}, wrapW = 0;
     cats.forEach(function (c) { catLabelW = Math.max(catLabelW, textWidth(svg, c, 12)); });
+    /* Wrap every name, then keep on one line any that fits the widest
+     * wrapped one. */
+    var wrapAll = function () {
+      cats.forEach(function (c) {
+        lines[c] = wrapLines(svg, c, 12);
+        wrapW = Math.max(wrapW, linesWidth(svg, lines[c], 12));
+      });
+      cats.forEach(function (c) { if (textWidth(svg, c, 12) <= wrapW) delete lines[c]; });
+    };
+    /* Value ticks thin to what fits: about one per 80px across, one per
+     * 50px up. The same compact format whatever the count. */
     var val = d3.scaleLinear().domain([lo, hi]).nice(5);
-    var tickW = 0;
-    val.ticks(5).forEach(function (v) { tickW = Math.max(tickW, textWidth(svg, ticks(v), 11)); });
+    var tickVals = function (count, room) {
+      for (var n = count; ; n--) {
+        var vs = val.ticks(n), w = 0;
+        vs.forEach(function (v) { w = Math.max(w, textWidth(svg, ticks(v), 11)); });
+        if (n <= 2 || !room || vs.length * (w + 16) <= room) return { vs: vs, w: w };
+      }
+    };
+    var tv;
     if (horizontal) {
-      m.left = Math.min(Math.ceil(catLabelW) + 10, Math.round(W * 0.38));
+      /* Names never shorten: past 30% of the width they wrap to two lines
+       * (when a band holds two), and the margin grows to the longest line,
+       * up to 40% of the width; a line still wider is set smaller. */
+      var stepH = (H - m.top - 24) / Math.max(1, cats.length);
+      if (catLabelW > W * 0.3 && stepH >= 26) wrapAll();
+      m.left = Math.min(Math.ceil(wrapW || catLabelW) + 10, Math.round(W * 0.4));
       m.bottom = 24;
     } else {
-      m.left = Math.ceil(tickW) + 10;
+      tv = tickVals(Math.max(2, Math.min(5, Math.floor((H - 40) / 50))), 0);
+      m.left = Math.ceil(tv.w) + 10;
       var room = (W - m.left - m.right) / Math.max(1, cats.length);
-      /* Names that collide: up to 16 categories turn 30°; more than that
-       * (a run of years, months) label every k-th one, flat. */
+      /* Names that collide wrap to two lines while a band is 48px or wider;
+       * narrower, up to 16 categories turn 30°; more than that (a run of
+       * years, months) label every k-th one, flat. */
       if (cats.length && room < catLabelW + 6) {
         if (cats.length > 16) every = Math.ceil((catLabelW + 14) / room);
+        else if (room >= 48) wrapAll();
         else rotate = true;
       }
-      m.bottom = rotate ? Math.min(Math.ceil(catLabelW * 0.55) + 22, 96) : 28;
+      m.bottom = rotate ? Math.min(Math.ceil(catLabelW * 0.5) + 22, Math.round(H * 0.4))
+        : wrapW ? 42 : 28;
     }
     if (plan.yTitle) m.left += 18;
     if (plan.xTitle) m.bottom += 18;
@@ -1807,8 +1963,11 @@
      * the KPI beside it carries the number. Still zero-based. */
     if (plan.spark) m = { top: 3, right: 3, bottom: 3, left: 3 };
     var iw = Math.max(10, W - m.left - m.right), ih = Math.max(10, H - m.top - m.bottom);
+    if (horizontal) tv = tickVals(Math.max(2, Math.floor(iw / 80)), iw);
+    /* Bars take 55% of their band. */
+    var isBar = kind === "bar" || kind === "barh";
     var band = d3.scaleBand().domain(cats).range(horizontal ? [0, ih] : [0, iw])
-      .paddingInner(kind === "bar" || kind === "barh" ? 0.28 : 0).paddingOuter(0.14);
+      .paddingInner(isBar ? 0.45 : 0).paddingOuter(isBar ? 0.225 : 0.14);
     val.range(horizontal ? [0, iw] : [ih, 0]);
     /* A sparkline runs edge to edge: the first and last points on the sides. */
     if (plan.spark && cats.length > 1) {
@@ -1831,19 +1990,19 @@
         .text(function (d) { return d; });
     }
 
-    /* Grid and axes: recessive, in the page's rule and muted ink. */
+    /* Grid: hairlines at 6% ink, no axis lines; the one baseline at zero is
+     * in the page's rule. */
     var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
-    transition(entry, grid.selectAll("line").data(plan.spark ? [] : val.ticks(5), function (v) { return v; }).join(
-      function (en) { return en.append("line").attr("stroke", t.rule); }))
+    transition(entry, grid.selectAll("line").data(plan.spark ? [] : tv.vs, function (v) { return v; }).join(
+      function (en) { return en.append("line"); }))
       .attr(horizontal ? "x1" : "y1", function (v) { return val(v); })
       .attr(horizontal ? "x2" : "y2", function (v) { return val(v); })
       .attr(horizontal ? "y1" : "x1", 0)
       .attr(horizontal ? "y2" : "x2", horizontal ? ih : iw)
-      .attr("stroke", t.rule)
-      .attr("stroke-width", function (v) { return v === 0 ? 1.5 : 1; })
-      .attr("stroke-opacity", function (v) { return v === 0 ? 1 : 0.7; });
+      .attr("stroke-width", 1)
+      .style("stroke", function (v) { return v === 0 ? "var(--tb-rule)" : "var(--tb-grid)"; });
     var vAxis = horizontal ? d3.axisBottom(val) : d3.axisLeft(val);
-    vAxis.ticks(5).tickSize(0).tickPadding(8).tickFormat(ticks);
+    vAxis.tickValues(tv.vs).tickSize(0).tickPadding(8).tickFormat(ticks);
     var cAxis = horizontal ? d3.axisLeft(band) : d3.axisBottom(band);
     cAxis.tickSize(0).tickPadding(8);
     if (!horizontal && every > 1) {
@@ -1859,9 +2018,19 @@
     g.selectAll(".tb-axis .domain").remove();
     g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11)
       .attr("font-family", t.font);
-    ca.selectAll("text").attr("font-size", 12).each(function () {
-      fitText(this, horizontal ? m.left - 10 - (plan.yTitle ? 18 : 0)
-        : rotate ? m.bottom * 1.6 : band.step() * (every || 1));
+    var labelRoom = horizontal ? m.left - 10 - (plan.yTitle ? 18 : 0)
+      : rotate ? (m.bottom - 16) * 2 : band.step() * every - 6;
+    /* One size for every name on the axis: 12px, or smaller (to 9px) when
+     * the widest does not fit its room. */
+    var labelSize = 12;
+    cats.forEach(function (c) {
+      var w = linesWidth(svg, lines[c] || [String(c)], 12);
+      if (w > labelRoom && labelRoom > 0) {
+        labelSize = Math.min(labelSize, Math.max(9, Math.floor(12 * labelRoom / w)));
+      }
+    });
+    ca.selectAll("text").each(function (c) {
+      setLabel(this, lines[c] || [String(c)], labelSize, horizontal);
     });
     if (rotate) {
       ca.selectAll("text").attr("text-anchor", "end").attr("dx", "-0.4em")
@@ -1922,7 +2091,7 @@
           /* Round only the end that faces away from zero, and only the
            * outermost segment of a stack. */
           var outer = !stacked || p.y1 === (p.y >= 0 ? stackTop(series, p.cat, 1) : stackTop(series, p.cat, -1));
-          var rad = outer ? Math.min(4, len, thick / 2) : 0;
+          var rad = outer ? Math.min(2, len, thick / 2) : 0;
           var pos = p.y >= 0;
           if (horizontal) {
             var x0 = lo2, x1 = lo2 + len, y0 = a, y1 = a + thick;
@@ -1953,6 +2122,51 @@
           .attr("d", shape).attr("fill", colour(s.key))
           .attr("stroke", stacked ? t.bg : null).attr("stroke-width", stacked ? 1 : null);
       });
+      /* Each bar's own value, formatted as the tooltip and the table show it:
+       * inside the free end when the label fits with 12px to spare and reads
+       * on the bar's colour, otherwise just past it. None on bars thinner
+       * than 14px, on stacks, in small multiples, or beside marked points. */
+      var labelled = [];
+      if (thick >= 14 && !stacked && !opt.title && !plan.spark && !marks.length) {
+        series.forEach(function (s) {
+          var f = chartFormatter(plan, rows, s.col), fill = colour(s.key);
+          var on = [t.onAccent, t.ink].filter(function (c) { return contrast(c, fill) >= 4.5; })[0];
+          s.points.forEach(function (p) {
+            if (p.y === null || band(p.cat) === undefined) return;
+            var text = f(p.y), w = textWidth(svg, text, 11);
+            var len = Math.abs(val(p.y) - val(0)), along = horizontal ? w : 11;
+            var across = horizontal ? 11 : w;
+            labelled.push({ key: s.key + "|" + p.cat, p: p, s: s, text: text, w: w,
+                            inside: !!on && len >= along + 12 && across <= thick - 4,
+                            fill: on, room: horizontal ? thick : inner.step() });
+          });
+        });
+        /* One placement for the chart: inside only when every label fits. */
+        var allIn = labelled.every(function (d) { return d.inside; });
+        labelled.forEach(function (d) { d.inside = allIn; });
+        /* An upright label wider than its slot would sit on its neighbour's. */
+        if (!horizontal && labelled.some(function (d) { return !d.inside && d.w > d.room; })) labelled = [];
+      }
+      var vl = g.selectAll("g.tb-values").data([0]).join("g").attr("class", "tb-values")
+        .selectAll("text").data(labelled, function (d) { return d.key; }).join("text");
+      vl.attr("font-size", 11).attr("font-weight", 600).attr("pointer-events", "none")
+        .attr("fill", function (d) { return d.inside ? d.fill : t.ink; })
+        .attr("text-anchor", function (d) {
+          if (!horizontal) return "middle";
+          return (d.p.y >= 0) === d.inside ? "end" : "start";
+        })
+        .attr("dy", horizontal ? "0.32em" : null)
+        .attr("x", function (d) {
+          if (!horizontal) return band(d.p.cat) + slot(d.s.key) + off + thick / 2;
+          var end = val(d.p.y), out = d.p.y >= 0 ? 1 : -1;
+          return end + (d.inside ? -6 : 4) * out;
+        })
+        .attr("y", function (d) {
+          if (horizontal) return band(d.p.cat) + slot(d.s.key) + off + thick / 2;
+          var end = val(d.p.y), up = d.p.y >= 0 ? 1 : -1;
+          return d.inside ? end + (up > 0 ? 15 : -6) : end + (up > 0 ? -5 : 14);
+        })
+        .text(function (d) { return d.text; });
     } else {
       var lineGen = d3.line().defined(function (p) { return p.y !== null; })
         .x(function (p) { return centre(p.cat); })
@@ -1961,28 +2175,24 @@
         .x(function (p) { return centre(p.cat); })
         .y0(function (p) { return stacked ? val(p.y0) : zero; })
         .y1(function (p) { return val(to(p)); });
-      groups.each(function (s, si) {
+      groups.each(function (s) {
         var pts = s.points.filter(function (p) { return band(p.cat) !== undefined; });
         var sel = d3.select(this);
         if (kind === "area") {
-          /* A soft vertical gradient: strongest at the line, fading to the base. */
-          var gid = entry.uid + "-" + (opt.panel || 0) + "-" + si;
-          var defs = svg.selectAll("defs").data([0]).join("defs");
-          var grad = defs.selectAll("linearGradient#" + gid).data([0]).join("linearGradient")
-            .attr("id", gid).attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
-          grad.selectAll("stop").data([[0, 0.32], [1, 0.03]]).join("stop")
-            .attr("offset", function (d) { return d[0]; })
-            .attr("stop-color", colour(s.key)).attr("stop-opacity", function (d) { return d[1]; });
+          /* A flat wash of the series colour at 10%: no gradient. */
           var ar = sel.selectAll("path.tb-area").data([pts]).join("path").attr("class", "tb-area")
-            .attr("fill", "url(#" + gid + ")");
+            .attr("fill", colour(s.key)).attr("fill-opacity", 0.1);
           transition(entry, ar).attr("d", areaGen);
         }
         var ln = sel.selectAll("path.tb-line").data([pts]).join("path").attr("class", "tb-line tb-mark")
-          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", 2.25)
+          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", 1.5)
           .attr("stroke-linejoin", "round").attr("stroke-linecap", "round");
         transition(entry, ln).attr("d", lineGen);
-        var dots = sel.selectAll("circle.tb-dot").data(pts.filter(function (p) { return p.y !== null; }),
-          function (p) { return p.cat; });
+        /* One dot per row, drawn only at the end of the line and under the
+         * pointer (.tb-dot-on), so the line reads as a line. */
+        var drawn = pts.filter(function (p) { return p.y !== null; });
+        var last = drawn.length ? drawn[drawn.length - 1].cat : null;
+        var dots = sel.selectAll("circle.tb-dot").data(drawn, function (p) { return p.cat; });
         transition(entry, dots.join(
           function (en) { return en.append("circle").attr("class", "tb-dot").attr("r", 0)
             .attr("cx", function (p) { return centre(p.cat); }).attr("cy", function (p) { return val(to(p)); }); },
@@ -1990,10 +2200,33 @@
           function (ex) { return ex.remove(); }))
           .attr("cx", function (p) { return centre(p.cat); })
           .attr("cy", function (p) { return val(to(p)); })
-          .attr("r", plan.spark || cats.length > 24 ? 0 : 3.5)
-          .attr("fill", colour(s.key)).attr("stroke", t.bg).attr("stroke-width", 2);
+          .attr("r", function (p) { return !plan.spark && p.cat === last ? 3 : 0; })
+          .attr("fill", colour(s.key)).attr("stroke", t.bg).attr("stroke-width", 1.5);
       });
     }
+
+    /* Lines end in a label: the last row's own value, formatted. Not on a
+     * sparkline, in small multiples, or where the author marked the last. */
+    var ends = [];
+    if (!isBar && !plan.spark && !opt.title && marks.indexOf("last") === -1) {
+      series.forEach(function (s) {
+        var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
+        if (!pts.length) return;
+        var p = pts[pts.length - 1];
+        ends.push({ key: s.key, p: p, y: val(to(p)) - 9,
+                    text: chartFormatter(plan, rows, s.col)(p.y), colour: colour(s.key) });
+      });
+      /* Labels that would overlap step apart, top to bottom. */
+      ends.sort(function (a, b) { return a.y - b.y; });
+      for (var ei = 1; ei < ends.length; ei++) {
+        if (ends[ei].y - ends[ei - 1].y < 13) ends[ei].y = ends[ei - 1].y + 13;
+      }
+    }
+    g.selectAll("text.tb-end-label").data(ends, function (d) { return d.key; }).join("text")
+      .attr("class", "tb-end-label").attr("pointer-events", "none")
+      .attr("x", function (d) { return centre(d.p.cat); }).attr("y", function (d) { return d.y; })
+      .attr("text-anchor", "end").attr("font-size", 11).attr("font-weight", 600)
+      .attr("fill", t.ink).text(function (d) { return d.text; });
 
     /* Marked points: the series' own high, low, first or last row, labelled
      * with that row's value. Picking a row never makes a number. */
@@ -2059,13 +2292,16 @@
       } else {
         cross.attr("x1", centre(c)).attr("x2", centre(c)).attr("y1", 0).attr("y2", ih)
           .attr("opacity", 1);
+        g.selectAll("circle.tb-dot").classed("tb-dot-on", function (p) { return p.cat === c; });
       }
-      var rowsOut = [];
+      var rowsOut = [], about = [];
       series.forEach(function (s) {
         for (var j = 0; j < s.points.length; j++) {
           if (s.points[j].cat === c) {
             rowsOut.push({ colour: colour(s.key), name: s.name,
                            value: chartFormatter(plan, rows, s.col)(s.points[j].y) });
+            var said = measureAbout(s.col);
+            if (said && about.indexOf(said) === -1) about.push(said);
             break;
           }
         }
@@ -2073,7 +2309,7 @@
       var o = px === undefined ? hostOffset(entry, svg) : { x: 0, y: 0 };
       var x = px === undefined ? o.x + m.left + (horizontal ? iw / 2 : centre(c)) : px;
       var y = py === undefined ? o.y + m.top + (horizontal ? centre(c) : ih / 3) : py;
-      tipShow(entry, x, y, (opt.title ? opt.title + " · " : "") + c, rowsOut);
+      tipShow(entry, x, y, (opt.title ? opt.title + " · " : "") + c, rowsOut, about);
     };
     var choose = filterable ? function (i) { filterTo(plan.x, cats[i]); } : null;
     var catAt = function (px) {
@@ -2205,12 +2441,12 @@
     var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
     transition(entry, grid.selectAll("line").data(ys.ticks(5), function (v) { return v; }).join("line"))
       .attr("x1", 0).attr("x2", iw).attr("y1", function (v) { return ys(v); })
-      .attr("y2", function (v) { return ys(v); }).attr("stroke", t.rule).attr("stroke-opacity", 0.7);
+      .attr("y2", function (v) { return ys(v); }).style("stroke", "var(--tb-grid)");
     transition(entry, g.selectAll("g.tb-axis-y").data([0]).join("g").attr("class", "tb-axis tb-axis-y"))
       .call(d3.axisLeft(ys).ticks(5).tickSize(0).tickPadding(8).tickFormat(ticks));
     transition(entry, g.selectAll("g.tb-axis-x").data([0]).join("g").attr("class", "tb-axis tb-axis-x")
       .attr("transform", "translate(0," + ih + ")"))
-      .call(d3.axisBottom(xs).ticks(Math.max(2, Math.floor(iw / 90))).tickSize(0).tickPadding(8)
+      .call(d3.axisBottom(xs).ticks(Math.max(2, Math.floor(iw / 80))).tickSize(0).tickPadding(8)
         .tickFormat(ticks));
     g.selectAll(".tb-axis .domain").remove();
     g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11).attr("font-family", t.font);
@@ -2253,7 +2489,7 @@
           { colour: colourOf(entry, p.key), name: humanise(plan.x), value: fx(p.x) },
           { colour: colourOf(entry, p.key), name: humanise(p.series.col),
             value: chartFormatter(plan, rows, p.series.col)(p.y) }
-        ]);
+        ], [measureAbout(plan.x), measureAbout(p.series.col)].filter(Boolean));
     };
     /* Nearest point wins: the reader only has to be closest, not dead on.
      * Dragging across the plot zooms to that range of x; double-click or
@@ -2287,7 +2523,7 @@
         var p2 = d3.pointer(event, entry.surface);
         showAt(best, p2[0], p2[1]);
       } else tipHide(entry);
-    }).on("pointerleave.tb", function () { tipHide(entry); });
+    }).on("pointerleave.tb", function () { tipLater(entry); });
     keyboardWalk(entry, pts.length, function (i) { showAt(i); }, null);
   }
 
@@ -2334,7 +2570,8 @@
       var c = arc.centroid(a);
       tipShow(entry, px === undefined ? W / 2 + c[0] : px,
         py === undefined ? hostOffset(entry, entry.svg).y + H / 2 + c[1] : py,
-        a.data.key, [{ colour: colourOf(entry, a.data.key), name: humanise(y0), value: fmtV(a.data.raw) }]);
+        a.data.key, [{ colour: colourOf(entry, a.data.key), name: humanise(y0), value: fmtV(a.data.raw) }],
+        [measureAbout(y0)].filter(Boolean));
     };
     joined.style("cursor", filterable ? "pointer" : null)
       .on("pointermove", function (event, a) {
@@ -2344,7 +2581,7 @@
       })
       .on("pointerleave", function () {
         g.selectAll("path.tb-mark").attr("d", arc);
-        tipHide(entry);
+        tipLater(entry);
       })
       .on("click", function (event, a) { filterTo(plan.x, a.data.key); });
     keyboardWalk(entry, arcs.length, function (i) { showAt(i); },
@@ -2363,6 +2600,7 @@
     t.muted = t.muted || "#666";
     t.ink = t.ink || "#111";
     t.bg = t.bg || "#fff";
+    try { t.onAccent = cssVar(getComputedStyle(document.documentElement), "--tb-on-accent"); } catch (e) {}
     legendFor(entry, kind);
     var H = entry.plan.spark ? entry.height
       : Math.max(200, entry.height - entry.legend.offsetHeight - 8);
@@ -2373,6 +2611,8 @@
         .attr("aria-label", (kind === "barh" ? "bar" : kind) + " chart of " +
           entry.plan.y.map(humanise).join(", ") + " by " + humanise(entry.plan.x) +
           ". Use the arrow keys to read each value.");
+      /* The readout follows the chart in tab order: Tab reaches its link. */
+      surface.appendChild(entry.tip);
     }
     entry.svg.attr("width", W).attr("height", H).attr("viewBox", "0 0 " + W + " " + H)
       .style("font-family", t.font);

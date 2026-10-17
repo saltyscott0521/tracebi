@@ -54,6 +54,14 @@
       "model": "portfolio_model",
       "query": { "fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"] }
     },
+    "issuer_curve": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fv_rank", "fv_cum_share"],
+        "dimensions": ["dim_issuer.issuer"],
+        "order_by": [{"column": "fv_rank", "desc": false}]
+      }
+    },
     "top_issuers": {
       "model": "portfolio_model",
       "query": {

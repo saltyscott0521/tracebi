@@ -37,6 +37,7 @@
   --tb-dark-accent: #7a9cff;
   --tb-dark-accent-text: #a5bcff;
   --tb-rule: #e4e4e8;
+  --tb-grid: color-mix(in oklab, var(--tb-ink) 6%, transparent); /* chart gridlines */
   /* Cards are a hairline, never a shadow. Kept as a token for a report's own
    * style.css; nothing in this sheet draws a resting shadow. */
   --tb-shadow: none;
@@ -493,15 +494,24 @@ tr.tb-window-pad td {
 .tb-legend-swatch--dot { border-radius: 50%; }
 .tb-chart-tip {
   position: absolute; z-index: 3; pointer-events: none; min-width: 140px; max-width: 280px;
-  padding: 8px 10px; border-radius: 8px; background: var(--tb-bg); color: var(--tb-muted);
+  padding: 8px 10px; border-radius: 6px; background: var(--tb-bg); color: var(--tb-muted);
   border: 1px solid var(--tb-rule); box-shadow: 0 4px 16px rgba(16, 24, 40, .12);
-  font-size: 12px; line-height: 1.45;
+  font-size: var(--tb-text-sm); line-height: 1.45;
 }
 .tb-chart-tip[hidden] { display: none; }
 .tb-chart-tip-title { color: var(--tb-ink); font-weight: 600; margin-bottom: 2px; }
 .tb-chart-tip-row { display: flex; align-items: baseline; gap: 6px; }
 .tb-chart-tip-row strong { color: var(--tb-ink); font-variant-numeric: tabular-nums; }
 .tb-chart-tip-key { width: 10px; height: 3px; border-radius: 2px; flex: none; align-self: center; }
+.tb-chart-tip-about { margin-top: 4px; max-width: 240px; font-size: var(--tb-text-xs); }
+/* The one part of the readout that takes the pointer: the way to its receipt. */
+.tb-chart-tip-receipt {
+  display: block; margin-top: 6px; padding: 0; border: 0; background: none; pointer-events: auto;
+  color: var(--tb-accent-text); font: inherit; font-weight: 500; cursor: pointer;
+}
+.tb-chart-tip-receipt:hover { text-decoration: underline; }
+.tb-chart-tip-receipt:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; border-radius: 2px; }
+.tb-chart-svg circle.tb-dot.tb-dot-on { r: 3px; }
 .tb-sr-only {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
@@ -843,6 +853,7 @@ label > input[data-tb-search] { width: 11em; }
   --tb-accent-text: var(--tb-dark-accent-text);
   --tb-on-accent: #0d0f12;
   --tb-rule: #2c2c32;
+  --tb-grid: color-mix(in oklab, var(--tb-ink) 6%, transparent);
   --tb-surface: #1c1c21;
   --tb-surface-accent: color-mix(in srgb, var(--tb-dark-accent) 12%, transparent);
   --tb-good: #6fcf8f;
@@ -870,6 +881,7 @@ label > input[data-tb-search] { width: 11em; }
     --tb-accent-text: var(--tb-dark-accent-text);
     --tb-on-accent: #0d0f12;
     --tb-rule: #2c2c32;
+    --tb-grid: color-mix(in oklab, var(--tb-ink) 6%, transparent);
     --tb-surface: #1c1c21;
     --tb-surface-accent: color-mix(in srgb, var(--tb-dark-accent) 12%, transparent);
     --tb-good: #6fcf8f;
@@ -1354,6 +1366,8 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   padding: var(--tb-space-1) 0;
   border-bottom: 1px solid var(--tb-rule);
 }
+/* The record a chart tooltip's Receipt link opened the drawer at. */
+.tb-receipt-row--here { background: var(--tb-surface-accent); transition: background .3s; }
 .tb-receipt-title { color: var(--tb-ink); }
 .tb-receipt-from {
   color: var(--tb-muted);

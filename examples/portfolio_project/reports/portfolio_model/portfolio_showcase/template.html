@@ -132,6 +132,30 @@
              data-tb-y-title="Fair value" data-tb-value-format="compact"
              id="chart-fund-sector"></div>
       </div>
+
+      <!-- The other chart types, one each, in the house style: bars carry
+           their own values, an area ends in its last value, a scatter names
+           each point by its row's text column. -->
+      <div class="tb-cols-2">
+        <div class="tb-card">
+          <h2>Top issuers by fair value</h2>
+          <div data-tb-figure="chart" data-tb-binding="top_issuers" data-tb-type="barh"
+               data-tb-x="dim_issuer.issuer" data-tb-y="fair_value"
+               data-tb-value-format="currency_compact" id="chart-top-issuers"></div>
+        </div>
+        <div class="tb-card">
+          <h2>Cumulative share, issuers by rank</h2>
+          <div data-tb-figure="chart" data-tb-binding="issuer_curve" data-tb-type="area"
+               data-tb-x="fv_rank" data-tb-y="fv_cum_share" data-tb-value-format="percent"
+               data-tb-x-title="Issuers, by rank" id="chart-issuer-curve"></div>
+        </div>
+      </div>
+      <div class="tb-card">
+        <h2>Size against mark, top issuers</h2>
+        <div data-tb-figure="chart" data-tb-binding="top_issuers" data-tb-type="scatter"
+             data-tb-x="fair_value" data-tb-y="mark" data-tb-x-title="Fair value"
+             data-tb-y-title="Mark (fair value / cost)" id="chart-size-mark"></div>
+      </div>
     </section>
 
     <section data-tb-tab="Detail">

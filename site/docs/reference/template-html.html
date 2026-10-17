@@ -150,6 +150,14 @@ multi-row binding fails the build.</p>
 <p><code>data-tb-type</code> (<code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>),
 <code>data-tb-x</code>, <code>data-tb-y</code> (comma-list for multi-series), <code>data-tb-color</code>,
 and <code>data-tb-value-format</code> for labels, axes and tooltips.</p>
+<p>Every chart is drawn in one style, with no setting to learn: bars carry
+their own values in that format (inside the bar when the label fits, past
+its end when not; none on bars under 14px wide, on stacks or in small
+multiples), a line or area ends in its last value (unless <code>data-tb-mark</code>
+already labels the last), category names wrap to two lines or turn and are
+never cut, and value ticks thin to what fits. The tooltip shows the
+category, the value, the measure's description from the model and a
+"Receipt →" link that opens the receipt drawer at that figure.</p>
 <p>The build inlines D3 automatically when the page contains a chart
 figure. <code>"libs"</code> in <a href="../reference/report-json.html">report.json</a> is optional.</p>
 <h3 id="table-figures">Table figures</h3>

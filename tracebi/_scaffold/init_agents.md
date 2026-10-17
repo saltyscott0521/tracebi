@@ -182,8 +182,11 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   fails at load, and a figure declared but never placed (or placed twice)
   fails the build. Hand-written figures still work; this is sugar. `libs`
   is optional. The build inlines D3 automatically when the page
-  contains a chart figure and draws every chart type with it (legend
-  toggles, tooltips, arrow-key reading, a click on a bar or slice sets the
+  contains a chart figure and draws every chart type with it, in one style
+  (bars carry their own values, a line ends in its last value, names wrap
+  and are never cut, ticks thin to what fits; legend toggles, tooltips with
+  the measure's description and a "Receipt →" link to that figure's record,
+  arrow-key reading, a click on a bar or slice sets the
   page's filter control for that column). List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the receipt.

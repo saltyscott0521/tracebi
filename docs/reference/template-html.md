@@ -66,6 +66,15 @@ multi-row binding fails the build.
 `data-tb-x`, `data-tb-y` (comma-list for multi-series), `data-tb-color`,
 and `data-tb-value-format` for labels, axes and tooltips.
 
+Every chart is drawn in one style, with no setting to learn: bars carry
+their own values in that format (inside the bar when the label fits, past
+its end when not; none on bars under 14px wide, on stacks or in small
+multiples), a line or area ends in its last value (unless `data-tb-mark`
+already labels the last), category names wrap to two lines or turn and are
+never cut, and value ticks thin to what fits. The tooltip shows the
+category, the value, the measure's description from the model and a
+"Receipt →" link that opens the receipt drawer at that figure.
+
 The build inlines D3 automatically when the page contains a chart
 figure. `"libs"` in [[report-json]] is optional.
 

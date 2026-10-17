@@ -356,7 +356,8 @@ def _presentation() -> dict:
             "--tb-on-accent (text on an accent fill)",
             "--tb-dark-accent / --tb-dark-accent-text (the accent on the "
             "dark ground; a theme sets both pairs)",
-            "--tb-rule", "--tb-radius", "--tb-space-1..4",
+            "--tb-rule", "--tb-grid (chart gridlines, 6% ink)", "--tb-radius",
+            "--tb-space-1..4",
             "--tb-text-xs..3xl (the type scale: 12/13/14/16/20/28/40px), "
             "--tb-tracking-tight (28px and up)",
             "--tb-good / --tb-bad (direction tones), --tb-warn (the amber "
@@ -434,7 +435,8 @@ def _presentation() -> dict:
                               "format, then a readable shape default "
                               "(4,846.10) — as a table column does",
             "data-tb-type / data-tb-x / data-tb-y / data-tb-color": "chart wiring",
-            "data-tb-value-format": "chart labels, axes, and tooltips — every "
+            "data-tb-value-format": "chart labels (each bar's own value, a "
+                                    "line's last value), axes, and tooltips — every "
                                     "chart type: compact | comma | currency | "
                                     "currency0 | currency_compact | percent | decimal "
                                     "(compact → '550.7B')",
