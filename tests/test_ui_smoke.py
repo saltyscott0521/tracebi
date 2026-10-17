@@ -420,9 +420,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # edits to its file without a reload, and publishes with a toast.
             draft = project / "drafts" / "anonymous" / "reports" / "portfolio_model" / "draft_demo"
             shutil.copytree(project / "reports" / "portfolio_model" / "portfolio_overview", draft)
-            template = draft / "template.html"
+            template = draft / "app.jsx"
             template.write_text(
-                template.read_text(encoding="utf-8").replace("Portfolio Overview", "Draft Marker One"),
+                template.read_text(encoding="utf-8").replace("Three funds, one Schedule", "Draft Marker One"),
                 encoding="utf-8")
             page.goto(base + "/drafts")
             page.get_by_role("heading", name="Drafts", exact=True).wait_for()
@@ -442,7 +442,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 "(t) => (document.querySelector('iframe')?.srcdoc || '').includes(t)",
                 arg="Draft Marker Two")
             page.get_by_role("button", name="Files", exact=True).click()
-            page.get_by_role("button", name="template.html").wait_for()
+            page.get_by_role("button", name="app.jsx").wait_for()
             page.get_by_role("button", name="Publish", exact=True).click()
             # The destination picker names every place it can go and whether
             # that publishes directly or asks (this app has no sign-in: Manage).

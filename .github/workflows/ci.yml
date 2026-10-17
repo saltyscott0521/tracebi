@@ -120,7 +120,7 @@ jobs:
           # installed wheel. Assert the two that tests import as representatives.
           for required in ("tracebi/web/api/main.py", "tracebi/web/ui/dist/index.html",
                            "tracebi/_scaffold/init_agents.md",
-                           "tracebi/_scaffold/init_sample_template.html"):
+                           "tracebi/_scaffold/init_sample_app.jsx"):
               assert required in names, f"{required} missing from {whl}"
           # `web.py` on PyPI owns a top-level `web/` in site-packages. Shipping
           # one here means pip silently overwrites whichever is installed
