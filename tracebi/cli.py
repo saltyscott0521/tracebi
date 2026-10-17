@@ -2042,24 +2042,43 @@ def _scaffold_binding(job: str = "overview") -> tuple[str, dict, str]:
             continue
         query: dict = {"fact": facts[0]["name"],
                        "measures": [measures[0]["name"]]}
-        if job == "scorecard":
+        runnable = facts[0].get("runnable_measures") or []
+        if job in ("scorecard", "monitor"):
             # Every measure the fact can run, up to four: the scorecard's row.
-            runnable = facts[0].get("runnable_measures") or []
             query["measures"] = list(runnable[:4]) or query["measures"]
+        if job == "funnel":
+            # Stages are counts — not money, not rates — widest first.
+            kinds = {m["name"]: m for m in measures}
+            counts = [n for n in runnable
+                      if kinds.get(n, {}).get("kind") in ("simple", "expression")
+                      and not str(kinds[n].get("format") or "").startswith(
+                          ("currency", "percent"))][:5]
+            if len(counts) < 2:
+                return info.get("name", name), query, (
+                    "The model's fact has fewer than two count measures, so "
+                    "there is no funnel to show: this dashboard starts as an "
+                    "overview. Add a measure per stage to the model, then run "
+                    "new-dashboard --job funnel --force again.")
+            query["measures"] = _widest_first(model, facts[0]["name"], counts)
         refs = [f"{d['name']}.{a}" for d in (info.get("dimensions") or [])
                 for a in (d.get("attributes") or [])[:1]]
         timed = [r for r in refs if _TIME_WORDS.search(r)]
         other = [r for r in refs if r not in timed]
-        if job == "scorecard" and timed:
+        if job in ("scorecard", "monitor") and timed:
             query["_time"] = timed[0]
+        if job in ("trend", "monitor") and not timed:
+            if job == "monitor" and other:
+                query["dimensions"] = [other[0]]     # a scorecard by category
+            return info.get("name", name), query, (
+                "The model has no time dimension (an attribute named like "
+                "month, week or date), so this dashboard shows totals only: "
+                f"add one to the model, then run new-dashboard --job {job} "
+                "--force again.")
         if job == "trend":
-            if not timed:
-                return info.get("name", name), query, (
-                    "The model has no time dimension (an attribute named like "
-                    "month, week or date), so this dashboard shows totals only: "
-                    "add one to the model, then run new-dashboard --job trend "
-                    "--force again.")
             query["dimensions"] = [timed[0]]
+        elif job == "monitor":
+            if other:
+                query["dimensions"] = [other[0]]
         elif other or timed:
             # A breakdown or a ranking reads best by a category, not by time.
             query["dimensions"] = [(other or timed)[0]]
@@ -2071,6 +2090,16 @@ def _scaffold_binding(job: str = "overview") -> tuple[str, dict, str]:
         "No model found in models/ — edit report.json's 'data' block to name a "
         "real model and query before running `tracebi report build`.",
     )
+
+
+def _widest_first(model, fact: str, names: list) -> list:
+    """Funnel stages in the order the warehouse has them today, widest first;
+    the model's order when the warehouse cannot answer yet."""
+    try:
+        row = model.query(fact=fact, measures=names).to_pandas().iloc[0]
+        return sorted(names, key=lambda n: -float(row[n]))
+    except Exception:  # noqa: BLE001 — no warehouse yet is not a scaffold error
+        return list(names)
 
 
 def _in_sentence(label: str) -> str:
@@ -2103,7 +2132,41 @@ def _report_json_text(title: str, model: str, query: dict,
     dims = query.get("dimensions")
     data = {"totals": {"model": model,
                        "query": {"fact": fact, "measures": measures}}}
-    if dims and job == "trend":
+    calculated = {}
+    if job == "monitor" and not time_ref:
+        job = "scorecard"
+    if job == "funnel" and len(measures) < 2:
+        job = "overview"
+    if job == "monitor":
+        # The latest period of every measure, the series, the lowest members.
+        data = {"latest": {"model": model, "query": {
+                    "fact": fact, "measures": measures, "dimensions": [time_ref],
+                    "order_by": ["-" + time_ref], "limit": 1}},
+                "by_period": {"model": model, "query": {
+                    "fact": fact, "measures": measures, "dimensions": [time_ref],
+                    "order_by": [time_ref]}}}
+        if dims:
+            data["watch"] = {"model": model, "query": {
+                "fact": fact, "measures": measures[:1], "dimensions": dims,
+                "order_by": [measures[0]], "limit": 10}}
+            data["breakdown"] = {"model": model, "query": {
+                "fact": fact, "measures": measures, "dimensions": dims,
+                "order_by": [measures[0]]}}
+    elif job == "funnel":
+        # Each conversion is a report-level ratio, so the receipt names it.
+        from tracebi._app_scaffold import funnel_rates
+        rates = funnel_rates(measures)
+        for rate, stage in rates:
+            calculated[rate] = {
+                "ratio": [stage, measures[0]], "format": "percent",
+                "description": f"Share of {measures[0]} that reach {stage}"}
+        data = {"stages": {"model": model, "query": {
+            "fact": fact, "measures": measures + [r for r, _ in rates]}}}
+        if dims:
+            data["breakdown"] = {"model": model, "query": {
+                "fact": fact, "measures": measures + [rates[-1][0]],
+                "dimensions": dims, "order_by": ["-" + measures[0]]}}
+    elif dims and job == "trend":
         # The series in time order, and its latest period on its own.
         data["latest"] = {"model": model, "query": {
             "fact": fact, "measures": measures, "dimensions": dims,
@@ -2136,6 +2199,8 @@ def _report_json_text(title: str, model: str, query: dict,
                        "pandas.",
         "data": data,
     }
+    if calculated:
+        declaration["measures"] = {model: calculated}
     if look is not None:
         # An app page has no <html> of its own: its mode and density live here.
         declaration["description"] = declaration["description"].replace(
@@ -3668,7 +3733,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write the dashboard as template.html (reads with JavaScript off) "
              "instead of an app.jsx React app.")
     p_new_dashboard.add_argument(
-        "--job", choices=["overview", "trend", "leaderboard", "scorecard"],
+        "--job", choices=["overview", "trend", "leaderboard", "scorecard",
+                          "monitor", "funnel"],
         default="overview",
         help="What the dashboard is for. overview (default): a KPI strip, a "
              "chart beside its ranking, a filterable detail. trend: the latest "
@@ -3676,7 +3742,11 @@ def build_parser() -> argparse.ArgumentParser:
              "table (needs a time dimension). leaderboard: the leader, the top "
              "ten, the full ranking with search. scorecard: every measure "
              "(up to four) as a KPI with its trend, and all of them by "
-             "category.")
+             "category. monitor: the latest period of every measure with its "
+             "trend, when the data was built, and a watch list, lowest first "
+             "(needs a time dimension). funnel: each count measure as a stage, "
+             "widest first, with its conversion from the first as a "
+             "report-level ratio, and where it narrows by category.")
     p_new_dashboard.set_defaults(func=cmd_new_report, kind="dashboard",
                                  layout="dashboard")
 

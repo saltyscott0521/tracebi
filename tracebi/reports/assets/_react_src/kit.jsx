@@ -5,6 +5,7 @@
 // build reads these components' literal props out of app.jsx to record the
 // claims (tracebi/reports/app_lane.py mirrors the attribute names and ids).
 import * as React from "react";
+import * as ReactDOM from "react-dom";
 
 const tb = () => window.tracebi;
 
@@ -166,6 +167,38 @@ function writeHash(state) {
     .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(state[k])}`).join("&");
   try { window.history.replaceState(null, "", h ? `#${h}` : window.location.pathname + window.location.search); }
   catch (e) { window.location.hash = h; }
+}
+
+// ── Printing ───────────────────────────────────────────────────────────────
+
+// One flag for the page: true from the browser's beforeprint to its afterprint
+// (Ctrl+P, and `tracebi report build --format pdf`, which dispatches it).
+let printing = false;
+const printSubs = new Set();
+function setPrinting(v) {
+  if (printing === v) return;
+  printing = v;
+  // Synchronously, so the print layout already holds every view — and their
+  // figures filled, before the next frame would have done it.
+  ReactDOM.flushSync(() => printSubs.forEach((f) => f(v)));
+  if (v && tb() && tb().refresh) tb().refresh();
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeprint", () => setPrinting(true));
+  window.addEventListener("afterprint", () => setPrinting(false));
+}
+
+/** True while the page is being printed. An app with views renders all of
+ * them then, so a PDF or a paper copy holds the whole report, not the view
+ * that happened to be open. */
+export function usePrinting() {
+  const [v, set] = React.useState(printing);
+  React.useEffect(() => {
+    printSubs.add(set);
+    set(printing);
+    return () => { printSubs.delete(set); };
+  }, []);
+  return v;
 }
 
 /** useState kept in the page's URL (#view=Detail&period=YTD), so a shared

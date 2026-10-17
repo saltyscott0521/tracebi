@@ -245,6 +245,10 @@ filterable, exactly as in a template.</p>
 <td><code>useState</code> kept in the URL (<code>#view=Detail&amp;period=YTD</code>): a reload or a shared link opens where the reader was.</td>
 </tr>
 <tr>
+<td><code>usePrinting()</code></td>
+<td><code>true</code> while the page prints (the browser's Ctrl+P, and <code>tracebi report build --format pdf</code>). An app with views renders every one then, so the PDF holds the whole report: <code>{printing ? &lt;&gt;&lt;Overview /&gt;&lt;Detail /&gt;&lt;/&gt; : &lt;View /&gt;}</code>. Give navigation <code>print:hidden</code>.</td>
+</tr>
+<tr>
 <td><code>&lt;Built&gt;</code></td>
 <td>When the file was built, from its receipt.</td>
 </tr>
@@ -317,6 +321,8 @@ numbers; the app replaces that view when it starts. <code>tracebi report build
 <li><code>trend</code> — the latest period leading with its sparkline, the series as a chart or a table (a <code>&lt;Segmented&gt;</code> kept in the URL). Needs a time dimension in the model.</li>
 <li><code>leaderboard</code> — the leader, a top-ten bar chart, the full ranking with search.</li>
 <li><code>scorecard</code> — every measure the fact runs (up to four) as a KPI, each with its trend when the model has a time dimension, then all of them by category.</li>
+<li><code>monitor</code> — is anything off right now: the latest period of every measure (up to four) with its sparkline, the series, and a watch list of the lowest members first. Needs a time dimension; without one it starts as a scorecard.</li>
+<li><code>funnel</code> — the fact's count measures (not money, not rates) as stages, widest first as the warehouse stands, with each stage's share of the first. The conversions are report-level ratios in <code>report.json</code> <code>"measures"</code>, so the receipt names them; reorder the stages to your funnel's in <code>report.json</code>. Needs two count measures; with one it starts as an overview.</li>
 </ul>
 <p>A broken app shows its error on the page instead of a blank one. The vendored
 bundles and their licences are listed in <code>tracebi/reports/assets/REACT_NOTICE.md</code>.</p>

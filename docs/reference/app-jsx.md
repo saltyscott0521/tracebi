@@ -86,6 +86,7 @@ filterable, exactly as in a template.
 | `<Filter column label>` with no `binding` | A page-wide filter: it subsets every binding that has the column — tables and charts, including ones mounted later. KPIs and values stay the stamped totals (a filtered KPI needs its own binding, or `report.json` `"selection"`). |
 | `<Segmented options value onChange label>` | One choice of a few — a view, a period. Use it to pick *which* figure shows: one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its receipt. |
 | `useUrlState(key, initial)` | `useState` kept in the URL (`#view=Detail&period=YTD`): a reload or a shared link opens where the reader was. |
+| `usePrinting()` | `true` while the page prints (the browser's Ctrl+P, and `tracebi report build --format pdf`). An app with views renders every one then, so the PDF holds the whole report: `{printing ? <><Overview /><Detail /></> : <View />}`. Give navigation `print:hidden`. |
 | `<Built>` | When the file was built, from its receipt. |
 
 **Data for your own components.** `useBinding("name")` returns the binding's
@@ -165,6 +166,8 @@ numbers; the app replaces that view when it starts. `tracebi report build
 - `trend` — the latest period leading with its sparkline, the series as a chart or a table (a `<Segmented>` kept in the URL). Needs a time dimension in the model.
 - `leaderboard` — the leader, a top-ten bar chart, the full ranking with search.
 - `scorecard` — every measure the fact runs (up to four) as a KPI, each with its trend when the model has a time dimension, then all of them by category.
+- `monitor` — is anything off right now: the latest period of every measure (up to four) with its sparkline, the series, and a watch list of the lowest members first. Needs a time dimension; without one it starts as a scorecard.
+- `funnel` — the fact's count measures (not money, not rates) as stages, widest first as the warehouse stands, with each stage's share of the first. The conversions are report-level ratios in `report.json` `"measures"`, so the receipt names them; reorder the stages to your funnel's in `report.json`. Needs two count measures; with one it starts as an overview.
 
 A broken app shows its error on the page instead of a blank one. The vendored
 bundles and their licences are listed in `tracebi/reports/assets/REACT_NOTICE.md`.

@@ -111,7 +111,9 @@ For app behaviour: `<Filter column>` with no `binding` filters the whole page
 `<Segmented options value onChange>` picks which figure shows — a period
 toggle is one literal-binding figure per option, never arithmetic; and
 `useUrlState("view", "Overview")` keeps a view or period in the URL so a
-shared link opens on it. `tracebi new-dashboard --job overview|trend|leaderboard|scorecard`
+shared link opens on it; while the page prints, `usePrinting()` is true and
+an app with views renders all of them, so the PDF holds the whole report.
+`tracebi new-dashboard --job overview|trend|leaderboard|scorecard|monitor|funnel`
 starts from the shape the dashboard is for. Without JavaScript (an email
 preview) the page shows its kit figures as built.
 `docs/reference/app-jsx.md` has the kit.

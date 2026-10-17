@@ -104,7 +104,7 @@ tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR]
                       [--mode light|dark|auto] [--density comfortable|compact]
                       [--nav top|side] [--title-at left|center|banner|nav] [--theme NAME]
 tracebi new-dashboard "Ops Board"     [--force] [--reports-dir DIR] [--html]
-                      [--job overview|trend|leaderboard|scorecard]
+                      [--job overview|trend|leaderboard|scorecard|monitor|funnel]
                       [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
 tracebi new-pipeline  "Sales ETL"     [--force]
 ```
@@ -134,7 +134,10 @@ TraceBi kit ([[app-jsx]]) — a KPI strip with a lead, a chart beside its
 ranking, a filterable detail. `--job trend` starts from the latest period and
 its series (the model needs a time dimension); `--job leaderboard` from the
 leader, the top ten and the full ranking; `--job scorecard` from every measure
-(up to four) with its trend. `--html` writes the dashboard as `template.html`
+(up to four) with its trend; `--job monitor` from the latest period of each
+measure, its trend and a watch list, lowest first; `--job funnel` from the
+fact's count measures as stages, widest first, each conversion a report-level
+ratio in `report.json` `"measures"`. `--html` writes the dashboard as `template.html`
 instead (the same page as `new-report --layout dashboard`).
 
 The look flags answer the questions an agent asks before it builds: `--mode`,

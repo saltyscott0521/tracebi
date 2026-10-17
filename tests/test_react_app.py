@@ -189,3 +189,34 @@ def test_a_page_filter_reaches_every_binding_and_the_view_rides_in_the_url(brows
     assert page.get_by_role("radio", name="Sales").get_attribute("aria-checked") == "true"
     assert page.locator("#fig-table-by_sale").count() == 1
     assert page.errors == []
+
+
+_APP_VIEWS = """
+import { Kpi, Table, useUrlState, usePrinting } from "tracebi";
+
+export default function App() {
+  const [view] = useUrlState("view", "Totals");
+  const printing = usePrinting();
+  const Totals = () => <Kpi binding="totals" cell="revenue" format="currency0" label="Revenue" />;
+  const Sales = () => <Table binding="by_sale" />;
+  return printing ? <><Totals /><Sales /></> : (view === "Totals" ? <Totals /> : <Sales />);
+}
+"""
+
+
+def test_printing_renders_every_view_filled(browser, tmp_path):
+    """While the page prints (Ctrl+P, or the PDF build, which dispatches
+    beforeprint), an app with views shows all of them — the hidden ones'
+    figures filled by then, not on the next frame — and goes back after."""
+    html = _build(tmp_path, _APP_VIEWS)
+    page = _open(browser, html)
+    assert page.locator("#fig-table-by_sale").count() == 0
+    rows = page.evaluate("""() => {
+      window.dispatchEvent(new Event('beforeprint'));
+      return document.querySelectorAll('#fig-table-by_sale tbody tr').length;
+    }""")
+    assert rows == 6
+    assert page.locator(".tb-kpi-value").inner_text() == "$5,251"
+    page.evaluate("() => window.dispatchEvent(new Event('afterprint'))")
+    assert page.locator("#fig-table-by_sale").count() == 0
+    assert page.errors == []

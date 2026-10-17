@@ -307,6 +307,41 @@ def test_dashboards_by_job(scaffolded, tmp_path, monkeypatch):
         (saas / "output" / "scorecard.html.manifest.json").read_text())["figures"]}
     assert {"fig-value-totals-ending_mrr", "fig-spark-by_period-customers"} <= claims
 
+    # A monitor: the latest month of every measure and a watch list, lowest first.
+    code, out = run_cli("new-dashboard", "Health", "--job", "monitor")
+    assert code == 0, out
+    data = json.loads((saas / "reports" / "health" / "report.json").read_text())["data"]
+    assert data["latest"]["query"]["order_by"] == ["-dim_month.month"]
+    assert data["watch"]["query"]["order_by"] == ["ending_mrr"]
+    code, out = run_cli("report", "build", "health")
+    assert code == 0, out
+    code, out = run_cli("verify", str(saas / "output" / "health.html.manifest.json"))
+    assert code == 0, out
+
+    # A funnel: count measures (not money, not rates) as stages, widest first,
+    # each conversion a report-level ratio — stamped, and written as a percent.
+    sales = tmp_path / "sales"
+    code, out = run_cli("init", str(sales), "--template", "sales-pipeline")
+    assert code == 0, out
+    monkeypatch.chdir(sales)
+    code, out = run_cli("run-transform", "sales_pipeline_transform")
+    assert code == 0, out
+    code, out = run_cli("new-dashboard", "Deal Funnel", "--job", "funnel")
+    assert code == 0, out
+    decl = json.loads((sales / "reports" / "deal_funnel" / "report.json").read_text())
+    assert decl["data"]["stages"]["query"]["measures"] == [
+        "closed_deals", "won_deals", "won_deals_conversion"]
+    assert decl["measures"]["sales_pipeline_model"]["won_deals_conversion"]["ratio"] == [
+        "won_deals", "closed_deals"]
+    code, out = run_cli("report", "build", "deal_funnel")
+    assert code == 0, out
+    built = (sales / "output" / "deal_funnel.html").read_text()
+    formats = json.loads(built.split('id="tracebi-formats" type="application/json">', 1)[1]
+                         .split("</script>", 1)[0])
+    assert formats["stages"]["won_deals_conversion"] == "percent"
+    code, out = run_cli("verify", str(sales / "output" / "deal_funnel.html.manifest.json"))
+    assert code == 0, out
+
 
 def test_themes_and_the_house_style(scaffolded):
     """A report names a shipped theme and the page carries it, over the

@@ -100,6 +100,11 @@ def print_pdf(html_path, pdf_path) -> None:
                         "canvas when the page has charts). "
                         f"{type(exc).__name__}: {exc}"
                     ) from exc
+                # An app renders every view while printing (the kit's
+                # usePrinting): announce the print, then wait for the views
+                # it mounts to be drawn too.
+                page.evaluate("() => window.dispatchEvent(new Event('beforeprint'))")
+                page.wait_for_function(_DRAWN, timeout=30_000)
                 page.pdf(path=str(dest), print_background=True)
             finally:
                 browser.close()

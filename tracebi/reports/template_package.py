@@ -1043,7 +1043,12 @@ class TemplatePackage:
             ds, model = frames.get(name), models.get(ref.model)
             if ds is None or model is None:
                 continue
-            fmts = declared_column_formats(model, ds.to_pandas().columns)
+            cols = ds.to_pandas().columns
+            fmts = declared_column_formats(model, cols)
+            # A report-level measure's format is declared here, not on the model.
+            for col, d in self.calculated_measures.get(ref.model, {}).items():
+                if col in cols and d.get("format"):
+                    fmts[col] = d["format"]
             if fmts:
                 out[name] = fmts
         return out

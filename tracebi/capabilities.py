@@ -309,7 +309,9 @@ def _presentation() -> dict:
                    "binding>, <Built>; <Segmented options value onChange> to choose which "
                    "figure shows (each option its own binding — never to compute one); "
                    "useUrlState(key, initial) keeps a view or period in the URL so a "
-                   "shared link opens on it; useBinding(name) returns the stamped rows; "
+                   "shared link opens on it; usePrinting() is true while the page "
+                   "prints (Ctrl+P and the PDF build), so an app with views renders "
+                   "all of them; useBinding(name) returns the stamped rows; "
                    "fmt(value, format).",
             "claims": "Kit figures are claims: binding, cell, x and y must be literal "
                       "strings, and the build refuses a binding or column that does not "
@@ -322,9 +324,12 @@ def _presentation() -> dict:
             "when": "app.jsx for dashboards people work in; template.html for briefs, "
                     "long-form, emailed and printed pages (they read with JavaScript off).",
             "scaffold": "tracebi new-dashboard \"Name\" writes a dashboard app.jsx; "
-                        "--job overview|trend|leaderboard|scorecard picks what it is "
-                        "for (trend needs a time dimension; scorecard shows every "
-                        "measure, up to four, with its trend), and --nav top|side, --title-at, "
+                        "--job overview|trend|leaderboard|scorecard|monitor|funnel picks "
+                        "what it is for (trend and monitor need a time dimension; "
+                        "scorecard shows every measure, up to four, with its trend; "
+                        "monitor the latest period and a lowest-first watch list; "
+                        "funnel each count measure as a stage, its conversion a "
+                        "report-level ratio), and --nav top|side, --title-at, "
                         "--mode, --density and --theme shape it. (new-report writes "
                         "pages to be read.)",
             "without_javascript": "The build writes the kit figures into the app's "
