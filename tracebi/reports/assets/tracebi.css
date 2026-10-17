@@ -343,6 +343,23 @@ th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
 /* data-tb-bars: a quiet bar behind the number, proportional to it. The
  * number stays on top and stays the thing you read. */
 .tb-bar-cell { position: relative; isolation: isolate; }
+/* The track spans the cell inside its padding; a bar's left/width are
+ * percentages of it. --tb-bar-inset follows the table's density. */
+.tb-bar-track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--tb-bar-inset, 12px);
+  right: var(--tb-bar-inset, 12px);
+  z-index: -1;
+  pointer-events: none;
+}
+:root[data-tb-density="compact"] { --tb-bar-inset: 10px; }
+.tb-table--compact { --tb-bar-inset: 8px; }
+.tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child td:last-child > .tb-bar-track,
+.tb-card > .tb-scroll:last-child td:last-child > .tb-bar-track { right: var(--tb-card-pad-x); }
+.tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child td:first-child > .tb-bar-track,
+.tb-card > .tb-scroll:last-child td:first-child > .tb-bar-track { left: var(--tb-card-pad-x); }
 span.tb-bar {
   position: absolute;
   top: calc(50% - 0.7em);         /* one line tall, even in a wrapped row */

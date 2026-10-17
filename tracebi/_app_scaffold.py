@@ -8,6 +8,8 @@ look the builder chose (navigation and title placement).
 
 from __future__ import annotations
 
+from tracebi.reports.derive import in_sentence
+
 _APP_HEAD = '''// app.jsx — this report's page, a React app (the React lane).
 // Numbers shown through the tracebi kit (<Kpi>, <Value>, <Chart>, <Table>)
 // carry the receipt: the build reads their binding / cell / x / y as claims,
@@ -297,8 +299,62 @@ _BRAND_TITLE = '''        <div className="mb-3 border-b border-rule px-2.5 pb-3"
         </div>'''
 
 
+def _scorecard_views(measures, dim_ref, time_ref, humanise):
+    """Every measure as a KPI (the first leads), each with its trend when the
+    model has a time dimension; then all of them by the category."""
+    kpis = []
+    for i, m in enumerate(measures):
+        lead = " lead" if i == 0 else ""
+        spark = (f'\n          <Spark binding="by_period" x="{time_ref}" y="{m}" '
+                 f'valueFormat="compact" />\n        ' if time_ref else "")
+        close = f">{spark}</Kpi>" if time_ref else " />"
+        kpis.append(f'        <Kpi{lead} binding="totals" cell="{m}" label="{humanise(m)}"{close}')
+    cat = humanise(dim_ref) if dim_ref else ""
+    by_cat = (f'''
+      <section className="tb-card">
+        <h2>By {in_sentence(cat)}</h2>
+        <p className="tb-note">Every measure on the scorecard, for each {in_sentence(cat)}.</p>
+        <Table binding="breakdown" sort />
+      </section>''' if dim_ref else "")
+    detail = (f'''
+function Detail() {{
+  return (
+    <section className="tb-card">
+      <h2>Every {in_sentence(cat)}</h2>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Filter binding="breakdown" column="{dim_ref}" label="{cat}" />
+        <Download binding="breakdown" />
+      </div>
+      <Table binding="breakdown" id="detail-table" sort rows="all" />
+    </section>
+  );
+}}
+''' if dim_ref else '''
+function Detail() {
+  return (
+    <section className="tb-card">
+      <h2>Detail</h2>
+      <Table binding="totals" />
+    </section>
+  );
+}
+''')
+    return ('''
+// A scorecard: every measure at a glance, each with its trend.
+function Overview() {
+  return (
+    <>
+      <div className="tb-grid">
+''' + "\n".join(kpis) + '''
+      </div>''' + by_cat + '''
+    </>
+  );
+}
+''' + detail)
+
+
 def report_app_jsx(title, measure, dim_ref, *, nav="", title_at="left",
-                   humanise=lambda s: s, job="overview"):
+                   humanise=lambda s: s, job="overview", measures=None, time_ref=None):
     """The React-lane starter: one app.jsx over the scaffold's bindings,
     shaped by the job (overview: totals/top/breakdown; trend: totals/latest/
     by_period, with dim_ref the period; leaderboard: totals/top/ranking/top10)
@@ -315,9 +371,12 @@ function Header({ view }) {
     shell = shell.replace("__BRAND__", _BRAND_TITLE if in_nav else _BRAND_PLAIN)
     shell = shell.replace("__MAIN_HEADER__",
                           "        <Header view={view} />" if in_nav else "        <Header />")
-    views = (_APP_VIEWS_TOTALS if not dim_ref else
-             {"trend": _APP_VIEWS_TREND, "leaderboard": _APP_VIEWS_LEADERBOARD}.get(
-                 job, _APP_VIEWS_DIM))
+    if job == "scorecard":
+        views = _scorecard_views(measures or [measure], dim_ref, time_ref, humanise)
+    else:
+        views = (_APP_VIEWS_TOTALS if not dim_ref else
+                 {"trend": _APP_VIEWS_TREND, "leaderboard": _APP_VIEWS_LEADERBOARD}.get(
+                     job, _APP_VIEWS_DIM))
     head = _APP_HEAD
     if not nav:
         head = head.replace('import { LayoutDashboard, Table2 } from "lucide-react";\n', "")
@@ -328,7 +387,7 @@ function Header({ view }) {
     js = lambda s: s.replace("\\", "\\\\").replace('"', '\\"')  # noqa: E731
     for token, value in (("__TITLE__", js(title)), ("__MEASURE_ID__", measure.replace(".", "-")),
                          ("__MEASURE__", measure), ("__DIM__", dim_ref or ""),
-                         ("__MLABEL__", m_label), ("__MLOWER__", m_label.lower()),
-                         ("__DLABEL__", d_label), ("__DLOWER__", d_label.lower())):
+                         ("__MLABEL__", m_label), ("__MLOWER__", in_sentence(m_label)),
+                         ("__DLABEL__", d_label), ("__DLOWER__", in_sentence(d_label))):
         text = text.replace(token, value)
     return text

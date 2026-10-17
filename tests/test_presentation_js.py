@@ -1162,6 +1162,21 @@ process.stdout.write(JSON.stringify({
 }));
 """
 
+    def test_derived_headers_spell_acronyms_like_the_build_does(self):
+        """A header the runtime derives reads exactly as the build's humanise
+        would write it: business acronyms in capitals, the rest as written."""
+        from tracebi.reports.derive import humanise
+        out = _run_dom("""
+dataBlock('b', 'dim_plan.plan,ending_mrr,ytd_revenue,customers\\nA,1,2,3\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b' });
+loadRuntime();
+process.stdout.write(JSON.stringify(tbl.querySelector('thead').children[0].children.map(
+  function (th) { return th.textContent; })));
+""")
+        cols = ["dim_plan.plan", "ending_mrr", "ytd_revenue", "customers"]
+        assert out == [humanise(c) for c in cols] == [
+            "Plan", "Ending MRR", "YTD revenue", "Customers"]
+
     def test_labels_and_formats_override_the_derived_defaults(self):
         out = _run_dom(self._SCRIPT)
         assert out["head"] == ["Market", "Net revenue, USD"]

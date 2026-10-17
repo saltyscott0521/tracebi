@@ -2042,10 +2042,16 @@ def _scaffold_binding(job: str = "overview") -> tuple[str, dict, str]:
             continue
         query: dict = {"fact": facts[0]["name"],
                        "measures": [measures[0]["name"]]}
+        if job == "scorecard":
+            # Every measure the fact can run, up to four: the scorecard's row.
+            runnable = facts[0].get("runnable_measures") or []
+            query["measures"] = list(runnable[:4]) or query["measures"]
         refs = [f"{d['name']}.{a}" for d in (info.get("dimensions") or [])
                 for a in (d.get("attributes") or [])[:1]]
         timed = [r for r in refs if _TIME_WORDS.search(r)]
         other = [r for r in refs if r not in timed]
+        if job == "scorecard" and timed:
+            query["_time"] = timed[0]
         if job == "trend":
             if not timed:
                 return info.get("name", name), query, (
@@ -2067,12 +2073,17 @@ def _scaffold_binding(job: str = "overview") -> tuple[str, dict, str]:
     )
 
 
+def _in_sentence(label: str) -> str:
+    from tracebi.reports.derive import in_sentence
+    return in_sentence(label)
+
+
 def _humanise_label(ref: str) -> str:
-    """"dim_region.region" → "Region"; "revenue" → "Revenue" — a readable label
-    for a scaffolded heading, mirroring the runtime's humanise."""
-    name = str(ref).split(".")[-1]
-    name = re.sub(r"^(dim|fact)_", "", name).replace("_", " ").strip()
-    return name[:1].upper() + name[1:] if name else str(ref)
+    """"dim_region.region" → "Region"; "ending_mrr" → "Ending MRR" — a
+    readable label for a scaffolded heading: the build's and the runtime's
+    humanise."""
+    from tracebi.reports.derive import humanise
+    return humanise(str(ref))
 
 
 def _report_json_text(title: str, model: str, query: dict,
@@ -2085,6 +2096,8 @@ def _report_json_text(title: str, model: str, query: dict,
     and a filterable table). The generated template references all of them,
     so the scaffold demonstrates the whole figure grammar rather than a bare
     table."""
+    query = dict(query)
+    time_ref = query.pop("_time", None)
     fact = query["fact"]
     measures = query["measures"]
     dims = query.get("dimensions")
@@ -2106,6 +2119,10 @@ def _report_json_text(title: str, model: str, query: dict,
             "model": model, "query": {
                 "fact": fact, "measures": measures, "dimensions": dims,
                 "order_by": ["-" + measures[0]]}}
+        if job == "scorecard" and time_ref:
+            data["by_period"] = {"model": model, "query": {
+                "fact": fact, "measures": measures, "dimensions": [time_ref],
+                "order_by": [time_ref]}}
         if job == "leaderboard":
             data["top10"] = {"model": model, "query": {
                 "fact": fact, "measures": measures[:1], "dimensions": dims,
@@ -2236,7 +2253,7 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
     if density == "compact":
         root.append('data-tb-density="compact"')
     m_label = _humanise_label(measure)
-    m_lower = esc(m_label.lower())
+    m_lower = esc(_in_sentence(m_label))
     centered = ' data-tb-title="center"' if title_at == "center" else ""
     parts = [
         "<!doctype html>",
@@ -2271,7 +2288,7 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
     ]
     if dim_ref:
         d_label = _humanise_label(dim_ref)
-        d_lower = esc(d_label.lower())
+        d_lower = esc(_in_sentence(d_label))
         parts += [
             "    The largest share comes from",
             f'    <span data-tb-figure="value" data-tb-binding="top"',
@@ -2396,7 +2413,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
             '    <p class="tb-lede">',
             '      <span data-tb-figure="value" data-tb-binding="top"',
             f'            data-tb-cell="{esc(dim_ref)}" id="val-top">—</span>',
-            f"      leads on {esc(m_label.lower())} with",
+            f"      leads on {esc(_in_sentence(m_label))} with",
             '      <span data-tb-figure="value" data-tb-binding="top"',
             f'            data-tb-cell="{esc(measure)}" id="val-top-{esc(measure)}">—</span>.',
             "      Rewrite this sentence as the page's finding.</p>",
@@ -2426,12 +2443,12 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         parts += [
             '    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="top"',
             f'         data-tb-cell="{esc(dim_ref)}" id="kpi-top">',
-            f'      <span class="tb-kpi-label">Top {esc(d_lab.lower())}</span>',
+            f'      <span class="tb-kpi-label">Top {esc(_in_sentence(d_lab))}</span>',
             '      <span class="tb-kpi-value"></span>',
             "    </div>",
             '    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="top"',
             f'         data-tb-cell="{esc(measure)}" id="kpi-top-{esc(measure)}">',
-            f'      <span class="tb-kpi-label">{esc(m_label)}, top {esc(d_lab.lower())}</span>',
+            f'      <span class="tb-kpi-label">{esc(m_label)}, top {esc(_in_sentence(d_lab))}</span>',
             '      <span class="tb-kpi-value"></span>',
             "    </div>",
         ]
@@ -2621,7 +2638,8 @@ def cmd_new_report(args: argparse.Namespace) -> int:
         page = "app.jsx"
         (pkg_dir / page).write_text(
             report_app_jsx(args.title, measure, dim_ref, nav=args.nav,
-                           title_at=args.title_at, humanise=_humanise_label, job=job),
+                           title_at=args.title_at, humanise=_humanise_label, job=job,
+                           measures=query["measures"], time_ref=query.get("_time")),
             encoding="utf-8")
         layout = f"dashboard app ({job})"
     else:
@@ -3650,12 +3668,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write the dashboard as template.html (reads with JavaScript off) "
              "instead of an app.jsx React app.")
     p_new_dashboard.add_argument(
-        "--job", choices=["overview", "trend", "leaderboard"], default="overview",
+        "--job", choices=["overview", "trend", "leaderboard", "scorecard"],
+        default="overview",
         help="What the dashboard is for. overview (default): a KPI strip, a "
              "chart beside its ranking, a filterable detail. trend: the latest "
              "period leading with its sparkline, the series as a chart or a "
              "table (needs a time dimension). leaderboard: the leader, the top "
-             "ten, the full ranking with search.")
+             "ten, the full ranking with search. scorecard: every measure "
+             "(up to four) as a KPI with its trend, and all of them by "
+             "category.")
     p_new_dashboard.set_defaults(func=cmd_new_report, kind="dashboard",
                                  layout="dashboard")
 

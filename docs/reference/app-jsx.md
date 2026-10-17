@@ -164,6 +164,7 @@ numbers; the app replaces that view when it starts. `tracebi report build
 - `overview` (default) — a KPI strip with a lead, a chart beside its ranking, a filterable detail.
 - `trend` — the latest period leading with its sparkline, the series as a chart or a table (a `<Segmented>` kept in the URL). Needs a time dimension in the model.
 - `leaderboard` — the leader, a top-ten bar chart, the full ranking with search.
+- `scorecard` — every measure the fact runs (up to four) as a KPI, each with its trend when the model has a time dimension, then all of them by category.
 
 A broken app shows its error on the page instead of a blank one. The vendored
 bundles and their licences are listed in `tracebi/reports/assets/REACT_NOTICE.md`.

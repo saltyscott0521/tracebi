@@ -322,8 +322,9 @@ def _presentation() -> dict:
             "when": "app.jsx for dashboards people work in; template.html for briefs, "
                     "long-form, emailed and printed pages (they read with JavaScript off).",
             "scaffold": "tracebi new-dashboard \"Name\" writes a dashboard app.jsx; "
-                        "--job overview|trend|leaderboard picks what it is for (trend "
-                        "needs a time dimension), and --nav top|side, --title-at, "
+                        "--job overview|trend|leaderboard|scorecard picks what it is "
+                        "for (trend needs a time dimension; scorecard shows every "
+                        "measure, up to four, with its trend), and --nav top|side, --title-at, "
                         "--mode, --density and --theme shape it. (new-report writes "
                         "pages to be read.)",
             "without_javascript": "The build writes the kit figures into the app's "

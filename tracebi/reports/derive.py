@@ -75,9 +75,15 @@ def _is_identity(column) -> bool:
     return name in _IDENTITY_NAMES or name.endswith(_IDENTITY_SUFFIXES)
 
 
+#: Business acronyms a label spells in capitals ("ending_mrr" → "Ending MRR").
+#: Mirrored in tracebi.js humanise — a header must read the same either side.
+_ACRONYMS = {"aov", "api", "arpu", "arr", "cac", "cogs", "cpa", "cpc", "cpm", "ctr", "ebitda", "eur", "fte", "gbp", "gmv", "kpi", "ltv", "mau", "mom", "mrr", "mtd", "nps", "qoq", "qtd", "roas", "roi", "sku", "sla", "usd", "wau", "dau", "wow", "yoy", "ytd"}
+
+
 def humanise(column: str) -> str:
     """
-    ``dim_branch.region`` → ``Region``;  ``market_value`` → ``Market value``.
+    ``dim_branch.region`` → ``Region``;  ``market_value`` → ``Market value``;
+    ``ending_mrr`` → ``Ending MRR``.
 
     The dimension prefix is dropped because it is addressing, not meaning: it
     tells the query engine where to look and tells a reader nothing.
@@ -87,7 +93,15 @@ def humanise(column: str) -> str:
     name = name.replace("_", " ").strip()
     if not name:
         return column
+    name = " ".join(w.upper() if w.lower() in _ACRONYMS else w for w in name.split(" "))
     return name[0].upper() + name[1:]
+
+
+def in_sentence(label: str) -> str:
+    """A label as it reads mid-sentence: "Ending MRR" → "ending MRR" —
+    lower case, except the acronyms humanise capitalised."""
+    return " ".join(w if len(w) > 1 and w.isupper() else w.lower()
+                    for w in label.split(" "))
 
 
 def _query_metadata(dataset) -> dict:

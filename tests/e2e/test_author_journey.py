@@ -293,6 +293,20 @@ def test_dashboards_by_job(scaffolded, tmp_path, monkeypatch):
         (saas / "output" / "mrr_trend.html.manifest.json").read_text())["figures"]}
     assert {"fig-spark-by_period-ending_mrr", "kpi-latest-period"} <= claims
 
+    # A scorecard: every measure the fact runs (up to four), each a KPI with
+    # its trend — and labels spell the business acronym (Ending MRR).
+    code, out = run_cli("new-dashboard", "Scorecard", "--job", "scorecard")
+    assert code == 0, out
+    data = json.loads((saas / "reports" / "scorecard" / "report.json").read_text())["data"]
+    assert len(data["totals"]["query"]["measures"]) == 4
+    assert data["by_period"]["query"]["dimensions"] == ["dim_month.month"]
+    assert 'label="Ending MRR"' in (saas / "reports" / "scorecard" / "app.jsx").read_text()
+    code, out = run_cli("report", "build", "scorecard")
+    assert code == 0, out
+    claims = {f["id"] for f in json.loads(
+        (saas / "output" / "scorecard.html.manifest.json").read_text())["figures"]}
+    assert {"fig-value-totals-ending_mrr", "fig-spark-by_period-customers"} <= claims
+
 
 def test_themes_and_the_house_style(scaffolded):
     """A report names a shipped theme and the page carries it, over the

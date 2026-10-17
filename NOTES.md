@@ -20,6 +20,58 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-17 — Reports and dashboards: the editorial page, the React lane, themes
+
+**Two kinds of page, picked by what the reader does.** `tracebi new-report`
+writes a page to be *read* — by default an editorial `template.html`
+(`.tb-article`: a headline that states the finding, standfirst, byline with the
+build time, prose with bound numbers, captioned figures, a pull-stat, "What to
+do", the methodology). `tracebi new-dashboard` writes a page to be *worked in* —
+an `app.jsx` (the React lane), `--job overview|trend|leaderboard|scorecard`,
+`--html` for the template version. Both read the same `report.json` bindings.
+
+**The React lane, and why it is shaped this way.**
+
+- *A fixed kit, no Node.* The page carries React 18, Sucrase (compiles the JSX
+  in the page), Tailwind's browser build, and — only when imported — Recharts
+  and the lucide icons named. The CSP is unchanged: inline scripts allowed,
+  `eval` refused. Bundles are vendored under `tracebi/reports/assets/`, rebuilt
+  from `assets/_react_src/` (`REACT_NOTICE.md`). Any other import fails the
+  build. An npm/esbuild lane was considered and deferred: every builder and the
+  server would need a JS toolchain.
+- *Numbers keep receipts through the kit.* `<Kpi>`, `<Value>`, `<Chart>`,
+  `<Spark>`, `<Table>` render the same `data-tb-*` elements a template holds and
+  `tracebi.js` fills them. The build reads their *literal* props from the
+  source (`app_lane.scan_figures`) to record claims and refuse a bad
+  binding/column without running the app — hence `binding`/`cell`/`x`/`y` must
+  be literal strings. A number the app computes is presentation; the About
+  block says so.
+- *Figures mounted after load* (a view switch) are hydrated by
+  `tracebi.refresh()`; each hydrator touches an element once (`fresh()`).
+- *No JavaScript* (email previews, file viewers): the build writes the kit
+  figures into the mount point as a static view, SSR-filled like any template
+  figure; it is also where the claims are read. The app replaces it.
+- *CSS layering.* On app pages `tracebi.css` sits in `@layer tracebi`, between
+  Tailwind's reset and its utilities, so a utility class wins; template-page
+  element defaults are scoped with `:where(:root:not([data-tb-app]))`.
+- *App behaviour honest by construction.* A page-wide `<Filter column>` subsets
+  every binding with the column but never a KPI; `<Segmented>` picks *which*
+  literal-binding figure shows; `useUrlState` keeps view/period in the URL.
+
+**Look and practice, not app storage.** The look is asked once in the agent
+dialog (mode, density, nav, title placement). Six contrast-checked shipped
+themes (`report.json` `"theme"`, `tracebi theme use` → `reports/_theme.css`);
+`reports/_style.md` is the team's house style, returned as `house_style` by
+`tracebi context` / `get_context`. Design lessons: `design-dashboard-feel`,
+`design-app-dashboards`, `design-editorial-report`.
+
+**Open.** Dark mode overrides a light theme's accent (deliberate: contrast).
+Label acronyms are a short fixed list (`derive._ACRONYMS`, mirrored in
+`tracebi.js`). More dashboard jobs (operational monitor, funnel) can follow the
+`_app_scaffold.py` pattern. PDF of an app prints its first view only.
+
+---
+
 ## 2026-10-13 — Navigation redesign, the report page, a built-in MCP sign-in
 
 Handoff from the cloud session that did this work. Merged: #253–#260.

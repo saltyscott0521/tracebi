@@ -250,8 +250,8 @@ def figure_id(kind: str, binding: str, key: str = "") -> str:
 
 
 def _humanise(ref: str) -> str:
-    name = re.sub(r"^(dim|fact)_", "", str(ref).split(".")[-1]).replace("_", " ").strip()
-    return name[:1].upper() + name[1:] if name else str(ref)
+    from tracebi.reports.derive import humanise
+    return humanise(str(ref))
 
 
 def _claim_element(f: KitFigure) -> str:

@@ -240,11 +240,16 @@
   /* ── Derived table labels + formats — the derive.py port ─────────────── */
 
   /* "dim_branch.region" → "Region"; "market_value" → "Market value". */
+  /* Business acronyms a label spells in capitals — derive.py _ACRONYMS. */
+  var ACRONYMS = ["aov","api","arpu","arr","cac","cogs","cpa","cpc","cpm","ctr","ebitda","eur","fte","gbp","gmv","kpi","ltv","mau","mom","mrr","mtd","nps","qoq","qtd","roas","roi","sku","sla","usd","wau","dau","wow","yoy","ytd"];
   function humanise(column) {
     var name = String(column).split(".").pop();
     name = name.replace(/^(dim|fact)_/, "");
     name = trim(name.replace(/_/g, " "));
     if (!name) return String(column);
+    name = name.split(" ").map(function (w) {
+      return ACRONYMS.indexOf(w.toLowerCase()) !== -1 ? w.toUpperCase() : w;
+    }).join(" ");
     return name.charAt(0).toUpperCase() + name.slice(1);
   }
 
@@ -810,8 +815,14 @@
     var zero = scale.neg ? 50 : 0;
     bar.style.left = (n < 0 ? zero - span : zero) + "%";
     bar.style.width = span + "%";
+    /* The bar's percentages are of a track inset by the cell's padding, so
+     * the longest bar ends where the number does, not at the cell's edge. */
+    var track = document.createElement("span");
+    track.className = "tb-bar-track";
+    track.setAttribute("aria-hidden", "true");
+    track.appendChild(bar);
     addClass(td, "tb-bar-cell");
-    td.insertBefore(bar, td.firstChild);
+    td.insertBefore(track, td.firstChild);
   }
 
   /* Above this many rows the scroll box paints only the visible window.
