@@ -13,7 +13,8 @@ it is the worked version of that scaffold with real cleaning to do.
 ②  MODEL       models/portfolio_model.yaml         grain, keys, measures — the contract
                           ── freeze: the model ──
 ③  REPORT      reports/portfolio_model/portfolio_dashboard.json   every figure a live query
-               reports/portfolio_model/portfolio_book/            freeform template package
+               reports/portfolio_model/portfolio_desk/            an app people work in (app.jsx)
+               reports/portfolio_model/portfolio_book/            an editorial report, its own CSS
                reports/portfolio_model/portfolio_overview/        default-component runtime package
                reports/portfolio_model/portfolio_concentration/   governed window measures
                reports/portfolio_model/portfolio_showcase/        kitchen-sink demo, every figure kind
@@ -52,15 +53,23 @@ Under `reports/portfolio_model/`:
 - `portfolio_dashboard.json` — a governed `ReportSpec`;
   validate it without running (`tracebi spec validate`), every figure
   reproducible.
-- `portfolio_model/portfolio_book/` — a freeform template package: your own
-  HTML/CSS/JS around fingerprinted data, built into one self-contained file
-  checkable offline with `tracebi verify --file`.
-- `portfolio_model/portfolio_overview/` — a default-component package: KPI, chart,
-  and table figures hydrated by the shipped runtime from the stamped bytes, no
-  author CSS or JS at all.
+- `portfolio_model/portfolio_desk/` — the book as an app (`app.jsx`, the React
+  lane): a sidebar with Overview, Holdings and Funds, a KPI strip with a lead, a
+  watch list of the lowest marks, and a holdings list with search, sector and
+  fund filters and a CSV download. Every number is a kit figure the receipt names.
+- `portfolio_model/portfolio_book/` — an editorial report with its own house CSS:
+  the headline is the finding ("marked at 97.9% of cost"), every number in the
+  prose is a bound figure, and `script.js` draws the issuer table from the same
+  fingerprinted rows. One self-contained file, checkable offline with
+  `tracebi verify --file`.
+- `portfolio_model/portfolio_overview/` — a default-component package: a title
+  block, a KPI strip with a lead, a wide chart beside a narrow ranking and a
+  table, hydrated by the shipped runtime from the stamped bytes, no author CSS
+  or JS at all.
 - `portfolio_model/portfolio_concentration/` — rank, share of total and running share as
-  governed window measures. It was once a `report.py` escape hatch and no
-  longer needs to be.
+  governed window measures; the headline's "top five hold 55.6%" is the fifth
+  issuer's row, picked by a `having` clause. It was once a `report.py` escape
+  hatch and no longer needs to be.
 Under `reports/housing_model/`:
 
 - `affordability/` — a second domain on public data: what buying the median

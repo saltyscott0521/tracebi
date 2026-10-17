@@ -18,9 +18,11 @@ Use these as `format` in [[figure-helper]], or `data-tb-format` /
 | `decimal` | `1,705,495.22` |
 | `percent` | applies to a fraction: `0.069` → `6.9%` |
 | `compact` | `1.7M` (`550.7B` at scale) |
+| `currency_compact` | `$1.7M` (`-$6.3M` for a loss) |
 
 `compact` is the right default for chart axes and tooltips, where space is
-tight.
+tight; `currency_compact` is the same for money, and reads best on a KPI card
+or in a sentence.
 
 ## Derived defaults
 

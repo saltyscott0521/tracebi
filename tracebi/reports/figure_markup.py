@@ -32,8 +32,8 @@ def _attr(name: str, value) -> str:
 #: Number formats the runtime's ``applyNamedFormat`` (tracebi.js) and the
 #: build's ``_ssr_format`` both render. A table's ``data-tb-formats`` may name
 #: only these.
-TABLE_FORMATS = ("comma", "compact", "currency", "currency0", "decimal",
-                 "percent")
+TABLE_FORMATS = ("comma", "compact", "currency", "currency0", "currency_compact",
+                 "decimal", "percent")
 
 
 def column_map_attr(mapping: dict) -> str:

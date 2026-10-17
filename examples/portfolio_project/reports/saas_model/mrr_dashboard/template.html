@@ -3,20 +3,24 @@
 <head><meta charset="utf-8"><title>SaaS MRR Dashboard</title></head>
 <body>
 <main class="tb-page">
-  <header>
+  <header class="tb-title" data-tb-title="left">
     <h1>Scale leads ending MRR</h1>
+    <p class="tb-subtitle">SaaS MRR dashboard: recurring revenue, customers and churn, month by month.</p>
+    <span data-tb-built></span>
+  </header>
+  <header>
     <p class="tb-lede">
       <span data-tb-figure="value" data-tb-binding="top_plan"
             data-tb-cell="dim_plan.plan" id="val-top-plan">—</span>
-      leads ending MRR at
+      holds
       <span data-tb-figure="value" data-tb-binding="top_plan"
             data-tb-cell="ending_mrr" data-tb-format="currency0"
-            id="val-top-mrr">—</span>.
-      The book ends at
+            id="val-top-mrr">—</span>
+      of the
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="ending_mrr" data-tb-format="currency0"
             id="val-mrr-inline">—</span>
-      across
+      book, across
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="customers" data-tb-format="comma"
             id="val-customers-inline">—</span>
@@ -31,18 +35,26 @@
       the start of that month.</p>
   </header>
 
+  <!-- One KPI strip: the lead number twice as wide. A .tb-spark chart under
+       a KPI is its trend's shape, bound to the monthly query. -->
   <div class="tb-grid">
-    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+    <div class="tb-kpi tb-kpi--lead" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="ending_mrr" data-tb-format="currency0" id="kpi-mrr">
       <span class="tb-kpi-label">Ending MRR</span>
       <span class="tb-kpi-value"></span>
       <span class="tb-kpi-context">latest month in the warehouse</span>
+      <div class="tb-spark" data-tb-figure="chart" data-tb-binding="by_month"
+           data-tb-type="area" data-tb-x="dim_month.month" data-tb-y="ending_mrr"
+           data-tb-value-format="currency0" id="spark-mrr"></div>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="customers" data-tb-format="comma" id="kpi-customers">
       <span class="tb-kpi-label">Customers</span>
       <span class="tb-kpi-value"></span>
       <span class="tb-kpi-context">logos active at that month</span>
+      <div class="tb-spark" data-tb-figure="chart" data-tb-binding="by_month"
+           data-tb-type="line" data-tb-x="dim_month.month" data-tb-y="customers"
+           data-tb-value-format="comma" id="spark-customers"></div>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="logo_churn" data-tb-format="percent" id="kpi-churn">
@@ -52,22 +64,20 @@
     </div>
   </div>
 
-  <div class="tb-cols-2">
+  <div class="tb-cols-2-1">
     <div class="tb-card">
       <h2>Ending MRR by month</h2>
-      <div data-tb-figure="chart" data-tb-binding="by_month" data-tb-type="line"
+      <p class="tb-note">Period-end balance each month; the last point is today's book.</p>
+      <div data-tb-figure="chart" data-tb-binding="by_month" data-tb-type="area"
            data-tb-x="dim_month.month" data-tb-y="ending_mrr"
-           data-tb-value-format="compact" id="chart-by-month"></div>
+           data-tb-value-format="currency0" data-tb-mark="last"
+           id="chart-by-month"></div>
     </div>
 
     <div class="tb-card">
       <h2>Ending MRR by plan</h2>
-      <p class="tb-note">Filter and search subset which stamped rows display.
-        They never compute new numbers.</p>
+      <p class="tb-note">The filter chooses rows; it never computes a number.</p>
       <p>
-        <label>Search
-          <input data-tb-search data-tb-binding="by_plan"
-                 placeholder="type to filter…"></label>
         <label>Plan
           <select data-tb-filter data-tb-binding="by_plan"
                   data-tb-column="dim_plan.plan"></select></label>
@@ -79,7 +89,7 @@
              data-tb-labels="dim_plan.plan=Plan; ending_mrr=Ending MRR; customers=Customers; logo_churn=Logo churn"
              data-tb-formats="ending_mrr=currency0; customers=comma; logo_churn=percent"
              data-tb-bars="ending_mrr"
-             class="tb-table--striped" id="tbl-plan"></table>
+             id="tbl-plan"></table>
     </div>
   </div>
 

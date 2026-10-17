@@ -92,10 +92,12 @@ class TestSsrValueFormatParity:
     half-to-even ties, negative zero, and large/small magnitudes.
     """
 
-    NAMES = ["currency", "currency0", "comma", "decimal", "percent"]
+    NAMES = ["currency", "currency0", "currency_compact", "compact", "comma", "decimal",
+             "percent"]
     EDGES = [0, 1, -1, 0.5, -0.5, 1.5, 2.5, 3.5, -2.5, 1234.5, -1234.5,
              0.005, -0.005, 0.125, -0.125, 0.069, -0.3, -0.001, -0.00005,
-             999.995, 1000000, 12345.678, -0.0]
+             999.995, 1000000, 12345.678, -0.0, 999999.99, 285904445.21,
+             -6272735.39, 1e12, 999950, 1500]
 
     def _js(self, cases):
         script = (

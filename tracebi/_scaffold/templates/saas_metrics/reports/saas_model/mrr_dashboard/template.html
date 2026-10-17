@@ -4,23 +4,23 @@
 <body>
 <main class="tb-page">
   <header class="tb-title" data-tb-title="left">
-    <h1>SaaS MRR Dashboard</h1>
-    <p class="tb-subtitle">Recurring revenue, customers and churn, month by month.</p>
+    <h1>Scale leads ending MRR</h1>
+    <p class="tb-subtitle">SaaS MRR dashboard: recurring revenue, customers and churn, month by month.</p>
     <span data-tb-built></span>
   </header>
   <header>
     <p class="tb-lede">
       <span data-tb-figure="value" data-tb-binding="top_plan"
             data-tb-cell="dim_plan.plan" id="val-top-plan">—</span>
-      leads ending MRR at
+      holds
       <span data-tb-figure="value" data-tb-binding="top_plan"
             data-tb-cell="ending_mrr" data-tb-format="currency0"
-            id="val-top-mrr">—</span>.
-      The book ends at
+            id="val-top-mrr">—</span>
+      of the
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="ending_mrr" data-tb-format="currency0"
             id="val-mrr-inline">—</span>
-      across
+      book, across
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="customers" data-tb-format="comma"
             id="val-customers-inline">—</span>
@@ -67,19 +67,17 @@
   <div class="tb-cols-2-1">
     <div class="tb-card">
       <h2>Ending MRR by month</h2>
-      <div data-tb-figure="chart" data-tb-binding="by_month" data-tb-type="line"
+      <p class="tb-note">Period-end balance each month; the last point is today's book.</p>
+      <div data-tb-figure="chart" data-tb-binding="by_month" data-tb-type="area"
            data-tb-x="dim_month.month" data-tb-y="ending_mrr"
-           data-tb-value-format="compact" id="chart-by-month"></div>
+           data-tb-value-format="currency0" data-tb-mark="last"
+           id="chart-by-month"></div>
     </div>
 
     <div class="tb-card">
       <h2>Ending MRR by plan</h2>
-      <p class="tb-note">Filter and search subset which stamped rows display.
-        They never compute new numbers.</p>
+      <p class="tb-note">The filter chooses rows; it never computes a number.</p>
       <p>
-        <label>Search
-          <input data-tb-search data-tb-binding="by_plan"
-                 placeholder="type to filter…"></label>
         <label>Plan
           <select data-tb-filter data-tb-binding="by_plan"
                   data-tb-column="dim_plan.plan"></select></label>

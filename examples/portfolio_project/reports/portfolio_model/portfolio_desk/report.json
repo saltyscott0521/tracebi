@@ -1,0 +1,41 @@
+{
+  "name": "Portfolio Desk",
+  "author": "workflow",
+  "description": "The book as an app people work in (app.jsx, the React lane): a sidebar with three views, a KPI strip with a lead, a watch list of the lowest marks, a searchable holdings list and the funds side by side. Every number is a kit figure, so the receipt names it.",
+  "look": {"density": "compact"},
+  "data": {
+    "totals": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings",
+                "measures": ["fair_value", "unrealized", "mark", "positions", "wtd_spread_bps"]}
+    },
+    "weakest_fund": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings", "measures": ["mark"],
+                "dimensions": ["dim_fund.fund"], "order_by": ["mark"], "limit": 1}
+    },
+    "by_sector": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings", "measures": ["fair_value", "unrealized"],
+                "dimensions": ["dim_issuer.sector"], "order_by": ["-fair_value"]}
+    },
+    "watch": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings", "measures": ["mark", "unrealized"],
+                "dimensions": ["dim_issuer.issuer"], "order_by": ["mark"], "limit": 5}
+    },
+    "holdings": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings",
+                "measures": ["fair_value", "unrealized", "mark", "wtd_spread_bps"],
+                "dimensions": ["dim_issuer.issuer", "dim_issuer.sector", "dim_fund.fund"],
+                "order_by": ["-fair_value"]}
+    },
+    "by_fund": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings",
+                "measures": ["fair_value", "unrealized", "mark", "positions", "wtd_spread_bps"],
+                "dimensions": ["dim_fund.fund"], "order_by": ["-fair_value"]}
+    }
+  }
+}

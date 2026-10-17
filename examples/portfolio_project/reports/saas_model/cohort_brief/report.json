@@ -1,22 +1,33 @@
 {
   "name": "SaaS Cohort Brief",
   "author": "tracebi init --template saas-metrics",
-  "description": "Which signup cohort holds ending MRR, then the monthly logo-churn series. Every figure claims a binding on saas_model.",
+  "description": "An editorial brief: which signup cohort holds ending MRR, where churn sits, then the monthly series. Every number in the prose is a figure on saas_model.",
   "data": {
     "kpis": {
       "model": "saas_model",
       "query": {
         "fact": "fact_account_month",
-        "measures": ["ending_mrr", "customers", "logo_churn"]
+        "measures": [
+          "ending_mrr",
+          "customers",
+          "logo_churn"
+        ]
       }
     },
     "top_cohort": {
       "model": "saas_model",
       "query": {
         "fact": "fact_account_month",
-        "measures": ["ending_mrr", "customers"],
-        "dimensions": ["dim_cohort.cohort"],
-        "order_by": ["-ending_mrr"],
+        "measures": [
+          "ending_mrr",
+          "customers"
+        ],
+        "dimensions": [
+          "dim_cohort.cohort"
+        ],
+        "order_by": [
+          "-ending_mrr"
+        ],
         "limit": 1
       }
     },
@@ -24,18 +35,50 @@
       "model": "saas_model",
       "query": {
         "fact": "fact_account_month",
-        "measures": ["ending_mrr", "customers", "logo_churn"],
-        "dimensions": ["dim_cohort.cohort"],
-        "order_by": ["-ending_mrr"]
+        "measures": [
+          "ending_mrr",
+          "customers",
+          "logo_churn"
+        ],
+        "dimensions": [
+          "dim_cohort.cohort"
+        ],
+        "order_by": [
+          "dim_cohort.cohort"
+        ]
       }
     },
     "by_month": {
       "model": "saas_model",
       "query": {
         "fact": "fact_account_month",
-        "measures": ["ending_mrr", "customers", "logo_churn"],
-        "dimensions": ["dim_month.month"],
-        "order_by": ["dim_month.month"]
+        "measures": [
+          "ending_mrr",
+          "customers",
+          "logo_churn"
+        ],
+        "dimensions": [
+          "dim_month.month"
+        ],
+        "order_by": [
+          "dim_month.month"
+        ]
+      }
+    },
+    "churniest": {
+      "model": "saas_model",
+      "query": {
+        "fact": "fact_account_month",
+        "measures": [
+          "logo_churn"
+        ],
+        "dimensions": [
+          "dim_cohort.cohort"
+        ],
+        "order_by": [
+          "-logo_churn"
+        ],
+        "limit": 1
       }
     }
   }

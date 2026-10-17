@@ -3,8 +3,12 @@
 <head><meta charset="utf-8"><title>Sales Pipeline Dashboard</title></head>
 <body>
 <main class="tb-page">
-  <header>
+  <header class="tb-title" data-tb-title="left">
     <h1>Negotiation holds the most open pipeline</h1>
+    <p class="tb-subtitle">Sales pipeline dashboard: open pipeline by stage and by region, with the win rate.</p>
+    <span data-tb-built></span>
+  </header>
+  <header>
     <p class="tb-lede">
       <span data-tb-figure="value" data-tb-binding="top_stage"
             data-tb-cell="dim_stage.stage" id="val-top-stage">—</span>
@@ -60,12 +64,8 @@
 
     <div class="tb-card">
       <h2>Pipeline by region</h2>
-      <p class="tb-note">Filter and search subset which stamped rows display.
-        They never compute new numbers.</p>
+      <p class="tb-note">The filter chooses rows; it never computes a number.</p>
       <p>
-        <label>Search
-          <input data-tb-search data-tb-binding="by_region"
-                 placeholder="type to filter…"></label>
         <label>Region
           <select data-tb-filter data-tb-binding="by_region"
                   data-tb-column="dim_region.region"></select></label>

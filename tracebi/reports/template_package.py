@@ -232,6 +232,29 @@ def _py_fixed(v: float, digits: int, *, grouped: bool = False) -> str:
     return format(v, spec)
 
 
+def _trim_zeros(s: str) -> str:
+    """tracebi.js ``trimZeros``: "1.50" → "1.5", "2.0" → "2"."""
+    return s.rstrip("0").rstrip(".") if "." in s else s
+
+
+def _compact(n: float) -> str:
+    """tracebi.js ``fmt(n, "compact")``, byte for byte: K/M/B/T from the
+    *rounded* magnitude, so 999,999.99 is "1M", never "1000K"."""
+    a2 = abs(float(_py_fixed(abs(n), 2)))
+    if a2 >= 1000:
+        up = {"K": "M", "M": "B", "B": "T"}
+        for div, unit in ((1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "K")):
+            if a2 >= div:
+                mant = _py_fixed(n / div, 1)
+                if abs(float(mant)) >= 1000 and unit != "T":
+                    div, unit = div * 1000, up[unit]
+                    mant = _py_fixed(n / div, 1)
+                return _trim_zeros(mant) + unit
+    if n % 1 == 0 and abs(n) < 1e15:
+        return _py_fixed(n, 0, grouped=True)
+    return _trim_zeros(_py_fixed(n, 2, grouped=True))
+
+
 def _ssr_format(raw, name: str) -> str:
     """Format *raw* byte-identically to the runtime's ``applyNamedFormat``
     (tracebi.js), so a server-rendered number and the hydrated one never differ
@@ -251,13 +274,12 @@ def _ssr_format(raw, name: str) -> str:
         return _ssr_cell(raw)
     if num == 0:
         num = 0.0                      # JS renders no negative zero; -0.0 -> 0.0
-    if name == "compact":
-        from tracebi.reports.chart import ChartSpec
-        return ChartSpec._fmt(num, compact=True)
+    if name == "compact":   return _compact(num)
     if name == "comma":     return _py_fixed(num, 0, grouped=True)
     if name == "decimal":   return _py_fixed(num, 2, grouped=True)
     if name == "currency":  return ("-$" if num < 0 else "$") + _py_fixed(abs(num), 2, grouped=True)
     if name == "currency0": return ("-$" if num < 0 else "$") + _py_fixed(abs(num), 0, grouped=True)
+    if name == "currency_compact": return ("-$" if num < 0 else "$") + _compact(abs(num))
     if name == "percent":   return _py_fixed(num * 100, 1) + "%"
     return str(raw)                    # unknown name: applyNamedFormat -> raw
 

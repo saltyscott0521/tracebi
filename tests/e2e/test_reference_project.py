@@ -20,6 +20,7 @@ from tests.e2e.conftest import REFERENCE_PROJECT, run_cli
 REPORTS = {
     "portfolio_model/portfolio_dashboard": "portfolio_model/portfolio_dashboard",
     "portfolio_model/portfolio_book": "portfolio_model/portfolio_book",
+    "portfolio_model/portfolio_desk": "portfolio_model/portfolio_desk",
     "portfolio_model/portfolio_overview": "portfolio_model/portfolio_overview",
     "portfolio_model/portfolio_concentration": "portfolio_model/portfolio_concentration",
     "portfolio_model/portfolio_showcase": "portfolio_model/portfolio_showcase",

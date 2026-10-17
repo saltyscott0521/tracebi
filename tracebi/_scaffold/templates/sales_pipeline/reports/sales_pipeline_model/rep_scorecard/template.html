@@ -3,8 +3,12 @@
 <head><meta charset="utf-8"><title>Sales Rep Scorecard</title></head>
 <body>
 <main class="tb-page">
-  <header>
+  <header class="tb-title" data-tb-title="left">
     <h1>Cara Singh leads win rate</h1>
+    <p class="tb-subtitle">Rep scorecard: win rate, open pipeline and won value, by rep and by region.</p>
+    <span data-tb-built></span>
+  </header>
+  <header>
     <p class="tb-lede">
       <span data-tb-figure="value" data-tb-binding="top_rep"
             data-tb-cell="dim_rep.rep" id="val-top-rep">—</span>
@@ -62,9 +66,6 @@
       <div class="tb-card">
         <h2>Rep scorecard</h2>
         <p>
-          <label>Search
-            <input data-tb-search data-tb-binding="by_rep"
-                   placeholder="type to filter…"></label>
           <label>Rep
             <select data-tb-filter data-tb-binding="by_rep"
                     data-tb-column="dim_rep.rep"></select></label>

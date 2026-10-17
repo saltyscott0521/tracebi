@@ -220,7 +220,8 @@ examples/
     models/            #   ② the star-schema contract (portfolio_model.yaml)
     reports/           #   ③ organised BY MODEL — the folder is the model's name:
                        #     portfolio_model/ (portfolio_dashboard.json spec,
-                       #     portfolio_book, portfolio_overview, portfolio_concentration,
+                       #     portfolio_desk (app.jsx), portfolio_book (editorial),
+                       #     portfolio_overview, portfolio_concentration,
                        #     portfolio_showcase), housing_model/ (affordability)
     pipelines/         #   one per model (YAML): transform → build that model's reports
     run_workflow.py    #   drives ①→③; data/ inside the project is gitignored
@@ -776,6 +777,7 @@ Don't add these unless asked.
 | Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.py` |
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.yaml` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json` |
+| Build an app dashboard (React lane) | `tracebi new-dashboard` → `examples/portfolio_project/reports/portfolio_model/portfolio_desk/` + `docs/reference/app-jsx.md` |
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
 | See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing_model/affordability/` + `tracebi/reports/scenario.py` |
 | See every artifact feature at once | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |

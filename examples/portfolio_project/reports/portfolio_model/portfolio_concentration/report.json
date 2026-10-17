@@ -1,8 +1,57 @@
 {
   "name": "Portfolio Concentration",
   "author": "risk",
-  "description": "Issuer concentration — rank, % of total, and running cumulative % — expressed as governed window measures (rank/share/running). Every number is query-reproducible; this was once a report.py escape hatch and no longer needs to be.",
+  "description": "Issuer concentration \u2014 rank, % of total, and running cumulative % \u2014 expressed as governed window measures (rank/share/running). Every number is query-reproducible; this was once a report.py escape hatch and no longer needs to be.",
   "data": {
+    "fifth": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fv_rank",
+          "fv_cum_share"
+        ],
+        "dimensions": [
+          "dim_issuer.issuer"
+        ],
+        "having": {
+          "fv_rank": 5
+        }
+      }
+    },
+    "largest": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fv_rank",
+          "fv_share",
+          "fair_value"
+        ],
+        "dimensions": [
+          "dim_issuer.issuer"
+        ],
+        "having": {
+          "fv_rank": 1
+        }
+      }
+    },
+    "largest_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fv_share"
+        ],
+        "dimensions": [
+          "dim_issuer.sector"
+        ],
+        "order_by": [
+          "-fv_share"
+        ],
+        "limit": 1
+      }
+    },
     "concentration": {
       "model": "portfolio_model",
       "query": {

@@ -747,6 +747,10 @@ label > input[data-tb-search] { width: 11em; }
   /* A table wider than the phone scrolls inside its card instead of
      widening the whole page. */
   .tb-table, [data-tb-figure="table"] { display: block; overflow-x: auto; }
+  /* Inside a box that already scrolls (a .tb-scroll, a card whose body is the
+     table) it keeps table layout, so a narrow table still spans its card. */
+  :is(.tb-scroll, .tb-card:has(> :is(.tb-table, [data-tb-figure="table"]):last-child))
+    > :is(.tb-table, [data-tb-figure="table"]) { display: table; }
 }
 
 .tb-tabs { margin: var(--tb-space-3) 0; }

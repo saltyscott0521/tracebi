@@ -233,6 +233,7 @@
     /* The sign leads the symbol: -$1,234, never $-1,234. */
     if (name === "currency") return (n < 0 ? "-$" : "$") + fixedGrouped(Math.abs(n), 2);
     if (name === "currency0") return (n < 0 ? "-$" : "$") + fixedGrouped(Math.abs(n), 0);
+    if (name === "currency_compact") return (n < 0 ? "-$" : "$") + fmt(Math.abs(n), "compact");
     if (name === "percent") return pyFixed(n * 100, 1) + "%";
     return null; /* unknown name — caller falls back to the raw value */
   }
@@ -1468,7 +1469,7 @@
     return function (v) {
       var n = Number(v), out;
       if (mode === "percent") out = applyNamedFormat(n, "percent");
-      else if (mode === "currency" || mode === "currency0") {
+      else if (mode === "currency" || mode === "currency0" || mode === "currency_compact") {
         out = (n < 0 ? "-$" : "$") + applyNamedFormat(Math.abs(n), "compact");
       } else out = applyNamedFormat(n, "compact");
       return (out === null ? String(v) : out) + unit;

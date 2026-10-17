@@ -118,10 +118,15 @@ you don't.</strong></p>
 <td><code>compact</code></td>
 <td><code>1.7M</code> (<code>550.7B</code> at scale)</td>
 </tr>
+<tr>
+<td><code>currency_compact</code></td>
+<td><code>$1.7M</code> (<code>-$6.3M</code> for a loss)</td>
+</tr>
 </tbody>
 </table>
 <p><code>compact</code> is the right default for chart axes and tooltips, where space is
-tight.</p>
+tight; <code>currency_compact</code> is the same for money, and reads best on a KPI card
+or in a sentence.</p>
 <h2 id="derived-defaults">Derived defaults</h2>
 <p>If you set no format, TraceBi fills one in from what the query already knows —
 so <code>dim_branch.region</code> renders as <strong>Region</strong> and <code>1705495.2200000002</code> renders

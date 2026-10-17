@@ -383,14 +383,15 @@ def _presentation() -> dict:
                             ".tb-kpi-value child when one exists, else the "
                             "element itself",
             "data-tb-format": "value figures: compact | comma | currency | "
-                              "currency0 | percent | decimal. Omitted, a "
+                              "currency0 | currency_compact ($285.9M) | "
+                              "percent | decimal. Omitted, a "
                               "numeric cell takes the model's declared "
                               "format, then a readable shape default "
                               "(4,846.10) — as a table column does",
             "data-tb-type / data-tb-x / data-tb-y / data-tb-color": "chart wiring",
             "data-tb-value-format": "chart labels, axes, and tooltips — every "
                                     "chart type: compact | comma | currency | "
-                                    "currency0 | percent | decimal "
+                                    "currency0 | currency_compact | percent | decimal "
                                     "(compact → '550.7B')",
             "data-tb-stack": "bar, barh and area charts (no value): stack "
                              "the series into one slot per category. The "
@@ -418,7 +419,7 @@ def _presentation() -> dict:
             "data-tb-formats": "table figures: number format per column, "
                                "\"fair_value=currency0; mark=percent\" — "
                                "compact | comma | currency | currency0 | "
-                               "percent | decimal; wins over the derived "
+                               "currency_compact | percent | decimal; wins over the derived "
                                "format. A column or format that does not "
                                "exist fails the build",
             "data-tb-totals": "table figures: a one-row binding (the same "

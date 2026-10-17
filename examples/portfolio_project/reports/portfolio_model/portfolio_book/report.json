@@ -1,8 +1,15 @@
 {
   "name": "Portfolio Book",
   "author": "workflow",
-  "description": "Direct-lending book against portfolio_model — fair value by sector and the largest issuer exposures. A freeform package: the whole page is drawn by template.html + script.js from embedded, fingerprinted data, with a declared D3 bar chart.",
+  "description": "The direct-lending book as an editorial report: the headline is the finding, every number in the prose is a bound figure, and the page carries its own house CSS and a script-drawn issuer table (script.js) from the same fingerprinted data.",
   "data": {
+    "totals": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["fair_value", "cost_basis", "unrealized", "mark", "positions"]
+      }
+    },
     "by_sector": {
       "model": "portfolio_model",
       "query": {
@@ -10,6 +17,35 @@
         "measures": ["fair_value"],
         "dimensions": ["dim_issuer.sector"],
         "order_by": [{"column": "fair_value", "desc": true}]
+      }
+    },
+    "sector_marks": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["unrealized", "mark", "fair_value"],
+        "dimensions": ["dim_issuer.sector"],
+        "order_by": ["unrealized"]
+      }
+    },
+    "weakest_fund": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["mark", "unrealized"],
+        "dimensions": ["dim_fund.fund"],
+        "order_by": ["mark"],
+        "limit": 1
+      }
+    },
+    "lowest_mark": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["mark", "unrealized"],
+        "dimensions": ["dim_issuer.issuer"],
+        "order_by": ["mark"],
+        "limit": 1
       }
     },
     "top_issuers": {
