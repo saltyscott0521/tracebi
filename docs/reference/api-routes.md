@@ -38,6 +38,9 @@ posture line.
 | `POST` | `/api/models/{name}/query` | viewer |
 | `GET` | `/api/models/{name}/source` | viewer |
 
+`GET /api/models` and `GET /api/models/{name}` carry each model's `label` (what a list
+shows; see [[model-json]]) beside `name`, the identifier every other route takes.
+
 `/source` returns the model's file, read-only (the **Code** tab). A model registered in
 Python code has no file and says so. `/query` takes a [[queries|QuerySpec]] and returns the result plus a lineage
 graph. It computes but persists nothing, which is why `viewer` may call it.
@@ -77,7 +80,11 @@ the spec, or the package's `report.json`, `template.html`, `style.css`,
 `script.js` and `report.py` — read-only, and only the files discovery
 registered for it. It also gives each report `models` (the models its data
 bindings read) and `measures` (the declared measure names they ask for, read
-from the file, never from a warehouse); the Map draws both.
+from the file, never from a warehouse); the Map draws both. `display_name` is
+`report.json`'s `name` (what a list or title shows); `name` stays the path
+identifier the routes take. `GET /api/runs` rows and the `report` entries of
+`GET /api/desk` carry `display_name` beside `target` / `report` (a model
+publish carries the model's `label`; a pipeline run carries `null`).
 
 `/run` returns `{name, html, manifest}` — the **real artifact render**, so what
 the browser shows is what `verify --file` can check. `POST /runs` starts the

@@ -140,8 +140,10 @@ def _model_yaml_template_text(title: str) -> str:
 # reads no rows; a query is what opens the warehouse. If a models/{slug}.py
 # exists too, the Python file wins (a model is one file).
 
-# The name equals this file's name.
+# The name equals this file's name. The label is what people read in lists
+# (optional; unset, it is the name title-cased).
 name: {slug}
+label: {json.dumps(title.strip())}
 
 # connectors: where the tables live. `database` is a DuckDB file inside the
 # project (no absolute path, no ".."). No credentials belong here: for a
@@ -251,7 +253,7 @@ connector = DuckDBConnector("warehouse",
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 # The variable MUST be named `model` — the registry looks for it at load time.
-model = DataModel("{model_name}")
+model = DataModel("{model_name}", label={json.dumps(title.strip())})
 model.add_connector(connector)
 model.add_table("my_table", connector="warehouse", source="my_table")
 # model.add_relationship(
@@ -1314,8 +1316,22 @@ def cmd_list_models(args: argparse.Namespace) -> int:
     if not files:
         print(f"No model files found in {models_dir}")
         return 0
+    from tracebi.model.data_model import default_label
+    from tracebi.model_registry import ModelRegistry
+
+    # A private registry: listing loads each file for its label without
+    # publishing anything to the process-wide one.
+    loaded = ModelRegistry()
+    stems = set(loaded.auto_discover(str(models_dir)))
     for p in files:
-        print(p.relative_to(models_dir.parent))
+        label = default_label(p.stem)
+        if p.stem in stems:
+            try:
+                label = getattr(loaded.get(p.stem), "label", label)
+            except Exception:  # noqa: BLE001 — a file that fails to load still lists
+                pass
+        print(f"{label} ({p.stem})  {p.relative_to(models_dir.parent)}")
+    loaded.release_all()
     return 0
 
 

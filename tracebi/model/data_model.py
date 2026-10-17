@@ -604,6 +604,20 @@ class _Resolved:
     combines: "dict[str, str]" = field(default_factory=dict)   # {output: arithmetic over measures}
 
 
+def default_label(identifier: str) -> str:
+    """The name shown for *identifier* when nothing declares one.
+
+    The last ``/`` segment, split at ``_``, ``-`` and camelCase boundaries,
+    each word capitalised and the rest of it kept: ``portfolio_model`` reads
+    ``Portfolio Model``, ``WealthModel`` reads ``Wealth Model``. Nothing is
+    dropped (no ``_model`` suffix stripping), so the identifier is always
+    recognisable in its label.
+    """
+    last = str(identifier).rpartition("/")[2]
+    words = re.sub(r"(?<=[a-z0-9])(?=[A-Z])|[_-]", " ", last).split()
+    return " ".join(w[:1].upper() + w[1:] for w in words) or str(identifier)
+
+
 # ─────────────────────────────────────────────────────────────
 # DataModel
 # ─────────────────────────────────────────────────────────────
@@ -661,8 +675,14 @@ class DataModel:
         )
     """
 
-    def __init__(self, name: str, owners: Optional[list] = None) -> None:
+    def __init__(self, name: str, owners: Optional[list] = None,
+                 label: Optional[str] = None) -> None:
         self.name = name
+        #: What people read where the model is listed; ``name`` stays the
+        #: identifier queries and commands use. Unset, it is ``default_label``.
+        if label is not None and not (isinstance(label, str) and label.strip()):
+            raise ValueError("label: must be a non-empty string")
+        self.declared_label = label
         #: Sign-in names allowed to publish a change to this model (admins
         #: always may); empty means any analyst may.
         owners = [] if owners is None else owners
@@ -678,6 +698,11 @@ class DataModel:
         self._measures: dict[str, MeasureDef] = {}
 
     # ── Fluent builder ─────────────────────────────────────────
+
+    @property
+    def label(self) -> str:
+        """The declared label, else the title-cased identifier."""
+        return self.declared_label or default_label(self.name)
 
     def add_connector(self, connector: BaseConnector) -> "DataModel":
         """Register a connector by its ``name`` attribute."""
@@ -3705,6 +3730,7 @@ class DataModel:
         }
         return {
             "name": self.name,
+            "label": self.label,
             "owners": list(self.owners),
             "connectors": list(self._connectors.keys()),
             # Where each connector's data lives, so a model file (code) can be

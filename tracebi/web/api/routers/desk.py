@@ -5,6 +5,7 @@ import os
 from fastapi import APIRouter
 
 from tracebi.desk import review
+from tracebi.web.api.registry import registry
 
 router = APIRouter(tags=["desk"])
 
@@ -27,5 +28,24 @@ def _loaded_models() -> dict:
 
 @router.get("/desk")
 def desk():
-    """Pins, exploration drafts, receipts that do not reproduce, sink status."""
-    return review(os.getcwd(), _loaded_models())
+    """Pins, exploration drafts, receipts that do not reproduce, sink status.
+
+    Each entry naming a ``report`` also carries its ``display_name``.
+    """
+    out = review(os.getcwd(), _loaded_models())
+    names = {r["name"]: r["display_name"] for r in registry.list_reports()}
+    for group in ("pins", "drafts", "verdicts", "builds"):
+        out[group] = [{**e, "display_name": _display_name(e["report"], names)}
+                      for e in out[group]]
+    if out["open"]:
+        out["open"] = {**out["open"],
+                       "display_name": _display_name(out["open"]["report"], names)}
+    return out
+
+
+def _display_name(report: str, names: dict) -> str:
+    """report.json's name for a registered report, else its title-cased identifier
+    (a build on disk whose report is no longer registered still reads as a name)."""
+    from tracebi.model.data_model import default_label
+
+    return names.get(report) or default_label(report)

@@ -174,6 +174,8 @@ posture line.</p>
 </tr>
 </tbody>
 </table>
+<p><code>GET /api/models</code> and <code>GET /api/models/{name}</code> carry each model's <code>label</code> (what a list
+shows; see <a href="../reference/model-json.html">Model files (YAML or JSON)</a>) beside <code>name</code>, the identifier every other route takes.</p>
 <p><code>/source</code> returns the model's file, read-only (the <strong>Code</strong> tab). A model registered in
 Python code has no file and says so. <code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
 graph. It computes but persists nothing, which is why <code>viewer</code> may call it.</p>
@@ -262,7 +264,11 @@ the spec, or the package's <code>report.json</code>, <code>template.html</code>,
 <code>script.js</code> and <code>report.py</code> — read-only, and only the files discovery
 registered for it. It also gives each report <code>models</code> (the models its data
 bindings read) and <code>measures</code> (the declared measure names they ask for, read
-from the file, never from a warehouse); the Map draws both.</p>
+from the file, never from a warehouse); the Map draws both. <code>display_name</code> is
+<code>report.json</code>'s <code>name</code> (what a list or title shows); <code>name</code> stays the path
+identifier the routes take. <code>GET /api/runs</code> rows and the <code>report</code> entries of
+<code>GET /api/desk</code> carry <code>display_name</code> beside <code>target</code> / <code>report</code> (a model
+publish carries the model's <code>label</code>; a pipeline run carries <code>null</code>).</p>
 <p><code>/run</code> returns <code>{name, html, manifest}</code> — the <strong>real artifact render</strong>, so what
 the browser shows is what <code>verify --file</code> can check. <code>POST /runs</code> starts the
 same work in the background and returns a <code>run_id</code> to poll.</p>

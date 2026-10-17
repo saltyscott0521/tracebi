@@ -111,7 +111,11 @@ framework builds for it.</strong></p>
 </code></pre>
 <h2 id="keys">Keys</h2>
 <h3 id="name-string"><code>name</code> — string</h3>
-<p>The report's display title. Defaults to the directory name.</p>
+<p>The report's display name: what people read in every list and title
+(<code>"Portfolio Overview"</code>), not the folder slug. The path
+(<code>portfolio_model/portfolio_overview</code>) stays the identifier commands and URLs
+take. <code>GET /api/reports</code> returns it as <code>display_name</code> beside <code>name</code> (the
+path); with no <code>name</code> here, <code>display_name</code> is the directory name title-cased.</p>
 <h3 id="author-string-optional"><code>author</code> — string, optional</h3>
 <p>Recorded in the manifest as <code>rendered_by</code>.</p>
 <h3 id="description-string-optional"><code>description</code> — string, optional</h3>

@@ -11,6 +11,8 @@
 # phase ① has ever run; a query is what reads it.
 
 name: sample_model
+# What people read in lists; `name` stays the identifier commands take.
+label: Sample Orders
 
 # connectors: where the tables live. `connection: warehouse` is
 # connections/warehouse.yaml (a DuckDB file here). For a database you already

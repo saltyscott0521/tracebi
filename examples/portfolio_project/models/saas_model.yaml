@@ -19,6 +19,7 @@
 # below (or draft a new model with `tracebi new-model --from`).
 
 name: saas_model
+label: SaaS Subscriptions
 
 # connectors: where the tables live (a DuckDB file inside the project)
 connectors:

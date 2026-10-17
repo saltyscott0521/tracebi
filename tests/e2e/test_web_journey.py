@@ -47,6 +47,8 @@ def test_a_reader_opens_runs_shares_and_downloads_a_report(served):
 
     listed = {r["name"]: r for r in c.get("/api/reports").json()}
     assert "sample_model/sample_dashboard" in listed
+    # A list shows report.json's name; the path stays the identifier.
+    assert listed["sample_model/sample_dashboard"]["display_name"] == "Sample Dashboard"
     # The Map draws which measures a report asks for, from its bindings alone.
     # The report's own calculations (big/small/split) are listed beside the model's.
     assert listed["sample_model/sample_dashboard"]["measures"] == [
@@ -114,6 +116,8 @@ def test_an_analyst_browses_the_model_and_queries_it(served):
     assert "revenue" in listed["sample_model"]["measures"]
     detail = c.get("/api/models/sample_model").json()
     assert detail["facts"] and detail["dimensions"]
+    # The YAML's label is what people read; name stays the identifier.
+    assert listed["sample_model"]["label"] == detail["label"] == "Sample Orders"
 
     # A model file is code; the model says where its data is kept, and the
     # connector list includes connectors that only live inside a model.

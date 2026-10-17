@@ -73,6 +73,15 @@ def test_a_good_file_compiles_without_reading_the_warehouse(tmp_path):
     assert not (tmp_path / "data").exists()
 
 
+def test_a_label_is_optional_and_unset_reads_as_the_name_title_cased(tmp_path):
+    assert load_model_spec(_write(tmp_path, _doc(), stem="m")).label == "M"
+    path = _yaml(tmp_path, "name: sales_orders_model\n", stem="sales_orders_model")
+    assert load_model_spec(path).info()["label"] == "Sales Orders Model"
+    path = _yaml(tmp_path, "name: m\nlabel: Direct Lending\n")
+    assert load_model_spec(path).info()["label"] == "Direct Lending"
+    assert validate_model_file(_yaml(tmp_path, "name: m\nlabel: ''\n"))[0].startswith("label:")
+
+
 def _yaml(tmp_path, text, stem="m"):
     (tmp_path / "models").mkdir(exist_ok=True)
     path = tmp_path / "models" / f"{stem}.yaml"

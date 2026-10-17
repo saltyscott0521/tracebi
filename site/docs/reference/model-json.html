@@ -95,6 +95,7 @@ commented <code>models/sales.yaml</code>.</p>
 <h2 id="example">Example</h2>
 <pre><code class="language-yaml"># models/sales_model.yaml
 name: sales_model
+label: Sales Orders
 
 connectors:
   - name: warehouse
@@ -161,7 +162,12 @@ Errors lead with their path, e.g. <code>measures[2].agg</code>.</p>
 <tr>
 <td><code>name</code></td>
 <td><code>DataModel(name)</code></td>
-<td><strong>Required.</strong> Must equal the file name without its extension.</td>
+<td><strong>Required.</strong> Must equal the file name without its extension. The identifier: queries, bindings and commands use it.</td>
+</tr>
+<tr>
+<td><code>label</code></td>
+<td><code>DataModel(name, label=)</code></td>
+<td>Optional non-empty string: what people read where the model is listed (<code>Direct Lending Portfolio</code>). Unset, it is the name title-cased (<code>portfolio_model</code> → <code>Portfolio Model</code>; nothing is stripped). <code>GET /api/models</code>, <code>describe_model</code> and <code>tracebi list-models</code> carry it.</td>
 </tr>
 <tr>
 <td><code>owners</code></td>

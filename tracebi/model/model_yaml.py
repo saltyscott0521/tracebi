@@ -106,6 +106,8 @@ def _measure(m: Any) -> dict:
 def _document(model: DataModel, root: Path) -> dict:
     info = model.info()
     doc: dict = {"name": model.name}
+    if getattr(model, "declared_label", None):
+        doc["label"] = model.declared_label
     if model.owners:
         doc["owners"] = list(model.owners)
     doc["connectors"] = [_connector(c, root) for c in model.connectors()]
@@ -154,6 +156,7 @@ def _document(model: DataModel, root: Path) -> dict:
 def _shape(model: DataModel) -> dict:
     info = model.info()
     return {
+        "label": model.label,
         "tables": [{k: t[k] for k in ("name", "connector", "source")}
                    for t in info["tables"]],
         "relationships": info["relationships"],
@@ -182,6 +185,8 @@ def model_to_yaml(model: DataModel, stem: str, root: "str | Path") -> str:
     doc = _document(model, root)
 
     parts = [_HEADER.format(name=stem), f"name: {stem}\n"]
+    if "label" in doc:
+        parts[-1] += yaml.dump({"label": doc["label"]}, Dumper=dumper, allow_unicode=True)
     for key, blurb in _SECTIONS:
         if key in doc:
             parts.append(f"# {key}: {blurb}\n" + yaml.dump(

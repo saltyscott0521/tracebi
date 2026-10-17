@@ -561,6 +561,7 @@ class DescribeTableResult(TypedDict, total=False):
 class ModelInfoResult(TypedDict, total=False):
     error: Optional[str]
     name: Optional[str]
+    label: Optional[str]
     tables: Any
     relationships: Any
     facts: Any
@@ -860,6 +861,7 @@ def gateway_models() -> ModelsResult:
             out[primary] = {"error": str(exc)}
             continue
         out[primary] = {
+            "label": info.get("label"),
             "aliases": sorted(n for n in names if n != primary),
             "tables": sorted(info.get("tables", {}))
             if isinstance(info.get("tables"), dict)

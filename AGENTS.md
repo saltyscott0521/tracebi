@@ -36,6 +36,11 @@ refused). `tracebi migrate model models/<name>.py [--write]` converts a Python
 model and leaves the `.py` in place until you delete it. A model draft over the
 gateway may be `<name>.yaml` or `<name>.json`.
 
+Names, not identifiers: give a model a `label` (`label: Direct Lending Portfolio`;
+`DataModel(name, label=)` in Python; unset, the name title-cased) and a report a
+human `report.json` `name` (`"Portfolio Overview"`, not the folder slug). People
+read those; commands, bindings and URLs keep taking the identifier.
+
 A model also gets a pipeline, `pipelines/<model>.yaml` (`transform:`, `models:`,
 `reports: all`, `schedule:`; it only names the Python transform; `.py` with
 `model_pipeline(...)` still works and wins on a name clash): `tracebi

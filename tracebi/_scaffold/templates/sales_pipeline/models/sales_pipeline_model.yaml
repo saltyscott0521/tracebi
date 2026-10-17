@@ -18,6 +18,7 @@
 # draft a new model with `tracebi new-model --from`).
 
 name: sales_pipeline_model
+label: Sales Pipeline
 
 # connectors: where the tables live. `connection: warehouse` is
 # connections/warehouse.yaml (a DuckDB file here). For a database you already

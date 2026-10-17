@@ -244,6 +244,9 @@ def _presentation() -> dict:
                 "Presentation never changes a number.",
         "report_json": {
             "example": REPORT_JSON_EXAMPLE,
+            "name": "The display name people read in every list and title "
+                    "(\"Sales by region\"), not the folder slug: the path "
+                    "(reports/<model>/<slug>/) is the identifier commands take.",
             "libs": REPORT_JSON_LIBS_NOTE,
             "report_measures": {
                 "key": "measures",
@@ -410,12 +413,13 @@ def _presentation() -> dict:
             ".tb-pullstat / .tb-pullstat-value / .tb-pullstat-text)",
             ".tb-good / .tb-bad (direction tones; pair with a sign or word, "
             "never color alone)",
-            ".tb-badge (--verified / --derived / --unverified — provenance "
-            "chooses the class; a stylesheet can restyle, never re-color "
-            "honesty). The green badge reads 'reproducible' (a re-runnable "
-            "query backs the number, matching verify's `reproduces` verdict), "
-            "never 'verified' — the receipt attests reproduction, not "
-            "correctness",
+            ".tb-badge (--derived / --unverified, or .tb-verdict on a figure "
+            "a re-runnable query backs — provenance chooses the class; a "
+            "stylesheet can restyle, never re-color honesty). The query-backed "
+            "badge is the verdict chip with the file's own state, 'Draft' on a "
+            "preview or 'Not checked' on a build: never green on the page, "
+            "since only a host that re-ran the queries may say 'Reproduces' — "
+            "the receipt attests reproduction, not correctness",
         ],
         "figure_attributes": {
             "data-tb-figure": "value | chart | table | custom — on ANY "
@@ -1603,7 +1607,10 @@ def describe(brief: bool = False) -> dict:
             "reference": "docs/reference/model-json.md",
             "what": "A declarative model: the same star schema as a Python "
                     "DataModel, written as one YAML document (comments allowed; "
-                    "JSON is the same schema). Top-level keys: name, owners (a list "
+                    "JSON is the same schema). Top-level keys: name (the identifier, "
+                    "equal to the file name), label (optional: what people read "
+                    "in lists, e.g. \"Direct Lending Portfolio\"; unset, the name "
+                    "title-cased; DataModel(name, label=) in Python), owners (a list "
                     "of sign-in names allowed to publish it; see drafts), connectors, "
                     "tables, relationships, dimensions, facts, measures, "
                     "time_grains (dimension, name, source, grain) and value_bins "
