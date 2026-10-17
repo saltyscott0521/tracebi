@@ -268,8 +268,11 @@ never recolours them.
 ## Editorial
 
 A report written to be read — what `tracebi new-report` writes by default.
-One reading column with a serif body (a system face; nothing is fetched), on
-the card colour rather than the dashboard's grey.
+A sheet on the page, opened by the hero; the prose in one serif column of
+about 68 characters (a system face; nothing is fetched; `--tb-measure`), and
+figures, tables and a KPI strip (`.tb-grid` of `.tb-kpi`) at the sheet's full
+width. With no `style.css` this is the page: one accent, no texture, no
+shadow.
 
 ```html
 <article class="tb-article">
@@ -292,9 +295,13 @@ the card colour rather than the dashboard's grey.
 </article>
 ```
 
-The hero is the masthead in the editorial's register. Charts, tables, the
-pull-stat and the footer keep the sans face, so
-numbers read as data. The writing advice is `tracebi knowledge
+The hero is the masthead in the editorial's register: the project's accent,
+flat, with a serif headline (on a dark ground, a deep band of the accent with
+the page's ink). A number in the prose is bound and set in weight 600, in the
+prose's own ink. Charts, tables, the KPI strip, the pull-stat and the footer
+keep the sans face, so numbers read as data; the methodology is in the
+receipt, behind the footer's link. To restyle it, set the accent pairs
+(`--tb-accent` / `--tb-dark-accent` and their `-text`), not a colour of its own. The writing advice is `tracebi knowledge
 design-editorial-report`.
 
 ## Stage blocks

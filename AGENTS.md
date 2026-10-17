@@ -220,7 +220,10 @@ class="tb-masthead tb-article-head">`: a `.tb-kicker`, an `<h1>` that states
 the finding, a `.tb-standfirst`, a `.tb-masthead-meta` with `<span
 data-tb-built>`), a `.tb-lede` with its numbers bound, `<h2>` sections of prose, `<figure
 class="tb-figure">` with a `<figcaption>` that says what to see, an `<aside
-class="tb-pullstat">`, a table, "What to do", and the `.tb-footer`. Someone
+class="tb-pullstat">`, a table, "What to do", and the `.tb-footer`. That
+register is the default (prose in a 68ch serif column, figures at the sheet's
+width, the hero on the accent): leave `style.css` empty or set only the accent
+pairs, never a hero colour of its own. Someone
 who *works in* it — checks it daily, switches views, drills in — gets a
 **dashboard**: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with the
 title, a KPI strip with a lead, a chart beside its ranking and a filterable

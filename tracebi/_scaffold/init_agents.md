@@ -256,7 +256,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   tb-article-head">` with `.tb-kicker`, an `<h1>` stating the finding, `.tb-standfirst`,
   `.tb-masthead-meta` with `data-tb-built` — a bound `.tb-lede`, prose sections,
   `<figure class="tb-figure">` with a `<figcaption>`, `.tb-pullstat`, a table, the
-  `.tb-footer`; read `tracebi knowledge design-editorial-report`). `--layout brief` is one
+  `.tb-footer`; the register is the default, so its `style.css` stays empty or sets only the
+  accent pairs; read `tracebi knowledge design-editorial-report`). `--layout brief` is one
   finding — `.tb-lede`, a few `.tb-kpi` cards, one chart in one `.tb-card`. A page someone
   *works in* is a dashboard: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with a KPI
   strip, a chart beside its ranking and a filterable detail; `--html` writes it as

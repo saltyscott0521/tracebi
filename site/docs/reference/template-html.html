@@ -347,8 +347,11 @@ appendix with every disclosure open. Its badges keep their own tones; a theme
 never recolours them.</p>
 <h2 id="editorial">Editorial</h2>
 <p>A report written to be read — what <code>tracebi new-report</code> writes by default.
-One reading column with a serif body (a system face; nothing is fetched), on
-the card colour rather than the dashboard's grey.</p>
+A sheet on the page, opened by the hero; the prose in one serif column of
+about 68 characters (a system face; nothing is fetched; <code>--tb-measure</code>), and
+figures, tables and a KPI strip (<code>.tb-grid</code> of <code>.tb-kpi</code>) at the sheet's full
+width. With no <code>style.css</code> this is the page: one accent, no texture, no
+shadow.</p>
 <pre><code class="language-html">&lt;article class=&quot;tb-article&quot;&gt;
   &lt;header class=&quot;tb-masthead tb-article-head&quot;&gt;  &lt;!-- data-tb-title=&quot;center&quot; to centre it --&gt;
     &lt;p class=&quot;tb-kicker&quot;&gt;Revenue&lt;/p&gt;
@@ -368,9 +371,13 @@ the card colour rather than the dashboard's grey.</p>
   &lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt;&lt;p&gt;Sources …&lt;/p&gt;&lt;/footer&gt;
 &lt;/article&gt;
 </code></pre>
-<p>The hero is the masthead in the editorial's register. Charts, tables, the
-pull-stat and the footer keep the sans face, so
-numbers read as data. The writing advice is <code>tracebi knowledge
+<p>The hero is the masthead in the editorial's register: the project's accent,
+flat, with a serif headline (on a dark ground, a deep band of the accent with
+the page's ink). A number in the prose is bound and set in weight 600, in the
+prose's own ink. Charts, tables, the KPI strip, the pull-stat and the footer
+keep the sans face, so numbers read as data; the methodology is in the
+receipt, behind the footer's link. To restyle it, set the accent pairs
+(<code>--tb-accent</code> / <code>--tb-dark-accent</code> and their <code>-text</code>), not a colour of its own. The writing advice is <code>tracebi knowledge
 design-editorial-report</code>.</p>
 <h2 id="stage-blocks">Stage blocks</h2>
 <pre><code class="language-html">&lt;section data-tb-stage=&quot;exploration&quot;&gt; … &lt;/section&gt;

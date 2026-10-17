@@ -64,11 +64,11 @@
         name.textContent = r["dim_issuer.issuer"];
 
         var fv = document.createElement("td");
-        fv.className = "num";
+        fv.className = "tb-num";
         fv.textContent = money(r.fair_value);
 
         var pos = document.createElement("td");
-        pos.className = "num";
+        pos.className = "tb-num";
         pos.textContent = Number(r.positions).toLocaleString();
 
         tr.appendChild(name);

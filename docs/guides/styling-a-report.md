@@ -48,6 +48,7 @@ set `--tb-font` to use your own face instead.
 | `--tb-shadow` | none; the sheet draws no resting shadow (cards are a hairline). Left for a report's own CSS |
 | `--tb-radius`, `--tb-space-1..4` | shape and rhythm |
 | `--tb-cell-pad` | table density, in one place |
+| `--tb-measure` | the editorial's reading column: 68ch of its serif body |
 | `--tb-chart-1..8` | the chart palette; `--tb-chart-1` is the accent |
 
 Setting the accent pairs in `reports/_theme.css` is usually all a house style

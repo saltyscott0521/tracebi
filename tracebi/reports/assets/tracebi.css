@@ -1101,36 +1101,56 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-verdict[data-tb-verdict="draft"] { border-style: dashed; }
 
 /* ── 12c. Editorial — a report written to be read ─────────────────────────
- * <article class="tb-article">: a sheet of paper on the page, opened by a
- * hero (kicker, the headline that states the finding, a standfirst, a
- * byline) in the accent colour. One serif reading column; figures, tables,
- * KPI strips and pull-stats sit in it as framed cards and keep the sans so
- * numbers read as data. Everything follows the theme's tokens.
+ * <article class="tb-article">: a sheet of paper on the page, opened by the
+ * masthead in its hero register (.tb-masthead.tb-article-head: kicker, the
+ * serif headline that states the finding, the standfirst, the meta line
+ * with the verdict chip and the Receipt link) on the accent ground. The
+ * prose is one serif column of about 68 characters (--tb-measure);
+ * figures, tables and the KPI strip are the dashboard's own, in the sans,
+ * and take the sheet's full width so a strip of four never cramps. The
+ * footer closes it; the methodology lives in the receipt.
  * The hero is the project's one accent, flat — the same colour in every
- * editorial — and its ink is --tb-on-accent (white on the light accent, near
- * black on the lighter dark-mode accent; both clear 4.5:1). */
+ * editorial; a theme (an accent preset) recolours it. Its ink is
+ * --tb-on-accent (white on the light accent; both clear 4.5:1). On a dark
+ * ground it is a deep band of the accent with the page's own ink, not a
+ * pale slab (below). */
+/* Registered as a length, so 68ch is measured once, in the article's serif,
+ * and every line of the column (the sans meta, the larger lede) shares it. */
+@property --tb-measure { syntax: "<length>"; inherits: true; initial-value: 608px; }
 .tb-article {
   --tb-hero: var(--tb-accent);
   --tb-hero-ink: var(--tb-on-accent);
   --tb-hero-soft: color-mix(in oklab, var(--tb-hero-ink) 88%, var(--tb-hero));
-  max-width: 50rem;
+  --tb-article-pad: clamp(18px, 5vw, 56px);
+  --tb-measure: 68ch;            /* of the serif body (registered above) */
+  max-width: 62rem;
   margin: var(--tb-space-4) auto;
-  padding: 0 clamp(18px, 5vw, 56px) clamp(24px, 4vw, 44px);
+  padding: 0 var(--tb-article-pad) clamp(24px, 4vw, 44px);
   background: var(--tb-bg);
   border: 1px solid var(--tb-rule);
-  border-radius: 18px;
+  border-radius: var(--tb-radius);
   font-family: var(--tb-font-serif);
-  font-size: 1.1em;
-  line-height: 1.72;
+  font-size: var(--tb-text-lg);
+  line-height: 1.7;
   overflow: hidden;
+}
+:root[data-tb-mode="dark"] .tb-article {
+  --tb-hero: color-mix(in oklab, var(--tb-accent) 22%, var(--tb-bg));
+  --tb-hero-ink: var(--tb-ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tb-mode="auto"] .tb-article {
+    --tb-hero: color-mix(in oklab, var(--tb-accent) 22%, var(--tb-bg));
+    --tb-hero-ink: var(--tb-ink);
+  }
 }
 .tb-article p { max-width: none; }
 
-/* The hero: a band in the accent colour across the top of the sheet. */
+/* The hero: the masthead on a band of the accent across the top of the sheet. */
 .tb-article-head {
   position: relative;
-  margin: 0 calc(-1 * clamp(18px, 5vw, 56px)) var(--tb-space-4);
-  padding: clamp(28px, 5vw, 48px) clamp(18px, 5vw, 56px) var(--tb-space-3);
+  margin: 0 calc(-1 * var(--tb-article-pad)) var(--tb-space-4);
+  padding: clamp(28px, 5vw, 48px) var(--tb-article-pad) var(--tb-space-3);
   color: var(--tb-hero-ink);
   background: var(--tb-hero);
   border-bottom: 0;
@@ -1138,7 +1158,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-article-head[data-tb-title="center"] { text-align: center; }
 .tb-kicker {
   font-family: var(--tb-font);
-  font-size: 0.7em;
+  font-size: var(--tb-text-xs);
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1155,18 +1175,16 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   margin: 0 0 var(--tb-space-3);
 }
 .tb-article-head h1 { color: var(--tb-hero-ink); }
-.tb-article h1 [data-tb-figure] { color: var(--tb-accent-text); }
-.tb-article-head h1 [data-tb-figure] { color: var(--tb-hero-soft); }
 .tb-dek, .tb-article .tb-standfirst {
-  font-size: 1.15em;
-  line-height: 1.5;
+  font-size: var(--tb-text-xl);
+  line-height: 1.45;
   color: var(--tb-muted);
   margin: 0 0 var(--tb-space-3);
 }
-.tb-article-head :is(.tb-dek, .tb-standfirst) { color: var(--tb-hero-soft); max-width: none; }
+.tb-article-head :is(.tb-dek, .tb-standfirst) { color: var(--tb-hero-soft); }
 .tb-byline {
   font-family: var(--tb-font);
-  font-size: 0.74em;
+  font-size: var(--tb-text-sm);
   color: var(--tb-muted);
   padding: var(--tb-space-2) 0;
   border-top: 1px solid var(--tb-rule);
@@ -1174,7 +1192,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 }
 .tb-article-head .tb-masthead-meta {
   font-family: var(--tb-font);
-  font-size: 0.74em;
+  font-size: var(--tb-text-sm);
   margin: 0;
   padding: var(--tb-space-2) 0;
   border-top: 1px solid color-mix(in oklab, var(--tb-hero-ink) 22%, transparent);
@@ -1184,12 +1202,11 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   border-top-color: color-mix(in oklab, var(--tb-hero-ink) 22%, transparent);
 }
 .tb-article .tb-lede {
-  font-size: 1.18em;
-  line-height: 1.6;
-  max-width: none;
+  font-size: var(--tb-text-xl);
+  line-height: 1.55;
 }
-.tb-article .tb-lede [data-tb-figure="value"],
-.tb-article p [data-tb-figure="value"] { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* A number in the prose is the prose's own ink, set in weight 600. */
+.tb-article :is(p, li, h1) [data-tb-figure="value"] { font-weight: 600; }
 
 /* Section heads: a claim, marked with a short accent bar. */
 .tb-article h2 {
@@ -1197,31 +1214,34 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   align-items: baseline;
   gap: 0.55em;
   font-family: var(--tb-font);
-  font-size: 1.12em;
+  font-size: var(--tb-text-xl);
   font-weight: 600;
+  line-height: 1.3;
   letter-spacing: -0.01em;
-  margin: 2.3em 0 0.6em;
+  margin: 2em 0 0.5em;
 }
 .tb-article h2::before {
   content: "";
   flex: none;
-  width: 0.9em;
-  height: 0.22em;
+  width: 0.8em;
+  height: 3px;
   border-radius: 2px;
   background: var(--tb-accent);
-  transform: translateY(-0.28em);
+  transform: translateY(-0.3em);
 }
 
-/* Figures, tables, KPI strips and pull-stats: framed cards in the column. */
+/* Figures, tables, KPI strips and pull-stats keep the sans, at the page's
+ * body size, so a number reads as data. */
 .tb-article :is(table, .tb-figure, .tb-pullstat, .tb-grid, [data-tb-methodology]) {
   font-family: var(--tb-font);
-  font-size: 0.86rem;
+  font-size: var(--tb-text-md);
+  line-height: 1.55;
 }
 .tb-figure {
   margin: var(--tb-space-4) 0;
   padding: var(--tb-space-3) var(--tb-space-3) var(--tb-space-2);
   border: 1px solid var(--tb-rule);
-  border-radius: 12px;
+  border-radius: var(--tb-radius);
   background: var(--tb-bg);
 }
 .tb-figure figcaption {
@@ -1229,13 +1249,13 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   padding-top: var(--tb-space-2);
   border-top: 1px solid var(--tb-rule);
   color: var(--tb-muted);
-  font-size: 0.92em;
+  font-size: var(--tb-text-sm);
 }
 .tb-figure [data-tb-figure="chart"] { min-height: 260px; }
 .tb-article > :is(table, .tb-scroll) {
-  margin: var(--tb-space-3) 0;
+  margin: var(--tb-space-3) 0 var(--tb-space-4);
   border: 1px solid var(--tb-rule);
-  border-radius: 12px;
+  border-radius: var(--tb-radius);
   overflow: hidden;
   border-collapse: separate;
   border-spacing: 0;
@@ -1250,37 +1270,57 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   align-items: center;
   column-gap: var(--tb-space-3);
   margin: var(--tb-space-4) 0;
-  padding: var(--tb-space-3) var(--tb-space-4);
-  border-radius: 12px;
-  border-left: 4px solid var(--tb-accent);
-  background: color-mix(in oklab, var(--tb-accent) 7%, var(--tb-bg));
+  padding: var(--tb-space-3) var(--tb-space-4) var(--tb-space-3) var(--tb-space-3);
+  border-left: 3px solid var(--tb-accent);
+  border-radius: 0 var(--tb-radius) var(--tb-radius) 0;
+  background: var(--tb-surface-accent);
 }
 .tb-pullstat-value {
-  font-size: 2.7em;
+  font-size: var(--tb-text-3xl);
   font-weight: 600;
   line-height: 1;
   letter-spacing: var(--tb-tracking-tight);
   color: var(--tb-accent-text);
   font-variant-numeric: tabular-nums;
 }
-.tb-pullstat-text { color: var(--tb-muted); font-size: 1.05em; line-height: 1.45; }
+.tb-pullstat-text { color: var(--tb-muted); font-size: var(--tb-text-lg); line-height: 1.45; }
 .tb-article [data-tb-methodology] {
-  margin-top: 40px;
+  margin-top: 48px;
   padding-top: var(--tb-space-3);
   border-top: 1px solid var(--tb-rule);
+  font-size: var(--tb-text-sm);
 }
 .tb-article [data-tb-methodology] h2::before { display: none; }
-/* The sheet rises in once; a reader who asked for less motion gets none. */
-@media (prefers-reduced-motion: no-preference) {
-  .tb-article { animation: tb-rise 0.5s ease-out both; }
+
+/* The reading column: the hero's lines and the prose (and the pull-stat and
+ * the footer that sit in it) keep to the measure, centred on the sheet;
+ * whatever is not named here — a figure, a table, the KPI strip, a row of
+ * columns — takes the sheet's width. */
+.tb-article .tb-article-head > *,
+.tb-article > :is(p, ul, ol, blockquote, h2, h3, h4, .tb-lede, .tb-pullstat,
+                  .tb-callout, [data-tb-methodology]) {
+  max-width: var(--tb-measure);
+  margin-left: auto;
+  margin-right: auto;
 }
-@keyframes tb-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* The headline starts on the column's edge and may run past its end. */
+.tb-article .tb-article-head:not([data-tb-title="center"]) > h1 {
+  max-width: none;
+  margin-left: max(0px, (100% - var(--tb-measure)) / 2);
+  margin-right: 0;
+}
+/* Controls in the prose (a download button, a filter) are the page's sans. */
+.tb-article :is(button, select, input) { font-family: var(--tb-font); }
 @media (max-width: 720px) {
-  .tb-article { font-size: 1.04em; margin: 0; border-radius: 0; border-width: 0; }
+  .tb-article { margin: 0; border-radius: 0; border-width: 0; }
   .tb-pullstat { grid-template-columns: 1fr; row-gap: var(--tb-space-1); }
+  /* A table wider than the phone scrolls in its frame (which then fits the
+   * table, not the column); a cell never wraps. */
+  :root .tb-article > table { display: block; overflow-x: auto; width: max-content; max-width: 100%; }
+  .tb-article > table :is(th, td) { white-space: nowrap; }
 }
 @media print {
-  .tb-article { border: 0; margin: 0; max-width: none; animation: none; }
+  .tb-article { border: 0; margin: 0; max-width: none; }
 }
 
 /* ── 12c-2. App pages (app.jsx) ─────────────────────────────────────────────

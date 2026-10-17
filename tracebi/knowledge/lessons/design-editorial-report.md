@@ -12,7 +12,7 @@ in the fourth section, if anywhere.
 **The headline is the finding.** A verb and a direction: "Midwest leads on
 revenue as the West slows", not "Revenue by region". Bind any number in it as a
 value figure — the build refuses a typed one. The `.tb-kicker` above it names
-the subject; the `.tb-dek` under it says in one or two sentences why it matters
+the subject; the `.tb-standfirst` under it says in one or two sentences why it matters
 to this reader ([[design-lead-with-the-answer]]).
 
 **The first paragraph does the whole job.** A reader who stops after the
@@ -34,8 +34,9 @@ row of them. A `.tb-pullstat` is for the single number the reader should
 remember, with the sentence that explains it.
 
 **End with what to do.** The last section is the decision or the next step the
-report supports — and who owns it. The methodology follows, small, for the
-reader who checks.
+report supports — and who owns it. The `.tb-footer` closes the page: your
+sources in words, and the way into the receipt, which holds the methodology
+for the reader who checks.
 
 **Words, not jargon.** Plain verbs, short sentences, the reader's names for
 things, not the model's (`fact_orders` is never on the page)

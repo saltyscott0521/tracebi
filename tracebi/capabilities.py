@@ -363,6 +363,7 @@ def _presentation() -> dict:
             "--tb-good / --tb-bad (direction tones), --tb-warn (the amber "
             "verdict tone)",
             "--tb-cell-pad (table density)",
+            "--tb-measure (an editorial's reading column, 68ch of its serif)",
             "--tb-chart-1..8 (the chart palette; chart-1 is the accent)",
         ],
         "components": [
@@ -402,8 +403,10 @@ def _presentation() -> dict:
             "table scrolls sideways)",
             ".tb-callout", ".tb-note",
             ".tb-article (an editorial report: the masthead as "
-            ".tb-article-head, .tb-kicker, .tb-standfirst, figure.tb-figure "
-            "with figcaption, "
+            ".tb-article-head, the hero on the accent, .tb-kicker, "
+            ".tb-standfirst; the prose in one 68ch serif column, while "
+            "figure.tb-figure with figcaption, tables and a .tb-grid KPI "
+            "strip take the sheet's width; "
             ".tb-pullstat / .tb-pullstat-value / .tb-pullstat-text)",
             ".tb-good / .tb-bad (direction tones; pair with a sign or word, "
             "never color alone)",
