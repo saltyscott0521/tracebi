@@ -5,7 +5,7 @@
 // DOM. That also means the app cannot read the frame's DOM. The report runtime
 // (tracebi.js, "Host bridge") and the app talk by postMessage instead, and only
 // about presentation: how tall the report is, which figures it holds, what the
-// person pointed at, which cut to apply.
+// person pointed at, which cut to apply, and what the app's check says of it.
 //
 // A message counts only if it came from this frame's own window (its origin is
 // "null", so the origin is no use) and carries the bridge tag.
@@ -45,4 +45,23 @@ export function answerSelections(frame, report, run) {
 export function tellFrame(frame, message) {
   // An opaque origin cannot be named as a target; the command carries nothing secret.
   frame?.contentWindow?.postMessage({ ...message, tracebiFrame: 1 }, '*')
+}
+
+// The states a report's chip can be told. Draft and Never built are the app's
+// own words for a page that is not a build.
+const TOLD = new Set(['reproduces', 'needs-a-look', 'does-not-reproduce', 'not-checked'])
+
+/**
+ * Tell the report in *frame* the app's verdict on the build it shows, now and
+ * each time a page in the frame says it is up, so its masthead chip and its
+ * receipt say what the app says instead of the file's own "Not checked".
+ * *verdict* is exactly what verdictOf computed ({ state, detail }); nothing
+ * else is ever sent, and no verdict sends nothing. Returns a stop function.
+ */
+export function tellVerdict(frame, verdict) {
+  if (!frame || !TOLD.has(verdict?.state)) return () => {}
+  const say = () => tellFrame(frame, { type: 'tracebi:verdict', state: verdict.state, detail: verdict.detail || '' })
+  const stop = listenToFrame(frame, m => { if (m.type === 'ready') say() })
+  say()
+  return stop
 }

@@ -272,7 +272,8 @@ already said. With nobody in the loop, use the defaults. Then:
   the numbers cover. The runtime fills the meta and adds what is missing; it
   sets the chip's `data-tb-verdict` from the file itself: `draft` on a
   working preview, `not-checked` on a built file (nothing has re-run its
-  queries; `tracebi verify` does). A page never makes it green. An empty
+  queries; `tracebi verify` does). A page never makes it green; framed in
+  the web app, the chip shows the app's re-check, which the app tells it. An empty
   `.tb-masthead-mark` takes a logo from the report's `style.css`. `nav` moves
   the masthead to the top of the sidebar;
 - the footer, which ends every page: `<footer class="tb-footer"

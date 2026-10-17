@@ -1415,6 +1415,9 @@ button.verdict:hover { border-color: currentColor; }
 .rp__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: var(--text-caption); color: var(--muted); }
 .rp__meta > span { display: inline-flex; align-items: center; gap: 5px; }
 .rp__meta > span + span::before { content: "·"; margin-right: 9px; color: var(--border-strong); }
+/* Why the chip asks for a look: the chip's own detail, in its colour, not a bar. */
+.rp__why { margin: 0; font-size: var(--text-caption); line-height: 1.45; color: var(--flag-warn); }
+.rp__why--bad { color: var(--red-text); }
 
 .rp__bar {
   position: relative; z-index: 40; flex: none; display: flex; align-items: center; gap: 2px;
@@ -1423,11 +1426,13 @@ button.verdict:hover { border-color: currentColor; }
 .rp__grow { flex: 1; }
 .rp__vr { width: 1px; height: 20px; margin: 0 4px; background: var(--border); flex: none; }
 .rp__pop { position: relative; }
+.rp__pop--end .rp__menu { left: auto; right: 0; }
 .cmd {
   appearance: none; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 0; border-radius: 6px;
   background: transparent; color: var(--text); font: inherit; font-size: 13.5px; font-weight: 500; white-space: nowrap; cursor: pointer;
 }
 .cmd svg { flex: none; color: var(--text-2); }
+a.cmd { text-decoration: none; }
 .cmd:hover:not(:disabled) { background: var(--card-hl); }
 .cmd:disabled { opacity: .5; cursor: default; }
 .cmd[aria-pressed="true"], .cmd[aria-expanded="true"] { background: var(--blue-lt); color: var(--accent-text); }
@@ -1446,24 +1451,19 @@ button.verdict:hover { border-color: currentColor; }
   display: flex; align-items: center; gap: 10px; width: 100%; height: 38px; padding: 0 14px;
   color: var(--text); font-size: 13.5px; font-weight: 500; text-decoration: none; cursor: pointer;
 }
+button.rp__item { appearance: none; border: 0; background: none; font: inherit; font-size: 13.5px; font-weight: 500; text-align: left; }
+button.rp__item:disabled { opacity: .5; cursor: default; }
 .rp__item:hover { background: var(--card-hl); }
 .rp__item svg { color: var(--text-2); }
 .rp__item:focus-visible { outline-offset: -2px; }
 .rp__tag { margin-left: auto; font-size: var(--text-sm); font-weight: 500; color: var(--muted); }
 .rp__rule { height: 1px; margin: 6px 0; background: var(--border); }
+.rp__menu-head { padding: 6px 14px 2px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .rp__share { display: flex; gap: 8px; }
 .rp__share input {
   flex: 1; min-width: 0; height: 32px; box-sizing: border-box; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: 6px;
   background: var(--bg); color: var(--text-2); font-family: var(--font-mono); font-size: 12px;
 }
-
-.rp__msg {
-  flex: none; display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; font-size: var(--text-base); line-height: 1.45;
-  border-bottom: 1px solid var(--amber-br); background: var(--amber-lt); color: var(--flag-warn);
-}
-.rp__msg--bad { border-bottom-color: var(--red-br); background: var(--red-lt); color: var(--red-text); }
-.rp__msg-text { flex: 1; min-width: 0; }
-.rp__msg .rpanel__link { color: inherit; text-decoration: underline; }
 
 .rp__body { flex: 1; min-height: 0; display: flex; position: relative; }
 .rp__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -1493,10 +1493,12 @@ button.verdict:hover { border-color: currentColor; }
 
 /* The panel beside the report */
 .rpanel {
-  flex: 0 0 400px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box;
+  flex: 0 0 400px; display: flex; flex-direction: column; min-width: 0; min-height: 0; box-sizing: border-box;
   background: var(--card); border-left: 1px solid var(--border);
 }
-.rpanel__tabs { display: flex; align-items: center; padding: 4px 12px 0; border-bottom: 1px solid var(--border); }
+.rpanel__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 0 18px; }
+.rpanel__title { margin: 0; font-size: var(--text-base); font-weight: 600; }
+.rpanel__tabs { display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border); }
 .rpanel__tablist { display: flex; gap: 2px; flex: 1; }
 .rpanel__tab {
   appearance: none; height: 40px; padding: 0 10px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent;
@@ -1519,6 +1521,9 @@ button.verdict:hover { border-color: currentColor; }
 .rpanel__hint { margin: 6px 0 0; font-size: var(--text-sm); line-height: 1.5; color: var(--muted); }
 .rpanel__empty { margin: 0; padding: 18px; font-size: var(--text-caption); color: var(--muted); }
 .rpanel__buttons { display: flex; gap: 8px; margin-top: 4px; }
+.rpanel__lead--facts { margin-bottom: 12px; }
+/* The build's own certificate, drawn by its runtime in a sandboxed frame. */
+.rpanel__receipt { display: block; width: 100%; border: 0; background: transparent; }
 
 .chain { list-style: none; margin: 0; padding: 0; }
 .chain > li { position: relative; padding: 0 0 16px 26px; }
@@ -1544,11 +1549,23 @@ button.verdict:hover { border-color: currentColor; }
   .cmd__lab { display: none; }
   .cmd { padding: 0 9px; }
   .rp__hide-sm { display: none !important; }
-  .rp__bar { overflow-x: auto; }
+  /* Open · Share · More, labelled; their menus span the bar. */
+  .rp__bar--narrow .cmd__lab { display: inline; }
+  .rp__bar--narrow .rp__pop { position: static; }
+  .rp__bar--narrow .rp__menu { left: 12px; right: 12px; width: auto; }
+  /* About this build is a sheet from the bottom. */
+  .rpanel {
+    top: auto; left: 0; width: 100%; height: 85vh; height: 85dvh; border-left: 0;
+    border-top: 1px solid var(--border); border-radius: 14px 14px 0 0; box-shadow: 0 -16px 40px rgba(0, 0, 0, .16);
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   @keyframes rpanel-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+  @keyframes rpanel-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
   .rpanel { animation: rpanel-in .18s ease-out; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 720px) {
+  .rpanel { animation-name: rpanel-up; }
 }
 
 /* Build mode on a narrow screen: the workbench goes under the report, and the page scrolls. */

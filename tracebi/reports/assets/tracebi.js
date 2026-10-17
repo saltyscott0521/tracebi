@@ -3483,7 +3483,7 @@
                           "model and says whether each figure reproduces." },
     /* The three a checker states (tracebi verify, the web app); this file
      * never chooses them for itself. renderReceipt shows them when its
-     * host passes one. */
+     * host passes one; the chips, when the app framing the file says so. */
     reproduces: { text: "Reproduces",
                   tip: "Re-running every query gave the data this file carries." },
     "needs-a-look": { text: "Needs a look",
@@ -3497,6 +3497,36 @@
     var stage = meta ? meta.getAttribute("content") : null;
     var receipt = document.getElementById("tracebi-receipt");
     return (stage === "final" && receipt) ? "not-checked" : "draft";
+  }
+
+  /* What the chips say. The file's own state, unless the app that shows it
+   * in a frame has said what its checker found (Host bridge,
+   * "tracebi:verdict"): the one way a chip here reads green, and only
+   * because the embedding window said so. Opened on its own (a file, /r/,
+   * an email) nothing can say it, and a draft stays a draft whatever it is
+   * told. */
+  var _hostVerdict = null;
+  function chipVerdict() {
+    var own = verdictState();
+    if (own === "draft" || !_hostVerdict) return { state: own, tip: _VERDICTS[own].tip };
+    return _hostVerdict;
+  }
+
+  function paintChips() {
+    var said = chipVerdict(), spec = _VERDICTS[said.state];
+    var chips = document.querySelectorAll(".tb-verdict"), i, chip;
+    for (i = 0; i < chips.length; i++) {
+      chip = chips[i];
+      /* A certificate mounted elsewhere states what its host passed it; the
+       * page's own drawer follows the page. */
+      if (inReceipt(chip) && !inDrawer(chip)) continue;
+      chip.setAttribute("data-tb-verdict", said.state);
+      chip.textContent = spec.text;
+      chip.title = said.tip;
+      if (chip.getAttribute("role") === "button") {
+        chip.setAttribute("aria-label", spec.text + ": open the receipt");
+      }
+    }
   }
 
   function hydrateMasthead() {
@@ -3527,19 +3557,14 @@
         meta.appendChild(el);
       }
     }
-    var state = verdictState(), spec = _VERDICTS[state];
-    var chips = document.querySelectorAll(".tb-verdict");
-    for (i = 0; i < chips.length; i++) {
-      if (inReceipt(chips[i])) continue; /* the receipt's own, set by its host */
-      chips[i].setAttribute("data-tb-verdict", state);
-      chips[i].textContent = spec.text;
-      chips[i].title = spec.tip;
-    }
+    paintChips();
   }
 
-  function inReceipt(el) {
+  function inReceipt(el) { return within(el, "tb-receipt"); }
+  function inDrawer(el) { return within(el, "tb-receipt-drawer"); }
+  function within(el, cls) {
     for (var n = el.parentNode; n && n.className !== undefined; n = n.parentNode) {
-      if ((" " + n.className + " ").indexOf(" tb-receipt ") !== -1) return true;
+      if ((" " + n.className + " ").indexOf(" " + cls + " ") !== -1) return true;
     }
     return false;
   }
@@ -3897,7 +3922,8 @@
     var path = "";
     try { path = (root.location && root.location.pathname) || ""; } catch (e) {}
     var base = decodeURIComponent(String(path).split("/").pop() || "");
-    if (!base) {
+    /* Framed by the app (about:srcdoc) the page has no file name of its own. */
+    if (!base || base === "srcdoc") {
       base = String(receipt.report || "report").toLowerCase()
         .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "report";
     }
@@ -3910,7 +3936,8 @@
    *                    measures' definitions (default: this page's)
    *   options.verdict  "draft" | "not-checked" | "reproduces" |
    *                    "needs-a-look" | "does-not-reproduce" (default: what
-   *                    this file can say of itself — never green)
+   *                    the page's chips say — the file's own state, never
+   *                    green, unless the embedding app said otherwise)
    *   options.page     the document whose figures show the values (default:
    *                    this one; null where the page is out of reach)
    *   options.file     the file name the "how to check" line names
@@ -3939,11 +3966,12 @@
     if (built) stampLine.push(built);
     if (models.length) stampLine.push(models.join(", "));
     if (stampLine.length) receiptEl(head, "p", "tb-receipt-built", stampLine.join(" · "));
-    var state = (opts.verdict && _VERDICTS[opts.verdict]) ? opts.verdict : verdictState();
+    var said = (opts.verdict && _VERDICTS[opts.verdict])
+      ? { state: opts.verdict, tip: _VERDICTS[opts.verdict].tip } : chipVerdict();
     var chipRow = receiptEl(head, "p", "tb-receipt-verdict");
-    var chip = receiptEl(chipRow, "span", "tb-verdict", _VERDICTS[state].text);
-    chip.setAttribute("data-tb-verdict", state);
-    chip.title = _VERDICTS[state].tip;
+    var chip = receiptEl(chipRow, "span", "tb-verdict", _VERDICTS[said.state].text);
+    chip.setAttribute("data-tb-verdict", said.state);
+    chip.title = said.tip;
     receiptEl(head, "p", "tb-receipt-honesty",
               "The receipt does not claim the numbers are right. It records "
               + "how each figure was made, so it can be checked.");
@@ -4740,7 +4768,8 @@
    * app cannot read the frame's DOM and the frame cannot read the app's. The
    * two talk by postMessage, and only about presentation: the frame tells the
    * app how tall it is and asks it to run a selection; the app answers it, applies a
-   * cut, or has it take part in Build mode (above). Every
+   * cut, tells it its verdict on this build, or has it take part in Build mode
+   * (above). Every
    * message carries tracebiFrame: 1; the frame accepts commands only from the
    * window that embeds it. A report opened on its own (no embedding window)
    * does none of this. */
@@ -4778,7 +4807,17 @@
       point: function (m) { if (m.on) startPointing(post); else if (_stopPointing) _stopPointing(); },
       snapshot: function () { post({ type: "snapshot", figures: snapshotFigures() }); },
       flash: function (m) { flashFigures(m.ids); },
-      "selection-response": selectionAnswered
+      "selection-response": selectionAnswered,
+      /* The app's verdict on this build (its re-check, in its words): the
+       * masthead chip and the drawer's say it instead of "Not checked".
+       * Draft, or a state this file does not know, is ignored. */
+      "tracebi:verdict": function (m) {
+        if (m.state === "draft" || !_VERDICTS.hasOwnProperty(m.state)) return;
+        _hostVerdict = { state: m.state,
+                         tip: (typeof m.detail === "string" && m.detail) ? m.detail
+                           : _VERDICTS[m.state].tip };
+        paintChips();
+      }
     };
     root.addEventListener("message", function (e) {
       var m = e.data;

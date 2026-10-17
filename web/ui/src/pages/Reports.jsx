@@ -3,21 +3,22 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import { useQueryClient } from '@tanstack/react-query'
 
 import {
-  useReports, useStartReportRun, useReportRun, useReportRunHistory,
+  useReports, useStartReportRun, useReportRun, useRuns,
   useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
   useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, useModels,
   useAppStatus, useMe, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
   postReportSelection,
 } from '../api'
-import { FRAME_SANDBOX, answerSelections, listenToFrame, tellFrame } from '../frameBridge'
+import { FRAME_SANDBOX, answerSelections, listenToFrame, tellFrame, tellVerdict } from '../frameBridge'
 import Workbench from '../components/Workbench'
+import ReceiptFrame from '../components/ReceiptFrame'
 import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
 import { ReportLineage } from '../components/ReportLineage'
 import {
   AttentionStrip, attentionItems, reviewNotes, when,
 } from '../components/Attention'
-import { VERDICT_LABEL, needsAction, verdictOf } from '../verdict'
+import { VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
 import { stamp, useLineFacts } from '../components/TheLine'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
@@ -34,35 +35,10 @@ import {
 } from '../components/Shared'
 
 function runDuration(rec) {
-  if (!rec.finished_at) return null
-  const s = (new Date(rec.finished_at) - new Date(rec.started_at)) / 1000
+  if (!rec.finished || !rec.started) return null
+  const s = (new Date(rec.finished) - new Date(rec.started)) / 1000
+  if (!Number.isFinite(s) || s < 0) return null
   return s < 10 ? `${s.toFixed(1)}s` : `${Math.round(s)}s`
-}
-
-// A report's recent builds, newest first. Only a failure is marked; the rest
-// are plain facts.
-function RunHistory({ name }) {
-  const { data: runs, refetch } = useReportRunHistory(name)
-  useEffect(() => { refetch() }, [refetch])
-  if (!runs) return <div className="rp__none"><Spinner /> Loading builds…</div>
-  if (!runs.length) return <p className="rp__none">No runs started from the app yet.</p>
-  return (
-    <ul className="rp__runs">
-      {runs.map(r => {
-        const dur = runDuration(r)
-        return (
-          <li key={r.run_id}>
-            <span>{r.status === 'running' ? '… Running' : `${stamp(r.started_at)}${dur ? ` · ${dur}` : ''}`}</span>
-            {r.status === 'failed' && (
-              <span className="flag flag--bad">
-                <span aria-hidden="true">✕</span> Failed{r.error?.message ? `: ${r.error.message}` : ''}
-              </span>
-            )}
-          </li>
-        )
-      })}
-    </ul>
-  )
 }
 
 // The receipt, at a glance — derived from the schema-2 manifest the run
@@ -105,6 +81,7 @@ function useReportBuild(name) {
       toast('Report ran successfully', 'info')
       qc.invalidateQueries({ queryKey: ['desk'] })   // new build time + receipt check
       qc.invalidateQueries({ queryKey: ['built-report', name] })
+      qc.invalidateQueries({ queryKey: ['runs'] })   // the panel's History
     }
     if (run?.status === 'failed') toast(`Run failed: ${run.error?.message || 'unknown error'}`, 'error')
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -270,13 +247,15 @@ function AskCut({ reportName, frameRef, onPackageChange }) {
 }
 
 // ── The report's own page ────────────────────────────────────────────────────
-// The app's nav stays as a rail. Two header rows (where it is, then its name,
-// what is not fine about it and when it was built), a toolbar of labelled
-// commands, a bar only when something is not fine, and the report filling the
-// rest of the screen, with a panel docked beside it (Details, Lineage, History,
-// Code). The report keeps its own receipt drawer on every figure (tracebi.js):
-// the frame is as tall as the screen and scrolls inside, so that drawer opens
-// at the edge of what you are looking at.
+// The page is the report. The app's nav stays as a rail; above the report, a
+// slim header (where it is, its name, the app's verdict on this build and, when
+// that asks for a look, why, and when it was built) and one command bar: Open,
+// Share and Export for everyone; Rebuild and Edit as a draft for an analyst or
+// admin, Build in dev mode, and the "About this build" panel (Receipt, Lineage,
+// History, Files). A command the person's role cannot use is not shown. The
+// report fills the rest of the screen and keeps its own receipt drawer
+// (tracebi.js); the app tells the frame its verdict, so the report's masthead
+// chip says what the app's check found rather than the file's "Not checked".
 
 const ICON = {
   rebuild: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />,
@@ -284,9 +263,9 @@ const ICON = {
   share: <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />,
   edit: <path d="M4 20h4L19 9l-4-4L4 16z" />,
   build: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="2.5" /></>,
-  lineage: <><rect x="3" y="4" width="6" height="5" rx="1" /><rect x="15" y="15" width="6" height="5" rx="1" /><path d="M9 6.5h3a2 2 0 0 1 2 2v7a2 2 0 0 0 2 2" /></>,
-  history: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   details: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>,
+  open: <path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6" />,
+  more: <><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></>,
   menu: <path d="M4 6h16M4 12h16M4 18h16" />,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></>,
   file: <><path d="M6 2h9l5 5v15H6z" /><path d="M15 2v5h5" /></>,
@@ -343,6 +322,23 @@ function usePopover() {
 // The three files a report can be exported as. Only the HTML carries its receipt.
 const EXPORTS = [['pdf', 'PDF'], ['xlsx', 'Excel'], ['html', 'HTML', 'with receipt']]
 
+function ExportItems({ name, onPick }) {
+  return (
+    <>
+      {EXPORTS.map(([format, label, tag]) => (
+        <a key={format} role="menuitem" href={reportDownloadUrl(name, format)} download
+           className="rp__item" onClick={onPick}>
+          <Icon name="file" />{label}{tag && <span className="rp__tag">{tag}</span>}
+        </a>
+      ))}
+      <div className="rp__rule" role="separator" />
+      <p className="rp__menu-note">
+        Only the HTML file carries its receipt; check it with <code>tracebi verify --file</code>.
+      </p>
+    </>
+  )
+}
+
 function ExportMenu({ name }) {
   const { open, setOpen, rootRef, onBlur } = usePopover()
   return (
@@ -351,16 +347,47 @@ function ExportMenu({ name }) {
            onClick={() => setOpen(o => !o)}>Export</Cmd>
       {open && (
         <div className="rp__menu" role="menu">
-          {EXPORTS.map(([format, label, tag]) => (
-            <a key={format} role="menuitem" href={reportDownloadUrl(name, format)} download
-               className="rp__item" onClick={() => setOpen(false)}>
-              <Icon name="file" />{label}{tag && <span className="rp__tag">{tag}</span>}
-            </a>
-          ))}
-          <div className="rp__rule" role="separator" />
-          <p className="rp__menu-note">
-            Only the HTML file carries its receipt; check it with <code>tracebi verify --file</code>.
-          </p>
+          <ExportItems name={name} onPick={() => setOpen(false)} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// On a phone the bar is Open, Share and this: the rest of the commands, the
+// person's role permitting, in one menu.
+function MoreMenu({ name, shown, canBuild, rebuild, running, canPoint, pointOn, togglePoint, onAbout }) {
+  const { open, setOpen, rootRef, onBlur } = usePopover()
+  const pick = fn => () => { setOpen(false); fn() }
+  return (
+    <div ref={rootRef} className="rp__pop rp__pop--end" onBlur={onBlur}>
+      <Cmd icon="more" on={open} aria-haspopup="menu" aria-expanded={open} aria-label="More"
+           onClick={() => setOpen(o => !o)} />
+      {open && (
+        <div className="rp__menu" role="menu">
+          {shown && (
+            <>
+              <div className="rp__menu-head">Export</div>
+              <ExportItems name={name} onPick={() => setOpen(false)} />
+              <div className="rp__rule" role="separator" />
+            </>
+          )}
+          {canBuild && shown && (
+            <button type="button" role="menuitem" className="rp__item" onClick={pick(rebuild)} disabled={running}>
+              <Icon name="rebuild" />{running ? 'Rebuilding…' : 'Rebuild'}
+            </button>
+          )}
+          <EditAsDraft kind="reports" path={name} bare className="rp__item" role="menuitem" />
+          {canPoint && (
+            <button type="button" role="menuitem" className="rp__item" onClick={pick(togglePoint)}>
+              <Icon name="build" />{pointOn ? 'Leave Build mode' : 'Build'}
+            </button>
+          )}
+          {!pointOn && (
+            <button type="button" role="menuitem" className="rp__item" onClick={pick(onAbout)}>
+              <Icon name="details" />About this build
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -396,20 +423,16 @@ function SharePopover({ name }) {
   )
 }
 
-const SINK_LINE = (table, status) => {
-  if (status === 'satisfied') return <>{table}: the sink satisfied its contract</>
-  if (status === 'stale') return <><span aria-hidden="true">△</span> {table}: changed since the sink last satisfied its contract</>
-  return <><span aria-hidden="true">○</span> {table}: no contract declared</>
-}
-
-const TABS = [['details', 'Details'], ['lineage', 'Lineage'], ['history', 'History'], ['code', 'Code']]
+const TABS = [['receipt', 'Receipt'], ['lineage', 'Lineage'], ['history', 'History'], ['files', 'Files']]
 const PANEL_KEY = 'tracebi-report-panel'
+// Narrower than this, the command bar is Open, Share and a menu of the rest.
+const BAR_QUERY = '(max-width: 720px)'
 
 function readPanel() {
   try {
     const v = JSON.parse(localStorage.getItem(PANEL_KEY) || 'null')
-    return v && TABS.some(([k]) => k === v.tab) ? { open: !!v.open, tab: v.tab } : { open: false, tab: 'details' }
-  } catch { return { open: false, tab: 'details' } }
+    return v && TABS.some(([k]) => k === v.tab) ? { open: !!v.open, tab: v.tab } : { open: false, tab: 'receipt' }
+  } catch { return { open: false, tab: 'receipt' } }
 }
 
 function Facts({ children }) { return <dl className="rpanel__kv">{children}</dl> }
@@ -418,24 +441,25 @@ function Section({ title, children }) {
   return <section className="rpanel__sec"><h2>{title}</h2>{children}</section>
 }
 
-function DetailsTab({ report, model, shown, lastBuild, checkedAt, verdict, onCheck, checking, goCode }) {
+// The Receipt tab: a few facts the receipt does not carry (whether the app's
+// check still holds, the model, the figures, the schedule, the kind), then the
+// build's own certificate, its chip in the app's verdict.
+function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onCheck, checking }) {
   const manifest = shown?.manifest
   const p = figureProvenance(manifest)
-  const contracts = Object.entries(manifest?.transform_contracts || {})
   const words = scheduleWords(report.schedule)
   const last = report.last_run
-  const builtAt = manifest?.rendered_at ? stamp(manifest.rendered_at) : null
+  const labelOf = useModelLabel()
+  const queries = (manifest?.embedded_data || []).length
   const form = (FORMS[report.form] || FORMS.code).label
   return (
     <>
-      {report.description && <section className="rpanel__sec"><p className="rpanel__lead">{report.description}</p></section>}
-      <Section title="Status">
+      <section className="rpanel__sec">
+        {report.description && <p className="rpanel__lead rpanel__lead--facts">{report.description}</p>}
         <Facts>
-          <Fact k="Built">{builtAt || 'Not built yet'}</Fact>
           {lastBuild && (
-            <Fact k="Numbers">
-              {verdict ? <Verdict state={verdict.state} detail={verdict.detail} /> : 'Checking…'}
-              {verdict && checkedAt ? <> · checked {stamp(new Date(checkedAt).toISOString())}</> : null}
+            <Fact k="Checked">
+              {!verdict ? 'Checking…' : checkedAt ? stamp(new Date(checkedAt).toISOString()) : 'Not yet'}
               {verdict && verdict.state !== 'reproduces' && <div className="rpanel__hint">{verdict.detail}</div>}
               <div><button type="button" className="rpanel__link" onClick={onCheck} disabled={checking}>Check again</button></div>
             </Fact>
@@ -443,27 +467,14 @@ function DetailsTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
           {manifest && manifest.schema_version !== 2 && (
             <Fact k="Receipt">○ Manifest v{manifest.schema_version ?? '?'}: no per-figure receipts to re-run</Fact>
           )}
-          {contracts.length > 0 && (
-            <Fact k="Source tables">
-              {contracts.map(([table, c]) => <div key={table}>{SINK_LINE(table, c?.status)}</div>)}
-            </Fact>
-          )}
-        </Facts>
-      </Section>
-      {manifest && (
-        <Section title="Data">
-          <Facts>
-            {model && <Fact k="Model"><Link to={dataPath(model, 'model')} className="mono">{model}</Link></Fact>}
+          {model && <Fact k="Model"><Link to={dataPath(model, 'model')}>{labelOf(model)}</Link></Fact>}
+          {manifest && (
             <Fact k="Figures">
-              {p.total} {p.total === 1 ? 'figure' : 'figures'} from {(manifest.embedded_data || []).length} {(manifest.embedded_data || []).length === 1 ? 'query' : 'queries'}
+              {p.total} {p.total === 1 ? 'figure' : 'figures'} from {queries} {queries === 1 ? 'query' : 'queries'}
               {p.derived > 0 && <div><span aria-hidden="true">○</span> {p.derived} from python, which cannot be re-run</div>}
               {p.unverified > 0 && <div><span aria-hidden="true">△</span> {p.unverified} unverified</div>}
             </Fact>
-          </Facts>
-        </Section>
-      )}
-      <Section title="Delivery">
-        <Facts>
+          )}
           <Fact k="Schedule">
             {words ? words.long : 'Not scheduled'}
             {!words && <div className="rpanel__hint">A <code>schedule</code> block in report.json builds it on a timetable.</div>}
@@ -478,14 +489,62 @@ function DetailsTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
               )}
             </Fact>
           )}
-        </Facts>
-      </Section>
-      <Section title="Definition">
-        <Facts>
           <Fact k="Kind">{form}</Fact>
-          <Fact k="Files"><button type="button" className="rpanel__link" onClick={goCode}>Read the files</button></Fact>
         </Facts>
-      </Section>
+      </section>
+      {shown?.html
+        ? <ReceiptFrame html={shown.html} verdict={verdict?.state} title={`Receipt of ${report.display_name || report.name}`}
+                        file={`${report.name.slice(report.name.lastIndexOf('/') + 1)}.html`} />
+        : <p className="rpanel__empty">No receipt yet: this report has not been built.</p>}
+    </>
+  )
+}
+
+// What the run store records for a report, and what the History tab calls it.
+const RUN_KIND = { report_build: 'Build', background_run: 'Build from the app', schedule: 'Scheduled run' }
+const BUILD_KINDS = new Set(['report_build', 'background_run'])
+const DONE = new Set(['succeeded', 'success', 'built', 'delivered'])
+const FAILED = new Set(['failed', 'error', 'refused'])
+
+// A report's runs, newest first: every build (from the app, the command line or
+// a schedule), not only the ones started here. As on History: the newest
+// successful build carries the page's verdict, a scheduled run the verdict its
+// check recorded, and every older build a plain "Not checked".
+function HistoryTab({ name, verdict }) {
+  const { data, isLoading, error } = useRuns('', name)
+  if (isLoading) return <div className="rp__none"><Spinner /> Loading builds…</div>
+  if (error) return <ErrorDetail error={error} />
+  const runs = (Array.isArray(data) ? data : []).filter(r => RUN_KIND[r.kind])
+  if (!runs.length) return <p className="rp__none">No builds recorded yet.</p>
+  const newest = runs.find(r => BUILD_KINDS.has(r.kind) && r.status === 'succeeded')
+  const said = r => {
+    if (!DONE.has(r.status)) return null
+    if (r.verdict) return checkedVerdict(r.verdict)
+    if (r === newest) return verdict
+    return { state: 'not-checked', detail: 'Only the latest build of a report is re-checked.' }
+  }
+  return (
+    <>
+      <ul className="rp__runs">
+        {runs.map(r => {
+          const dur = runDuration(r)
+          const v = said(r)
+          return (
+            <li key={r.id}>
+              <span>{r.status === 'running' ? '… Running' : stamp(r.started)}</span>
+              <span>{RUN_KIND[r.kind]}{dur ? ` · ${dur}` : ''}{r.actor ? ` · ${r.actor}` : ''}</span>
+              {v && <Verdict state={v.state} detail={v.detail} size="sm" />}
+              {FAILED.has(r.status) && (
+                <span className="flag flag--bad">
+                  <span aria-hidden="true">✕</span> {r.status === 'refused' ? 'Refused' : 'Failed'}
+                  {r.detail?.error ? `: ${r.detail.error}` : ''}
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      <Link to={`/runs?target=${encodeURIComponent(name)}`} className="rpanel__link">Every run in History</Link>
     </>
   )
 }
@@ -570,13 +629,18 @@ function FullGraph({ onClose, children }) {
   )
 }
 
-// The panel beside the report: its own tabs, a close, and the open tab's content.
+// "About this build", beside the report (a sheet from the bottom on a phone):
+// its tabs, a close, and the open tab's content.
 function ReportPanel({ tab, setTab, onClose, ...props }) {
-  const { report, shown } = props
+  const { report, shown, verdict } = props
   return (
-    <aside className="rpanel" aria-label="About this report">
+    <aside className="rpanel" aria-label="About this build">
+      <div className="rpanel__top">
+        <h2 className="rpanel__title">About this build</h2>
+        <button type="button" className="cmd" onClick={onClose} aria-label="Close the panel"><Icon name="close" /></button>
+      </div>
       <div className="rpanel__tabs">
-        <div role="tablist" aria-label="About this report" className="rpanel__tablist">
+        <div role="tablist" aria-label="About this build" className="rpanel__tablist">
           {TABS.map(([key, label]) => (
             <button key={key} type="button" role="tab" id={`rp-tab-${key}`} aria-selected={tab === key}
                     aria-controls="rp-tabpanel" className="rpanel__tab" onClick={() => setTab(key)}>
@@ -584,13 +648,12 @@ function ReportPanel({ tab, setTab, onClose, ...props }) {
             </button>
           ))}
         </div>
-        <button type="button" className="cmd" onClick={onClose} aria-label="Close the panel"><Icon name="close" /></button>
       </div>
       <div className="rpanel__body" role="tabpanel" id="rp-tabpanel" aria-labelledby={`rp-tab-${tab}`}>
-        {tab === 'details' && <DetailsTab {...props} goCode={() => setTab('code')} />}
+        {tab === 'receipt' && <ReceiptTab {...props} />}
         {tab === 'lineage' && <LineageTab name={report.name} manifest={shown?.manifest} />}
-        {tab === 'history' && <div className="rpanel__sec rpanel__sec--last"><RunHistory name={report.name} /></div>}
-        {tab === 'code' && <div className="rpanel__sec rpanel__sec--last"><ReportSource name={report.name} /></div>}
+        {tab === 'history' && <div className="rpanel__sec rpanel__sec--last"><HistoryTab name={report.name} verdict={verdict} /></div>}
+        {tab === 'files' && <div className="rpanel__sec rpanel__sec--last"><ReportSource name={report.name} /></div>}
       </div>
     </aside>
   )
@@ -624,6 +687,7 @@ function OpenReport({ report, model }) {
   const qc = useQueryClient()
   const labelOf = useModelLabel()
   const navMenu = useNavMenu()
+  const narrow = useNarrow(BAR_QUERY)
   const { data: me } = useMe()
   const canBuild = me?.role === 'analyst' || me?.role === 'admin'
   const { data: desk, dataUpdatedAt, isError: deskFailed, isFetching: checkingDesk } = useDesk()
@@ -714,6 +778,11 @@ function OpenReport({ report, model }) {
     setWantBuild(false)
     setPanel(p => (p.open && p.tab === tab ? { ...p, open: false } : { open: true, tab }))
   }
+  // "About this build" opens the panel on the tab it was last left on.
+  const togglePanel = e => {
+    panelOpener.current = e?.currentTarget || null
+    setPanel(p => ({ ...p, open: !p.open }))
+  }
   const closePanel = useCallback(() => {
     setPanel(p => ({ ...p, open: false }))
     if (panelOpener.current?.isConnected) panelOpener.current.focus()
@@ -747,6 +816,11 @@ function OpenReport({ report, model }) {
     report, build: lastBuild, contracts: shown?.manifest?.transform_contracts, checkedAt: dataUpdatedAt,
   }) : null
   const message = needsAction(verdict) ? verdict : null
+  // The report's own chip says what the app's check found. Only the build is
+  // told: Build mode's working preview is a draft, and says so itself.
+  useEffect(() => (pointOn ? undefined : tellVerdict(frameRef.current, verdict)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [frameHtml, pointOn, verdict?.state, verdict?.detail])
   const builtAt = shown?.manifest?.rendered_at ? stamp(shown.manifest.rendered_at) : null
   const opening = !frameHtml && !running && ((!desk && !deskFailed) || built.isLoading)
   const label = report.display_name || name.slice(name.lastIndexOf('/') + 1)
@@ -769,7 +843,7 @@ function OpenReport({ report, model }) {
         </nav>
         <div className="rp__titlerow">
           <h1 className="rp__name" title={name}>{label}</h1>
-          {verdict && <Verdict state={verdict.state} detail={verdict.detail} onClick={e => openPanel('details', e)} />}
+          {verdict && <Verdict state={verdict.state} detail={verdict.detail} onClick={e => openPanel('receipt', e)} />}
           <div className="rp__meta">
             {builtAt && (
               <span title="Opening a report shows its last build. Rebuild or a schedule refreshes the data.">Built {builtAt}</span>
@@ -778,41 +852,51 @@ function OpenReport({ report, model }) {
             {words && <span className="rp__hide-sm"><Icon name="calendar" size={13} /> {words.short}</span>}
           </div>
         </div>
+        {message && (
+          <p role="status" className={`rp__why${message.state === 'does-not-reproduce' ? ' rp__why--bad' : ''}`}>
+            {message.detail}
+          </p>
+        )}
 
-      <div role="toolbar" aria-label="Report actions" className="rp__bar">
-        {canBuild && shown && (
-          <Cmd icon="rebuild" onClick={rebuild} disabled={running}
-               title="Re-run every query and build the report again">
-            {running ? <><Spinner size={12} /> Rebuilding…</> : 'Rebuild'}
-          </Cmd>
+      <div role="toolbar" aria-label="Report actions" className={narrow ? 'rp__bar rp__bar--narrow' : 'rp__bar'}>
+        {shown && (
+          <a className="cmd" href={reportShareUrl(name)} target="_blank" rel="noopener noreferrer"
+             aria-label="Open" title="Open this build in a new tab, as readers receive it">
+            <Icon name="open" /><span className="cmd__lab">Open</span>
+          </a>
         )}
-        {canBuild && <ExportMenu name={name} />}
         <SharePopover name={name} />
-        {canBuild && <span className="rp__vr" aria-hidden="true" />}
-        <EditAsDraft kind="reports" path={name} bare />
-        {canPoint && (
-          <Cmd icon="build" on={pointOn} onClick={togglePoint}
-               title="Build mode: point at a figure or area, leave your agent notes, and watch it work.">
-            Build
-          </Cmd>
-        )}
+        {!narrow && shown && <ExportMenu name={name} />}
         <span className="rp__grow" />
-        {!pointOn && TABS.slice(1, 3).concat(TABS.slice(0, 1)).map(([key, text]) => (
-          <Cmd key={key} icon={key} on={showPanel && (panel.tab === key || (key === 'details' && panel.tab === 'code'))}
-               onClick={e => openPanel(key, e)}>{text}</Cmd>
-        ))}
+        {narrow ? (
+          <MoreMenu name={name} shown={shown} canBuild={canBuild} rebuild={rebuild} running={running}
+                    canPoint={canPoint} pointOn={pointOn} togglePoint={togglePoint}
+                    onAbout={() => { setWantBuild(false); setPanel(p => ({ ...p, open: true })) }} />
+        ) : (
+          <>
+            {canBuild && shown && (
+              <Cmd icon="rebuild" onClick={rebuild} disabled={running}
+                   title="Re-run every query and build the report again">
+                {running ? <><Spinner size={12} /> Rebuilding…</> : 'Rebuild'}
+              </Cmd>
+            )}
+            <EditAsDraft kind="reports" path={name} bare />
+            {canPoint && (
+              <Cmd icon="build" on={pointOn} onClick={togglePoint}
+                   title="Build mode: point at a figure or area, leave your agent notes, and watch it work.">
+                Build
+              </Cmd>
+            )}
+            {!pointOn && (
+              <>
+                {(canBuild || canPoint) && <span className="rp__vr" aria-hidden="true" />}
+                <Cmd icon="details" on={showPanel} onClick={togglePanel}>About this build</Cmd>
+              </>
+            )}
+          </>
+        )}
       </div>
       </header>
-
-      {message && (
-        <div role="status" className={`rp__msg${message.state === 'does-not-reproduce' ? ' rp__msg--bad' : ''}`}>
-          <span className="rp__msg-text">
-            <strong>{VERDICT_LABEL[message.state]}.</strong> {message.detail}
-          </span>
-          {canBuild && <button type="button" className="rpanel__link" onClick={rebuild} disabled={running}>Rebuild</button>}
-          <button type="button" className="rpanel__link" onClick={e => openPanel('details', e)}>Details</button>
-        </div>
-      )}
 
       <div className="rp__body">
         <main className="rp__main">
@@ -891,7 +975,7 @@ const PREVIEW_W = 1100
 const PREVIEW_MAX = 520
 
 // The last build as readers see it, scaled to fit and read-only.
-function PreviewFrame({ html, title }) {
+function PreviewFrame({ html, title, verdict }) {
   const box = useRef(null)
   const frame = useRef(null)
   const [scale, setScale] = useState(0.6)
@@ -912,6 +996,9 @@ function PreviewFrame({ html, title }) {
   useEffect(() => listenToFrame(frame.current, m => {
     if (m.type === 'size' && m.height) setHeight(m.height)
   }), [html])
+  // Its chip says what the list beside it says.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => tellVerdict(frame.current, verdict), [html, verdict?.state, verdict?.detail])
 
   const full = height * scale
   return (
@@ -923,14 +1010,14 @@ function PreviewFrame({ html, title }) {
   )
 }
 
-function BuiltPreview({ name }) {
+function BuiltPreview({ name, verdict }) {
   const built = useBuiltReport(name)
   if (built.isLoading) return <div className="rp__none"><Spinner /> Opening the last build…</div>
   if (built.error) return <ErrorDetail error={built.error} />
   if (!built.data) return null
   return (
     <>
-      <PreviewFrame html={built.data.html} title={`Preview of ${name}`} />
+      <PreviewFrame html={built.data.html} title={`Preview of ${name}`} verdict={verdict} />
       <p className="rprev__note">The last build, as readers see it. Open it to trace any number.</p>
     </>
   )
@@ -1028,7 +1115,7 @@ function ReportView({ report, desk, deskFailed, build, canBuild, view, onView })
       {view === 'config' ? <ConfigView report={report} /> : (
         <div className="rview__body">
           {desk && !build && <NeverBuilt build={buildRun} canBuild={canBuild} />}
-          {(build || deskFailed) && <BuiltPreview name={report.name} />}
+          {(build || deskFailed) && <BuiltPreview name={report.name} verdict={verdict} />}
           {!desk && !deskFailed && <SkeletonCard />}
         </div>
       )}

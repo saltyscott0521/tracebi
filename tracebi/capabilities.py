@@ -386,7 +386,8 @@ def _presentation() -> dict:
             "preview, not-checked on a built file, since nothing has re-run "
             "its queries; tracebi verify does. The four verdicts are "
             "reproduces (green), needs-a-look (amber), does-not-reproduce "
-            "(red), not-checked (neutral). A page never sets it green)",
+            "(red), not-checked (neutral). A page never sets it green; framed "
+            "in the web app, it shows the app's re-check, which the app tells it)",
             ".tb-footer (ends the page: your sources first, then the build's "
             "one line — who, when, which model, and that the receipt does "
             "not claim the numbers are right — and 'How these numbers were "

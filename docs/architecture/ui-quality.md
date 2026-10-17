@@ -172,7 +172,11 @@ Each fix that taught something general adds a line here.
 - A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the
-  page's full width; its list is one click away.
+  page's full width; its list is one click away. The report page's bar is
+  what everyone may do on the left (Open, Share, Export) and what the role
+  allows on the right (Rebuild, Edit as a draft, Build, then the one panel);
+  a command the role cannot use is not rendered, never disabled. On a phone
+  it is Open, Share and a "…" menu of the rest.
 - Focus that sits inside a report's frame belongs to the element inside it, so
   the audit judges that element; the frame draws no ring of its own.
 - A phone is not a narrow desktop window. The Step 1 captures were taken at

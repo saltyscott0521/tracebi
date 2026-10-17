@@ -288,7 +288,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   class="tb-verdict"></span>`. `data-tb-period` names what the numbers cover. The runtime
   fills the meta, adds what is missing, and sets the chip's `data-tb-verdict` from the
   file itself — `draft` on a working preview, `not-checked` on a built file (nothing has
-  re-run it; `tracebi verify` does); a page never makes it green. An empty
+  re-run it; `tracebi verify` does); a page never makes it green (framed in the web app,
+  it shows the app's re-check, which the app tells it). An empty
   `.tb-masthead-mark` takes a logo from the report's `style.css`. Every page ends with
   `<footer class="tb-footer" data-tb-methodology>` holding your sources; the build adds
   one line and "How these numbers were made" behind a disclosure (and the whole footer

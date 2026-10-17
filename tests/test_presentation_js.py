@@ -752,6 +752,64 @@ process.stdout.write(JSON.stringify({
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestHostVerdict:
+    """The one way a file's chip reads green: the app that frames it says what
+    its checker found ("tracebi:verdict" over the host bridge). Without that
+    message the chip is what the file can say of itself, and a draft stays a
+    draft whatever it is told."""
+
+    _SCRIPT = """
+var listeners = [];
+var host = { postMessage: function () {} };
+globalThis.parent = host;
+globalThis.addEventListener = function (type, fn) { if (type === 'message') listeners.push(fn); };
+el('meta', { name: 'tracebi-stage', content: %s });
+var head = el('header', { 'class': 'tb-masthead' });
+el('h1', {}, head);
+if (%s) {
+  var rc = el('script', { id: 'tracebi-receipt', type: 'application/json' });
+  rc.textContent = JSON.stringify({ rendered_at: '2026-10-12T18:33:00Z', figures: [] });
+}
+loadRuntime();
+function say(source, msg) {
+  listeners.forEach(function (fn) { fn({ source: source, data: msg }); });
+}
+function chips() {
+  return document.querySelectorAll('.tb-verdict').map(function (c) {
+    return c.getAttribute('data-tb-verdict') + '|' + c.textContent + '|' + c.title;
+  });
+}
+var out = { before: chips() };
+say({}, { tracebiFrame: 1, type: 'tracebi:verdict', state: 'reproduces', detail: 'forged' });
+out.stranger = chips();
+say(host, { tracebiFrame: 1, type: 'tracebi:verdict', state: 'draft' });
+say(host, { tracebiFrame: 1, type: 'tracebi:verdict', state: 'fine' });
+out.unknown = chips();
+say(host, { tracebiFrame: 1, type: 'tracebi:verdict', state: 'reproduces',
+            detail: 'Re-running every query gave the numbers this build carries.' });
+out.told = chips();
+process.stdout.write(JSON.stringify(out));
+"""
+
+    def test_the_host_sets_the_chips_and_nothing_else_does(self):
+        out = _run_dom(self._SCRIPT % ('"final"', "true"))
+        # The masthead chip and the drawer's: Not checked until the app speaks.
+        assert len(out["before"]) == 2
+        assert all(c.startswith("not-checked|Not checked|") for c in out["before"])
+        # A message from any window but the embedding one changes nothing; nor
+        # does a state the file does not know, or "draft".
+        assert out["stranger"] == out["before"]
+        assert out["unknown"] == out["before"]
+        assert out["told"] == [
+            "reproduces|Reproduces|Re-running every query gave the numbers this build carries."] * 2
+
+    def test_a_draft_stays_a_draft(self):
+        out = _run_dom(self._SCRIPT % ('"exploration"', "false"))
+        assert out["before"] == out["told"]
+        assert all(c.startswith("draft|Draft|") for c in out["told"])
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestReceiptDrawer:
     """The drawer renders ONLY what #tracebi-receipt records — display,
     never re-judged, in the locked language."""

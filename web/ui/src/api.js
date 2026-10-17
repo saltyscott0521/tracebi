@@ -183,13 +183,6 @@ export const useReportRun = (name, runId) =>
     refetchIntervalInBackground: true,
   })
 
-export const useReportRunHistory = (name) =>
-  useQuery({
-    queryKey: ['report-runs', name],
-    queryFn: () => get(`/reports/${reportPath(name)}/runs?limit=5`),
-    enabled: !!name,
-  })
-
 // The files that define a report (its spec, or its package's files).
 export const useReportSource = (name, enabled) =>
   useQuery({

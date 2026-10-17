@@ -295,17 +295,23 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.keyboard.press("Escape")
             assert menu.count() == 0
 
-            # Lineage, the check and the code are a panel beside the report.
-            page.get_by_role("button", name="Lineage").click()
+            # The receipt, the lineage, the builds and the files are one panel
+            # beside the report, "About this build". Its Receipt is the build's
+            # own certificate, in the honesty language, sink contracts and all.
+            page.get_by_role("button", name="About this build").click()
+            page.get_by_role("tab", name="Receipt").click()
+            page.get_by_role("button", name="Check again").wait_for()
+            receipt = page.frame_locator("iframe.rpanel__receipt")
+            receipt.get_by_text("The receipt does not claim the numbers are right.").wait_for()
+            receipt.locator("summary", has_text="About this build").click()
+            receipt.get_by_text("fact_holdings: the sink satisfied its contract").wait_for()
+            page.get_by_role("tab", name="Lineage").click()
             page.get_by_text("Where the numbers on this page came from").wait_for()
             page.get_by_text("fact_holdings").first.wait_for()
-            page.get_by_role("tab", name="Details").click()
-            page.get_by_text("fact_holdings: the sink satisfied its contract").wait_for()
-            page.get_by_role("button", name="Check again").wait_for()
-            page.get_by_role("tab", name="Code").click()
+            page.get_by_role("tab", name="Files").click()
             page.get_by_role("button", name="report.json").wait_for()
             page.get_by_role("button", name="Close the panel").click()
-            assert page.get_by_role("tab", name="Code").count() == 0
+            assert page.get_by_role("tab", name="Files").count() == 0
 
             downloaded = page.evaluate(
                 """async (url) => {
@@ -321,6 +327,10 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # the strip counts it as reproducing, and its row says when it was built.
             page.get_by_role("button", name="Rebuild").click()
             page.get_by_text("Report ran successfully").wait_for()
+            # The report's own chip says what the app's check found: the file
+            # alone says "Not checked", framed here it is told the verdict.
+            frame_chip = page.frame_locator("iframe.rp__frame").locator(".tb-masthead .tb-verdict").first
+            expect(frame_chip).to_have_text("Reproduces", timeout=60_000)
             back.click()
             page.wait_for_url(base + "/")
             glance = page.get_by_role("group", name="At a glance")
@@ -351,9 +361,10 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("0 of 1 built reports reproduce").wait_for()
             page.get_by_role("link", name="Open").click()
             page.get_by_role("button", name="Needs a look", exact=True).wait_for()
-            bar = page.get_by_role("status").filter(has_text="Needs a look.")
-            expect(bar).to_contain_text("The data changed since it was built")
-            assert "Reproduces" not in bar.inner_text()
+            why = page.get_by_role("status").filter(has_text="The data changed since it was built")
+            expect(why).to_be_visible()
+            assert "Reproduces" not in why.inner_text()
+            expect(frame_chip).to_have_text("Needs a look")
             page.unroute("**/api/desk")
 
             # A library row opens the same page, titled with the report's own name.
