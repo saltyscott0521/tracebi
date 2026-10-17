@@ -299,6 +299,7 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
 
 
 _HTML_OPEN = re.compile(r"<html\b[^>]*>", re.I)
+_VIEWPORT = re.compile(r"<meta\b[^>]*\bname=[\"']?viewport\b", re.I)
 
 
 def with_default_mode(page: str) -> str:
@@ -317,6 +318,10 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
                 report_js: str = "", app: bool = False, theme_css: str = "") -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
     page = with_default_mode(page)
+    # A phone lays out a page that names no viewport 980px wide and shrinks
+    # it to fit, so none of tracebi.css's narrow-screen rules would apply.
+    viewport = ("" if _VIEWPORT.search(page) else
+                '<meta name="viewport" content="width=device-width, initial-scale=1">\n')
     # The carrier render may already carry the framework CSP meta
     # (html_renderer inserts the same one); a second identical tag is just
     # noise, so skip it — but ONLY when the EXACT framework meta is present.
@@ -325,9 +330,9 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
     # entirely, which is exactly the markup an injection would smuggle.
     page = insert_before(
         page, "</head>",
-        stack_head(stage, project_css, report_css,
-                   include_csp=csp_meta().strip() not in page, libs=libs, app=app,
-                   theme_css=theme_css))
+        viewport + stack_head(stage, project_css, report_css,
+                              include_csp=csp_meta().strip() not in page, libs=libs,
+                              app=app, theme_css=theme_css))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))

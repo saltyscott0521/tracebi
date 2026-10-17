@@ -20,6 +20,49 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-17 — Step 1 of the UX plan: the report design system v2
+
+The audit ([[ux-audit-2026-10-17]]) found four visual languages in the
+reports; the plan ([[ux-plan-2026-10-17]]) cut the fix into nine packages, one
+commit each on `design-system-v2`.
+
+| Package | What shipped |
+|---|---|
+| DS-1 | `tracebi.css` §1 is the system: a seven-step type scale, three weights, tabular numerals; the accent is chart series 1; a dark palette of its own; `auto` mode; themes as accent presets; no hatch, gradient or resting shadow. |
+| DS-2 | A masthead (kicker, h1, standfirst, period, built time, verdict chip) and a footer on every page; the About block leaves the body; 1,200px measure, 12-column grid. |
+| DS-3 | The lead KPI larger, not wider; a delta is a stamped figure, never computed in the browser. |
+| DS-4 | One D3 chart style: 55% bars, direct labels, nothing cut, thinned ticks, 6% gridlines; the tooltip links the receipt. |
+| DS-5 | Tables: tabular numbers right, a 6px data bar in its own lane, sticky header, one totals style. |
+| DS-6 | The receipt as a certificate: verdict, how to check, one row per figure (value, definition, query, short fingerprint). |
+| DS-7 | The editorial on the same tokens and masthead, a 68-character column on a sheet. |
+| DS-8 | Showcase, scaffolds, `init` bundles and demo app on the system; `aum_by_branch` the one bespoke look. |
+| DS-9 | `scripts/ui_audit.py` renders every report, both modes and widths, into `report-sheet.png` and ratchets fonts, accents, shadows, gradients and looks per project. |
+
+**What the captures showed.** The report sheet puts every reference and demo
+report on one frame in both modes. It also showed what the package captures
+missed: they were taken at 390px in a desktop browser, and no built page but
+affordability named a viewport, so a real phone laid every report out 980px
+wide and shrank it. The build now adds the meta (`stack.apply_stack`).
+
+**Decisions.** *`auto` is the default mode*: a page follows the reader's
+system; light or dark is pinned on purpose only. *The verdict chip is never
+green on a file*: a file says Not checked or Draft; Reproduces needs a re-run
+(`tracebi verify`, or a host passing a verdict). *Themes are accent presets*:
+a light/dark accent pair and an optional display face, nothing structural; a
+report's `style.css` follows the same rule. *The 12-column grid*
+(`.tb-grid` + `.tb-span-*`) replaces Tailwind grid columns and `.tb-cols-2-1`.
+*One receipt component*: Step 2 mounts `tracebi.renderReceipt(mount,
+receipt, options)` in the app's report panel.
+
+**Deliberately left** ([[ui-backlog]]): small multiples are dense on a phone;
+the showcase's striped frozen column keeps a light shade in dark; the
+selection handshake with a parent that is not the app; affordability keeps
+its own look (Inter, green, paper, shadows, gradients), pinned light; the
+reference project keeps per-report accents (book, showcase), so it has more
+than one look.
+
+---
+
 ## 2026-10-17 — Reports and dashboards: the editorial page, the React lane, themes
 
 **Two kinds of page, picked by what the reader does.** `tracebi new-report`

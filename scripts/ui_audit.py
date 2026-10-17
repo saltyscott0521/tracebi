@@ -13,6 +13,11 @@ to read it, pages that say "not found", and slow pages. Every page is
 screenshotted into a contact sheet (``index.html``) for the judgement calls a
 script can't make.
 
+It then opens every report as delivered (``/r/<name>``) at 1440 and 390 wide,
+light and dark, into one ``report-sheet.png``, and counts what makes a project
+look like more than one system: font families, accents, resting shadows,
+gradients, and "looks" (display face + accent) per project.
+
 ``--baseline`` compares against an earlier run: a finding that is new fails
 the run (exit 1), so a fix can never quietly undo another. That ratchet is the
 point. When the loop fixes a class of bug, it adds the check here, and the
@@ -298,6 +303,59 @@ FOCUS_JS = r"""
 """
 
 
+REPORT_LOOK_JS = r"""
+() => {
+  // Decoration a report may keep: the chart tooltip, a menu or popover, the receipt drawer.
+  const allowed = '.tb-chart-tip, .tb-receipt-drawer, [role=tooltip], [role=menu], [popover]';
+  const visible = el => {
+    const r = el.getBoundingClientRect();
+    const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+  };
+  const label = el => {
+    const cls = typeof el.className === 'string' && el.className.trim()
+      ? '.' + el.className.trim().split(/\s+/).slice(0, 2).join('.') : '';
+    return el.tagName.toLowerCase() + cls;
+  };
+  // The face an author chose: the first family of the computed stack.
+  const face = el => getComputedStyle(el).fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '');
+  const families = {};
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n; (n = walker.nextNode());) {
+    const el = n.parentElement;
+    if (!el || !n.nodeValue.trim() || el.closest('script,style,noscript,template,' + allowed) || !visible(el)) continue;
+    families[face(el)] = (families[face(el)] || 0) + 1;
+  }
+  const shadows = [], gradients = [];
+  for (const el of document.querySelectorAll('body *')) {
+    if (el.closest(allowed) || !visible(el)) continue;
+    const s = getComputedStyle(el);
+    // A layer with no blur and no spread is a hairline rule (a sticky header's), not a lift.
+    const lifts = s.boxShadow !== 'none' && s.boxShadow.split(/,(?![^(]*\))/).some(layer => {
+      const px = (layer.replace(/rgba?\([^)]*\)/, '').match(/-?[\d.]+px/g) || []).map(parseFloat);
+      return !/rgba\([^)]*,\s*0\)/.test(layer) && ((px[2] || 0) > 0 || (px[3] || 0) > 0);
+    });
+    if (lifts) shadows.push(label(el));
+    if (/gradient/.test(s.backgroundImage)) gradients.push(label(el));
+  }
+  for (const el of document.querySelectorAll('linearGradient, radialGradient'))
+    if (!el.closest(allowed)) gradients.push(label(el));
+  // The accent as a colour: a probe resolves var() and color-mix() alike.
+  let accent = null;
+  if (getComputedStyle(document.documentElement).getPropertyValue('--tb-accent').trim()) {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--tb-accent)';
+    document.body.appendChild(probe);
+    accent = getComputedStyle(probe).color;
+    probe.remove();
+  }
+  const h1 = document.querySelector('.tb-masthead h1') || document.querySelector('h1');
+  return {families, shadows, gradients, accent, display: h1 ? face(h1) : null,
+          width: window.innerWidth, scroll: document.documentElement.scrollWidth};
+}
+"""
+
+
 def _links(page, base: str) -> list[str]:
     hrefs = page.eval_on_selector_all(
         "a[href]", "els => els.map(e => e.getAttribute('href'))")
@@ -438,6 +496,8 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
             pages.append(record)
 
         findings += scope_findings(browser, base)
+        report_pass, report_findings = report_sheet(browser, base, out, deep)
+        findings += report_findings
         browser.close()
 
     # Nothing on disk changed during the crawl, so nothing should come or go.
@@ -451,11 +511,126 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
     findings = _dedupe(findings + token_findings() + report_style_findings()
                        + theme_findings() + source_findings())
     report = {"base": base, "when": time.strftime("%Y-%m-%d %H:%M:%S"),
-              "pages": pages, "findings": findings, "metrics": static_metrics(),
-              "score": score(findings)}
+              "pages": pages, "findings": findings,
+              "metrics": {**static_metrics(), **report_pass.pop("metrics")},
+              "report_pass": report_pass, "score": score(findings)}
     (out / "findings.json").write_text(json.dumps(report, indent=1))
     (out / "index.html").write_text(contact_sheet(report))
     return report
+
+
+# ── every report, as delivered ────────────────────────────────────────────────
+
+REPORT_TILE = {"desktop": (480, 900), "phone": (180, 900)}   # width, max height in the sheet
+
+
+def _hex(rgb: str | None) -> str | None:
+    nums = re.findall(r"[\d.]+", rgb or "")
+    return "#" + "".join(f"{round(float(c)):02x}" for c in nums[:3]) if len(nums) >= 3 else None
+
+
+def report_sheet(browser, base: str, out: Path, deep: bool = True) -> tuple[dict, list[dict]]:
+    """Open every report's share link (the artifact as delivered) in both widths
+    and both modes, into one ``report-sheet.png``, and count what makes a project
+    look like several systems instead of one: the font families its pages use,
+    its accents (a light/dark pair each), resting shadows and gradients outside
+    the tooltip, menus and the receipt drawer, and its "looks" (display face +
+    accent). The audit loop looks at the sheet before each release; the counts
+    may not grow against a baseline.
+    """
+    shots = out / "report-shots"
+    shots.mkdir(parents=True, exist_ok=True)
+    findings: list[dict] = []
+    per: dict[str, dict] = {}
+    combos = [(vp, theme) for vp in VIEWPORTS for theme in THEMES
+              if deep or not (vp == "phone" and theme == "dark")]
+    for r in _safe(base, "/api/reports"):
+        name = r["name"]
+        rec = per[name] = {"shots": {}, "families": {}, "shadows": [], "gradients": [], "accent": {}}
+        for vp, theme in combos:
+            w, h = VIEWPORTS[vp]
+            ctx = browser.new_context(viewport={"width": w, "height": h}, color_scheme=theme,
+                                      is_mobile=(vp == "phone"), has_touch=(vp == "phone"))
+            page = ctx.new_page()
+            errors: list[str] = []
+            page.on("pageerror", lambda e, errors=errors: errors.append(f"pageerror: {e}"))
+            page.on("console", lambda m, errors=errors: errors.append(f"console: {m.text}")
+                    if m.type == "error" else None)
+            where = {"page": f"/r/{name}", "pattern": "/r/<report>", "viewport": vp, "theme": theme}
+            resp = page.goto(f"{base}/r/{urllib.parse.quote(name)}", wait_until="networkidle")
+            if not resp or resp.status != 200:
+                findings.append({**where, "rule": "report-unrendered", "severity": "critical",
+                                 "target": name, "detail": f"/r/{name} answered {resp.status if resp else '-'}"})
+                ctx.close()
+                break
+            page.wait_for_timeout(800)            # charts draw in
+            look = page.evaluate(REPORT_LOOK_JS)
+            for e in errors:
+                findings.append({**where, "rule": "browser-error", "severity": "critical",
+                                 "target": re.sub(r"\d{3,}", "#", e)[:120], "detail": e[:400]})
+            # A page with no viewport meta is laid out 980px wide on a phone and shrunk.
+            if look["width"] > w + 1:
+                findings.append({**where, "rule": "report-phone-layout", "severity": "serious", "target": name,
+                                 "detail": f"laid out {look['width']}px wide on a {w}px phone (no viewport meta)"})
+            elif look["scroll"] > w + 1:
+                findings.append({**where, "rule": "h-overflow", "severity": "serious", "target": name,
+                                 "detail": f"page is {look['scroll']}px wide on a {w}px screen"})
+            for f, n in look["families"].items():
+                rec["families"][f] = rec["families"].get(f, 0) + n
+            rec["shadows"] += [f"{s} ({vp}-{theme})" for s in look["shadows"]]
+            rec["gradients"] += [f"{g} ({vp}-{theme})" for g in look["gradients"]]
+            rec["accent"][theme] = _hex(look["accent"])
+            rec.setdefault("display", look["display"])
+            shot = shots / f"{_slug(name)}__{vp}-{theme}.png"
+            page.screenshot(path=str(shot), full_page=True)
+            rec["shots"][f"{vp}-{theme}"] = str(shot.relative_to(out))
+            ctx.close()
+
+    built = {n: p for n, p in per.items() if p["shots"]}
+    for p in built.values():
+        p["accent"] = "/".join(p["accent"].get(t) or "-" for t in THEMES)
+    looks: dict[str, list[str]] = {}
+    for n, p in built.items():
+        looks.setdefault(f"{p['display']} + {p['accent']}", []).append(n)
+    families = sorted({f for p in built.values() for f in p["families"]})
+    accents = sorted({p["accent"] for p in built.values()})
+    sheet = _report_sheet_png(browser, out, built, combos)
+    return {"sheet": sheet, "families": families, "accents": accents, "looks": looks, "reports": per,
+            "metrics": {"report_font_families": len(families), "report_accents": len(accents),
+                        "report_box_shadows": sum(len(p["shadows"]) for p in built.values()),
+                        "report_gradients": sum(len(p["gradients"]) for p in built.values()),
+                        "report_looks": len(looks)}}, findings
+
+
+def _report_sheet_png(browser, out: Path, built: dict, combos: list) -> str | None:
+    """One labelled tile per report, width and mode: a page of images, screenshotted."""
+    if not built:
+        return None
+    esc = html.escape
+    rows = []
+    for name, p in built.items():
+        tiles = "".join(
+            f"<figure><figcaption>{esc(name)} · {vp} · {theme}</figcaption>"
+            f"<div style='width:{REPORT_TILE[vp][0]}px;max-height:{REPORT_TILE[vp][1]}px'>"
+            f"<img src='{esc(p['shots'][f'{vp}-{theme}'])}'></div></figure>"
+            for vp, theme in combos if f"{vp}-{theme}" in p["shots"])
+        rows.append(f"<section><h2>{esc(name)} <span>{esc(p['display'] or '-')} · {esc(p['accent'])}"
+                    f"</span></h2><div class=row>{tiles}</div></section>")
+    page_html = out / "report-sheet.html"
+    page_html.write_text(f"""<!doctype html><meta charset=utf-8><title>Report sheet</title>
+<style>
+body{{font:13px/1.4 system-ui,sans-serif;margin:0;padding:16px;background:#e9ebef;color:#111}}
+section{{margin-bottom:20px}} h2{{font-size:15px;margin:0 0 6px}} h2 span{{font-weight:400;color:#556}}
+.row{{display:flex;gap:12px;align-items:flex-start}} figure{{margin:0}}
+figcaption{{font-size:11px;color:#556;margin-bottom:3px}}
+figure div{{overflow:hidden;border:1px solid #c5c9d2;background:#fff}} img{{width:100%;display:block}}
+</style>{''.join(rows)}""")
+    width = 32 + sum(REPORT_TILE[vp][0] + 12 for vp, _ in combos)
+    page = browser.new_page(viewport={"width": width, "height": 900})
+    page.goto(page_html.as_uri(), wait_until="load")
+    page.screenshot(path=str(out / "report-sheet.png"), full_page=True)
+    page.close()
+    return "report-sheet.png"
 
 
 def scope_findings(browser, base: str) -> list[dict]:
@@ -782,7 +957,8 @@ li.critical b{{color:#e5484d}} li.serious b{{color:#f76b15}} li.moderate b{{colo
 img{{height:260px;border:1px solid var(--bd);border-radius:6px;display:block}} figcaption{{font-size:11px;color:var(--mut)}}
 </style>
 <h1>UI audit — score {report['score']}</h1>
-<div class=sum>{esc(report['when'])} · {len(report['pages'])} pages · {summary or 'no findings'} · {esc(json.dumps(report['metrics']))}</div>
+<div class=sum>{esc(report['when'])} · {len(report['pages'])} pages · {summary or 'no findings'} · {esc(json.dumps(report['metrics']))}
+ · <a href='report-sheet.html'>every report, both modes and widths</a></div>
 {''.join(rows)}"""
 
 
@@ -802,6 +978,19 @@ def compare(report: dict, baseline_path: Path) -> list[dict]:
         if before is not None and after is not None and after > before * 1.02:
             new.append({"severity": "serious", "rule": f"metric:{key}", "page": "(metrics)",
                         "target": f"{before} → {after}"})
+    # The report pass: a project is one system. A new face, accent, shadow,
+    # gradient or look is a regression, not noise.
+    for key in ("report_font_families", "report_accents", "report_box_shadows",
+                "report_gradients", "report_looks"):
+        before, after = old.get("metrics", {}).get(key), report["metrics"].get(key)
+        if before is not None and after is not None and after > before:
+            new.append({"severity": "serious", "rule": f"metric:{key}", "page": "(reports)",
+                        "target": f"{before} → {after}"})
+    looks_before = old.get("report_pass", {}).get("looks")
+    for look, names in report.get("report_pass", {}).get("looks", {}).items():
+        if looks_before is not None and look not in looks_before:
+            new.append({"severity": "serious", "rule": "metric:report_looks", "page": "(reports)",
+                        "target": f"new look {look} ({', '.join(names)})"})
     for f in new:
         print(f"  NEW {f['severity']:9} {f['rule']:24} {f['page']}  {f['target']}")
     return new
@@ -838,6 +1027,8 @@ def main(argv=None) -> int:
     for f in report["findings"]:
         print(f"  {f['severity']:9} {f['rule']:24} {f['page'][:40]:40} {f['target'][:60]}")
     print(f"contact sheet: {out / 'index.html'}")
+    if report["report_pass"].get("sheet"):
+        print(f"report sheet: {out / report['report_pass']['sheet']}")
     if args.baseline:
         return 1 if compare(report, Path(args.baseline)) else 0
     return 0

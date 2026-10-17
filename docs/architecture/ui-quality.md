@@ -5,13 +5,33 @@ most of it and a reviewer can check the rest in ten minutes.
 
 `python scripts/ui_audit.py` serves the reference project, crawls every page
 it can reach in desktop and phone widths, light and dark, and writes
-`findings.json` plus a contact sheet of screenshots. Run it with
-`--baseline <old findings.json>` and any new finding fails the run: a fix can
-never quietly undo another. The open work lives in `ui-backlog.md`.
+`findings.json` plus a contact sheet of screenshots. It then opens every
+report as delivered (`/r/<name>`) at 1440 and 390 wide, light and dark, into
+one `report-sheet.png` (beside `findings.json`; `report-sheet.html` is the same
+tiles, browsable), and counts what makes a project look like more than one
+system. Run it with `--baseline <old findings.json>` and any new finding fails
+the run: a fix can never quietly undo another. The open work lives in
+`ui-backlog.md`.
+
+The baselines are committed: `ui-audit-baseline-reference.json` (the
+reference project) and `ui-audit-baseline-demo.json` (`--app
+tracebi.web.demo_app`), both in this folder. The sheets are not committed (they
+are megabytes); a run prints where it wrote them.
+
+```bash
+python scripts/ui_audit.py --out /tmp/a --baseline docs/architecture/ui-audit-baseline-reference.json
+python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
+    --baseline docs/architecture/ui-audit-baseline-demo.json
+```
+
+A change that fixes findings, or deliberately changes a count, commits the new
+`findings.json` over the baseline in the same change.
 
 ## How the loop works
 
-1. Audit (`--baseline` the last run), and look at the contact sheet.
+1. Audit (`--baseline` the committed baseline), and look at the contact
+   sheet. Before each release, look at the report sheet too: every report,
+   both modes, both widths, side by side.
 2. Take the top item in `ui-backlog.md`. Fix it in the smallest change that
    fixes it everywhere it occurs, not just on the page where it was seen.
 3. If the bug is a *kind* of bug, add a check for that kind to
@@ -68,6 +88,19 @@ Checked by the script (rule name in brackets):
   every surface a report puts text on.
 - **No colour tricks that break themes**: no `${colour}22` hex-alpha gluing
   `[hex-alpha-concat]`.
+- **Every report renders as delivered** `[report-unrendered]`, with no browser
+  error `[browser-error]`, laid out at the phone's own width
+  `[report-phone-layout]` and without sideways scrolling `[h-overflow]`.
+- **A project's reports are one system** `[metric:report_*]`, counted from the
+  rendered pages and never allowed to grow against the baseline:
+  `report_font_families` (the first family of the computed font on every
+  visible text node), `report_accents` (the computed `--tb-accent` light/dark
+  pair per report), `report_box_shadows` and `report_gradients` (elements with
+  a resting shadow that has blur or spread, or a gradient background or SVG
+  gradient; the chart tooltip, a menu or popover and the receipt drawer may
+  keep theirs), and `report_looks` (display face + accent; a look not in the
+  baseline fails the run even if the count does not grow). The target is one
+  look per project, plus a named bespoke example.
 
 Run it on both projects: the reference project, and the demo app
 (`--app tracebi.web.demo_app`: its own models, reports folder and pipelines,
@@ -137,3 +170,8 @@ Each fix that taught something general adds a line here.
   page's full width; its list is one click away.
 - Focus that sits inside a report's frame belongs to the element inside it, so
   the audit judges that element; the frame draws no ring of its own.
+- A phone is not a narrow desktop window. The Step 1 captures were taken at
+  390px in a desktop browser, where a page with no viewport meta still lays out
+  at 390; a phone lays it out at 980 and shrinks it, and only affordability
+  named one. The report pass opens reports as a phone does (`is_mobile`), and
+  the build now adds the meta to any page that lacks it.
