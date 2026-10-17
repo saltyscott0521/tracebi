@@ -64,7 +64,7 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.
 | ⓪ Input | `inputs/` | a raw pull: a CSV, an API export, a SQL dump | it doesn't; you put it there |
 | ① Transform | `transforms/` | pandas (a `.py` or `.ipynb`) that writes DuckDB tables | it doesn't; you run it with `tracebi run-transform` |
 | ② Model | `models/` | a `DataModel` in a variable named `model` | listed on the model's Overview, Model stage |
-| ③ Report | `reports/` | a package (`report.json` + `template.html`), or a JSON spec that compiles into one | listed on the model's Overview, Reports stage |
+| ③ Report | `reports/` | a package (`report.json` + an `app.jsx` dashboard or a `template.html` page), or a JSON spec that compiles into one | listed on the model's Overview, Reports stage |
 
 The warehouse is one file, `data/warehouse.duckdb`: phase ① writes it and phase
 ② reads it, so the two can run in separate processes. `output/` holds what

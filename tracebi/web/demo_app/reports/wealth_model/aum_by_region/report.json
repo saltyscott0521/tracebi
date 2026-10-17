@@ -1,0 +1,15 @@
+{
+  "name": "AUM by Region",
+  "author": "analyst",
+  "description": "Market value by the region of the branch that manages the account: an app (app.jsx) over the wealth model's declared measures.",
+  "data": {
+    "totals": {"model": "wealth_model", "query": {"fact": "fact_holdings",
+      "measures": ["market_value", "unrealized_gain", "gain_pct"]}},
+    "by_region": {"model": "wealth_model", "query": {"fact": "fact_holdings",
+      "measures": ["market_value", "unrealized_gain", "gain_pct"],
+      "dimensions": ["dim_branch.region"], "order_by": ["-market_value"]}},
+    "top_region": {"model": "wealth_model", "query": {"fact": "fact_holdings",
+      "measures": ["market_value"], "dimensions": ["dim_branch.region"],
+      "order_by": ["-market_value"], "limit": 1}}
+  }
+}

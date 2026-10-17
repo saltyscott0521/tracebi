@@ -87,7 +87,7 @@ The reference implementation ships in the repo at `examples/portfolio_project/`
 — a complete project with the same shape `tracebi init` scaffolds (plus its own
 `run_workflow.py` driver):
 `transforms/holdings_transform.py`, `models/portfolio_model.yaml`,
-`reports/portfolio_model/portfolio_dashboard.json`, driven by `run_workflow.py`. Full
+`reports/portfolio_model/portfolio_dashboard/`, driven by `run_workflow.py`. Full
 walkthrough: **[the three-phase workflow](docs/concepts/the-three-phase-workflow.md)**.
 
 Everything below hangs off this spine: the framework gives you the connectors

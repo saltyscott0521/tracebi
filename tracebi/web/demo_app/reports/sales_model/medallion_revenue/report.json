@@ -1,0 +1,19 @@
+{
+  "name": "Medallion Revenue Report",
+  "author": "TraceBi Demo",
+  "description": "Revenue from the Landing → Manipulation → Final pipeline: an app (app.jsx) over the model that reads the silver tables, with all orders and shipped orders as two views.",
+  "data": {
+    "totals": {"model": "sales_model", "query": {"fact": "fact_orders",
+      "measures": {"revenue": "sum", "qty": "sum", "cost": "sum"}}},
+    "by_region": {"model": "sales_model", "query": {"fact": "fact_orders",
+      "measures": {"revenue": "sum", "qty": "sum", "cost": "sum"},
+      "dimensions": ["dim_customer.region"], "order_by": ["-revenue"]}},
+    "shipped": {"model": "sales_model", "query": {"fact": "fact_orders",
+      "measures": {"revenue": "sum", "order_id": "count"},
+      "filters": {"status": "shipped"}}},
+    "shipped_by_segment": {"model": "sales_model", "query": {"fact": "fact_orders",
+      "measures": {"revenue": "sum", "order_id": "count"},
+      "dimensions": ["dim_customer.segment"], "filters": {"status": "shipped"},
+      "order_by": ["-revenue"]}}
+  }
+}

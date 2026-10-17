@@ -1,0 +1,34 @@
+{
+  "name": "Portfolio Dashboard",
+  "author": "workflow",
+  "description": "Fund holdings by sector, fund and issuer, on one screen: an app (app.jsx) whose every number is a kit figure, so the receipt names it. Edit app.jsx to reshape the page; nothing re-runs the pandas.",
+  "data": {
+    "totals": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings",
+                "measures": ["fair_value", "positions", "unrealized", "mark"]}
+    },
+    "by_sector": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings", "measures": ["fair_value"],
+                "dimensions": ["dim_issuer.sector"], "order_by": ["-fair_value"]}
+    },
+    "by_fund": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings", "measures": ["fair_value"],
+                "dimensions": ["dim_fund.fund"], "order_by": ["-fair_value"]}
+    },
+    "holdings": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings",
+                "measures": ["fair_value", "cost_basis", "unrealized", "mark", "positions"],
+                "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"],
+                "order_by": ["-fair_value"]}
+    },
+    "holdings_totals": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings",
+                "measures": ["fair_value", "cost_basis", "unrealized", "positions"]}
+    }
+  }
+}

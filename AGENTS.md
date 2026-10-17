@@ -25,7 +25,7 @@ materialized artifact handed across the boundary:
 
 Reference implementation, end to end, at `examples/portfolio_project/`:
 `transforms/holdings_transform.py` → `models/portfolio_model.yaml` →
-`reports/portfolio_model/portfolio_dashboard.json`, wired by `run_workflow.py`.
+`reports/portfolio_model/portfolio_dashboard/` (an `app.jsx` dashboard), wired by `run_workflow.py`.
 `docs/concepts/the-three-phase-workflow.md` is the full tour; read it first.
 
 A model is YAML by default: `models/<name>.yaml` (`tracebi new-model` writes a

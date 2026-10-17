@@ -103,16 +103,3 @@ def test_every_warning_names_a_lesson_that_exists():
         slug = re.search(r"tracebi knowledge (design-[a-z-]+)\)", w).group(1)
         assert get_lesson(slug) is not None, f"{slug} named by: {w}"
 
-
-@pytest.mark.parametrize("path", [
-    "examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json",
-])
-def test_the_reference_spec_follows_its_own_lessons(path):
-    """The spec people copy from must not trip the checks it teaches."""
-    import json
-    from pathlib import Path
-
-    raw = json.loads((Path(__file__).parents[1] / path).read_text())
-    spec = ReportSpec.from_dict(raw)
-    found = [w for w in spec.validate()["warnings"] if ": design — " in w]
-    assert not found, found

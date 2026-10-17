@@ -137,11 +137,12 @@ phase to the next):
 
    *— freeze: the model (the semantic contract) —*
 
-3. **REPORT** — `reports/`. A `ReportSpec` (JSON) pointed at the model —
-   KPI cards, charts, tables — where every figure is a live query. Because the
-   model is materialized, the page re-renders in milliseconds with no pandas in
-   the loop. Reference:
-   `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json`;
+3. **REPORT** — `reports/`. A report package pointed at the model (`report.json`
+   bindings plus an `app.jsx` dashboard or a `template.html` page) — KPI cards,
+   charts, tables — where every figure is a live query. Because the model is
+   materialized, the page re-renders in milliseconds with no pandas in the
+   loop. Reference:
+   `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/`;
    served in the web UI, on the model's Overview. `reports/` also holds template
    packages and
    `@register.report` factories — every report form lives in the one folder.
@@ -219,7 +220,7 @@ examples/
     transforms/        #   ① unconstrained pandas → sink star tables (holdings_transform.py)
     models/            #   ② the star-schema contract (portfolio_model.yaml)
     reports/           #   ③ organised BY MODEL — the folder is the model's name:
-                       #     portfolio_model/ (portfolio_dashboard.json spec,
+                       #     portfolio_model/ (portfolio_dashboard (app.jsx),
                        #     portfolio_desk (app.jsx), portfolio_book (editorial),
                        #     portfolio_overview, portfolio_concentration,
                        #     portfolio_showcase), housing_model/ (affordability)
@@ -647,12 +648,14 @@ registration seam (discovery uses it for packages and specs alike); what was
 removed is the fallback that rendered a factory with no package.
 
 ### New dashboard (phase ③)
-1. Add a `ReportSpec` `.json` under `reports/`, pointed at a model (grain +
-   measures it declares). Model this on the reference project's `reports/portfolio_model/portfolio_dashboard.json`.
-2. Every figure is a live query against the model — KPI cards, charts, tables. A
-   `metrics` section may carry a `data` query; a card whose `value` names a
-   measure reads it live from the one-row result rather than hard-coding it.
-3. Validate before running: `tracebi spec validate reports/<name>.json`. The
+1. `tracebi new-dashboard "Name"` writes `reports/<name>/`: `report.json`
+   bindings pointed at a model (grain + measures it declares) and an `app.jsx`.
+   Model this on the reference project's `reports/portfolio_model/portfolio_dashboard/`
+   (one screen) or `portfolio_desk/` (a sidebar of views).
+2. Every figure is a live query against the model — `<Kpi>`, `<Chart>`,
+   `<Table>` with literal binding and cell, so the receipt names each one.
+3. Build it: `tracebi report build <name>` (a JSON `ReportSpec` still works and
+   compiles with `tracebi migrate spec`; no shipped report uses one). The
    folder is auto-discovered and served in the app, on the model's Overview.
 
 ### New report as a template package (freeform HTML)
@@ -776,7 +779,7 @@ Don't add these unless asked.
 | Understand the three-phase workflow | `docs/concepts/the-three-phase-workflow.md` + `examples/portfolio_project/` |
 | Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.py` |
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.yaml` |
-| Build a dashboard | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json` |
+| Build a dashboard | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/` |
 | Build an app dashboard (React lane) | `tracebi new-dashboard` → `examples/portfolio_project/reports/portfolio_model/portfolio_desk/` + `docs/reference/app-jsx.md` |
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
 | See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing_model/affordability/` + `tracebi/reports/scenario.py` |

@@ -12,7 +12,7 @@ it is the worked version of that scaffold with real cleaning to do.
                           ── freeze: data/warehouse.duckdb ──
 ②  MODEL       models/portfolio_model.yaml         grain, keys, measures — the contract
                           ── freeze: the model ──
-③  REPORT      reports/portfolio_model/portfolio_dashboard.json   every figure a live query
+③  REPORT      reports/portfolio_model/portfolio_dashboard/       one-screen app, every figure a live query
                reports/portfolio_model/portfolio_desk/            an app people work in (app.jsx)
                reports/portfolio_model/portfolio_book/            an editorial report, its own CSS
                reports/portfolio_model/portfolio_overview/        default-component runtime package
@@ -50,9 +50,9 @@ every report in its folder.
 
 Under `reports/portfolio_model/`:
 
-- `portfolio_dashboard.json` — a governed `ReportSpec`;
-  validate it without running (`tracebi spec validate`), every figure
-  reproducible.
+- `portfolio_dashboard/` — the whole book on one screen, an app (`app.jsx`):
+  a KPI strip with a lead, sector and fund charts, and the holdings table with
+  search, a sector filter, a CSV download and a stamped total row.
 - `portfolio_model/portfolio_desk/` — the book as an app (`app.jsx`, the React
   lane): a sidebar with Overview, Holdings and Funds, a KPI strip with a lead, a
   watch list of the lowest marks, and a holdings list with search, sector and
