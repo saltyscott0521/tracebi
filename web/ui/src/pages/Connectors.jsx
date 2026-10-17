@@ -5,7 +5,7 @@ import { StorageLine, KIND_LABEL } from '../components/Storage'
 import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
 import Warehouse from '../components/Warehouse'
-import { pagePath } from '../nav'
+import { dataPath } from '../nav'
 import {
   Card, CardTitle, Badge, Btn,
   Empty, ListItem, SplitLayout, SearchInput, SkeletonList, SkeletonCard,
@@ -42,7 +42,7 @@ function ConnectorDetail({ c }) {
         {(c.used_by || []).length === 0
           ? <span style={{ color: 'var(--muted)', fontSize: 12.5 }}>No model reads from this connector.</span>
           : (c.used_by || []).map(m => (
-            <Link key={m} to={pagePath('model', m)} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
+            <Link key={m} to={dataPath(m, 'model')} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
           ))}
       </Section>
       {warehouse && <Section label="Warehouse"><Warehouse connector={c} /></Section>}

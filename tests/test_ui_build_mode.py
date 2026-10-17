@@ -63,7 +63,7 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             page = browser.new_page()
             page.set_default_timeout(60_000)
             # The page of a report nobody has built yet: building is a click, never a side effect of looking.
-            page.goto(f"{base}/m/saas_model/reports?r={report}&open=1")
+            page.goto(f"{base}/reports/{report}")
             page.get_by_role("button", name="Build it now").click()
             page.locator("iframe").wait_for()
             frame = page.frame_locator("iframe")
@@ -163,7 +163,7 @@ def test_build_mode_is_absent_unless_the_server_is_in_dev_mode(tmp_path: Path) -
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/m/saas_model/reports?r=saas_model/cohort_brief&open=1")
+            page.goto(f"{base}/reports/saas_model/cohort_brief")
             page.get_by_role("button", name="Share").wait_for()   # the page is up, and has asked what the server is
             page.wait_for_load_state("networkidle")
             assert page.get_by_role("button", name="Build", exact=True).count() == 0
@@ -182,7 +182,7 @@ def test_build_mode_is_absent_unless_the_server_is_in_dev_mode(tmp_path: Path) -
 
 
 def test_the_dev_app_url_opens_in_build_mode(tmp_path: Path) -> None:
-    """`tracebi dev <name> --app` opens /reports?r=<name>&build=1: the workbench is
+    """`tracebi dev <name> --app` opens /reports/<name>?build=1: the workbench is
     already beside the report, with nothing to click first."""
     from playwright.sync_api import sync_playwright
 
@@ -199,7 +199,7 @@ def test_the_dev_app_url_opens_in_build_mode(tmp_path: Path) -> None:
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/reports?r=saas_model%2Fcohort_brief&build=1")
+            page.goto(f"{base}/reports/saas_model/cohort_brief?build=1")
             page.locator(".wb-version", has_text="Opened").wait_for()
             assert page.get_by_role("button", name="Build", exact=True).get_attribute("aria-pressed") == "true"
             browser.close()
@@ -212,7 +212,7 @@ def test_the_dev_app_url_opens_in_build_mode(tmp_path: Path) -> None:
 def test_build_mode_shows_the_data_and_checks_and_the_project_feed(tmp_path: Path, monkeypatch) -> None:
     """What only the classic workbench page showed is in the app's panel (each binding
     with its size, and the checks), a note left there reaches the agent, and with no
-    report open the Reports page carries the agent's exhibits from the project feed."""
+    report open the Data page carries the agent's exhibits from the project feed."""
     import pandas as pd
     from playwright.sync_api import sync_playwright
 
@@ -232,7 +232,7 @@ def test_build_mode_shows_the_data_and_checks_and_the_project_feed(tmp_path: Pat
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/reports?r=saas_model%2Fcohort_brief&build=1")
+            page.goto(f"{base}/reports/saas_model/cohort_brief?build=1")
 
             def section(title: str):
                 return page.locator(".wb-section", has=page.locator(
@@ -258,7 +258,7 @@ def test_build_mode_shows_the_data_and_checks_and_the_project_feed(tmp_path: Pat
             monkeypatch.delenv("TRACEBI_WORKBENCH_DIR", raising=False)
             show(pd.DataFrame({"region": ["East", "West"], "revenue": [10.5, 20.5]}),
                  note="revenue by region", name="region_scan")
-            page.goto(f"{base}/reports")
+            page.goto(f"{base}/data")
             feed = page.locator(".wb--project")
             feed.get_by_text("region_scan").wait_for()
             assert "East" in feed.inner_text()

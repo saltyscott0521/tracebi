@@ -1,42 +1,37 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
-import { useHealth, useAppStatus, useModels, useMe, signOut } from '../api'
-import { pagePath, lastModel } from '../nav'
-import { ModelSwitcher, useScope, useOpenReport, NavMenuContext } from './Scope'
+import { useHealth, useAppStatus, useMe, signOut } from '../api'
+import { PAGES } from '../nav'
+import { useScope, useOpenReport, NavMenuContext } from './Scope'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
 const ICONS = {
-  overview: (
+  reports: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 13h7M9 17h5" />
+    </svg>
+  ),
+  ask: (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 5h16v11H9l-5 4z" /><path d="M10 9.5a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9M12 14h.01" />
+    </svg>
+  ),
+  data: (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <circle cx="4" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="20" cy="12" r="2" /><path d="M6 12h4M14 12h4" />
     </svg>
   ),
-  map: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="5" cy="6" r="2.5" /><circle cx="19" cy="6" r="2.5" /><circle cx="12" cy="18" r="2.5" /><path d="M7.5 6h9M6.5 8l4 8M17.5 8l-4 8" />
-    </svg>
-  ),
-  explore: (
+  review: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-11.707a1 1 0 00-1.111-.206l-4 1.714a1 1 0 00-.525.525l-1.714 4a1 1 0 001.317 1.317l4-1.714a1 1 0 00.525-.525l1.714-4a1 1 0 00-.206-1.111zM10 11a1 1 0 110-2 1 1 0 010 2z" clipRule="evenodd" />
+      <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
     </svg>
   ),
   workflow: (
     <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
       <path d="M3 4.5A1.5 1.5 0 014.5 3h2A1.5 1.5 0 018 4.5v2A1.5 1.5 0 016.5 8h-2A1.5 1.5 0 013 6.5v-2zM12 13.5a1.5 1.5 0 011.5-1.5h2a1.5 1.5 0 011.5 1.5v2a1.5 1.5 0 01-1.5 1.5h-2a1.5 1.5 0 01-1.5-1.5v-2z" />
       <path fillRule="evenodd" d="M6 8.5a.5.5 0 01.5.5v2a2 2 0 002 2h3a.5.5 0 010 1h-3a3 3 0 01-3-3V9a.5.5 0 01.5-.5z" clipRule="evenodd" />
-    </svg>
-  ),
-  drafts: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-    </svg>
-  ),
-  verify: (
-    <svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor">
-      <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
     </svg>
   ),
   docs: (
@@ -50,19 +45,6 @@ const ICONS = {
 // the Docs it links to are one entry, marked current on either (a plain link
 // would only mark its own path).
 const HELP_PATHS = ['/getting-started', '/handbook']
-
-/**
- * The model the sidebar's links are about: the one in the URL; on a page
- * outside the frame, the only model or the one you were last in.
- */
-function useSidebarModel() {
-  const { model, page } = useScope()
-  const { data } = useModels()
-  const names = (data || []).map(m => m.name)
-  if (page) return model
-  if (names.length === 1) return names[0]
-  return names.includes(lastModel()) ? lastModel() : ''
-}
 
 function SunIcon() {
   return (
@@ -176,11 +158,9 @@ export default function Layout({ children }) {
   const openerRef = useRef(null)
   const closeRef = useRef(null)
   const inHelp = HELP_PATHS.some(p => pathname.startsWith(p))
-  const model = useSidebarModel()
   const scope = useScope()
+  const place = PAGES.find(p => p.key === scope.page)
   const openReport = useOpenReport()
-  const { data: modelList } = useModels()
-  const multi = (modelList || []).length > 1
 
   // While the mobile menu is open, the page behind it stays put.
   useEffect(() => {
@@ -210,13 +190,8 @@ export default function Layout({ children }) {
   // The opener is the clicked button (a click does not focus a button in every browser).
   const openMenu = e => { openerRef.current = e?.currentTarget || document.activeElement; setOpen(true) }
 
-  const items = [
-    { path: pagePath('overview', model), label: 'Overview', icon: 'overview', active: scope.page === 'overview' },
-    { path: '/map', label: 'Map', icon: 'map', active: pathname.startsWith('/map') },
-    { path: pagePath('explore', model), label: 'Explore', icon: 'explore', active: scope.page === 'explore' },
-    { path: '/drafts', label: 'Drafts', icon: 'drafts', active: pathname.startsWith('/drafts') },
-    { path: '/verify', label: 'Verify a file', icon: 'verify', active: pathname.startsWith('/verify') },
-  ]
+  // The four places. Each marks itself current on every page inside it.
+  const items = PAGES.map(p => ({ path: p.path, label: p.label, icon: p.key, active: scope.page === p.key }))
 
   return (
     <div style={openReport ? undefined : { display: 'flex', minHeight: '100vh' }}
@@ -232,15 +207,10 @@ export default function Layout({ children }) {
         alignItems: 'center', justifyContent: 'space-between', padding: '0 16px',
         zIndex: 200,
       }}>
-        {/* On a phone the switcher is in the drawer, so the header says which
-            model every page is about. */}
+        {/* On a phone the header says which of the four places you are in. */}
         <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           TraceBi
-          {multi && (
-            <button type="button" className="mobile-header__model" onClick={() => setOpen(true)}>
-              {model || 'All models'}
-            </button>
-          )}
+          {place && <span className="mobile-header__place">{place.label}</span>}
         </span>
         <button onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} style={{
           background: 'none', border: 'none', cursor: 'pointer',
@@ -331,13 +301,10 @@ export default function Layout({ children }) {
               borderRadius: 3, color: 'var(--sidebar-text)',
             }}>⌘K</kbd>
           </button>
-          <ModelSwitcher model={model} onNavigate={close} />
         </div>
 
-        {/* Overview and Explore are about the picked model (all models: the
-            Overview lists them); the Map is every model, the picked one's band
-            tinted; Drafts and Verify a file are about no one model: a file can
-            come from anywhere. */}
+        {/* Reports (the library), Ask, Data and Review. A model is a filter
+            inside a place, not the frame of the app. */}
         <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: '12px 0 4px' }}>
           {items.map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
         </ul>

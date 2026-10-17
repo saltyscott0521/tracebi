@@ -68,9 +68,9 @@ function duration(start, end) {
   return `${h}h ${m % 60}m`
 }
 
-function reportPage(run, models) {
+function reportPage(run) {
   if (!run.target || !REPORT_KINDS.has(run.kind)) return null
-  return reportPagePath(run.target, models)
+  return reportPagePath(run.target)
 }
 
 // A filesystem path is not a URL the app serves. A report run's file is
@@ -104,11 +104,12 @@ function runModels(run, modelsOf, pipelineModelsOf) {
   return []
 }
 
-export default function Runs({ model = '' }) {
-  // The owner alert links here as /runs?kind=schedule&target=<report>.
-  // The filters are that query string, so the link arrives already selected
-  // and a change stays in the URL.
+export default function Runs() {
+  // The owner alert links here as /runs?kind=schedule&target=<report>, and a
+  // model's line as /runs?model=<model>. The filters are that query string, so
+  // the link arrives already selected and a change stays in the URL.
   const [searchParams, setSearchParams] = useSearchParams()
+  const model = searchParams.get('model') || ''
   const kind = searchParams.get('kind') || ''
   const target = searchParams.get('target') || ''
   const setFilter = (key, value) => {
@@ -203,7 +204,7 @@ export default function Runs({ model = '' }) {
               {runs.map(run => {
                 const models = runModels(run, modelsOf, pipelineModelsOf)
                 const verdict = runVerdict(run, latestBuild, checks)
-                const page = reportPage(run, models)
+                const page = reportPage(run)
                 const output = outputHref(run)
                 const dur = duration(run.started, run.finished)
                 return (

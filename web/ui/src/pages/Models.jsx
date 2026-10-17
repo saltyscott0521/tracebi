@@ -6,11 +6,12 @@ import '@xyflow/react/dist/style.css'
 import { StorageLine, KIND_LABEL } from '../components/Storage'
 import { buildModelGraph, measureDefinition, MEASURE_KINDS, summary } from '../components/modelGraph'
 import {
-  useModels, useModel, useTablePreview, useDesk, useReports, usePipelines, tableCsvUrl,
+  useModels, useModel, useTablePreview, useDesk, useReports, usePipelines, useAppStatus, tableCsvUrl,
 } from '../api'
 import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
-import { pagePath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import { ProjectFeed } from '../components/Workbench'
+import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 import {
   Card, Badge, Spinner, Empty, Tabs, SkeletonList, SkeletonCard,
 } from '../components/Shared'
@@ -478,17 +479,20 @@ export function ModelDetail({ name }) {
 // ── All models: pick one ─────────────────────────────────────────────────────
 
 /**
- * The all-models view of a page that is always about one model (Overview,
- * Explore): the models, each opening that page for itself.
+ * The models, each opening *pageKey* for itself: its line on Data
+ * ('data'), or Ask with it picked ('ask').
  */
-export default function Models({ pageKey = 'overview' }) {
+export default function Models({ pageKey = 'data' }) {
   const { data, isLoading } = useModels()
   const { data: reports } = useReports()
   const { data: pipelines } = usePipelines()
   const [params] = useSearchParams()
+  const open = pageKey === 'ask' ? askPath : dataPath
+  const { data: appStatus } = useAppStatus()
+  const dev = !!appStatus?.build_mode
   // Old links: /models?m=<model>, /explore?model=<model>.
   const legacy = params.get('m') || params.get('model')
-  if (legacy) return <Navigate to={pagePath(pageKey, legacy)} replace />
+  if (legacy) return <Navigate to={open(legacy)} replace />
 
   const models = data || []
   const reportCount = name => (reports || []).filter(r => reportBelongsToModel(r, name)).length
@@ -497,7 +501,7 @@ export default function Models({ pageKey = 'overview' }) {
   return (
     <>
       <PageHeader pageKey={pageKey} model=""
-        sub={pageKey === 'explore' ? 'Explore asks one model at a time. Pick one.' : undefined} />
+        sub={pageKey === 'ask' ? 'Ask asks one model at a time. Pick one.' : undefined} />
       {isLoading ? <SkeletonList /> : models.length === 0 ? (
         <Empty icon="⬡" message="No models yet. Create one with tracebi new-model, in models/." />
       ) : (
@@ -505,8 +509,8 @@ export default function Models({ pageKey = 'overview' }) {
           {models.map((m, i) => {
             const n = reportCount(m.name)
             return (
-              <Link key={m.name} to={pagePath(pageKey, m.name)} className="model-card rise" style={{ '--i': i }}>
-                <span className="model-card__name">{m.name}</span>
+              <Link key={m.name} to={open(m.name)} className="model-card rise" style={{ '--i': i }}>
+                <span className="model-card__name">{m.label || m.name}</span>
                 <span className="model-card__shape">
                   {m.facts
                     ? `${m.facts.length} fact${m.facts.length !== 1 ? 's' : ''} · ${m.dimensions.length} dimension${m.dimensions.length !== 1 ? 's' : ''} · ${m.measures.length} measures`
@@ -521,6 +525,9 @@ export default function Models({ pageKey = 'overview' }) {
           })}
         </div>
       )}
+      {/* In dev mode (`tracebi dev`) the agent's exhibits and your notes to it
+          are on Data, before any report exists. */}
+      {pageKey === 'data' && dev && <ProjectFeed />}
     </>
   )
 }

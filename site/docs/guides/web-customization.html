@@ -214,7 +214,7 @@ your peril):</p>
 <tr>
 <td><code>models/</code></td>
 <td><code>model = DataModel(...)</code> variable</td>
-<td>the model's <strong>Overview</strong> (Model stage) + <strong>Explore</strong></td>
+<td>the model's <strong>Data</strong> page (Model stage) + <strong>Ask</strong></td>
 </tr>
 <tr>
 <td><code>pipelines/</code></td>
@@ -246,12 +246,12 @@ your peril):</p>
 <tr>
 <td>Connector</td>
 <td><code>registry.add_connector(conn)</code></td>
-<td>the <strong>Sources</strong> list (<code>/sources</code>)</td>
+<td>the <strong>Sources</strong> list (<code>/data/sources</code>)</td>
 </tr>
 <tr>
 <td>Model</td>
 <td><code>registry.add_model(model, default=False)</code></td>
-<td>the <strong>model switcher</strong>, the model's <strong>Overview</strong> (its Model stage) + <strong>Explore</strong></td>
+<td>a model chip on <strong>Reports</strong>, the model's <strong>Data</strong> page (its Model stage) + <strong>Ask</strong></td>
 </tr>
 <tr>
 <td>Report</td>
@@ -271,8 +271,8 @@ your peril):</p>
 </tbody>
 </table>
 <p><strong>History</strong> is not a folder. It reads <code>GET /api/runs</code>: what ran, when,
-for whom, and whether it reproduced. Like every page under the model
-switcher, it narrows to the picked model.</p>
+for whom, and whether it reproduced. It lives under <strong>Review</strong>;
+<code>/runs?model=&lt;model&gt;</code> narrows it to one model.</p>
 <h2 id="step-3-the-development-loop">Step 3: The development loop</h2>
 <pre><code class="language-bash">python -m tracebi.web.run                       # uvicorn with hot-reload, port 8000
 python -m tracebi.web.run --port 9000           # different port
@@ -295,7 +295,7 @@ npm run build    # writes tracebi/web/ui/dist/ — FastAPI serves it at / when p
 <pre><code>api.js               # all API hooks (React Query) — one hook per endpoint
 components/
   Layout.jsx         # sidebar, theme toggle, ⌘K trigger
-  Scope.jsx          # model switcher, page header, all-models / one-model routes
+  Scope.jsx          # page header, one-model routes, redirects from old addresses
   Shared.jsx         # Card, Badge, Btn, Tabs, toasts, skeletons…
   Lineage.jsx        # React Flow lineage graph renderer
   CommandPalette.jsx # ⌘K navigation
@@ -307,14 +307,16 @@ styles/global.css    # ALL design tokens — start here for theming
 dark under <code>[data-theme="dark"]</code>. To rebrand, edit the tokens (<code>--blue</code>,
 <code>--bg</code>, <code>--card</code>, the <code>--op-*</code> lineage-node palette) — components never
 hard-code colors. The brand gradient is <code>--brand</code>.</p>
-<p><strong>Adding a nav page:</strong> a page that is about a model goes in <code>PAGES</code> in
-<code>nav.js</code> (it gets <code>/m/&lt;model&gt;/&lt;page&gt;</code> and an all-models <code>/&lt;page&gt;</code>) with both
-routes in <code>App.jsx</code>, and takes a <code>model</code> prop (<code>''</code> means all models); the
-sidebar's links are listed in <code>Layout.jsx</code>. A model's Overview
-(<code>pages/Overview.jsx</code>, the line in <code>components/TheLine.jsx</code>) is one page with
-three stages (<code>transform</code>, <code>model</code>, <code>reports</code>), each with an address of its own.
-A page about no one model is linked from <code>Layout.jsx</code> the same way. Use the hooks
-in <code>api.js</code> for data and the primitives in <code>Shared.jsx</code> for visual
+<p><strong>Adding a nav page:</strong> the sidebar is four places, <code>PAGES</code> in <code>nav.js</code>
+(Reports <code>/</code>, Ask <code>/ask</code>, Data <code>/data</code>, Review <code>/review</code>), drawn by
+<code>Layout.jsx</code>. A new page lives inside one of them: give it a route in
+<code>App.jsx</code> under that place's address and teach <code>whereAmI</code> in <code>nav.js</code> which
+place it belongs to, so its sidebar entry reads as current. A model is a
+filter, not a frame: pass it in the query (<code>?model=&lt;name&gt;</code>) or, on Data, the
+path (<code>/data/&lt;model&gt;/&lt;stage&gt;</code>; <code>pages/Overview.jsx</code>, the line in
+<code>components/TheLine.jsx</code>, three stages <code>transform</code>, <code>model</code>, <code>reports</code>). An
+address that moves gets an entry in <code>movedTo</code> so old links keep working. Use
+the hooks in <code>api.js</code> for data and the primitives in <code>Shared.jsx</code> for visual
 consistency.</p>
 <h2 id="step-5-extend-the-api">Step 5: Extend the API</h2>
 <p>New endpoints follow one pattern: a router file under

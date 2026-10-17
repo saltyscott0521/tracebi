@@ -2,15 +2,15 @@ import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 
-import { useMe, useStartPipelineRun } from '../api'
+import { useAppStatus, useMe, useStartPipelineRun } from '../api'
 import TheLine, { Breakable, stamp, since, useLineFacts } from '../components/TheLine'
 import Warehouse from '../components/Warehouse'
 import EditAsDraft from '../components/EditAsDraft'
 import { ModelDetail } from './Models'
 import Pipelines from './Pipelines'
-import Reports, { ReportPage } from './Reports'
-import { useOpenReport } from '../components/Scope'
-import { pagePath } from '../nav'
+import { ReportsStage } from './Reports'
+import { ProjectFeed } from '../components/Workbench'
+import { dataPath, historyPath } from '../nav'
 import { Btn, Card, Spinner, useToast } from '../components/Shared'
 
 // What changed on the line when a run ends: every stage may read differently.
@@ -90,6 +90,8 @@ function ModelPage({ model, stage }) {
   const facts = useLineFacts(model)
   const { transform } = facts
   const { data: me } = useMe()
+  const { data: appStatus } = useAppStatus()
+  const dev = !!appStatus?.build_mode
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
@@ -119,12 +121,12 @@ function ModelPage({ model, stage }) {
     <div className="overview">
       <header className="overview__head">
         <div className="overview__id">
-          <div className="overview__cap">Overview</div>
+          <div className="overview__cap">Data</div>
           <h1 className="overview__title"><Breakable name={model} /></h1>
           <p className="overview__sub">
             {facts.description && <>{facts.description} </>}
             {refreshed && <span className="overview__muted">{refreshed} </span>}
-            <Link to={pagePath('runs', model)}>History</Link>
+            <Link to={historyPath(model)}>History</Link>
           </p>
         </div>
         {me?.role === 'admin' && transform.pipeline && (
@@ -149,14 +151,14 @@ function ModelPage({ model, stage }) {
             {transform.failure ? ' at its sink contract' : ''}.
           </strong>
           {transform.failure && facts.builtCount > 0 && <span>The built reports were made from the tables it replaced.</span>}
-          {stage !== 'transform' && <Link to={pagePath('transform', model)}>See why</Link>}
+          {stage !== 'transform' && <Link to={dataPath(model, 'transform')}>See why</Link>}
         </p>
       )}
 
       <TheLine model={model} stage={stage} line={facts.line} />
 
       <section className="stage" aria-label={STAGE_LABEL[stage]}>
-        {stage === 'reports' && <Reports model={model} embedded />}
+        {stage === 'reports' && <ReportsStage model={model} />}
         {stage === 'model' && (
           <>
             <div className="stage__actions"><EditAsDraft kind="models" path={model} /></div>
@@ -165,12 +167,12 @@ function ModelPage({ model, stage }) {
         )}
         {stage === 'transform' && <TransformStage model={model} facts={facts} />}
       </section>
+      {/* In dev mode (`tracebi dev`) what the agent shows you while it works on
+          the transform and the model, and your notes to it, are here, even
+          before a report exists. */}
+      {dev && <ProjectFeed />}
     </div>
   )
 }
 
-// A report opened from the Reports stage is a page of its own, not part of this one.
-export default function Overview(props) {
-  const open = useOpenReport()
-  return open ? <ReportPage name={open.name} model={open.model} /> : <ModelPage {...props} />
-}
+export default ModelPage

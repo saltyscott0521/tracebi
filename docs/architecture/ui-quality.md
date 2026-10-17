@@ -48,8 +48,9 @@ Checked by the script (rule name in brackets):
   any page `[browser-error]`. No blank page `[blank-page]`, no raw
   `undefined` / `NaN` / traceback shown to a reader `[raw-garbage]`, no
   "not found" except on a page that does not exist `[not-found]`.
-- **You always know where you are.** Exactly one sidebar entry is marked
-  as the current page `[nav-you-are-here]`. Exactly one `h1`, naming the
+- **You always know where you are.** Exactly one sidebar entry (one of the
+  four places, or Help; on an open report, the rail's) is marked as the
+  current page `[nav-you-are-here]`. Exactly one `h1`, naming the
   page `[one-h1]`.
 - **Everything works from a keyboard.** Anything that looks clickable is a
   link or a button `[click-not-keyboard]`. Focus is always visible
@@ -67,9 +68,10 @@ Checked by the script (rule name in brackets):
 - **It is quick.** Every page settles within 2.5s on the reference project
   `[slow-page]`. The JS bundle and the count of hard-coded colours never grow
   against the baseline `[metric:*]`.
-- **Picking a model shows exactly what belongs to it**: each model's Reports
-  and Sources list what the API says it owns `[scope-mismatch]`; every model a
-  report reads is one the switcher lists `[report-model-unlisted]`; nothing
+- **Picking a model shows exactly what belongs to it**: the library filtered
+  to a model (`/?model=<m>`) lists what the API says it owns
+  `[scope-mismatch]`; every model a report reads is one the model chips list
+  `[report-model-unlisted]`; nothing
   appears or vanishes while the audit runs `[registry-drift]`.
 - **No model is a dead end**: every model has at least one report
   `[model-without-reports]`. (The live demo showed three models with none:
@@ -111,8 +113,9 @@ Checked by eye, from the contact sheet:
 - **One idea per page.** The title says what the page is, the subtitle says
   what to do on it, in words a reader uses (no "sink", "contract",
   "connector" unless the page explains them).
-- **The model is the frame.** With more than one model, every list says
-  which model each row belongs to, and the model switcher narrows every page.
+- **The model is a filter, not the frame.** Four places (Reports, Ask, Data,
+  Review); with more than one model, the library groups reports under their
+  model's name and a chip narrows it to one.
 - **Hierarchy is visible.** The first thing the eye lands on is the thing
   the page is for. Secondary things are quieter, not merely smaller.
 - **Empty states teach.** An empty list says what would fill it and how

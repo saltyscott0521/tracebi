@@ -59,7 +59,7 @@ export function modelReadout({ name, info, a, sel, builds }) {
         asked.length ? `Asks ${name} for ${asked.join(', ')}.${read}` : `Asks ${name} for no declared measure.`,
         state ? (state.detail || (state.tone === 'ghost' ? 'It has not been built yet.' : '')) : '',
       ].filter(Boolean).join(' '),
-      open: reportPagePath(sel.id, [name]),
+      open: reportPagePath(sel.id),
     }
   }
   const unused = a.declared.filter(m => a.usedBy(m).length === 0).length

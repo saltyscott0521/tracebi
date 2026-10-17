@@ -38,9 +38,10 @@ Recorded in the committed audit baselines, not caused by Step 1 (which touched
 no app code), to retriage with Step 2's library and report page (R-1, R-4):
 
 13. **App crawl findings since the 2026-10-13 Reports page**: `scope-mismatch`
-    (a model's Reports list reads empty to the audit, which looks for
-    `.list-item__name`; the rows are `button.rrow` now), `nav-you-are-here` on
-    `/reports`, `blank-page` / `one-h1` / `small-target` on an open report,
+    and `nav-you-are-here` were the audit's selectors (R-1: it now reads the
+    library's `[data-report]` rows at `/?model=<m>` and counts the rail's
+    current entry on an open report; the committed baselines still name the
+    old addresses until the next run), `blank-page` / `one-h1` / `small-target` on an open report,
     `no-focus-ring` into the report frame, eleven `slow-page`, and the
     segmented bar's `repeating-linear-gradient` (`global.css:1188`,
     `theme-decoration`). Some are the audit's selectors, some the app.

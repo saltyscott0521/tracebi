@@ -6,7 +6,7 @@ import '@xyflow/react/dist/style.css'
 import { usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
 import RunLog, { RunList } from '../components/RunLog'
 import CodeView from '../components/CodeView'
-import { pipelineModels, pipelineBelongsToModel } from '../nav'
+import { pipelineBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Spinner,
   Empty, Btn, Tabs, SkeletonCard, useToast,
@@ -192,7 +192,7 @@ function LayerHistory({ pipeline, layer }) {
   )
 }
 
-export function PipelineDetail({ pipeline, layers, models = [] }) {
+export function PipelineDetail({ pipeline, layers }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
@@ -332,7 +332,7 @@ export function PipelineDetail({ pipeline, layers, models = [] }) {
       {tab === 'Runs' && (
         <div className="fade-in">
           {runs?.length > 0 && <RunList runs={runs} runId={shownRun} onPick={setPicked} />}
-          <RunLog pipeline={pipeline} runs={runs} runId={shownRun} models={models} onDone={finished} />
+          <RunLog pipeline={pipeline} runs={runs} runId={shownRun} onDone={finished} />
         </div>
       )}
 
@@ -360,7 +360,7 @@ export default function Pipelines({ model }) {
   }
   return pipelines.map(p => (
     <div key={p.pipeline} style={{ marginBottom: 16 }}>
-      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} models={pipelineModels(p)} />
+      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} />
     </div>
   ))
 }

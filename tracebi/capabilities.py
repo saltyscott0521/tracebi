@@ -1507,7 +1507,7 @@ def describe(brief: bool = False) -> dict:
             "http": "GET /api/workbench/project, POST /api/workbench/project/note "
                     "(only when the server runs with TRACEBI_DEV_MODE=1)",
             "what": "Before a report is open, `tracebi dev` opens the app on "
-                    "Reports and the human sees your show() exhibits there "
+                    "Data and the human sees your show() exhibits there "
                     "(From your agent) and leaves notes. While it is up any "
                     "script in the project can call tracebi.workbench.show() "
                     "with no setup. Your gateway work posts there too: each "

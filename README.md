@@ -324,7 +324,7 @@ keep the rest of TraceBi as the data layer.
 tracebi init my_project                              # scaffold a full three-phase project (inputs → transform → model → report)
 tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (artifact package)
 tracebi dev portfolio_book                           # live loop in the app: Build mode on that report (:8001)
-tracebi dev                                          # no name: the app's Reports list, where your agent's exhibits land (phases ①/②)
+tracebi dev                                          # no name: the app's Data page, where your agent's exhibits land (phases ①/②)
 tracebi dev portfolio_book --classic                 # the old stdlib preview + /__workbench page (fallback)
 tracebi session export --format md                   # save the session → explorations/ (lab-notebook record)
 tracebi context --brief                              # token-lean vocabulary for agents (~44% of full)
@@ -361,7 +361,7 @@ http://127.0.0.1:8001 (loopback only). The report re-renders every time you
 save the package; the panel beside it lists what changed, the data each
 binding reads, and checks (figures with no data behind them, bindings nothing
 reads, numbers typed outside figures). Click a figure to point at it, or leave
-your agent a note. With no name it opens the app's Reports list, where what your
+your agent a note. With no name it opens the app's Data page, where what your
 agent shows you appears before any report exists. Keep it next to your editor
 for a tight authoring loop. `--classic` serves the older stdlib preview and
 its `/__workbench` page instead, and is what runs when the `web` extra is not
@@ -647,13 +647,18 @@ nothing.
 
 A browser interface over your TraceBi registry — connectors, models, reports, and pipelines all in one place. Highlights:
 
-- **Explore** — a visual star-schema query builder: pick a fact, toggle
+The sidebar has four places: **Reports** (the library, where the app opens:
+every report by folder, each with its verdict, built time and schedule,
+narrowed to a model by a chip), **Ask**, **Data** and **Review**. Older
+addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them.
+
+- **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
   chart, CSV download, and the *lineage graph of the exact query that ran*.
-- **Model** — a model's Overview, Model stage: table previews with column dtypes
+- **Model** — a model's Data page, Model stage: table previews with column dtypes
   and full-table CSV export,
   plus an interactive ERD of its facts and dimensions.
-- **Reports** — a model's Overview, Reports stage: the list, and beside it the last
+- **Reports** — the library opens a report at `/reports/<name>`; a model's Data page, Reports stage, lists its reports beside the last
   build of the report you picked (Preview) or the files that define it (Config); a
   report with no build says so and offers **Build it now**. **Open** gives a report the
   whole page: the app's nav is a slim icon rail on the left, and a breadcrumb leads
@@ -667,12 +672,12 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
   schedule and files. **Lineage** shows where each number came from, **History** lists
   the past builds, and **Code** shows the report's files, read-only. Failures show the
   full Python traceback.
-- **Transform** — a model's Overview, Transform stage: the medallion chain as a live DAG
-  with per-layer run buttons and run history. **Refresh data** (admin), in the Overview's
+- **Transform** — a model's Data page, Transform stage: the medallion chain as a live DAG
+  with per-layer run buttons and run history. **Refresh data** (admin), in the Data page's
   header, runs the whole pipeline.
-- **Map** — every model as one picture: transform → warehouse → model → reports. Open a
+- **Map** (`/data/map`) — every model as one picture: transform → warehouse → model → reports. Open a
   model to see its measures and the reports that use them.
-- **History** — what ran, when, for whom, and whether it reproduced. A report
+- **History** (under **Review**) — what ran, when, for whom, and whether it reproduced. A report
   run links to the report, and a refresh names its model. A report's newest
   build shows the same verdict as the report's own page; every older build reads
   "Not checked". Only a `reproduces` verdict reads green.

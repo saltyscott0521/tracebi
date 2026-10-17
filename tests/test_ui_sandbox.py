@@ -88,7 +88,7 @@ def test_a_report_script_cannot_reach_the_app_it_is_shown_in(tmp_path: Path) -> 
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/m/saas_model/reports?r={report}&open=1")
+            page.goto(f"{base}/reports/{report}")
             page.get_by_role("button", name="Build it now").click()
             page.locator("iframe").wait_for()
 

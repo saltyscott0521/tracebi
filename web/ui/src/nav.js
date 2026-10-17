@@ -1,75 +1,93 @@
-// The app's frame: a model switcher, and beneath it the pages of one model.
-// Pick a model and every page narrows to it; pick "All models" and the
-// Overview lists the models, and every row says which model it belongs to.
+// The app's frame: four places, each for one job.
 //
-//   /m/<model>             Overview, Reports stage    /models   (all: pick a model)
-//   /m/<model>/reports     Overview, Reports stage    /reports
-//   …/reports?r=<name>     that report picked beside the list (its preview); &open=1 opens it
-//                          as a page of its own (on /reports, ?r= alone opens it)
-//   /m/<model>/model       Overview, Model stage
-//   /m/<model>/transform   Overview, Transform stage
-//   /m/<model>/explore     Explore                    /explore  (all: pick a model)
-//   /m/<model>/runs        History                    /runs
+//   Reports  /                  the library: every report, by folder; ?model=<m> filters it
+//            /reports/<name>    one report as a page of its own (<name> is folder/slug)
+//   Ask      /ask               a question of one model; ?model=<m> picks it
+//   Data     /data              the models; /data/<m> one model's line, with its three
+//                               stages at /data/<m>/transform|model|reports;
+//                               /data/map every model as one picture; /data/sources
+//   Review   /review            drafts and publish requests; /drafts, /runs (History)
+//                               and /verify (Verify a file) are part of it
 //
-// The Overview is "the line": ① transforms/ → ② models/ → ③ reports/, one stage
-// shown at a time, each with an address of its own. /m/<model>/refresh and
-// /m/<model>/sources are old addresses of the Transform stage.
+// Every older address (/models, /m/<model>/…, /explore, /sources, /map,
+// /reports?r=<name>) redirects into these (see Moved in components/Scope.jsx),
+// keeping its query.
 //
-// The convention that ties them (and what model_pipeline stamps): the model
-// file models/<model>.py, its pipeline pipelines/<model>.py, its reports
-// under reports/<model>/.
+// The convention that ties a model to its reports (and what model_pipeline
+// stamps): the model file models/<model>.py, its pipeline pipelines/<model>.py,
+// its reports under reports/<model>/.
 
-// Every addressable page. `all` is where it lives with no model picked; the
-// stages of the Overview have no all-models page of their own, so they open
-// the list of models.
 export const PAGES = [
-  { key: 'overview',  label: 'Overview',  all: '/models',
-    sub: 'The tables a model reads, the numbers it names, and the reports that show them. Pick a model.' },
-  { key: 'reports',   label: 'Reports',   all: '/reports',
+  { key: 'reports', label: 'Reports', path: '/',
     sub: 'What people read. Every number carries its receipt.' },
-  { key: 'model',     label: 'Model',     all: '/models',
-    sub: 'Its tables, how they join, and the measures it defines.' },
-  { key: 'transform', label: 'Transform', all: '/models',
-    sub: 'Rebuild the data, then the reports that read it.' },
-  { key: 'explore',   label: 'Explore',   all: '/explore',
-    sub: 'Ask a question and see the query behind the answer.' },
-  { key: 'sources',   label: 'Sources',   all: '/sources',
-    sub: 'Where the data is kept: a file, a folder or a database.' },
-  { key: 'runs',      label: 'History',   all: '/runs',
-    sub: 'What ran, when, for whom, and whether it reproduced.' },
+  { key: 'ask',     label: 'Ask',     path: '/ask',
+    sub: 'Ask a model a question and see the query behind the answer.' },
+  { key: 'data',    label: 'Data',    path: '/data',
+    sub: 'How the numbers are made: each model, the transform that feeds it, and where the data is kept.' },
+  { key: 'review',  label: 'Review',  path: '/review',
+    sub: 'What waits on a person: drafts and requests to publish, what ran, and checking a file.' },
 ]
 
-// The three stations of the Overview's line, in the order a number is made.
+// Pages inside a place that keep a heading of their own until Steps 3 and 4
+// rebuild them.
+const INNER = [
+  { key: 'runs',    label: 'History', sub: 'What ran, when, for whom, and whether it reproduced.' },
+  { key: 'sources', label: 'Sources', sub: 'Where the data is kept: a file, a folder or a database.' },
+]
+
+// The three stations of a model's line, in the order a number is made.
 export const STAGES = ['transform', 'model', 'reports']
 
-export const page = key => PAGES.find(p => p.key === key)
+export const page = key => PAGES.find(p => p.key === key) || INNER.find(p => p.key === key)
 
-/** Where *pageKey* lives for *model* ('' = all models). */
-export function pagePath(pageKey, model) {
-  if (!model) return page(pageKey).all
-  const base = `/m/${encodeURIComponent(model)}`
-  return pageKey === 'overview' ? base : `${base}/${pageKey}`
+const qs = params => {
+  const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v))
+  return q.toString() ? `?${q}` : ''
 }
 
+/** The library, narrowed to *model* when one is given. */
+export const libraryPath = (model = '') => `/${qs({ model })}`
+
+/** Ask, with *model* picked when one is given. */
+export const askPath = (model = '') => `/ask${qs({ model })}`
+
+/** Data: the models; one model's line; or one stage of it. */
+export function dataPath(model = '', stage = '') {
+  if (!model) return '/data'
+  const base = `/data/${encodeURIComponent(model)}`
+  return stage ? `${base}/${stage}` : base
+}
+
+/** History, narrowed to *model* when one is given. */
+export const historyPath = (model = '') => `/runs${qs({ model })}`
+
+const PLACE_OF = [
+  [/^\/(reports(\/.*)?)?$/, 'reports'],
+  [/^\/ask$/, 'ask'],
+  [/^\/data(\/.*)?$/, 'data'],
+  [/^\/(review|drafts|runs|verify)(\/.*)?$/, 'review'],
+]
+
 /**
- * Which page and model a pathname is, or null for pages outside the frame.
- * A stage of the Overview is that page, with `stage` saying which one.
+ * Which place a pathname is in ({page, model, stage}), or null for pages
+ * outside the four (Help, an unknown address). On Data, `model` and `stage`
+ * say which model's line and which of its stages.
  */
 export function whereAmI(pathname) {
-  const scoped = pathname.match(/^\/m\/([^/]+)(?:\/([^/]+))?\/?$/)
-  if (scoped) {
-    const model = decodeURIComponent(scoped[1])
-    const key = scoped[2] || 'reports'
-    if (STAGES.includes(key)) return { model, page: 'overview', stage: key }
-    return ['explore', 'runs'].includes(key) ? { model, page: key, stage: null } : null
+  const path = pathname.replace(/(.)\/+$/, '$1')
+  const hit = PLACE_OF.find(([re]) => re.test(path))
+  if (!hit) return null
+  const scoped = hit[1] === 'data' && path.match(/^\/data\/([^/]+)(?:\/([^/]+))?$/)
+  if (scoped && !['map', 'sources'].includes(scoped[1])) {
+    const stage = STAGES.includes(scoped[2]) ? scoped[2] : null
+    return { page: 'data', model: decodeURIComponent(scoped[1]), stage }
   }
-  const all = PAGES.find(p => p.all === pathname.replace(/\/+$/, ''))
-  return all ? { model: '', page: all.key, stage: null } : null
+  return { page: hit[1], model: '', stage: null }
 }
 
 /** The folder a report sits in: reports/<folder>/<name>. */
-function folderOf(name) {
-  const i = (name || '').indexOf('/')
+export function folderOf(name) {
+  const i = (name || '').lastIndexOf('/')
   return i === -1 ? '' : name.slice(0, i)
 }
 
@@ -79,8 +97,8 @@ function folderOf(name) {
  */
 export function reportModels(report) {
   if (report?.models?.length) return report.models
-  const folder = folderOf(report?.name)
-  return folder ? [folder] : []
+  const i = (report?.name || '').indexOf('/')
+  return i === -1 ? [] : [report.name.slice(0, i)]
 }
 
 export const reportBelongsToModel = (report, model) =>
@@ -102,32 +120,64 @@ export const modelOfPipeline = p => pipelineModels(p)[0] || ''
 export const pipelineBelongsToModel = (p, model) =>
   !model || pipelineModels(p).includes(model)
 
-/** Where to open a report: under its (first) model when one is known. */
-export function reportPagePath(name, models = []) {
-  return `${pagePath('reports', models[0] || '')}?${new URLSearchParams({ r: name })}`
-}
+/** A report's own page: /reports/<folder>/<slug>, each segment encoded. */
+export const reportPagePath = name =>
+  `/reports/${String(name).split('/').map(encodeURIComponent).join('/')}`
 
-/** The report's own page, from the Reports stage of *model* (where ?r= alone only picks it beside the list). */
-export function reportOpenPath(name, model = '') {
-  return `${pagePath('reports', model)}?${new URLSearchParams({ r: name, open: '1' })}`
+/** Where Open goes: the report's page (one address now, from any list). */
+export const reportOpenPath = reportPagePath
+
+/** The report an address opens as a page ({name}), or null. */
+export function openedReport(pathname) {
+  const m = pathname.match(/^\/reports\/(.+?)\/*$/)
+  if (!m) return null
+  const name = m[1].split('/').map(decodeURIComponent).join('/')
+  return name ? { name } : null
 }
 
 /**
- * The report an address opens as a page ({name, model}), or null. On a model's
- * Reports stage ?r=<name> only picks it beside the list, where its preview is;
- * ?open=1 opens it, and so does ?build=1 (Build mode lives on the page) and a
- * screen too narrow for the preview. The all-models page has no preview, so
- * there ?r= opens it.
+ * Where an address from before the four places lives now, or null when it is
+ * not one of them. Its query comes along (a report named by ?r= opens as its
+ * own page; &build=1 still turns Build mode on).
  */
-export function openedReport(pathname, search, narrow = false) {
-  const at = whereAmI(pathname)
-  if (!at || (at.page !== 'reports' && at.stage !== 'reports')) return null
+export function movedTo(pathname, search = '') {
+  const path = pathname.replace(/(.)\/+$/, '$1')
   const q = new URLSearchParams(search)
-  const name = q.get('r')
-  if (!name) return null
-  const previewed = at.stage === 'reports'
-  const open = !previewed || narrow || q.get('open') === '1' || q.get('build') === '1'
-  return open ? { name, model: at.model } : null
+  const to = (target, add = {}, drop = []) => {
+    const next = new URLSearchParams(q)
+    ;['r', 'open', 'tab', ...drop].forEach(k => next.delete(k))
+    Object.entries(add).forEach(([k, v]) => { if (v) next.set(k, v) })
+    return `${target}${next.toString() ? `?${next}` : ''}`
+  }
+  const scoped = path.match(/^\/m\/([^/]+)(?:\/([^/]+))?$/)
+  const r = q.get('r')
+  if (r && (path === '/' || path === '/reports' || (scoped && [undefined, 'reports'].includes(scoped[2])))) {
+    return to(reportPagePath(r), {}, ['model'])
+  }
+  if (scoped) {
+    const model = decodeURIComponent(scoped[1])
+    const sub = scoped[2] || ''
+    if (sub === 'reports') return to('/', { model })
+    if (sub === 'explore') return to('/ask', { model })
+    if (sub === 'runs') return to('/runs', { model })
+    if (sub === 'model' || sub === 'transform') return to(dataPath(model, sub))
+    if (sub === 'refresh' || sub === 'sources') return to(dataPath(model, 'transform'))
+    return to(dataPath(model))
+  }
+  const legacy = path.match(/^\/models\/([^/]+)$/)
+  if (legacy) {
+    const model = decodeURIComponent(legacy[1])
+    const tab = q.get('tab')
+    if (tab === 'explore') return to('/ask', { model })
+    if (tab === 'reports') return to('/', { model })
+    return to(dataPath(model, tab === 'refresh' ? 'transform' : ''))
+  }
+  if (path === '/pipelines') return to(dataPath(q.get('model') || '', q.get('model') ? 'transform' : ''), {}, ['model'])
+  const flat = {
+    '/reports': '/', '/models': '/data', '/explore': '/ask', '/refresh': '/data',
+    '/sources': '/data/sources', '/connectors': '/data/sources', '/map': '/data/map',
+  }[path]
+  return flat ? to(flat) : null
 }
 
 const LAST = 'tracebi-model'

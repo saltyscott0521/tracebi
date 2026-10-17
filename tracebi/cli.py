@@ -1043,19 +1043,20 @@ def cmd_dev(args: argparse.Namespace) -> int:
 
 def _dev_in_the_app(args: argparse.Namespace) -> int:
     """``tracebi dev [<name>]``: the web app, in dev mode. With a name it opens
-    that report with Build already on; without one, the Reports list, where what
-    the agent shows you lands before any report exists. The agent's chat goes
+    that report with Build already on; without one, Data, where what the agent
+    shows you lands before any report exists. The agent's chat goes
     beside it; the app is where you watch it work and point at what you mean
     (see docs/architecture/design-direction.md).
     """
-    from urllib.parse import urlencode
+    from urllib.parse import quote, urlencode
 
     # Build mode's endpoints write dev-state files, so the server is in dev mode
     # (the same gate as /api/_dev/reload) and stays on loopback.
     os.environ["TRACEBI_DEV_MODE"] = "1"
-    url = f"http://127.0.0.1:{args.port}/reports"
+    url = f"http://127.0.0.1:{args.port}/data"
     if args.name:
-        url += "?" + urlencode({"r": args.name, "build": "1"})
+        path = "/".join(quote(part, safe="") for part in args.name.split("/"))
+        url = f"http://127.0.0.1:{args.port}/reports/{path}?" + urlencode({"build": "1"})
         print(f"\n  TraceBi dev — {args.name} in the app, Build mode")
         print(f"  {url}")
         print("  Put your agent's chat beside it (it connects over MCP: `tracebi mcp`).")
@@ -1063,7 +1064,7 @@ def _dev_in_the_app(args: argparse.Namespace) -> int:
     else:
         print("\n  TraceBi dev — the app, before any report is open")
         print(f"  {url}")
-        print("  What your agent shows you while it works appears under Reports, "
+        print("  What your agent shows you while it works appears under Data, "
               "as From your agent.")
         print("  Any script you run can call tracebi.workbench.show(df, note=...) "
               "while this is up — no env var needed.")

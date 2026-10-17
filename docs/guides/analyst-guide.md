@@ -131,7 +131,7 @@ compiles it into a package, which shadows the same-named spec at discovery.
 
 ### The project feed — the workbench before a report exists
 
-Run `tracebi dev` with **no argument** and the app opens on the Reports list
+Run `tracebi dev` with **no argument** and the app opens on the Data page
 with the project feed: what your agent shows you while it works (`show()` from
 any
 script in the project), and the notes you leave it. It is the live surface for

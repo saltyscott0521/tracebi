@@ -1,16 +1,15 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
-import { page, pagePath, reportPagePath, reportModels, pipelineModels } from '../nav'
+import { PAGES, page, dataPath, reportPagePath, pipelineModels } from '../nav'
 
 // Static page destinations — always available, even before data loads. The
-// sidebar's own five, then help.
+// four places, the pages inside them, then help.
 const PAGES_ALL = [
-  { label: 'Overview', path: page('overview').all, kind: 'page', sub: page('overview').sub },
-  { label: 'Map', path: '/map', kind: 'page', sub: 'Every model as one picture: what feeds what.' },
-  { label: 'Explore', path: page('explore').all, kind: 'page', sub: page('explore').sub },
-  { label: 'Drafts', path: '/drafts', kind: 'page' },
+  ...PAGES.map(p => ({ label: p.label, path: p.path, kind: 'page', sub: p.sub })),
+  { label: 'History', path: '/runs', kind: 'page', sub: page('runs').sub },
   { label: 'Verify a file', path: '/verify', kind: 'page' },
+  { label: 'Map', path: '/data/map', kind: 'page', sub: 'Every model as one picture: what feeds what.' },
   { label: 'Get started', path: '/getting-started', kind: 'page' },
   { label: 'Docs', path: '/handbook', kind: 'page' },
 ]
@@ -36,15 +35,15 @@ export default function CommandPalette() {
   const items = useMemo(() => [
     ...PAGES_ALL,
     ...(models     || []).map(m => ({
-      label: m.name,
-      path: pagePath('overview', m.name),
+      label: m.label || m.name,
+      path: dataPath(m.name),
       kind: 'model',
       sub: `${m.tables.length} tables`,
     })),
-    ...(reports    || []).map(r => ({ label: r.name, path: reportPagePath(r.name, reportModels(r)), kind: 'report', sub: r.description })),
+    ...(reports    || []).map(r => ({ label: r.display_name || r.name, path: reportPagePath(r.name), kind: 'report', sub: r.description })),
     ...(pipelines  || []).map(p => ({
       label: p.pipeline,
-      path: pagePath('transform', pipelineModels(p)[0] || ''),
+      path: pipelineModels(p)[0] ? dataPath(pipelineModels(p)[0], 'transform') : '/data',
       kind: 'pipeline',
       sub: `${(p.layers || []).length} steps${pipelineModels(p).length ? ` · ${pipelineModels(p).join(', ')}` : ''}`,
     })),
@@ -150,7 +149,7 @@ export default function CommandPalette() {
             const meta = KIND_META[it.kind]
             return (
               <div
-                key={`${it.kind}-${it.label}`}
+                key={`${it.kind}-${it.path}`}
                 onClick={() => go(it)}
                 onMouseEnter={() => setCursor(i)}
                 style={{

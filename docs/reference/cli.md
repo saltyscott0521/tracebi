@@ -304,7 +304,7 @@ data behind them, bindings no figure reads, numbers typed outside figures), and
 has a note box for your agent. You instruct the agent in its chat; a note is
 for later.
 
-With **no name** it opens the app's Reports list, where what your agent shows you
+With **no name** it opens the app's Data page, where what your agent shows you
 (`tracebi.workbench.show`, from any script in the project) appears under *From
 your agent*, before any report exists, along with the notes you leave it.
 

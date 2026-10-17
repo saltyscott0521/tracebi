@@ -70,19 +70,20 @@ function Guides() {
   )
 }
 
-// How the pieces fit: pick a model, and every page is about it.
+// How the pieces fit: four places, each for one job.
 function HowItFits() {
   return (
     <div style={{ marginBottom: 36 }}>
       <h2 className="section-title">How the app fits together</h2>
       <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: 0, maxWidth: '74ch' }}>
-        Everything belongs to a <strong>model</strong>. Pick one at the top of the sidebar and
-        every page below it is about that model. Its <strong>Overview</strong> draws how it is made
-        in three stages: its transform (where its data is kept and when it last ran), its model,
-        and its reports. <strong>Explore</strong> asks it questions, and <strong>History</strong>
-        shows what ran. Pick “All models” to see everything, with each row naming its model.
-        <strong>Map</strong> draws every model as one picture, and <Link to="/verify">Verify a file</Link>
-        belongs to no model: it checks a report file from anywhere.
+        Four places. <Link to="/">Reports</Link> is where the app opens: every report you may see,
+        in its folder, each saying whether its numbers still reproduce; pick a model to narrow the
+        list, and open a report to read it with its receipt. <Link to="/ask">Ask</Link> puts a
+        question to one model and shows the query behind the answer. <Link to="/data">Data</Link> is
+        how the numbers are made: each model drawn as its transform, the model itself and the
+        reports that read it, with every model as one picture on its Map.{' '}
+        <Link to="/review">Review</Link> holds what waits on a person: drafts and requests to
+        publish, the History of what ran, and Verify a file, which checks a report file from anywhere.
       </p>
     </div>
   )
@@ -143,8 +144,8 @@ export default function GettingStarted() {
       }}>
         <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', marginBottom: 12 }}>Go deeper</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Link to="/models" style={LINK_STYLE}>Models</Link>
-          <Link to="/reports" style={LINK_STYLE}>Reports</Link>
+          <Link to="/" style={LINK_STYLE}>Reports</Link>
+          <Link to="/data" style={LINK_STYLE}>Data</Link>
         </div>
       </div>
     </div>

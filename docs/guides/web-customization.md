@@ -129,7 +129,7 @@ your peril):
 
 | Directory | File convention | Result |
 |---|---|---|
-| `models/` | `model = DataModel(...)` variable | the model's **Overview** (Model stage) + **Explore** |
+| `models/` | `model = DataModel(...)` variable | the model's **Data** page (Model stage) + **Ask** |
 | `pipelines/` | `runner = PipelineRunner(...)` variable | the **Transform** stage |
 | `reports/` | a `<name>/` **artifact package** (current lane; shadows a same-named `.json` spec), a `.json` `ReportSpec`, or a `@register.report("name")` factory | the **Reports** stage of its model |
 | `requests/` | any `.py` / `.ipynb` with `run()` — **deprecated, removed in 0.8** | **Requests** page (through 0.7) |
@@ -138,15 +138,15 @@ your peril):
 
 | Resource | Call | Appears in UI as |
 |---|---|---|
-| Connector | `registry.add_connector(conn)` | the **Sources** list (`/sources`) |
-| Model | `registry.add_model(model, default=False)` | the **model switcher**, the model's **Overview** (its Model stage) + **Explore** |
+| Connector | `registry.add_connector(conn)` | the **Sources** list (`/data/sources`) |
+| Model | `registry.add_model(model, default=False)` | a model chip on **Reports**, the model's **Data** page (its Model stage) + **Ask** |
 | Report | `@registry.report("name", description="…")` on a zero-arg factory | the **Reports** stage of its model |
 | Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |
 | Pipeline | `registry.add_pipeline("name", runner)` | the **Transform** stage (DAG, run buttons, a live run log, history) |
 
 **History** is not a folder. It reads `GET /api/runs`: what ran, when,
-for whom, and whether it reproduced. Like every page under the model
-switcher, it narrows to the picked model.
+for whom, and whether it reproduced. It lives under **Review**;
+`/runs?model=<model>` narrows it to one model.
 
 ## Step 3: The development loop
 
@@ -181,7 +181,7 @@ Layout of `src/`:
 api.js               # all API hooks (React Query) — one hook per endpoint
 components/
   Layout.jsx         # sidebar, theme toggle, ⌘K trigger
-  Scope.jsx          # model switcher, page header, all-models / one-model routes
+  Scope.jsx          # page header, one-model routes, redirects from old addresses
   Shared.jsx         # Card, Badge, Btn, Tabs, toasts, skeletons…
   Lineage.jsx        # React Flow lineage graph renderer
   CommandPalette.jsx # ⌘K navigation
@@ -195,14 +195,16 @@ dark under `[data-theme="dark"]`. To rebrand, edit the tokens (`--blue`,
 `--bg`, `--card`, the `--op-*` lineage-node palette) — components never
 hard-code colors. The brand gradient is `--brand`.
 
-**Adding a nav page:** a page that is about a model goes in `PAGES` in
-`nav.js` (it gets `/m/<model>/<page>` and an all-models `/<page>`) with both
-routes in `App.jsx`, and takes a `model` prop (`''` means all models); the
-sidebar's links are listed in `Layout.jsx`. A model's Overview
-(`pages/Overview.jsx`, the line in `components/TheLine.jsx`) is one page with
-three stages (`transform`, `model`, `reports`), each with an address of its own.
-A page about no one model is linked from `Layout.jsx` the same way. Use the hooks
-in `api.js` for data and the primitives in `Shared.jsx` for visual
+**Adding a nav page:** the sidebar is four places, `PAGES` in `nav.js`
+(Reports `/`, Ask `/ask`, Data `/data`, Review `/review`), drawn by
+`Layout.jsx`. A new page lives inside one of them: give it a route in
+`App.jsx` under that place's address and teach `whereAmI` in `nav.js` which
+place it belongs to, so its sidebar entry reads as current. A model is a
+filter, not a frame: pass it in the query (`?model=<name>`) or, on Data, the
+path (`/data/<model>/<stage>`; `pages/Overview.jsx`, the line in
+`components/TheLine.jsx`, three stages `transform`, `model`, `reports`). An
+address that moves gets an entry in `movedTo` so old links keep working. Use
+the hooks in `api.js` for data and the primitives in `Shared.jsx` for visual
 consistency.
 
 ## Step 5: Extend the API

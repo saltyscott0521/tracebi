@@ -519,10 +519,10 @@ does not verify is recorded `refused` and nothing is sent. When `TRACEBI_SLACK_B
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 The workbench starts BEFORE the report exists. `tracebi dev` with **no
-name** opens the app's Reports list, with the **project feed** — the live
+name** opens the app's Data page, with the **project feed** — the live
 surface for phase ① and ②: while this server is up,
 `tracebi.workbench.show(df, note=...)` from ANY script you run (a transform
-probe, a scratch analysis) posts the frame to the feed (the app's Reports, under
+probe, a scratch analysis) posts the frame to the feed (the app's Data page, under
 *From your agent*) with no configuration, and the human leaves you notes there.
 Your gateway work lands there too, with nothing to call: each `query_model`
 result as a table, and each `build_report` / `render_report_spec` as one

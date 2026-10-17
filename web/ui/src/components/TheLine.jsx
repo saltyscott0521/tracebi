@@ -7,7 +7,7 @@ import {
 } from '../api'
 import { buildModelGraph } from './modelGraph'
 import { verdictOf } from '../verdict'
-import { pagePath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import { dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 
 // The line: how a model is made, as three stations and the two hand-offs
 // between them. ① transforms/ writes tables into the warehouse; ② the model
@@ -227,7 +227,7 @@ function Station({ model, stage, s, info }) {
   const current = stage === s.key
   return (
     <li>
-      <Link to={pagePath(s.key, model)} className="station" aria-current={current ? 'page' : undefined}>
+      <Link to={dataPath(model, s.key)} className="station" aria-current={current ? 'page' : undefined}>
         <span className="station__head">
           <span className="station__n" aria-hidden="true">{s.n}</span>
           <span className="station__title">{s.title}</span>

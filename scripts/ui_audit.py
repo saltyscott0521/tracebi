@@ -119,20 +119,26 @@ def seeds(base: str) -> list[str]:
     The crawl follows links from here, so a page reachable by a link is found
     without being listed. Pages reached only by a button (tabs) need a seed.
     """
-    pages = ["reports", "model", "transform", "explore", "runs"]
-    paths = ["/", "/models", "/explore", "/refresh", "/reports", "/sources", "/runs",
+    stages = ["transform", "model", "reports"]
+    paths = ["/", "/ask", "/data", "/data/map", "/data/sources", "/review", "/drafts", "/runs",
              "/verify", "/getting-started", "/handbook", "/workflow"]
     models = _safe(base, "/api/models")
     for m in models:
         name = urllib.parse.quote(m["name"])
-        paths += [f"/m/{name}"] + [f"/m/{name}/{p}" for p in pages]
-    for r in _safe(base, "/api/reports")[:PER_PATTERN]:
-        paths.append("/reports?" + urllib.parse.urlencode({"r": r["name"]}))
+        paths += [f"/?model={name}", f"/ask?model={name}", f"/data/{name}"]
+        paths += [f"/data/{name}/{p}" for p in stages]
+    reports = _safe(base, "/api/reports")
+    for r in reports[:PER_PATTERN]:
+        paths.append("/reports/" + "/".join(urllib.parse.quote(p, safe="") for p in r["name"].split("/")))
     # Old addresses must still land somewhere real.
+    paths += ["/models", "/explore", "/refresh", "/reports", "/sources", "/map",
+              "/connectors", "/pipelines"]
     if models:
         name = urllib.parse.quote(models[0]["name"])
-        paths += [f"/models/{name}?tab=explore", f"/m/{name}/refresh", f"/m/{name}/sources",
-                  "/connectors", "/pipelines"]
+        paths += [f"/m/{name}", f"/m/{name}/reports", f"/m/{name}/explore", f"/m/{name}/runs",
+                  f"/models/{name}?tab=explore", f"/m/{name}/refresh", f"/m/{name}/sources"]
+    if reports:
+        paths.append("/reports?" + urllib.parse.urlencode({"r": reports[0]["name"]}))
     paths.append("/no-such-page")
     return list(dict.fromkeys(paths))
 
@@ -152,6 +158,8 @@ def _pattern(path: str) -> str:
     keys = sorted(f"{k}={q[k][0]}" if k == "tab" else k for k in q)
     p = re.sub(r"/models/[^/?]+", "/models/<m>", u.path)
     p = re.sub(r"/m/[^/?]+", "/m/<m>", p)
+    p = re.sub(r"^/data/(?!map$|sources$)[^/?]+", "/data/<m>", p)
+    p = re.sub(r"^/reports/.+", "/reports/<r>", p)
     return p + ("?" + "&".join(keys) if keys else "")
 
 
@@ -255,8 +263,9 @@ PAGE_CHECKS_JS = r"""
     }
   }
 
-  // "Where am I": exactly one sidebar entry marks the page you are on.
-  const current = document.querySelectorAll('nav.app-nav [aria-current="page"]').length;
+  // "Where am I": exactly one sidebar entry marks the page you are on (on an
+  // open report, the rail's).
+  const current = document.querySelectorAll('nav.app-nav [aria-current="page"], nav.rail [aria-current="page"]').length;
   if (location.pathname !== '/no-such-page' && current !== 1)
     out.push({rule: 'nav-you-are-here', severity: 'serious', target: 'nav.app-nav',
               detail: `${current} sidebar entries are marked as the current page`});
@@ -409,7 +418,7 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
             if path in seen:
                 continue
             pat = _pattern(path)
-            cap = PER_MODEL_PAGE if pat.startswith("/m/<m>") and "?" not in pat else PER_PATTERN
+            cap = PER_MODEL_PAGE if pat.startswith("/data/<m>") and "?" not in pat else PER_PATTERN
             if per_pattern.get(pat, 0) >= cap:
                 continue
             per_pattern[pat] = per_pattern.get(pat, 0) + 1
@@ -655,10 +664,10 @@ def scope_findings(browser, base: str) -> list[dict]:
     # A model nobody can read a report from is a dead end in the app.
     for m in models:
         if not any(m["name"] in (r.get("models") or []) for r in reports):
-            out.append({"page": f"/m/{m['name']}/reports", "pattern": "/m/<m>/reports",
+            out.append({"page": f"/?model={m['name']}", "pattern": "/?model",
                         "viewport": "desktop", "theme": "light", "rule": "model-without-reports",
                         "severity": "serious", "target": m["name"],
-                        "detail": f"{m['name']} has no report; its Reports page is empty"})
+                        "detail": f"{m['name']} has no report; the library filtered to it is empty"})
     # ...and one nothing can refresh. A pipeline belongs to the models it names
     # (`models`), else the one it stamped, else its own name (as the app reads it).
     pipelines = _safe(base, "/api/pipelines")
@@ -668,29 +677,30 @@ def scope_findings(browser, base: str) -> list[dict]:
 
     for m in models:
         if not any(m["name"] in pipeline_models(p) for p in pipelines):
-            out.append({"page": f"/m/{m['name']}/transform", "pattern": "/m/<m>/transform",
+            out.append({"page": f"/data/{m['name']}/transform", "pattern": "/data/<m>/transform",
                         "viewport": "desktop", "theme": "light", "rule": "model-without-pipeline",
                         "severity": "serious", "target": m["name"],
                         "detail": f"nothing refreshes {m['name']}; its Transform stage is empty"})
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     for m in models:
         name = m["name"]
+        # The library filtered to a model: each row names its report in data-report.
         expect = {
-            "reports": {r["name"].rsplit("/", 1)[-1] for r in reports if name in (r.get("models") or [])},
+            "reports": {r["name"] for r in reports if name in (r.get("models") or [])},
         }
         for key, want in expect.items():
-            page.goto(f"{base}/m/{urllib.parse.quote(name)}/{key}")
+            page.goto(f"{base}/?model={urllib.parse.quote(name)}")
             _settle(page)
             try:   # the list can land after the page settles; give it a moment
                 page.wait_for_function(
-                    "n => document.querySelectorAll('main .list-item__name').length >= n",
+                    "n => document.querySelectorAll('main [data-report]').length >= n",
                     arg=len(want), timeout=5000)
             except Exception:
                 pass
             shown = set(page.eval_on_selector_all(
-                "main .list-item__name", "els => els.map(e => e.innerText.trim())"))
+                "main [data-report]", "els => els.map(e => e.dataset.report)"))
             if shown != want:
-                out.append({"page": f"/m/{name}/{key}", "pattern": f"/m/<m>/{key}", "viewport": "desktop",
+                out.append({"page": f"/?model={name}", "pattern": "/?model", "viewport": "desktop",
                             "theme": "light", "rule": "scope-mismatch", "severity": "critical",
                             "target": f"{key} of {name}",
                             "detail": f"shows {sorted(shown)}; belongs: {sorted(want)}"})

@@ -427,7 +427,7 @@ body, the same text as `tracebi knowledge <slug>`).
 
 0. **Discovery comes first — and it has a live surface.** Before any report
    exists, run `tracebi dev` with **no name** (backgrounded — it blocks):
-   it opens the web app's Reports list, where the project feed is. While it
+   it opens the web app's Data page, where the project feed is. While it
    serves, ANY script you run can call `tracebi.workbench.show(...)` — no
    env var needed — and the feed (*From your agent*) updates live; the
    human leaves you notes there. Your MCP work posts there too, with

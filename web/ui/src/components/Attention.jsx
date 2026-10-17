@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom'
 import { Badge, Verdict } from './Shared'
 import { VERDICT_LABEL, needsAction, verdictOf } from '../verdict'
-import { pipelineModels, pagePath, reportPagePath } from '../nav'
+import { pipelineModels, dataPath, reportPagePath } from '../nav'
 
 // What needs a person, from GET /api/desk plus the pipelines list: review
 // notes, receipts that don't reproduce, failed refreshes, and sink checks
-// that are stale or missing. Shown on the Reports page only when non-empty.
+// that are stale or missing. Shown on Review only when non-empty.
 
 const SINK = {
   stale:       'Data changed since its checks last passed',
@@ -22,8 +22,8 @@ export function when(iso) {
     : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function reportHref(name, models) {
-  return name && name !== '_discovery' ? reportPagePath(name, models) : null
+function reportHref(name) {
+  return name && name !== '_discovery' ? reportPagePath(name) : null
 }
 
 const NOTE = 'Review note'
@@ -41,7 +41,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
       key: `pin-${pin.report}-${pin.id}`, kind: NOTE, variant: 'blue',
       models: modelsOf(pin.report),
       title: pin.report === '_discovery' ? 'Project workbench' : pin.report,
-      detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report, modelsOf(pin.report)),
+      detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report),
     })
   }
   // Every build the desk re-checked, and every receipt it could not pair with
@@ -55,7 +55,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
       key: `verdict-${name}`, kind: VERDICT_LABEL[v.state], verdict: v.state,
       models: modelsOf(name),
       title: name, detail: v.detail,
-      href: reportHref(name, modelsOf(name)),
+      href: reportHref(name),
     })
   }
   for (const p of pipelines || []) {
@@ -66,7 +66,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
         models: pipelineModels(p),
         title: `${p.pipeline} / ${l.name}`,
         detail: `Last run ${when(l.last_run) || 'recently'}`,
-        href: pagePath('transform', pipelineModels(p)[0] || ''),
+        href: pipelineModels(p)[0] ? dataPath(pipelineModels(p)[0], 'transform') : '/data',
       })
     }
   }
@@ -74,7 +74,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
     items.push({
       key: `sink-${s.table}`, kind: s.status === 'stale' ? 'Checks stale' : 'No checks',
       variant: s.status === 'stale' ? 'amber' : 'gray',
-      models: [], title: s.table, detail: SINK[s.status] || s.status, href: '/models',
+      models: [], title: s.table, detail: SINK[s.status] || s.status, href: '/data',
     })
   }
   return items
