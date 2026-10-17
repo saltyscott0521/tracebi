@@ -34,7 +34,7 @@ it.
   answer sentence ([[design-lead-with-the-answer]]) sits under it, short.
 - **One strip with an anchor, not a row of equal boxes.** A `.tb-grid` of
   `.tb-kpi` cells is one panel with hairlines between them. Mark the number the
-  page is about `.tb-kpi--lead` (twice as wide, larger). A row of three
+  page is about `.tb-kpi--lead` (larger, not wider). A row of three
   identical cards is the most recognisable sign of a generated dashboard.
 - **Trends under their numbers.** A KPI that changes over time gets a
   `class="tb-spark"` line or area chart bound to the by-period query: the

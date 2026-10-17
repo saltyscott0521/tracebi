@@ -11,11 +11,15 @@ function Overview() {
   return (
     <>
       <div className="tb-grid">
+        {/* The delta is the model's unrealized (fair value less cost): a
+            stamped change, not one computed here. */}
         <Kpi lead binding="kpis" cell="fair_value" format="currency_compact" label="Fair value"
-             context="administrator marks, three funds" id="fig-fv" />
-        <Kpi binding="kpis" cell="positions" label="Positions" id="fig-pos" />
-        <Kpi binding="kpis" cell="unrealized" format="currency_compact" label="Unrealized"
-             context="fair value less cost" id="fig-unrealized" />
+             deltaBinding="kpis" deltaCell="unrealized" deltaFormat="currency_compact"
+             deltaGood="up" context="vs cost" id="fig-fv" />
+        <Kpi binding="kpis" cell="positions" label="Positions" context="three funds"
+             id="fig-pos" />
+        <Kpi binding="kpis" cell="cost_basis" format="currency_compact" label="Cost"
+             context="what the book paid" id="fig-cost" />
       </div>
       <div className="tb-grid">
         <section className="tb-card tb-span-8">

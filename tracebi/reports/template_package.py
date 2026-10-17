@@ -284,6 +284,30 @@ def _ssr_format(raw, name: str) -> str:
     return str(raw)                    # unknown name: applyNamedFormat -> raw
 
 
+def _ssr_direction(ds, fig) -> str:
+    """The classes the runtime's ``markDirection`` puts on a value figure that
+    names ``data-tb-direction`` (``up-good`` / ``down-good``): its direction
+    from the stamped value's sign, and whether that is good. ``""`` when the
+    figure names none or the value is not a number."""
+    want = fig.attrs.get("data-tb-direction")
+    if want not in ("up-good", "down-good"):
+        return ""
+    df = ds.to_pandas()
+    cell = fig.cell or (str(df.columns[0]) if len(df.columns) == 1 else None)
+    if df.empty or cell not in df.columns:
+        return ""
+    try:
+        n = float(df[cell].iloc[0])
+    except (TypeError, ValueError):
+        return ""
+    if not math.isfinite(n):
+        return ""
+    if n == 0:
+        return "tb-flat"
+    good = (n > 0) == (want == "up-good")
+    return ("tb-up " if n > 0 else "tb-down ") + ("tb-good" if good else "tb-bad")
+
+
 #: Server-rendered rows per table before the runtime hydrates the full set from
 #: embedded data. Generous enough to render normal tables whole; a ceiling so a
 #: huge binding cannot re-inflate the page it was embedded as Parquet to shrink.
@@ -1055,6 +1079,11 @@ class TemplatePackage:
                     ds, fig, (declared_formats or {}).get(fig.binding))
                 if text is not None:
                     content[fig.id] = _html.escape(text)
+                    cls = _ssr_direction(ds, fig)
+                    if cls:
+                        # The arrow and its colour for a no-JS reader; the
+                        # runtime writes the same text and classes over it.
+                        content[fig.id] = f'<span class="{cls}">{content[fig.id]}</span>'
             elif fig.kind == "table":
                 markup = self._ssr_table(
                     ds, fig, (declared_formats or {}).get(fig.binding),

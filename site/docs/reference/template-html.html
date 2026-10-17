@@ -134,8 +134,15 @@ not being one.</p>
 <li><code>data-tb-direction</code> — <code>up-good</code> or <code>down-good</code>, for a figure that shows a
   change. The runtime draws ▲ or ▼ from the value's sign and colors it with
   <code>--tb-good</code> or <code>--tb-bad</code> depending on whether that direction is good. The
-  text stays the formatted number. Anything else fails the build.</li>
+  text stays the formatted number. Anything else fails the build. On a KPI,
+  the change goes first on the context line as a <code>.tb-kpi-delta</code> (a rise is
+  drawn <code>▲ +</code>, zero is neutral):</li>
 </ul>
+<pre><code class="language-html">&lt;span class=&quot;tb-kpi-context&quot;&gt;&lt;span class=&quot;tb-kpi-delta&quot; data-tb-figure=&quot;value&quot;
+  data-tb-binding=&quot;gain&quot; data-tb-cell=&quot;unrealized&quot; data-tb-format=&quot;compact&quot;
+  data-tb-direction=&quot;up-good&quot; id=&quot;kpi-gain&quot;&gt;&lt;/span&gt; vs cost&lt;/span&gt;
+</code></pre>
+<p>Only where the model measures a comparison; no comparison measure, no delta.</p>
 <p>The runtime fills a <code>.tb-kpi-value</code> child when one exists, otherwise the
 element itself. The <code>binding</code> must return one row; a value figure over a
 multi-row binding fails the build.</p>
@@ -235,11 +242,11 @@ is the in-page find.</p>
   <code>&lt;div class="tb-grid"&gt;&lt;section class="tb-card tb-span-8"&gt;…&lt;/section&gt;&lt;section
   class="tb-card tb-span-4"&gt;…&lt;/section&gt;&lt;/div&gt;</code>.</li>
 <li><strong>KPI strip</strong> — a <code>.tb-grid</code> of <code>.tb-kpi</code> cells renders as one panel with
-  hairlines between the cells. <code>.tb-kpi--lead</code> makes the page's main number
-  twice as wide and larger.</li>
+  hairlines between the cells. <code>.tb-kpi--lead</code> sets the page's main number a
+  step larger (not wider); a <code>.tb-kpi-delta</code> leads its context line.</li>
 <li><strong>Sparkline</strong> — a line or area chart with <code>class="tb-spark"</code> inside a
-  <code>.tb-kpi</code> draws the trend's shape alone (no axes, grid or legend; 44px tall;
-  zero-based); hovering still reads each value.</li>
+  <code>.tb-kpi</code> draws the trend's shape alone (no axes, grid or legend; 32px tall
+  on the card's bottom edge; zero-based); hovering still reads each value.</li>
 <li><strong>Panels</strong> — a <code>.tb-note</code> straight after a <code>.tb-card</code>'s first <code>&lt;h2&gt;</code> is the
   panel's subtitle; a table that ends a card runs edge to edge.</li>
 <li><strong>Sidebar</strong> — <code>&lt;div class="tb-tabs" data-tb-nav="side"&gt;</code> lays the same tab

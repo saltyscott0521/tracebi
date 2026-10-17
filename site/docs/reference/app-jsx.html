@@ -183,7 +183,7 @@ filterable, exactly as in a template.</p>
 <tbody>
 <tr>
 <td><code>&lt;Kpi&gt;</code></td>
-<td><code>binding</code>, <code>cell</code>, <code>format</code>, <code>label</code>, <code>context</code>, <code>lead</code> (twice as wide), <code>id</code>; children (a <code>&lt;Spark&gt;</code>) go under the number</td>
+<td><code>binding</code>, <code>cell</code>, <code>format</code>, <code>label</code>, <code>context</code>, <code>lead</code> (a step larger), <code>id</code>; <code>deltaBinding</code>, <code>deltaCell</code>, <code>deltaFormat</code>, <code>deltaGood</code> (<code>"up"</code> or <code>"down"</code>: which way is good) show a stamped change first on the context line, with its arrow, sign and colour; children (a <code>&lt;Spark&gt;</code>) sit on the card's bottom edge</td>
 </tr>
 <tr>
 <td><code>&lt;Value&gt;</code></td>
@@ -275,7 +275,11 @@ named formats (<a href="../reference/number-formats.html">Number formats</a>).</
 <h2 id="what-the-receipt-covers">What the receipt covers</h2>
 <p>The build reads every kit figure's props from <code>app.jsx</code> without running it,
 records each one as a claim in the manifest, and refuses a binding or a column
-that does not exist. So <code>binding</code>, <code>cell</code>, <code>x</code> and <code>y</code> must be literal strings:
+that does not exist. A <code>&lt;Kpi&gt;</code>'s delta is a claim of its own
+(<code>fig-delta-&lt;binding&gt;-&lt;cell&gt;</code>); it reads a measure the model computes, such as
+fair value less cost, and the kit never computes one: no comparison measure,
+no delta. So <code>binding</code>, <code>cell</code>, <code>x</code> and <code>y</code> (and <code>deltaBinding</code>, <code>deltaCell</code>)
+must be literal strings:
 <code>&lt;Kpi binding={b}&gt;</code> fails the build. Two kit figures of the same binding and
 column need an <code>id</code> each — an id is the receipt's address for one number.</p>
 <p>A number typed into the app's text (<code>&lt;p&gt;Up 1250 units&lt;/p&gt;</code>) fails the build,

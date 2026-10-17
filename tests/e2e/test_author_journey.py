@@ -200,7 +200,8 @@ export default function App() {
       <nav><button onClick={() => setView("Detail")}><TrendingUp size={16} /> Detail</button></nav>
       {view === "Overview" ? (
         <div className="tb-grid">
-          <Kpi lead binding="kpis" cell="revenue" format="currency0" label="Revenue" />
+          <Kpi lead binding="kpis" cell="revenue" format="currency0" label="Revenue"
+               deltaBinding="kpis" deltaCell="units" deltaGood="up" />
           <Chart binding="by_region" x="dim_region.region" y="revenue" />
         </div>
       ) : (
@@ -226,7 +227,7 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     pkg.mkdir()
     (pkg / "report.json").write_text(json.dumps({"name": "Regions App", "data": {
         "kpis": {"model": "sample_model",
-                 "query": {"fact": "fact_orders", "measures": ["revenue"]}},
+                 "query": {"fact": "fact_orders", "measures": ["revenue", "units"]}},
         "by_region": {"model": "sample_model", "query": {
             "fact": "fact_orders", "measures": ["revenue"],
             "dimensions": ["dim_region.region"], "order_by": ["-revenue"]}},
@@ -242,7 +243,9 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     assert list(icons) == ["TrendingUp"]
     manifest_path = scaffolded / "output" / "regions_app.html.manifest.json"
     claims = {f["id"]: f["binding"] for f in json.loads(manifest_path.read_text())["figures"]}
+    # A KPI's delta is a claim of its own, under the same receipt.
     assert claims == {"fig-value-kpis-revenue": "kpis",
+                      "fig-delta-kpis-units": "kpis",
                       "fig-chart-by_region-revenue": "by_region",
                       "fig-table-by_region": "by_region"}
     assert "This page is an app." in built
@@ -257,6 +260,12 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
                                  encoding="utf-8")
     code, out = run_cli("report", "build", "regions_app")
     assert code != 0 and "kpi" in out
+
+    # So is a delta naming a column its binding does not return.
+    (pkg / "app.jsx").write_text(_APP_JSX.replace('deltaCell="units"', 'deltaCell="unit"'),
+                                 encoding="utf-8")
+    code, out = run_cli("report", "build", "regions_app")
+    assert code != 0 and "'unit' is not a column" in out, out
 
     # A number typed into the app's text is refused, as in a template.html.
     (pkg / "app.jsx").write_text(_APP_JSX.replace("</nav>", "<p>Up 1250 units.</p></nav>", 1),
@@ -393,7 +402,7 @@ def test_status_and_the_review_snapshot(scaffolded):
     assert code == 0, out
     code, out = run_cli("report", "status", "sample_model/sample_dashboard")
     assert code == 0, out
-    assert "9 figure(s) — 9 query-backed, 0 python-derived, 0 unverified" in out
+    assert "10 figure(s) — 10 query-backed, 0 python-derived, 0 unverified" in out
 
     code, out = run_cli("report", "snapshot", "sample_model/sample_dashboard")
     assert code == 0, out

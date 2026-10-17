@@ -44,7 +44,17 @@ not being one.
 - `data-tb-direction` — `up-good` or `down-good`, for a figure that shows a
   change. The runtime draws ▲ or ▼ from the value's sign and colors it with
   `--tb-good` or `--tb-bad` depending on whether that direction is good. The
-  text stays the formatted number. Anything else fails the build.
+  text stays the formatted number. Anything else fails the build. On a KPI,
+  the change goes first on the context line as a `.tb-kpi-delta` (a rise is
+  drawn `▲ +`, zero is neutral):
+
+```html
+<span class="tb-kpi-context"><span class="tb-kpi-delta" data-tb-figure="value"
+  data-tb-binding="gain" data-tb-cell="unrealized" data-tb-format="compact"
+  data-tb-direction="up-good" id="kpi-gain"></span> vs cost</span>
+```
+
+  Only where the model measures a comparison; no comparison measure, no delta.
 
 The runtime fills a `.tb-kpi-value` child when one exists, otherwise the
 element itself. The `binding` must return one row; a value figure over a
@@ -154,11 +164,11 @@ is the in-page find.
   `<div class="tb-grid"><section class="tb-card tb-span-8">…</section><section
   class="tb-card tb-span-4">…</section></div>`.
 - **KPI strip** — a `.tb-grid` of `.tb-kpi` cells renders as one panel with
-  hairlines between the cells. `.tb-kpi--lead` makes the page's main number
-  twice as wide and larger.
+  hairlines between the cells. `.tb-kpi--lead` sets the page's main number a
+  step larger (not wider); a `.tb-kpi-delta` leads its context line.
 - **Sparkline** — a line or area chart with `class="tb-spark"` inside a
-  `.tb-kpi` draws the trend's shape alone (no axes, grid or legend; 44px tall;
-  zero-based); hovering still reads each value.
+  `.tb-kpi` draws the trend's shape alone (no axes, grid or legend; 32px tall
+  on the card's bottom edge; zero-based); hovering still reads each value.
 - **Panels** — a `.tb-note` straight after a `.tb-card`'s first `<h2>` is the
   panel's subtitle; a table that ends a card runs edge to edge.
 - **Sidebar** — `<div class="tb-tabs" data-tb-nav="side">` lays the same tab

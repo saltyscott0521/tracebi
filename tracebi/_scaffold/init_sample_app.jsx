@@ -27,7 +27,7 @@ export default function App() {
           revenue.
         </p>
 
-        {/* One KPI strip: the lead number twice as wide, then what explains it. */}
+        {/* One KPI strip: the lead number larger, then what explains it. */}
         <div className="tb-grid">
           <Kpi lead binding="kpis" cell="revenue" format="currency0" label="Revenue"
                context="all regions, all order dates" id="kpi-revenue" />
@@ -35,9 +35,13 @@ export default function App() {
                context="count of orders in the sink" id="kpi-orders" />
           <Kpi binding="kpis" cell="units" format="comma" label="Units"
                context="units on those orders" id="kpi-units" />
-          {/* A report-level measure (report.json "measures"): stamped like the rest. */}
-          <Kpi binding="split" cell="big_minus_small" format="currency0"
-               label="Large orders less small" context="calculated in this report, not the model"
+          {/* A delta: a stamped change shown with its arrow, sign and colour —
+              here a report-level measure (report.json "measures"), large orders
+              less small. deltaGood says which way is good. No comparison
+              measure, no delta: never compute one here. */}
+          <Kpi binding="split" cell="big_orders" format="currency0" label="Large orders"
+               deltaBinding="split" deltaCell="big_minus_small" deltaFormat="currency0"
+               deltaGood="up" context="vs small orders, calculated in this report"
                id="kpi-split" />
         </div>
 

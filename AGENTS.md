@@ -151,7 +151,11 @@ file. Show numbers through the kit — `<Kpi binding cell format label lead>`,
 `<Value>`, `<Chart binding type x y>`, `<Spark>`, `<Table binding>`, with
 `<Filter>`, `<Search>`, `<Download>` — and give `binding`, `cell`, `x`, `y`
 literal strings: the build reads them as claims and refuses a binding or
-column that does not exist. `useBinding("name")` hands your own components
+column that does not exist. A KPI's change is a stamped figure too:
+`<Kpi … deltaBinding="kpis" deltaCell="unrealized" deltaFormat="currency_compact"
+deltaGood="up" context="vs cost">` shows it first on the context line with its
+arrow, sign and colour (`deltaGood="down"` for costs and churn). Only where
+the model measures a comparison; no comparison measure, no delta. `useBinding("name")` hands your own components
 the stamped rows; a number your code computes or draws (a Recharts chart, a
 sum) is the app's presentation, not a checked figure, and the page says so.
 For app behaviour: `<Filter column>` with no `binding` filters the whole page
@@ -198,7 +202,8 @@ and compute nothing: `data-tb-sort` on a table makes its headers click-to-sort
 draws a proportional bar behind each named numeric cell (zero at the left, or
 centered when the column has negatives); and `data-tb-direction="up-good"` or
 `"down-good"` on a value figure marks a bound change up or down, good or bad,
-from its sign. Add `tb-table--freeze` to keep a wide table's first column in
+from its sign — on a KPI, as `<span class="tb-kpi-delta" data-tb-figure="value"
+… data-tb-direction="up-good">` leading its `.tb-kpi-context` line. Add `tb-table--freeze` to keep a wide table's first column in
 view. Tables past 500 rows render only the visible rows; printing and download still use every row. Find-in-page cannot see rows outside that window — search with `data-tb-search`. A figure with no binding carries `data-tb-unverified` —
 there is no third state. Give every figure an `id`: ids are how humans
 redirect you. `tracebi context` documents the full grammar in its
@@ -228,8 +233,9 @@ the choice is not obvious. Read `tracebi knowledge design-editorial-report`
 before writing a report.
 
 **Lay it out like a dashboard.** A `.tb-grid` of `.tb-kpi` cells is one
-KPI strip; mark the number the page is about `.tb-kpi--lead` (twice as wide)
-rather than a row of identical boxes. Under a KPI with a trend, add a
+KPI strip; mark the number the page is about `.tb-kpi--lead` (larger, not
+wider) rather than a row of identical boxes; a `.tb-kpi-delta` gives a number
+its signal where the model measures a change. Under a KPI with a trend, add a
 `class="tb-spark"` line or area chart bound to the by-period query — the
 shape alone, no axes. Put a wide panel beside a narrow one with `.tb-cols-2-1`
 (or `.tb-cols-1-2`), or give a `.tb-grid`'s panels `.tb-span-8` / `.tb-span-4`

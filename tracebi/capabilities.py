@@ -306,7 +306,11 @@ def _presentation() -> dict:
                    "is presentation, \"Q3 2026\"; it holds the build time and the "
                    "verdict chip), <Footer /> where the build's footer goes (the end "
                    "of the main column; without it the footer follows the app), "
-                   "<Kpi binding cell format label context lead>, <Value binding cell "
+                   "<Kpi binding cell format label context lead deltaBinding deltaCell "
+                   "deltaFormat deltaGood> (the delta is a stamped change shown with "
+                   "its arrow, sign and colour, deltaGood \"up\" or \"down\" saying "
+                   "which way is good; no comparison measure, no delta; a <Spark> "
+                   "child sits on the card's bottom edge), <Value binding cell "
                    "format>, <Chart binding type x y valueFormat ...>, <Spark ...> (a "
                    "sparkline), <Table binding columns sort bars rows>, <Filter binding "
                    "column> (no binding: a page-wide filter on every binding with the "
@@ -319,9 +323,10 @@ def _presentation() -> dict:
                    "prints (Ctrl+P and the PDF build), so an app with views renders "
                    "all of them; useBinding(name) returns the stamped rows; "
                    "fmt(value, format).",
-            "claims": "Kit figures are claims: binding, cell, x and y must be literal "
-                      "strings, and the build refuses a binding or column that does not "
-                      "exist. A number the app computes or draws itself is presentation, "
+            "claims": "Kit figures are claims: binding, cell, x and y (and a Kpi's "
+                      "deltaBinding / deltaCell) must be literal strings, and the "
+                      "build refuses a binding or column that does not exist. A "
+                      "number the app computes or draws itself is presentation, "
                       "not a checked figure; the page's footer says so. A number "
                       "typed into the app's text (two or more digits) fails the build, as "
                       "in template.html: bind it with <Value binding cell />.",
@@ -389,7 +394,8 @@ def _presentation() -> dict:
             ".tb-lede (the page's answer sentence under the title, its "
             "numbers bound as value figures)",
             ".tb-kpi (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context — the "
-            "comparison line under the number)",
+            "comparison line under the number; .tb-kpi-delta, a value figure "
+            "with data-tb-direction leading that line, is the stamped change)",
             ".tb-table (variants: .tb-table--striped, .tb-table--compact, "
             ".tb-table--freeze — the first column stays put while a wide "
             "table scrolls sideways)",
@@ -656,12 +662,18 @@ def _presentation() -> dict:
                        "column under 720px",
             "kpi_strip": "A .tb-grid of .tb-kpi cells renders as ONE panel "
                          "with hairlines between the cells. Mark the number "
-                         "the page is about .tb-kpi--lead (twice as wide, a "
-                         "larger figure) — never a row of identical boxes. "
+                         "the page is about .tb-kpi--lead (larger, not "
+                         "wider) — never a row of identical boxes. A change "
+                         "the model measures goes first on the context line "
+                         "as <span class=\"tb-kpi-delta\" "
+                         "data-tb-figure=\"value\" data-tb-direction="
+                         "\"up-good\" ...>: arrow, sign and --tb-good / "
+                         "--tb-bad from the stamped value, zero neutral. "
+                         "No comparison measure, no delta. "
                          "A line or area chart with class .tb-spark inside "
                          "a .tb-kpi is its trend's shape: no axes or legend, "
-                         "44px tall, zero-based, hover still reads each "
-                         "value",
+                         "32px tall on the card's bottom edge, zero-based, "
+                         "hover still reads each value",
             "recipes": {
                 "editorial": "A report to be read top to bottom (the default for "
                              "new-report): <article class=\"tb-article\"> — a "

@@ -65,7 +65,7 @@ filterable, exactly as in a template.
 
 | Component | Props |
 |---|---|
-| `<Kpi>` | `binding`, `cell`, `format`, `label`, `context`, `lead` (twice as wide), `id`; children (a `<Spark>`) go under the number |
+| `<Kpi>` | `binding`, `cell`, `format`, `label`, `context`, `lead` (a step larger), `id`; `deltaBinding`, `deltaCell`, `deltaFormat`, `deltaGood` (`"up"` or `"down"`: which way is good) show a stamped change first on the context line, with its arrow, sign and colour; children (a `<Spark>`) sit on the card's bottom edge |
 | `<Value>` | `binding`, `cell`, `format`, `id` — a number inside a sentence |
 | `<Chart>` | `binding`, `type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`), `x`, `y` (a string or a list), `color`, `valueFormat`, `stack`, `mark`, `annotate`, `facet`, `unit`, `xTitle`, `yTitle`, `palette`, `height`, `id` |
 | `<Spark>` | as `<Chart>` (default `type="area"`): the trend's shape alone, under a KPI |
@@ -100,7 +100,11 @@ named formats ([[number-formats]]).
 
 The build reads every kit figure's props from `app.jsx` without running it,
 records each one as a claim in the manifest, and refuses a binding or a column
-that does not exist. So `binding`, `cell`, `x` and `y` must be literal strings:
+that does not exist. A `<Kpi>`'s delta is a claim of its own
+(`fig-delta-<binding>-<cell>`); it reads a measure the model computes, such as
+fair value less cost, and the kit never computes one: no comparison measure,
+no delta. So `binding`, `cell`, `x` and `y` (and `deltaBinding`, `deltaCell`)
+must be literal strings:
 `<Kpi binding={b}>` fails the build. Two kit figures of the same binding and
 column need an `id` each — an id is the receipt's address for one number.
 

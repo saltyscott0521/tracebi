@@ -257,7 +257,8 @@ def scan_figures(src: str) -> list[KitFigure]:
                 i = j
         line = code.count("\n", 0, m.start()) + 1
         for key in ("binding",) + (("cell",) if FIGURE_TAGS[tag] == "value" else ()) \
-                + (("x", "y") if FIGURE_TAGS[tag] == "chart" else ()) + ("id",):
+                + (("x", "y") if FIGURE_TAGS[tag] == "chart" else ()) + ("id",) \
+                + (("deltaBinding", "deltaCell") if tag == "Kpi" else ()):
             if key in dynamic:
                 raise AppError(
                     f"{APP_JSX} line {line}: <{tag}> {key}= must be a literal "
@@ -305,11 +306,21 @@ def _claim_element(f: KitFigure) -> str:
                 _humanise(_join(p.get("cell")) or p["binding"])
             context = p.get("context") if isinstance(p.get("context"), str) else ""
             cls = "tb-kpi tb-kpi--lead" if p.get("lead") is True else "tb-kpi"
+            delta = ""
+            if isinstance(p.get("deltaBinding"), str):
+                # The change under the number: its own stamped value figure.
+                good = p.get("deltaGood")
+                did = figure_id("delta", p["deltaBinding"], _join(p.get("deltaCell")))
+                delta = (f'<span class="tb-kpi-delta" id="{esc(did)}" ' + attrs_of({
+                    "data-tb-figure": "value", "data-tb-binding": p["deltaBinding"],
+                    "data-tb-cell": p.get("deltaCell"), "data-tb-format": p.get("deltaFormat"),
+                    "data-tb-direction": f"{good}-good" if isinstance(good, str) else None,
+                }) + "></span>" + (" " if context else ""))
             return (f'<div class="{cls}" id="{esc(fid)}" {attrs}>'
                     f'<span class="tb-kpi-label">{html.escape(label)}</span>'
                     '<span class="tb-kpi-value"></span>'
-                    + (f'<span class="tb-kpi-context">{html.escape(context)}</span>'
-                       if context else "") + "</div>")
+                    + (f'<span class="tb-kpi-context">{delta}{html.escape(context)}</span>'
+                       if context or delta else "") + "</div>")
         label = _humanise(_join(p.get("cell")) or p["binding"])
         return (f'<li><span class="tb-kpi-label">{html.escape(label)}</span> '
                 f'<span id="{esc(fid)}" {attrs}></span></li>')
@@ -339,13 +350,13 @@ def static_html(figs: list[KitFigure]) -> str:
                                     "spark": [], "table": []}
     for f in figs:
         el = _claim_element(f)
-        fid = re.search(r'id="([^"]*)"', el).group(1)
-        if fid in seen:
-            raise AppError(
-                f"{APP_JSX} lines {seen[fid]} and {f.line}: two kit figures "
-                f"would share the id \"{fid}\". Give one an id=\"…\" — a figure "
-                f"id is the receipt's address for one number.")
-        seen[fid] = f.line
+        for fid in re.findall(r'id="([^"]*)"', el):    # a Kpi's delta has its own
+            if fid in seen:
+                raise AppError(
+                    f"{APP_JSX} lines {seen[fid]} and {f.line}: two kit figures "
+                    f"would share the id \"{fid}\". Give one an id=\"…\" — a figure "
+                    f"id is the receipt's address for one number.")
+            seen[fid] = f.line
         key = ("kpi" if f.tag == "Kpi" else "spark" if f.tag == "Spark"
                else f.kind)
         groups[key].append(el)

@@ -122,7 +122,7 @@ class TestScaffoldDemonstratesTheProduct:
 
         for marker in ("<Kpi lead", "<Value", "<Chart", "<Table", "<Filter",
                        "<Search", "<Download", "<Masthead", "<Footer",
-                       "tb-span-8"):
+                       "tb-span-8", "deltaBinding="):
             assert marker in _INIT_SAMPLE_APP_JSX, (
                 f"the scaffold sample no longer demonstrates {marker}"
             )
@@ -137,7 +137,8 @@ class TestScaffoldDemonstratesTheProduct:
         for marker in ("data-tb-filter", "data-tb-search",
                        "data-tb-download", "data-tb-figure",
                        "data-tb-stage", "data-tb-methodology",
-                       "tb-masthead", "data-tb-period", "tb-footer"):
+                       "tb-masthead", "data-tb-period", "tb-footer",
+                       "tb-kpi-delta"):
             assert marker in showcase, f"the showcase no longer demonstrates {marker}"
 
 

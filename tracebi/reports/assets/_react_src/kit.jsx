@@ -52,16 +52,30 @@ export function Value({ binding, cell, format, id, className, ...rest }) {
   );
 }
 
-export function Kpi({ binding, cell, format, label, context, lead, id, className, children, ...rest }) {
+/** A KPI card. `deltaBinding` / `deltaCell` name a stamped change (a measure
+ * the model computes, e.g. fair value less cost), shown first on the context
+ * line with its arrow, sign and colour; `deltaGood="up|down"` says which way
+ * is good. No comparison measure, no delta: the kit never computes one. A
+ * <Spark> child sits on the card's bottom edge. */
+export function Kpi({ binding, cell, format, label, context, lead, id, className, children,
+                      deltaBinding, deltaCell, deltaFormat, deltaGood, ...rest }) {
   useHydrate();
   const cls = ["tb-kpi", lead ? "tb-kpi--lead" : "", className || ""].filter(Boolean).join(" ");
+  const delta = deltaBinding != null && (
+    <span className="tb-kpi-delta" id={figureId("delta", deltaBinding, deltaCell)}
+      data-tb-figure="value" data-tb-binding={deltaBinding} data-tb-cell={deltaCell}
+      data-tb-format={deltaFormat}
+      data-tb-direction={deltaGood ? `${deltaGood}-good` : undefined} />
+  );
   return (
     <div {...rest} className={cls} id={id || figureId("value", binding, cell)}
       data-tb-figure="value" data-tb-binding={binding} data-tb-cell={cell}
       data-tb-format={format}>
       {label != null && <span className="tb-kpi-label">{label}</span>}
       <span className="tb-kpi-value" />
-      {context != null && <span className="tb-kpi-context">{context}</span>}
+      {(context != null || delta) && (
+        <span className="tb-kpi-context">{delta}{delta && context != null ? " " : null}{context}</span>
+      )}
       {children}
     </div>
   );

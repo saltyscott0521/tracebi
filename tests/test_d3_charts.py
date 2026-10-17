@@ -281,7 +281,7 @@ def test_a_sparkline_is_the_shape_alone_at_its_own_height(page):
     row's own value. Ignoring the class would drop a 320px chart into a tile."""
     _reset(page)
     svg = page.locator("#spark svg.tb-chart-svg")
-    assert svg.get_attribute("height") == "44"
+    assert svg.get_attribute("height") == "32"
     assert page.locator("#spark .tb-axis text").evaluate_all(
         "ts => ts.filter(t => t.getBoundingClientRect().width > 0).length") == 0
     assert page.locator("#spark .tb-grid line").count() == 0

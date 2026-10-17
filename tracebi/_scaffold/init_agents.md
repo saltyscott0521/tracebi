@@ -103,7 +103,11 @@ file. Show numbers through the kit — `<Kpi binding cell format label lead>`,
 `<Value>`, `<Chart binding type x y>`, `<Spark>`, `<Table binding>`, with
 `<Filter>`, `<Search>`, `<Download>` — and give `binding`, `cell`, `x`, `y`
 literal strings: the build reads them as claims and refuses a binding or
-column that does not exist. `useBinding("name")` hands your own components
+column that does not exist. A KPI's change is a stamped figure too:
+`<Kpi … deltaBinding="kpis" deltaCell="unrealized" deltaFormat="currency_compact"
+deltaGood="up" context="vs cost">` shows it first on the context line with its
+arrow, sign and colour (`deltaGood="down"` for costs and churn). Only where
+the model measures a comparison; no comparison measure, no delta. `useBinding("name")` hands your own components
 the stamped rows; a number your code computes or draws (a Recharts chart, a
 sum) is the app's presentation, not a checked figure, and the page says so.
 For app behaviour: `<Filter column>` with no `binding` filters the whole page
@@ -156,7 +160,9 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `data-tb-sort` makes a table's headers click-to-sort, `data-tb-bars="col"`
   draws a proportional bar behind a numeric column, and
   `data-tb-direction="up-good"` (or `"down-good"`) marks a bound change on a
-  value figure up or down, good or bad. They reorder or decorate stamped
+  value figure up or down, good or bad — on a KPI, as `<span class="tb-kpi-delta"
+  data-tb-figure="value" … data-tb-direction="up-good">` leading its
+  `.tb-kpi-context` line. They reorder or decorate stamped
   values; they never compute one. Tables past 500 rows render only the
   visible rows; printing and download still use every row. Find-in-page
   cannot see rows outside that window — search with `data-tb-search`.
@@ -252,7 +258,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   *works in* is a dashboard: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with a KPI
   strip, a chart beside its ranking and a filterable detail; `--html` writes it as
   `template.html` (`brief` plus `.tb-cols-2-1`); `tracebi init`'s sample is an `app.jsx`. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
-  number `.tb-kpi--lead`, and give a KPI with a trend a `class="tb-spark"` line or area
+  number `.tb-kpi--lead` (larger, not wider), give a number its signal with a
+  `.tb-kpi-delta` where the model measures a change, and give a KPI with a trend a `class="tb-spark"` line or area
   chart (the shape alone, no axes). `.tb-cols-2-1` / `.tb-cols-1-2` put a wide panel
   beside a narrow one, as do `.tb-span-8` / `.tb-span-4` (`.tb-span-6`, `.tb-span-12`)
   on a `.tb-grid`'s panels: the 12-column grid.

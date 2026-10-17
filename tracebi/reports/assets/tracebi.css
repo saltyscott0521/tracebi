@@ -272,10 +272,10 @@ img, svg { max-width: 100%; }
 }
 
 .tb-kpi-value {
-  font-size: 1.85em;
+  font-size: var(--tb-text-2xl);
   font-weight: 600;
   line-height: 1.15;
-  letter-spacing: -0.025em;
+  letter-spacing: var(--tb-tracking-tight);
   font-variant-numeric: tabular-nums;
 }
 
@@ -291,11 +291,9 @@ img, svg { max-width: 100%; }
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 .tb-grid > .tb-kpi { border: 0; border-radius: 0; }
-/* The lead KPI: the one number the page is about — twice the width and a
- * larger figure, so the row has an anchor instead of equal boxes. */
-.tb-kpi--lead { grid-column: span 2; }
-.tb-kpi--lead .tb-kpi-value { font-size: 2.6em; letter-spacing: var(--tb-tracking-tight); }
-@media (max-width: 720px) { .tb-kpi--lead { grid-column: auto; } }
+/* The lead KPI: the one number the page is about. It is larger, not wider:
+ * one step up the scale, so the row has an anchor and no empty half-cell. */
+.tb-kpi--lead .tb-kpi-value { font-size: var(--tb-text-3xl); }
 
 /* The comparison under the number — "+4.1% vs last month", "of total".
  * A KPI without one is a number, not a signal. */
@@ -306,6 +304,20 @@ img, svg { max-width: 100%; }
 }
 .tb-kpi-context [data-tb-figure] { font-weight: 600; }
 .tb-kpi-context [data-tb-figure]:not(.tb-good):not(.tb-bad) { color: var(--tb-ink); }
+/* The delta: a stamped change, first on the context line ("▲ +$12.3M vs
+ * cost"). data-tb-direction gives it its arrow and its --tb-good / --tb-bad
+ * from the value's sign; the sign of a rise is drawn here, so the figure's
+ * text stays exactly the formatted number. Zero is neutral: no arrow, ink. */
+.tb-kpi-delta { white-space: nowrap; margin-right: 0.25em; }
+.tb-kpi-delta:is(.tb-up, .tb-down)::before, .tb-kpi-delta > :is(.tb-up, .tb-down)::before {
+  font-size: 1em;
+  margin-right: 0;
+  vertical-align: 0;
+}
+.tb-kpi-delta.tb-up::before, .tb-kpi-delta > .tb-up::before { content: "\25B4\00A0+"; }   /* ▴ + */
+.tb-kpi-delta.tb-down::before, .tb-kpi-delta > .tb-down::before { content: "\25BE\00A0"; } /* ▾ */
+/* A sparkline in the card sits on its bottom edge, under the context. */
+.tb-kpi > [data-tb-figure="chart"].tb-spark { height: 32px; margin-top: auto; }
 
 /* ── 5. Tables ─────────────────────────────────────────────────────────── */
 

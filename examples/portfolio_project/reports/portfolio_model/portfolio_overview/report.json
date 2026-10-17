@@ -10,7 +10,8 @@
           "fair_value",
           "positions",
           "mark",
-          "unrealized"
+          "unrealized",
+          "cost_basis"
         ]
       }
     },

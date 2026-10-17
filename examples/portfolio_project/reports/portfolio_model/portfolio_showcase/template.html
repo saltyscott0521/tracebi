@@ -53,12 +53,14 @@
   <div class="tb-grid sc-kpis">
     <!-- Each KPI carries its context. The book has one as-of date, so the
          comparison is against cost, not a prior period: a governed measure
-         (unrealized = fair value - cost), never a number typed in. -->
+         (unrealized = fair value - cost), never a number typed in. The delta
+         (.tb-kpi-delta) leads the context line; data-tb-direction gives it
+         its arrow, sign and colour from the stamped value. -->
     <div class="tb-kpi">
       <span class="tb-kpi-label">Fair value</span>
       <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv"></span>
-      <span class="tb-kpi-context"><span data-tb-figure="value"
+      <span class="tb-kpi-context"><span class="tb-kpi-delta" data-tb-figure="value"
             data-tb-binding="gain" data-tb-cell="unrealized"
             data-tb-format="compact" data-tb-direction="up-good"
             id="kpi-gain"></span> vs cost</span>

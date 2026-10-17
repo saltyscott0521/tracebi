@@ -1387,6 +1387,33 @@ process.stdout.write(JSON.stringify([[a.className, a.textContent],
                        ["tb-down tb-good", "-2"],
                        ["tb-flat", "0"]]
 
+    def test_server_rendered_direction_matches_the_runtime(self):
+        """A KPI's delta reads the same with and without JavaScript: the build's
+        no-JS classes (_ssr_direction) are the ones markDirection sets."""
+        import types
+
+        import pandas as pd
+
+        from tracebi.reports.template_package import _ssr_direction
+        cases = [("a", "12.5", "up-good"), ("b", "-3", "up-good"), ("c", "4", "down-good"),
+                 ("d", "-0.5", "down-good"), ("e", "0", "down-good"), ("f", "n/a", "up-good")]
+        out = _run_dom("""
+dataBlock('k', '%s\\n%s\\n');
+var els = %s.map(function (c) {
+  return el('span', { 'data-tb-figure': 'value', 'data-tb-binding': 'k',
+                      'data-tb-cell': c[0], 'data-tb-direction': c[1] });
+});
+loadRuntime();
+process.stdout.write(JSON.stringify(els.map(function (e) { return e.className; })));
+""" % (",".join(c for c, _, _ in cases), ",".join(v for _, v, _ in cases),
+       json.dumps([[c, d] for c, _, d in cases])))
+        frame = pd.DataFrame({c: [float(v) if v != "n/a" else v] for c, v, _ in cases})
+        ds = types.SimpleNamespace(to_pandas=lambda: frame)
+        ssr = [_ssr_direction(ds, types.SimpleNamespace(
+            cell=c, attrs={"data-tb-direction": d})) for c, _, d in cases]
+        assert ssr == out == ["tb-up tb-good", "tb-down tb-bad", "tb-up tb-bad",
+                              "tb-down tb-good", "tb-flat", ""]
+
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestTableWindow:

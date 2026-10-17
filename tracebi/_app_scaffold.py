@@ -64,7 +64,9 @@ function Overview() {
         <Value binding="top" cell="__MEASURE__" />. Rewrite this sentence as the
         page's finding.
       </p>
-      {/* One KPI strip: the lead number twice as wide, then what explains it. */}
+      {/* One KPI strip: the lead number larger, then what explains it. A change
+          the model measures (an offset or growth measure) leads a KPI's context
+          as its delta: deltaBinding deltaCell deltaFormat deltaGood="up|down". */}
       <div className="tb-grid">
         <Kpi lead binding="totals" cell="__MEASURE__" label="__MLABEL__"
              context="state the period and comparison" />
