@@ -161,9 +161,11 @@ Each fix that taught something general adds a line here.
 - A theme token the dark block does not set silently inherits the light value:
   `--blue` stayed near-black and every active tab and row vanished in dark.
 - A page that shows a fact another page shows uses the same words and chips,
-  from the same data: the Runs page shows the verdict the Reports page shows
-  (`/api/desk`) on a report's newest build, and a neutral "Not checked" on every
-  older one. A build row stores no verdict, so it never reads green by itself.
+  from the same data: every verdict is the `Verdict` chip, its state from
+  `verdictOf` (`web/ui/src/verdict.js`). The Runs page shows the verdict the
+  Reports page shows (`/api/desk`) on a report's newest build, and a neutral
+  "Not checked" on every older one. A build row stores no verdict, so it never
+  reads green by itself.
 - A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the

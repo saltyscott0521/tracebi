@@ -195,7 +195,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             row.click()
             page.wait_for_url(f"**?r={_REPORT.replace('/', '%2F')}")
             expect(row).to_have_attribute("aria-pressed", "true")
-            expect(row).to_contain_text("○ Never built")
+            expect(row).to_contain_text("Never built")
             expect(row).to_contain_text("Mondays 07:00")   # its schedule, in words
             page.get_by_text("There is no page to show yet").wait_for()
             assert page.locator("iframe").count() == 0
@@ -288,17 +288,17 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert _TITLE in downloaded["body"]
 
             # Rebuild makes more build rows, and the stage re-checks the new one:
-            # the sentence under the list says the built report still re-runs to
-            # the same numbers, and its row says when it was built.
+            # the sentence under the list says the built report reproduces, and
+            # its row says when it was built.
             page.get_by_role("button", name="Rebuild").click()
             page.get_by_text("Report ran successfully").wait_for()
             back.click()
-            page.get_by_text(re.compile(r"re-runs? to the same numbers")).wait_for()
+            page.get_by_text(re.compile(r"built reports? reproduces?")).wait_for()
             expect(row).to_contain_text("Built ")
 
             # A build whose source changed since never reads as fine: its row, the
-            # sentence under the list and the bar of its page say so, in words with a
-            # glyph, and the sentence does not claim it re-runs.
+            # sentence under the list, the chip and the bar of its page all say
+            # Needs a look, and nothing there claims it reproduces.
             def source_changed(route):
                 desk = route.fetch().json()
                 for built in desk["builds"]:
@@ -307,14 +307,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
             page.route("**/api/desk", source_changed)
             page.reload()
-            expect(row).to_contain_text("△ Source changed")
+            expect(row).to_contain_text("Needs a look")
+            expect(row).not_to_contain_text("Reproduces")
             expect(page.get_by_role("button", name=re.compile(r"^Needs a look \(\d+\)"))).to_be_visible()
-            page.get_by_text("0 of 1 built reports re-run to the same numbers").wait_for()
+            page.get_by_text("0 of 1 built reports reproduce").wait_for()
             page.get_by_role("link", name="Open").click()
-            page.get_by_text("Source changed since").wait_for()
-            bar = page.get_by_role("status").filter(has_text="Source changed.")
+            page.get_by_role("button", name="Needs a look", exact=True).wait_for()
+            bar = page.get_by_role("status").filter(has_text="Needs a look.")
             expect(bar).to_contain_text("The data changed since it was built")
-            assert "re-run to the same" not in bar.inner_text()
+            assert "Reproduces" not in bar.inner_text()
             page.unroute("**/api/desk")
 
             # The all-models page keeps its list; a row there opens the same page.

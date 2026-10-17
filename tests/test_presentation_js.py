@@ -1039,10 +1039,12 @@ El.prototype.querySelector = function (sel) {  // class selectors only
 Object.defineProperty(El.prototype, 'firstChild', {
   get: function () { return this.children[0] || null; }
 });
+El.prototype.setAttribute = function (k, v) { this[k] = String(v); };
 
 var byId = {};
 globalThis.document = {
   readyState: 'complete',
+  querySelector: function () { return null; },   // no stage meta, no receipt: a working page
   querySelectorAll: function () { return []; },
   getElementById: function (id) { return byId[id] || null; },
   createElement: function (t) { return new El(t); },
@@ -1079,6 +1081,7 @@ globalThis.tracebi._badges();  // second pass must not double-badge or re-wrap
 var wrap = table.parentNode;
 process.stdout.write(JSON.stringify({
   kpi_children: kpi.children.map(function (c) { return c.className; }),
+  kpi_chip: kpi.children[0] ? [kpi.children[0]['data-tb-verdict'], kpi.children[0].textContent] : null,
   kpi_not_wrapped: kpi.parentNode === page,
   wrap_class: wrap ? wrap.className : null,
   wrap_in_section: wrap !== null && wrap.parentNode === section,
@@ -1098,7 +1101,10 @@ process.stdout.write(JSON.stringify({
         out = json.loads(result.stdout)
         # The KPI is its own anchor (position:relative in css): badged in
         # place, never wrapped — and exactly once across two passes.
-        assert out["kpi_children"] == ["tb-badge tb-badge--verified"]
+        assert out["kpi_children"] == ["tb-badge tb-verdict"]
+        # A query-backed figure's badge is the verdict chip with the file's own
+        # state: a working page is a Draft, never green by itself.
+        assert out["kpi_chip"] == ["draft", "Draft"]
         assert out["kpi_not_wrapped"] is True
         # The table is wrapped in the positioned anchor div, which holds
         # the badge and then the table — badge pinned to the table corner.

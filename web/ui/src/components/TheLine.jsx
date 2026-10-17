@@ -6,7 +6,7 @@ import {
   useConnectorWarehouse, useReports, useDesk,
 } from '../api'
 import { buildModelGraph } from './modelGraph'
-import { verdictOf } from './Attention'
+import { verdictOf } from '../verdict'
 import { pagePath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 
 // The line: how a model is made, as three stations and the two hand-offs
@@ -65,15 +65,6 @@ export function contractFailure(message) {
   return { failed: Number(m[1]), total: Number(m[2]), checks }
 }
 
-// What a verdict that is not "reproduces" says, in a few words, on a count.
-const VERDICT_NOTE = {
-  source_drift: 'source changed',
-  not_reproduced: "don't reproduce",
-  nothing_to_verify: 'nothing to check',
-  refused_newer_schema: 'built by a newer TraceBi',
-  error: 'check failed',
-}
-
 const GLYPH = { bad: '✕', warn: '△', none: '○' }
 const mark = (kind, text) => ({ kind, glyph: GLYPH[kind], text })
 
@@ -130,7 +121,8 @@ export function useLineFacts(model) {
   const listed = (reports || []).filter(r => reportBelongsToModel(r, model))
   const builds = new Map((desk?.builds || []).map(b => [b.report, b]))
   const built = listed.filter(r => builds.has(r.name))
-  const looks = built.map(r => builds.get(r.name).verdict).filter(v => !['green', 'gray'].includes(verdictOf(v).variant))
+  const looks = built.map(r => verdictOf({ report: r, build: builds.get(r.name) }).state)
+    .filter(state => state === 'needs-a-look' || state === 'does-not-reproduce')
 
   // The tables of the model's warehouse, with the sink contract's word on each
   const read = new Set((detail?.tables || []).filter(t => t.connector === source?.name).map(t => t.source))
@@ -183,12 +175,11 @@ function reportsStation(reports, listed, desk, built, looks) {
   s.fact = [built.length && `${built.length} built`, scheduled && `${scheduled} scheduled`].filter(Boolean).join(' · ')
   const never = listed.length - built.length
   if (never) s.flags.push(mark('none', `${never} never built`))
-  if (looks.length) {
-    const kinds = new Set(looks)
-    const text = kinds.size === 1 ? VERDICT_NOTE[looks[0]] || 'need a look' : 'need a look'
-    const bad = [...kinds].some(v => verdictOf(v).variant === 'red')
-    s.flags.push(mark(bad ? 'bad' : 'warn', `${looks.length} ${text}`))
-  }
+  // The chip's words, on a count.
+  const broken = looks.filter(state => state === 'does-not-reproduce').length
+  const look = looks.length - broken
+  if (broken) s.flags.push(mark('bad', `${broken} ${broken === 1 ? 'does' : 'do'} not reproduce`))
+  if (look) s.flags.push(mark('warn', `${look} ${look === 1 ? 'needs' : 'need'} a look`))
   return s
 }
 

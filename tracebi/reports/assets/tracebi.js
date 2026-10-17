@@ -2843,13 +2843,14 @@
    *    become green, because the class is chosen from provenance here. ──── */
 
   /* The badge word is what a non-technical reviewer reads, so it must state
-   * the actual guarantee, not imply "correct/audited". A green figure's number
-   * is query-REPRODUCIBLE (a re-runnable query backs it, matching the verify
-   * verdict `reproduces`) — never "verified". Grey is computed in python (not
-   * query-reproducible); amber is an honest unbacked figure. The provenance
-   * KEY and the CSS class stay as-is; only the reader-facing text changes. */
+   * the actual guarantee, not imply "correct/audited". A figure a re-runnable
+   * query backs carries the verdict chip (.tb-verdict) with this file's own
+   * state: "Draft" on a working preview, "Not checked" on a built file. It is
+   * never green here: only a host that re-ran the queries may say Reproduces.
+   * Grey is computed in python (not query-reproducible); amber is an honest
+   * unbacked figure. The provenance KEY stays as-is. */
   var _BADGES = {
-    verified:   { cls: "tb-badge--verified",   text: "reproducible" },
+    verified:   { cls: "tb-verdict", verdict: true },
     derived:    { cls: "tb-badge--derived",    text: "python-derived" },
     unverified: { cls: "tb-badge--unverified", text: "unverified" }
   };
@@ -2890,7 +2891,14 @@
         if (anchor.querySelector(".tb-badge")) return;
         var badge = document.createElement("span");
         badge.className = "tb-badge " + spec.cls;
-        badge.textContent = spec.text;
+        if (spec.verdict) {
+          var state = verdictState();
+          badge.setAttribute("data-tb-verdict", state);
+          badge.textContent = _VERDICTS[state].text;
+          badge.title = _VERDICTS[state].tip;
+        } else {
+          badge.textContent = spec.text;
+        }
         if (fig.note) badge.title = fig.note;
         anchor.insertBefore(badge, anchor.firstChild);
       } catch (e) { /* defensive */ }

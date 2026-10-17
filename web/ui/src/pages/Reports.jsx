@@ -15,22 +15,20 @@ import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
 import { ReportLineage } from '../components/ReportLineage'
 import {
-  AttentionStrip, attentionItems, reviewNotes, verdictOf, verdictFlag, isQuiet, when,
+  AttentionStrip, attentionItems, reviewNotes, when,
 } from '../components/Attention'
-import { Flag, stamp, useLineFacts } from '../components/TheLine'
+import { VERDICT_LABEL, needsAction, verdictOf } from '../verdict'
+import { stamp, useLineFacts } from '../components/TheLine'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
 import { PageHeader, useReportModels, useOpenReport, useNavMenu, PREVIEW_QUERY } from '../components/Scope'
 import { reportBelongsToModel, reportModels, pagePath, reportOpenPath } from '../nav'
 import { scheduleWords } from '../schedule'
 import {
-  Card, CardTitle, Badge, Spinner,
+  Card, CardTitle, Spinner, Verdict,
   Empty, Btn, SplitLayout, ListItem, ErrorDetail,
   SearchInput, SkeletonList, SkeletonCard, useToast, pressable, useNarrow,
 } from '../components/Shared'
-
-// A report that has no build: marked, never coloured (it is not an error).
-const NEVER_BUILT = { kind: 'none', glyph: '○', text: 'Never built' }
 
 function runDuration(rec) {
   if (!rec.finished_at) return null
@@ -417,13 +415,12 @@ function Section({ title, children }) {
   return <section className="rpanel__sec"><h2>{title}</h2>{children}</section>
 }
 
-function DetailsTab({ report, model, shown, lastBuild, checkedAt, flag, onCheck, checking, goCode }) {
+function DetailsTab({ report, model, shown, lastBuild, checkedAt, verdict, onCheck, checking, goCode }) {
   const manifest = shown?.manifest
   const p = figureProvenance(manifest)
   const contracts = Object.entries(manifest?.transform_contracts || {})
   const words = scheduleWords(report.schedule)
   const last = report.last_run
-  const verdict = lastBuild && verdictOf(lastBuild.verdict)
   const builtAt = manifest?.rendered_at ? stamp(manifest.rendered_at) : null
   const form = (FORMS[report.form] || FORMS.code).label
   return (
@@ -433,11 +430,11 @@ function DetailsTab({ report, model, shown, lastBuild, checkedAt, flag, onCheck,
         <Facts>
           <Fact k="Built">{builtAt || 'Not built yet'}</Fact>
           {lastBuild && (
-            <Fact k="Re-run check">
-              {flag ? <Flag flag={flag} /> : verdict.label}
-              {checkedAt ? <> · {stamp(new Date(checkedAt).toISOString())}</> : null}
-              <br />
-              <button type="button" className="rpanel__link" onClick={onCheck} disabled={checking}>Check again</button>
+            <Fact k="Numbers">
+              {verdict ? <Verdict state={verdict.state} detail={verdict.detail} /> : 'Checking…'}
+              {verdict && checkedAt ? <> · checked {stamp(new Date(checkedAt).toISOString())}</> : null}
+              {verdict && verdict.state !== 'reproduces' && <div className="rpanel__hint">{verdict.detail}</div>}
+              <div><button type="button" className="rpanel__link" onClick={onCheck} disabled={checking}>Check again</button></div>
             </Fact>
           )}
           {manifest && manifest.schema_version !== 2 && (
@@ -596,18 +593,12 @@ function ReportPanel({ tab, setTab, onClose, ...props }) {
   )
 }
 
-// "Source changed" on a build reads, beside its time, as "Source changed since".
-function sinceFlag(verdict) {
-  const flag = verdictFlag(verdict)
-  return flag && verdict === 'source_drift' ? { ...flag, text: 'Source changed since' } : flag
-}
-
 // A report with no build: nothing to show, and nothing is built by looking.
 function NeverBuilt({ build, canBuild }) {
   const busy = build.running || build.status === 'succeeded'
   return (
     <div className="rprev__never">
-      <Flag flag={NEVER_BUILT} />
+      <Verdict state="never-built" />
       <p>There is no page to show yet. Build it once and the preview, its receipt and the check appear here.</p>
       {canBuild && (
         <Btn onClick={build.build} disabled={busy}>
@@ -738,8 +729,9 @@ function OpenReport({ report, model }) {
     try {
       await qc.refetchQueries({ queryKey: ['desk'] })
       const row = (qc.getQueryData(['desk'])?.builds || []).find(b => b.report === name)
-      const v = row && verdictOf(row.verdict)
-      toast(row ? `Checked again: ${v.label}.` : 'There is no build to check.', v?.variant === 'red' ? 'error' : 'info')
+      const v = row && verdictOf({ report, build: row })
+      toast(row ? `Checked again: ${VERDICT_LABEL[v.state]}.` : 'There is no build to check.',
+        v?.state === 'does-not-reproduce' ? 'error' : 'info')
     } catch (err) {
       toast(`The check failed: ${err.message}`, 'error')
     } finally {
@@ -748,8 +740,10 @@ function OpenReport({ report, model }) {
   }
 
   // A check still running would show the verdict from before it.
-  const flag = !checkingDesk && lastBuild ? sinceFlag(lastBuild.verdict) : null
-  const message = flag && verdictOf(lastBuild.verdict)
+  const verdict = desk && !checkingDesk ? verdictOf({
+    report, build: lastBuild, contracts: shown?.manifest?.transform_contracts, checkedAt: dataUpdatedAt,
+  }) : null
+  const message = needsAction(verdict) ? verdict : null
   const builtAt = shown?.manifest?.rendered_at ? stamp(shown.manifest.rendered_at) : null
   const opening = !frameHtml && !running && ((!desk && !deskFailed) || built.isLoading)
   const toModel = model
@@ -775,11 +769,7 @@ function OpenReport({ report, model }) {
         </nav>
         <div className="rp__titlerow">
           <h1 className="rp__name" title={name}>{label}</h1>
-          {flag && (
-            <button type="button" className={`rp__chip rp__chip--${flag.kind}`} onClick={e => openPanel('details', e)}>
-              <span aria-hidden="true">{flag.glyph}</span> {flag.text}
-            </button>
-          )}
+          {verdict && <Verdict state={verdict.state} detail={verdict.detail} onClick={e => openPanel('details', e)} />}
           <div className="rp__meta">
             {builtAt && (
               <span title="Opening a report shows its last build. Rebuild or a schedule refreshes the data.">Built {builtAt}</span>
@@ -815,10 +805,9 @@ function OpenReport({ report, model }) {
       </header>
 
       {message && (
-        <div role="status" className={`rp__msg rp__msg--${flag.kind}`}>
-          <span aria-hidden="true">{flag.glyph}</span>
+        <div role="status" className={`rp__msg${message.state === 'does-not-reproduce' ? ' rp__msg--bad' : ''}`}>
           <span className="rp__msg-text">
-            <strong>{message.label}.</strong> {message.detail || 'See Details.'}
+            <strong>{VERDICT_LABEL[message.state]}.</strong> {message.detail}
           </span>
           {canBuild && <button type="button" className="rpanel__link" onClick={rebuild} disabled={running}>Rebuild</button>}
           <button type="button" className="rpanel__link" onClick={e => openPanel('details', e)}>Details</button>
@@ -863,7 +852,7 @@ function OpenReport({ report, model }) {
             <div className="rp__scrim rp__scrim--panel" onClick={closePanel} aria-hidden="true" />
             <ReportPanel tab={panel.tab} setTab={tab => setPanel({ open: true, tab })} onClose={closePanel}
                          report={report} model={model} shown={shown} lastBuild={lastBuild}
-                         checkedAt={dataUpdatedAt} flag={flag} onCheck={checkAgain} checking={checking} />
+                         checkedAt={dataUpdatedAt} verdict={verdict} onCheck={checkAgain} checking={checking} />
           </>
         )}
       </div>
@@ -957,39 +946,38 @@ function ConfigView({ report }) {
   )
 }
 
-// What a verdict that is not "reproduces" says of the builds that have it, said
-// of *n* of them.
-const NOT_HELD = {
-  source_drift: n => `${n === 1 ? 'was' : 'were'} built before the source data changed`,
-  not_reproduced: n => `${n === 1 ? "doesn't" : "don't"} reproduce`,
-  unverifiable: n => `can't be re-run (${n === 1 ? 'its' : 'their'} numbers come from code)`,
-  nothing_to_verify: () => 'recorded no numbers to check',
-  refused_newer_schema: n => `${n === 1 ? 'was' : 'were'} built by a newer TraceBi`,
-  error: () => 'could not be checked',
+// Worst first: the state the summary sentence leads with.
+const WORST = ['does-not-reproduce', 'needs-a-look', 'not-checked', 'reproduces']
+const COUNTED = {
+  'needs-a-look': n => `${n} ${n === 1 ? 'needs' : 'need'} a look`,
+  'does-not-reproduce': n => `${n} ${n === 1 ? 'does' : 'do'} not reproduce`,
+  'not-checked': n => `${n} not checked`,
 }
 
 // The one sentence under the list that says whether the built reports still
-// hold. The good news only when it is true; otherwise what is not.
-function receiptLine(reports, builds, checkedAt) {
+// hold, led by the chip of the worst of them. The good news only when it is
+// true; otherwise how many of each.
+function ReceiptLine({ reports, builds, checkedAt }) {
   const built = reports.filter(r => builds[r.name])
   if (!built.length) return 'No report here is built yet.'
   const when = checkedAt ? ` (checked ${stamp(new Date(checkedAt).toISOString())})` : ''
-  const held = built.filter(r => builds[r.name].verdict === 'reproduces').length
-  if (held === built.length) {
-    return built.length === 1
-      ? `The built report re-runs to the same numbers${when}.`
-      : `All ${built.length} built reports re-run to the same numbers${when}.`
-  }
-  const rest = {}
+  const count = {}
   built.forEach(r => {
-    const v = builds[r.name].verdict
-    if (v !== 'reproduces') rest[v] = (rest[v] || 0) + 1
+    const { state } = verdictOf({ report: r, build: builds[r.name] })
+    count[state] = (count[state] || 0) + 1
   })
-  const said = Object.entries(rest).map(([v, n]) => `${n} ${(NOT_HELD[v] || (() => 'needs a look'))(n)}`)
-  return `${held} of ${built.length} built reports re-run to the same numbers${when}. ${said.join('; ')}.`
+  const held = count.reproduces || 0
+  const lead = <Verdict state={WORST.find(st => count[st])} size="sm" />
+  if (held === built.length) {
+    return <>{lead} {built.length === 1
+      ? `The built report reproduces${when}.`
+      : `All ${built.length} built reports reproduce${when}.`}</>
+  }
+  const said = WORST.filter(st => COUNTED[st] && count[st]).map(st => COUNTED[st](count[st]))
+  return <>{lead} {`${held} of ${built.length} built reports reproduce${when}. ${said.join('; ')}.`}</>
 }
 
-function ReportRow({ report, flag, builtAt, selected, onPick }) {
+function ReportRow({ report, verdict, builtAt, selected, onPick }) {
   const words = scheduleWords(report.schedule)
   return (
     <li>
@@ -999,7 +987,7 @@ function ReportRow({ report, flag, builtAt, selected, onPick }) {
           {report.description && <span className="rrow__desc" title={report.description}>{report.description}</span>}
         </span>
         <span className="rrow__side">
-          {flag && <Flag flag={flag} />}
+          {verdict && <Verdict state={verdict.state} detail={verdict.detail} size="sm" />}
           {builtAt && <span className="rrow__built">Built {builtAt}</span>}
           {words && <span className="rrow__sched">{words.short}</span>}
         </span>
@@ -1013,7 +1001,7 @@ function ReportRow({ report, flag, builtAt, selected, onPick }) {
 function ReportView({ report, model, desk, deskFailed, build, canBuild, view, onView }) {
   const buildRun = useReportBuild(report.name)
   const words = scheduleWords(report.schedule)
-  const flag = build ? sinceFlag(build.verdict) : desk ? NEVER_BUILT : null
+  const verdict = desk ? verdictOf({ report, build }) : null
   const label = report.name.slice(report.name.lastIndexOf('/') + 1)
   return (
     <div className="rview">
@@ -1022,7 +1010,7 @@ function ReportView({ report, model, desk, deskFailed, build, canBuild, view, on
           <div className="rview__name" title={report.name}>{label}</div>
           <div className="rview__built">
             {build && <span>Built {stamp(build.built_at)}</span>}
-            {flag && <Flag flag={flag} />}
+            {verdict && <Verdict state={verdict.state} detail={verdict.detail} size="sm" />}
             {words && <span>{words.long}</span>}
           </div>
         </div>
@@ -1072,8 +1060,8 @@ function ReportsStage({ model }) {
   const notes = reviewNotes(attentionItems(desk, [], modelsOf)).filter(it => it.models.includes(model))
   const builds = Object.fromEntries((desk?.builds || []).map(b => [b.report, b]))
   // Before the desk has answered nothing is claimed about any build.
-  const flagOf = r => (!desk ? null : builds[r.name] ? verdictFlag(builds[r.name].verdict) : NEVER_BUILT)
-  const needsLook = r => !!desk && (!builds[r.name] || !isQuiet(builds[r.name].verdict))
+  const verdictFor = r => (desk ? verdictOf({ report: r, build: builds[r.name] }) : null)
+  const needsLook = r => { const v = verdictFor(r); return v?.state === 'never-built' || needsAction(v) }
   // How many each filter would show (Needs a look is not known until the desk answers).
   const count = key => (key === 'look' ? (desk ? reports.filter(needsLook).length : null)
     : key === 'scheduled' ? reports.filter(r => r.schedule).length : null)
@@ -1116,14 +1104,14 @@ function ReportsStage({ model }) {
           </div>
           <ul className="rsplit__rows">
             {listed.map(r => (
-              <ReportRow key={r.name} report={r} flag={flagOf(r)}
+              <ReportRow key={r.name} report={r} verdict={verdictFor(r)}
                          builtAt={builds[r.name] ? stamp(builds[r.name].built_at) : null}
                          selected={narrow ? undefined : selected?.name === r.name}
                          onPick={() => pick(r.name)} />
             ))}
           </ul>
           {!listed.length && <p className="rsplit__none">No report matches. Clear the search or pick “All”.</p>}
-          {desk && <p className="rsplit__receipt">{receiptLine(reports, builds, dataUpdatedAt)}</p>}
+          {desk && <p className="rsplit__receipt"><ReceiptLine reports={reports} builds={builds} checkedAt={dataUpdatedAt} /></p>}
         </div>
         {selected && (
           <ReportView key={selected.name} report={selected} model={model} desk={desk} deskFailed={deskFailed}
@@ -1172,16 +1160,18 @@ function ReportSource({ name }) {
 }
 
 // The last build's receipt, re-checked by GET /api/desk. Nothing is shown
-// for a report with no build on disk: an unchecked report makes no claim.
-function ReceiptChip({ build }) {
-  if (!build) return null
-  const v = verdictOf(build.verdict)
+// before the desk has answered: until then nothing is claimed.
+function ReceiptChip({ report, build, known }) {
+  if (!known) return null
+  const v = verdictOf({ report, build })
   return (
     <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
-      <Badge variant={v.variant} style={{ textTransform: 'none', fontSize: 10 }}>{v.label}</Badge>
-      <span style={{ fontSize: 10.5, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-        built {when(build.built_at) || '—'}
-      </span>
+      <Verdict state={v.state} detail={v.detail} size="sm" />
+      {build && (
+        <span style={{ fontSize: 10.5, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+          built {when(build.built_at) || '—'}
+        </span>
+      )}
     </span>
   )
 }
@@ -1220,17 +1210,22 @@ function LibraryFacts({ report }) {
 // What the list is, before you open anything: how many reports, whether their
 // last builds still reproduce, what needs a look, and the latest builds.
 function ReportsOverview({ reports, builds, onOpen }) {
-  const names = new Set(reports.map(r => r.name))
-  const built = builds.filter(b => names.has(b.report))
-  const good = built.filter(b => verdictOf(b.verdict).variant === 'green').length
-  const look = built.filter(b => !['green', 'gray'].includes(verdictOf(b.verdict).variant)).length
+  const byName = new Map(reports.map(r => [r.name, r]))
+  const built = builds.filter(b => byName.has(b.report))
+  const verdict = b => verdictOf({ report: byName.get(b.report), build: b })
+  const count = state => built.filter(b => verdict(b).state === state).length
+  const good = count('reproduces')
+  const look = count('needs-a-look')
+  const broken = count('does-not-reproduce')
   const never = reports.length - built.length
   const latest = [...built].sort((a, b) => String(b.built_at).localeCompare(String(a.built_at))).slice(0, 6)
+  // Each count is labelled with the words of the chip it counts.
   const tiles = [
     ['Reports', reports.length, null],
-    ['Reproduce', built.length ? `${good} of ${built.length}` : '—', null],
-    ['Need a look', look, look ? 'bad' : null],
-    ['Never built', never, null],
+    ['reproduces', built.length ? `${good} of ${built.length}` : '—', null],
+    ['needs-a-look', look, look ? 'bad' : null],
+    ...(broken ? [['does-not-reproduce', broken, 'bad']] : []),
+    ['never-built', never, null],
   ]
   return (
     <Card className="fade-in">
@@ -1239,7 +1234,7 @@ function ReportsOverview({ reports, builds, onOpen }) {
         {tiles.map(([label, value, tone]) => (
           <div key={label} className={`glance-tile${tone ? ` glance-tile--${tone}` : ''}`}>
             <div className="glance-tile__value">{value}</div>
-            <div className="glance-tile__label">{label}</div>
+            <div className="glance-tile__label">{VERDICT_LABEL[label] || label}</div>
           </div>
         ))}
       </div>
@@ -1250,12 +1245,12 @@ function ReportsOverview({ reports, builds, onOpen }) {
           <code>tracebi report build &lt;name&gt;</code>.
         </p>
       ) : latest.map(b => {
-        const v = verdictOf(b.verdict)
+        const v = verdict(b)
         return (
           <div key={b.report} className="glance-row" {...pressable(() => onOpen(b.report))}>
             <span className="glance-row__name">{b.report.slice(b.report.lastIndexOf('/') + 1)}</span>
             <span className="glance-row__when">{when(b.built_at) || '—'}</span>
-            <Badge variant={v.variant} style={{ textTransform: 'none' }}>{v.label}</Badge>
+            <Verdict state={v.state} detail={v.detail} size="sm" />
           </div>
         )
       })}
@@ -1388,7 +1383,7 @@ function AllReports({ model }) {
     <div className="reports-page">
       <PageHeader pageKey="reports" model={model} />
 
-      <AttentionStrip items={attentionItems(desk, pipelines, modelsOf)
+      <AttentionStrip items={attentionItems(desk, pipelines, modelsOf, reports)
         .filter(it => !model || it.models.includes(model))} />
 
       {!isLoading && reports.length === 0 && !(folderData?.personal && !model) ? (
@@ -1432,7 +1427,7 @@ function AllReports({ model }) {
                             name={r.name.slice(r.name.lastIndexOf('/') + 1)}
                             sub={r.description}
                             meta={<><FormChip form={r.form} /><LibraryFacts report={r} /></>}
-                            right={<ReceiptChip build={builds[r.name]} />}
+                            right={<ReceiptChip report={r} build={builds[r.name]} known={!!desk} />}
                           />
                           </div>
                         ))}

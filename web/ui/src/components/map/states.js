@@ -1,4 +1,4 @@
-import { verdictOf } from '../Attention'
+import { VERDICT_LABEL, needsAction, verdictOf } from '../../verdict'
 
 // What a node says when it is not fine. A state is `{ tone, label }`: the label
 // leads with a glyph so the state never rests on colour alone. Green is not a
@@ -26,15 +26,16 @@ export function ago(iso, now = Date.now()) {
 }
 
 /**
- * A report: never built, or what its last build's receipt said. Reproducing
- * and "not re-runnable" are quiet. Only the receipt colours a report: a sink
- * contract never does.
+ * A report: never built, or the verdict on its last build (verdict.js, so the
+ * words are the Reports page's). Reproduces and Not checked are quiet. *report*
+ * (its GET /api/reports row) lets files changed since the build need a look.
  */
-export function reportState(build) {
+export function reportState(build, report) {
   if (!build) return NEVER
-  const v = verdictOf(build.verdict)
-  if (v.variant === 'green' || v.variant === 'gray') return null
-  return { tone: v.variant === 'red' ? 'bad' : 'warn', label: `${v.variant === 'red' ? '✕' : '△'} ${v.label}`, detail: v.detail }
+  const v = verdictOf({ report, build })
+  if (!needsAction(v)) return null
+  const bad = v.state === 'does-not-reproduce'
+  return { tone: bad ? 'bad' : 'warn', label: `${bad ? '✕' : '△'} ${VERDICT_LABEL[v.state]}`, detail: v.detail }
 }
 
 /**

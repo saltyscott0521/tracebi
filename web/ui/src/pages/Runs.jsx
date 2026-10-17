@@ -1,12 +1,13 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { reportShareUrl, useDesk, usePipelines, useRuns } from '../api'
-import { verdictOf, when } from '../components/Attention'
+import { reportShareUrl, useDesk, usePipelines, useReports, useRuns } from '../api'
+import { when } from '../components/Attention'
+import { checkedVerdict, verdictOf } from '../verdict'
 import { PageHeader, useReportModels } from '../components/Scope'
 import { pipelineModels, reportPagePath } from '../nav'
 import {
-  Badge, Spinner, Empty, ErrorDetail,
+  Badge, Spinner, Empty, ErrorDetail, Verdict,
 } from '../components/Shared'
 
 // Kinds the store records. The values are the API's filters; the labels
@@ -35,19 +36,21 @@ const field = {
   borderRadius: 6, padding: '6px 10px',
 }
 
-// The words and chips the Reports page uses, and only `reproduces` is green.
-// A build row stores no verdict (a build is not a check). Only the newest
-// successful build of a report is still the page on disk, and the Reports page
-// re-checks that one: its row shows that verdict. Any other build was never
-// checked, and says so in grey.
+// The chip the Reports page shows, from the same rule (verdict.js), and only
+// `reproduces` is green. A build row stores no verdict (a build is not a
+// check). Only the newest successful build of a report is still the page on
+// disk, and the desk re-checks that one: its row shows that verdict. Any other
+// build was never checked, and says so. Null while the check is coming.
 function runVerdict(run, latestBuild, checks) {
-  if (run.verdict) return verdictOf(run.verdict)
+  if (run.verdict) return checkedVerdict(run.verdict)
   const latest = BUILD_KINDS.has(run.kind) && latestBuild[run.target] === run.id
-  if (latest && checks.loading) return { label: 'Checking…', variant: 'gray' }
-  if (latest && checks.byReport[run.target]) return verdictOf(checks.byReport[run.target])
+  if (latest && checks.loading) return null
+  if (latest && checks.builds[run.target]) {
+    return verdictOf({ report: checks.reports[run.target], build: checks.builds[run.target] })
+  }
   return {
-    label: 'Not checked', variant: 'gray',
-    title: BUILD_KINDS.has(run.kind) ? 'Only the latest build of a report is re-checked; the Reports page shows it.' : undefined,
+    state: 'not-checked',
+    detail: BUILD_KINDS.has(run.kind) ? 'Only the latest build of a report is re-checked; the Reports page shows it.' : undefined,
   }
 }
 
@@ -131,9 +134,11 @@ export default function Runs({ model = '' }) {
     return name => index.get(name) || []
   }, [pipelines])
   const { data: desk, isLoading: deskLoading } = useDesk()
+  const { data: reports, isLoading: reportsLoading } = useReports()
   const checks = {
-    loading: deskLoading,
-    byReport: Object.fromEntries((desk?.builds || []).map(b => [b.report, b.verdict])),
+    loading: deskLoading || reportsLoading,
+    builds: Object.fromEntries((desk?.builds || []).map(b => [b.report, b])),
+    reports: Object.fromEntries((reports || []).map(r => [r.name, r])),
   }
   // The newest successful build of each report, whatever the filters hide.
   const latestBuild = {}
@@ -230,9 +235,9 @@ export default function Runs({ model = '' }) {
                     </td>
                     <td style={{ fontSize: 12 }}><Actor run={run} /></td>
                     <td>
-                      <Badge variant={verdict.variant} style={{ textTransform: 'none' }} title={verdict.title}>
-                        {verdict.label}
-                      </Badge>
+                      {verdict
+                        ? <Verdict state={verdict.state} detail={verdict.detail} size="sm" />
+                        : <span style={{ color: 'var(--muted)', fontSize: 12 }}>Checking…</span>}
                     </td>
                   </tr>
                 )

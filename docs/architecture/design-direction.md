@@ -82,9 +82,10 @@ grounds was picked from six side-by-side options.)
   Grounds are neutral (`#fafafa` / `#0a0a0a`) with hairline borders, and the
   sidebar is a near-black slab in both themes. The brand stays in its blue
   family. ◆
-- **Beyond the brand, colour means something.** Green is *reproduces*. Amber is
-  *needs a look* (source changed, checks stale). Red is *does not reproduce*
-  or failed. Supabase's signature green is deliberately not borrowed as a brand
+- **Beyond the brand, colour means something.** Four verdict states, one chip
+  in the report and in the app: green is *Reproduces*; amber is *Needs a look*
+  (source changed since the build, checks stale); red is *Does not reproduce*
+  or failed; *Not checked* is neutral. Supabase's signature green is deliberately not borrowed as a brand
   colour: green is already spoken for. A decorative amber chip reads as a
   warning.
 - **Dark and light are both designed.** Follow the OS setting until the viewer

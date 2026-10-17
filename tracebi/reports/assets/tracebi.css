@@ -619,12 +619,6 @@ tr.tb-window-pad td {
   border: 1px solid transparent;
 }
 
-.tb-badge--verified {
-  color: #1e6b34;
-  background: #e6f4ea;
-  border-color: #b7dfc3;
-}
-
 .tb-badge--derived { /* "python-derived" */
   color: #4b5563;
   background: #eef0f3;
@@ -635,6 +629,19 @@ tr.tb-window-pad td {
   color: #8a5a00;
   background: #fdf3d7;
   border-color: #ecd393;
+}
+
+/* A query-backed figure's badge is the verdict chip (.tb-verdict, section
+ * 12b-2) in a small size: the file's own state, Draft or Not checked, never
+ * green. Placement stays the badge's. */
+.tb-badge.tb-verdict {
+  display: inline-flex;
+  padding: 0 7px;
+  font-size: var(--tb-text-xs);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 /* Runtime wrapper around figures an absolute badge cannot anchor against
@@ -658,6 +665,8 @@ span > .tb-badge {
   vertical-align: middle;
   margin-right: var(--tb-space-1);
 }
+.tb-badge-anchor > .tb-badge.tb-verdict { display: flex; }
+span > .tb-badge.tb-verdict { display: inline-flex; }
 
 /* Scenarios — the reader's what-if, computed in the browser. Visibly apart
  * from the stamped figures: a dashed frame and the runtime's label, so a
