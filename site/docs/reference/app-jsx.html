@@ -72,6 +72,8 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
@@ -163,7 +165,9 @@ an app follows the page's mode and the project's <code>reports/_theme.css</code>
 <code>bg-page</code>, <code>bg-card</code>, <code>bg-surface</code>, <code>text-ink</code>, <code>text-muted</code>, <code>border-rule</code>,
 <code>bg-accent</code>, <code>text-accent-text</code>, <code>text-on-accent</code> (text on an accent fill), <code>text-good</code>, <code>text-bad</code>, <code>chart-1</code> … <code>chart-8</code>,
 <code>font-sans</code> / <code>font-mono</code>, <code>rounded-panel</code>. The <code>tb-*</code> classes
-(<a href="../guides/styling-a-report.html">Styling a report</a>) work too.</p>
+(<a href="../guides/styling-a-report.html">Styling a report</a>) work too. A <code>style.css</code> beside <code>app.jsx</code> is a theme
+preset as for a template (the accent pair for each ground, a display face);
+its <code>:root</code> tokens give way to the dark ground as a template's do.</p>
 <h2 id="the-tracebi-module">The <code>tracebi</code> module</h2>
 <pre><code class="language-jsx">import { Kpi, Value, Chart, Spark, Table, Filter, Search, Download,
          useBinding, fmt } from &quot;tracebi&quot;;
@@ -181,7 +185,7 @@ filterable, exactly as in a template.</p>
 <tbody>
 <tr>
 <td><code>&lt;Kpi&gt;</code></td>
-<td><code>binding</code>, <code>cell</code>, <code>format</code>, <code>label</code>, <code>context</code>, <code>lead</code> (twice as wide), <code>id</code>; children (a <code>&lt;Spark&gt;</code>) go under the number</td>
+<td><code>binding</code>, <code>cell</code>, <code>format</code>, <code>label</code>, <code>context</code>, <code>lead</code> (a step larger), <code>id</code>; <code>deltaBinding</code>, <code>deltaCell</code>, <code>deltaFormat</code>, <code>deltaGood</code> (<code>"up"</code> or <code>"down"</code>: which way is good) show a stamped change first on the context line, with its arrow, sign and colour; children (a <code>&lt;Spark&gt;</code>) sit on the card's bottom edge</td>
 </tr>
 <tr>
 <td><code>&lt;Value&gt;</code></td>
@@ -250,8 +254,20 @@ filterable, exactly as in a template.</p>
 <td><code>true</code> while the page prints (the browser's Ctrl+P, and <code>tracebi report build --format pdf</code>). An app with views renders every one then, so the PDF holds the whole report: <code>{printing ? &lt;&gt;&lt;Overview /&gt;&lt;Detail /&gt;&lt;/&gt; : &lt;View /&gt;}</code>. Give navigation <code>print:hidden</code>.</td>
 </tr>
 <tr>
+<td><code>&lt;Masthead title kicker period mark&gt;</code></td>
+<td>Opens the page: an optional <code>mark</code> (a node; or leave it empty and size <code>.tb-masthead-mark</code> in <code>style.css</code>), a <code>kicker</code>, the <code>title</code> (a string, or text with <code>&lt;Value&gt;</code>s in it: <code>title={&lt;&gt;Marked at &lt;Value binding="kpis" cell="mark" /&gt; of cost&lt;/&gt;}</code>), the standfirst as its children, and a meta line with the <code>period</code> (presentation, <code>"Q3 2026"</code>), the build time and the verdict chip, which the runtime fills from the file itself (<code>not-checked</code> on a built file, <code>draft</code> on a preview; never green on its own say-so). Other props go on the <code>&lt;header&gt;</code>: <code>data-tb-title="center|banner|nav"</code>. A literal <code>title</code> is checked for typed numbers like the app's text; <code>kicker</code> and <code>period</code> are labels.</td>
+</tr>
+<tr>
+<td><code>&lt;Footer /&gt;</code></td>
+<td>Where the build's footer goes: one line on who built the file, from which model, and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's <code>&lt;main&gt;</code>); without it the footer follows the app.</td>
+</tr>
+<tr>
 <td><code>&lt;Built&gt;</code></td>
-<td>When the file was built, from its receipt.</td>
+<td>When the file was built, from its receipt (<code>&lt;Masthead&gt;</code> already shows it).</td>
+</tr>
+<tr>
+<td><code>tb-page</code>, <code>tb-grid</code> + <code>tb-span-4/6/8/12</code></td>
+<td>The page measure (<code>&lt;main className="tb-page space-y-8 px-6 py-8"&gt;</code>, 1,200px) and the 12-column grid (<code>&lt;div className="tb-grid"&gt;&lt;section className="tb-card tb-span-8"&gt;…</code>).</td>
 </tr>
 </tbody>
 </table>
@@ -261,7 +277,11 @@ named formats (<a href="../reference/number-formats.html">Number formats</a>).</
 <h2 id="what-the-receipt-covers">What the receipt covers</h2>
 <p>The build reads every kit figure's props from <code>app.jsx</code> without running it,
 records each one as a claim in the manifest, and refuses a binding or a column
-that does not exist. So <code>binding</code>, <code>cell</code>, <code>x</code> and <code>y</code> must be literal strings:
+that does not exist. A <code>&lt;Kpi&gt;</code>'s delta is a claim of its own
+(<code>fig-delta-&lt;binding&gt;-&lt;cell&gt;</code>); it reads a measure the model computes, such as
+fair value less cost, and the kit never computes one: no comparison measure,
+no delta. So <code>binding</code>, <code>cell</code>, <code>x</code> and <code>y</code> (and <code>deltaBinding</code>, <code>deltaCell</code>)
+must be literal strings:
 <code>&lt;Kpi binding={b}&gt;</code> fails the build. Two kit figures of the same binding and
 column need an <code>id</code> each — an id is the receipt's address for one number.</p>
 <p>A number typed into the app's text (<code>&lt;p&gt;Up 1250 units&lt;/p&gt;</code>) fails the build,
@@ -269,14 +289,14 @@ as it does in a <code>template.html</code>: bind it with <code>&lt;Value binding
 or say it in words. A single digit ("Q3") is not a number here.</p>
 <p>Anything the app computes or draws itself — a Recharts chart, a sum, a number
 in your own markup — is the app's presentation, not a checked figure. The page's
-About block says so: <em>"This page is an app. The figures it shows through the
+footer says so: <em>"This page is an app. The figures it shows through the
 TraceBi kit carry that receipt; anything else it draws is the app's own
 presentation and is not checked."</em> <code>tracebi verify</code> re-runs the bindings as for
 any report.</p>
 <h2 id="an-example">An example</h2>
 <pre><code class="language-jsx">import { useState } from &quot;react&quot;;
 import { LayoutDashboard, CreditCard } from &quot;lucide-react&quot;;
-import { Kpi, Spark, Chart, Table, Filter } from &quot;tracebi&quot;;
+import { Masthead, Footer, Kpi, Spark, Chart, Table, Filter } from &quot;tracebi&quot;;
 
 const NAV = { Overview: LayoutDashboard, Plans: CreditCard };
 
@@ -292,7 +312,10 @@ export default function App() {
           &lt;/button&gt;
         ))}
       &lt;/aside&gt;
-      &lt;main className=&quot;flex-1 space-y-6 p-8&quot;&gt;
+      &lt;main className=&quot;min-w-0 flex-1 space-y-8 px-6 py-8&quot;&gt;
+        &lt;Masthead kicker=&quot;SaaS metrics&quot; title=&quot;Recurring revenue&quot; period=&quot;Monthly&quot;&gt;
+          Ending MRR and customers, month by month.
+        &lt;/Masthead&gt;
         {view === &quot;Overview&quot; ? (
           &lt;div className=&quot;tb-grid&quot;&gt;
             &lt;Kpi lead binding=&quot;kpis&quot; cell=&quot;ending_mrr&quot; format=&quot;currency0&quot; label=&quot;Ending MRR&quot;&gt;
@@ -307,6 +330,7 @@ export default function App() {
             &lt;Table binding=&quot;by_plan&quot; sort bars=&quot;ending_mrr&quot; /&gt;
           &lt;/section&gt;
         )}
+        &lt;Footer /&gt;
       &lt;/main&gt;
     &lt;/div&gt;
   );

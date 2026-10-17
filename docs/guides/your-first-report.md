@@ -83,23 +83,31 @@ Add a `figures` block and let the framework build the markup:
 <html><head><meta charset="utf-8"><title>{{ title }}</title></head>
 <body>
 <main class="tb-page">
-  <h1>Portfolio Book</h1>
+  <header class="tb-masthead">
+    <h1>Portfolio Book</h1>
+    <p class="tb-standfirst">The book at fair value, by sector.</p>
+  </header>
 
-  <div class="tb-cols-2">
-    <div class="tb-card">{{ figure("kpi_value") }}</div>
-    <div class="tb-card">{{ figure("kpi_count") }}</div>
+  <div class="tb-grid">            <!-- a value figure is a KPI card: one strip -->
+    {{ figure("kpi_value") }}
+    {{ figure("kpi_count") }}
   </div>
 
-  <div class="tb-card">
-    <h2>Fair value by sector</h2>
-    {{ figure("sector_mix") }}
+  <div class="tb-grid">            <!-- the 12-column grid: 8 beside 4 -->
+    <div class="tb-card tb-span-8">
+      <h2>Fair value by sector</h2>
+      {{ figure("sector_mix") }}
+    </div>
+    <div class="tb-card tb-span-4">
+      <h2>Detail</h2>
+      <input data-tb-search data-tb-binding="by_sector" placeholder="Search…">
+      {{ figure("sector_tbl") }}
+    </div>
   </div>
 
-  <div class="tb-card">
-    <h2>Detail</h2>
-    <input data-tb-search data-tb-binding="by_sector" placeholder="Search…">
-    {{ figure("sector_tbl") }}
-  </div>
+  <footer class="tb-footer" data-tb-methodology>
+    <p>Source: the funds' Schedules of Investments.</p>
+  </footer>
 </main>
 </body></html>
 ```

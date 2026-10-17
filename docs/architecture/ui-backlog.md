@@ -18,6 +18,33 @@ bottom with the change that closed them.
 6. **`Btn` drops a caller's colours**: its variant styles are applied after
     `style`, so `style={{ background }}` is silently overridden.
 
+Left by Step 1 of the UX plan ([[ux-plan-2026-10-17]]), report side:
+
+7. **Affordability is a second bespoke look**: Inter, a green accent, its own
+   paper ground, resting shadows and gradients (all of the reference
+   project's `report_box_shadows` and `report_gradients`), pinned light. Move
+   it onto the system, or name it beside `aum_by_branch` as a bespoke example.
+8. **The reference project has more than one look**: `portfolio_book` (navy)
+   and `portfolio_showcase` (teal, Fraunces) carry their own accent presets
+   (`report_accents`, `report_looks` in the baseline). Decide whether a project
+   is one accent, and ratchet the count down.
+9. **Small multiples are dense on a phone** (DS-4).
+10. **The showcase's striped frozen column keeps a light shade in dark** (DS-5).
+11. **The selection handshake with a parent that is not the app** (DS-8).
+12. **A line's end label is cut at the plot's top edge on a phone**
+    (`portfolio_concentration`'s cumulative share at 390px).
+
+Recorded in the committed audit baselines, not caused by Step 1 (which touched
+no app code), to retriage with Step 2's library and report page (R-1, R-4):
+
+13. **App crawl findings since the 2026-10-13 Reports page**: `scope-mismatch`
+    (a model's Reports list reads empty to the audit, which looks for
+    `.list-item__name`; the rows are `button.rrow` now), `nav-you-are-here` on
+    `/reports`, `blank-page` / `one-h1` / `small-target` on an open report,
+    `no-focus-ring` into the report frame, eleven `slow-page`, and the
+    segmented bar's `repeating-linear-gradient` (`global.css:1188`,
+    `theme-decoration`). Some are the audit's selectors, some the app.
+
 ## Done
 
 - **Model switcher as the frame of the app** — one control at the top of the
@@ -63,4 +90,14 @@ bottom with the change that closed them.
   they touch (`runner.models`), so SalesModel, SalesPipelineModel and
   WealthModel each show one on Refresh; a pipeline may belong to several.
   The audit flags any model with none.
-
+- **Report design system v2 (Step 1)**: one type scale, accent and dark
+  palette, `auto` mode, themes as accent presets (DS-1); masthead, footer,
+  12-column grid (DS-2); KPI with a stamped delta (DS-3); one chart style
+  (DS-4); tables (DS-5); the receipt as a certificate (DS-6); the editorial on
+  the system (DS-7); showcase, scaffolds and demo app on it (DS-8).
+- **The audit renders every report** (DS-9): both modes and widths into
+  `report-sheet.png`, font families, accents, shadows, gradients and looks
+  ratcheted per project against committed baselines
+  `[metric:report_*]`; a page laid out wider than the phone
+  `[report-phone-layout]` (every built report but one named no viewport; the
+  build now adds it).

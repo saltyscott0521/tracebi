@@ -23,23 +23,41 @@
   --tb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   /* Neutral grounds and one cobalt: colour is for meaning, the accent for the
    * few places you act or are. --tb-accent is the fill (focus ring, bars, the
-   * active tab's rule); --tb-accent-text is the same blue deepened to read as
-   * small text (links, hovers) on white and on the accent wash. */
+   * active tab's rule, the editorial hero); --tb-accent-text is the same blue
+   * deepened to read as small text (links, hovers) on white and on the accent
+   * wash. The dark ground takes its own pair, --tb-dark-accent and
+   * --tb-dark-accent-text (section 12b): a theme sets all four. */
   --tb-ink: #18181b;
   --tb-bg: #ffffff;              /* cards, tables, tooltips */
   --tb-page: #f6f6f7;            /* the plane cards sit on */
   --tb-muted: #63636e;
   --tb-accent: #2f5bea;
   --tb-accent-text: #2447c4;
-  --tb-on-accent: #ffffff;       /* text on an accent fill (a banner) */
+  --tb-on-accent: #ffffff;       /* text on an accent fill (a banner, the hero) */
+  --tb-dark-accent: #7a9cff;
+  --tb-dark-accent-text: #a5bcff;
   --tb-rule: #e4e4e8;
-  /* Cards are a hairline with the faintest lift — never a soft drop shadow. */
-  --tb-shadow: 0 1px 2px rgba(16, 16, 24, 0.04);
+  --tb-grid: color-mix(in oklab, var(--tb-ink) 6%, transparent); /* chart gridlines */
+  /* Cards are a hairline, never a shadow. Kept as a token for a report's own
+   * style.css; nothing in this sheet draws a resting shadow. */
+  --tb-shadow: none;
   /* Subtle raised surfaces (striped rows, code blocks, callouts). Tokens, not
    * hard-coded hex, so overriding the palette for a dark ground carries them
    * too — a report on a dark background used to keep these light. */
   --tb-surface: #f4f4f6;
   --tb-surface-accent: #eff3fe;
+
+  /* Type: one scale of seven steps (about 1.25 apart above the body), three
+   * weights (400 text, 500 labels, 600 headings and figures), and tight
+   * tracking from 28px up. Hierarchy is size and weight, never colour. */
+  --tb-text-xs: 12px;
+  --tb-text-sm: 13px;
+  --tb-text-md: 14px;            /* body */
+  --tb-text-lg: 16px;
+  --tb-text-xl: 20px;
+  --tb-text-2xl: 28px;
+  --tb-text-3xl: 40px;
+  --tb-tracking-tight: -0.025em;
 
   --tb-space-1: 4px;
   --tb-space-2: 8px;
@@ -58,10 +76,15 @@
    * pair them with a sign or a word, never color alone. */
   --tb-good: #1e6b34;
   --tb-bad: #b42318;
+  /* The third verdict tone, amber ("Needs a look"): 5.9:1 on --tb-bg. */
+  --tb-warn: #8a5a00;
 
-  /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). A
-   * colour-blind-checked order: keep it fixed, never cycle past eight. */
-  --tb-chart-1: #2a78d6;
+  /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). The
+   * first series IS the accent, so a single-series chart, the links and the
+   * hero are one colour; the other seven are checked against it and each
+   * other for colour-blind separation. Keep the order; never cycle past
+   * eight. */
+  --tb-chart-1: var(--tb-accent);
   --tb-chart-2: #eb6834;
   --tb-chart-3: #1baf7a;
   --tb-chart-4: #eda100;
@@ -70,10 +93,14 @@
   --tb-chart-7: #4a3aa7;
   --tb-chart-8: #e34948;
 
-  /* Shipped documents open identically anywhere — one theme, like print —
-   * unless the author asks for data-tb-mode (section 12b). */
+  /* Light until section 12b says otherwise; a page with no data-tb-mode is
+   * given "auto" at build (template_package), so it follows the reader. */
   color-scheme: light;
 }
+
+/* Every figure in tabular numerals, so columns of numbers align and a value
+ * does not shift width as it updates. */
+.tb-kpi-value, .tb-table td, [data-tb-figure="value"] { font-variant-numeric: tabular-nums; }
 
 /* ── 2. Base — a page with no classes already looks like a report ──────── */
 
@@ -81,11 +108,11 @@ body {
   font-family: var(--tb-font);
   color: var(--tb-ink);
   background: var(--tb-page);
-  max-width: 1120px;
+  max-width: 1200px;           /* the page measure, as .tb-page */
   margin: 0 auto;
   padding: 40px var(--tb-space-3) 64px;
   line-height: 1.55;
-  font-size: 15px;
+  font-size: var(--tb-text-md);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -98,12 +125,13 @@ body {
   margin: var(--tb-space-4) 0 var(--tb-space-2);
   letter-spacing: -0.01em;
 }
-:where(:root:not([data-tb-app])) h1 { font-size: 2.1em; font-weight: 650; letter-spacing: -0.03em; margin-top: 0; }
-:where(:root:not([data-tb-app])) h1 + p { color: var(--tb-muted); font-size: 1.05em; max-width: 72ch;
+:where(:root:not([data-tb-app])) h1 { font-size: var(--tb-text-2xl); font-weight: 600;
+         letter-spacing: var(--tb-tracking-tight); margin-top: 0; }
+:where(:root:not([data-tb-app])) h1 + p { color: var(--tb-muted); font-size: var(--tb-text-lg); max-width: 72ch;
          margin-top: 0; }
-:where(:root:not([data-tb-app])) h2 { font-size: 1.2em; font-weight: 600; margin-top: 40px; }
-:where(:root:not([data-tb-app])) h3 { font-size: 1em; font-weight: 600; }
-:where(:root:not([data-tb-app])) h4 { font-size: 0.8em; font-weight: 600; color: var(--tb-muted);
+:where(:root:not([data-tb-app])) h2 { font-size: var(--tb-text-xl); font-weight: 600; margin-top: 40px; }
+:where(:root:not([data-tb-app])) h3 { font-size: var(--tb-text-lg); font-weight: 600; }
+:where(:root:not([data-tb-app])) h4 { font-size: var(--tb-text-xs); font-weight: 600; color: var(--tb-muted);
      text-transform: uppercase; letter-spacing: 0.06em; }
 
 :where(:root:not([data-tb-app])) p { margin: var(--tb-space-2) 0 var(--tb-space-3); max-width: 75ch; }
@@ -130,13 +158,13 @@ img, svg { max-width: 100%; }
  * with its numbers bound as value figures. Larger and darker than a note —
  * it is the finding, not a caption. */
 .tb-lede {
-  font-size: 1.2em;
+  font-size: var(--tb-text-xl);
   line-height: 1.45;
   color: var(--tb-ink);
   max-width: 60ch;
   margin: 0 0 var(--tb-space-4);
 }
-.tb-lede [data-tb-figure="value"] { font-weight: 700; }
+.tb-lede [data-tb-figure="value"] { font-weight: 600; }
 
 .tb-good { color: var(--tb-good); }
 .tb-bad { color: var(--tb-bad); }
@@ -154,7 +182,8 @@ img, svg { max-width: 100%; }
 
 /* ── 3. Layout ─────────────────────────────────────────────────────────── */
 
-.tb-page { max-width: 1100px; margin: 0 auto; }
+/* The page measure: 1,200px, the same on a template page and an app. */
+.tb-page { max-width: 1200px; margin: 0 auto; }
 
 .tb-grid {
   display: grid;
@@ -162,13 +191,26 @@ img, svg { max-width: 100%; }
   gap: var(--tb-space-3);
   margin: var(--tb-space-3) 0;
 }
+/* A .tb-grid whose children name a span is the 12-column grid: a panel
+ * takes 4, 6, 8 or 12 columns (a third, a half, two thirds, the row), and
+ * every span is the full row under 720px. Without spans the grid keeps
+ * fitting equal cells (a KPI strip). */
+.tb-grid:has(> :is(.tb-span-4, .tb-span-6, .tb-span-8, .tb-span-12)) {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+.tb-span-4 { grid-column: span 4; }
+.tb-span-6 { grid-column: span 6; }
+.tb-span-8 { grid-column: span 8; }
+.tb-span-12 { grid-column: 1 / -1; }
+@media (max-width: 720px) {
+  .tb-span-4, .tb-span-6, .tb-span-8 { grid-column: 1 / -1; }
+}
 
 .tb-card {
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
   padding: var(--tb-card-pad-y) var(--tb-card-pad-x);
   background: var(--tb-bg);
-  box-shadow: var(--tb-shadow);
   min-width: 0;
 }
 /* Cards stacked in normal flow keep the grid's gap between them. */
@@ -220,7 +262,6 @@ img, svg { max-width: 100%; }
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
   background: var(--tb-bg);
-  box-shadow: var(--tb-shadow);
   position: relative; /* anchors a .tb-badge in the corner */
 }
 
@@ -232,10 +273,10 @@ img, svg { max-width: 100%; }
 }
 
 .tb-kpi-value {
-  font-size: 1.85em;
+  font-size: var(--tb-text-2xl);
   font-weight: 600;
   line-height: 1.15;
-  letter-spacing: -0.025em;
+  letter-spacing: var(--tb-tracking-tight);
   font-variant-numeric: tabular-nums;
 }
 
@@ -247,16 +288,13 @@ img, svg { max-width: 100%; }
   background: var(--tb-rule);
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
-  box-shadow: var(--tb-shadow);
   overflow: hidden;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
-.tb-grid > .tb-kpi { border: 0; border-radius: 0; box-shadow: none; }
-/* The lead KPI: the one number the page is about — twice the width and a
- * larger figure, so the row has an anchor instead of equal boxes. */
-.tb-kpi--lead { grid-column: span 2; }
-.tb-kpi--lead .tb-kpi-value { font-size: 2.6em; letter-spacing: -0.035em; }
-@media (max-width: 720px) { .tb-kpi--lead { grid-column: auto; } }
+.tb-grid > .tb-kpi { border: 0; border-radius: 0; }
+/* The lead KPI: the one number the page is about. It is larger, not wider:
+ * one step up the scale, so the row has an anchor and no empty half-cell. */
+.tb-kpi--lead .tb-kpi-value { font-size: var(--tb-text-3xl); }
 
 /* The comparison under the number — "+4.1% vs last month", "of total".
  * A KPI without one is a number, not a signal. */
@@ -267,6 +305,20 @@ img, svg { max-width: 100%; }
 }
 .tb-kpi-context [data-tb-figure] { font-weight: 600; }
 .tb-kpi-context [data-tb-figure]:not(.tb-good):not(.tb-bad) { color: var(--tb-ink); }
+/* The delta: a stamped change, first on the context line ("▲ +$12.3M vs
+ * cost"). data-tb-direction gives it its arrow and its --tb-good / --tb-bad
+ * from the value's sign; the sign of a rise is drawn here, so the figure's
+ * text stays exactly the formatted number. Zero is neutral: no arrow, ink. */
+.tb-kpi-delta { white-space: nowrap; margin-right: 0.25em; }
+.tb-kpi-delta:is(.tb-up, .tb-down)::before, .tb-kpi-delta > :is(.tb-up, .tb-down)::before {
+  font-size: 1em;
+  margin-right: 0;
+  vertical-align: 0;
+}
+.tb-kpi-delta.tb-up::before, .tb-kpi-delta > .tb-up::before { content: "\25B4\00A0+"; }   /* ▴ + */
+.tb-kpi-delta.tb-down::before, .tb-kpi-delta > .tb-down::before { content: "\25BE\00A0"; } /* ▾ */
+/* A sparkline in the card sits on its bottom edge, under the context. */
+.tb-kpi > [data-tb-figure="chart"].tb-spark { height: 32px; margin-top: auto; }
 
 /* ── 5. Tables ─────────────────────────────────────────────────────────── */
 
@@ -284,9 +336,12 @@ img, svg { max-width: 100%; }
   border-bottom: 1px solid var(--tb-rule);
 }
 
+.tb-table td, [data-tb-figure="table"] td { font-size: var(--tb-text-sm); }
+.tb-table th, [data-tb-figure="table"] th { font-variant-numeric: tabular-nums; }
+
 .tb-table thead th, [data-tb-figure="table"] thead th {
   border-bottom: 1px solid var(--tb-rule);
-  font-size: 0.72em;
+  font-size: var(--tb-text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -316,11 +371,13 @@ img, svg { max-width: 100%; }
   white-space: nowrap;  /* a number never breaks across lines */
 }
 
-/* Totals row */
+/* Totals row: one style, a tfoot row or an authored .tb-total. */
+:is(.tb-table, [data-tb-figure="table"]) :is(tfoot td, tfoot th, .tb-total td, tr.tb-total th),
 .tb-total td, tr.tb-total th {
-  border-top: 2px solid var(--tb-ink);
+  border-top: 2px solid rgba(24, 24, 27, 0.6);
+  border-top: 2px solid color-mix(in srgb, var(--tb-ink) 60%, transparent);
   border-bottom: 0;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* data-tb-sort: headers become buttons; aria-sort states the order. */
@@ -340,40 +397,37 @@ th[aria-sort="ascending"] .tb-sort::after { content: " \2191"; }  /* ↑ */
 th[aria-sort="descending"] .tb-sort::after { content: " \2193"; } /* ↓ */
 th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
 
-/* data-tb-bars: a quiet bar behind the number, proportional to it. The
- * number stays on top and stays the thing you read. */
-.tb-bar-cell { position: relative; isolation: isolate; }
-/* The track spans the cell inside its padding; a bar's left/width are
- * percentages of it. --tb-bar-inset follows the table's density. */
+/* data-tb-bars: a thin bar in its own lane after the number, proportional
+ * to it. The number is the thing you read; the bar is only its length. The
+ * lane is inside the cell, so it follows its row on sort and filter, and a
+ * header, total or blank in the column keeps the same lane empty so the
+ * numbers stay in one column. Zero is the lane's left edge; a column with
+ * negatives has its zero in the middle. */
 .tb-bar-track {
+  display: inline-block;
+  position: relative;
+  width: var(--tb-bar-lane, 72px);
+  height: 6px;
+  margin-left: var(--tb-space-2);
+  vertical-align: middle;
+  pointer-events: none;
+}
+:is(th, td).tb-bar-cell:not(:has(> .tb-bar-track))::after {
+  content: "";
+  display: inline-block;
+  width: var(--tb-bar-lane, 72px);
+  margin-left: var(--tb-space-2);
+}
+span.tb-bar {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: var(--tb-bar-inset, 12px);
-  right: var(--tb-bar-inset, 12px);
-  z-index: -1;
+  background: var(--tb-accent);
+  border-radius: 1px;
   pointer-events: none;
 }
-:root[data-tb-density="compact"] { --tb-bar-inset: 10px; }
-.tb-table--compact { --tb-bar-inset: 8px; }
-.tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child td:last-child > .tb-bar-track,
-.tb-card > .tb-scroll:last-child td:last-child > .tb-bar-track { right: var(--tb-card-pad-x); }
-.tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child td:first-child > .tb-bar-track,
-.tb-card > .tb-scroll:last-child td:first-child > .tb-bar-track { left: var(--tb-card-pad-x); }
-span.tb-bar {
-  position: absolute;
-  top: calc(50% - 0.7em);         /* one line tall, even in a wrapped row */
-  height: 1.4em;
-  z-index: -1;                    /* under the number, above the row */
-  background: rgba(31, 99, 184, 0.16);
-  background: color-mix(in srgb, var(--tb-accent) 16%, transparent);
-  border-radius: 2px;
-  pointer-events: none;
-}
-span.tb-bar--neg {
-  background: rgba(180, 35, 24, 0.16);
-  background: color-mix(in srgb, var(--tb-bad) 16%, transparent);
-}
+span.tb-bar--neg { background: var(--tb-bad); }
+@media (max-width: 720px) { :root { --tb-bar-lane: 48px; } }
 
 /* Variant: freeze — the first column stays put while a wide table scrolls
  * sideways, so every row keeps its name. */
@@ -407,9 +461,8 @@ tr.tb-window-pad td {
   background: color-mix(in srgb, var(--tb-surface) 60%, transparent);
 }
 
-/* Variant: compact — tighter padding, smaller type. */
+/* Variant: compact — tighter padding (density is --tb-cell-pad only). */
 .tb-table--compact { --tb-cell-pad: var(--tb-space-1) var(--tb-space-2); }
-.tb-table--compact th, .tb-table--compact td { font-size: 0.85em; }
 
 /* ── 6. Charts ─────────────────────────────────────────────────────────── */
 
@@ -436,21 +489,30 @@ tr.tb-window-pad td {
 .tb-legend-item:hover { border-color: var(--tb-muted); }
 .tb-legend-item:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
 .tb-legend-item[aria-pressed="false"] { opacity: .45; }
-.tb-legend-item[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--tb-muted); }
+.tb-legend-item[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; outline: 1.5px solid var(--tb-muted); outline-offset: -1.5px; }
 .tb-legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .tb-legend-swatch--line { height: 3px; width: 14px; border-radius: 2px; }
 .tb-legend-swatch--dot { border-radius: 50%; }
 .tb-chart-tip {
   position: absolute; z-index: 3; pointer-events: none; min-width: 140px; max-width: 280px;
-  padding: 8px 10px; border-radius: 8px; background: var(--tb-bg); color: var(--tb-muted);
+  padding: 8px 10px; border-radius: 6px; background: var(--tb-bg); color: var(--tb-muted);
   border: 1px solid var(--tb-rule); box-shadow: 0 4px 16px rgba(16, 24, 40, .12);
-  font-size: 12px; line-height: 1.45;
+  font-size: var(--tb-text-sm); line-height: 1.45;
 }
 .tb-chart-tip[hidden] { display: none; }
 .tb-chart-tip-title { color: var(--tb-ink); font-weight: 600; margin-bottom: 2px; }
 .tb-chart-tip-row { display: flex; align-items: baseline; gap: 6px; }
 .tb-chart-tip-row strong { color: var(--tb-ink); font-variant-numeric: tabular-nums; }
 .tb-chart-tip-key { width: 10px; height: 3px; border-radius: 2px; flex: none; align-self: center; }
+.tb-chart-tip-about { margin-top: 4px; max-width: 240px; font-size: var(--tb-text-xs); }
+/* The one part of the readout that takes the pointer: the way to its receipt. */
+.tb-chart-tip-receipt {
+  display: block; margin-top: 6px; padding: 0; border: 0; background: none; pointer-events: auto;
+  color: var(--tb-accent-text); font: inherit; font-weight: 500; cursor: pointer;
+}
+.tb-chart-tip-receipt:hover { text-decoration: underline; }
+.tb-chart-tip-receipt:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; border-radius: 2px; }
+.tb-chart-svg circle.tb-dot.tb-dot-on { r: 3px; }
 .tb-sr-only {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
@@ -501,52 +563,43 @@ tr.tb-window-pad td {
   color: var(--tb-muted);
 }
 
-/* Default About footer (.tb-about) — who / when / definitions / what the
- * receipt is for. On by default at the end of a built page, or inside the
- * author's data-tb-methodology container. Never a claim badge. */
-.tb-about {
-  margin-top: var(--tb-space-5);
-  padding-top: var(--tb-space-3);
-  border-top: 1px solid var(--tb-rule);
-  font-size: 0.9em;
-  color: var(--tb-muted);
-}
-.tb-about > h2 {
-  margin: 0 0 var(--tb-space-2);
-  font-size: 1em;
-  font-weight: 600;
-  color: var(--tb-ink);
-}
-.tb-about-meta,
-.tb-about-receipt { margin: var(--tb-space-1) 0; max-width: 40rem;
-                    font-size: 0.9em; color: var(--tb-muted); }
-/* The methodology block is the page's footer, not another panel: a rule,
- * small muted type, the same column as everything above it. */
+/* The footer that ends the page (.tb-footer, or the author's ONE
+ * data-tb-methodology container): the author's sources first, then the
+ * build's one visible line and "How these numbers were made" behind a
+ * disclosure. Small and muted, the page's own column. Never a claim badge. */
 [data-tb-methodology] {
   margin-top: var(--tb-space-4);
   padding-top: var(--tb-space-3);
   border-top: 1px solid var(--tb-rule);
-  font-size: 0.92em;
+  font-size: var(--tb-text-sm);
+  color: var(--tb-muted);
 }
 .tb-card[data-tb-methodology] {
   background: none; border-width: 1px 0 0; border-radius: 0;
-  box-shadow: none; padding: var(--tb-space-3) 0 0;
+  padding: var(--tb-space-3) 0 0;
 }
-[data-tb-methodology] > h2:first-child { margin: 0 0 var(--tb-space-1); font-size: 1em; }
-.tb-about-receipt code {
-  font-size: 0.92em;
+[data-tb-methodology] > :is(h2, h3):first-child {
+  margin: 0 0 var(--tb-space-1); font-size: var(--tb-text-sm); font-weight: 600;
+  color: var(--tb-ink);
 }
+[data-tb-methodology] p { margin: 0 0 var(--tb-space-2); max-width: 75ch; }
+[data-tb-methodology] .tb-note { font-size: inherit; }
+.tb-footer-line { color: var(--tb-muted); }
+.tb-footer-details { margin: 0 0 var(--tb-space-2); }
+.tb-footer-details > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--tb-ink);
+  font-weight: 500;
+}
+.tb-footer-details[open] > summary { margin-bottom: var(--tb-space-2); }
+.tb-footer-details code { font-size: 0.92em; }
 
 /* The stated-methodology appendix — build-appended prose the transform and
- * the model STATE about themselves. An appendix, never a claim: muted and
- * small, and no badge class ever styles it. */
-.tb-methodology {
-  margin-top: var(--tb-space-3);
-  padding-top: var(--tb-space-2);
-  border-top: 1px solid var(--tb-rule);
-  font-size: 0.85em;
-  color: var(--tb-muted);
-}
+ * the model STATE about themselves, inside the footer's disclosure. An
+ * appendix, never a claim: muted and small, and no badge class ever
+ * styles it. */
+.tb-methodology { color: var(--tb-muted); }
 .tb-methodology .tb-note { margin: var(--tb-space-1) 0; }
 
 /* ── 8. Receipt badges — provenance picks the class at runtime ─────────── */
@@ -648,7 +701,7 @@ span > .tb-badge {
   content: "EXPLORATION";
   display: block;
   font-size: 0.7em;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.12em;
   color: #8a5a00;
   margin-bottom: var(--tb-space-2);
@@ -722,11 +775,17 @@ label > input[data-tb-search] { width: 11em; }
 }
 .tb-scroll .tb-table,
 .tb-scroll [data-tb-figure="table"] { margin: 0; }
+/* The header stays while the rows scroll; its rule is a shadow, because a
+ * collapsed border belongs to the table and would scroll away. */
 .tb-scroll thead th {
   position: sticky;
   top: 0;
-  background: var(--tb-bg);
+  z-index: 2;
+  background: var(--tb-surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--tb-rule);
 }
+.tb-scroll .tb-table--freeze thead th:first-child { z-index: 3; background: var(--tb-surface); }
 
 /* ── 12. Layout — columns and tabs ─────────────────────────────────────── */
 
@@ -784,36 +843,42 @@ label > input[data-tb-search] { width: 11em; }
 
 /* ── 12b. Page look: mode, density, width, sidebar tabs, the title ───────
  * Set on <html> (the runtime and the charts read the tokens from there):
- *   data-tb-mode="dark"   a dark ground; "auto" follows the reader's system;
- *                         unset is light, the shipped default
+ *   data-tb-mode="auto"   follows the reader's system — the default: a page
+ *                         that sets no mode is given "auto" at build
+ *   data-tb-mode="dark"   always dark; "light" always light
  *   data-tb-density="compact"   tighter spacing and table rows
  *   data-tb-width="full"        the page uses the whole window (a dashboard)
  * Tokens only: a mode changes how the page looks, never a number, and the
- * receipt's own tones are untouched. */
+ * receipt's own tones are untouched. --tb-chart-1 stays the accent.
+ * The two dark blocks sit between the tb-mode-tokens markers: an app page
+ * repeats them outside its cascade layer (stack.py), so a theme's or a
+ * style.css's :root tokens give way to the dark ground there too. */
 
+/* tb-mode-tokens: begin */
 :root[data-tb-mode="dark"] {
   --tb-ink: #ededf0;
   --tb-bg: #141417;
   --tb-page: #0b0b0d;
   --tb-muted: #a0a0ab;
-  --tb-accent: #7a9cff;
-  --tb-accent-text: #a5bcff;
+  --tb-accent: var(--tb-dark-accent);
+  --tb-accent-text: var(--tb-dark-accent-text);
   --tb-on-accent: #0d0f12;
-  --tb-rule: #26262b;
-  --tb-surface: #1b1b1f;
-  --tb-surface-accent: rgba(122, 156, 255, 0.12);
-  --tb-shadow: none;
+  --tb-rule: #2c2c32;
+  --tb-grid: color-mix(in oklab, var(--tb-ink) 6%, transparent);
+  --tb-surface: #1c1c21;
+  --tb-surface-accent: color-mix(in srgb, var(--tb-dark-accent) 12%, transparent);
   --tb-good: #6fcf8f;
   --tb-bad: #ff8a80;
-  /* The same eight hues stepped for the dark ground (validated as a set:
-   * lightness band, CVD separation, >= 3:1 on --tb-bg). */
-  --tb-chart-1: #3987e5;
-  --tb-chart-2: #d95926;
+  --tb-warn: #e0a93b;
+  /* Its own set for the dark ground, not the light one dimmed: the accent
+   * first, the rest lifted to read at >= 4:1 on --tb-bg and re-checked for
+   * colour-blind separation against it (deuteranope / protanope). */
+  --tb-chart-2: #cf4f1c;
   --tb-chart-3: #199e70;
-  --tb-chart-4: #c98500;
-  --tb-chart-5: #d55181;
-  --tb-chart-6: #008300;
-  --tb-chart-7: #9085e9;
+  --tb-chart-4: #dba21a;
+  --tb-chart-5: #e87ba4;
+  --tb-chart-6: #7cc06a;
+  --tb-chart-7: #8b5cf6;
   --tb-chart-8: #e66767;
   color-scheme: dark;
 }
@@ -823,28 +888,30 @@ label > input[data-tb-search] { width: 11em; }
     --tb-bg: #141417;
     --tb-page: #0b0b0d;
     --tb-muted: #a0a0ab;
-    --tb-accent: #7a9cff;
-    --tb-accent-text: #a5bcff;
+    --tb-accent: var(--tb-dark-accent);
+    --tb-accent-text: var(--tb-dark-accent-text);
     --tb-on-accent: #0d0f12;
-    --tb-rule: #26262b;
-    --tb-surface: #1b1b1f;
-    --tb-surface-accent: rgba(122, 156, 255, 0.12);
-    --tb-shadow: none;
+    --tb-rule: #2c2c32;
+    --tb-grid: color-mix(in oklab, var(--tb-ink) 6%, transparent);
+    --tb-surface: #1c1c21;
+    --tb-surface-accent: color-mix(in srgb, var(--tb-dark-accent) 12%, transparent);
     --tb-good: #6fcf8f;
     --tb-bad: #ff8a80;
-    /* The same eight hues stepped for the dark ground (validated as a set:
-     * lightness band, CVD separation, >= 3:1 on --tb-bg). */
-    --tb-chart-1: #3987e5;
-    --tb-chart-2: #d95926;
+    --tb-warn: #e0a93b;
+    /* Its own set for the dark ground, not the light one dimmed: the accent
+     * first, the rest lifted to read at >= 4:1 on --tb-bg and re-checked for
+     * colour-blind separation against it (deuteranope / protanope). */
+    --tb-chart-2: #cf4f1c;
     --tb-chart-3: #199e70;
-    --tb-chart-4: #c98500;
-    --tb-chart-5: #d55181;
-    --tb-chart-6: #008300;
-    --tb-chart-7: #9085e9;
+    --tb-chart-4: #dba21a;
+    --tb-chart-5: #e87ba4;
+    --tb-chart-6: #7cc06a;
+    --tb-chart-7: #8b5cf6;
     --tb-chart-8: #e66767;
     color-scheme: dark;
   }
 }
+/* tb-mode-tokens: end */
 
 :root[data-tb-density="compact"] {
   --tb-space-3: 12px;
@@ -895,12 +962,12 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   color: var(--tb-ink);
 }
 /* A title moved into the sidebar (data-tb-title="nav") heads the rail. */
-.tb-tab-bar > .tb-title {
+.tb-tab-bar > :is(.tb-title, .tb-masthead) {
   margin: 0 0 var(--tb-space-3);
   padding: 4px 10px var(--tb-space-3);
   border-bottom: 1px solid var(--tb-rule);
 }
-.tb-tab-bar > .tb-title h1 { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.tb-tab-bar > :is(.tb-title, .tb-masthead) h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .tb-tab-bar > .tb-title p { font-size: 12.5px; line-height: 1.45; }
 .tb-tab-bar > .tb-title [data-tb-built] { font-size: 11.5px; }
 @media (max-width: 720px) {
@@ -911,7 +978,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
     border-right: 0; border-bottom: 1px solid var(--tb-rule);
     padding: 0; margin-bottom: var(--tb-space-3);
   }
-  .tb-tab-bar > .tb-title { flex-basis: 100%; border-bottom: 0; padding: 0 0 var(--tb-space-2); margin: 0; }
+  .tb-tab-bar > :is(.tb-title, .tb-masthead) { flex-basis: 100%; border-bottom: 0; padding: 0 0 var(--tb-space-2); margin: 0; }
 }
 
 /* The title: <header class="tb-title" data-tb-title="left|center|banner|nav">
@@ -942,59 +1009,162 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-title[data-tb-title="banner"] [data-tb-built] {
   color: color-mix(in srgb, var(--tb-on-accent) 85%, transparent); }
 
+/* ── 12b-2. The frame: the masthead and the verdict chip ─────────────────
+ * <header class="tb-masthead"> opens every page: an optional
+ * .tb-masthead-mark (empty; a project's style.css gives it a logo), an
+ * optional .tb-kicker, the <h1>, a .tb-standfirst, and .tb-masthead-meta —
+ * the period the numbers cover (data-tb-period on the masthead, or a
+ * .tb-masthead-period of your own), when the file was built and the
+ * .tb-verdict chip. The runtime fills the meta; a masthead without one gets
+ * it. data-tb-title="center|banner|nav" places it as for .tb-title. The
+ * editorial hero (.tb-article-head) is the same masthead in its register. */
+.tb-masthead {
+  margin: 0 0 var(--tb-space-4);
+  padding-bottom: var(--tb-space-3);
+  border-bottom: 1px solid var(--tb-rule);
+}
+.tb-masthead .tb-kicker {
+  font-size: var(--tb-text-xs);
+  letter-spacing: 0.1em;
+  margin: 0 0 var(--tb-space-1);
+}
+.tb-masthead h1 {
+  font-size: var(--tb-text-2xl);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: var(--tb-tracking-tight);
+  text-wrap: balance;
+  margin: 0;
+}
+.tb-standfirst {
+  margin: var(--tb-space-2) 0 0;
+  font-size: var(--tb-text-lg);
+  line-height: 1.5;
+  color: var(--tb-muted);
+  max-width: 72ch;
+}
+.tb-masthead-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tb-space-1) var(--tb-space-3);
+  margin: var(--tb-space-3) 0 0;
+  font-size: var(--tb-text-sm);
+  color: var(--tb-muted);
+}
+.tb-masthead-meta [data-tb-built] { display: inline; margin: 0; font-size: inherit; color: inherit; }
+.tb-masthead-period { color: var(--tb-ink); font-weight: 500; }
+.tb-masthead[data-tb-title="center"] { text-align: center; }
+.tb-masthead[data-tb-title="center"] .tb-standfirst { margin-left: auto; margin-right: auto; }
+.tb-masthead[data-tb-title="center"] .tb-masthead-meta { justify-content: center; }
+.tb-masthead[data-tb-title="banner"] {
+  background: var(--tb-accent);
+  color: var(--tb-on-accent);
+  border: 0;
+  border-radius: var(--tb-radius);
+  padding: var(--tb-space-4) var(--tb-space-4) var(--tb-space-3);
+}
+.tb-masthead[data-tb-title="banner"] :is(.tb-kicker, .tb-standfirst, .tb-masthead-meta, .tb-masthead-period) {
+  color: color-mix(in srgb, var(--tb-on-accent) 85%, transparent); }
+/* In a sidebar (moved into the tab bar, or an app's rail): compact. */
+.tb-masthead[data-tb-title="nav"] { border-bottom: 0; margin: 0; padding-bottom: 0; }
+.tb-masthead[data-tb-title="nav"] h1 { font-size: var(--tb-text-md); letter-spacing: -0.01em; }
+.tb-masthead[data-tb-title="nav"] .tb-standfirst { font-size: var(--tb-text-xs); margin-top: 2px; }
+.tb-masthead[data-tb-title="nav"] .tb-masthead-meta { font-size: var(--tb-text-xs); margin-top: var(--tb-space-2); gap: var(--tb-space-1) var(--tb-space-2); }
+
+/* The verdict chip: what is known about whether this file's numbers still
+ * reproduce. The runtime chooses data-tb-verdict from the file itself —
+ * "draft" on a working preview, "not-checked" on a built file (nothing has
+ * re-run its queries; tracebi verify does) — so a stylesheet can restyle the
+ * chip, never turn it green. Its own ground, so it reads on any masthead. */
+.tb-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 9px;
+  border: 1px solid var(--tb-rule);
+  border-radius: 999px;
+  background: var(--tb-bg);
+  color: var(--tb-muted);
+  font-family: var(--tb-font);
+  font-size: var(--tb-text-xs);
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.tb-verdict:empty { display: none; }
+.tb-verdict::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tb-verdict[data-tb-verdict="reproduces"] { color: var(--tb-good); }
+.tb-verdict[data-tb-verdict="needs-a-look"] { color: var(--tb-warn); }
+.tb-verdict[data-tb-verdict="does-not-reproduce"] { color: var(--tb-bad); }
+.tb-verdict[data-tb-verdict="draft"] { border-style: dashed; }
+
 /* ── 12c. Editorial — a report written to be read ─────────────────────────
- * <article class="tb-article">: a sheet of paper on the page, opened by a
- * hero (kicker, the headline that states the finding, a standfirst, a
- * byline) in the accent colour. One serif reading column; figures, tables,
- * KPI strips and pull-stats sit in it as framed cards and keep the sans so
- * numbers read as data. Everything follows the theme's tokens. */
+ * <article class="tb-article">: a sheet of paper on the page, opened by the
+ * masthead in its hero register (.tb-masthead.tb-article-head: kicker, the
+ * serif headline that states the finding, the standfirst, the meta line
+ * with the verdict chip and the Receipt link) on the accent ground. The
+ * prose is one serif column of about 68 characters (--tb-measure);
+ * figures, tables and the KPI strip are the dashboard's own, in the sans,
+ * and take the sheet's full width so a strip of four never cramps. The
+ * footer closes it; the methodology lives in the receipt.
+ * The hero is the project's one accent, flat — the same colour in every
+ * editorial; a theme (an accent preset) recolours it. Its ink is
+ * --tb-on-accent (white on the light accent; both clear 4.5:1). On a dark
+ * ground it is a deep band of the accent with the page's own ink, not a
+ * pale slab (below). */
+/* Registered as a length, so 68ch is measured once, in the article's serif,
+ * and every line of the column (the sans meta, the larger lede) shares it. */
+@property --tb-measure { syntax: "<length>"; inherits: true; initial-value: 608px; }
 .tb-article {
-  --tb-hero: color-mix(in oklab, var(--tb-accent) 58%, #0a0f1f);
-  --tb-hero-ink: #ffffff;
-  --tb-hero-soft: color-mix(in oklab, var(--tb-accent) 22%, #ffffff);
-  max-width: 50rem;
+  --tb-hero: var(--tb-accent);
+  --tb-hero-ink: var(--tb-on-accent);
+  --tb-hero-soft: color-mix(in oklab, var(--tb-hero-ink) 88%, var(--tb-hero));
+  --tb-article-pad: clamp(18px, 5vw, 56px);
+  --tb-measure: 68ch;            /* of the serif body (registered above) */
+  max-width: 62rem;
   margin: var(--tb-space-4) auto;
-  padding: 0 clamp(18px, 5vw, 56px) clamp(24px, 4vw, 44px);
+  padding: 0 var(--tb-article-pad) clamp(24px, 4vw, 44px);
   background: var(--tb-bg);
   border: 1px solid var(--tb-rule);
-  border-radius: 18px;
-  box-shadow: 0 1px 2px rgba(16, 16, 24, 0.04), 0 12px 32px rgba(16, 16, 24, 0.06);
+  border-radius: var(--tb-radius);
   font-family: var(--tb-font-serif);
-  font-size: 1.1em;
-  line-height: 1.72;
+  font-size: var(--tb-text-lg);
+  line-height: 1.7;
   overflow: hidden;
 }
-/* The article is a sheet on the page's plane, warmed by a soft accent glow. */
-body:has(> .tb-article), body:has(> * > .tb-article) {
-  background:
-    radial-gradient(circle at 10% -5%, color-mix(in oklab, var(--tb-accent) 10%, transparent), transparent 42%),
-    var(--tb-page);
+:root[data-tb-mode="dark"] .tb-article {
+  --tb-hero: color-mix(in oklab, var(--tb-accent) 22%, var(--tb-bg));
+  --tb-hero-ink: var(--tb-ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-tb-mode="auto"] .tb-article {
+    --tb-hero: color-mix(in oklab, var(--tb-accent) 22%, var(--tb-bg));
+    --tb-hero-ink: var(--tb-ink);
+  }
 }
 .tb-article p { max-width: none; }
-/* An editorial page's charts lead with its accent, so a single-series figure
- * matches the hero and the section marks. */
-:root:has(.tb-article) { --tb-chart-1: var(--tb-accent); }
 
-/* The hero: a band in the accent colour across the top of the sheet. */
+/* The hero: the masthead on a band of the accent across the top of the sheet. */
 .tb-article-head {
   position: relative;
-  margin: 0 calc(-1 * clamp(18px, 5vw, 56px)) var(--tb-space-4);
-  padding: clamp(28px, 5vw, 48px) clamp(18px, 5vw, 56px) var(--tb-space-3);
+  margin: 0 calc(-1 * var(--tb-article-pad)) var(--tb-space-4);
+  padding: clamp(28px, 5vw, 48px) var(--tb-article-pad) var(--tb-space-3);
   color: var(--tb-hero-ink);
-  background:
-    repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 2px, transparent 2px 10px),
-    linear-gradient(135deg, var(--tb-hero), color-mix(in oklab, var(--tb-accent) 85%, #0a0f1f));
-}
-.tb-article-head::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-  background: linear-gradient(90deg, transparent, var(--tb-hero-soft), transparent);
-  opacity: 0.6;
+  background: var(--tb-hero);
+  border-bottom: 0;
 }
 .tb-article-head[data-tb-title="center"] { text-align: center; }
 .tb-kicker {
   font-family: var(--tb-font);
-  font-size: 0.7em;
-  font-weight: 650;
+  font-size: var(--tb-text-xs);
+  font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--tb-accent-text);
@@ -1003,41 +1173,45 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 .tb-article-head .tb-kicker { color: var(--tb-hero-soft); }
 .tb-article h1 {
   font-family: var(--tb-font-serif);
-  font-size: clamp(1.75em, 4.2vw, 2.5em);
+  font-size: clamp(var(--tb-text-2xl), 4.2vw, var(--tb-text-3xl));
   font-weight: 600;
   line-height: 1.1;
-  letter-spacing: -0.015em;
+  letter-spacing: var(--tb-tracking-tight);
   margin: 0 0 var(--tb-space-3);
 }
 .tb-article-head h1 { color: var(--tb-hero-ink); }
-.tb-article h1 [data-tb-figure] { color: var(--tb-accent-text); }
-.tb-article-head h1 [data-tb-figure] { color: var(--tb-hero-soft); }
-.tb-dek {
-  font-size: 1.15em;
-  line-height: 1.5;
+.tb-dek, .tb-article .tb-standfirst {
+  font-size: var(--tb-text-xl);
+  line-height: 1.45;
   color: var(--tb-muted);
   margin: 0 0 var(--tb-space-3);
 }
-.tb-article-head .tb-dek { color: color-mix(in oklab, var(--tb-hero-ink) 82%, var(--tb-hero)); }
+.tb-article-head :is(.tb-dek, .tb-standfirst) { color: var(--tb-hero-soft); }
 .tb-byline {
   font-family: var(--tb-font);
-  font-size: 0.74em;
+  font-size: var(--tb-text-sm);
   color: var(--tb-muted);
   padding: var(--tb-space-2) 0;
   border-top: 1px solid var(--tb-rule);
   margin: 0;
 }
-.tb-article-head .tb-byline {
-  color: color-mix(in oklab, var(--tb-hero-ink) 70%, var(--tb-hero));
-  border-top-color: rgba(255, 255, 255, 0.18);
+.tb-article-head .tb-masthead-meta {
+  font-family: var(--tb-font);
+  font-size: var(--tb-text-sm);
+  margin: 0;
+  padding: var(--tb-space-2) 0;
+  border-top: 1px solid color-mix(in oklab, var(--tb-hero-ink) 22%, transparent);
+}
+.tb-article-head :is(.tb-byline, .tb-masthead-meta, .tb-masthead-period) {
+  color: var(--tb-hero-soft);
+  border-top-color: color-mix(in oklab, var(--tb-hero-ink) 22%, transparent);
 }
 .tb-article .tb-lede {
-  font-size: 1.18em;
-  line-height: 1.6;
-  max-width: none;
+  font-size: var(--tb-text-xl);
+  line-height: 1.55;
 }
-.tb-article .tb-lede [data-tb-figure="value"],
-.tb-article p [data-tb-figure="value"] { font-weight: 650; font-variant-numeric: tabular-nums; }
+/* A number in the prose is the prose's own ink, set in weight 600. */
+.tb-article :is(p, li, h1) [data-tb-figure="value"] { font-weight: 600; }
 
 /* Section heads: a claim, marked with a short accent bar. */
 .tb-article h2 {
@@ -1045,46 +1219,48 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   align-items: baseline;
   gap: 0.55em;
   font-family: var(--tb-font);
-  font-size: 1.12em;
-  font-weight: 650;
+  font-size: var(--tb-text-xl);
+  font-weight: 600;
+  line-height: 1.3;
   letter-spacing: -0.01em;
-  margin: 2.3em 0 0.6em;
+  margin: 2em 0 0.5em;
 }
 .tb-article h2::before {
   content: "";
   flex: none;
-  width: 0.9em;
-  height: 0.22em;
+  width: 0.8em;
+  height: 3px;
   border-radius: 2px;
   background: var(--tb-accent);
-  transform: translateY(-0.28em);
+  transform: translateY(-0.3em);
 }
 
-/* Figures, tables, KPI strips and pull-stats: framed cards in the column. */
-.tb-article :is(table, .tb-figure, .tb-pullstat, .tb-grid, .tb-about, [data-tb-methodology]) {
+/* Figures, tables, KPI strips and pull-stats keep the sans, at the page's
+ * body size, so a number reads as data. */
+.tb-article :is(table, .tb-figure, .tb-pullstat, .tb-grid, [data-tb-methodology]) {
   font-family: var(--tb-font);
-  font-size: 0.86rem;
+  font-size: var(--tb-text-md);
+  line-height: 1.55;
 }
 .tb-figure {
   margin: var(--tb-space-4) 0;
   padding: var(--tb-space-3) var(--tb-space-3) var(--tb-space-2);
   border: 1px solid var(--tb-rule);
-  border-radius: 12px;
+  border-radius: var(--tb-radius);
   background: var(--tb-bg);
-  box-shadow: var(--tb-shadow);
 }
 .tb-figure figcaption {
   margin-top: var(--tb-space-2);
   padding-top: var(--tb-space-2);
   border-top: 1px solid var(--tb-rule);
   color: var(--tb-muted);
-  font-size: 0.92em;
+  font-size: var(--tb-text-sm);
 }
 .tb-figure [data-tb-figure="chart"] { min-height: 260px; }
 .tb-article > :is(table, .tb-scroll) {
-  margin: var(--tb-space-3) 0;
+  margin: var(--tb-space-3) 0 var(--tb-space-4);
   border: 1px solid var(--tb-rule);
-  border-radius: 12px;
+  border-radius: var(--tb-radius);
   overflow: hidden;
   border-collapse: separate;
   border-spacing: 0;
@@ -1099,37 +1275,57 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   align-items: center;
   column-gap: var(--tb-space-3);
   margin: var(--tb-space-4) 0;
-  padding: var(--tb-space-3) var(--tb-space-4);
-  border-radius: 12px;
-  border-left: 4px solid var(--tb-accent);
-  background: color-mix(in oklab, var(--tb-accent) 7%, var(--tb-bg));
+  padding: var(--tb-space-3) var(--tb-space-4) var(--tb-space-3) var(--tb-space-3);
+  border-left: 3px solid var(--tb-accent);
+  border-radius: 0 var(--tb-radius) var(--tb-radius) 0;
+  background: var(--tb-surface-accent);
 }
 .tb-pullstat-value {
-  font-size: 2.7em;
-  font-weight: 650;
+  font-size: var(--tb-text-3xl);
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--tb-tracking-tight);
   color: var(--tb-accent-text);
   font-variant-numeric: tabular-nums;
 }
-.tb-pullstat-text { color: var(--tb-muted); font-size: 1.05em; line-height: 1.45; }
+.tb-pullstat-text { color: var(--tb-muted); font-size: var(--tb-text-lg); line-height: 1.45; }
 .tb-article [data-tb-methodology] {
-  margin-top: var(--tb-space-5, 40px);
+  margin-top: 48px;
   padding-top: var(--tb-space-3);
   border-top: 1px solid var(--tb-rule);
+  font-size: var(--tb-text-sm);
 }
 .tb-article [data-tb-methodology] h2::before { display: none; }
-/* The sheet rises in once; a reader who asked for less motion gets none. */
-@media (prefers-reduced-motion: no-preference) {
-  .tb-article { animation: tb-rise 0.5s ease-out both; }
+
+/* The reading column: the hero's lines and the prose (and the pull-stat and
+ * the footer that sit in it) keep to the measure, centred on the sheet;
+ * whatever is not named here — a figure, a table, the KPI strip, a row of
+ * columns — takes the sheet's width. */
+.tb-article .tb-article-head > *,
+.tb-article > :is(p, ul, ol, blockquote, h2, h3, h4, .tb-lede, .tb-pullstat,
+                  .tb-callout, [data-tb-methodology]) {
+  max-width: var(--tb-measure);
+  margin-left: auto;
+  margin-right: auto;
 }
-@keyframes tb-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* The headline starts on the column's edge and may run past its end. */
+.tb-article .tb-article-head:not([data-tb-title="center"]) > h1 {
+  max-width: none;
+  margin-left: max(0px, (100% - var(--tb-measure)) / 2);
+  margin-right: 0;
+}
+/* Controls in the prose (a download button, a filter) are the page's sans. */
+.tb-article :is(button, select, input) { font-family: var(--tb-font); }
 @media (max-width: 720px) {
-  .tb-article { font-size: 1.04em; margin: 0; border-radius: 0; border-width: 0; }
+  .tb-article { margin: 0; border-radius: 0; border-width: 0; }
   .tb-pullstat { grid-template-columns: 1fr; row-gap: var(--tb-space-1); }
+  /* A table wider than the phone scrolls in its frame (which then fits the
+   * table, not the column); a cell never wraps. */
+  :root .tb-article > table { display: block; overflow-x: auto; width: max-content; max-width: 100%; }
+  .tb-article > table :is(th, td) { white-space: nowrap; }
 }
 @media print {
-  .tb-article { box-shadow: none; border: 0; margin: 0; max-width: none; animation: none; }
+  .tb-article { border: 0; margin: 0; max-width: none; }
 }
 
 /* ── 12c-2. App pages (app.jsx) ─────────────────────────────────────────────
@@ -1144,12 +1340,12 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 }
 .tb-segmented > button {
   font: inherit; font-size: 13px; color: var(--tb-muted); background: none;
-  border: 0; border-radius: 7px; padding: 4px 12px; cursor: pointer;
+  border: 1px solid transparent; border-radius: 7px; padding: 3px 11px; cursor: pointer;
 }
 .tb-segmented > button:hover { color: var(--tb-ink); }
 .tb-segmented > button.tb-segmented-on {
   background: var(--tb-bg); color: var(--tb-ink); font-weight: 600;
-  box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08);
+  border-color: var(--tb-rule);
 }
 /* The no-JavaScript view of an app page (an email preview, a file viewer). */
 .tb-app-static { padding: var(--tb-space-4) var(--tb-space-3); }
@@ -1157,8 +1353,14 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 .tb-app-static-values { list-style: none; padding: 0; display: grid; gap: var(--tb-space-1); }
 /* The app spaces its own panels (gap, space-y); no stacking margin. */
 :root[data-tb-app] .tb-card + .tb-card { margin-top: 0; }
-:root[data-tb-app] .tb-about { max-width: 1120px; margin: var(--tb-space-4) auto;
-  padding: var(--tb-space-3) var(--tb-space-3) var(--tb-space-4); }
+:root[data-tb-app] .tb-page { box-sizing: content-box; }
+/* The footer after the app, in the page measure; placed inside the app with
+ * the kit's <Footer />, it ends that column instead. */
+:root[data-tb-app] body > .tb-footer {
+  max-width: 1200px; margin: 0 auto;
+  padding: var(--tb-space-3) var(--tb-space-3) var(--tb-space-4);
+}
+[data-tb-footer-slot] > .tb-footer { margin-top: 0; }
 .tb-app-error {
   margin: var(--tb-space-4); padding: var(--tb-space-3);
   border: 1px solid var(--tb-bad); border-radius: var(--tb-radius);
@@ -1167,17 +1369,46 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 .tb-app-error pre { white-space: pre-wrap; color: var(--tb-bad); margin: 8px 0 0; }
 
 /* ── 13. Receipt drawer — provenance DISPLAY, never re-colored ─────────── */
-/* Muted like .tb-note. No rule below sets a colour on a badge: the drawer
- * shows the recorded statuses in their own tones, untouched. */
+/* A certificate, not a log: the verdict and what the receipt does not
+ * claim first, then one row per figure (its value, its definition, its
+ * query in one line, its fingerprint), the raw detail behind disclosures.
+ * .tb-receipt is the certificate (renderReceipt fills it; the web app's
+ * side panel mounts the same one); .tb-receipt-drawer is the artifact's
+ * chrome around it: 420px on the right, a full-height sheet on a phone.
+ * No rule below sets a colour on a badge: the drawer shows the recorded
+ * statuses in their own tones, untouched. */
+
+/* The page's ways in: a quiet button after the masthead's verdict chip
+ * (the chip opens it too) and on the footer's line. A page without a
+ * masthead keeps the floating button. */
+.tb-receipt-link {
+  font: inherit;
+  font-size: inherit;
+  color: var(--tb-accent-text);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.tb-footer-line .tb-receipt-link { margin-left: var(--tb-space-1); }
+.tb-masthead[data-tb-title="banner"] .tb-receipt-link,
+.tb-article-head .tb-receipt-link { color: inherit; }
+.tb-masthead .tb-verdict[role="button"] { cursor: pointer; }
+.tb-masthead .tb-verdict[role="button"]:hover { border-color: currentColor; }
+/* A value figure opens the receipt at its row. */
+.tb-has-receipt [data-tb-figure="value"][id] { cursor: pointer; }
 
 .tb-receipt-btn {
   box-shadow: var(--tb-shadow);
   position: fixed;
   right: var(--tb-space-3);
   bottom: var(--tb-space-3);
-  z-index: 30;
+  z-index: 31;
   font: inherit;
-  font-size: 0.85em;
+  font-size: var(--tb-text-sm);
   color: var(--tb-muted);
   background: var(--tb-bg);
   border: 1px solid var(--tb-rule);
@@ -1192,65 +1423,247 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 340px;
-  max-width: 85vw;
-  z-index: 29;
-  overflow-y: auto;
+  width: 420px;
+  max-width: 100vw;
+  box-sizing: border-box;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  padding-top: 48px; /* the close button's strip; the certificate scrolls below it */
   background: var(--tb-bg);
   border-left: 1px solid var(--tb-rule);
-  padding: var(--tb-space-3);
-  font-size: 0.85em;
-  color: var(--tb-muted);
-  transform: translateX(100%);
-  transition: transform 0.15s ease-out;
-}
-.tb-receipt-drawer.tb-receipt-open { transform: none; }
-
-.tb-receipt-head {
+  box-shadow: -12px 0 32px rgba(16, 24, 40, .12);
   color: var(--tb-ink);
-  font-weight: 700;
-  margin-bottom: var(--tb-space-2);
+  font-family: var(--tb-font);
+  font-size: var(--tb-text-sm);
+  line-height: 1.5;
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.18s ease-out, visibility 0s linear 0.18s;
 }
-.tb-receipt-line { margin: var(--tb-space-1) 0; }
-.tb-receipt-row {
-  padding: var(--tb-space-1) 0;
-  border-bottom: 1px solid var(--tb-rule);
+.tb-receipt-drawer.tb-receipt-open {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.18s ease-out, visibility 0s;
 }
-.tb-receipt-title { color: var(--tb-ink); }
-.tb-receipt-from {
+.tb-receipt-close {
+  position: absolute;
+  top: var(--tb-space-2);
+  right: var(--tb-space-2);
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
   color: var(--tb-muted);
-  font-size: 0.92em;
-  margin-top: 2px;
+  background: var(--tb-bg);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
 }
+.tb-receipt-close:hover { color: var(--tb-ink); background: var(--tb-surface); }
+.tb-receipt-scroll {
+  position: relative; /* rows measure their offset from here */
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--tb-space-4) var(--tb-space-4);
+}
+/* On a phone: a sheet over the whole screen, rising from the bottom. */
+@media (max-width: 640px) {
+  .tb-receipt-drawer {
+    width: 100%;
+    border-left: 0;
+    box-shadow: none;
+    transform: translateY(100%);
+  }
+  .tb-receipt-scroll { padding: 0 var(--tb-space-3) var(--tb-space-4); }
+}
+
+/* The certificate. */
+.tb-receipt { color: var(--tb-ink); font-size: var(--tb-text-sm); }
+.tb-receipt-kicker {
+  margin: 0 0 var(--tb-space-1);
+  font-size: var(--tb-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tb-muted);
+}
+.tb-receipt-head {
+  margin: 0;
+  font-size: var(--tb-text-xl);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--tb-ink);
+}
+.tb-receipt-built {
+  margin: var(--tb-space-1) 0 0;
+  font-size: var(--tb-text-xs);
+  color: var(--tb-muted);
+}
+.tb-receipt-verdict { margin: var(--tb-space-3) 0 0; }
+.tb-receipt-honesty {
+  margin: var(--tb-space-2) 0 0;
+  color: var(--tb-ink);
+  max-width: 44ch;
+}
+.tb-receipt-label {
+  margin: 0 0 var(--tb-space-2);
+  font-size: var(--tb-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tb-muted);
+}
+.tb-receipt-check,
+.tb-receipt-figures,
+.tb-receipt-selection,
+.tb-receipt-about {
+  margin-top: var(--tb-space-4);
+  padding-top: var(--tb-space-3);
+  border-top: 1px solid var(--tb-rule);
+}
+.tb-receipt-cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-2);
+  padding: 6px 6px 6px 10px;
+  background: var(--tb-surface);
+  border: 1px solid var(--tb-rule);
+  border-radius: 8px;
+}
+.tb-receipt-cmd code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--tb-mono);
+  font-size: var(--tb-text-xs);
+  overflow-wrap: anywhere;
+}
+.tb-receipt-note {
+  margin: var(--tb-space-2) 0 0;
+  font-size: var(--tb-text-xs);
+  color: var(--tb-muted);
+}
+.tb-receipt-copy {
+  flex: none;
+  font: inherit;
+  font-size: var(--tb-text-xs);
+  color: var(--tb-muted);
+  background: var(--tb-bg);
+  border: 1px solid var(--tb-rule);
+  border-radius: 6px;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+.tb-receipt-copy:hover { color: var(--tb-ink); border-color: var(--tb-muted); }
+
+/* One figure: its label and value on one line, then what it means, its
+ * query and its fingerprint, the raw record behind "Raw". */
+.tb-receipt-row {
+  padding: var(--tb-space-3) var(--tb-space-2);
+  margin: 0 calc(-1 * var(--tb-space-2));
+  border-bottom: 1px solid var(--tb-rule);
+  border-radius: 6px;
+}
+.tb-receipt-row:last-child { border-bottom: 0; }
+/* The record a figure (a click on it, its chart's Receipt link) opened the
+ * drawer at. */
+.tb-receipt-row--here { background: var(--tb-surface-accent); transition: background .3s; }
+.tb-receipt-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px var(--tb-space-2);
+}
+.tb-receipt-name { flex: 1; min-width: 0; font-weight: 500; color: var(--tb-ink); }
+.tb-receipt-value {
+  font-size: var(--tb-text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--tb-ink);
+}
+.tb-receipt-kind { font-size: var(--tb-text-xs); color: var(--tb-muted); }
 .tb-receipt-changed {
   color: var(--tb-bad);
-  font-size: 0.92em;
+  font-size: var(--tb-text-xs);
   margin-top: 2px;
 }
-.tb-receipt-details { margin-top: var(--tb-space-1); }
-.tb-receipt-details summary { cursor: pointer; }
-.tb-receipt-meta,
-.tb-receipt-fp {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  word-break: break-all;
+.tb-receipt-def { margin: 2px 0 0; color: var(--tb-muted); }
+.tb-receipt-term { color: var(--tb-ink); font-weight: 500; }
+.tb-receipt-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px var(--tb-space-3);
+  margin: var(--tb-space-2) 0 0;
+  font-size: var(--tb-text-xs);
 }
-.tb-receipt-fp { display: block; }
+.tb-receipt-facts dt { color: var(--tb-muted); }
+.tb-receipt-facts dd { margin: 0; display: flex; align-items: baseline; gap: var(--tb-space-2); }
+.tb-receipt-query,
+.tb-receipt-fp-short,
+.tb-receipt-meta,
+.tb-receipt-fp,
+.tb-receipt-json {
+  font-family: var(--tb-mono);
+  font-size: var(--tb-text-xs);
+}
+.tb-receipt-query { overflow-wrap: anywhere; color: var(--tb-ink); }
+.tb-receipt-noquery { color: var(--tb-muted); }
+.tb-receipt-details { margin-top: var(--tb-space-2); font-size: var(--tb-text-xs); }
+.tb-receipt-details > summary,
+.tb-receipt-about > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--tb-muted);
+}
+.tb-receipt-details > summary:hover,
+.tb-receipt-about > summary:hover { color: var(--tb-ink); }
+.tb-receipt-details[open] > summary { margin-bottom: var(--tb-space-1); }
+.tb-receipt-meta { color: var(--tb-muted); overflow-wrap: anywhere; }
+.tb-receipt-fp { color: var(--tb-muted); word-break: break-all; }
+.tb-receipt-fp { display: block; margin-top: var(--tb-space-1); }
+.tb-receipt-json {
+  margin: var(--tb-space-1) 0 0;
+  padding: var(--tb-space-2);
+  background: var(--tb-surface);
+  border: 1px solid var(--tb-rule);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--tb-ink);
+}
+/* About this build: contracts, the stated methodology, the stamps. */
+.tb-receipt-about > summary { color: var(--tb-ink); font-weight: 500; }
+.tb-receipt-about[open] > summary { margin-bottom: var(--tb-space-3); }
+.tb-receipt-about .tb-receipt-label { margin-top: var(--tb-space-3); }
+.tb-receipt-line { margin: var(--tb-space-1) 0; color: var(--tb-muted); }
+.tb-receipt-about .tb-receipt-note { margin: var(--tb-space-1) 0; }
+.tb-receipt-selection button.tb-receipt-line {
+  font: inherit;
+  color: var(--tb-accent-text);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
 /* Layout only — the badge keeps its own recorded tone. */
-.tb-receipt-drawer .tb-badge {
+.tb-receipt .tb-badge {
   position: static;
-  margin-left: var(--tb-space-2);
+  align-self: center;
 }
 
 /* Motion is never required to read the page. */
 @media (prefers-reduced-motion: reduce) {
-  .tb-receipt-drawer { transition: none; }
+  .tb-receipt-drawer, .tb-receipt-drawer.tb-receipt-open { transition: none; }
 }
 
 /* ── 14. Print — honesty survives printing ─────────────────────────────── */
 
 @media print {
   body { max-width: none; padding: 0; background: #fff; }
-  .tb-card, .tb-kpi { box-shadow: none; }
 
   .tb-card, .tb-kpi, [data-tb-figure] {
     page-break-inside: avoid;
@@ -1275,7 +1688,7 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   pre { background: none; border: 1px solid var(--tb-rule); }
 
   /* Truly interactive chrome has no meaning on paper. */
-  .tb-receipt-btn,
+  .tb-receipt-btn, .tb-receipt-link, .tb-receipt-close, .tb-receipt-copy,
   select[data-tb-filter], input[data-tb-search], button[data-tb-download] {
     display: none;
   }
@@ -1286,8 +1699,10 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   .tb-tab-bar { display: none; }
   .tb-tab-bar ~ [data-tb-tab] { display: block !important; }
 
-  /* A closed disclosure would hide the fingerprint on paper. */
-  .tb-receipt-details > * { display: block !important; }
+  /* A closed disclosure would hide the fingerprint on paper (the runtime
+     also opens them for print). */
+  .tb-receipt-drawer details > * { display: block !important; }
+  .tb-receipt-drawer details::details-content { content-visibility: visible; display: block; }
 
   /* The receipt IS the point of the document. Un-pin the drawer from its
      fixed overlay into a static appendix so the fingerprints, contract status
@@ -1297,15 +1712,18 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
     position: static;
     inset: auto;
     transform: none;
+    visibility: visible;
     width: auto;
     max-width: none;
     box-shadow: none;
-    border: 1px solid var(--tb-rule);
+    border: 0;
     margin-top: var(--tb-space-4);
-    padding: var(--tb-space-3);
+    padding: 0;
     page-break-before: always;
     color: inherit;
   }
+  .tb-receipt-scroll { overflow: visible; padding: 0; }
+  .tb-receipt-row { break-inside: avoid; }
 
   /* A scrolling region would truncate rows on paper — unclip it. */
   .tb-scroll { overflow-y: visible; max-height: none !important; }

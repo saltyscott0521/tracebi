@@ -1,27 +1,11 @@
-/* midnight — always dark, whatever the reader's system. */
-/* The dark ground and the chart palette stepped for it are the same as
- * data-tb-mode="dark". */
+/* midnight — a deep navy accent. */
+/* An accent preset: the accent pair for each ground, nothing structural.
+ * For a page that is always dark, set the mode instead: data-tb-mode="dark"
+ * on <html>, or report.json "look". */
 :root {
-  --tb-ink: #ededf0;
-  --tb-bg: #141417;
-  --tb-page: #0b0b0d;
-  --tb-muted: #a0a0ab;
-  --tb-accent: #7a9cff;
-  --tb-accent-text: #a5bcff;
-  --tb-on-accent: #0d0f12;
-  --tb-rule: #26262b;
-  --tb-surface: #1b1b1f;
-  --tb-surface-accent: rgba(122, 156, 255, 0.12);
-  --tb-shadow: none;
-  --tb-good: #6fcf8f;
-  --tb-bad: #ff8a80;
-  --tb-chart-1: #3987e5;
-  --tb-chart-2: #d95926;
-  --tb-chart-3: #199e70;
-  --tb-chart-4: #c98500;
-  --tb-chart-5: #d55181;
-  --tb-chart-6: #008300;
-  --tb-chart-7: #9085e9;
-  --tb-chart-8: #e66767;
-  color-scheme: dark;
+  --tb-accent: #1e3a8a;
+  --tb-accent-text: #1e3a8a;
+  --tb-surface-accent: #eef2fe;
+  --tb-dark-accent: #8fb0ff;
+  --tb-dark-accent-text: #b8ceff;
 }

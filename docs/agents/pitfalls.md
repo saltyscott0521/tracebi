@@ -136,5 +136,4 @@ The report's security policy blocks web fonts, CDN scripts and remote images.
 
 **20. Ship the licence with a font.**
 Open-licence fonts (SIL OFL) may be embedded, but the licence must travel with
-them. The showcase keeps `Inter-OFL.txt` and `Fraunces-OFL.txt` beside the font
-files.
+them. The showcase keeps `Fraunces-OFL.txt` beside its font file.

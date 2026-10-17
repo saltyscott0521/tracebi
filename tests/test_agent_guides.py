@@ -121,7 +121,8 @@ class TestScaffoldDemonstratesTheProduct:
         from tracebi.cli import _INIT_SAMPLE_APP_JSX
 
         for marker in ("<Kpi lead", "<Value", "<Chart", "<Table", "<Filter",
-                       "<Search", "<Download", "<Built"):
+                       "<Search", "<Download", "<Masthead", "<Footer",
+                       "tb-span-8", "deltaBinding="):
             assert marker in _INIT_SAMPLE_APP_JSX, (
                 f"the scaffold sample no longer demonstrates {marker}"
             )
@@ -135,8 +136,55 @@ class TestScaffoldDemonstratesTheProduct:
                     / "portfolio_model" / "portfolio_showcase" / "template.html").read_text()
         for marker in ("data-tb-filter", "data-tb-search",
                        "data-tb-download", "data-tb-figure",
-                       "data-tb-stage", "data-tb-methodology"):
+                       "data-tb-stage", "data-tb-methodology",
+                       "tb-masthead", "data-tb-period", "tb-footer",
+                       "tb-kpi-delta", "tb-kicker", "tb-standfirst",
+                       "tb-kpi--lead", "tb-span-8", "tb-span-4", "tb-span-6",
+                       "data-tb-direction", "data-tb-bars", "data-tb-sort",
+                       "data-tb-totals", "data-tb-facet", "data-tb-mark",
+                       "data-tb-scenario", "data-tb-unverified", "tb-tabs",
+                       *(f'data-tb-type="{t}"' for t in ("bar", "barh", "line",
+                                                          "area", "scatter"))):
             assert marker in showcase, f"the showcase no longer demonstrates {marker}"
+
+
+class TestTheDesignSystemIsTaught:
+    """The report design system (the frame, the KPI signal, the grid) is the
+    vocabulary every page is built from. A component the guides do not name
+    is one an agent rebuilds by hand, in a look of its own."""
+
+    _FRAME = ("tb-masthead", "tb-kicker", "tb-standfirst", "tb-masthead-meta",
+              "tb-verdict", "data-tb-verdict", "tb-footer", "tb-kpi--lead",
+              "tb-kpi-delta", "tb-span-8", "tb-span-4", "<Masthead", "<Footer",
+              "deltaBinding")
+
+    def test_the_vocabulary_and_both_guides_name_the_system(self):
+        payload = json.dumps(describe(brief=True)["presentation"])
+        for name in self._FRAME:
+            assert name in payload, f"the vocabulary does not name {name}"
+        for guide, text in _guides().items():
+            missing = [n for n in self._FRAME if n not in text]
+            assert not missing, f"{guide} does not teach {missing}"
+
+    def test_every_scaffold_and_bundle_is_framed(self):
+        """What a new project copies opens with the masthead and ends with
+        the footer: the init sample, the new-report and new-dashboard
+        templates, and both init --template bundles."""
+        from tracebi.cli import _INIT_SAMPLE_APP_JSX, _report_template_html
+
+        pages = {"init sample": _INIT_SAMPLE_APP_JSX}
+        for layout in ("editorial", "brief", "dashboard", "tabbed"):
+            pages[layout] = _report_template_html(
+                "T", "revenue", "dim_region.region", layout)
+        bundles = _REPO / "tracebi" / "_scaffold" / "templates"
+        for path in sorted(bundles.rglob("reports/*/*/*")):
+            if path.name in ("app.jsx", "template.html"):
+                pages[str(path.relative_to(bundles))] = path.read_text(encoding="utf-8")
+        assert len(pages) >= 8
+        for name, page in pages.items():
+            opens = "<Masthead" in page or "tb-masthead" in page
+            ends = "<Footer" in page or "tb-footer" in page
+            assert opens and ends, f"{name} is not on the frame (masthead and footer)"
 
 
 class TestLargeDetailArtifactIsTaught:

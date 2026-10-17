@@ -107,8 +107,11 @@ refused at load.
 
 ### `theme` — string, optional
 
-A shipped theme by name: `graphite`, `indigo`, `midnight` (always dark),
-`ocean`, `plum` or `sand` (`tracebi theme list`). It stacks over the
+A shipped theme by name: `graphite`, `indigo`, `midnight`, `ocean`, `plum`
+or `sand` (`tracebi theme list`). A theme is an accent preset: it sets the
+accent for the light and the dark ground (`--tb-accent`, `--tb-accent-text`,
+`--tb-dark-accent`, `--tb-dark-accent-text`) and nothing structural; the mode
+is `look` (or `data-tb-mode` on a template's `<html>`). It stacks over the
 project's `reports/_theme.css` and under the package's own `style.css`. An
 unknown name is refused at load.
 
@@ -120,7 +123,8 @@ unknown name is refused at load.
 
 An [[app-jsx|app]]'s mode and density — the attributes a `template.html`
 puts on its own `<html>`: `"mode"` is `light`, `dark` or `auto` (follows the
-reader's system); `"density"` is `comfortable` or `compact`.
+reader's system; the default when `mode` is unset); `"density"` is
+`comfortable` or `compact`.
 
 ```json
 "look": {"mode": "dark", "density": "compact"}

@@ -2314,19 +2314,19 @@ def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
 
 
 def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
-                           mode: str = "light", density: str = "comfortable",
+                           mode: str = "auto", density: str = "comfortable",
                            title_at: str = "left") -> str:
     """The ``editorial`` page — a report written to be read, top to bottom.
 
-    A kicker, a headline that states the finding, a standfirst, a byline with
-    the build time, then prose with its numbers bound, captioned figures, a
-    pull-stat, and the methodology. ``.tb-article`` sets the measure and the
+    The masthead (a kicker, a headline that states the finding, a standfirst,
+    the meta line with the build time and verdict), then prose with its
+    numbers bound, captioned figures, a pull-stat, and the footer. ``.tb-article`` sets the measure and the
     type (tracebi.css "Editorial"). Every number is a value figure: the
     scaffold has no digits, so the build's numeral lint passes as written.
     """
     esc = _html.escape
     root = []
-    if mode in ("dark", "auto"):
+    if mode in ("dark", "light"):
         root.append(f'data-tb-mode="{mode}"')
     if density == "compact":
         root.append('data-tb-density="compact"')
@@ -2342,7 +2342,10 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
         "     states the finding; every number in the prose is a value figure",
         "     bound to report.json, so the receipt names it. Never type one in. -->",
         '<article class="tb-article">',
-        f'  <header class="tb-article-head"{centered}>',
+        "  <!-- The masthead, in the editorial's register: kicker, the headline",
+        "       that states the finding, the standfirst, and the meta line (when",
+        "       it was built and the verdict chip, filled from the receipt). -->",
+        f'  <header class="tb-masthead tb-article-head"{centered}>',
         f'    <p class="tb-kicker">{esc(m_label)}</p>',
     ]
     if dim_ref:
@@ -2354,9 +2357,10 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
     else:
         parts.append(f"    <h1>{esc(title)}</h1>")
     parts += [
-        '    <p class="tb-dek">One or two sentences: what this report finds, and',
-        "      why it matters to the person reading it.</p>",
-        f'    <p class="tb-byline">{esc(title)} · <span data-tb-built></span></p>',
+        '    <p class="tb-standfirst">One or two sentences: what this report finds,',
+        "      and why it matters to the person reading it.</p>",
+        '    <p class="tb-masthead-meta"><span data-tb-built></span>',
+        '      <span class="tb-verdict"></span></p>',
         "  </header>",
         "",
         '  <p class="tb-lede">',
@@ -2410,13 +2414,14 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
         "  <h2>What to do</h2>",
         "  <p>End with the decision or the next step this report supports.</p>",
         "",
-        "  <section data-tb-methodology>",
-        "    <h2>How these numbers were made</h2>",
-        "    <p class=\"tb-note\">The build appends the transform's stated",
-        "      methodology (the sink <code>note=</code>) below this line. It is",
-        "      the author's prose — \"the sink satisfied its contract\", never",
-        "      \"the transform was verified\".</p>",
-        "  </section>",
+        "  <!-- The footer ends the page: your sources here, then the build adds",
+        "       one line on who built it and from which model, and \"How these",
+        "       numbers were made\" (the transform's stated methodology, the sink",
+        "       note=) behind a disclosure: \"the sink satisfied its contract\",",
+        "       never \"the transform was verified\". -->",
+        '  <footer class="tb-footer" data-tb-methodology>',
+        "    <p>Sources: say where the data comes from, in words.</p>",
+        "  </footer>",
         "",
         '  <section data-tb-stage="exploration">',
         "    <h3>Working notes</h3>",
@@ -2431,15 +2436,15 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
 
 
 def _report_template_html(title: str, measure: str, dim_ref: "str | None",
-                          layout: str = "editorial", *, mode: str = "light",
+                          layout: str = "editorial", *, mode: str = "auto",
                           density: str = "comfortable", nav: str = "",
                           title_at: str = "left") -> str:
     """A starter ``template.html`` for one named page structure.
 
     ``dashboard`` (the default, and what ``tracebi init`` writes) is an answer
     sentence, a KPI strip, and — when the model has a dimension — a chart
-    beside a filter/search/download table (``.tb-cols-2-1``), plus a methodology
-    block and an exploration stage. ``brief`` is that header and one chart
+    beside a filter/search/download table (``.tb-span-8`` / ``.tb-span-4`` in
+    the 12-column grid), plus the footer and an exploration stage. ``brief`` is that header and one chart
     card. ``tabbed`` is that header, then Overview and Detail tabs. Generated
     (not a static file) because ``data-tb-*`` attributes name the model's real
     measure and dimension. No ``script.js`` or ``style.css``: the runtime
@@ -2456,11 +2461,11 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
                                       density=density, title_at=title_at)
     # The look (asked of the builder before a dashboard is built): the mode and
     # density are tokens on <html>; navigation picks the tabbed structure, as
-    # a top bar or a sidebar; the title is the standard .tb-title block.
+    # a top bar or a sidebar; the title is the standard .tb-masthead block.
     if nav in ("top", "side"):
         layout = "tabbed"
     root = []
-    if mode in ("dark", "auto"):
+    if mode in ("dark", "light"):
         root.append(f'data-tb-mode="{mode}"')
     if density == "compact":
         root.append('data-tb-density="compact"')
@@ -2475,13 +2480,15 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         f"<head><meta charset=\"utf-8\"><title>{esc(title)}</title></head>",
         "<body>",
         '<main class="tb-page">',
-        "  <!-- The standard title: placement left | center | banner | nav (nav",
-        "       moves it to the top of a sidebar). data-tb-built shows when this",
-        "       file was built, from its receipt; never type a date in. -->",
-        f'  <header class="tb-title" data-tb-title="{esc(title_at)}">',
+        "  <!-- The masthead: placement left | center | banner | nav (nav moves",
+        "       it to the top of a sidebar). data-tb-period names what the numbers",
+        "       cover; the meta line shows it, when this file was built and the",
+        "       verdict chip, from its receipt. Never type a date in. -->",
+        f'  <header class="tb-masthead" data-tb-title="{esc(title_at)}">',
         f"    <h1>{esc(title)}</h1>",
-        '    <p class="tb-subtitle">One line on what this page is for.</p>',
-        "    <span data-tb-built></span>",
+        '    <p class="tb-standfirst">One line on what this page is for.</p>',
+        '    <p class="tb-masthead-meta"><span data-tb-built></span>',
+        '      <span class="tb-verdict"></span></p>',
         "  </header>",
         "  <header>",
     ]
@@ -2506,7 +2513,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         "  </header>",
         "",
         "",
-        "  <!-- One KPI strip: the lead number twice as wide, then the figures",
+        "  <!-- One KPI strip: the lead number larger, then the figures",
         "       that explain it. Never a row of identical boxes. -->",
         '  <div class="tb-grid">',
         f'    <div class="tb-kpi{" tb-kpi--lead" if dim_ref else ""}" data-tb-figure="value"',
@@ -2551,18 +2558,18 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         d_label = _humanise_label(dim_ref)
         parts += [
             "",
-            "  <!-- Chart and the filterable table share one dashboard row: the",
-            "       wide panel beside the narrow one (tb-cols-2-1). It stacks to",
-            "       a single column on a narrow screen. -->",
-            '  <div class="tb-cols-2-1">',
-            '    <div class="tb-card">',
+            "  <!-- Chart and the filterable table share one row of the 12-column",
+            "       grid: the wide panel (tb-span-8) beside the narrow one",
+            "       (tb-span-4). Each takes the full row on a narrow screen. -->",
+            '  <div class="tb-grid">',
+            '    <div class="tb-card tb-span-8">',
             f"      <h2>{esc(m_label)} by {esc(d_label)}</h2>",
             f'      <div data-tb-figure="chart" data-tb-binding="breakdown"',
             f'           data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
             f'           data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
             '           id="chart-breakdown"></div>',
             "    </div>",
-            '    <div class="tb-card">',
+            '    <div class="tb-card tb-span-4">',
             "      <h2>Detail</h2>",
             '      <p class="tb-note">Filter and search subset which stamped rows',
             "        display — they never compute new numbers. The CSV button",
@@ -2593,13 +2600,14 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         ]
     parts += [
         "",
-        '  <section class="tb-card" data-tb-methodology>',
-        "    <h2>How these numbers were made</h2>",
-        '    <p class="tb-note">The build appends the transform\'s stated',
-        "      methodology (the sink <code>note=</code>) below this line. It is",
-        '      the author\'s prose — "the sink satisfied its contract", never',
-        '      "the transform was verified".</p>',
-        "  </section>",
+        "  <!-- The footer ends the page: your sources here, then the build adds",
+        "       one line on who built it and from which model, and \"How these",
+        "       numbers were made\" (the transform's stated methodology, the sink",
+        "       note=) behind a disclosure: \"the sink satisfied its contract\",",
+        "       never \"the transform was verified\". -->",
+        '  <footer class="tb-footer" data-tb-methodology>',
+        "    <p>Sources: say where the data comes from, in words.</p>",
+        "  </footer>",
         "",
         '  <section data-tb-stage="exploration">',
         "    <h3>Working notes</h3>",
@@ -2703,7 +2711,7 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     dims = query.get("dimensions")
     dim_ref = dims[0] if dims else None
     look = {k: v for k, v in (("mode", args.mode), ("density", args.density))
-            if v not in ("light", "comfortable")}
+            if v not in ("auto", "comfortable")}
     for stale in ("template.html", "app.jsx"):     # --force switching lanes
         if (pkg_dir / stale).is_file():
             (pkg_dir / stale).unlink()
@@ -3705,8 +3713,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
                        help="Directory holding report packages (default: ./reports).")
         p.add_argument(
-            "--mode", choices=["light", "dark", "auto"], default="light",
-            help="light (default), dark, or auto (follows the reader's system).")
+            "--mode", choices=["light", "dark", "auto"], default="auto",
+            help="auto (default: follows the reader's system), light, or dark.")
         p.add_argument(
             "--density", choices=["comfortable", "compact"], default="comfortable",
             help="comfortable (default) or compact spacing.")

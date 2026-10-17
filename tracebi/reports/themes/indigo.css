@@ -1,6 +1,9 @@
 /* indigo — a violet-blue accent. */
+/* An accent preset: the accent pair for each ground, nothing structural. */
 :root {
   --tb-accent: #4f46e5;
   --tb-accent-text: #4338ca;
   --tb-surface-accent: #eef0fe;
+  --tb-dark-accent: #a5a0ff;
+  --tb-dark-accent-text: #c7c4ff;
 }

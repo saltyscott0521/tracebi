@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import functools
 import os
+import re
 from typing import Optional
 
 from tracebi.reports.embed import (
@@ -236,15 +237,20 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
     On an app page (app.jsx) tracebi.css goes in a cascade layer between
     Tailwind's reset and its utilities, so a utility class (text-2xl) wins
     over a TraceBi default while the kit's tb-* classes still style the
-    figures. The project theme and style.css stay unlayered: they win."""
+    figures. The project theme and style.css stay unlayered: they win. The
+    dark-mode token blocks are repeated after the layer, unlayered, so a
+    theme's or style.css's :root tokens still give way to the dark ground,
+    as they do on a template page (where specificity decides)."""
     head = csp_meta() if include_csp else ""
     head += libraries_comment(libs)
     if stage:
         head += f'<meta name="tracebi-stage" content="{stage}">\n'
     css = read_asset("tracebi.css")
     if app:
+        begin, end = "/* tb-mode-tokens: begin */", "/* tb-mode-tokens: end */"
+        modes = css[css.index(begin):css.index(end) + len(end)]
         css = ("@layer theme, base, tracebi, components, utilities;\n"
-               f"@layer tracebi {{\n{css}\n}}")
+               f"@layer tracebi {{\n{css}\n}}\n{modes}")
     head += ("<!-- tracebi.css: the TraceBi design system -->\n"
              f"<style>\n{font_face_css()}\n{css}\n</style>\n")
     if project_css.strip():
@@ -292,11 +298,30 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
     return tail
 
 
+_HTML_OPEN = re.compile(r"<html\b[^>]*>", re.I)
+_VIEWPORT = re.compile(r"<meta\b[^>]*\bname=[\"']?viewport\b", re.I)
+
+
+def with_default_mode(page: str) -> str:
+    """Give a page that names no mode ``data-tb-mode="auto"``: it follows the
+    reader's system, as the app does. An explicit ``light`` / ``dark`` (on the
+    template's ``<html>``, or an app's ``look``) is left alone."""
+    m = _HTML_OPEN.search(page)
+    if m is None or "data-tb-mode" in m.group(0):
+        return page
+    return page[:m.end() - 1] + ' data-tb-mode="auto"' + page[m.end() - 1:]
+
+
 def apply_stack(page: str, *, libs, data_blocks_html: str,
                 stage: Optional[str] = None, project_css: str = "",
                 report_css: str = "", figures_cfg: Optional[dict] = None,
                 report_js: str = "", app: bool = False, theme_css: str = "") -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
+    page = with_default_mode(page)
+    # A phone lays out a page that names no viewport 980px wide and shrinks
+    # it to fit, so none of tracebi.css's narrow-screen rules would apply.
+    viewport = ("" if _VIEWPORT.search(page) else
+                '<meta name="viewport" content="width=device-width, initial-scale=1">\n')
     # The carrier render may already carry the framework CSP meta
     # (html_renderer inserts the same one); a second identical tag is just
     # noise, so skip it — but ONLY when the EXACT framework meta is present.
@@ -305,9 +330,9 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
     # entirely, which is exactly the markup an injection would smuggle.
     page = insert_before(
         page, "</head>",
-        stack_head(stage, project_css, report_css,
-                   include_csp=csp_meta().strip() not in page, libs=libs, app=app,
-                   theme_css=theme_css))
+        viewport + stack_head(stage, project_css, report_css,
+                              include_csp=csp_meta().strip() not in page, libs=libs,
+                              app=app, theme_css=theme_css))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))

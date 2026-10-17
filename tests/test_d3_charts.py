@@ -281,7 +281,7 @@ def test_a_sparkline_is_the_shape_alone_at_its_own_height(page):
     row's own value. Ignoring the class would drop a 320px chart into a tile."""
     _reset(page)
     svg = page.locator("#spark svg.tb-chart-svg")
-    assert svg.get_attribute("height") == "44"
+    assert svg.get_attribute("height") == "32"
     assert page.locator("#spark .tb-axis text").evaluate_all(
         "ts => ts.filter(t => t.getBoundingClientRect().width > 0).length") == 0
     assert page.locator("#spark .tb-grid line").count() == 0
@@ -296,3 +296,24 @@ def test_a_sparkline_is_the_shape_alone_at_its_own_height(page):
     tip.wait_for(state="visible")
     # Q1 revenue: 1200+900+400+300.
     assert tip.locator("strong").inner_text() == "$2,800"
+
+
+def test_bars_carry_their_own_values_in_the_pages_format(page):
+    """A direct label is the row's stamped value through the figure's own
+    format, never a rounded recomputation; small multiples carry none."""
+    _reset(page)
+    labels = page.locator("#bar .tb-values text").all_text_contents()
+    # Revenue by region, ordered -revenue: East 6,000, West 3,650, North 1,870, South 1,350.
+    assert labels == ["$6,000", "$3,650", "$1,870", "$1,350"]
+    assert page.locator("#facet .tb-values text").count() == 0
+
+
+def test_the_tooltip_opens_the_receipt_at_its_figure(page):
+    _reset(page)
+    page.locator("#bar .tb-hit").nth(2).hover()
+    link = page.locator("#bar .tb-chart-tip-receipt")
+    link.wait_for(state="visible")
+    link.click()
+    assert page.locator(".tb-receipt-drawer.tb-receipt-open").count() == 1
+    assert page.locator(".tb-receipt-row--here").get_attribute("data-tb-receipt-fig") == "bar"
+    page.locator(".tb-receipt-btn").click()               # close it again

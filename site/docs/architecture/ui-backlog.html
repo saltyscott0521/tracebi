@@ -72,6 +72,8 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a class="on" href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
@@ -96,6 +98,33 @@ bottom with the change that closed them.</p>
    <code>prefers-color-scheme</code> until the viewer picks one.</li>
 <li><strong><code>Btn</code> drops a caller's colours</strong>: its variant styles are applied after
     <code>style</code>, so <code>style={{ background }}</code> is silently overridden.</li>
+</ol>
+<p>Left by Step 1 of the UX plan (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>), report side:</p>
+<ol start="7">
+<li><strong>Affordability is a second bespoke look</strong>: Inter, a green accent, its own
+   paper ground, resting shadows and gradients (all of the reference
+   project's <code>report_box_shadows</code> and <code>report_gradients</code>), pinned light. Move
+   it onto the system, or name it beside <code>aum_by_branch</code> as a bespoke example.</li>
+<li><strong>The reference project has more than one look</strong>: <code>portfolio_book</code> (navy)
+   and <code>portfolio_showcase</code> (teal, Fraunces) carry their own accent presets
+   (<code>report_accents</code>, <code>report_looks</code> in the baseline). Decide whether a project
+   is one accent, and ratchet the count down.</li>
+<li><strong>Small multiples are dense on a phone</strong> (DS-4).</li>
+<li><strong>The showcase's striped frozen column keeps a light shade in dark</strong> (DS-5).</li>
+<li><strong>The selection handshake with a parent that is not the app</strong> (DS-8).</li>
+<li><strong>A line's end label is cut at the plot's top edge on a phone</strong>
+    (<code>portfolio_concentration</code>'s cumulative share at 390px).</li>
+</ol>
+<p>Recorded in the committed audit baselines, not caused by Step 1 (which touched
+no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
+<ol start="13">
+<li><strong>App crawl findings since the 2026-10-13 Reports page</strong>: <code>scope-mismatch</code>
+    (a model's Reports list reads empty to the audit, which looks for
+    <code>.list-item__name</code>; the rows are <code>button.rrow</code> now), <code>nav-you-are-here</code> on
+    <code>/reports</code>, <code>blank-page</code> / <code>one-h1</code> / <code>small-target</code> on an open report,
+    <code>no-focus-ring</code> into the report frame, eleven <code>slow-page</code>, and the
+    segmented bar's <code>repeating-linear-gradient</code> (<code>global.css:1188</code>,
+    <code>theme-decoration</code>). Some are the audit's selectors, some the app.</li>
 </ol>
 <h2 id="done">Done</h2>
 <ul>
@@ -142,6 +171,17 @@ bottom with the change that closed them.</p>
   they touch (<code>runner.models</code>), so SalesModel, SalesPipelineModel and
   WealthModel each show one on Refresh; a pipeline may belong to several.
   The audit flags any model with none.</li>
+<li><strong>Report design system v2 (Step 1)</strong>: one type scale, accent and dark
+  palette, <code>auto</code> mode, themes as accent presets (DS-1); masthead, footer,
+  12-column grid (DS-2); KPI with a stamped delta (DS-3); one chart style
+  (DS-4); tables (DS-5); the receipt as a certificate (DS-6); the editorial on
+  the system (DS-7); showcase, scaffolds and demo app on it (DS-8).</li>
+<li><strong>The audit renders every report</strong> (DS-9): both modes and widths into
+  <code>report-sheet.png</code>, font families, accents, shadows, gradients and looks
+  ratcheted per project against committed baselines
+  <code>[metric:report_*]</code>; a page laid out wider than the phone
+  <code>[report-phone-layout]</code> (every built report but one named no viewport; the
+  build now adds it).</li>
 </ul>
   </main>
 </div>

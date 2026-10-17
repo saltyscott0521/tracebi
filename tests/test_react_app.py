@@ -220,3 +220,25 @@ def test_printing_renders_every_view_filled(browser, tmp_path):
     page.evaluate("() => window.dispatchEvent(new Event('afterprint'))")
     assert page.locator("#fig-table-by_sale").count() == 0
     assert page.errors == []
+
+
+def test_a_style_css_token_gives_way_to_the_dark_ground(browser, tmp_path):
+    """On an app page tracebi.css sits in a cascade layer, so a style.css that
+    sets :root tokens (an accent, a light ink) used to beat the dark ground:
+    dark cards with near-black text. The dark tokens win, as on a template page."""
+    out = _build(tmp_path, _APP)
+    (tmp_path / "app" / "style.css").write_text(
+        ":root { --tb-ink: #10201c; --tb-accent: #1f6f5c; --tb-dark-accent: #6cc3a8; }",
+        encoding="utf-8")
+    TemplatePackage(str(tmp_path / "app")).render({"sales_model": _model()}, str(out))
+    page = browser.new_page(color_scheme="dark")
+    page.goto(out.as_uri())
+    tokens = page.evaluate("""() => { const s = getComputedStyle(document.documentElement);
+        return [s.getPropertyValue('--tb-ink').trim(), s.getPropertyValue('--tb-accent').trim()]; }""")
+    assert tokens[0] != "#10201c"
+    assert tokens[1] == "#6cc3a8"
+    light = browser.new_page(color_scheme="light")
+    light.goto(out.as_uri())
+    assert light.evaluate(
+        "() => getComputedStyle(document.documentElement).getPropertyValue('--tb-ink').trim()"
+    ) == "#10201c"

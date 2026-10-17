@@ -301,22 +301,33 @@ def _presentation() -> dict:
                     "a fixed kit; still one offline file with the receipt.",
             "imports": "react, react-dom, recharts, lucide-react (icons by name; only "
                        "those are embedded), tracebi. Any other import fails the build.",
-            "kit": "<Kpi binding cell format label context lead>, <Value binding cell "
+            "kit": "<Masthead title kicker period mark> opens the page (children are the "
+                   "standfirst; title is a string or text with <Value>s in it; period "
+                   "is presentation, \"Q3 2026\"; it holds the build time and the "
+                   "verdict chip), <Footer /> where the build's footer goes (the end "
+                   "of the main column; without it the footer follows the app), "
+                   "<Kpi binding cell format label context lead deltaBinding deltaCell "
+                   "deltaFormat deltaGood> (the delta is a stamped change shown with "
+                   "its arrow, sign and colour, deltaGood \"up\" or \"down\" saying "
+                   "which way is good; no comparison measure, no delta; a <Spark> "
+                   "child sits on the card's bottom edge), <Value binding cell "
                    "format>, <Chart binding type x y valueFormat ...>, <Spark ...> (a "
                    "sparkline), <Table binding columns sort bars rows>, <Filter binding "
                    "column> (no binding: a page-wide filter on every binding with the "
                    "column; KPIs stay the stamped totals), <Search binding>, <Download "
-                   "binding>, <Built>; <Segmented options value onChange> to choose which "
+                   "binding>, <Built> (the build time alone; <Masthead> already "
+                   "shows it); <Segmented options value onChange> to choose which "
                    "figure shows (each option its own binding — never to compute one); "
                    "useUrlState(key, initial) keeps a view or period in the URL so a "
                    "shared link opens on it; usePrinting() is true while the page "
                    "prints (Ctrl+P and the PDF build), so an app with views renders "
                    "all of them; useBinding(name) returns the stamped rows; "
                    "fmt(value, format).",
-            "claims": "Kit figures are claims: binding, cell, x and y must be literal "
-                      "strings, and the build refuses a binding or column that does not "
-                      "exist. A number the app computes or draws itself is presentation, "
-                      "not a checked figure; the page's About block says so. A number "
+            "claims": "Kit figures are claims: binding, cell, x and y (and a Kpi's "
+                      "deltaBinding / deltaCell) must be literal strings, and the "
+                      "build refuses a binding or column that does not exist. A "
+                      "number the app computes or draws itself is presentation, "
+                      "not a checked figure; the page's footer says so. A number "
                       "typed into the app's text (two or more digits) fails the build, as "
                       "in template.html: bind it with <Value binding cell />.",
             "styling": "Tailwind classes, with the TraceBi tokens as colours (bg-page, "
@@ -343,23 +354,59 @@ def _presentation() -> dict:
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
             "--tb-on-accent (text on an accent fill)",
-            "--tb-rule", "--tb-radius", "--tb-space-1..4",
-            "--tb-good / --tb-bad (direction tones)",
+            "--tb-dark-accent / --tb-dark-accent-text (the accent on the "
+            "dark ground; a theme sets both pairs)",
+            "--tb-rule", "--tb-grid (chart gridlines, 6% ink)", "--tb-radius",
+            "--tb-space-1..4",
+            "--tb-text-xs..3xl (the type scale: 12/13/14/16/20/28/40px), "
+            "--tb-tracking-tight (28px and up)",
+            "--tb-good / --tb-bad (direction tones), --tb-warn (the amber "
+            "verdict tone)",
             "--tb-cell-pad (table density)",
-            "--tb-chart-1..8 (the chart palette)",
+            "--tb-measure (an editorial's reading column, 68ch of its serif)",
+            "--tb-chart-1..8 (the chart palette; chart-1 is the accent)",
         ],
         "components": [
-            ".tb-page", ".tb-grid", ".tb-card",
+            ".tb-page (the page measure, 1,200px; an app's <main "
+            "className=\"tb-page px-6 py-8\">)",
+            ".tb-masthead (opens every page: optional .tb-masthead-mark — "
+            "empty; a report's style.css gives it a logo, e.g. width, height "
+            "and background: url(assets/logo.svg) — .tb-kicker, <h1>, "
+            ".tb-standfirst, .tb-masthead-meta. data-tb-period=\"…\" on the "
+            "masthead names what the numbers cover; the runtime fills the "
+            "meta with the period, the build time and the verdict chip, "
+            "adding whichever is missing. data-tb-title=\"center|banner|nav\" "
+            "places it. The editorial hero is <header class=\"tb-masthead "
+            "tb-article-head\">)",
+            ".tb-verdict (the verdict chip, in the masthead: the runtime sets "
+            "data-tb-verdict from the file itself — draft on a working "
+            "preview, not-checked on a built file, since nothing has re-run "
+            "its queries; tracebi verify does. The four verdicts are "
+            "reproduces (green), needs-a-look (amber), does-not-reproduce "
+            "(red), not-checked (neutral). A page never sets it green)",
+            ".tb-footer (ends the page: your sources first, then the build's "
+            "one line — who, when, which model, and that the receipt does "
+            "not claim the numbers are right — and 'How these numbers were "
+            "made' behind a <details>: the stated methodology. The build "
+            "adds it when the template places no data-tb-methodology)",
+            ".tb-grid", ".tb-span-4 / .tb-span-6 / .tb-span-8 / .tb-span-12 "
+            "(children of a .tb-grid make it the 12-column grid: a third, a "
+            "half, two thirds, the row; full width under 720px)",
+            ".tb-card",
             ".tb-lede (the page's answer sentence under the title, its "
             "numbers bound as value figures)",
             ".tb-kpi (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context — the "
-            "comparison line under the number)",
+            "comparison line under the number; .tb-kpi-delta, a value figure "
+            "with data-tb-direction leading that line, is the stamped change)",
             ".tb-table (variants: .tb-table--striped, .tb-table--compact, "
             ".tb-table--freeze — the first column stays put while a wide "
             "table scrolls sideways)",
             ".tb-callout", ".tb-note",
-            ".tb-article (an editorial report: .tb-article-head, .tb-kicker, "
-            ".tb-dek, .tb-byline, figure.tb-figure with figcaption, "
+            ".tb-article (an editorial report: the masthead as "
+            ".tb-article-head, the hero on the accent, .tb-kicker, "
+            ".tb-standfirst; the prose in one 68ch serif column, while "
+            "figure.tb-figure with figcaption, tables and a .tb-grid KPI "
+            "strip take the sheet's width; "
             ".tb-pullstat / .tb-pullstat-value / .tb-pullstat-text)",
             ".tb-good / .tb-bad (direction tones; pair with a sign or word, "
             "never color alone)",
@@ -391,7 +438,8 @@ def _presentation() -> dict:
                               "format, then a readable shape default "
                               "(4,846.10) — as a table column does",
             "data-tb-type / data-tb-x / data-tb-y / data-tb-color": "chart wiring",
-            "data-tb-value-format": "chart labels, axes, and tooltips — every "
+            "data-tb-value-format": "chart labels (each bar's own value, a "
+                                    "line's last value), axes, and tooltips — every "
                                     "chart type: compact | comma | currency | "
                                     "currency0 | currency_compact | percent | decimal "
                                     "(compact → '550.7B')",
@@ -435,8 +483,8 @@ def _presentation() -> dict:
                             "descending, then back to the query's order. It "
                             "reorders stamped rows and computes nothing; the "
                             "query's order_by stays the default",
-            "data-tb-bars": "table figures: \"col, col2\" — a quiet bar "
-                            "behind each named numeric cell, proportional to "
+            "data-tb-bars": "table figures: \"col, col2\" — a thin bar "
+                            "after each named numeric cell, in its own lane, proportional to "
                             "the stamped value (zero at the left edge, or in "
                             "the middle when the column has negatives; scaled "
                             "over all rows, not the visible window, so a "
@@ -450,13 +498,16 @@ def _presentation() -> dict:
                                  "comparison, e.g. a growth measure",
             "data-tb-unverified": "the honest mark for an unbacked figure",
             "data-tb-stage": "exploration — stripped at final build",
-            "data-tb-methodology": "one per page, on any container element; "
-                                   "the author's own children stay FIRST; "
-                                   "the build appends the pipeline's stated "
-                                   "methodology (transform notes, per-check "
-                                   "rationale, measure descriptions) — an "
-                                   "appendix, never a claim: no badge, no "
-                                   "status",
+            "data-tb-methodology": "one per page, on any container element "
+                                   "(<footer class=\"tb-footer\" "
+                                   "data-tb-methodology>); the author's own "
+                                   "children (sources) stay FIRST; the build "
+                                   "appends the footer's line and, behind "
+                                   "'How these numbers were made', the "
+                                   "pipeline's stated methodology (transform "
+                                   "notes, per-check rationale, measure "
+                                   "descriptions) — an appendix, never a "
+                                   "claim: no badge, no status",
         },
         "figure_helper": {
             "rule": "You keep the layout; the framework builds the figure. "
@@ -610,28 +661,37 @@ def _presentation() -> dict:
                     "data-tb-tab=\"Label\">…</section>…</div> — the "
                     "runtime builds the tab bar from the labels and shows "
                     "one section at a time",
-            "columns": ".tb-cols-2 / .tb-cols-3 grid classes, and .tb-cols-2-1 / "
-                       ".tb-cols-1-2 for a wide panel beside a narrow one "
-                       "(the dashboard row); responsive collapse to one "
-                       "column under 720px",
+            "columns": "The 12-column grid: a .tb-grid whose panels carry "
+                       ".tb-span-4 / -6 / -8 / -12 (.tb-span-8 beside "
+                       ".tb-span-4 is the dashboard row: a wide panel beside "
+                       "a narrow one); every span is the full row under "
+                       "720px. .tb-cols-2 / .tb-cols-3 / .tb-cols-2-1 / "
+                       ".tb-cols-1-2 still work as shorthands",
             "kpi_strip": "A .tb-grid of .tb-kpi cells renders as ONE panel "
                          "with hairlines between the cells. Mark the number "
-                         "the page is about .tb-kpi--lead (twice as wide, a "
-                         "larger figure) — never a row of identical boxes. "
+                         "the page is about .tb-kpi--lead (larger, not "
+                         "wider) — never a row of identical boxes. A change "
+                         "the model measures goes first on the context line "
+                         "as <span class=\"tb-kpi-delta\" "
+                         "data-tb-figure=\"value\" data-tb-direction="
+                         "\"up-good\" ...>: arrow, sign and --tb-good / "
+                         "--tb-bad from the stamped value, zero neutral. "
+                         "No comparison measure, no delta. "
                          "A line or area chart with class .tb-spark inside "
                          "a .tb-kpi is its trend's shape: no axes or legend, "
-                         "44px tall, zero-based, hover still reads each "
-                         "value",
+                         "32px tall on the card's bottom edge, zero-based, "
+                         "hover still reads each value",
             "recipes": {
                 "editorial": "A report to be read top to bottom (the default for "
                              "new-report): <article class=\"tb-article\"> — a "
-                             ".tb-kicker, an <h1> that states the finding, a "
-                             ".tb-dek standfirst, a .tb-byline with "
-                             "<span data-tb-built>, a .tb-lede with its numbers "
+                             "masthead (<header class=\"tb-masthead "
+                             "tb-article-head\">: .tb-kicker, an <h1> that "
+                             "states the finding, a .tb-standfirst, a "
+                             ".tb-masthead-meta), a .tb-lede with its numbers "
                              "bound, <h2> sections of prose, <figure "
                              "class=\"tb-figure\"> with a <figcaption> saying "
                              "what to see, an <aside class=\"tb-pullstat\">, a "
-                             "table, What to do, the methodology. Serif body, "
+                             "table, What to do, the .tb-footer. Serif body, "
                              "reads with JavaScript off, prints and emails. "
                              "tracebi new-report \"Name\" --layout editorial",
                 "brief": "One finding: answer sentence (.tb-lede), a few "
@@ -645,8 +705,7 @@ def _presentation() -> dict:
                              "navigation asked for. new-dashboard --html (or "
                              "tracebi new-report \"Name\" --layout dashboard) "
                              "writes the template.html version (brief, then "
-                             ".tb-cols-2-1), which is what tracebi init's "
-                             "sample is.",
+                             "a .tb-span-8 chart beside a .tb-span-4 detail).",
                 "tabbed": "The same header, then .tb-tabs / data-tb-tab "
                           "(Overview and Detail). "
                           "tracebi new-report \"Name\" --layout tabbed",
@@ -658,20 +717,23 @@ def _presentation() -> dict:
                              "dark / the reader's choice, comfortable / "
                              "compact. Offer the look of their last report "
                              "first. No person: use the defaults.",
-                "page": "On <html>: data-tb-mode=\"dark\" (or \"auto\": "
-                        "follows the reader's system; unset is light), "
+                "page": "On <html>: data-tb-mode=\"dark\" or \"light\" "
+                        "(unset is \"auto\": follows the reader's system), "
                         "data-tb-density=\"compact\", data-tb-width=\"full\" "
                         "(the whole window, for a dashboard). Tokens only: "
                         "never a number, never the receipt's tones",
                 "sidebar": "<div class=\"tb-tabs\" data-tb-nav=\"side\"> — "
                            "the same data-tb-tab sections with the bar as a "
                            "column; put the whole page inside it",
-                "title": "<header class=\"tb-title\" data-tb-title=\"left|"
-                         "center|banner|nav\"><h1>…</h1><p class=\""
-                         "tb-subtitle\">…</p><span data-tb-built></span>"
-                         "</header> — data-tb-built shows when the file was "
-                         "built, from its receipt; nav moves the title to the "
-                         "top of a sidebar",
+                "title": "<header class=\"tb-masthead\" data-tb-title=\"left|"
+                         "center|banner|nav\" data-tb-period=\"…\"><h1>…</h1>"
+                         "<p class=\"tb-standfirst\">…</p><p class=\""
+                         "tb-masthead-meta\"><span data-tb-built></span>"
+                         "<span class=\"tb-verdict\"></span></p></header> — "
+                         "data-tb-built shows when the file was built, from "
+                         "its receipt; nav moves the masthead to the top of a "
+                         "sidebar. (.tb-title, the older title block, still "
+                         "works)",
                 "app": "An app.jsx has no <html>: its mode and density are "
                        "report.json \"look\": {\"mode\": \"dark\"|\"auto\", "
                        "\"density\": \"compact\"}; its navigation and title "
@@ -689,6 +751,14 @@ def _presentation() -> dict:
                 "for_everyone": "reports/_theme.css restyles every report in "
                                 "the project (token overrides: accent, fonts, "
                                 "spacing)",
+                "style_css": "A report's own style.css is a theme preset at "
+                             "most: the accent pairs (--tb-accent / "
+                             "--tb-accent-text, --tb-dark-accent / "
+                             "--tb-dark-accent-text) and one display face for "
+                             ".tb-masthead h1 and .tb-kpi--lead .tb-kpi-value "
+                             "(an @font-face from assets/). No gradient, hatch, "
+                             "glow or resting shadow; the showcase's style.css "
+                             "is the example",
                 "house_style": "reports/_style.md is the team's design rules, "
                                "returned as house_style by tracebi context and "
                                "get_context. Read it before building and follow "
@@ -699,11 +769,24 @@ def _presentation() -> dict:
             "Every built artifact embeds a tracebi-receipt JSON block — "
             "report, render stamp, git SHA, per-figure binding "
             "fingerprints, compact transform-contract statuses, the "
-            "semantic-contract model names, and whether stated "
-            "methodology shipped. The drawer is a provenance display from "
+            "semantic-contract model names, whether stated methodology "
+            "shipped and its text, who built the file, and per binding the "
+            "query as run, its rows and how many ordering keys the author "
+            "wrote. The drawer is a provenance display from "
             "the recorded receipt block — it renders only what the block "
             "records, never re-colored; the manifest remains the receipt "
-            "of record. Draft snapshots carry no receipt block."
+            "of record. It reads as a certificate: the verdict chip and "
+            "'The receipt does not claim the numbers are right.', how to "
+            "check the file, then per figure its value as shown, label, "
+            "the measure's definition, the query in one line and the "
+            "fingerprint's first 8 characters, with the raw query and full "
+            "fingerprint behind 'Raw', and 'About this build' last. It "
+            "opens from the masthead's Receipt button or verdict chip, a "
+            "click on a value figure (at its row), a chart tooltip's "
+            "'Receipt ->' or the footer's line; a full-height sheet on a "
+            "phone; it prints as an appendix. tracebi.renderReceipt(mount, "
+            "receipt, options) renders the same certificate into any "
+            "element. Draft snapshots carry no receipt block."
         ),
         "prose_values": "When explaining results in prose, BIND the numbers: "
                         "<span data-tb-figure=\"value\" data-tb-binding=... "

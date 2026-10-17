@@ -1,6 +1,9 @@
 /* graphite — neutral ink accent: for pages where colour is left to the data. */
+/* An accent preset: the accent pair for each ground, nothing structural. */
 :root {
   --tb-accent: #3f3f46;
   --tb-accent-text: #27272a;
   --tb-surface-accent: #f1f1f3;
+  --tb-dark-accent: #b4b4bd;
+  --tb-dark-accent-text: #d4d4d8;
 }

@@ -284,10 +284,66 @@ def _ssr_format(raw, name: str) -> str:
     return str(raw)                    # unknown name: applyNamedFormat -> raw
 
 
+def _ssr_direction(ds, fig) -> str:
+    """The classes the runtime's ``markDirection`` puts on a value figure that
+    names ``data-tb-direction`` (``up-good`` / ``down-good``): its direction
+    from the stamped value's sign, and whether that is good. ``""`` when the
+    figure names none or the value is not a number."""
+    want = fig.attrs.get("data-tb-direction")
+    if want not in ("up-good", "down-good"):
+        return ""
+    df = ds.to_pandas()
+    cell = fig.cell or (str(df.columns[0]) if len(df.columns) == 1 else None)
+    if df.empty or cell not in df.columns:
+        return ""
+    try:
+        n = float(df[cell].iloc[0])
+    except (TypeError, ValueError):
+        return ""
+    if not math.isfinite(n):
+        return ""
+    if n == 0:
+        return "tb-flat"
+    good = (n > 0) == (want == "up-good")
+    return ("tb-up " if n > 0 else "tb-down ") + ("tb-good" if good else "tb-bad")
+
+
 #: Server-rendered rows per table before the runtime hydrates the full set from
 #: embedded data. Generous enough to render normal tables whole; a ceiling so a
 #: huge binding cannot re-inflate the page it was embedded as Parquet to shrink.
 _SSR_MAX_ROWS = 1000
+
+
+def _ssr_bar_scales(df, want, cols, numeric) -> dict:
+    """The runtime's barScales: for each data-tb-bars column that is shown and
+    numeric, the largest magnitude over ALL rows and whether any is negative."""
+    out = {}
+    for col in (c.strip() for c in (want or "").split(",")):
+        if col not in cols or col not in numeric:
+            continue
+        vals = pd.to_numeric(df[col], errors="coerce").dropna()
+        top = float(vals.abs().max()) if len(vals) else 0.0
+        if top > 0:
+            out[col] = (top, bool((vals < 0).any()))
+    return out
+
+
+def _ssr_bar(raw, scale) -> str:
+    """The runtime's paintBar as markup: a lane after the number whose bar's
+    left/width are the same percentages (the stamped value never changes)."""
+    if scale is None or raw is None or pd.isna(raw):
+        return ""
+    top, neg = scale
+    n = float(raw)
+    span = (50 if neg else 100) * abs(n) / top
+    zero = 50 if neg else 0
+
+    def pct(x):  # JS Number#toString for the values this produces
+        return f"{int(x)}%" if float(x).is_integer() else f"{x!r}%"
+    return ('<span class="tb-bar-track" aria-hidden="true"><span class="tb-bar'
+            + (" tb-bar--neg" if n < 0 else "")
+            + f'" aria-hidden="true" style="left:{pct(zero - span if n < 0 else zero)};'
+            f'width:{pct(span)}"></span></span>')
 
 
 def _ssr_cell(raw) -> str:
@@ -949,23 +1005,26 @@ class TemplatePackage:
         if contracts:
             manifest.transform_contracts = contracts
 
-        # About this report (default on) + the stated-methodology appendix.
-        # A template may place ONE data-tb-methodology container; otherwise
-        # the build adds a footer. Either way the page gets plain-language
-        # who / when / definitions / what the receipt is for, then any
-        # stated methodology notes after the author's own children. Prose,
-        # never a verified claim: no badge, no status, and it never colors
-        # a figure. Stated notes are recorded in the manifest when present.
+        # The footer that ends the page (default on). A template may place
+        # ONE data-tb-methodology container; otherwise the build adds a
+        # <footer class="tb-footer">. Either way, after the author's own
+        # children (their sources), one visible line — who, when, which
+        # model, and that the receipt does not claim the numbers are right —
+        # then "How these numbers were made" behind a <details>: what the
+        # receipt is for and the stated methodology notes. Prose, never a
+        # verified claim: no badge, no status, and it never colors a figure.
+        # Stated notes are recorded in the manifest (and the receipt block)
+        # when present.
         model_names = sorted({ref.model for ref in self.bindings.values()})
         page, insert_at = _ensure_about_home(page)
-        about = _about_html(manifest, model_names,
-                            app=self.app_source is not None)
         notes = stated_methodology_block(models, lineages)
         measure_notes = self._measure_notes(models)
         if measure_notes:
             notes["measure_notes"] = measure_notes
         notes_html = (_methodology_html(notes, contracts) if notes else "")
-        page = page[:insert_at] + about + notes_html + page[insert_at:]
+        footer = _footer_html(manifest, model_names, notes_html,
+                              app=self.app_source is not None)
+        page = page[:insert_at] + footer + page[insert_at:]
         if notes:
             manifest.methodology = notes
 
@@ -1002,6 +1061,7 @@ class TemplatePackage:
             fingerprints={sd.name: sd.fingerprint for sd in embed_items},
             binding_models={n: ref.model for n, ref in self.bindings.items()},
             contracts=contracts,
+            bindings=self._receipt_bindings(embed_items),
         )
         contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
         contract_blocks.append(embed_json(declared_formats, "tracebi-formats") + "\n")
@@ -1052,6 +1112,11 @@ class TemplatePackage:
                     ds, fig, (declared_formats or {}).get(fig.binding))
                 if text is not None:
                     content[fig.id] = _html.escape(text)
+                    cls = _ssr_direction(ds, fig)
+                    if cls:
+                        # The arrow and its colour for a no-JS reader; the
+                        # runtime writes the same text and classes over it.
+                        content[fig.id] = f'<span class="{cls}">{content[fig.id]}</span>'
             elif fig.kind == "table":
                 markup = self._ssr_table(
                     ds, fig, (declared_formats or {}).get(fig.binding),
@@ -1191,10 +1256,16 @@ class TemplatePackage:
         formats.update({c: v for c, v in
                         parse_column_map(fig.attrs.get("data-tb-formats")).items()
                         if c in numeric})
+        bars = _ssr_bar_scales(df, fig.attrs.get("data-tb-bars"), cols, numeric)
+
+        def cls(c, base=""):
+            names = " ".join(n for n in ("tb-bar-cell" if c in bars else "", base) if n)
+            return f' class="{names}"' if names else ""
+
         head = []
         for c in cols:
-            cls = ' class="tb-num"' if c in numeric else ""
-            head.append(f"<th{cls}>{_html.escape(labels.get(c) or humanise(c))}</th>")
+            head.append(f"<th{cls(c, 'tb-num' if c in numeric else '')}>"
+                        f"{_html.escape(labels.get(c) or humanise(c))}</th>")
         thead = "<thead><tr>" + "".join(head) + "</tr></thead>"
         if df.empty:
             # An empty binding says so, rather than showing a header over a void
@@ -1216,7 +1287,8 @@ class TemplatePackage:
                 if c in numeric:
                     fmt = formats.get(c)
                     text = _ssr_format(raw, fmt) if fmt else _ssr_cell(raw)
-                    cells.append(f'<td class="tb-num">{_html.escape(text)}</td>')
+                    cells.append(f'<td{cls(c, "tb-num")}>{_html.escape(text)}'
+                                 f'{_ssr_bar(raw, bars.get(c))}</td>')
                 else:
                     cells.append(f"<td>{_html.escape(_ssr_cell(raw))}</td>")
             body.append("<tr>" + "".join(cells) + "</tr>")
@@ -1235,11 +1307,11 @@ class TemplatePackage:
                     if c in tf.columns:
                         fmt = formats.get(c)
                         text = _ssr_format(row[c], fmt) if fmt else _ssr_cell(row[c])
-                        cells.append(f'<td class="tb-num">{_html.escape(text)}</td>')
+                        cells.append(f'<td{cls(c, "tb-num")}>{_html.escape(text)}</td>')
                     elif i == 0 and c not in numeric:
-                        cells.append("<td>Total</td>")
+                        cells.append(f"<td{cls(c)}>Total</td>")
                     else:
-                        cells.append("<td></td>")
+                        cells.append(f"<td{cls(c)}></td>")
                 tfoot = ('<tfoot><tr class="tb-total">' + "".join(cells)
                          + "</tr></tfoot>")
         return (thead + "<tbody data-tb-hydrate>" + "".join(body) + "</tbody>"
@@ -1454,6 +1526,24 @@ class TemplatePackage:
         if sql_calcs:
             contract["sql_calculations"] = sql_calcs
         return contract
+
+    def _receipt_bindings(self, items: list[StampedData]) -> dict:
+        """Per binding, what the receipt drawer states about its query: the
+        query as run (a copy of the manifest's ``query_spec``), the rows it
+        returned, and how many of its ordering keys the author wrote. A
+        report.py output has no query; it records its rows only."""
+        out: dict = {}
+        for sd in items:
+            rec: dict = {}
+            if sd.query_spec:
+                rec["query"] = sd.query_spec
+                ref = self.bindings.get(sd.name)
+                stated = getattr(getattr(ref, "query", None), "order_by", None)
+                if stated and sd.query_spec.get("order_by"):
+                    rec["order_stated"] = len(stated)
+            rec["rows"] = int(sd.dataset.to_pandas().shape[0])
+            out[sd.name] = rec
+        return out
 
     def _measure_notes(self, models: dict) -> dict[str, str]:
         """Descriptions of the declared measures the bindings reference.
@@ -1749,20 +1839,18 @@ class TemplatePackage:
 
 
 def _ensure_about_home(page: str) -> tuple[str, int]:
-    """Return ``(page, insert_at)`` for the About / methodology appendix.
+    """Return ``(page, insert_at)`` for the footer that ends the page.
 
     Prefer the author's ONE ``data-tb-methodology`` container. When the
-    template left none, append a footer before ``</body>`` so About this
-    report is on by default.
+    template left none, append a ``<footer class="tb-footer">`` before
+    ``</body>`` so the footer is on by default. Its id lets an app place it
+    (the kit's ``<Footer />``).
     """
     insert_at = methodology_insertion(page)
     if insert_at is not None:
         return page, insert_at
-    footer = (
-        '<footer class="tb-about" data-tb-methodology>'
-        "<h2>About this report</h2>"
-        "</footer>"
-    )
+    footer = ('<footer class="tb-footer" id="tb-footer" data-tb-methodology>'
+              "</footer>")
     close = page.lower().rfind("</body>")
     if close < 0:
         page = page + footer
@@ -1773,54 +1861,50 @@ def _ensure_about_home(page: str) -> tuple[str, int]:
     return page, insert_at
 
 
-def _about_html(manifest: ReportManifest, model_names: list[str],
-                app: bool = False) -> str:
-    """Plain-language About this report — who, when, definitions, receipt.
+def _footer_html(manifest: ReportManifest, model_names: list[str],
+                 notes_html: str = "", app: bool = False) -> str:
+    """The footer's build-written part: one visible line, then "How these
+    numbers were made" behind a ``<details>``.
 
-    Locked honesty: names what the receipt is for and what it does not
-    claim. Never says verified, reproduces, or correct.
+    The line says who built the file, when, from which model, and that the
+    receipt does not claim the numbers are right. The disclosure holds what
+    the receipt is for, the app note, and the stated methodology appendix.
+    Locked honesty: never says verified, reproduces, or correct.
     """
     import html as _html
 
-    lines: list[str] = []
     who = (manifest.rendered_by or "").strip()
+    if who == "unknown":
+        who = ""
     when = _about_when(manifest.rendered_at)
-    if who and who != "unknown" and when:
-        lines.append(
-            f'<p class="tb-about-meta">Built by {_html.escape(who)} '
-            f"on {_html.escape(when)}.</p>"
-        )
-    elif who and who != "unknown":
-        lines.append(
-            f'<p class="tb-about-meta">Built by {_html.escape(who)}.</p>'
-        )
-    elif when:
-        lines.append(
-            f'<p class="tb-about-meta">Built on {_html.escape(when)}.</p>'
-        )
-
+    stamp = "Built"
+    if who:
+        stamp += f" by {_html.escape(who)}"
+    if when:
+        stamp += f" on {_html.escape(when)}"
     if model_names:
         label = "model" if len(model_names) == 1 else "models"
         names = ", ".join(_html.escape(n) for n in model_names)
-        lines.append(
-            f'<p class="tb-about-meta">Definitions from the {label} '
-            f"{names}.</p>"
-        )
+        stamp += f" from the {label} {names}"
+    line = (stamp + ". " if stamp != "Built" else "")
+    line += "The receipt does not claim the numbers are right."
 
-    lines.append(
-        '<p class="tb-about-receipt">This file carries a receipt. Each '
+    inner = [
+        '<p class="tb-footer-note">This file carries a receipt. Each '
         "figure names the query that produced it and a fingerprint of the "
         "result. Running <code>tracebi verify</code> on the receipt checks "
-        "whether those numbers still match the model. The receipt does not "
-        "claim the numbers are right.</p>"
-    )
+        "whether those numbers still match the model.</p>"
+    ]
     if app:
-        lines.append(
-            '<p class="tb-about-receipt">This page is an app. The figures it '
+        inner.append(
+            '<p class="tb-footer-note">This page is an app. The figures it '
             "shows through the TraceBi kit carry that receipt; anything else "
             "it draws is the app's own presentation and is not checked.</p>"
         )
-    return "".join(lines)
+    return (f'<p class="tb-footer-line">{line}</p>'
+            '<details class="tb-footer-details">'
+            "<summary>How these numbers were made</summary>"
+            + "".join(inner) + notes_html + "</details>")
 
 
 def _about_when(rendered_at: str) -> str:
@@ -1893,7 +1977,7 @@ def _embedded_payload(block: str) -> str:
 
 def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
                      fingerprints: dict, binding_models: dict,
-                     contracts: dict) -> dict:
+                     contracts: dict, bindings: Optional[dict] = None) -> dict:
     """The ``tracebi-receipt`` block's payload — the receipt drawer's feed.
 
     Presentation feed only: it duplicates facts the manifest records so the
@@ -1903,12 +1987,18 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
     the payload is byte-stable across renders (the ``rendered_at`` stamp
     aside). ``transform_contracts`` is compacted to ``{table: status}`` —
     the drawer names the status; the full record stays in the manifest.
+    ``bindings`` is per binding the query as run (the manifest's
+    ``query_spec``), its row count, and how many of its ``order_by`` keys
+    the author wrote (the rest is the engine's tie-break), so the drawer
+    can state each query in one line without the page.
     """
     figures = []
     for f in figs:
         entry: dict = {"id": f.id, "kind": f.kind}
         if f.binding:
             entry["binding"] = f.binding
+        if f.cell:
+            entry["cell"] = f.cell
         if f.unverified:
             entry["unverified"] = True
         fp = fingerprints.get(f.binding) if f.binding else None
@@ -1926,6 +2016,8 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
         "git_sha": manifest.git_sha,
         "figures": figures,
     }
+    if bindings:
+        payload["bindings"] = bindings
     if contracts:
         payload["transform_contracts"] = {
             table: contracts[table]["status"] for table in sorted(contracts)
@@ -1933,6 +2025,14 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
     if manifest.semantic_contract:
         payload["semantic_contract_models"] = sorted(manifest.semantic_contract)
     payload["methodology"] = manifest.methodology is not None
+    # The footer's facts, for the drawer to show (DS-6): who built the file
+    # and the stated methodology text, both copies of what the manifest
+    # records.
+    who = (manifest.rendered_by or "").strip()
+    if who and who != "unknown":
+        payload["rendered_by"] = who
+    if manifest.methodology is not None:
+        payload["stated_methodology"] = manifest.methodology
     return payload
 
 

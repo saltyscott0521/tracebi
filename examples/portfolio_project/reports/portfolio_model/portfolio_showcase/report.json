@@ -54,6 +54,14 @@
       "model": "portfolio_model",
       "query": { "fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"] }
     },
+    "issuer_curve": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fv_rank", "fv_cum_share"],
+        "dimensions": ["dim_issuer.issuer"],
+        "order_by": [{"column": "fv_rank", "desc": false}]
+      }
+    },
     "top_issuers": {
       "model": "portfolio_model",
       "query": {
@@ -75,8 +83,7 @@
   "figures": {
     "chart_fund": {
       "kind": "chart", "binding": "by_fund", "chart_type": "pie",
-      "x": "dim_fund.fund", "y": "fair_value", "value_format": "compact",
-      "palette": ["#3b5bdb", "#0f9d8a", "#f08c00"]
+      "x": "dim_fund.fund", "y": "fair_value", "value_format": "compact"
     }
   }
 }

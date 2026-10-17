@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-tb-mode="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,7 +9,7 @@
 <main class="tb-page mp">
 
   <!-- ── Hero ─────────────────────────────────────────────────────────── -->
-  <header class="mp-hero">
+  <header class="tb-masthead mp-hero">
     <div class="mp-hero-copy">
       <p class="mp-eyebrow">Housing affordability · the worst of the eighties vs today</p>
       <h1>Was it harder to buy a home then, or now?</h1>
@@ -31,6 +31,12 @@
         refinance.</p>
       <p class="mp-hero-sources">Sources: Freddie Mac · FHFA · NAR · U.S. Census Bureau · BLS ·
         <a href="#sources">details</a></p>
+      <!-- The masthead's meta line: the years compared (figures, never typed),
+           when this file was built and the verdict chip. -->
+      <p class="tb-masthead-meta"><span class="tb-masthead-period"><span data-tb-figure="value"
+        data-tb-binding="peak" data-tb-cell="dim_year.year" id="period-then"></span> against
+        <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year"
+        id="period-now"></span></span> <span data-tb-built></span> <span class="tb-verdict"></span></p>
     </div>
 
     <figure class="mp-scene" aria-hidden="true">
@@ -321,8 +327,9 @@
       <code>inputs/housing_sources.md</code>.</p>
   </section>
 
-  <section class="mp-section mp-method" data-tb-methodology>
-    <h2 class="mp-h2">How these numbers were made</h2>
+  <footer class="tb-footer mp-method" data-tb-methodology>
+    <details class="tb-footer-details">
+    <summary>The method, in words</summary>
     <p>Each year's buyer puts a fifth down on the median existing home, pays
       closing costs of three percent, and takes a thirty-year fixed loan at that
       year's average rate. The monthly payment adds property tax and insurance,
@@ -333,7 +340,8 @@
       at the latest year's average, and income and home values grow at
       income's pace over the last decade. The work is in
       <code>transforms/affordability_transform.py</code>.</p>
-  </section>
+    </details>
+  </footer>
 </main>
 </body>
 </html>

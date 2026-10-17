@@ -19,8 +19,8 @@ _APP_HEAD = '''// app.jsx — this report's page, a React app (the React lane).
 // text-ink text-muted border-rule bg-accent follow the page's theme and mode.
 // The kit and patterns: docs/reference/app-jsx.md.
 import { LayoutDashboard, Table2 } from "lucide-react";
-import { Kpi, Value, Spark, Chart, Table, Filter, Search, Download, Built, Segmented,
-         useUrlState, usePrinting } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Spark, Chart, Table, Filter, Search, Download,
+         Segmented, useUrlState, usePrinting } from "tracebi";
 
 const TITLE = "__TITLE__";
 const VIEWS = { Overview: LayoutDashboard, Detail: Table2 };
@@ -29,36 +29,26 @@ const VIEWS = { Overview: LayoutDashboard, Detail: Table2 };
 _APP_HEADERS = {
     "left": '''
 function Header() {
-  return (
-    <header className="flex flex-wrap items-end justify-between gap-2">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{TITLE}</h1>
-        <p className="text-sm text-muted">One line on what this page is for.</p>
-      </div>
-      <Built className="text-xs text-muted" />
-    </header>
-  );
+  // The masthead: the title, what this page is for, when it was built and the
+  // verdict chip (from the file's receipt). period="…" names what the numbers cover.
+  return <Masthead title={TITLE}>One line on what this page is for.</Masthead>;
 }
 ''',
     "center": '''
 function Header() {
   return (
-    <header className="text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">{TITLE}</h1>
-      <p className="text-sm text-muted">One line on what this page is for.</p>
-      <Built className="text-xs text-muted" />
-    </header>
+    <Masthead title={TITLE} data-tb-title="center">
+      One line on what this page is for.
+    </Masthead>
   );
 }
 ''',
     "banner": '''
 function Header() {
   return (
-    <header className="rounded-panel bg-accent px-8 py-7 text-on-accent">
-      <h1 className="text-2xl font-semibold tracking-tight">{TITLE}</h1>
-      <p className="text-sm opacity-85">One line on what this page is for.</p>
-      <Built className="text-xs opacity-75" />
-    </header>
+    <Masthead title={TITLE} data-tb-title="banner">
+      One line on what this page is for.
+    </Masthead>
   );
 }
 ''',
@@ -74,7 +64,9 @@ function Overview() {
         <Value binding="top" cell="__MEASURE__" />. Rewrite this sentence as the
         page's finding.
       </p>
-      {/* One KPI strip: the lead number twice as wide, then what explains it. */}
+      {/* One KPI strip: the lead number larger, then what explains it. A change
+          the model measures (an offset or growth measure) leads a KPI's context
+          as its delta: deltaBinding deltaCell deltaFormat deltaGood="up|down". */}
       <div className="tb-grid">
         <Kpi lead binding="totals" cell="__MEASURE__" label="__MLABEL__"
              context="state the period and comparison" />
@@ -82,15 +74,16 @@ function Overview() {
         <Kpi binding="top" cell="__MEASURE__" label="__MLABEL__, top __DLOWER__"
              id="kpi-top-__MEASURE_ID__" />
       </div>
-      {/* A wide panel beside a narrow one: the breakdown and its ranking. */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="tb-card lg:col-span-2">
+      {/* The 12-column grid: a wide panel (8) beside a narrow one (4), the
+          breakdown and its ranking; one column on a phone. */}
+      <div className="tb-grid">
+        <section className="tb-card tb-span-8">
           <h2>__MLABEL__ by __DLABEL__</h2>
           <p className="tb-note">Largest first.</p>
           <Chart binding="breakdown" type="bar" x="__DIM__" y="__MEASURE__"
                  valueFormat="compact" />
         </section>
-        <section className="tb-card">
+        <section className="tb-card tb-span-4">
           <h2>Ranking</h2>
           <Table binding="breakdown" sort bars="__MEASURE__" />
         </section>
@@ -191,12 +184,12 @@ function Overview() {
         <Kpi binding="top" cell="__MEASURE__" label="__MLABEL__, leader" id="kpi-top-__MEASURE_ID__" />
         <Kpi binding="totals" cell="__MEASURE__" label="__MLABEL__, everyone" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="tb-card">
+      <div className="tb-grid">
+        <section className="tb-card tb-span-6">
           <h2>Top ten</h2>
           <Chart binding="top10" type="barh" x="__DIM__" y="__MEASURE__" valueFormat="compact" />
         </section>
-        <section className="tb-card">
+        <section className="tb-card tb-span-6">
           <h2>Full ranking</h2>
           <div className="mb-3"><Search binding="ranking" placeholder="Find a __DLOWER__…" /></div>
           <Table binding="ranking" sort bars="__MEASURE__" />
@@ -226,10 +219,11 @@ _APP_SHELLS = {
 export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
+      <main className="tb-page space-y-8 px-6 py-8">
         <Header />
         <Overview />
         <Detail />
+        <Footer />
       </main>
     </div>
   );
@@ -244,7 +238,7 @@ export default function App() {
   const printing = usePrinting();
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
+      <main className="tb-page space-y-8 px-6 py-8">
         <Header />
         <nav className="flex gap-1 border-b border-rule print:hidden">
           {Object.entries(VIEWS).map(([name, Icon]) => (
@@ -257,6 +251,7 @@ export default function App() {
           ))}
         </nav>
         {printing ? <><Overview /><Detail /></> : <View />}
+        <Footer />
       </main>
     </div>
   );
@@ -285,9 +280,10 @@ __BRAND__
           ))}
         </nav>
       </aside>
-      <main className="min-w-0 flex-1 space-y-6 px-6 py-8">
+      <main className="min-w-0 flex-1 space-y-8 px-6 py-8">
 __MAIN_HEADER__
         {printing ? <><Overview /><Detail /></> : <View />}
+        <Footer />
       </main>
     </div>
   );
@@ -296,11 +292,9 @@ __MAIN_HEADER__
 }
 
 _BRAND_PLAIN = '''        <div className="mb-3 border-b border-rule px-2.5 pb-3 font-semibold">{TITLE}</div>'''
-_BRAND_TITLE = '''        <div className="mb-3 border-b border-rule px-2.5 pb-3">
-          <div className="font-semibold">{TITLE}</div>
-          <p className="text-xs text-muted">One line on what this page is for.</p>
-          <Built className="text-xs text-muted" />
-        </div>'''
+_BRAND_TITLE = '''        <Masthead title={TITLE} data-tb-title="nav" className="mb-3 border-b border-rule px-2.5 pb-3">
+          One line on what this page is for.
+        </Masthead>'''
 
 
 def _scorecard_views(measures, dim_ref, time_ref, humanise):
@@ -379,13 +373,13 @@ def _funnel_views(stages, dim_ref, humanise):
         f'        <Kpi binding="stages" cell="{r}" label="{humanise(s)}, % of {first}" />'
         for r, s in rates)
     by_cat = (f'''
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="tb-card lg:col-span-2">
+      <div className="tb-grid">
+        <section className="tb-card tb-span-8">
           <h2>Where it narrows</h2>
           <p className="tb-note">{humanise(last)} as a share of {first}, by {in_sentence(humanise(dim_ref))}.</p>
           <Chart binding="breakdown" type="barh" x="{dim_ref}" y="{last_rate}" valueFormat="percent" />
         </section>
-        <section className="tb-card">
+        <section className="tb-card tb-span-4">
           <h2>Conversion by {in_sentence(humanise(dim_ref))}</h2>
           <Table binding="breakdown" columns={{["{dim_ref}", "{last_rate}"]}} sort bars="{last_rate}" />
         </section>
@@ -453,13 +447,13 @@ def _monitor_views(measures, dim_ref, time_ref, humanise):
           <h2>{m0} by {period}</h2>
           <Chart binding="by_period" type="line" x="{time_ref}" y="{measures[0]}" valueFormat="compact" />'''
     watch = (f'''
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="tb-card">
+      <div className="tb-grid">
+        <section className="tb-card tb-span-4">
           <h2>Watch list</h2>
           <p className="tb-note">Lowest {in_sentence(m0)} first: where to look.</p>
           <Table binding="watch" bars="{measures[0]}" />
         </section>
-        <section className="tb-card lg:col-span-2">{trend}
+        <section className="tb-card tb-span-8">{trend}
         </section>
       </div>''' if dim_ref else f'''
       <section className="tb-card">{trend}

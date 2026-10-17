@@ -705,7 +705,7 @@
   /* data-tb-totals names a one-row binding the model computed (the table's
    * query with no dimensions): its values fill a <tfoot> row. Nothing is
    * summed here — a ratio's total is the model's ratio of totals. */
-  function totalsRow(el, cols, numeric, formats) {
+  function totalsRow(el, cols, numeric, formats, bars) {
     var name = attr(el, "data-tb-totals");
     if (!name) return null;
     var old = el.querySelector("tfoot");
@@ -719,8 +719,9 @@
     tr.className = "tb-total";
     cols.forEach(function (col, i) {
       var td = document.createElement("td");
+      if (bars[col]) td.className = "tb-bar-cell";
       if (block.cols.indexOf(col) !== -1) {
-        td.className = "tb-num";
+        addClass(td, "tb-num");
         var n = toNum(row[col]), text = row[col] === undefined ? "" : row[col];
         var fmt = formats[col] || deriveFormat(block.rows, col);
         if (n !== null && fmt) {
@@ -785,7 +786,7 @@
     });
   }
 
-  /* data-tb-bars: a bar behind each cell of the named numeric columns,
+  /* data-tb-bars: a thin bar after each cell of the named numeric columns,
    * proportional to the stamped value. Zero is the left edge; a column with
    * negatives gets its zero in the middle so neither side is exaggerated.
    * The scale comes from ALL rows of the current result (the stamped block,
@@ -816,14 +817,13 @@
     var zero = scale.neg ? 50 : 0;
     bar.style.left = (n < 0 ? zero - span : zero) + "%";
     bar.style.width = span + "%";
-    /* The bar's percentages are of a track inset by the cell's padding, so
-     * the longest bar ends where the number does, not at the cell's edge. */
+    /* The bar's percentages are of a fixed-width lane after the number. */
     var track = document.createElement("span");
     track.className = "tb-bar-track";
     track.setAttribute("aria-hidden", "true");
     track.appendChild(bar);
     addClass(td, "tb-bar-cell");
-    td.insertBefore(track, td.firstChild);
+    td.appendChild(track);
   }
 
   /* Above this many rows the scroll box paints only the visible window.
@@ -939,8 +939,9 @@
       var td = document.createElement("td");
       var raw = r[col], text = (raw === undefined) ? "" : raw;
       var n = null;
+      if (bars && bars[col]) td.className = "tb-bar-cell";
       if (entry.numeric[col]) {
-        td.className = "tb-num";
+        addClass(td, "tb-num");
         n = toNum(raw);
         if (n !== null && entry.formats[col]) {
           var formatted = applyNamedFormat(n, entry.formats[col]);
@@ -1089,10 +1090,20 @@
   function bindPrintMode() {
     if (bindPrintMode.done) return;
     bindPrintMode.done = true;
+    var opened = [];
     var apply = function (on) {
       on = !!on;
       if (_printing === on) return;
       _printing = on;
+      /* The receipt prints as an appendix with every disclosure open. */
+      var boxes = document.querySelectorAll(".tb-receipt-drawer details"), k;
+      if (on) {
+        for (k = 0; k < boxes.length; k++) {
+          if (!boxes[k].open) { boxes[k].open = true; opened.push(boxes[k]); }
+        }
+      } else {
+        while (opened.length) opened.pop().open = false;
+      }
       for (var i = 0; i < _tables.length; i++) {
         try { renderBody(_tables[i], _tables[i].modelRows); } catch (e) {}
       }
@@ -1214,7 +1225,13 @@
                       numeric: numeric, formats: formats,
                       rowCount: rows.length, sort: null,
                       bars: barScales(el, rows, cols, numeric) };
-        entry.tfoot = totalsRow(el, cols, numeric, formats);
+        /* A bar column's header keeps its lane empty, so it sits over the
+         * numbers (an author's or the server's thead as well). */
+        var heads = el.querySelectorAll("thead th");
+        cols.forEach(function (col, i) {
+          if (entry.bars[col] && heads[i]) addClass(heads[i], "tb-bar-cell");
+        });
+        entry.tfoot = totalsRow(el, cols, numeric, formats, entry.bars);
         hydrateSort(entry);
         _tables.push(entry);
         renderBody(entry, filteredRows(binding));
@@ -1499,7 +1516,7 @@
 
   function colourOf(entry, key) {
     var pal = entry.plan.palette && entry.plan.palette.length
-      ? entry.plan.palette : ["#2a78d6"];
+      ? entry.plan.palette : ["#2f5bea"];
     var i = entry.keys.indexOf(key);
     return pal[(i < 0 ? 0 : i) % pal.length];
   }
@@ -1561,16 +1578,6 @@
     return true;
   }
 
-  /* Shorten an SVG text node until it fits *room*, ending in an ellipsis. */
-  function fitText(node, room) {
-    var full = node.textContent, n = full.length;
-    try {
-      while (n > 1 && node.getComputedTextLength() > room) {
-        node.textContent = full.slice(0, --n) + "…";
-      }
-    } catch (e) {}
-  }
-
   function textWidth(svg, text, size) {
     var t = svg.append("text").attr("font-size", size).text(text);
     var w = 0;
@@ -1579,8 +1586,124 @@
     return w;
   }
 
-  function tipShow(entry, x, y, title, rows) {
+  /* A category name in at most two lines, split at the space that balances
+   * them. A name is never shortened: what does not fit is set smaller. */
+  function wrapLines(svg, text, size) {
+    var words = String(text).split(/\s+/), best = [String(text)], bw = Infinity;
+    for (var i = 1; i < words.length; i++) {
+      var a = words.slice(0, i).join(" "), b = words.slice(i).join(" ");
+      var w = Math.max(textWidth(svg, a, size), textWidth(svg, b, size));
+      if (w < bw) { bw = w; best = [a, b]; }
+    }
+    return best;
+  }
+
+  function linesWidth(svg, lines, size) {
+    var w = 0;
+    lines.forEach(function (l) { w = Math.max(w, textWidth(svg, l, size)); });
+    return w;
+  }
+
+  /* Write *lines* into an axis label (one tspan each, centred on the tick)
+   * at *size*. */
+  function setLabel(node, lines, size, centred) {
+    var t = root.d3.select(node), x = t.attr("x") || 0;
+    t.text(null);
+    lines.forEach(function (l, i) {
+      t.append("tspan").attr("x", x)
+        .attr("dy", i ? "1.15em" : (lines.length > 1 && centred ? "-0.23em" : t.attr("dy")))
+        .text(l);
+    });
+    t.attr("font-size", size);
+  }
+
+  /* Contrast of two colours (#hex or rgb()), or 0 when either is unreadable. */
+  function rgbOf(c) {
+    var s = trim(String(c || "")), m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
+    if (m) {
+      var h = m[1].length === 3 ? m[1].replace(/(.)/g, "$1$1") : m[1];
+      return [0, 2, 4].map(function (i) { return parseInt(h.slice(i, i + 2), 16); });
+    }
+    m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(s);
+    return m ? [+m[1], +m[2], +m[3]] : null;
+  }
+
+  function contrast(a, b) {
+    var lum = function (rgb) {
+      var c = rgb.map(function (v) {
+        v /= 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    };
+    var x = rgbOf(a), y = rgbOf(b);
+    if (!x || !y) return 0;
+    var l1 = lum(x), l2 = lum(y);
+    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+  }
+
+  /* The measures' own descriptions, from the semantic contract the build
+   * embedded (the manifest's measure definitions): read once. */
+  var _measureAbout = null;
+  function pageContracts() {
+    var blocks = typeof document === "undefined" ? []
+      : document.querySelectorAll('script[id^="tb-semantic-contract-"]');
+    var out = [];
+    for (var i = 0; i < blocks.length; i++) {
+      try { out.push(JSON.parse(blocks[i].textContent)); } catch (e) {}
+    }
+    return out;
+  }
+  function measureIndex(contracts) {
+    var out = {};
+    (contracts || []).forEach(function (c) {
+      ((c && c.measures) || []).forEach(function (m) {
+        if (m && m.name && m.description && !out.hasOwnProperty(m.name)) {
+          out[m.name] = String(m.description);
+        }
+      });
+    });
+    return out;
+  }
+  function measureAbout(col) {
+    if (_measureAbout === null) _measureAbout = measureIndex(pageContracts());
+    return _measureAbout.hasOwnProperty(col) ? _measureAbout[col] : null;
+  }
+
+  function receiptRowFor(id) {
+    if (typeof document === "undefined") return null;
+    var rows = document.querySelectorAll(".tb-receipt-row[data-tb-receipt-fig]");
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute("data-tb-receipt-fig") === id) return rows[i];
+    }
+    return null;
+  }
+
+  /* Open the receipt drawer at one figure's record. */
+  function openReceipt(id) {
+    var row = receiptRowFor(String(id));
+    var drawer = receiptDrawer();
+    if (!row || !drawer) return false;
+    setReceiptOpen(true);
+    var scroll = drawer.querySelector(".tb-receipt-scroll") || drawer;
+    scroll.scrollTop = Math.max(0, row.offsetTop - 8);
+    addClass(row, "tb-receipt-row--here");
+    setTimeout(function () { removeClass(row, "tb-receipt-row--here"); }, 1600);
+    return true;
+  }
+
+  /* The readout stays put while the pointer travels to its Receipt link. */
+  function tipLater(entry) {
+    clearTimeout(entry.hideTimer);
+    entry.hideTimer = setTimeout(function () { tipHide(entry); }, 220);
+  }
+
+  /* about: the measures' descriptions, one line each under the values. */
+  function tipShow(entry, x, y, title, rows, about) {
     var tip = entry.tip, i, row, line;
+    clearTimeout(entry.hideTimer);
+    var same = !tip.hidden && entry.tipTitle === title;
+    entry.tipTitle = title;
     while (tip.firstChild) tip.removeChild(tip.firstChild);
     var head = document.createElement("div");
     head.className = "tb-chart-tip-title";
@@ -1601,12 +1724,39 @@
       row.appendChild(name);
       tip.appendChild(row);
     }
+    (about || []).forEach(function (text) {
+      var d = document.createElement("div");
+      d.className = "tb-chart-tip-about";
+      d.textContent = text;
+      tip.appendChild(d);
+    });
+    var figId = entry.el && entry.el.id;
+    if (figId && receiptRowFor(figId)) {
+      var link = document.createElement("button");
+      link.type = "button";
+      link.className = "tb-chart-tip-receipt";
+      link.textContent = "Receipt →";
+      link.addEventListener("click", function () { tipHide(entry); openReceipt(figId); });
+      link.addEventListener("pointerenter", function () { clearTimeout(entry.hideTimer); });
+      link.addEventListener("pointerleave", function () { tipLater(entry); });
+      link.addEventListener("blur", function (e) {
+        if (e.relatedTarget !== entry.svg.node()) tipHide(entry);
+      });
+      tip.appendChild(link);
+    }
     tip.hidden = false;
+    /* The same readout again (the pointer moving within one category) stays
+     * where it is, so its link can be reached. */
+    if (same) return announce(entry, title, rows);
     var w = entry.surface.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
-    var left = x + 14 + tw > w ? Math.max(0, x - 14 - tw) : x + 14;
-    var top = Math.max(0, y - th - 10);
+    var left = x + 10 + tw > w ? Math.max(0, x - 10 - tw) : x + 10;
+    var top = Math.max(0, y - th + 6);
     tip.style.left = left + "px";
     tip.style.top = top + "px";
+    announce(entry, title, rows);
+  }
+
+  function announce(entry, title, rows) {
     if (entry.live && entry.keyboard) {
       entry.live.textContent = title + ": " + rows.map(function (r) {
         return r.name + " " + r.value;
@@ -1616,10 +1766,12 @@
 
   /* Keyboard readouts are placed in svg coordinates; the legend sits above. */
   function tipHide(entry) {
+    clearTimeout(entry.hideTimer);
     if (entry.tip) entry.tip.hidden = true;
     if (entry.svg) {
       entry.svg.selectAll(".tb-hover").attr("opacity", 0);
       entry.svg.selectAll(".tb-mark").classed("tb-dim", false);
+      entry.svg.selectAll("circle.tb-dot").classed("tb-dot-on", false);
     }
   }
 
@@ -1670,7 +1822,7 @@
       var p = root.d3.pointer(event, entry.surface);
       entry.keyboard = false;
       fn(d, p[0], p[1]);
-    }).on("pointerleave", function () { tipHide(entry); });
+    }).on("pointerleave", function () { tipLater(entry); });
   }
 
   /* Arrow keys walk the marks, Enter filters by the focused one, Escape
@@ -1693,7 +1845,10 @@
       show(entry.focusIndex);
     };
     svgNode.onfocus = function () { entry.keyboard = true; show(entry.focusIndex); };
-    svgNode.onblur = function () { tipHide(entry); };
+    /* Tab from the chart reaches the readout's Receipt link. */
+    svgNode.onblur = function (e) {
+      if (!(e.relatedTarget && entry.tip.contains(e.relatedTarget))) tipHide(entry);
+    };
   }
 
   function transition(entry, sel) {
@@ -1779,24 +1934,50 @@
     var lo = ext[0], hi = ext[1];
     var titleH = opt.title ? 20 : 0;
     var m = { top: 10 + titleH, right: 16, bottom: 28, left: 12 };
-    var catLabelW = 0, rotate = false, every = 1;
+    var catLabelW = 0, rotate = false, every = 1, lines = {}, wrapW = 0;
     cats.forEach(function (c) { catLabelW = Math.max(catLabelW, textWidth(svg, c, 12)); });
+    /* Wrap every name, then keep on one line any that fits the widest
+     * wrapped one. */
+    var wrapAll = function () {
+      cats.forEach(function (c) {
+        lines[c] = wrapLines(svg, c, 12);
+        wrapW = Math.max(wrapW, linesWidth(svg, lines[c], 12));
+      });
+      cats.forEach(function (c) { if (textWidth(svg, c, 12) <= wrapW) delete lines[c]; });
+    };
+    /* Value ticks thin to what fits: about one per 80px across, one per
+     * 50px up. The same compact format whatever the count. */
     var val = d3.scaleLinear().domain([lo, hi]).nice(5);
-    var tickW = 0;
-    val.ticks(5).forEach(function (v) { tickW = Math.max(tickW, textWidth(svg, ticks(v), 11)); });
+    var tickVals = function (count, room) {
+      for (var n = count; ; n--) {
+        var vs = val.ticks(n), w = 0;
+        vs.forEach(function (v) { w = Math.max(w, textWidth(svg, ticks(v), 11)); });
+        if (n <= 2 || !room || vs.length * (w + 16) <= room) return { vs: vs, w: w };
+      }
+    };
+    var tv;
     if (horizontal) {
-      m.left = Math.min(Math.ceil(catLabelW) + 10, Math.round(W * 0.38));
+      /* Names never shorten: past 30% of the width they wrap to two lines
+       * (when a band holds two), and the margin grows to the longest line,
+       * up to 40% of the width; a line still wider is set smaller. */
+      var stepH = (H - m.top - 24) / Math.max(1, cats.length);
+      if (catLabelW > W * 0.3 && stepH >= 26) wrapAll();
+      m.left = Math.min(Math.ceil(wrapW || catLabelW) + 10, Math.round(W * 0.4));
       m.bottom = 24;
     } else {
-      m.left = Math.ceil(tickW) + 10;
+      tv = tickVals(Math.max(2, Math.min(5, Math.floor((H - 40) / 50))), 0);
+      m.left = Math.ceil(tv.w) + 10;
       var room = (W - m.left - m.right) / Math.max(1, cats.length);
-      /* Names that collide: up to 16 categories turn 30°; more than that
-       * (a run of years, months) label every k-th one, flat. */
+      /* Names that collide wrap to two lines while a band is 48px or wider;
+       * narrower, up to 16 categories turn 30°; more than that (a run of
+       * years, months) label every k-th one, flat. */
       if (cats.length && room < catLabelW + 6) {
         if (cats.length > 16) every = Math.ceil((catLabelW + 14) / room);
+        else if (room >= 48) wrapAll();
         else rotate = true;
       }
-      m.bottom = rotate ? Math.min(Math.ceil(catLabelW * 0.55) + 22, 96) : 28;
+      m.bottom = rotate ? Math.min(Math.ceil(catLabelW * 0.5) + 22, Math.round(H * 0.4))
+        : wrapW ? 42 : 28;
     }
     if (plan.yTitle) m.left += 18;
     if (plan.xTitle) m.bottom += 18;
@@ -1807,8 +1988,11 @@
      * the KPI beside it carries the number. Still zero-based. */
     if (plan.spark) m = { top: 3, right: 3, bottom: 3, left: 3 };
     var iw = Math.max(10, W - m.left - m.right), ih = Math.max(10, H - m.top - m.bottom);
+    if (horizontal) tv = tickVals(Math.max(2, Math.floor(iw / 80)), iw);
+    /* Bars take 55% of their band. */
+    var isBar = kind === "bar" || kind === "barh";
     var band = d3.scaleBand().domain(cats).range(horizontal ? [0, ih] : [0, iw])
-      .paddingInner(kind === "bar" || kind === "barh" ? 0.28 : 0).paddingOuter(0.14);
+      .paddingInner(isBar ? 0.45 : 0).paddingOuter(isBar ? 0.225 : 0.14);
     val.range(horizontal ? [0, iw] : [ih, 0]);
     /* A sparkline runs edge to edge: the first and last points on the sides. */
     if (plan.spark && cats.length > 1) {
@@ -1831,19 +2015,19 @@
         .text(function (d) { return d; });
     }
 
-    /* Grid and axes: recessive, in the page's rule and muted ink. */
+    /* Grid: hairlines at 6% ink, no axis lines; the one baseline at zero is
+     * in the page's rule. */
     var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
-    transition(entry, grid.selectAll("line").data(plan.spark ? [] : val.ticks(5), function (v) { return v; }).join(
-      function (en) { return en.append("line").attr("stroke", t.rule); }))
+    transition(entry, grid.selectAll("line").data(plan.spark ? [] : tv.vs, function (v) { return v; }).join(
+      function (en) { return en.append("line"); }))
       .attr(horizontal ? "x1" : "y1", function (v) { return val(v); })
       .attr(horizontal ? "x2" : "y2", function (v) { return val(v); })
       .attr(horizontal ? "y1" : "x1", 0)
       .attr(horizontal ? "y2" : "x2", horizontal ? ih : iw)
-      .attr("stroke", t.rule)
-      .attr("stroke-width", function (v) { return v === 0 ? 1.5 : 1; })
-      .attr("stroke-opacity", function (v) { return v === 0 ? 1 : 0.7; });
+      .attr("stroke-width", 1)
+      .style("stroke", function (v) { return v === 0 ? "var(--tb-rule)" : "var(--tb-grid)"; });
     var vAxis = horizontal ? d3.axisBottom(val) : d3.axisLeft(val);
-    vAxis.ticks(5).tickSize(0).tickPadding(8).tickFormat(ticks);
+    vAxis.tickValues(tv.vs).tickSize(0).tickPadding(8).tickFormat(ticks);
     var cAxis = horizontal ? d3.axisLeft(band) : d3.axisBottom(band);
     cAxis.tickSize(0).tickPadding(8);
     if (!horizontal && every > 1) {
@@ -1859,9 +2043,19 @@
     g.selectAll(".tb-axis .domain").remove();
     g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11)
       .attr("font-family", t.font);
-    ca.selectAll("text").attr("font-size", 12).each(function () {
-      fitText(this, horizontal ? m.left - 10 - (plan.yTitle ? 18 : 0)
-        : rotate ? m.bottom * 1.6 : band.step() * (every || 1));
+    var labelRoom = horizontal ? m.left - 10 - (plan.yTitle ? 18 : 0)
+      : rotate ? (m.bottom - 16) * 2 : band.step() * every - 6;
+    /* One size for every name on the axis: 12px, or smaller (to 9px) when
+     * the widest does not fit its room. */
+    var labelSize = 12;
+    cats.forEach(function (c) {
+      var w = linesWidth(svg, lines[c] || [String(c)], 12);
+      if (w > labelRoom && labelRoom > 0) {
+        labelSize = Math.min(labelSize, Math.max(9, Math.floor(12 * labelRoom / w)));
+      }
+    });
+    ca.selectAll("text").each(function (c) {
+      setLabel(this, lines[c] || [String(c)], labelSize, horizontal);
     });
     if (rotate) {
       ca.selectAll("text").attr("text-anchor", "end").attr("dx", "-0.4em")
@@ -1922,7 +2116,7 @@
           /* Round only the end that faces away from zero, and only the
            * outermost segment of a stack. */
           var outer = !stacked || p.y1 === (p.y >= 0 ? stackTop(series, p.cat, 1) : stackTop(series, p.cat, -1));
-          var rad = outer ? Math.min(4, len, thick / 2) : 0;
+          var rad = outer ? Math.min(2, len, thick / 2) : 0;
           var pos = p.y >= 0;
           if (horizontal) {
             var x0 = lo2, x1 = lo2 + len, y0 = a, y1 = a + thick;
@@ -1953,6 +2147,51 @@
           .attr("d", shape).attr("fill", colour(s.key))
           .attr("stroke", stacked ? t.bg : null).attr("stroke-width", stacked ? 1 : null);
       });
+      /* Each bar's own value, formatted as the tooltip and the table show it:
+       * inside the free end when the label fits with 12px to spare and reads
+       * on the bar's colour, otherwise just past it. None on bars thinner
+       * than 14px, on stacks, in small multiples, or beside marked points. */
+      var labelled = [];
+      if (thick >= 14 && !stacked && !opt.title && !plan.spark && !marks.length) {
+        series.forEach(function (s) {
+          var f = chartFormatter(plan, rows, s.col), fill = colour(s.key);
+          var on = [t.onAccent, t.ink].filter(function (c) { return contrast(c, fill) >= 4.5; })[0];
+          s.points.forEach(function (p) {
+            if (p.y === null || band(p.cat) === undefined) return;
+            var text = f(p.y), w = textWidth(svg, text, 11);
+            var len = Math.abs(val(p.y) - val(0)), along = horizontal ? w : 11;
+            var across = horizontal ? 11 : w;
+            labelled.push({ key: s.key + "|" + p.cat, p: p, s: s, text: text, w: w,
+                            inside: !!on && len >= along + 12 && across <= thick - 4,
+                            fill: on, room: horizontal ? thick : inner.step() });
+          });
+        });
+        /* One placement for the chart: inside only when every label fits. */
+        var allIn = labelled.every(function (d) { return d.inside; });
+        labelled.forEach(function (d) { d.inside = allIn; });
+        /* An upright label wider than its slot would sit on its neighbour's. */
+        if (!horizontal && labelled.some(function (d) { return !d.inside && d.w > d.room; })) labelled = [];
+      }
+      var vl = g.selectAll("g.tb-values").data([0]).join("g").attr("class", "tb-values")
+        .selectAll("text").data(labelled, function (d) { return d.key; }).join("text");
+      vl.attr("font-size", 11).attr("font-weight", 600).attr("pointer-events", "none")
+        .attr("fill", function (d) { return d.inside ? d.fill : t.ink; })
+        .attr("text-anchor", function (d) {
+          if (!horizontal) return "middle";
+          return (d.p.y >= 0) === d.inside ? "end" : "start";
+        })
+        .attr("dy", horizontal ? "0.32em" : null)
+        .attr("x", function (d) {
+          if (!horizontal) return band(d.p.cat) + slot(d.s.key) + off + thick / 2;
+          var end = val(d.p.y), out = d.p.y >= 0 ? 1 : -1;
+          return end + (d.inside ? -6 : 4) * out;
+        })
+        .attr("y", function (d) {
+          if (horizontal) return band(d.p.cat) + slot(d.s.key) + off + thick / 2;
+          var end = val(d.p.y), up = d.p.y >= 0 ? 1 : -1;
+          return d.inside ? end + (up > 0 ? 15 : -6) : end + (up > 0 ? -5 : 14);
+        })
+        .text(function (d) { return d.text; });
     } else {
       var lineGen = d3.line().defined(function (p) { return p.y !== null; })
         .x(function (p) { return centre(p.cat); })
@@ -1961,28 +2200,24 @@
         .x(function (p) { return centre(p.cat); })
         .y0(function (p) { return stacked ? val(p.y0) : zero; })
         .y1(function (p) { return val(to(p)); });
-      groups.each(function (s, si) {
+      groups.each(function (s) {
         var pts = s.points.filter(function (p) { return band(p.cat) !== undefined; });
         var sel = d3.select(this);
         if (kind === "area") {
-          /* A soft vertical gradient: strongest at the line, fading to the base. */
-          var gid = entry.uid + "-" + (opt.panel || 0) + "-" + si;
-          var defs = svg.selectAll("defs").data([0]).join("defs");
-          var grad = defs.selectAll("linearGradient#" + gid).data([0]).join("linearGradient")
-            .attr("id", gid).attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
-          grad.selectAll("stop").data([[0, 0.32], [1, 0.03]]).join("stop")
-            .attr("offset", function (d) { return d[0]; })
-            .attr("stop-color", colour(s.key)).attr("stop-opacity", function (d) { return d[1]; });
+          /* A flat wash of the series colour at 10%: no gradient. */
           var ar = sel.selectAll("path.tb-area").data([pts]).join("path").attr("class", "tb-area")
-            .attr("fill", "url(#" + gid + ")");
+            .attr("fill", colour(s.key)).attr("fill-opacity", 0.1);
           transition(entry, ar).attr("d", areaGen);
         }
         var ln = sel.selectAll("path.tb-line").data([pts]).join("path").attr("class", "tb-line tb-mark")
-          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", 2.25)
+          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", 1.5)
           .attr("stroke-linejoin", "round").attr("stroke-linecap", "round");
         transition(entry, ln).attr("d", lineGen);
-        var dots = sel.selectAll("circle.tb-dot").data(pts.filter(function (p) { return p.y !== null; }),
-          function (p) { return p.cat; });
+        /* One dot per row, drawn only at the end of the line and under the
+         * pointer (.tb-dot-on), so the line reads as a line. */
+        var drawn = pts.filter(function (p) { return p.y !== null; });
+        var last = drawn.length ? drawn[drawn.length - 1].cat : null;
+        var dots = sel.selectAll("circle.tb-dot").data(drawn, function (p) { return p.cat; });
         transition(entry, dots.join(
           function (en) { return en.append("circle").attr("class", "tb-dot").attr("r", 0)
             .attr("cx", function (p) { return centre(p.cat); }).attr("cy", function (p) { return val(to(p)); }); },
@@ -1990,10 +2225,33 @@
           function (ex) { return ex.remove(); }))
           .attr("cx", function (p) { return centre(p.cat); })
           .attr("cy", function (p) { return val(to(p)); })
-          .attr("r", plan.spark || cats.length > 24 ? 0 : 3.5)
-          .attr("fill", colour(s.key)).attr("stroke", t.bg).attr("stroke-width", 2);
+          .attr("r", function (p) { return !plan.spark && p.cat === last ? 3 : 0; })
+          .attr("fill", colour(s.key)).attr("stroke", t.bg).attr("stroke-width", 1.5);
       });
     }
+
+    /* Lines end in a label: the last row's own value, formatted. Not on a
+     * sparkline, in small multiples, or where the author marked the last. */
+    var ends = [];
+    if (!isBar && !plan.spark && !opt.title && marks.indexOf("last") === -1) {
+      series.forEach(function (s) {
+        var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
+        if (!pts.length) return;
+        var p = pts[pts.length - 1];
+        ends.push({ key: s.key, p: p, y: val(to(p)) - 9,
+                    text: chartFormatter(plan, rows, s.col)(p.y), colour: colour(s.key) });
+      });
+      /* Labels that would overlap step apart, top to bottom. */
+      ends.sort(function (a, b) { return a.y - b.y; });
+      for (var ei = 1; ei < ends.length; ei++) {
+        if (ends[ei].y - ends[ei - 1].y < 13) ends[ei].y = ends[ei - 1].y + 13;
+      }
+    }
+    g.selectAll("text.tb-end-label").data(ends, function (d) { return d.key; }).join("text")
+      .attr("class", "tb-end-label").attr("pointer-events", "none")
+      .attr("x", function (d) { return centre(d.p.cat); }).attr("y", function (d) { return d.y; })
+      .attr("text-anchor", "end").attr("font-size", 11).attr("font-weight", 600)
+      .attr("fill", t.ink).text(function (d) { return d.text; });
 
     /* Marked points: the series' own high, low, first or last row, labelled
      * with that row's value. Picking a row never makes a number. */
@@ -2059,13 +2317,16 @@
       } else {
         cross.attr("x1", centre(c)).attr("x2", centre(c)).attr("y1", 0).attr("y2", ih)
           .attr("opacity", 1);
+        g.selectAll("circle.tb-dot").classed("tb-dot-on", function (p) { return p.cat === c; });
       }
-      var rowsOut = [];
+      var rowsOut = [], about = [];
       series.forEach(function (s) {
         for (var j = 0; j < s.points.length; j++) {
           if (s.points[j].cat === c) {
             rowsOut.push({ colour: colour(s.key), name: s.name,
                            value: chartFormatter(plan, rows, s.col)(s.points[j].y) });
+            var said = measureAbout(s.col);
+            if (said && about.indexOf(said) === -1) about.push(said);
             break;
           }
         }
@@ -2073,7 +2334,7 @@
       var o = px === undefined ? hostOffset(entry, svg) : { x: 0, y: 0 };
       var x = px === undefined ? o.x + m.left + (horizontal ? iw / 2 : centre(c)) : px;
       var y = py === undefined ? o.y + m.top + (horizontal ? centre(c) : ih / 3) : py;
-      tipShow(entry, x, y, (opt.title ? opt.title + " · " : "") + c, rowsOut);
+      tipShow(entry, x, y, (opt.title ? opt.title + " · " : "") + c, rowsOut, about);
     };
     var choose = filterable ? function (i) { filterTo(plan.x, cats[i]); } : null;
     var catAt = function (px) {
@@ -2205,12 +2466,12 @@
     var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
     transition(entry, grid.selectAll("line").data(ys.ticks(5), function (v) { return v; }).join("line"))
       .attr("x1", 0).attr("x2", iw).attr("y1", function (v) { return ys(v); })
-      .attr("y2", function (v) { return ys(v); }).attr("stroke", t.rule).attr("stroke-opacity", 0.7);
+      .attr("y2", function (v) { return ys(v); }).style("stroke", "var(--tb-grid)");
     transition(entry, g.selectAll("g.tb-axis-y").data([0]).join("g").attr("class", "tb-axis tb-axis-y"))
       .call(d3.axisLeft(ys).ticks(5).tickSize(0).tickPadding(8).tickFormat(ticks));
     transition(entry, g.selectAll("g.tb-axis-x").data([0]).join("g").attr("class", "tb-axis tb-axis-x")
       .attr("transform", "translate(0," + ih + ")"))
-      .call(d3.axisBottom(xs).ticks(Math.max(2, Math.floor(iw / 90))).tickSize(0).tickPadding(8)
+      .call(d3.axisBottom(xs).ticks(Math.max(2, Math.floor(iw / 80))).tickSize(0).tickPadding(8)
         .tickFormat(ticks));
     g.selectAll(".tb-axis .domain").remove();
     g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11).attr("font-family", t.font);
@@ -2253,7 +2514,7 @@
           { colour: colourOf(entry, p.key), name: humanise(plan.x), value: fx(p.x) },
           { colour: colourOf(entry, p.key), name: humanise(p.series.col),
             value: chartFormatter(plan, rows, p.series.col)(p.y) }
-        ]);
+        ], [measureAbout(plan.x), measureAbout(p.series.col)].filter(Boolean));
     };
     /* Nearest point wins: the reader only has to be closest, not dead on.
      * Dragging across the plot zooms to that range of x; double-click or
@@ -2287,7 +2548,7 @@
         var p2 = d3.pointer(event, entry.surface);
         showAt(best, p2[0], p2[1]);
       } else tipHide(entry);
-    }).on("pointerleave.tb", function () { tipHide(entry); });
+    }).on("pointerleave.tb", function () { tipLater(entry); });
     keyboardWalk(entry, pts.length, function (i) { showAt(i); }, null);
   }
 
@@ -2334,7 +2595,8 @@
       var c = arc.centroid(a);
       tipShow(entry, px === undefined ? W / 2 + c[0] : px,
         py === undefined ? hostOffset(entry, entry.svg).y + H / 2 + c[1] : py,
-        a.data.key, [{ colour: colourOf(entry, a.data.key), name: humanise(y0), value: fmtV(a.data.raw) }]);
+        a.data.key, [{ colour: colourOf(entry, a.data.key), name: humanise(y0), value: fmtV(a.data.raw) }],
+        [measureAbout(y0)].filter(Boolean));
     };
     joined.style("cursor", filterable ? "pointer" : null)
       .on("pointermove", function (event, a) {
@@ -2344,7 +2606,7 @@
       })
       .on("pointerleave", function () {
         g.selectAll("path.tb-mark").attr("d", arc);
-        tipHide(entry);
+        tipLater(entry);
       })
       .on("click", function (event, a) { filterTo(plan.x, a.data.key); });
     keyboardWalk(entry, arcs.length, function (i) { showAt(i); },
@@ -2363,6 +2625,7 @@
     t.muted = t.muted || "#666";
     t.ink = t.ink || "#111";
     t.bg = t.bg || "#fff";
+    try { t.onAccent = cssVar(getComputedStyle(document.documentElement), "--tb-on-accent"); } catch (e) {}
     legendFor(entry, kind);
     var H = entry.plan.spark ? entry.height
       : Math.max(200, entry.height - entry.legend.offsetHeight - 8);
@@ -2373,6 +2636,8 @@
         .attr("aria-label", (kind === "barh" ? "bar" : kind) + " chart of " +
           entry.plan.y.map(humanise).join(", ") + " by " + humanise(entry.plan.x) +
           ". Use the arrow keys to read each value.");
+      /* The readout follows the chart in tab order: Tab reaches its link. */
+      surface.appendChild(entry.tip);
     }
     entry.svg.attr("width", W).attr("height", H).attr("viewBox", "0 0 " + W + " " + H)
       .style("font-family", t.font);
@@ -3190,22 +3455,101 @@
   /* ── The title — when it was built, and where it sits ─────────────────
    * [data-tb-built] shows when this file was built, read from its own
    * receipt: a fact about the build, never typed in. A title marked
-   * data-tb-title="nav" moves to the top of a sidebar tab bar. */
+   * data-tb-title="nav" moves to the top of a sidebar tab bar.
+   *
+   * The masthead (.tb-masthead): its .tb-masthead-meta holds the period
+   * (data-tb-period on the masthead), the build time and the verdict chip;
+   * whichever a template left out is added, so every masthead carries the
+   * chip. The chip's state is read from the file, never from the page's
+   * markup: "draft" on a working preview (stage exploration, no receipt),
+   * "not-checked" on a built file — nothing has re-run its queries, so the
+   * file cannot honestly say they reproduce. An author-written state is
+   * overwritten; a chip never turns green on its own say-so. */
+
+  var _VERDICTS = {
+    draft: { text: "Draft",
+             tip: "A working preview. It carries no receipt." },
+    "not-checked": { text: "Not checked",
+                     tip: "Nothing has re-run this file's queries since it was " +
+                          "built. tracebi verify re-runs them against the " +
+                          "model and says whether each figure reproduces." },
+    /* The three a checker states (tracebi verify, the web app); this file
+     * never chooses them for itself. renderReceipt shows them when its
+     * host passes one. */
+    reproduces: { text: "Reproduces",
+                  tip: "Re-running every query gave the data this file carries." },
+    "needs-a-look": { text: "Needs a look",
+                      tip: "The source or the model changed since this build." },
+    "does-not-reproduce": { text: "Does not reproduce",
+                            tip: "Re-running a query gave different data." }
+  };
+
+  function verdictState() {
+    var meta = document.querySelector('meta[name="tracebi-stage"]');
+    var stage = meta ? meta.getAttribute("content") : null;
+    var receipt = document.getElementById("tracebi-receipt");
+    return (stage === "final" && receipt) ? "not-checked" : "draft";
+  }
+
+  function hydrateMasthead() {
+    var heads = document.querySelectorAll(".tb-masthead"), i, head, meta, el;
+    for (i = 0; i < heads.length; i++) {
+      head = heads[i];
+      meta = head.querySelector(".tb-masthead-meta");
+      if (!meta) {
+        meta = document.createElement("div");
+        meta.className = "tb-masthead-meta";
+        head.appendChild(meta);
+      }
+      var period = attr(head, "data-tb-period");
+      if (period && !meta.querySelector(".tb-masthead-period")) {
+        el = document.createElement("span");
+        el.className = "tb-masthead-period";
+        el.textContent = period;
+        meta.insertBefore(el, meta.firstChild);
+      }
+      if (!head.querySelector("[data-tb-built]")) {
+        el = document.createElement("span");
+        el.setAttribute("data-tb-built", "");
+        meta.appendChild(el);
+      }
+      if (!head.querySelector(".tb-verdict")) {
+        el = document.createElement("span");
+        el.className = "tb-verdict";
+        meta.appendChild(el);
+      }
+    }
+    var state = verdictState(), spec = _VERDICTS[state];
+    var chips = document.querySelectorAll(".tb-verdict");
+    for (i = 0; i < chips.length; i++) {
+      if (inReceipt(chips[i])) continue; /* the receipt's own, set by its host */
+      chips[i].setAttribute("data-tb-verdict", state);
+      chips[i].textContent = spec.text;
+      chips[i].title = spec.tip;
+    }
+  }
+
+  function inReceipt(el) {
+    for (var n = el.parentNode; n && n.className !== undefined; n = n.parentNode) {
+      if ((" " + n.className + " ").indexOf(" tb-receipt ") !== -1) return true;
+    }
+    return false;
+  }
 
   function hydrateTitle() {
+    try { hydrateMasthead(); } catch (e) { /* defensive */ }
+    try { placeReceiptTriggers(); } catch (e) { /* defensive */ }
     var el = document.getElementById("tracebi-receipt"), stamp = null, i;
     if (el) {
       try { stamp = JSON.parse(el.textContent).rendered_at || null; } catch (e) { stamp = null; }
     }
-    var when = stamp ? new Date(stamp) : null;
-    if (when && !isNaN(when.getTime())) {
-      var text = "Built " + when.toLocaleString(undefined, {
-        year: "numeric", month: "short", day: "numeric",
-        hour: "numeric", minute: "2-digit" });
+    var text = builtText(stamp);
+    if (text) {
       var built = document.querySelectorAll("[data-tb-built]");
       for (i = 0; i < built.length; i++) built[i].textContent = text;
     }
-    var title = document.querySelector('.tb-title[data-tb-title="nav"]');
+    var title = document.querySelector('.tb-title[data-tb-title="nav"]')
+      || document.querySelector('.tb-masthead[data-tb-title="nav"]');
     var bar = document.querySelector('.tb-tabs[data-tb-nav="side"] .tb-tab-bar');
     if (title && bar) bar.insertBefore(title, bar.firstChild);
   }
@@ -3213,7 +3557,18 @@
   /* ── The receipt drawer — provenance DISPLAY from #tracebi-receipt ─────
    * Renders ONLY what the build recorded: never re-colored, never
    * re-judged. Locked language: "the sink satisfied its contract" — never
-   * "the transform was verified". */
+   * "the transform was verified".
+   *
+   * Two parts. renderReceipt(mount, receipt, options) writes the certificate
+   * into any element: the header (report, when it was built, from which
+   * model, the verdict chip, the honesty line), how to check the file, one
+   * row per figure (its value as shown, its label, the measure's definition,
+   * the query in one line, the fingerprint's first 8 characters) with the
+   * raw query and full fingerprint behind "Raw", and "About this build"
+   * (sink contracts, the stated methodology, who built it, when, git) behind
+   * one disclosure. The web app's report page mounts the same function in its
+   * side panel. hydrateReceipt is the artifact's chrome around it: the
+   * drawer (a sheet on a phone), its close button, and the ways to open it. */
 
   function receiptLine(parent, text, cls) {
     var div = document.createElement("div");
@@ -3223,15 +3578,57 @@
     return div;
   }
 
+  function receiptEl(parent, tag, cls, text) {
+    var el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text !== undefined && text !== null) el.textContent = text;
+    parent.appendChild(el);
+    return el;
+  }
+
+  /* Copy text to the clipboard; say so on the button, or select the text
+   * when the browser refuses (a sandboxed frame, an old browser). */
+  function receiptCopyButton(parent, text, label, target) {
+    var btn = receiptEl(parent, "button", "tb-receipt-copy", "Copy");
+    btn.type = "button";
+    btn.setAttribute("aria-label", label);
+    btn.addEventListener("click", function () {
+      var said = function (ok) {
+        btn.textContent = ok ? "Copied" : "Select";
+        setTimeout(function () { btn.textContent = "Copy"; }, 1400);
+        if (!ok && target && root.getSelection && document.createRange) {
+          try {
+            var range = document.createRange();
+            range.selectNodeContents(target);
+            var sel = root.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          } catch (e) {}
+        }
+      };
+      try {
+        if (root.navigator && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(
+            function () { said(true); }, function () { said(false); });
+          return;
+        }
+      } catch (e) {}
+      said(false);
+    });
+    return btn;
+  }
+
   /* The page element this figure record names, if the build placed one. */
-  function receiptPageEl(fig) {
-    if (!fig || !fig.id || typeof document === "undefined") return null;
-    var el = document.getElementById(fig.id);
+  function receiptPageEl(fig, page) {
+    if (!fig || !fig.id || !page || !page.getElementById) return null;
+    var el = page.getElementById(fig.id);
     return (el && el.getAttribute) ? el : null;
   }
 
-  /* Rows on the page, or the stamped block when the figure has no table. */
-  function receiptRowCount(el, binding) {
+  /* Rows the query returned (recorded), else rows on the page, else the
+   * stamped block when the figure has no table. */
+  function receiptRowCount(el, binding, rec, page) {
+    if (rec && typeof rec.rows === "number") return rec.rows;
     if (el && el.tagName === "TABLE") {
       var body = el.querySelector("tbody");
       if (body) {
@@ -3246,50 +3643,113 @@
         return n;
       }
     }
-    var block = binding ? readBlock(binding) : null;
+    var block = (binding && page) ? readBlock(binding) : null;
     if (block && block.rows) return block.rows.length;
     return null;
   }
 
-  function receiptQuery(receipt, fig) {
-    if (fig.query && typeof fig.query === "object") return fig.query;
+  function receiptBinding(receipt, fig) {
     var bindings = receipt && receipt.bindings;
     var rec = (bindings && fig.binding) ? bindings[fig.binding] : null;
-    if (!rec || typeof rec !== "object") return null;
-    return (rec.query && typeof rec.query === "object") ? rec.query : rec;
+    return (rec && typeof rec === "object") ? rec : null;
   }
 
-  function humanList(items) {
-    if (!items || !items.length) return "";
-    var out = [], i;
-    for (i = 0; i < items.length; i++) out.push(humanise(String(items[i])));
-    return out.join(", ");
+  function receiptQuery(receipt, fig) {
+    if (fig.query && typeof fig.query === "object") return fig.query;
+    var rec = receiptBinding(receipt, fig);
+    if (!rec) return null;
+    return (rec.query && typeof rec.query === "object") ? rec.query : null;
   }
 
-  function filterPhrase(filters) {
+  function queryValue(v) {
+    if (v && typeof v === "object" && v.length !== undefined) {
+      return "(" + Array.prototype.map.call(v, String).join(", ") + ")";
+    }
+    return String(v);
+  }
+
+  /* {col: value | [values] | {op: value}} → "col = v, col in (a, b), col >= 5". */
+  function filterText(filters) {
     if (!filters || typeof filters !== "object") return "";
     var parts = [], k, v, op, bits;
     for (k in filters) {
       if (!Object.prototype.hasOwnProperty.call(filters, k)) continue;
       v = filters[k];
-      if (v && typeof v === "object") {
+      if (v && typeof v === "object" && v.length !== undefined) {
+        parts.push(k + " in " + queryValue(v));
+      } else if (v && typeof v === "object") {
         bits = [];
         for (op in v) {
           if (Object.prototype.hasOwnProperty.call(v, op)) {
-            bits.push(op + " " + v[op]);
+            bits.push(k + " " + op + " " + queryValue(v[op]));
           }
         }
-        parts.push(humanise(k) + " " + bits.join(" "));
+        parts.push(bits.join(", "));
       } else {
-        parts.push(humanise(k) + " is " + v);
+        parts.push(k + " = " + v);
       }
     }
     return parts.join(", ");
   }
 
-  function receiptFigureRow(drawer, fig, receipt) {
+  /* The query in one line, in the model's own names:
+   * "fair_value by dim_issuer.sector · order fair_value desc · limit 10".
+   * Only the ordering keys the author wrote; the rest is the engine's
+   * tie-break, which stays in the raw query. */
+  function queryLine(query, rec) {
+    if (!query || typeof query !== "object") return "";
+    if (typeof query.sql === "string") {
+      return "sql " + trim(query.sql.replace(/\s+/g, " "));
+    }
+    var measures = query.measures, names = [], k;
+    if (measures && typeof measures === "object" && measures.length === undefined) {
+      for (k in measures) if (Object.prototype.hasOwnProperty.call(measures, k)) names.push(k);
+    } else if (measures) {
+      names = Array.prototype.map.call(measures, String);
+    }
+    var line = names.join(", ");
+    var dims = query.dimensions || [];
+    if (dims.length) line += (line ? " by " : "by ") + Array.prototype.join.call(dims, ", ");
+    var where = filterText(query.filters);
+    if (where) line += " · where " + where;
+    var having = filterText(query.having);
+    if (having) line += " · having " + having;
+    var order = query.order_by || [];
+    if (rec && typeof rec.order_stated === "number") order = order.slice(0, rec.order_stated);
+    if (order.length) {
+      line += " · order " + order.map(function (o) {
+        if (o && typeof o === "object") return o.column + (o.desc ? " desc" : "");
+        var t = String(o);
+        return t.charAt(0) === "-" ? t.slice(1) + " desc" : t;
+      }).join(", ");
+    }
+    if (query.limit !== undefined && query.limit !== null) line += " · limit " + query.limit;
+    return line;
+  }
+
+  function queryMeasures(query, cell) {
+    var m = query && query.measures, out = [], k;
+    if (m && typeof m === "object" && m.length === undefined) {
+      for (k in m) if (Object.prototype.hasOwnProperty.call(m, k)) out.push(k);
+    } else if (m) {
+      out = Array.prototype.map.call(m, String);
+    }
+    if (!out.length && cell) out = [cell];
+    return out;
+  }
+
+  /* "Built Oct 17, 2026, 7:28 PM" from the file's own stamp, or null. */
+  function builtText(stamp) {
+    var when = stamp ? new Date(stamp) : null;
+    if (!when || isNaN(when.getTime())) return null;
+    return "Built " + when.toLocaleString(undefined, {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "numeric", minute: "2-digit" });
+  }
+
+  function receiptFigureRow(list, fig, receipt, ctx) {
     if (!fig || !fig.id) return;
-    var page = receiptPageEl(fig);
+    var page = receiptPageEl(fig, ctx.page);
     var kind = fig.kind || (page ? attr(page, "data-tb-figure") : null);
     var binding = fig.binding || (page ? attr(page, "data-tb-binding") : null);
     var cell = fig.cell || (page ? attr(page, "data-tb-cell") : null);
@@ -3297,78 +3757,368 @@
       var y = attr(page, "data-tb-y");
       if (y) cell = splitList(y)[0];
     }
+    var rec = receiptBinding(receipt, fig);
+    var query = receiptQuery(receipt, fig);
 
-    var row = document.createElement("div");
-    row.className = "tb-receipt-row";
+    var row = receiptEl(list, "div", "tb-receipt-row");
     row.setAttribute("data-tb-receipt-fig", String(fig.id));
-    var title = document.createElement("div");
-    title.className = "tb-receipt-title";
-    var headline;
+
+    /* The label, and what the page shows: the value as formatted there, or
+     * the figure's kind and rows. */
+    var title = receiptEl(row, "div", "tb-receipt-title");
+    var name, shown = "";
     if (kind === "value") {
       var labelEl = page ? page.querySelector(".tb-kpi-label") : null;
       var pageLabel = labelEl ? trim(labelEl.textContent || "") : "";
       /* A column uses the same words as the page's headings. A literal
        * figure has no column, so the label already printed on it is the
        * name. */
-      var label = cell ? humanise(cell)
+      name = cell ? humanise(cell)
         : (pageLabel || (binding ? humanise(binding) : humanise(fig.id)));
       var shownEl = page ? (page.querySelector(".tb-kpi-value") || page) : null;
-      var shown = shownEl ? trim(shownEl.textContent || "") : "";
-      headline = shown ? (label + " · " + shown) : label;
-    } else if (kind === "table" || kind === "chart") {
-      headline = (binding ? humanise(binding) : humanise(fig.id)) + " · " + kind;
-      var count = receiptRowCount(page, binding);
-      if (count !== null) {
-        headline += ", " + count + (count === 1 ? " row" : " rows");
-      }
+      shown = shownEl ? trim(shownEl.textContent || "") : "";
     } else {
-      headline = binding ? humanise(binding) : humanise(fig.id);
-      if (kind) headline += " · " + kind;
+      name = binding ? humanise(binding) : humanise(fig.id);
     }
-    title.textContent = headline;
+    receiptEl(title, "span", "tb-receipt-name", name);
+    if (shown) {
+      receiptEl(title, "span", "tb-receipt-value", shown);
+    } else if (kind) {
+      var what = kind;
+      if (kind === "table" || kind === "chart") {
+        var count = receiptRowCount(page, binding, rec, ctx.page);
+        if (count !== null) what += ", " + count + (count === 1 ? " row" : " rows");
+      }
+      receiptEl(title, "span", "tb-receipt-kind", what);
+    }
     if (fig.unverified) {
       /* The recorded status in its existing tone — display, not judgment. */
-      var badge = document.createElement("span");
-      badge.className = "tb-badge tb-badge--unverified";
-      badge.textContent = "unverified";
-      title.appendChild(badge);
-    }
-    row.appendChild(title);
-
-    var query = receiptQuery(receipt, fig);
-    var measures = (query && query.measures && query.measures.length)
-      ? query.measures : (cell ? [cell] : []);
-    var dims = (query && query.dimensions) || [];
-    var from = humanList(measures);
-    if (dims.length) from += (from ? ", by " : "by ") + humanList(dims);
-    var filters = filterPhrase(query && query.filters);
-    if (filters) from += (from ? ", " : "") + filters;
-    if (from) {
-      var quiet = document.createElement("div");
-      quiet.className = "tb-receipt-from";
-      quiet.textContent = from;
-      row.appendChild(quiet);
+      receiptEl(title, "span", "tb-badge tb-badge--unverified", "unverified");
     }
 
-    var details = document.createElement("details");
-    details.className = "tb-receipt-details";
-    var summary = document.createElement("summary");
-    summary.textContent = "Details";
-    details.appendChild(summary);
+    /* The definition in words: the model's description of each measure. */
+    var measures = (kind === "value" && cell) ? [cell] : queryMeasures(query, cell);
+    var defs = [], i, about;
+    for (i = 0; i < measures.length; i++) {
+      about = ctx.about.hasOwnProperty(measures[i]) ? ctx.about[measures[i]] : null;
+      if (about) defs.push([measures[i], about]);
+    }
+    if (defs.length === 1 && kind === "value") {
+      receiptEl(row, "p", "tb-receipt-def", defs[0][1]);
+    } else if (defs.length) {
+      var dl = receiptEl(row, "p", "tb-receipt-def");
+      defs.forEach(function (d, j) {
+        if (j) receiptEl(dl, "br");
+        receiptEl(dl, "span", "tb-receipt-term", humanise(d[0]));
+        receiptEl(dl, "span", null, " \u2014 " + d[1]);
+      });
+    }
+
+    var facts = receiptEl(row, "dl", "tb-receipt-facts");
+    var line = queryLine(query, rec);
+    if (line) {
+      receiptEl(facts, "dt", null, "Query");
+      var dq = receiptEl(facts, "dd");
+      receiptEl(dq, "code", "tb-receipt-query", line);
+    } else if (rec && !rec.query) {
+      receiptEl(facts, "dt", null, "Query");
+      receiptEl(facts, "dd", "tb-receipt-noquery",
+                "none: computed in report.py, not query-reproducible");
+    }
+    if (fig.fingerprint) {
+      var full = String(fig.fingerprint);
+      receiptEl(facts, "dt", null, "Fingerprint");
+      var dfp = receiptEl(facts, "dd");
+      var short = receiptEl(dfp, "code", "tb-receipt-fp-short", full.slice(0, 8));
+      short.title = full;
+      receiptCopyButton(dfp, full, "Copy the full fingerprint", short);
+    }
+
+    /* Raw: the addresses, the query exactly as run, the full fingerprint. */
+    var details = receiptEl(row, "details", "tb-receipt-details");
+    receiptEl(details, "summary", null, "Raw");
     var meta = String(fig.id);
     if (kind) meta += " · " + kind;
     if (binding) meta += " · " + binding;
+    if (fig.model) meta += " · " + fig.model;
     receiptLine(details, meta, "tb-receipt-meta");
-    if (fig.fingerprint) {
-      var fp = document.createElement("span");
-      fp.className = "tb-receipt-fp";
-      fp.textContent = String(fig.fingerprint);
-      fp.title = String(fig.fingerprint);
-      details.appendChild(fp);
+    if (query) {
+      var pre = receiptEl(details, "pre", "tb-receipt-json");
+      try { pre.textContent = JSON.stringify(query, null, 2); } catch (e) {}
     }
-    row.appendChild(details);
-    drawer.appendChild(row);
+    if (fig.fingerprint) {
+      var fp = receiptEl(details, "span", "tb-receipt-fp", String(fig.fingerprint));
+      fp.title = String(fig.fingerprint);
+    }
     if (_scriptChanged[fig.id]) paintScriptChange(String(fig.id));
+  }
+
+  /* The stated methodology the build recorded, in the author's words. */
+  function receiptMethodology(parent, notes) {
+    var byNote = {}, order = [], t, n;
+    var tn = (notes && notes.transform_notes) || {};
+    for (t in tn) {
+      if (!Object.prototype.hasOwnProperty.call(tn, t)) continue;
+      n = String(tn[t]);
+      if (!byNote.hasOwnProperty(n)) { byNote[n] = []; order.push(n); }
+      byNote[n].push(t);
+    }
+    var any = false;
+    order.forEach(function (note) {
+      receiptLine(parent, "the transform states, for " + byNote[note].join(", ")
+                  + ": " + note, "tb-receipt-note");
+      any = true;
+    });
+    ((notes && notes.check_notes) || []).forEach(function (cn) {
+      if (!cn || !cn.note) return;
+      receiptLine(parent, "the transform '" + cn.transform + "' states, of "
+                  + cn.check + "(" + cn.table + "): " + cn.note, "tb-receipt-note");
+      any = true;
+    });
+    var mn = (notes && notes.measure_notes) || {};
+    for (t in mn) {
+      if (!Object.prototype.hasOwnProperty.call(mn, t)) continue;
+      receiptLine(parent, "measure '" + t + "': " + mn[t], "tb-receipt-note");
+      any = true;
+    }
+    return any;
+  }
+
+  /* The file name to check, from the address it was opened at. */
+  function receiptFileName(receipt) {
+    var path = "";
+    try { path = (root.location && root.location.pathname) || ""; } catch (e) {}
+    var base = decodeURIComponent(String(path).split("/").pop() || "");
+    if (!base) {
+      base = String(receipt.report || "report").toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "report";
+    }
+    return /\.html?$/i.test(base) ? base : base + ".html";
+  }
+
+  /* Write the receipt certificate into `mount` (its children are replaced).
+   *   receipt          the parsed #tracebi-receipt block
+   *   options.contracts  the parsed tb-semantic-contract-* blocks, for the
+   *                    measures' definitions (default: this page's)
+   *   options.verdict  "draft" | "not-checked" | "reproduces" |
+   *                    "needs-a-look" | "does-not-reproduce" (default: what
+   *                    this file can say of itself — never green)
+   *   options.page     the document whose figures show the values (default:
+   *                    this one; null where the page is out of reach)
+   *   options.file     the file name the "how to check" line names
+   * Returns the mount. Display only: it re-runs nothing. */
+  function renderReceipt(mount, receipt, options) {
+    var opts = options || {};
+    while (mount.firstChild) mount.removeChild(mount.firstChild);
+    addClass(mount, "tb-receipt");
+    var page = opts.page !== undefined ? opts.page
+      : (typeof document !== "undefined" ? document : null);
+    var ctx = {
+      page: page,
+      about: measureIndex(opts.contracts || (page === document ? pageContracts() : []))
+    };
+
+    var head = receiptEl(mount, "header", "tb-receipt-header");
+    receiptEl(head, "p", "tb-receipt-kicker", "Receipt");
+    receiptEl(head, "h2", "tb-receipt-head", receipt.report || "Receipt");
+    var models = receipt.semantic_contract_models || [], stampLine = [];
+    if (!models.length) {
+      (receipt.figures || []).forEach(function (f) {
+        if (f && f.model && models.indexOf(f.model) === -1) models.push(f.model);
+      });
+    }
+    var built = builtText(receipt.rendered_at);
+    if (built) stampLine.push(built);
+    if (models.length) stampLine.push(models.join(", "));
+    if (stampLine.length) receiptEl(head, "p", "tb-receipt-built", stampLine.join(" · "));
+    var state = (opts.verdict && _VERDICTS[opts.verdict]) ? opts.verdict : verdictState();
+    var chipRow = receiptEl(head, "p", "tb-receipt-verdict");
+    var chip = receiptEl(chipRow, "span", "tb-verdict", _VERDICTS[state].text);
+    chip.setAttribute("data-tb-verdict", state);
+    chip.title = _VERDICTS[state].tip;
+    receiptEl(head, "p", "tb-receipt-honesty",
+              "The receipt does not claim the numbers are right. It records "
+              + "how each figure was made, so it can be checked.");
+
+    var file = opts.file || receiptFileName(receipt);
+    var check = receiptEl(mount, "section", "tb-receipt-check");
+    receiptEl(check, "h3", "tb-receipt-label", "How to check");
+    var cmd = receiptEl(check, "div", "tb-receipt-cmd");
+    var code = receiptEl(cmd, "code", null, "tracebi verify --file " + file);
+    receiptCopyButton(cmd, "tracebi verify --file " + file, "Copy the command", code);
+    receiptEl(check, "p", "tb-receipt-note",
+              "Keep " + file + ".manifest.json beside the file. This checks "
+              + "the file was not altered since it was built; tracebi verify "
+              + "on the manifest re-runs each query against the model.");
+
+    var figures = receipt.figures || [], i;
+    var section = receiptEl(mount, "section", "tb-receipt-figures");
+    receiptEl(section, "h3", "tb-receipt-label",
+              figures.length === 1 ? "1 figure" : figures.length + " figures");
+    for (i = 0; i < figures.length; i++) {
+      try { receiptFigureRow(section, figures[i], receipt, ctx); } catch (e) { /* defensive */ }
+    }
+
+    var aboutBox = receiptEl(mount, "details", "tb-receipt-about");
+    receiptEl(aboutBox, "summary", null, "About this build");
+    var contracts = receipt.transform_contracts, table, rec, status;
+    if (contracts && typeof contracts === "object") {
+      receiptEl(aboutBox, "h4", "tb-receipt-label", "Sink contracts");
+      for (table in contracts) {
+        if (!contracts.hasOwnProperty(table)) continue;
+        rec = contracts[table];
+        status = (rec && typeof rec === "object") ? rec.status : rec;
+        if (status === "satisfied") {
+          receiptLine(aboutBox, table + ": the sink satisfied its contract");
+        } else if (status === "stale") {
+          receiptLine(aboutBox, table + ": contract stale — the warehouse "
+                      + "has moved since the certificate");
+        } else {
+          receiptLine(aboutBox, table + ": no contract");
+        }
+      }
+    }
+    var stated = receipt.stated_methodology;
+    if (stated && typeof stated === "object") {
+      receiptEl(aboutBox, "h4", "tb-receipt-label", "Stated methodology");
+      receiptMethodology(aboutBox, stated);
+    } else if (receipt.methodology === true) {
+      receiptLine(aboutBox, "stated methodology aboard");
+    }
+    receiptEl(aboutBox, "h4", "tb-receipt-label", "The build");
+    var mono = "tb-receipt-line tb-receipt-meta";
+    if (models.length) receiptLine(aboutBox, "semantic contract: " + models.join(", "), mono);
+    if (receipt.rendered_by) receiptLine(aboutBox, "built by " + receipt.rendered_by, mono);
+    if (receipt.rendered_at) receiptLine(aboutBox, "rendered " + receipt.rendered_at, mono);
+    if (receipt.git_sha) receiptLine(aboutBox, "git " + receipt.git_sha, mono);
+    return mount;
+  }
+
+  function receiptDrawer() {
+    return typeof document === "undefined" ? null
+      : document.querySelector(".tb-receipt-drawer");
+  }
+
+  var _receiptOpener = null;
+  function setReceiptOpen(on) {
+    var drawer = receiptDrawer();
+    if (!drawer) return false;
+    var open = (" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1;
+    if (on === open) return true;
+    if (on) {
+      _receiptOpener = document.activeElement || null;
+      addClass(drawer, "tb-receipt-open");
+      var close = drawer.querySelector(".tb-receipt-close");
+      if (close && close.focus) {
+        try { close.focus({ preventScroll: true }); } catch (e) {}
+      }
+    } else {
+      removeClass(drawer, "tb-receipt-open");
+      if (_receiptOpener && _receiptOpener.focus) {
+        try { _receiptOpener.focus(); } catch (e) {}
+      }
+      _receiptOpener = null;
+    }
+    var toggles = document.querySelectorAll(".tb-receipt-btn, .tb-receipt-link");
+    for (var i = 0; i < toggles.length; i++) toggles[i].setAttribute("aria-expanded", on ? "true" : "false");
+    return true;
+  }
+
+  function toggleReceipt() {
+    var drawer = receiptDrawer();
+    if (!drawer) return;
+    setReceiptOpen((" " + drawer.className + " ").indexOf(" tb-receipt-open ") === -1);
+  }
+
+  /* A quiet "Receipt" button for the masthead's meta line (after the
+   * verdict chip) and the footer's line. */
+  function receiptLinkButton(text) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "tb-receipt-link";
+    b.textContent = text;
+    b.setAttribute("aria-expanded", "false");
+    b.addEventListener("click", toggleReceipt);
+    return b;
+  }
+
+  /* Clicking a value figure opens the receipt at its row; the masthead's
+   * verdict chip opens it too. Controls, links and selections are left
+   * alone. */
+  function onReceiptClick(e) {
+    var n = e.target, drawer = receiptDrawer();
+    if (!drawer) return;
+    for (; n && n.nodeType === 1; n = n.parentNode) {
+      if (n === drawer) return;
+      if (/^(A|BUTTON|INPUT|SELECT|TEXTAREA|SUMMARY|LABEL)$/.test(n.tagName)) return;
+      if ((" " + n.className + " ").indexOf(" tb-verdict ") !== -1
+          && n.getAttribute("role") === "button") {
+        toggleReceipt();
+        return;
+      }
+      if (n.getAttribute("data-tb-figure") === "value" && n.id) {
+        var sel = root.getSelection ? root.getSelection() : null;
+        if (sel && String(sel)) return;
+        openReceipt(n.id);
+        return;
+      }
+    }
+  }
+
+  function onReceiptKey(e) {
+    var drawer = receiptDrawer();
+    if (!drawer) return;
+    if (e.key === "Escape"
+        && (" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1) {
+      setReceiptOpen(false);
+      return;
+    }
+    var t = e.target;
+    if ((e.key === "Enter" || e.key === " ") && t && t.getAttribute
+        && t.getAttribute("role") === "button"
+        && (" " + t.className + " ").indexOf(" tb-verdict ") !== -1) {
+      e.preventDefault();
+      toggleReceipt();
+    }
+  }
+
+  /* Where the page offers its receipt: after the masthead's verdict chip
+   * (the chip itself opens it too), and on the footer's line. A page with
+   * no masthead keeps the floating Receipt button. Safe to call again: a
+   * masthead an app mounts later gets its link then. */
+  function placeReceiptTriggers() {
+    var drawer = receiptDrawer();
+    if (!drawer) return;
+    var metas = document.querySelectorAll(".tb-masthead .tb-masthead-meta"), i, chip;
+    for (i = 0; i < metas.length; i++) {
+      chip = metas[i].querySelector(".tb-verdict");
+      if (chip && chip.getAttribute("role") !== "button") {
+        chip.setAttribute("role", "button");
+        chip.setAttribute("tabindex", "0");
+        chip.setAttribute("aria-label", chip.textContent + ": open the receipt");
+      }
+      if (!metas[i].querySelector(".tb-receipt-link")) {
+        metas[i].appendChild(receiptLinkButton("Receipt"));
+      }
+    }
+    var lines = document.querySelectorAll(".tb-footer-line");
+    for (i = 0; i < lines.length; i++) {
+      if (!lines[i].querySelector(".tb-receipt-link")) {
+        lines[i].appendChild(receiptLinkButton("Open the receipt"));
+      }
+    }
+    var floating = document.querySelector(".tb-receipt-btn");
+    if (metas.length) {
+      if (floating && floating.parentNode) floating.parentNode.removeChild(floating);
+    } else if (!floating) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tb-receipt-btn";
+      btn.textContent = "Receipt";
+      btn.setAttribute("aria-expanded", "false");
+      btn.addEventListener("click", toggleReceipt);
+      document.body.appendChild(btn);
+    }
   }
 
   function hydrateReceipt() {
@@ -3378,68 +4128,45 @@
     try { receipt = JSON.parse(el.textContent); } catch (e) { return; }
     if (!receipt || typeof receipt !== "object") return;
 
-    var drawer = document.createElement("div");
+    /* The chrome: a drawer on the right (a full-height sheet on a phone),
+     * its close button, and a scrolling body the certificate fills. */
+    var drawer = document.createElement("aside");
     drawer.className = "tb-receipt-drawer";
-    receiptLine(drawer, receipt.report || "Receipt", "tb-receipt-head");
-    if (receipt.rendered_at) {
-      receiptLine(drawer, "rendered " + receipt.rendered_at);
-    }
-    if (receipt.git_sha) receiptLine(drawer, "git " + receipt.git_sha);
-
-    var figures = receipt.figures || [], i;
-    for (i = 0; i < figures.length; i++) {
-      try { receiptFigureRow(drawer, figures[i], receipt); } catch (e) { /* defensive */ }
-    }
-
-    var contracts = receipt.transform_contracts, table, rec, status;
-    if (contracts && typeof contracts === "object") {
-      for (table in contracts) {
-        if (!contracts.hasOwnProperty(table)) continue;
-        rec = contracts[table];
-        status = (rec && typeof rec === "object") ? rec.status : rec;
-        if (status === "satisfied") {
-          receiptLine(drawer, table + ": the sink satisfied its contract");
-        } else if (status === "stale") {
-          receiptLine(drawer, table + ": contract stale — the warehouse "
-                      + "has moved since the certificate");
-        } else {
-          receiptLine(drawer, table + ": no contract");
-        }
-      }
-    }
-
-    var models = receipt.semantic_contract_models;
-    if (models && models.length) {
-      receiptLine(drawer, "semantic contract: " + models.join(", "));
-    }
-    if (receipt.methodology === true) {
-      receiptLine(drawer, "stated methodology aboard");
-    }
+    drawer.setAttribute("aria-label", "Receipt");
+    var close = document.createElement("button");
+    close.type = "button";
+    close.className = "tb-receipt-close";
+    close.setAttribute("aria-label", "Close the receipt");
+    close.textContent = "×";
+    close.addEventListener("click", function () { setReceiptOpen(false); });
+    drawer.appendChild(close);
+    var scroll = document.createElement("div");
+    scroll.className = "tb-receipt-scroll";
+    drawer.appendChild(scroll);
+    var mount = document.createElement("div");
+    scroll.appendChild(mount);
+    renderReceipt(mount, receipt);
 
     if (selectionConfig()) {
-      var status = receiptLine(drawer, "selection: authored", "tb-receipt-line");
+      var about = mount.querySelector(".tb-receipt-about");
+      var sel = document.createElement("section");
+      sel.className = "tb-receipt-selection";
+      var status = receiptLine(sel, "selection: authored", "tb-receipt-line");
       status.id = "tb-selection-status";
       var slice = document.createElement("button");
       slice.type = "button";
       slice.className = "tb-receipt-line";
       slice.textContent = "Download this selection";
       slice.addEventListener("click", downloadSelection);
-      drawer.appendChild(slice);
+      sel.appendChild(slice);
+      mount.insertBefore(sel, about);
     }
 
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "tb-receipt-btn";
-    btn.textContent = "Receipt";
-    btn.addEventListener("click", function () {
-      if ((" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1) {
-        removeClass(drawer, "tb-receipt-open");
-      } else {
-        addClass(drawer, "tb-receipt-open");
-      }
-    });
     document.body.appendChild(drawer);
-    document.body.appendChild(btn);
+    placeReceiptTriggers();
+    document.addEventListener("click", onReceiptClick);
+    document.addEventListener("keydown", onReceiptKey);
+    if (document.documentElement) addClass(document.documentElement, "tb-has-receipt");
     if (selectionConfig()) {
       paintSelectionReceipt(_lastSelection || {
         filters: (selectionConfig().filters || {}),
@@ -3852,7 +4579,7 @@
    * is over and report what was clicked; read the figures back out; flash the
    * ones that changed. Presentation only, and only on request from the
    * embedding window. */
-  var POINT_CHROME = "#tracebi-receipt, .tb-badge, .tb-receipt-btn, [data-tb-chrome]";
+  var POINT_CHROME = "#tracebi-receipt, .tb-badge, .tb-receipt-btn, .tb-receipt-link, .tb-receipt-drawer, [data-tb-chrome]";
   var POINT_INLINE = { SPAN: 1, B: 1, I: 1, EM: 1, STRONG: 1, A: 1, CODE: 1, SMALL: 1, SUP: 1, SUB: 1, TSPAN: 1 };
   var POINT_STYLE =
     ".tb-point-hover { outline: 2px solid #2563eb !important; outline-offset: 2px; cursor: crosshair !important; }" +
@@ -4062,6 +4789,9 @@
     theme: theme,
     setSelection: setSelection,
     refresh: refresh,
+    /* The receipt certificate into any element (the web app's side panel
+     * mounts it too); see renderReceipt. Display only. */
+    renderReceipt: renderReceipt,
     /* The scenario evaluator, exposed so tests and authors can check a
      * formula gives what they expect. It computes from the values passed. */
     evaluate: evalFormula

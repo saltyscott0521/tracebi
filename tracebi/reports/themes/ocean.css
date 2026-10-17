@@ -1,6 +1,9 @@
 /* ocean — a deep teal accent. */
+/* An accent preset: the accent pair for each ground, nothing structural. */
 :root {
   --tb-accent: #0e7490;
   --tb-accent-text: #155e75;
   --tb-surface-accent: #ecf8fb;
+  --tb-dark-accent: #4fc3dc;
+  --tb-dark-accent-text: #8be0f0;
 }

@@ -103,7 +103,11 @@ file. Show numbers through the kit — `<Kpi binding cell format label lead>`,
 `<Value>`, `<Chart binding type x y>`, `<Spark>`, `<Table binding>`, with
 `<Filter>`, `<Search>`, `<Download>` — and give `binding`, `cell`, `x`, `y`
 literal strings: the build reads them as claims and refuses a binding or
-column that does not exist. `useBinding("name")` hands your own components
+column that does not exist. A KPI's change is a stamped figure too:
+`<Kpi … deltaBinding="kpis" deltaCell="unrealized" deltaFormat="currency_compact"
+deltaGood="up" context="vs cost">` shows it first on the context line with its
+arrow, sign and colour (`deltaGood="down"` for costs and churn). Only where
+the model measures a comparison; no comparison measure, no delta. `useBinding("name")` hands your own components
 the stamped rows; a number your code computes or draws (a Recharts chart, a
 sum) is the app's presentation, not a checked figure, and the page says so.
 For app behaviour: `<Filter column>` with no `binding` filters the whole page
@@ -113,6 +117,10 @@ toggle is one literal-binding figure per option, never arithmetic; and
 `useUrlState("view", "Overview")` keeps a view or period in the URL so a
 shared link opens on it; while the page prints, `usePrinting()` is true and
 an app with views renders all of them, so the PDF holds the whole report.
+Open the page with `<Masthead title kicker period>` (children are the
+standfirst; it shows the build time and the verdict chip) and end its main
+column with `<Footer />`, where the build's footer goes; `<main
+className="tb-page px-6 py-8">` is the 1,200px page measure.
 `tracebi new-dashboard --job overview|trend|leaderboard|scorecard|monitor|funnel`
 starts from the shape the dashboard is for. Without JavaScript (an email
 preview) the page shows its kit figures as built.
@@ -150,9 +158,11 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `data-tb-totals="<binding>"` adds a totals row from a one-row binding (the
   same query with no dimensions — the model computes each total).
   `data-tb-sort` makes a table's headers click-to-sort, `data-tb-bars="col"`
-  draws a proportional bar behind a numeric column, and
+  draws a thin proportional bar after each number in a column, and
   `data-tb-direction="up-good"` (or `"down-good"`) marks a bound change on a
-  value figure up or down, good or bad. They reorder or decorate stamped
+  value figure up or down, good or bad — on a KPI, as `<span class="tb-kpi-delta"
+  data-tb-figure="value" … data-tb-direction="up-good">` leading its
+  `.tb-kpi-context` line. They reorder or decorate stamped
   values; they never compute one. Tables past 500 rows render only the
   visible rows; printing and download still use every row. Find-in-page
   cannot see rows outside that window — search with `data-tb-search`.
@@ -172,8 +182,11 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   fails at load, and a figure declared but never placed (or placed twice)
   fails the build. Hand-written figures still work; this is sugar. `libs`
   is optional. The build inlines D3 automatically when the page
-  contains a chart figure and draws every chart type with it (legend
-  toggles, tooltips, arrow-key reading, a click on a bar or slice sets the
+  contains a chart figure and draws every chart type with it, in one style
+  (bars carry their own values, a line ends in its last value, names wrap
+  and are never cut, ticks thin to what fits; legend toggles, tooltips with
+  the measure's description and a "Receipt →" link to that figure's record,
+  arrow-key reading, a click on a bar or slice sets the
   page's filter control for that column). List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the receipt.
@@ -236,38 +249,55 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   recompute offline. Tables scroll past
   `data-tb-rows` (default 10). `data-tb-download` buttons export the
   stamped CSV verbatim (`data-tb-label` sets their text). Layout: tabs via `data-tb-tab` sections inside
-  `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Pick a page by name instead of
+  `.tb-tabs`; side-by-side via the 12-column grid (a `.tb-grid` whose panels carry
+  `.tb-span-4/6/8/12`). Pick a page by name instead of
   inventing one (`presentation.layout` in `tracebi context`). A page someone *reads* —
   once, emailed, printed — is a report: `tracebi new-report "<Name>"` writes an editorial
-  `template.html` (`<article class="tb-article">`: `.tb-kicker`, an `<h1>` stating the
-  finding, `.tb-dek`, `.tb-byline` with `data-tb-built`, a bound `.tb-lede`, prose sections,
+  `template.html` (`<article class="tb-article">`: a masthead — `<header class="tb-masthead
+  tb-article-head">` with `.tb-kicker`, an `<h1>` stating the finding, `.tb-standfirst`,
+  `.tb-masthead-meta` with `data-tb-built` — a bound `.tb-lede`, prose sections,
   `<figure class="tb-figure">` with a `<figcaption>`, `.tb-pullstat`, a table, the
-  methodology; read `tracebi knowledge design-editorial-report`). `--layout brief` is one
+  `.tb-footer`; the register is the default, so its `style.css` stays empty or sets only the
+  accent pairs; read `tracebi knowledge design-editorial-report`). `--layout brief` is one
   finding — `.tb-lede`, a few `.tb-kpi` cards, one chart in one `.tb-card`. A page someone
   *works in* is a dashboard: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with a KPI
   strip, a chart beside its ranking and a filterable detail; `--html` writes it as
-  `template.html` (`brief` plus `.tb-cols-2-1`); `tracebi init`'s sample is an `app.jsx`. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
-  number `.tb-kpi--lead`, and give a KPI with a trend a `class="tb-spark"` line or area
-  chart (the shape alone, no axes). `.tb-cols-2-1` / `.tb-cols-1-2` put a wide panel
-  beside a narrow one.
+  `template.html` (`brief` plus a `.tb-span-8` chart beside a `.tb-span-4` detail); `tracebi init`'s sample is an `app.jsx`. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
+  number `.tb-kpi--lead` (larger, not wider), give a number its signal with a
+  `.tb-kpi-delta` where the model measures a change, and give a KPI with a trend a `class="tb-spark"` line or area
+  chart (the shape alone, no axes). `.tb-span-8` / `.tb-span-4` on a `.tb-grid`'s panels
+  put a wide panel beside a narrow one (`.tb-span-6` halves, `.tb-span-12` the row; the
+  older `.tb-cols-2` / `.tb-cols-2-1` still work as shorthands).
   `tabbed` is the same header, then `.tb-tabs` / `data-tb-tab` (Overview and Detail).
   Pick by fit — a report to read, a dashboard to work in, `brief` for one finding —
   and ask only when a person is in the loop and the choice is not obvious. Every built
-  page carries the Receipt drawer automatically.
+  page carries the Receipt drawer automatically (the masthead's Receipt button, the
+  verdict chip, or a click on a value figure opens it at that figure's row).
 - Ask how it should look, once, before you build (a person in the loop; otherwise use
   the defaults): the title and where it sits, one page / top tabs / a sidebar, light /
   dark / the reader's choice, comfortable / compact. Offer the look of their last
-  report first. Then on `<html>`: `data-tb-mode="dark"` (or `"auto"`, following the
+  report first. Then on `<html>`: `data-tb-mode="dark"` or `"light"` (unset is `"auto"`, following the
   reader's system), `data-tb-density="compact"`, `data-tb-width="full"`. A sidebar is
-  `<div class="tb-tabs" data-tb-nav="side">` with the whole page inside. The title is
-  `<header class="tb-title" data-tb-title="left|center|banner|nav">` with the `<h1>`,
-  `<p class="tb-subtitle">` and `<span data-tb-built></span>` (the build time, from the
-  receipt; never type a date). `tracebi new-dashboard "<Name>" --mode dark --density
+  `<div class="tb-tabs" data-tb-nav="side">` with the whole page inside. Every page
+  opens with the masthead, `<header class="tb-masthead" data-tb-title="left|center|banner|nav"
+  data-tb-period="Q3 2026">`: an optional `.tb-kicker`, the `<h1>`, `<p
+  class="tb-standfirst">`, and `<p class="tb-masthead-meta">` with `<span
+  data-tb-built></span>` (the build time, from the receipt; never type a date) and `<span
+  class="tb-verdict"></span>`. `data-tb-period` names what the numbers cover. The runtime
+  fills the meta, adds what is missing, and sets the chip's `data-tb-verdict` from the
+  file itself — `draft` on a working preview, `not-checked` on a built file (nothing has
+  re-run it; `tracebi verify` does); a page never makes it green. An empty
+  `.tb-masthead-mark` takes a logo from the report's `style.css`. Every page ends with
+  `<footer class="tb-footer" data-tb-methodology>` holding your sources; the build adds
+  one line and "How these numbers were made" behind a disclosure (and the whole footer
+  when the template has none). `tracebi new-dashboard "<Name>" --mode dark --density
   compact --nav side --title-at nav` writes it — for an app, mode and density go in
   `report.json` `"look"` and the sidebar and title are its own components. Looks never
   change a number. A report may name a shipped theme in `report.json` `"theme"`
-  (`tracebi theme list`); `tracebi theme use <name>` makes one everyone's default
-  (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
+  (`tracebi theme list`; each is an accent preset for both grounds, never a mode);
+  a report's own `style.css` is that at most — the accent pairs and one display face for
+  the masthead `<h1>` and the lead number, no gradient, hatch, glow or resting shadow;
+  `tracebi theme use <name>` makes one everyone's default (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
   returns it as `house_style` — follow its Rules over the defaults. Read
   `tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an app).
 - Blocks marked `data-tb-stage="exploration"` are working scratch: they render
@@ -315,8 +345,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
 - Methodology travels the pipeline: `contract(..., note=...)` (and per-check
   `note=`) records the transform's STATED methodology in the certificate;
   measure `description=` carries modeling intent. Add ONE
-  `<section data-tb-methodology></section>` to the template and the build
-  appends them after your own prose — an appendix of what the pipeline
+  `<footer class="tb-footer" data-tb-methodology></footer>` to the template and the build
+  appends them after your own prose, behind "How these numbers were made" — an appendix of what the pipeline
   states about itself, clearly not a verified claim, never badged.
 
 ## The loop you run

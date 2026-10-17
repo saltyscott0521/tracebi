@@ -25,7 +25,7 @@ have no order are the usual results.
   receipt.
 - **One measure per axis.** No dual axes: two scales on one chart invite the
   reader to compare heights that aren't comparable. Use two charts side by side
-  (`.tb-cols-2`).
+  (two `.tb-span-6` panels in a `.tb-grid`).
 - **Pie is for 2–5 parts of a positive whole.** TraceBi refuses negative values
   in a pie; past five slices, use sorted bars.
 - **Lines need an ordered axis** — time, or an ordered band. Categories without

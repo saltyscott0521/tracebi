@@ -103,7 +103,8 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     # time, and numbers bound into the prose — so it builds with no numeral
     # typed in, and verifies.
     article = (plain / "template.html").read_text()
-    for marker in ('class="tb-article"', "tb-kicker", "tb-dek", "data-tb-built",
+    for marker in ('class="tb-article"', "tb-masthead", "tb-kicker", "tb-standfirst",
+                   "data-tb-built", "tb-verdict", "tb-footer",
                    "tb-lede", "<figcaption>", "tb-pullstat", "data-tb-methodology"):
         assert marker in article, marker
     assert not (plain / "app.jsx").exists()
@@ -153,7 +154,7 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     assert ('<html lang="en" data-tb-mode="dark" data-tb-density="compact" '
             'data-tb-width="full">') in desk
     assert '<div class="tb-tabs" data-tb-nav="side">' in desk
-    assert '<header class="tb-title" data-tb-title="nav">' in desk
+    assert '<header class="tb-masthead" data-tb-title="nav">' in desk
     # The whole page sits inside the sidebar's first tab: the KPIs follow it.
     assert desk.index('data-tb-tab="Overview"') < desk.index('class="tb-kpi"')
     code, out = run_cli("report", "build", "desk")
@@ -199,7 +200,8 @@ export default function App() {
       <nav><button onClick={() => setView("Detail")}><TrendingUp size={16} /> Detail</button></nav>
       {view === "Overview" ? (
         <div className="tb-grid">
-          <Kpi lead binding="kpis" cell="revenue" format="currency0" label="Revenue" />
+          <Kpi lead binding="kpis" cell="revenue" format="currency0" label="Revenue"
+               deltaBinding="kpis" deltaCell="units" deltaGood="up" />
           <Chart binding="by_region" x="dim_region.region" y="revenue" />
         </div>
       ) : (
@@ -225,7 +227,7 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     pkg.mkdir()
     (pkg / "report.json").write_text(json.dumps({"name": "Regions App", "data": {
         "kpis": {"model": "sample_model",
-                 "query": {"fact": "fact_orders", "measures": ["revenue"]}},
+                 "query": {"fact": "fact_orders", "measures": ["revenue", "units"]}},
         "by_region": {"model": "sample_model", "query": {
             "fact": "fact_orders", "measures": ["revenue"],
             "dimensions": ["dim_region.region"], "order_by": ["-revenue"]}},
@@ -241,7 +243,9 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     assert list(icons) == ["TrendingUp"]
     manifest_path = scaffolded / "output" / "regions_app.html.manifest.json"
     claims = {f["id"]: f["binding"] for f in json.loads(manifest_path.read_text())["figures"]}
+    # A KPI's delta is a claim of its own, under the same receipt.
     assert claims == {"fig-value-kpis-revenue": "kpis",
+                      "fig-delta-kpis-units": "kpis",
                       "fig-chart-by_region-revenue": "by_region",
                       "fig-table-by_region": "by_region"}
     assert "This page is an app." in built
@@ -256,6 +260,12 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
                                  encoding="utf-8")
     code, out = run_cli("report", "build", "regions_app")
     assert code != 0 and "kpi" in out
+
+    # So is a delta naming a column its binding does not return.
+    (pkg / "app.jsx").write_text(_APP_JSX.replace('deltaCell="units"', 'deltaCell="unit"'),
+                                 encoding="utf-8")
+    code, out = run_cli("report", "build", "regions_app")
+    assert code != 0 and "'unit' is not a column" in out, out
 
     # A number typed into the app's text is refused, as in a template.html.
     (pkg / "app.jsx").write_text(_APP_JSX.replace("</nav>", "<p>Up 1250 units.</p></nav>", 1),
@@ -360,7 +370,7 @@ def test_themes_and_the_house_style(scaffolded):
 
     code, out = run_cli("theme", "use", "sand")
     assert code == 0, out
-    assert "--tb-page: #f6f4ef" in (scaffolded / "reports" / "_theme.css").read_text()
+    assert "--tb-accent: #44403c" in (scaffolded / "reports" / "_theme.css").read_text()
     code, out = run_cli("theme", "use", "ocean")
     assert code != 0 and "--force" in out
 
@@ -372,7 +382,7 @@ def test_themes_and_the_house_style(scaffolded):
     assert code == 0, out
     page = (scaffolded / "output" / "teal.html").read_text()
     # The project default first, then the report's theme over it.
-    assert page.index("--tb-page: #f6f4ef") < page.index("--tb-accent: #0e7490")
+    assert page.index("--tb-accent: #44403c") < page.index("--tb-accent: #0e7490")
 
     decl_path = scaffolded / "reports" / "teal" / "report.json"
     decl = json.loads(decl_path.read_text())
@@ -392,7 +402,7 @@ def test_status_and_the_review_snapshot(scaffolded):
     assert code == 0, out
     code, out = run_cli("report", "status", "sample_model/sample_dashboard")
     assert code == 0, out
-    assert "9 figure(s) — 9 query-backed, 0 python-derived, 0 unverified" in out
+    assert "10 figure(s) — 10 query-backed, 0 python-derived, 0 unverified" in out
 
     code, out = run_cli("report", "snapshot", "sample_model/sample_dashboard")
     assert code == 0, out

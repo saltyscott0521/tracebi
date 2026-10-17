@@ -34,7 +34,7 @@ colours stay meaning: `text-bad` for a problem, never for decoration
 - **Views, not one long scroll.** A rail or top tabs with two to five views;
   the first view answers "how are we doing?" on one screen.
 - **One KPI strip with a lead** (`.tb-grid` of `<Kpi>`, one `lead`), then a wide
-  panel beside a narrow one (`grid lg:grid-cols-3`, `lg:col-span-2`). Panels are
+  panel beside a narrow one (`tb-grid`, `tb-span-8` and `tb-span-4`). Panels are
   `.tb-card`; a `.tb-note` under the `<h2>` is the subtitle
   ([[design-dashboard-feel]]).
 - **Controls next to what they change**, in one row above the table: `<Search>`,
@@ -42,7 +42,8 @@ colours stay meaning: `text-bad` for a problem, never for decoration
 - **Drill-down opens beside, not instead.** A selected row opens a side panel
   or drawer; the list stays where it was.
 - **Plain chrome.** Icons only where they label navigation; no gradients, glass
-  or shadows beyond the card's ([[design-cut-the-chrome]]).
+  or shadows ([[design-cut-the-chrome]]). Open with `<Masthead>` and end with
+  `<Footer />`.
 
 **Every state, not just the happy one.** An empty binding renders "No rows", a
 filter that matches nothing says so, and a view with no data says why

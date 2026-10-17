@@ -12,7 +12,7 @@ the same ``data-tb-*`` element a template would hold and the runtime fills it
 from the stamped rows. This module reads those components' literal props out
 of the source so the build can record the claims — and refuse a binding or a
 column that does not exist — without running the app. A number the app's own
-code computes is not a claim; the page says so in its About block.
+code computes is not a claim; the page's footer says so.
 
 The attribute names and figure ids here mirror ``assets/_react_src/kit.jsx``.
 """
@@ -92,6 +92,11 @@ _JSX_TEXT = re.compile(r"(?<![=\-])>([^<>{}]*)<")
 _NUMERIC_TOKEN = re.compile(r"\d[\d,.]*\d")
 
 
+#: A literal title on a <Masthead> tag (before the tag's first ">").
+_MASTHEAD_TITLE = re.compile(
+    r"""<Masthead\b[^>]*?\btitle\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*"([^"]*)"\s*\}|\{\s*'([^']*)'\s*\})""")
+
+
 def lint_jsx_numbers(src: str) -> int:
     """Count numbers typed into the app's JSX text, outside every kit figure.
 
@@ -99,11 +104,18 @@ def lint_jsx_numbers(src: str) -> int:
     sees it; this is the same rule for app.jsx: a number a reader might act on
     is a <Value> (or a <Kpi>), never typed. A text run that reads like code
     (``=``, ``;``, ``?``, ``&``, ``|``) is skipped rather than guessed at."""
+    code = _strip_comments(src)
     count = 0
-    for m in _JSX_TEXT.finditer(_strip_comments(src)):
+    for m in _JSX_TEXT.finditer(code):
         text = m.group(1)
         if not any(ch in text for ch in "=;?&|"):
             count += len(_NUMERIC_TOKEN.findall(text))
+    # <Masthead title="…"> is the page's headline, so the same rule holds
+    # for it as a literal prop; the kicker and the period are presentation
+    # ("Q3 2026"). A title with numbers is text with <Value>s in it.
+    for m in _MASTHEAD_TITLE.finditer(code):
+        title = next(g for g in m.groups() if g is not None)
+        count += len(_NUMERIC_TOKEN.findall(title))
     return count
 
 
@@ -245,7 +257,8 @@ def scan_figures(src: str) -> list[KitFigure]:
                 i = j
         line = code.count("\n", 0, m.start()) + 1
         for key in ("binding",) + (("cell",) if FIGURE_TAGS[tag] == "value" else ()) \
-                + (("x", "y") if FIGURE_TAGS[tag] == "chart" else ()) + ("id",):
+                + (("x", "y") if FIGURE_TAGS[tag] == "chart" else ()) + ("id",) \
+                + (("deltaBinding", "deltaCell") if tag == "Kpi" else ()):
             if key in dynamic:
                 raise AppError(
                     f"{APP_JSX} line {line}: <{tag}> {key}= must be a literal "
@@ -293,11 +306,21 @@ def _claim_element(f: KitFigure) -> str:
                 _humanise(_join(p.get("cell")) or p["binding"])
             context = p.get("context") if isinstance(p.get("context"), str) else ""
             cls = "tb-kpi tb-kpi--lead" if p.get("lead") is True else "tb-kpi"
+            delta = ""
+            if isinstance(p.get("deltaBinding"), str):
+                # The change under the number: its own stamped value figure.
+                good = p.get("deltaGood")
+                did = figure_id("delta", p["deltaBinding"], _join(p.get("deltaCell")))
+                delta = (f'<span class="tb-kpi-delta" id="{esc(did)}" ' + attrs_of({
+                    "data-tb-figure": "value", "data-tb-binding": p["deltaBinding"],
+                    "data-tb-cell": p.get("deltaCell"), "data-tb-format": p.get("deltaFormat"),
+                    "data-tb-direction": f"{good}-good" if isinstance(good, str) else None,
+                }) + "></span>" + (" " if context else ""))
             return (f'<div class="{cls}" id="{esc(fid)}" {attrs}>'
                     f'<span class="tb-kpi-label">{html.escape(label)}</span>'
                     '<span class="tb-kpi-value"></span>'
-                    + (f'<span class="tb-kpi-context">{html.escape(context)}</span>'
-                       if context else "") + "</div>")
+                    + (f'<span class="tb-kpi-context">{delta}{html.escape(context)}</span>'
+                       if context or delta else "") + "</div>")
         label = _humanise(_join(p.get("cell")) or p["binding"])
         return (f'<li><span class="tb-kpi-label">{html.escape(label)}</span> '
                 f'<span id="{esc(fid)}" {attrs}></span></li>')
@@ -327,13 +350,13 @@ def static_html(figs: list[KitFigure]) -> str:
                                     "spark": [], "table": []}
     for f in figs:
         el = _claim_element(f)
-        fid = re.search(r'id="([^"]*)"', el).group(1)
-        if fid in seen:
-            raise AppError(
-                f"{APP_JSX} lines {seen[fid]} and {f.line}: two kit figures "
-                f"would share the id \"{fid}\". Give one an id=\"…\" — a figure "
-                f"id is the receipt's address for one number.")
-        seen[fid] = f.line
+        for fid in re.findall(r'id="([^"]*)"', el):    # a Kpi's delta has its own
+            if fid in seen:
+                raise AppError(
+                    f"{APP_JSX} lines {seen[fid]} and {f.line}: two kit figures "
+                    f"would share the id \"{fid}\". Give one an id=\"…\" — a figure "
+                    f"id is the receipt's address for one number.")
+            seen[fid] = f.line
         key = ("kpi" if f.tag == "Kpi" else "spark" if f.tag == "Spark"
                else f.kind)
         groups[key].append(el)
@@ -375,7 +398,7 @@ def shell_html(title: str, figs: list[KitFigure], look: dict | None = None) -> s
     claims. Everything the reader sees is drawn by the app."""
     look = look or {}
     attrs = "".join(
-        [f' data-tb-mode="{look["mode"]}"' if look.get("mode") in ("dark", "auto") else "",
+        [f' data-tb-mode="{look["mode"]}"' if look.get("mode") else "",
          ' data-tb-density="compact"' if look.get("density") == "compact" else ""])
     return (
         f"<!doctype html>\n<html lang=\"en\" data-tb-app{attrs}>\n<head><meta charset=\"utf-8\">"

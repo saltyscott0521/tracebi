@@ -18,13 +18,11 @@
   var money = function (v) { return "$" + tb.fmt(v, "compact"); };
   var current = null; // the sector this figure filtered to, if any
 
-  // Shorten each label until it fits its box, ending in an ellipsis.
+  // A label that does not fit its box is left out, never cut: the
+  // tooltip and the table below carry every name and value.
   function fit(text, room) {
     text.each(function () {
-      var full = this.textContent, n = full.length;
-      while (n > 1 && this.getComputedTextLength() > room) {
-        this.textContent = full.slice(0, --n) + "…";
-      }
+      if (this.getComputedTextLength() > room) this.remove();
     });
   }
 
@@ -42,7 +40,9 @@
     var svg = d3.select(surface).append("svg")
       .attr("width", width).attr("height", height)
       .attr("role", "img").style("font-family", theme.font);
-    var tip = d3.select(surface).append("div").attr("class", "sc-tip").attr("hidden", "");
+    // The system's chart readout (.tb-chart-tip), so the treemap's tooltip
+    // reads like every other chart's.
+    var tip = d3.select(surface).append("div").attr("class", "tb-chart-tip").attr("hidden", "");
 
     var groups = svg.selectAll("g.sector").data(root.children || []).join("g")
       .attr("class", "sector");
@@ -66,7 +66,7 @@
     cells.append("rect")
       .attr("width", function (d) { return d.x1 - d.x0; })
       .attr("height", function (d) { return d.y1 - d.y0; })
-      .attr("rx", 4).attr("fill", theme.accent).attr("fill-opacity", 0.85)
+      .attr("rx", 2).attr("fill", theme.accent).attr("fill-opacity", 0.85)
       .on("pointermove", function (event, d) {
         d3.select(this).attr("fill-opacity", 1);
         var at = d3.pointer(event, surface);
@@ -74,9 +74,11 @@
           .style("left", Math.min(at[0] + 12, width - 180) + "px")
           .style("top", (at[1] + 12) + "px");
         tip.selectAll("*").remove();
-        tip.append("strong").text(money(d.data.fair_value));
-        tip.append("span").text(d.data[ISSUER] + " · " + d.data[SECTOR]);
-        tip.append("span").text("Mark " + (d.data.mark * 100).toFixed(1) + "% of cost");
+        tip.append("div").attr("class", "tb-chart-tip-title").text(d.data[ISSUER]);
+        tip.append("div").text(d.data[SECTOR]);
+        var row = tip.append("div").attr("class", "tb-chart-tip-row");
+        row.append("strong").text(money(d.data.fair_value));
+        row.append("span").text("fair value · mark " + (d.data.mark * 100).toFixed(1) + "%");
       })
       .on("pointerleave", function () {
         d3.select(this).attr("fill-opacity", 0.85);

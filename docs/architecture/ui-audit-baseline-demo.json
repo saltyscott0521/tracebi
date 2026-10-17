@@ -1,0 +1,1796 @@
+{
+ "base": "http://127.0.0.1:49631",
+ "when": "2026-10-17 21:30:20",
+ "pages": [
+  {
+   "path": "/",
+   "pattern": "/",
+   "shots": {},
+   "ms": {},
+   "redirect": "/models"
+  },
+  {
+   "path": "/models",
+   "pattern": "/models",
+   "shots": {
+    "desktop-light": "shots/models_359797__desktop-light.png",
+    "desktop-dark": "shots/models_359797__desktop-dark.png",
+    "phone-light": "shots/models_359797__phone-light.png",
+    "phone-dark": "shots/models_359797__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 935,
+    "desktop-dark": 1002,
+    "phone-light": 951,
+    "phone-dark": 1006
+   }
+  },
+  {
+   "path": "/explore",
+   "pattern": "/explore",
+   "shots": {
+    "desktop-light": "shots/explore_ef7bb8__desktop-light.png",
+    "desktop-dark": "shots/explore_ef7bb8__desktop-dark.png",
+    "phone-light": "shots/explore_ef7bb8__phone-light.png",
+    "phone-dark": "shots/explore_ef7bb8__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 925,
+    "desktop-dark": 1017,
+    "phone-light": 928,
+    "phone-dark": 998
+   }
+  },
+  {
+   "path": "/refresh",
+   "pattern": "/refresh",
+   "shots": {},
+   "ms": {},
+   "redirect": "/models"
+  },
+  {
+   "path": "/reports",
+   "pattern": "/reports",
+   "shots": {
+    "desktop-light": "shots/reports_cfe05d__desktop-light.png",
+    "desktop-dark": "shots/reports_cfe05d__desktop-dark.png",
+    "phone-light": "shots/reports_cfe05d__phone-light.png",
+    "phone-dark": "shots/reports_cfe05d__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 5022,
+    "desktop-dark": 5119,
+    "phone-light": 4706,
+    "phone-dark": 5107
+   }
+  },
+  {
+   "path": "/sources",
+   "pattern": "/sources",
+   "shots": {
+    "desktop-light": "shots/sources_be308c__desktop-light.png",
+    "desktop-dark": "shots/sources_be308c__desktop-dark.png",
+    "phone-light": "shots/sources_be308c__phone-light.png",
+    "phone-dark": "shots/sources_be308c__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1013,
+    "desktop-dark": 1074,
+    "phone-light": 984,
+    "phone-dark": 1256
+   }
+  },
+  {
+   "path": "/runs",
+   "pattern": "/runs",
+   "shots": {
+    "desktop-light": "shots/runs_6e4bd5__desktop-light.png",
+    "desktop-dark": "shots/runs_6e4bd5__desktop-dark.png",
+    "phone-light": "shots/runs_6e4bd5__phone-light.png",
+    "phone-dark": "shots/runs_6e4bd5__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4822,
+    "desktop-dark": 4617,
+    "phone-light": 4935,
+    "phone-dark": 5228
+   }
+  },
+  {
+   "path": "/verify",
+   "pattern": "/verify",
+   "shots": {
+    "desktop-light": "shots/verify_c77e84__desktop-light.png",
+    "desktop-dark": "shots/verify_c77e84__desktop-dark.png",
+    "phone-light": "shots/verify_c77e84__phone-light.png",
+    "phone-dark": "shots/verify_c77e84__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 980,
+    "desktop-dark": 994,
+    "phone-light": 1022,
+    "phone-dark": 1023
+   }
+  },
+  {
+   "path": "/getting-started",
+   "pattern": "/getting-started",
+   "shots": {
+    "desktop-light": "shots/getting_started_0f76e0__desktop-light.png",
+    "desktop-dark": "shots/getting_started_0f76e0__desktop-dark.png",
+    "phone-light": "shots/getting_started_0f76e0__phone-light.png",
+    "phone-dark": "shots/getting_started_0f76e0__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1014,
+    "desktop-dark": 1058,
+    "phone-light": 1116,
+    "phone-dark": 1117
+   }
+  },
+  {
+   "path": "/handbook",
+   "pattern": "/handbook",
+   "shots": {
+    "desktop-light": "shots/handbook_e17828__desktop-light.png",
+    "desktop-dark": "shots/handbook_e17828__desktop-dark.png",
+    "phone-light": "shots/handbook_e17828__phone-light.png",
+    "phone-dark": "shots/handbook_e17828__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1051,
+    "desktop-dark": 978,
+    "phone-light": 982,
+    "phone-dark": 1091
+   }
+  },
+  {
+   "path": "/workflow",
+   "pattern": "/workflow",
+   "shots": {},
+   "ms": {},
+   "redirect": "/getting-started"
+  },
+  {
+   "path": "/m/sales_model",
+   "pattern": "/m/<m>",
+   "shots": {
+    "desktop-light": "shots/m_sales_model_3b4cc8__desktop-light.png",
+    "desktop-dark": "shots/m_sales_model_3b4cc8__desktop-dark.png",
+    "phone-light": "shots/m_sales_model_3b4cc8__phone-light.png",
+    "phone-dark": "shots/m_sales_model_3b4cc8__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4677,
+    "desktop-dark": 4857,
+    "phone-light": 4601,
+    "phone-dark": 4739
+   }
+  },
+  {
+   "path": "/m/sales_model/reports",
+   "pattern": "/m/<m>/reports",
+   "shots": {
+    "desktop-light": "shots/m_sales_model_reports_22d57f__desktop-light.png",
+    "desktop-dark": "shots/m_sales_model_reports_22d57f__desktop-dark.png",
+    "phone-light": "shots/m_sales_model_reports_22d57f__phone-light.png",
+    "phone-dark": "shots/m_sales_model_reports_22d57f__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4967,
+    "desktop-dark": 4825,
+    "phone-light": 5227,
+    "phone-dark": 5033
+   }
+  },
+  {
+   "path": "/m/sales_model/model",
+   "pattern": "/m/<m>/model",
+   "shots": {
+    "desktop-light": "shots/m_sales_model_model_065ed7__desktop-light.png",
+    "desktop-dark": "shots/m_sales_model_model_065ed7__desktop-dark.png",
+    "phone-light": "shots/m_sales_model_model_065ed7__phone-light.png",
+    "phone-dark": "shots/m_sales_model_model_065ed7__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4999,
+    "desktop-dark": 4761,
+    "phone-light": 4678,
+    "phone-dark": 4804
+   }
+  },
+  {
+   "path": "/m/sales_model/transform",
+   "pattern": "/m/<m>/transform",
+   "shots": {
+    "desktop-light": "shots/m_sales_model_transform_4de42a__desktop-light.png",
+    "desktop-dark": "shots/m_sales_model_transform_4de42a__desktop-dark.png",
+    "phone-light": "shots/m_sales_model_transform_4de42a__phone-light.png",
+    "phone-dark": "shots/m_sales_model_transform_4de42a__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 5251,
+    "desktop-dark": 4994,
+    "phone-light": 4688,
+    "phone-dark": 4583
+   }
+  },
+  {
+   "path": "/m/sales_model/explore",
+   "pattern": "/m/<m>/explore",
+   "shots": {
+    "desktop-light": "shots/m_sales_model_explore_6b62f2__desktop-light.png",
+    "desktop-dark": "shots/m_sales_model_explore_6b62f2__desktop-dark.png",
+    "phone-light": "shots/m_sales_model_explore_6b62f2__phone-light.png",
+    "phone-dark": "shots/m_sales_model_explore_6b62f2__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1009,
+    "desktop-dark": 981,
+    "phone-light": 1023,
+    "phone-dark": 984
+   }
+  },
+  {
+   "path": "/m/sales_model/runs",
+   "pattern": "/m/<m>/runs",
+   "shots": {
+    "desktop-light": "shots/m_sales_model_runs_15003a__desktop-light.png",
+    "desktop-dark": "shots/m_sales_model_runs_15003a__desktop-dark.png",
+    "phone-light": "shots/m_sales_model_runs_15003a__phone-light.png",
+    "phone-dark": "shots/m_sales_model_runs_15003a__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4569,
+    "desktop-dark": 4569,
+    "phone-light": 4751,
+    "phone-dark": 4544
+   }
+  },
+  {
+   "path": "/m/wealth_model",
+   "pattern": "/m/<m>",
+   "shots": {
+    "desktop-light": "shots/m_wealth_model_58092e__desktop-light.png",
+    "desktop-dark": "shots/m_wealth_model_58092e__desktop-dark.png",
+    "phone-light": "shots/m_wealth_model_58092e__phone-light.png",
+    "phone-dark": "shots/m_wealth_model_58092e__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4917,
+    "desktop-dark": 4771,
+    "phone-light": 4465,
+    "phone-dark": 4830
+   }
+  },
+  {
+   "path": "/m/wealth_model/reports",
+   "pattern": "/m/<m>/reports",
+   "shots": {
+    "desktop-light": "shots/m_wealth_model_reports_ac6cc1__desktop-light.png",
+    "desktop-dark": "shots/m_wealth_model_reports_ac6cc1__desktop-dark.png",
+    "phone-light": "shots/m_wealth_model_reports_ac6cc1__phone-light.png",
+    "phone-dark": "shots/m_wealth_model_reports_ac6cc1__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 5146,
+    "desktop-dark": 4714,
+    "phone-light": 4737,
+    "phone-dark": 4732
+   }
+  },
+  {
+   "path": "/m/wealth_model/model",
+   "pattern": "/m/<m>/model",
+   "shots": {
+    "desktop-light": "shots/m_wealth_model_model_9858e5__desktop-light.png",
+    "desktop-dark": "shots/m_wealth_model_model_9858e5__desktop-dark.png",
+    "phone-light": "shots/m_wealth_model_model_9858e5__phone-light.png",
+    "phone-dark": "shots/m_wealth_model_model_9858e5__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4819,
+    "desktop-dark": 4658,
+    "phone-light": 5019,
+    "phone-dark": 4774
+   }
+  },
+  {
+   "path": "/m/wealth_model/transform",
+   "pattern": "/m/<m>/transform",
+   "shots": {
+    "desktop-light": "shots/m_wealth_model_transform_fe43cf__desktop-light.png",
+    "desktop-dark": "shots/m_wealth_model_transform_fe43cf__desktop-dark.png",
+    "phone-light": "shots/m_wealth_model_transform_fe43cf__phone-light.png",
+    "phone-dark": "shots/m_wealth_model_transform_fe43cf__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 5083,
+    "desktop-dark": 4877,
+    "phone-light": 4691,
+    "phone-dark": 4762
+   }
+  },
+  {
+   "path": "/m/wealth_model/explore",
+   "pattern": "/m/<m>/explore",
+   "shots": {
+    "desktop-light": "shots/m_wealth_model_explore_7b7e71__desktop-light.png",
+    "desktop-dark": "shots/m_wealth_model_explore_7b7e71__desktop-dark.png",
+    "phone-light": "shots/m_wealth_model_explore_7b7e71__phone-light.png",
+    "phone-dark": "shots/m_wealth_model_explore_7b7e71__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 981,
+    "desktop-dark": 1000,
+    "phone-light": 1002,
+    "phone-dark": 997
+   }
+  },
+  {
+   "path": "/m/wealth_model/runs",
+   "pattern": "/m/<m>/runs",
+   "shots": {
+    "desktop-light": "shots/m_wealth_model_runs_241a2b__desktop-light.png",
+    "desktop-dark": "shots/m_wealth_model_runs_241a2b__desktop-dark.png",
+    "phone-light": "shots/m_wealth_model_runs_241a2b__phone-light.png",
+    "phone-dark": "shots/m_wealth_model_runs_241a2b__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4554,
+    "desktop-dark": 4510,
+    "phone-light": 4851,
+    "phone-dark": 4769
+   }
+  },
+  {
+   "path": "/m/housing_model",
+   "pattern": "/m/<m>",
+   "shots": {
+    "desktop-light": "shots/m_housing_model_6cb02d__desktop-light.png",
+    "desktop-dark": "shots/m_housing_model_6cb02d__desktop-dark.png",
+    "phone-light": "shots/m_housing_model_6cb02d__phone-light.png",
+    "phone-dark": "shots/m_housing_model_6cb02d__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 5833,
+    "desktop-dark": 4838,
+    "phone-light": 4464,
+    "phone-dark": 4737
+   }
+  },
+  {
+   "path": "/m/housing_model/reports",
+   "pattern": "/m/<m>/reports",
+   "shots": {
+    "desktop-light": "shots/m_housing_model_reports_2da536__desktop-light.png",
+    "desktop-dark": "shots/m_housing_model_reports_2da536__desktop-dark.png",
+    "phone-light": "shots/m_housing_model_reports_2da536__phone-light.png",
+    "phone-dark": "shots/m_housing_model_reports_2da536__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4705,
+    "desktop-dark": 4954,
+    "phone-light": 4765,
+    "phone-dark": 4517
+   }
+  },
+  {
+   "path": "/m/housing_model/model",
+   "pattern": "/m/<m>/model",
+   "shots": {
+    "desktop-light": "shots/m_housing_model_model_8f3373__desktop-light.png",
+    "desktop-dark": "shots/m_housing_model_model_8f3373__desktop-dark.png",
+    "phone-light": "shots/m_housing_model_model_8f3373__phone-light.png",
+    "phone-dark": "shots/m_housing_model_model_8f3373__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4570,
+    "desktop-dark": 4932,
+    "phone-light": 4765,
+    "phone-dark": 4826
+   }
+  },
+  {
+   "path": "/m/housing_model/transform",
+   "pattern": "/m/<m>/transform",
+   "shots": {
+    "desktop-light": "shots/m_housing_model_transform_1c8282__desktop-light.png",
+    "desktop-dark": "shots/m_housing_model_transform_1c8282__desktop-dark.png",
+    "phone-light": "shots/m_housing_model_transform_1c8282__phone-light.png",
+    "phone-dark": "shots/m_housing_model_transform_1c8282__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4785,
+    "desktop-dark": 4597,
+    "phone-light": 4436,
+    "phone-dark": 4616
+   }
+  },
+  {
+   "path": "/m/housing_model/explore",
+   "pattern": "/m/<m>/explore",
+   "shots": {
+    "desktop-light": "shots/m_housing_model_explore_65e07d__desktop-light.png",
+    "desktop-dark": "shots/m_housing_model_explore_65e07d__desktop-dark.png",
+    "phone-light": "shots/m_housing_model_explore_65e07d__phone-light.png",
+    "phone-dark": "shots/m_housing_model_explore_65e07d__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 986,
+    "desktop-dark": 1035,
+    "phone-light": 1002,
+    "phone-dark": 995
+   }
+  },
+  {
+   "path": "/m/housing_model/runs",
+   "pattern": "/m/<m>/runs",
+   "shots": {
+    "desktop-light": "shots/m_housing_model_runs_d7caf8__desktop-light.png",
+    "desktop-dark": "shots/m_housing_model_runs_d7caf8__desktop-dark.png",
+    "phone-light": "shots/m_housing_model_runs_d7caf8__phone-light.png",
+    "phone-dark": "shots/m_housing_model_runs_d7caf8__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4150,
+    "desktop-dark": 4165,
+    "phone-light": 4279,
+    "phone-dark": 4297
+   }
+  },
+  {
+   "path": "/m/portfolio_model",
+   "pattern": "/m/<m>",
+   "shots": {
+    "desktop-light": "shots/m_portfolio_model_3e8081__desktop-light.png",
+    "desktop-dark": "shots/m_portfolio_model_3e8081__desktop-dark.png",
+    "phone-light": "shots/m_portfolio_model_3e8081__phone-light.png",
+    "phone-dark": "shots/m_portfolio_model_3e8081__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4770,
+    "desktop-dark": 4604,
+    "phone-light": 4394,
+    "phone-dark": 4396
+   }
+  },
+  {
+   "path": "/m/portfolio_model/reports",
+   "pattern": "/m/<m>/reports",
+   "shots": {
+    "desktop-light": "shots/m_portfolio_model_reports_226446__desktop-light.png",
+    "desktop-dark": "shots/m_portfolio_model_reports_226446__desktop-dark.png",
+    "phone-light": "shots/m_portfolio_model_reports_226446__phone-light.png",
+    "phone-dark": "shots/m_portfolio_model_reports_226446__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4433,
+    "desktop-dark": 4681,
+    "phone-light": 4511,
+    "phone-dark": 4933
+   }
+  },
+  {
+   "path": "/m/portfolio_model/model",
+   "pattern": "/m/<m>/model",
+   "shots": {
+    "desktop-light": "shots/m_portfolio_model_model_a6d651__desktop-light.png",
+    "desktop-dark": "shots/m_portfolio_model_model_a6d651__desktop-dark.png",
+    "phone-light": "shots/m_portfolio_model_model_a6d651__phone-light.png",
+    "phone-dark": "shots/m_portfolio_model_model_a6d651__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4849,
+    "desktop-dark": 5093,
+    "phone-light": 4632,
+    "phone-dark": 4842
+   }
+  },
+  {
+   "path": "/m/portfolio_model/transform",
+   "pattern": "/m/<m>/transform",
+   "shots": {
+    "desktop-light": "shots/m_portfolio_model_transform_20469c__desktop-light.png",
+    "desktop-dark": "shots/m_portfolio_model_transform_20469c__desktop-dark.png",
+    "phone-light": "shots/m_portfolio_model_transform_20469c__phone-light.png",
+    "phone-dark": "shots/m_portfolio_model_transform_20469c__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4686,
+    "desktop-dark": 4470,
+    "phone-light": 4573,
+    "phone-dark": 4616
+   }
+  },
+  {
+   "path": "/m/portfolio_model/explore",
+   "pattern": "/m/<m>/explore",
+   "shots": {
+    "desktop-light": "shots/m_portfolio_model_explore_e92daa__desktop-light.png",
+    "desktop-dark": "shots/m_portfolio_model_explore_e92daa__desktop-dark.png",
+    "phone-light": "shots/m_portfolio_model_explore_e92daa__phone-light.png",
+    "phone-dark": "shots/m_portfolio_model_explore_e92daa__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 997,
+    "desktop-dark": 1146,
+    "phone-light": 957,
+    "phone-dark": 978
+   }
+  },
+  {
+   "path": "/m/portfolio_model/runs",
+   "pattern": "/m/<m>/runs",
+   "shots": {
+    "desktop-light": "shots/m_portfolio_model_runs_7550d2__desktop-light.png",
+    "desktop-dark": "shots/m_portfolio_model_runs_7550d2__desktop-dark.png",
+    "phone-light": "shots/m_portfolio_model_runs_7550d2__phone-light.png",
+    "phone-dark": "shots/m_portfolio_model_runs_7550d2__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4293,
+    "desktop-dark": 4310,
+    "phone-light": 4685,
+    "phone-dark": 5214
+   }
+  },
+  {
+   "path": "/m/saas_model",
+   "pattern": "/m/<m>",
+   "shots": {
+    "desktop-light": "shots/m_saas_model_918738__desktop-light.png",
+    "desktop-dark": "shots/m_saas_model_918738__desktop-dark.png",
+    "phone-light": "shots/m_saas_model_918738__phone-light.png",
+    "phone-dark": "shots/m_saas_model_918738__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4936,
+    "desktop-dark": 4903,
+    "phone-light": 4410,
+    "phone-dark": 4362
+   }
+  },
+  {
+   "path": "/m/saas_model/reports",
+   "pattern": "/m/<m>/reports",
+   "shots": {
+    "desktop-light": "shots/m_saas_model_reports_5d29ff__desktop-light.png",
+    "desktop-dark": "shots/m_saas_model_reports_5d29ff__desktop-dark.png",
+    "phone-light": "shots/m_saas_model_reports_5d29ff__phone-light.png",
+    "phone-dark": "shots/m_saas_model_reports_5d29ff__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4669,
+    "desktop-dark": 4744,
+    "phone-light": 4809,
+    "phone-dark": 4726
+   }
+  },
+  {
+   "path": "/m/saas_model/model",
+   "pattern": "/m/<m>/model",
+   "shots": {
+    "desktop-light": "shots/m_saas_model_model_e247eb__desktop-light.png",
+    "desktop-dark": "shots/m_saas_model_model_e247eb__desktop-dark.png",
+    "phone-light": "shots/m_saas_model_model_e247eb__phone-light.png",
+    "phone-dark": "shots/m_saas_model_model_e247eb__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4904,
+    "desktop-dark": 4978,
+    "phone-light": 4703,
+    "phone-dark": 4866
+   }
+  },
+  {
+   "path": "/m/saas_model/transform",
+   "pattern": "/m/<m>/transform",
+   "shots": {
+    "desktop-light": "shots/m_saas_model_transform_d34d5a__desktop-light.png",
+    "desktop-dark": "shots/m_saas_model_transform_d34d5a__desktop-dark.png",
+    "phone-light": "shots/m_saas_model_transform_d34d5a__phone-light.png",
+    "phone-dark": "shots/m_saas_model_transform_d34d5a__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4640,
+    "desktop-dark": 4467,
+    "phone-light": 4257,
+    "phone-dark": 4473
+   }
+  },
+  {
+   "path": "/m/saas_model/explore",
+   "pattern": "/m/<m>/explore",
+   "shots": {
+    "desktop-light": "shots/m_saas_model_explore_948d13__desktop-light.png",
+    "desktop-dark": "shots/m_saas_model_explore_948d13__desktop-dark.png",
+    "phone-light": "shots/m_saas_model_explore_948d13__phone-light.png",
+    "phone-dark": "shots/m_saas_model_explore_948d13__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1009,
+    "desktop-dark": 986,
+    "phone-light": 1022,
+    "phone-dark": 1011
+   }
+  },
+  {
+   "path": "/m/saas_model/runs",
+   "pattern": "/m/<m>/runs",
+   "shots": {
+    "desktop-light": "shots/m_saas_model_runs_7c2c47__desktop-light.png",
+    "desktop-dark": "shots/m_saas_model_runs_7c2c47__desktop-dark.png",
+    "phone-light": "shots/m_saas_model_runs_7c2c47__phone-light.png",
+    "phone-dark": "shots/m_saas_model_runs_7c2c47__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4498,
+    "desktop-dark": 4138,
+    "phone-light": 4248,
+    "phone-dark": 4305
+   }
+  },
+  {
+   "path": "/reports?r=sales_model%2Fmedallion_revenue",
+   "pattern": "/reports?r",
+   "shots": {
+    "desktop-light": "shots/reports_r_sales_model_2Fmedallion_revenue_67ae26__desktop-light.png",
+    "desktop-dark": "shots/reports_r_sales_model_2Fmedallion_revenue_67ae26__desktop-dark.png",
+    "phone-light": "shots/reports_r_sales_model_2Fmedallion_revenue_67ae26__phone-light.png",
+    "phone-dark": "shots/reports_r_sales_model_2Fmedallion_revenue_67ae26__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4658,
+    "desktop-dark": 4741,
+    "phone-light": 4343,
+    "phone-dark": 4753
+   }
+  },
+  {
+   "path": "/reports?r=sales_model%2Fsales_overview",
+   "pattern": "/reports?r",
+   "shots": {
+    "desktop-light": "shots/reports_r_sales_model_2Fsales_overview_2aca9a__desktop-light.png",
+    "desktop-dark": "shots/reports_r_sales_model_2Fsales_overview_2aca9a__desktop-dark.png",
+    "phone-light": "shots/reports_r_sales_model_2Fsales_overview_2aca9a__phone-light.png",
+    "phone-dark": "shots/reports_r_sales_model_2Fsales_overview_2aca9a__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4634,
+    "desktop-dark": 4578,
+    "phone-light": 4504,
+    "phone-dark": 4651
+   }
+  },
+  {
+   "path": "/reports?r=wealth_model%2Faum_by_branch",
+   "pattern": "/reports?r",
+   "shots": {
+    "desktop-light": "shots/reports_r_wealth_model_2Faum_by_branch_51985a__desktop-light.png",
+    "desktop-dark": "shots/reports_r_wealth_model_2Faum_by_branch_51985a__desktop-dark.png",
+    "phone-light": "shots/reports_r_wealth_model_2Faum_by_branch_51985a__phone-light.png",
+    "phone-dark": "shots/reports_r_wealth_model_2Faum_by_branch_51985a__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4791,
+    "desktop-dark": 4740,
+    "phone-light": 4597,
+    "phone-dark": 4573
+   }
+  },
+  {
+   "path": "/models/sales_model?tab=explore",
+   "pattern": "/models/<m>?tab=explore",
+   "shots": {},
+   "ms": {},
+   "redirect": "/m/sales_model/explore"
+  },
+  {
+   "path": "/m/sales_model/refresh",
+   "pattern": "/m/<m>/refresh",
+   "shots": {},
+   "ms": {},
+   "redirect": "/m/sales_model/transform"
+  },
+  {
+   "path": "/m/sales_model/sources",
+   "pattern": "/m/<m>/sources",
+   "shots": {},
+   "ms": {},
+   "redirect": "/m/sales_model/transform"
+  },
+  {
+   "path": "/connectors",
+   "pattern": "/connectors",
+   "shots": {},
+   "ms": {},
+   "redirect": "/sources"
+  },
+  {
+   "path": "/pipelines",
+   "pattern": "/pipelines",
+   "shots": {},
+   "ms": {},
+   "redirect": "/models"
+  },
+  {
+   "path": "/no-such-page",
+   "pattern": "/no-such-page",
+   "shots": {
+    "desktop-light": "shots/no_such_page_01c67c__desktop-light.png",
+    "desktop-dark": "shots/no_such_page_01c67c__desktop-dark.png",
+    "phone-light": "shots/no_such_page_01c67c__phone-light.png",
+    "phone-dark": "shots/no_such_page_01c67c__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 917,
+    "desktop-dark": 918,
+    "phone-light": 963,
+    "phone-dark": 983
+   }
+  },
+  {
+   "path": "/map",
+   "pattern": "/map",
+   "shots": {
+    "desktop-light": "shots/map_a63c62__desktop-light.png",
+    "desktop-dark": "shots/map_a63c62__desktop-dark.png",
+    "phone-light": "shots/map_a63c62__phone-light.png",
+    "phone-dark": "shots/map_a63c62__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 5431,
+    "desktop-dark": 4947,
+    "phone-light": 4948,
+    "phone-dark": 4714
+   }
+  },
+  {
+   "path": "/drafts",
+   "pattern": "/drafts",
+   "shots": {
+    "desktop-light": "shots/drafts_caef4f__desktop-light.png",
+    "desktop-dark": "shots/drafts_caef4f__desktop-dark.png",
+    "phone-light": "shots/drafts_caef4f__phone-light.png",
+    "phone-dark": "shots/drafts_caef4f__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 926,
+    "desktop-dark": 995,
+    "phone-light": 946,
+    "phone-dark": 943
+   }
+  },
+  {
+   "path": "/m/saas_model/reports?r=saas_model%2Fmrr_dashboard",
+   "pattern": "/m/<m>/reports?r",
+   "shots": {
+    "desktop-light": "shots/m_saas_model_reports_r_saas_model_2Fmrr_dashboard_fdf25c__desktop-light.png",
+    "desktop-dark": "shots/m_saas_model_reports_r_saas_model_2Fmrr_dashboard_fdf25c__desktop-dark.png",
+    "phone-light": "shots/m_saas_model_reports_r_saas_model_2Fmrr_dashboard_fdf25c__phone-light.png",
+    "phone-dark": "shots/m_saas_model_reports_r_saas_model_2Fmrr_dashboard_fdf25c__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4705,
+    "desktop-dark": 4566,
+    "phone-light": 4733,
+    "phone-dark": 4445
+   }
+  },
+  {
+   "path": "/m/saas_model/reports?r=saas_model%2Fcohort_brief",
+   "pattern": "/m/<m>/reports?r",
+   "shots": {
+    "desktop-light": "shots/m_saas_model_reports_r_saas_model_2Fcohort_brief_df5818__desktop-light.png",
+    "desktop-dark": "shots/m_saas_model_reports_r_saas_model_2Fcohort_brief_df5818__desktop-dark.png",
+    "phone-light": "shots/m_saas_model_reports_r_saas_model_2Fcohort_brief_df5818__phone-light.png",
+    "phone-dark": "shots/m_saas_model_reports_r_saas_model_2Fcohort_brief_df5818__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4516,
+    "desktop-dark": 4503,
+    "phone-light": 4712,
+    "phone-dark": 4431
+   }
+  },
+  {
+   "path": "/m/portfolio_model/reports?r=portfolio_model%2Fportfolio_showcase",
+   "pattern": "/m/<m>/reports?r",
+   "shots": {
+    "desktop-light": "shots/m_portfolio_model_reports_r_portfolio_model_2Fportfolio_show_1587b4__desktop-light.png",
+    "desktop-dark": "shots/m_portfolio_model_reports_r_portfolio_model_2Fportfolio_show_1587b4__desktop-dark.png",
+    "phone-light": "shots/m_portfolio_model_reports_r_portfolio_model_2Fportfolio_show_1587b4__phone-light.png",
+    "phone-dark": "shots/m_portfolio_model_reports_r_portfolio_model_2Fportfolio_show_1587b4__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4710,
+    "desktop-dark": 5047,
+    "phone-light": 5487,
+    "phone-dark": 5602
+   }
+  },
+  {
+   "path": "/m/sales_model/reports?r=sales_model%2Fmedallion_revenue&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "shots": {
+    "desktop-light": "shots/m_sales_model_reports_r_sales_model_2Fmedallion_revenue_open_74a591__desktop-light.png",
+    "desktop-dark": "shots/m_sales_model_reports_r_sales_model_2Fmedallion_revenue_open_74a591__desktop-dark.png",
+    "phone-light": "shots/m_sales_model_reports_r_sales_model_2Fmedallion_revenue_open_74a591__phone-light.png",
+    "phone-dark": "shots/m_sales_model_reports_r_sales_model_2Fmedallion_revenue_open_74a591__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4372,
+    "desktop-dark": 4760,
+    "phone-light": 4668,
+    "phone-dark": 4487
+   }
+  },
+  {
+   "path": "/m/wealth_model/reports?r=wealth_model%2Faum_by_branch&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "shots": {
+    "desktop-light": "shots/m_wealth_model_reports_r_wealth_model_2Faum_by_branch_open_1_4b40cb__desktop-light.png",
+    "desktop-dark": "shots/m_wealth_model_reports_r_wealth_model_2Faum_by_branch_open_1_4b40cb__desktop-dark.png",
+    "phone-light": "shots/m_wealth_model_reports_r_wealth_model_2Faum_by_branch_open_1_4b40cb__phone-light.png",
+    "phone-dark": "shots/m_wealth_model_reports_r_wealth_model_2Faum_by_branch_open_1_4b40cb__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4435,
+    "desktop-dark": 4763,
+    "phone-light": 4639,
+    "phone-dark": 4432
+   }
+  },
+  {
+   "path": "/m/housing_model/reports?r=housing_model%2Faffordability&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "shots": {
+    "desktop-light": "shots/m_housing_model_reports_r_housing_model_2Faffordability_open_473eb4__desktop-light.png",
+    "desktop-dark": "shots/m_housing_model_reports_r_housing_model_2Faffordability_open_473eb4__desktop-dark.png",
+    "phone-light": "shots/m_housing_model_reports_r_housing_model_2Faffordability_open_473eb4__phone-light.png",
+    "phone-dark": "shots/m_housing_model_reports_r_housing_model_2Faffordability_open_473eb4__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 4804,
+    "desktop-dark": 4611,
+    "phone-light": 4827,
+    "phone-dark": 4924
+   }
+  }
+ ],
+ "findings": [
+  {
+   "page": "/m/saas_model/reports?r=saas_model%2Fmrr_dashboard",
+   "pattern": "/m/<m>/reports?r",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "blank-page",
+   "severity": "critical",
+   "target": "main",
+   "detail": "nothing rendered",
+   "key": "blank-page|/m/<m>/reports?r|main",
+   "seen_in": [
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/housing_model/reports?r=housing_model%2Faffordability&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "blank-page",
+   "severity": "critical",
+   "target": "main",
+   "detail": "nothing rendered",
+   "key": "blank-page|/m/<m>/reports?open&r|main",
+   "seen_in": [
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/sales_model/reports",
+   "pattern": "/m/<m>/reports",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "scope-mismatch",
+   "severity": "critical",
+   "target": "reports of sales_model",
+   "detail": "shows []; belongs: ['medallion_revenue', 'sales_overview']",
+   "key": "scope-mismatch|/m/<m>/reports|reports of sales_model",
+   "seen_in": [
+    "desktop-light"
+   ]
+  },
+  {
+   "page": "/m/wealth_model/reports",
+   "pattern": "/m/<m>/reports",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "scope-mismatch",
+   "severity": "critical",
+   "target": "reports of wealth_model",
+   "detail": "shows []; belongs: ['aum_by_branch', 'aum_by_region']",
+   "key": "scope-mismatch|/m/<m>/reports|reports of wealth_model",
+   "seen_in": [
+    "desktop-light"
+   ]
+  },
+  {
+   "page": "/m/housing_model/reports",
+   "pattern": "/m/<m>/reports",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "scope-mismatch",
+   "severity": "critical",
+   "target": "reports of housing_model",
+   "detail": "shows []; belongs: ['affordability']",
+   "key": "scope-mismatch|/m/<m>/reports|reports of housing_model",
+   "seen_in": [
+    "desktop-light"
+   ]
+  },
+  {
+   "page": "/m/portfolio_model/reports",
+   "pattern": "/m/<m>/reports",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "scope-mismatch",
+   "severity": "critical",
+   "target": "reports of portfolio_model",
+   "detail": "shows []; belongs: ['portfolio_book', 'portfolio_concentration', 'portfolio_dashboard', 'portfolio_desk', 'portfolio_overview', 'portfolio_showcase']",
+   "key": "scope-mismatch|/m/<m>/reports|reports of portfolio_model",
+   "seen_in": [
+    "desktop-light"
+   ]
+  },
+  {
+   "page": "/m/saas_model/reports",
+   "pattern": "/m/<m>/reports",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "scope-mismatch",
+   "severity": "critical",
+   "target": "reports of saas_model",
+   "detail": "shows []; belongs: ['cohort_brief', 'mrr_dashboard']",
+   "key": "scope-mismatch|/m/<m>/reports|reports of saas_model",
+   "seen_in": [
+    "desktop-light"
+   ]
+  },
+  {
+   "page": "/reports",
+   "pattern": "/reports",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "nav-you-are-here",
+   "severity": "serious",
+   "target": "nav.app-nav",
+   "detail": "0 sidebar entries are marked as the current page",
+   "key": "nav-you-are-here|(app shell)|nav.app-nav",
+   "seen_in": [
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/housing_model/reports?r=housing_model%2Faffordability&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "no-focus-ring",
+   "severity": "serious",
+   "target": "iframe \"IFRAME\"",
+   "detail": "keyboard focus is invisible",
+   "key": "no-focus-ring|/m/<m>/reports?open&r|iframe",
+   "seen_in": [
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light",
+    "desktop-light"
+   ]
+  },
+  {
+   "page": "(theme)",
+   "pattern": "(theme)",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "theme-decoration",
+   "severity": "serious",
+   "target": "global.css:1188",
+   "detail": "background-image: repeating-linear-gradient(90deg, var(--seg) 0 8px, transparent",
+   "key": "theme-decoration|(theme)|global.css:#",
+   "seen_in": [
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/reports?r=sales_model%2Fmedallion_revenue",
+   "pattern": "/reports?r",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "one-h1",
+   "severity": "moderate",
+   "target": "main",
+   "detail": "0 visible h1 elements",
+   "key": "one-h1|/reports?r|main",
+   "seen_in": [
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/saas_model/reports?r=saas_model%2Fmrr_dashboard",
+   "pattern": "/m/<m>/reports?r",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "one-h1",
+   "severity": "moderate",
+   "target": "main",
+   "detail": "0 visible h1 elements",
+   "key": "one-h1|/m/<m>/reports?r|main",
+   "seen_in": [
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/sales_model/reports?r=sales_model%2Fmedallion_revenue&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "one-h1",
+   "severity": "moderate",
+   "target": "main",
+   "detail": "0 visible h1 elements",
+   "key": "one-h1|/m/<m>/reports?open&r|main",
+   "seen_in": [
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/reports",
+   "pattern": "/reports",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 5107ms",
+   "key": "slow-page|/reports|page",
+   "seen_in": [
+    "---"
+   ]
+  },
+  {
+   "page": "/runs",
+   "pattern": "/runs",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4935ms",
+   "key": "slow-page|/runs|page",
+   "seen_in": [
+    "---"
+   ]
+  },
+  {
+   "page": "/m/sales_model",
+   "pattern": "/m/<m>",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4739ms",
+   "key": "slow-page|/m/<m>|page",
+   "seen_in": [
+    "---",
+    "---",
+    "---",
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/m/sales_model/reports",
+   "pattern": "/m/<m>/reports",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 5033ms",
+   "key": "slow-page|/m/<m>/reports|page",
+   "seen_in": [
+    "---",
+    "---",
+    "---",
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/m/sales_model/model",
+   "pattern": "/m/<m>/model",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4804ms",
+   "key": "slow-page|/m/<m>/model|page",
+   "seen_in": [
+    "---",
+    "---",
+    "---",
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/m/sales_model/transform",
+   "pattern": "/m/<m>/transform",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4994ms",
+   "key": "slow-page|/m/<m>/transform|page",
+   "seen_in": [
+    "---",
+    "---",
+    "---",
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/m/sales_model/runs",
+   "pattern": "/m/<m>/runs",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4569ms",
+   "key": "slow-page|/m/<m>/runs|page",
+   "seen_in": [
+    "---",
+    "---",
+    "---",
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/reports?r=sales_model%2Fmedallion_revenue",
+   "pattern": "/reports?r",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4741ms",
+   "key": "slow-page|/reports?r|page",
+   "seen_in": [
+    "---",
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/map",
+   "pattern": "/map",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4948ms",
+   "key": "slow-page|/map|page",
+   "seen_in": [
+    "---"
+   ]
+  },
+  {
+   "page": "/m/saas_model/reports?r=saas_model%2Fmrr_dashboard",
+   "pattern": "/m/<m>/reports?r",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4705ms",
+   "key": "slow-page|/m/<m>/reports?r|page",
+   "seen_in": [
+    "---",
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/m/sales_model/reports?r=sales_model%2Fmedallion_revenue&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 4668ms",
+   "key": "slow-page|/m/<m>/reports?open&r|page",
+   "seen_in": [
+    "---",
+    "---",
+    "---"
+   ]
+  },
+  {
+   "page": "/reports?r=sales_model%2Fmedallion_revenue",
+   "pattern": "/reports?r",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "small-target",
+   "severity": "moderate",
+   "target": "a.rp__model \"sales_model\"",
+   "detail": "86x20px tap target",
+   "key": "small-target|/reports?r|a.rp__model",
+   "seen_in": [
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/reports?r=sales_model%2Fmedallion_revenue",
+   "pattern": "/reports?r",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "small-target",
+   "severity": "moderate",
+   "target": "a \"Reports\"",
+   "detail": "46x20px tap target",
+   "key": "small-target|/reports?r|a",
+   "seen_in": [
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/saas_model/reports?r=saas_model%2Fmrr_dashboard",
+   "pattern": "/m/<m>/reports?r",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "small-target",
+   "severity": "moderate",
+   "target": "a.rp__model \"saas_model\"",
+   "detail": "78x20px tap target",
+   "key": "small-target|/m/<m>/reports?r|a.rp__model",
+   "seen_in": [
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/saas_model/reports?r=saas_model%2Fmrr_dashboard",
+   "pattern": "/m/<m>/reports?r",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "small-target",
+   "severity": "moderate",
+   "target": "a \"Reports\"",
+   "detail": "46x20px tap target",
+   "key": "small-target|/m/<m>/reports?r|a",
+   "seen_in": [
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/sales_model/reports?r=sales_model%2Fmedallion_revenue&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "small-target",
+   "severity": "moderate",
+   "target": "a.rp__model \"sales_model\"",
+   "detail": "86x20px tap target",
+   "key": "small-target|/m/<m>/reports?open&r|a.rp__model",
+   "seen_in": [
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/m/sales_model/reports?r=sales_model%2Fmedallion_revenue&open=1",
+   "pattern": "/m/<m>/reports?open&r",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "small-target",
+   "severity": "moderate",
+   "target": "a \"Reports\"",
+   "detail": "46x20px tap target",
+   "key": "small-target|/m/<m>/reports?open&r|a",
+   "seen_in": [
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark",
+    "phone-light",
+    "phone-dark"
+   ]
+  }
+ ],
+ "metrics": {
+  "hardcoded_colors_in_jsx": 13,
+  "inline_style_blocks": 485,
+  "bundle_js_kb": 2345,
+  "bundle_css_kb": 141,
+  "report_font_families": 5,
+  "report_accents": 5,
+  "report_box_shadows": 16,
+  "report_gradients": 60,
+  "report_looks": 6
+ },
+ "report_pass": {
+  "sheet": "report-sheet.png",
+  "families": [
+   "Fraunces",
+   "Hanken Grotesk",
+   "Inter",
+   "Iowan Old Style",
+   "ui-monospace"
+  ],
+  "accents": [
+   "#0d6b73/#5cc4bd",
+   "#1f4e79/#8bb4e0",
+   "#1f6f5c/#6cc3a8",
+   "#1f7a4d/#1f7a4d",
+   "#2f5bea/#7a9cff"
+  ],
+  "looks": {
+   "Hanken Grotesk + #2f5bea/#7a9cff": [
+    "sales_model/medallion_revenue",
+    "sales_model/sales_overview",
+    "wealth_model/aum_by_region",
+    "portfolio_model/portfolio_concentration",
+    "portfolio_model/portfolio_dashboard",
+    "portfolio_model/portfolio_desk",
+    "portfolio_model/portfolio_overview",
+    "saas_model/mrr_dashboard"
+   ],
+   "Fraunces + #1f6f5c/#6cc3a8": [
+    "wealth_model/aum_by_branch"
+   ],
+   "Inter + #1f7a4d/#1f7a4d": [
+    "housing_model/affordability"
+   ],
+   "Iowan Old Style + #1f4e79/#8bb4e0": [
+    "portfolio_model/portfolio_book"
+   ],
+   "Fraunces + #0d6b73/#5cc4bd": [
+    "portfolio_model/portfolio_showcase"
+   ],
+   "Iowan Old Style + #2f5bea/#7a9cff": [
+    "saas_model/cohort_brief"
+   ]
+  },
+  "reports": {
+   "sales_model/medallion_revenue": {
+    "shots": {
+     "desktop-light": "report-shots/sales_model_medallion_revenue_1a8784__desktop-light.png",
+     "desktop-dark": "report-shots/sales_model_medallion_revenue_1a8784__desktop-dark.png",
+     "phone-light": "report-shots/sales_model_medallion_revenue_1a8784__phone-light.png",
+     "phone-dark": "report-shots/sales_model_medallion_revenue_1a8784__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 206,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Hanken Grotesk"
+   },
+   "sales_model/sales_overview": {
+    "shots": {
+     "desktop-light": "report-shots/sales_model_sales_overview_608f14__desktop-light.png",
+     "desktop-dark": "report-shots/sales_model_sales_overview_608f14__desktop-dark.png",
+     "phone-light": "report-shots/sales_model_sales_overview_608f14__phone-light.png",
+     "phone-dark": "report-shots/sales_model_sales_overview_608f14__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 222,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Hanken Grotesk"
+   },
+   "wealth_model/aum_by_branch": {
+    "shots": {
+     "desktop-light": "report-shots/wealth_model_aum_by_branch_044cc8__desktop-light.png",
+     "desktop-dark": "report-shots/wealth_model_aum_by_branch_044cc8__desktop-dark.png",
+     "phone-light": "report-shots/wealth_model_aum_by_branch_044cc8__phone-light.png",
+     "phone-dark": "report-shots/wealth_model_aum_by_branch_044cc8__phone-dark.png"
+    },
+    "families": {
+     "Inter": 538,
+     "Fraunces": 40,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#1f6f5c/#6cc3a8",
+    "display": "Fraunces"
+   },
+   "wealth_model/aum_by_region": {
+    "shots": {
+     "desktop-light": "report-shots/wealth_model_aum_by_region_e9c4ce__desktop-light.png",
+     "desktop-dark": "report-shots/wealth_model_aum_by_region_e9c4ce__desktop-dark.png",
+     "phone-light": "report-shots/wealth_model_aum_by_region_e9c4ce__phone-light.png",
+     "phone-dark": "report-shots/wealth_model_aum_by_region_e9c4ce__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 256,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Hanken Grotesk"
+   },
+   "housing_model/affordability": {
+    "shots": {
+     "desktop-light": "report-shots/housing_model_affordability_118bc4__desktop-light.png",
+     "desktop-dark": "report-shots/housing_model_affordability_118bc4__desktop-dark.png",
+     "phone-light": "report-shots/housing_model_affordability_118bc4__phone-light.png",
+     "phone-dark": "report-shots/housing_model_affordability_118bc4__phone-dark.png"
+    },
+    "families": {
+     "Inter": 1052,
+     "ui-monospace": 16
+    },
+    "shadows": [
+     "header.tb-masthead.mp-hero (desktop-light)",
+     "div.mp-tag.mp-tag--then (desktop-light)",
+     "div.mp-tag.mp-tag--now (desktop-light)",
+     "form.mp-scenario.mp-scenario--now (desktop-light)",
+     "header.tb-masthead.mp-hero (desktop-dark)",
+     "div.mp-tag.mp-tag--then (desktop-dark)",
+     "div.mp-tag.mp-tag--now (desktop-dark)",
+     "form.mp-scenario.mp-scenario--now (desktop-dark)",
+     "header.tb-masthead.mp-hero (phone-light)",
+     "div.mp-tag.mp-tag--then (phone-light)",
+     "div.mp-tag.mp-tag--now (phone-light)",
+     "form.mp-scenario.mp-scenario--now (phone-light)",
+     "header.tb-masthead.mp-hero (phone-dark)",
+     "div.mp-tag.mp-tag--then (phone-dark)",
+     "div.mp-tag.mp-tag--now (phone-dark)",
+     "form.mp-scenario.mp-scenario--now (phone-dark)"
+    ],
+    "gradients": [
+     "header.tb-masthead.mp-hero (desktop-light)",
+     "svg (desktop-light)",
+     "div.tb-kpi.mp-kpi (desktop-light)",
+     "div.tb-kpi.mp-kpi (desktop-light)",
+     "div.tb-kpi.mp-kpi (desktop-light)",
+     "form.mp-scenario.mp-scenario--now (desktop-light)",
+     "div.mp-results (desktop-light)",
+     "div.tb-kpi.mp-kpi (desktop-light)",
+     "div.tb-kpi.mp-kpi (desktop-light)",
+     "div.tb-kpi.mp-kpi (desktop-light)",
+     "div.tb-kpi.mp-kpi (desktop-light)",
+     "lineargradient (desktop-light)",
+     "lineargradient (desktop-light)",
+     "lineargradient (desktop-light)",
+     "lineargradient (desktop-light)",
+     "header.tb-masthead.mp-hero (desktop-dark)",
+     "svg (desktop-dark)",
+     "div.tb-kpi.mp-kpi (desktop-dark)",
+     "div.tb-kpi.mp-kpi (desktop-dark)",
+     "div.tb-kpi.mp-kpi (desktop-dark)",
+     "form.mp-scenario.mp-scenario--now (desktop-dark)",
+     "div.mp-results (desktop-dark)",
+     "div.tb-kpi.mp-kpi (desktop-dark)",
+     "div.tb-kpi.mp-kpi (desktop-dark)",
+     "div.tb-kpi.mp-kpi (desktop-dark)",
+     "div.tb-kpi.mp-kpi (desktop-dark)",
+     "lineargradient (desktop-dark)",
+     "lineargradient (desktop-dark)",
+     "lineargradient (desktop-dark)",
+     "lineargradient (desktop-dark)",
+     "header.tb-masthead.mp-hero (phone-light)",
+     "svg (phone-light)",
+     "div.tb-kpi.mp-kpi (phone-light)",
+     "div.tb-kpi.mp-kpi (phone-light)",
+     "div.tb-kpi.mp-kpi (phone-light)",
+     "form.mp-scenario.mp-scenario--now (phone-light)",
+     "div.mp-results (phone-light)",
+     "div.tb-kpi.mp-kpi (phone-light)",
+     "div.tb-kpi.mp-kpi (phone-light)",
+     "div.tb-kpi.mp-kpi (phone-light)",
+     "div.tb-kpi.mp-kpi (phone-light)",
+     "lineargradient (phone-light)",
+     "lineargradient (phone-light)",
+     "lineargradient (phone-light)",
+     "lineargradient (phone-light)",
+     "header.tb-masthead.mp-hero (phone-dark)",
+     "svg (phone-dark)",
+     "div.tb-kpi.mp-kpi (phone-dark)",
+     "div.tb-kpi.mp-kpi (phone-dark)",
+     "div.tb-kpi.mp-kpi (phone-dark)",
+     "form.mp-scenario.mp-scenario--now (phone-dark)",
+     "div.mp-results (phone-dark)",
+     "div.tb-kpi.mp-kpi (phone-dark)",
+     "div.tb-kpi.mp-kpi (phone-dark)",
+     "div.tb-kpi.mp-kpi (phone-dark)",
+     "div.tb-kpi.mp-kpi (phone-dark)",
+     "lineargradient (phone-dark)",
+     "lineargradient (phone-dark)",
+     "lineargradient (phone-dark)",
+     "lineargradient (phone-dark)"
+    ],
+    "accent": "#1f7a4d/#1f7a4d",
+    "display": "Inter"
+   },
+   "portfolio_model/portfolio_book": {
+    "shots": {
+     "desktop-light": "report-shots/portfolio_model_portfolio_book_baec1f__desktop-light.png",
+     "desktop-dark": "report-shots/portfolio_model_portfolio_book_baec1f__desktop-dark.png",
+     "phone-light": "report-shots/portfolio_model_portfolio_book_baec1f__phone-light.png",
+     "phone-dark": "report-shots/portfolio_model_portfolio_book_baec1f__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 454,
+     "Iowan Old Style": 84,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#1f4e79/#8bb4e0",
+    "display": "Iowan Old Style"
+   },
+   "portfolio_model/portfolio_concentration": {
+    "shots": {
+     "desktop-light": "report-shots/portfolio_model_portfolio_concentration_a93b0b__desktop-light.png",
+     "desktop-dark": "report-shots/portfolio_model_portfolio_concentration_a93b0b__desktop-dark.png",
+     "phone-light": "report-shots/portfolio_model_portfolio_concentration_a93b0b__phone-light.png",
+     "phone-dark": "report-shots/portfolio_model_portfolio_concentration_a93b0b__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 708,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Hanken Grotesk"
+   },
+   "portfolio_model/portfolio_dashboard": {
+    "shots": {
+     "desktop-light": "report-shots/portfolio_model_portfolio_dashboard_a12461__desktop-light.png",
+     "desktop-dark": "report-shots/portfolio_model_portfolio_dashboard_a12461__desktop-dark.png",
+     "phone-light": "report-shots/portfolio_model_portfolio_dashboard_a12461__phone-light.png",
+     "phone-dark": "report-shots/portfolio_model_portfolio_dashboard_a12461__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 682,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Hanken Grotesk"
+   },
+   "portfolio_model/portfolio_desk": {
+    "shots": {
+     "desktop-light": "report-shots/portfolio_model_portfolio_desk_6cadf0__desktop-light.png",
+     "desktop-dark": "report-shots/portfolio_model_portfolio_desk_6cadf0__desktop-dark.png",
+     "phone-light": "report-shots/portfolio_model_portfolio_desk_6cadf0__phone-light.png",
+     "phone-dark": "report-shots/portfolio_model_portfolio_desk_6cadf0__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 306,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Hanken Grotesk"
+   },
+   "portfolio_model/portfolio_overview": {
+    "shots": {
+     "desktop-light": "report-shots/portfolio_model_portfolio_overview_3930b0__desktop-light.png",
+     "desktop-dark": "report-shots/portfolio_model_portfolio_overview_3930b0__desktop-dark.png",
+     "phone-light": "report-shots/portfolio_model_portfolio_overview_3930b0__phone-light.png",
+     "phone-dark": "report-shots/portfolio_model_portfolio_overview_3930b0__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 270,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Hanken Grotesk"
+   },
+   "portfolio_model/portfolio_showcase": {
+    "shots": {
+     "desktop-light": "report-shots/portfolio_model_portfolio_showcase_1de249__desktop-light.png",
+     "desktop-dark": "report-shots/portfolio_model_portfolio_showcase_1de249__desktop-dark.png",
+     "phone-light": "report-shots/portfolio_model_portfolio_showcase_1de249__phone-light.png",
+     "phone-dark": "report-shots/portfolio_model_portfolio_showcase_1de249__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 860,
+     "Fraunces": 20,
+     "ui-monospace": 8
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#0d6b73/#5cc4bd",
+    "display": "Fraunces"
+   },
+   "saas_model/cohort_brief": {
+    "shots": {
+     "desktop-light": "report-shots/saas_model_cohort_brief_bcb608__desktop-light.png",
+     "desktop-dark": "report-shots/saas_model_cohort_brief_bcb608__desktop-dark.png",
+     "phone-light": "report-shots/saas_model_cohort_brief_bcb608__phone-light.png",
+     "phone-dark": "report-shots/saas_model_cohort_brief_bcb608__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 364,
+     "Iowan Old Style": 80,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Iowan Old Style"
+   },
+   "saas_model/mrr_dashboard": {
+    "shots": {
+     "desktop-light": "report-shots/saas_model_mrr_dashboard_0048a3__desktop-light.png",
+     "desktop-dark": "report-shots/saas_model_mrr_dashboard_0048a3__desktop-dark.png",
+     "phone-light": "report-shots/saas_model_mrr_dashboard_0048a3__phone-light.png",
+     "phone-dark": "report-shots/saas_model_mrr_dashboard_0048a3__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 280,
+     "ui-monospace": 4
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "display": "Hanken Grotesk"
+   }
+  }
+ },
+ "score": 33
+}

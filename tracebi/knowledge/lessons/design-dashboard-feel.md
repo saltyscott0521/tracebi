@@ -16,13 +16,14 @@ comfortable or compact. Offer the look of their last report first and skip what
 they already said. With nobody in the loop, use the defaults. Each answer is one
 attribute (`presentation.layout.look` in `tracebi context`):
 
-- `data-tb-mode="dark"` or `"auto"` on `<html>` (auto follows the reader's
-  system), `data-tb-density="compact"`, `data-tb-width="full"`;
+- `data-tb-mode="dark"` or `"light"` on `<html>` (unset is `"auto"`, which
+  follows the reader's system), `data-tb-density="compact"`, `data-tb-width="full"`;
 - `<div class="tb-tabs" data-tb-nav="side">` for a sidebar, with the whole page
   inside it so the column runs top to bottom;
-- `<header class="tb-title" data-tb-title="…">` with the `<h1>`, a
-  `.tb-subtitle` and `<span data-tb-built></span>`. The build time comes from
-  the receipt; never type a date.
+- `<header class="tb-masthead" data-tb-title="…" data-tb-period="…">` with
+  the `<h1>` and a `.tb-standfirst`; the runtime adds the meta line (the
+  period, the build time from the receipt and the verdict chip). Never type a
+  date.
 
 `tracebi new-dashboard "<Name>" --mode … --density … --nav … --title-at …` writes
 it.
@@ -34,14 +35,15 @@ it.
   answer sentence ([[design-lead-with-the-answer]]) sits under it, short.
 - **One strip with an anchor, not a row of equal boxes.** A `.tb-grid` of
   `.tb-kpi` cells is one panel with hairlines between them. Mark the number the
-  page is about `.tb-kpi--lead` (twice as wide, larger). A row of three
+  page is about `.tb-kpi--lead` (larger, not wider). A row of three
   identical cards is the most recognisable sign of a generated dashboard.
 - **Trends under their numbers.** A KPI that changes over time gets a
   `class="tb-spark"` line or area chart bound to the by-period query: the
   shape alone, no axes. It stays zero-based; never crop it to make a flat line
   look steep.
 - **Panels side by side, not cards down a page.** A wide panel beside a narrow
-  one (`.tb-cols-2-1`: the trend beside its ranking) reads as a dashboard; two
+  one (a `.tb-grid` whose panels are `.tb-span-8` and `.tb-span-4`: the trend
+  beside its ranking) reads as a dashboard; two
   equal halves read as a document. One figure per `.tb-card`, the most
   important top-left ([[design-layout-by-importance]]). Give a panel a
   one-line `.tb-note` subtitle under its `<h2>`. The first screen holds the

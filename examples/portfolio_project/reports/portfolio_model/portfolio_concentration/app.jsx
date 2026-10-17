@@ -1,23 +1,18 @@
 // Portfolio Concentration: how concentrated the book is by issuer, an app.
 // Rank, share and cumulative share are governed window measures declared in
 // the model; every number is a kit figure, so the receipt names it.
-import { Kpi, Value, Chart, Table, Download, Built } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Download } from "tracebi";
 
 export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-5 px-6 py-8">
-        <header className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              The five largest issuers hold{" "}
-              <Value binding="fifth" cell="fv_cum_share" id="head-top5" /> of the book
-            </h1>
-            <p className="text-sm text-muted">Issuer concentration across the three funds. Rank,
-              share and cumulative share are window measures declared in the model.</p>
-          </div>
-          <Built className="text-xs text-muted" />
-        </header>
+      <main className="tb-page space-y-8 px-6 py-8">
+        <Masthead kicker="Direct lending · Concentration"
+          title={<>The five largest issuers hold{" "}
+            <Value binding="fifth" cell="fv_cum_share" id="head-top5" /> of the book</>}>
+          Issuer concentration across the three funds. Rank, share and cumulative share are
+          window measures declared in the model.
+        </Masthead>
 
         <div className="tb-grid">
           <Kpi lead binding="fifth" cell="fv_cum_share" label="Top five issuers, share of book"
@@ -32,14 +27,14 @@ export default function App() {
           </Kpi>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section className="tb-card">
+        <div className="tb-grid">
+          <section className="tb-card tb-span-6">
             <h2>Share of the book, by issuer</h2>
             <p className="tb-note">Each issuer's fair value over the total.</p>
             <Chart binding="concentration" type="barh" x="dim_issuer.issuer" y="fv_share"
                    valueFormat="percent" height={420} id="fig-share_chart" />
           </section>
-          <section className="tb-card">
+          <section className="tb-card tb-span-6">
             <h2>Cumulative share, largest issuer first</h2>
             <p className="tb-note">The steeper the start, the more concentrated the book.</p>
             <Chart binding="concentration" type="area" x="fv_rank" y="fv_cum_share"
@@ -60,6 +55,7 @@ export default function App() {
                            fv_cum_share: "Cumulative share" }}
                  formats={{ fair_value: "currency0", fv_share: "percent", fv_cum_share: "percent" }} />
         </section>
+        <Footer />
       </main>
     </div>
   );

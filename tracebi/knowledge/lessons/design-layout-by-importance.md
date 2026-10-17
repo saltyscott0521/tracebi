@@ -21,7 +21,7 @@ own answer.
   the figures they filter, not in a global bar far away.
 - **Put things that should be compared next to each other.** A chart and the
   breakdown it summarises, or this period beside last, go in the same row
-  (`.tb-cols-2`) so the eye can move between them. Things that would be
+  (`.tb-span-6` panels in one `.tb-grid`) so the eye can move between them. Things that would be
   compared but sit a scroll apart won't be compared.
 - **The overview fits one screen.** The point of a report page is seeing it
   together. If the headline section doesn't fit a laptop screen, cut or move

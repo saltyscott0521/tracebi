@@ -52,16 +52,30 @@ export function Value({ binding, cell, format, id, className, ...rest }) {
   );
 }
 
-export function Kpi({ binding, cell, format, label, context, lead, id, className, children, ...rest }) {
+/** A KPI card. `deltaBinding` / `deltaCell` name a stamped change (a measure
+ * the model computes, e.g. fair value less cost), shown first on the context
+ * line with its arrow, sign and colour; `deltaGood="up|down"` says which way
+ * is good. No comparison measure, no delta: the kit never computes one. A
+ * <Spark> child sits on the card's bottom edge. */
+export function Kpi({ binding, cell, format, label, context, lead, id, className, children,
+                      deltaBinding, deltaCell, deltaFormat, deltaGood, ...rest }) {
   useHydrate();
   const cls = ["tb-kpi", lead ? "tb-kpi--lead" : "", className || ""].filter(Boolean).join(" ");
+  const delta = deltaBinding != null && (
+    <span className="tb-kpi-delta" id={figureId("delta", deltaBinding, deltaCell)}
+      data-tb-figure="value" data-tb-binding={deltaBinding} data-tb-cell={deltaCell}
+      data-tb-format={deltaFormat}
+      data-tb-direction={deltaGood ? `${deltaGood}-good` : undefined} />
+  );
   return (
     <div {...rest} className={cls} id={id || figureId("value", binding, cell)}
       data-tb-figure="value" data-tb-binding={binding} data-tb-cell={cell}
       data-tb-format={format}>
       {label != null && <span className="tb-kpi-label">{label}</span>}
       <span className="tb-kpi-value" />
-      {context != null && <span className="tb-kpi-context">{context}</span>}
+      {(context != null || delta) && (
+        <span className="tb-kpi-context">{delta}{delta && context != null ? " " : null}{context}</span>
+      )}
       {children}
     </div>
   );
@@ -145,6 +159,45 @@ export function Download({ binding, label }) {
 export function Built({ className }) {
   useHydrate();
   return <span className={className} data-tb-built="" />;
+}
+
+/** The masthead that opens the page: an optional mark, a kicker, the title
+ * (a string, or text with <Value> figures in it), the standfirst (children),
+ * and a meta line with the period the numbers cover, when the file was built
+ * and the verdict chip, both filled by the runtime from the file itself.
+ * `period` is presentation ("Q3 2026"); the title's own numbers are figures.
+ * Other props (data-tb-title="center|banner|nav") go on the <header>. */
+export function Masthead({ title, kicker, period, mark, className, children, ...rest }) {
+  useHydrate();
+  return (
+    <header {...rest} className={["tb-masthead", className || ""].join(" ").trim()}>
+      <div className="tb-masthead-mark">{mark}</div>
+      {kicker != null && <p className="tb-kicker">{kicker}</p>}
+      <h1>{title}</h1>
+      {children != null && <div className="tb-standfirst">{children}</div>}
+      <div className="tb-masthead-meta">
+        {period != null && <span className="tb-masthead-period">{period}</span>}
+        <span data-tb-built="" />
+        <span className="tb-verdict" />
+      </div>
+    </header>
+  );
+}
+
+/** Where the page's footer goes: the build writes it (the one line on how
+ * these numbers were made, and its disclosure) after the app; <Footer />
+ * moves it here, so it ends this column (a sidebar layout's main). */
+export function Footer({ className }) {
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const foot = document.getElementById("tb-footer");
+    const slot = ref.current;
+    if (!foot || !slot) return undefined;
+    const home = foot.parentNode;
+    slot.appendChild(foot);
+    return () => { if (home) home.appendChild(foot); };
+  }, []);
+  return <div ref={ref} className={className} data-tb-footer-slot="" />;
 }
 
 

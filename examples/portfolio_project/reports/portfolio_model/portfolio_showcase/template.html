@@ -12,12 +12,13 @@
                              draws every chart and the treemap.
   report.py                  The escape hatch: python-derived data, which the
                              receipt marks as not query-reproducible.
-  style.css                  The custom theme: fonts, one gradient hero,
-                             pill tabs, token overrides.
+  style.css                  A theme preset: the accent pair for each
+                             ground and one display face. Everything
+                             else is the design system's own.
   script.js                  The d3 treemap, drawn through
                              tracebi.draw.
-  assets/                    Fonts (Inter, Fraunces; SIL Open Font License)
-                             and hero artwork, inlined at build.
+  assets/                    The display face (Fraunces; SIL Open Font
+                             License), inlined at build.
 
   At build, TraceBi adds its design system (tracebi.css), its runtime
   (tracebi.js) and the charting library, each marked with a comment, plus
@@ -27,35 +28,41 @@
 <body>
 <main class="tb-page">
 
-  <header class="sc-hero">
-    <span class="sc-eyebrow">Direct lending · Portfolio showcase</span>
+  <!-- The masthead opens the page: a kicker, the <h1> that states the
+       finding, the standfirst. data-tb-period names what the numbers cover;
+       the runtime adds the meta line: the period, when this file was built,
+       the verdict chip and the Receipt button. -->
+  <header class="tb-masthead" data-tb-period="Latest administrator marks">
+    <p class="tb-kicker">Direct lending · Portfolio showcase</p>
     <!-- The title states the finding, and its numbers are live figures.
          top_sector is a one-row query (largest first, limit 1); the share is
          computed over the whole book before the limit applies. -->
     <h1><span data-tb-figure="value" data-tb-binding="top_sector"
               data-tb-cell="dim_issuer.sector" id="val-top-sector"></span>
-      is the largest sector, <em><span data-tb-figure="value"
+      is the largest sector, <span data-tb-figure="value"
               data-tb-binding="top_sector" data-tb-cell="fv_share"
               data-tb-format="percent" id="val-top-share"></span>
-      of the book.</em></h1>
-    <p class="sc-lede">Three funds, cleaned from a Schedule of Investments and
+      of the book.</h1>
+    <p class="tb-standfirst">Three funds, cleaned from a Schedule of Investments and
       modelled as a star schema, holding
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="fair_value" data-tb-format="compact"
             id="val-fv-inline"></span> at fair value. Every number on this
-      page is a live query with a fingerprint; open the
-      <strong>Receipt</strong> drawer to see them.</p>
+      page is a live query with a fingerprint; open the receipt to see them.</p>
   </header>
 
-  <div class="tb-grid sc-kpis">
-    <!-- Each KPI carries its context. The book has one as-of date, so the
-         comparison is against cost, not a prior period: a governed measure
-         (unrealized = fair value - cost), never a number typed in. -->
-    <div class="tb-kpi">
+  <div class="tb-grid">
+    <!-- One KPI strip: the lead is the number the page is about (larger,
+         not wider). The book has one as-of date, so the comparison is
+         against cost, not a prior period: a governed measure (unrealized =
+         fair value - cost), never a number typed in. The delta
+         (.tb-kpi-delta) leads the context line; data-tb-direction gives it
+         its arrow, sign and colour from the stamped value. -->
+    <div class="tb-kpi tb-kpi--lead">
       <span class="tb-kpi-label">Fair value</span>
       <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv"></span>
-      <span class="tb-kpi-context"><span data-tb-figure="value"
+      <span class="tb-kpi-context"><span class="tb-kpi-delta" data-tb-figure="value"
             data-tb-binding="gain" data-tb-cell="unrealized"
             data-tb-format="compact" data-tb-direction="up-good"
             id="kpi-gain"></span> vs cost</span>
@@ -80,8 +87,10 @@
 
   <div class="tb-tabs">
     <section data-tb-tab="Overview">
-      <div class="tb-cols-2">
-        <div class="tb-card">
+      <!-- The 12-column grid: each panel names its span (4, 6, 8 or 12
+           columns); every span is the full row on a phone. -->
+      <div class="tb-grid">
+        <div class="tb-card tb-span-8">
           <h2>Fair value by sector</h2>
           <div data-tb-figure="chart" data-tb-binding="by_sector"
                data-tb-type="bar" data-tb-x="dim_issuer.sector"
@@ -93,13 +102,13 @@
              below: the framework emits the data-tb-* element, this card
              keeps the layout. (Jinja parses inside HTML comments too, so
              never write a figure call in one.) -->
-        <div class="tb-card">
+        <div class="tb-card tb-span-4">
           <h2>Fair value by fund</h2>
           {{ figure("chart_fund") }}
         </div>
       </div>
-      <div class="tb-cols-2 sc-split">
-        <div class="tb-card">
+      <div class="tb-grid">
+        <div class="tb-card tb-span-8">
           <h2>Top issuers <button data-tb-download
               data-tb-binding="top_issuers">CSV</button></h2>
           <table data-tb-figure="table" data-tb-binding="top_issuers"
@@ -108,7 +117,7 @@
                  data-tb-bars="fair_value"
                  id="tbl-top"></table>
         </div>
-        <div class="tb-card">
+        <div class="tb-card tb-span-4">
           <h2>Cumulative share, largest sector first (python-derived)</h2>
           <div data-tb-figure="chart" data-tb-binding="concentration"
                data-tb-type="line" data-tb-x="dim_issuer.sector"
@@ -126,6 +135,30 @@
              data-tb-facet="dim_fund.fund" data-tb-mark="max"
              data-tb-y-title="Fair value" data-tb-value-format="compact"
              id="chart-fund-sector"></div>
+      </div>
+
+      <!-- The other chart types, one each, in the house style: bars carry
+           their own values, an area ends in its last value, a scatter names
+           each point by its row's text column. -->
+      <div class="tb-grid">
+        <div class="tb-card tb-span-6">
+          <h2>Top issuers by fair value</h2>
+          <div data-tb-figure="chart" data-tb-binding="top_issuers" data-tb-type="barh"
+               data-tb-x="dim_issuer.issuer" data-tb-y="fair_value"
+               data-tb-value-format="currency_compact" id="chart-top-issuers"></div>
+        </div>
+        <div class="tb-card tb-span-6">
+          <h2>Cumulative share, issuers by rank</h2>
+          <div data-tb-figure="chart" data-tb-binding="issuer_curve" data-tb-type="area"
+               data-tb-x="fv_rank" data-tb-y="fv_cum_share" data-tb-value-format="percent"
+               data-tb-x-title="Issuers, by rank" id="chart-issuer-curve"></div>
+        </div>
+      </div>
+      <div class="tb-card">
+        <h2>Size against mark, top issuers</h2>
+        <div data-tb-figure="chart" data-tb-binding="top_issuers" data-tb-type="scatter"
+             data-tb-x="fair_value" data-tb-y="mark" data-tb-x-title="Fair value"
+             data-tb-y-title="Mark (fair value / cost)" id="chart-size-mark"></div>
       </div>
     </section>
 
@@ -176,25 +209,19 @@
       </form>
     </section>
 
-    <section data-tb-tab="Methodology">
-      <section data-tb-methodology>
-        <h2>Methodology</h2>
-        <p class="tb-note">Author's note: marks are administrator-reported;
-          no independent valuation was performed.</p>
-      </section>
-    </section>
   </div>
 
-  <footer class="sc-footer">
-    <h2>About this file</h2>
-    One self-contained HTML file that works offline. Inside it:
-    <ul>
-      <li>the data behind every figure, fingerprinted, with its receipt;</li>
-      <li>TraceBi's design system and runtime (MIT);</li>
-      <li>D3 for the charts and the treemap (ISC License);</li>
-      <li>the Inter and Fraunces typefaces (SIL Open Font License).</li>
-    </ul>
-    Check it with <code>tracebi verify --file</code>.
+  <!-- The footer ends the page: the author's sources and notes first; the
+       build adds one line on who built it and from which model, then "How
+       these numbers were made" (the stated methodology) behind a disclosure. -->
+  <footer class="tb-footer" data-tb-methodology>
+    <p>Source: each fund's Schedule of Investments. Marks are
+      administrator-reported; no independent valuation was performed.</p>
+    <p>One self-contained HTML file that works offline: the data behind every
+      figure, fingerprinted, with its receipt; TraceBi's design system and
+      runtime (MIT); D3 for the charts and the treemap (ISC License); the
+      Fraunces typeface (SIL Open Font License). Check it with
+      <code>tracebi verify --file</code>.</p>
   </footer>
 
   <section data-tb-stage="exploration">

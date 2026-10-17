@@ -707,6 +707,51 @@ process.stdout.write(JSON.stringify({
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestMastheadVerdict:
+    """The masthead's verdict chip is read from the file, never from its
+    markup: a built file that nothing has re-run says "Not checked", a
+    working preview says "Draft", and neither is ever green."""
+
+    _SCRIPT = """
+var stage = el('meta', { name: 'tracebi-stage', content: %s });
+var head = el('header', { 'class': 'tb-masthead', 'data-tb-period': 'Q3 2026' });
+el('h1', {}, head);
+/* An author who writes a green chip by hand does not get one. */
+var forged = el('span', { 'class': 'tb-verdict', 'data-tb-verdict': 'reproduces' });
+var bare = el('header', { 'class': 'tb-masthead' });
+if (%s) {
+  var rc = el('script', { id: 'tracebi-receipt', type: 'application/json' });
+  rc.textContent = JSON.stringify({ rendered_at: '2026-10-12T18:33:00Z', figures: [] });
+}
+loadRuntime();
+var meta = head.querySelector('.tb-masthead-meta');
+var chip = bare.querySelector('.tb-verdict');
+process.stdout.write(JSON.stringify({
+  period: head.querySelector('.tb-masthead-period').textContent,
+  built: meta.querySelector('[data-tb-built]').textContent,
+  state: chip.getAttribute('data-tb-verdict'),
+  text: chip.textContent,
+  tip: chip.title,
+  forged: forged.getAttribute('data-tb-verdict') + '|' + forged.textContent
+}));
+"""
+
+    def test_a_built_file_is_not_checked(self):
+        out = _run_dom(self._SCRIPT % ('"final"', "true"))
+        # Every masthead gets the meta line: the period, the build time.
+        assert out["period"] == "Q3 2026"
+        assert out["built"].startswith("Built ")
+        assert out["state"] == "not-checked" and out["text"] == "Not checked"
+        assert "tracebi verify" in out["tip"]
+        assert out["forged"] == "not-checked|Not checked"
+
+    def test_a_preview_is_a_draft_never_green(self):
+        out = _run_dom(self._SCRIPT % ('"exploration"', "false"))
+        assert out["state"] == "draft" and out["text"] == "Draft"
+        assert out["forged"] == "draft|Draft"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestReceiptDrawer:
     """The drawer renders ONLY what #tracebi-receipt records — display,
     never re-judged, in the locked language."""
@@ -739,13 +784,16 @@ var out = {
   closed_on_load: !hasClass(drawer, 'tb-receipt-open'),
   head_text: drawer.querySelector('.tb-receipt-head').textContent,
   a_text: allText(rows[0]),
+  a_name: rows[0].querySelector('.tb-receipt-name').textContent,
+  a_kind: rows[0].querySelector('.tb-receipt-kind').textContent,
   a_fp_text: rows[0].querySelector('.tb-receipt-fp').textContent,
   a_fp_title: rows[0].querySelector('.tb-receipt-fp').title,
   b_badge_class: rows[1].querySelector('.tb-badge')
     ? rows[1].querySelector('.tb-badge').className : null,
   b_badge_text: rows[1].querySelector('.tb-badge')
     ? rows[1].querySelector('.tb-badge').textContent : null,
-  drawer_text: allText(drawer)
+  drawer_text: allText(drawer),
+  chip: drawer.querySelector('.tb-verdict').getAttribute('data-tb-verdict')
 };
 btn._fire('click');
 out.open_after_click = hasClass(drawer, 'tb-receipt-open');
@@ -759,12 +807,12 @@ process.stdout.write(JSON.stringify(out));
         assert out["btn_text"] == "Receipt"
         assert out["closed_on_load"] is True
         assert out["head_text"] == "portfolio_book"
-        # First line names the binding. The id, kind and full fingerprint
-        # sit in the details disclosure.
-        assert "Holdings · table" in out["a_text"]
+        # First line names the binding and the kind. The id, kind and full
+        # fingerprint sit in the Raw disclosure.
+        assert out["a_name"] == "Holdings" and out["a_kind"] == "table"
         for piece in ("fig-a", "table", "holdings"):
             assert piece in out["a_text"]
-        assert "Details" in out["a_text"]
+        assert "Raw" in out["a_text"]
         assert out["a_fp_text"] == "f" * 64
         assert out["a_fp_title"] == "f" * 64
         # The unverified row carries the existing badge tone, untouched.
@@ -781,6 +829,10 @@ process.stdout.write(JSON.stringify(out));
         assert "the transform was verified" not in text
         assert "semantic contract: portfolio_model" in text
         assert "stated methodology aboard" in text
+        # The certificate's header says what it does not claim, verbatim,
+        # and its chip is never green on the file's own say-so.
+        assert "The receipt does not claim the numbers are right." in text
+        assert out["chip"] in ("draft", "not-checked")
         # The button toggles the drawer open and closed again.
         assert out["open_after_click"] is True
         assert out["closed_after_second"] is True
@@ -788,10 +840,12 @@ process.stdout.write(JSON.stringify(out));
 
     def test_value_row_reads_the_rendered_figure(self):
         out = _run_dom(_VALUE_ROW_SCRIPT)
-        assert out["title"] == "Fair value · $285.9M"
-        assert out["from"] == "Fair value, by Sector, Sector is Software"
-        assert out["table_title"] == "Fair value by sector · table, 6 rows"
-        assert out["table_from"] == "Fair value, by Sector"
+        assert (out["name"], out["value"]) == ("Fair value", "$285.9M")
+        assert out["from"] == ("fair_value by dim_issuer.sector"
+                               " · where dim_issuer.sector = Software")
+        assert (out["table_name"], out["table_kind"]) == (
+            "Fair value by sector", "table, 6 rows")
+        assert out["table_from"] == "fair_value by dim_issuer.sector"
         assert out["fp_text"] == "a" * 64
         assert out["fp_in_details"] is True
         assert "kpi-fv" in out["details_text"]
@@ -844,10 +898,13 @@ for (i = 0; i < rows.length; i++) {
 }
 var details = valueRow.querySelector('.tb-receipt-details');
 var out = {
-  title: valueRow.querySelector('.tb-receipt-title').textContent,
-  from: valueRow.querySelector('.tb-receipt-from').textContent,
-  table_title: tableRow.querySelector('.tb-receipt-title').textContent,
-  table_from: tableRow.querySelector('.tb-receipt-from').textContent,
+  title: allText(valueRow.querySelector('.tb-receipt-title')),
+  name: valueRow.querySelector('.tb-receipt-name').textContent,
+  value: valueRow.querySelector('.tb-receipt-value').textContent,
+  from: valueRow.querySelector('.tb-receipt-query').textContent,
+  table_name: tableRow.querySelector('.tb-receipt-name').textContent,
+  table_kind: tableRow.querySelector('.tb-receipt-kind').textContent,
+  table_from: tableRow.querySelector('.tb-receipt-query').textContent,
   fp_text: details.querySelector('.tb-receipt-fp').textContent,
   fp_in_details: details.querySelector('.tb-receipt-fp') !== null,
   details_text: allText(details),
@@ -864,7 +921,7 @@ def _assert_rows_avoid_honesty_words(text: str) -> None:
 
 
 def assert_built_receipt_rows(html: str) -> None:
-    """A built page's value row reads ``<Label> · <formatted value>``.
+    """A built page's value row reads ``<Label>`` and ``<formatted value>``.
 
     The formatted value is the one the build already wrote into the figure.
     The fingerprint stays in the details disclosure.
@@ -895,18 +952,28 @@ def assert_built_receipt_rows(html: str) -> None:
         "var rc = el('script', { id: 'tracebi-receipt',"
         " type: 'application/json' });\n"
         "rc.textContent = " + json.dumps(json.dumps(
-            {"report": receipt.get("report"), "figures": [fig]})) + ";\n"
+            {"report": receipt.get("report"), "figures": [fig],
+             "bindings": receipt.get("bindings", {})})) + ";\n"
         "loadRuntime();\n"
         "var row = BODY.querySelector('.tb-receipt-row');\n"
         "var details = row.querySelector('.tb-receipt-details');\n"
         "process.stdout.write(JSON.stringify({\n"
-        "  title: row.querySelector('.tb-receipt-title').textContent,\n"
+        "  title: allText(row.querySelector('.tb-receipt-title')),\n"
+        "  name: row.querySelector('.tb-receipt-name').textContent,\n"
+        "  value: row.querySelector('.tb-receipt-value').textContent,\n"
         "  fp: details.querySelector('.tb-receipt-fp').textContent,\n"
         "  details_text: allText(details),\n"
+        "  query: row.querySelector('.tb-receipt-query').textContent,\n"
         "  row_text: allText(row)\n"
         "}));\n"
     )
-    assert out["title"] == f"{label} · {shown}"
+    assert (out["name"], out["value"]) == (label, shown)
+    # The query in one line names the measure, and of the ordering only the
+    # keys the author wrote: the engine's tie-break stays in the raw query.
+    rec = receipt["bindings"][fig["binding"]]
+    assert cell.group(1) in out["query"]
+    order = out["query"].partition(" · order ")[2].split(" · ")[0]
+    assert len([k for k in order.split(", ") if k]) == rec.get("order_stated", 0)
     assert out["fp"] == fig["fingerprint"]
     assert fig["id"] in out["details_text"]
     assert fig["binding"] in out["details_text"]
@@ -1325,6 +1392,68 @@ process.stdout.write(JSON.stringify({
         assert out["name"] is None             # text columns never get a bar
         assert out["text"] == "-25"            # the number itself is untouched
 
+    def test_server_rendered_bars_match_the_runtime(self):
+        """The no-JS table draws the same bar lane as the runtime: the same
+        cells carry it (header, rows, total) and each bar has the same left and
+        width, so hydrating over the server's rows moves nothing."""
+        import types
+        from html.parser import HTMLParser
+
+        import pandas as pd
+
+        from tracebi.reports.template_package import TemplatePackage
+        out = _run_dom("""
+dataBlock('b', 'name,pos,gain\\nA,50,-25\\nB,100,50\\nC,7.5,\\n');
+dataBlock('t', 'pos,gain\\n157.5,25\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b',
+                        'data-tb-bars': 'pos, gain, name', 'data-tb-totals': 't' });
+loadRuntime();
+function cell(c) {
+  var b = c.querySelector('.tb-bar');
+  return [c.className, c.textContent, b ? [b.className, b.style.left, b.style.width] : null];
+}
+var rows = [tbl.querySelector('thead tr')].concat(tbl.querySelector('tbody').children,
+                                                  [tbl.querySelector('tfoot tr')]);
+process.stdout.write(JSON.stringify(rows.map(function (r) {
+  return r.children.map(cell); })));
+""")
+
+        class Cells(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.rows, self.cell = [], None
+
+            def handle_starttag(self, tag, attrs):
+                a = dict(attrs)
+                if tag == "tr":
+                    self.rows.append([])
+                elif tag in ("th", "td"):
+                    self.cell = [a.get("class") or "", "", None]
+                    self.rows[-1].append(self.cell)
+                elif tag == "span" and "tb-bar" in (a.get("class") or "").split():
+                    style = dict(p.split(":") for p in a["style"].split(";"))
+                    self.cell[2] = [a["class"], style["left"], style["width"]]
+
+            def handle_data(self, data):
+                if self.cell is not None:
+                    self.cell[1] += data
+
+        frame = pd.DataFrame({"name": ["A", "B", "C"], "pos": [50, 100, 7.5],
+                              "gain": [-25, 50, None]})
+        totals = pd.DataFrame({"pos": [157.5], "gain": [25]})
+        fig = types.SimpleNamespace(attrs={"data-tb-bars": "pos, gain, name"})
+        markup = TemplatePackage._ssr_table(
+            types.SimpleNamespace(to_pandas=lambda: frame), fig,
+            totals_ds=types.SimpleNamespace(to_pandas=lambda: totals))
+        parser = Cells()
+        parser.feed(markup)
+        ssr = [[[set(c[0].split()), c[1], c[2]] for c in r] for r in parser.rows]
+        js = [[[set(c[0].split()), c[1], c[2]] for c in r] for r in out]
+        assert ssr == js
+        assert js[1][1][2] == ["tb-bar", "0%", "50%"]
+        assert js[1][2][2] == ["tb-bar tb-bar--neg", "25%", "25%"]
+        assert "tb-bar-cell" in js[0][1][0] and "tb-bar-cell" in js[4][1][0]
+
     def test_direction_marks_sign_and_meaning_without_changing_text(self):
         out = _run_dom("""
 dataBlock('k', 'gain,cost_change,flat\\n-6.3,-2,0\\n');
@@ -1341,6 +1470,33 @@ process.stdout.write(JSON.stringify([[a.className, a.textContent],
         assert out == [["tb-down tb-bad", "-6.30"],
                        ["tb-down tb-good", "-2"],
                        ["tb-flat", "0"]]
+
+    def test_server_rendered_direction_matches_the_runtime(self):
+        """A KPI's delta reads the same with and without JavaScript: the build's
+        no-JS classes (_ssr_direction) are the ones markDirection sets."""
+        import types
+
+        import pandas as pd
+
+        from tracebi.reports.template_package import _ssr_direction
+        cases = [("a", "12.5", "up-good"), ("b", "-3", "up-good"), ("c", "4", "down-good"),
+                 ("d", "-0.5", "down-good"), ("e", "0", "down-good"), ("f", "n/a", "up-good")]
+        out = _run_dom("""
+dataBlock('k', '%s\\n%s\\n');
+var els = %s.map(function (c) {
+  return el('span', { 'data-tb-figure': 'value', 'data-tb-binding': 'k',
+                      'data-tb-cell': c[0], 'data-tb-direction': c[1] });
+});
+loadRuntime();
+process.stdout.write(JSON.stringify(els.map(function (e) { return e.className; })));
+""" % (",".join(c for c, _, _ in cases), ",".join(v for _, v, _ in cases),
+       json.dumps([[c, d] for c, _, d in cases])))
+        frame = pd.DataFrame({c: [float(v) if v != "n/a" else v] for c, v, _ in cases})
+        ds = types.SimpleNamespace(to_pandas=lambda: frame)
+        ssr = [_ssr_direction(ds, types.SimpleNamespace(
+            cell=c, attrs={"data-tb-direction": d})) for c, _, d in cases]
+        assert ssr == out == ["tb-up tb-good", "tb-down tb-bad", "tb-up tb-bad",
+                              "tb-down tb-good", "tb-flat", ""]
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")

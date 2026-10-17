@@ -50,7 +50,9 @@ an app follows the page's mode and the project's `reports/_theme.css`:
 `bg-page`, `bg-card`, `bg-surface`, `text-ink`, `text-muted`, `border-rule`,
 `bg-accent`, `text-accent-text`, `text-on-accent` (text on an accent fill), `text-good`, `text-bad`, `chart-1` … `chart-8`,
 `font-sans` / `font-mono`, `rounded-panel`. The `tb-*` classes
-([[styling-a-report]]) work too.
+([[styling-a-report]]) work too. A `style.css` beside `app.jsx` is a theme
+preset as for a template (the accent pair for each ground, a display face);
+its `:root` tokens give way to the dark ground as a template's do.
 
 ## The `tracebi` module
 
@@ -65,7 +67,7 @@ filterable, exactly as in a template.
 
 | Component | Props |
 |---|---|
-| `<Kpi>` | `binding`, `cell`, `format`, `label`, `context`, `lead` (twice as wide), `id`; children (a `<Spark>`) go under the number |
+| `<Kpi>` | `binding`, `cell`, `format`, `label`, `context`, `lead` (a step larger), `id`; `deltaBinding`, `deltaCell`, `deltaFormat`, `deltaGood` (`"up"` or `"down"`: which way is good) show a stamped change first on the context line, with its arrow, sign and colour; children (a `<Spark>`) sit on the card's bottom edge |
 | `<Value>` | `binding`, `cell`, `format`, `id` — a number inside a sentence |
 | `<Chart>` | `binding`, `type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`), `x`, `y` (a string or a list), `color`, `valueFormat`, `stack`, `mark`, `annotate`, `facet`, `unit`, `xTitle`, `yTitle`, `palette`, `height`, `id` |
 | `<Spark>` | as `<Chart>` (default `type="area"`): the trend's shape alone, under a KPI |
@@ -87,7 +89,10 @@ filterable, exactly as in a template.
 | `<Segmented options value onChange label>` | One choice of a few — a view, a period. Use it to pick *which* figure shows: one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its receipt. |
 | `useUrlState(key, initial)` | `useState` kept in the URL (`#view=Detail&period=YTD`): a reload or a shared link opens where the reader was. |
 | `usePrinting()` | `true` while the page prints (the browser's Ctrl+P, and `tracebi report build --format pdf`). An app with views renders every one then, so the PDF holds the whole report: `{printing ? <><Overview /><Detail /></> : <View />}`. Give navigation `print:hidden`. |
-| `<Built>` | When the file was built, from its receipt. |
+| `<Masthead title kicker period mark>` | Opens the page: an optional `mark` (a node; or leave it empty and size `.tb-masthead-mark` in `style.css`), a `kicker`, the `title` (a string, or text with `<Value>`s in it: `title={<>Marked at <Value binding="kpis" cell="mark" /> of cost</>}`), the standfirst as its children, and a meta line with the `period` (presentation, `"Q3 2026"`), the build time and the verdict chip, which the runtime fills from the file itself (`not-checked` on a built file, `draft` on a preview; never green on its own say-so). Other props go on the `<header>`: `data-tb-title="center|banner|nav"`. A literal `title` is checked for typed numbers like the app's text; `kicker` and `period` are labels. |
+| `<Footer />` | Where the build's footer goes: one line on who built the file, from which model, and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's `<main>`); without it the footer follows the app. |
+| `<Built>` | When the file was built, from its receipt (`<Masthead>` already shows it). |
+| `tb-page`, `tb-grid` + `tb-span-4/6/8/12` | The page measure (`<main className="tb-page space-y-8 px-6 py-8">`, 1,200px) and the 12-column grid (`<div className="tb-grid"><section className="tb-card tb-span-8">…`). |
 
 **Data for your own components.** `useBinding("name")` returns the binding's
 stamped rows (copies), and `fmt(value, "currency0")` formats a number with the
@@ -97,7 +102,11 @@ named formats ([[number-formats]]).
 
 The build reads every kit figure's props from `app.jsx` without running it,
 records each one as a claim in the manifest, and refuses a binding or a column
-that does not exist. So `binding`, `cell`, `x` and `y` must be literal strings:
+that does not exist. A `<Kpi>`'s delta is a claim of its own
+(`fig-delta-<binding>-<cell>`); it reads a measure the model computes, such as
+fair value less cost, and the kit never computes one: no comparison measure,
+no delta. So `binding`, `cell`, `x` and `y` (and `deltaBinding`, `deltaCell`)
+must be literal strings:
 `<Kpi binding={b}>` fails the build. Two kit figures of the same binding and
 column need an `id` each — an id is the receipt's address for one number.
 
@@ -107,7 +116,7 @@ or say it in words. A single digit ("Q3") is not a number here.
 
 Anything the app computes or draws itself — a Recharts chart, a sum, a number
 in your own markup — is the app's presentation, not a checked figure. The page's
-About block says so: *"This page is an app. The figures it shows through the
+footer says so: *"This page is an app. The figures it shows through the
 TraceBi kit carry that receipt; anything else it draws is the app's own
 presentation and is not checked."* `tracebi verify` re-runs the bindings as for
 any report.
@@ -117,7 +126,7 @@ any report.
 ```jsx
 import { useState } from "react";
 import { LayoutDashboard, CreditCard } from "lucide-react";
-import { Kpi, Spark, Chart, Table, Filter } from "tracebi";
+import { Masthead, Footer, Kpi, Spark, Chart, Table, Filter } from "tracebi";
 
 const NAV = { Overview: LayoutDashboard, Plans: CreditCard };
 
@@ -133,7 +142,10 @@ export default function App() {
           </button>
         ))}
       </aside>
-      <main className="flex-1 space-y-6 p-8">
+      <main className="min-w-0 flex-1 space-y-8 px-6 py-8">
+        <Masthead kicker="SaaS metrics" title="Recurring revenue" period="Monthly">
+          Ending MRR and customers, month by month.
+        </Masthead>
         {view === "Overview" ? (
           <div className="tb-grid">
             <Kpi lead binding="kpis" cell="ending_mrr" format="currency0" label="Ending MRR">
@@ -148,6 +160,7 @@ export default function App() {
             <Table binding="by_plan" sort bars="ending_mrr" />
           </section>
         )}
+        <Footer />
       </main>
     </div>
   );

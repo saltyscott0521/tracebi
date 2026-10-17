@@ -156,11 +156,12 @@ class TestStageMeta:
     def test_reads_the_stage_meta(self):
         assert read_stage_meta(PAGE) == "final"
 
-# ── the stated-methodology appendix ─────────────────────────────────────────
-# About this report is on by default (auto footer, or the author's ONE
-# data-tb-methodology container). The build appends plain-language About
-# copy and the pipeline's STATED methodology after the author's own
-# children. Prose, never a verified claim — no badge, no status.
+# ── the footer and the stated-methodology appendix ──────────────────────────
+# The footer is on by default (auto <footer class="tb-footer">, or the
+# author's ONE data-tb-methodology container). After the author's own
+# children the build appends one visible line and "How these numbers were
+# made" behind a <details>: what the receipt is for and the pipeline's
+# STATED methodology. Prose, never a verified claim — no badge, no status.
 
 # Deliberately markup-shaped prose: the appendix must render it inert.
 TRANSFORM_NOTE = "dropped the 9 unkeyed rows & <b>counted</b> them"
@@ -280,21 +281,26 @@ class TestMethodologyAppendix:
         assert manifest["transform_contracts"]["fact_orders"]["status"] \
             == "satisfied"
 
-    def test_without_the_container_about_footer_is_default_on(self, tmp_path):
+    def test_without_the_container_the_footer_is_default_on(self, tmp_path):
         page, manifest = _render_package(tmp_path, extra_body="")
-        assert "About this report" in page
-        assert 'class="tb-about"' in page
-        assert "This file carries a receipt" in page
-        assert "claim the numbers are right" in page
-        assert "Definitions from the model wh_model" in page
+        assert 'class="tb-footer"' in page
+        # One visible line: when, from which model, and the honesty
+        # sentence — outside the disclosure, so a reader always sees it.
+        line = page[page.index('class="tb-footer-line"'):
+                    page.index("</p>", page.index('class="tb-footer-line"'))]
+        assert "Built on " in line and "from the model wh_model" in line
+        assert "The receipt does not claim the numbers are right." in line
         assert "Built by unknown" not in page
-        assert "Built on " in page
-        receipt = page[page.index('class="tb-about-receipt"'):
-                       page.index('class="tb-about-receipt"') + 400]
-        for word in ("verified", "reproduces", "correct"):
-            assert word not in receipt.lower()
-        # Stated methodology notes ship through the default About home.
-        assert APPENDIX in page
+        # The rest sits behind "How these numbers were made".
+        details = page[page.index('<details class="tb-footer-details">'):
+                       page.index("</details>")]
+        assert "<summary>How these numbers were made</summary>" in details
+        assert "This file carries a receipt" in details
+        for text in (line, details[:details.index(APPENDIX)]):
+            for word in ("verified", "reproduces", "correct"):
+                assert word not in text.lower()
+        # Stated methodology notes ship inside that disclosure.
+        assert APPENDIX in details
         assert manifest["methodology"]["transform_notes"]["fact_orders"] \
             == TRANSFORM_NOTE
 
@@ -306,16 +312,17 @@ class TestMethodologyAppendix:
             )
 
 
-class TestAboutFooter:
-    def test_author_container_keeps_prose_first_and_still_gets_about(
+class TestFooter:
+    def test_author_container_keeps_prose_first_and_still_gets_the_footer(
             self, tmp_path):
         page, _ = _render_package(tmp_path, CONTAINER)
         assert 'id="authors-own"' in page
         assert page.index('id="authors-own"') < page.index(
-            "This file carries a receipt")
-        assert page.index("This file carries a receipt") < page.index(APPENDIX)
+            'class="tb-footer-line"')
+        assert page.index('class="tb-footer-line"') < page.index(
+            "This file carries a receipt") < page.index(APPENDIX)
         # Author supplied the home — no second auto footer.
-        assert page.count('class="tb-about"') == 0
+        assert page.count('class="tb-footer"') == 0
 
     def test_report_author_is_named_when_set(self, tmp_path):
         from tracebi.reports.template_package import TemplatePackage
@@ -492,6 +499,9 @@ class TestReceiptBlockJoins:
         }
         assert receipt["transform_contracts"]["fact_orders"] == "satisfied"
         assert receipt["methodology"] is True
+        # The footer's text rides along for the drawer: a copy of what the
+        # manifest records, never a second account of it.
+        assert receipt["stated_methodology"] == manifest["methodology"]
         assert receipt["semantic_contract_models"] == ["wh_model"]
 
     def test_methodology_flag_is_true_when_notes_ship_via_default_about(

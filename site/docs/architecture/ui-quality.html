@@ -72,6 +72,8 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a class="on" href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
@@ -84,12 +86,28 @@
 most of it and a reviewer can check the rest in ten minutes.</p>
 <p><code>python scripts/ui_audit.py</code> serves the reference project, crawls every page
 it can reach in desktop and phone widths, light and dark, and writes
-<code>findings.json</code> plus a contact sheet of screenshots. Run it with
-<code>--baseline &lt;old findings.json&gt;</code> and any new finding fails the run: a fix can
-never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</p>
+<code>findings.json</code> plus a contact sheet of screenshots. It then opens every
+report as delivered (<code>/r/&lt;name&gt;</code>) at 1440 and 390 wide, light and dark, into
+one <code>report-sheet.png</code> (beside <code>findings.json</code>; <code>report-sheet.html</code> is the same
+tiles, browsable), and counts what makes a project look like more than one
+system. Run it with <code>--baseline &lt;old findings.json&gt;</code> and any new finding fails
+the run: a fix can never quietly undo another. The open work lives in
+<code>ui-backlog.md</code>.</p>
+<p>The baselines are committed: <code>ui-audit-baseline-reference.json</code> (the
+reference project) and <code>ui-audit-baseline-demo.json</code> (<code>--app
+tracebi.web.demo_app</code>), both in this folder. The sheets are not committed (they
+are megabytes); a run prints where it wrote them.</p>
+<pre><code class="language-bash">python scripts/ui_audit.py --out /tmp/a --baseline docs/architecture/ui-audit-baseline-reference.json
+python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
+    --baseline docs/architecture/ui-audit-baseline-demo.json
+</code></pre>
+<p>A change that fixes findings, or deliberately changes a count, commits the new
+<code>findings.json</code> over the baseline in the same change.</p>
 <h2 id="how-the-loop-works">How the loop works</h2>
 <ol>
-<li>Audit (<code>--baseline</code> the last run), and look at the contact sheet.</li>
+<li>Audit (<code>--baseline</code> the committed baseline), and look at the contact
+   sheet. Before each release, look at the report sheet too: every report,
+   both modes, both widths, side by side.</li>
 <li>Take the top item in <code>ui-backlog.md</code>. Fix it in the smallest change that
    fixes it everywhere it occurs, not just on the page where it was seen.</li>
 <li>If the bug is a <em>kind</em> of bug, add a check for that kind to
@@ -145,6 +163,19 @@ never quietly undo another. The open work lives in <code>ui-backlog.md</code>.</
   every surface a report puts text on.</li>
 <li><strong>No colour tricks that break themes</strong>: no <code>${colour}22</code> hex-alpha gluing
   <code>[hex-alpha-concat]</code>.</li>
+<li><strong>Every report renders as delivered</strong> <code>[report-unrendered]</code>, with no browser
+  error <code>[browser-error]</code>, laid out at the phone's own width
+  <code>[report-phone-layout]</code> and without sideways scrolling <code>[h-overflow]</code>.</li>
+<li><strong>A project's reports are one system</strong> <code>[metric:report_*]</code>, counted from the
+  rendered pages and never allowed to grow against the baseline:
+  <code>report_font_families</code> (the first family of the computed font on every
+  visible text node), <code>report_accents</code> (the computed <code>--tb-accent</code> light/dark
+  pair per report), <code>report_box_shadows</code> and <code>report_gradients</code> (elements with
+  a resting shadow that has blur or spread, or a gradient background or SVG
+  gradient; the chart tooltip, a menu or popover and the receipt drawer may
+  keep theirs), and <code>report_looks</code> (display face + accent; a look not in the
+  baseline fails the run even if the count does not grow). The target is one
+  look per project, plus a named bespoke example.</li>
 </ul>
 <p>Run it on both projects: the reference project, and the demo app
 (<code>--app tracebi.web.demo_app</code>: its own models, reports folder and pipelines,
@@ -212,6 +243,11 @@ registered by an app module rather than found under <code>reports/</code>). Each
   page's full width; its list is one click away.</li>
 <li>Focus that sits inside a report's frame belongs to the element inside it, so
   the audit judges that element; the frame draws no ring of its own.</li>
+<li>A phone is not a narrow desktop window. The Step 1 captures were taken at
+  390px in a desktop browser, where a page with no viewport meta still lays out
+  at 390; a phone lays it out at 980 and shrinks it, and only affordability
+  named one. The report pass opens reports as a phone does (<code>is_mobile</code>), and
+  the build now adds the meta to any page that lacks it.</li>
 </ul>
   </main>
 </div>

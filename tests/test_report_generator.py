@@ -1066,7 +1066,8 @@ class TestReportCLI:
         app = (reports / "regions_app" / "app.jsx").read_text()
         assert not (reports / "regions_app" / "template.html").exists()
         for marker in ("<Kpi lead", "<Value", "<Chart", "<Table", "<Filter",
-                       "<Search", "<Download", "<Built", 'from "tracebi"'):
+                       "<Search", "<Download", "<Masthead", "<Footer", "tb-span-8",
+                       'from "tracebi"'):
             assert marker in app, f"app scaffold no longer teaches {marker}"
 
         assert cli.main(["new-dashboard", "Regions Demo", "--html",
@@ -1088,7 +1089,7 @@ class TestReportCLI:
         template = (pkg / "template.html").read_text()
         for marker in ("data-tb-figure", "data-tb-binding", "data-tb-filter",
                        "data-tb-search", "data-tb-download", "data-tb-stage",
-                       "data-tb-methodology", "tb-lede", "tb-grid", "tb-cols-2",
+                       "data-tb-methodology", "tb-lede", "tb-grid", "tb-span-8",
                        "tb-kpi-context"):
             assert marker in template, f"scaffold no longer teaches {marker}"
         assert "parseCsv" not in template   # no reimplemented runtime

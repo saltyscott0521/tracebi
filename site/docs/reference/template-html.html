@@ -72,6 +72,8 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
@@ -132,8 +134,15 @@ not being one.</p>
 <li><code>data-tb-direction</code> — <code>up-good</code> or <code>down-good</code>, for a figure that shows a
   change. The runtime draws ▲ or ▼ from the value's sign and colors it with
   <code>--tb-good</code> or <code>--tb-bad</code> depending on whether that direction is good. The
-  text stays the formatted number. Anything else fails the build.</li>
+  text stays the formatted number. Anything else fails the build. On a KPI,
+  the change goes first on the context line as a <code>.tb-kpi-delta</code> (a rise is
+  drawn <code>▲ +</code>, zero is neutral):</li>
 </ul>
+<pre><code class="language-html">&lt;span class=&quot;tb-kpi-context&quot;&gt;&lt;span class=&quot;tb-kpi-delta&quot; data-tb-figure=&quot;value&quot;
+  data-tb-binding=&quot;gain&quot; data-tb-cell=&quot;unrealized&quot; data-tb-format=&quot;compact&quot;
+  data-tb-direction=&quot;up-good&quot; id=&quot;kpi-gain&quot;&gt;&lt;/span&gt; vs cost&lt;/span&gt;
+</code></pre>
+<p>Only where the model measures a comparison; no comparison measure, no delta.</p>
 <p>The runtime fills a <code>.tb-kpi-value</code> child when one exists, otherwise the
 element itself. The <code>binding</code> must return one row; a value figure over a
 multi-row binding fails the build.</p>
@@ -141,6 +150,14 @@ multi-row binding fails the build.</p>
 <p><code>data-tb-type</code> (<code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>),
 <code>data-tb-x</code>, <code>data-tb-y</code> (comma-list for multi-series), <code>data-tb-color</code>,
 and <code>data-tb-value-format</code> for labels, axes and tooltips.</p>
+<p>Every chart is drawn in one style, with no setting to learn: bars carry
+their own values in that format (inside the bar when the label fits, past
+its end when not; none on bars under 14px wide, on stacks or in small
+multiples), a line or area ends in its last value (unless <code>data-tb-mark</code>
+already labels the last), category names wrap to two lines or turn and are
+never cut, and value ticks thin to what fits. The tooltip shows the
+category, the value, the measure's description from the model and a
+"Receipt →" link that opens the receipt drawer at that figure.</p>
 <p>The build inlines D3 automatically when the page contains a chart
 figure. <code>"libs"</code> in <a href="../reference/report-json.html">report.json</a> is optional.</p>
 <h3 id="table-figures">Table figures</h3>
@@ -167,8 +184,9 @@ the rows shown.</p>
 ascending, then descending, then back to the query's own order. Blanks sort
 last, and <code>aria-sort</code> tells screen readers the current order. Sorting only
 reorders stamped rows; the totals row stays.</p>
-<p><code>data-tb-bars="col, col2"</code> — a quiet bar behind each value in the named numeric
-columns, proportional to the value. Zero is the left edge; when a column holds
+<p><code>data-tb-bars="col, col2"</code> — a thin bar after each value in the named numeric
+columns, in a lane of its own inside the cell, proportional to the value; the
+number stays right-aligned and the bar follows its row on sort and filter. Zero is the left edge; when a column holds
 negative values, zero moves to the middle so neither side is exaggerated. The
 scale covers every stamped row, so filtering never rescales it. A column that
 isn't numeric fails the build.</p>
@@ -223,14 +241,23 @@ is the in-page find.</p>
 <ul>
 <li><strong>Tabs</strong> — <code>&lt;div class="tb-tabs"&gt;&lt;section data-tb-tab="Label"&gt;…&lt;/section&gt;&lt;/div&gt;</code>;
   the runtime builds the tab bar from the labels.</li>
-<li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, and <code>.tb-cols-2-1</code> / <code>.tb-cols-1-2</code>
-  for a wide panel beside a narrow one; all collapse to one column under 720px.</li>
+<li><strong>Page measure</strong> — <code>&lt;main class="tb-page"&gt;</code> (and the page itself) is
+  1,200px wide at most.</li>
+<li><strong>12-column grid</strong> — the layout: give a <code>.tb-grid</code>'s panels <code>.tb-span-4</code>,
+  <code>.tb-span-6</code>, <code>.tb-span-8</code> or <code>.tb-span-12</code> (a third, a half, two thirds,
+  the row): the grid becomes twelve columns, and every span is the full row
+  under 720px. A wide panel beside a narrow one:
+  <code>&lt;div class="tb-grid"&gt;&lt;section class="tb-card tb-span-8"&gt;…&lt;/section&gt;&lt;section
+  class="tb-card tb-span-4"&gt;…&lt;/section&gt;&lt;/div&gt;</code>.</li>
+<li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, and <code>.tb-cols-2-1</code> / <code>.tb-cols-1-2</code>,
+  still work as shorthands for equal or 2:1 columns; they collapse to one
+  column under 720px.</li>
 <li><strong>KPI strip</strong> — a <code>.tb-grid</code> of <code>.tb-kpi</code> cells renders as one panel with
-  hairlines between the cells. <code>.tb-kpi--lead</code> makes the page's main number
-  twice as wide and larger.</li>
+  hairlines between the cells. <code>.tb-kpi--lead</code> sets the page's main number a
+  step larger (not wider); a <code>.tb-kpi-delta</code> leads its context line.</li>
 <li><strong>Sparkline</strong> — a line or area chart with <code>class="tb-spark"</code> inside a
-  <code>.tb-kpi</code> draws the trend's shape alone (no axes, grid or legend; 44px tall;
-  zero-based); hovering still reads each value.</li>
+  <code>.tb-kpi</code> draws the trend's shape alone (no axes, grid or legend; 32px tall
+  on the card's bottom edge; zero-based); hovering still reads each value.</li>
 <li><strong>Panels</strong> — a <code>.tb-note</code> straight after a <code>.tb-card</code>'s first <code>&lt;h2&gt;</code> is the
   panel's subtitle; a table that ends a card runs edge to edge.</li>
 <li><strong>Sidebar</strong> — <code>&lt;div class="tb-tabs" data-tb-nav="side"&gt;</code> lays the same tab
@@ -249,7 +276,7 @@ they didn't ask for (<code>tracebi context</code> → <code>presentation.layout.
 <tbody>
 <tr>
 <td><code>data-tb-mode</code></td>
-<td><code>dark</code>, or <code>auto</code> (follows the reader's system); unset is light</td>
+<td><code>dark</code> or <code>light</code>; unset is <code>auto</code> (follows the reader's system, set at build)</td>
 </tr>
 <tr>
 <td><code>data-tb-density</code></td>
@@ -261,28 +288,86 @@ they didn't ask for (<code>tracebi context</code> → <code>presentation.layout.
 </tr>
 </tbody>
 </table>
-<p><strong>The title block</strong> — one standard header:</p>
-<pre><code class="language-html">&lt;header class=&quot;tb-title&quot; data-tb-title=&quot;left&quot;&gt;
+<p><strong>The masthead</strong> — every page opens with one:</p>
+<pre><code class="language-html">&lt;header class=&quot;tb-masthead&quot; data-tb-title=&quot;left&quot; data-tb-period=&quot;Q3 2026&quot;&gt;
+  &lt;div class=&quot;tb-masthead-mark&quot;&gt;&lt;/div&gt;              &lt;!-- optional: your logo --&gt;
+  &lt;p class=&quot;tb-kicker&quot;&gt;Direct lending&lt;/p&gt;           &lt;!-- optional --&gt;
   &lt;h1&gt;Portfolio Book&lt;/h1&gt;
-  &lt;p class=&quot;tb-subtitle&quot;&gt;One line on what this page is for.&lt;/p&gt;
-  &lt;span data-tb-built&gt;&lt;/span&gt;
+  &lt;p class=&quot;tb-standfirst&quot;&gt;One line on what this page is for.&lt;/p&gt;
+  &lt;p class=&quot;tb-masthead-meta&quot;&gt;&lt;span data-tb-built&gt;&lt;/span&gt;
+    &lt;span class=&quot;tb-verdict&quot;&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;/header&gt;
 </code></pre>
 <p><code>data-tb-title</code> is <code>left</code>, <code>center</code>, <code>banner</code> (accent band) or <code>nav</code> (moved
-to the top of a sidebar). The runtime fills <code>data-tb-built</code> with the build time
-from the receipt — never type a date. A look for every report in the project
-goes in <code>reports/_theme.css</code>.</p>
+to the top of a sidebar). <code>data-tb-period</code> names what the numbers cover; it
+is a label, so it may hold a year. The runtime fills the meta line: the
+period, the build time from the receipt (never type a date) and the verdict
+chip; whichever the template leaves out, it adds.</p>
+<p>The chip's state is <code>data-tb-verdict</code>, set by the runtime from the file
+itself, never from the page's markup: <code>draft</code> on a working preview (no
+receipt), <code>not-checked</code> on a built file — nothing has re-run its queries;
+<code>tracebi verify</code> does, and says whether each figure reproduces. The four
+verdicts, everywhere TraceBi shows one, are <code>reproduces</code> (green, <code>--tb-good</code>),
+<code>needs-a-look</code> (amber, <code>--tb-warn</code>), <code>does-not-reproduce</code> (red, <code>--tb-bad</code>)
+and <code>not-checked</code> (neutral). A page never makes it green. In a built file the
+runtime puts a "Receipt" button after the chip and makes the chip open the
+receipt too (the receipt drawer, below).</p>
+<p>The mark is empty by default. To show a logo, put the file in the package's
+<code>assets/</code> and size it in <code>style.css</code>:
+<code>.tb-masthead-mark { width: 120px; height: 28px; margin-bottom: 16px;
+background: url(assets/logo.svg) left / contain no-repeat; }</code>. A look for every
+report in the project goes in <code>reports/_theme.css</code>. (<code>.tb-title</code>, the older
+title block, still works.)</p>
+<p>A report's look beyond that is a theme preset: <code>tracebi theme use &lt;name&gt;</code>, or
+in <code>style.css</code> the accent pair for each ground (<code>--tb-accent</code> /
+<code>--tb-accent-text</code> and <code>--tb-dark-accent</code> / <code>--tb-dark-accent-text</code>) and at
+most one display face for the headline and the lead number. The showcase's
+<code>style.css</code> is exactly that: Fraunces from <code>assets/fonts/</code> on
+<code>.tb-masthead h1</code> and <code>.tb-kpi--lead .tb-kpi-value</code>, and a teal accent. No
+gradient, no shadow, no second set of components.</p>
+<p><strong>The footer</strong> — every page ends with one:</p>
+<pre><code class="language-html">&lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt;
+  &lt;p&gt;Source: the funds' Schedules of Investments.&lt;/p&gt;
+&lt;/footer&gt;
+</code></pre>
+<p>Your sources come first. The build adds one line — who built the file, when,
+from which model, and <em>"The receipt does not claim the numbers are right."</em> —
+then "How these numbers were made" behind a <code>&lt;details&gt;</code>: what the receipt is
+for, and the stated methodology (below). A template with no
+<code>data-tb-methodology</code> gets the whole footer at the end of the page. The
+runtime adds "Open the receipt" to that line.</p>
+<p><strong>The receipt drawer</strong> — every built page carries one; you write nothing for
+it. It opens from the masthead's "Receipt" button or its verdict chip, the
+footer's line, a click on any value figure (at that figure's row), or a
+chart tooltip's "Receipt →"; Escape closes it. A page with no masthead keeps
+a floating "Receipt" button instead. It reads as a certificate: the report,
+when it was built and from which model, the verdict chip, <em>"The receipt does
+not claim the numbers are right."</em>, how to check the file
+(<code>tracebi verify --file &lt;name&gt;.html</code>, with its <code>.manifest.json</code> beside it),
+then one row per figure in page order — the value as the page shows it (or
+"table, 13 rows" / "chart, 6 rows"), its label, the measure's definition from
+the model, the query in one line (<code>fair_value by dim_issuer.sector · order
+fair_value desc</code>, only the ordering keys you wrote), the fingerprint's first
+8 characters with Copy — and "Raw" (the query exactly as run, the full
+fingerprint) behind a disclosure. "About this build" closes it: the sink
+contracts, the stated methodology, who built it, the render stamp and git.
+It is 420px on the right, a full-height sheet on a phone, and prints as an
+appendix with every disclosure open. Its badges keep their own tones; a theme
+never recolours them.</p>
 <h2 id="editorial">Editorial</h2>
 <p>A report written to be read — what <code>tracebi new-report</code> writes by default.
-One reading column with a serif body (a system face; nothing is fetched), on
-the card colour rather than the dashboard's grey.</p>
+A sheet on the page, opened by the hero; the prose in one serif column of
+about 68 characters (a system face; nothing is fetched; <code>--tb-measure</code>), and
+figures, tables and a KPI strip (<code>.tb-grid</code> of <code>.tb-kpi</code>) at the sheet's full
+width. With no <code>style.css</code> this is the page: one accent, no texture, no
+shadow.</p>
 <pre><code class="language-html">&lt;article class=&quot;tb-article&quot;&gt;
-  &lt;header class=&quot;tb-article-head&quot;&gt;          &lt;!-- data-tb-title=&quot;center&quot; to centre it --&gt;
+  &lt;header class=&quot;tb-masthead tb-article-head&quot;&gt;  &lt;!-- data-tb-title=&quot;center&quot; to centre it --&gt;
     &lt;p class=&quot;tb-kicker&quot;&gt;Revenue&lt;/p&gt;
     &lt;h1&gt;&lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_region.region&quot;&gt;&lt;/span&gt;
         leads on revenue&lt;/h1&gt;
-    &lt;p class=&quot;tb-dek&quot;&gt;What this report finds, and why it matters.&lt;/p&gt;
-    &lt;p class=&quot;tb-byline&quot;&gt;Q3 review · &lt;span data-tb-built&gt;&lt;/span&gt;&lt;/p&gt;
+    &lt;p class=&quot;tb-standfirst&quot;&gt;What this report finds, and why it matters.&lt;/p&gt;
+    &lt;p class=&quot;tb-masthead-meta&quot;&gt;&lt;span data-tb-built&gt;&lt;/span&gt; &lt;span class=&quot;tb-verdict&quot;&gt;&lt;/span&gt;&lt;/p&gt;
   &lt;/header&gt;
   &lt;p class=&quot;tb-lede&quot;&gt;… numbers bound as value figures …&lt;/p&gt;
   &lt;h2&gt;A claim, not a topic&lt;/h2&gt;
@@ -292,10 +377,16 @@ the card colour rather than the dashboard's grey.</p>
   &lt;aside class=&quot;tb-pullstat&quot;&gt;
     &lt;span class=&quot;tb-pullstat-value&quot; data-tb-figure=&quot;value&quot; …&gt;&lt;/span&gt;
     &lt;span class=&quot;tb-pullstat-text&quot;&gt;the one number to remember, explained&lt;/span&gt;&lt;/aside&gt;
+  &lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt;&lt;p&gt;Sources …&lt;/p&gt;&lt;/footer&gt;
 &lt;/article&gt;
 </code></pre>
-<p>Charts, tables, the pull-stat and the About footer keep the sans face, so
-numbers read as data. The writing advice is <code>tracebi knowledge
+<p>The hero is the masthead in the editorial's register: the project's accent,
+flat, with a serif headline (on a dark ground, a deep band of the accent with
+the page's ink). A number in the prose is bound and set in weight 600, in the
+prose's own ink. Charts, tables, the KPI strip, the pull-stat and the footer
+keep the sans face, so numbers read as data; the methodology is in the
+receipt, behind the footer's link. To restyle it, set the accent pairs
+(<code>--tb-accent</code> / <code>--tb-dark-accent</code> and their <code>-text</code>), not a colour of its own. The writing advice is <code>tracebi knowledge
 design-editorial-report</code>.</p>
 <h2 id="stage-blocks">Stage blocks</h2>
 <pre><code class="language-html">&lt;section data-tb-stage=&quot;exploration&quot;&gt; … &lt;/section&gt;
@@ -303,9 +394,10 @@ design-editorial-report</code>.</p>
 <p>Exploration content is <strong>deleted</strong> at final build. Use it to keep scratch
 queries beside the page while iterating with <code>tracebi dev</code>.</p>
 <h2 id="stated-methodology">Stated methodology</h2>
-<pre><code class="language-html">&lt;section data-tb-methodology&gt; your own notes … &lt;/section&gt;
+<pre><code class="language-html">&lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt; your sources … &lt;/footer&gt;
 </code></pre>
-<p>One per page. Your children stay first; the build appends the pipeline's
+<p>One per page, on any container. Your children stay first; the build appends
+the footer's line and, behind "How these numbers were made", the pipeline's
 stated methodology — transform notes, per-check rationale, measure
 descriptions. It is an appendix, never a claim: no badge, no status.</p>
 <h2 id="reading-data-in-scriptjs">Reading data in <code>script.js</code></h2>
