@@ -16,8 +16,8 @@ comfortable or compact. Offer the look of their last report first and skip what
 they already said. With nobody in the loop, use the defaults. Each answer is one
 attribute (`presentation.layout.look` in `tracebi context`):
 
-- `data-tb-mode="dark"` or `"auto"` on `<html>` (auto follows the reader's
-  system), `data-tb-density="compact"`, `data-tb-width="full"`;
+- `data-tb-mode="dark"` or `"light"` on `<html>` (unset is `"auto"`, which
+  follows the reader's system), `data-tb-density="compact"`, `data-tb-width="full"`;
 - `<div class="tb-tabs" data-tb-nav="side">` for a sidebar, with the whole page
   inside it so the column runs top to bottom;
 - `<header class="tb-title" data-tb-title="…">` with the `<h1>`, a

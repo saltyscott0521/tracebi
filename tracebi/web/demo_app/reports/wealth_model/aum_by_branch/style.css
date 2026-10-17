@@ -111,7 +111,7 @@ body { padding-top: 0; }
   letter-spacing: 0;
 }
 .tb-table thead th, [data-tb-figure="table"] thead th {
-  background: #eef2ee;
+  background: var(--tb-surface);
   color: var(--tb-muted);
 }
 

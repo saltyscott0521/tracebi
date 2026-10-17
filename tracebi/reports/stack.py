@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import functools
 import os
+import re
 from typing import Optional
 
 from tracebi.reports.embed import (
@@ -292,11 +293,25 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
     return tail
 
 
+_HTML_OPEN = re.compile(r"<html\b[^>]*>", re.I)
+
+
+def with_default_mode(page: str) -> str:
+    """Give a page that names no mode ``data-tb-mode="auto"``: it follows the
+    reader's system, as the app does. An explicit ``light`` / ``dark`` (on the
+    template's ``<html>``, or an app's ``look``) is left alone."""
+    m = _HTML_OPEN.search(page)
+    if m is None or "data-tb-mode" in m.group(0):
+        return page
+    return page[:m.end() - 1] + ' data-tb-mode="auto"' + page[m.end() - 1:]
+
+
 def apply_stack(page: str, *, libs, data_blocks_html: str,
                 stage: Optional[str] = None, project_css: str = "",
                 report_css: str = "", figures_cfg: Optional[dict] = None,
                 report_js: str = "", app: bool = False, theme_css: str = "") -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
+    page = with_default_mode(page)
     # The carrier render may already carry the framework CSP meta
     # (html_renderer inserts the same one); a second identical tag is just
     # noise, so skip it — but ONLY when the EXACT framework meta is present.

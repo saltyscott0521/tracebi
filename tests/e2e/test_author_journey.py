@@ -360,7 +360,7 @@ def test_themes_and_the_house_style(scaffolded):
 
     code, out = run_cli("theme", "use", "sand")
     assert code == 0, out
-    assert "--tb-page: #f6f4ef" in (scaffolded / "reports" / "_theme.css").read_text()
+    assert "--tb-accent: #44403c" in (scaffolded / "reports" / "_theme.css").read_text()
     code, out = run_cli("theme", "use", "ocean")
     assert code != 0 and "--force" in out
 
@@ -372,7 +372,7 @@ def test_themes_and_the_house_style(scaffolded):
     assert code == 0, out
     page = (scaffolded / "output" / "teal.html").read_text()
     # The project default first, then the report's theme over it.
-    assert page.index("--tb-page: #f6f4ef") < page.index("--tb-accent: #0e7490")
+    assert page.index("--tb-accent: #44403c") < page.index("--tb-accent: #0e7490")
 
     decl_path = scaffolded / "reports" / "teal" / "report.json"
     decl = json.loads(decl_path.read_text())

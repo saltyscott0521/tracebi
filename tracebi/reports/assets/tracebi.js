@@ -1499,7 +1499,7 @@
 
   function colourOf(entry, key) {
     var pal = entry.plan.palette && entry.plan.palette.length
-      ? entry.plan.palette : ["#2a78d6"];
+      ? entry.plan.palette : ["#2f5bea"];
     var i = entry.keys.indexOf(key);
     return pal[(i < 0 ? 0 : i) % pal.length];
   }

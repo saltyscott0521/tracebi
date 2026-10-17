@@ -237,8 +237,8 @@ light, dark or the reader's choice; comfortable or compact. Offer the look
 of their last report first ("same as `sales_book`?") and skip what they
 already said. With nobody in the loop, use the defaults. Then:
 
-- the page: on `<html>`, `data-tb-mode="dark"` (or `"auto"`, which follows
-  the reader's system; unset is light), `data-tb-density="compact"`, and
+- the page: on `<html>`, `data-tb-mode="dark"` or `"light"` (unset is
+  `"auto"`, which follows the reader's system), `data-tb-density="compact"`, and
   `data-tb-width="full"` for a dashboard that uses the whole window;
 - a sidebar: `<div class="tb-tabs" data-tb-nav="side">` with the same
   `data-tb-tab` sections, and the whole page inside it;
@@ -257,6 +257,8 @@ it as the template attributes above. These change how a page looks, never a numb
 `report.json` `"theme"` (`tracebi theme list`: graphite, indigo, midnight,
 ocean, plum, sand; `--theme` on `new-report` / `new-dashboard`). `tracebi theme use <name>` makes
 one the project default (`reports/_theme.css`, which restyles every report).
+A theme is an accent preset (the accent for the light and the dark ground),
+never a mode or a layout.
 `reports/_style.md` is the team's house style — `tracebi context` and
 `get_context` return it as `house_style`. Read it before you build and follow
 its Rules over these defaults. Before you build, read

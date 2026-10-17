@@ -257,7 +257,7 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
 - Ask how it should look, once, before you build (a person in the loop; otherwise use
   the defaults): the title and where it sits, one page / top tabs / a sidebar, light /
   dark / the reader's choice, comfortable / compact. Offer the look of their last
-  report first. Then on `<html>`: `data-tb-mode="dark"` (or `"auto"`, following the
+  report first. Then on `<html>`: `data-tb-mode="dark"` or `"light"` (unset is `"auto"`, following the
   reader's system), `data-tb-density="compact"`, `data-tb-width="full"`. A sidebar is
   `<div class="tb-tabs" data-tb-nav="side">` with the whole page inside. The title is
   `<header class="tb-title" data-tb-title="left|center|banner|nav">` with the `<h1>`,
@@ -266,8 +266,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   compact --nav side --title-at nav` writes it — for an app, mode and density go in
   `report.json` `"look"` and the sidebar and title are its own components. Looks never
   change a number. A report may name a shipped theme in `report.json` `"theme"`
-  (`tracebi theme list`); `tracebi theme use <name>` makes one everyone's default
-  (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
+  (`tracebi theme list`; each is an accent preset for both grounds, never a mode);
+  `tracebi theme use <name>` makes one everyone's default (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
   returns it as `house_style` — follow its Rules over the defaults. Read
   `tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an app).
 - Blocks marked `data-tb-stage="exploration"` are working scratch: they render

@@ -375,7 +375,7 @@ def shell_html(title: str, figs: list[KitFigure], look: dict | None = None) -> s
     claims. Everything the reader sees is drawn by the app."""
     look = look or {}
     attrs = "".join(
-        [f' data-tb-mode="{look["mode"]}"' if look.get("mode") in ("dark", "auto") else "",
+        [f' data-tb-mode="{look["mode"]}"' if look.get("mode") else "",
          ' data-tb-density="compact"' if look.get("density") == "compact" else ""])
     return (
         f"<!doctype html>\n<html lang=\"en\" data-tb-app{attrs}>\n<head><meta charset=\"utf-8\">"

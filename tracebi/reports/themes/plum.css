@@ -1,6 +1,9 @@
 /* plum — a purple accent. */
+/* An accent preset: the accent pair for each ground, nothing structural. */
 :root {
   --tb-accent: #7e22ce;
   --tb-accent-text: #6b21a8;
   --tb-surface-accent: #f7f0fd;
+  --tb-dark-accent: #c79bf2;
+  --tb-dark-accent-text: #dcbdf7;
 }

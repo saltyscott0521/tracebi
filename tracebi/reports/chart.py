@@ -38,7 +38,7 @@ from typing import Any
 # Default series colours. Kept here rather than in the renderer so a chart
 # spec is fully self-describing.
 DEFAULT_PALETTE = (
-    "#2a78d6", "#eb6834", "#1baf7a", "#eda100",
+    "#2f5bea", "#eb6834", "#1baf7a", "#eda100",
     "#e87ba4", "#008300", "#4a3aa7", "#e34948",
 )
 

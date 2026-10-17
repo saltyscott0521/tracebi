@@ -164,7 +164,7 @@ they didn't ask for (`tracebi context` → `presentation.layout.look`).
 
 | Attribute | Values |
 |---|---|
-| `data-tb-mode` | `dark`, or `auto` (follows the reader's system); unset is light |
+| `data-tb-mode` | `dark` or `light`; unset is `auto` (follows the reader's system, set at build) |
 | `data-tb-density` | `compact`; unset is comfortable |
 | `data-tb-width` | `full` drops the reading-width cap (a sidebar wants it) |
 

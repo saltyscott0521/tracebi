@@ -72,6 +72,8 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
@@ -126,7 +128,15 @@ set <code>--tb-font</code> to use your own face instead.</p>
 </tr>
 <tr>
 <td><code>--tb-accent</code> / <code>--tb-accent-text</code></td>
-<td>the accent (focus ring, bars, the active tab's rule), and the same blue deepened for small text (links, hovers): override both</td>
+<td>the accent (focus ring, bars, the first chart series, the editorial hero), and the same blue deepened for small text (links, hovers): override both</td>
+</tr>
+<tr>
+<td><code>--tb-dark-accent</code> / <code>--tb-dark-accent-text</code></td>
+<td>the same pair for the dark ground; set them too, or dark mode keeps the default cobalt</td>
+</tr>
+<tr>
+<td><code>--tb-text-xs</code> … <code>--tb-text-3xl</code></td>
+<td>the type scale: 12, 13, 14 (body), 16, 20, 28, 40px; <code>--tb-tracking-tight</code> from 28px up</td>
 </tr>
 <tr>
 <td><code>--tb-good</code> / <code>--tb-bad</code></td>
@@ -138,7 +148,7 @@ set <code>--tb-font</code> to use your own face instead.</p>
 </tr>
 <tr>
 <td><code>--tb-shadow</code></td>
-<td>the card shadow (none by default: cards are a hairline)</td>
+<td>none; the sheet draws no resting shadow (cards are a hairline). Left for a report's own CSS</td>
 </tr>
 <tr>
 <td><code>--tb-radius</code>, <code>--tb-space-1..4</code></td>
@@ -150,12 +160,19 @@ set <code>--tb-font</code> to use your own face instead.</p>
 </tr>
 <tr>
 <td><code>--tb-chart-1..8</code></td>
-<td>the chart palette</td>
+<td>the chart palette; <code>--tb-chart-1</code> is the accent</td>
 </tr>
 </tbody>
 </table>
-<p>Setting <code>--tb-chart-1..8</code> in <code>reports/_theme.css</code> is usually all a house style
-needs: charts follow it automatically.</p>
+<p>Setting the accent pairs in <code>reports/_theme.css</code> is usually all a house style
+needs: the first chart series, links, the hero and the active tab follow it.
+The shipped themes (<code>tracebi theme list</code>) are exactly that, an accent preset
+for each ground.</p>
+<p><strong>Modes.</strong> A page follows the reader's system by default: the build gives a
+<code>&lt;html&gt;</code> with no <code>data-tb-mode</code> the value <code>auto</code>. Set <code>data-tb-mode="light"</code>
+(or <code>"dark"</code>) to pin it; an app sets <code>report.json</code> <code>"look"</code>. A report whose own
+<code>style.css</code> paints a light ground (a fixed paper colour, a light-only palette)
+should pin <code>light</code> until it styles the dark ground too.</p>
 <h2 id="components">Components</h2>
 <pre><code>.tb-page   .tb-grid   .tb-card
 .tb-lede                     the answer sentence under the title

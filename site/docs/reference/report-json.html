@@ -72,6 +72,8 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
@@ -155,8 +157,11 @@ for the page's charts (no D3 is then added for them); <code>tracebi.configureCha
 patches apply only there. Each library is inlined once. An unknown value is
 refused at load.</p>
 <h3 id="theme-string-optional"><code>theme</code> — string, optional</h3>
-<p>A shipped theme by name: <code>graphite</code>, <code>indigo</code>, <code>midnight</code> (always dark),
-<code>ocean</code>, <code>plum</code> or <code>sand</code> (<code>tracebi theme list</code>). It stacks over the
+<p>A shipped theme by name: <code>graphite</code>, <code>indigo</code>, <code>midnight</code>, <code>ocean</code>, <code>plum</code>
+or <code>sand</code> (<code>tracebi theme list</code>). A theme is an accent preset: it sets the
+accent for the light and the dark ground (<code>--tb-accent</code>, <code>--tb-accent-text</code>,
+<code>--tb-dark-accent</code>, <code>--tb-dark-accent-text</code>) and nothing structural; the mode
+is <code>look</code> (or <code>data-tb-mode</code> on a template's <code>&lt;html&gt;</code>). It stacks over the
 project's <code>reports/_theme.css</code> and under the package's own <code>style.css</code>. An
 unknown name is refused at load.</p>
 <pre><code class="language-json">&quot;theme&quot;: &quot;ocean&quot;
@@ -164,7 +169,8 @@ unknown name is refused at load.</p>
 <h3 id="look-object-optional-appjsx-only"><code>look</code> — object, optional (app.jsx only)</h3>
 <p>An <a href="../reference/app-jsx.html">app</a>'s mode and density — the attributes a <code>template.html</code>
 puts on its own <code>&lt;html&gt;</code>: <code>"mode"</code> is <code>light</code>, <code>dark</code> or <code>auto</code> (follows the
-reader's system); <code>"density"</code> is <code>comfortable</code> or <code>compact</code>.</p>
+reader's system; the default when <code>mode</code> is unset); <code>"density"</code> is
+<code>comfortable</code> or <code>compact</code>.</p>
 <pre><code class="language-json">&quot;look&quot;: {&quot;mode&quot;: &quot;dark&quot;, &quot;density&quot;: &quot;compact&quot;}
 </code></pre>
 <h3 id="schedule-object-optional"><code>schedule</code> — object, optional</h3>

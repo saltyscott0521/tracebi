@@ -2314,7 +2314,7 @@ def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
 
 
 def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
-                           mode: str = "light", density: str = "comfortable",
+                           mode: str = "auto", density: str = "comfortable",
                            title_at: str = "left") -> str:
     """The ``editorial`` page — a report written to be read, top to bottom.
 
@@ -2326,7 +2326,7 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
     """
     esc = _html.escape
     root = []
-    if mode in ("dark", "auto"):
+    if mode in ("dark", "light"):
         root.append(f'data-tb-mode="{mode}"')
     if density == "compact":
         root.append('data-tb-density="compact"')
@@ -2431,7 +2431,7 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
 
 
 def _report_template_html(title: str, measure: str, dim_ref: "str | None",
-                          layout: str = "editorial", *, mode: str = "light",
+                          layout: str = "editorial", *, mode: str = "auto",
                           density: str = "comfortable", nav: str = "",
                           title_at: str = "left") -> str:
     """A starter ``template.html`` for one named page structure.
@@ -2460,7 +2460,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
     if nav in ("top", "side"):
         layout = "tabbed"
     root = []
-    if mode in ("dark", "auto"):
+    if mode in ("dark", "light"):
         root.append(f'data-tb-mode="{mode}"')
     if density == "compact":
         root.append('data-tb-density="compact"')
@@ -2703,7 +2703,7 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     dims = query.get("dimensions")
     dim_ref = dims[0] if dims else None
     look = {k: v for k, v in (("mode", args.mode), ("density", args.density))
-            if v not in ("light", "comfortable")}
+            if v not in ("auto", "comfortable")}
     for stale in ("template.html", "app.jsx"):     # --force switching lanes
         if (pkg_dir / stale).is_file():
             (pkg_dir / stale).unlink()
@@ -3705,8 +3705,8 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--reports-dir", type=Path, default=_default_reports_dir(),
                        help="Directory holding report packages (default: ./reports).")
         p.add_argument(
-            "--mode", choices=["light", "dark", "auto"], default="light",
-            help="light (default), dark, or auto (follows the reader's system).")
+            "--mode", choices=["light", "dark", "auto"], default="auto",
+            help="auto (default: follows the reader's system), light, or dark.")
         p.add_argument(
             "--density", choices=["comfortable", "compact"], default="comfortable",
             help="comfortable (default) or compact spacing.")

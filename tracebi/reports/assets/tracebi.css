@@ -23,23 +23,40 @@
   --tb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   /* Neutral grounds and one cobalt: colour is for meaning, the accent for the
    * few places you act or are. --tb-accent is the fill (focus ring, bars, the
-   * active tab's rule); --tb-accent-text is the same blue deepened to read as
-   * small text (links, hovers) on white and on the accent wash. */
+   * active tab's rule, the editorial hero); --tb-accent-text is the same blue
+   * deepened to read as small text (links, hovers) on white and on the accent
+   * wash. The dark ground takes its own pair, --tb-dark-accent and
+   * --tb-dark-accent-text (section 12b): a theme sets all four. */
   --tb-ink: #18181b;
   --tb-bg: #ffffff;              /* cards, tables, tooltips */
   --tb-page: #f6f6f7;            /* the plane cards sit on */
   --tb-muted: #63636e;
   --tb-accent: #2f5bea;
   --tb-accent-text: #2447c4;
-  --tb-on-accent: #ffffff;       /* text on an accent fill (a banner) */
+  --tb-on-accent: #ffffff;       /* text on an accent fill (a banner, the hero) */
+  --tb-dark-accent: #7a9cff;
+  --tb-dark-accent-text: #a5bcff;
   --tb-rule: #e4e4e8;
-  /* Cards are a hairline with the faintest lift — never a soft drop shadow. */
-  --tb-shadow: 0 1px 2px rgba(16, 16, 24, 0.04);
+  /* Cards are a hairline, never a shadow. Kept as a token for a report's own
+   * style.css; nothing in this sheet draws a resting shadow. */
+  --tb-shadow: none;
   /* Subtle raised surfaces (striped rows, code blocks, callouts). Tokens, not
    * hard-coded hex, so overriding the palette for a dark ground carries them
    * too — a report on a dark background used to keep these light. */
   --tb-surface: #f4f4f6;
   --tb-surface-accent: #eff3fe;
+
+  /* Type: one scale of seven steps (about 1.25 apart above the body), three
+   * weights (400 text, 500 labels, 600 headings and figures), and tight
+   * tracking from 28px up. Hierarchy is size and weight, never colour. */
+  --tb-text-xs: 12px;
+  --tb-text-sm: 13px;
+  --tb-text-md: 14px;            /* body */
+  --tb-text-lg: 16px;
+  --tb-text-xl: 20px;
+  --tb-text-2xl: 28px;
+  --tb-text-3xl: 40px;
+  --tb-tracking-tight: -0.025em;
 
   --tb-space-1: 4px;
   --tb-space-2: 8px;
@@ -59,9 +76,12 @@
   --tb-good: #1e6b34;
   --tb-bad: #b42318;
 
-  /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). A
-   * colour-blind-checked order: keep it fixed, never cycle past eight. */
-  --tb-chart-1: #2a78d6;
+  /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). The
+   * first series IS the accent, so a single-series chart, the links and the
+   * hero are one colour; the other seven are checked against it and each
+   * other for colour-blind separation. Keep the order; never cycle past
+   * eight. */
+  --tb-chart-1: var(--tb-accent);
   --tb-chart-2: #eb6834;
   --tb-chart-3: #1baf7a;
   --tb-chart-4: #eda100;
@@ -70,10 +90,14 @@
   --tb-chart-7: #4a3aa7;
   --tb-chart-8: #e34948;
 
-  /* Shipped documents open identically anywhere — one theme, like print —
-   * unless the author asks for data-tb-mode (section 12b). */
+  /* Light until section 12b says otherwise; a page with no data-tb-mode is
+   * given "auto" at build (template_package), so it follows the reader. */
   color-scheme: light;
 }
+
+/* Every figure in tabular numerals, so columns of numbers align and a value
+ * does not shift width as it updates. */
+.tb-kpi-value, .tb-table td, [data-tb-figure="value"] { font-variant-numeric: tabular-nums; }
 
 /* ── 2. Base — a page with no classes already looks like a report ──────── */
 
@@ -85,7 +109,7 @@ body {
   margin: 0 auto;
   padding: 40px var(--tb-space-3) 64px;
   line-height: 1.55;
-  font-size: 15px;
+  font-size: var(--tb-text-md);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -98,12 +122,13 @@ body {
   margin: var(--tb-space-4) 0 var(--tb-space-2);
   letter-spacing: -0.01em;
 }
-:where(:root:not([data-tb-app])) h1 { font-size: 2.1em; font-weight: 650; letter-spacing: -0.03em; margin-top: 0; }
-:where(:root:not([data-tb-app])) h1 + p { color: var(--tb-muted); font-size: 1.05em; max-width: 72ch;
+:where(:root:not([data-tb-app])) h1 { font-size: var(--tb-text-2xl); font-weight: 600;
+         letter-spacing: var(--tb-tracking-tight); margin-top: 0; }
+:where(:root:not([data-tb-app])) h1 + p { color: var(--tb-muted); font-size: var(--tb-text-lg); max-width: 72ch;
          margin-top: 0; }
-:where(:root:not([data-tb-app])) h2 { font-size: 1.2em; font-weight: 600; margin-top: 40px; }
-:where(:root:not([data-tb-app])) h3 { font-size: 1em; font-weight: 600; }
-:where(:root:not([data-tb-app])) h4 { font-size: 0.8em; font-weight: 600; color: var(--tb-muted);
+:where(:root:not([data-tb-app])) h2 { font-size: var(--tb-text-xl); font-weight: 600; margin-top: 40px; }
+:where(:root:not([data-tb-app])) h3 { font-size: var(--tb-text-lg); font-weight: 600; }
+:where(:root:not([data-tb-app])) h4 { font-size: var(--tb-text-xs); font-weight: 600; color: var(--tb-muted);
      text-transform: uppercase; letter-spacing: 0.06em; }
 
 :where(:root:not([data-tb-app])) p { margin: var(--tb-space-2) 0 var(--tb-space-3); max-width: 75ch; }
@@ -130,13 +155,13 @@ img, svg { max-width: 100%; }
  * with its numbers bound as value figures. Larger and darker than a note —
  * it is the finding, not a caption. */
 .tb-lede {
-  font-size: 1.2em;
+  font-size: var(--tb-text-xl);
   line-height: 1.45;
   color: var(--tb-ink);
   max-width: 60ch;
   margin: 0 0 var(--tb-space-4);
 }
-.tb-lede [data-tb-figure="value"] { font-weight: 700; }
+.tb-lede [data-tb-figure="value"] { font-weight: 600; }
 
 .tb-good { color: var(--tb-good); }
 .tb-bad { color: var(--tb-bad); }
@@ -168,7 +193,6 @@ img, svg { max-width: 100%; }
   border-radius: var(--tb-radius);
   padding: var(--tb-card-pad-y) var(--tb-card-pad-x);
   background: var(--tb-bg);
-  box-shadow: var(--tb-shadow);
   min-width: 0;
 }
 /* Cards stacked in normal flow keep the grid's gap between them. */
@@ -220,7 +244,6 @@ img, svg { max-width: 100%; }
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
   background: var(--tb-bg);
-  box-shadow: var(--tb-shadow);
   position: relative; /* anchors a .tb-badge in the corner */
 }
 
@@ -247,15 +270,14 @@ img, svg { max-width: 100%; }
   background: var(--tb-rule);
   border: 1px solid var(--tb-rule);
   border-radius: var(--tb-radius);
-  box-shadow: var(--tb-shadow);
   overflow: hidden;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
-.tb-grid > .tb-kpi { border: 0; border-radius: 0; box-shadow: none; }
+.tb-grid > .tb-kpi { border: 0; border-radius: 0; }
 /* The lead KPI: the one number the page is about — twice the width and a
  * larger figure, so the row has an anchor instead of equal boxes. */
 .tb-kpi--lead { grid-column: span 2; }
-.tb-kpi--lead .tb-kpi-value { font-size: 2.6em; letter-spacing: -0.035em; }
+.tb-kpi--lead .tb-kpi-value { font-size: 2.6em; letter-spacing: var(--tb-tracking-tight); }
 @media (max-width: 720px) { .tb-kpi--lead { grid-column: auto; } }
 
 /* The comparison under the number — "+4.1% vs last month", "of total".
@@ -320,7 +342,7 @@ img, svg { max-width: 100%; }
 .tb-total td, tr.tb-total th {
   border-top: 2px solid var(--tb-ink);
   border-bottom: 0;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* data-tb-sort: headers become buttons; aria-sort states the order. */
@@ -436,7 +458,7 @@ tr.tb-window-pad td {
 .tb-legend-item:hover { border-color: var(--tb-muted); }
 .tb-legend-item:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
 .tb-legend-item[aria-pressed="false"] { opacity: .45; }
-.tb-legend-item[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; box-shadow: inset 0 0 0 1.5px var(--tb-muted); }
+.tb-legend-item[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; outline: 1.5px solid var(--tb-muted); outline-offset: -1.5px; }
 .tb-legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .tb-legend-swatch--line { height: 3px; width: 14px; border-radius: 2px; }
 .tb-legend-swatch--dot { border-radius: 50%; }
@@ -530,7 +552,7 @@ tr.tb-window-pad td {
 }
 .tb-card[data-tb-methodology] {
   background: none; border-width: 1px 0 0; border-radius: 0;
-  box-shadow: none; padding: var(--tb-space-3) 0 0;
+  padding: var(--tb-space-3) 0 0;
 }
 [data-tb-methodology] > h2:first-child { margin: 0 0 var(--tb-space-1); font-size: 1em; }
 .tb-about-receipt code {
@@ -648,7 +670,7 @@ span > .tb-badge {
   content: "EXPLORATION";
   display: block;
   font-size: 0.7em;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.12em;
   color: #8a5a00;
   margin-bottom: var(--tb-space-2);
@@ -784,36 +806,36 @@ label > input[data-tb-search] { width: 11em; }
 
 /* ── 12b. Page look: mode, density, width, sidebar tabs, the title ───────
  * Set on <html> (the runtime and the charts read the tokens from there):
- *   data-tb-mode="dark"   a dark ground; "auto" follows the reader's system;
- *                         unset is light, the shipped default
+ *   data-tb-mode="auto"   follows the reader's system — the default: a page
+ *                         that sets no mode is given "auto" at build
+ *   data-tb-mode="dark"   always dark; "light" always light
  *   data-tb-density="compact"   tighter spacing and table rows
  *   data-tb-width="full"        the page uses the whole window (a dashboard)
  * Tokens only: a mode changes how the page looks, never a number, and the
- * receipt's own tones are untouched. */
+ * receipt's own tones are untouched. --tb-chart-1 stays the accent. */
 
 :root[data-tb-mode="dark"] {
   --tb-ink: #ededf0;
   --tb-bg: #141417;
   --tb-page: #0b0b0d;
   --tb-muted: #a0a0ab;
-  --tb-accent: #7a9cff;
-  --tb-accent-text: #a5bcff;
+  --tb-accent: var(--tb-dark-accent);
+  --tb-accent-text: var(--tb-dark-accent-text);
   --tb-on-accent: #0d0f12;
-  --tb-rule: #26262b;
-  --tb-surface: #1b1b1f;
-  --tb-surface-accent: rgba(122, 156, 255, 0.12);
-  --tb-shadow: none;
+  --tb-rule: #2c2c32;
+  --tb-surface: #1c1c21;
+  --tb-surface-accent: color-mix(in srgb, var(--tb-dark-accent) 12%, transparent);
   --tb-good: #6fcf8f;
   --tb-bad: #ff8a80;
-  /* The same eight hues stepped for the dark ground (validated as a set:
-   * lightness band, CVD separation, >= 3:1 on --tb-bg). */
-  --tb-chart-1: #3987e5;
-  --tb-chart-2: #d95926;
+  /* Its own set for the dark ground, not the light one dimmed: the accent
+   * first, the rest lifted to read at >= 4:1 on --tb-bg and re-checked for
+   * colour-blind separation against it (deuteranope / protanope). */
+  --tb-chart-2: #cf4f1c;
   --tb-chart-3: #199e70;
-  --tb-chart-4: #c98500;
-  --tb-chart-5: #d55181;
-  --tb-chart-6: #008300;
-  --tb-chart-7: #9085e9;
+  --tb-chart-4: #dba21a;
+  --tb-chart-5: #e87ba4;
+  --tb-chart-6: #7cc06a;
+  --tb-chart-7: #8b5cf6;
   --tb-chart-8: #e66767;
   color-scheme: dark;
 }
@@ -823,24 +845,23 @@ label > input[data-tb-search] { width: 11em; }
     --tb-bg: #141417;
     --tb-page: #0b0b0d;
     --tb-muted: #a0a0ab;
-    --tb-accent: #7a9cff;
-    --tb-accent-text: #a5bcff;
+    --tb-accent: var(--tb-dark-accent);
+    --tb-accent-text: var(--tb-dark-accent-text);
     --tb-on-accent: #0d0f12;
-    --tb-rule: #26262b;
-    --tb-surface: #1b1b1f;
-    --tb-surface-accent: rgba(122, 156, 255, 0.12);
-    --tb-shadow: none;
+    --tb-rule: #2c2c32;
+    --tb-surface: #1c1c21;
+    --tb-surface-accent: color-mix(in srgb, var(--tb-dark-accent) 12%, transparent);
     --tb-good: #6fcf8f;
     --tb-bad: #ff8a80;
-    /* The same eight hues stepped for the dark ground (validated as a set:
-     * lightness band, CVD separation, >= 3:1 on --tb-bg). */
-    --tb-chart-1: #3987e5;
-    --tb-chart-2: #d95926;
+    /* Its own set for the dark ground, not the light one dimmed: the accent
+     * first, the rest lifted to read at >= 4:1 on --tb-bg and re-checked for
+     * colour-blind separation against it (deuteranope / protanope). */
+    --tb-chart-2: #cf4f1c;
     --tb-chart-3: #199e70;
-    --tb-chart-4: #c98500;
-    --tb-chart-5: #d55181;
-    --tb-chart-6: #008300;
-    --tb-chart-7: #9085e9;
+    --tb-chart-4: #dba21a;
+    --tb-chart-5: #e87ba4;
+    --tb-chart-6: #7cc06a;
+    --tb-chart-7: #8b5cf6;
     --tb-chart-8: #e66767;
     color-scheme: dark;
   }
@@ -900,7 +921,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   padding: 4px 10px var(--tb-space-3);
   border-bottom: 1px solid var(--tb-rule);
 }
-.tb-tab-bar > .tb-title h1 { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.tb-tab-bar > .tb-title h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .tb-tab-bar > .tb-title p { font-size: 12.5px; line-height: 1.45; }
 .tb-tab-bar > .tb-title [data-tb-built] { font-size: 11.5px; }
 @media (max-width: 720px) {
@@ -947,33 +968,26 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
  * hero (kicker, the headline that states the finding, a standfirst, a
  * byline) in the accent colour. One serif reading column; figures, tables,
  * KPI strips and pull-stats sit in it as framed cards and keep the sans so
- * numbers read as data. Everything follows the theme's tokens. */
+ * numbers read as data. Everything follows the theme's tokens.
+ * The hero is the project's one accent, flat — the same colour in every
+ * editorial — and its ink is --tb-on-accent (white on the light accent, near
+ * black on the lighter dark-mode accent; both clear 4.5:1). */
 .tb-article {
-  --tb-hero: color-mix(in oklab, var(--tb-accent) 58%, #0a0f1f);
-  --tb-hero-ink: #ffffff;
-  --tb-hero-soft: color-mix(in oklab, var(--tb-accent) 22%, #ffffff);
+  --tb-hero: var(--tb-accent);
+  --tb-hero-ink: var(--tb-on-accent);
+  --tb-hero-soft: color-mix(in oklab, var(--tb-hero-ink) 88%, var(--tb-hero));
   max-width: 50rem;
   margin: var(--tb-space-4) auto;
   padding: 0 clamp(18px, 5vw, 56px) clamp(24px, 4vw, 44px);
   background: var(--tb-bg);
   border: 1px solid var(--tb-rule);
   border-radius: 18px;
-  box-shadow: 0 1px 2px rgba(16, 16, 24, 0.04), 0 12px 32px rgba(16, 16, 24, 0.06);
   font-family: var(--tb-font-serif);
   font-size: 1.1em;
   line-height: 1.72;
   overflow: hidden;
 }
-/* The article is a sheet on the page's plane, warmed by a soft accent glow. */
-body:has(> .tb-article), body:has(> * > .tb-article) {
-  background:
-    radial-gradient(circle at 10% -5%, color-mix(in oklab, var(--tb-accent) 10%, transparent), transparent 42%),
-    var(--tb-page);
-}
 .tb-article p { max-width: none; }
-/* An editorial page's charts lead with its accent, so a single-series figure
- * matches the hero and the section marks. */
-:root:has(.tb-article) { --tb-chart-1: var(--tb-accent); }
 
 /* The hero: a band in the accent colour across the top of the sheet. */
 .tb-article-head {
@@ -981,20 +995,13 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   margin: 0 calc(-1 * clamp(18px, 5vw, 56px)) var(--tb-space-4);
   padding: clamp(28px, 5vw, 48px) clamp(18px, 5vw, 56px) var(--tb-space-3);
   color: var(--tb-hero-ink);
-  background:
-    repeating-linear-gradient(135deg, rgba(255,255,255,.035) 0 2px, transparent 2px 10px),
-    linear-gradient(135deg, var(--tb-hero), color-mix(in oklab, var(--tb-accent) 85%, #0a0f1f));
-}
-.tb-article-head::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-  background: linear-gradient(90deg, transparent, var(--tb-hero-soft), transparent);
-  opacity: 0.6;
+  background: var(--tb-hero);
 }
 .tb-article-head[data-tb-title="center"] { text-align: center; }
 .tb-kicker {
   font-family: var(--tb-font);
   font-size: 0.7em;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--tb-accent-text);
@@ -1003,10 +1010,10 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 .tb-article-head .tb-kicker { color: var(--tb-hero-soft); }
 .tb-article h1 {
   font-family: var(--tb-font-serif);
-  font-size: clamp(1.75em, 4.2vw, 2.5em);
+  font-size: clamp(var(--tb-text-2xl), 4.2vw, var(--tb-text-3xl));
   font-weight: 600;
   line-height: 1.1;
-  letter-spacing: -0.015em;
+  letter-spacing: var(--tb-tracking-tight);
   margin: 0 0 var(--tb-space-3);
 }
 .tb-article-head h1 { color: var(--tb-hero-ink); }
@@ -1018,7 +1025,7 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   color: var(--tb-muted);
   margin: 0 0 var(--tb-space-3);
 }
-.tb-article-head .tb-dek { color: color-mix(in oklab, var(--tb-hero-ink) 82%, var(--tb-hero)); }
+.tb-article-head .tb-dek { color: var(--tb-hero-soft); }
 .tb-byline {
   font-family: var(--tb-font);
   font-size: 0.74em;
@@ -1028,8 +1035,8 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   margin: 0;
 }
 .tb-article-head .tb-byline {
-  color: color-mix(in oklab, var(--tb-hero-ink) 70%, var(--tb-hero));
-  border-top-color: rgba(255, 255, 255, 0.18);
+  color: var(--tb-hero-soft);
+  border-top-color: color-mix(in oklab, var(--tb-hero-ink) 22%, transparent);
 }
 .tb-article .tb-lede {
   font-size: 1.18em;
@@ -1037,7 +1044,7 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   max-width: none;
 }
 .tb-article .tb-lede [data-tb-figure="value"],
-.tb-article p [data-tb-figure="value"] { font-weight: 650; font-variant-numeric: tabular-nums; }
+.tb-article p [data-tb-figure="value"] { font-weight: 600; font-variant-numeric: tabular-nums; }
 
 /* Section heads: a claim, marked with a short accent bar. */
 .tb-article h2 {
@@ -1046,7 +1053,7 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   gap: 0.55em;
   font-family: var(--tb-font);
   font-size: 1.12em;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
   margin: 2.3em 0 0.6em;
 }
@@ -1071,7 +1078,6 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   border: 1px solid var(--tb-rule);
   border-radius: 12px;
   background: var(--tb-bg);
-  box-shadow: var(--tb-shadow);
 }
 .tb-figure figcaption {
   margin-top: var(--tb-space-2);
@@ -1106,9 +1112,9 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 }
 .tb-pullstat-value {
   font-size: 2.7em;
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--tb-tracking-tight);
   color: var(--tb-accent-text);
   font-variant-numeric: tabular-nums;
 }
@@ -1129,7 +1135,7 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
   .tb-pullstat { grid-template-columns: 1fr; row-gap: var(--tb-space-1); }
 }
 @media print {
-  .tb-article { box-shadow: none; border: 0; margin: 0; max-width: none; animation: none; }
+  .tb-article { border: 0; margin: 0; max-width: none; animation: none; }
 }
 
 /* ── 12c-2. App pages (app.jsx) ─────────────────────────────────────────────
@@ -1144,12 +1150,12 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 }
 .tb-segmented > button {
   font: inherit; font-size: 13px; color: var(--tb-muted); background: none;
-  border: 0; border-radius: 7px; padding: 4px 12px; cursor: pointer;
+  border: 1px solid transparent; border-radius: 7px; padding: 3px 11px; cursor: pointer;
 }
 .tb-segmented > button:hover { color: var(--tb-ink); }
 .tb-segmented > button.tb-segmented-on {
   background: var(--tb-bg); color: var(--tb-ink); font-weight: 600;
-  box-shadow: 0 1px 2px rgba(16, 16, 24, 0.08);
+  border-color: var(--tb-rule);
 }
 /* The no-JavaScript view of an app page (an email preview, a file viewer). */
 .tb-app-static { padding: var(--tb-space-4) var(--tb-space-3); }
@@ -1208,7 +1214,7 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 
 .tb-receipt-head {
   color: var(--tb-ink);
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: var(--tb-space-2);
 }
 .tb-receipt-line { margin: var(--tb-space-1) 0; }
@@ -1250,7 +1256,6 @@ body:has(> .tb-article), body:has(> * > .tb-article) {
 
 @media print {
   body { max-width: none; padding: 0; background: #fff; }
-  .tb-card, .tb-kpi { box-shadow: none; }
 
   .tb-card, .tb-kpi, [data-tb-figure] {
     page-break-inside: avoid;

@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX plan — executing the 2026-10-17 audit — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="UX plan — executing the 2026-10-17 audit">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a class="on" href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="ux-plan-executing-the-2026-10-17-audit">UX plan — executing the 2026-10-17 audit</h1>
+<p><strong>Status: decided, in execution.</strong> The audit is <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>; this
+is the work, cut into packages an agent can own. Read the audit first; it is
+the <em>why</em>, this is the <em>what</em> and the acceptance test for each piece.</p>
+<h2 id="decisions-closed">Decisions (closed)</h2>
+<ol>
+<li><strong>Four places:</strong> Reports (home) · Ask · Data · Review. The model switcher
+   becomes a filter inside Reports and Data, not the frame of the app.</li>
+<li><strong>The bar for the report output.</strong> Type and restraint as Stripe's
+   dashboard; density and chrome as Linear; the editorial register as a
+   first-rate fund's quarterly letter. Operationally: one accent; no gradient,
+   hatch, glow or resting shadow; hierarchy carried by type size and weight;
+   every figure in tabular numerals; nothing truncated; every page framed by a
+   masthead and a footer.</li>
+<li><strong>Order:</strong> Step 1 ships whole before Step 2 starts. Within a step,
+   packages touching the same file run in sequence; disjoint packages may run
+   in parallel.</li>
+<li><strong>Invariants that no package may bend.</strong> A presentation default never
+   changes a number. The locked honesty lines (<code>tests/test_agent_guides.py</code>)
+   survive verbatim. No new runtime dependency and no CSP change in the
+   artifact. The receipt's own tones are never re-coloured by a theme. The
+   discoverability definition of done applies to every authoring-surface
+   change: vocabulary (<code>capabilities.py</code>), scaffold/showcase, both agent
+   guides, in the same change.</li>
+</ol>
+<h2 id="how-work-is-done">How work is done</h2>
+<ul>
+<li>Branch <code>design-system-v2</code> off <code>main</code>. One commit per package, message
+  naming the package (<code>DS-3: KPI as number + signal</code>). Merge to <code>main</code> at the
+  end of each step when the full suite is green.</li>
+<li>Before a package's commit: <code>pytest tests/</code> (full), plus
+  <code>TRACEBI_E2E=1 PYTHONPATH=$PWD pytest tests/test_ui_smoke.py</code> whenever the
+  package touches the UI, <code>tracebi.js</code>, <code>tracebi.css</code> or any report package.
+  Subprocess-spawning tests need <code>PYTHONPATH=$PWD</code>.</li>
+<li>Every visual package ends with captures: the changed surfaces at 1440 and
+  390 wide, light and dark, looked at by the agent that made the change,
+  before it reports done. "The tests pass" is not done for visual work.</li>
+<li>A package that finds the plan wrong says so in its report and stops at the
+  boundary rather than improvising a different design.</li>
+</ul>
+<hr>
+<h2 id="step-1-report-design-system-v2">Step 1 — Report design system v2</h2>
+<p>Goal: a report with no <code>style.css</code> is the page we would show. Touches
+<code>tracebi/reports/assets/tracebi.css</code>, <code>tracebi.js</code>, <code>_react_src/kit.jsx</code>
+(then rebuild the vendored bundle per <code>REACT_NOTICE.md</code>), <code>template_package.py</code>
+(the About block, mode default), the scaffolds, the showcase, the reference
+reports, docs and guides.</p>
+<h3 id="ds-1-tokens-type-scale-modes">DS-1 Tokens, type scale, modes</h3>
+<ul>
+<li>Section 1 of <code>tracebi.css</code> becomes the system: a seven-step type scale
+  (<code>--tb-text-xs … --tb-text-3xl</code>, 12/13/14/16/20/28/40 at 1.25 ratio or
+  close), weights 400/500/600, <code>--tb-tracking-tight</code> for ≥ 28px, tabular
+  numerals on <code>.tb-kpi-value</code>, table cells, <code>[data-tb-figure="value"]</code>.</li>
+<li>One accent family: <code>--tb-chart-1</code> is derived from <code>--tb-accent</code> (same hue),
+  not a second blue. The remaining seven series colours are re-checked for
+  CVD separation against the new first.</li>
+<li><code>auto</code> is the default mode: <code>template_package</code> emits <code>data-tb-mode="auto"</code>
+  when <code>look.mode</code> is unset, for app and template pages alike. Dark values
+  are reviewed as their own palette (surfaces, rules, chart series, muted
+  ink), not inverted light.</li>
+<li>Themes (<code>tracebi/reports/themes/*.css</code>) collapse to accent presets on the
+  one system: each file sets <code>--tb-accent</code>, <code>--tb-accent-text</code>, an optional
+  display face, and nothing structural. <code>tracebi theme use</code> unchanged.</li>
+<li>Remove decoration from 12c: the hatched hero texture; the hero becomes
+  <code>--tb-accent</code> (one colour per project, not <code>color-mix</code> per report).</li>
+<li>Acceptance: <code>tests/test_showcase.py</code>, the parity test, and the contrast
+  checks in <code>scripts/ui_audit.py</code> pass; a grep for <code>linear-gradient</code>,
+  <code>repeating-linear-gradient</code>, <code>box-shadow</code> in <code>tracebi.css</code> finds only the
+  popover/menu/tooltip and the receipt drawer.</li>
+</ul>
+<h3 id="ds-2-frame-masthead-footer-the-about-block">DS-2 Frame: masthead, footer, the About block</h3>
+<ul>
+<li>A masthead on every page. Template grammar: <code>.tb-masthead</code> with slots
+  (<code>.tb-masthead-mark</code>, kicker, <code>h1</code>, standfirst, <code>.tb-masthead-meta</code> holding
+  period, built time and the verdict chip). Kit: <code>&lt;Masthead title kicker
+  period mark&gt;</code> renders it; <code>&lt;Built&gt;</code> moves inside it. The scaffolds and every
+  reference report use it.</li>
+<li>The verdict chip in the artifact: <code>.tb-verdict</code> with the four states from
+  DS-6, filled by <code>tracebi.js</code> from the manifest (Reproduces when the file's
+  own fingerprints match at load — the runtime already knows; Not checked
+  otherwise). Never green on a draft.</li>
+<li>A footer that ends the page: <code>.tb-footer</code> with sources (if the report
+  names any) and "How these numbers were made" as one visible line and a
+  <code>&lt;details&gt;</code>; the transform statement and the measure definitions move into
+  the receipt drawer (DS-6). The 9px grey dump is gone from the page body.</li>
+<li>Page measure 1,200px, a 12-column <code>.tb-grid</code> with named spans
+  (<code>.tb-span-4/6/8/12</code>), consistent vertical rhythm from <code>--tb-space-*</code>.</li>
+<li>Acceptance: no page shows the methodology text in the body; every
+  reference report and scaffold carries a masthead; <code>about</code> text in
+  <code>template_package.py</code> is covered by an updated test.</li>
+</ul>
+<h3 id="ds-3-kpi-as-number-signal">DS-3 KPI as number + signal</h3>
+<ul>
+<li><code>.tb-kpi-value</code> lead at <code>--tb-text-3xl</code>, others at <code>2xl</code>; the lead is
+  larger, not wider (drop <code>grid-column: span 2</code>).</li>
+<li><code>&lt;Kpi delta deltaFormat deltaGood="up|down"&gt;</code> and the template attribute
+  <code>data-tb-delta</code> show a signed change with direction glyph and
+  <code>--tb-good/--tb-bad</code>; <code>context</code> stays the one-line caption. Where the
+  binding has no comparison, no delta: never invent one.</li>
+<li>Optional <code>spark</code> prop (already exists as <code>&lt;Spark&gt;</code>): aligned to the card
+  baseline, 32px tall.</li>
+<li>Acceptance: app_lane records the delta's binding/cell as a claim; the
+  scaffold and showcase use at least one delta; captures of the KPI strip at
+  390px show four cards stacking cleanly.</li>
+</ul>
+<h3 id="ds-4-chart-style-d3-engine-in-tracebijs">DS-4 Chart style (D3 engine in <code>tracebi.js</code>)</h3>
+<ul>
+<li>Bars: band padding 0.45 (bars at 55% of the band), 2px radius on the free
+  end, direct value labels (inside the bar when it fits, outside otherwise)
+  using the figure's <code>valueFormat</code>.</li>
+<li>Category labels never truncate: wrap to two lines on <code>barh</code>, rotate on
+  <code>bar</code> only past a density threshold, otherwise shrink the band.</li>
+<li>Axis ticks: thin to what fits (<code>ticks(width / 80)</code>), same formatter as the
+  tables; gridlines at 6% ink; no axis lines; baseline only.</li>
+<li>Lines and areas: 1.5px stroke, end-point label, area at 10% of the series
+  colour, no gradient.</li>
+<li>Tooltip: category, value, the measure's description from the manifest in
+  plain words, and "Receipt →" that opens the drawer at that figure.</li>
+<li>Each of the six types has a reference rendering in the showcase.</li>
+<li>Acceptance: <code>portfolio_dashboard</code>'s <em>By fund</em> chart at 420px wide shows no
+  colliding ticks; no label is cut with "…"; the selection/filter behaviour
+  tests still pass.</li>
+</ul>
+<h3 id="ds-5-tables">DS-5 Tables</h3>
+<ul>
+<li>Numbers right-aligned with tabular numerals; a sticky header inside
+  <code>.tb-scroll</code>; the data bar is a thin (6px) bar in its own cell after the
+  number (<code>data-tb-bars</code> keeps its meaning), not a highlight behind the text;
+  one totals row style (2px rule above, weight 600).</li>
+<li>Density follows <code>--tb-cell-pad</code> only.</li>
+<li>Acceptance: a capture of <code>portfolio_dashboard</code>'s holdings table and the
+  editorial's sector table, light and dark.</li>
+</ul>
+<h3 id="ds-6-the-receipt-as-a-certificate">DS-6 The receipt as a certificate</h3>
+<ul>
+<li>Drawer (section 13 + <code>tracebi.js</code>): header with the verdict chip, the
+  report name, built time, model; then one row per figure: formatted value,
+  label, the definition in words, the query in one line
+  (<code>fair_value by dim_issuer.sector · order -fair_value</code>), fingerprint
+  abbreviated to 8 characters with copy; the raw query JSON, the full
+  fingerprint and git/rendered stamps behind a disclosure per figure and one
+  at the end. Clicking a figure in the page opens the drawer scrolled to its
+  row (already partly there).</li>
+<li>The same component serves the app's report page side panel (Step 2 reuses
+  it; build it once, in the artifact first).</li>
+<li>Verdict chip states and colours, used everywhere from now on:
+  Reproduces (green) · Needs a look (amber: source or model changed since the
+  build, checks stale) · Does not reproduce (red) · Not checked (neutral).</li>
+<li>Acceptance: the receipt tests in <code>tests/</code> pass unchanged where they check
+  content; the drawer at 390px is a full-height sheet; the honesty text
+  ("does not claim the numbers are right") is present verbatim.</li>
+</ul>
+<h3 id="ds-7-editorial-on-the-system">DS-7 Editorial on the system</h3>
+<ul>
+<li><code>.tb-article</code> uses DS-1 tokens and the DS-2 masthead (hero register: the
+  masthead on the accent ground, serif headline); the hatch is gone; the KPI
+  strip is DS-3's; figures use DS-4; the methodology is in the receipt.</li>
+<li><code>portfolio_book</code>'s and <code>cohort_brief</code>'s own <code>style.css</code> shrink to accent
+  and face overrides only; both copies of <code>cohort_brief</code> identical.</li>
+</ul>
+<h3 id="ds-8-showcase-scaffolds-demo-app-docs-guides">DS-8 Showcase, scaffolds, demo app, docs, guides</h3>
+<ul>
+<li><code>portfolio_showcase</code> rewritten to the system: no gradient, no shadows, the
+  system's faces; still every figure kind and every interaction
+  (<code>tests/test_showcase.py</code> is the contract, extend it for DS-2..6 markers).</li>
+<li><code>_INIT_SAMPLE_APP_JSX</code>, <code>_app_scaffold.py</code> jobs, the <code>new-report</code>
+  editorial template, the two <code>init --template</code> bundles and
+  <code>tracebi/web/demo_app/reports/*</code> on the system (<code>aum_by_branch</code> may keep its
+  faces and palette as the one bespoke example, on the new frame).</li>
+<li><code>capabilities.py</code> names the new components and attributes; <code>AGENTS.md</code> and
+  <code>_scaffold/init_agents.md</code> teach them; <code>docs/reference/app-jsx.md</code>,
+  <code>template-html.md</code>, <code>docs/guides/styling-a-report.md</code> and
+  <code>docs/architecture/design-direction.md</code> updated; <code>tests/test_agent_guides.py</code>
+  extended for the new <code>data-tb-*</code> names.</li>
+<li>Fix: the served artifact at <code>/r/&lt;name&gt;</code> must not <code>fetch</code> the selection API
+  from a <code>null</code> origin (either inline what it needs or detect the context).</li>
+</ul>
+<h3 id="ds-9-regression-harness">DS-9 Regression harness</h3>
+<ul>
+<li><code>scripts/ui_audit.py</code> also renders every report in both modes and both
+  widths into <code>report-sheet.png</code>, and records per project: distinct font
+  families, distinct accent hues, <code>box-shadow</code>/gradient occurrences. Baseline
+  committed under <code>docs/architecture/</code>; a later run may not regress it.</li>
+</ul>
+<p>Step 1 is done when: every reference report, demo report and scaffold renders
+on one system in both modes; the receipt is the certificate; the audit's
+"four visual languages" table collapses to one row (plus the one bespoke); and
+the full suite plus the UI smoke are green on <code>main</code>.</p>
+<hr>
+<h2 id="step-2-reports-as-home-and-the-report-page">Step 2 — Reports as home, and the report page</h2>
+<h3 id="r-1-the-library">R-1 The library</h3>
+<ul>
+<li><code>/</code> → the library: folders by model (the existing <code>/api/folders</code> and
+  <code>/api/reports</code> data), search, each row: display name, one-line description,
+  verdict chip, built time, schedule if any. Model switcher becomes a filter
+  chip row at the top. "At a glance" survives as a slim strip above the list.
+  Notes-to-agent and the agent feed leave this page (to Build mode / dev).</li>
+<li>Sidebar: Reports · Ask · Data · Review, then Help. <code>PAGES</code> in <code>nav.js</code> is
+  rewritten to these four; old addresses redirect.</li>
+</ul>
+<h3 id="r-2-names-not-identifiers">R-2 Names, not identifiers</h3>
+<ul>
+<li>Every list and title uses <code>report.json</code> <code>name</code>; models get a <code>label</code>
+  (<code>model_spec.py</code>, YAML and Python forms, optional, defaults to a
+  title-cased identifier); identifiers appear in mono only in Code and the
+  receipt's query line.</li>
+</ul>
+<h3 id="r-3-one-trust-vocabulary-in-the-app">R-3 One trust vocabulary in the app</h3>
+<ul>
+<li>A <code>Verdict</code> component in <code>Shared.jsx</code> with DS-6's four states; used by the
+  library row, the report header, History, Review and Build mode's figure
+  badges (replacing "REPRODUCIBLE"). "Source changed since this build" is
+  Needs a look everywhere at once (<code>/api/desk</code> already knows).</li>
+</ul>
+<h3 id="r-4-the-report-page">R-4 The report page</h3>
+<ul>
+<li>Full width, the artifact as delivered, the masthead's chip is the trust
+  affordance; one command bar: Open in new tab · Share · Export · (analyst+)
+  Rebuild · Edit as draft · (dev) Build; one side panel "About this build"
+  with tabs Receipt (the DS-6 component) · Lineage · History · Files. Config
+  is gone (its content is Files). Role-aware: buttons the role cannot use are
+  not rendered (<code>/api/me</code>).</li>
+</ul>
+<h3 id="r-5-history-and-phone">R-5 History and phone</h3>
+<ul>
+<li>History rows: what, verdict, when, how long, who; empty columns are not
+  shown. Report list rows wrap descriptions to two lines on a phone; the
+  receipt pill never overlaps content (anchor it to the masthead chip on
+  narrow screens).</li>
+</ul>
+<hr>
+<h2 id="step-3-data-and-review">Step 3 — Data and Review</h2>
+<h3 id="d-1-data">D-1 Data</h3>
+<ul>
+<li><code>/data/&lt;model&gt;</code>: the line as the page header (compact: three stations,
+  the freeze points as labels, verdict summary), then tabs Model (diagram,
+  tables, measures, relationships, storage, code) · Transform (flow, steps,
+  runs, code, produces) · Sources · Runs. "Refresh data" lives on Transform
+  only, as the primary action there. <code>/data</code> lists the models with one line
+  each. Map folds in as the all-models view of the line (<code>/data</code> with the
+  diagram toggled), one node style.</li>
+</ul>
+<h3 id="d-2-review">D-2 Review</h3>
+<ul>
+<li><code>/review</code>: Needs attention first (failed runs, stale builds, publish
+  requests awaiting the caller), then Drafts, then Verify a file as a quiet
+  entry at the bottom. The Drafts empty state is written for a person, with
+  the MCP tool names behind "for your agent".</li>
+</ul>
+<h3 id="d-3-retire">D-3 Retire</h3>
+<ul>
+<li>Routes <code>/m/&lt;model&gt;/*</code>, <code>/models</code>, <code>/sources</code>, <code>/runs</code>, <code>/map</code>, <code>/drafts</code>,
+  <code>/verify</code> redirect into the four places. <code>Overview.jsx</code>, <code>Map.jsx</code>,
+  <code>TheLine.jsx</code> are reduced to what Data uses. <code>docs/guides/*</code> and the
+  handbook's "How the app fits together" rewritten.</li>
+</ul>
+<hr>
+<h2 id="step-4-ask">Step 4 — Ask</h2>
+<ul>
+<li><code>/ask</code>: one input; the answer is a small table or chart from the model's
+  existing query surface, with the measure definitions in words and the
+  verdict chip; follow-ups refine; "Keep this" opens a draft (<code>/api/drafts</code>)
+  with a one-figure app page. The query builder remains under "Advanced".
+  Honesty: no number is shown that did not come from a stamped query.</li>
+</ul>
+<hr>
+<h2 id="reporting">Reporting</h2>
+<p>At the end of each step the orchestrator records in <code>NOTES.md</code> what shipped,
+what the captures showed, and what was deliberately left, and updates
+<code>docs/architecture/ui-backlog.md</code>.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

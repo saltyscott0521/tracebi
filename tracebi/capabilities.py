@@ -343,10 +343,14 @@ def _presentation() -> dict:
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
             "--tb-on-accent (text on an accent fill)",
+            "--tb-dark-accent / --tb-dark-accent-text (the accent on the "
+            "dark ground; a theme sets both pairs)",
             "--tb-rule", "--tb-radius", "--tb-space-1..4",
+            "--tb-text-xs..3xl (the type scale: 12/13/14/16/20/28/40px), "
+            "--tb-tracking-tight (28px and up)",
             "--tb-good / --tb-bad (direction tones)",
             "--tb-cell-pad (table density)",
-            "--tb-chart-1..8 (the chart palette)",
+            "--tb-chart-1..8 (the chart palette; chart-1 is the accent)",
         ],
         "components": [
             ".tb-page", ".tb-grid", ".tb-card",
@@ -658,8 +662,8 @@ def _presentation() -> dict:
                              "dark / the reader's choice, comfortable / "
                              "compact. Offer the look of their last report "
                              "first. No person: use the defaults.",
-                "page": "On <html>: data-tb-mode=\"dark\" (or \"auto\": "
-                        "follows the reader's system; unset is light), "
+                "page": "On <html>: data-tb-mode=\"dark\" or \"light\" "
+                        "(unset is \"auto\": follows the reader's system), "
                         "data-tb-density=\"compact\", data-tb-width=\"full\" "
                         "(the whole window, for a dashboard). Tokens only: "
                         "never a number, never the receipt's tones",

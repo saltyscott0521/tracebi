@@ -40,16 +40,26 @@ set `--tb-font` to use your own face instead.
 | `--tb-font` / `--tb-mono` | the type family, and the one for code |
 | `--tb-ink` / `--tb-muted` | text |
 | `--tb-page` / `--tb-bg` / `--tb-surface` | the page, cards and tables, raised tints |
-| `--tb-accent` / `--tb-accent-text` | the accent (focus ring, bars, the active tab's rule), and the same blue deepened for small text (links, hovers): override both |
+| `--tb-accent` / `--tb-accent-text` | the accent (focus ring, bars, the first chart series, the editorial hero), and the same blue deepened for small text (links, hovers): override both |
+| `--tb-dark-accent` / `--tb-dark-accent-text` | the same pair for the dark ground; set them too, or dark mode keeps the default cobalt |
+| `--tb-text-xs` … `--tb-text-3xl` | the type scale: 12, 13, 14 (body), 16, 20, 28, 40px; `--tb-tracking-tight` from 28px up |
 | `--tb-good` / `--tb-bad` | direction: better and worse |
 | `--tb-rule` | borders and rules |
-| `--tb-shadow` | the card shadow (none by default: cards are a hairline) |
+| `--tb-shadow` | none; the sheet draws no resting shadow (cards are a hairline). Left for a report's own CSS |
 | `--tb-radius`, `--tb-space-1..4` | shape and rhythm |
 | `--tb-cell-pad` | table density, in one place |
-| `--tb-chart-1..8` | the chart palette |
+| `--tb-chart-1..8` | the chart palette; `--tb-chart-1` is the accent |
 
-Setting `--tb-chart-1..8` in `reports/_theme.css` is usually all a house style
-needs: charts follow it automatically.
+Setting the accent pairs in `reports/_theme.css` is usually all a house style
+needs: the first chart series, links, the hero and the active tab follow it.
+The shipped themes (`tracebi theme list`) are exactly that, an accent preset
+for each ground.
+
+**Modes.** A page follows the reader's system by default: the build gives a
+`<html>` with no `data-tb-mode` the value `auto`. Set `data-tb-mode="light"`
+(or `"dark"`) to pin it; an app sets `report.json` `"look"`. A report whose own
+`style.css` paints a light ground (a fixed paper colour, a light-only palette)
+should pin `light` until it styles the dark ground too.
 
 ## Components
 
