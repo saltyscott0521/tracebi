@@ -301,12 +301,18 @@ def _presentation() -> dict:
                     "a fixed kit; still one offline file with the receipt.",
             "imports": "react, react-dom, recharts, lucide-react (icons by name; only "
                        "those are embedded), tracebi. Any other import fails the build.",
-            "kit": "<Kpi binding cell format label context lead>, <Value binding cell "
+            "kit": "<Masthead title kicker period mark> opens the page (children are the "
+                   "standfirst; title is a string or text with <Value>s in it; period "
+                   "is presentation, \"Q3 2026\"; it holds the build time and the "
+                   "verdict chip), <Footer /> where the build's footer goes (the end "
+                   "of the main column; without it the footer follows the app), "
+                   "<Kpi binding cell format label context lead>, <Value binding cell "
                    "format>, <Chart binding type x y valueFormat ...>, <Spark ...> (a "
                    "sparkline), <Table binding columns sort bars rows>, <Filter binding "
                    "column> (no binding: a page-wide filter on every binding with the "
                    "column; KPIs stay the stamped totals), <Search binding>, <Download "
-                   "binding>, <Built>; <Segmented options value onChange> to choose which "
+                   "binding>, <Built> (the build time alone; <Masthead> already "
+                   "shows it); <Segmented options value onChange> to choose which "
                    "figure shows (each option its own binding — never to compute one); "
                    "useUrlState(key, initial) keeps a view or period in the URL so a "
                    "shared link opens on it; usePrinting() is true while the page "
@@ -316,7 +322,7 @@ def _presentation() -> dict:
             "claims": "Kit figures are claims: binding, cell, x and y must be literal "
                       "strings, and the build refuses a binding or column that does not "
                       "exist. A number the app computes or draws itself is presentation, "
-                      "not a checked figure; the page's About block says so. A number "
+                      "not a checked figure; the page's footer says so. A number "
                       "typed into the app's text (two or more digits) fails the build, as "
                       "in template.html: bind it with <Value binding cell />.",
             "styling": "Tailwind classes, with the TraceBi tokens as colours (bg-page, "
@@ -348,12 +354,38 @@ def _presentation() -> dict:
             "--tb-rule", "--tb-radius", "--tb-space-1..4",
             "--tb-text-xs..3xl (the type scale: 12/13/14/16/20/28/40px), "
             "--tb-tracking-tight (28px and up)",
-            "--tb-good / --tb-bad (direction tones)",
+            "--tb-good / --tb-bad (direction tones), --tb-warn (the amber "
+            "verdict tone)",
             "--tb-cell-pad (table density)",
             "--tb-chart-1..8 (the chart palette; chart-1 is the accent)",
         ],
         "components": [
-            ".tb-page", ".tb-grid", ".tb-card",
+            ".tb-page (the page measure, 1,200px; an app's <main "
+            "className=\"tb-page px-6 py-8\">)",
+            ".tb-masthead (opens every page: optional .tb-masthead-mark — "
+            "empty; a report's style.css gives it a logo, e.g. width, height "
+            "and background: url(assets/logo.svg) — .tb-kicker, <h1>, "
+            ".tb-standfirst, .tb-masthead-meta. data-tb-period=\"…\" on the "
+            "masthead names what the numbers cover; the runtime fills the "
+            "meta with the period, the build time and the verdict chip, "
+            "adding whichever is missing. data-tb-title=\"center|banner|nav\" "
+            "places it. The editorial hero is <header class=\"tb-masthead "
+            "tb-article-head\">)",
+            ".tb-verdict (the verdict chip, in the masthead: the runtime sets "
+            "data-tb-verdict from the file itself — draft on a working "
+            "preview, not-checked on a built file, since nothing has re-run "
+            "its queries; tracebi verify does. The four verdicts are "
+            "reproduces (green), needs-a-look (amber), does-not-reproduce "
+            "(red), not-checked (neutral). A page never sets it green)",
+            ".tb-footer (ends the page: your sources first, then the build's "
+            "one line — who, when, which model, and that the receipt does "
+            "not claim the numbers are right — and 'How these numbers were "
+            "made' behind a <details>: the stated methodology. The build "
+            "adds it when the template places no data-tb-methodology)",
+            ".tb-grid", ".tb-span-4 / .tb-span-6 / .tb-span-8 / .tb-span-12 "
+            "(children of a .tb-grid make it the 12-column grid: a third, a "
+            "half, two thirds, the row; full width under 720px)",
+            ".tb-card",
             ".tb-lede (the page's answer sentence under the title, its "
             "numbers bound as value figures)",
             ".tb-kpi (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context — the "
@@ -362,8 +394,9 @@ def _presentation() -> dict:
             ".tb-table--freeze — the first column stays put while a wide "
             "table scrolls sideways)",
             ".tb-callout", ".tb-note",
-            ".tb-article (an editorial report: .tb-article-head, .tb-kicker, "
-            ".tb-dek, .tb-byline, figure.tb-figure with figcaption, "
+            ".tb-article (an editorial report: the masthead as "
+            ".tb-article-head, .tb-kicker, .tb-standfirst, figure.tb-figure "
+            "with figcaption, "
             ".tb-pullstat / .tb-pullstat-value / .tb-pullstat-text)",
             ".tb-good / .tb-bad (direction tones; pair with a sign or word, "
             "never color alone)",
@@ -454,13 +487,16 @@ def _presentation() -> dict:
                                  "comparison, e.g. a growth measure",
             "data-tb-unverified": "the honest mark for an unbacked figure",
             "data-tb-stage": "exploration — stripped at final build",
-            "data-tb-methodology": "one per page, on any container element; "
-                                   "the author's own children stay FIRST; "
-                                   "the build appends the pipeline's stated "
-                                   "methodology (transform notes, per-check "
-                                   "rationale, measure descriptions) — an "
-                                   "appendix, never a claim: no badge, no "
-                                   "status",
+            "data-tb-methodology": "one per page, on any container element "
+                                   "(<footer class=\"tb-footer\" "
+                                   "data-tb-methodology>); the author's own "
+                                   "children (sources) stay FIRST; the build "
+                                   "appends the footer's line and, behind "
+                                   "'How these numbers were made', the "
+                                   "pipeline's stated methodology (transform "
+                                   "notes, per-check rationale, measure "
+                                   "descriptions) — an appendix, never a "
+                                   "claim: no badge, no status",
         },
         "figure_helper": {
             "rule": "You keep the layout; the framework builds the figure. "
@@ -629,13 +665,14 @@ def _presentation() -> dict:
             "recipes": {
                 "editorial": "A report to be read top to bottom (the default for "
                              "new-report): <article class=\"tb-article\"> — a "
-                             ".tb-kicker, an <h1> that states the finding, a "
-                             ".tb-dek standfirst, a .tb-byline with "
-                             "<span data-tb-built>, a .tb-lede with its numbers "
+                             "masthead (<header class=\"tb-masthead "
+                             "tb-article-head\">: .tb-kicker, an <h1> that "
+                             "states the finding, a .tb-standfirst, a "
+                             ".tb-masthead-meta), a .tb-lede with its numbers "
                              "bound, <h2> sections of prose, <figure "
                              "class=\"tb-figure\"> with a <figcaption> saying "
                              "what to see, an <aside class=\"tb-pullstat\">, a "
-                             "table, What to do, the methodology. Serif body, "
+                             "table, What to do, the .tb-footer. Serif body, "
                              "reads with JavaScript off, prints and emails. "
                              "tracebi new-report \"Name\" --layout editorial",
                 "brief": "One finding: answer sentence (.tb-lede), a few "
@@ -670,12 +707,15 @@ def _presentation() -> dict:
                 "sidebar": "<div class=\"tb-tabs\" data-tb-nav=\"side\"> — "
                            "the same data-tb-tab sections with the bar as a "
                            "column; put the whole page inside it",
-                "title": "<header class=\"tb-title\" data-tb-title=\"left|"
-                         "center|banner|nav\"><h1>…</h1><p class=\""
-                         "tb-subtitle\">…</p><span data-tb-built></span>"
-                         "</header> — data-tb-built shows when the file was "
-                         "built, from its receipt; nav moves the title to the "
-                         "top of a sidebar",
+                "title": "<header class=\"tb-masthead\" data-tb-title=\"left|"
+                         "center|banner|nav\" data-tb-period=\"…\"><h1>…</h1>"
+                         "<p class=\"tb-standfirst\">…</p><p class=\""
+                         "tb-masthead-meta\"><span data-tb-built></span>"
+                         "<span class=\"tb-verdict\"></span></p></header> — "
+                         "data-tb-built shows when the file was built, from "
+                         "its receipt; nav moves the masthead to the top of a "
+                         "sidebar. (.tb-title, the older title block, still "
+                         "works)",
                 "app": "An app.jsx has no <html>: its mode and density are "
                        "report.json \"look\": {\"mode\": \"dark\"|\"auto\", "
                        "\"density\": \"compact\"}; its navigation and title "
@@ -703,8 +743,8 @@ def _presentation() -> dict:
             "Every built artifact embeds a tracebi-receipt JSON block — "
             "report, render stamp, git SHA, per-figure binding "
             "fingerprints, compact transform-contract statuses, the "
-            "semantic-contract model names, and whether stated "
-            "methodology shipped. The drawer is a provenance display from "
+            "semantic-contract model names, whether stated methodology "
+            "shipped and its text, and who built the file. The drawer is a provenance display from "
             "the recorded receipt block — it renders only what the block "
             "records, never re-colored; the manifest remains the receipt "
             "of record. Draft snapshots carry no receipt block."

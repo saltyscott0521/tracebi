@@ -1066,7 +1066,8 @@ class TestReportCLI:
         app = (reports / "regions_app" / "app.jsx").read_text()
         assert not (reports / "regions_app" / "template.html").exists()
         for marker in ("<Kpi lead", "<Value", "<Chart", "<Table", "<Filter",
-                       "<Search", "<Download", "<Built", 'from "tracebi"'):
+                       "<Search", "<Download", "<Masthead", "<Footer", "tb-span-8",
+                       'from "tracebi"'):
             assert marker in app, f"app scaffold no longer teaches {marker}"
 
         assert cli.main(["new-dashboard", "Regions Demo", "--html",

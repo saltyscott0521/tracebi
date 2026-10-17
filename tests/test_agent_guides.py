@@ -121,7 +121,8 @@ class TestScaffoldDemonstratesTheProduct:
         from tracebi.cli import _INIT_SAMPLE_APP_JSX
 
         for marker in ("<Kpi lead", "<Value", "<Chart", "<Table", "<Filter",
-                       "<Search", "<Download", "<Built"):
+                       "<Search", "<Download", "<Masthead", "<Footer",
+                       "tb-span-8"):
             assert marker in _INIT_SAMPLE_APP_JSX, (
                 f"the scaffold sample no longer demonstrates {marker}"
             )
@@ -135,7 +136,8 @@ class TestScaffoldDemonstratesTheProduct:
                     / "portfolio_model" / "portfolio_showcase" / "template.html").read_text()
         for marker in ("data-tb-filter", "data-tb-search",
                        "data-tb-download", "data-tb-figure",
-                       "data-tb-stage", "data-tb-methodology"):
+                       "data-tb-stage", "data-tb-methodology",
+                       "tb-masthead", "data-tb-period", "tb-footer"):
             assert marker in showcase, f"the showcase no longer demonstrates {marker}"
 
 

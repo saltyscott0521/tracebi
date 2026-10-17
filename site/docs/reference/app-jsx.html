@@ -252,8 +252,20 @@ filterable, exactly as in a template.</p>
 <td><code>true</code> while the page prints (the browser's Ctrl+P, and <code>tracebi report build --format pdf</code>). An app with views renders every one then, so the PDF holds the whole report: <code>{printing ? &lt;&gt;&lt;Overview /&gt;&lt;Detail /&gt;&lt;/&gt; : &lt;View /&gt;}</code>. Give navigation <code>print:hidden</code>.</td>
 </tr>
 <tr>
+<td><code>&lt;Masthead title kicker period mark&gt;</code></td>
+<td>Opens the page: an optional <code>mark</code> (a node; or leave it empty and size <code>.tb-masthead-mark</code> in <code>style.css</code>), a <code>kicker</code>, the <code>title</code> (a string, or text with <code>&lt;Value&gt;</code>s in it: <code>title={&lt;&gt;Marked at &lt;Value binding="kpis" cell="mark" /&gt; of cost&lt;/&gt;}</code>), the standfirst as its children, and a meta line with the <code>period</code> (presentation, <code>"Q3 2026"</code>), the build time and the verdict chip, which the runtime fills from the file itself (<code>not-checked</code> on a built file, <code>draft</code> on a preview; never green on its own say-so). Other props go on the <code>&lt;header&gt;</code>: <code>data-tb-title="center|banner|nav"</code>. A literal <code>title</code> is checked for typed numbers like the app's text; <code>kicker</code> and <code>period</code> are labels.</td>
+</tr>
+<tr>
+<td><code>&lt;Footer /&gt;</code></td>
+<td>Where the build's footer goes: one line on who built the file, from which model, and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's <code>&lt;main&gt;</code>); without it the footer follows the app.</td>
+</tr>
+<tr>
 <td><code>&lt;Built&gt;</code></td>
-<td>When the file was built, from its receipt.</td>
+<td>When the file was built, from its receipt (<code>&lt;Masthead&gt;</code> already shows it).</td>
+</tr>
+<tr>
+<td><code>tb-page</code>, <code>tb-grid</code> + <code>tb-span-4/6/8/12</code></td>
+<td>The page measure (<code>&lt;main className="tb-page space-y-8 px-6 py-8"&gt;</code>, 1,200px) and the 12-column grid (<code>&lt;div className="tb-grid"&gt;&lt;section className="tb-card tb-span-8"&gt;…</code>).</td>
 </tr>
 </tbody>
 </table>
@@ -271,7 +283,7 @@ as it does in a <code>template.html</code>: bind it with <code>&lt;Value binding
 or say it in words. A single digit ("Q3") is not a number here.</p>
 <p>Anything the app computes or draws itself — a Recharts chart, a sum, a number
 in your own markup — is the app's presentation, not a checked figure. The page's
-About block says so: <em>"This page is an app. The figures it shows through the
+footer says so: <em>"This page is an app. The figures it shows through the
 TraceBi kit carry that receipt; anything else it draws is the app's own
 presentation and is not checked."</em> <code>tracebi verify</code> re-runs the bindings as for
 any report.</p>

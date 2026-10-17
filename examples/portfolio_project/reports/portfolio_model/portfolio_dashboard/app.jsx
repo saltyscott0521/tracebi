@@ -3,20 +3,16 @@
 // binding and cell, so the build records it and the receipt names it. The
 // search and the sector filter choose which stamped rows show; they never
 // compute a number.
-import { Kpi, Chart, Table, Filter, Search, Download, Built } from "tracebi";
+import { Masthead, Footer, Kpi, Chart, Table, Filter, Search, Download } from "tracebi";
 
 export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-5 px-6 py-8">
-        <header className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Direct lending: portfolio book</h1>
-            <p className="text-sm text-muted">Three funds, cleaned from a Schedule-of-Investments
-              export. Every number is a query against the model.</p>
-          </div>
-          <Built className="text-xs text-muted" />
-        </header>
+      <main className="tb-page space-y-8 px-6 py-8">
+        <Masthead kicker="Direct lending" title="Portfolio book">
+          Three funds, cleaned from a Schedule-of-Investments export. Every number is a
+          query against the model.
+        </Masthead>
 
         <div className="tb-grid">
           <Kpi lead binding="totals" cell="fair_value" format="currency_compact"
@@ -28,14 +24,14 @@ export default function App() {
                context="fair value / cost" id="kpi-mark" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <section className="tb-card lg:col-span-2">
+        <div className="tb-grid">
+          <section className="tb-card tb-span-8">
             <h2>Fair value by sector</h2>
             <p className="tb-note">Largest first.</p>
             <Chart binding="by_sector" type="barh" x="dim_issuer.sector" y="fair_value"
                    valueFormat="currency_compact" />
           </section>
-          <section className="tb-card">
+          <section className="tb-card tb-span-4">
             <h2>By fund</h2>
             <p className="tb-note">Fair value each fund holds.</p>
             <Chart binding="by_fund" type="barh" x="dim_fund.fund" y="fair_value"
@@ -59,6 +55,7 @@ export default function App() {
                  labels={{ "dim_issuer.issuer": "Issuer", "dim_issuer.sector": "Sector",
                            "cost_basis": "Cost" }} />
         </section>
+        <Footer />
       </main>
     </div>
   );

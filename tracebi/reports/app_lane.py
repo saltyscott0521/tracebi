@@ -12,7 +12,7 @@ the same ``data-tb-*`` element a template would hold and the runtime fills it
 from the stamped rows. This module reads those components' literal props out
 of the source so the build can record the claims — and refuse a binding or a
 column that does not exist — without running the app. A number the app's own
-code computes is not a claim; the page says so in its About block.
+code computes is not a claim; the page's footer says so.
 
 The attribute names and figure ids here mirror ``assets/_react_src/kit.jsx``.
 """
@@ -92,6 +92,11 @@ _JSX_TEXT = re.compile(r"(?<![=\-])>([^<>{}]*)<")
 _NUMERIC_TOKEN = re.compile(r"\d[\d,.]*\d")
 
 
+#: A literal title on a <Masthead> tag (before the tag's first ">").
+_MASTHEAD_TITLE = re.compile(
+    r"""<Masthead\b[^>]*?\btitle\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*"([^"]*)"\s*\}|\{\s*'([^']*)'\s*\})""")
+
+
 def lint_jsx_numbers(src: str) -> int:
     """Count numbers typed into the app's JSX text, outside every kit figure.
 
@@ -99,11 +104,18 @@ def lint_jsx_numbers(src: str) -> int:
     sees it; this is the same rule for app.jsx: a number a reader might act on
     is a <Value> (or a <Kpi>), never typed. A text run that reads like code
     (``=``, ``;``, ``?``, ``&``, ``|``) is skipped rather than guessed at."""
+    code = _strip_comments(src)
     count = 0
-    for m in _JSX_TEXT.finditer(_strip_comments(src)):
+    for m in _JSX_TEXT.finditer(code):
         text = m.group(1)
         if not any(ch in text for ch in "=;?&|"):
             count += len(_NUMERIC_TOKEN.findall(text))
+    # <Masthead title="…"> is the page's headline, so the same rule holds
+    # for it as a literal prop; the kicker and the period are presentation
+    # ("Q3 2026"). A title with numbers is text with <Value>s in it.
+    for m in _MASTHEAD_TITLE.finditer(code):
+        title = next(g for g in m.groups() if g is not None)
+        count += len(_NUMERIC_TOKEN.findall(title))
     return count
 
 

@@ -2,7 +2,8 @@
 // is a kit figure (<Kpi>, <Value>, <Chart>, <Table>) with a literal binding and
 // cell, so the build records it and the receipt names it.
 import { LayoutDashboard, Building2, Landmark } from "lucide-react";
-import { Kpi, Value, Chart, Table, Download, Built, useUrlState, usePrinting } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Download, useUrlState,
+         usePrinting } from "tracebi";
 
 const VIEWS = { Overview: LayoutDashboard, Issuers: Building2, Funds: Landmark };
 
@@ -16,14 +17,14 @@ function Overview() {
         <Kpi binding="kpis" cell="unrealized" format="currency_compact" label="Unrealized"
              context="fair value less cost" id="fig-unrealized" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="tb-card lg:col-span-2">
+      <div className="tb-grid">
+        <section className="tb-card tb-span-8">
           <h2>Fair value by sector</h2>
           <p className="tb-note">Largest first.</p>
           <Chart binding="by_sector" type="barh" x="dim_issuer.sector" y="fair_value"
                  valueFormat="currency_compact" id="fig-chart" />
         </section>
-        <section className="tb-card">
+        <section className="tb-card tb-span-4">
           <h2>By fund</h2>
           <p className="tb-note">Fair value and the mark each fund carries.</p>
           <Table binding="by_fund" bars="fair_value" id="fig-funds"
@@ -67,18 +68,12 @@ export default function App() {
   const printing = usePrinting();
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-5 px-6 py-8">
-        <header className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Direct lending: the book is marked at{" "}
-              <Value binding="kpis" cell="mark" id="head-mark" /> of cost
-            </h1>
-            <p className="text-sm text-muted">Three funds, one Schedule of Investments. Every
-              number is a query against the model.</p>
-          </div>
-          <Built className="text-xs text-muted" />
-        </header>
+      <main className="tb-page space-y-8 px-6 py-8">
+        <Masthead kicker="Direct lending · Portfolio overview"
+          title={<>The book is marked at <Value binding="kpis" cell="mark" id="head-mark" /> of
+            cost</>}>
+          Three funds, one Schedule of Investments. Every number is a query against the model.
+        </Masthead>
         <nav className="flex gap-1 border-b border-rule print:hidden">
           {Object.entries(VIEWS).map(([name, Icon]) => (
             <button key={name} onClick={() => setView(name)}
@@ -91,6 +86,7 @@ export default function App() {
           ))}
         </nav>
         {printing ? <><Overview /><Issuers /><Funds /></> : <View />}
+        <Footer />
       </main>
     </div>
   );

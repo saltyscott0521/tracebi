@@ -146,6 +146,13 @@ is the in-page find.
   the runtime builds the tab bar from the labels.
 - **Columns** — `.tb-cols-2` / `.tb-cols-3`, and `.tb-cols-2-1` / `.tb-cols-1-2`
   for a wide panel beside a narrow one; all collapse to one column under 720px.
+- **Page measure** — `<main class="tb-page">` (and the page itself) is
+  1,200px wide at most.
+- **12-column grid** — give a `.tb-grid`'s panels `.tb-span-4`, `.tb-span-6`,
+  `.tb-span-8` or `.tb-span-12` (a third, a half, two thirds, the row): the
+  grid becomes twelve columns, and every span is the full row under 720px.
+  `<div class="tb-grid"><section class="tb-card tb-span-8">…</section><section
+  class="tb-card tb-span-4">…</section></div>`.
 - **KPI strip** — a `.tb-grid` of `.tb-kpi` cells renders as one panel with
   hairlines between the cells. `.tb-kpi--lead` makes the page's main number
   twice as wide and larger.
@@ -168,20 +175,53 @@ they didn't ask for (`tracebi context` → `presentation.layout.look`).
 | `data-tb-density` | `compact`; unset is comfortable |
 | `data-tb-width` | `full` drops the reading-width cap (a sidebar wants it) |
 
-**The title block** — one standard header:
+**The masthead** — every page opens with one:
 
 ```html
-<header class="tb-title" data-tb-title="left">
+<header class="tb-masthead" data-tb-title="left" data-tb-period="Q3 2026">
+  <div class="tb-masthead-mark"></div>              <!-- optional: your logo -->
+  <p class="tb-kicker">Direct lending</p>           <!-- optional -->
   <h1>Portfolio Book</h1>
-  <p class="tb-subtitle">One line on what this page is for.</p>
-  <span data-tb-built></span>
+  <p class="tb-standfirst">One line on what this page is for.</p>
+  <p class="tb-masthead-meta"><span data-tb-built></span>
+    <span class="tb-verdict"></span></p>
 </header>
 ```
 
 `data-tb-title` is `left`, `center`, `banner` (accent band) or `nav` (moved
-to the top of a sidebar). The runtime fills `data-tb-built` with the build time
-from the receipt — never type a date. A look for every report in the project
-goes in `reports/_theme.css`.
+to the top of a sidebar). `data-tb-period` names what the numbers cover; it
+is a label, so it may hold a year. The runtime fills the meta line: the
+period, the build time from the receipt (never type a date) and the verdict
+chip; whichever the template leaves out, it adds.
+
+The chip's state is `data-tb-verdict`, set by the runtime from the file
+itself, never from the page's markup: `draft` on a working preview (no
+receipt), `not-checked` on a built file — nothing has re-run its queries;
+`tracebi verify` does, and says whether each figure reproduces. The four
+verdicts, everywhere TraceBi shows one, are `reproduces` (green, `--tb-good`),
+`needs-a-look` (amber, `--tb-warn`), `does-not-reproduce` (red, `--tb-bad`)
+and `not-checked` (neutral). A page never makes it green.
+
+The mark is empty by default. To show a logo, put the file in the package's
+`assets/` and size it in `style.css`:
+`.tb-masthead-mark { width: 120px; height: 28px; margin-bottom: 16px;
+background: url(assets/logo.svg) left / contain no-repeat; }`. A look for every
+report in the project goes in `reports/_theme.css`. (`.tb-title`, the older
+title block, still works.)
+
+**The footer** — every page ends with one:
+
+```html
+<footer class="tb-footer" data-tb-methodology>
+  <p>Source: the funds' Schedules of Investments.</p>
+</footer>
+```
+
+Your sources come first. The build adds one line — who built the file, when,
+from which model, and *"The receipt does not claim the numbers are right."* —
+then "How these numbers were made" behind a `<details>`: what the receipt is
+for, and the stated methodology (below). A template with no
+`data-tb-methodology` gets the whole footer at the end of the page.
 
 ## Editorial
 
@@ -191,12 +231,12 @@ the card colour rather than the dashboard's grey.
 
 ```html
 <article class="tb-article">
-  <header class="tb-article-head">          <!-- data-tb-title="center" to centre it -->
+  <header class="tb-masthead tb-article-head">  <!-- data-tb-title="center" to centre it -->
     <p class="tb-kicker">Revenue</p>
     <h1><span data-tb-figure="value" data-tb-binding="top" data-tb-cell="dim_region.region"></span>
         leads on revenue</h1>
-    <p class="tb-dek">What this report finds, and why it matters.</p>
-    <p class="tb-byline">Q3 review · <span data-tb-built></span></p>
+    <p class="tb-standfirst">What this report finds, and why it matters.</p>
+    <p class="tb-masthead-meta"><span data-tb-built></span> <span class="tb-verdict"></span></p>
   </header>
   <p class="tb-lede">… numbers bound as value figures …</p>
   <h2>A claim, not a topic</h2>
@@ -206,10 +246,12 @@ the card colour rather than the dashboard's grey.
   <aside class="tb-pullstat">
     <span class="tb-pullstat-value" data-tb-figure="value" …></span>
     <span class="tb-pullstat-text">the one number to remember, explained</span></aside>
+  <footer class="tb-footer" data-tb-methodology><p>Sources …</p></footer>
 </article>
 ```
 
-Charts, tables, the pull-stat and the About footer keep the sans face, so
+The hero is the masthead in the editorial's register. Charts, tables, the
+pull-stat and the footer keep the sans face, so
 numbers read as data. The writing advice is `tracebi knowledge
 design-editorial-report`.
 
@@ -225,10 +267,11 @@ queries beside the page while iterating with `tracebi dev`.
 ## Stated methodology
 
 ```html
-<section data-tb-methodology> your own notes … </section>
+<footer class="tb-footer" data-tb-methodology> your sources … </footer>
 ```
 
-One per page. Your children stay first; the build appends the pipeline's
+One per page, on any container. Your children stay first; the build appends
+the footer's line and, behind "How these numbers were made", the pipeline's
 stated methodology — transform notes, per-check rationale, measure
 descriptions. It is an appendix, never a claim: no badge, no status.
 

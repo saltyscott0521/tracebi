@@ -75,6 +75,8 @@
    * pair them with a sign or a word, never color alone. */
   --tb-good: #1e6b34;
   --tb-bad: #b42318;
+  /* The third verdict tone, amber ("Needs a look"): 5.9:1 on --tb-bg. */
+  --tb-warn: #8a5a00;
 
   /* Chart series — seeded from ChartSpec.DEFAULT_PALETTE (chart.py). The
    * first series IS the accent, so a single-series chart, the links and the
@@ -105,7 +107,7 @@ body {
   font-family: var(--tb-font);
   color: var(--tb-ink);
   background: var(--tb-page);
-  max-width: 1120px;
+  max-width: 1200px;           /* the page measure, as .tb-page */
   margin: 0 auto;
   padding: 40px var(--tb-space-3) 64px;
   line-height: 1.55;
@@ -179,13 +181,28 @@ img, svg { max-width: 100%; }
 
 /* ── 3. Layout ─────────────────────────────────────────────────────────── */
 
-.tb-page { max-width: 1100px; margin: 0 auto; }
+/* The page measure: 1,200px, the same on a template page and an app. */
+.tb-page { max-width: 1200px; margin: 0 auto; }
 
 .tb-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--tb-space-3);
   margin: var(--tb-space-3) 0;
+}
+/* A .tb-grid whose children name a span is the 12-column grid: a panel
+ * takes 4, 6, 8 or 12 columns (a third, a half, two thirds, the row), and
+ * every span is the full row under 720px. Without spans the grid keeps
+ * fitting equal cells (a KPI strip). */
+.tb-grid:has(> :is(.tb-span-4, .tb-span-6, .tb-span-8, .tb-span-12)) {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+.tb-span-4 { grid-column: span 4; }
+.tb-span-6 { grid-column: span 6; }
+.tb-span-8 { grid-column: span 8; }
+.tb-span-12 { grid-column: 1 / -1; }
+@media (max-width: 720px) {
+  .tb-span-4, .tb-span-6, .tb-span-8 { grid-column: 1 / -1; }
 }
 
 .tb-card {
@@ -523,52 +540,43 @@ tr.tb-window-pad td {
   color: var(--tb-muted);
 }
 
-/* Default About footer (.tb-about) — who / when / definitions / what the
- * receipt is for. On by default at the end of a built page, or inside the
- * author's data-tb-methodology container. Never a claim badge. */
-.tb-about {
-  margin-top: var(--tb-space-5);
-  padding-top: var(--tb-space-3);
-  border-top: 1px solid var(--tb-rule);
-  font-size: 0.9em;
-  color: var(--tb-muted);
-}
-.tb-about > h2 {
-  margin: 0 0 var(--tb-space-2);
-  font-size: 1em;
-  font-weight: 600;
-  color: var(--tb-ink);
-}
-.tb-about-meta,
-.tb-about-receipt { margin: var(--tb-space-1) 0; max-width: 40rem;
-                    font-size: 0.9em; color: var(--tb-muted); }
-/* The methodology block is the page's footer, not another panel: a rule,
- * small muted type, the same column as everything above it. */
+/* The footer that ends the page (.tb-footer, or the author's ONE
+ * data-tb-methodology container): the author's sources first, then the
+ * build's one visible line and "How these numbers were made" behind a
+ * disclosure. Small and muted, the page's own column. Never a claim badge. */
 [data-tb-methodology] {
   margin-top: var(--tb-space-4);
   padding-top: var(--tb-space-3);
   border-top: 1px solid var(--tb-rule);
-  font-size: 0.92em;
+  font-size: var(--tb-text-sm);
+  color: var(--tb-muted);
 }
 .tb-card[data-tb-methodology] {
   background: none; border-width: 1px 0 0; border-radius: 0;
   padding: var(--tb-space-3) 0 0;
 }
-[data-tb-methodology] > h2:first-child { margin: 0 0 var(--tb-space-1); font-size: 1em; }
-.tb-about-receipt code {
-  font-size: 0.92em;
+[data-tb-methodology] > :is(h2, h3):first-child {
+  margin: 0 0 var(--tb-space-1); font-size: var(--tb-text-sm); font-weight: 600;
+  color: var(--tb-ink);
 }
+[data-tb-methodology] p { margin: 0 0 var(--tb-space-2); max-width: 75ch; }
+[data-tb-methodology] .tb-note { font-size: inherit; }
+.tb-footer-line { color: var(--tb-muted); }
+.tb-footer-details { margin: 0 0 var(--tb-space-2); }
+.tb-footer-details > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--tb-ink);
+  font-weight: 500;
+}
+.tb-footer-details[open] > summary { margin-bottom: var(--tb-space-2); }
+.tb-footer-details code { font-size: 0.92em; }
 
 /* The stated-methodology appendix — build-appended prose the transform and
- * the model STATE about themselves. An appendix, never a claim: muted and
- * small, and no badge class ever styles it. */
-.tb-methodology {
-  margin-top: var(--tb-space-3);
-  padding-top: var(--tb-space-2);
-  border-top: 1px solid var(--tb-rule);
-  font-size: 0.85em;
-  color: var(--tb-muted);
-}
+ * the model STATE about themselves, inside the footer's disclosure. An
+ * appendix, never a claim: muted and small, and no badge class ever
+ * styles it. */
+.tb-methodology { color: var(--tb-muted); }
 .tb-methodology .tb-note { margin: var(--tb-space-1) 0; }
 
 /* ── 8. Receipt badges — provenance picks the class at runtime ─────────── */
@@ -827,6 +835,7 @@ label > input[data-tb-search] { width: 11em; }
   --tb-surface-accent: color-mix(in srgb, var(--tb-dark-accent) 12%, transparent);
   --tb-good: #6fcf8f;
   --tb-bad: #ff8a80;
+  --tb-warn: #e0a93b;
   /* Its own set for the dark ground, not the light one dimmed: the accent
    * first, the rest lifted to read at >= 4:1 on --tb-bg and re-checked for
    * colour-blind separation against it (deuteranope / protanope). */
@@ -853,6 +862,7 @@ label > input[data-tb-search] { width: 11em; }
     --tb-surface-accent: color-mix(in srgb, var(--tb-dark-accent) 12%, transparent);
     --tb-good: #6fcf8f;
     --tb-bad: #ff8a80;
+    --tb-warn: #e0a93b;
     /* Its own set for the dark ground, not the light one dimmed: the accent
      * first, the rest lifted to read at >= 4:1 on --tb-bg and re-checked for
      * colour-blind separation against it (deuteranope / protanope). */
@@ -916,12 +926,12 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   color: var(--tb-ink);
 }
 /* A title moved into the sidebar (data-tb-title="nav") heads the rail. */
-.tb-tab-bar > .tb-title {
+.tb-tab-bar > :is(.tb-title, .tb-masthead) {
   margin: 0 0 var(--tb-space-3);
   padding: 4px 10px var(--tb-space-3);
   border-bottom: 1px solid var(--tb-rule);
 }
-.tb-tab-bar > .tb-title h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.tb-tab-bar > :is(.tb-title, .tb-masthead) h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .tb-tab-bar > .tb-title p { font-size: 12.5px; line-height: 1.45; }
 .tb-tab-bar > .tb-title [data-tb-built] { font-size: 11.5px; }
 @media (max-width: 720px) {
@@ -932,7 +942,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
     border-right: 0; border-bottom: 1px solid var(--tb-rule);
     padding: 0; margin-bottom: var(--tb-space-3);
   }
-  .tb-tab-bar > .tb-title { flex-basis: 100%; border-bottom: 0; padding: 0 0 var(--tb-space-2); margin: 0; }
+  .tb-tab-bar > :is(.tb-title, .tb-masthead) { flex-basis: 100%; border-bottom: 0; padding: 0 0 var(--tb-space-2); margin: 0; }
 }
 
 /* The title: <header class="tb-title" data-tb-title="left|center|banner|nav">
@@ -962,6 +972,102 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-title[data-tb-title="banner"] .tb-subtitle,
 .tb-title[data-tb-title="banner"] [data-tb-built] {
   color: color-mix(in srgb, var(--tb-on-accent) 85%, transparent); }
+
+/* ── 12b-2. The frame: the masthead and the verdict chip ─────────────────
+ * <header class="tb-masthead"> opens every page: an optional
+ * .tb-masthead-mark (empty; a project's style.css gives it a logo), an
+ * optional .tb-kicker, the <h1>, a .tb-standfirst, and .tb-masthead-meta —
+ * the period the numbers cover (data-tb-period on the masthead, or a
+ * .tb-masthead-period of your own), when the file was built and the
+ * .tb-verdict chip. The runtime fills the meta; a masthead without one gets
+ * it. data-tb-title="center|banner|nav" places it as for .tb-title. The
+ * editorial hero (.tb-article-head) is the same masthead in its register. */
+.tb-masthead {
+  margin: 0 0 var(--tb-space-4);
+  padding-bottom: var(--tb-space-3);
+  border-bottom: 1px solid var(--tb-rule);
+}
+.tb-masthead .tb-kicker {
+  font-size: var(--tb-text-xs);
+  letter-spacing: 0.1em;
+  margin: 0 0 var(--tb-space-1);
+}
+.tb-masthead h1 {
+  font-size: var(--tb-text-2xl);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: var(--tb-tracking-tight);
+  text-wrap: balance;
+  margin: 0;
+}
+.tb-standfirst {
+  margin: var(--tb-space-2) 0 0;
+  font-size: var(--tb-text-lg);
+  line-height: 1.5;
+  color: var(--tb-muted);
+  max-width: 72ch;
+}
+.tb-masthead-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--tb-space-1) var(--tb-space-3);
+  margin: var(--tb-space-3) 0 0;
+  font-size: var(--tb-text-sm);
+  color: var(--tb-muted);
+}
+.tb-masthead-meta [data-tb-built] { display: inline; margin: 0; font-size: inherit; color: inherit; }
+.tb-masthead-period { color: var(--tb-ink); font-weight: 500; }
+.tb-masthead[data-tb-title="center"] { text-align: center; }
+.tb-masthead[data-tb-title="center"] .tb-standfirst { margin-left: auto; margin-right: auto; }
+.tb-masthead[data-tb-title="center"] .tb-masthead-meta { justify-content: center; }
+.tb-masthead[data-tb-title="banner"] {
+  background: var(--tb-accent);
+  color: var(--tb-on-accent);
+  border: 0;
+  border-radius: var(--tb-radius);
+  padding: var(--tb-space-4) var(--tb-space-4) var(--tb-space-3);
+}
+.tb-masthead[data-tb-title="banner"] :is(.tb-kicker, .tb-standfirst, .tb-masthead-meta, .tb-masthead-period) {
+  color: color-mix(in srgb, var(--tb-on-accent) 85%, transparent); }
+/* In a sidebar (moved into the tab bar, or an app's rail): compact. */
+.tb-masthead[data-tb-title="nav"] { border-bottom: 0; margin: 0; padding-bottom: 0; }
+.tb-masthead[data-tb-title="nav"] h1 { font-size: var(--tb-text-md); letter-spacing: -0.01em; }
+.tb-masthead[data-tb-title="nav"] .tb-standfirst { font-size: var(--tb-text-xs); margin-top: 2px; }
+.tb-masthead[data-tb-title="nav"] .tb-masthead-meta { font-size: var(--tb-text-xs); margin-top: var(--tb-space-2); gap: var(--tb-space-1) var(--tb-space-2); }
+
+/* The verdict chip: what is known about whether this file's numbers still
+ * reproduce. The runtime chooses data-tb-verdict from the file itself —
+ * "draft" on a working preview, "not-checked" on a built file (nothing has
+ * re-run its queries; tracebi verify does) — so a stylesheet can restyle the
+ * chip, never turn it green. Its own ground, so it reads on any masthead. */
+.tb-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 9px;
+  border: 1px solid var(--tb-rule);
+  border-radius: 999px;
+  background: var(--tb-bg);
+  color: var(--tb-muted);
+  font-family: var(--tb-font);
+  font-size: var(--tb-text-xs);
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.tb-verdict:empty { display: none; }
+.tb-verdict::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tb-verdict[data-tb-verdict="reproduces"] { color: var(--tb-good); }
+.tb-verdict[data-tb-verdict="needs-a-look"] { color: var(--tb-warn); }
+.tb-verdict[data-tb-verdict="does-not-reproduce"] { color: var(--tb-bad); }
+.tb-verdict[data-tb-verdict="draft"] { border-style: dashed; }
 
 /* ── 12c. Editorial — a report written to be read ─────────────────────────
  * <article class="tb-article">: a sheet of paper on the page, opened by a
@@ -996,6 +1102,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   padding: clamp(28px, 5vw, 48px) clamp(18px, 5vw, 56px) var(--tb-space-3);
   color: var(--tb-hero-ink);
   background: var(--tb-hero);
+  border-bottom: 0;
 }
 .tb-article-head[data-tb-title="center"] { text-align: center; }
 .tb-kicker {
@@ -1019,13 +1126,13 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-article-head h1 { color: var(--tb-hero-ink); }
 .tb-article h1 [data-tb-figure] { color: var(--tb-accent-text); }
 .tb-article-head h1 [data-tb-figure] { color: var(--tb-hero-soft); }
-.tb-dek {
+.tb-dek, .tb-article .tb-standfirst {
   font-size: 1.15em;
   line-height: 1.5;
   color: var(--tb-muted);
   margin: 0 0 var(--tb-space-3);
 }
-.tb-article-head .tb-dek { color: var(--tb-hero-soft); }
+.tb-article-head :is(.tb-dek, .tb-standfirst) { color: var(--tb-hero-soft); max-width: none; }
 .tb-byline {
   font-family: var(--tb-font);
   font-size: 0.74em;
@@ -1034,7 +1141,14 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   border-top: 1px solid var(--tb-rule);
   margin: 0;
 }
-.tb-article-head .tb-byline {
+.tb-article-head .tb-masthead-meta {
+  font-family: var(--tb-font);
+  font-size: 0.74em;
+  margin: 0;
+  padding: var(--tb-space-2) 0;
+  border-top: 1px solid color-mix(in oklab, var(--tb-hero-ink) 22%, transparent);
+}
+.tb-article-head :is(.tb-byline, .tb-masthead-meta, .tb-masthead-period) {
   color: var(--tb-hero-soft);
   border-top-color: color-mix(in oklab, var(--tb-hero-ink) 22%, transparent);
 }
@@ -1068,7 +1182,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 }
 
 /* Figures, tables, KPI strips and pull-stats: framed cards in the column. */
-.tb-article :is(table, .tb-figure, .tb-pullstat, .tb-grid, .tb-about, [data-tb-methodology]) {
+.tb-article :is(table, .tb-figure, .tb-pullstat, .tb-grid, [data-tb-methodology]) {
   font-family: var(--tb-font);
   font-size: 0.86rem;
 }
@@ -1120,7 +1234,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 }
 .tb-pullstat-text { color: var(--tb-muted); font-size: 1.05em; line-height: 1.45; }
 .tb-article [data-tb-methodology] {
-  margin-top: var(--tb-space-5, 40px);
+  margin-top: 40px;
   padding-top: var(--tb-space-3);
   border-top: 1px solid var(--tb-rule);
 }
@@ -1163,8 +1277,14 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-app-static-values { list-style: none; padding: 0; display: grid; gap: var(--tb-space-1); }
 /* The app spaces its own panels (gap, space-y); no stacking margin. */
 :root[data-tb-app] .tb-card + .tb-card { margin-top: 0; }
-:root[data-tb-app] .tb-about { max-width: 1120px; margin: var(--tb-space-4) auto;
-  padding: var(--tb-space-3) var(--tb-space-3) var(--tb-space-4); }
+:root[data-tb-app] .tb-page { box-sizing: content-box; }
+/* The footer after the app, in the page measure; placed inside the app with
+ * the kit's <Footer />, it ends that column instead. */
+:root[data-tb-app] body > .tb-footer {
+  max-width: 1200px; margin: 0 auto;
+  padding: var(--tb-space-3) var(--tb-space-3) var(--tb-space-4);
+}
+[data-tb-footer-slot] > .tb-footer { margin-top: 0; }
 .tb-app-error {
   margin: var(--tb-space-4); padding: var(--tb-space-3);
   border: 1px solid var(--tb-bad); border-radius: var(--tb-radius);

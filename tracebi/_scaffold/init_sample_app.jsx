@@ -5,20 +5,18 @@
 // checked figure. Colours: bg-page bg-card bg-surface text-ink text-muted
 // border-rule bg-accent follow the page's theme and mode.
 // The kit and patterns: docs/reference/app-jsx.md.
-import { Kpi, Value, Chart, Table, Filter, Search, Download, Built } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download } from "tracebi";
 
 export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-5 px-6 py-8">
-        {/* The title: what this page is, and when it was built (from its receipt). */}
-        <header className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Orders — Sample Dashboard</h1>
-            <p className="text-sm text-muted">Revenue, orders and units across every region.</p>
-          </div>
-          <Built className="text-xs text-muted" />
-        </header>
+      {/* tb-page is the page measure (1,200px); space-y-8 the rhythm between sections. */}
+      <main className="tb-page space-y-8 px-6 py-8">
+        {/* The masthead: what this page is, the period its numbers cover, and when
+            it was built with the verdict chip (both from the file's receipt). */}
+        <Masthead kicker="Orders" title="Sample Dashboard" period="Every order date">
+          Revenue, orders and units across every region.
+        </Masthead>
 
         {/* Lead with the answer: one sentence, its numbers bound. Never type one in. */}
         <p className="tb-lede">
@@ -43,15 +41,16 @@ export default function App() {
                id="kpi-split" />
         </div>
 
-        {/* A wide panel beside a narrow one; one column on a phone. */}
-        <div className="grid gap-4 lg:grid-cols-3">
-          <section className="tb-card lg:col-span-2">
+        {/* The 12-column grid: a wide panel (8) beside a narrow one (4); one
+            column on a phone. */}
+        <div className="tb-grid">
+          <section className="tb-card tb-span-8">
             <h2>Revenue by region</h2>
             <p className="tb-note">Ranked by revenue, largest first.</p>
             <Chart binding="by_region" type="barh" x="dim_region.region" y="revenue"
                    valueFormat="currency_compact" id="chart-by-region" />
           </section>
-          <section className="tb-card">
+          <section className="tb-card tb-span-4">
             <h2>Region detail</h2>
             {/* Controls choose which stamped rows show; they never compute a number.
                 The CSV is the stamped rows, verbatim. */}
@@ -65,6 +64,8 @@ export default function App() {
                    formats={{ revenue: "currency0" }} />
           </section>
         </div>
+        {/* The footer the build writes: one line on how these numbers were made. */}
+        <Footer />
       </main>
     </div>
   );

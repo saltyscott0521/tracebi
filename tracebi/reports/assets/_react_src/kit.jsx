@@ -147,6 +147,45 @@ export function Built({ className }) {
   return <span className={className} data-tb-built="" />;
 }
 
+/** The masthead that opens the page: an optional mark, a kicker, the title
+ * (a string, or text with <Value> figures in it), the standfirst (children),
+ * and a meta line with the period the numbers cover, when the file was built
+ * and the verdict chip, both filled by the runtime from the file itself.
+ * `period` is presentation ("Q3 2026"); the title's own numbers are figures.
+ * Other props (data-tb-title="center|banner|nav") go on the <header>. */
+export function Masthead({ title, kicker, period, mark, className, children, ...rest }) {
+  useHydrate();
+  return (
+    <header {...rest} className={["tb-masthead", className || ""].join(" ").trim()}>
+      <div className="tb-masthead-mark">{mark}</div>
+      {kicker != null && <p className="tb-kicker">{kicker}</p>}
+      <h1>{title}</h1>
+      {children != null && <div className="tb-standfirst">{children}</div>}
+      <div className="tb-masthead-meta">
+        {period != null && <span className="tb-masthead-period">{period}</span>}
+        <span data-tb-built="" />
+        <span className="tb-verdict" />
+      </div>
+    </header>
+  );
+}
+
+/** Where the page's footer goes: the build writes it (the one line on how
+ * these numbers were made, and its disclosure) after the app; <Footer />
+ * moves it here, so it ends this column (a sidebar layout's main). */
+export function Footer({ className }) {
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const foot = document.getElementById("tb-footer");
+    const slot = ref.current;
+    if (!foot || !slot) return undefined;
+    const home = foot.parentNode;
+    slot.appendChild(foot);
+    return () => { if (home) home.appendChild(foot); };
+  }, []);
+  return <div ref={ref} className={className} data-tb-footer-slot="" />;
+}
+
 
 // ── App state that a shared link carries ────────────────────────────────────
 

@@ -60,8 +60,9 @@ body { padding-top: 0; }
     radial-gradient(700px 380px at 80% 90%, rgba(217, 179, 106, .22), transparent 65%),
     linear-gradient(160deg, var(--hero-from) 0%, var(--hero-to) 100%);
 }
-.wm-hero-inner { max-width: 72rem; margin: 0 auto; }
-.wm-eyebrow {
+/* The masthead, in the hero's register: no rule, the hero's own ink. */
+.wm-hero-inner { max-width: 1200px; margin: 0 auto; padding: 0; border: 0; }
+.wm-hero .tb-kicker {
   font-size: .75rem;
   font-weight: 600;
   letter-spacing: .16em;
@@ -78,13 +79,13 @@ body { padding-top: 0; }
   color: #fff;
 }
 .wm-hero h1 em { font-style: normal; color: var(--brass); }
-.wm-hero .wm-lede {
+.wm-hero .tb-standfirst {
   max-width: 60ch;
   font-size: 1.05rem;
   color: rgba(255, 255, 255, .8);
   margin: 0;
 }
-.wm-hero .wm-lede strong,
+.wm-hero .tb-standfirst strong,
 .wm-hero [data-tb-figure="value"] { color: #fff; font-weight: 600; }
 
 /* ── KPI tiles sit on the hero's lower edge ───────────────────────────── */
@@ -119,17 +120,7 @@ body { padding-top: 0; }
 .wm-split { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
 @media (max-width: 720px) { .wm-split { grid-template-columns: 1fr; } }
 
-/* ── Footer ───────────────────────────────────────────────────────────── */
-
-.wm-footer {
-  margin-top: 40px;
-  padding: 22px 26px;
-  border-radius: var(--tb-radius);
-  background: var(--hero-from);
-  color: rgba(255, 255, 255, .78);
-  font-size: .86em;
-}
-.wm-footer h2 { font-family: var(--display); color: var(--brass); font-size: 1.05rem; margin: 0 0 6px; }
-.wm-footer p { margin: 0; max-width: 72ch; }
+.wm-hero .tb-masthead-meta { color: rgba(255, 255, 255, .7); }
+.wm-hero .tb-masthead-period { color: #fff; }
 
 .tb-receipt-btn { font-weight: 600; color: var(--tb-accent); }

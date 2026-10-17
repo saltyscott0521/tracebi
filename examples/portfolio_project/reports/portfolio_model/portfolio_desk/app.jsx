@@ -3,7 +3,7 @@
 // the build records it as a claim and the receipt names it. Controls choose
 // which stamped rows show; they never compute a number.
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
-import { Kpi, Value, Chart, Table, Filter, Search, Download, Built,
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download,
          useUrlState, usePrinting } from "tracebi";
 
 const TITLE = "Portfolio Desk";
@@ -31,14 +31,14 @@ function Overview() {
         <Kpi binding="totals" cell="wtd_spread_bps" format="comma"
              label="Spread, bps" context="par-weighted" id="kpi-spread" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="tb-card lg:col-span-2">
+      <div className="tb-grid">
+        <section className="tb-card tb-span-8">
           <h2>Fair value by sector</h2>
           <p className="tb-note">Largest first. Hover a bar for its value.</p>
           <Chart binding="by_sector" type="barh" x="dim_issuer.sector" y="fair_value"
                  valueFormat="currency_compact" />
         </section>
-        <section className="tb-card">
+        <section className="tb-card tb-span-4">
           <h2>Watch list</h2>
           <p className="tb-note">The five lowest marks in the book.</p>
           <Table binding="watch" columns={["dim_issuer.issuer", "mark"]}
@@ -74,13 +74,13 @@ function Holdings() {
 function Funds() {
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="tb-card">
+      <div className="tb-grid">
+        <section className="tb-card tb-span-6">
           <h2>Fair value by fund</h2>
           <Chart binding="by_fund" type="bar" x="dim_fund.fund" y="fair_value"
                  valueFormat="currency_compact" />
         </section>
-        <section className="tb-card">
+        <section className="tb-card tb-span-6">
           <h2>Unrealized by fund</h2>
           <p className="tb-note">Fair value less cost. Every fund is below what it paid.</p>
           <Chart binding="by_fund" type="bar" x="dim_fund.fund" y="unrealized"
@@ -111,11 +111,12 @@ export default function App() {
     <div className="min-h-screen bg-page text-ink md:flex">
       <aside className="shrink-0 border-b border-rule bg-card p-3 md:sticky md:top-0
                         md:h-screen md:w-60 md:border-r md:border-b-0 print:hidden">
-        <div className="mb-3 border-b border-rule px-2.5 pb-3">
-          <div className="font-semibold">{TITLE}</div>
-          <p className="text-xs text-muted">Direct lending, three funds.</p>
-          <Built className="text-xs text-muted" />
-        </div>
+        {/* The masthead in the sidebar: the title, what it is, when it was built
+            and the verdict chip. */}
+        <Masthead title={TITLE} kicker="Direct lending" data-tb-title="nav"
+          className="mb-3 border-b border-rule px-2.5 pb-3">
+          Three funds, one book.
+        </Masthead>
         <nav className="flex gap-1 md:flex-col">
           {Object.entries(VIEWS).map(([name, Icon]) => (
             <button key={name} onClick={() => setView(name)}
@@ -128,9 +129,11 @@ export default function App() {
           ))}
         </nav>
       </aside>
-      <main className="min-w-0 flex-1 space-y-5 px-6 py-7">
+      <main className="min-w-0 flex-1 space-y-8 px-6 py-7">
         <Header view={printing ? TITLE : view} />
         {printing ? <><Overview /><Holdings /><Funds /></> : <View />}
+        {/* The footer ends this column, not the page under the sidebar. */}
+        <Footer />
       </main>
     </div>
   );

@@ -2,7 +2,7 @@
 // Final (star schema). This app queries the model that reads the silver
 // tables; no pandas in the loop. Every number is a kit figure.
 import { Layers, Truck } from "lucide-react";
-import { Kpi, Chart, Table, Built, useUrlState, usePrinting } from "tracebi";
+import { Masthead, Footer, Kpi, Chart, Table, useUrlState, usePrinting } from "tracebi";
 
 const VIEWS = { "All orders": Layers, "Shipped orders": Truck };
 
@@ -67,15 +67,11 @@ export default function App() {
   const printing = usePrinting();
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-5 px-6 py-8">
-        <header className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Medallion revenue</h1>
-            <p className="text-sm text-muted">Landing → Manipulation → Final: revenue from the
-              model that reads the cleaned silver tables.</p>
-          </div>
-          <Built className="text-xs text-muted" />
-        </header>
+      <main className="tb-page space-y-8 px-6 py-8">
+        <Masthead kicker="Sales" title="Medallion revenue">
+          Landing → Manipulation → Final: revenue from the model that reads the cleaned
+          silver tables.
+        </Masthead>
         <nav className="flex gap-1 border-b border-rule print:hidden">
           {Object.entries(VIEWS).map(([name, Icon]) => (
             <button key={name} onClick={() => setView(name)}
@@ -88,6 +84,7 @@ export default function App() {
           ))}
         </nav>
         {printing ? <><AllOrders /><Shipped /></> : <View />}
+        <Footer />
       </main>
     </div>
   );

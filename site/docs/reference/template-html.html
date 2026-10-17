@@ -227,6 +227,13 @@ is the in-page find.</p>
   the runtime builds the tab bar from the labels.</li>
 <li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, and <code>.tb-cols-2-1</code> / <code>.tb-cols-1-2</code>
   for a wide panel beside a narrow one; all collapse to one column under 720px.</li>
+<li><strong>Page measure</strong> — <code>&lt;main class="tb-page"&gt;</code> (and the page itself) is
+  1,200px wide at most.</li>
+<li><strong>12-column grid</strong> — give a <code>.tb-grid</code>'s panels <code>.tb-span-4</code>, <code>.tb-span-6</code>,
+  <code>.tb-span-8</code> or <code>.tb-span-12</code> (a third, a half, two thirds, the row): the
+  grid becomes twelve columns, and every span is the full row under 720px.
+  <code>&lt;div class="tb-grid"&gt;&lt;section class="tb-card tb-span-8"&gt;…&lt;/section&gt;&lt;section
+  class="tb-card tb-span-4"&gt;…&lt;/section&gt;&lt;/div&gt;</code>.</li>
 <li><strong>KPI strip</strong> — a <code>.tb-grid</code> of <code>.tb-kpi</code> cells renders as one panel with
   hairlines between the cells. <code>.tb-kpi--lead</code> makes the page's main number
   twice as wide and larger.</li>
@@ -263,28 +270,55 @@ they didn't ask for (<code>tracebi context</code> → <code>presentation.layout.
 </tr>
 </tbody>
 </table>
-<p><strong>The title block</strong> — one standard header:</p>
-<pre><code class="language-html">&lt;header class=&quot;tb-title&quot; data-tb-title=&quot;left&quot;&gt;
+<p><strong>The masthead</strong> — every page opens with one:</p>
+<pre><code class="language-html">&lt;header class=&quot;tb-masthead&quot; data-tb-title=&quot;left&quot; data-tb-period=&quot;Q3 2026&quot;&gt;
+  &lt;div class=&quot;tb-masthead-mark&quot;&gt;&lt;/div&gt;              &lt;!-- optional: your logo --&gt;
+  &lt;p class=&quot;tb-kicker&quot;&gt;Direct lending&lt;/p&gt;           &lt;!-- optional --&gt;
   &lt;h1&gt;Portfolio Book&lt;/h1&gt;
-  &lt;p class=&quot;tb-subtitle&quot;&gt;One line on what this page is for.&lt;/p&gt;
-  &lt;span data-tb-built&gt;&lt;/span&gt;
+  &lt;p class=&quot;tb-standfirst&quot;&gt;One line on what this page is for.&lt;/p&gt;
+  &lt;p class=&quot;tb-masthead-meta&quot;&gt;&lt;span data-tb-built&gt;&lt;/span&gt;
+    &lt;span class=&quot;tb-verdict&quot;&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;/header&gt;
 </code></pre>
 <p><code>data-tb-title</code> is <code>left</code>, <code>center</code>, <code>banner</code> (accent band) or <code>nav</code> (moved
-to the top of a sidebar). The runtime fills <code>data-tb-built</code> with the build time
-from the receipt — never type a date. A look for every report in the project
-goes in <code>reports/_theme.css</code>.</p>
+to the top of a sidebar). <code>data-tb-period</code> names what the numbers cover; it
+is a label, so it may hold a year. The runtime fills the meta line: the
+period, the build time from the receipt (never type a date) and the verdict
+chip; whichever the template leaves out, it adds.</p>
+<p>The chip's state is <code>data-tb-verdict</code>, set by the runtime from the file
+itself, never from the page's markup: <code>draft</code> on a working preview (no
+receipt), <code>not-checked</code> on a built file — nothing has re-run its queries;
+<code>tracebi verify</code> does, and says whether each figure reproduces. The four
+verdicts, everywhere TraceBi shows one, are <code>reproduces</code> (green, <code>--tb-good</code>),
+<code>needs-a-look</code> (amber, <code>--tb-warn</code>), <code>does-not-reproduce</code> (red, <code>--tb-bad</code>)
+and <code>not-checked</code> (neutral). A page never makes it green.</p>
+<p>The mark is empty by default. To show a logo, put the file in the package's
+<code>assets/</code> and size it in <code>style.css</code>:
+<code>.tb-masthead-mark { width: 120px; height: 28px; margin-bottom: 16px;
+background: url(assets/logo.svg) left / contain no-repeat; }</code>. A look for every
+report in the project goes in <code>reports/_theme.css</code>. (<code>.tb-title</code>, the older
+title block, still works.)</p>
+<p><strong>The footer</strong> — every page ends with one:</p>
+<pre><code class="language-html">&lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt;
+  &lt;p&gt;Source: the funds' Schedules of Investments.&lt;/p&gt;
+&lt;/footer&gt;
+</code></pre>
+<p>Your sources come first. The build adds one line — who built the file, when,
+from which model, and <em>"The receipt does not claim the numbers are right."</em> —
+then "How these numbers were made" behind a <code>&lt;details&gt;</code>: what the receipt is
+for, and the stated methodology (below). A template with no
+<code>data-tb-methodology</code> gets the whole footer at the end of the page.</p>
 <h2 id="editorial">Editorial</h2>
 <p>A report written to be read — what <code>tracebi new-report</code> writes by default.
 One reading column with a serif body (a system face; nothing is fetched), on
 the card colour rather than the dashboard's grey.</p>
 <pre><code class="language-html">&lt;article class=&quot;tb-article&quot;&gt;
-  &lt;header class=&quot;tb-article-head&quot;&gt;          &lt;!-- data-tb-title=&quot;center&quot; to centre it --&gt;
+  &lt;header class=&quot;tb-masthead tb-article-head&quot;&gt;  &lt;!-- data-tb-title=&quot;center&quot; to centre it --&gt;
     &lt;p class=&quot;tb-kicker&quot;&gt;Revenue&lt;/p&gt;
     &lt;h1&gt;&lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_region.region&quot;&gt;&lt;/span&gt;
         leads on revenue&lt;/h1&gt;
-    &lt;p class=&quot;tb-dek&quot;&gt;What this report finds, and why it matters.&lt;/p&gt;
-    &lt;p class=&quot;tb-byline&quot;&gt;Q3 review · &lt;span data-tb-built&gt;&lt;/span&gt;&lt;/p&gt;
+    &lt;p class=&quot;tb-standfirst&quot;&gt;What this report finds, and why it matters.&lt;/p&gt;
+    &lt;p class=&quot;tb-masthead-meta&quot;&gt;&lt;span data-tb-built&gt;&lt;/span&gt; &lt;span class=&quot;tb-verdict&quot;&gt;&lt;/span&gt;&lt;/p&gt;
   &lt;/header&gt;
   &lt;p class=&quot;tb-lede&quot;&gt;… numbers bound as value figures …&lt;/p&gt;
   &lt;h2&gt;A claim, not a topic&lt;/h2&gt;
@@ -294,9 +328,11 @@ the card colour rather than the dashboard's grey.</p>
   &lt;aside class=&quot;tb-pullstat&quot;&gt;
     &lt;span class=&quot;tb-pullstat-value&quot; data-tb-figure=&quot;value&quot; …&gt;&lt;/span&gt;
     &lt;span class=&quot;tb-pullstat-text&quot;&gt;the one number to remember, explained&lt;/span&gt;&lt;/aside&gt;
+  &lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt;&lt;p&gt;Sources …&lt;/p&gt;&lt;/footer&gt;
 &lt;/article&gt;
 </code></pre>
-<p>Charts, tables, the pull-stat and the About footer keep the sans face, so
+<p>The hero is the masthead in the editorial's register. Charts, tables, the
+pull-stat and the footer keep the sans face, so
 numbers read as data. The writing advice is <code>tracebi knowledge
 design-editorial-report</code>.</p>
 <h2 id="stage-blocks">Stage blocks</h2>
@@ -305,9 +341,10 @@ design-editorial-report</code>.</p>
 <p>Exploration content is <strong>deleted</strong> at final build. Use it to keep scratch
 queries beside the page while iterating with <code>tracebi dev</code>.</p>
 <h2 id="stated-methodology">Stated methodology</h2>
-<pre><code class="language-html">&lt;section data-tb-methodology&gt; your own notes … &lt;/section&gt;
+<pre><code class="language-html">&lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt; your sources … &lt;/footer&gt;
 </code></pre>
-<p>One per page. Your children stay first; the build appends the pipeline's
+<p>One per page, on any container. Your children stay first; the build appends
+the footer's line and, behind "How these numbers were made", the pipeline's
 stated methodology — transform notes, per-check rationale, measure
 descriptions. It is an appendix, never a claim: no badge, no status.</p>
 <h2 id="reading-data-in-scriptjs">Reading data in <code>script.js</code></h2>

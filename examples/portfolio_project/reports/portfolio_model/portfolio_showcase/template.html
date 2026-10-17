@@ -27,7 +27,10 @@
 <body>
 <main class="tb-page">
 
-  <header class="sc-hero">
+  <!-- The masthead in the showcase's own register (style.css). data-tb-period
+       names what the numbers cover; the runtime adds the meta line: the
+       period, when this file was built, and the verdict chip. -->
+  <header class="tb-masthead sc-hero" data-tb-period="Latest administrator marks">
     <span class="sc-eyebrow">Direct lending · Portfolio showcase</span>
     <!-- The title states the finding, and its numbers are live figures.
          top_sector is a one-row query (largest first, limit 1); the share is
@@ -38,7 +41,7 @@
               data-tb-binding="top_sector" data-tb-cell="fv_share"
               data-tb-format="percent" id="val-top-share"></span>
       of the book.</em></h1>
-    <p class="sc-lede">Three funds, cleaned from a Schedule of Investments and
+    <p class="tb-standfirst sc-lede">Three funds, cleaned from a Schedule of Investments and
       modelled as a star schema, holding
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="fair_value" data-tb-format="compact"
@@ -176,25 +179,23 @@
       </form>
     </section>
 
-    <section data-tb-tab="Methodology">
-      <section data-tb-methodology>
-        <h2>Methodology</h2>
-        <p class="tb-note">Author's note: marks are administrator-reported;
-          no independent valuation was performed.</p>
-      </section>
-    </section>
   </div>
 
-  <footer class="sc-footer">
+  <!-- The footer ends the page: the author's sources and notes first; the
+       build adds one line on who built it and from which model, then "How
+       these numbers were made" (the stated methodology) behind a disclosure. -->
+  <footer class="tb-footer sc-footer" data-tb-methodology>
     <h2>About this file</h2>
-    One self-contained HTML file that works offline. Inside it:
+    <p>Marks are administrator-reported; no independent valuation was
+      performed.</p>
+    <p>One self-contained HTML file that works offline. Inside it:</p>
     <ul>
       <li>the data behind every figure, fingerprinted, with its receipt;</li>
       <li>TraceBi's design system and runtime (MIT);</li>
       <li>D3 for the charts and the treemap (ISC License);</li>
       <li>the Inter and Fraunces typefaces (SIL Open Font License).</li>
     </ul>
-    Check it with <code>tracebi verify --file</code>.
+    <p>Check it with <code>tracebi verify --file</code>.</p>
   </footer>
 
   <section data-tb-stage="exploration">

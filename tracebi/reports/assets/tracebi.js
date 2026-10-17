@@ -3190,9 +3190,72 @@
   /* ── The title — when it was built, and where it sits ─────────────────
    * [data-tb-built] shows when this file was built, read from its own
    * receipt: a fact about the build, never typed in. A title marked
-   * data-tb-title="nav" moves to the top of a sidebar tab bar. */
+   * data-tb-title="nav" moves to the top of a sidebar tab bar.
+   *
+   * The masthead (.tb-masthead): its .tb-masthead-meta holds the period
+   * (data-tb-period on the masthead), the build time and the verdict chip;
+   * whichever a template left out is added, so every masthead carries the
+   * chip. The chip's state is read from the file, never from the page's
+   * markup: "draft" on a working preview (stage exploration, no receipt),
+   * "not-checked" on a built file — nothing has re-run its queries, so the
+   * file cannot honestly say they reproduce. An author-written state is
+   * overwritten; a chip never turns green on its own say-so. */
+
+  var _VERDICTS = {
+    draft: { text: "Draft",
+             tip: "A working preview. It carries no receipt." },
+    "not-checked": { text: "Not checked",
+                     tip: "Nothing has re-run this file's queries since it was " +
+                          "built. tracebi verify re-runs them against the " +
+                          "model and says whether each figure reproduces." }
+  };
+
+  function verdictState() {
+    var meta = document.querySelector('meta[name="tracebi-stage"]');
+    var stage = meta ? meta.getAttribute("content") : null;
+    var receipt = document.getElementById("tracebi-receipt");
+    return (stage === "final" && receipt) ? "not-checked" : "draft";
+  }
+
+  function hydrateMasthead() {
+    var heads = document.querySelectorAll(".tb-masthead"), i, head, meta, el;
+    for (i = 0; i < heads.length; i++) {
+      head = heads[i];
+      meta = head.querySelector(".tb-masthead-meta");
+      if (!meta) {
+        meta = document.createElement("div");
+        meta.className = "tb-masthead-meta";
+        head.appendChild(meta);
+      }
+      var period = attr(head, "data-tb-period");
+      if (period && !meta.querySelector(".tb-masthead-period")) {
+        el = document.createElement("span");
+        el.className = "tb-masthead-period";
+        el.textContent = period;
+        meta.insertBefore(el, meta.firstChild);
+      }
+      if (!head.querySelector("[data-tb-built]")) {
+        el = document.createElement("span");
+        el.setAttribute("data-tb-built", "");
+        meta.appendChild(el);
+      }
+      if (!head.querySelector(".tb-verdict")) {
+        el = document.createElement("span");
+        el.className = "tb-verdict";
+        meta.appendChild(el);
+      }
+    }
+    var state = verdictState(), spec = _VERDICTS[state];
+    var chips = document.querySelectorAll(".tb-verdict");
+    for (i = 0; i < chips.length; i++) {
+      chips[i].setAttribute("data-tb-verdict", state);
+      chips[i].textContent = spec.text;
+      chips[i].title = spec.tip;
+    }
+  }
 
   function hydrateTitle() {
+    try { hydrateMasthead(); } catch (e) { /* defensive */ }
     var el = document.getElementById("tracebi-receipt"), stamp = null, i;
     if (el) {
       try { stamp = JSON.parse(el.textContent).rendered_at || null; } catch (e) { stamp = null; }
@@ -3205,7 +3268,8 @@
       var built = document.querySelectorAll("[data-tb-built]");
       for (i = 0; i < built.length; i++) built[i].textContent = text;
     }
-    var title = document.querySelector('.tb-title[data-tb-title="nav"]');
+    var title = document.querySelector('.tb-title[data-tb-title="nav"]')
+      || document.querySelector('.tb-masthead[data-tb-title="nav"]');
     var bar = document.querySelector('.tb-tabs[data-tb-nav="side"] .tb-tab-bar');
     if (title && bar) bar.insertBefore(title, bar.firstChild);
   }

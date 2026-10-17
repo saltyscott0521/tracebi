@@ -949,23 +949,26 @@ class TemplatePackage:
         if contracts:
             manifest.transform_contracts = contracts
 
-        # About this report (default on) + the stated-methodology appendix.
-        # A template may place ONE data-tb-methodology container; otherwise
-        # the build adds a footer. Either way the page gets plain-language
-        # who / when / definitions / what the receipt is for, then any
-        # stated methodology notes after the author's own children. Prose,
-        # never a verified claim: no badge, no status, and it never colors
-        # a figure. Stated notes are recorded in the manifest when present.
+        # The footer that ends the page (default on). A template may place
+        # ONE data-tb-methodology container; otherwise the build adds a
+        # <footer class="tb-footer">. Either way, after the author's own
+        # children (their sources), one visible line — who, when, which
+        # model, and that the receipt does not claim the numbers are right —
+        # then "How these numbers were made" behind a <details>: what the
+        # receipt is for and the stated methodology notes. Prose, never a
+        # verified claim: no badge, no status, and it never colors a figure.
+        # Stated notes are recorded in the manifest (and the receipt block)
+        # when present.
         model_names = sorted({ref.model for ref in self.bindings.values()})
         page, insert_at = _ensure_about_home(page)
-        about = _about_html(manifest, model_names,
-                            app=self.app_source is not None)
         notes = stated_methodology_block(models, lineages)
         measure_notes = self._measure_notes(models)
         if measure_notes:
             notes["measure_notes"] = measure_notes
         notes_html = (_methodology_html(notes, contracts) if notes else "")
-        page = page[:insert_at] + about + notes_html + page[insert_at:]
+        footer = _footer_html(manifest, model_names, notes_html,
+                              app=self.app_source is not None)
+        page = page[:insert_at] + footer + page[insert_at:]
         if notes:
             manifest.methodology = notes
 
@@ -1749,20 +1752,18 @@ class TemplatePackage:
 
 
 def _ensure_about_home(page: str) -> tuple[str, int]:
-    """Return ``(page, insert_at)`` for the About / methodology appendix.
+    """Return ``(page, insert_at)`` for the footer that ends the page.
 
     Prefer the author's ONE ``data-tb-methodology`` container. When the
-    template left none, append a footer before ``</body>`` so About this
-    report is on by default.
+    template left none, append a ``<footer class="tb-footer">`` before
+    ``</body>`` so the footer is on by default. Its id lets an app place it
+    (the kit's ``<Footer />``).
     """
     insert_at = methodology_insertion(page)
     if insert_at is not None:
         return page, insert_at
-    footer = (
-        '<footer class="tb-about" data-tb-methodology>'
-        "<h2>About this report</h2>"
-        "</footer>"
-    )
+    footer = ('<footer class="tb-footer" id="tb-footer" data-tb-methodology>'
+              "</footer>")
     close = page.lower().rfind("</body>")
     if close < 0:
         page = page + footer
@@ -1773,54 +1774,50 @@ def _ensure_about_home(page: str) -> tuple[str, int]:
     return page, insert_at
 
 
-def _about_html(manifest: ReportManifest, model_names: list[str],
-                app: bool = False) -> str:
-    """Plain-language About this report — who, when, definitions, receipt.
+def _footer_html(manifest: ReportManifest, model_names: list[str],
+                 notes_html: str = "", app: bool = False) -> str:
+    """The footer's build-written part: one visible line, then "How these
+    numbers were made" behind a ``<details>``.
 
-    Locked honesty: names what the receipt is for and what it does not
-    claim. Never says verified, reproduces, or correct.
+    The line says who built the file, when, from which model, and that the
+    receipt does not claim the numbers are right. The disclosure holds what
+    the receipt is for, the app note, and the stated methodology appendix.
+    Locked honesty: never says verified, reproduces, or correct.
     """
     import html as _html
 
-    lines: list[str] = []
     who = (manifest.rendered_by or "").strip()
+    if who == "unknown":
+        who = ""
     when = _about_when(manifest.rendered_at)
-    if who and who != "unknown" and when:
-        lines.append(
-            f'<p class="tb-about-meta">Built by {_html.escape(who)} '
-            f"on {_html.escape(when)}.</p>"
-        )
-    elif who and who != "unknown":
-        lines.append(
-            f'<p class="tb-about-meta">Built by {_html.escape(who)}.</p>'
-        )
-    elif when:
-        lines.append(
-            f'<p class="tb-about-meta">Built on {_html.escape(when)}.</p>'
-        )
-
+    stamp = "Built"
+    if who:
+        stamp += f" by {_html.escape(who)}"
+    if when:
+        stamp += f" on {_html.escape(when)}"
     if model_names:
         label = "model" if len(model_names) == 1 else "models"
         names = ", ".join(_html.escape(n) for n in model_names)
-        lines.append(
-            f'<p class="tb-about-meta">Definitions from the {label} '
-            f"{names}.</p>"
-        )
+        stamp += f" from the {label} {names}"
+    line = (stamp + ". " if stamp != "Built" else "")
+    line += "The receipt does not claim the numbers are right."
 
-    lines.append(
-        '<p class="tb-about-receipt">This file carries a receipt. Each '
+    inner = [
+        '<p class="tb-footer-note">This file carries a receipt. Each '
         "figure names the query that produced it and a fingerprint of the "
         "result. Running <code>tracebi verify</code> on the receipt checks "
-        "whether those numbers still match the model. The receipt does not "
-        "claim the numbers are right.</p>"
-    )
+        "whether those numbers still match the model.</p>"
+    ]
     if app:
-        lines.append(
-            '<p class="tb-about-receipt">This page is an app. The figures it '
+        inner.append(
+            '<p class="tb-footer-note">This page is an app. The figures it '
             "shows through the TraceBi kit carry that receipt; anything else "
             "it draws is the app's own presentation and is not checked.</p>"
         )
-    return "".join(lines)
+    return (f'<p class="tb-footer-line">{line}</p>'
+            '<details class="tb-footer-details">'
+            "<summary>How these numbers were made</summary>"
+            + "".join(inner) + notes_html + "</details>")
 
 
 def _about_when(rendered_at: str) -> str:
@@ -1933,6 +1930,14 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
     if manifest.semantic_contract:
         payload["semantic_contract_models"] = sorted(manifest.semantic_contract)
     payload["methodology"] = manifest.methodology is not None
+    # The footer's facts, for the drawer to show (DS-6): who built the file
+    # and the stated methodology text, both copies of what the manifest
+    # records.
+    who = (manifest.rendered_by or "").strip()
+    if who and who != "unknown":
+        payload["rendered_by"] = who
+    if manifest.methodology is not None:
+        payload["stated_methodology"] = manifest.methodology
     return payload
 
 

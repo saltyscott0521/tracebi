@@ -1,23 +1,17 @@
 // Sales Pipeline Dashboard: an app (the React lane). Every number is a kit
 // figure, so the receipt names it. Open pipeline is the sum of amounts on deals
 // still open; win rate is won deals over closed deals, a ratio of totals.
-import { Kpi, Value, Chart, Table, Filter, Download, Built } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download } from "tracebi";
 
 export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-5 px-6 py-8">
-        <header className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              <Value binding="top_stage" cell="dim_stage.stage" id="head-top-stage" /> holds the
-              most open pipeline
-            </h1>
-            <p className="text-sm text-muted">Sales pipeline dashboard: open pipeline by stage and
-              by region, with the win rate.</p>
-          </div>
-          <Built className="text-xs text-muted" />
-        </header>
+      <main className="tb-page space-y-8 px-6 py-8">
+        <Masthead kicker="Sales pipeline"
+          title={<><Value binding="top_stage" cell="dim_stage.stage" id="head-top-stage" /> holds
+            the most open pipeline</>}>
+          Sales pipeline dashboard: open pipeline by stage and by region, with the win rate.
+        </Masthead>
 
         <p className="tb-lede">
           <Value binding="top_stage" cell="dim_stage.stage" /> holds{" "}
@@ -56,6 +50,7 @@ export default function App() {
                               win_rate: "percent" }} />
           </section>
         </div>
+        <Footer />
       </main>
     </div>
   );

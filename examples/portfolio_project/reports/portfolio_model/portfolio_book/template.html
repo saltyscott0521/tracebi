@@ -11,14 +11,15 @@
      script.js from the same fingerprinted rows (a custom figure). -->
 <main class="book">
 <article class="tb-article">
-  <header class="tb-article-head">
+  <header class="tb-masthead tb-article-head">
     <p class="tb-kicker">Direct lending · Portfolio book</p>
     <h1>The book is marked at
       <span data-tb-figure="value" data-tb-binding="totals" data-tb-cell="mark"
             id="head-mark">—</span> of cost, and three sectors carry the loss</h1>
-    <p class="tb-dek">Consumer, healthcare and software names are marked below
-      what the funds paid. Everything else is at or above cost.</p>
-    <p class="tb-byline">Portfolio Book · <span data-tb-built></span></p>
+    <p class="tb-standfirst">Consumer, healthcare and software names are marked
+      below what the funds paid. Everything else is at or above cost.</p>
+    <p class="tb-masthead-meta"><span data-tb-built></span>
+      <span class="tb-verdict"></span></p>
   </header>
 
   <p class="tb-lede">
@@ -100,12 +101,10 @@
           id="val-lowest-mark">—</span> of cost. The valuation committee should
     ask the administrator what moved it before the next quarter's marks.</p>
 
-  <section data-tb-methodology>
-    <h2>How these numbers were made</h2>
-    <p class="tb-note">Marks are administrator-reported; no independent
-      valuation was performed. The build appends the transform's stated
-      methodology below.</p>
-  </section>
+  <footer class="tb-footer" data-tb-methodology>
+    <p>Source: the three funds' Schedules of Investments. Marks are
+      administrator-reported; no independent valuation was performed.</p>
+  </footer>
 
   <section data-tb-stage="exploration">
     <h2>Working note</h2>

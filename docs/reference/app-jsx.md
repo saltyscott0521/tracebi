@@ -87,7 +87,10 @@ filterable, exactly as in a template.
 | `<Segmented options value onChange label>` | One choice of a few — a view, a period. Use it to pick *which* figure shows: one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its receipt. |
 | `useUrlState(key, initial)` | `useState` kept in the URL (`#view=Detail&period=YTD`): a reload or a shared link opens where the reader was. |
 | `usePrinting()` | `true` while the page prints (the browser's Ctrl+P, and `tracebi report build --format pdf`). An app with views renders every one then, so the PDF holds the whole report: `{printing ? <><Overview /><Detail /></> : <View />}`. Give navigation `print:hidden`. |
-| `<Built>` | When the file was built, from its receipt. |
+| `<Masthead title kicker period mark>` | Opens the page: an optional `mark` (a node; or leave it empty and size `.tb-masthead-mark` in `style.css`), a `kicker`, the `title` (a string, or text with `<Value>`s in it: `title={<>Marked at <Value binding="kpis" cell="mark" /> of cost</>}`), the standfirst as its children, and a meta line with the `period` (presentation, `"Q3 2026"`), the build time and the verdict chip, which the runtime fills from the file itself (`not-checked` on a built file, `draft` on a preview; never green on its own say-so). Other props go on the `<header>`: `data-tb-title="center|banner|nav"`. A literal `title` is checked for typed numbers like the app's text; `kicker` and `period` are labels. |
+| `<Footer />` | Where the build's footer goes: one line on who built the file, from which model, and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's `<main>`); without it the footer follows the app. |
+| `<Built>` | When the file was built, from its receipt (`<Masthead>` already shows it). |
+| `tb-page`, `tb-grid` + `tb-span-4/6/8/12` | The page measure (`<main className="tb-page space-y-8 px-6 py-8">`, 1,200px) and the 12-column grid (`<div className="tb-grid"><section className="tb-card tb-span-8">…`). |
 
 **Data for your own components.** `useBinding("name")` returns the binding's
 stamped rows (copies), and `fmt(value, "currency0")` formats a number with the
@@ -107,7 +110,7 @@ or say it in words. A single digit ("Q3") is not a number here.
 
 Anything the app computes or draws itself — a Recharts chart, a sum, a number
 in your own markup — is the app's presentation, not a checked figure. The page's
-About block says so: *"This page is an app. The figures it shows through the
+footer says so: *"This page is an app. The figures it shows through the
 TraceBi kit carry that receipt; anything else it draws is the app's own
 presentation and is not checked."* `tracebi verify` re-runs the bindings as for
 any report.

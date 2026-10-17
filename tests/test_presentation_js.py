@@ -707,6 +707,51 @@ process.stdout.write(JSON.stringify({
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestMastheadVerdict:
+    """The masthead's verdict chip is read from the file, never from its
+    markup: a built file that nothing has re-run says "Not checked", a
+    working preview says "Draft", and neither is ever green."""
+
+    _SCRIPT = """
+var stage = el('meta', { name: 'tracebi-stage', content: %s });
+var head = el('header', { 'class': 'tb-masthead', 'data-tb-period': 'Q3 2026' });
+el('h1', {}, head);
+/* An author who writes a green chip by hand does not get one. */
+var forged = el('span', { 'class': 'tb-verdict', 'data-tb-verdict': 'reproduces' });
+var bare = el('header', { 'class': 'tb-masthead' });
+if (%s) {
+  var rc = el('script', { id: 'tracebi-receipt', type: 'application/json' });
+  rc.textContent = JSON.stringify({ rendered_at: '2026-10-12T18:33:00Z', figures: [] });
+}
+loadRuntime();
+var meta = head.querySelector('.tb-masthead-meta');
+var chip = bare.querySelector('.tb-verdict');
+process.stdout.write(JSON.stringify({
+  period: head.querySelector('.tb-masthead-period').textContent,
+  built: meta.querySelector('[data-tb-built]').textContent,
+  state: chip.getAttribute('data-tb-verdict'),
+  text: chip.textContent,
+  tip: chip.title,
+  forged: forged.getAttribute('data-tb-verdict') + '|' + forged.textContent
+}));
+"""
+
+    def test_a_built_file_is_not_checked(self):
+        out = _run_dom(self._SCRIPT % ('"final"', "true"))
+        # Every masthead gets the meta line: the period, the build time.
+        assert out["period"] == "Q3 2026"
+        assert out["built"].startswith("Built ")
+        assert out["state"] == "not-checked" and out["text"] == "Not checked"
+        assert "tracebi verify" in out["tip"]
+        assert out["forged"] == "not-checked|Not checked"
+
+    def test_a_preview_is_a_draft_never_green(self):
+        out = _run_dom(self._SCRIPT % ('"exploration"', "false"))
+        assert out["state"] == "draft" and out["text"] == "Draft"
+        assert out["forged"] == "draft|Draft"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestReceiptDrawer:
     """The drawer renders ONLY what #tracebi-receipt records — display,
     never re-judged, in the locked language."""

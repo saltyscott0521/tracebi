@@ -3,8 +3,8 @@
 // won deals over closed deals inside the rep or region, a ratio of totals, not a
 // mean of per-rep rates.
 import { Users, Map } from "lucide-react";
-import { Kpi, Value, Chart, Table, Filter, Download, Built,
-         useUrlState, usePrinting } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download, useUrlState,
+         usePrinting } from "tracebi";
 
 const VIEWS = { Reps: Users, Regions: Map };
 
@@ -63,17 +63,12 @@ export default function App() {
   const printing = usePrinting();
   return (
     <div className="min-h-screen bg-page text-ink">
-      <main className="mx-auto max-w-6xl space-y-5 px-6 py-8">
-        <header className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              <Value binding="top_rep" cell="dim_rep.rep" id="head-top-rep" /> leads win rate
-            </h1>
-            <p className="text-sm text-muted">Rep scorecard: win rate, open pipeline and won value,
-              by rep and by region.</p>
-          </div>
-          <Built className="text-xs text-muted" />
-        </header>
+      <main className="tb-page space-y-8 px-6 py-8">
+        <Masthead kicker="Sales pipeline"
+          title={<><Value binding="top_rep" cell="dim_rep.rep" id="head-top-rep" /> leads
+            win rate</>}>
+          Rep scorecard: win rate, open pipeline and won value, by rep and by region.
+        </Masthead>
 
         <p className="tb-lede">
           <Value binding="top_rep" cell="dim_rep.rep" /> leads at{" "}
@@ -103,6 +98,7 @@ export default function App() {
           ))}
         </nav>
         {printing ? <><Reps /><Regions /></> : <View />}
+        <Footer />
       </main>
     </div>
   );

@@ -103,7 +103,8 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     # time, and numbers bound into the prose — so it builds with no numeral
     # typed in, and verifies.
     article = (plain / "template.html").read_text()
-    for marker in ('class="tb-article"', "tb-kicker", "tb-dek", "data-tb-built",
+    for marker in ('class="tb-article"', "tb-masthead", "tb-kicker", "tb-standfirst",
+                   "data-tb-built", "tb-verdict", "tb-footer",
                    "tb-lede", "<figcaption>", "tb-pullstat", "data-tb-methodology"):
         assert marker in article, marker
     assert not (plain / "app.jsx").exists()
@@ -153,7 +154,7 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     assert ('<html lang="en" data-tb-mode="dark" data-tb-density="compact" '
             'data-tb-width="full">') in desk
     assert '<div class="tb-tabs" data-tb-nav="side">' in desk
-    assert '<header class="tb-title" data-tb-title="nav">' in desk
+    assert '<header class="tb-masthead" data-tb-title="nav">' in desk
     # The whole page sits inside the sidebar's first tab: the KPIs follow it.
     assert desk.index('data-tb-tab="Overview"') < desk.index('class="tb-kpi"')
     code, out = run_cli("report", "build", "desk")
