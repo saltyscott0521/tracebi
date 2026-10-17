@@ -39,6 +39,7 @@
 <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
 <a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
@@ -411,6 +412,11 @@ it serves no <code>/mcp</code>.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>TRACEBI_LIBRARY_SYNC_SECRET</code></td>
+<td>unset</td>
+<td>Turns on <code>POST /api/library/sync</code>, the git webhook that fast-forwards each library checkout and rescans (<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>). GitHub signs with it (<code>X-Hub-Signature-256</code>); other senders put it in <code>X-TraceBi-Sync-Token</code>.</td>
+</tr>
 <tr>
 <td><code>TRACEBI_UPDATE_CHECK</code></td>
 <td>on</td>

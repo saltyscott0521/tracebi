@@ -237,6 +237,11 @@ the actual login to the company's provider:**
 - A library folder can be a git checkout; `POST /api/library/sync` (a webhook
   with its own secret) pulls `main`, and live discovery picks up the change.
 
+Built 2026-10-17: `tracebi push` (`tracebi/_push.py`) and `POST /api/library/sync`
+(`tracebi/web/api/routers/library.py`); [[push-from-a-laptop]]. Connections
+(`connections/*.yaml`) go as code too: they decide which server secrets a
+transform reads.
+
 ## Step 4 — Pipelines, published with approval
 
 - A publish request holds Python files (`pipelines/`, `transforms/`,
@@ -247,6 +252,11 @@ the actual login to the company's provider:**
 - Approval copies the files in, keeps history as in step 1, and runs the
   pipeline once with the server's secrets; its sink contract checks what
   landed. The request records the run.
+
+Built 2026-10-17: `tracebi/code_requests.py`, `tracebi_code_requests`
+(Alembic 0006), **Code requests** on the Drafts page. The pipelines an approval
+runs are the ones in the request plus each `pipelines/*.yaml` whose
+`transform` it changes.
 
 ---
 

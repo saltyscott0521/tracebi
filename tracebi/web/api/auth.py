@@ -43,7 +43,8 @@ _logger = logging.getLogger("tracebi.auth")
 
 
 _PROTECTED_PREFIXES = ("/api/", "/dashboards/", "/r/")
-_EXEMPT_PATHS = ("/api/health",)
+# The library sync webhook carries its own secret (routers/library.py).
+_EXEMPT_PATHS = ("/api/health", "/api/library/sync")
 
 
 # ── Authorization ───────────────────────────────────────────────────────────
@@ -85,6 +86,9 @@ def _required_role(method: str, path: str) -> str:
             return "analyst"
         return "viewer"
     if path.startswith("/api/pipelines/") or path.startswith("/api/_dev/"):
+        return "admin"
+    # Approving code puts Python on the server and runs it with its secrets.
+    if path.startswith("/api/code-requests/") and path.endswith(("/approve", "/reject")):
         return "admin"
     # Keeping a selection cut writes the published report.json. Foldered
     # report names contain slashes, so match the suffix, not one segment.

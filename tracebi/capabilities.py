@@ -1435,6 +1435,13 @@ def describe(brief: bool = False) -> dict:
                     "resolved_count.",
         },
         "drafts": {
+            "push": "From a laptop: tracebi push <paths> --server <url> --note 'why' "
+                    "(after tracebi login). Report packages and models/<name>.yaml|.json "
+                    "become the person's drafts; transforms/, pipelines/, "
+                    "models/<name>.py, connections/ and report.py become one code "
+                    "request (POST /api/code-requests) that an admin approves in the "
+                    "app: the files go in and the pipelines they touch run once on "
+                    "the server. Data files are refused.",
             "mcp": "list_drafts(), start_draft(kind, path, from_published=False), "
                    "read_draft(kind, path), write_draft_file(kind, path, file, content), "
                    "preview_draft(kind, path), model_impact(path), "

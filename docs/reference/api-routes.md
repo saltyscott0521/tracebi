@@ -136,6 +136,12 @@ A draft's owner is the acting principal; `{owner}` is that name slugged to
 | `GET` | `/api/publish-requests?status=` | viewer: the caller's own requests, and those into folders where they hold `publish` |
 | `POST` | `/api/publish-requests/{id}/approve` | analyst, and `publish` on the destination |
 | `POST` | `/api/publish-requests/{id}/reject` | analyst, and `publish` on the destination; body `{"note"}` (required) |
+| `POST` | `/api/code-requests` | analyst: Python from `tracebi push`, body `{"files": {path: text}, "note"}` (note required) |
+| `GET` | `/api/code-requests?status=` | viewer: the caller's own; an admin sees every one |
+| `GET` | `/api/code-requests/{id}` | the requester or an admin: each file with its diff, and the runs an approval started |
+| `POST` | `/api/code-requests/{id}/approve` | admin: copy the files in, run the pipelines they touch once |
+| `POST` | `/api/code-requests/{id}/reject` | admin; body `{"note"}` (required) |
+| `POST` | `/api/library/sync` | outside sign-in: `TRACEBI_LIBRARY_SYNC_SECRET` as `X-Hub-Signature-256` or `X-TraceBi-Sync-Token`; 404 when unset |
 
 `POST /api/drafts` takes `{"kind": "reports"|"models", "path", "from_published"}`
 and answers `201` with the new draft, or `200` with the one the caller already

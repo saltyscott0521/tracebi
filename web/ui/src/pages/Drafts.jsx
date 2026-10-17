@@ -5,6 +5,7 @@ import {
   useDrafts, useDraftVersion, useDraftFiles, useDraftPreview, useDraftImpact,
   usePublishDraft, useDeleteDraft, useWriteDraftFile, useMe,
   useDraftDestinations, usePublishRequests, useDecideRequest,
+  useCodeRequests, useCodeRequest, useDecideCodeRequest,
 } from '../api'
 import { reportModels, reportPagePath } from '../nav'
 import {
@@ -41,6 +42,7 @@ export default function Drafts() {
         Nothing here changes what anyone sees until it is published.
       </PageSub>
       <PublishRequests />
+      <CodeRequests />
       {error && <ErrorDetail error={error} />}
       {isLoading && <SkeletonList rows={3} />}
       {data && list.length === 0 && (
@@ -159,6 +161,138 @@ function PublishRequests() {
         {[...pending, ...settled].map(row)}
       </ul>
     </Card>
+  )
+}
+
+// Code pushed from a laptop (`tracebi push`): it would run on this server with
+// its secrets, so an admin reads every file's diff against what is published,
+// then approves (the files go in and the pipelines they touch run once) or
+// declines with a reason.
+function CodeRequests() {
+  const { data } = useCodeRequests()
+  const [open, setOpen] = useState(null)               // request id under review
+  const requests = data || []
+  if (!requests.length) return null
+  const pending = requests.filter(r => r.status === 'pending')
+  const settled = requests.filter(r => r.status !== 'pending').slice(0, 5)
+  return (
+    <Card style={{ marginBottom: 16 }}>
+      <h2 style={{ fontSize: 14, margin: '0 0 4px' }}>Code requests</h2>
+      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 6px' }}>
+        {pending.length
+          ? `${pending.length} waiting. Code runs on this server with its secrets, so an admin reviews every file before it goes in.`
+          : 'Nothing is waiting.'}
+      </p>
+      <ul aria-label="Code requests" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        {[...pending, ...settled].map(r => (
+          <li key={r.id} style={{ fontSize: 13, lineHeight: 1.5, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+                {r.files.length === 1 ? r.files[0] : `${r.files.length} files`}
+              </span>
+              <Badge variant={r.status === 'pending' ? 'amber' : r.status === 'approved' ? 'green' : 'gray'}>
+                {r.status === 'pending' ? 'Waiting for an admin' : r.status === 'approved' ? 'Approved' : 'Declined'}
+              </Badge>
+              <Btn size="sm" variant="outline" style={{ marginLeft: 'auto' }}
+                   onClick={() => setOpen(open === r.id ? null : r.id)} aria-expanded={open === r.id}>
+                {open === r.id ? 'Close' : r.status === 'pending' && r.can_decide ? 'Review' : 'Details'}
+              </Btn>
+            </div>
+            <div style={{ color: 'var(--muted)' }}>
+              Asked by {r.requested_by || 'unknown'} {when(r.requested_at) || ''} · “{r.note}”
+              {r.decided_by && <> · {r.status === 'approved' ? 'approved' : 'declined'} by {r.decided_by} {when(r.decided_at) || ''}</>}
+              {r.status === 'rejected' && r.decision_note && <> · reason: {r.decision_note}</>}
+            </div>
+            {open === r.id && <CodeReview id={r.id} />}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  )
+}
+
+function Diff({ text }) {
+  return (
+    <pre style={{ margin: 0, padding: '8px 10px', overflowX: 'auto', fontSize: 12, lineHeight: 1.45,
+                  background: 'var(--surface-2)', borderRadius: 'var(--radius-sm)' }}>
+      {text.split('\n').map((line, i) => (
+        <div key={i} style={{
+          color: line.startsWith('+') && !line.startsWith('+++') ? 'var(--green-text)'
+            : line.startsWith('-') && !line.startsWith('---') ? 'var(--red-text)' : undefined,
+        }}>{line || ' '}</div>
+      ))}
+    </pre>
+  )
+}
+
+function CodeReview({ id }) {
+  const { data: req, isLoading, error } = useCodeRequest(id, true)
+  const decide = useDecideCodeRequest()
+  const toast = useToast()
+  const [declining, setDeclining] = useState(false)
+  const [reason, setReason] = useState('')
+  const [failure, setFailure] = useState(null)
+  if (isLoading) return <Spinner />
+  if (error) return <ErrorDetail error={error} />
+  const act = approve => decide.mutate({ id, approve, note: approve ? '' : reason.trim() }, {
+    onSuccess: res => {
+      setFailure(null); setDeclining(false)
+      toast(approve ? `Approved: ${(res.runs || []).length} pipeline run(s) started` : 'Request declined', 'success')
+    },
+    onError: err => setFailure(err),
+  })
+  return (
+    <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+      {req.files.map(f => (
+        <div key={f.path}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+            {f.path} {f.new && <Badge variant="blue">New file</Badge>}
+          </div>
+          <Diff text={f.diff || '(no change)'} />
+        </div>
+      ))}
+      {(req.runs || []).length > 0 && (
+        <div style={{ fontSize: 12 }}>
+          Runs after approval:{' '}
+          {req.runs.map(run => (
+            <span key={run.pipeline} style={{ marginRight: 10 }}>
+              {run.pipeline}: <strong>{run.error ? 'did not start' : run.status || 'started'}</strong>
+              {run.error && <> ({run.error})</>}
+            </span>
+          ))}
+          <Link to="/runs">See runs</Link>
+        </div>
+      )}
+      {failure && <div role="alert"><ErrorDetail error={failure} /></div>}
+      {req.status === 'pending' && req.can_decide && !declining && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Btn size="sm" onClick={() => act(true)} disabled={decide.isPending}>Approve and run</Btn>
+          <Btn size="sm" variant="outline" onClick={() => setDeclining(true)}>Decline</Btn>
+        </div>
+      )}
+      {req.status === 'pending' && !req.can_decide && (
+        <div style={{ fontSize: 12, color: 'var(--muted)' }}>An admin will review it.</div>
+      )}
+      {declining && (
+        <div>
+          <label htmlFor={`code-decline-${id}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+            Reason (the person who asked will see it)
+          </label>
+          <input id={`code-decline-${id}`} value={reason} onChange={e => setReason(e.target.value)}
+            style={{
+              width: '100%', maxWidth: 480, padding: '8px 10px', marginBottom: 8,
+              border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
+              background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+            }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Btn size="sm" variant="red" onClick={() => act(false)} disabled={decide.isPending || !reason.trim()}>
+              Decline request
+            </Btn>
+            <Btn size="sm" variant="outline" onClick={() => setDeclining(false)}>Cancel</Btn>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -190,6 +190,14 @@ def get_default_runner() -> Any:
     return _registry.get_default()
 
 
+def reload(name: str, path: str) -> Any:
+    """Load pipeline *name* again from the files in *path*: after an approved
+    code request replaced or added it, the next run uses the new file."""
+    _registry._runners.pop(name, None)
+    _registry.auto_discover(path)
+    return _registry.get(name)
+
+
 def list_pipelines() -> list[str]:
     """List all known pipeline names (discovered + explicitly registered)."""
     _ensure_discovered()

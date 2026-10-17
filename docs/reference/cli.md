@@ -367,6 +367,18 @@ watcher would post straight over the reset.
 
 ## Sharing
 
+### `tracebi push`
+
+```bash
+tracebi push <paths…> --server <url> [--note "why"]
+```
+
+Sends files to a server you signed in to (`tracebi login`). Report packages and
+`models/<name>.yaml` / `.json` become your drafts; `transforms/`, `pipelines/`,
+`models/<name>.py`, `connections/` and a package's `report.py` become one code
+request that an admin approves in the app (it needs `--note`). Data files are
+refused. See [[push-from-a-laptop]].
+
 ### `tracebi report send`
 
 ```bash

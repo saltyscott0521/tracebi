@@ -357,6 +357,15 @@ def access_token(server: str) -> str:
         return _refresh(server, record)["access_token"]
 
 
+def api(server: str, method: str, path: str,
+        json_body: Optional[dict] = None) -> tuple[int, dict]:
+    """Call the server's API (``path`` like ``/api/drafts``) as the signed-in
+    person: (status, JSON body)."""
+    server = server_key(server)
+    return _request(method, server + path, json_body=json_body,
+                    bearer=access_token(server))
+
+
 def _refresh(server: str, record: dict) -> dict:
     again = f"run `tracebi login --server {server}`"
     if not record.get("refresh_token"):

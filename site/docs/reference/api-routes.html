@@ -39,6 +39,7 @@
 <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
 <a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
@@ -354,7 +355,13 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 | <code>GET</code> | <code>/api/drafts/{owner}/reports/{path}/destinations</code> | owner or admin: where the draft may be published, each <code>mode: publish</code> or <code>request</code> |
 | <code>GET</code> | <code>/api/publish-requests?status=</code> | viewer: the caller's own requests, and those into folders where they hold <code>publish</code> |
 | <code>POST</code> | <code>/api/publish-requests/{id}/approve</code> | analyst, and <code>publish</code> on the destination |
-| <code>POST</code> | <code>/api/publish-requests/{id}/reject</code> | analyst, and <code>publish</code> on the destination; body <code>{"note"}</code> (required) |</p>
+| <code>POST</code> | <code>/api/publish-requests/{id}/reject</code> | analyst, and <code>publish</code> on the destination; body <code>{"note"}</code> (required) |
+| <code>POST</code> | <code>/api/code-requests</code> | analyst: Python from <code>tracebi push</code>, body <code>{"files": {path: text}, "note"}</code> (note required) |
+| <code>GET</code> | <code>/api/code-requests?status=</code> | viewer: the caller's own; an admin sees every one |
+| <code>GET</code> | <code>/api/code-requests/{id}</code> | the requester or an admin: each file with its diff, and the runs an approval started |
+| <code>POST</code> | <code>/api/code-requests/{id}/approve</code> | admin: copy the files in, run the pipelines they touch once |
+| <code>POST</code> | <code>/api/code-requests/{id}/reject</code> | admin; body <code>{"note"}</code> (required) |
+| <code>POST</code> | <code>/api/library/sync</code> | outside sign-in: <code>TRACEBI_LIBRARY_SYNC_SECRET</code> as <code>X-Hub-Signature-256</code> or <code>X-TraceBi-Sync-Token</code>; 404 when unset |</p>
 <p><code>POST /api/drafts</code> takes <code>{"kind": "reports"|"models", "path", "from_published"}</code>
 and answers <code>201</code> with the new draft, or <code>200</code> with the one the caller already
 has; a Python model, or a report with a <code>report.py</code>, is <code>422</code> and the message

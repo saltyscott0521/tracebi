@@ -144,6 +144,7 @@ How an install learns about a newer TraceBi ([[updating]]).
 
 | Variable | Default | Effect |
 | --- | --- | --- |
+| `TRACEBI_LIBRARY_SYNC_SECRET` | unset | Turns on `POST /api/library/sync`, the git webhook that fast-forwards each library checkout and rescans ([[push-from-a-laptop]]). GitHub signs with it (`X-Hub-Signature-256`); other senders put it in `X-TraceBi-Sync-Token`. |
 | `TRACEBI_UPDATE_CHECK` | on | `0` turns off the release check in `tracebi update` and the web app's "available" notice. Nothing else changes. |
 | `TRACEBI_UPDATE_URL` | GitHub's `releases/latest` for this repo | Where to check: any URL that answers like GitHub's releases API, e.g. an internal mirror. |
 | `TRACEBI_IN_DOCKER` | set in the image | Marks a container install, so the update command pulls a new image instead of upgrading in place. |

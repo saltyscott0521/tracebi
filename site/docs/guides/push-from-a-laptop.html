@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Push from a laptop — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Push from a laptop">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a class="on" href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="push-from-a-laptop">Push from a laptop</h1>
+<p><strong>Build and preview on your own machine, then send the files to the server:
+<code>tracebi push</code>. Reports and declarative models land in your drafts. Python
+goes to an admin, who reads the diff and approves it before it runs.</strong></p>
+<p>This is for analysts who work in a local project (often with an agent such as
+Claude Code), and for the admin who approves code on the server. Sign in first
+(<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>).</p>
+<hr>
+<h2 id="what-goes-where">What goes where</h2>
+<p>What a file can do on the server decides where it lands:</p>
+<table>
+<thead>
+<tr>
+<th>You push</th>
+<th>It becomes</th>
+<th>Who decides</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A report package (<code>reports/&lt;model&gt;/&lt;name&gt;/</code>)</td>
+<td>Your draft of that report</td>
+<td>You publish it in the app, as any draft</td>
+</tr>
+<tr>
+<td><code>models/&lt;name&gt;.yaml</code> or <code>.json</code></td>
+<td>Your draft of that model</td>
+<td>You publish it; the impact check runs as usual</td>
+</tr>
+<tr>
+<td><code>transforms/*.py</code> or <code>.ipynb</code>, <code>pipelines/*</code>, <code>models/&lt;name&gt;.py</code>, <code>connections/*.yaml</code>, a package's <code>report.py</code></td>
+<td>One <strong>code request</strong></td>
+<td>An admin approves or declines it</td>
+</tr>
+</tbody>
+</table>
+<p>Data never goes. The server runs the transform with its own secrets and builds
+its own warehouse; the sink contract checks what landed there. A path outside
+the table above (<code>inputs/orders.csv</code>, <code>data/warehouse.duckdb</code>) is refused.</p>
+<p>Connections count as code because they decide which of the server's secrets a
+transform reads.</p>
+<h2 id="push">Push</h2>
+<pre><code class="language-bash">tracebi push reports/sales_model/weekly models/sales_model.yaml --server https://bi.example.com
+tracebi push transforms/sales_transform.py --server https://bi.example.com \
+    --note &quot;Drop test accounts before the sink&quot;
+</code></pre>
+<p>Paths are files, package folders, or folders of them, inside the project you
+are in. A code request needs <code>--note</code>: the admin reads it beside the diff.
+Nothing is sent when a path is refused or the note is missing.</p>
+<p>The command prints each draft's page and the request's id. A draft that already
+held a file you did not push says so; delete it in the app if it should go.</p>
+<h2 id="approve-code-admin">Approve code (admin)</h2>
+<p>The <strong>Drafts</strong> page lists <strong>Code requests</strong>. <strong>Review</strong> shows every file with
+its diff against what is published (a new file says so). Then:</p>
+<ul>
+<li><strong>Approve and run</strong> copies the files in, keeps what they replace under
+  <code>.tracebi/history/code/&lt;version&gt;/</code>, and runs once every pipeline the request
+  touches: the pipelines it holds, and each <code>pipelines/*.yaml</code> whose
+  <code>transform</code> it changes. The run uses the server's secrets, the sink contract
+  checks what landed, and the request records the run and its outcome.</li>
+<li><strong>Decline</strong> needs a reason; the person who asked sees it.</li>
+</ul>
+<p>Only <code>admin</code> approves. An analyst sees their own requests, an admin everyone's.
+Over the hosted MCP connector, Python is refused: a chat cannot send code.</p>
+<p>The API is <code>POST /api/code-requests</code> (<code>{files: {path: text}, note}</code>),
+<code>GET /api/code-requests[/&lt;id&gt;]</code>, and <code>POST /api/code-requests/&lt;id&gt;/approve</code>
+or <code>/reject</code> (<code>{note}</code>). Each request is stored under
+<code>.tracebi/requests/&lt;id&gt;/</code> with a row in the run store.</p>
+<h2 id="or-a-git-checkout-and-a-webhook">Or: a git checkout and a webhook</h2>
+<p>When changes reach the library by pull request, review happens there. Make the
+project (or a library folder) a git checkout on the server, set
+<code>TRACEBI_LIBRARY_SYNC_SECRET</code>, and point the repository's push webhook at
+<code>POST /api/library/sync</code>:</p>
+<ul>
+<li>GitHub: content type <code>application/json</code>, the secret as the webhook secret
+  (the server checks <code>X-Hub-Signature-256</code>).</li>
+<li>Anything else: send the secret itself in <code>X-TraceBi-Sync-Token</code>.</li>
+</ul>
+<p>The endpoint fast-forwards each checkout (<code>git pull --ff-only</code>), registers new
+reports, models and pipelines, and reloads any pipeline file that changed. It
+sits outside the app's sign-in because a webhook has none; without the secret
+set it does not exist.</p>
+<h2 id="if-it-does-not-work">If it does not work</h2>
+<table>
+<thead>
+<tr>
+<th>You see</th>
+<th>Likely cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>not signed in to …</code></td>
+<td>Run <code>tracebi login --server &lt;url&gt;</code> first.</td>
+</tr>
+<tr>
+<td><code>… is not something a server takes</code></td>
+<td>A data file, or a path outside the folders above.</td>
+</tr>
+<tr>
+<td><code>→ 403</code> on push</td>
+<td>Your role is <code>viewer</code>; pushing needs <code>analyst</code>.</td>
+</tr>
+<tr>
+<td>A request approved, its run <code>failed</code></td>
+<td>The transform failed on the server's data or secrets. The run's log is on the model's <strong>Runs</strong> page.</td>
+</tr>
+<tr>
+<td>Sync answers <code>401</code></td>
+<td>The signature or token does not match <code>TRACEBI_LIBRARY_SYNC_SECRET</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../guides/sign-in.html">Sign in to the app and the CLI</a> — <code>tracebi login</code>, and the roles</li>
+<li><a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a> — drafting from a chat instead</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

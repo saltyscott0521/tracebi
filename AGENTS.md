@@ -749,7 +749,11 @@ transforms, pipelines) cannot be drafted remotely; those change through git.
 **What a remote draft may hold.** A report draft takes `report.json`,
 `template.html`, `style.css` and `script.js`; a model draft takes its one
 `<name>.yaml` or `.json`. Nothing else is accepted: Python would run on the
-server with its secrets, so it comes only through a laptop and review.
+server with its secrets, so it comes only through a laptop and review:
+`tracebi push <paths> --server <url> --note "why"` sends report packages and
+declarative models to the person's drafts and Python (transforms, pipelines,
+`models/<name>.py`, connections, `report.py`) as one code request an admin
+approves; data never goes.
 `script.js` is different because it runs only in the reader's browser, in a
 sandboxed frame with no network and no access to the app. It may draw
 anything, but if it changes the text of a stamped figure the receipt says

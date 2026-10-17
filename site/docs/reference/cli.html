@@ -39,6 +39,7 @@
 <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
 <a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
 <a href="../guides/quickstart.html">Quickstart</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
 <a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
@@ -361,6 +362,14 @@ refuses it by name.</p>
 watcher would post straight over the reset.</p>
 <hr>
 <h2 id="sharing">Sharing</h2>
+<h3 id="tracebi-push"><code>tracebi push</code></h3>
+<pre><code class="language-bash">tracebi push &lt;paths…&gt; --server &lt;url&gt; [--note &quot;why&quot;]
+</code></pre>
+<p>Sends files to a server you signed in to (<code>tracebi login</code>). Report packages and
+<code>models/&lt;name&gt;.yaml</code> / <code>.json</code> become your drafts; <code>transforms/</code>, <code>pipelines/</code>,
+<code>models/&lt;name&gt;.py</code>, <code>connections/</code> and a package's <code>report.py</code> become one code
+request that an admin approves in the app (it needs <code>--note</code>). Data files are
+refused. See <a href="../guides/push-from-a-laptop.html">Push from a laptop</a>.</p>
 <h3 id="tracebi-report-send"><code>tracebi report send</code></h3>
 <pre><code class="language-bash">tracebi report send &lt;name&gt; --to a@b.com[,c@d.com] [--subject S] [--force]
 </code></pre>

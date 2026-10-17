@@ -838,6 +838,19 @@ def cmd_logout(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_push(args: argparse.Namespace) -> int:
+    """Send report packages and models to your drafts on a server, and code
+    as a request for an admin to approve."""
+    from tracebi import _push, credentials
+
+    try:
+        _push.push(args.server, args.paths, args.note or "")
+    except (_push.PushError, credentials.CredentialsError) as exc:
+        print(f"tracebi push: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def cmd_update(args: argparse.Namespace) -> int:
     """Is there a newer TraceBi, and how does this install get it?
 
@@ -3460,6 +3473,20 @@ def build_parser() -> argparse.ArgumentParser:
         "logout", help="Revoke this machine's sign-in to a TraceBi server and forget it.")
     p_logout.add_argument("--server", required=True, metavar="URL")
     p_logout.set_defaults(func=cmd_logout)
+
+    p_push = sub.add_parser(
+        "push",
+        help="Send files to a TraceBi server you signed in to: report packages "
+             "and declarative models become your drafts; Python (transforms/, "
+             "pipelines/, models/<name>.py, connections/, report.py) becomes a "
+             "request an admin approves. Data never goes.",
+    )
+    p_push.add_argument("paths", nargs="+",
+                        help="Files, report package folders, or folders of them.")
+    p_push.add_argument("--server", required=True, metavar="URL")
+    p_push.add_argument("--note", default="",
+                        help="Why: the reviewer reads it. Required when code goes.")
+    p_push.set_defaults(func=cmd_push)
 
     p_update = sub.add_parser(
         "update",

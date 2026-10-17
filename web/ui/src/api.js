@@ -486,6 +486,36 @@ export const useDecideRequest = () => {
   })
 }
 
+// Code requests: Python pushed from a laptop (`tracebi push`), which an admin
+// reviews (each file with its diff) and approves; approval runs the pipelines
+// it touches once.
+export const useCodeRequests = () =>
+  useQuery({
+    queryKey: ['code-requests'],
+    queryFn: () => get('/code-requests').then(x => x.requests),
+    refetchInterval: 10000,
+  })
+
+export const useCodeRequest = (id, enabled) =>
+  useQuery({
+    queryKey: ['code-request', id],
+    queryFn: () => get(`/code-requests/${id}`),
+    enabled,
+    refetchInterval: q => (q.state.data?.runs || []).some(r => r.status === 'running') ? 3000 : false,
+  })
+
+export const useDecideCodeRequest = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, approve, note }) =>
+      postJson(`/code-requests/${id}/${approve ? 'approve' : 'reject'}`, { note: note || '' }),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['code-requests'] })
+      qc.invalidateQueries({ queryKey: ['code-request', id] })
+    },
+  })
+}
+
 // Start the caller's own draft of a published report or model. Asking again for
 // one that exists returns it, so the same call means "open my draft".
 export const useStartDraft = () => {
