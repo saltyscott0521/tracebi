@@ -50,7 +50,9 @@ an app follows the page's mode and the project's `reports/_theme.css`:
 `bg-page`, `bg-card`, `bg-surface`, `text-ink`, `text-muted`, `border-rule`,
 `bg-accent`, `text-accent-text`, `text-on-accent` (text on an accent fill), `text-good`, `text-bad`, `chart-1` … `chart-8`,
 `font-sans` / `font-mono`, `rounded-panel`. The `tb-*` classes
-([[styling-a-report]]) work too.
+([[styling-a-report]]) work too. A `style.css` beside `app.jsx` is a theme
+preset as for a template (the accent pair for each ground, a display face);
+its `:root` tokens give way to the dark ground as a template's do.
 
 ## The `tracebi` module
 
@@ -124,7 +126,7 @@ any report.
 ```jsx
 import { useState } from "react";
 import { LayoutDashboard, CreditCard } from "lucide-react";
-import { Kpi, Spark, Chart, Table, Filter } from "tracebi";
+import { Masthead, Footer, Kpi, Spark, Chart, Table, Filter } from "tracebi";
 
 const NAV = { Overview: LayoutDashboard, Plans: CreditCard };
 
@@ -140,7 +142,10 @@ export default function App() {
           </button>
         ))}
       </aside>
-      <main className="flex-1 space-y-6 p-8">
+      <main className="min-w-0 flex-1 space-y-8 px-6 py-8">
+        <Masthead kicker="SaaS metrics" title="Recurring revenue" period="Monthly">
+          Ending MRR and customers, month by month.
+        </Masthead>
         {view === "Overview" ? (
           <div className="tb-grid">
             <Kpi lead binding="kpis" cell="ending_mrr" format="currency0" label="Ending MRR">
@@ -155,6 +160,7 @@ export default function App() {
             <Table binding="by_plan" sort bars="ending_mrr" />
           </section>
         )}
+        <Footer />
       </main>
     </div>
   );

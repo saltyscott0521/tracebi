@@ -65,16 +65,21 @@ should pin `light` until it styles the dark ground too.
 ## Components
 
 ```
-.tb-page   .tb-grid   .tb-card
-.tb-lede                     the answer sentence under the title
+.tb-page                     the page measure, 1,200px
+.tb-masthead                 opens the page: .tb-kicker, <h1>, .tb-standfirst,
+                             .tb-masthead-meta (period, build time, .tb-verdict)
+.tb-footer                   ends the page: your sources, then the build's line
+.tb-grid   .tb-card
+.tb-span-4 / -6 / -8 / -12   the 12-column grid: a .tb-grid's panels name a span
+.tb-lede                     the answer sentence under the masthead
 .tb-kpi  (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context)
-.tb-kpi--lead                the strip's main number, twice as wide
+.tb-kpi--lead                the strip's main number: larger, not wider
+.tb-kpi-delta                a stamped change leading the context line
 .tb-spark                    a line/area chart in a KPI: the trend's shape alone
 .tb-table  (.tb-table--striped / .tb-table--compact / .tb-table--freeze)
 .tb-callout   .tb-note   .tb-badge
 .tb-good / .tb-bad           direction tones; pair with a sign or a word
-.tb-cols-2 / .tb-cols-3      responsive, collapse under 720px
-.tb-cols-2-1 / .tb-cols-1-2  a wide panel beside a narrow one
+.tb-cols-2 / .tb-cols-3      shorthands: equal columns, one under 720px
 .tb-tabs                     with data-tb-tab sections
 ```
 
@@ -84,7 +89,10 @@ nothing requires these classes.
 A typical top of page, built only from these:
 
 ```html
-<h1>Fund book, end of August</h1>
+<header class="tb-masthead" data-tb-period="End of August">
+  <h1>Fund book</h1>
+  <p class="tb-standfirst">The book at fair value, by sector and fund.</p>
+</header>
 <p class="tb-lede">
   <span data-tb-figure="value" data-tb-binding="top" data-tb-cell="dim_issuer.sector" id="top-sector">—</span>
   is the largest sector, at
@@ -92,14 +100,14 @@ A typical top of page, built only from these:
   of the book.</p>
 
 <div class="tb-grid">
-  <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
-       data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv">
+  <div class="tb-kpi tb-kpi--lead">
     <span class="tb-kpi-label">Fair value</span>
-    <span class="tb-kpi-value"></span>
+    <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
+          data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv"></span>
     <span class="tb-kpi-context">
-      <span data-tb-figure="value" data-tb-binding="kpis" data-tb-cell="fv_growth"
-            data-tb-format="percent" data-tb-direction="up-good" id="kpi-fv-growth"></span>
-      vs last month</span>
+      <span class="tb-kpi-delta" data-tb-figure="value" data-tb-binding="kpis"
+            data-tb-cell="fv_growth" data-tb-format="percent" data-tb-direction="up-good"
+            id="kpi-fv-growth"></span> vs last month</span>
   </div>
 </div>
 ```
@@ -187,10 +195,12 @@ The build inlines each one as a `data:` URI, so the file still fetches nothing:
 
 ```css
 @font-face {
-  font-family: "Inter";
-  src: url(assets/fonts/inter-latin-400-normal.woff2) format("woff2");
+  font-family: "Fraunces";
+  font-weight: 600;
+  src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
 }
-.hero { background: url(assets/contours.svg) center / cover, linear-gradient(125deg, #0a1330, #1b2f7a); }
+.tb-masthead h1, .tb-kpi--lead .tb-kpi-value { font-family: "Fraunces", var(--tb-font-serif); }
+.tb-masthead-mark { width: 120px; height: 28px; background: url(assets/logo.svg) left / contain no-repeat; }
 ```
 
 ```html
@@ -202,9 +212,12 @@ file, any other type, or a path outside `assets/` fails the load with the file
 named. Keep images small: every byte ships inside the report. Check a font's
 licence allows embedding (SIL OFL fonts do; ship the licence text alongside).
 
-`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` shows it all: two
-typefaces, a hero with inlined artwork, pill tabs, in-cell bars, sortable
-columns, and chart styling through `tracebi.configureChart`.
+`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` shows it all on
+the system: a `style.css` that is a theme preset (an accent pair and one
+inlined display face), every chart type, a KPI delta, data bars, sortable
+columns, filters, a scenario and a custom d3 figure. The demo app's
+`aum_by_branch` is the one bespoke look (its own faces, palette and hero band
+with inlined artwork) on the same masthead, grid, footer and receipt.
 
 ## Related
 

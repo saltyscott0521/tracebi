@@ -132,7 +132,7 @@ def test_the_showcase_carries_every_affordance(built):
     from tests.test_presentation_js import assert_built_receipt_rows
     assert_built_receipt_rows(html)
     for marker in ("data-tb-filter", "data-tb-search", "data-tb-download",
-                   "tb-tabs", "tb-cols-2", 'id="tracebi-receipt"',
+                   "tb-tabs", "tb-span-8", "tb-kpi--lead", 'id="tracebi-receipt"',
                    "tb-methodology", "data-tb-unverified",
                    "tb-semantic-contract-portfolio_model",
                    'id="tracebi-selection"', 'id="tracebi-grain"',
@@ -145,6 +145,9 @@ def test_the_showcase_carries_every_affordance(built):
     assert "Working notes" not in html, "exploration must die at build"
     # A page with a selection block asks the app to run its cut; it connects nowhere.
     assert "connect-src 'none'" in html and "connect-src 'self'" not in html
+    # ...and its runtime never calls the app itself: served on its own at
+    # /r/<name> (an opaque origin) a request to the API fails CORS on load.
+    assert "/api/" not in html and "fetch(" not in html
 
     manifest = json.loads(_manifest(built, "portfolio_model/portfolio_showcase").read_text())
     assert manifest["schema_version"] == 2

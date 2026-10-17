@@ -24,11 +24,19 @@ never tokens.
   axes follow the theme with no chart code.
 - **Name by role, not by color.** Write `--tb-accent`, not `--blue`. A
   component rule refers to a role token and never to a raw hex.
-- **A dark ground swaps the tokens, it doesn't invert them.** Use a near-black
-  page (around `#121212`, not `#000`), surfaces a step lighter than the page,
-  off-white ink, and an accent with slightly lower saturation so it doesn't
-  glare. Re-check contrast afterwards: `--tb-muted` is the token that most often
-  fails (see [[design-accessible-by-default]]).
+- **A theme is an accent preset.** The shipped themes (`tracebi theme use`)
+  set the accent pair for each ground (`--tb-accent` / `--tb-accent-text` and
+  `--tb-dark-accent` / `--tb-dark-accent-text`) and nothing structural; a
+  report may add one display face for its headline and lead number. Set the
+  dark pair too, or dark mode keeps the default cobalt.
+- **A dark ground swaps the tokens, it doesn't invert them.** The system's
+  dark mode (the default `auto` follows the reader) already has its own
+  grounds, ink and series; a `:root` override of the light ones gives way to
+  it. If you style the dark ground yourself, use a near-black page (around
+  `#121212`, not `#000`), surfaces a step lighter, off-white ink, and an
+  accent with slightly lower saturation so it doesn't glare. Re-check
+  contrast afterwards: `--tb-muted` is the token that most often fails (see
+  [[design-accessible-by-default]]).
 - **Keep the series palette's order.** Recolor `--tb-chart-*` for the brand if
   you need to, but keep the palette colorblind-checked and keep the first two
   series clearly distinct (see [[design-color-with-meaning]]).

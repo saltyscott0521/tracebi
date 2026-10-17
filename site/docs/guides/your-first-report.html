@@ -142,23 +142,31 @@ binding; a value figure over a multi-row binding is refused.</p>
 &lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;title&gt;{{ title }}&lt;/title&gt;&lt;/head&gt;
 &lt;body&gt;
 &lt;main class=&quot;tb-page&quot;&gt;
-  &lt;h1&gt;Portfolio Book&lt;/h1&gt;
+  &lt;header class=&quot;tb-masthead&quot;&gt;
+    &lt;h1&gt;Portfolio Book&lt;/h1&gt;
+    &lt;p class=&quot;tb-standfirst&quot;&gt;The book at fair value, by sector.&lt;/p&gt;
+  &lt;/header&gt;
 
-  &lt;div class=&quot;tb-cols-2&quot;&gt;
-    &lt;div class=&quot;tb-card&quot;&gt;{{ figure(&quot;kpi_value&quot;) }}&lt;/div&gt;
-    &lt;div class=&quot;tb-card&quot;&gt;{{ figure(&quot;kpi_count&quot;) }}&lt;/div&gt;
+  &lt;div class=&quot;tb-grid&quot;&gt;            &lt;!-- a value figure is a KPI card: one strip --&gt;
+    {{ figure(&quot;kpi_value&quot;) }}
+    {{ figure(&quot;kpi_count&quot;) }}
   &lt;/div&gt;
 
-  &lt;div class=&quot;tb-card&quot;&gt;
-    &lt;h2&gt;Fair value by sector&lt;/h2&gt;
-    {{ figure(&quot;sector_mix&quot;) }}
+  &lt;div class=&quot;tb-grid&quot;&gt;            &lt;!-- the 12-column grid: 8 beside 4 --&gt;
+    &lt;div class=&quot;tb-card tb-span-8&quot;&gt;
+      &lt;h2&gt;Fair value by sector&lt;/h2&gt;
+      {{ figure(&quot;sector_mix&quot;) }}
+    &lt;/div&gt;
+    &lt;div class=&quot;tb-card tb-span-4&quot;&gt;
+      &lt;h2&gt;Detail&lt;/h2&gt;
+      &lt;input data-tb-search data-tb-binding=&quot;by_sector&quot; placeholder=&quot;Search…&quot;&gt;
+      {{ figure(&quot;sector_tbl&quot;) }}
+    &lt;/div&gt;
   &lt;/div&gt;
 
-  &lt;div class=&quot;tb-card&quot;&gt;
-    &lt;h2&gt;Detail&lt;/h2&gt;
-    &lt;input data-tb-search data-tb-binding=&quot;by_sector&quot; placeholder=&quot;Search…&quot;&gt;
-    {{ figure(&quot;sector_tbl&quot;) }}
-  &lt;/div&gt;
+  &lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt;
+    &lt;p&gt;Source: the funds' Schedules of Investments.&lt;/p&gt;
+  &lt;/footer&gt;
 &lt;/main&gt;
 &lt;/body&gt;&lt;/html&gt;
 </code></pre>

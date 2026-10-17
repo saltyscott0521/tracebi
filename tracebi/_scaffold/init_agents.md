@@ -249,7 +249,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   recompute offline. Tables scroll past
   `data-tb-rows` (default 10). `data-tb-download` buttons export the
   stamped CSV verbatim (`data-tb-label` sets their text). Layout: tabs via `data-tb-tab` sections inside
-  `.tb-tabs`; side-by-side via `.tb-cols-2` / `.tb-cols-3`. Pick a page by name instead of
+  `.tb-tabs`; side-by-side via the 12-column grid (a `.tb-grid` whose panels carry
+  `.tb-span-4/6/8/12`). Pick a page by name instead of
   inventing one (`presentation.layout` in `tracebi context`). A page someone *reads* —
   once, emailed, printed — is a report: `tracebi new-report "<Name>"` writes an editorial
   `template.html` (`<article class="tb-article">`: a masthead — `<header class="tb-masthead
@@ -261,12 +262,12 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   finding — `.tb-lede`, a few `.tb-kpi` cards, one chart in one `.tb-card`. A page someone
   *works in* is a dashboard: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with a KPI
   strip, a chart beside its ranking and a filterable detail; `--html` writes it as
-  `template.html` (`brief` plus `.tb-cols-2-1`); `tracebi init`'s sample is an `app.jsx`. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
+  `template.html` (`brief` plus a `.tb-span-8` chart beside a `.tb-span-4` detail); `tracebi init`'s sample is an `app.jsx`. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
   number `.tb-kpi--lead` (larger, not wider), give a number its signal with a
   `.tb-kpi-delta` where the model measures a change, and give a KPI with a trend a `class="tb-spark"` line or area
-  chart (the shape alone, no axes). `.tb-cols-2-1` / `.tb-cols-1-2` put a wide panel
-  beside a narrow one, as do `.tb-span-8` / `.tb-span-4` (`.tb-span-6`, `.tb-span-12`)
-  on a `.tb-grid`'s panels: the 12-column grid.
+  chart (the shape alone, no axes). `.tb-span-8` / `.tb-span-4` on a `.tb-grid`'s panels
+  put a wide panel beside a narrow one (`.tb-span-6` halves, `.tb-span-12` the row; the
+  older `.tb-cols-2` / `.tb-cols-2-1` still work as shorthands).
   `tabbed` is the same header, then `.tb-tabs` / `data-tb-tab` (Overview and Detail).
   Pick by fit — a report to read, a dashboard to work in, `brief` for one finding —
   and ask only when a person is in the loop and the choice is not obvious. Every built
@@ -294,6 +295,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `report.json` `"look"` and the sidebar and title are its own components. Looks never
   change a number. A report may name a shipped theme in `report.json` `"theme"`
   (`tracebi theme list`; each is an accent preset for both grounds, never a mode);
+  a report's own `style.css` is that at most — the accent pairs and one display face for
+  the masthead `<h1>` and the lead number, no gradient, hatch, glow or resting shadow;
   `tracebi theme use <name>` makes one everyone's default (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
   returns it as `house_style` — follow its Rules over the defaults. Read
   `tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an app).

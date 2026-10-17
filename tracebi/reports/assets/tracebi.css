@@ -849,8 +849,12 @@ label > input[data-tb-search] { width: 11em; }
  *   data-tb-density="compact"   tighter spacing and table rows
  *   data-tb-width="full"        the page uses the whole window (a dashboard)
  * Tokens only: a mode changes how the page looks, never a number, and the
- * receipt's own tones are untouched. --tb-chart-1 stays the accent. */
+ * receipt's own tones are untouched. --tb-chart-1 stays the accent.
+ * The two dark blocks sit between the tb-mode-tokens markers: an app page
+ * repeats them outside its cascade layer (stack.py), so a theme's or a
+ * style.css's :root tokens give way to the dark ground there too. */
 
+/* tb-mode-tokens: begin */
 :root[data-tb-mode="dark"] {
   --tb-ink: #ededf0;
   --tb-bg: #141417;
@@ -907,6 +911,7 @@ label > input[data-tb-search] { width: 11em; }
     color-scheme: dark;
   }
 }
+/* tb-mode-tokens: end */
 
 :root[data-tb-density="compact"] {
   --tb-space-3: 12px;

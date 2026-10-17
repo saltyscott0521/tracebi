@@ -661,10 +661,12 @@ def _presentation() -> dict:
                     "data-tb-tab=\"Label\">…</section>…</div> — the "
                     "runtime builds the tab bar from the labels and shows "
                     "one section at a time",
-            "columns": ".tb-cols-2 / .tb-cols-3 grid classes, and .tb-cols-2-1 / "
-                       ".tb-cols-1-2 for a wide panel beside a narrow one "
-                       "(the dashboard row); responsive collapse to one "
-                       "column under 720px",
+            "columns": "The 12-column grid: a .tb-grid whose panels carry "
+                       ".tb-span-4 / -6 / -8 / -12 (.tb-span-8 beside "
+                       ".tb-span-4 is the dashboard row: a wide panel beside "
+                       "a narrow one); every span is the full row under "
+                       "720px. .tb-cols-2 / .tb-cols-3 / .tb-cols-2-1 / "
+                       ".tb-cols-1-2 still work as shorthands",
             "kpi_strip": "A .tb-grid of .tb-kpi cells renders as ONE panel "
                          "with hairlines between the cells. Mark the number "
                          "the page is about .tb-kpi--lead (larger, not "
@@ -703,8 +705,7 @@ def _presentation() -> dict:
                              "navigation asked for. new-dashboard --html (or "
                              "tracebi new-report \"Name\" --layout dashboard) "
                              "writes the template.html version (brief, then "
-                             ".tb-cols-2-1), which is what tracebi init's "
-                             "sample is.",
+                             "a .tb-span-8 chart beside a .tb-span-4 detail).",
                 "tabbed": "The same header, then .tb-tabs / data-tb-tab "
                           "(Overview and Detail). "
                           "tracebi new-report \"Name\" --layout tabbed",
@@ -750,6 +751,14 @@ def _presentation() -> dict:
                 "for_everyone": "reports/_theme.css restyles every report in "
                                 "the project (token overrides: accent, fonts, "
                                 "spacing)",
+                "style_css": "A report's own style.css is a theme preset at "
+                             "most: the accent pairs (--tb-accent / "
+                             "--tb-accent-text, --tb-dark-accent / "
+                             "--tb-dark-accent-text) and one display face for "
+                             ".tb-masthead h1 and .tb-kpi--lead .tb-kpi-value "
+                             "(an @font-face from assets/). No gradient, hatch, "
+                             "glow or resting shadow; the showcase's style.css "
+                             "is the example",
                 "house_style": "reports/_style.md is the team's design rules, "
                                "returned as house_style by tracebi context and "
                                "get_context. Read it before building and follow "

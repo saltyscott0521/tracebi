@@ -228,7 +228,7 @@ who *works in* it — checks it daily, switches views, drills in — gets a
 **dashboard**: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with the
 title, a KPI strip with a lead, a chart beside its ranking and a filterable
 detail, as `tracebi init`'s sample is; `--html` writes it as `template.html`
-(`brief`, then `.tb-cols-2-1`). Other report layouts:
+(`brief`, then a `.tb-span-8` chart beside a `.tb-span-4` detail). Other report layouts:
 `new-report --layout brief` (one finding — `.tb-lede`, a few `.tb-kpi`
 cards, one chart in one `.tb-card`) and `--layout tabbed` (the same header,
 then `.tb-tabs` / `data-tb-tab`). Ask only when a person is in the loop and
@@ -240,9 +240,10 @@ KPI strip; mark the number the page is about `.tb-kpi--lead` (larger, not
 wider) rather than a row of identical boxes; a `.tb-kpi-delta` gives a number
 its signal where the model measures a change. Under a KPI with a trend, add a
 `class="tb-spark"` line or area chart bound to the by-period query — the
-shape alone, no axes. Put a wide panel beside a narrow one with `.tb-cols-2-1`
-(or `.tb-cols-1-2`), or give a `.tb-grid`'s panels `.tb-span-8` / `.tb-span-4`
-(`.tb-span-6`, `.tb-span-12`): the 12-column grid; a `.tb-note` straight after a card's `<h2>` is its
+shape alone, no axes. Lay panels on the 12-column grid: give a `.tb-grid`'s
+panels `.tb-span-8` / `.tb-span-4` for a wide panel beside a narrow one
+(`.tb-span-6` for halves, `.tb-span-12` for the row; `.tb-cols-2` and
+`.tb-cols-2-1` still work as shorthands); a `.tb-note` straight after a card's `<h2>` is its
 subtitle, and a table that ends a card runs edge to edge.
 
 **Ask how it should look, once, before you build.** With a person in the
@@ -286,7 +287,11 @@ it as the template attributes above. These change how a page looks, never a numb
 ocean, plum, sand; `--theme` on `new-report` / `new-dashboard`). `tracebi theme use <name>` makes
 one the project default (`reports/_theme.css`, which restyles every report).
 A theme is an accent preset (the accent for the light and the dark ground),
-never a mode or a layout.
+never a mode or a layout. A report's own `style.css` is the same thing at most:
+the accent pairs (`--tb-accent` / `--tb-accent-text`, `--tb-dark-accent` /
+`--tb-dark-accent-text`) and one display face for the `.tb-masthead h1` and the
+lead number; no gradient, hatch, glow or resting shadow, and no second set of
+components.
 `reports/_style.md` is the team's house style — `tracebi context` and
 `get_context` return it as `house_style`. Read it before you build and follow
 its Rules over these defaults. Before you build, read
@@ -357,8 +362,9 @@ only; `tracebi.setSelection({column: value})` filters the page from a click.
 The showcase's holdings treemap is the worked example.
 
 **Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
-(`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`) uses it for two
-typefaces and its hero artwork.
+(`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`) uses it for its
+one display face (Fraunces, with its licence beside it); the demo app's
+`aum_by_branch` for its faces and its hero artwork.
 
 Three rules that keep pages honest:
 

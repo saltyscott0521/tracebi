@@ -164,15 +164,17 @@ is the in-page find.
 
 - **Tabs** — `<div class="tb-tabs"><section data-tb-tab="Label">…</section></div>`;
   the runtime builds the tab bar from the labels.
-- **Columns** — `.tb-cols-2` / `.tb-cols-3`, and `.tb-cols-2-1` / `.tb-cols-1-2`
-  for a wide panel beside a narrow one; all collapse to one column under 720px.
 - **Page measure** — `<main class="tb-page">` (and the page itself) is
   1,200px wide at most.
-- **12-column grid** — give a `.tb-grid`'s panels `.tb-span-4`, `.tb-span-6`,
-  `.tb-span-8` or `.tb-span-12` (a third, a half, two thirds, the row): the
-  grid becomes twelve columns, and every span is the full row under 720px.
+- **12-column grid** — the layout: give a `.tb-grid`'s panels `.tb-span-4`,
+  `.tb-span-6`, `.tb-span-8` or `.tb-span-12` (a third, a half, two thirds,
+  the row): the grid becomes twelve columns, and every span is the full row
+  under 720px. A wide panel beside a narrow one:
   `<div class="tb-grid"><section class="tb-card tb-span-8">…</section><section
   class="tb-card tb-span-4">…</section></div>`.
+- **Columns** — `.tb-cols-2` / `.tb-cols-3`, and `.tb-cols-2-1` / `.tb-cols-1-2`,
+  still work as shorthands for equal or 2:1 columns; they collapse to one
+  column under 720px.
 - **KPI strip** — a `.tb-grid` of `.tb-kpi` cells renders as one panel with
   hairlines between the cells. `.tb-kpi--lead` sets the page's main number a
   step larger (not wider); a `.tb-kpi-delta` leads its context line.
@@ -230,6 +232,14 @@ The mark is empty by default. To show a logo, put the file in the package's
 background: url(assets/logo.svg) left / contain no-repeat; }`. A look for every
 report in the project goes in `reports/_theme.css`. (`.tb-title`, the older
 title block, still works.)
+
+A report's look beyond that is a theme preset: `tracebi theme use <name>`, or
+in `style.css` the accent pair for each ground (`--tb-accent` /
+`--tb-accent-text` and `--tb-dark-accent` / `--tb-dark-accent-text`) and at
+most one display face for the headline and the lead number. The showcase's
+`style.css` is exactly that: Fraunces from `assets/fonts/` on
+`.tb-masthead h1` and `.tb-kpi--lead .tb-kpi-value`, and a teal accent. No
+gradient, no shadow, no second set of components.
 
 **The footer** — every page ends with one:
 

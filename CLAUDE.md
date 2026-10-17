@@ -783,7 +783,7 @@ Don't add these unless asked.
 | Build an app dashboard (React lane) | `tracebi new-dashboard` → `examples/portfolio_project/reports/portfolio_model/portfolio_desk/` + `docs/reference/app-jsx.md` |
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
 | See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing_model/affordability/` + `tracebi/reports/scenario.py` |
-| See every artifact feature at once | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/test_showcase.py`) |
+| See every artifact feature at once | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/e2e/test_reference_project.py` and `tests/test_agent_guides.py`) |
 | Understand architecture decisions | `NOTES.md` |
 | Avoid bugs already hit in this repo | `docs/agents/pitfalls.md` |
 | Decide whether a test is worth writing | `docs/architecture/test-suite-review.md` |

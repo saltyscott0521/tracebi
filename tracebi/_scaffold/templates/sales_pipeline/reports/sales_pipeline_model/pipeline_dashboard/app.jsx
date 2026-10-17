@@ -29,14 +29,14 @@ export default function App() {
                context="amount on won deals" id="kpi-won" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <section className="tb-card lg:col-span-2">
+        <div className="tb-grid">
+          <section className="tb-card tb-span-8">
             <h2>Open pipeline by stage</h2>
             <p className="tb-note">Stages with open deals, largest first.</p>
             <Chart binding="by_stage" type="barh" x="dim_stage.stage" y="pipeline_value"
                    valueFormat="currency_compact" id="chart-by-stage" />
           </section>
-          <section className="tb-card">
+          <section className="tb-card tb-span-4">
             <h2>Pipeline by region</h2>
             <p className="tb-note">The filter chooses rows; it never computes a number.</p>
             <div className="mb-3 flex flex-wrap items-center gap-2">

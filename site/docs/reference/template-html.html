@@ -241,15 +241,17 @@ is the in-page find.</p>
 <ul>
 <li><strong>Tabs</strong> — <code>&lt;div class="tb-tabs"&gt;&lt;section data-tb-tab="Label"&gt;…&lt;/section&gt;&lt;/div&gt;</code>;
   the runtime builds the tab bar from the labels.</li>
-<li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, and <code>.tb-cols-2-1</code> / <code>.tb-cols-1-2</code>
-  for a wide panel beside a narrow one; all collapse to one column under 720px.</li>
 <li><strong>Page measure</strong> — <code>&lt;main class="tb-page"&gt;</code> (and the page itself) is
   1,200px wide at most.</li>
-<li><strong>12-column grid</strong> — give a <code>.tb-grid</code>'s panels <code>.tb-span-4</code>, <code>.tb-span-6</code>,
-  <code>.tb-span-8</code> or <code>.tb-span-12</code> (a third, a half, two thirds, the row): the
-  grid becomes twelve columns, and every span is the full row under 720px.
+<li><strong>12-column grid</strong> — the layout: give a <code>.tb-grid</code>'s panels <code>.tb-span-4</code>,
+  <code>.tb-span-6</code>, <code>.tb-span-8</code> or <code>.tb-span-12</code> (a third, a half, two thirds,
+  the row): the grid becomes twelve columns, and every span is the full row
+  under 720px. A wide panel beside a narrow one:
   <code>&lt;div class="tb-grid"&gt;&lt;section class="tb-card tb-span-8"&gt;…&lt;/section&gt;&lt;section
   class="tb-card tb-span-4"&gt;…&lt;/section&gt;&lt;/div&gt;</code>.</li>
+<li><strong>Columns</strong> — <code>.tb-cols-2</code> / <code>.tb-cols-3</code>, and <code>.tb-cols-2-1</code> / <code>.tb-cols-1-2</code>,
+  still work as shorthands for equal or 2:1 columns; they collapse to one
+  column under 720px.</li>
 <li><strong>KPI strip</strong> — a <code>.tb-grid</code> of <code>.tb-kpi</code> cells renders as one panel with
   hairlines between the cells. <code>.tb-kpi--lead</code> sets the page's main number a
   step larger (not wider); a <code>.tb-kpi-delta</code> leads its context line.</li>
@@ -316,6 +318,13 @@ receipt too (the receipt drawer, below).</p>
 background: url(assets/logo.svg) left / contain no-repeat; }</code>. A look for every
 report in the project goes in <code>reports/_theme.css</code>. (<code>.tb-title</code>, the older
 title block, still works.)</p>
+<p>A report's look beyond that is a theme preset: <code>tracebi theme use &lt;name&gt;</code>, or
+in <code>style.css</code> the accent pair for each ground (<code>--tb-accent</code> /
+<code>--tb-accent-text</code> and <code>--tb-dark-accent</code> / <code>--tb-dark-accent-text</code>) and at
+most one display face for the headline and the lead number. The showcase's
+<code>style.css</code> is exactly that: Fraunces from <code>assets/fonts/</code> on
+<code>.tb-masthead h1</code> and <code>.tb-kpi--lead .tb-kpi-value</code>, and a teal accent. No
+gradient, no shadow, no second set of components.</p>
 <p><strong>The footer</strong> — every page ends with one:</p>
 <pre><code class="language-html">&lt;footer class=&quot;tb-footer&quot; data-tb-methodology&gt;
   &lt;p&gt;Source: the funds' Schedules of Investments.&lt;/p&gt;

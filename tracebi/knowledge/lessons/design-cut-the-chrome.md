@@ -26,8 +26,9 @@ what a receipted report is for.
   digits line up.
 - **Numbered section markers (01 / 02 / 03)** on sections that aren't a sequence.
 
-**What to keep instead.** Whitespace, a consistent grid (`.tb-cols-2`,
-`.tb-cols-3`), one type size per role, and the design tokens rather than new
+**What to keep instead.** Whitespace, a consistent grid (the 12-column
+`.tb-grid` with `.tb-span-4/6/8/12`), one step of the type scale per role, and
+the design tokens rather than new
 colors. Restraint reads as confidence.
 
 **The tell.** Show the page to someone for five seconds and ask what it says.

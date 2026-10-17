@@ -25,14 +25,14 @@ export default function App() {
           <Kpi binding="totals" cell="gain_pct" label="Gain on cost" id="kpi-gain-pct" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <section className="tb-card lg:col-span-2">
+        <div className="tb-grid">
+          <section className="tb-card tb-span-8">
             <h2>Market value by region</h2>
             <p className="tb-note">Largest first.</p>
             <Chart binding="by_region" type="barh" x="dim_branch.region" y="market_value"
                    valueFormat="currency_compact" />
           </section>
-          <section className="tb-card">
+          <section className="tb-card tb-span-4">
             <h2>By region</h2>
             <div className="mb-3"><Download binding="by_region" /></div>
             <Table binding="by_region" bars="market_value"

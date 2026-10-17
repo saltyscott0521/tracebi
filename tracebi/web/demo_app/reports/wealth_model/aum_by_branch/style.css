@@ -1,9 +1,12 @@
 /* ─────────────────────────────────────────────────────────────────────────
  * AUM by Branch: the custom theme for the demo's wealth report.
  *
- * Stacks after tracebi.css, so the rules here win; the app (app.jsx) uses
- * these class names. Fonts and the hero artwork come from assets/ and are
- * inlined at build, so the file still works offline.
+ * The demo's one bespoke look: its own faces (Inter, Fraunces), its own
+ * palette (pine and brass) and a hero band, on the system's frame (the
+ * masthead's meta and verdict, the KPI strip, the grid, the footer and the
+ * receipt are tracebi.css). Stacks after tracebi.css, so the rules here win.
+ * Fonts and the hero artwork come from assets/ and are inlined at build, so
+ * the file still works offline. No gradient, no shadow.
  *
  * Presentation only: nothing here can change a number.
  * ───────────────────────────────────────────────────────────────────────── */
@@ -34,36 +37,35 @@
   --tb-muted: #56655f;
   --tb-page: #f3f5f2;
   --tb-rule: #dfe5e0;
+  /* The accent pair for each ground: pine, and a lighter pine on dark. */
   --tb-accent: #1f6f5c;
-  --tb-radius: 14px;
-  --tb-shadow: 0 1px 2px rgba(16, 32, 28, .05), 0 8px 24px -12px rgba(16, 32, 28, .2);
-  /* Chart series: pine, brass, slate blue, clay (checked for colour-blind
-     separation). */
-  --tb-chart-1: #1f6f5c;
+  --tb-accent-text: #1a5e4e;
+  --tb-surface-accent: #e9f2ee;
+  --tb-dark-accent: #6cc3a8;
+  --tb-dark-accent-text: #9ad9c4;
+  /* Chart series after the accent: brass, slate blue, clay (checked for
+     colour-blind separation against pine). */
   --tb-chart-2: #c08a2b;
   --tb-chart-3: #4c6ea8;
   --tb-chart-4: #b5563c;
   --brass: #d9b36a;
-  --hero-from: #08201b;
-  --hero-to: #1d4a3f;
+  --hero: #0d2b24;
 }
 
 body { padding-top: 0; }
 
 /* ── Hero ────────────────────────────────────────────────────────────── */
+/* One flat band of deep pine with the rings artwork over it (an image from
+   assets/, inlined at build): the report's one decorative moment. */
 
 .wm-hero {
-  padding: 64px 24px 104px;
+  padding: 56px 24px 48px;
   color: #fff;
-  background:
-    url(assets/rings.svg) center / cover no-repeat,
-    radial-gradient(700px 380px at 80% 90%, rgba(217, 179, 106, .22), transparent 65%),
-    linear-gradient(160deg, var(--hero-from) 0%, var(--hero-to) 100%);
+  background: url(assets/rings.svg) center / cover no-repeat, var(--hero);
 }
 /* The masthead, in the hero's register: no rule, the hero's own ink. */
 .wm-hero-inner { max-width: 1200px; margin: 0 auto; padding: 0; border: 0; }
 .wm-hero .tb-kicker {
-  font-size: .75rem;
   font-weight: 600;
   letter-spacing: .16em;
   text-transform: uppercase;
@@ -71,56 +73,25 @@ body { padding-top: 0; }
 }
 .wm-hero h1 {
   font-family: var(--display);
-  font-weight: 600;
-  font-size: clamp(2.1rem, 4.4vw, 3.3rem);
+  font-size: var(--tb-text-3xl);
   letter-spacing: -.015em;
   line-height: 1.06;
   margin: 16px 0 14px;
   color: #fff;
 }
 .wm-hero h1 em { font-style: normal; color: var(--brass); }
-.wm-hero .tb-standfirst {
-  max-width: 60ch;
-  font-size: 1.05rem;
-  color: rgba(255, 255, 255, .8);
-  margin: 0;
-}
+.wm-hero .tb-standfirst { max-width: 60ch; color: rgba(255, 255, 255, .8); }
 .wm-hero .tb-standfirst strong,
 .wm-hero [data-tb-figure="value"] { color: #fff; font-weight: 600; }
+.wm-hero .tb-masthead-meta { color: rgba(255, 255, 255, .72); }
+.wm-hero .tb-masthead-period { color: #fff; }
+.wm-hero .tb-receipt-link { color: #fff; }
 
-/* ── KPI tiles sit on the hero's lower edge ───────────────────────────── */
+/* ── The display face on the figures and the panel titles ─────────────── */
 
-.wm-kpis { margin-top: -64px; position: relative; }
-.wm-kpis .tb-kpi {
-  border: 0;
-  border-bottom: 3px solid var(--brass);
-  box-shadow: var(--tb-shadow);
-}
-.wm-kpis .tb-kpi-value {
+.wm-kpis .tb-kpi { border-bottom: 3px solid var(--brass); }
+.wm-kpis .tb-kpi-value, .tb-card > h2:first-child {
   font-family: var(--display);
   font-weight: 600;
-  font-size: 2.2em;
-}
-
-/* ── Cards ────────────────────────────────────────────────────────────── */
-
-.tb-card { border-color: transparent; box-shadow: var(--tb-shadow); }
-.tb-card > h2:first-child {
-  font-family: var(--display);
-  font-weight: 600;
-  font-size: 1.1em;
   letter-spacing: 0;
 }
-.tb-table thead th, [data-tb-figure="table"] thead th {
-  background: var(--tb-surface);
-  color: var(--tb-muted);
-}
-
-/* The bar chart gets the wider column; one column again on a phone. */
-.wm-split { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
-@media (max-width: 720px) { .wm-split { grid-template-columns: 1fr; } }
-
-.wm-hero .tb-masthead-meta { color: rgba(255, 255, 255, .7); }
-.wm-hero .tb-masthead-period { color: #fff; }
-
-.tb-receipt-btn { font-weight: 600; color: var(--tb-accent); }

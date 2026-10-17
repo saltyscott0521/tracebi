@@ -237,15 +237,20 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
     On an app page (app.jsx) tracebi.css goes in a cascade layer between
     Tailwind's reset and its utilities, so a utility class (text-2xl) wins
     over a TraceBi default while the kit's tb-* classes still style the
-    figures. The project theme and style.css stay unlayered: they win."""
+    figures. The project theme and style.css stay unlayered: they win. The
+    dark-mode token blocks are repeated after the layer, unlayered, so a
+    theme's or style.css's :root tokens still give way to the dark ground,
+    as they do on a template page (where specificity decides)."""
     head = csp_meta() if include_csp else ""
     head += libraries_comment(libs)
     if stage:
         head += f'<meta name="tracebi-stage" content="{stage}">\n'
     css = read_asset("tracebi.css")
     if app:
+        begin, end = "/* tb-mode-tokens: begin */", "/* tb-mode-tokens: end */"
+        modes = css[css.index(begin):css.index(end) + len(end)]
         css = ("@layer theme, base, tracebi, components, utilities;\n"
-               f"@layer tracebi {{\n{css}\n}}")
+               f"@layer tracebi {{\n{css}\n}}\n{modes}")
     head += ("<!-- tracebi.css: the TraceBi design system -->\n"
              f"<style>\n{font_face_css()}\n{css}\n</style>\n")
     if project_css.strip():

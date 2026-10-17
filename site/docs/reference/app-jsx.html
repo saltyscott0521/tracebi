@@ -165,7 +165,9 @@ an app follows the page's mode and the project's <code>reports/_theme.css</code>
 <code>bg-page</code>, <code>bg-card</code>, <code>bg-surface</code>, <code>text-ink</code>, <code>text-muted</code>, <code>border-rule</code>,
 <code>bg-accent</code>, <code>text-accent-text</code>, <code>text-on-accent</code> (text on an accent fill), <code>text-good</code>, <code>text-bad</code>, <code>chart-1</code> … <code>chart-8</code>,
 <code>font-sans</code> / <code>font-mono</code>, <code>rounded-panel</code>. The <code>tb-*</code> classes
-(<a href="../guides/styling-a-report.html">Styling a report</a>) work too.</p>
+(<a href="../guides/styling-a-report.html">Styling a report</a>) work too. A <code>style.css</code> beside <code>app.jsx</code> is a theme
+preset as for a template (the accent pair for each ground, a display face);
+its <code>:root</code> tokens give way to the dark ground as a template's do.</p>
 <h2 id="the-tracebi-module">The <code>tracebi</code> module</h2>
 <pre><code class="language-jsx">import { Kpi, Value, Chart, Spark, Table, Filter, Search, Download,
          useBinding, fmt } from &quot;tracebi&quot;;
@@ -294,7 +296,7 @@ any report.</p>
 <h2 id="an-example">An example</h2>
 <pre><code class="language-jsx">import { useState } from &quot;react&quot;;
 import { LayoutDashboard, CreditCard } from &quot;lucide-react&quot;;
-import { Kpi, Spark, Chart, Table, Filter } from &quot;tracebi&quot;;
+import { Masthead, Footer, Kpi, Spark, Chart, Table, Filter } from &quot;tracebi&quot;;
 
 const NAV = { Overview: LayoutDashboard, Plans: CreditCard };
 
@@ -310,7 +312,10 @@ export default function App() {
           &lt;/button&gt;
         ))}
       &lt;/aside&gt;
-      &lt;main className=&quot;flex-1 space-y-6 p-8&quot;&gt;
+      &lt;main className=&quot;min-w-0 flex-1 space-y-8 px-6 py-8&quot;&gt;
+        &lt;Masthead kicker=&quot;SaaS metrics&quot; title=&quot;Recurring revenue&quot; period=&quot;Monthly&quot;&gt;
+          Ending MRR and customers, month by month.
+        &lt;/Masthead&gt;
         {view === &quot;Overview&quot; ? (
           &lt;div className=&quot;tb-grid&quot;&gt;
             &lt;Kpi lead binding=&quot;kpis&quot; cell=&quot;ending_mrr&quot; format=&quot;currency0&quot; label=&quot;Ending MRR&quot;&gt;
@@ -325,6 +330,7 @@ export default function App() {
             &lt;Table binding=&quot;by_plan&quot; sort bars=&quot;ending_mrr&quot; /&gt;
           &lt;/section&gt;
         )}
+        &lt;Footer /&gt;
       &lt;/main&gt;
     &lt;/div&gt;
   );

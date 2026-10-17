@@ -27,14 +27,14 @@ export default function App() {
           </Kpi>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section className="tb-card">
+        <div className="tb-grid">
+          <section className="tb-card tb-span-6">
             <h2>Share of the book, by issuer</h2>
             <p className="tb-note">Each issuer's fair value over the total.</p>
             <Chart binding="concentration" type="barh" x="dim_issuer.issuer" y="fv_share"
                    valueFormat="percent" height={420} id="fig-share_chart" />
           </section>
-          <section className="tb-card">
+          <section className="tb-card tb-span-6">
             <h2>Cumulative share, largest issuer first</h2>
             <p className="tb-note">The steeper the start, the more concentrated the book.</p>
             <Chart binding="concentration" type="area" x="fv_rank" y="fv_cum_share"

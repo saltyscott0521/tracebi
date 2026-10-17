@@ -10,13 +10,13 @@ const VIEWS = { Reps: Users, Regions: Map };
 
 function Reps() {
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <section className="tb-card">
+    <div className="tb-grid">
+      <section className="tb-card tb-span-4">
         <h2>Win rate by rep</h2>
         <Chart binding="by_rep" type="barh" x="dim_rep.rep" y="win_rate"
                valueFormat="percent" id="chart-win-by-rep" />
       </section>
-      <section className="tb-card lg:col-span-2">
+      <section className="tb-card tb-span-8">
         <h2>Rep scorecard</h2>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Filter binding="by_rep" column="dim_rep.rep" label="Rep" />
@@ -34,13 +34,13 @@ function Reps() {
 
 function Regions() {
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <section className="tb-card">
+    <div className="tb-grid">
+      <section className="tb-card tb-span-4">
         <h2>Open pipeline by region</h2>
         <Chart binding="by_region" type="barh" x="dim_region.region" y="pipeline_value"
                valueFormat="currency_compact" id="chart-pipeline-by-region" />
       </section>
-      <section className="tb-card lg:col-span-2">
+      <section className="tb-card tb-span-8">
         <h2>Region scorecard</h2>
         <div className="mb-3"><Download binding="by_region" /></div>
         <Table binding="by_region" id="tbl-region" sort bars="pipeline_value"

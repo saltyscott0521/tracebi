@@ -23,14 +23,14 @@ export default function App() {
           <Kpi binding="totals" cell="cost" format="currency0" label="Cost" id="kpi-cost" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <section className="tb-card lg:col-span-2">
+        <div className="tb-grid">
+          <section className="tb-card tb-span-8">
             <h2>Revenue by region</h2>
             <p className="tb-note">Largest first.</p>
             <Chart binding="by_region" type="barh" x="dim_customer.region" y="revenue"
                    valueFormat="currency_compact" />
           </section>
-          <section className="tb-card">
+          <section className="tb-card tb-span-4">
             <h2>By customer segment</h2>
             <p className="tb-note">The CSV is the stamped rows, verbatim.</p>
             <div className="mb-3"><Download binding="by_segment" /></div>

@@ -15,13 +15,13 @@ function AllOrders() {
         <Kpi binding="totals" cell="qty" format="comma" label="Units" id="kpi-units" />
         <Kpi binding="totals" cell="cost" format="currency0" label="Cost" id="kpi-cost" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="tb-card lg:col-span-2">
+      <div className="tb-grid">
+        <section className="tb-card tb-span-8">
           <h2>Revenue by region</h2>
           <Chart binding="by_region" type="barh" x="dim_customer.region" y="revenue"
                  valueFormat="currency_compact" />
         </section>
-        <section className="tb-card">
+        <section className="tb-card tb-span-4">
           <h2>Region summary</h2>
           <Table binding="by_region" columns={["dim_customer.region", "revenue", "qty"]}
                  labels={{ "dim_customer.region": "Region", qty: "Units" }}
@@ -41,13 +41,13 @@ function Shipped() {
         <Kpi binding="shipped" cell="order_id" format="comma" label="Shipped orders"
              id="kpi-shipped-orders" />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="tb-card">
+      <div className="tb-grid">
+        <section className="tb-card tb-span-6">
           <h2>Shipped revenue by segment</h2>
           <Chart binding="shipped_by_segment" type="bar" x="dim_customer.segment" y="revenue"
                  valueFormat="currency_compact" />
         </section>
-        <section className="tb-card">
+        <section className="tb-card tb-span-6">
           <h2>Segment breakdown</h2>
           <Table binding="shipped_by_segment"
                  labels={{ "dim_customer.segment": "Segment", order_id: "Orders" }}

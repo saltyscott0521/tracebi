@@ -2318,9 +2318,9 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
                            title_at: str = "left") -> str:
     """The ``editorial`` page — a report written to be read, top to bottom.
 
-    A kicker, a headline that states the finding, a standfirst, a byline with
-    the build time, then prose with its numbers bound, captioned figures, a
-    pull-stat, and the methodology. ``.tb-article`` sets the measure and the
+    The masthead (a kicker, a headline that states the finding, a standfirst,
+    the meta line with the build time and verdict), then prose with its
+    numbers bound, captioned figures, a pull-stat, and the footer. ``.tb-article`` sets the measure and the
     type (tracebi.css "Editorial"). Every number is a value figure: the
     scaffold has no digits, so the build's numeral lint passes as written.
     """
@@ -2443,8 +2443,8 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
 
     ``dashboard`` (the default, and what ``tracebi init`` writes) is an answer
     sentence, a KPI strip, and — when the model has a dimension — a chart
-    beside a filter/search/download table (``.tb-cols-2-1``), plus a methodology
-    block and an exploration stage. ``brief`` is that header and one chart
+    beside a filter/search/download table (``.tb-span-8`` / ``.tb-span-4`` in
+    the 12-column grid), plus the footer and an exploration stage. ``brief`` is that header and one chart
     card. ``tabbed`` is that header, then Overview and Detail tabs. Generated
     (not a static file) because ``data-tb-*`` attributes name the model's real
     measure and dimension. No ``script.js`` or ``style.css``: the runtime
@@ -2558,18 +2558,18 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         d_label = _humanise_label(dim_ref)
         parts += [
             "",
-            "  <!-- Chart and the filterable table share one dashboard row: the",
-            "       wide panel beside the narrow one (tb-cols-2-1). It stacks to",
-            "       a single column on a narrow screen. -->",
-            '  <div class="tb-cols-2-1">',
-            '    <div class="tb-card">',
+            "  <!-- Chart and the filterable table share one row of the 12-column",
+            "       grid: the wide panel (tb-span-8) beside the narrow one",
+            "       (tb-span-4). Each takes the full row on a narrow screen. -->",
+            '  <div class="tb-grid">',
+            '    <div class="tb-card tb-span-8">',
             f"      <h2>{esc(m_label)} by {esc(d_label)}</h2>",
             f'      <div data-tb-figure="chart" data-tb-binding="breakdown"',
             f'           data-tb-type="bar" data-tb-x="{esc(dim_ref)}"',
             f'           data-tb-y="{esc(measure)}" data-tb-value-format="compact"',
             '           id="chart-breakdown"></div>',
             "    </div>",
-            '    <div class="tb-card">',
+            '    <div class="tb-card tb-span-4">',
             "      <h2>Detail</h2>",
             '      <p class="tb-note">Filter and search subset which stamped rows',
             "        display — they never compute new numbers. The CSV button",

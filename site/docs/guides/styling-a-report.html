@@ -178,22 +178,30 @@ for each ground.</p>
 <code>style.css</code> paints a light ground (a fixed paper colour, a light-only palette)
 should pin <code>light</code> until it styles the dark ground too.</p>
 <h2 id="components">Components</h2>
-<pre><code>.tb-page   .tb-grid   .tb-card
-.tb-lede                     the answer sentence under the title
+<pre><code>.tb-page                     the page measure, 1,200px
+.tb-masthead                 opens the page: .tb-kicker, &lt;h1&gt;, .tb-standfirst,
+                             .tb-masthead-meta (period, build time, .tb-verdict)
+.tb-footer                   ends the page: your sources, then the build's line
+.tb-grid   .tb-card
+.tb-span-4 / -6 / -8 / -12   the 12-column grid: a .tb-grid's panels name a span
+.tb-lede                     the answer sentence under the masthead
 .tb-kpi  (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context)
-.tb-kpi--lead                the strip's main number, twice as wide
+.tb-kpi--lead                the strip's main number: larger, not wider
+.tb-kpi-delta                a stamped change leading the context line
 .tb-spark                    a line/area chart in a KPI: the trend's shape alone
 .tb-table  (.tb-table--striped / .tb-table--compact / .tb-table--freeze)
 .tb-callout   .tb-note   .tb-badge
 .tb-good / .tb-bad           direction tones; pair with a sign or a word
-.tb-cols-2 / .tb-cols-3      responsive, collapse under 720px
-.tb-cols-2-1 / .tb-cols-1-2  a wide panel beside a narrow one
+.tb-cols-2 / .tb-cols-3      shorthands: equal columns, one under 720px
 .tb-tabs                     with data-tb-tab sections
 </code></pre>
 <p>Use them or ignore them — <a href="../reference/template-html.html">template.html</a> is your page, and
 nothing requires these classes.</p>
 <p>A typical top of page, built only from these:</p>
-<pre><code class="language-html">&lt;h1&gt;Fund book, end of August&lt;/h1&gt;
+<pre><code class="language-html">&lt;header class=&quot;tb-masthead&quot; data-tb-period=&quot;End of August&quot;&gt;
+  &lt;h1&gt;Fund book&lt;/h1&gt;
+  &lt;p class=&quot;tb-standfirst&quot;&gt;The book at fair value, by sector and fund.&lt;/p&gt;
+&lt;/header&gt;
 &lt;p class=&quot;tb-lede&quot;&gt;
   &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_issuer.sector&quot; id=&quot;top-sector&quot;&gt;—&lt;/span&gt;
   is the largest sector, at
@@ -201,14 +209,14 @@ nothing requires these classes.</p>
   of the book.&lt;/p&gt;
 
 &lt;div class=&quot;tb-grid&quot;&gt;
-  &lt;div class=&quot;tb-kpi&quot; data-tb-figure=&quot;value&quot; data-tb-binding=&quot;kpis&quot;
-       data-tb-cell=&quot;fair_value&quot; data-tb-format=&quot;compact&quot; id=&quot;kpi-fv&quot;&gt;
+  &lt;div class=&quot;tb-kpi tb-kpi--lead&quot;&gt;
     &lt;span class=&quot;tb-kpi-label&quot;&gt;Fair value&lt;/span&gt;
-    &lt;span class=&quot;tb-kpi-value&quot;&gt;&lt;/span&gt;
+    &lt;span class=&quot;tb-kpi-value&quot; data-tb-figure=&quot;value&quot; data-tb-binding=&quot;kpis&quot;
+          data-tb-cell=&quot;fair_value&quot; data-tb-format=&quot;compact&quot; id=&quot;kpi-fv&quot;&gt;&lt;/span&gt;
     &lt;span class=&quot;tb-kpi-context&quot;&gt;
-      &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;kpis&quot; data-tb-cell=&quot;fv_growth&quot;
-            data-tb-format=&quot;percent&quot; data-tb-direction=&quot;up-good&quot; id=&quot;kpi-fv-growth&quot;&gt;&lt;/span&gt;
-      vs last month&lt;/span&gt;
+      &lt;span class=&quot;tb-kpi-delta&quot; data-tb-figure=&quot;value&quot; data-tb-binding=&quot;kpis&quot;
+            data-tb-cell=&quot;fv_growth&quot; data-tb-format=&quot;percent&quot; data-tb-direction=&quot;up-good&quot;
+            id=&quot;kpi-fv-growth&quot;&gt;&lt;/span&gt; vs last month&lt;/span&gt;
   &lt;/div&gt;
 &lt;/div&gt;
 </code></pre>
@@ -277,10 +285,12 @@ self-contained and the offline <code>verify --file</code> check meaningful.</p>
 <p>Put them in the package's <code>assets/</code> folder and reference them by relative path.
 The build inlines each one as a <code>data:</code> URI, so the file still fetches nothing:</p>
 <pre><code class="language-css">@font-face {
-  font-family: &quot;Inter&quot;;
-  src: url(assets/fonts/inter-latin-400-normal.woff2) format(&quot;woff2&quot;);
+  font-family: &quot;Fraunces&quot;;
+  font-weight: 600;
+  src: url(assets/fonts/fraunces-latin-600-normal.woff2) format(&quot;woff2&quot;);
 }
-.hero { background: url(assets/contours.svg) center / cover, linear-gradient(125deg, #0a1330, #1b2f7a); }
+.tb-masthead h1, .tb-kpi--lead .tb-kpi-value { font-family: &quot;Fraunces&quot;, var(--tb-font-serif); }
+.tb-masthead-mark { width: 120px; height: 28px; background: url(assets/logo.svg) left / contain no-repeat; }
 </code></pre>
 <pre><code class="language-html">&lt;img src=&quot;assets/logo.svg&quot; alt=&quot;Company&quot;&gt;
 </code></pre>
@@ -288,9 +298,12 @@ The build inlines each one as a <code>data:</code> URI, so the file still fetche
 file, any other type, or a path outside <code>assets/</code> fails the load with the file
 named. Keep images small: every byte ships inside the report. Check a font's
 licence allows embedding (SIL OFL fonts do; ship the licence text alongside).</p>
-<p><code>examples/portfolio_project/reports/portfolio_model/portfolio_showcase/</code> shows it all: two
-typefaces, a hero with inlined artwork, pill tabs, in-cell bars, sortable
-columns, and chart styling through <code>tracebi.configureChart</code>.</p>
+<p><code>examples/portfolio_project/reports/portfolio_model/portfolio_showcase/</code> shows it all on
+the system: a <code>style.css</code> that is a theme preset (an accent pair and one
+inlined display face), every chart type, a KPI delta, data bars, sortable
+columns, filters, a scenario and a custom d3 figure. The demo app's
+<code>aum_by_branch</code> is the one bespoke look (its own faces, palette and hero band
+with inlined artwork) on the same masthead, grid, footer and receipt.</p>
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup</li>

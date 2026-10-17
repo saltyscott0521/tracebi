@@ -103,8 +103,60 @@ grounds was picked from six side-by-side options.)
   row, status as a small dot or chip, secondary text quiet. Progressive
   disclosure (Linear): the detail opens when you ask for it.
 - **The reader's report** follows Mercury and Plausible: one big number, then
-  its context, then the receipt on demand. Report templates keep their own
-  style; the default theme (`tracebi.css`) takes the same tokens.
+  its context, then the receipt on demand. It is one system, below; a report's
+  own `style.css` is a theme preset on it, not a second look.
+
+## The report's system
+
+The bar ([[ux-plan-2026-10-17]], decision 2): type and restraint as Stripe's
+dashboard, density and chrome as Linear, the editorial register as a fund's
+quarterly letter. A report with no `style.css` is the page we would show.
+Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
+`portfolio_showcase`, which carries every figure kind and interaction on it.
+
+- **Type.** One scale of seven steps (`--tb-text-xs` … `--tb-text-3xl`:
+  12/13/14/16/20/28/40px), weights 400/500/600, tight tracking from 28px,
+  tabular numerals on every figure. Hierarchy is size and weight, never
+  colour. The editorial and the dashboard share the scale and use different
+  steps (the editorial's prose is a 68-character serif column).
+- **Modes.** `auto` by default: a built page follows the reader's system, as
+  the app does. Dark has its own grounds, series and accent pair
+  (`--tb-dark-accent`), not light inverted.
+- **One accent.** `--tb-chart-1` is the accent; the other seven series are
+  checked against it for colour-blind separation. A theme
+  (`tracebi theme use`) is an accent preset: the pair for each ground and
+  nothing structural. A report's `style.css` may add one display face (the
+  showcase sets its headline and lead number in Fraunces).
+- **The frame.** Every page opens with a masthead (kicker, the `<h1>` that
+  states the finding, the standfirst, and a meta line: the period, the build
+  time, the verdict chip and the Receipt button) and ends with a footer (the
+  author's sources, one line on who built it from which model with "The
+  receipt does not claim the numbers are right.", and "How these numbers were
+  made" behind a disclosure). The page measure is 1,200px with a 12-column
+  grid (`.tb-span-4/6/8/12`). No methodology in the body.
+- **The verdict chip.** Reproduces (green), Needs a look (amber), Does not
+  reproduce (red), Not checked (neutral). A file only ever calls itself Not
+  checked or Draft; the other three come from a host that re-ran its queries.
+- **A KPI is a number with a signal.** The lead is larger, not wider; a delta
+  is a stamped change with its arrow, sign and good/bad tone, and with no
+  comparison measure there is no delta.
+- **One chart style.** Bars at 55% of the band with a 2px end radius and their
+  own values; category names wrap, never "…"; ticks thin to what fits;
+  gridlines at 6% ink, a baseline, no axis lines; lines 1.5px ending in their
+  last value; an area at 10%; a tooltip with the measure's definition and
+  "Receipt →".
+- **Tables.** Numbers right-aligned in tabular numerals, a sticky header in a
+  scroll box, a thin data bar in its own lane after the number, one totals
+  style (a 2px rule, weight 600), density from `--tb-cell-pad`.
+- **The receipt is a certificate.** The verdict and the honesty line first,
+  then one row per figure: the value as shown, the definition in words, the
+  query in one line and an 8-character fingerprint, the raw detail behind a
+  disclosure.
+- **Nothing decorates.** No gradient, hatch, glow or resting shadow; a menu,
+  popover, tooltip and the receipt drawer may lift. The one bespoke example is
+  the demo app's `aum_by_branch`: its own faces (Inter, Fraunces), a pine and
+  brass palette and a flat hero band with inlined artwork, on the system's
+  masthead, KPI strip, grid, footer and receipt.
 
 ## Order of work
 
@@ -132,5 +184,11 @@ grounds was picked from six side-by-side options.)
    - Report defaults (done): `tracebi.css` takes the same type, grounds and
      cobalt, so a report matches the app. Hanken Grotesk is inlined into the file
      (`stack.font_face_css`); controls and inline code are finished.
-   - Still to do: lists as console rows throughout, the logo and
-     illustrations, and a second look at density on each page.
+   - Report design system v2 (done, [[ux-plan-2026-10-17]] Step 1): the
+     report's system above, the scaffolds, the reference reports and the demo
+     app on it.
+   - Still to do: a report contact sheet in the audit (both modes, both
+     widths) with a baseline that may not regress; the app's own pages on
+     the four places (Reports, Ask, Data, Review) and the verdict chip
+     everywhere; lists as console rows throughout, the logo and
+     illustrations.

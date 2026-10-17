@@ -12,12 +12,13 @@ belong together.
 **The correct pattern in TraceBi.**
 
 - **Use the layout classes, not hand-made columns.** `.tb-grid` (KPI rows that
-  wrap on their own), `.tb-cols-2` and `.tb-cols-3` (side-by-side figures that
-  stack on a phone), and `.tb-card` for each figure. They share one gap, so
-  edges line up across rows without any extra work.
+  wrap on their own), the 12-column grid (a `.tb-grid` whose panels carry
+  `.tb-span-4`, `-6`, `-8` or `-12`; each the full row on a phone), and
+  `.tb-card` for each figure. They share one gap, so edges line up across rows
+  without any extra work.
 - **Pick proportions, not pixel widths.** Two related charts share a row
-  equally. A chart with its detail table can go 1:2 in your `style.css`
-  (`grid-template-columns: 1fr 2fr`). Don't mix three different splits on one
+  equally (6 and 6). A chart with its detail table goes 8 and 4, or 4 and 8.
+  Don't mix three different splits on one
   page.
 - **Space from the scale.** `--tb-space-1` to `--tb-space-4` (4 / 8 / 16 / 32px)
   cover almost everything. Things that belong together sit close (a control

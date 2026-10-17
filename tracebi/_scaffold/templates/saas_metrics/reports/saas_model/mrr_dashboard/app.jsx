@@ -36,14 +36,14 @@ export default function App() {
                context="lost / starting logos, that month" id="kpi-churn" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <section className="tb-card lg:col-span-2">
+        <div className="tb-grid">
+          <section className="tb-card tb-span-8">
             <h2>Ending MRR by month</h2>
             <p className="tb-note">Period-end balance each month; the last point is today's book.</p>
             <Chart binding="by_month" type="area" x="dim_month.month" y="ending_mrr"
                    valueFormat="currency0" mark="last" id="chart-by-month" />
           </section>
-          <section className="tb-card">
+          <section className="tb-card tb-span-4">
             <h2>Ending MRR by plan</h2>
             <p className="tb-note">The filter chooses rows; it never computes a number.</p>
             <div className="mb-3 flex flex-wrap items-center gap-2">
