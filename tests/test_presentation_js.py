@@ -784,13 +784,16 @@ var out = {
   closed_on_load: !hasClass(drawer, 'tb-receipt-open'),
   head_text: drawer.querySelector('.tb-receipt-head').textContent,
   a_text: allText(rows[0]),
+  a_name: rows[0].querySelector('.tb-receipt-name').textContent,
+  a_kind: rows[0].querySelector('.tb-receipt-kind').textContent,
   a_fp_text: rows[0].querySelector('.tb-receipt-fp').textContent,
   a_fp_title: rows[0].querySelector('.tb-receipt-fp').title,
   b_badge_class: rows[1].querySelector('.tb-badge')
     ? rows[1].querySelector('.tb-badge').className : null,
   b_badge_text: rows[1].querySelector('.tb-badge')
     ? rows[1].querySelector('.tb-badge').textContent : null,
-  drawer_text: allText(drawer)
+  drawer_text: allText(drawer),
+  chip: drawer.querySelector('.tb-verdict').getAttribute('data-tb-verdict')
 };
 btn._fire('click');
 out.open_after_click = hasClass(drawer, 'tb-receipt-open');
@@ -804,12 +807,12 @@ process.stdout.write(JSON.stringify(out));
         assert out["btn_text"] == "Receipt"
         assert out["closed_on_load"] is True
         assert out["head_text"] == "portfolio_book"
-        # First line names the binding. The id, kind and full fingerprint
-        # sit in the details disclosure.
-        assert "Holdings · table" in out["a_text"]
+        # First line names the binding and the kind. The id, kind and full
+        # fingerprint sit in the Raw disclosure.
+        assert out["a_name"] == "Holdings" and out["a_kind"] == "table"
         for piece in ("fig-a", "table", "holdings"):
             assert piece in out["a_text"]
-        assert "Details" in out["a_text"]
+        assert "Raw" in out["a_text"]
         assert out["a_fp_text"] == "f" * 64
         assert out["a_fp_title"] == "f" * 64
         # The unverified row carries the existing badge tone, untouched.
@@ -826,6 +829,10 @@ process.stdout.write(JSON.stringify(out));
         assert "the transform was verified" not in text
         assert "semantic contract: portfolio_model" in text
         assert "stated methodology aboard" in text
+        # The certificate's header says what it does not claim, verbatim,
+        # and its chip is never green on the file's own say-so.
+        assert "The receipt does not claim the numbers are right." in text
+        assert out["chip"] in ("draft", "not-checked")
         # The button toggles the drawer open and closed again.
         assert out["open_after_click"] is True
         assert out["closed_after_second"] is True
@@ -833,10 +840,12 @@ process.stdout.write(JSON.stringify(out));
 
     def test_value_row_reads_the_rendered_figure(self):
         out = _run_dom(_VALUE_ROW_SCRIPT)
-        assert out["title"] == "Fair value · $285.9M"
-        assert out["from"] == "Fair value, by Sector, Sector is Software"
-        assert out["table_title"] == "Fair value by sector · table, 6 rows"
-        assert out["table_from"] == "Fair value, by Sector"
+        assert (out["name"], out["value"]) == ("Fair value", "$285.9M")
+        assert out["from"] == ("fair_value by dim_issuer.sector"
+                               " · where dim_issuer.sector = Software")
+        assert (out["table_name"], out["table_kind"]) == (
+            "Fair value by sector", "table, 6 rows")
+        assert out["table_from"] == "fair_value by dim_issuer.sector"
         assert out["fp_text"] == "a" * 64
         assert out["fp_in_details"] is True
         assert "kpi-fv" in out["details_text"]
@@ -889,10 +898,13 @@ for (i = 0; i < rows.length; i++) {
 }
 var details = valueRow.querySelector('.tb-receipt-details');
 var out = {
-  title: valueRow.querySelector('.tb-receipt-title').textContent,
-  from: valueRow.querySelector('.tb-receipt-from').textContent,
-  table_title: tableRow.querySelector('.tb-receipt-title').textContent,
-  table_from: tableRow.querySelector('.tb-receipt-from').textContent,
+  title: allText(valueRow.querySelector('.tb-receipt-title')),
+  name: valueRow.querySelector('.tb-receipt-name').textContent,
+  value: valueRow.querySelector('.tb-receipt-value').textContent,
+  from: valueRow.querySelector('.tb-receipt-query').textContent,
+  table_name: tableRow.querySelector('.tb-receipt-name').textContent,
+  table_kind: tableRow.querySelector('.tb-receipt-kind').textContent,
+  table_from: tableRow.querySelector('.tb-receipt-query').textContent,
   fp_text: details.querySelector('.tb-receipt-fp').textContent,
   fp_in_details: details.querySelector('.tb-receipt-fp') !== null,
   details_text: allText(details),
@@ -909,7 +921,7 @@ def _assert_rows_avoid_honesty_words(text: str) -> None:
 
 
 def assert_built_receipt_rows(html: str) -> None:
-    """A built page's value row reads ``<Label> · <formatted value>``.
+    """A built page's value row reads ``<Label>`` and ``<formatted value>``.
 
     The formatted value is the one the build already wrote into the figure.
     The fingerprint stays in the details disclosure.
@@ -940,18 +952,28 @@ def assert_built_receipt_rows(html: str) -> None:
         "var rc = el('script', { id: 'tracebi-receipt',"
         " type: 'application/json' });\n"
         "rc.textContent = " + json.dumps(json.dumps(
-            {"report": receipt.get("report"), "figures": [fig]})) + ";\n"
+            {"report": receipt.get("report"), "figures": [fig],
+             "bindings": receipt.get("bindings", {})})) + ";\n"
         "loadRuntime();\n"
         "var row = BODY.querySelector('.tb-receipt-row');\n"
         "var details = row.querySelector('.tb-receipt-details');\n"
         "process.stdout.write(JSON.stringify({\n"
-        "  title: row.querySelector('.tb-receipt-title').textContent,\n"
+        "  title: allText(row.querySelector('.tb-receipt-title')),\n"
+        "  name: row.querySelector('.tb-receipt-name').textContent,\n"
+        "  value: row.querySelector('.tb-receipt-value').textContent,\n"
         "  fp: details.querySelector('.tb-receipt-fp').textContent,\n"
         "  details_text: allText(details),\n"
+        "  query: row.querySelector('.tb-receipt-query').textContent,\n"
         "  row_text: allText(row)\n"
         "}));\n"
     )
-    assert out["title"] == f"{label} · {shown}"
+    assert (out["name"], out["value"]) == (label, shown)
+    # The query in one line names the measure, and of the ordering only the
+    # keys the author wrote: the engine's tie-break stays in the raw query.
+    rec = receipt["bindings"][fig["binding"]]
+    assert cell.group(1) in out["query"]
+    order = out["query"].partition(" · order ")[2].split(" · ")[0]
+    assert len([k for k in order.split(", ") if k]) == rec.get("order_stated", 0)
     assert out["fp"] == fig["fingerprint"]
     assert fig["id"] in out["details_text"]
     assert fig["binding"] in out["details_text"]

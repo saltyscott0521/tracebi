@@ -1090,10 +1090,20 @@
   function bindPrintMode() {
     if (bindPrintMode.done) return;
     bindPrintMode.done = true;
+    var opened = [];
     var apply = function (on) {
       on = !!on;
       if (_printing === on) return;
       _printing = on;
+      /* The receipt prints as an appendix with every disclosure open. */
+      var boxes = document.querySelectorAll(".tb-receipt-drawer details"), k;
+      if (on) {
+        for (k = 0; k < boxes.length; k++) {
+          if (!boxes[k].open) { boxes[k].open = true; opened.push(boxes[k]); }
+        }
+      } else {
+        while (opened.length) opened.pop().open = false;
+      }
       for (var i = 0; i < _tables.length; i++) {
         try { renderBody(_tables[i], _tables[i].modelRows); } catch (e) {}
       }
@@ -1635,21 +1645,28 @@
   /* The measures' own descriptions, from the semantic contract the build
    * embedded (the manifest's measure definitions): read once. */
   var _measureAbout = null;
-  function measureAbout(col) {
-    if (_measureAbout === null) {
-      _measureAbout = {};
-      var blocks = typeof document === "undefined" ? []
-        : document.querySelectorAll('script[id^="tb-semantic-contract-"]');
-      for (var i = 0; i < blocks.length; i++) {
-        try {
-          (JSON.parse(blocks[i].textContent).measures || []).forEach(function (m) {
-            if (m && m.name && m.description && !_measureAbout.hasOwnProperty(m.name)) {
-              _measureAbout[m.name] = String(m.description);
-            }
-          });
-        } catch (e) {}
-      }
+  function pageContracts() {
+    var blocks = typeof document === "undefined" ? []
+      : document.querySelectorAll('script[id^="tb-semantic-contract-"]');
+    var out = [];
+    for (var i = 0; i < blocks.length; i++) {
+      try { out.push(JSON.parse(blocks[i].textContent)); } catch (e) {}
     }
+    return out;
+  }
+  function measureIndex(contracts) {
+    var out = {};
+    (contracts || []).forEach(function (c) {
+      ((c && c.measures) || []).forEach(function (m) {
+        if (m && m.name && m.description && !out.hasOwnProperty(m.name)) {
+          out[m.name] = String(m.description);
+        }
+      });
+    });
+    return out;
+  }
+  function measureAbout(col) {
+    if (_measureAbout === null) _measureAbout = measureIndex(pageContracts());
     return _measureAbout.hasOwnProperty(col) ? _measureAbout[col] : null;
   }
 
@@ -1665,10 +1682,11 @@
   /* Open the receipt drawer at one figure's record. */
   function openReceipt(id) {
     var row = receiptRowFor(String(id));
-    var drawer = row ? row.parentNode : null;
-    if (!drawer) return false;
-    addClass(drawer, "tb-receipt-open");
-    drawer.scrollTop = Math.max(0, row.offsetTop - 12);
+    var drawer = receiptDrawer();
+    if (!row || !drawer) return false;
+    setReceiptOpen(true);
+    var scroll = drawer.querySelector(".tb-receipt-scroll") || drawer;
+    scroll.scrollTop = Math.max(0, row.offsetTop - 8);
     addClass(row, "tb-receipt-row--here");
     setTimeout(function () { removeClass(row, "tb-receipt-row--here"); }, 1600);
     return true;
@@ -3454,7 +3472,16 @@
     "not-checked": { text: "Not checked",
                      tip: "Nothing has re-run this file's queries since it was " +
                           "built. tracebi verify re-runs them against the " +
-                          "model and says whether each figure reproduces." }
+                          "model and says whether each figure reproduces." },
+    /* The three a checker states (tracebi verify, the web app); this file
+     * never chooses them for itself. renderReceipt shows them when its
+     * host passes one. */
+    reproduces: { text: "Reproduces",
+                  tip: "Re-running every query gave the data this file carries." },
+    "needs-a-look": { text: "Needs a look",
+                      tip: "The source or the model changed since this build." },
+    "does-not-reproduce": { text: "Does not reproduce",
+                            tip: "Re-running a query gave different data." }
   };
 
   function verdictState() {
@@ -3495,23 +3522,29 @@
     var state = verdictState(), spec = _VERDICTS[state];
     var chips = document.querySelectorAll(".tb-verdict");
     for (i = 0; i < chips.length; i++) {
+      if (inReceipt(chips[i])) continue; /* the receipt's own, set by its host */
       chips[i].setAttribute("data-tb-verdict", state);
       chips[i].textContent = spec.text;
       chips[i].title = spec.tip;
     }
   }
 
+  function inReceipt(el) {
+    for (var n = el.parentNode; n && n.className !== undefined; n = n.parentNode) {
+      if ((" " + n.className + " ").indexOf(" tb-receipt ") !== -1) return true;
+    }
+    return false;
+  }
+
   function hydrateTitle() {
     try { hydrateMasthead(); } catch (e) { /* defensive */ }
+    try { placeReceiptTriggers(); } catch (e) { /* defensive */ }
     var el = document.getElementById("tracebi-receipt"), stamp = null, i;
     if (el) {
       try { stamp = JSON.parse(el.textContent).rendered_at || null; } catch (e) { stamp = null; }
     }
-    var when = stamp ? new Date(stamp) : null;
-    if (when && !isNaN(when.getTime())) {
-      var text = "Built " + when.toLocaleString(undefined, {
-        year: "numeric", month: "short", day: "numeric",
-        hour: "numeric", minute: "2-digit" });
+    var text = builtText(stamp);
+    if (text) {
       var built = document.querySelectorAll("[data-tb-built]");
       for (i = 0; i < built.length; i++) built[i].textContent = text;
     }
@@ -3524,7 +3557,18 @@
   /* ── The receipt drawer — provenance DISPLAY from #tracebi-receipt ─────
    * Renders ONLY what the build recorded: never re-colored, never
    * re-judged. Locked language: "the sink satisfied its contract" — never
-   * "the transform was verified". */
+   * "the transform was verified".
+   *
+   * Two parts. renderReceipt(mount, receipt, options) writes the certificate
+   * into any element: the header (report, when it was built, from which
+   * model, the verdict chip, the honesty line), how to check the file, one
+   * row per figure (its value as shown, its label, the measure's definition,
+   * the query in one line, the fingerprint's first 8 characters) with the
+   * raw query and full fingerprint behind "Raw", and "About this build"
+   * (sink contracts, the stated methodology, who built it, when, git) behind
+   * one disclosure. The web app's report page mounts the same function in its
+   * side panel. hydrateReceipt is the artifact's chrome around it: the
+   * drawer (a sheet on a phone), its close button, and the ways to open it. */
 
   function receiptLine(parent, text, cls) {
     var div = document.createElement("div");
@@ -3534,15 +3578,57 @@
     return div;
   }
 
+  function receiptEl(parent, tag, cls, text) {
+    var el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text !== undefined && text !== null) el.textContent = text;
+    parent.appendChild(el);
+    return el;
+  }
+
+  /* Copy text to the clipboard; say so on the button, or select the text
+   * when the browser refuses (a sandboxed frame, an old browser). */
+  function receiptCopyButton(parent, text, label, target) {
+    var btn = receiptEl(parent, "button", "tb-receipt-copy", "Copy");
+    btn.type = "button";
+    btn.setAttribute("aria-label", label);
+    btn.addEventListener("click", function () {
+      var said = function (ok) {
+        btn.textContent = ok ? "Copied" : "Select";
+        setTimeout(function () { btn.textContent = "Copy"; }, 1400);
+        if (!ok && target && root.getSelection && document.createRange) {
+          try {
+            var range = document.createRange();
+            range.selectNodeContents(target);
+            var sel = root.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          } catch (e) {}
+        }
+      };
+      try {
+        if (root.navigator && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(
+            function () { said(true); }, function () { said(false); });
+          return;
+        }
+      } catch (e) {}
+      said(false);
+    });
+    return btn;
+  }
+
   /* The page element this figure record names, if the build placed one. */
-  function receiptPageEl(fig) {
-    if (!fig || !fig.id || typeof document === "undefined") return null;
-    var el = document.getElementById(fig.id);
+  function receiptPageEl(fig, page) {
+    if (!fig || !fig.id || !page || !page.getElementById) return null;
+    var el = page.getElementById(fig.id);
     return (el && el.getAttribute) ? el : null;
   }
 
-  /* Rows on the page, or the stamped block when the figure has no table. */
-  function receiptRowCount(el, binding) {
+  /* Rows the query returned (recorded), else rows on the page, else the
+   * stamped block when the figure has no table. */
+  function receiptRowCount(el, binding, rec, page) {
+    if (rec && typeof rec.rows === "number") return rec.rows;
     if (el && el.tagName === "TABLE") {
       var body = el.querySelector("tbody");
       if (body) {
@@ -3557,50 +3643,113 @@
         return n;
       }
     }
-    var block = binding ? readBlock(binding) : null;
+    var block = (binding && page) ? readBlock(binding) : null;
     if (block && block.rows) return block.rows.length;
     return null;
   }
 
-  function receiptQuery(receipt, fig) {
-    if (fig.query && typeof fig.query === "object") return fig.query;
+  function receiptBinding(receipt, fig) {
     var bindings = receipt && receipt.bindings;
     var rec = (bindings && fig.binding) ? bindings[fig.binding] : null;
-    if (!rec || typeof rec !== "object") return null;
-    return (rec.query && typeof rec.query === "object") ? rec.query : rec;
+    return (rec && typeof rec === "object") ? rec : null;
   }
 
-  function humanList(items) {
-    if (!items || !items.length) return "";
-    var out = [], i;
-    for (i = 0; i < items.length; i++) out.push(humanise(String(items[i])));
-    return out.join(", ");
+  function receiptQuery(receipt, fig) {
+    if (fig.query && typeof fig.query === "object") return fig.query;
+    var rec = receiptBinding(receipt, fig);
+    if (!rec) return null;
+    return (rec.query && typeof rec.query === "object") ? rec.query : null;
   }
 
-  function filterPhrase(filters) {
+  function queryValue(v) {
+    if (v && typeof v === "object" && v.length !== undefined) {
+      return "(" + Array.prototype.map.call(v, String).join(", ") + ")";
+    }
+    return String(v);
+  }
+
+  /* {col: value | [values] | {op: value}} → "col = v, col in (a, b), col >= 5". */
+  function filterText(filters) {
     if (!filters || typeof filters !== "object") return "";
     var parts = [], k, v, op, bits;
     for (k in filters) {
       if (!Object.prototype.hasOwnProperty.call(filters, k)) continue;
       v = filters[k];
-      if (v && typeof v === "object") {
+      if (v && typeof v === "object" && v.length !== undefined) {
+        parts.push(k + " in " + queryValue(v));
+      } else if (v && typeof v === "object") {
         bits = [];
         for (op in v) {
           if (Object.prototype.hasOwnProperty.call(v, op)) {
-            bits.push(op + " " + v[op]);
+            bits.push(k + " " + op + " " + queryValue(v[op]));
           }
         }
-        parts.push(humanise(k) + " " + bits.join(" "));
+        parts.push(bits.join(", "));
       } else {
-        parts.push(humanise(k) + " is " + v);
+        parts.push(k + " = " + v);
       }
     }
     return parts.join(", ");
   }
 
-  function receiptFigureRow(drawer, fig, receipt) {
+  /* The query in one line, in the model's own names:
+   * "fair_value by dim_issuer.sector · order fair_value desc · limit 10".
+   * Only the ordering keys the author wrote; the rest is the engine's
+   * tie-break, which stays in the raw query. */
+  function queryLine(query, rec) {
+    if (!query || typeof query !== "object") return "";
+    if (typeof query.sql === "string") {
+      return "sql " + trim(query.sql.replace(/\s+/g, " "));
+    }
+    var measures = query.measures, names = [], k;
+    if (measures && typeof measures === "object" && measures.length === undefined) {
+      for (k in measures) if (Object.prototype.hasOwnProperty.call(measures, k)) names.push(k);
+    } else if (measures) {
+      names = Array.prototype.map.call(measures, String);
+    }
+    var line = names.join(", ");
+    var dims = query.dimensions || [];
+    if (dims.length) line += (line ? " by " : "by ") + Array.prototype.join.call(dims, ", ");
+    var where = filterText(query.filters);
+    if (where) line += " · where " + where;
+    var having = filterText(query.having);
+    if (having) line += " · having " + having;
+    var order = query.order_by || [];
+    if (rec && typeof rec.order_stated === "number") order = order.slice(0, rec.order_stated);
+    if (order.length) {
+      line += " · order " + order.map(function (o) {
+        if (o && typeof o === "object") return o.column + (o.desc ? " desc" : "");
+        var t = String(o);
+        return t.charAt(0) === "-" ? t.slice(1) + " desc" : t;
+      }).join(", ");
+    }
+    if (query.limit !== undefined && query.limit !== null) line += " · limit " + query.limit;
+    return line;
+  }
+
+  function queryMeasures(query, cell) {
+    var m = query && query.measures, out = [], k;
+    if (m && typeof m === "object" && m.length === undefined) {
+      for (k in m) if (Object.prototype.hasOwnProperty.call(m, k)) out.push(k);
+    } else if (m) {
+      out = Array.prototype.map.call(m, String);
+    }
+    if (!out.length && cell) out = [cell];
+    return out;
+  }
+
+  /* "Built Oct 17, 2026, 7:28 PM" from the file's own stamp, or null. */
+  function builtText(stamp) {
+    var when = stamp ? new Date(stamp) : null;
+    if (!when || isNaN(when.getTime())) return null;
+    return "Built " + when.toLocaleString(undefined, {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "numeric", minute: "2-digit" });
+  }
+
+  function receiptFigureRow(list, fig, receipt, ctx) {
     if (!fig || !fig.id) return;
-    var page = receiptPageEl(fig);
+    var page = receiptPageEl(fig, ctx.page);
     var kind = fig.kind || (page ? attr(page, "data-tb-figure") : null);
     var binding = fig.binding || (page ? attr(page, "data-tb-binding") : null);
     var cell = fig.cell || (page ? attr(page, "data-tb-cell") : null);
@@ -3608,78 +3757,368 @@
       var y = attr(page, "data-tb-y");
       if (y) cell = splitList(y)[0];
     }
+    var rec = receiptBinding(receipt, fig);
+    var query = receiptQuery(receipt, fig);
 
-    var row = document.createElement("div");
-    row.className = "tb-receipt-row";
+    var row = receiptEl(list, "div", "tb-receipt-row");
     row.setAttribute("data-tb-receipt-fig", String(fig.id));
-    var title = document.createElement("div");
-    title.className = "tb-receipt-title";
-    var headline;
+
+    /* The label, and what the page shows: the value as formatted there, or
+     * the figure's kind and rows. */
+    var title = receiptEl(row, "div", "tb-receipt-title");
+    var name, shown = "";
     if (kind === "value") {
       var labelEl = page ? page.querySelector(".tb-kpi-label") : null;
       var pageLabel = labelEl ? trim(labelEl.textContent || "") : "";
       /* A column uses the same words as the page's headings. A literal
        * figure has no column, so the label already printed on it is the
        * name. */
-      var label = cell ? humanise(cell)
+      name = cell ? humanise(cell)
         : (pageLabel || (binding ? humanise(binding) : humanise(fig.id)));
       var shownEl = page ? (page.querySelector(".tb-kpi-value") || page) : null;
-      var shown = shownEl ? trim(shownEl.textContent || "") : "";
-      headline = shown ? (label + " · " + shown) : label;
-    } else if (kind === "table" || kind === "chart") {
-      headline = (binding ? humanise(binding) : humanise(fig.id)) + " · " + kind;
-      var count = receiptRowCount(page, binding);
-      if (count !== null) {
-        headline += ", " + count + (count === 1 ? " row" : " rows");
-      }
+      shown = shownEl ? trim(shownEl.textContent || "") : "";
     } else {
-      headline = binding ? humanise(binding) : humanise(fig.id);
-      if (kind) headline += " · " + kind;
+      name = binding ? humanise(binding) : humanise(fig.id);
     }
-    title.textContent = headline;
+    receiptEl(title, "span", "tb-receipt-name", name);
+    if (shown) {
+      receiptEl(title, "span", "tb-receipt-value", shown);
+    } else if (kind) {
+      var what = kind;
+      if (kind === "table" || kind === "chart") {
+        var count = receiptRowCount(page, binding, rec, ctx.page);
+        if (count !== null) what += ", " + count + (count === 1 ? " row" : " rows");
+      }
+      receiptEl(title, "span", "tb-receipt-kind", what);
+    }
     if (fig.unverified) {
       /* The recorded status in its existing tone — display, not judgment. */
-      var badge = document.createElement("span");
-      badge.className = "tb-badge tb-badge--unverified";
-      badge.textContent = "unverified";
-      title.appendChild(badge);
-    }
-    row.appendChild(title);
-
-    var query = receiptQuery(receipt, fig);
-    var measures = (query && query.measures && query.measures.length)
-      ? query.measures : (cell ? [cell] : []);
-    var dims = (query && query.dimensions) || [];
-    var from = humanList(measures);
-    if (dims.length) from += (from ? ", by " : "by ") + humanList(dims);
-    var filters = filterPhrase(query && query.filters);
-    if (filters) from += (from ? ", " : "") + filters;
-    if (from) {
-      var quiet = document.createElement("div");
-      quiet.className = "tb-receipt-from";
-      quiet.textContent = from;
-      row.appendChild(quiet);
+      receiptEl(title, "span", "tb-badge tb-badge--unverified", "unverified");
     }
 
-    var details = document.createElement("details");
-    details.className = "tb-receipt-details";
-    var summary = document.createElement("summary");
-    summary.textContent = "Details";
-    details.appendChild(summary);
+    /* The definition in words: the model's description of each measure. */
+    var measures = (kind === "value" && cell) ? [cell] : queryMeasures(query, cell);
+    var defs = [], i, about;
+    for (i = 0; i < measures.length; i++) {
+      about = ctx.about.hasOwnProperty(measures[i]) ? ctx.about[measures[i]] : null;
+      if (about) defs.push([measures[i], about]);
+    }
+    if (defs.length === 1 && kind === "value") {
+      receiptEl(row, "p", "tb-receipt-def", defs[0][1]);
+    } else if (defs.length) {
+      var dl = receiptEl(row, "p", "tb-receipt-def");
+      defs.forEach(function (d, j) {
+        if (j) receiptEl(dl, "br");
+        receiptEl(dl, "span", "tb-receipt-term", humanise(d[0]));
+        receiptEl(dl, "span", null, " \u2014 " + d[1]);
+      });
+    }
+
+    var facts = receiptEl(row, "dl", "tb-receipt-facts");
+    var line = queryLine(query, rec);
+    if (line) {
+      receiptEl(facts, "dt", null, "Query");
+      var dq = receiptEl(facts, "dd");
+      receiptEl(dq, "code", "tb-receipt-query", line);
+    } else if (rec && !rec.query) {
+      receiptEl(facts, "dt", null, "Query");
+      receiptEl(facts, "dd", "tb-receipt-noquery",
+                "none: computed in report.py, not query-reproducible");
+    }
+    if (fig.fingerprint) {
+      var full = String(fig.fingerprint);
+      receiptEl(facts, "dt", null, "Fingerprint");
+      var dfp = receiptEl(facts, "dd");
+      var short = receiptEl(dfp, "code", "tb-receipt-fp-short", full.slice(0, 8));
+      short.title = full;
+      receiptCopyButton(dfp, full, "Copy the full fingerprint", short);
+    }
+
+    /* Raw: the addresses, the query exactly as run, the full fingerprint. */
+    var details = receiptEl(row, "details", "tb-receipt-details");
+    receiptEl(details, "summary", null, "Raw");
     var meta = String(fig.id);
     if (kind) meta += " · " + kind;
     if (binding) meta += " · " + binding;
+    if (fig.model) meta += " · " + fig.model;
     receiptLine(details, meta, "tb-receipt-meta");
-    if (fig.fingerprint) {
-      var fp = document.createElement("span");
-      fp.className = "tb-receipt-fp";
-      fp.textContent = String(fig.fingerprint);
-      fp.title = String(fig.fingerprint);
-      details.appendChild(fp);
+    if (query) {
+      var pre = receiptEl(details, "pre", "tb-receipt-json");
+      try { pre.textContent = JSON.stringify(query, null, 2); } catch (e) {}
     }
-    row.appendChild(details);
-    drawer.appendChild(row);
+    if (fig.fingerprint) {
+      var fp = receiptEl(details, "span", "tb-receipt-fp", String(fig.fingerprint));
+      fp.title = String(fig.fingerprint);
+    }
     if (_scriptChanged[fig.id]) paintScriptChange(String(fig.id));
+  }
+
+  /* The stated methodology the build recorded, in the author's words. */
+  function receiptMethodology(parent, notes) {
+    var byNote = {}, order = [], t, n;
+    var tn = (notes && notes.transform_notes) || {};
+    for (t in tn) {
+      if (!Object.prototype.hasOwnProperty.call(tn, t)) continue;
+      n = String(tn[t]);
+      if (!byNote.hasOwnProperty(n)) { byNote[n] = []; order.push(n); }
+      byNote[n].push(t);
+    }
+    var any = false;
+    order.forEach(function (note) {
+      receiptLine(parent, "the transform states, for " + byNote[note].join(", ")
+                  + ": " + note, "tb-receipt-note");
+      any = true;
+    });
+    ((notes && notes.check_notes) || []).forEach(function (cn) {
+      if (!cn || !cn.note) return;
+      receiptLine(parent, "the transform '" + cn.transform + "' states, of "
+                  + cn.check + "(" + cn.table + "): " + cn.note, "tb-receipt-note");
+      any = true;
+    });
+    var mn = (notes && notes.measure_notes) || {};
+    for (t in mn) {
+      if (!Object.prototype.hasOwnProperty.call(mn, t)) continue;
+      receiptLine(parent, "measure '" + t + "': " + mn[t], "tb-receipt-note");
+      any = true;
+    }
+    return any;
+  }
+
+  /* The file name to check, from the address it was opened at. */
+  function receiptFileName(receipt) {
+    var path = "";
+    try { path = (root.location && root.location.pathname) || ""; } catch (e) {}
+    var base = decodeURIComponent(String(path).split("/").pop() || "");
+    if (!base) {
+      base = String(receipt.report || "report").toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "report";
+    }
+    return /\.html?$/i.test(base) ? base : base + ".html";
+  }
+
+  /* Write the receipt certificate into `mount` (its children are replaced).
+   *   receipt          the parsed #tracebi-receipt block
+   *   options.contracts  the parsed tb-semantic-contract-* blocks, for the
+   *                    measures' definitions (default: this page's)
+   *   options.verdict  "draft" | "not-checked" | "reproduces" |
+   *                    "needs-a-look" | "does-not-reproduce" (default: what
+   *                    this file can say of itself — never green)
+   *   options.page     the document whose figures show the values (default:
+   *                    this one; null where the page is out of reach)
+   *   options.file     the file name the "how to check" line names
+   * Returns the mount. Display only: it re-runs nothing. */
+  function renderReceipt(mount, receipt, options) {
+    var opts = options || {};
+    while (mount.firstChild) mount.removeChild(mount.firstChild);
+    addClass(mount, "tb-receipt");
+    var page = opts.page !== undefined ? opts.page
+      : (typeof document !== "undefined" ? document : null);
+    var ctx = {
+      page: page,
+      about: measureIndex(opts.contracts || (page === document ? pageContracts() : []))
+    };
+
+    var head = receiptEl(mount, "header", "tb-receipt-header");
+    receiptEl(head, "p", "tb-receipt-kicker", "Receipt");
+    receiptEl(head, "h2", "tb-receipt-head", receipt.report || "Receipt");
+    var models = receipt.semantic_contract_models || [], stampLine = [];
+    if (!models.length) {
+      (receipt.figures || []).forEach(function (f) {
+        if (f && f.model && models.indexOf(f.model) === -1) models.push(f.model);
+      });
+    }
+    var built = builtText(receipt.rendered_at);
+    if (built) stampLine.push(built);
+    if (models.length) stampLine.push(models.join(", "));
+    if (stampLine.length) receiptEl(head, "p", "tb-receipt-built", stampLine.join(" · "));
+    var state = (opts.verdict && _VERDICTS[opts.verdict]) ? opts.verdict : verdictState();
+    var chipRow = receiptEl(head, "p", "tb-receipt-verdict");
+    var chip = receiptEl(chipRow, "span", "tb-verdict", _VERDICTS[state].text);
+    chip.setAttribute("data-tb-verdict", state);
+    chip.title = _VERDICTS[state].tip;
+    receiptEl(head, "p", "tb-receipt-honesty",
+              "The receipt does not claim the numbers are right. It records "
+              + "how each figure was made, so it can be checked.");
+
+    var file = opts.file || receiptFileName(receipt);
+    var check = receiptEl(mount, "section", "tb-receipt-check");
+    receiptEl(check, "h3", "tb-receipt-label", "How to check");
+    var cmd = receiptEl(check, "div", "tb-receipt-cmd");
+    var code = receiptEl(cmd, "code", null, "tracebi verify --file " + file);
+    receiptCopyButton(cmd, "tracebi verify --file " + file, "Copy the command", code);
+    receiptEl(check, "p", "tb-receipt-note",
+              "Keep " + file + ".manifest.json beside the file. This checks "
+              + "the file was not altered since it was built; tracebi verify "
+              + "on the manifest re-runs each query against the model.");
+
+    var figures = receipt.figures || [], i;
+    var section = receiptEl(mount, "section", "tb-receipt-figures");
+    receiptEl(section, "h3", "tb-receipt-label",
+              figures.length === 1 ? "1 figure" : figures.length + " figures");
+    for (i = 0; i < figures.length; i++) {
+      try { receiptFigureRow(section, figures[i], receipt, ctx); } catch (e) { /* defensive */ }
+    }
+
+    var aboutBox = receiptEl(mount, "details", "tb-receipt-about");
+    receiptEl(aboutBox, "summary", null, "About this build");
+    var contracts = receipt.transform_contracts, table, rec, status;
+    if (contracts && typeof contracts === "object") {
+      receiptEl(aboutBox, "h4", "tb-receipt-label", "Sink contracts");
+      for (table in contracts) {
+        if (!contracts.hasOwnProperty(table)) continue;
+        rec = contracts[table];
+        status = (rec && typeof rec === "object") ? rec.status : rec;
+        if (status === "satisfied") {
+          receiptLine(aboutBox, table + ": the sink satisfied its contract");
+        } else if (status === "stale") {
+          receiptLine(aboutBox, table + ": contract stale — the warehouse "
+                      + "has moved since the certificate");
+        } else {
+          receiptLine(aboutBox, table + ": no contract");
+        }
+      }
+    }
+    var stated = receipt.stated_methodology;
+    if (stated && typeof stated === "object") {
+      receiptEl(aboutBox, "h4", "tb-receipt-label", "Stated methodology");
+      receiptMethodology(aboutBox, stated);
+    } else if (receipt.methodology === true) {
+      receiptLine(aboutBox, "stated methodology aboard");
+    }
+    receiptEl(aboutBox, "h4", "tb-receipt-label", "The build");
+    var mono = "tb-receipt-line tb-receipt-meta";
+    if (models.length) receiptLine(aboutBox, "semantic contract: " + models.join(", "), mono);
+    if (receipt.rendered_by) receiptLine(aboutBox, "built by " + receipt.rendered_by, mono);
+    if (receipt.rendered_at) receiptLine(aboutBox, "rendered " + receipt.rendered_at, mono);
+    if (receipt.git_sha) receiptLine(aboutBox, "git " + receipt.git_sha, mono);
+    return mount;
+  }
+
+  function receiptDrawer() {
+    return typeof document === "undefined" ? null
+      : document.querySelector(".tb-receipt-drawer");
+  }
+
+  var _receiptOpener = null;
+  function setReceiptOpen(on) {
+    var drawer = receiptDrawer();
+    if (!drawer) return false;
+    var open = (" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1;
+    if (on === open) return true;
+    if (on) {
+      _receiptOpener = document.activeElement || null;
+      addClass(drawer, "tb-receipt-open");
+      var close = drawer.querySelector(".tb-receipt-close");
+      if (close && close.focus) {
+        try { close.focus({ preventScroll: true }); } catch (e) {}
+      }
+    } else {
+      removeClass(drawer, "tb-receipt-open");
+      if (_receiptOpener && _receiptOpener.focus) {
+        try { _receiptOpener.focus(); } catch (e) {}
+      }
+      _receiptOpener = null;
+    }
+    var toggles = document.querySelectorAll(".tb-receipt-btn, .tb-receipt-link");
+    for (var i = 0; i < toggles.length; i++) toggles[i].setAttribute("aria-expanded", on ? "true" : "false");
+    return true;
+  }
+
+  function toggleReceipt() {
+    var drawer = receiptDrawer();
+    if (!drawer) return;
+    setReceiptOpen((" " + drawer.className + " ").indexOf(" tb-receipt-open ") === -1);
+  }
+
+  /* A quiet "Receipt" button for the masthead's meta line (after the
+   * verdict chip) and the footer's line. */
+  function receiptLinkButton(text) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "tb-receipt-link";
+    b.textContent = text;
+    b.setAttribute("aria-expanded", "false");
+    b.addEventListener("click", toggleReceipt);
+    return b;
+  }
+
+  /* Clicking a value figure opens the receipt at its row; the masthead's
+   * verdict chip opens it too. Controls, links and selections are left
+   * alone. */
+  function onReceiptClick(e) {
+    var n = e.target, drawer = receiptDrawer();
+    if (!drawer) return;
+    for (; n && n.nodeType === 1; n = n.parentNode) {
+      if (n === drawer) return;
+      if (/^(A|BUTTON|INPUT|SELECT|TEXTAREA|SUMMARY|LABEL)$/.test(n.tagName)) return;
+      if ((" " + n.className + " ").indexOf(" tb-verdict ") !== -1
+          && n.getAttribute("role") === "button") {
+        toggleReceipt();
+        return;
+      }
+      if (n.getAttribute("data-tb-figure") === "value" && n.id) {
+        var sel = root.getSelection ? root.getSelection() : null;
+        if (sel && String(sel)) return;
+        openReceipt(n.id);
+        return;
+      }
+    }
+  }
+
+  function onReceiptKey(e) {
+    var drawer = receiptDrawer();
+    if (!drawer) return;
+    if (e.key === "Escape"
+        && (" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1) {
+      setReceiptOpen(false);
+      return;
+    }
+    var t = e.target;
+    if ((e.key === "Enter" || e.key === " ") && t && t.getAttribute
+        && t.getAttribute("role") === "button"
+        && (" " + t.className + " ").indexOf(" tb-verdict ") !== -1) {
+      e.preventDefault();
+      toggleReceipt();
+    }
+  }
+
+  /* Where the page offers its receipt: after the masthead's verdict chip
+   * (the chip itself opens it too), and on the footer's line. A page with
+   * no masthead keeps the floating Receipt button. Safe to call again: a
+   * masthead an app mounts later gets its link then. */
+  function placeReceiptTriggers() {
+    var drawer = receiptDrawer();
+    if (!drawer) return;
+    var metas = document.querySelectorAll(".tb-masthead .tb-masthead-meta"), i, chip;
+    for (i = 0; i < metas.length; i++) {
+      chip = metas[i].querySelector(".tb-verdict");
+      if (chip && chip.getAttribute("role") !== "button") {
+        chip.setAttribute("role", "button");
+        chip.setAttribute("tabindex", "0");
+        chip.setAttribute("aria-label", chip.textContent + ": open the receipt");
+      }
+      if (!metas[i].querySelector(".tb-receipt-link")) {
+        metas[i].appendChild(receiptLinkButton("Receipt"));
+      }
+    }
+    var lines = document.querySelectorAll(".tb-footer-line");
+    for (i = 0; i < lines.length; i++) {
+      if (!lines[i].querySelector(".tb-receipt-link")) {
+        lines[i].appendChild(receiptLinkButton("Open the receipt"));
+      }
+    }
+    var floating = document.querySelector(".tb-receipt-btn");
+    if (metas.length) {
+      if (floating && floating.parentNode) floating.parentNode.removeChild(floating);
+    } else if (!floating) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tb-receipt-btn";
+      btn.textContent = "Receipt";
+      btn.setAttribute("aria-expanded", "false");
+      btn.addEventListener("click", toggleReceipt);
+      document.body.appendChild(btn);
+    }
   }
 
   function hydrateReceipt() {
@@ -3689,68 +4128,45 @@
     try { receipt = JSON.parse(el.textContent); } catch (e) { return; }
     if (!receipt || typeof receipt !== "object") return;
 
-    var drawer = document.createElement("div");
+    /* The chrome: a drawer on the right (a full-height sheet on a phone),
+     * its close button, and a scrolling body the certificate fills. */
+    var drawer = document.createElement("aside");
     drawer.className = "tb-receipt-drawer";
-    receiptLine(drawer, receipt.report || "Receipt", "tb-receipt-head");
-    if (receipt.rendered_at) {
-      receiptLine(drawer, "rendered " + receipt.rendered_at);
-    }
-    if (receipt.git_sha) receiptLine(drawer, "git " + receipt.git_sha);
-
-    var figures = receipt.figures || [], i;
-    for (i = 0; i < figures.length; i++) {
-      try { receiptFigureRow(drawer, figures[i], receipt); } catch (e) { /* defensive */ }
-    }
-
-    var contracts = receipt.transform_contracts, table, rec, status;
-    if (contracts && typeof contracts === "object") {
-      for (table in contracts) {
-        if (!contracts.hasOwnProperty(table)) continue;
-        rec = contracts[table];
-        status = (rec && typeof rec === "object") ? rec.status : rec;
-        if (status === "satisfied") {
-          receiptLine(drawer, table + ": the sink satisfied its contract");
-        } else if (status === "stale") {
-          receiptLine(drawer, table + ": contract stale — the warehouse "
-                      + "has moved since the certificate");
-        } else {
-          receiptLine(drawer, table + ": no contract");
-        }
-      }
-    }
-
-    var models = receipt.semantic_contract_models;
-    if (models && models.length) {
-      receiptLine(drawer, "semantic contract: " + models.join(", "));
-    }
-    if (receipt.methodology === true) {
-      receiptLine(drawer, "stated methodology aboard");
-    }
+    drawer.setAttribute("aria-label", "Receipt");
+    var close = document.createElement("button");
+    close.type = "button";
+    close.className = "tb-receipt-close";
+    close.setAttribute("aria-label", "Close the receipt");
+    close.textContent = "×";
+    close.addEventListener("click", function () { setReceiptOpen(false); });
+    drawer.appendChild(close);
+    var scroll = document.createElement("div");
+    scroll.className = "tb-receipt-scroll";
+    drawer.appendChild(scroll);
+    var mount = document.createElement("div");
+    scroll.appendChild(mount);
+    renderReceipt(mount, receipt);
 
     if (selectionConfig()) {
-      var status = receiptLine(drawer, "selection: authored", "tb-receipt-line");
+      var about = mount.querySelector(".tb-receipt-about");
+      var sel = document.createElement("section");
+      sel.className = "tb-receipt-selection";
+      var status = receiptLine(sel, "selection: authored", "tb-receipt-line");
       status.id = "tb-selection-status";
       var slice = document.createElement("button");
       slice.type = "button";
       slice.className = "tb-receipt-line";
       slice.textContent = "Download this selection";
       slice.addEventListener("click", downloadSelection);
-      drawer.appendChild(slice);
+      sel.appendChild(slice);
+      mount.insertBefore(sel, about);
     }
 
-    var btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "tb-receipt-btn";
-    btn.textContent = "Receipt";
-    btn.addEventListener("click", function () {
-      if ((" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1) {
-        removeClass(drawer, "tb-receipt-open");
-      } else {
-        addClass(drawer, "tb-receipt-open");
-      }
-    });
     document.body.appendChild(drawer);
-    document.body.appendChild(btn);
+    placeReceiptTriggers();
+    document.addEventListener("click", onReceiptClick);
+    document.addEventListener("keydown", onReceiptKey);
+    if (document.documentElement) addClass(document.documentElement, "tb-has-receipt");
     if (selectionConfig()) {
       paintSelectionReceipt(_lastSelection || {
         filters: (selectionConfig().filters || {}),
@@ -4163,7 +4579,7 @@
    * is over and report what was clicked; read the figures back out; flash the
    * ones that changed. Presentation only, and only on request from the
    * embedding window. */
-  var POINT_CHROME = "#tracebi-receipt, .tb-badge, .tb-receipt-btn, [data-tb-chrome]";
+  var POINT_CHROME = "#tracebi-receipt, .tb-badge, .tb-receipt-btn, .tb-receipt-link, .tb-receipt-drawer, [data-tb-chrome]";
   var POINT_INLINE = { SPAN: 1, B: 1, I: 1, EM: 1, STRONG: 1, A: 1, CODE: 1, SMALL: 1, SUP: 1, SUB: 1, TSPAN: 1 };
   var POINT_STYLE =
     ".tb-point-hover { outline: 2px solid #2563eb !important; outline-offset: 2px; cursor: crosshair !important; }" +
@@ -4373,6 +4789,9 @@
     theme: theme,
     setSelection: setSelection,
     refresh: refresh,
+    /* The receipt certificate into any element (the web app's side panel
+     * mounts it too); see renderReceipt. Display only. */
+    renderReceipt: renderReceipt,
     /* The scenario evaluator, exposed so tests and authors can check a
      * formula gives what they expect. It computes from the values passed. */
     evaluate: evalFormula

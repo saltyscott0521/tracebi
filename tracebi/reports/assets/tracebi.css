@@ -1324,17 +1324,46 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-app-error pre { white-space: pre-wrap; color: var(--tb-bad); margin: 8px 0 0; }
 
 /* ── 13. Receipt drawer — provenance DISPLAY, never re-colored ─────────── */
-/* Muted like .tb-note. No rule below sets a colour on a badge: the drawer
- * shows the recorded statuses in their own tones, untouched. */
+/* A certificate, not a log: the verdict and what the receipt does not
+ * claim first, then one row per figure (its value, its definition, its
+ * query in one line, its fingerprint), the raw detail behind disclosures.
+ * .tb-receipt is the certificate (renderReceipt fills it; the web app's
+ * side panel mounts the same one); .tb-receipt-drawer is the artifact's
+ * chrome around it: 420px on the right, a full-height sheet on a phone.
+ * No rule below sets a colour on a badge: the drawer shows the recorded
+ * statuses in their own tones, untouched. */
+
+/* The page's ways in: a quiet button after the masthead's verdict chip
+ * (the chip opens it too) and on the footer's line. A page without a
+ * masthead keeps the floating button. */
+.tb-receipt-link {
+  font: inherit;
+  font-size: inherit;
+  color: var(--tb-accent-text);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.tb-footer-line .tb-receipt-link { margin-left: var(--tb-space-1); }
+.tb-masthead[data-tb-title="banner"] .tb-receipt-link,
+.tb-article-head .tb-receipt-link { color: inherit; }
+.tb-masthead .tb-verdict[role="button"] { cursor: pointer; }
+.tb-masthead .tb-verdict[role="button"]:hover { border-color: currentColor; }
+/* A value figure opens the receipt at its row. */
+.tb-has-receipt [data-tb-figure="value"][id] { cursor: pointer; }
 
 .tb-receipt-btn {
   box-shadow: var(--tb-shadow);
   position: fixed;
   right: var(--tb-space-3);
   bottom: var(--tb-space-3);
-  z-index: 30;
+  z-index: 31;
   font: inherit;
-  font-size: 0.85em;
+  font-size: var(--tb-text-sm);
   color: var(--tb-muted);
   background: var(--tb-bg);
   border: 1px solid var(--tb-rule);
@@ -1349,60 +1378,241 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   top: 0;
   right: 0;
   bottom: 0;
-  width: 340px;
-  max-width: 85vw;
-  z-index: 29;
-  overflow-y: auto;
+  width: 420px;
+  max-width: 100vw;
+  box-sizing: border-box;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  padding-top: 48px; /* the close button's strip; the certificate scrolls below it */
   background: var(--tb-bg);
   border-left: 1px solid var(--tb-rule);
-  padding: var(--tb-space-3);
-  font-size: 0.85em;
-  color: var(--tb-muted);
-  transform: translateX(100%);
-  transition: transform 0.15s ease-out;
-}
-.tb-receipt-drawer.tb-receipt-open { transform: none; }
-
-.tb-receipt-head {
+  box-shadow: -12px 0 32px rgba(16, 24, 40, .12);
   color: var(--tb-ink);
-  font-weight: 600;
-  margin-bottom: var(--tb-space-2);
+  font-family: var(--tb-font);
+  font-size: var(--tb-text-sm);
+  line-height: 1.5;
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 0.18s ease-out, visibility 0s linear 0.18s;
 }
-.tb-receipt-line { margin: var(--tb-space-1) 0; }
-.tb-receipt-row {
-  padding: var(--tb-space-1) 0;
-  border-bottom: 1px solid var(--tb-rule);
+.tb-receipt-drawer.tb-receipt-open {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.18s ease-out, visibility 0s;
 }
-/* The record a chart tooltip's Receipt link opened the drawer at. */
-.tb-receipt-row--here { background: var(--tb-surface-accent); transition: background .3s; }
-.tb-receipt-title { color: var(--tb-ink); }
-.tb-receipt-from {
+.tb-receipt-close {
+  position: absolute;
+  top: var(--tb-space-2);
+  right: var(--tb-space-2);
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
   color: var(--tb-muted);
-  font-size: 0.92em;
-  margin-top: 2px;
+  background: var(--tb-bg);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
 }
+.tb-receipt-close:hover { color: var(--tb-ink); background: var(--tb-surface); }
+.tb-receipt-scroll {
+  position: relative; /* rows measure their offset from here */
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 var(--tb-space-4) var(--tb-space-4);
+}
+/* On a phone: a sheet over the whole screen, rising from the bottom. */
+@media (max-width: 640px) {
+  .tb-receipt-drawer {
+    width: 100%;
+    border-left: 0;
+    box-shadow: none;
+    transform: translateY(100%);
+  }
+  .tb-receipt-scroll { padding: 0 var(--tb-space-3) var(--tb-space-4); }
+}
+
+/* The certificate. */
+.tb-receipt { color: var(--tb-ink); font-size: var(--tb-text-sm); }
+.tb-receipt-kicker {
+  margin: 0 0 var(--tb-space-1);
+  font-size: var(--tb-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tb-muted);
+}
+.tb-receipt-head {
+  margin: 0;
+  font-size: var(--tb-text-xl);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--tb-ink);
+}
+.tb-receipt-built {
+  margin: var(--tb-space-1) 0 0;
+  font-size: var(--tb-text-xs);
+  color: var(--tb-muted);
+}
+.tb-receipt-verdict { margin: var(--tb-space-3) 0 0; }
+.tb-receipt-honesty {
+  margin: var(--tb-space-2) 0 0;
+  color: var(--tb-ink);
+  max-width: 44ch;
+}
+.tb-receipt-label {
+  margin: 0 0 var(--tb-space-2);
+  font-size: var(--tb-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tb-muted);
+}
+.tb-receipt-check,
+.tb-receipt-figures,
+.tb-receipt-selection,
+.tb-receipt-about {
+  margin-top: var(--tb-space-4);
+  padding-top: var(--tb-space-3);
+  border-top: 1px solid var(--tb-rule);
+}
+.tb-receipt-cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--tb-space-2);
+  padding: 6px 6px 6px 10px;
+  background: var(--tb-surface);
+  border: 1px solid var(--tb-rule);
+  border-radius: 8px;
+}
+.tb-receipt-cmd code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--tb-mono);
+  font-size: var(--tb-text-xs);
+  overflow-wrap: anywhere;
+}
+.tb-receipt-note {
+  margin: var(--tb-space-2) 0 0;
+  font-size: var(--tb-text-xs);
+  color: var(--tb-muted);
+}
+.tb-receipt-copy {
+  flex: none;
+  font: inherit;
+  font-size: var(--tb-text-xs);
+  color: var(--tb-muted);
+  background: var(--tb-bg);
+  border: 1px solid var(--tb-rule);
+  border-radius: 6px;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+.tb-receipt-copy:hover { color: var(--tb-ink); border-color: var(--tb-muted); }
+
+/* One figure: its label and value on one line, then what it means, its
+ * query and its fingerprint, the raw record behind "Raw". */
+.tb-receipt-row {
+  padding: var(--tb-space-3) var(--tb-space-2);
+  margin: 0 calc(-1 * var(--tb-space-2));
+  border-bottom: 1px solid var(--tb-rule);
+  border-radius: 6px;
+}
+.tb-receipt-row:last-child { border-bottom: 0; }
+/* The record a figure (a click on it, its chart's Receipt link) opened the
+ * drawer at. */
+.tb-receipt-row--here { background: var(--tb-surface-accent); transition: background .3s; }
+.tb-receipt-title {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px var(--tb-space-2);
+}
+.tb-receipt-name { flex: 1; min-width: 0; font-weight: 500; color: var(--tb-ink); }
+.tb-receipt-value {
+  font-size: var(--tb-text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--tb-ink);
+}
+.tb-receipt-kind { font-size: var(--tb-text-xs); color: var(--tb-muted); }
 .tb-receipt-changed {
   color: var(--tb-bad);
-  font-size: 0.92em;
+  font-size: var(--tb-text-xs);
   margin-top: 2px;
 }
-.tb-receipt-details { margin-top: var(--tb-space-1); }
-.tb-receipt-details summary { cursor: pointer; }
-.tb-receipt-meta,
-.tb-receipt-fp {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  word-break: break-all;
+.tb-receipt-def { margin: 2px 0 0; color: var(--tb-muted); }
+.tb-receipt-term { color: var(--tb-ink); font-weight: 500; }
+.tb-receipt-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px var(--tb-space-3);
+  margin: var(--tb-space-2) 0 0;
+  font-size: var(--tb-text-xs);
 }
-.tb-receipt-fp { display: block; }
+.tb-receipt-facts dt { color: var(--tb-muted); }
+.tb-receipt-facts dd { margin: 0; display: flex; align-items: baseline; gap: var(--tb-space-2); }
+.tb-receipt-query,
+.tb-receipt-fp-short,
+.tb-receipt-meta,
+.tb-receipt-fp,
+.tb-receipt-json {
+  font-family: var(--tb-mono);
+  font-size: var(--tb-text-xs);
+}
+.tb-receipt-query { overflow-wrap: anywhere; color: var(--tb-ink); }
+.tb-receipt-noquery { color: var(--tb-muted); }
+.tb-receipt-details { margin-top: var(--tb-space-2); font-size: var(--tb-text-xs); }
+.tb-receipt-details > summary,
+.tb-receipt-about > summary {
+  cursor: pointer;
+  width: fit-content;
+  color: var(--tb-muted);
+}
+.tb-receipt-details > summary:hover,
+.tb-receipt-about > summary:hover { color: var(--tb-ink); }
+.tb-receipt-details[open] > summary { margin-bottom: var(--tb-space-1); }
+.tb-receipt-meta { color: var(--tb-muted); overflow-wrap: anywhere; }
+.tb-receipt-fp { color: var(--tb-muted); word-break: break-all; }
+.tb-receipt-fp { display: block; margin-top: var(--tb-space-1); }
+.tb-receipt-json {
+  margin: var(--tb-space-1) 0 0;
+  padding: var(--tb-space-2);
+  background: var(--tb-surface);
+  border: 1px solid var(--tb-rule);
+  border-radius: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--tb-ink);
+}
+/* About this build: contracts, the stated methodology, the stamps. */
+.tb-receipt-about > summary { color: var(--tb-ink); font-weight: 500; }
+.tb-receipt-about[open] > summary { margin-bottom: var(--tb-space-3); }
+.tb-receipt-about .tb-receipt-label { margin-top: var(--tb-space-3); }
+.tb-receipt-line { margin: var(--tb-space-1) 0; color: var(--tb-muted); }
+.tb-receipt-about .tb-receipt-note { margin: var(--tb-space-1) 0; }
+.tb-receipt-selection button.tb-receipt-line {
+  font: inherit;
+  color: var(--tb-accent-text);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
 /* Layout only — the badge keeps its own recorded tone. */
-.tb-receipt-drawer .tb-badge {
+.tb-receipt .tb-badge {
   position: static;
-  margin-left: var(--tb-space-2);
+  align-self: center;
 }
 
 /* Motion is never required to read the page. */
 @media (prefers-reduced-motion: reduce) {
-  .tb-receipt-drawer { transition: none; }
+  .tb-receipt-drawer, .tb-receipt-drawer.tb-receipt-open { transition: none; }
 }
 
 /* ── 14. Print — honesty survives printing ─────────────────────────────── */
@@ -1433,7 +1643,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   pre { background: none; border: 1px solid var(--tb-rule); }
 
   /* Truly interactive chrome has no meaning on paper. */
-  .tb-receipt-btn,
+  .tb-receipt-btn, .tb-receipt-link, .tb-receipt-close, .tb-receipt-copy,
   select[data-tb-filter], input[data-tb-search], button[data-tb-download] {
     display: none;
   }
@@ -1444,8 +1654,10 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   .tb-tab-bar { display: none; }
   .tb-tab-bar ~ [data-tb-tab] { display: block !important; }
 
-  /* A closed disclosure would hide the fingerprint on paper. */
-  .tb-receipt-details > * { display: block !important; }
+  /* A closed disclosure would hide the fingerprint on paper (the runtime
+     also opens them for print). */
+  .tb-receipt-drawer details > * { display: block !important; }
+  .tb-receipt-drawer details::details-content { content-visibility: visible; display: block; }
 
   /* The receipt IS the point of the document. Un-pin the drawer from its
      fixed overlay into a static appendix so the fingerprints, contract status
@@ -1455,15 +1667,18 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
     position: static;
     inset: auto;
     transform: none;
+    visibility: visible;
     width: auto;
     max-width: none;
     box-shadow: none;
-    border: 1px solid var(--tb-rule);
+    border: 0;
     margin-top: var(--tb-space-4);
-    padding: var(--tb-space-3);
+    padding: 0;
     page-break-before: always;
     color: inherit;
   }
+  .tb-receipt-scroll { overflow: visible; padding: 0; }
+  .tb-receipt-row { break-inside: avoid; }
 
   /* A scrolling region would truncate rows on paper — unclip it. */
   .tb-scroll { overflow-y: visible; max-height: none !important; }

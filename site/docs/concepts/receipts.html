@@ -96,6 +96,30 @@ output/my_report.html.manifest.json     the receipt
 a SHA-256 fingerprint of the data the query returned. The artifact embeds the
 same fingerprinted bytes it draws from — so what the reader sees and what the
 receipt covers are the same thing, by construction.</p>
+<h2 id="what-the-file-shows">What the file shows</h2>
+<p>Every built page carries the receipt in a drawer: open it from the
+masthead's <strong>Receipt</strong> button or verdict chip, from the footer, or by
+clicking a number on the page (it opens at that figure's row). It reads top
+to bottom as a certificate:</p>
+<ul>
+<li>the report, when it was built, from which model, and the verdict chip. A
+  file says <strong>Not checked</strong> of itself: nothing has re-run its queries since
+  it was built. Only a checker (<code>tracebi verify</code>, the web app) states
+  <strong>Reproduces</strong>, <strong>Needs a look</strong> (the source or model changed since the
+  build) or <strong>Does not reproduce</strong>.</li>
+<li><em>"The receipt does not claim the numbers are right."</em></li>
+<li>how to check the file: <code>tracebi verify --file &lt;name&gt;.html</code>, with the
+  <code>.manifest.json</code> beside it.</li>
+<li>one row per figure, in page order: the value as the page shows it, its
+  label, the measure's definition from the model, the query in one line
+  (<code>fair_value by dim_issuer.sector · order fair_value desc</code>) and the first 8
+  characters of the fingerprint. <strong>Raw</strong> holds the query exactly as run and
+  the full fingerprint.</li>
+<li><strong>About this build</strong>: the sink contracts, the stated methodology, who
+  built it, the render stamp and the git commit.</li>
+</ul>
+<p>The drawer displays what the embedded receipt block records; it re-runs
+nothing. The manifest beside the file is still the receipt of record.</p>
 <h2 id="what-you-can-check">What you can check</h2>
 <pre><code class="language-bash">tracebi verify output/my_report.html.manifest.json
 </code></pre>

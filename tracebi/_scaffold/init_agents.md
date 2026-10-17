@@ -269,7 +269,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `tabbed` is the same header, then `.tb-tabs` / `data-tb-tab` (Overview and Detail).
   Pick by fit — a report to read, a dashboard to work in, `brief` for one finding —
   and ask only when a person is in the loop and the choice is not obvious. Every built
-  page carries the Receipt drawer automatically.
+  page carries the Receipt drawer automatically (the masthead's Receipt button, the
+  verdict chip, or a click on a value figure opens it at that figure's row).
 - Ask how it should look, once, before you build (a person in the loop; otherwise use
   the defaults): the title and where it sits, one page / top tabs / a sidebar, light /
   dark / the reader's choice, comfortable / compact. Offer the look of their last

@@ -220,7 +220,9 @@ receipt), `not-checked` on a built file — nothing has re-run its queries;
 `tracebi verify` does, and says whether each figure reproduces. The four
 verdicts, everywhere TraceBi shows one, are `reproduces` (green, `--tb-good`),
 `needs-a-look` (amber, `--tb-warn`), `does-not-reproduce` (red, `--tb-bad`)
-and `not-checked` (neutral). A page never makes it green.
+and `not-checked` (neutral). A page never makes it green. In a built file the
+runtime puts a "Receipt" button after the chip and makes the chip open the
+receipt too (the receipt drawer, below).
 
 The mark is empty by default. To show a logo, put the file in the package's
 `assets/` and size it in `style.css`:
@@ -241,7 +243,27 @@ Your sources come first. The build adds one line — who built the file, when,
 from which model, and *"The receipt does not claim the numbers are right."* —
 then "How these numbers were made" behind a `<details>`: what the receipt is
 for, and the stated methodology (below). A template with no
-`data-tb-methodology` gets the whole footer at the end of the page.
+`data-tb-methodology` gets the whole footer at the end of the page. The
+runtime adds "Open the receipt" to that line.
+
+**The receipt drawer** — every built page carries one; you write nothing for
+it. It opens from the masthead's "Receipt" button or its verdict chip, the
+footer's line, a click on any value figure (at that figure's row), or a
+chart tooltip's "Receipt →"; Escape closes it. A page with no masthead keeps
+a floating "Receipt" button instead. It reads as a certificate: the report,
+when it was built and from which model, the verdict chip, *"The receipt does
+not claim the numbers are right."*, how to check the file
+(`tracebi verify --file <name>.html`, with its `.manifest.json` beside it),
+then one row per figure in page order — the value as the page shows it (or
+"table, 13 rows" / "chart, 6 rows"), its label, the measure's definition from
+the model, the query in one line (`fair_value by dim_issuer.sector · order
+fair_value desc`, only the ordering keys you wrote), the fingerprint's first
+8 characters with Copy — and "Raw" (the query exactly as run, the full
+fingerprint) behind a disclosure. "About this build" closes it: the sink
+contracts, the stated methodology, who built it, the render stamp and git.
+It is 420px on the right, a full-height sheet on a phone, and prints as an
+appendix with every disclosure open. Its badges keep their own tones; a theme
+never recolours them.
 
 ## Editorial
 

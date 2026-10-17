@@ -1061,6 +1061,7 @@ class TemplatePackage:
             fingerprints={sd.name: sd.fingerprint for sd in embed_items},
             binding_models={n: ref.model for n, ref in self.bindings.items()},
             contracts=contracts,
+            bindings=self._receipt_bindings(embed_items),
         )
         contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
         contract_blocks.append(embed_json(declared_formats, "tracebi-formats") + "\n")
@@ -1526,6 +1527,24 @@ class TemplatePackage:
             contract["sql_calculations"] = sql_calcs
         return contract
 
+    def _receipt_bindings(self, items: list[StampedData]) -> dict:
+        """Per binding, what the receipt drawer states about its query: the
+        query as run (a copy of the manifest's ``query_spec``), the rows it
+        returned, and how many of its ordering keys the author wrote. A
+        report.py output has no query; it records its rows only."""
+        out: dict = {}
+        for sd in items:
+            rec: dict = {}
+            if sd.query_spec:
+                rec["query"] = sd.query_spec
+                ref = self.bindings.get(sd.name)
+                stated = getattr(getattr(ref, "query", None), "order_by", None)
+                if stated and sd.query_spec.get("order_by"):
+                    rec["order_stated"] = len(stated)
+            rec["rows"] = int(sd.dataset.to_pandas().shape[0])
+            out[sd.name] = rec
+        return out
+
     def _measure_notes(self, models: dict) -> dict[str, str]:
         """Descriptions of the declared measures the bindings reference.
 
@@ -1958,7 +1977,7 @@ def _embedded_payload(block: str) -> str:
 
 def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
                      fingerprints: dict, binding_models: dict,
-                     contracts: dict) -> dict:
+                     contracts: dict, bindings: Optional[dict] = None) -> dict:
     """The ``tracebi-receipt`` block's payload — the receipt drawer's feed.
 
     Presentation feed only: it duplicates facts the manifest records so the
@@ -1968,12 +1987,18 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
     the payload is byte-stable across renders (the ``rendered_at`` stamp
     aside). ``transform_contracts`` is compacted to ``{table: status}`` —
     the drawer names the status; the full record stays in the manifest.
+    ``bindings`` is per binding the query as run (the manifest's
+    ``query_spec``), its row count, and how many of its ``order_by`` keys
+    the author wrote (the rest is the engine's tie-break), so the drawer
+    can state each query in one line without the page.
     """
     figures = []
     for f in figs:
         entry: dict = {"id": f.id, "kind": f.kind}
         if f.binding:
             entry["binding"] = f.binding
+        if f.cell:
+            entry["cell"] = f.cell
         if f.unverified:
             entry["unverified"] = True
         fp = fingerprints.get(f.binding) if f.binding else None
@@ -1991,6 +2016,8 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
         "git_sha": manifest.git_sha,
         "figures": figures,
     }
+    if bindings:
+        payload["bindings"] = bindings
     if contracts:
         payload["transform_contracts"] = {
             table: contracts[table]["status"] for table in sorted(contracts)

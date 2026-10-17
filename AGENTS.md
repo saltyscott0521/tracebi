@@ -418,8 +418,11 @@ Three rules that keep pages honest:
   the header. Offline, the page keeps the authored view unless a sealed
   grain can recompute `simple` aggregations and `ratio`; `period_end`
   does not recompute offline. Download buttons take `data-tb-label` for their text.
-  Every artifact also carries the receipt drawer (the floating Receipt
-  button); the manifest remains the receipt of record. Methodology ships
+  Every artifact also carries the receipt drawer (opened from the
+  masthead's Receipt button or verdict chip, a click on a value figure, a
+  chart tooltip's "Receipt →", or the footer's line): per figure its value,
+  definition, query in one line and fingerprint, raw detail behind "Raw";
+  the manifest remains the receipt of record. Methodology ships
   via ONE `<footer class="tb-footer" data-tb-methodology>` — the build
   appends the pipeline's stated methodology after your own prose, behind
   "How these numbers were made".
