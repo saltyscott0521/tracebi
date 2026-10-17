@@ -40,7 +40,7 @@ class TestTemplateFlag:
         assert cli.main(["init", str(proj)]) == 0
         assert (proj / "models" / "sample_model.yaml").is_file()
         assert (proj / "reports" / "sample_model" / "sample_dashboard"
-                / "template.html").is_file()
+                / "app.jsx").is_file()
         assert (proj / "pipelines" / "sample_model.yaml").is_file()
         assert (proj / "inputs" / "orders.csv").is_file()
         assert not (proj / "models" / "saas_model.yaml").exists()
@@ -59,7 +59,7 @@ class TestTemplateFlag:
         assert (proj / "models" / "saas_model.yaml").is_file()
         assert (proj / "transforms" / "saas_transform.py").is_file()
         assert (proj / "reports" / "saas_model" / "mrr_dashboard"
-                / "template.html").is_file()
+                / "app.jsx").is_file()
         assert (proj / "reports" / "saas_model" / "cohort_brief"
                 / "report.json").is_file()
         readme = (proj / "README.md").read_text(encoding="utf-8")
@@ -157,7 +157,7 @@ class TestSalesTemplateVerifies:
         assert (proj / "transforms" / "sales_pipeline_transform.py").is_file()
         assert (proj / "inputs" / "opportunities.csv").is_file()
         assert (proj / "reports" / "sales_pipeline_model" / "pipeline_dashboard"
-                / "template.html").is_file()
+                / "app.jsx").is_file()
         assert (proj / "reports" / "sales_pipeline_model" / "rep_scorecard"
                 / "report.json").is_file()
         readme = (proj / "README.md").read_text(encoding="utf-8")

@@ -876,6 +876,15 @@ class TemplatePackage:
         # Exploration is already stripped. A numeral left in the prose is a
         # number the build would ship with no figure claim.
         outside = lint_numeric_literals(page)
+        if self.app_source is not None:
+            from tracebi.reports import app_lane
+            typed = app_lane.lint_jsx_numbers(self.app_source)
+            if typed:
+                raise FigureError(
+                    f"Package '{self.name}': {typed} number"
+                    f"{'s are' if typed != 1 else ' is'} typed into app.jsx's text. "
+                    f"Bind each one with <Value binding=\"…\" cell=\"…\" />, or say "
+                    f"it in words. A hand-typed number cannot ship as if it were checked.")
         if outside:
             raise FigureError(
                 f"Package '{self.name}': {outside} numeric literal"

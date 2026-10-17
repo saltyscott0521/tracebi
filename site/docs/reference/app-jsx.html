@@ -264,6 +264,9 @@ records each one as a claim in the manifest, and refuses a binding or a column
 that does not exist. So <code>binding</code>, <code>cell</code>, <code>x</code> and <code>y</code> must be literal strings:
 <code>&lt;Kpi binding={b}&gt;</code> fails the build. Two kit figures of the same binding and
 column need an <code>id</code> each — an id is the receipt's address for one number.</p>
+<p>A number typed into the app's text (<code>&lt;p&gt;Up 1250 units&lt;/p&gt;</code>) fails the build,
+as it does in a <code>template.html</code>: bind it with <code>&lt;Value binding="…" cell="…" /&gt;</code>,
+or say it in words. A single digit ("Q3") is not a number here.</p>
 <p>Anything the app computes or draws itself — a Recharts chart, a sum, a number
 in your own markup — is the app's presentation, not a checked figure. The page's
 About block says so: <em>"This page is an app. The figures it shows through the

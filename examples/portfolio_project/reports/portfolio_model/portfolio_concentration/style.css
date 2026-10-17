@@ -1,2 +1,0 @@
-/* Thirteen issuers need more room than the default chart height. */
-#fig-share_chart, #fig-curve_chart { min-height: 420px; }

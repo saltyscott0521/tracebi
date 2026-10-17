@@ -838,6 +838,7 @@ def collect_state(package_dir: str, models: dict) -> dict:
     joins the exhibit feed and pins. Nothing is written except the
     on-demand workbench directory itself — dev-state only, no receipts.
     """
+    from tracebi.reports.app_lane import lint_jsx_numbers
     from tracebi.reports.embed import stamp
     from tracebi.reports.figures import (
         FigureError, extract_figures, lint_numeric_literals,
@@ -972,7 +973,8 @@ def collect_state(package_dir: str, models: dict) -> dict:
         "unused_bindings": unused,
         "lint": {
             "numeric_literals_outside_figures":
-                lint_numeric_literals(page) if page is not None else 0,
+                (lint_numeric_literals(page) if page is not None else 0)
+                + (lint_jsx_numbers(pkg.app_source) if pkg.app_source else 0),
         },
         "exhibits": exhibits,
         # What the person is pointing at right now ("this" in their message).

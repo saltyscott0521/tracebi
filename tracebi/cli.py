@@ -439,7 +439,7 @@ _INIT_SAMPLE_PIPELINE = _scaffold_text("init_sample_pipeline.yaml.txt")
 # spec` compiles one, but the scaffold must not teach the legacy form.)
 _INIT_SAMPLE_REPORT_JSON = _scaffold_text("init_sample_report.json")
 
-_INIT_SAMPLE_TEMPLATE_HTML = _scaffold_text("init_sample_template.html")
+_INIT_SAMPLE_APP_JSX = _scaffold_text("init_sample_app.jsx")
 
 # Claude Code and Cursor both read this shape. The command is `tracebi` on
 # PATH, run from the project folder — not an absolute path, so the file
@@ -611,8 +611,8 @@ def cmd_init(args: argparse.Namespace) -> int:
         target / "pipelines" / "sample_model.yaml": _INIT_SAMPLE_PIPELINE,
         target / "reports" / "sample_model" / "sample_dashboard" / "report.json":
             _INIT_SAMPLE_REPORT_JSON,
-        target / "reports" / "sample_model" / "sample_dashboard" / "template.html":
-            _INIT_SAMPLE_TEMPLATE_HTML,
+        target / "reports" / "sample_model" / "sample_dashboard" / "app.jsx":
+            _INIT_SAMPLE_APP_JSX,
         target / "reports" / "_style.md": _INIT_STYLE_MD,
         target / ".mcp.json": _INIT_MCP_JSON,
         target / ".cursor" / "mcp.json": _INIT_MCP_JSON,

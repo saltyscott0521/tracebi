@@ -86,6 +86,27 @@ def _strip_comments(src: str) -> str:
     return "".join(out)
 
 
+#: Text between a JSX tag's ">" and the next "<" ("=>" and "->" are code).
+_JSX_TEXT = re.compile(r"(?<![=\-])>([^<>{}]*)<")
+#: A number of two or more characters: a single digit ("Q3") is not one.
+_NUMERIC_TOKEN = re.compile(r"\d[\d,.]*\d")
+
+
+def lint_jsx_numbers(src: str) -> int:
+    """Count numbers typed into the app's JSX text, outside every kit figure.
+
+    The app's prose is compiled in the browser, so the page's own check never
+    sees it; this is the same rule for app.jsx: a number a reader might act on
+    is a <Value> (or a <Kpi>), never typed. A text run that reads like code
+    (``=``, ``;``, ``?``, ``&``, ``|``) is skipped rather than guessed at."""
+    count = 0
+    for m in _JSX_TEXT.finditer(_strip_comments(src)):
+        text = m.group(1)
+        if not any(ch in text for ch in "=;?&|"):
+            count += len(_NUMERIC_TOKEN.findall(text))
+    return count
+
+
 def scan_imports(src: str) -> dict[str, list[str]]:
     """``{module: [imported names]}`` — refusing anything outside the kit."""
     code = _strip_comments(src)

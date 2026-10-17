@@ -118,14 +118,25 @@ class TestScaffoldDemonstratesTheProduct:
         """The first page a new project renders must demonstrate the
         current product — the scaffold is a teaching surface, and round 2
         proved a scaffold teaching the old lane orphans every feature."""
-        from tracebi.cli import _INIT_SAMPLE_TEMPLATE_HTML
+        from tracebi.cli import _INIT_SAMPLE_APP_JSX
 
+        for marker in ("<Kpi lead", "<Value", "<Chart", "<Table", "<Filter",
+                       "<Search", "<Download", "<Built"):
+            assert marker in _INIT_SAMPLE_APP_JSX, (
+                f"the scaffold sample no longer demonstrates {marker}"
+            )
+
+    def test_the_showcase_carries_the_template_grammar(self):
+        """The HTML grammar (template.html) is taught by the showcase now that
+        the scaffold sample is an app."""
+        from pathlib import Path
+
+        showcase = (Path(__file__).parents[1] / "examples" / "portfolio_project" / "reports"
+                    / "portfolio_model" / "portfolio_showcase" / "template.html").read_text()
         for marker in ("data-tb-filter", "data-tb-search",
                        "data-tb-download", "data-tb-figure",
                        "data-tb-stage", "data-tb-methodology"):
-            assert marker in _INIT_SAMPLE_TEMPLATE_HTML, (
-                f"the scaffold sample no longer demonstrates {marker}"
-            )
+            assert marker in showcase, f"the showcase no longer demonstrates {marker}"
 
 
 class TestLargeDetailArtifactIsTaught:

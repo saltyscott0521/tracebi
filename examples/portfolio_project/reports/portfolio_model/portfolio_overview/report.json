@@ -1,6 +1,6 @@
 {
   "name": "portfolio_overview",
-  "description": "The default stack, end to end: a title block, a KPI strip with a lead, a wide chart beside a narrow ranking, and a table, all hydrated by the shipped runtime from the stamped bytes. No author CSS or JS.",
+  "description": "The book at a glance, as an app with top tabs: an overview with the KPI strip and the sector chart, the eight largest issuers, and the funds. Every number is a kit figure.",
   "data": {
     "kpis": {
       "model": "portfolio_model",

@@ -1,7 +1,7 @@
 {
   "name": "Portfolio Concentration",
   "author": "risk",
-  "description": "Issuer concentration \u2014 rank, % of total, and running cumulative % \u2014 expressed as governed window measures (rank/share/running). Every number is query-reproducible; this was once a report.py escape hatch and no longer needs to be.",
+  "description": "Issuer concentration as an app: rank, share of the book and cumulative share are governed window measures (rank, share, running) declared in the model, so every number re-runs with tracebi verify. The headline's top-five share is the fifth issuer's row, picked by a having clause.",
   "data": {
     "fifth": {
       "model": "portfolio_model",
@@ -72,38 +72,6 @@
             "desc": false
           }
         ]
-      }
-    }
-  },
-  "figures": {
-    "share_chart": {
-      "kind": "chart",
-      "binding": "concentration",
-      "chart_type": "barh",
-      "x": "dim_issuer.issuer",
-      "y": "fv_share",
-      "value_format": "percent"
-    },
-    "ranking": {
-      "kind": "table",
-      "binding": "concentration",
-      "columns": [
-        "fv_rank",
-        "dim_issuer.issuer",
-        "dim_issuer.sector",
-        "fair_value",
-        "fv_share",
-        "fv_cum_share"
-      ],
-      "labels": {
-        "fv_rank": "Rank",
-        "fv_share": "Share of book",
-        "fv_cum_share": "Cumulative share"
-      },
-      "formats": {
-        "fair_value": "currency0",
-        "fv_share": "percent",
-        "fv_cum_share": "percent"
       }
     }
   }

@@ -101,6 +101,10 @@ that does not exist. So `binding`, `cell`, `x` and `y` must be literal strings:
 `<Kpi binding={b}>` fails the build. Two kit figures of the same binding and
 column need an `id` each — an id is the receipt's address for one number.
 
+A number typed into the app's text (`<p>Up 1250 units</p>`) fails the build,
+as it does in a `template.html`: bind it with `<Value binding="…" cell="…" />`,
+or say it in words. A single digit ("Q3") is not a number here.
+
 Anything the app computes or draws itself — a Recharts chart, a sum, a number
 in your own markup — is the app's presentation, not a checked figure. The page's
 About block says so: *"This page is an app. The figures it shows through the

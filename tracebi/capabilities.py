@@ -316,7 +316,9 @@ def _presentation() -> dict:
             "claims": "Kit figures are claims: binding, cell, x and y must be literal "
                       "strings, and the build refuses a binding or column that does not "
                       "exist. A number the app computes or draws itself is presentation, "
-                      "not a checked figure; the page's About block says so.",
+                      "not a checked figure; the page's About block says so. A number "
+                      "typed into the app's text (two or more digits) fails the build, as "
+                      "in template.html: bind it with <Value binding cell />.",
             "styling": "Tailwind classes, with the TraceBi tokens as colours (bg-page, "
                        "bg-card, bg-surface, text-ink, text-muted, border-rule, bg-accent "
                        "with text-on-accent, "

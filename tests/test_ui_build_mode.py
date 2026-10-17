@@ -50,7 +50,7 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
     assert done.returncode == 0, done.stderr or done.stdout
 
     base, server, log = _serve(project, tmp_path / "server.log", dev_mode=True)
-    report = "saas_model/mrr_dashboard"
+    report = "saas_model/cohort_brief"
     api = f"{base}/api/reports/{report}/workbench/pointing"
 
     def pointing():
@@ -98,9 +98,9 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
 
             # The pane is a live view of the agent's work: it edits the package and
             # the report in the pane changes on its own, with what changed listed.
-            template = project / "reports" / "saas_model" / "mrr_dashboard" / "template.html"
+            template = project / "reports" / "saas_model" / "cohort_brief" / "template.html"
             template.write_text(template.read_text()
-                .replace("Scale leads ending MRR", "Edited while you watch")
+                .replace("The earliest cohort still holds the most ending MRR", "Edited while you watch")
                 .replace('data-tb-format="currency0" id="kpi-mrr"',
                          'data-tb-format="currency2" id="kpi-mrr"'))
             frame.get_by_role("heading", name="Edited while you watch").wait_for(timeout=15_000)
@@ -110,7 +110,7 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
 
             # Flip back to the report as it was before the edit, then to the latest.
             page.locator(".wb-version", has_text="Opened").click()
-            frame.get_by_role("heading", name="Scale leads ending MRR").wait_for()
+            frame.get_by_role("heading", name="The earliest cohort still holds the most ending MRR").wait_for()
             page.get_by_role("button", name="Back to latest").click()
             frame.get_by_role("heading", name="Edited while you watch").wait_for()
             frame.locator("#kpi-mrr").wait_for()
@@ -163,13 +163,13 @@ def test_build_mode_is_absent_unless_the_server_is_in_dev_mode(tmp_path: Path) -
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/m/saas_model/reports?r=saas_model/mrr_dashboard&open=1")
+            page.goto(f"{base}/m/saas_model/reports?r=saas_model/cohort_brief&open=1")
             page.get_by_role("button", name="Share").wait_for()   # the page is up, and has asked what the server is
             page.wait_for_load_state("networkidle")
             assert page.get_by_role("button", name="Build", exact=True).count() == 0
             browser.close()
         request = urllib.request.Request(
-            f"{base}/api/reports/saas_model/mrr_dashboard/workbench/pointing",
+            f"{base}/api/reports/saas_model/cohort_brief/workbench/pointing",
             data=b'{"kind": "figure"}', method="POST",
             headers={"Content-Type": "application/json"})
         with pytest.raises(urllib.error.HTTPError) as refused:
@@ -199,7 +199,7 @@ def test_the_dev_app_url_opens_in_build_mode(tmp_path: Path) -> None:
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/reports?r=saas_model%2Fmrr_dashboard&build=1")
+            page.goto(f"{base}/reports?r=saas_model%2Fcohort_brief&build=1")
             page.locator(".wb-version", has_text="Opened").wait_for()
             assert page.get_by_role("button", name="Build", exact=True).get_attribute("aria-pressed") == "true"
             browser.close()
@@ -226,13 +226,13 @@ def test_build_mode_shows_the_data_and_checks_and_the_project_feed(tmp_path: Pat
     assert done.returncode == 0, done.stderr or done.stdout
 
     base, server, log = _serve(project, tmp_path / "server.log", dev_mode=True)
-    state_url = f"{base}/api/reports/saas_model/mrr_dashboard/workbench/state"
+    state_url = f"{base}/api/reports/saas_model/cohort_brief/workbench/state"
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)
             page = browser.new_page()
             page.set_default_timeout(60_000)
-            page.goto(f"{base}/reports?r=saas_model%2Fmrr_dashboard&build=1")
+            page.goto(f"{base}/reports?r=saas_model%2Fcohort_brief&build=1")
 
             def section(title: str):
                 return page.locator(".wb-section", has=page.locator(

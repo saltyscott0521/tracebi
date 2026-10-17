@@ -354,9 +354,9 @@ def test_the_build_panel_reads_the_data_and_the_checks(served, monkeypatch, scaf
     spec["data"]["spare"] = {"model": "sample_model",
                              "query": {"fact": "fact_orders", "measures": ["revenue"]}}
     (pkg / "report.json").write_text(json.dumps(spec))
-    template = (pkg / "template.html").read_text()
-    (pkg / "template.html").write_text(template.replace(
-        "Prose numbers can be bound too; never type one in.", "We took 1250 orders."))
+    app = (pkg / "app.jsx").read_text()
+    (pkg / "app.jsx").write_text(app.replace(
+        "Revenue, orders and units across every region.", "We took 1250 orders."))
     # report.py runs to describe the report; its show() must not reach the project
     # feed, which a live dev server keeps open for scripts.
     (pkg / "report.py").write_text(
@@ -696,7 +696,7 @@ def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, s
         return got["structuredContent"]
 
     path = "sample_model/sample_dashboard"
-    published = scaffolded / "reports" / path / "template.html"
+    published = scaffolded / "reports" / path / "app.jsx"
     route = main.serve_gateway("s3cret")
     try:
         with served:
@@ -705,11 +705,11 @@ def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, s
             assert started["ok"], started
             assert started["url"] == f"/drafts/agent/reports/{path}"
 
-            html = call(session, "read_draft", kind="reports", path=path)["files"]["template.html"]
+            html = call(session, "read_draft", kind="reports", path=path)["files"]["app.jsx"]
             assert html == published.read_text(encoding="utf-8")
-            changed = html + "\n<p>a note added in the draft</p>\n"
+            changed = html + "\n// a note added in the draft\n"
             assert call(session, "write_draft_file", kind="reports", path=path,
-                        file="template.html", content=changed)["ok"]
+                        file="app.jsx", content=changed)["ok"]
             assert call(session, "preview_draft", kind="reports", path=path)["ok"]
             refused = call(session, "write_draft_file", kind="reports", path=path,
                            file="report.py", content="print(1)")
@@ -739,7 +739,7 @@ def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, s
             assert published.read_text(encoding="utf-8") == changed
             assert (published.parent / "script.js").read_text(encoding="utf-8") == script
             kept = scaffolded / ".tracebi" / "history" / "reports" / path / done["version"]
-            assert (kept / "template.html").read_text(encoding="utf-8") == html
+            assert (kept / "app.jsx").read_text(encoding="utf-8") == html
 
             rows = served.get("/api/runs", params={"kind": "publish"}).json()
             assert [(r["target"], r["actor"]) for r in rows] == [(f"reports/{path}", "mcp:agent")]
@@ -756,7 +756,7 @@ def test_a_person_starts_edits_previews_and_publishes_a_draft_in_the_app(served,
     puts it in the library. Python is refused with the laptop line."""
     c = served
     path = "sample_model/sample_dashboard"
-    published = scaffolded / "reports" / path / "template.html"
+    published = scaffolded / "reports" / path / "app.jsx"
     before = published.read_text(encoding="utf-8")
 
     started = c.post("/api/drafts", json={"kind": "reports", "path": path, "from_published": True})
@@ -772,12 +772,12 @@ def test_a_person_starts_edits_previews_and_publishes_a_draft_in_the_app(served,
     assert again.status_code == 200 and again.json()["created"] is False
     assert again.json()["updated"] == draft["updated"]
 
-    changed = before + "\n<p>edited in the app</p>\n"
-    saved = c.put(f"{base}/files/template.html", json={"content": changed})
+    changed = before + "\n// edited in the app\n"
+    saved = c.put(f"{base}/files/app.jsx", json={"content": changed})
     assert saved.status_code == 200, saved.text
     assert saved.json()["differs_from_published"] is True
     assert saved.json()["version"] == c.get(f"{base}/version").json()["version"] != version
-    assert c.get(f"{base}/files").json()["files"]["template.html"] == changed
+    assert c.get(f"{base}/files").json()["files"]["app.jsx"] == changed
     preview = c.get(f"{base}/preview")
     assert preview.status_code == 200 and "edited in the app" in preview.text
     assert published.read_text(encoding="utf-8") == before

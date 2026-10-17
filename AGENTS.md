@@ -214,8 +214,8 @@ class="tb-pullstat">`, a table, "What to do", and the methodology. Someone
 who *works in* it — checks it daily, switches views, drills in — gets a
 **dashboard**: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with the
 title, a KPI strip with a lead, a chart beside its ranking and a filterable
-detail; `--html` writes it as `template.html` (that is what `tracebi init`'s
-sample is: `brief`, then `.tb-cols-2-1`). Other report layouts:
+detail, as `tracebi init`'s sample is; `--html` writes it as `template.html`
+(`brief`, then `.tb-cols-2-1`). Other report layouts:
 `new-report --layout brief` (one finding — `.tb-lede`, a few `.tb-kpi`
 cards, one chart in one `.tb-card`) and `--layout tabbed` (the same header,
 then `.tb-tabs` / `data-tb-tab`). Ask only when a person is in the loop and

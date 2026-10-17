@@ -1,18 +1,16 @@
-/* The book's house style, over the TraceBi stack: a deep-ink accent, a warm
- * paper ground, and the script-drawn issuer table set like the others. */
-:root {
-  --tb-accent: #1f4e79;
-  --tb-accent-text: #1f4e79;
-  --tb-bg: #fbfaf7;
-}
+/* The book's house style, over the TraceBi stack: a deep-ink accent (the hero,
+ * the section marks, the pull-stat) and the script-drawn issuer table set like
+ * the others. */
+:root { --tb-accent: #1f4e79; --tb-accent-text: #1f4e79; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --tb-accent: #8bb4e0; --tb-accent-text: #8bb4e0; --tb-bg: #15171b; }
+  :root:not([data-theme="light"]) { --tb-accent: #8bb4e0; --tb-accent-text: #8bb4e0; }
 }
-:root[data-theme="dark"] { --tb-accent: #8bb4e0; --tb-accent-text: #8bb4e0; --tb-bg: #15171b; }
-body:has(.book) { background: var(--tb-bg); }
+:root[data-theme="dark"] { --tb-accent: #8bb4e0; --tb-accent-text: #8bb4e0; }
 
-.book-table { width: 100%; border-collapse: collapse; font-family: var(--tb-font); font-size: 0.86rem; }
-.book-table th, .book-table td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--tb-rule); text-align: left; }
-.book-table th { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--tb-muted); }
+.book-table { width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--tb-font);
+  font-size: 0.86rem; border: 1px solid var(--tb-rule); border-radius: 12px; overflow: hidden; }
+.book-table th, .book-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--tb-rule); text-align: left; }
+.book-table th { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--tb-muted); background: var(--tb-surface); }
 .book-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .book-table tbody tr:last-child td { border-bottom: 0; }

@@ -57,11 +57,11 @@ def _project(tmp_path: Path) -> Path:
     done = subprocess.run([sys.executable, "run_workflow.py"], cwd=project,
                           capture_output=True, text=True, check=False)
     assert done.returncode == 0, done.stderr or done.stdout
-    package = project / "reports" / "saas_model" / "mrr_dashboard"
+    package = project / "reports" / "saas_model" / "cohort_brief"
     (package / "script.js").write_text(_PROBE, encoding="utf-8")
     template = package / "template.html"
     template.write_text(template.read_text(encoding="utf-8").replace(
-        "</main>", '<button data-tb-download data-tb-binding="kpis" id="csv">CSV</button></main>', 1),
+        "</article>", '<button data-tb-download data-tb-binding="kpis" id="csv">CSV</button></article>', 1),
         encoding="utf-8")
     return project
 
@@ -82,7 +82,7 @@ def test_a_report_script_cannot_reach_the_app_it_is_shown_in(tmp_path: Path) -> 
 
     project = _project(tmp_path)
     base, server, log = _serve(project, tmp_path / "server.log", dev_mode=False)
-    report = "saas_model/mrr_dashboard"
+    report = "saas_model/cohort_brief"
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)

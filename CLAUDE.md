@@ -562,7 +562,7 @@ not done when it works — it is done when an agent WOULD use it. Every
 authoring-surface feature must land with all three, in the same change:
 (1) the generated vocabulary documents it (`tracebi/capabilities.py` — the
 `tracebi context` / MCP `get_context` payload); (2) the scaffold or the
-showcase demonstrates it (`_INIT_SAMPLE_TEMPLATE_HTML` in `cli.py`, or
+showcase demonstrates it (`_INIT_SAMPLE_APP_JSX` in `cli.py`, or
 `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`); (3) both agent
 guides name it (`AGENTS.md` and `_INIT_AGENTS_MD` in `cli.py`).
 `tests/test_agent_guides.py` enforces (1)↔(3) mechanically — every

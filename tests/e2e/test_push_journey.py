@@ -100,8 +100,8 @@ def test_a_laptop_pushes_drafts_and_code_an_admin_approves(laptop):
     copy, server, app, as_person = laptop
     alice = as_person("alice")
     pkg = copy / "reports" / "sample_model" / "sample_dashboard"
-    (pkg / "template.html").write_text(
-        (pkg / "template.html").read_text().replace("</h1>", " (pushed)</h1>", 1))
+    (pkg / "app.jsx").write_text(
+        (pkg / "app.jsx").read_text().replace("</h1>", " (pushed)</h1>", 1))
     model = copy / "models" / "sample_model.yaml"
     model.write_text(model.read_text() + "# reviewed on a laptop\n")
     transform = copy / "transforms" / "sample_transform.py"
@@ -128,7 +128,7 @@ def test_a_laptop_pushes_drafts_and_code_an_admin_approves(laptop):
     # The drafts are alice's; nothing is published yet.
     drafts = {(d["kind"], d["path"]): d for d in app.get("/api/drafts", headers=alice).json()["drafts"]}
     assert set(drafts) == {("reports", "sample_model/sample_dashboard"), ("models", "sample_model")}
-    assert "(pushed)" not in (server / "reports/sample_model/sample_dashboard/template.html").read_text()
+    assert "(pushed)" not in (server / "reports/sample_model/sample_dashboard/app.jsx").read_text()
     assert "from the laptop" not in (server / "transforms/sample_transform.py").read_text()
 
     # Alice sees her request and its diff, and cannot approve it.

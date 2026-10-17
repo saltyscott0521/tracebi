@@ -257,6 +257,12 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     code, out = run_cli("report", "build", "regions_app")
     assert code != 0 and "kpi" in out
 
+    # A number typed into the app's text is refused, as in a template.html.
+    (pkg / "app.jsx").write_text(_APP_JSX.replace("</nav>", "<p>Up 1250 units.</p></nav>", 1),
+                                 encoding="utf-8")
+    code, out = run_cli("report", "build", "regions_app")
+    assert code != 0 and "typed into app.jsx" in out, out
+
 
 def test_dashboards_by_job(scaffolded, tmp_path, monkeypatch):
     """--job picks what a dashboard is for, and each one builds and verifies.

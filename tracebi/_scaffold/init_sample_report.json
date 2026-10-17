@@ -1,12 +1,33 @@
 {
   "name": "Sample Dashboard",
   "author": "tracebi init",
-  "description": "Every figure claims a stamped binding. Edit template.html to reshape the page; nothing re-runs the pandas.",
+  "description": "Every figure claims a stamped binding. Edit app.jsx to reshape the page; nothing re-runs the pandas.",
   "measures": {
     "sample_model": {
-      "big_orders": {"column": "revenue", "agg": "sum", "filters": {"qty": {"gte": 10}}, "format": "currency0"},
-      "small_orders": {"column": "revenue", "agg": "sum", "filters": {"qty": {"lt": 10}}, "format": "currency0"},
-      "big_minus_small": {"measure_expr": "big_orders - small_orders", "format": "currency0"}
+      "big_orders": {
+        "column": "revenue",
+        "agg": "sum",
+        "filters": {
+          "qty": {
+            "gte": 10
+          }
+        },
+        "format": "currency0"
+      },
+      "small_orders": {
+        "column": "revenue",
+        "agg": "sum",
+        "filters": {
+          "qty": {
+            "lt": 10
+          }
+        },
+        "format": "currency0"
+      },
+      "big_minus_small": {
+        "measure_expr": "big_orders - small_orders",
+        "format": "currency0"
+      }
     }
   },
   "data": {
@@ -14,20 +35,37 @@
       "model": "sample_model",
       "query": {
         "fact": "fact_orders",
-        "measures": ["big_minus_small", "big_orders", "small_orders"]
+        "measures": [
+          "big_minus_small",
+          "big_orders",
+          "small_orders"
+        ]
       }
     },
     "kpis": {
       "model": "sample_model",
-      "query": { "fact": "fact_orders", "measures": ["revenue", "orders", "units"] }
+      "query": {
+        "fact": "fact_orders",
+        "measures": [
+          "revenue",
+          "orders",
+          "units"
+        ]
+      }
     },
     "top_region": {
       "model": "sample_model",
       "query": {
         "fact": "fact_orders",
-        "measures": ["revenue"],
-        "dimensions": ["dim_region.region"],
-        "order_by": ["-revenue"],
+        "measures": [
+          "revenue"
+        ],
+        "dimensions": [
+          "dim_region.region"
+        ],
+        "order_by": [
+          "-revenue"
+        ],
         "limit": 1
       }
     },
@@ -35,19 +73,37 @@
       "model": "sample_model",
       "query": {
         "fact": "fact_orders",
-        "measures": ["revenue"],
-        "dimensions": ["dim_region.region"],
-        "having": { "revenue": { "gte": 1000 } },
-        "order_by": ["-revenue"]
+        "measures": [
+          "revenue"
+        ],
+        "dimensions": [
+          "dim_region.region"
+        ],
+        "having": {
+          "revenue": {
+            "gte": 1000
+          }
+        },
+        "order_by": [
+          "-revenue"
+        ]
       }
     },
     "region_detail": {
       "model": "sample_model",
       "query": {
         "fact": "fact_orders",
-        "measures": ["revenue", "orders", "units"],
-        "dimensions": ["dim_region.region"],
-        "order_by": ["-revenue"]
+        "measures": [
+          "revenue",
+          "orders",
+          "units"
+        ],
+        "dimensions": [
+          "dim_region.region"
+        ],
+        "order_by": [
+          "-revenue"
+        ]
       }
     }
   }

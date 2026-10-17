@@ -31,6 +31,27 @@
           id="val-cohort-customers">—</span>
     customers still active.</p>
 
+  <div class="tb-grid">
+    <div class="tb-kpi tb-kpi--lead" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="ending_mrr" data-tb-format="currency0" id="kpi-mrr">
+      <span class="tb-kpi-label">Ending MRR</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">latest month, all cohorts</span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="customers" data-tb-format="comma" id="kpi-customers">
+      <span class="tb-kpi-label">Customers</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">logos active that month</span>
+    </div>
+    <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
+         data-tb-cell="logo_churn" data-tb-format="percent" id="kpi-churn">
+      <span class="tb-kpi-label">Logo churn</span>
+      <span class="tb-kpi-value"></span>
+      <span class="tb-kpi-context">lost / starting logos, that month</span>
+    </div>
+  </div>
+
   <h2>Each later cohort is about half as large</h2>
   <p>Read the cohorts in signup order: the first bar stands alone, and the three
     after it sit level with each other.</p>
@@ -58,13 +79,6 @@
          data-tb-formats="ending_mrr=currency0; customers=comma; logo_churn=percent"
          data-tb-bars="ending_mrr"
          id="tbl-cohort"></table>
-
-  <aside class="tb-pullstat">
-    <span class="tb-pullstat-value" data-tb-figure="value" data-tb-binding="kpis"
-          data-tb-cell="logo_churn" data-tb-format="percent" id="pull-churn">—</span>
-    <span class="tb-pullstat-text">Logo churn across the whole book that month:
-      logos lost over logos at its start.</span>
-  </aside>
 
   <h2>Month by month</h2>
   <p>Each row is that month's own period-end. Logo churn is recomputed inside

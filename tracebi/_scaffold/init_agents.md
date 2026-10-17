@@ -131,9 +131,9 @@ Worked example — the framework builds the figure, you place it. Declare it in
 A declared figure the template never places fails `publish_draft` and
 `preview_draft` alike.
 
-`reports/sample_model/sample_dashboard/` is the working example of the
-hand-written form — a page of ordinary HTML whose figures each name a binding
-from `report.json`:
+`tracebi new-report "<Name>"` writes a working example of the hand-written
+form (`reports/sample_model/sample_dashboard/`, the sample, is the app form) —
+a page of ordinary HTML whose figures each name a binding from `report.json`:
 
 - `data-tb-figure="value|chart|table|custom"` + `data-tb-binding="<name>"` —
   the claim. Values add `data-tb-cell="<column>"` and optionally
@@ -246,7 +246,7 @@ from `report.json`:
   finding — `.tb-lede`, a few `.tb-kpi` cards, one chart in one `.tb-card`. A page someone
   *works in* is a dashboard: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with a KPI
   strip, a chart beside its ranking and a filterable detail; `--html` writes it as
-  `template.html` (`brief` plus `.tb-cols-2-1`, as `tracebi init`'s sample). A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
+  `template.html` (`brief` plus `.tb-cols-2-1`); `tracebi init`'s sample is an `app.jsx`. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
   number `.tb-kpi--lead`, and give a KPI with a trend a `class="tb-spark"` line or area
   chart (the shape alone, no axes). `.tb-cols-2-1` / `.tb-cols-1-2` put a wide panel
   beside a narrow one.

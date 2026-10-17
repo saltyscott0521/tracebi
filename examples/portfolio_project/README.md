@@ -15,8 +15,8 @@ it is the worked version of that scaffold with real cleaning to do.
 ③  REPORT      reports/portfolio_model/portfolio_dashboard/       one-screen app, every figure a live query
                reports/portfolio_model/portfolio_desk/            an app people work in (app.jsx)
                reports/portfolio_model/portfolio_book/            an editorial report, its own CSS
-               reports/portfolio_model/portfolio_overview/        default-component runtime package
-               reports/portfolio_model/portfolio_concentration/   governed window measures
+               reports/portfolio_model/portfolio_overview/        an app with top tabs
+               reports/portfolio_model/portfolio_concentration/   an app over governed window measures
                reports/portfolio_model/portfolio_showcase/        kitchen-sink demo, every figure kind
                reports/housing_model/affordability/               public data, a one-number answer
                pipelines/<model>.py                               one per model: transform → build
@@ -62,10 +62,9 @@ Under `reports/portfolio_model/`:
   prose is a bound figure, and `script.js` draws the issuer table from the same
   fingerprinted rows. One self-contained file, checkable offline with
   `tracebi verify --file`.
-- `portfolio_model/portfolio_overview/` — a default-component package: a title
-  block, a KPI strip with a lead, a wide chart beside a narrow ranking and a
-  table, hydrated by the shipped runtime from the stamped bytes, no author CSS
-  or JS at all.
+- `portfolio_model/portfolio_overview/` — the book at a glance, an app with
+  top tabs (Overview, Issuers, Funds): the third app shape beside
+  `portfolio_dashboard` (one screen) and `portfolio_desk` (a sidebar).
 - `portfolio_model/portfolio_concentration/` — rank, share of total and running share as
   governed window measures; the headline's "top five hold 55.6%" is the fifth
   issuer's row, picked by a `having` clause. It was once a `report.py` escape

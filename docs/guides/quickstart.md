@@ -118,7 +118,7 @@ Edit a number inside the HTML by hand and run it again: it reports
 tracebi dev sample_model/sample_dashboard
 ```
 
-The live loop, in the web app. Edit `reports/sample_model/sample_dashboard/template.html` and the page
+The live loop, in the web app. Edit `reports/sample_model/sample_dashboard/app.jsx` and the page
 reloads. The panel beside the report shows what changed on each save, the data
 each figure is bound to, and checks on what it has earned.
 
