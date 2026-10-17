@@ -158,7 +158,7 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `data-tb-totals="<binding>"` adds a totals row from a one-row binding (the
   same query with no dimensions — the model computes each total).
   `data-tb-sort` makes a table's headers click-to-sort, `data-tb-bars="col"`
-  draws a proportional bar behind a numeric column, and
+  draws a thin proportional bar after each number in a column, and
   `data-tb-direction="up-good"` (or `"down-good"`) marks a bound change on a
   value figure up or down, good or bad — on a KPI, as `<span class="tb-kpi-delta"
   data-tb-figure="value" … data-tb-direction="up-good">` leading its

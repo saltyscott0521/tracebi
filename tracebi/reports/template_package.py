@@ -314,6 +314,38 @@ def _ssr_direction(ds, fig) -> str:
 _SSR_MAX_ROWS = 1000
 
 
+def _ssr_bar_scales(df, want, cols, numeric) -> dict:
+    """The runtime's barScales: for each data-tb-bars column that is shown and
+    numeric, the largest magnitude over ALL rows and whether any is negative."""
+    out = {}
+    for col in (c.strip() for c in (want or "").split(",")):
+        if col not in cols or col not in numeric:
+            continue
+        vals = pd.to_numeric(df[col], errors="coerce").dropna()
+        top = float(vals.abs().max()) if len(vals) else 0.0
+        if top > 0:
+            out[col] = (top, bool((vals < 0).any()))
+    return out
+
+
+def _ssr_bar(raw, scale) -> str:
+    """The runtime's paintBar as markup: a lane after the number whose bar's
+    left/width are the same percentages (the stamped value never changes)."""
+    if scale is None or raw is None or pd.isna(raw):
+        return ""
+    top, neg = scale
+    n = float(raw)
+    span = (50 if neg else 100) * abs(n) / top
+    zero = 50 if neg else 0
+
+    def pct(x):  # JS Number#toString for the values this produces
+        return f"{int(x)}%" if float(x).is_integer() else f"{x!r}%"
+    return ('<span class="tb-bar-track" aria-hidden="true"><span class="tb-bar'
+            + (" tb-bar--neg" if n < 0 else "")
+            + f'" aria-hidden="true" style="left:{pct(zero - span if n < 0 else zero)};'
+            f'width:{pct(span)}"></span></span>')
+
+
 def _ssr_cell(raw) -> str:
     """A table cell's unformatted text — the runtime shows the raw value for a
     non-numeric or unformatted (identity) column."""
@@ -1223,10 +1255,16 @@ class TemplatePackage:
         formats.update({c: v for c, v in
                         parse_column_map(fig.attrs.get("data-tb-formats")).items()
                         if c in numeric})
+        bars = _ssr_bar_scales(df, fig.attrs.get("data-tb-bars"), cols, numeric)
+
+        def cls(c, base=""):
+            names = " ".join(n for n in ("tb-bar-cell" if c in bars else "", base) if n)
+            return f' class="{names}"' if names else ""
+
         head = []
         for c in cols:
-            cls = ' class="tb-num"' if c in numeric else ""
-            head.append(f"<th{cls}>{_html.escape(labels.get(c) or humanise(c))}</th>")
+            head.append(f"<th{cls(c, 'tb-num' if c in numeric else '')}>"
+                        f"{_html.escape(labels.get(c) or humanise(c))}</th>")
         thead = "<thead><tr>" + "".join(head) + "</tr></thead>"
         if df.empty:
             # An empty binding says so, rather than showing a header over a void
@@ -1248,7 +1286,8 @@ class TemplatePackage:
                 if c in numeric:
                     fmt = formats.get(c)
                     text = _ssr_format(raw, fmt) if fmt else _ssr_cell(raw)
-                    cells.append(f'<td class="tb-num">{_html.escape(text)}</td>')
+                    cells.append(f'<td{cls(c, "tb-num")}>{_html.escape(text)}'
+                                 f'{_ssr_bar(raw, bars.get(c))}</td>')
                 else:
                     cells.append(f"<td>{_html.escape(_ssr_cell(raw))}</td>")
             body.append("<tr>" + "".join(cells) + "</tr>")
@@ -1267,11 +1306,11 @@ class TemplatePackage:
                     if c in tf.columns:
                         fmt = formats.get(c)
                         text = _ssr_format(row[c], fmt) if fmt else _ssr_cell(row[c])
-                        cells.append(f'<td class="tb-num">{_html.escape(text)}</td>')
+                        cells.append(f'<td{cls(c, "tb-num")}>{_html.escape(text)}</td>')
                     elif i == 0 and c not in numeric:
-                        cells.append("<td>Total</td>")
+                        cells.append(f"<td{cls(c)}>Total</td>")
                     else:
-                        cells.append("<td></td>")
+                        cells.append(f"<td{cls(c)}></td>")
                 tfoot = ('<tfoot><tr class="tb-total">' + "".join(cells)
                          + "</tr></tfoot>")
         return (thead + "<tbody data-tb-hydrate>" + "".join(body) + "</tbody>"

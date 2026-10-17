@@ -110,8 +110,9 @@ ascending, then descending, then back to the query's own order. Blanks sort
 last, and `aria-sort` tells screen readers the current order. Sorting only
 reorders stamped rows; the totals row stays.
 
-`data-tb-bars="col, col2"` — a quiet bar behind each value in the named numeric
-columns, proportional to the value. Zero is the left edge; when a column holds
+`data-tb-bars="col, col2"` — a thin bar after each value in the named numeric
+columns, in a lane of its own inside the cell, proportional to the value; the
+number stays right-aligned and the bar follows its row on sort and filter. Zero is the left edge; when a column holds
 negative values, zero moves to the middle so neither side is exaggerated. The
 scale covers every stamped row, so filtering never rescales it. A column that
 isn't numeric fails the build.

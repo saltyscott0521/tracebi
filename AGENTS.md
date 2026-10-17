@@ -199,8 +199,8 @@ declare the same query with no dimensions, so the model computes each total
 and never the browser). Three reader aids decorate or reorder stamped values
 and compute nothing: `data-tb-sort` on a table makes its headers click-to-sort
 (ascending, descending, back to the query's order); `data-tb-bars="col, col2"`
-draws a proportional bar behind each named numeric cell (zero at the left, or
-centered when the column has negatives); and `data-tb-direction="up-good"` or
+draws a thin proportional bar after each named numeric cell (zero at the left,
+or centered when the column has negatives); and `data-tb-direction="up-good"` or
 `"down-good"` on a value figure marks a bound change up or down, good or bad,
 from its sign — on a KPI, as `<span class="tb-kpi-delta" data-tb-figure="value"
 … data-tb-direction="up-good">` leading its `.tb-kpi-context` line. Add `tb-table--freeze` to keep a wide table's first column in

@@ -184,8 +184,9 @@ the rows shown.</p>
 ascending, then descending, then back to the query's own order. Blanks sort
 last, and <code>aria-sort</code> tells screen readers the current order. Sorting only
 reorders stamped rows; the totals row stays.</p>
-<p><code>data-tb-bars="col, col2"</code> — a quiet bar behind each value in the named numeric
-columns, proportional to the value. Zero is the left edge; when a column holds
+<p><code>data-tb-bars="col, col2"</code> — a thin bar after each value in the named numeric
+columns, in a lane of its own inside the cell, proportional to the value; the
+number stays right-aligned and the bar follows its row on sort and filter. Zero is the left edge; when a column holds
 negative values, zero moves to the middle so neither side is exaggerated. The
 scale covers every stamped row, so filtering never rescales it. A column that
 isn't numeric fails the build.</p>

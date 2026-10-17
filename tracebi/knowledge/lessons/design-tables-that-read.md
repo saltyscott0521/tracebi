@@ -37,7 +37,7 @@ so you don't undo it.
   turns the headers into sort buttons (ascending, descending, back to the
   query's order), so reordering never means a second binding. The query's
   `order_by` stays the default the page opens with. `data-tb-bars="fair_value"`
-  draws a quiet bar behind each value in that column, so the biggest positions
+  draws a thin bar after each value in that column, so the biggest positions
   stand out without a separate chart. The bars start at zero, and zero moves to
   the middle when the column has negatives. On a wide table,
   `class="tb-table--freeze"` keeps the first column in view while the rest

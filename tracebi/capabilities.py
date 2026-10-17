@@ -480,8 +480,8 @@ def _presentation() -> dict:
                             "descending, then back to the query's order. It "
                             "reorders stamped rows and computes nothing; the "
                             "query's order_by stays the default",
-            "data-tb-bars": "table figures: \"col, col2\" — a quiet bar "
-                            "behind each named numeric cell, proportional to "
+            "data-tb-bars": "table figures: \"col, col2\" — a thin bar "
+                            "after each named numeric cell, in its own lane, proportional to "
                             "the stamped value (zero at the left edge, or in "
                             "the middle when the column has negatives; scaled "
                             "over all rows, not the visible window, so a "

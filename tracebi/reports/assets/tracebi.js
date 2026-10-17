@@ -705,7 +705,7 @@
   /* data-tb-totals names a one-row binding the model computed (the table's
    * query with no dimensions): its values fill a <tfoot> row. Nothing is
    * summed here — a ratio's total is the model's ratio of totals. */
-  function totalsRow(el, cols, numeric, formats) {
+  function totalsRow(el, cols, numeric, formats, bars) {
     var name = attr(el, "data-tb-totals");
     if (!name) return null;
     var old = el.querySelector("tfoot");
@@ -719,8 +719,9 @@
     tr.className = "tb-total";
     cols.forEach(function (col, i) {
       var td = document.createElement("td");
+      if (bars[col]) td.className = "tb-bar-cell";
       if (block.cols.indexOf(col) !== -1) {
-        td.className = "tb-num";
+        addClass(td, "tb-num");
         var n = toNum(row[col]), text = row[col] === undefined ? "" : row[col];
         var fmt = formats[col] || deriveFormat(block.rows, col);
         if (n !== null && fmt) {
@@ -785,7 +786,7 @@
     });
   }
 
-  /* data-tb-bars: a bar behind each cell of the named numeric columns,
+  /* data-tb-bars: a thin bar after each cell of the named numeric columns,
    * proportional to the stamped value. Zero is the left edge; a column with
    * negatives gets its zero in the middle so neither side is exaggerated.
    * The scale comes from ALL rows of the current result (the stamped block,
@@ -816,14 +817,13 @@
     var zero = scale.neg ? 50 : 0;
     bar.style.left = (n < 0 ? zero - span : zero) + "%";
     bar.style.width = span + "%";
-    /* The bar's percentages are of a track inset by the cell's padding, so
-     * the longest bar ends where the number does, not at the cell's edge. */
+    /* The bar's percentages are of a fixed-width lane after the number. */
     var track = document.createElement("span");
     track.className = "tb-bar-track";
     track.setAttribute("aria-hidden", "true");
     track.appendChild(bar);
     addClass(td, "tb-bar-cell");
-    td.insertBefore(track, td.firstChild);
+    td.appendChild(track);
   }
 
   /* Above this many rows the scroll box paints only the visible window.
@@ -939,8 +939,9 @@
       var td = document.createElement("td");
       var raw = r[col], text = (raw === undefined) ? "" : raw;
       var n = null;
+      if (bars && bars[col]) td.className = "tb-bar-cell";
       if (entry.numeric[col]) {
-        td.className = "tb-num";
+        addClass(td, "tb-num");
         n = toNum(raw);
         if (n !== null && entry.formats[col]) {
           var formatted = applyNamedFormat(n, entry.formats[col]);
@@ -1214,7 +1215,13 @@
                       numeric: numeric, formats: formats,
                       rowCount: rows.length, sort: null,
                       bars: barScales(el, rows, cols, numeric) };
-        entry.tfoot = totalsRow(el, cols, numeric, formats);
+        /* A bar column's header keeps its lane empty, so it sits over the
+         * numbers (an author's or the server's thead as well). */
+        var heads = el.querySelectorAll("thead th");
+        cols.forEach(function (col, i) {
+          if (entry.bars[col] && heads[i]) addClass(heads[i], "tb-bar-cell");
+        });
+        entry.tfoot = totalsRow(el, cols, numeric, formats, entry.bars);
         hydrateSort(entry);
         _tables.push(entry);
         renderBody(entry, filteredRows(binding));

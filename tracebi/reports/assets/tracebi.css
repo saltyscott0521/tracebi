@@ -336,9 +336,12 @@ img, svg { max-width: 100%; }
   border-bottom: 1px solid var(--tb-rule);
 }
 
+.tb-table td, [data-tb-figure="table"] td { font-size: var(--tb-text-sm); }
+.tb-table th, [data-tb-figure="table"] th { font-variant-numeric: tabular-nums; }
+
 .tb-table thead th, [data-tb-figure="table"] thead th {
   border-bottom: 1px solid var(--tb-rule);
-  font-size: 0.72em;
+  font-size: var(--tb-text-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -368,9 +371,11 @@ img, svg { max-width: 100%; }
   white-space: nowrap;  /* a number never breaks across lines */
 }
 
-/* Totals row */
+/* Totals row: one style, a tfoot row or an authored .tb-total. */
+:is(.tb-table, [data-tb-figure="table"]) :is(tfoot td, tfoot th, .tb-total td, tr.tb-total th),
 .tb-total td, tr.tb-total th {
-  border-top: 2px solid var(--tb-ink);
+  border-top: 2px solid rgba(24, 24, 27, 0.6);
+  border-top: 2px solid color-mix(in srgb, var(--tb-ink) 60%, transparent);
   border-bottom: 0;
   font-weight: 600;
 }
@@ -392,40 +397,37 @@ th[aria-sort="ascending"] .tb-sort::after { content: " \2191"; }  /* ↑ */
 th[aria-sort="descending"] .tb-sort::after { content: " \2193"; } /* ↓ */
 th[aria-sort="ascending"], th[aria-sort="descending"] { color: var(--tb-ink); }
 
-/* data-tb-bars: a quiet bar behind the number, proportional to it. The
- * number stays on top and stays the thing you read. */
-.tb-bar-cell { position: relative; isolation: isolate; }
-/* The track spans the cell inside its padding; a bar's left/width are
- * percentages of it. --tb-bar-inset follows the table's density. */
+/* data-tb-bars: a thin bar in its own lane after the number, proportional
+ * to it. The number is the thing you read; the bar is only its length. The
+ * lane is inside the cell, so it follows its row on sort and filter, and a
+ * header, total or blank in the column keeps the same lane empty so the
+ * numbers stay in one column. Zero is the lane's left edge; a column with
+ * negatives has its zero in the middle. */
 .tb-bar-track {
+  display: inline-block;
+  position: relative;
+  width: var(--tb-bar-lane, 72px);
+  height: 6px;
+  margin-left: var(--tb-space-2);
+  vertical-align: middle;
+  pointer-events: none;
+}
+:is(th, td).tb-bar-cell:not(:has(> .tb-bar-track))::after {
+  content: "";
+  display: inline-block;
+  width: var(--tb-bar-lane, 72px);
+  margin-left: var(--tb-space-2);
+}
+span.tb-bar {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: var(--tb-bar-inset, 12px);
-  right: var(--tb-bar-inset, 12px);
-  z-index: -1;
+  background: var(--tb-accent);
+  border-radius: 1px;
   pointer-events: none;
 }
-:root[data-tb-density="compact"] { --tb-bar-inset: 10px; }
-.tb-table--compact { --tb-bar-inset: 8px; }
-.tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child td:last-child > .tb-bar-track,
-.tb-card > .tb-scroll:last-child td:last-child > .tb-bar-track { right: var(--tb-card-pad-x); }
-.tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child td:first-child > .tb-bar-track,
-.tb-card > .tb-scroll:last-child td:first-child > .tb-bar-track { left: var(--tb-card-pad-x); }
-span.tb-bar {
-  position: absolute;
-  top: calc(50% - 0.7em);         /* one line tall, even in a wrapped row */
-  height: 1.4em;
-  z-index: -1;                    /* under the number, above the row */
-  background: rgba(31, 99, 184, 0.16);
-  background: color-mix(in srgb, var(--tb-accent) 16%, transparent);
-  border-radius: 2px;
-  pointer-events: none;
-}
-span.tb-bar--neg {
-  background: rgba(180, 35, 24, 0.16);
-  background: color-mix(in srgb, var(--tb-bad) 16%, transparent);
-}
+span.tb-bar--neg { background: var(--tb-bad); }
+@media (max-width: 720px) { :root { --tb-bar-lane: 48px; } }
 
 /* Variant: freeze — the first column stays put while a wide table scrolls
  * sideways, so every row keeps its name. */
@@ -459,9 +461,8 @@ tr.tb-window-pad td {
   background: color-mix(in srgb, var(--tb-surface) 60%, transparent);
 }
 
-/* Variant: compact — tighter padding, smaller type. */
+/* Variant: compact — tighter padding (density is --tb-cell-pad only). */
 .tb-table--compact { --tb-cell-pad: var(--tb-space-1) var(--tb-space-2); }
-.tb-table--compact th, .tb-table--compact td { font-size: 0.85em; }
 
 /* ── 6. Charts ─────────────────────────────────────────────────────────── */
 
@@ -774,11 +775,17 @@ label > input[data-tb-search] { width: 11em; }
 }
 .tb-scroll .tb-table,
 .tb-scroll [data-tb-figure="table"] { margin: 0; }
+/* The header stays while the rows scroll; its rule is a shadow, because a
+ * collapsed border belongs to the table and would scroll away. */
 .tb-scroll thead th {
   position: sticky;
   top: 0;
-  background: var(--tb-bg);
+  z-index: 2;
+  background: var(--tb-surface);
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--tb-rule);
 }
+.tb-scroll .tb-table--freeze thead th:first-child { z-index: 3; background: var(--tb-surface); }
 
 /* ── 12. Layout — columns and tabs ─────────────────────────────────────── */
 

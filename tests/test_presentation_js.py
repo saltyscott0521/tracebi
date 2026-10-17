@@ -1370,6 +1370,68 @@ process.stdout.write(JSON.stringify({
         assert out["name"] is None             # text columns never get a bar
         assert out["text"] == "-25"            # the number itself is untouched
 
+    def test_server_rendered_bars_match_the_runtime(self):
+        """The no-JS table draws the same bar lane as the runtime: the same
+        cells carry it (header, rows, total) and each bar has the same left and
+        width, so hydrating over the server's rows moves nothing."""
+        import types
+        from html.parser import HTMLParser
+
+        import pandas as pd
+
+        from tracebi.reports.template_package import TemplatePackage
+        out = _run_dom("""
+dataBlock('b', 'name,pos,gain\\nA,50,-25\\nB,100,50\\nC,7.5,\\n');
+dataBlock('t', 'pos,gain\\n157.5,25\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b',
+                        'data-tb-bars': 'pos, gain, name', 'data-tb-totals': 't' });
+loadRuntime();
+function cell(c) {
+  var b = c.querySelector('.tb-bar');
+  return [c.className, c.textContent, b ? [b.className, b.style.left, b.style.width] : null];
+}
+var rows = [tbl.querySelector('thead tr')].concat(tbl.querySelector('tbody').children,
+                                                  [tbl.querySelector('tfoot tr')]);
+process.stdout.write(JSON.stringify(rows.map(function (r) {
+  return r.children.map(cell); })));
+""")
+
+        class Cells(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.rows, self.cell = [], None
+
+            def handle_starttag(self, tag, attrs):
+                a = dict(attrs)
+                if tag == "tr":
+                    self.rows.append([])
+                elif tag in ("th", "td"):
+                    self.cell = [a.get("class") or "", "", None]
+                    self.rows[-1].append(self.cell)
+                elif tag == "span" and "tb-bar" in (a.get("class") or "").split():
+                    style = dict(p.split(":") for p in a["style"].split(";"))
+                    self.cell[2] = [a["class"], style["left"], style["width"]]
+
+            def handle_data(self, data):
+                if self.cell is not None:
+                    self.cell[1] += data
+
+        frame = pd.DataFrame({"name": ["A", "B", "C"], "pos": [50, 100, 7.5],
+                              "gain": [-25, 50, None]})
+        totals = pd.DataFrame({"pos": [157.5], "gain": [25]})
+        fig = types.SimpleNamespace(attrs={"data-tb-bars": "pos, gain, name"})
+        markup = TemplatePackage._ssr_table(
+            types.SimpleNamespace(to_pandas=lambda: frame), fig,
+            totals_ds=types.SimpleNamespace(to_pandas=lambda: totals))
+        parser = Cells()
+        parser.feed(markup)
+        ssr = [[[set(c[0].split()), c[1], c[2]] for c in r] for r in parser.rows]
+        js = [[[set(c[0].split()), c[1], c[2]] for c in r] for r in out]
+        assert ssr == js
+        assert js[1][1][2] == ["tb-bar", "0%", "50%"]
+        assert js[1][2][2] == ["tb-bar tb-bar--neg", "25%", "25%"]
+        assert "tb-bar-cell" in js[0][1][0] and "tb-bar-cell" in js[4][1][0]
+
     def test_direction_marks_sign_and_meaning_without_changing_text(self):
         out = _run_dom("""
 dataBlock('k', 'gain,cost_change,flat\\n-6.3,-2,0\\n');
