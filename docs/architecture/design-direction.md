@@ -107,6 +107,26 @@ grounds was picked from six side-by-side options.)
   its context, then the receipt on demand. It is one system, below; a report's
   own `style.css` is a theme preset on it, not a second look.
 
+### The mark
+
+A trace: one stroke rising through two open points to a filled one, the
+number you arrived at. White on the cobalt tile (`--ink`, `#2f5bea`, radius
+6px), flat: no gradient, no second blue, so `theme-brand-colour` holds it as it
+holds every brand token. It is drawn once, on a 20-unit grid with a 1.6 stroke,
+and holds at 16px (the browser tab), 18px in its 28px tile (the sidebar, the
+56px rail on a report page, the phone header) and 32px. Its `title` is the
+tagline, *Every number, traced.*, which also opens the sign-in page and Get
+started; it is never set under the logo. The wordmark beside it is "TraceBi"
+in the app's sans at 15px/600, tracking -0.01em.
+
+Where it lives: `BrandMark` in `web/ui/src/components/Art.jsx` (the trace
+draws point to point, replayed on hover), `web/ui/public/favicon.svg`, the
+gateway's sign-in page (`_MARK_SVG` in `tracebi/mcp_oauth.py`) and the site
+header and favicon (`site/index.html`; `site/build_docs.py` copies the
+favicon). It is never put on a report: `.tb-masthead-mark` is the customer's
+slot. The illustrations speak the same language: `ReportArt`'s trend is a
+cobalt line ending on a filled point.
+
 ## The report's system
 
 The bar ([[ux-plan-2026-10-17]], decision 2): type and restraint as Stripe's
@@ -191,5 +211,5 @@ Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
    - The app on the four places (done, [[ux-plan-2026-10-17]] Steps 2 and 3):
      Reports as home, the report page, Data and Review, the verdict chip
      everywhere; the report contact sheet in the audit (DS-9).
-   - Still to do: Ask (Step 4); lists as console rows throughout, the logo
-     and illustrations.
+   - Still to do: Ask (Step 4); lists as console rows throughout, and
+     illustrations beyond the mark.

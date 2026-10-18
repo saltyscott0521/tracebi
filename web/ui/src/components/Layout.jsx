@@ -216,9 +216,12 @@ export default function Layout({ children }) {
         zIndex: 200,
       }}>
         {/* On a phone the header says which of the four places you are in. */}
-        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          TraceBi
-          {place && <span className="mobile-header__place">{place.label}</span>}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <BrandMark />
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            TraceBi
+            {place && <span className="mobile-header__place">{place.label}</span>}
+          </span>
         </span>
         <button onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} style={{
           background: 'none', border: 'none', cursor: 'pointer',
@@ -279,7 +282,7 @@ export default function Layout({ children }) {
         <div style={{ padding: '22px 20px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <BrandMark />
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
               TraceBi
             </div>
           </div>

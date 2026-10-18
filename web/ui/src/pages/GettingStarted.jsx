@@ -119,7 +119,7 @@ export default function GettingStarted() {
   return (
     <div>
       <PageTitle>Get started</PageTitle>
-      <PageSub>How TraceBi fits together, then five steps from install to your first report with a receipt.</PageSub>
+      <PageSub>Every number, traced. How TraceBi fits together, then five steps from install to your first report with a receipt.</PageSub>
 
       <HowItFits />
 

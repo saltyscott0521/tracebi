@@ -1051,6 +1051,17 @@ class Provider:
         await asyncio.to_thread(revoke)
 
 
+# The brand mark (web/ui/public/favicon.svg): a trace through two points to the
+# number, white on the cobalt tile.
+_MARK_SVG = (
+    '<svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">'
+    '<rect width="32" height="32" rx="7" fill="#2f5bea"/>'
+    '<g transform="translate(3 3) scale(1.3)" fill="none" stroke="#fff" stroke-width="1.6" '
+    'stroke-linecap="round"><circle cx="4" cy="15.5" r="2"/>'
+    '<path d="M5.85 14.73 L8.15 13.77 M11.1 11.3 L13.9 6.95"/><circle cx="10" cy="13" r="2"/>'
+    '<circle cx="15.5" cy="4.5" r="2.9" fill="#fff" stroke="none"/></g></svg>')
+
+
 def _login_page(state: str, cfg: OAuthConfig, message: str = "", status: int = 200) -> Response:
     """The built-in sign-in page: a name and password when TRACEBI_LOCAL_USERS
     is set, and a one-click button when TRACEBI_DEMO_LOGIN is."""
@@ -1086,7 +1097,10 @@ def _login_page(state: str, cfg: OAuthConfig, message: str = "", status: int = 2
         '.or{text-align:center;margin:14px 0}.note{margin:8px 0 0;font-size:13px;color:#666}'
         '.err{color:#b91c1c;font-weight:600}'
         ':focus-visible{outline:2px solid #2f5bea;outline-offset:2px}'
-        '</style></head><body><main><h1>Sign in to TraceBi</h1>'
+        '.brand{display:flex;align-items:center;gap:10px;margin:0 0 18px;font-size:13px;color:#666}'
+        '.brand svg{flex:none}'
+        '</style></head><body><main>'
+        f'<p class="brand">{_MARK_SVG}Every number, traced.</p><h1>Sign in to TraceBi</h1>'
         '<p>An AI app is asking to connect to this server as you.</p>'
         + (f'<p class="err" role="alert">{q(message)}</p>' if message else "")
         + f'<form method="post" action="/oauth/callback"><input type="hidden" name="state" value="{q(state)}">'

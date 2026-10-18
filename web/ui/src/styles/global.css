@@ -800,26 +800,17 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
 .rise { animation: rise .42s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 12) * 35ms); }
 
-/* The brand mark: brackets draw, bars rise, a trace dot runs across. */
+/* The brand mark: the trace draws point to point and ends on the number. */
 .bm {
   width: 28px; height: 28px; border-radius: var(--radius); flex-shrink: 0;
   background: var(--ink); color: var(--on-ink);
   display: flex; align-items: center; justify-content: center;
 }
-.bm svg { width: 16px; height: 16px; overflow: visible; }
-.bm-bracket { stroke-dasharray: 32; animation: bm-draw .5s var(--ease-out) both; }
-.bm-bar { transform-box: fill-box; transform-origin: bottom; animation: bm-grow .55s var(--ease-spring) both; }
-.bm-bar-1 { animation-delay: .25s; }
-.bm-bar-2 { animation-delay: .38s; }
-.bm-dot { opacity: 0; animation: bm-trace 1.1s .6s var(--ease-io) both; }
-@keyframes bm-draw  { from { stroke-dashoffset: 32; } to { stroke-dashoffset: 0; } }
-@keyframes bm-grow  { from { transform: scaleY(0); } }
-@keyframes bm-trace {
-  0%   { opacity: 0; transform: translate(0, 0); }
-  15%  { opacity: 1; }
-  80%  { opacity: 1; transform: translate(10px, 0); }
-  100% { opacity: 0; transform: translate(10px, 11px); }
-}
+.bm svg { width: 18px; height: 18px; overflow: visible; }
+.bm-node { transform-box: fill-box; transform-origin: center; animation: bm-pop .35s var(--ease-spring) both; animation-delay: calc(var(--i) * .22s); }
+.bm-link { stroke-dasharray: 1; animation: bm-draw .2s var(--ease-out) both; animation-delay: calc(.1s + var(--i) * .22s); }
+@keyframes bm-pop  { from { transform: scale(0); } }
+@keyframes bm-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 
 /* A report assembling itself (components/Art.jsx ReportArt): the numbers,
    bars, trend line and donut build in. mode "build" loops it. */
