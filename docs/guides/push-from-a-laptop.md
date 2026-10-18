@@ -44,7 +44,7 @@ held a file you did not push says so; delete it in the app if it should go.
 
 ## Approve code (admin)
 
-The **Drafts** page lists **Code requests**. **Review** shows every file with
+**Review** lists a pending code request under **Needs attention**. **Review** on its row shows every file with
 its diff against what is published (a new file says so). Then:
 
 - **Approve and run** copies the files in, keeps what they replace under

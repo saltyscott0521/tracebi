@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
-  useDesk, usePipelines, useReports,
   useDrafts, useDraftVersion, useDraftFiles, useDraftPreview, useDraftImpact,
   usePublishDraft, useDeleteDraft, useWriteDraftFile, useMe,
   useDraftDestinations, usePublishRequests, useDecideRequest,
@@ -10,144 +9,142 @@ import {
 } from '../api'
 import { reportPagePath } from '../nav'
 import {
-  PageTitle, PageSub, Card, Btn, Badge, Spinner, Empty, Alert, ErrorDetail,
-  ReportFrame, Tabs, SkeletonList, useToast,
+  PageTitle, PageSub, Card, Btn, Badge, Spinner, Alert, ErrorDetail,
+  ReportFrame, Tabs, SkeletonList, Verdict, useToast,
 } from '../components/Shared'
 import { CodeFiles } from '../components/CodeView'
-import { AttentionStrip, attentionItems, when } from '../components/Attention'
-import { useReportModels } from '../components/Scope'
+import { when } from '../components/Attention'
 
-// Drafts: what an agent (or a person) is writing before it is published. A
-// draft is private to its owner; Publish is the one step that changes what
+// Drafts: what an agent (or a person) is writing before it is published, as a
+// section of Review and a page per draft. A draft is private to its owner; Publish is the one step that changes what
 // everyone sees. An analyst or admin can edit a draft's files here; Save writes
 // the file and the live preview follows.
 
 const href = d => `/drafts/${encodeURIComponent(d.owner)}/${d.kind}/${d.path.split('/').map(encodeURIComponent).join('/')}`
 const kindLabel = kind => (kind === 'models' ? 'Model' : 'Report')
 
-function Differs({ differs }) {
-  return differs
-    ? <Badge variant="amber">Changed</Badge>
-    : <Badge variant="gray">Same as published</Badge>
+// The owner a sign-in name becomes on disk (tracebi.drafts.slug_owner): a
+// name with characters that had to be replaced gains a short hash, so match
+// its prefix then.
+function isMine(owner, actor) {
+  const lowered = (actor || '').replace(/^mcp:/, '').toLowerCase()
+  const slug = lowered.replace(/[^a-z0-9._@+-]/g, '-').replace(/^\.+/, m => '-'.repeat(m.length)) || 'anonymous'
+  return owner === slug || (slug !== lowered && owner.startsWith(`${slug}-`))
 }
 
-// Review, until Step 3 builds its own page: what needs attention, then the
-// drafts, with History and Verify a file one link away.
-function ReviewLinks() {
-  return (
-    <nav aria-label="Review" className="review-links">
-      <span className="review-links__cap">Review</span>
-      <Link to="/runs">History</Link>
-      <Link to="/verify">Verify a file</Link>
-    </nav>
-  )
-}
-
-export default function Drafts() {
+/**
+ * Review's Drafts: the person's own drafts first; an admin may see
+ * everyone's. A viewer cannot start one, and is told so instead of a list.
+ * Requests already decided sit below, folded.
+ */
+export default function DraftList() {
+  const { data: me } = useMe()
+  const canDraft = me?.role === 'analyst' || me?.role === 'admin'
   const { data, isLoading, error } = useDrafts()
-  const list = data?.drafts || []
-  const manyOwners = new Set(list.map(d => d.owner)).size > 1
-  const { data: desk } = useDesk()
-  const { data: pipelines } = usePipelines()
-  const { data: reports } = useReports()
-  const modelsOf = useReportModels()
+  // With no sign-in there is no "own": every draft is shown.
+  const [everyone, setEveryone] = useState(null)
+  const all = data?.drafts || []
+  const actor = me?.actor
+  const showAll = everyone ?? !actor
+  const others = all.some(d => !isMine(d.owner, actor))
+  const list = (showAll || !actor ? all : all.filter(d => isMine(d.owner, actor)))
+    .map((d, i) => [d, i])
+    .sort(([a, i], [b, j]) => (isMine(b.owner, actor) - isMine(a.owner, actor)) || (i - j))
+    .map(([d]) => d)
 
+  if (me && !canDraft) {
+    return (
+      <p className="review__quiet">
+        Drafts need the analyst role. A draft is a report or model being written before it is published.
+      </p>
+    )
+  }
   return (
-    <div className="fade-in">
-      <ReviewLinks />
-      <PageTitle>Drafts</PageTitle>
-      <PageSub>
-        Reports and models being written before they are published, newest first.
-        Nothing here changes what anyone sees until it is published.
-      </PageSub>
-      <AttentionStrip items={attentionItems(desk, pipelines, modelsOf, reports || [])} />
-      <PublishRequests />
-      <CodeRequests />
+    <>
+      {me?.role === 'admin' && actor && others && (
+        <div className="seg" role="group" aria-label="Whose drafts">
+          <button type="button" aria-pressed={!showAll} onClick={() => setEveryone(false)}>Mine</button>
+          <button type="button" aria-pressed={showAll} onClick={() => setEveryone(true)}>Everyone&rsquo;s</button>
+        </div>
+      )}
       {error && <ErrorDetail error={error} />}
-      {isLoading && <SkeletonList rows={3} />}
+      {isLoading && <SkeletonList rows={2} />}
       {data && list.length === 0 && (
-        <Card>
-          <Empty
-            message="No drafts yet. A draft starts when an agent connected to this server over MCP calls start_draft and write_draft_file. Ask your agent to draft a report here, and it will appear in this list."
-          />
-        </Card>
+        <div className="review__empty">
+          <p>
+            No drafts. A draft is a report or model being written before it is published; start one
+            from a report&rsquo;s page (Edit as a draft) or ask your agent.
+          </p>
+          <details className="review__agent">
+            <summary>For your agent</summary>
+            <p>
+              An agent connected to this server over MCP starts a draft with <code>start_draft</code> and
+              writes its files with <code>write_draft_file</code>; the draft appears here. Python (a transform,
+              a model in Python) comes from a laptop instead: <code>tracebi push</code> sends it as a code
+              request for an admin to review.
+            </p>
+          </details>
+        </div>
       )}
       {list.length > 0 && (
-        <ul aria-label="Drafts" style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 10 }}>
+        <ul aria-label="Drafts" className="dlist">
           {list.map(d => (
             <li key={`${d.owner}/${d.kind}/${d.path}`}>
-              <Link to={href(d)} className="draft-row" style={{
-                display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 12px',
-                padding: '12px 16px', textDecoration: 'none', color: 'var(--text)',
-                background: 'var(--surface)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-lg)',
-              }}>
-                <span style={{ fontWeight: 600, fontSize: 14, minWidth: 0, overflowWrap: 'anywhere' }}>{d.path}</span>
-                <Badge variant="blue">{kindLabel(d.kind)}</Badge>
-                <Differs differs={d.differs_from_published} />
-                <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--muted)' }}>
-                  {manyOwners && <>by {d.owner} · </>}updated {when(d.updated) || 'unknown'}
+              <Link to={href(d)} className="dlist__row">
+                <span className="dlist__main">
+                  <span className="dlist__name">
+                    <Verdict state="draft" size="sm" />
+                    <span style={{ overflowWrap: 'anywhere' }}>{d.path}</span>
+                  </span>
+                  <span className="dlist__facts">
+                    {kindLabel(d.kind)} · by {d.owner} ·{' '}
+                    {d.differs_from_published ? 'Changed from the published one' : 'Same as published'}
+                  </span>
+                </span>
+                <span className="dlist__side">
+                  <span className="dlist__when">changed {when(d.updated) || 'unknown'}</span>
+                  <span className="review__open">Open</span>
                 </span>
               </Link>
             </li>
           ))}
         </ul>
       )}
-    </div>
+      <SettledRequests />
+    </>
   )
 }
 
-// Requests to publish into a folder. Someone with only Build there asks;
-// someone with Publish there (the approver) approves or declines, and a
-// decline records why. Shown to the person who asked and to the approvers.
-function PublishRequests() {
-  const { data } = usePublishRequests()
+/**
+ * Approve or decline one pending publish request, in place. Declining asks
+ * for a reason, which the person who asked sees.
+ */
+export function RequestDecision({ request: r }) {
   const decide = useDecideRequest()
   const toast = useToast()
-  const [declining, setDeclining] = useState(null)   // request id
+  const [declining, setDeclining] = useState(false)
   const [reason, setReason] = useState('')
   const [failure, setFailure] = useState(null)
-  const requests = data || []
-  if (!requests.length) return null
-  const pending = requests.filter(r => r.status === 'pending')
-  const settled = requests.filter(r => r.status !== 'pending').slice(0, 5)
-
-  const run = (r, approve) => decide.mutate(
+  const run = approve => decide.mutate(
     { id: r.id, approve, note: approve ? '' : reason.trim() }, {
       onSuccess: () => {
-        setDeclining(null); setReason(''); setFailure(null)
+        setDeclining(false); setReason(''); setFailure(null)
         toast(approve ? `Published ${r.destination}` : 'Request declined', 'success')
       },
       onError: err => setFailure(err),
     })
-
-  const row = r => (
-    <li key={r.id} style={{ fontSize: 13, lineHeight: 1.5, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
-      <div>
-        <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{r.destination}</span>{' '}
-        <Badge variant={r.status === 'pending' ? 'amber' : r.status === 'approved' ? 'green' : 'gray'}>
-          {r.status === 'pending' ? 'Waiting for approval' : r.status === 'approved' ? 'Approved' : 'Declined'}
-        </Badge>
-      </div>
-      <div style={{ color: 'var(--muted)' }}>
-        Asked by {r.requested_by || 'unknown'} {when(r.requested_at) || ''}
-        {r.note && <> · “{r.note}”</>}
-        {r.decided_by && <> · {r.status === 'approved' ? 'approved' : 'declined'} by {r.decided_by} {when(r.decided_at) || ''}</>}
-        {r.status === 'rejected' && r.decision_note && <> · reason: {r.decision_note}</>}
-      </div>
-      {r.status === 'pending' && r.can_decide && declining !== r.id && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-          <Btn size="sm" onClick={() => run(r, true)} disabled={decide.isPending}
+  return (
+    <div>
+      {failure && <div role="alert"><ErrorDetail error={failure} /></div>}
+      {!declining ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Btn size="sm" onClick={() => run(true)} disabled={decide.isPending}
                aria-label={`Approve publishing ${r.destination}`}>Approve and publish</Btn>
-          <Btn size="sm" variant="outline" onClick={() => { setDeclining(r.id); setReason(''); setFailure(null) }}
+          <Btn size="sm" variant="outline" onClick={() => { setDeclining(true); setReason(''); setFailure(null) }}
                aria-label={`Decline publishing ${r.destination}`}>Decline</Btn>
         </div>
-      )}
-      {r.status === 'pending' && !r.can_decide && (
-        <div style={{ color: 'var(--muted)' }}>Someone with Publish permission on this folder will decide.</div>
-      )}
-      {declining === r.id && (
-        <div style={{ marginTop: 8 }}>
+      ) : (
+        <div>
           <label htmlFor={`decline-${r.id}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
             Reason (the person who asked will see it)
           </label>
@@ -158,76 +155,67 @@ function PublishRequests() {
               background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
             }} />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Btn size="sm" variant="red" onClick={() => run(r, false)} disabled={decide.isPending || !reason.trim()}>
+            <Btn size="sm" variant="red" onClick={() => run(false)} disabled={decide.isPending || !reason.trim()}>
               Decline request
             </Btn>
-            <Btn size="sm" variant="outline" onClick={() => setDeclining(null)}>Cancel</Btn>
+            <Btn size="sm" variant="outline" onClick={() => setDeclining(false)}>Cancel</Btn>
           </div>
         </div>
       )}
-    </li>
-  )
-
-  return (
-    <Card style={{ marginBottom: 16 }}>
-      <h2 style={{ fontSize: 14, margin: '0 0 4px' }}>Publish requests</h2>
-      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 6px' }}>
-        {pending.length
-          ? `${pending.length} waiting. A request publishes exactly the files that were asked for, whatever the draft becomes meanwhile.`
-          : 'Nothing is waiting.'}
-      </p>
-      {failure && <div role="alert"><ErrorDetail error={failure} /></div>}
-      <ul aria-label="Publish requests" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {[...pending, ...settled].map(row)}
-      </ul>
-    </Card>
+    </div>
   )
 }
 
-// Code pushed from a laptop (`tracebi push`): it would run on this server with
-// its secrets, so an admin reads every file's diff against what is published,
-// then approves (the files go in and the pipelines they touch run once) or
-// declines with a reason.
-function CodeRequests() {
-  const { data } = useCodeRequests()
-  const [open, setOpen] = useState(null)               // request id under review
-  const requests = data || []
-  if (!requests.length) return null
-  const pending = requests.filter(r => r.status === 'pending')
-  const settled = requests.filter(r => r.status !== 'pending').slice(0, 5)
+// Requests already decided: publish requests (someone with only Build in a
+// folder asks; someone with Publish there decides) and code pushed from a
+// laptop (`tracebi push`, which an admin reviews file by file). The ones still
+// waiting are under Needs attention.
+function SettledRequests() {
+  const { data: publish } = usePublishRequests()
+  const { data: code } = useCodeRequests()
+  const [open, setOpen] = useState(null)               // code request id shown
+  const settled = (publish || []).filter(r => r.status !== 'pending').slice(0, 5)
+  const pushed = (code || []).filter(r => r.status !== 'pending').slice(0, 5)
+  if (!settled.length && !pushed.length) return null
+  const decided = r => (
+    <>
+      Asked by {r.requested_by || 'unknown'} {when(r.requested_at) || ''}
+      {r.note && <> · “{r.note}”</>}
+      {r.decided_by && <> · {r.status === 'approved' ? 'approved' : 'declined'} by {r.decided_by} {when(r.decided_at) || ''}</>}
+      {r.status === 'rejected' && r.decision_note && <> · reason: {r.decision_note}</>}
+    </>
+  )
+  const status = r => (
+    <Badge variant={r.status === 'approved' ? 'green' : 'gray'}>{r.status === 'approved' ? 'Approved' : 'Declined'}</Badge>
+  )
   return (
-    <Card style={{ marginBottom: 16 }}>
-      <h2 style={{ fontSize: 14, margin: '0 0 4px' }}>Code requests</h2>
-      <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 6px' }}>
-        {pending.length
-          ? `${pending.length} waiting. Code runs on this server with its secrets, so an admin reviews every file before it goes in.`
-          : 'Nothing is waiting.'}
-      </p>
-      <ul aria-label="Code requests" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {[...pending, ...settled].map(r => (
-          <li key={r.id} style={{ fontSize: 13, lineHeight: 1.5, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
+    <details className="review__requests">
+      <summary>Requests <span className="review__count">{settled.length + pushed.length}</span></summary>
+      <ul aria-label="Requests" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        {settled.map(r => (
+          <li key={r.id} className="review__request">
+            <div><span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>Publish {r.destination}</span> {status(r)}</div>
+            <div className="review__quiet">{decided(r)}</div>
+          </li>
+        ))}
+        {pushed.map(r => (
+          <li key={r.id} className="review__request">
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
               <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
-                {r.files.length === 1 ? r.files[0] : `${r.files.length} files`}
+                Code: {r.files.length === 1 ? r.files[0] : `${r.files.length} files`}
               </span>
-              <Badge variant={r.status === 'pending' ? 'amber' : r.status === 'approved' ? 'green' : 'gray'}>
-                {r.status === 'pending' ? 'Waiting for an admin' : r.status === 'approved' ? 'Approved' : 'Declined'}
-              </Badge>
+              {status(r)}
               <Btn size="sm" variant="outline" style={{ marginLeft: 'auto' }}
                    onClick={() => setOpen(open === r.id ? null : r.id)} aria-expanded={open === r.id}>
-                {open === r.id ? 'Close' : r.status === 'pending' && r.can_decide ? 'Review' : 'Details'}
+                {open === r.id ? 'Close' : 'Details'}
               </Btn>
             </div>
-            <div style={{ color: 'var(--muted)' }}>
-              Asked by {r.requested_by || 'unknown'} {when(r.requested_at) || ''} · “{r.note}”
-              {r.decided_by && <> · {r.status === 'approved' ? 'approved' : 'declined'} by {r.decided_by} {when(r.decided_at) || ''}</>}
-              {r.status === 'rejected' && r.decision_note && <> · reason: {r.decision_note}</>}
-            </div>
+            <div className="review__quiet">{decided(r)}</div>
             {open === r.id && <CodeReview id={r.id} />}
           </li>
         ))}
       </ul>
-    </Card>
+    </details>
   )
 }
 
@@ -245,7 +233,7 @@ function Diff({ text }) {
   )
 }
 
-function CodeReview({ id }) {
+export function CodeReview({ id }) {
   const { data: req, isLoading, error } = useCodeRequest(id, true)
   const decide = useDecideCodeRequest()
   const toast = useToast()
@@ -316,6 +304,17 @@ function CodeReview({ id }) {
   )
 }
 
+// Where a draft sits: Review › Drafts, then its own name as the title.
+function DraftCrumb() {
+  return (
+    <nav aria-label="Where this draft is" className="rp__crumb" style={{ marginBottom: 6 }}>
+      <Link to="/review">Review</Link>
+      <span aria-hidden="true">›</span>
+      <Link to="/review#drafts">Drafts</Link>
+    </nav>
+  )
+}
+
 const modeSentence = {
   publish: 'Publishes directly: you hold Publish permission there.',
   request: 'Sends a request: you can build there but not publish, so someone with Publish permission approves it first.',
@@ -377,15 +376,15 @@ export function DraftPage() {
     })
   }
   const doDelete = () => del.mutate(undefined, {
-    onSuccess: () => { toast('Draft deleted', 'success'); navigate('/drafts') },
+    onSuccess: () => { toast('Draft deleted', 'success'); navigate('/review#drafts') },
     onError: err => { setRefusal(err); setStep(null) },
   })
 
   if (versionError) {
     return (
       <div className="fade-in">
+        <DraftCrumb />
         <PageTitle>{path}</PageTitle>
-        <PageSub><Link to="/drafts">All drafts</Link></PageSub>
         <ErrorDetail error={versionError} />
       </div>
     )
@@ -395,11 +394,9 @@ export function DraftPage() {
 
   return (
     <div className="fade-in">
+      <DraftCrumb />
       <PageTitle>{path}</PageTitle>
-      <PageSub>
-        Draft by {owner} · updated {when(files?.updated) || '…'} ·{' '}
-        <Link to="/drafts">All drafts</Link>
-      </PageSub>
+      <PageSub>Draft by {owner} · updated {when(files?.updated) || '…'}</PageSub>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'center' }}>
         <Btn onClick={() => setStep('publish')} disabled={busy || step === 'publish'}>Publish</Btn>
@@ -496,7 +493,7 @@ export function DraftPage() {
       {published?.status === 'requested' && (
         <Alert variant="info">
           Asked. Nothing is published yet: someone with Publish permission on {published.request.destination} will
-          approve or decline it under <Link to="/drafts">Drafts</Link>, and you will see the answer there.
+          approve or decline it under <Link to="/review">Review</Link>, and you will see the answer there.
         </Alert>
       )}
       {published && published.status !== 'requested' && (

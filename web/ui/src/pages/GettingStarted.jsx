@@ -83,8 +83,9 @@ function HowItFits() {
         how the numbers are made: the models, one row each (or every model as one picture on the
         Map), and a page per model that leads with its line, transform → model → reports, then
         tabs for the model, the transform that refreshes it, its sources and its runs.{' '}
-        <Link to="/review">Review</Link> holds what waits on a person: drafts and requests to
-        publish, the History of what ran, and Verify a file, which checks a report file from anywhere.
+        <Link to="/review">Review</Link> holds what waits on a person: first what needs attention (a
+        refresh that failed, a build that needs a look, a request to publish), then drafts, then Verify
+        a file, which checks a report file from anywhere; the History of what ran is one link away.
       </p>
     </div>
   )

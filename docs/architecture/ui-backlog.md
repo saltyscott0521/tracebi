@@ -71,6 +71,15 @@ Left by Step 2 of the UX plan ([[ux-plan-2026-10-17]]), app side:
 
 ## Done
 
+- **Review is one page** (D-2): Needs attention first (failed runs and
+  refreshes with what went wrong, builds that need a look, publish requests to
+  decide in place, the person's own requests waiting on approvers), then
+  Drafts (own first, an admin's Mine | Everyone's; an empty state written for
+  a person, the MCP tool names under "For your agent"; decided requests
+  folded under Requests), then Verify a file as a small drop zone that opens
+  into the full one. `/drafts` lands on `/review#drafts`; a draft's page says
+  Review › Drafts.
+
 - **Data is one page per model** (D-1): the line as its header (three
   stations, the warehouse file and the measures between them, the reports'
   verdicts as chip counts), then tabs Model · Transform · Sources · Runs;

@@ -12,7 +12,8 @@ import Library, { ReportRoute } from './pages/Reports'
 import Ask from './pages/Ask'
 import Verify from './pages/Verify'
 import Runs from './pages/Runs'
-import Drafts, { DraftPage } from './pages/Drafts'
+import { DraftPage } from './pages/Drafts'
+import Review from './pages/Review'
 
 // Four places: Reports (/), Ask, Data and Review. Every older address lands in
 // one of them (Moved). See nav.js.
@@ -38,9 +39,10 @@ export default function App() {
                    element={<OneModel>{m => <Overview key={m} model={m} tab={tab} />}</OneModel>} />
           ))}
 
-          {/* Review: drafts, History and Verify a file. */}
-          <Route path="/review" element={<Drafts />} />
-          <Route path="/drafts" element={<Drafts />} />
+          {/* Review: what needs attention, drafts, and Verify a file; History
+              and the full Verify page keep their own addresses. */}
+          <Route path="/review" element={<Review />} />
+          <Route path="/drafts" element={<Navigate to="/review#drafts" replace />} />
           <Route path="/drafts/:owner/:kind/*" element={<DraftPage />} />
           <Route path="/runs" element={<Runs />} />
           <Route path="/verify" element={<Verify />} />

@@ -120,7 +120,7 @@ def seeds(base: str) -> list[str]:
     without being listed. Pages reached only by a button (tabs) need a seed.
     """
     tabs = ["model", "transform", "sources", "runs"]
-    paths = ["/", "/ask", "/data", "/data?view=map", "/data/sources", "/review", "/drafts", "/runs",
+    paths = ["/", "/ask", "/data", "/data?view=map", "/data/sources", "/review", "/runs",
              "/verify", "/getting-started", "/handbook", "/workflow"]
     models = _safe(base, "/api/models")
     for m in models:
@@ -132,7 +132,7 @@ def seeds(base: str) -> list[str]:
         paths.append("/reports/" + "/".join(urllib.parse.quote(p, safe="") for p in r["name"].split("/")))
     # Old addresses must still land somewhere real.
     paths += ["/models", "/explore", "/refresh", "/reports", "/sources", "/map", "/data/map",
-              "/connectors", "/pipelines"]
+              "/connectors", "/pipelines", "/drafts"]
     if models:
         name = urllib.parse.quote(models[0]["name"])
         paths += [f"/m/{name}", f"/m/{name}/reports", f"/m/{name}/explore", f"/m/{name}/runs",

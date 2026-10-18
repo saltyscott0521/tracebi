@@ -7,8 +7,10 @@
 //                               picture. /data/<m> one model: its line, then the tabs
 //                               /data/<m>/model|transform|sources|runs (Model at /data/<m>).
 //                               /data/sources every source
-//   Review   /review            drafts and publish requests; /drafts, /runs (History)
-//                               and /verify (Verify a file) are part of it
+//   Review   /review            what needs attention, then drafts, then Verify a file;
+//                               /runs (History), /verify (its full page) and
+//                               /drafts/<owner>/<kind>/<path> (one draft) are part of
+//                               it. /drafts lands on /review#drafts
 //
 // Every older address (/models, /m/<model>/…, /explore, /sources, /map,
 // /reports?r=<name>) redirects into these (see Moved in components/Scope.jsx),
@@ -26,7 +28,7 @@ export const PAGES = [
   { key: 'data',    label: 'Data',    path: '/data',
     sub: 'How the numbers are made: each model, the transform that feeds it, and where the data is kept.' },
   { key: 'review',  label: 'Review',  path: '/review',
-    sub: 'What waits on a person: drafts and requests to publish, what ran, and checking a file.' },
+    sub: 'What waits on a person: what needs attention, drafts, and checking a file you were sent.' },
 ]
 
 // Pages inside a place that keep a heading of their own until Steps 3 and 4

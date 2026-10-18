@@ -477,7 +477,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")
             fail_on_browser_errors()
 
-            # Drafts: a report draft on disk is listed, rendered live, follows
+            # Drafts: a report draft on disk is listed on Review (the old
+            # /drafts lands on its Drafts section), rendered live, follows
             # edits to its file without a reload, and publishes with a toast.
             draft = project / "drafts" / "anonymous" / "reports" / "portfolio_model" / "draft_demo"
             shutil.copytree(project / "reports" / "portfolio_model" / "portfolio_overview", draft)
@@ -486,6 +487,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 template.read_text(encoding="utf-8").replace("Three funds, one Schedule", "Draft Marker One"),
                 encoding="utf-8")
             page.goto(base + "/drafts")
+            page.wait_for_url("**/review#drafts")
             page.get_by_role("heading", name="Drafts", exact=True).wait_for()
             row = page.get_by_role("list", name="Drafts").get_by_role("link")
             assert "portfolio_model/draft_demo" in row.inner_text()
