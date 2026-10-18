@@ -808,6 +808,45 @@ process.stdout.write(JSON.stringify(out));
         assert out["before"] == out["told"]
         assert all(c.startswith("draft|Draft|") for c in out["told"])
 
+    _HOSTED = """
+var listeners = [];
+var host = { postMessage: function () {} };
+globalThis.parent = host;
+globalThis.addEventListener = function (type, fn) { if (type === 'message') listeners.push(fn); };
+el('meta', { name: 'tracebi-stage', content: 'final' });
+var head = el('header', { 'class': 'tb-masthead' });
+el('h1', {}, head);
+var rc = el('script', { id: 'tracebi-receipt', type: 'application/json' });
+rc.textContent = JSON.stringify({ rendered_at: '2026-10-12T18:33:00Z', figures: [] });
+loadRuntime();
+function shown() {
+  return head.querySelector('.tb-masthead-meta').children.filter(function (c) {
+    return c.getAttribute('hidden') === null;
+  }).map(function (c) { return c.className || c.tagName; });
+}
+var out = { alone: shown() };
+listeners.forEach(function (fn) {
+  fn({ source: host, data: { tracebiFrame: 1, type: 'tracebi:verdict', state: 'reproduces',
+                             hosted: %s } });
+});
+out.told = shown();
+out.drawer = document.querySelector('.tb-receipt-drawer .tb-verdict').getAttribute('hidden');
+process.stdout.write(JSON.stringify(out));
+"""
+
+    def test_hosted_the_masthead_meta_keeps_only_the_receipt_link(self):
+        out = _run_dom(self._HOSTED % "true")
+        # Opened on its own: the build time, the chip and the Receipt link.
+        assert out["alone"] == ["SPAN", "tb-verdict", "tb-receipt-link"]
+        # Framed by the app, whose header shows the first two: the link only.
+        assert out["told"] == ["tb-receipt-link"]
+        # The receipt's own chip still says the verdict.
+        assert out["drawer"] is None
+
+    def test_a_verdict_without_hosted_keeps_the_full_meta(self):
+        out = _run_dom(self._HOSTED % "false")
+        assert out["told"] == out["alone"] == ["SPAN", "tb-verdict", "tb-receipt-link"]
+
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestReceiptDrawer:
@@ -862,9 +901,10 @@ process.stdout.write(JSON.stringify(out));
 
     def test_drawer_rows_from_sample_block(self):
         out = _run_dom(self._SCRIPT)
-        assert out["btn_text"] == "Receipt"
+        assert out["btn_text"] == "Trace"
         assert out["closed_on_load"] is True
         assert out["head_text"] == "portfolio_book"
+        assert "How each number was made" in out["drawer_text"]
         # First line names the binding and the kind. The id, kind and full
         # fingerprint sit in the Raw disclosure.
         assert out["a_name"] == "Holdings" and out["a_kind"] == "table"
@@ -889,7 +929,8 @@ process.stdout.write(JSON.stringify(out));
         assert "stated methodology aboard" in text
         # The certificate's header says what it does not claim, verbatim,
         # and its chip is never green on the file's own say-so.
-        assert "The receipt does not claim the numbers are right." in text
+        assert ("This page does not claim the numbers are right; it records "
+                "how each was made so it can be checked.") in text
         assert out["chip"] in ("draft", "not-checked")
         # The button toggles the drawer open and closed again.
         assert out["open_after_click"] is True

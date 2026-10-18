@@ -4,7 +4,8 @@ import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType 
 import '@xyflow/react/dist/style.css'
 
 import { StorageLine, sourceKind } from '../components/Storage'
-import { buildModelGraph, measureDefinition, MEASURE_KINDS, summary } from '../components/modelGraph'
+import { buildModelGraph, measureDefinition, MEASURE_KINDS } from '../components/modelGraph'
+import { dimensionLabel, inSentence } from '../ask'
 import {
   useModels, useModel, useTablePreview, useDesk, useReports, usePipelines, tableCsvUrl,
 } from '../api'
@@ -12,7 +13,7 @@ import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
 import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 import {
-  Card, Badge, Spinner, Empty, Tabs, SkeletonList, SkeletonCard,
+  Card, Badge, Spinner, Empty, SkeletonList, SkeletonCard, useNarrow,
 } from '../components/Shared'
 
 // ── Table Preview ─────────────────────────────────────────────────────────────
@@ -333,11 +334,17 @@ function ModelStorage({ details, tables }) {
 // What the desk says of a warehouse table, in plain words.
 const SINK_WORDS = { stale: 'changed since its checks last passed', no_contract: 'no checks declared' }
 
-export function ModelDetail({ name }) {
+const VIEWS = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Storage', 'Code']
+
+/** *action*: what sits at the right of the views (the page's Edit as a draft). */
+export function ModelDetail({ name, action }) {
   const { data, isLoading } = useModel(name)
   const { data: desk } = useDesk()
   const [tab, setTab] = useState(null)      // null: the model's own default tab
   const [previewTable, setPreviewTable] = useState(null)
+  // A diagram fitted to a phone shrinks every table past reading; there the
+  // Tables view (the diagram's list form) opens first.
+  const phone = useNarrow('(max-width: 720px)')
 
   if (!name) return (
     <Card>
@@ -352,18 +359,27 @@ export function ModelDetail({ name }) {
 
   const graph = buildModelGraph(data)
   const storageOf = new Map((data.connector_details || []).map(c => [c.name, c.storage]))
-  const tabs = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Storage', 'Code']
   // A model with joins opens on its diagram; one with none has nothing to draw.
-  const active = tab || (graph.edges.length ? 'Diagram' : 'Tables')
-  const grain = (data.dimensions || []).flatMap(d =>
-    (d.attributes || []).map(attr => `${d.name}.${attr}`)
-  ).join(', ')
+  const active = tab || (graph.edges.length && !phone ? 'Diagram' : 'Tables')
+  // The grain in the words a report uses for each attribute; the identifiers in the title.
+  const grainRefs = (data.dimensions || []).flatMap(d =>
+    (d.attributes || []).map(attr => `${d.name}.${attr}`))
+  const grain = grainRefs.map(ref => inSentence(dimensionLabel(data, ref))).join(' · ')
   const sinks = desk?.sinks || []
 
   return (
     <Card className="fade-in">
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
-        {grain && <div>Grain: {grain}</div>}
+      <div className="mdetail__head">
+        <div className="seg mdetail__views" role="group" aria-label="What to show of the model">
+          {VIEWS.map(v => (
+            <button key={v} type="button" aria-pressed={active === v}
+                    onClick={() => { setTab(v); setPreviewTable(null) }}>{v}</button>
+          ))}
+        </div>
+        {action && <div className="mdetail__action">{action}</div>}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
+        {grain && <div title={grainRefs.join(', ')}>Grain: {grain}</div>}
         {(data.owners || []).length > 0 && (
           <div>Owners: {data.owners.join(', ')} (only they or an admin publish changes to it)</div>
         )}
@@ -374,12 +390,6 @@ export function ModelDetail({ name }) {
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-        <Badge variant="purple">{summary(data)}</Badge>
-        <Badge variant="gray">{data.tables.length} table{data.tables.length !== 1 ? 's' : ''}</Badge>
-      </div>
-
-      <Tabs tabs={tabs} active={active} onChange={t => { setTab(t); setPreviewTable(null) }} />
 
       {active === 'Tables' && (
         <div>

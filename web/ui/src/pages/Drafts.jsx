@@ -310,7 +310,7 @@ function DraftCrumb() {
     <nav aria-label="Where this draft is" className="rp__crumb" style={{ marginBottom: 6 }}>
       <Link to="/review">Review</Link>
       <span aria-hidden="true">›</span>
-      <Link to="/review#drafts">Drafts</Link>
+      <Link to="/review/drafts">Drafts</Link>
     </nav>
   )
 }
@@ -376,7 +376,7 @@ export function DraftPage() {
     })
   }
   const doDelete = () => del.mutate(undefined, {
-    onSuccess: () => { toast('Draft deleted', 'success'); navigate('/review#drafts') },
+    onSuccess: () => { toast('Draft deleted', 'success'); navigate('/review/drafts') },
     onError: err => { setRefusal(err); setStep(null) },
   })
 

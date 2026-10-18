@@ -126,13 +126,4 @@ export const MEASURE_KINDS = {
   to_date: 'To date',
 }
 
-export const summary = (data) => {
-  const n = (a, one, many) => `${a.length} ${a.length === 1 ? one : many}`
-  return [
-    n(data.facts || [], 'fact', 'facts'),
-    n(data.dimensions || [], 'dimension', 'dimensions'),
-    n(data.measures || [], 'measure', 'measures'),
-  ].join(' · ')
-}
-
 export { tableOf }

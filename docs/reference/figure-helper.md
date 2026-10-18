@@ -92,7 +92,7 @@ draws it. Write and mark that one yourself; see [[template-html]].
 
 The declared name becomes the figure id: `total` → `fig-total`.
 
-That id is the receipt's stable address for the number, and it is how a human
+That id is the trace's stable address for the number, and it is how a human
 redirects you — *"fix `fig-total`"*. Name figures accordingly.
 
 ## Refusals

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
-import { useHealth, useAppStatus, useMe, signOut } from '../api'
-import { PAGES } from '../nav'
-import { useScope, useOpenReport, NavMenuContext } from './Scope'
+import { useHealth, useAppStatus, useMe, useRole, signOut } from '../api'
+import { page, placesFor, placeOf, mayUse } from '../nav'
+import { useScope, useOpenReport, NavMenuContext, NotForYou } from './Scope'
+import { SkeletonCard } from './Shared'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
@@ -134,6 +135,7 @@ export default function Layout({ children }) {
   const { data: appStatus } = useAppStatus()
   const update = appStatus?.update?.available ? appStatus.update : null
   const { data: me } = useMe()
+  const role = useRole()
   const person = me?.sign_in === 'oidc' && me.actor ? me : null
   // Follow the OS until the viewer picks one; their pick is remembered, the OS
   // default is not (so it keeps following the OS).
@@ -159,7 +161,8 @@ export default function Layout({ children }) {
   const closeRef = useRef(null)
   const inHelp = HELP_PATHS.some(p => pathname.startsWith(p))
   const scope = useScope()
-  const place = PAGES.find(p => p.key === scope.page)
+  const places = placesFor(role)
+  const place = places.find(p => p.key === placeOf(scope.page))
   const openReport = useOpenReport()
 
   // While the mobile menu is open, the page behind it stays put.
@@ -190,8 +193,13 @@ export default function Layout({ children }) {
   // The opener is the clicked button (a click does not focus a button in every browser).
   const openMenu = e => { openerRef.current = e?.currentTarget || document.activeElement; setOpen(true) }
 
-  // The four places. Each marks itself current on every page inside it.
-  const items = PAGES.map(p => ({ path: p.path, label: p.label, icon: p.key, active: scope.page === p.key }))
+  // The places this role sees. Each marks itself current on every page inside it.
+  const items = places.map(p => ({ path: p.path, label: p.label, icon: p.key, active: placeOf(scope.page) === p.key }))
+  // An address above the role is a plain page saying so (while the role loads,
+  // nothing of it is drawn).
+  const body = scope.page && !mayUse(role, scope.page)
+    ? (role === null ? <SkeletonCard /> : <NotForYou role={page(scope.page).minRole} />)
+    : children
 
   return (
     <div style={openReport ? undefined : { display: 'flex', minHeight: '100vh' }}
@@ -208,9 +216,12 @@ export default function Layout({ children }) {
         zIndex: 200,
       }}>
         {/* On a phone the header says which of the four places you are in. */}
-        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          TraceBi
-          {place && <span className="mobile-header__place">{place.label}</span>}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <BrandMark />
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            TraceBi
+            {place && <span className="mobile-header__place">{place.label}</span>}
+          </span>
         </span>
         <button onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} style={{
           background: 'none', border: 'none', cursor: 'pointer',
@@ -271,13 +282,8 @@ export default function Layout({ children }) {
         <div style={{ padding: '22px 20px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <BrandMark />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                TraceBi
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--sidebar-text)', marginTop: 1 }}>
-                Analytics trust layer
-              </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+              TraceBi
             </div>
           </div>
           <button
@@ -303,8 +309,9 @@ export default function Layout({ children }) {
           </button>
         </div>
 
-        {/* Reports (the library), Ask, Data and Review. A model is a filter
-            inside a place, not the frame of the app. */}
+        {/* Reports (the library), Ask, then Data and Review for the roles
+            that use them. A model is a filter inside a place, not the frame
+            of the app. */}
         <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: '12px 0 4px' }}>
           {items.map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
         </ul>
@@ -383,7 +390,7 @@ export default function Layout({ children }) {
           marginLeft: 'var(--nav-w)', flex: 1, minWidth: 0,
           padding: '36px 44px', maxWidth: 1340,
         }} className="layout-main">
-          {children}
+          {body}
         </main>
       )}
 

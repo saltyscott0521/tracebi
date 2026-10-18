@@ -13,14 +13,6 @@ import './map.css'
 // something is a <button>; one that only says something is a labelled group,
 // so a reader is never offered a control that does nothing.
 
-/** A name, breaking only after an underscore. The text itself is untouched. */
-function Name({ text }) {
-  const parts = text.split('_')
-  return parts.map((part, i) => (
-    i < parts.length - 1 ? <Fragment key={i}>{part}_<wbr /></Fragment> : part
-  ))
-}
-
 function Chevron() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
@@ -56,7 +48,7 @@ function MapNode({ node, label = node.label || '', tone = node.tone || 'quiet', 
   const marks = node.verdict ? [<Verdict key="v" state={node.verdict} detail={node.detail} size="sm" />]
     : flag ? [<Flag key="f" flag={{ kind: FLAG[tone], glyph, text: words }} />] : []
   return (
-    <LineNode shape={node.shape} name={node.name} fact={!node.verdict && !flag ? words : null} marks={marks} note={note}
+    <LineNode shape={node.shape} name={node.name} sans={node.sans} title={node.title} fact={!node.verdict && !flag ? words : null} marks={marks} note={note}
               tone={['hot', 'unused'].includes(tone) ? tone : ''} className="map-node" label={aria}
               style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
               pressed={node.pressed} onClick={node.action ? () => onActivate(node) : undefined} />
@@ -102,10 +94,10 @@ export default function MapCanvas({ layout, label, onActivate, onOpen }) {
                style={{ left: b.x, top: b.y, width: b.w, height: b.h }} />
         ))}
         {layout.card && (
-          <div role="group" aria-label={`model: ${layout.card.name}`} className="map-modelcard"
+          <div role="group" aria-label={`model: ${layout.card.label}`} className="map-modelcard"
                style={{ left: layout.card.x, top: layout.card.y, width: layout.card.w, height: layout.card.h }}>
             <div className="map-colh map-colh--in"><span className="map-colh__n">2</span>Model</div>
-            <div className="map-modelcard__name"><Name text={layout.card.name} /></div>
+            <div className="map-modelcard__name" title={layout.card.name}>{layout.card.label}</div>
             {layout.card.empty && <p className="map-modelcard__empty">{layout.card.empty}</p>}
           </div>
         )}
@@ -116,8 +108,8 @@ export default function MapCanvas({ layout, label, onActivate, onOpen }) {
           ? layout.bands.map(b => (
             <Fragment key={b.model}>
               <button type="button" className={`map-open${b.tinted ? ' map-open--tinted' : ''}`}
-                      style={{ left: 22, top: b.y + 10 }} aria-label={`Open ${b.model}`} onClick={() => onOpen(b.model)}>
-                <span className="map-mono">{b.model}</span><Chevron />
+                      style={{ left: 22, top: b.y + 10 }} title={b.model} onClick={() => onOpen(b.model)}>
+                <span><span className="sr-only">Open </span>{b.label}</span><Chevron />
               </button>
               {layout.nodes.filter(n => n.band === b.model).map(n => drawn(n))}
             </Fragment>

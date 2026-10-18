@@ -7,7 +7,7 @@ when: choosing chart colors, styling cards or badges, or writing style.css / _th
 card; green and red used for decoration. Color then carries no information, so
 the one thing that *should* stand out can't. Worse, green and red already mean
 something in a TraceBi report — reproducible and altered — and decorative use
-muddies the receipt's own language.
+muddies the trace's own language.
 
 **The correct pattern in TraceBi.**
 
@@ -18,7 +18,7 @@ muddies the receipt's own language.
 - **Categorical color only when the category is the point** (`data-tb-color` on
   a chart), and then at most five or six. Past that, colors stop being
   distinguishable; sort and label instead (see [[design-choose-the-chart]]).
-- **Green, amber and red belong to the verdict.** The receipt's badges use them
+- **Green, amber and red belong to the verdict.** The trace's badges use them
   for *reproducible / derived / unverified*. Don't reuse them for "good / bad"
   styling, and never restyle a badge to change what it says — provenance
   chooses the badge class, presentation cannot.

@@ -665,6 +665,6 @@ def test_reproduces_verdict_names_the_sections_it_could_not_check(
     assert mixed.get("verdict") == REPRODUCES
     assert "1 unverifiable" in mixed.get("verdict_detail", ""), (
         "the verdict line is where a reader looks; it must disclose the "
-        "section this receipt does not prove"
+        "section this report does not prove"
     )
     assert mixed["verdict_detail"] != fully_checked["verdict_detail"]

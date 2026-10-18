@@ -61,7 +61,7 @@ measures:
     agg: count
     description: Order count
   # A measure with its own filter: only the rows it matches are summed, the
-  # rest of the vocabulary is untouched. The receipt stamps the filter.
+  # rest of the vocabulary is untouched. The trace stamps the filter.
   - name: large_order_revenue
     column: revenue
     agg: sum

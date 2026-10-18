@@ -158,10 +158,7 @@ function ModelPage({ model, tab }) {
 
       <section className="stage" key={tab} aria-label={TABS.find(([key]) => key === tab)[1]}>
         {tab === 'model' && (
-          <>
-            <div className="stage__actions"><EditAsDraft kind="models" path={model} /></div>
-            <ModelDetail name={model} />
-          </>
+          <ModelDetail name={model} action={<EditAsDraft kind="models" path={model} bare />} />
         )}
         {tab === 'transform' && <TransformTab model={model} facts={facts} />}
         {tab === 'sources' && <Connectors model={model} />}

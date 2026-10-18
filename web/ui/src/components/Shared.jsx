@@ -240,6 +240,15 @@ export function Verdict({ state, detail, size, onClick, children }) {
     : <span className={cls} title={detail}>{label}</span>
 }
 
+/**
+ * A state that is not a verdict (a table's checks, say) in the verdict chip's
+ * shape, so the app keeps one chip: *tone* `warn` is amber, `none` a hollow
+ * dot, anything else neutral. Words in sentence case; *title* says why.
+ */
+export function Chip({ tone, title, children }) {
+  return <span className={`verdict verdict--sm${tone ? ` chip--${tone}` : ''}`} title={title}>{children}</span>
+}
+
 export function Spinner({ size = 18 }) {
   return (
     <span style={{

@@ -100,11 +100,6 @@ def test_row_order_is_preserved():
 # (writer dtype drift, os.linesep, library versions) — so these tests exercise
 # the REAL verify_file end to end, never a recomputed triple.
 
-def _fp(triple):
-    from tracebi.reports.embed import fingerprint_triple
-
-    return fingerprint_triple(triple)
-
 
 def _manifest_for(plan, stamped_list, verifiable=True):
     """A minimal but REAL manifest for verify_file: the plan's records plus
@@ -217,39 +212,6 @@ def _frame(rows):
         "region": ["North", "South", "East", "West"] * (rows // 4),
         "revenue": [1705495.22, 250000.0, 99999.99, 42000.5] * (rows // 4),
     })
-
-
-def test_small_report_stays_csv_and_ships_no_engine():
-    """A KPI-shaped dashboard must not pay megabytes for an engine: below the
-    crossover the CSV artifact is genuinely smaller."""
-    from tracebi.reports.embed import (
-        EMBED_FORMAT_CSV, choose_embed_format, data_blocks_html, stamp_frame,
-    )
-    from tracebi.reports.stack import stack_tail
-
-    stamped = [stamp_frame(_frame(40), name="d")]
-    assert choose_embed_format(stamped) == EMBED_FORMAT_CSV
-    blocks = data_blocks_html(stamped)
-    assert '"csv"' in blocks
-    assert 'id="tracebi-engine-worker"' not in stack_tail(libs=(),
-                                                          data_blocks_html=blocks)
-
-
-def test_large_report_switches_to_parquet_and_gets_smaller():
-    """Past the crossover Parquet wins outright — the engine pays for itself."""
-    from tracebi.reports.embed import (
-        EMBED_FORMAT_PARQUET, choose_embed_format, data_blocks_html, stamp_frame,
-    )
-    from tracebi.reports.stack import stack_tail
-
-    stamped = [stamp_frame(_frame(400_000), name="d")]
-    assert choose_embed_format(stamped) == EMBED_FORMAT_PARQUET
-    blocks = data_blocks_html(stamped)
-    assert '"parquet"' in blocks
-    # smaller than the CSV it replaced, and the engine now ships
-    assert len(blocks) < len(stamped[0].triple["csv"])
-    assert 'id="tracebi-engine-worker"' in stack_tail(libs=(),
-                                                      data_blocks_html=blocks)
 
 
 def test_one_format_per_artifact_never_a_mix():

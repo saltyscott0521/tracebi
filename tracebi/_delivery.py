@@ -139,7 +139,7 @@ def _body(name: str, manifest: dict, verify_result: Optional[dict],
     if verify_result is not None and verify_result.get("exit_code", 0) != 0:
         # The red flag travels with the report — first thing the reader sees.
         lines += [
-            "*** RED FLAG: THIS RECEIPT DID NOT VERIFY ***",
+            "*** RED FLAG: THIS REPORT DID NOT VERIFY ***",
             verify_result.get("verdict_detail", ""),
             "",
         ]
@@ -153,7 +153,7 @@ def _body(name: str, manifest: dict, verify_result: Optional[dict],
     lines.append(_contracts_line(manifest.get("transform_contracts")))
     lines += [
         "",
-        "The attached HTML is self-contained; its .manifest.json receipt is "
+        "The attached HTML is self-contained; its .manifest.json trace is "
         "attached beside it.",
         f"Re-check it any time with: tracebi verify {manifest_name}",
     ]
@@ -393,7 +393,7 @@ def _slack_message(manifest: dict, html: str, verify_result: Optional[dict],
     ]
     if verify_result:
         if verify_result.get("exit_code", 0) != 0:
-            lines.insert(0, "*** RED FLAG: THIS RECEIPT DID NOT VERIFY ***")
+            lines.insert(0, "*** RED FLAG: THIS REPORT DID NOT VERIFY ***")
         detail = (verify_result.get("verdict_detail")
                   or verify_result.get("verdict") or "")
         lines.append(f"Verify: {detail}")

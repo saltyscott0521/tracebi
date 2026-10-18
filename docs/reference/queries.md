@@ -4,7 +4,7 @@
 ordering, limits — as data, not SQL.**
 
 A query is a `QuerySpec`: validatable, serializable, diffable in a pull request,
-and replayable. That is what lets [[receipts|`tracebi verify`]] re-run it later.
+and replayable. That is what lets [[trace|`tracebi verify`]] re-run it later.
 
 ---
 

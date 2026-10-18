@@ -1,7 +1,8 @@
 {
   "name": "Portfolio Book",
   "author": "workflow",
-  "description": "The direct-lending book as an editorial report: the headline is the finding, every number in the prose is a bound figure, and the page carries its own house CSS and a script-drawn issuer table (script.js) from the same fingerprinted data.",
+  "description": "A written review of the book: how it is marked against cost, which sectors carry the loss, the weakest fund and issuer, and the largest issuers.",
+  "notes": "An editorial page with its own house CSS; the issuer table is drawn by script.js from the same fingerprinted rows.",
   "data": {
     "totals": {
       "model": "portfolio_model",

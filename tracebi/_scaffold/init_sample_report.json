@@ -1,7 +1,7 @@
 {
   "name": "Sample Dashboard",
   "author": "tracebi init",
-  "description": "Every figure claims a stamped binding. Edit app.jsx to reshape the page; nothing re-runs the pandas.",
+  "description": "Revenue, orders and units by region, and how much of revenue comes from big orders.",
   "measures": {
     "sample_model": {
       "big_orders": {

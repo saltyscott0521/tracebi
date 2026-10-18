@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX and UI audit, pass 2 — 2026-10-18 — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="UX and UI audit, pass 2 — 2026-10-18">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a class="on" href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="ux-and-ui-audit-pass-2-2026-10-18">UX and UI audit, pass 2 — 2026-10-18</h1>
+<p><strong>Status: findings and a short round of fixes.</strong> Taken from main at <code>306ea21</code>
+after all four steps of <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a> merged: fresh UI build, the
+reference project rebuilt, 94 captures of every place, tab, panel and report
+at 1440 and 390, light and dark. Zero console errors in any context. The
+first audit is <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>; this one asks what a reader meets now.</p>
+<p>The short version: <strong>the structure is right and the system holds.</strong> The four
+places read as four places; the reports read as one family in both modes;
+trust has one vocabulary. What is left is a layer of <em>words and
+duplication</em> that the packages, each owning one piece, could not see across
+pieces: text written for the agent that the reader now meets first, the same
+fact shown twice within one screen, and a handful of finish items.</p>
+<h2 id="findings">Findings</h2>
+<p>Severity as before: <strong>S1</strong> breaks or misleads the reader's job, <strong>S2</strong>
+confuses or wastes, <strong>S3</strong> polish.</p>
+<h3 id="words-a-reader-meets">Words a reader meets</h3>
+<ol>
+<li><strong>S1 — Report descriptions are implementation notes.</strong> The library's
+   second line, the first thing a reader scans, reads "The direct-lending
+   book as an editorial report: the headline is the finding, every number
+   in the prose is a bound figure, and the page carries its own house CSS…"
+   or "an app (app.jsx) whose every number is a kit figure, so the receipt
+   names it. Edit app.jsx to reshape the page". These are <code>report.json</code>
+   <code>description</code>s written when the reader was an agent. Every reference
+   report, both template bundles and the demo app need a description a
+   reader would use ("Fair value, unrealized and mark across three funds,
+   by sector, fund and issuer"), one sentence. The same text shows in the
+   About-this-build panel's first line.</li>
+<li><strong>S1 — <code>portfolio_dashboard</code>'s masthead says "Portfolio book".</strong> The
+   library row says Portfolio Dashboard, the app header says Portfolio
+   Dashboard, and the page inside says "Portfolio book" with the kicker
+   "Direct Lending". A leftover from the spec conversion. Mastheads should
+   carry the report's <code>name</code> or a finding, never another report's name.</li>
+<li><strong>S2 — The footer line leaks identifiers and tooling.</strong> "Built by
+   workflow on 2026-10-18 from the model portfolio_model" / "Built by
+   tracebi init --template saas-metrics on 2026-10-18 from the model
+   saas_model". A reader wants "Built 18 Oct 2026 · Direct Lending
+   Portfolio". The author field is tooling provenance: keep it in the
+   receipt's About-this-build, not on the page.</li>
+<li><strong>S2 — Kickers are inconsistent.</strong> "DIRECT LENDING", "DIRECT LENDING ·
+   PORTFOLIO OVERVIEW", "SAAS METRICS", "SAAS METRICS · COHORT BRIEF". One
+   rule: the kicker is the model's label; the h1 is the report's name or
+   finding.</li>
+<li><strong>S3 — Identifiers still surface</strong> where a label exists: the Map's nodes
+   (<code>housing_model</code>, <code>affordability_transform</code>), the Transform tab's card
+   title (<code>portfolio_model</code>), the Model tab's grain line
+   (<code>dim_fund.fund, dim_issuer.issuer, dim_issuer.sector</code>), the footer's
+   model name. The sidebar tagline "Analytics trust layer" remains.</li>
+</ol>
+<h3 id="the-same-fact-twice">The same fact twice</h3>
+<ol start="6">
+<li><strong>S2 — Built time and verdict appear twice within 150px</strong> on the report
+   page: the app header ("Reproduces · Built Oct 18 · 20:25 · Data refreshed
+   Oct 17 · 23:47") and, inside the frame, the masthead meta ("Built Oct 18,
+   2026, 8:25 PM · Reproduces · Receipt"). When the app hosts the artifact,
+   the app header is the chrome; the masthead's meta should reduce to the
+   Receipt link (the host already sends a message; send "hosted" with it).
+   Outside the app the masthead meta stays whole.</li>
+<li><strong>S2 — The Data page stacks three tab rows.</strong> Page tabs (Model ·
+   Transform · Sources · Runs), then inside Model a second row (Diagram ·
+   Tables · Measures · Relationships · Storage · Code) with an "Edit as a
+   draft" button floating alone above an empty band, plus a badge
+   "1 FACT · 2 DIMENSIONS · 13 MEASURES" repeating what the line above
+   already says. On a phone the inner row wraps to two lines and the ERD is
+   a thumbnail. (Backlog 23, now seen in context.)</li>
+<li><strong>S2 — History is a wall of "Not checked".</strong> 40 rows of the same nine
+   reports, one per rebuild, and on a phone a 4,000px card list. Older
+   builds of the same report carry no information a reader needs by
+   default. Group by target: the newest build per report, with "N older
+   builds" expanding. The Took and Who columns show as dashes on every
+   desktop row because a few CLI rows carry a value; a dash should be
+   quieter than text.</li>
+<li><strong>S3 — The report page's History tab</strong> has the same wall (20 rows of
+   "Build · Not checked"); the same grouping fixes it.</li>
+</ol>
+<h3 id="report-finish">Report finish</h3>
+<ol start="10">
+<li><strong>S1 — <code>affordability</code>'s Receipt link is invisible</strong>: accent blue on
+    the green hero (the masthead meta's link colour is not the hero's ink).
+    The chip beside it reads fine. One rule: links inside <code>.tb-masthead</code>
+    on a hero ground inherit the hero ink.</li>
+<li><strong>S2 — Tables cut their last column with no hint.</strong> <code>mrr_dashboard</code>'s
+    "Ending MRR by plan" shows "LO…" for Logo churn at 1440; every phone
+    table clips its right columns inside the card. The scroll works, but
+    nothing says so. A right-edge fade while there is more to scroll, on
+    <code>.tb-scroll</code> and the kit's <code>&lt;Table&gt;</code>.</li>
+<li><strong>S2 — The showcase's lead KPI reads "285.9M"</strong> with no currency while
+    every other page says "$285.9M"; its fourth KPI "Est. Q3 deployments ·
+    4" is a <code>report.py</code> demonstration that reads as a fact. Format the
+    lead as currency; label the python-derived card as such in its context
+    line ("from report.py, not re-run"). Its scatter card is 70% empty
+    space at 1440.</li>
+<li><strong>S3 — Transform tab words.</strong> Flow nodes say <code>transform</code> / <code>build</code> in
+    mono with "3 rows" / "6 rows" (rows of what?); the table-check chips
+    are all-caps "CHECKS PASSED"; the Steps table on a phone clips its
+    status column. Say "Transform · ran in 2 s · wrote 3 tables", "Build ·
+    6 reports"; chips in sentence case as the Verdict chip is.</li>
+<li><strong>S3 — Library rows truncate descriptions to one line at 1440</strong> with
+    "…" while the phone wraps to two; let the desktop wrap to two as well
+    once descriptions are reader-length (finding 1).</li>
+</ol>
+<h3 id="what-is-right-and-should-not-move">What is right and should not move</h3>
+<p>The library as home with a chip per row; the four-place sidebar; the
+report page as the report with one bar and one panel; the receipt as a
+certificate in both the file and the app; the editorial register (the
+cohort brief and the book read as letters); charts with direct labels and
+no truncation; dark mode as its own palette everywhere; Ask's answer card
+and its honesty line; Review's three sections; the Get started page's new
+"How the app fits together".</p>
+<h2 id="round-2-the-fixes">Round 2 — the fixes</h2>
+<p>Three packages, small, each with the usual gate and captures:</p>
+<ul>
+<li><strong>A2-1 Words</strong> (report files + <code>template_package.py</code>): reader descriptions
+  for every reference, template and demo report; <code>portfolio_dashboard</code>'s
+  masthead; the kicker rule (model label) and the h1 rule applied across the
+  reference project, scaffolds and guides; the footer line as "Built <date> ·
+  <model label>" with author/tooling moved to the receipt's About-this-build;
+  <code>AGENTS.md</code> / <code>init_agents.md</code> / <code>capabilities.py</code> teach "description is
+  for the reader".</li>
+<li><strong>A2-2 Report finish</strong> (<code>tracebi.css</code>, <code>tracebi.js</code>, kit, frame bridge,
+  two reports): hosted mastheads reduce their meta to the Receipt link;
+  masthead links inherit hero ink; the scroll fade on overflowing tables;
+  the showcase's currency, python-derived label and scatter height;
+  <code>mrr_dashboard</code>'s plan table.</li>
+<li><strong>A2-3 App</strong> (<code>web/ui</code>): the Model tab's inner row becomes a segmented
+  control in the card header with Edit as a draft beside it, the duplicate
+  badge goes, grain in labels; the Transform tab's words and the phone
+  Steps table; History grouped by target with older builds folded (page
+  and panel), quiet dashes; the Map and Transform card by label; library
+  descriptions on two lines; the tagline.</li>
+</ul>
+<p>Not in this round, still in <a href="../architecture/ui-backlog.html">UI backlog</a>: build durations (the run store
+stores no finish time), Ask fingerprints, the two-step Flow zoom.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

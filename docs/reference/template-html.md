@@ -24,7 +24,7 @@ Nothing here is a component library. Any element can be a figure — including a
 | --- | --- |
 | `data-tb-figure` | `value` \| `chart` \| `table` \| `custom` |
 | `data-tb-binding` | which stamped binding feeds this element |
-| `id` | **give every figure one** — it is the receipt's address, and how a human redirects you |
+| `id` | **give every figure one** — it is the trace's address, and how a human redirects you |
 
 A figure with no binding must carry `data-tb-unverified`. **There is no third
 state:** a number is either backed by a re-runnable query or honestly marked as
@@ -73,7 +73,7 @@ multiples), a line or area ends in its last value (unless `data-tb-mark`
 already labels the last), category names wrap to two lines or turn and are
 never cut, and value ticks thin to what fits. The tooltip shows the
 category, the value, the measure's description from the model and a
-"Receipt →" link that opens the receipt drawer at that figure.
+"Trace →" link that opens the trace drawer at that figure.
 
 The build inlines D3 automatically when the page contains a chart
 figure. `"libs"` in [[report-json]] is optional.
@@ -137,7 +137,7 @@ The single highest-value habit in this file:
 ```
 
 Narrative prose is where hard-coded numbers hide. Here the honest path costs
-one attribute, and each bound span gets its own entry in the receipt.
+one attribute, and each bound span gets its own entry in the trace.
 
 ## Interactivity
 
@@ -152,7 +152,7 @@ filtered KPI needs its own binding, and value figures never react to controls.
 | Download | `<button data-tb-download data-tb-binding="B" data-tb-label="…">` |
 
 Filters on one binding AND-combine, and search ANDs with them. Download exports
-the binding's **stamped CSV verbatim** — a receipt-preserving export, always the
+the binding's **stamped CSV verbatim** — a trace-preserving export, always the
 full binding, never the filtered view.
 
 Tables scroll past `data-tb-rows` (default 10); `data-tb-rows="all"` opts out.
@@ -202,7 +202,7 @@ they didn't ask for (`tracebi context` → `presentation.layout.look`).
 ```html
 <header class="tb-masthead" data-tb-title="left" data-tb-period="Q3 2026">
   <div class="tb-masthead-mark"></div>              <!-- optional: your logo -->
-  <p class="tb-kicker">Direct lending</p>           <!-- optional -->
+  <p class="tb-kicker">Direct Lending Portfolio</p> <!-- optional: the model's label -->
   <h1>Portfolio Book</h1>
   <p class="tb-standfirst">One line on what this page is for.</p>
   <p class="tb-masthead-meta"><span data-tb-built></span>
@@ -210,21 +210,24 @@ they didn't ask for (`tracebi context` → `presentation.layout.look`).
 </header>
 ```
 
+The kicker is the model's label: leave it out and the build adds
+`<p class="tb-kicker">` with the label of the model the bindings read; write
+one to say something else. The `<h1>` is the report's name or its finding.
 `data-tb-title` is `left`, `center`, `banner` (accent band) or `nav` (moved
 to the top of a sidebar). `data-tb-period` names what the numbers cover; it
 is a label, so it may hold a year. The runtime fills the meta line: the
-period, the build time from the receipt (never type a date) and the verdict
+period, the build time from the trace (never type a date) and the verdict
 chip; whichever the template leaves out, it adds.
 
 The chip's state is `data-tb-verdict`, set by the runtime from the file
 itself, never from the page's markup: `draft` on a working preview (no
-receipt), `not-checked` on a built file — nothing has re-run its queries;
+trace), `not-checked` on a built file — nothing has re-run its queries;
 `tracebi verify` does, and says whether each figure reproduces. The four
 verdicts, everywhere TraceBi shows one, are `reproduces` (green, `--tb-good`),
 `needs-a-look` (amber, `--tb-warn`), `does-not-reproduce` (red, `--tb-bad`)
 and `not-checked` (neutral). A page never makes it green. In a built file the
-runtime puts a "Receipt" button after the chip and makes the chip open the
-receipt too (the receipt drawer, below).
+runtime puts a "Trace" link after the chip and makes the chip open the
+trace too (the trace drawer, below).
 
 The mark is empty by default. To show a logo, put the file in the package's
 `assets/` and size it in `style.css`:
@@ -249,20 +252,25 @@ gradient, no shadow, no second set of components.
 </footer>
 ```
 
-Your sources come first. The build adds one line — who built the file, when,
-from which model, and *"The receipt does not claim the numbers are right."* —
-then "How these numbers were made" behind a `<details>`: what the receipt is
+Your sources come first. The build adds one line — when the file was built and
+from which model, by its label ("Built 18 Oct 2026 · Direct Lending Portfolio."),
+and *"This page does not claim the numbers are right."* —
+then "How these numbers were made" behind a `<details>`: what the trace is
 for, and the stated methodology (below). A template with no
-`data-tb-methodology` gets the whole footer at the end of the page. The
-runtime adds "Open the receipt" to that line.
+`data-tb-methodology` gets the whole footer at the end of the page. With the
+runtime, the line ends in "▸ How these numbers were made", which opens the
+trace drawer, and the `<details>` hides: the drawer's About this build holds
+the same notes. The `<details>` stays for a reader without JavaScript.
 
-**The receipt drawer** — every built page carries one; you write nothing for
-it. It opens from the masthead's "Receipt" button or its verdict chip, the
-footer's line, a click on any value figure (at that figure's row), or a
-chart tooltip's "Receipt →"; Escape closes it. A page with no masthead keeps
-a floating "Receipt" button instead. It reads as a certificate: the report,
-when it was built and from which model, the verdict chip, *"The receipt does
-not claim the numbers are right."*, how to check the file
+**The trace drawer** — every built page carries one; you write nothing for
+it. It opens from the masthead's "Trace" link or its verdict chip, the
+footer's "How these numbers were made", a click on any value figure (at that
+figure's row), or a chart tooltip's "Trace →"; Escape closes it. A page with
+no masthead keeps a floating "Trace" button instead. It reads as a
+certificate headed with the report's name and *How each number was made*:
+when it was built and from which model, the verdict chip, *"This page does
+not claim the numbers are right; it records how each was made so it can be
+checked."*, how to check the file, which carries its trace
 (`tracebi verify --file <name>.html`, with its `.manifest.json` beside it),
 then one row per figure in page order — the value as the page shows it (or
 "table, 13 rows" / "chart, 6 rows"), its label, the measure's definition from
@@ -287,7 +295,6 @@ shadow.
 ```html
 <article class="tb-article">
   <header class="tb-masthead tb-article-head">  <!-- data-tb-title="center" to centre it -->
-    <p class="tb-kicker">Revenue</p>
     <h1><span data-tb-figure="value" data-tb-binding="top" data-tb-cell="dim_region.region"></span>
         leads on revenue</h1>
     <p class="tb-standfirst">What this report finds, and why it matters.</p>
@@ -310,7 +317,7 @@ flat, with a serif headline (on a dark ground, a deep band of the accent with
 the page's ink). A number in the prose is bound and set in weight 600, in the
 prose's own ink. Charts, tables, the KPI strip, the pull-stat and the footer
 keep the sans face, so numbers read as data; the methodology is in the
-receipt, behind the footer's link. To restyle it, set the accent pairs
+trace, behind the footer's link. To restyle it, set the accent pairs
 (`--tb-accent` / `--tb-dark-accent` and their `-text`), not a colour of its own. The writing advice is `tracebi knowledge
 design-editorial-report`.
 
@@ -345,7 +352,7 @@ decodes its data in a worker *after* `script.js` runs, so a bare call returns
 `[]` there and rows on a small report. `ready(fn)` behaves the same on both.
 
 Sorting and slicing belong in the query (`order_by` + `limit`, see
-[[queries]]), never in JS — that moves ordering out of the receipt.
+[[queries]]), never in JS — that moves ordering out of the trace.
 
 ## Related
 

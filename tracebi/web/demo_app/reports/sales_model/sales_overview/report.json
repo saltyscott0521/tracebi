@@ -1,7 +1,7 @@
 {
   "name": "Sales Overview",
   "author": "TraceBi Demo",
-  "description": "Revenue, units and cost by region and customer segment, straight off the sales model: an app (app.jsx) whose every number is a kit figure.",
+  "description": "Revenue, units and cost by customer region and segment.",
   "data": {
     "totals": {"model": "sales_model", "query": {"fact": "fact_orders",
       "measures": {"revenue": "sum", "qty": "sum", "cost": "sum"}}},

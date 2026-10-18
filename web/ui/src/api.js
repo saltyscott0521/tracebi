@@ -116,6 +116,20 @@ export const useAppStatus = () =>
 export const useMe = () =>
   useQuery({ queryKey: ['me'], queryFn: () => get('/me'), staleTime: 5 * 60 * 1000, retry: false })
 
+/**
+ * The role the app shows places for (nav.js placesFor): null while /api/me
+ * loads, admin when it names none (no sign-in: the API lets everyone do
+ * everything), and viewer when it cannot be read or names a role the app does
+ * not know (as the API treats one).
+ */
+export function useRole() {
+  const { data, isLoading, isError } = useMe()
+  if (isLoading) return null
+  if (isError) return 'viewer'
+  if (!data?.role) return 'admin'
+  return ['viewer', 'analyst', 'admin'].includes(data.role) ? data.role : 'viewer'
+}
+
 export const signOut = () =>
   fetch('/logout', { method: 'POST' }).finally(() => window.location.assign('/'))
 

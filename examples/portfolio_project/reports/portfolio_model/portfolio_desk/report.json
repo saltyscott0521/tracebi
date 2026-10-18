@@ -1,7 +1,8 @@
 {
   "name": "Portfolio Desk",
   "author": "workflow",
-  "description": "The book as an app people work in (app.jsx, the React lane): a sidebar with three views, a KPI strip with a lead, a watch list of the lowest marks, a searchable holdings list and the funds side by side. Every number is a kit figure, so the receipt names it.",
+  "description": "Fair value, unrealized gain, mark and weighted spread for the book, with a watch list of the lowest marks, searchable holdings and the funds side by side.",
+  "notes": "An app people work in: a sidebar with three views.",
   "look": {"density": "compact"},
   "data": {
     "totals": {

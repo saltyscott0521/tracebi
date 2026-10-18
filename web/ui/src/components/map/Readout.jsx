@@ -9,7 +9,7 @@ export function Readout({ readout }) {
   return (
     <section className="map-readout" aria-live="polite" aria-label="Selection">
       <div className="map-cap">{readout.kind}</div>
-      <div className="map-readout__name">{readout.name}</div>
+      <div className={`map-readout__name${readout.mono ? ' map-mono' : ''}`}>{readout.name}</div>
       <p className="map-readout__text">{readout.text}</p>
       {readout.open && <Link to={readout.open} className="map-readout__open">Open report</Link>}
     </section>

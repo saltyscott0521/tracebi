@@ -122,7 +122,7 @@ def _pipeline(model: str, transform: str) -> str:
 # Pipeline for {model}: rebuild the warehouse, then its reports.
 #
 #     transform  runs {transform}, which sinks the star schema
-#     build      builds every report in reports/{model}/, each with a receipt
+#     build      builds every report in reports/{model}/, each with its trace
 #
 #     tracebi run-pipeline {model}
 name: {model}
@@ -182,7 +182,7 @@ contract. The claim on the transform is "the sink satisfied its contract".
 ├── pipelines/{entry["model"]}.yaml
 {report_lines}
 ├── data/             warehouse (gitignored)
-└── output/           rendered HTML + manifest receipts
+└── output/           rendered HTML + manifests
 ```
 """
 

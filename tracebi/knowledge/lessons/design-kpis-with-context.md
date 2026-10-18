@@ -23,7 +23,7 @@ model.add_measure("fv_growth", growth=("fair_value", "month", 1), format="percen
 ```
 
   Bind both in the card — the value, and "+6.2% vs last month" beneath it in a
-  `.tb-kpi-context` line — so the change carries the same receipt as the value.
+  `.tb-kpi-context` line — so the change carries the same trace as the value.
   Put `data-tb-direction="up-good"` (or `"down-good"` for costs and defaults) on
   the bound change, with `class="tb-kpi-delta"` as the context line's first
   span (in an app.jsx: `<Kpi … deltaBinding deltaCell deltaFormat

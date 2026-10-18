@@ -11,7 +11,7 @@ reports/my_report/
   template.html    the page you draw          → [[template-html]]
   style.css        optional, your CSS
   script.js        optional, your JS
-  report.py        optional escape hatch      → [[receipts#Unverifiable figures]]
+  report.py        optional escape hatch      → [[trace#Unverifiable figures]]
 ```
 
 ---
@@ -47,17 +47,27 @@ path); with no `name` here, `display_name` is the directory name title-cased.
 
 ### `author` — string, optional
 
-Recorded in the manifest as `rendered_by`.
+Recorded in the manifest as `rendered_by`, and shown in the trace's About
+this build ("built by …"), not on the page.
 
 ### `description` — string, optional
 
-Shown in the web UI, in the library under the report's model.
+One sentence for the reader: what the page shows — its measures, breakdowns
+and period (`"Ending MRR, customers and logo churn, month by month and by
+plan."`). Shown in the library under the report's name and at the top of About
+this build. How the page is built (the lane, which file draws what, why a
+measure is declared the way it is) does not belong here: put it in `notes`.
+
+### `notes` — string, optional
+
+For the people and agents who edit the package: how the page is built, what
+`report.py` or `script.js` does. Nothing renders it.
 
 ### `data` — object, **required**
 
 Maps a **binding name** to a query. A binding is the unit of trust: it is
 resolved once, fingerprinted, embedded in the artifact, and recorded in the
-receipt.
+trace.
 
 ```json
 "data": {
@@ -154,7 +164,7 @@ The build itself ignores it.
 | `timezone` | Optional IANA name. Default `UTC`. |
 | `to` | Optional list of email addresses. Without it, a run sends no email. When `TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are both set, a successful run still uploads the HTML and the manifest to that channel. |
 | `refresh` | Optional. `{"transforms": [...], "pipelines": [...]}` to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (`tracebi run-transform` / `tracebi run-pipeline`). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent. |
-| `retries` | Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A receipt that does not verify, and a delivery failure, are not retried. |
+| `retries` | Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A trace that does not verify, and a delivery failure, are not retried. |
 | `owner` | Optional. One email address. A run recorded `failed`, `refused`, or `empty` emails this address a plain-text alert and does not send the report to `to`. Without it, nothing is alerted. |
 | `burst` | Optional. One build per filter value, each with its own recipients. `filter` is one dimension key mapped to a list or `{"in": [...]}`. `to` maps each value to email addresses. A value missing from `to` is skipped and recorded, and is not sent to the top-level `to`. `burst` without `to` is refused when the package loads. |
 

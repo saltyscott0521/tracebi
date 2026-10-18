@@ -40,7 +40,7 @@ never tokens.
 - **Keep the series palette's order.** Recolor `--tb-chart-*` for the brand if
   you need to, but keep the palette colorblind-checked and keep the first two
   series clearly distinct (see [[design-color-with-meaning]]).
-- **Never theme the receipt.** Badge and receipt-drawer colors are not tokens on
+- **Never theme the trace.** Badge and trace-drawer colors are not tokens on
   purpose, so a theme can't make a grey badge look green.
 
 **The tell.** Search the report's `style.css` for `#` and `px`. Every hex value

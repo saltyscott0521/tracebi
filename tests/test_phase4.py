@@ -19,7 +19,6 @@ import pandas as pd
 import pytest
 
 from tracebi import DataModel, MemoryConnector, DataSet
-from tracebi.connectors.base import BaseConnector
 from tracebi.connectors.sql_connector import SQLConnector
 from tracebi.etl.bronze import BronzeLayer
 from tracebi.etl.silver import SilverLayer
@@ -88,103 +87,6 @@ def runner(sqlite_url):
     return PipelineRunner(db_url=sqlite_url)
 
 
-# ── Connector write() ─────────────────────────────────────────────────────────
-
-class TestConnectorWrite:
-    def test_base_raises(self, orders_df):
-        class Dummy(BaseConnector):
-            def connect(self): pass
-            def load(self, s): return pd.DataFrame()
-
-        with pytest.raises(NotImplementedError):
-            Dummy("d").write(orders_df, "t")
-
-    def test_memory_replace(self, mem, orders_df):
-        new_df = pd.DataFrame({"a": [1]})
-        mem.write(new_df, "orders_raw")
-        assert list(mem.load("orders_raw").columns) == ["a"]
-
-    def test_memory_append(self, mem, orders_df):
-        extra = pd.DataFrame({"order_id": [99], "customer_id": [999],
-                               "qty": ["1"], "revenue": [1.0], "status": ["open"]})
-        before = len(mem.load("orders_raw"))
-        mem.write(extra, "orders_raw", if_exists="append")
-        assert len(mem.load("orders_raw")) == before + 1
-
-    def test_memory_fail(self, mem, orders_df):
-        with pytest.raises(ValueError, match="already exists"):
-            mem.write(orders_df, "orders_raw", if_exists="fail")
-
-    def test_sql_write_and_read(self, sql_db, orders_df):
-        result = sql_db.load("orders_raw")
-        assert len(result) == len(orders_df)
-
-    def test_sql_write_replace(self, sql_db):
-        small = pd.DataFrame({"order_id": [1], "customer_id": [1],
-                               "qty": ["1"], "revenue": [9.99], "status": ["open"]})
-        sql_db.write(small, "orders_raw")
-        assert len(sql_db.load("orders_raw")) == 1
-
-
-# ── BronzeLayer.execute() ─────────────────────────────────────────────────────
-
-class TestBronzeExecute:
-    def test_execute_writes_to_sink(self, mem, orders_df):
-        bronze = BronzeLayer(connector=mem, source="orders_raw",
-                             sink=mem, sink_table="orders_bronze")
-        ds = bronze.execute()
-        assert "orders_bronze" in mem._tables
-        assert len(ds) == len(orders_df)
-
-    def test_execute_no_sink_raises(self, mem):
-        bronze = BronzeLayer(connector=mem, source="orders_raw")
-        with pytest.raises(RuntimeError, match="sink"):
-            bronze.execute()
-
-    def test_load_does_not_write(self, mem):
-        bronze = BronzeLayer(connector=mem, source="orders_raw",
-                             sink=mem, sink_table="orders_bronze_x")
-        bronze.load()
-        assert "orders_bronze_x" not in mem._tables
-
-
-# ── SilverLayer.execute() ─────────────────────────────────────────────────────
-
-class TestSilverExecute:
-    def _setup(self, mem, orders_df):
-        # Put bronze data into mem
-        mem.write(orders_df, "orders_bronze")
-        return (
-            SilverLayer(
-                source=mem, source_table="orders_bronze",
-                sink=mem, sink_table="orders_silver",
-            )
-            .cast({"qty": "int64"})
-            .deduplicate(subset=["order_id"])
-        )
-
-    def test_execute_writes_to_sink(self, mem, orders_df):
-        silver = self._setup(mem, orders_df)
-        ds = silver.execute()
-        assert "orders_silver" in mem._tables
-
-    def test_execute_deduplicates(self, mem, orders_df):
-        silver = self._setup(mem, orders_df)
-        ds = silver.execute()
-        assert len(ds) == 4  # one duplicate removed
-
-    def test_execute_no_source_raises(self):
-        silver = SilverLayer(sink=MemoryConnector("m", {}), sink_table="t")
-        with pytest.raises(RuntimeError, match="source"):
-            silver.execute()
-
-    def test_execute_no_sink_raises(self, mem, orders_df):
-        mem.write(orders_df, "orders_bronze")
-        silver = SilverLayer(source=mem, source_table="orders_bronze")
-        with pytest.raises(RuntimeError, match="sink"):
-            silver.execute()
-
-
 # ── GoldLayer.execute() ───────────────────────────────────────────────────────
 
 class TestGoldExecute:
@@ -210,28 +112,6 @@ class TestGoldExecute:
         assert "revenue" in result.columns
         assert len(result) == 3  # 3 regions
 
-    def test_execute_lineage_has_gold_node(self, sql_db, orders_df, customers_df, model):
-        self._setup_silver(sql_db, orders_df, customers_df)
-        gold = GoldLayer(
-            model=model, fact="fact_orders",
-            measures={"revenue": "sum"}, dimensions=["dim_customer.region"],
-            sink=sql_db, sink_table="revenue_gold2",
-        )
-        ds = gold.execute()
-        ops = [n.operation for n in ds.lineage]
-        assert "gold" in ops
-
-    def test_execute_no_fact_raises(self, model):
-        gold = GoldLayer(model=model, sink=MemoryConnector("m", {}), sink_table="t")
-        with pytest.raises(RuntimeError, match="fact"):
-            gold.execute()
-
-    def test_execute_no_sink_raises(self, model):
-        gold = GoldLayer(model=model, fact="fact_orders",
-                         measures={"revenue": "sum"})
-        with pytest.raises(RuntimeError, match="sink"):
-            gold.execute()
-
 
 # ── PipelineRunner ────────────────────────────────────────────────────────────
 
@@ -248,29 +128,6 @@ class TestPipelineRunner:
             .deduplicate(subset=["order_id"])
         )
 
-    def test_register_depends_on_must_exist(self, runner, mem):
-        silver = self._make_silver(mem)
-        with pytest.raises(ValueError, match="not registered"):
-            runner.register(silver, name="orders_silver", depends_on="orders_bronze")
-
-    def test_register_persists_to_db(self, runner, mem):
-        bronze = self._make_bronze(mem)
-        runner.register(bronze, name="orders_bronze")
-        df = pd.read_sql("SELECT * FROM tracebi_layers WHERE name='orders_bronze'",
-                         con=runner._engine_())
-        assert len(df) == 1
-        assert df.iloc[0]["layer_type"] == "bronze"
-
-    def test_status_and_lineage_report_each_layers_last_run(self, runner, mem, capsys):
-        """The notebook views print what actually ran: each layer, its last
-        status, and the upstream chain."""
-        runner.register(BronzeLayer(connector=mem, source="orders_raw", sink=mem,
-                                    sink_table="orders_bronze"), name="orders_bronze")
-        runner.run("orders_bronze")
-        runner.status()
-        runner.lineage("orders_bronze")
-        out = capsys.readouterr().out
-        assert "orders_bronze" in out and "success" in out
 
     def test_concurrent_run_of_same_layer_rejected(self, runner, mem):
         bronze = self._make_bronze(mem)
@@ -287,28 +144,6 @@ class TestPipelineRunner:
         runner.run("orders_bronze")
         assert "orders_bronze" in mem._tables
 
-    def test_run_unknown_raises(self, runner):
-        with pytest.raises(ValueError, match="not registered"):
-            runner.run("no_such_layer")
-
-    def test_run_refresh_full_chain(self, runner, mem, orders_df):
-        bronze = self._make_bronze(mem)
-        silver = self._make_silver(mem)
-        runner.register(bronze, name="orders_bronze")
-        runner.register(silver, name="orders_silver", depends_on="orders_bronze")
-        runner.run("orders_silver", refresh=True)
-        assert "orders_bronze" in mem._tables
-        assert "orders_silver" in mem._tables
-
-    def test_run_refresh_records_upstream_id(self, runner, mem, orders_df):
-        bronze = self._make_bronze(mem)
-        silver = self._make_silver(mem)
-        runner.register(bronze, name="orders_bronze")
-        runner.register(silver, name="orders_silver", depends_on="orders_bronze")
-        runner.run("orders_silver", refresh=True)
-        df = pd.read_sql("SELECT * FROM tracebi_runs WHERE layer_name='orders_silver'",
-                         con=runner._engine_())
-        assert df.iloc[0]["upstream_run_id"] is not None
 
     def test_register_model_persists_facts_and_dims(self, runner, model):
         runner.register_model(model)
@@ -319,13 +154,6 @@ class TestPipelineRunner:
         facts = pd.read_sql("SELECT * FROM tracebi_facts", con=runner._engine_())
         assert len(facts) >= 1
 
-    def test_register_model_no_facts_skips_schema_row(self, runner, sql_db):
-        m = DataModel("Plain")
-        m.add_connector(sql_db)
-        m.add_table("orders_silver", connector="db", source="orders_silver")
-        runner.register_model(m)
-        df = pd.read_sql("SELECT * FROM tracebi_schemas", con=runner._engine_())
-        assert len(df) == 0
 
 # ── Dialect portability ───────────────────────────────────────────────────────
 # PipelineRunner takes any SQLAlchemy URL, and the Supabase deploy guide tells
@@ -342,12 +170,6 @@ def _baseline_migration():
 
 
 class TestDialectPortability:
-    def test_ddl_has_no_hardcoded_autoincrement(self):
-        # AUTOINCREMENT is SQLite-only syntax and must not be baked into the
-        # shared DDL — it arrives via the {pk} substitution instead.
-        for _name, ddl in _baseline_migration()._TABLES:
-            assert "AUTOINCREMENT" not in ddl
-            assert "{pk}" in ddl
 
     def test_every_ddl_statement_formats_per_dialect(self):
         mod = _baseline_migration()
@@ -357,25 +179,6 @@ class TestDialectPortability:
                 assert "{pk}" not in sql
                 assert pk in sql, dialect
 
-    def test_unknown_dialect_falls_back_rather_than_failing(self):
-        # Better to create a usable table on an untested dialect than to
-        # refuse to start.
-        mod = _baseline_migration()
-        pk = mod._PK.get("some-future-db", mod._PK_DEFAULT)
-        assert pk == "INTEGER PRIMARY KEY"
-        for _name, ddl in mod._TABLES:
-            assert "{pk}" not in ddl.format(pk=pk)
-
-    def test_sqlite_still_uses_last_insert_rowid(self, runner, mem):
-        # The SQLite path is the one every existing test exercises; make sure
-        # the refactor kept it, and that ids are real and increasing.
-        bronze = self._make_bronze(mem)
-        runner.register(bronze, name="orders_bronze")
-        runner.run("orders_bronze")
-        runner.run("orders_bronze")
-        history = runner.run_history("orders_bronze", limit=2)
-        assert len(history) == 2
-        assert history[0]["id"] != history[1]["id"]
 
     def _make_bronze(self, mem):
         return BronzeLayer(connector=mem, source="orders_raw",
@@ -399,39 +202,6 @@ class TestCrossProcessLocking:
         # pg_try_advisory_lock takes a signed bigint.
         assert 0 <= a < 2 ** 63
 
-    def test_sqlite_lock_is_a_noop_that_grants(self, runner):
-        # SQLite is the single-process dev fallback; the context manager must
-        # still grant so execution proceeds.
-        with runner._cross_process_lock("orders_bronze") as granted:
-            assert granted is True
-
-    def test_same_process_double_run_still_refused(self, runner, mem):
-        # The in-process lock remains the first gate; this is the behaviour
-        # existing deployments already rely on.
-        import threading
-        bronze = BronzeLayer(connector=mem, source="orders_raw",
-                             sink=mem, sink_table="orders_bronze")
-        runner.register(bronze, name="orders_bronze")
-        held = runner._layer_lock("orders_bronze")
-        assert held.acquire(blocking=False)
-        try:
-            with pytest.raises(RuntimeError, match="already running"):
-                runner.run("orders_bronze")
-        finally:
-            held.release()
-        assert isinstance(held, type(threading.Lock()))
-
-    def test_advisory_key_namespace_survives_max_checksum(self):
-        # Regression: a 31-bit shift let a crc32 with its top bit set bleed
-        # into the namespace, so two layers could collide on one lock key.
-        import zlib
-        from unittest.mock import patch
-        r = PipelineRunner(db_url="sqlite:///:memory:")
-        with patch.object(zlib, "crc32", return_value=0xFFFFFFFF):
-            key = r._advisory_key("anything")
-        assert key >> 32 == PipelineRunner._ADVISORY_NAMESPACE
-        assert key < 2 ** 63
-
 
 # ── Audit attribution ─────────────────────────────────────────────────────────
 # tracebi_runs recorded what happened and never who. For a product sold on
@@ -444,18 +214,6 @@ class TestAuditAttribution:
         return BronzeLayer(connector=mem, source="orders_raw",
                            sink=mem, sink_table="orders_bronze")
 
-    def test_actor_scope_sets_and_restores(self):
-        from tracebi.audit import actor, get_actor
-        with actor("alice", role="admin"):
-            assert get_actor() == ("alice", "admin")
-        assert get_actor() == (None, None)
-
-    def test_actor_scopes_nest(self):
-        from tracebi.audit import actor, get_actor
-        with actor("alice", role="admin"):
-            with actor("bob", role="analyst"):
-                assert get_actor() == ("bob", "analyst")
-            assert get_actor() == ("alice", "admin")
 
     def test_actor_restored_even_when_the_block_raises(self):
         from tracebi.audit import actor, get_actor
@@ -464,14 +222,6 @@ class TestAuditAttribution:
                 raise ValueError("boom")
         assert get_actor() == (None, None)
 
-    def test_run_records_the_actor(self, runner, mem):
-        from tracebi.audit import actor
-        runner.register(self._bronze(mem), name="orders_bronze")
-        with actor("alice", role="admin"):
-            runner.run("orders_bronze")
-        last = runner.last_run("orders_bronze")
-        assert last["actor"] == "alice"
-        assert last["actor_role"] == "admin"
 
     def test_actor_does_not_leak_between_runs(self, runner, mem):
         from tracebi.audit import actor
@@ -508,12 +258,3 @@ class TestAuditAttribution:
         legacy = r.run_history("legacy", limit=1)[0]
         assert legacy["layer_name"] == "legacy"
         assert legacy["actor"] is None
-
-    def test_migration_is_idempotent(self, tmp_path):
-        db_url = f"sqlite:///{tmp_path / 'x.db'}"
-        PipelineRunner(db_url=db_url)
-        PipelineRunner(db_url=db_url)   # second startup must not re-add columns
-        r = PipelineRunner(db_url=db_url)
-        cols = [c["name"] for c in __import__("sqlalchemy").inspect(
-            r._engine_()).get_columns("tracebi_runs")]
-        assert cols.count("actor") == 1

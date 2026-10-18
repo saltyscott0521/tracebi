@@ -443,7 +443,7 @@ export function keepFiles({ model, modelLabel, detail, q, rows }) {
   const app = [
     `// Kept from Ask: ${attr(sentence)}.`,
     `// One figure of the binding "answer" in report.json, a live query against ${attr(modelLabel)}:`,
-    '// the build stamps it and the receipt names it. Reshape the page freely;',
+    '// the build stamps it and traces it. Reshape the page freely;',
     '// keep binding, cell, x and y literal strings (docs/reference/app-jsx.md).',
     `import { Masthead, Footer, ${imports} } from "tracebi";`,
     '',

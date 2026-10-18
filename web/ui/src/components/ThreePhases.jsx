@@ -51,7 +51,7 @@ model = (DataModel("portfolio_model")
   {
     n: '3', color: 'var(--phase-report)', folder: 'reports/', title: 'Report',
     lead: 'A report package pointed at the model. KPI cards, charts and tables, each a query. Because the model is materialized, the page re-renders in milliseconds — no pandas in the loop.',
-    point: 'report.json names the queries; app.jsx lays them out. Every kit figure is a claim the receipt names.',
+    point: 'report.json names the queries; app.jsx lays them out. Every kit figure is traced to its query.',
     code: `// reports/portfolio_model/portfolio_dashboard/report.json
 "by_sector": { "model": "portfolio_model",
   "query": { "fact": "fact_holdings", "measures": ["fair_value"],

@@ -14,7 +14,7 @@ before binding anything, then let the page read top to bottom as the answer:
 
 1. **The title states the finding**, not the topic. "Tech is now 41% of the
    book, up from 33%" — not "Sector Allocation". Bind the numbers in it
-   (`<span data-tb-figure="value" …>`) so the headline is a live, receipted
+   (`<span data-tb-figure="value" …>`) so the headline is a live, traced
    figure rather than typed-in text.
 2. **The first figure is the evidence for that sentence** — the one chart or KPI
    that proves it. Detail comes after, never before.

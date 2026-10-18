@@ -32,7 +32,7 @@ Every word is generic, and it could sit on any report.
 - **Plain words over system words.** Write "Download CSV", not "Export dataset".
   Write "Fair value", not `fair_value`. Leave out filler adjectives such as
   "powerful", "comprehensive" or "seamless" (see [[design-cut-the-chrome]]).
-- **Honesty words are locked.** Don't rephrase a receipt's wording in your
+- **Honesty words are locked.** Don't rephrase a trace's wording in your
   prose. "The sink satisfied its contract" stays as written, and nothing on the
   page calls the transform "verified".
 

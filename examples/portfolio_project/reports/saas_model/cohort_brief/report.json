@@ -1,7 +1,7 @@
 {
   "name": "SaaS Cohort Brief",
   "author": "tracebi init --template saas-metrics",
-  "description": "An editorial brief: which signup cohort holds ending MRR, where churn sits, then the monthly series. Every number in the prose is a figure on saas_model.",
+  "description": "Which signup cohort holds the most ending MRR, where logo churn sits, and ending MRR, customers and churn month by month.",
   "data": {
     "kpis": {
       "model": "saas_model",

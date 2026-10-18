@@ -31,7 +31,7 @@ model.query(fact="holdings",
 
 `rank` orders by its base measure descending (rank 1 = largest); `running` is the
 cumulative sum in that same largest-first order — a `running` of a *share* is the
-cumulative % of total. Every one carries a receipt, and a total tie-break makes
+cumulative % of total. Every one carries a trace, and a total tie-break makes
 them reproducible (see [[share-of-total]]).
 
 **Top-N per group** — "the top 3 issuers *in each sector*" — is the same rank,

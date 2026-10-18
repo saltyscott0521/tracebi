@@ -5,7 +5,7 @@
 <title>Design direction — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Design direction">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -73,6 +74,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -197,6 +199,23 @@ grounds was picked from six side-by-side options.)</p>
   its context, then the receipt on demand. It is one system, below; a report's
   own <code>style.css</code> is a theme preset on it, not a second look.</li>
 </ul>
+<h3 id="the-mark">The mark</h3>
+<p>A trace: one stroke rising through two open points to a filled one, the
+number you arrived at. White on the cobalt tile (<code>--ink</code>, <code>#2f5bea</code>, radius
+6px), flat: no gradient, no second blue, so <code>theme-brand-colour</code> holds it as it
+holds every brand token. It is drawn once, on a 20-unit grid with a 1.6 stroke,
+and holds at 16px (the browser tab), 18px in its 28px tile (the sidebar, the
+56px rail on a report page, the phone header) and 32px. Its <code>title</code> is the
+tagline, <em>Every number, traced.</em>, which also opens the sign-in page and Get
+started; it is never set under the logo. The wordmark beside it is "TraceBi"
+in the app's sans at 15px/600, tracking -0.01em.</p>
+<p>Where it lives: <code>BrandMark</code> in <code>web/ui/src/components/Art.jsx</code> (the trace
+draws point to point, replayed on hover), <code>web/ui/public/favicon.svg</code>, the
+gateway's sign-in page (<code>_MARK_SVG</code> in <code>tracebi/mcp_oauth.py</code>) and the site
+header and favicon (<code>site/index.html</code>; <code>site/build_docs.py</code> copies the
+favicon). It is never put on a report: <code>.tb-masthead-mark</code> is the customer's
+slot. The illustrations speak the same language: <code>ReportArt</code>'s trend is a
+cobalt line ending on a filled point.</p>
 <h2 id="the-reports-system">The report's system</h2>
 <p>The bar (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>, decision 2): type and restraint as Stripe's
 dashboard, density and chrome as Linear, the editorial register as a fund's
@@ -280,8 +299,8 @@ Everything here is <code>tracebi.css</code>, <code>tracebi.js</code> and the kit
    - The app on the four places (done, <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a> Steps 2 and 3):
      Reports as home, the report page, Data and Review, the verdict chip
      everywhere; the report contact sheet in the audit (DS-9).
-   - Still to do: Ask (Step 4); lists as console rows throughout, the logo
-     and illustrations.</li>
+   - Still to do: Ask (Step 4); lists as console rows throughout, and
+     illustrations beyond the mark.</li>
 </ol>
   </main>
 </div>

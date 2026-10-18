@@ -34,12 +34,12 @@ for node in ds.lineage:
 
 ## Where it shows up
 
-- **In the receipt.** A figure's manifest entry carries the resolved query and
+- **In the trace.** A figure's manifest entry carries the resolved query and
   the model it ran against — recovered from lineage, not re-derived.
 - **In the web UI.** A report's **Lineage** tab draws where each number came
   from, left to right: the transform that wrote the tables, the stored tables
   (and where they live), the model, each query, and the figures on the page.
-  It is read from the last build's [[receipts|receipt]], so it shows what the
+  It is read from the last build's [[trace]], so it shows what the
   reader was shown, not a fresh re-run. Select a node to trace it: a figure
   lights only the tables its own query read. `GET /api/reports/{name}/lineage`
   returns the same graph; `/mermaid` returns a diagram.
@@ -63,5 +63,5 @@ to audit arbitrary Python.
 
 ## Related
 
-- [[receipts]] — what the chain is ultimately used for
+- [[trace]] — what the chain is ultimately used for
 - [[sink-contracts]] — narrowing the phase-① gap

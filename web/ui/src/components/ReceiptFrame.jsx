@@ -71,7 +71,7 @@ export default function ReceiptFrame({ html, verdict, title, file }) {
     if (m.type === 'size' && m.height) setHeight(m.height)
   }) : undefined), [doc])
   if (!doc) {
-    return <p className="rpanel__empty">This build carries no receipt the app can show. Open the report to read it there.</p>
+    return <p className="rpanel__empty">This build carries no trace the app can show. Open the report to read it there.</p>
   }
   return (
     <iframe ref={frame} srcDoc={doc} sandbox={FRAME_SANDBOX} title={title}

@@ -79,10 +79,8 @@ Left by Step 2 of the UX plan ([[ux-plan-2026-10-17]]), app side:
 
 Left by Step 3 of the UX plan ([[ux-plan-2026-10-17]]):
 
-22. **The Map's labels are in mono** where the line's are in the sans (D-1).
-23. **The Model tab has a second row of tabs inside it** (Diagram, Tables,
-    Measures, …) and its **Edit as a draft** button floats alone above them
-    (D-1).
+22. *Closed by A2-3 (see Done).*
+23. *Closed by A2-3 (see Done).*
 24. **The Transform flow zooms in two steps** only (D-1).
 25. *Closed by Step 4 (see Done): `AskCut` deleted.*
 26. **`notebook-guide.md`'s `@register.report` section predates the one
@@ -105,7 +103,60 @@ Left by Step 4 (Ask):
 31. **Keep this cannot pick a folder**: the draft starts at
     `<model>/<slug>`; the folder is chosen when it is published.
 
+Left by A2-3 (the app, audit pass 2):
+
+32. **A pipeline run in History goes by its identifier** (`portfolio_model`):
+    `/api/runs` gives a report run a `display_name` and a pipeline run none.
+    Give it its model's label, as the Transform card now reads.
+33. **History's "N older runs" counts what `/api/runs` returned** (the last
+    50 runs, default `limit`), not every run the store holds.
+34. **The Steps table's status is an upper-case badge** ("SUCCESS"), not the
+    verdict-shaped `Chip` the table checks now use.
+
+Left by A2-6 (role-aware navigation):
+
+35. **Links inside a page still point past the role**: a viewer's report
+    panel and Ask can link to History or a model's Data page, which then shows
+    the plain "for analysts / admins" page. Hide those links by the same
+    `mayUse` rule the sidebar uses.
+
+Left by A2-4 (receipt → trace):
+
+36. **The code still says "receipt".** Readers see *trace* everywhere; the
+    identifiers kept the old word so the artifact contract did not move: the
+    `tracebi-receipt` block id, `.tb-receipt*` classes, `data-tb-receipt-*`
+    attributes, `tracebi.renderReceipt` / `receiptFileName`, Python
+    `receipt_*` names, `ReceiptFrame.jsx`, the panel's `receipt` tab key and
+    the `receipt_drawer` key in `tracebi context`. Rename them together, with
+    a reader for the old block id so files built before the rename still open
+    their drawer (and `verify --file` still reads them).
+
 ## Done
+
+- **The sidebar is tiered by role** (A2-6): `nav.js` gives each place a
+  `minRole` and `placesFor(role)` is the one list the sidebar, the phone's
+  drawer, the report page's rail and ⌘K draw: everyone Reports and Ask, an
+  analyst also Review, an admin also Data; with no sign-in (`/api/me` names
+  admin) all four, and while the role loads only Reports and Ask. An address
+  above the role shows a plain page in the frame ("This part of the app is
+  for admins. You can read reports and ask questions."). Review is four tabs
+  at their own addresses: Attention (`/review`), Drafts (`/review/drafts`;
+  `/drafts` and `/review#drafts` land there), History (`/runs`) and Verify
+  (`/verify`); its "All history →" link and the small Verify entry are gone.
+
+- **The app, audit pass 2** (A2-3): the Model tab's views are one segmented
+  row in its card's header with Edit as a draft at its right (no badge
+  repeating the line; the grain in labels, identifiers in its title), sideways
+  on a phone where Tables opens first; the Transform card goes by its model's
+  label, its steps read "Transform · ran 2 h ago · wrote 3 tables" and
+  "Build · 6 reports" in the sans at the app's size, table checks are
+  sentence-case chips in the verdict's shape (`Chip`), and the phone's Steps
+  table drops Schedule and Runs after; History is one row per report or
+  pipeline with "N older runs" folded (Every run, `?all=1`, lists them flat;
+  a fold says how many failed), the report panel's History folds older builds
+  the same way, and an empty cell's dash is muted; the Map's models and
+  reports go by their labels, measured in the sans; library descriptions
+  wrap to two lines; the sidebar's tagline is gone. Closed items 22 and 23.
 
 - **Ask** (Step 4): `/ask` is one sentence of the model's tokens ("Show
   [measure] by [dimension] for [filter], [order], top [n]"), typed or picked;

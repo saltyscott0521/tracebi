@@ -34,7 +34,7 @@ models/       ② the star-schema contract
 reports/      ③ the report packages, one folder per model
 pipelines/    one per model: run its transform, then build its reports
 data/         the warehouse lives here
-output/       built artifacts + receipts
+output/       built artifacts + traces
 ```
 
 ## 3. Run the transform — phase ①
@@ -73,7 +73,7 @@ and is named by that path. It writes two files:
 
 ```
 output/sample_model/sample_dashboard.html                   the artifact
-output/sample_model/sample_dashboard.html.manifest.json     the receipt
+output/sample_model/sample_dashboard.html.manifest.json     the trace
 ```
 
 The HTML is fully self-contained — no CDN, no network. Open it directly.
@@ -108,7 +108,7 @@ tracebi verify --file output/sample_model/sample_dashboard.html
 Edit a number inside the HTML by hand and run it again: it reports
 `FILE ALTERED` and names the binding.
 
-→ [[receipts]]
+→ [[trace]]
 
 ---
 

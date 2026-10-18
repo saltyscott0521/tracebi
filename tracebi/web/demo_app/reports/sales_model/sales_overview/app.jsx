@@ -1,12 +1,12 @@
 // Sales Overview: orders joined to customers through the sales model's
-// declared relationship. Every number is a kit figure, so the receipt names it.
+// declared relationship. Every number is a kit figure, so its trace names it.
 import { Masthead, Footer, Kpi, Value, Chart, Table, Download } from "tracebi";
 
 export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Sales" title="Sales overview">
+        <Masthead title="Sales overview">
           Revenue, units and cost by region and customer segment. Nothing here is typed in.
         </Masthead>
 

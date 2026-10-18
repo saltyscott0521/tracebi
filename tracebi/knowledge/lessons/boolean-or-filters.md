@@ -31,7 +31,7 @@ filters={"status": "active",
 # status = active AND (region = West OR revenue >= 1000)
 ```
 
-It stays one governed query with a receipt — the boolean structure is recorded
+It stays one governed query with a trace — the boolean structure is recorded
 in the stamped spec, and the result is reproducible.
 
 **The tell.** Running two queries and unioning them in `report.py`, or reaching

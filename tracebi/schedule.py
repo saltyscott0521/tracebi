@@ -760,7 +760,7 @@ def _what_happened(record: dict) -> str:
     if status == REFUSED:
         verdict = record.get("verdict") or "unknown"
         detail = record.get("error") or ""
-        return f"The receipt did not verify ({verdict}). {detail}".strip()
+        return f"The report did not verify ({verdict}). {detail}".strip()
     return record.get("error") or "The run failed."
 
 

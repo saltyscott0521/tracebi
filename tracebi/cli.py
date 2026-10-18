@@ -9,7 +9,7 @@ Scaffolds and drives a project through the three-phase workflow — TRANSFORM
     tracebi connect wh --kind duckdb        # point at a warehouse you already have
     tracebi import dbt <path>               # draft a model from a dbt manifest.json
     tracebi new-model "Sales Model"         # ② scaffold a model over the warehouse
-    tracebi report build <name>             # ③ render an artifact package + receipt
+    tracebi report build <name>             # ③ render an artifact package + its trace
     tracebi verify <manifest>               # re-run recorded queries; classify drift
     tracebi serve                           # browse the project
     tracebi mcp                             # agent gateway over MCP
@@ -459,7 +459,7 @@ A TraceBi project. Scaffolded by `tracebi init`.
 
 Ask it, build it, schedule it. Analysts and agents write every kind of
 report from one set of approved definitions, and the ones worth repeating
-run themselves. Every number carries a receipt you can re-check.
+run themselves. Every number carries a trace you can re-check.
 
 ```
 ⓪  INPUT       inputs/       raw pulls land here (API export · CSV · SQL dump)
@@ -493,18 +493,18 @@ route works either way.)
 The scaffold is a complete working example — messy input included:
 
 ```bash
-tracebi run-pipeline sample_model           # ① clean + sink, then ③ build → output/sample_model/sample_dashboard.html + receipt
+tracebi run-pipeline sample_model           # ① clean + sink, then ③ build → output/sample_model/sample_dashboard.html + manifest
 tracebi verify output/sample_model/sample_dashboard.html.manifest.json   # every checked section: REPRODUCES
 tracebi serve                               # browse it at http://127.0.0.1:8000
 ```
 
 That `verify` is the point: it re-runs the recorded queries against the model
 and confirms the rendered numbers still reproduce. Every number drawn through
-the model has a receipt; anything else must be marked as not having one.
+the model has a trace; anything else must be marked as not having one.
 
 **Handing the report to a reviewer?** They need only the `.html` — no model, no
 warehouse. The offline check re-hashes the data embedded in the file against
-the receipt it carries:
+the trace it carries:
 
 ```bash
 tracebi verify --file output/sample_model/sample_dashboard.html   # FILE INTACT, or names what was altered
@@ -520,7 +520,7 @@ tracebi verify --file output/sample_model/sample_dashboard.html   # FILE INTACT,
 ├── reports/          Phase ③ — one folder per model: reports/<model>/<report>/
 ├── pipelines/        One per model: transform, then build its reports — each .py exposes `runner`
 ├── data/             The warehouse (gitignored)
-├── output/           Rendered reports; *.manifest.json receipts stay tracked
+├── output/           Rendered reports; *.manifest.json traces stay tracked
 └── .env.example      Copy to `.env` and fill in credentials
 ```
 
@@ -558,7 +558,7 @@ is half the audit story.
 The same contracts drive the agent surface: `tracebi context` emits the
 vocabulary as JSON, `tracebi mcp` opens the gateway (validate a spec, query
 a model, render, verify — read-and-compute only). An agent and an analyst
-author against the same model and produce the same receipts. **`AGENTS.md`
+author against the same model and produce the same traces. **`AGENTS.md`
 in this project orients an AI agent working here** — point a fresh session at
 it (most coding agents read it automatically).
 
@@ -630,7 +630,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     print(f"Initialised TraceBi project at {target}")
     print(f"  cd {target.name}")
     print(f"  git init && git add . && git commit -m init   # manifests stamp the commit (git_sha)")
-    print(f"  tracebi run-pipeline sample_model      # ① clean + sink, then ③ build the report + receipt")
+    print(f"  tracebi run-pipeline sample_model      # ① clean + sink, then ③ build the report + manifest")
     print(f"  tracebi verify output/sample_model/sample_dashboard.html.manifest.json   # re-run the queries")
     print(f"  tracebi serve                          # browse at http://127.0.0.1:8000")
     print(f"AGENTS.md orients an AI agent working in this project.")
@@ -1729,7 +1729,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     different source/connector — a governance event), UNEXPLAINED (result
     differs but the inputs did not — the alarming case), or UNVERIFIABLE
     (no recorded query to re-run). One line per section, then a summary
-    and the receipt-level verdict.
+    and the report-level verdict.
 
     Exit codes: 0 all reproduce/unverifiable · 2 diagnosed drift only ·
     1 anything unexplained, of unknown cause, errored, or a manifest with
@@ -2220,21 +2220,26 @@ def _report_json_text(title: str, model: str, query: dict,
             data["top10"] = {"model": model, "query": {
                 "fact": fact, "measures": measures[:1], "dimensions": dims,
                 "order_by": ["-" + measures[0]], "limit": 10}}
+    # The library's line under the name: one sentence a reader would use,
+    # what the page shows. The bracket is the author's to fill; how the page
+    # is built belongs in "notes", never here.
+    def joined(words: list) -> str:
+        return ", ".join(words[:-1]) + " and " + words[-1] if len(words) > 1 else words[0]
+
+    labels = [_humanise_label(m) for m in measures]
+    shows = joined(labels[:1] + [_in_sentence(lbl) for lbl in labels[1:]])
+    if dims:
+        shows += " by " + joined([_in_sentence(_humanise_label(d)) for d in dims])
     declaration = {
         "name": title,
         "author": "",
-        "description": "Freeform report package scaffolded by tracebi "
-                       "new-report. Every figure claims a stamped binding; edit "
-                       "template.html to reshape the page — nothing re-runs the "
-                       "pandas.",
+        "description": f"{shows}, over [the period these numbers cover].",
         "data": data,
     }
     if calculated:
         declaration["measures"] = {model: calculated}
     if look is not None:
         # An app page has no <html> of its own: its mode and density live here.
-        declaration["description"] = declaration["description"].replace(
-            "edit template.html", "edit app.jsx")
         if look:
             declaration["look"] = look
     if theme:
@@ -2357,13 +2362,14 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
         "<body>",
         "<!-- An editorial report: written to be read top to bottom. The headline",
         "     states the finding; every number in the prose is a value figure",
-        "     bound to report.json, so the receipt names it. Never type one in. -->",
+        "     bound to report.json, so its trace names it. Never type one in. -->",
         '<article class="tb-article">',
-        "  <!-- The masthead, in the editorial's register: kicker, the headline",
-        "       that states the finding, the standfirst, and the meta line (when",
-        "       it was built and the verdict chip, filled from the receipt). -->",
+        "  <!-- The masthead, in the editorial's register: the kicker (the build",
+        "       adds the model's label; write <p class=\"tb-kicker\"> above the",
+        "       headline to say something else), the headline that states the",
+        "       finding, the standfirst, and the meta line (when it was built and",
+        "       the verdict chip, filled from the trace). -->",
         f'  <header class="tb-masthead tb-article-head"{centered}>',
-        f'    <p class="tb-kicker">{esc(m_label)}</p>',
     ]
     if dim_ref:
         parts += [
@@ -2500,7 +2506,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
         "  <!-- The masthead: placement left | center | banner | nav (nav moves",
         "       it to the top of a sidebar). data-tb-period names what the numbers",
         "       cover; the meta line shows it, when this file was built and the",
-        "       verdict chip, from its receipt. Never type a date in. -->",
+        "       verdict chip, from its trace. Never type a date in. -->",
         f'  <header class="tb-masthead" data-tb-title="{esc(title_at)}">',
         f"    <h1>{esc(title)}</h1>",
         '    <p class="tb-standfirst">One line on what this page is for.</p>',
@@ -2833,7 +2839,7 @@ def _report_status(kind: str, path: Path, as_json: bool = False) -> int:
     """
     if kind != "package":
         print("status applies to artifact packages (reports/<name>/); "
-              "verify a spec's receipt with `tracebi verify` instead.",
+              "verify a spec's manifest with `tracebi verify` instead.",
               file=sys.stderr)
         return 1
     from tracebi.workbench import collect_state
@@ -3020,7 +3026,7 @@ def cmd_report(args: argparse.Namespace) -> int:
         tracebi report snapshot <name>   # review snapshot — NO manifest
         tracebi report send <name> --to a@b.com[,c@d]
                                          # build, verify, then email BOTH the
-                                         # html and its manifest receipt
+                                         # html and its manifest
 
     A report is a package (``reports/<name>/``) or a spec
     (``reports/<name>.json``). Output defaults to ``output/<name>.html`` —
@@ -3030,7 +3036,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     working state, and ``verify`` refuses it by name.
 
     ``send`` builds exactly like ``build``, then verifies the manifest
-    in-process and REFUSES to send while the receipt does not verify —
+    in-process and REFUSES to send while the manifest does not verify —
     distribution never outruns verification. ``--force`` sends anyway with
     the failing verdict pasted prominently into the body: the red flag
     travels WITH the report, never silently.
@@ -3096,7 +3102,7 @@ def cmd_report(args: argparse.Namespace) -> int:
             print(f"failed to print '{args.name}' to PDF: {exc}", file=sys.stderr)
             return 1
         print(f"  pdf → {pdf_path}")
-        print("  a print of the HTML; it carries no receipt")
+        print("  a print of the HTML; it carries no trace")
 
     if args.action == "send":
         return _report_send(args, output, manifest)
@@ -3110,7 +3116,7 @@ def _report_send(args: argparse.Namespace, output: Path,
     """The send action's second half: verification gates distribution.
 
     The build already happened, exactly as ``build``. The manifest is now
-    verified in-process; a receipt that does not verify is refused —
+    verified in-process; a build that does not verify is refused —
     ``--force`` sends anyway with the failing verdict pasted prominently
     into the body (see :mod:`tracebi._delivery`), so the red flag travels
     WITH the report instead of the report outrunning it.
@@ -3135,7 +3141,7 @@ def _report_send(args: argparse.Namespace, output: Path,
     ok = result["exit_code"] == 0
     print(result["verdict_detail"], file=sys.stdout if ok else sys.stderr)
     if not ok and not getattr(args, "force", False):
-        print(f"refusing to send '{args.name}': the receipt did not verify. "
+        print(f"refusing to send '{args.name}': the manifest did not verify. "
               f"Distribution never outruns verification; --force sends "
               f"anyway with the verdict pasted into the body.",
               file=sys.stderr)
@@ -3149,7 +3155,7 @@ def _report_send(args: argparse.Namespace, output: Path,
     except (RuntimeError, OSError) as exc:
         print(f"report send: {exc}", file=sys.stderr)
         return 1
-    print(f"Sent {args.name} → {', '.join(to)} (html + manifest receipt)")
+    print(f"Sent {args.name} → {', '.join(to)} (html + manifest)")
 
     webhook = os.environ.get("TRACEBI_SLACK_WEBHOOK")
     if webhook:
@@ -3384,7 +3390,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "TraceBi — ask it, build it, schedule it: analysts and agents "
             "write every kind of report from one set of approved definitions. "
-            "Every number carries a receipt you can re-check."
+            "Every number carries a trace you can re-check."
         ),
     )
     parser.add_argument(
@@ -3819,7 +3825,7 @@ def build_parser() -> argparse.ArgumentParser:
         "report",
         help="Build a report package or spec to one self-contained .html + "
              "manifest, preview it locally, or send it (build → verify → "
-             "email with the receipt attached).",
+             "email with the manifest attached).",
     )
     p_report.add_argument("action",
                           choices=["build", "preview", "snapshot", "status",
@@ -3829,7 +3835,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--to",
         help="With `send`: recipient address(es), comma-separated. Send "
              "builds like `build`, verifies the manifest in-process, and "
-             "refuses to send unless the receipt verifies (--force "
+             "refuses to send unless the manifest verifies (--force "
              "overrides, pasting the verdict into the body). Email needs "
              "TRACEBI_SMTP_URL (smtp://user:pass@host:port or smtps://) "
              "and TRACEBI_SMTP_FROM; TRACEBI_SLACK_WEBHOOK adds a Slack "
@@ -3843,7 +3849,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_report.add_argument(
         "--force", action="store_true",
-        help="With `send`: send even when the receipt does not verify. The "
+        help="With `send`: send even when the manifest does not verify. The "
              "failing verdict is pasted prominently into the email body — "
              "a red flag travels WITH the report, never silently.",
     )
@@ -3851,7 +3857,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument(
         "--format", choices=["html", "pdf"], default="html",
         help="With `build`: html (default), or pdf to also write a sibling "
-             ".pdf — a print of the built HTML. The PDF carries no receipt; "
+             ".pdf — a print of the built HTML. The PDF carries no trace; "
              "the HTML and manifest stay the checkable artifact. Needs "
              "pip install 'tracebi[pdf]' and "
              "python -m playwright install chromium.",
@@ -3874,7 +3880,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument(
         "--badges", action="store_true",
         help="Render the per-figure provenance badges on the page. Off by "
-             "default — the receipt drawer carries provenance in one place. "
+             "default — the trace drawer carries provenance in one place. "
              "The manifest is unaffected either way.",
     )
     p_report.add_argument(
@@ -4076,8 +4082,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_verify.add_argument(
         "--file", dest="verify_file", default=None,
-        help="Path to a self-contained report *.html*; rehash its embedded "
-             "data against a sibling <file>.manifest.json (no model needed).",
+        help="Path to a self-contained report *.html*; the file carries its "
+             "trace: rehash its embedded data against a sibling "
+             "<file>.manifest.json (no model needed).",
     )
     p_verify.add_argument(
         "--contracts", action="store_true",

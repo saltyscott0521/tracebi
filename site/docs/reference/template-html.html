@@ -5,7 +5,7 @@
 <title>template.html — the figure grammar — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="template.html — the figure grammar">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -73,6 +74,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -115,7 +117,7 @@ markup; mix freely.</p>
 </tr>
 <tr>
 <td><code>id</code></td>
-<td><strong>give every figure one</strong> — it is the receipt's address, and how a human redirects you</td>
+<td><strong>give every figure one</strong> — it is the trace's address, and how a human redirects you</td>
 </tr>
 </tbody>
 </table>
@@ -157,7 +159,7 @@ multiples), a line or area ends in its last value (unless <code>data-tb-mark</co
 already labels the last), category names wrap to two lines or turn and are
 never cut, and value ticks thin to what fits. The tooltip shows the
 category, the value, the measure's description from the model and a
-"Receipt →" link that opens the receipt drawer at that figure.</p>
+"Trace →" link that opens the trace drawer at that figure.</p>
 <p>The build inlines D3 automatically when the page contains a chart
 figure. <code>"libs"</code> in <a href="../reference/report-json.html">report.json</a> is optional.</p>
 <h3 id="table-figures">Table figures</h3>
@@ -203,7 +205,7 @@ isn't numeric fails the build.</p>
    this quarter.&lt;/p&gt;
 </code></pre>
 <p>Narrative prose is where hard-coded numbers hide. Here the honest path costs
-one attribute, and each bound span gets its own entry in the receipt.</p>
+one attribute, and each bound span gets its own entry in the trace.</p>
 <h2 id="interactivity">Interactivity</h2>
 <p><strong>Controls subset which stamped rows a figure displays. They never compute new
 numbers</strong> — client-side aggregation would mint numbers nobody can re-run, so a
@@ -231,7 +233,7 @@ filtered KPI needs its own binding, and value figures never react to controls.</
 </tbody>
 </table>
 <p>Filters on one binding AND-combine, and search ANDs with them. Download exports
-the binding's <strong>stamped CSV verbatim</strong> — a receipt-preserving export, always the
+the binding's <strong>stamped CSV verbatim</strong> — a trace-preserving export, always the
 full binding, never the filtered view.</p>
 <p>Tables scroll past <code>data-tb-rows</code> (default 10); <code>data-tb-rows="all"</code> opts out.
 Tables past 500 rows render only the visible rows; printing and download still
@@ -291,27 +293,30 @@ they didn't ask for (<code>tracebi context</code> → <code>presentation.layout.
 <p><strong>The masthead</strong> — every page opens with one:</p>
 <pre><code class="language-html">&lt;header class=&quot;tb-masthead&quot; data-tb-title=&quot;left&quot; data-tb-period=&quot;Q3 2026&quot;&gt;
   &lt;div class=&quot;tb-masthead-mark&quot;&gt;&lt;/div&gt;              &lt;!-- optional: your logo --&gt;
-  &lt;p class=&quot;tb-kicker&quot;&gt;Direct lending&lt;/p&gt;           &lt;!-- optional --&gt;
+  &lt;p class=&quot;tb-kicker&quot;&gt;Direct Lending Portfolio&lt;/p&gt; &lt;!-- optional: the model's label --&gt;
   &lt;h1&gt;Portfolio Book&lt;/h1&gt;
   &lt;p class=&quot;tb-standfirst&quot;&gt;One line on what this page is for.&lt;/p&gt;
   &lt;p class=&quot;tb-masthead-meta&quot;&gt;&lt;span data-tb-built&gt;&lt;/span&gt;
     &lt;span class=&quot;tb-verdict&quot;&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;/header&gt;
 </code></pre>
-<p><code>data-tb-title</code> is <code>left</code>, <code>center</code>, <code>banner</code> (accent band) or <code>nav</code> (moved
+<p>The kicker is the model's label: leave it out and the build adds
+<code>&lt;p class="tb-kicker"&gt;</code> with the label of the model the bindings read; write
+one to say something else. The <code>&lt;h1&gt;</code> is the report's name or its finding.
+<code>data-tb-title</code> is <code>left</code>, <code>center</code>, <code>banner</code> (accent band) or <code>nav</code> (moved
 to the top of a sidebar). <code>data-tb-period</code> names what the numbers cover; it
 is a label, so it may hold a year. The runtime fills the meta line: the
-period, the build time from the receipt (never type a date) and the verdict
+period, the build time from the trace (never type a date) and the verdict
 chip; whichever the template leaves out, it adds.</p>
 <p>The chip's state is <code>data-tb-verdict</code>, set by the runtime from the file
 itself, never from the page's markup: <code>draft</code> on a working preview (no
-receipt), <code>not-checked</code> on a built file — nothing has re-run its queries;
+trace), <code>not-checked</code> on a built file — nothing has re-run its queries;
 <code>tracebi verify</code> does, and says whether each figure reproduces. The four
 verdicts, everywhere TraceBi shows one, are <code>reproduces</code> (green, <code>--tb-good</code>),
 <code>needs-a-look</code> (amber, <code>--tb-warn</code>), <code>does-not-reproduce</code> (red, <code>--tb-bad</code>)
 and <code>not-checked</code> (neutral). A page never makes it green. In a built file the
-runtime puts a "Receipt" button after the chip and makes the chip open the
-receipt too (the receipt drawer, below).</p>
+runtime puts a "Trace" link after the chip and makes the chip open the
+trace too (the trace drawer, below).</p>
 <p>The mark is empty by default. To show a logo, put the file in the package's
 <code>assets/</code> and size it in <code>style.css</code>:
 <code>.tb-masthead-mark { width: 120px; height: 28px; margin-bottom: 16px;
@@ -330,19 +335,24 @@ gradient, no shadow, no second set of components.</p>
   &lt;p&gt;Source: the funds' Schedules of Investments.&lt;/p&gt;
 &lt;/footer&gt;
 </code></pre>
-<p>Your sources come first. The build adds one line — who built the file, when,
-from which model, and <em>"The receipt does not claim the numbers are right."</em> —
-then "How these numbers were made" behind a <code>&lt;details&gt;</code>: what the receipt is
+<p>Your sources come first. The build adds one line — when the file was built and
+from which model, by its label ("Built 18 Oct 2026 · Direct Lending Portfolio."),
+and <em>"This page does not claim the numbers are right."</em> —
+then "How these numbers were made" behind a <code>&lt;details&gt;</code>: what the trace is
 for, and the stated methodology (below). A template with no
-<code>data-tb-methodology</code> gets the whole footer at the end of the page. The
-runtime adds "Open the receipt" to that line.</p>
-<p><strong>The receipt drawer</strong> — every built page carries one; you write nothing for
-it. It opens from the masthead's "Receipt" button or its verdict chip, the
-footer's line, a click on any value figure (at that figure's row), or a
-chart tooltip's "Receipt →"; Escape closes it. A page with no masthead keeps
-a floating "Receipt" button instead. It reads as a certificate: the report,
-when it was built and from which model, the verdict chip, <em>"The receipt does
-not claim the numbers are right."</em>, how to check the file
+<code>data-tb-methodology</code> gets the whole footer at the end of the page. With the
+runtime, the line ends in "▸ How these numbers were made", which opens the
+trace drawer, and the <code>&lt;details&gt;</code> hides: the drawer's About this build holds
+the same notes. The <code>&lt;details&gt;</code> stays for a reader without JavaScript.</p>
+<p><strong>The trace drawer</strong> — every built page carries one; you write nothing for
+it. It opens from the masthead's "Trace" link or its verdict chip, the
+footer's "How these numbers were made", a click on any value figure (at that
+figure's row), or a chart tooltip's "Trace →"; Escape closes it. A page with
+no masthead keeps a floating "Trace" button instead. It reads as a
+certificate headed with the report's name and <em>How each number was made</em>:
+when it was built and from which model, the verdict chip, <em>"This page does
+not claim the numbers are right; it records how each was made so it can be
+checked."</em>, how to check the file, which carries its trace
 (<code>tracebi verify --file &lt;name&gt;.html</code>, with its <code>.manifest.json</code> beside it),
 then one row per figure in page order — the value as the page shows it (or
 "table, 13 rows" / "chart, 6 rows"), its label, the measure's definition from
@@ -363,7 +373,6 @@ width. With no <code>style.css</code> this is the page: one accent, no texture, 
 shadow.</p>
 <pre><code class="language-html">&lt;article class=&quot;tb-article&quot;&gt;
   &lt;header class=&quot;tb-masthead tb-article-head&quot;&gt;  &lt;!-- data-tb-title=&quot;center&quot; to centre it --&gt;
-    &lt;p class=&quot;tb-kicker&quot;&gt;Revenue&lt;/p&gt;
     &lt;h1&gt;&lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_region.region&quot;&gt;&lt;/span&gt;
         leads on revenue&lt;/h1&gt;
     &lt;p class=&quot;tb-standfirst&quot;&gt;What this report finds, and why it matters.&lt;/p&gt;
@@ -385,7 +394,7 @@ flat, with a serif headline (on a dark ground, a deep band of the accent with
 the page's ink). A number in the prose is bound and set in weight 600, in the
 prose's own ink. Charts, tables, the KPI strip, the pull-stat and the footer
 keep the sans face, so numbers read as data; the methodology is in the
-receipt, behind the footer's link. To restyle it, set the accent pairs
+trace, behind the footer's link. To restyle it, set the accent pairs
 (<code>--tb-accent</code> / <code>--tb-dark-accent</code> and their <code>-text</code>), not a colour of its own. The writing advice is <code>tracebi knowledge
 design-editorial-report</code>.</p>
 <h2 id="stage-blocks">Stage blocks</h2>
@@ -407,7 +416,7 @@ descriptions. It is an appendix, never a claim: no badge, no status.</p>
 decodes its data in a worker <em>after</em> <code>script.js</code> runs, so a bare call returns
 <code>[]</code> there and rows on a small report. <code>ready(fn)</code> behaves the same on both.</p>
 <p>Sorting and slicing belong in the query (<code>order_by</code> + <code>limit</code>, see
-<a href="../reference/queries.html">Queries</a>), never in JS — that moves ordering out of the receipt.</p>
+<a href="../reference/queries.html">Queries</a>), never in JS — that moves ordering out of the trace.</p>
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="../reference/figure-helper.html">{{ figure("name") }}</a> — declare figures instead of writing this</li>

@@ -262,7 +262,7 @@ def scan_figures(src: str) -> list[KitFigure]:
             if key in dynamic:
                 raise AppError(
                     f"{APP_JSX} line {line}: <{tag}> {key}= must be a literal "
-                    f"string, so the receipt can name what this figure shows. "
+                    f"string, so the trace can name what this figure shows. "
                     f"Compute the choice outside the figure (one figure per "
                     f"binding), or show the value with your own markup — it "
                     f"will not be a checked figure.")
@@ -355,7 +355,7 @@ def static_html(figs: list[KitFigure]) -> str:
                 raise AppError(
                     f"{APP_JSX} lines {seen[fid]} and {f.line}: two kit figures "
                     f"would share the id \"{fid}\". Give one an id=\"…\" — a figure "
-                    f"id is the receipt's address for one number.")
+                    f"id is the trace's address for one number.")
             seen[fid] = f.line
         key = ("kpi" if f.tag == "Kpi" else "spark" if f.tag == "Spark"
                else f.kind)

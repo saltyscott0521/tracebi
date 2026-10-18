@@ -35,7 +35,7 @@ remember, with the sentence that explains it.
 
 **End with what to do.** The last section is the decision or the next step the
 report supports — and who owns it. The `.tb-footer` closes the page: your
-sources in words, and the way into the receipt, which holds the methodology
+sources in words, and the way into the trace, which holds the methodology
 for the reader who checks.
 
 **Words, not jargon.** Plain verbs, short sentences, the reader's names for

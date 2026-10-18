@@ -1,13 +1,13 @@
 // Portfolio Concentration: how concentrated the book is by issuer, an app.
 // Rank, share and cumulative share are governed window measures declared in
-// the model; every number is a kit figure, so the receipt names it.
+// the model; every number is a kit figure, so its trace names it.
 import { Masthead, Footer, Kpi, Value, Chart, Table, Download } from "tracebi";
 
 export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Direct lending · Concentration"
+        <Masthead
           title={<>The five largest issuers hold{" "}
             <Value binding="fifth" cell="fv_cum_share" id="head-top5" /> of the book</>}>
           Issuer concentration across the three funds. Rank, share and cumulative share are

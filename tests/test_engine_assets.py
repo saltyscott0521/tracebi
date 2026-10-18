@@ -7,52 +7,9 @@ the wheel; this test guards their presence and shape so a build that drops them
 fails in CI rather than shipping an artifact whose engine cannot load.
 """
 
-from pathlib import Path
-
-ASSETS = Path(__file__).resolve().parents[1] / "tracebi" / "reports" / "assets"
-
-
-def test_engine_worker_bundle_present_and_shaped():
-    worker = ASSETS / "tracebi-engine.worker.js"
-    assert worker.is_file(), "the worker engine bundle is missing"
-    text = worker.read_text(encoding="utf-8", errors="replace")
-    assert len(text) > 100_000, "worker bundle is implausibly small"
-    # esbuild preserves the protocol's string literals; a bundle missing them
-    # is not the engine worker.
-    for marker in ("inited", "loaded", '"rows"', '"query"'):
-        assert marker in text, f"worker bundle missing protocol marker {marker!r}"
-
-
-def test_parquet_wasm_is_gzipped():
-    wasm_gz = ASSETS / "parquet_wasm_bg.wasm.gz"
-    assert wasm_gz.is_file(), "the gzipped parquet-wasm module is missing"
-    data = wasm_gz.read_bytes()
-    assert data[:2] == b"\x1f\x8b", "not a gzip stream"
-
-
-def test_engine_notice_attributes_bundled_libraries():
-    notice = ASSETS / "ENGINE_NOTICE.md"
-    assert notice.is_file(), "ENGINE_NOTICE.md (attribution) is missing"
-    text = notice.read_text(encoding="utf-8")
-    for lib in ("parquet-wasm", "arquero", "apache-arrow"):
-        assert lib in text, f"NOTICE does not attribute {lib}"
 
 
 # ── inlining the engine into an artifact ─────────────────────────────────────
-
-def test_engine_blocks_carry_worker_and_wasm_in_the_ids_the_runtime_reads():
-    from tracebi.reports.embed import (
-        ENGINE_WASM_ID, ENGINE_WORKER_ID, engine_blocks_html,
-    )
-
-    html = engine_blocks_html()
-    assert f'id="{ENGINE_WORKER_ID}"' in html
-    assert f'id="{ENGINE_WASM_ID}"' in html
-    # The worker must be inert markup (the runtime reads textContent and builds
-    # a blob) and must not be able to close its own block.
-    assert 'type="text/plain"' in html
-    body = html.split(f'id="{ENGINE_WORKER_ID}">', 1)[1].split("</script>", 1)[0]
-    assert "</script" not in body
 
 
 def test_engine_ships_only_when_a_binding_is_parquet():

@@ -1,6 +1,6 @@
 // AUM by Branch & Asset Class: the custom-styled demo, an app. Its look is
 // style.css (fonts, the hero band, colours) on the system's frame; its
-// numbers are kit figures, so the receipt names every one. Net new assets is
+// numbers are kit figures, so the trace names every one. Net new assets is
 // this report's own calculation (report.json "measures"), stamped like the rest.
 import { Masthead, Footer, Kpi, Value, Chart, Table, Download } from "tracebi";
 
@@ -8,13 +8,13 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <div className="wm-hero">
-        <Masthead className="wm-hero-inner" kicker="Wealth management · Demo"
+        <Masthead className="wm-hero-inner"
           title={<>Where the book sits, <em>branch by branch.</em></>}>
           Assets under management across six branches and four asset classes. The book
           stands at{" "}
           <Value binding="at_a_glance" cell="market_value" format="currency_compact"
                  id="val-aum-inline" />; every number on this page is a live query against the
-          wealth model, with its fingerprint in the <strong>Receipt</strong> drawer.
+          wealth model, with its fingerprint in its <strong>trace</strong>.
         </Masthead>
       </div>
 

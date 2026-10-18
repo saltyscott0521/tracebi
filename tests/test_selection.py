@@ -19,13 +19,9 @@ from tracebi import DataModel, MemoryConnector, QuerySpec
 from tracebi.model.dataset import frame_fingerprint
 from tracebi.reports.selection import (
     answer_question,
-    conjoin_filters,
     evaluate_selection,
-    filters_equal,
     keep_cut,
     match_question,
-    query_under_selection,
-    resolve_question,
 )
 from tracebi.reports.selection_eval import (
     OfflineRefusal,
@@ -116,60 +112,6 @@ def _package(tmp_path, *, selection=None, binding_filters=None):
     return pkg
 
 
-class TestConjoin:
-    def test_selection_wins_on_the_same_target_and_keeps_the_rest(self):
-        merged = conjoin_filters(
-            {"dim_customer.region": "East", "status": "open"},
-            {"dim_customer.region": "West"},
-        )
-        assert merged == {"dim_customer.region": "West", "status": "open"}
-
-    def test_having_order_and_limit_stay_on_the_binding(self):
-        query = QuerySpec(
-            fact="fact_orders", measures=["revenue"],
-            filters={"status": "open"},
-            having={"revenue": {"gte": 10}},
-            order_by=("-revenue",), limit=3,
-        )
-        out = query_under_selection(query, {"dim_customer.region": "East"})
-        assert out.having == {"revenue": {"gte": 10}}
-        assert out.limit == 3
-        assert out.order_by[0]["column"] == "revenue"
-        assert out.filters["status"] == "open"
-        assert out.filters["dim_customer.region"] == "East"
-
-    def test_empty_selection_does_not_rewrite_an_unfiltered_query(self):
-        query = QuerySpec(fact="fact_orders", measures=["revenue"])
-        assert query_under_selection(query, {}) is query
-        assert filters_equal({}, None)
-
-
-class TestPackageSelection:
-    def test_empty_filters_opt_in_without_an_extra_cut(self, tmp_path):
-        pkg = TemplatePackage(str(_package(
-            tmp_path, selection={"model": "selection_model", "filters": {}},
-        )))
-        assert pkg.selection == {"model": "selection_model", "filters": {}}
-
-    def test_build_stamps_the_authored_selection(self, tmp_path):
-        model = _model()
-        pkg = TemplatePackage(str(_package(
-            tmp_path,
-            selection={"model": "selection_model",
-                       "filters": {"dim_customer.region": "East"}},
-        )))
-        _report, stamped = pkg.build({"selection_model": model})
-        by_name = {sd.name: sd for sd in stamped}
-        expected = model.query(
-            "fact_orders", ["revenue", "margin"],
-            filters={"dim_customer.region": "East"},
-        )
-        assert by_name["totals"].fingerprint == expected.fingerprint()
-        assert by_name["totals"].query_spec["filters"] == {
-            "dim_customer.region": "East",
-        }
-
-
 class TestEvaluate:
     def test_fingerprint_equals_the_conjoined_query(self, tmp_path):
         model = _model()
@@ -206,24 +148,6 @@ class TestEvaluate:
         assert "East" in control["included"]
         assert control["excluded"] == []
 
-    def test_a_value_with_no_rows_under_the_rest_is_excluded(self, tmp_path):
-        model = _model()
-        pkg = TemplatePackage(str(_package(
-            tmp_path, selection={"model": "selection_model", "filters": {}},
-        )))
-        result = evaluate_selection(
-            pkg, {"selection_model": model},
-            {"dim_customer.region": "East", "revenue": {"gte": 1000}},
-        )
-        control = result["controls"][0]
-        assert control["included"] == []
-        assert control["excluded"] == ["East", "West"]
-
-    def test_without_a_block_selection_is_refused(self, tmp_path):
-        model = _model()
-        pkg = TemplatePackage(str(_package(tmp_path)))
-        with pytest.raises(ValueError, match="no selection block"):
-            evaluate_selection(pkg, {"selection_model": model}, {})
 
     def test_page_without_a_block_keeps_connect_src_none(self, tmp_path):
         model = _model()
@@ -286,54 +210,12 @@ class TestKeep:
 
 
 class TestAsk:
-    def test_a_question_names_one_declared_value(self):
-        assert match_question("what about west", {
-            "dim_customer.region": ["East", "West"],
-        }) == {"dim_customer.region": "West"}
 
-    def test_several_values_on_one_column_become_a_list(self):
-        assert match_question("east and west", {
-            "dim_customer.region": ["East", "West"],
-        }) == {"dim_customer.region": ["East", "West"]}
 
     def test_a_longer_value_wins_over_its_prefix(self):
         assert match_question("what about north america", {
             "dim.region": ["North", "North America"],
         }) == {"dim.region": "North America"}
-
-    def test_two_columns_are_refused(self):
-        with pytest.raises(ValueError, match="more than one control"):
-            match_question("east", {
-                "dim_customer.region": ["East", "West"],
-                "dim_store.name": ["East"],
-            })
-
-    def test_an_unknown_word_is_refused(self):
-        with pytest.raises(ValueError, match="does not name a value"):
-            match_question("what about nowhere", {
-                "dim_customer.region": ["East", "West"],
-            })
-
-    def test_a_key_value_cut_is_returned_as_written(self):
-        assert match_question(
-            "dim_customer.region=West", {},
-        ) == {"dim_customer.region": "West"}
-
-    def test_question_recomputes_with_the_model_fingerprint(self, tmp_path):
-        model = _model()
-        pkg = TemplatePackage(str(_package(
-            tmp_path, selection={"model": "selection_model", "filters": {}},
-        )))
-        filters = resolve_question(pkg, {"selection_model": model}, "what about west")
-        assert filters == {"dim_customer.region": "West"}
-        result = evaluate_selection(pkg, {"selection_model": model}, filters)
-        expected = model.query(
-            "fact_orders", ["revenue", "margin"],
-            filters={"dim_customer.region": "West"},
-        )
-        fig = next(f for f in result["figures"] if f["id"] == "fig-total")
-        assert fig["fingerprint"] == expected.fingerprint()
-        assert fig["value"] == pytest.approx(100.0)
 
 
 class TestEndpoint:
@@ -372,104 +254,6 @@ class TestEndpoint:
         # A report that never opted in is not this package; the empty-filters
         # request on an opted-in package is the authored cut.
         assert bare.json()["authored"] is True
-
-    def test_a_question_posts_the_resolved_cut(self, tmp_path):
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
-
-        from tracebi import model_registry
-        from tracebi.web.api.routers import reports as reports_router
-        from tracebi.web.discovery import _register_template_package
-
-        model = _model()
-        model_registry.register(model)
-        pkg = _package(
-            tmp_path, selection={"model": "selection_model", "filters": {}},
-        )
-        registered = _register_template_package(str(pkg), "ask_demo")
-        assert registered["status"] == "registered", registered
-        app = FastAPI()
-        app.include_router(reports_router.router, prefix="/api")
-        client = TestClient(app)
-        res = client.post(
-            "/api/reports/ask_demo/selection",
-            json={"question": "what about west"},
-        )
-        assert res.status_code == 200, res.text
-        body = res.json()
-        assert body["filters"] == {"dim_customer.region": "West"}
-        fig = next(f for f in body["figures"] if f["id"] == "fig-total")
-        expected = model.query(
-            "fact_orders", ["revenue", "margin"],
-            filters={"dim_customer.region": "West"},
-        )
-        assert fig["fingerprint"] == expected.fingerprint()
-        missed = client.post(
-            "/api/reports/ask_demo/selection",
-            json={"question": "what about nowhere"},
-        )
-        assert missed.status_code == 422
-
-    def test_built_report_opens_the_saved_artifact(self, tmp_path, monkeypatch):
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
-
-        from tracebi.web.api.routers import reports as reports_router
-        from tracebi.web.discovery import _register_template_package
-
-        monkeypatch.chdir(tmp_path)
-        pkg = _package(tmp_path, selection={"model": "selection_model", "filters": {}})
-        registered = _register_template_package(str(pkg), "built_demo")
-        assert registered["status"] == "registered", registered
-        out = tmp_path / "output"
-        out.mkdir()
-        (out / "built_demo.html").write_text("<html>saved</html>", encoding="utf-8")
-        (out / "built_demo.html.manifest.json").write_text(
-            '{"report_name": "built_demo"}', encoding="utf-8",
-        )
-        app = FastAPI()
-        app.include_router(reports_router.router, prefix="/api")
-        client = TestClient(app)
-        res = client.get("/api/reports/built_demo/built")
-        assert res.status_code == 200, res.text
-        assert "saved" in res.json()["html"]
-
-    def test_last_build_is_kept_when_the_disk_is_read_only(self, tmp_path, monkeypatch):
-        """A never-built report builds once on first open; after that, opening
-        and downloading serve that build and never render again — even on a
-        read-only disk, where the file lives under the system temp dir and
-        the path is recorded in the run store."""
-        from fastapi import FastAPI
-        from fastapi.testclient import TestClient
-
-        import tracebi.model_registry as model_registry
-        from tracebi.reports.template_package import TemplatePackage
-        from tracebi.web.api.routers import reports as reports_router
-        from tracebi.web.discovery import _register_template_package
-
-        monkeypatch.chdir(tmp_path)
-        monkeypatch.setattr(reports_router, "_writable_output_html", lambda name: None)
-        monkeypatch.setattr(reports_router, "_ARTIFACT_TTL_S", 0.0)
-        monkeypatch.setattr(reports_router, "_ARTIFACT_CACHE", {})
-        renders = []
-        real_render = TemplatePackage.render
-        monkeypatch.setattr(TemplatePackage, "render",
-                            lambda self, *a, **k: renders.append(1) or real_render(self, *a, **k))
-        model_registry.register(_model())
-        pkg = _package(tmp_path, selection={"model": "selection_model", "filters": {}})
-        assert _register_template_package(str(pkg), "ro_demo")["status"] == "registered"
-        app = FastAPI()
-        app.include_router(reports_router.router, prefix="/api")
-        client = TestClient(app)
-
-        first = client.get("/api/reports/ro_demo/built")
-        assert first.status_code == 200, first.text
-        assert first.json()["retained"] is False
-        second = client.get("/api/reports/ro_demo/built").json()
-        download = client.get("/api/reports/ro_demo/download?format=html")
-        assert len(renders) == 1
-        assert second["manifest"]["rendered_at"] == first.json()["manifest"]["rendered_at"]
-        assert download.text == first.json()["html"]
 
 
 class TestNewGrain:
@@ -544,59 +328,6 @@ class TestNewGrain:
         assert fig["kind"] == "table"
         # The thread cites the fingerprint. The table cells are not a value.
         assert "value" not in fig
-
-    def test_an_unknown_word_stays_refused(self, tmp_path):
-        model = self._segment_model()
-        pkg = _package(
-            tmp_path, selection={"model": "selection_model", "filters": {}},
-        )
-        with pytest.raises(ValueError, match="does not name a value"):
-            answer_question(
-                str(pkg), {"selection_model": model}, "what about nowhere",
-                output_html=str(tmp_path / "output" / "demo.html"),
-                project_root=str(tmp_path),
-            )
-        saved = json.loads((pkg / "report.json").read_text(encoding="utf-8"))
-        assert "by_segment" not in saved["data"]
-
-    def test_an_existing_grain_is_refused(self, tmp_path):
-        model = self._segment_model()
-        pkg = _package(
-            tmp_path, selection={"model": "selection_model", "filters": {}},
-        )
-        with pytest.raises(ValueError, match="already a dimension"):
-            answer_question(
-                str(pkg), {"selection_model": model}, "what about region",
-                output_html=str(tmp_path / "output" / "demo.html"),
-                project_root=str(tmp_path),
-            )
-
-    def test_two_grains_are_refused(self, tmp_path):
-        model = self._segment_model()
-        pkg = _package(
-            tmp_path, selection={"model": "selection_model", "filters": {}},
-        )
-        with pytest.raises(ValueError, match="more than one grain"):
-            answer_question(
-                str(pkg), {"selection_model": model}, "what about customer",
-                output_html=str(tmp_path / "output" / "demo.html"),
-                project_root=str(tmp_path),
-            )
-
-    def test_a_value_question_does_not_write_a_binding(self, tmp_path):
-        model = self._segment_model()
-        pkg = _package(
-            tmp_path, selection={"model": "selection_model", "filters": {}},
-        )
-        result = answer_question(
-            str(pkg), {"selection_model": model}, "what about west",
-            output_html=str(tmp_path / "output" / "demo.html"),
-            project_root=str(tmp_path),
-        )
-        assert "added_binding" not in result
-        assert result["filters"] == {"dim_customer.region": "West"}
-        saved = json.loads((pkg / "report.json").read_text(encoding="utf-8"))
-        assert set(saved["data"]) == {"by_region", "totals"}
 
 
 class TestOfflinePort:

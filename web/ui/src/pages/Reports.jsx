@@ -18,6 +18,7 @@ import { ReportLineage } from '../components/ReportLineage'
 import { when } from '../components/Attention'
 import { VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
 import { stamp, useLineFacts } from '../components/TheLine'
+import { Older } from './Runs'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
 import {
@@ -168,8 +169,8 @@ function usePopover() {
   return { open, setOpen, rootRef, onBlur }
 }
 
-// The three files a report can be exported as. Only the HTML carries its receipt.
-const EXPORTS = [['pdf', 'PDF'], ['xlsx', 'Excel'], ['html', 'HTML', 'with receipt']]
+// The three files a report can be exported as. Only the HTML carries its trace.
+const EXPORTS = [['pdf', 'PDF'], ['xlsx', 'Excel'], ['html', 'HTML', 'the file with its trace']]
 
 function ExportItems({ name, onPick }) {
   return (
@@ -182,7 +183,7 @@ function ExportItems({ name, onPick }) {
       ))}
       <div className="rp__rule" role="separator" />
       <p className="rp__menu-note">
-        Only the HTML file carries its receipt; check it with <code>tracebi verify --file</code>.
+        Only the HTML file can be checked on its own: <code>tracebi verify --file</code>.
       </p>
     </>
   )
@@ -272,7 +273,7 @@ function SharePopover({ name }) {
   )
 }
 
-const TABS = [['receipt', 'Receipt'], ['lineage', 'Lineage'], ['history', 'History'], ['files', 'Files']]
+const TABS = [['receipt', 'Trace'], ['lineage', 'Lineage'], ['history', 'History'], ['files', 'Files']]
 const PANEL_KEY = 'tracebi-report-panel'
 // Narrower than this, the command bar is Open, Share and a menu of the rest.
 const BAR_QUERY = '(max-width: 720px)'
@@ -287,7 +288,7 @@ function readPanel() {
 function Facts({ children }) { return <dl className="rpanel__kv">{children}</dl> }
 function Fact({ k, children }) { return <><dt>{k}</dt><dd>{children}</dd></> }
 
-// The Receipt tab: a few facts the receipt does not carry (whether the app's
+// The Trace tab: a few facts the trace does not carry (whether the app's
 // check still holds, the model, the figures, the schedule, the kind), then the
 // build's own certificate, its chip in the app's verdict.
 function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onCheck, checking }) {
@@ -311,7 +312,7 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
             </Fact>
           )}
           {manifest && manifest.schema_version !== 2 && (
-            <Fact k="Receipt">○ Manifest v{manifest.schema_version ?? '?'}: no per-figure receipts to re-run</Fact>
+            <Fact k="Trace">○ Manifest v{manifest.schema_version ?? '?'}: no per-figure queries to re-run</Fact>
           )}
           {model && <Fact k="Model"><Link to={dataPath(model, 'model')}>{labelOf(model)}</Link></Fact>}
           {manifest && (
@@ -339,9 +340,9 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
         </Facts>
       </section>
       {shown?.html
-        ? <ReceiptFrame html={shown.html} verdict={verdict?.state} title={`Receipt of ${report.display_name || report.name}`}
+        ? <ReceiptFrame html={shown.html} verdict={verdict?.state} title={`How ${report.display_name || report.name} was made`}
                         file={`${report.name.slice(report.name.lastIndexOf('/') + 1)}.html`} />
-        : <p className="rpanel__empty">No receipt yet: this report has not been built.</p>}
+        : <p className="rpanel__empty">Nothing to trace yet: this report has not been built.</p>}
     </>
   )
 }
@@ -358,6 +359,7 @@ const FAILED = new Set(['failed', 'error', 'refused'])
 // check recorded, and every older build a plain "Not checked".
 function HistoryTab({ name, verdict }) {
   const { data, isLoading, error } = useRuns('', name)
+  const [open, setOpen] = useState(false)
   if (isLoading) return <div className="rp__none"><Spinner /> Loading builds…</div>
   if (error) return <ErrorDetail error={error} />
   const runs = (Array.isArray(data) ? data : []).filter(r => RUN_KIND[r.kind])
@@ -369,26 +371,36 @@ function HistoryTab({ name, verdict }) {
     if (r === newest) return verdict
     return { state: 'not-checked', detail: 'Only the latest build of a report is re-checked.' }
   }
+  // As on History: the newest build (and anything since it) shows; older builds fold.
+  const shown = runs.indexOf(newest) + 1 || 1
+  const older = runs.slice(shown)
+  const row = r => {
+    const dur = runDuration(r)
+    const v = said(r)
+    return (
+      <li key={r.id}>
+        <span>{r.status === 'running' ? '… Running' : stamp(r.started)}</span>
+        <span>{RUN_KIND[r.kind]}{dur ? ` · ${dur}` : ''}{r.actor ? ` · ${r.actor}` : ''}</span>
+        {v && <Verdict state={v.state} detail={v.detail} size="sm" />}
+        {FAILED.has(r.status) && (
+          <span className="flag flag--bad">
+            <span aria-hidden="true">✕</span> {r.status === 'refused' ? 'Refused' : 'Failed'}
+            {r.detail?.error ? `: ${r.detail.error}` : ''}
+          </span>
+        )}
+      </li>
+    )
+  }
   return (
     <>
       <ul className="rp__runs">
-        {runs.map(r => {
-          const dur = runDuration(r)
-          const v = said(r)
-          return (
-            <li key={r.id}>
-              <span>{r.status === 'running' ? '… Running' : stamp(r.started)}</span>
-              <span>{RUN_KIND[r.kind]}{dur ? ` · ${dur}` : ''}{r.actor ? ` · ${r.actor}` : ''}</span>
-              {v && <Verdict state={v.state} detail={v.detail} size="sm" />}
-              {FAILED.has(r.status) && (
-                <span className="flag flag--bad">
-                  <span aria-hidden="true">✕</span> {r.status === 'refused' ? 'Refused' : 'Failed'}
-                  {r.detail?.error ? `: ${r.detail.error}` : ''}
-                </span>
-              )}
-            </li>
-          )
-        })}
+        {runs.slice(0, shown).map(row)}
+        {older.length > 0 && (
+          <li className="rp__runs-fold">
+            <Older older={older.map(run => ({ run }))} open={open} onToggle={() => setOpen(o => !o)} noun="build" />
+          </li>
+        )}
+        {open && older.map(row)}
       </ul>
       <Link to={`/runs?target=${encodeURIComponent(name)}`} className="rpanel__link">Every run in History</Link>
     </>
@@ -416,7 +428,7 @@ function LineageTab({ name, manifest }) {
   const mark = status => (status === 'warn' ? '△ ' : status === 'derived' ? '○ python: ' : '')
   return (
     <div className="rpanel__sec rpanel__sec--last">
-      <p className="rpanel__lead rpanel__lead--small">Where the numbers on this page came from, read from this build's receipt.</p>
+      <p className="rpanel__lead rpanel__lead--small">Where the numbers on this page came from, as this build recorded it.</p>
       {flow ? (
         <ol className="chain">
           {flow.columns.map(col => {
@@ -511,7 +523,7 @@ function NeverBuilt({ build, canBuild }) {
   return (
     <div className="rprev__never">
       <Verdict state="never-built" />
-      <p>There is no page to show yet. Build it once and the preview, its receipt and the check appear here.</p>
+      <p>There is no page to show yet. Build it once and the preview, its trace and the check appear here.</p>
       {canBuild && (
         <Btn onClick={build.build} disabled={busy}>
           {busy ? <><Spinner size={12} /> Building…</> : 'Build it now'}

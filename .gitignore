@@ -10,7 +10,7 @@ venv/
 .pytest_cache/
 .coverage
 htmlcov/
-# Rendered outputs are disposable, but *.manifest.json files are receipts —
+# Rendered outputs are disposable, but *.manifest.json files are traces —
 # the audit trail behind every rendered number. `output/*` + the negation
 # (not `output/`: git cannot re-include files under an excluded directory)
 # keeps outputs ignored while manifests stay retained.

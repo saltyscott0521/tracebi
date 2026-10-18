@@ -5,7 +5,7 @@ reports: finance, operations, compliance, leadership. No terminal on screen
 and no code on screen.**
 
 The story you are telling has three beats: *here is a report*, *every number
-has a receipt*, *a changed number gets caught*. Everything else is optional.
+has a trace*, *a changed number gets caught*. Everything else is optional.
 If the audience needs the concepts first, send them [[plain-english]] ahead of
 the meeting.
 
@@ -71,17 +71,17 @@ Point at the green **Reproduces** chip beside the report's title.
 Optional: click **Data** in the sidebar, then Direct Lending Portfolio. Its
 **Model** tab shows the definitions in one screen. Go back to **Reports**.
 
-### Beat 2: every number has a receipt (2 minutes)
+### Beat 2: every number has a trace (2 minutes)
 
 Open `demo/portfolio_showcase.html` straight from the desktop. It's an ordinary
-file in an ordinary browser tab, with no server involved. Click **Receipt**
+file in an ordinary browser tab, with no server involved. Click **Trace**
 beside the chip under the title.
 
-> "This is the file you'd email. It works offline. Every figure carries a receipt, like the one from a shop. It records where
+> "This is the file you'd email. It works offline. Every figure carries its trace: how it was made. It records where
 > the number came from and a fingerprint of the exact data behind it. If a
 > single digit changes, the fingerprint no longer matches."
 
-Point at the **unverified** tag on one line of the receipt.
+Point at the **unverified** tag on one line of the trace.
 
 > "And a number that *can't* be checked, like an estimate someone typed in, is
 > labelled as such. It can't pass itself off as checked."
@@ -94,7 +94,7 @@ Show the browser tab with `edited.html` open.
 > by accident or on purpose. Fair value now says $295 million. It looks
 > completely normal."
 
-Click **Review** in the sidebar, then **Verify a file** at the bottom. Drag in `edited.html`
+Click **Review** in the sidebar, then its **Verify** tab. Drag in `edited.html`
 and `edited.html.manifest.json`, then click **Verify offline**.
 
 The screen turns red: **FILE ALTERED**, with the exact figures listed.
@@ -116,7 +116,7 @@ Click **Ask** in the sidebar. With Direct Lending Portfolio picked, tick
 
 ### Beat 5: the honest boundary (1 minute, don't skip)
 
-> "One thing TraceBi does *not* claim: a receipt shows a number is consistent
+> "One thing TraceBi does *not* claim: a trace shows a number is consistent
 > and unedited, not that it's *correct*. If bad data goes in at the start, the
 > report will faithfully show the bad number. That's why a person still
 > approves the definitions and the cleaning. TraceBi makes sure that what they
@@ -131,8 +131,8 @@ audience than any feature.
 | --- | --- |
 | "Does this replace Tableau / Power BI?" | "No. It's for the reports where being able to prove the number matters most: board packs, investor reports, regulatory filings, anything an AI drafts." |
 | "Can the AI change our data?" | "No. The AI builds the report through a gateway that has no write access to the data it reports on. A person approves every change." |
-| "What does the reader need?" | "A web browser. The report is one file that works offline. To check it, they need that file and its receipt file." |
-| "Who issued the receipt? Could someone fake both?" | "Today the receipt is made by whoever built the report, so between companies it's documentation. Signed receipts that prove who issued them are on the roadmap." |
+| "What does the reader need?" | "A web browser. The report is one file that works offline. To check it, they need that file and its manifest file." |
+| "Who issued the trace? Could someone fake both?" | "Today the trace is made by whoever built the report, so between companies it's documentation. Signed traces that prove who issued them are on the roadmap." |
 | "Where does the data live?" | "In your environment. TraceBi runs where your data is. Nothing is sent to us." |
 
 ## Words to avoid on stage
@@ -142,7 +142,7 @@ instead:
 
 | Instead of | Say |
 | --- | --- |
-| manifest | receipt |
+| manifest | trace |
 | SHA-256 fingerprint / hash | fingerprint |
 | star schema, grain, semantic layer | the definitions |
 | sink, warehouse, DuckDB | the clean data |

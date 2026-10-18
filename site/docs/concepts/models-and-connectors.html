@@ -5,7 +5,7 @@
 <title>Models and connectors — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Models and connectors">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -73,6 +74,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -140,7 +142,7 @@ model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;, 
   data or plumbing.</li>
 <li><strong>The data can be rebuilt without touching the model.</strong> A <a href="../concepts/transform.html">Transform — phase ①</a>
   writes the warehouse file; the model keeps reading the same table names.</li>
-<li><strong>A <a href="../concepts/receipts.html">receipt</a> can name its source.</strong> Every query records which
+<li><strong>A <a href="../concepts/trace.html">The trace</a> can name its source.</strong> Every query records which
   connector and which table it read, plus a fingerprint of that table, so a
   number can be traced to stored data.</li>
 </ul>
@@ -153,7 +155,7 @@ pipelines/portfolio_model.yaml         rebuild its data, then those reports
 <p>One line makes the pipeline: <code>model_pipeline("portfolio_model",
 transform="holdings_transform")</code> registers a <strong>transform</strong> step (the phase ①
 script that fills the warehouse) and a <strong>build</strong> step (every report in
-<code>reports/portfolio_model/</code>, each with its receipt). It shows on the Pipelines
+<code>reports/portfolio_model/</code>, each with its trace). It shows on the Pipelines
 page and runs with <code>tracebi run-pipeline portfolio_model</code>. The build step
 refuses to run after a transform that failed, so a report is never rebuilt on
 data the transform did not refresh.</p>

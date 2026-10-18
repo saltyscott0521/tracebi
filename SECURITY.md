@@ -48,9 +48,9 @@ operator's responsibility to configure before exposing a deployment:
 - **Error detail.** Full tracebacks are returned only under
   `TRACEBI_DEV_MODE=1`.
 
-## What the receipt does and does not attest
+## What the trace does and does not attest
 
-The report "receipt" attests that a number **reproduces** from its recorded
+The report "trace" attests that a number **reproduces** from its recorded
 query against a materialized model, and that the shipped file is
 integrity-checkable — not that a number is *correct*, and not (until signing
 lands) that it came from a particular party. Treat a received report as

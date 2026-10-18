@@ -1,6 +1,6 @@
 // Portfolio Desk: the book as an app people work in. Every number is a kit
 // figure (<Kpi>, <Value>, <Chart>, <Table>) with literal binding and cell, so
-// the build records it as a claim and the receipt names it. Controls choose
+// the build records it as a claim and its trace names it. Controls choose
 // which stamped rows show; they never compute a number.
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download,
@@ -113,7 +113,7 @@ export default function App() {
                         md:h-screen md:w-60 md:border-r md:border-b-0 print:hidden">
         {/* The masthead in the sidebar: the title, what it is, when it was built
             and the verdict chip. */}
-        <Masthead title={TITLE} kicker="Direct lending" data-tb-title="nav"
+        <Masthead title={TITLE} data-tb-title="nav"
           className="mb-3 border-b border-rule px-2.5 pb-3">
           Three funds, one book.
         </Masthead>

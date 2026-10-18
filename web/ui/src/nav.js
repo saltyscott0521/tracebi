@@ -7,10 +7,15 @@
 //                               picture. /data/<m> one model: its line, then the tabs
 //                               /data/<m>/model|transform|sources|runs (Model at /data/<m>).
 //                               /data/sources every source
-//   Review   /review            what needs attention, then drafts, then Verify a file;
-//                               /runs (History), /verify (its full page) and
-//                               /drafts/<owner>/<kind>/<path> (one draft) are part of
-//                               it. /drafts lands on /review#drafts
+//   Review   /review            its tabs: Attention (/review), Drafts (/review/drafts),
+//                               History (/runs) and Verify (/verify), each at its own
+//                               address in Review's frame; /drafts/<owner>/<kind>/<path>
+//                               (one draft) is part of it. /drafts and /review#drafts
+//                               land on /review/drafts
+//
+// Who sees which place (placesFor): everyone Reports and Ask, an analyst also
+// Review, an admin also Data. With no sign-in the API names everyone admin,
+// so every place shows. The API enforces the roles; this is what the app shows.
 //
 // Every older address (/models, /m/<model>/…, /explore, /sources, /map,
 // /reports?r=<name>) redirects into these (see Moved in components/Scope.jsx),
@@ -20,28 +25,57 @@
 // stamps): the model file models/<model>.py, its pipeline pipelines/<model>.py,
 // its reports under reports/<model>/.
 
+// The four places, then the pages inside Review (`parent`): each keeps its own
+// address, and the sidebar marks Review on it. `minRole` is the least role
+// that sees it.
 export const PAGES = [
-  { key: 'reports', label: 'Reports', path: '/',
-    sub: 'What people read. Every number carries its receipt.' },
-  { key: 'ask',     label: 'Ask',     path: '/ask',
+  { key: 'reports', label: 'Reports', path: '/', minRole: 'viewer',
+    sub: 'What people read. Every report, and whether its numbers still hold.' },
+  { key: 'ask',     label: 'Ask',     path: '/ask', minRole: 'viewer',
     sub: 'Ask a model a question and see the query behind the answer.' },
-  { key: 'data',    label: 'Data',    path: '/data',
+  { key: 'data',    label: 'Data',    path: '/data', minRole: 'admin',
     sub: 'How the numbers are made: each model, the transform that feeds it, and where the data is kept.' },
-  { key: 'review',  label: 'Review',  path: '/review',
-    sub: 'What waits on a person: what needs attention, drafts, and checking a file you were sent.' },
+  { key: 'review',  label: 'Review',  path: '/review', minRole: 'analyst',
+    sub: 'What waits on a person: what needs attention, drafts, what ran, and checking a file you were sent.' },
+  { key: 'drafts',  label: 'Drafts',  path: '/review/drafts', parent: 'review', minRole: 'analyst' },
+  { key: 'runs',    label: 'History', path: '/runs', parent: 'review', minRole: 'analyst',
+    sub: 'What ran, when, for whom, and whether it reproduced.' },
+  { key: 'verify',  label: 'Verify',  path: '/verify', parent: 'review', minRole: 'analyst' },
 ]
 
-// Pages inside a place that keep a heading of their own until Steps 3 and 4
-// rebuild them.
+// Pages inside a place that keep a heading of their own.
 const INNER = [
-  { key: 'runs',    label: 'History', sub: 'What ran, when, for whom, and whether it reproduced.' },
   { key: 'sources', label: 'Sources', sub: 'Where the data is kept: a file, a folder or a database.' },
+]
+
+// Review's tabs, in order: Attention is /review itself.
+export const REVIEW_TABS = [
+  { key: 'review', label: 'Attention', path: '/review' },
+  ...PAGES.filter(p => p.parent === 'review'),
 ]
 
 // The tabs of a model's Data page, in order (the first opens at /data/<m>).
 export const TABS = ['model', 'transform', 'sources', 'runs']
 
 export const page = key => PAGES.find(p => p.key === key) || INNER.find(p => p.key === key)
+
+const RANK = { viewer: 0, analyst: 1, admin: 2 }
+
+/** Whether *role* sees the page *key* (a page outside the places: everyone). */
+export function mayUse(role, key) {
+  const p = page(key)
+  return !p?.minRole || (RANK[role] ?? 0) >= RANK[p.minRole]
+}
+
+/**
+ * The places *role* sees, in the sidebar's order: the one list the sidebar,
+ * the phone's drawer, the rail and the ⌘K palette draw. No role yet (while
+ * /api/me loads) is the least: Reports and Ask, never a flash of the rest.
+ */
+export const placesFor = role => PAGES.filter(p => !p.parent && mayUse(role, p.key))
+
+/** The place a page sits in: itself, or its parent. */
+export const placeOf = key => page(key)?.parent || key
 
 const qs = params => {
   const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v))
@@ -71,12 +105,16 @@ const PLACE_OF = [
   [/^\/(reports(\/.*)?)?$/, 'reports'],
   [/^\/ask$/, 'ask'],
   [/^\/data(\/.*)?$/, 'data'],
-  [/^\/(review|drafts|runs|verify)(\/.*)?$/, 'review'],
+  [/^\/(review\/drafts|drafts)(\/.*)?$/, 'drafts'],
+  [/^\/runs$/, 'runs'],
+  [/^\/verify$/, 'verify'],
+  [/^\/review$/, 'review'],
 ]
 
 /**
- * Which place a pathname is in ({page, model, tab}), or null for pages
- * outside the four (Help, an unknown address). On Data, `model` and `tab`
+ * Which page a pathname is ({page, model, tab}), or null for pages outside
+ * the four places (Help, an unknown address). Inside Review it is the tab's
+ * own page (placeOf gives Review). On Data, `model` and `tab`
  * say which model's page and which of its tabs.
  */
 export function whereAmI(pathname) {

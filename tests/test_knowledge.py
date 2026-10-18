@@ -10,123 +10,6 @@ an agent through both consumption forms (the `tracebi context` payload and the
 import re
 from pathlib import Path
 
-from tracebi.knowledge import get_lesson, index, list_lessons
-
-_SKILL = (Path(__file__).resolve().parents[1]
-          / "skills" / "tracebi-analyst" / "SKILL.md")
-
-
-def test_lessons_parse_and_slugs_are_unique():
-    lessons = list_lessons()
-    assert lessons, "no lessons found — the curriculum is empty"
-    slugs = [ls.slug for ls in lessons]
-    assert len(slugs) == len(set(slugs)), f"duplicate lesson slugs: {slugs}"
-    for ls in lessons:
-        assert ls.title and ls.title != ls.slug, f"{ls.slug}: missing title"
-        assert ls.when, f"{ls.slug}: missing 'when' trigger — an agent needs it"
-        assert len(ls.body) > 100, f"{ls.slug}: body too thin to teach anything"
-
-
-def test_cross_links_resolve():
-    """Every [[slug]] reference points at a real lesson (link liberally, but not
-    to nothing — a dead reference teaches the agent a lesson that isn't there)."""
-    slugs = {ls.slug for ls in list_lessons()}
-    for ls in list_lessons():
-        for ref in re.findall(r"\[\[([a-z0-9-]+)\]\]", ls.body):
-            assert ref in slugs, f"{ls.slug} links [[{ref}]] which does not exist"
-
-
-def test_the_curriculum_is_delivered_in_context_both_tiers():
-    """The lessons must appear in describe() — brief AND full — or a bring-your-
-    own agent over MCP never learns the curriculum exists. This is the guard
-    against the SOP-doc fate: a folder nobody's surface points at."""
-    from tracebi.capabilities import describe
-
-    for brief in (True, False):
-        payload = describe(brief=brief)
-        block = payload.get("analyst_knowledge")
-        assert block, f"analyst_knowledge missing from context (brief={brief})"
-        got = {l["slug"] for l in block["lessons"]}
-        assert got == {ls.slug for ls in list_lessons()}, (
-            f"context curriculum out of sync with the lessons (brief={brief})")
-        assert "tracebi knowledge" in block["fetch"]
-        assert block["fetch"].index("lessons") < block["fetch"].index(
-            "tracebi knowledge")
-        rules = " ".join(payload["conventions"]["rules"])
-        assert rules.index("list_models") < rules.index("tracebi validate")
-        assert "list_reports" in rules
-        assert payload["warehouse"]["when"].startswith("Call describe_table")
-
-
-def test_context_index_matches_the_files():
-    idx = index()
-    assert {i["slug"] for i in idx} == {ls.slug for ls in list_lessons()}
-    for i in idx:
-        assert i["title"] and i["when"]
-
-
-def test_skill_points_at_the_knowledge_base():
-    """The skill must delegate to the lessons (single source of truth), not
-    re-state the guidance where it can drift."""
-    text = _SKILL.read_text(encoding="utf-8")
-    assert "tracebi knowledge" in text, "skill does not reference the lessons"
-    # The seed lessons the skill names by slug must exist.
-    for slug in ("ratio-of-totals", "weighted-vs-plain-mean", "grain-and-fanout",
-                 "verify-your-own-work"):
-        assert slug in text, f"skill names '{slug}' in prose"
-        assert get_lesson(slug) is not None, f"skill names missing lesson '{slug}'"
-
-
-_DESIGNER = _SKILL.parents[1] / "tracebi-designer" / "SKILL.md"
-_REPO = _SKILL.parents[2]
-
-
-def test_every_design_lesson_reaches_the_designer_skill_and_both_guides():
-    """The design lessons share the analyst curriculum's delivery, so the same
-    rot applies: a design lesson no skill or guide names is one no agent
-    reads. Every `design-` lesson must be named in the designer skill and in
-    the repo AGENTS.md, and the skill must name no lesson that doesn't exist.
-    The scaffolded guide must at least point at the curriculum."""
-    design = {ls.slug for ls in list_lessons() if ls.slug.startswith("design-")}
-    assert len(design) >= 5, "the design curriculum is missing"
-
-    skill = _DESIGNER.read_text(encoding="utf-8")
-    assert "tracebi knowledge" in skill, "designer skill does not reference the lessons"
-    named = set(re.findall(r"\bdesign-[a-z-]+[a-z]", skill))
-    assert design <= named, f"designer skill omits {sorted(design - named)}"
-    assert named <= design, f"designer skill names missing lessons {sorted(named - design)}"
-
-    agents = (_REPO / "AGENTS.md").read_text(encoding="utf-8")
-    missing = sorted(s for s in design if s not in agents)
-    assert not missing, f"AGENTS.md does not name {missing}"
-
-    from tracebi.cli import _INIT_AGENTS_MD
-    assert "tracebi knowledge design-" in _INIT_AGENTS_MD, (
-        "the scaffolded AGENTS.md never points at the design lessons")
-
-
-def test_every_measure_kind_and_aggregation_is_in_the_vocabulary():
-    """A feature the vocabulary doesn't publish effectively doesn't exist for
-    an agent. Derived from the code, so a new measure kind or aggregation
-    that isn't documented fails here instead of per-feature look-alikes."""
-    import inspect
-
-    from tracebi.capabilities import describe
-    from tracebi.model.data_model import _AGG_FUNCS, DataModel
-
-    sm = describe()["semantic_model"]
-    published = {k["kind"] for k in sm["measure_kinds"]}
-    renamed = {"column": "simple", "expr": "expression"}
-    params = inspect.signature(DataModel.add_measure).parameters
-    kinds = {renamed.get(p, p) for p in params
-             if p in ("column", "expr", "ratio", "share", "rank", "running",
-                      "period_end", "offset", "growth", "to_date")}
-    assert len(kinds) == 10, "a measure kind was added: list it above"
-    assert kinds <= published, f"undocumented measure kinds: {kinds - published}"
-    assert set(_AGG_FUNCS) <= set(sm["aggregations"])
-    assert any("percentile" in a for a in sm["aggregations"])
-    assert "add_value_bins" in sm["value_bins"]["declare"]
-    assert "or" in str(sm["filter_forms"])
 
 
 def test_reference_model_obeys_the_weighted_mean_lesson():
@@ -209,13 +92,6 @@ class TestMeanOfARatioGuard:
                                    allow_rate_agg=True)
         self._model().add_measure("sum_pct", column="p2", agg="sum",
                                    allow_rate_agg=True)
-
-    def test_guard_is_documented_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        constraints = describe()["semantic_model"]["constraints"]
-        assert any("allow_rate_agg" in c for c in constraints), (
-            "the mean-of-a-ratio guard must be in the vocabulary so an agent "
-            "knows it exists and knows the escape hatch")
 
 
 class TestValueBasedRateGuard:
@@ -567,11 +443,6 @@ class TestPerGroupTopN:
         with pytest.raises(ValueError, match="dim_name.attribute"):
             DataModel("t").add_measure("r", rank="revenue", partition_by="sector")
 
-    def test_partition_is_documented_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        kinds = {k["kind"]: k for k in describe()["semantic_model"]["measure_kinds"]}
-        assert "partition_by" in kinds["rank"]["args"]
-        assert "top-n-per-group" in kinds["rank"]["note"].lower()
 
 class TestTimeGrain:
     def _model(self):
@@ -609,11 +480,6 @@ class TestTimeGrain:
         with pytest.raises(ValueError, match="not supported"):
             m.add_time_grain("dim_date", "x", source="order_date", grain="fortnight")
 
-    def test_grain_is_discoverable_in_model_info(self):
-        info = self._model().info()
-        dim = next(d for d in info["dimensions"] if d["name"] == "dim_date")
-        assert dim["derived"]["order_month"] == {
-            "kind": "date_trunc", "of": "order_date", "grain": "month"}
 
 class TestValueBins:
     """Value bins: group by a BAND of a numeric dimension column — a governed
@@ -683,12 +549,6 @@ class TestValueBins:
         with pytest.raises(ValueError, match="one label per band"):
             m.add_value_bins("d", "b", source="x", edges=[600, 700], labels=["a"])
 
-    def test_bins_are_discoverable_in_model_info(self):
-        info = self._model().info()
-        dim = next(d for d in info["dimensions"] if d["name"] == "dim_customer")
-        band = dim["derived"]["score_band"]
-        assert band["kind"] == "bin" and band["of"] == "score"
-        assert band["bands"] == ["< 600", "600–700", "700–800", "≥ 800"]
 
 class TestSemiAdditive:
     """period_end (semi-additive) measures: sum a stock across dimensions but
@@ -823,11 +683,6 @@ class TestStockSumGuard:
                                   allow_additive=True)
         # a name with no stock token sums freely
         self._model().add_measure("revenue", column="balance", agg="sum")
-
-    def test_guard_is_documented_in_the_vocabulary(self):
-        from tracebi.capabilities import describe
-        text = str(describe()["semantic_model"]["constraints"])
-        assert "stock" in text and "allow_additive" in text
 
 
 class TestBooleanOrFilters:

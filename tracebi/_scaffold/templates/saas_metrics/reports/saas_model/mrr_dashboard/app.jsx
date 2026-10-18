@@ -1,6 +1,6 @@
 // SaaS MRR Dashboard: an app (the React lane). Every number is a kit figure
 // (<Kpi>, <Value>, <Chart>, <Spark>, <Table>) with a literal binding and cell,
-// so the build records it and the receipt names it. The plan filter chooses
+// so the build records it and its trace names it. The plan filter chooses
 // rows; it never computes a number.
 import { Masthead, Footer, Kpi, Value, Spark, Chart, Table, Filter, Download } from "tracebi";
 
@@ -8,7 +8,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="SaaS metrics"
+        <Masthead
           title={<><Value binding="top_plan" cell="dim_plan.plan" id="head-top-plan" /> leads
             ending MRR</>}>
           SaaS MRR dashboard: recurring revenue, customers and churn, month by month.
@@ -37,13 +37,13 @@ export default function App() {
         </div>
 
         <div className="tb-grid">
-          <section className="tb-card tb-span-8">
+          <section className="tb-card tb-span-6">
             <h2>Ending MRR by month</h2>
             <p className="tb-note">Period-end balance each month; the last point is today's book.</p>
             <Chart binding="by_month" type="area" x="dim_month.month" y="ending_mrr"
                    valueFormat="currency0" mark="last" id="chart-by-month" />
           </section>
-          <section className="tb-card tb-span-4">
+          <section className="tb-card tb-span-6">
             <h2>Ending MRR by plan</h2>
             <p className="tb-note">The filter chooses rows; it never computes a number.</p>
             <div className="mb-3 flex flex-wrap items-center gap-2">

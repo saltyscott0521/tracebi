@@ -181,7 +181,7 @@ tracebi session export --format md # → explorations/<name>.md (the markdown tw
 This writes the committed record of what you looked at — frames, charts, and
 notes from the workbench feed. It carries **no manifest**, because nothing in it
 is a verified figure; `tracebi verify` refuses the file by name rather than
-letting a lab notebook read as a receipt. It is the honest home for the
+letting a lab notebook read as a trace. It is the honest home for the
 narrative that a governed report deliberately does not carry.
 
 ## Publishing a report from a notebook
@@ -202,7 +202,7 @@ library under its model. In an interactive kernel the decorator is harmless if t
 extras aren't installed — it raises a clear `ImportError` telling you to
 `pip install "tracebi[web]"`.
 
-For a governed, receipt-bearing report, prefer the artifact package
+For a governed, traced report, prefer the artifact package
 (`tracebi new-report` → `tracebi dev` → `tracebi report build`), covered in the
 [Analyst Guide](analyst-guide.md).
 

@@ -15,7 +15,7 @@ agent composes forty reports overnight, "ask the author" is not a control, code
 review of the pandas is not a control, and a dashboard tool's polish is not a
 control. So the framework does two things a GUI cannot: it refuses the
 silently-wrong number at the keystroke, and it gives every published figure a
-mechanical receipt — a contract it was computed against, a fingerprint of what
+mechanical trace — a contract it was computed against, a fingerprint of what
 came out, and a command that re-checks both without trusting anyone's memory.
 
 Producing analysis is now cheap. TraceBi is how a team that writes code keeps it
@@ -46,7 +46,7 @@ transform.
 `template.html` / `style.css` / `script.js`) or a `ReportSpec`, pointed at the
 model, where every figure is a live query: KPI cards, charts, tables.
 `tracebi dev` explores it live; `tracebi report build` renders one
-self-contained HTML with the receipt inlined; `tracebi verify` re-runs it.
+self-contained HTML with its trace inlined; `tracebi verify` re-runs it.
 Because the model is materialized, the page re-renders in milliseconds with no
 pandas in the loop. A dashboard is a style of report, not a different thing;
 the JSON spec is one serialization of the package, not a lesser lane.
@@ -56,13 +56,13 @@ The phases never block each other: editing a report never re-runs the
 transform; rewriting the transform never breaks a report the model still
 satisfies.
 
-## The receipt
+## The trace
 
 At the freeze points, the machinery attaches.
 
 Every query from the model boundary onward is **stamped**: the resolved
 query, the lineage chain, and a SHA-256 fingerprint of the result. Every
-render emits a **manifest** — the receipt for the whole report. Specs are
+render emits a **manifest** — the trace of the whole report. Specs are
 validated before execution, and a validation error carries a repair path
 (`sections[0].data.query.fact`), because the author fixing it may not be a
 person.
@@ -71,10 +71,10 @@ person.
 and classifies every section: **REPRODUCES**, **SOURCE DRIFT**, **MODEL
 CHANGED**, **MISMATCH (cause unknown)**, **UNEXPLAINED**, **UNVERIFIABLE**,
 **ERROR**. Anything alarming — a mismatch nobody has diagnosed, a model that
-changed under a receipt, an error mid-check — exits nonzero. The bias is
+changed under a trace, an error mid-check — exits nonzero. The bias is
 toward loud failure, never toward the reassuring guess.
 
-**Every number drawn through the model has a receipt; everything else must
+**Every number drawn through the model has a trace; everything else must
 be marked as not having one.** That is the promise, and it is checkable: run
 `verify` yourself. In an artifact package the build enforces it: every figure
 either names a stamped binding or is marked `data-tb-unverified` — a
@@ -88,8 +88,8 @@ The trust boundary needs somewhere to draw the line, and the line is drawn at
 the **sink** — the freeze point where free-form analysis becomes named
 tables, and the numbers become a contract you can report against. The
 three-phase workflow is not a style preference; it is the framework's spine —
-and the same mechanism that makes the receipt possible. The framework is the
-identity; the receipt is what earns trust in the agent era.
+and the same mechanism that makes the trace possible. The framework is the
+identity; the trace is what earns trust in the agent era.
 
 It is also why the spec is JSON. Python stays strictly more powerful: a spec
 cannot express arbitrary computation, which is exactly why it is safe for a
@@ -99,11 +99,11 @@ exports with `from_report()`, and the governed artifact needs no rewrite.
 
 In TraceBi, humans and machines author against the same contracts. Nothing on the agent surface is a second-class
 copy of the human surface — a report has only ever been a name and a zero-arg
-callable, and neither author gets a shortcut around the receipt. The analyst
+callable, and neither author gets a shortcut around the trace. The analyst
 gets a model they can read in one screen and a `verify` they can run before a
 sign-off. The agent gets the same thing through the MCP gateway — validate a
 spec, query a model, render, verify — a surface with no write access to the
-warehouse: the only thing it writes is its own rendered artifact and receipt.
+warehouse: the only thing it writes is its own rendered artifact and trace.
 An agent that can check everything and rewrite nothing it reports on is one
 you can leave alone.
 
@@ -139,13 +139,13 @@ unchecked work is not.
 The maturity frame is the **assurance ladder**:
 
 - **L0 — nothing**: raw SQL in, raw HTML out; the company can prove nothing.
-- **L1 — query receipts**: every figure carries its resolved query, lineage,
+- **L1 — query traces**: every figure carries its resolved query, lineage,
   and fingerprint.
 - **L2 — spec reproducibility**: the whole report re-runs from its manifest
   and reproduces, section by section.
-- **L3 — signed attestation**: a receipt whose issuer is cryptographically
+- **L3 — signed attestation**: a trace whose issuer is cryptographically
   verifiable. **This does not exist yet.** Manifests today are unsigned, and
-  until receipts are signed and attribution is authenticated, we describe the
+  until traces are signed and attribution is authenticated, we describe the
   audit trail as operator-asserted — because that is what it is. We say so,
   because a trust product that overclaims its own trust story has already
   failed.
@@ -194,23 +194,23 @@ One canon, used everywhere — code, docs, UI, agent context:
 | **Figure** | A stamped display element (`data-tb-figure`): a value card, chart, or table |
 | **Binding** | The named stamped dataset a figure reads (`data-tb-binding`) |
 | **Stage** | `data-tb-stage="exploration"` blocks — live under `tracebi dev`, stripped at the final build |
-| **`data-tb-unverified`** | The figure-level honesty mark: displays data, claims no receipt; distinct from a section's `UNVERIFIABLE` verdict |
+| **`data-tb-unverified`** | The figure-level honesty mark: displays data, claims no trace; distinct from a section's `UNVERIFIABLE` verdict |
 | **Stamp** | Resolved query + lineage + SHA-256 fingerprint on a section's data |
-| **Manifest** / **Receipt drawer** | The receipt a render emits (every stamp for the report); every built page carries a drawer that shows its human-readable face |
+| **Manifest** / **Trace drawer** | The trace a render emits (every stamp for the report); every built page carries a drawer that shows its human face, "How these numbers were made" |
 | **Stated methodology** | `data-tb-methodology` — an author's prose appendix in the artifact; never a claim, never colors a status |
 | **Verify** | Re-run the recorded queries; classify: REPRODUCES / SOURCE DRIFT / MODEL CHANGED / MISMATCH (cause unknown) / UNEXPLAINED / UNVERIFIABLE / ERROR |
 | **`verifiable: false`** | The escape hatch's permanent mark; never green |
 | **Workbench** / **Discovery** | The live authoring surface (`tracebi dev` / `report status`): in the app, the Build panel beside the report (what changed, the data each binding reads, checks, human notes and pins). With no report named, it is the project feed over phases ① and ② (`tracebi dev --classic` keeps the older `/__workbench` page) |
 | **Session record** | `tracebi session export` — the committed lab-notebook of a discovery session; no manifest is written, ever |
 | **Interactivity subsets, never computes** | Controls (`data-tb-filter` / `data-tb-search`) subset which stamped rows a figure displays; they never compute a new number, so a value figure never reacts and a filtered KPI needs its own binding. Reader aids (`data-tb-sort`, `data-tb-bars`, `data-tb-direction`) follow the same rule: they reorder or decorate stamped values and never compute one |
-| **Assurance ladder** | L0 nothing → L1 receipts → L2 reproducibility → L3 signed attestation (L3: not yet) |
+| **Assurance ladder** | L0 nothing → L1 traces → L2 reproducibility → L3 signed attestation (L3: not yet) |
 | **Migrate** | `tracebi migrate spec` compiles a JSON spec into the artifact package — the section enum ends as compile vocabulary; the artifact directory shadows the same-named spec |
 
 ## Commitments
 
-1. **Never weaken the receipt.** Every published figure stays re-runnable; any
+1. **Never weaken the trace.** Every published figure stays re-runnable; any
    feature that weakens the stamp–manifest–verify loop is rejected, whatever it
-   adds elsewhere. The framework is the product; a receipt you can't trust would
+   adds elsewhere. The framework is the product; a trace you can't trust would
    quietly unmake it.
 2. **Never overclaim.** The boundary at the sink, the unsigned manifest, the
    unverifiable section — all stated plainly, in the tool's own output, not
@@ -223,7 +223,7 @@ One canon, used everywhere — code, docs, UI, agent context:
 4. **Both authors, one contract.** Any spec or package the analyst can
    validate, render, build, or verify, the agent can too — the gateway's
    `build_report` renders artifact packages over MCP — and neither gets a
-   shortcut around the receipt. (Excel rendering is not on the agent surface
+   shortcut around the trace. (Excel rendering is not on the agent surface
    yet; parity is the direction, not a claim.)
 5. **Errors are for repair.** Validation failures carry the path to the
    fault. A machine-facing error that a machine cannot act on is a bug.
@@ -236,5 +236,5 @@ that alter values — violate this manifesto and get reverted, not debated. If
 a change makes a number harder to check, it violates the manifesto. Cite this
 document and reject it.
 
-The machine wrote it and is gone. The receipt remains. That is enough — if
-the receipt is honest.
+The machine wrote it and is gone. The trace remains. That is enough — if
+the trace is honest.

@@ -56,7 +56,7 @@ Under `reports/portfolio_model/`:
 - `portfolio_model/portfolio_desk/` — the book as an app (`app.jsx`, the React
   lane): a sidebar with Overview, Holdings and Funds, a KPI strip with a lead, a
   watch list of the lowest marks, and a holdings list with search, sector and
-  fund filters and a CSV download. Every number is a kit figure the receipt names.
+  fund filters and a CSV download. Every number is a kit figure the trace names.
 - `portfolio_model/portfolio_book/` — an editorial report with its own house CSS:
   the headline is the finding ("marked at 97.9% of cost"), every number in the
   prose is a bound figure, and `script.js` draws the issuer table from the same
@@ -78,7 +78,7 @@ Under `reports/housing_model/`:
   sunk by `transforms/affordability_transform.py` to its own
   `data/housing.duckdb` and modelled by `models/housing_model.yaml`. Today's buyer
   is a labelled **scenario** (`data-tb-scenario`) whose assumptions the reader
-  sets; it is computed in the browser and never part of the receipt.
+  sets; it is computed in the browser and never part of the trace.
   `python inputs/fetch_housing.py` refreshes the snapshot from the publishers
   (see `inputs/housing_sources.md`); it needs the network, so it is not part of
   the pipeline.

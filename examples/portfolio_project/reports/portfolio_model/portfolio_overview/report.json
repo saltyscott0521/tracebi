@@ -1,6 +1,6 @@
 {
   "name": "Portfolio Overview",
-  "description": "The book at a glance, as an app with top tabs: an overview with the KPI strip and the sector chart, the eight largest issuers, and the funds. Every number is a kit figure.",
+  "description": "The book at a glance: fair value, mark and unrealized gain, fair value by sector, the eight largest issuers, and the funds compared.",
   "data": {
     "kpis": {
       "model": "portfolio_model",

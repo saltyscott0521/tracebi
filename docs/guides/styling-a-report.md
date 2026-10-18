@@ -114,7 +114,7 @@ A typical top of page, built only from these:
 
 The `data-tb-*` attributes are covered in [[template-html]]. Here `fv_share` is
 a `share=` measure and `fv_growth` a `growth=` measure ([[measures]]), so the
-comparison is a governed number with its own receipt. `data-tb-direction` draws
+comparison is a governed number with its own trace. `data-tb-direction` draws
 the ▲/▼ and picks `--tb-good` or `--tb-bad` from that number's sign.
 
 ## What you get without writing CSS
@@ -125,8 +125,8 @@ the ▲/▼ and picks `--tb-good` or `--tb-bad` from that number's sign.
 - Keyboard focus is always visible, headings wrap evenly, and running text
   stops at a readable line length.
 - An empty table or chart says "no data" instead of showing a blank.
-- Printing keeps the receipt, the badges and every tab's content.
-- The receipt drawer doesn't animate for people who've turned motion off.
+- Printing keeps the trace, the badges and every tab's content.
+- The trace drawer doesn't animate for people who've turned motion off.
 
 ## Design guidance
 
@@ -168,7 +168,7 @@ there and rows on a small report. `ready(fn)` behaves identically on both.
 Two things that belong in the query, not in JS:
 
 - **Sorting and slicing** — `order_by` + `limit` ([[queries]]). Sorting in JS
-  moves the ordering out of the receipt. If readers should re-sort a table,
+  moves the ordering out of the trace. If readers should re-sort a table,
   add `data-tb-sort` to it: the query's order stays the default, and the
   reader's clicks only reorder the stamped rows.
 - **Aggregation** — never. Client-side aggregation mints numbers nobody can
@@ -217,7 +217,7 @@ the system: a `style.css` that is a theme preset (an accent pair and one
 inlined display face), every chart type, a KPI delta, data bars, sortable
 columns, filters, a scenario and a custom d3 figure. The demo app's
 `aum_by_branch` is the one bespoke look (its own faces, palette and hero band
-with inlined artwork) on the same masthead, grid, footer and receipt.
+with inlined artwork) on the same masthead, grid, footer and trace.
 
 ## Related
 

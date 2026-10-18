@@ -7,18 +7,21 @@ import { useEffect, useState } from 'react'
 // tokens so they hold in light and dark, and everything stops under
 // prefers-reduced-motion.
 
-// ── The brand mark: brackets, two bars rising, a trace dot running across ──
+// ── The brand mark: a trace rising through two points to the number ──────
+// Two open nodes on one stroke, the last node filled: the number you arrived
+// at, and the points it came through. The same drawing is public/favicon.svg.
 
 export function BrandMark() {
   const [play, setPlay] = useState(0)            // bump to replay on hover
   return (
-    <div className="bm" onMouseEnter={() => setPlay(p => p + 1)} aria-hidden="true">
-      <svg key={play} width="16" height="16" viewBox="0 0 20 20" fill="none">
-        <path className="bm-bracket" d="M6.6 4.5 H4.6 V15.5 H6.6 M13.4 4.5 H15.4 V15.5 H13.4"
-              stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        <rect className="bm-bar bm-bar-1" x="8.1" y="9.6" width="1.7" height="4.4" rx=".4" fill="currentColor" />
-        <rect className="bm-bar bm-bar-2" x="11" y="7.2" width="1.7" height="6.8" rx=".4" fill="currentColor" />
-        <circle className="bm-dot" cx="5" cy="4.5" r="1.1" fill="currentColor" />
+    <div className="bm" onMouseEnter={() => setPlay(p => p + 1)} title="Every number, traced." aria-hidden="true">
+      <svg key={play} width="18" height="18" viewBox="0 0 20 20" fill="none"
+           stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+        <circle className="bm-node" style={{ '--i': 0 }} cx="4" cy="15.5" r="2" />
+        <path className="bm-link" style={{ '--i': 0 }} d="M5.85 14.73 L8.15 13.77" pathLength="1" />
+        <circle className="bm-node" style={{ '--i': 1 }} cx="10" cy="13" r="2" />
+        <path className="bm-link" style={{ '--i': 1 }} d="M11.1 11.3 L13.9 6.95" pathLength="1" />
+        <circle className="bm-node bm-end" style={{ '--i': 2 }} cx="15.5" cy="4.5" r="2.9" fill="currentColor" stroke="none" />
       </svg>
     </div>
   )
@@ -52,10 +55,10 @@ export function ReportArt({ mode = 'done', size = 220 }) {
         {BARS.map((h, i) => (
           <rect key={i} className="ra-bar" style={{ '--i': i }}
                 x={29 + i * 16} y={132 - h} width="9" height={h} rx="2"
-                fill="var(--accent-text)" opacity={0.3 + i * 0.1} />
+                fill="var(--accent-text)" opacity={0.15 + i * 0.06} />
         ))}
-        <path className="ra-trend" d={TREND} pathLength="100" stroke="#38bdf8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle className="ra-dot" cx="124" cy="80" r="3" fill="#38bdf8" />
+        <path className="ra-trend" d={TREND} pathLength="100" stroke="var(--accent-text)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle className="ra-dot" cx="124" cy="80" r="3" fill="var(--accent-text)" />
         <rect x="138" y="66" width="62" height="74" rx="5" fill="var(--surface-2)" stroke="var(--border)" />
         <circle cx="169" cy="100" r="18" stroke="var(--border)" strokeWidth="7" />
         <circle className="ra-donut" cx="169" cy="100" r="18" pathLength="100" stroke="var(--accent-text)" strokeWidth="7"

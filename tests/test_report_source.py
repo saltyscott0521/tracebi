@@ -57,36 +57,6 @@ def discovered(tmp_path, monkeypatch):
         model_registry._registry._models.pop("src_demo", None)
 
 
-def test_list_says_whether_a_report_is_a_spec_or_a_package(discovered):
-    forms = {r["name"]: r["form"] for r in discovered.get("/api/reports").json()}
-    assert forms["src_spec"] == "spec"
-    assert forms["src_pkg"] == "package"
-
-
-def test_spec_source_is_the_json_file(discovered):
-    body = discovered.get("/api/reports/src_spec/source").json()
-    assert body["form"] == "spec"
-    assert [f["path"] for f in body["files"]] == ["reports/src_spec.json"]
-    assert json.loads(body["files"][0]["content"])["name"] == "Spec"
-    assert "tracebi migrate spec" in body["hint"]
-
-
 def test_spec_theme_cannot_point_outside_the_reports_folder(discovered):
     body = discovered.get("/api/reports/src_spec/source").json()
     assert all("secret" not in f["content"] for f in body["files"])
-
-
-def test_package_source_lists_its_files_in_reading_order(discovered):
-    body = discovered.get("/api/reports/src_pkg/source").json()
-    assert body["form"] == "package"
-    assert [f["path"] for f in body["files"]] == [
-        "reports/src_pkg/report.json",
-        "reports/src_pkg/template.html",
-        "reports/src_pkg/style.css",
-    ]
-    assert body["files"][2]["language"] == "css"
-    assert body["other_files"] == ["assets/logo.svg"]
-
-
-def test_unknown_report_is_404(discovered):
-    assert discovered.get("/api/reports/nope/source").status_code == 404

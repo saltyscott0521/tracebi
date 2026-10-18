@@ -1,6 +1,6 @@
 // Portfolio Dashboard: the whole book on one screen, an app (the React lane).
 // Every number is a kit figure (<Kpi>, <Chart>, <Table>) with a literal
-// binding and cell, so the build records it and the receipt names it. The
+// binding and cell, so the build records it and its trace names it. The
 // search and the sector filter choose which stamped rows show; they never
 // compute a number.
 import { Masthead, Footer, Kpi, Chart, Table, Filter, Search, Download } from "tracebi";
@@ -9,7 +9,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Direct lending" title="Portfolio book">
+        <Masthead title="Portfolio Dashboard">
           Three funds, cleaned from a Schedule-of-Investments export. Every number is a
           query against the model.
         </Masthead>

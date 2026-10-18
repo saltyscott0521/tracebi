@@ -11,7 +11,7 @@
                              "libs": ["d3"], which inlines D3: it
                              draws every chart and the treemap.
   report.py                  The escape hatch: python-derived data, which the
-                             receipt marks as not query-reproducible.
+                             trace marks as not query-reproducible.
   style.css                  A theme preset: the accent pair for each
                              ground and one display face. Everything
                              else is the design system's own.
@@ -22,18 +22,19 @@
 
   At build, TraceBi adds its design system (tracebi.css), its runtime
   (tracebi.js) and the charting library, each marked with a comment, plus
-  the embedded data and the receipt. The finished file is self-contained.
+  the embedded data and its trace. The finished file is self-contained.
 -->
 </head>
 <body>
 <main class="tb-page">
 
   <!-- The masthead opens the page: a kicker, the <h1> that states the
-       finding, the standfirst. data-tb-period names what the numbers cover;
+       finding, the standfirst. The build adds the kicker, the model's label,
+       when the masthead has no <p class="tb-kicker"> of its own (write one
+       to say something else). data-tb-period names what the numbers cover;
        the runtime adds the meta line: the period, when this file was built,
-       the verdict chip and the Receipt button. -->
+       the verdict chip and the Trace link. -->
   <header class="tb-masthead" data-tb-period="Latest administrator marks">
-    <p class="tb-kicker">Direct lending · Portfolio showcase</p>
     <!-- The title states the finding, and its numbers are live figures.
          top_sector is a one-row query (largest first, limit 1); the share is
          computed over the whole book before the limit applies. -->
@@ -46,9 +47,9 @@
     <p class="tb-standfirst">Three funds, cleaned from a Schedule of Investments and
       modelled as a star schema, holding
       <span data-tb-figure="value" data-tb-binding="kpis"
-            data-tb-cell="fair_value" data-tb-format="compact"
+            data-tb-cell="fair_value" data-tb-format="currency_compact"
             id="val-fv-inline"></span> at fair value. Every number on this
-      page is a live query with a fingerprint; open the receipt to see them.</p>
+      page is a live query with a fingerprint; open the trace to see them.</p>
   </header>
 
   <div class="tb-grid">
@@ -61,10 +62,10 @@
     <div class="tb-kpi tb-kpi--lead">
       <span class="tb-kpi-label">Fair value</span>
       <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
-            data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv"></span>
+            data-tb-cell="fair_value" data-tb-format="currency_compact" id="kpi-fv"></span>
       <span class="tb-kpi-context"><span class="tb-kpi-delta" data-tb-figure="value"
             data-tb-binding="gain" data-tb-cell="unrealized"
-            data-tb-format="compact" data-tb-direction="up-good"
+            data-tb-format="currency_compact" data-tb-direction="up-good"
             id="kpi-gain"></span> vs cost</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
@@ -82,6 +83,8 @@
          data-tb-note="analyst estimate" id="kpi-est">
       <span class="tb-kpi-label">Est. Q3 deployments</span>
       <span class="tb-kpi-value">4</span>
+      <!-- Typed in, so it says so where it is read, not only in the trace. -->
+      <span class="tb-kpi-context">typed in, not a query · not re-run</span>
     </div>
   </div>
 
@@ -148,17 +151,17 @@
                data-tb-value-format="currency_compact" id="chart-top-issuers"></div>
         </div>
         <div class="tb-card tb-span-6">
-          <h2>Cumulative share, issuers by rank</h2>
-          <div data-tb-figure="chart" data-tb-binding="issuer_curve" data-tb-type="area"
-               data-tb-x="fv_rank" data-tb-y="fv_cum_share" data-tb-value-format="percent"
-               data-tb-x-title="Issuers, by rank" id="chart-issuer-curve"></div>
+          <h2>Size against mark, top issuers</h2>
+          <div data-tb-figure="chart" data-tb-binding="top_issuers" data-tb-type="scatter"
+               data-tb-x="fair_value" data-tb-y="mark" data-tb-x-title="Fair value"
+               data-tb-y-title="Mark (fair value / cost)" id="chart-size-mark"></div>
         </div>
       </div>
       <div class="tb-card">
-        <h2>Size against mark, top issuers</h2>
-        <div data-tb-figure="chart" data-tb-binding="top_issuers" data-tb-type="scatter"
-             data-tb-x="fair_value" data-tb-y="mark" data-tb-x-title="Fair value"
-             data-tb-y-title="Mark (fair value / cost)" id="chart-size-mark"></div>
+        <h2>Cumulative share, issuers by rank</h2>
+        <div data-tb-figure="chart" data-tb-binding="issuer_curve" data-tb-type="area"
+             data-tb-x="fv_rank" data-tb-y="fv_cum_share" data-tb-value-format="percent"
+             data-tb-x-title="Issuers, by rank" id="chart-issuer-curve"></div>
       </div>
     </section>
 
@@ -212,13 +215,13 @@
   </div>
 
   <!-- The footer ends the page: the author's sources and notes first; the
-       build adds one line on who built it and from which model, then "How
+       build adds one line on when it was built and from which model, then "How
        these numbers were made" (the stated methodology) behind a disclosure. -->
   <footer class="tb-footer" data-tb-methodology>
     <p>Source: each fund's Schedule of Investments. Marks are
       administrator-reported; no independent valuation was performed.</p>
     <p>One self-contained HTML file that works offline: the data behind every
-      figure, fingerprinted, with its receipt; TraceBi's design system and
+      figure, fingerprinted, with its trace; TraceBi's design system and
       runtime (MIT); D3 for the charts and the treemap (ISC License); the
       Fraunces typeface (SIL Open Font License). Check it with
       <code>tracebi verify --file</code>.</p>

@@ -20,6 +20,45 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-18 — Decision: "receipt" becomes "trace"
+
+**Decision.** The word *receipt* is retired from the canon and from every
+surface a reader sees. The concept is **traceability**; the noun is
+**trace**; the verb is "how this number was made" / "trace this number".
+The MANIFESTO's "The receipt" is now "The trace": every number drawn through
+the model has a trace; everything else must be marked as not having one.
+
+**Why.** A receipt is proof of a purchase: it says a transaction happened
+and was paid for, which is close to the claim TraceBi refuses to make (that a
+number is right). Readers took "receipt" as "verified". A trace says what the
+thing actually is: how the number was made, so it can be checked. It is also
+the product's name and the brand mark's own figure ("Every number, traced",
+A2-5), so the canon now says one word where it said two.
+
+**The reader rule.** The noun names the thing at most once per screen;
+everywhere else, say what it does. In the artifact: the masthead link is
+"Trace", the footer is one line ending "▸ How these numbers were made" (it
+opens the drawer; the footer's `<details>` stays in the file for a reader
+without JavaScript and hides once the runtime has a drawer, whose About this
+build holds the same notes, the app note included), the drawer is headed with
+the report's name and "How each number was made", and the honesty sentence is
+"This page does not claim the numbers are right; it records how each was made
+so it can be checked." ("does not claim the numbers are right" is unchanged).
+In the app: the panel's Trace tab, "Every report, and whether its numbers
+still hold", "Only a build that re-runs to the same numbers reads green",
+Export's "HTML · the file with its trace".
+
+**Kept internal, on purpose.** The `tracebi-receipt` block id, `.tb-receipt*`
+classes, `data-tb-receipt-*` attributes, `renderReceipt` /
+`receiptFileName`, Python `receipt_*` names, manifest keys, `/api/...` fields,
+`ReceiptFrame.jsx`, the panel's `receipt` tab key, and the `receipt_drawer`
+key in `tracebi context`. Renaming them buys a reader nothing and moves the
+artifact contract that every file already built depends on. A later rename is
+item 36 in `docs/architecture/ui-backlog.md`. History (`changes/*.md`, this
+file, the architecture and strategy records) keeps the word it was written
+in. `tests/test_agent_guides.py` now fails if AGENTS.md, the scaffolded
+AGENTS.md or `tracebi context` says "receipt" outside those identifiers.
+
 ## 2026-10-18 — Step 4 of the UX plan: Ask
 
 Step 4 made Ask the reader's path to a stamped number without code: one

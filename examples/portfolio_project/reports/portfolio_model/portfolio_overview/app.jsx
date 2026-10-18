@@ -1,6 +1,6 @@
 // Portfolio Overview: the book at a glance, an app with top tabs. Every number
 // is a kit figure (<Kpi>, <Value>, <Chart>, <Table>) with a literal binding and
-// cell, so the build records it and the receipt names it.
+// cell, so the build records it and its trace names it.
 import { LayoutDashboard, Building2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Download, useUrlState,
          usePrinting } from "tracebi";
@@ -73,7 +73,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Direct lending · Portfolio overview"
+        <Masthead
           title={<>The book is marked at <Value binding="kpis" cell="mark" id="head-mark" /> of
             cost</>}>
           Three funds, one Schedule of Investments. Every number is a query against the model.

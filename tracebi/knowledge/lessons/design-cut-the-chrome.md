@@ -3,10 +3,10 @@ slug: design-cut-the-chrome
 title: Cut the decoration — the telltale marks of a generated report
 when: a report looks "AI-made", or before calling any report page finished
 ---
-**The pitfall.** A report can be correct, well-bound and fully receipted, and
+**The pitfall.** A report can be correct, well-bound and fully traced, and
 still look machine-made at a glance. The marks are consistent enough to list,
 and each one makes the reader trust the page a little less — the opposite of
-what a receipted report is for.
+what a traced report is for.
 
 **Remove these on sight:**
 
@@ -14,7 +14,7 @@ what a receipted report is for.
 - **Gradients, glows and glassy cards**; a drop shadow on every box. Cards are a
   grouping device — a hairline border (`.tb-card`) is enough.
 - **Every number badged.** Badges are off by default for a reason: mark only the
-  exceptions (an estimate, a python-derived figure). The receipt drawer already
+  exceptions (an estimate, a python-derived figure). The trace drawer already
   carries provenance for everything else.
 - **Every KPI in a same-sized card in one long row** — see
   [[design-kpis-with-context]].

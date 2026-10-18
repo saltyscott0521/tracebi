@@ -1,5 +1,5 @@
 import { pipelineBelongsToModel, reportBelongsToModel } from '../../nav'
-import { bus, byTone, clamp, fileName, heightOf, reportLabel, widest } from './geometry'
+import { bus, byTone, clamp, fileName, heightOf, widest, widestLabel } from './geometry'
 import { reportState, transformState } from './states'
 
 // The whole project: one band per model, each reading left to right,
@@ -7,8 +7,9 @@ import { reportState, transformState } from './states'
 //   Transform  →  Warehouse  →  Model  →  Reports
 //
 // A card is something the user writes (a transform, a model, a report). A pill
-// is what gets handed on (the warehouse file). Everything is computed from the
-// lists the API already serves. The column of input files is not drawn: no
+// is what gets handed on (the warehouse file). A model and a report go by their
+// labels (the identifier in the node's title); a transform by its file name.
+// Everything is computed from the lists the API already serves. The column of input files is not drawn: no
 // endpoint says what a transform reads, and reading the Python to find out is
 // not this page's job.
 
@@ -27,26 +28,28 @@ export const pipelineFor = (pipelines, model) =>
 
 const byName = (a, b) => a.name.localeCompare(b.name)
 
-/** What a warehouse pill is called, and whom it is shared with. */
-function warehouseOf(connector, model, connectors) {
+/** What a warehouse pill is called, and whom (by label) it is shared with. */
+function warehouseOf(connector, model, connectors, labels) {
   const c = connectors[connector]
   const where = c?.storage?.where
   const file = where && ['file', 'directory'].includes(c.storage.kind)
     ? fileName(where, c.storage.kind)
     : connector
-  const others = (c?.used_by || []).filter(m => m !== model)
+  const others = (c?.used_by || []).filter(m => m !== model).map(m => labels[m] || m)
   return { connector, file, others, missing: c?.storage?.exists === false }
 }
 
 export function projectLayout({ models, connectors, pipelines, reports, builds, tinted }) {
   const sorted = [...models].sort(byName)
+  const labels = Object.fromEntries(models.map(m => [m.name, m.label || m.name]))
   const placed = sorted.map(m => {
     const pipeline = pipelineFor(pipelines, m.name)
     return {
       model: m.name,
+      label: m.label || m.name,
       pipeline,
       transform: pipeline ? pipeline.transform || pipeline.pipeline : null,
-      warehouses: (m.connectors || []).map(c => warehouseOf(c, m.name, connectors)),
+      warehouses: (m.connectors || []).map(c => warehouseOf(c, m.name, connectors, labels)),
       reports: reports.filter(r => reportBelongsToModel(r, m.name)).sort(byName),
     }
   })
@@ -55,8 +58,8 @@ export function projectLayout({ models, connectors, pipelines, reports, builds, 
   const all = f => placed.flatMap(f)
   const tW = clamp(Math.ceil(widest(all(b => (b.transform ? [b.transform] : []))) + 28), 184, 280)
   const wW = clamp(Math.ceil(widest(all(b => b.warehouses.map(w => w.file))) + 28), 168, 240)
-  const mW = clamp(Math.ceil(widest(placed.map(b => b.model)) + 28), 168, 280)
-  const rW = clamp(Math.ceil(widest(all(b => b.reports.map(r => reportLabel(r.name, b.model)))) + 28), 216, 320)
+  const mW = clamp(Math.ceil(widestLabel(placed.map(b => b.label)) + 28), 168, 280)
+  const rW = clamp(Math.ceil(widestLabel(all(b => b.reports.map(r => r.display_name || r.name))) + 28), 216, 320)
   const xT = SIDE
   const xW = xT + tW + ARROW
   const xM = xW + wW + ARROW
@@ -87,11 +90,13 @@ export function projectLayout({ models, connectors, pipelines, reports, builds, 
       id: id(`warehouse:${w.connector}`), role: 'warehouse', shape: 'pill', x: xW, w: wW, name: w.file,
       connector: w.connector, others: w.others, missing: w.missing, action: act,
     }))
-    const model = { id: id('model'), role: 'model', shape: 'card', x: xM, w: mW, name: b.model, tone: 'quiet', action: act }
+    const model = {
+      id: id('model'), role: 'model', shape: 'card', x: xM, w: mW, name: b.label, sans: true, title: b.model, tone: 'quiet', action: act,
+    }
     const cards = b.reports.map(r => {
       const state = reportState(builds[r.name], r)
       return {
-        id: id(`report:${r.name}`), role: 'report', shape: 'card', x: xR, w: rW, name: reportLabel(r.name, b.model),
+        id: id(`report:${r.name}`), role: 'report', shape: 'card', x: xR, w: rW, name: r.display_name || r.name, sans: true, title: r.name,
         label: state?.label || '', tone: state?.tone || 'quiet', action: { zoom: b.model, sel: `report:${r.name}` },
         verdict: state?.verdict, detail: state?.detail,
       }
@@ -140,7 +145,7 @@ export function projectLayout({ models, connectors, pipelines, reports, builds, 
 
     nodes.push(...[transform, ...warehouses, model, ...cards].filter(Boolean).map(n => ({ ...n, band: b.model })))
     bands.push({
-      model: b.model, x: 12, y: top, w: width - 24, h: height, tinted: b.model === tinted,
+      model: b.model, label: b.label, x: 12, y: top, w: width - 24, h: height, tinted: b.model === tinted,
       empty: {
         transform: !b.transform && { x: xT, y: cy - 26, w: tW, text: 'No pipeline refreshes this model.' },
         reports: !cards.length && { x: xR, y: cy - 26, w: rW, text: 'No reports read this model yet.' },
@@ -170,7 +175,7 @@ function sharedFiles(placed) {
     for (const w of b.warehouses) {
       if (!w.others.length) continue
       const entry = found.get(w.connector) || { file: w.file, models: [], writers: new Set() }
-      entry.models.push(b.model)
+      entry.models.push(b.label)
       if (b.transform) entry.writers.add(b.transform)
       found.set(w.connector, entry)
     }

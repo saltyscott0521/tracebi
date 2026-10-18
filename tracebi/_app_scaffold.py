@@ -12,7 +12,7 @@ from tracebi.reports.derive import in_sentence
 
 _APP_HEAD = '''// app.jsx — this report's page, a React app (the React lane).
 // Numbers shown through the tracebi kit (<Kpi>, <Value>, <Chart>, <Table>)
-// carry the receipt: the build reads their binding / cell / x / y as claims,
+// carry a trace: the build reads their binding / cell / x / y as claims,
 // so keep those literal strings. A number your own code computes or draws is
 // the app's presentation, not a checked figure. Imports: react, recharts,
 // lucide-react (icons by name), tracebi. Colours: bg-page bg-card bg-surface
@@ -29,8 +29,9 @@ const VIEWS = { Overview: LayoutDashboard, Detail: Table2 };
 _APP_HEADERS = {
     "left": '''
 function Header() {
-  // The masthead: the title, what this page is for, when it was built and the
-  // verdict chip (from the file's receipt). period="…" names what the numbers cover.
+  // The masthead: the kicker (the model's label unless you pass kicker="…"), the
+  // title, what this page is for, when it was built and the verdict chip (from
+  // the file's trace). period="…" names what the numbers cover.
   return <Masthead title={TITLE}>One line on what this page is for.</Masthead>;
 }
 ''',
@@ -360,7 +361,7 @@ def funnel_rates(stages):
 
 def _funnel_views(stages, dim_ref, humanise):
     """Each stage widest first, how much of the first reaches it (report-level
-    ratio measures, so the receipt names them), and where it narrows by the
+    ratio measures, so the trace names them), and where it narrows by the
     category."""
     first = in_sentence(humanise(stages[0]))
     rates = funnel_rates(stages)
@@ -411,7 +412,7 @@ function Detail() {
 // A funnel: each stage, widest first, then how much of the first reaches it.
 // The stages are report.json's "stages" measures (put them in your funnel's
 // order); each conversion is a report-level ratio in its "measures" block, so
-// the receipt names it. Never divide in this file.
+// its trace names it. Never divide in this file.
 function Overview() {{
   return (
     <>

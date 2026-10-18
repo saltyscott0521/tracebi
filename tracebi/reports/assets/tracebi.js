@@ -1735,7 +1735,7 @@
       var link = document.createElement("button");
       link.type = "button";
       link.className = "tb-chart-tip-receipt";
-      link.textContent = "Receipt →";
+      link.textContent = "Trace →";
       link.addEventListener("click", function () { tipHide(entry); openReceipt(figId); });
       link.addEventListener("pointerenter", function () { clearTimeout(entry.hideTimer); });
       link.addEventListener("pointerleave", function () { tipLater(entry); });
@@ -3409,6 +3409,53 @@
         attachWindow(entry);
       } catch (e) { /* defensive */ }
     });
+    hydrateMore();
+  }
+
+  /* More to scroll: a box that scrolls a table (a .tb-scroll, the kit's
+   * <Table>, or on a phone a table or card that scrolls itself) says which
+   * way more of it lies, data-tb-more="x", "y" or "xy", and tracebi.css
+   * fades that edge. Kept current on scroll, on resize, and when the table
+   * inside changes size (a filter, a tab shown). Presentation only. */
+  var _moreSeen = typeof WeakSet !== "undefined" ? new WeakSet() : null, _moreObserver = null;
+  function markMore(box) {
+    var cs = getComputedStyle(box);
+    var sx = /auto|scroll/.test(cs.overflowX), sy = /auto|scroll/.test(cs.overflowY);
+    var more = (sx && box.scrollWidth - box.clientWidth - box.scrollLeft > 1 ? "x" : "")
+      + (sy && box.scrollHeight - box.clientHeight - box.scrollTop > 1 ? "y" : "");
+    if (more) box.setAttribute("data-tb-more", more);
+    else box.removeAttribute("data-tb-more");
+  }
+  function moreBox(el) {
+    return el && el.matches && el.matches(".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card");
+  }
+  function hydrateMore() {
+    if (typeof getComputedStyle === "undefined" || !_moreSeen) return;
+    if (!_moreObserver) {
+      document.addEventListener("scroll", function (e) {
+        if (moreBox(e.target)) markMore(e.target);
+      }, true);
+      root.addEventListener("resize", hydrateMore);
+      if (typeof ResizeObserver !== "undefined") {
+        _moreObserver = new ResizeObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (moreBox(en.target)) markMore(en.target);
+            if (moreBox(en.target.parentNode)) markMore(en.target.parentNode);
+          });
+        });
+      } else {
+        _moreObserver = { observe: function () {} };
+      }
+    }
+    var boxes = document.querySelectorAll(".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card"), i;
+    for (i = 0; i < boxes.length; i++) {
+      markMore(boxes[i]);
+      if (!_moreSeen.has(boxes[i])) {
+        _moreSeen.add(boxes[i]);
+        _moreObserver.observe(boxes[i]);
+        if (boxes[i].firstElementChild) _moreObserver.observe(boxes[i].firstElementChild);
+      }
+    }
   }
 
   /* ── Tabs — the bar is built from the section labels ─────────────────── */
@@ -3476,7 +3523,7 @@
 
   var _VERDICTS = {
     draft: { text: "Draft",
-             tip: "A working preview. It carries no receipt." },
+             tip: "A working preview. It carries no trace." },
     "not-checked": { text: "Not checked",
                      tip: "Nothing has re-run this file's queries since it was " +
                           "built. tracebi verify re-runs them against the " +
@@ -3524,7 +3571,7 @@
       chip.textContent = spec.text;
       chip.title = said.tip;
       if (chip.getAttribute("role") === "button") {
-        chip.setAttribute("aria-label", spec.text + ": open the receipt");
+        chip.setAttribute("aria-label", spec.text + ": how these numbers were made");
       }
     }
   }
@@ -3556,8 +3603,34 @@
         el.className = "tb-verdict";
         meta.appendChild(el);
       }
+      /* A masthead on a filled ground (the editorial hero, a banner, a
+       * report's own hero) takes its links in its own ink (tracebi.css). */
+      if (typeof getComputedStyle !== "undefined" && filledGround(getComputedStyle(head))) {
+        head.setAttribute("data-tb-ground", "filled");
+      }
     }
     paintChips();
+    hostedMeta();
+  }
+
+  function filledGround(cs) {
+    if (cs.backgroundImage && cs.backgroundImage !== "none") return true;
+    var c = cs.backgroundColor || "";
+    return !!c && c !== "transparent" && !/^rgba\(.*,\s*0\)$/.test(c);
+  }
+
+  /* Hosted: the app that frames this file said so ("tracebi:verdict" with
+   * hosted: true, Host bridge). Its header already shows when the file was
+   * built and its verdict, so each masthead's meta keeps the period and the
+   * Receipt link and hides the build time and the chip. Opened on its own,
+   * nothing is hidden. */
+  var _hosted = false;
+  function hostedMeta() {
+    if (!_hosted) return;
+    ["[data-tb-built]", ".tb-verdict"].forEach(function (sel) {
+      var els = document.querySelectorAll(".tb-masthead .tb-masthead-meta " + sel), i;
+      for (i = 0; i < els.length; i++) els[i].setAttribute("hidden", "");
+    });
   }
 
   function inReceipt(el) { return within(el, "tb-receipt"); }
@@ -3954,8 +4027,8 @@
     };
 
     var head = receiptEl(mount, "header", "tb-receipt-header");
-    receiptEl(head, "p", "tb-receipt-kicker", "Receipt");
-    receiptEl(head, "h2", "tb-receipt-head", receipt.report || "Receipt");
+    receiptEl(head, "h2", "tb-receipt-head", receipt.report || "This report");
+    receiptEl(head, "p", "tb-receipt-sub", "How each number was made");
     var models = receipt.semantic_contract_models || [], stampLine = [];
     if (!models.length) {
       (receipt.figures || []).forEach(function (f) {
@@ -3973,8 +4046,8 @@
     chip.setAttribute("data-tb-verdict", said.state);
     chip.title = said.tip;
     receiptEl(head, "p", "tb-receipt-honesty",
-              "The receipt does not claim the numbers are right. It records "
-              + "how each figure was made, so it can be checked.");
+              "This page does not claim the numbers are right; it records "
+              + "how each was made so it can be checked.");
 
     var file = opts.file || receiptFileName(receipt);
     var check = receiptEl(mount, "section", "tb-receipt-check");
@@ -4021,6 +4094,11 @@
     } else if (receipt.methodology === true) {
       receiptLine(aboutBox, "stated methodology aboard");
     }
+    if (receipt.app === true) {
+      receiptLine(aboutBox, "This page is an app. The figures it shows through "
+                  + "the TraceBi kit are traced; anything else it draws is the "
+                  + "app's own presentation and is not checked.", "tb-receipt-note");
+    }
     receiptEl(aboutBox, "h4", "tb-receipt-label", "The build");
     var mono = "tb-receipt-line tb-receipt-meta";
     if (models.length) receiptLine(aboutBox, "semantic contract: " + models.join(", "), mono);
@@ -4066,8 +4144,8 @@
     setReceiptOpen((" " + drawer.className + " ").indexOf(" tb-receipt-open ") === -1);
   }
 
-  /* A quiet "Receipt" button for the masthead's meta line (after the
-   * verdict chip) and the footer's line. */
+  /* A quiet "Trace" button for the masthead's meta line (after the
+   * verdict chip), and "How these numbers were made" on the footer's line. */
   function receiptLinkButton(text) {
     var b = document.createElement("button");
     b.type = "button";
@@ -4118,10 +4196,12 @@
     }
   }
 
-  /* Where the page offers its receipt: after the masthead's verdict chip
-   * (the chip itself opens it too), and on the footer's line. A page with
-   * no masthead keeps the floating Receipt button. Safe to call again: a
-   * masthead an app mounts later gets its link then. */
+  /* Where the page offers its trace: after the masthead's verdict chip
+   * (the chip itself opens it too), and on the footer's line, which then
+   * stands for the footer's disclosure (its notes are the drawer's About
+   * this build; the disclosure stays for a reader without the runtime). A
+   * page with no masthead keeps the floating Trace button. Safe to call
+   * again: a masthead an app mounts later gets its link then. */
   function placeReceiptTriggers() {
     var drawer = receiptDrawer();
     if (!drawer) return;
@@ -4131,16 +4211,20 @@
       if (chip && chip.getAttribute("role") !== "button") {
         chip.setAttribute("role", "button");
         chip.setAttribute("tabindex", "0");
-        chip.setAttribute("aria-label", chip.textContent + ": open the receipt");
+        chip.setAttribute("aria-label", chip.textContent + ": how these numbers were made");
       }
       if (!metas[i].querySelector(".tb-receipt-link")) {
-        metas[i].appendChild(receiptLinkButton("Receipt"));
+        metas[i].appendChild(receiptLinkButton("Trace"));
       }
     }
     var lines = document.querySelectorAll(".tb-footer-line");
     for (i = 0; i < lines.length; i++) {
       if (!lines[i].querySelector(".tb-receipt-link")) {
-        lines[i].appendChild(receiptLinkButton("Open the receipt"));
+        lines[i].appendChild(receiptLinkButton("How these numbers were made"));
+      }
+      var disclosure = lines[i].nextElementSibling;
+      if (disclosure && (" " + disclosure.className + " ").indexOf(" tb-footer-details ") !== -1) {
+        disclosure.hidden = true;
       }
     }
     var floating = document.querySelector(".tb-receipt-btn");
@@ -4150,7 +4234,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "tb-receipt-btn";
-      btn.textContent = "Receipt";
+      btn.textContent = "Trace";
       btn.setAttribute("aria-expanded", "false");
       btn.addEventListener("click", toggleReceipt);
       document.body.appendChild(btn);
@@ -4168,11 +4252,11 @@
      * its close button, and a scrolling body the certificate fills. */
     var drawer = document.createElement("aside");
     drawer.className = "tb-receipt-drawer";
-    drawer.setAttribute("aria-label", "Receipt");
+    drawer.setAttribute("aria-label", "How these numbers were made");
     var close = document.createElement("button");
     close.type = "button";
     close.className = "tb-receipt-close";
-    close.setAttribute("aria-label", "Close the receipt");
+    close.setAttribute("aria-label", "Close");
     close.textContent = "×";
     close.addEventListener("click", function () { setReceiptOpen(false); });
     drawer.appendChild(close);
@@ -4313,7 +4397,7 @@
         if (!box.querySelector(".tb-scenario-label")) {
           var label = document.createElement("div");
           label.className = "tb-scenario-label";
-          label.textContent = "Scenario · computed in your browser from these inputs · not part of the receipt";
+          label.textContent = "Scenario · computed in your browser from these inputs · not part of the trace";
           box.insertBefore(label, box.firstChild);
         }
         var inputs = box.querySelectorAll("[data-tb-input]");
@@ -4575,7 +4659,7 @@
       if (!_scriptChanged[id]) return;
       var note = document.createElement("div");
       note.className = "tb-receipt-changed";
-      note.textContent = CHANGED_BY_SCRIPT + ": the receipt covers \u201c"
+      note.textContent = CHANGED_BY_SCRIPT + ": the trace covers \u201c"
         + _stamped[id] + "\u201d, the page shows \u201c" + _scriptChanged[id] + "\u201d";
       var title = row.querySelector(".tb-receipt-title");
       row.insertBefore(note, title ? title.nextSibling : row.firstChild);
@@ -4810,13 +4894,16 @@
       "selection-response": selectionAnswered,
       /* The app's verdict on this build (its re-check, in its words): the
        * masthead chip and the drawer's say it instead of "Not checked".
-       * Draft, or a state this file does not know, is ignored. */
+       * Draft, or a state this file does not know, is ignored. hosted: true
+       * says the app's header shows the build time and verdict, so the
+       * masthead's meta reduces to the Receipt link (hostedMeta). */
       "tracebi:verdict": function (m) {
         if (m.state === "draft" || !_VERDICTS.hasOwnProperty(m.state)) return;
         _hostVerdict = { state: m.state,
                          tip: (typeof m.detail === "string" && m.detail) ? m.detail
                            : _VERDICTS[m.state].tip };
         paintChips();
+        if (m.hosted === true) { _hosted = true; hostedMeta(); }
       }
     };
     root.addEventListener("message", function (e) {

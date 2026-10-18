@@ -2,12 +2,12 @@
 
 You are an agent working in a **TraceBi** project. TraceBi is the trust layer
 for AI-generated analytics: every number you put in front of a person should
-carry a receipt. Read this before you touch anything.
+carry a trace. Read this before you touch anything.
 
 ## The one rule
 
 **Every figure in a report names a stamped data binding — never a hard-coded
-number.** A number you typed in has no receipt and cannot be verified. If a
+number.** A number you typed in has no trace and cannot be verified. If a
 figure genuinely cannot come from a query, mark the element
 `data-tb-unverified` (with a `data-tb-note` saying why); do not fake it.
 There is no third state.
@@ -36,7 +36,7 @@ honest path costs one attribute.
                  reports/<model>/<name>/ holding report.json (named query
                  bindings) + template.html (your page, where every figure
                  claims a binding). Builds to one self-contained HTML + a
-                 manifest (the receipt).
+                 manifest (the trace).
 ```
 
 A model, its transform and its reports belong together, and a **pipeline**
@@ -44,12 +44,15 @@ runs them as one: `models/<model>.yaml`, `pipelines/<model>.yaml` (`transform:`,
 `models:`, `reports: all`, `schedule:`; it only names the Python transform),
 `reports/<model>/`. A source is `connections/<name>.yaml`.
 `tracebi run-pipeline <model>` runs the transform, then builds every report in
-`reports/<model>/`, each with its receipt; the app's **Refresh data** (Data,
+`reports/<model>/`, each with its trace; the app's **Refresh data** (Data,
 the model's Transform tab) runs the same pipeline. A report is named by its path (`<model>/<name>`) in every
 command, and builds to `output/<model>/<name>.html`. The sample is
 `sample_model` — `pipelines/sample_model.py`, `reports/sample_model/`.
 People read names, not identifiers: a model's `label` (optional; unset, the name
 title-cased) and a report's `report.json` `name` (human, not the folder slug).
+A report's `description` is one sentence for the reader, what the page shows; how
+it is built goes in `"notes"` or a comment. The masthead's kicker is the model's
+label (added by the build when you write none); the `<h1>` is the name or finding.
 
 **Folder permissions.** A folder under `reports/` (a directory that is not a package) may hold a `_folder.yaml` granting `view`, `build`, `publish` and `manage` to sign-in groups or names (`docs/reference/folder-yaml.md`). With none, roles decide as before. A report in a folder you cannot view is not listed and every read of it answers as if it did not exist, so a "no such report" over the gateway can mean "not yours": do not look for it another way. A `build` or `publish` refusal names the permission it needs; ask a folder manager rather than working around it.
 
@@ -120,7 +123,8 @@ toggle is one literal-binding figure per option, never arithmetic; and
 shared link opens on it; while the page prints, `usePrinting()` is true and
 an app with views renders all of them, so the PDF holds the whole report.
 Open the page with `<Masthead title kicker period>` (children are the
-standfirst; it shows the build time and the verdict chip) and end its main
+standfirst; it shows the build time and the verdict chip; `kicker` defaults to
+the model's label) and end its main
 column with `<Footer />`, where the build's footer goes; `<main
 className="tb-page px-6 py-8">` is the 1,200px page measure.
 `tracebi new-dashboard --job overview|trend|leaderboard|scorecard|monitor|funnel`
@@ -187,25 +191,25 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   contains a chart figure and draws every chart type with it, in one style
   (bars carry their own values, a line ends in its last value, names wrap
   and are never cut, ticks thin to what fits; legend toggles, tooltips with
-  the measure's description and a "Receipt →" link to that figure's record,
+  the measure's description and a "Trace →" link to that figure's record,
   arrow-key reading, a click on a bar or slice sets the
   page's filter control for that column). List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
-  Never sort or slice in `script.js` — that moves ordering out of the receipt.
+  Never sort or slice in `script.js` — that moves ordering out of the trace.
 - `filters` is WHERE (before aggregation) — a filter on a measure changes the
   group totals. To keep only groups whose *total* clears a threshold, use
   `having` (HAVING): `"having": {"revenue": {"gte": 250}}`.
 - A measure can carry its own filter, declared on the model:
   `add_measure('purchases', column='amount', agg='sum', filters={'activity_type':
   'purchase'})` (YAML: `filters:` on the measure). It restricts only that
-  measure, so a query's own filters still narrow every measure; the receipt
+  measure, so a query's own filters still narrow every measure; the trace
   stamps the filter, and `verify` re-runs it.
 - A report can calculate its own measures: a `"measures"` block in its
   `report.json`, keyed by model (`{"sample_model": {"big_minus_small":
   {"measure_expr": "big_orders - small_orders"}}}`), takes the model's measure
   keywords. A binding that lists one by name gets it for that query only; the
   model is not changed, and a name the model already declares is refused. The
-  receipt labels these "calculated in this report". Promote one into the model
+  trace labels these "calculated in this report". Promote one into the model
   (a reviewed edit) to make it shared.
 - A report can run a SQL calculation the model cannot express (a rollforward, a
   running total): a `"sql_calculations"` block in its `report.json`, keyed by
@@ -216,7 +220,7 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   warehouse's own table names; a write, ATTACH, COPY, PRAGMA, or a second statement
   is refused when the report builds. `{{ measure('revenue') }}` inside it expands
   to a model measure (simple and filtered measures only; other kinds are refused by
-  name). The receipt labels it "calculated in this report (SQL)" and records the
+  name). The trace labels it "calculated in this report (SQL)" and records the
   SQL, and `verify` re-runs it. Reach for a model measure first.
 - **Scenarios are the one place a page computes.** A
   `data-tb-scenario` block lets the reader ask "what if": `data-tb-input`
@@ -224,7 +228,7 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `data-tb-default`) that fills them from a stamped row, and
   `data-tb-calc` outputs with a closed formula (`+ - * / ^`, `pmt`, `min`,
   `max`, `round`, `abs`) evaluated in the browser. It is never a figure,
-  never inside or around one, and never in the receipt: the runtime labels
+  never inside or around one, and never in the trace: the runtime labels
   it as computed from the reader's inputs, and the manifest records only
   its declaration with `verifiable: false`. Use it for a rate the reader
   remembers, never for a number a query could produce. The build checks
@@ -243,8 +247,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   question that names no declared value, or names two columns, is
   refused. A number in the reply is a value figure beside its
   fingerprint. Excluded options stay visible
-  and inert. The receipt names the selection and whether it is the authored
-  one. `data-tb-download` stays the full stamped binding; the receipt
+  and inert. The trace names the selection and whether it is the authored
+  one. `data-tb-download` stays the full stamped binding; the trace drawer
   downloads the sliced view and names the selection in the filename and the
   header. Offline, further slices need the model unless a sealed grain can
   recompute `simple` aggregations and `ratio`; `period_end` does not
@@ -273,8 +277,9 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `tabbed` is the same header, then `.tb-tabs` / `data-tb-tab` (Overview and Detail).
   Pick by fit — a report to read, a dashboard to work in, `brief` for one finding —
   and ask only when a person is in the loop and the choice is not obvious. Every built
-  page carries the Receipt drawer automatically (the masthead's Receipt button, the
-  verdict chip, or a click on a value figure opens it at that figure's row).
+  page carries the trace drawer automatically, headed with the report's name and "How
+  each number was made" (the masthead's Trace link, the verdict chip, the footer's
+  "How these numbers were made", or a click on a value figure opens it at that figure's row).
 - Ask how it should look, once, before you build (a person in the loop; otherwise use
   the defaults): the title and where it sits, one page / top tabs / a sidebar, light /
   dark / the reader's choice, comfortable / compact. Offer the look of their last
@@ -282,9 +287,10 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   reader's system), `data-tb-density="compact"`, `data-tb-width="full"`. A sidebar is
   `<div class="tb-tabs" data-tb-nav="side">` with the whole page inside. Every page
   opens with the masthead, `<header class="tb-masthead" data-tb-title="left|center|banner|nav"
-  data-tb-period="Q3 2026">`: an optional `.tb-kicker`, the `<h1>`, `<p
+  data-tb-period="Q3 2026">`: an optional `.tb-kicker` (left out, the build adds the
+  model's label), the `<h1>`, `<p
   class="tb-standfirst">`, and `<p class="tb-masthead-meta">` with `<span
-  data-tb-built></span>` (the build time, from the receipt; never type a date) and `<span
+  data-tb-built></span>` (the build time, from the trace; never type a date) and `<span
   class="tb-verdict"></span>`. `data-tb-period` names what the numbers cover. The runtime
   fills the meta, adds what is missing, and sets the chip's `data-tb-verdict` from the
   file itself — `draft` on a working preview, `not-checked` on a built file (nothing has
@@ -292,8 +298,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   it shows the app's re-check, which the app tells it). An empty
   `.tb-masthead-mark` takes a logo from the report's `style.css`. Every page ends with
   `<footer class="tb-footer" data-tb-methodology>` holding your sources; the build adds
-  one line and "How these numbers were made" behind a disclosure (and the whole footer
-  when the template has none). `tracebi new-dashboard "<Name>" --mode dark --density
+  one line and "How these numbers were made", which opens the trace drawer (and the whole
+  footer when the template has none). `tracebi new-dashboard "<Name>" --mode dark --density
   compact --nav side --title-at nav` writes it — for an app, mode and density go in
   `report.json` `"look"` and the sidebar and title are its own components. Looks never
   change a number. A report may name a shipped theme in `report.json` `"theme"`
@@ -415,7 +421,7 @@ declarative models to the person's drafts and Python (transforms, pipelines,
 approves; data never goes.
 `script.js` is different because it runs only in the reader's browser, in a
 sandboxed frame with no network and no access to the app. It may draw
-anything, but if it changes the text of a stamped figure the receipt says
+anything, but if it changes the text of a stamped figure the trace says
 "changed on the page by a custom script" for that figure, so leave stamped
 numbers to the runtime. `list_models` and `describe_model` report `draftable`
 per model.
@@ -452,12 +458,12 @@ body, the same text as `tracebi knowledge <slug>`).
    load is listed under `skipped` with its error; fix the file and call
    again (models reload when the file changes). Pins read via the MCP
    `workbench_state` tool called with no `report`. All dev-state; no
-   receipts exist before the model boundary, and `show()` is a no-op the
+   traces exist before the model boundary, and `show()` is a no-op the
    moment the server is down. When a session shaped the pipeline, save it:
    `tracebi session export` (add `--format md` for the git-review twin)
    writes the full feed to `explorations/<session>` — ONE living record
    that you re-export as the exploration evolves; git is its timeline —
-   exploration-stamped, no receipts, `verify` refuses it by name.
+   exploration-stamped, no trace, `verify` refuses it by name.
 1. **Start the dev server — it blocks.** Run `tracebi dev <name>` in a
    background shell (or ask the human to run it and keep the tab open; the
    page is their view, not yours). It opens the web app on that report with
@@ -507,12 +513,12 @@ body, the same text as `tracebi knowledge <slug>`).
 5. **Publish with `tracebi report build <name>`**, then
    `tracebi verify output/<name>.html.manifest.json --strict --contracts`.
    The build strips exploration, validates every figure claim against the
-   embedded bindings, and writes the receipt. `output/<name>.html` (+ its
+   embedded bindings, and writes the manifest. `output/<name>.html` (+ its
    `.manifest.json`) is the deliverable to hand over or commit — and the
    package is already served live in the app (`tracebi serve`), in the library under its model;
    there is no separate publish step. The gateway's
    `build_report(..., format="xlsx")` also writes `<name>.xlsx` in the
-   same output directory. The spreadsheet carries no receipt and is not
+   same output directory. The spreadsheet carries no trace and is not
    verifiable; the HTML and manifest are the checkable artifact.
    Pass that result's `xlsx_path` as `fetch_artifact(path=...)`; the
    workbook comes back base64-encoded. `build_report` returns `output_path`
@@ -520,7 +526,7 @@ body, the same text as `tracebi knowledge <slug>`).
    `verify_manifest(manifest=...)`. A PDF
    (`tracebi report build <name> --format pdf`, or
    `build_report(..., format="pdf")`) is a print of that built HTML and
-   carries no receipt. A pdf build returns `pdf_path`; pass that as
+   carries no trace. A pdf build returns `pdf_path`; pass that as
    `fetch_artifact(path=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
@@ -542,8 +548,8 @@ run those first, so the report shows fresh data; a failed step (including a
 sink contract that refuses the new data) fails the run before anything is
 built or sent. A failed refresh or build is retried twice, after 1 minute
 and then 5 minutes, unless `"retries"` is an integer from 0 to 5 (0
-disables); a receipt that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
-verify → email → record in `tracebi_runs`, kind `schedule`; an existing `output/schedule_runs.jsonl` is imported once); a receipt that
+disables); a build that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
+verify → email → record in `tracebi_runs`, kind `schedule`; an existing `output/schedule_runs.jsonl` is imported once); a build that
 does not verify is recorded `refused` and nothing is sent. When `TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are both set, that successful send also uploads the HTML and the manifest to Slack with the report name, when it rendered, the verify verdict, and up to five headline value figures. A failed upload is recorded on the run and not retried. `--no-send` records the intent and does not call Slack. `TRACEBI_SLACK_WEBHOOK` stays a text ping. Optional `"owner"` is one email address: a run recorded `failed`, `refused`, or `empty` emails that address a plain-text alert and does not email the report to `to`. A binding a figure uses that returned zero rows is recorded `empty` and is not sent. `tracebi schedule serve` runs every
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
@@ -563,7 +569,7 @@ you tell a human a report is done.
 2. Read the sample files: `transforms/sample_transform.py`,
    `models/sample_model.yaml`, `pipelines/sample_model.yaml`,
    `reports/sample_model/sample_dashboard/`. They are a complete working
-   example of the loop, receipt included.
+   example of the loop, trace included.
 3. Run `tracebi knowledge` — the analyst good-practice lessons. Read the one
    whose *when* matches your decision (`tracebi knowledge <slug>`, or over
    the gateway `tracebi://knowledge/{slug}`) before

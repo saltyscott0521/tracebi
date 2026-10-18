@@ -56,11 +56,14 @@ const TOLD = new Set(['reproduces', 'needs-a-look', 'does-not-reproduce', 'not-c
  * each time a page in the frame says it is up, so its masthead chip and its
  * receipt say what the app says instead of the file's own "Not checked".
  * *verdict* is exactly what verdictOf computed ({ state, detail }); nothing
- * else is ever sent, and no verdict sends nothing. Returns a stop function.
+ * else is ever sent, and no verdict sends nothing. hosted: true tells it the
+ * app's header shows the build time and verdict, so its masthead keeps only
+ * the Receipt link. Returns a stop function.
  */
 export function tellVerdict(frame, verdict) {
   if (!frame || !TOLD.has(verdict?.state)) return () => {}
-  const say = () => tellFrame(frame, { type: 'tracebi:verdict', state: verdict.state, detail: verdict.detail || '' })
+  const say = () => tellFrame(frame, {
+    type: 'tracebi:verdict', state: verdict.state, detail: verdict.detail || '', hosted: true })
   const stop = listenToFrame(frame, m => { if (m.type === 'ready') say() })
   say()
   return stop

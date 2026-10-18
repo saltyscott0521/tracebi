@@ -287,12 +287,12 @@ _PDF_MEDIA_TYPE = "application/pdf"
 # neither is text. Every other suffix stays refused.
 _FETCH_TEXT_TYPES = {".html": "text/html", ".json": "application/json"}
 _XLSX_NOTE = (
-    "The spreadsheet carries no receipt and is not verifiable. "
+    "The spreadsheet carries no trace and is not verifiable. "
     "The checkable artifact is the HTML at output_path and its manifest "
     "at manifest_path."
 )
 _PDF_NOTE = (
-    "The PDF is a print of the built HTML. It carries no receipt and is "
+    "The PDF is a print of the built HTML. It carries no trace and is "
     "not verifiable. The checkable artifact is the HTML at output_path "
     "and its manifest at manifest_path."
 )
@@ -363,7 +363,7 @@ _AUTHORING_GUIDE = """\
 # Working with the TraceBi gateway
 
 TraceBi is a trust layer for AI-generated analytics: every number you put in
-front of a person should carry a receipt. This gateway is how you produce one.
+front of a person should carry a trace. This gateway is how you produce one.
 
 ## The loop
 1. **get_context** — first call. Returns the whole vocabulary: models, facts,
@@ -376,7 +376,7 @@ front of a person should carry a receipt. This gateway is how you produce one.
    result. Cite the fingerprint with any number you quote. The response's
    `binding` object is the value of `data.<name>` in report.json — paste
    it there under a name you choose. "Top N" is
-   `order_by` + `limit` in the query — declarative, in the receipt.
+   `order_by` + `limit` in the query — declarative, in the trace.
 3. **author the report** — the report form is an ARTIFACT PACKAGE
    (`reports/<name>/`): `report.json` names query bindings; `template.html`
    is your page, where every figure claims a binding via
@@ -388,7 +388,7 @@ front of a person should carry a receipt. This gateway is how you produce one.
    which stamped rows display (never compute — value figures are exempt),
    tables scroll past `data-tb-rows`, `data-tb-download` exports the
    stamped CSV verbatim, tabs via `data-tb-tab`, layouts via
-   `.tb-cols-2/3`; every built page carries the receipt drawer. Details
+   `.tb-cols-2/3`; every built page carries the trace drawer. Details
    in get_context's `presentation` block.
    (A JSON ReportSpec is the same thing as a serialization — read
    `tracebi://spec-schema`, then **validate_report_spec** →
@@ -405,11 +405,11 @@ front of a person should carry a receipt. This gateway is how you produce one.
    resolved list in pins.json and writes nothing else.
 5. **build_report** — the publish step: builds the package to a
    self-contained HTML + manifest, validating every figure claim. Writes
-   only its own artifact and receipt. `format="xlsx"` also writes
-   `<name>.xlsx` beside them. The spreadsheet carries no receipt and is
+   only its own artifact and manifest. `format="xlsx"` also writes
+   `<name>.xlsx` beside them. The spreadsheet carries no trace and is
    not verifiable; the HTML and manifest are the checkable artifact.
    `format="pdf"` also writes `<name>.pdf`: a print of that built HTML,
-   which carries no receipt.
+   which carries no trace.
 6. **fetch_artifact** — build/render return a server-side PATH, not bytes.
    The argument is `path`. `build_report` returns `output_path` (the HTML)
    and `manifest_path`; `render_report_spec` returns `html_path` and
@@ -433,7 +433,7 @@ front of a person should carry a receipt. This gateway is how you produce one.
 - **Contract plane (this gateway):** you *use* the semantic contract; you do
   not change it here. The gateway is read-and-compute only — it never writes
   the warehouse. `render_report_spec` and `build_report` write only their
-  own artifact and receipt. `resolve_pin` writes only the workbench's
+  own artifact and manifest. `resolve_pin` writes only the workbench's
   pins.json. The read tools are annotated read-only so a client can see it.
 
 ## The rules
@@ -1020,7 +1020,7 @@ def _query(
             "The gateway appends the remaining result columns, dimension "
             "columns first, as ascending tie-breakers so the order is "
             "deterministic. They were not in the order_by you passed. The "
-            "receipt records them so a replay matches; paste binding as-is."
+            "trace records them so a replay matches; paste binding as-is."
         )
     return result
 
@@ -1210,8 +1210,8 @@ def gateway_verify_manifest(manifest: Any) -> VerifyResult:
     *manifest* is the manifest as a dict, or a path to the
     ``*.manifest.json`` file ``render_report_spec`` wrote. On success the
     result carries per-section classifications, a summary, and a
-    receipt-level ``verdict`` with a human-readable ``verdict_detail``.
-    ``ok`` is False for a drifted or unexplained receipt, and for one with
+    report-level ``verdict`` with a human-readable ``verdict_detail``.
+    ``ok`` is False for a drifted or unexplained manifest, and for one with
     no data-bearing section at all — nothing was verified, so nothing
     passed. Read the verdict, not just ``ok``: only ``reproduces`` means a
     number was re-run and matched, and it names any section it could not
@@ -1259,7 +1259,7 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     Read-only: this is how a driving agent sees what the human flagged in
     the portal ("steer from chat, see results in the workbench" — pointing
     happens where the evidence is). Exhibits and pins are dev-state only;
-    nothing here mints a receipt.
+    nothing here mints a trace.
     """
     from tracebi.workbench import DISCOVERY_NAME, collect_discovery_state, collect_state
 
@@ -1329,21 +1329,21 @@ def _build_report(
 
     This is the ``tracebi report build`` gate over MCP: exploration blocks
     are stripped, every figure claim is validated against the embedded
-    bindings, and the receipt (manifest schema 2: figures + the
+    bindings, and the manifest (schema 2: figures + the
     ``transform_contracts`` join) is written beside the page. Like
-    ``render_report_spec``, it writes only its own artifact and receipt —
+    ``render_report_spec``, it writes only its own artifact and manifest —
     never source data. The dev loop itself (``tracebi dev``, snapshots,
     pins) stays on the CLI, where the human's portal lives; this tool is
     how an MCP-driving agent finishes.
 
     ``format="xlsx"`` also writes ``<name>.xlsx`` in the same confined
     directory, via the library's :class:`ExcelRenderer` (the web download
-    path, ``save_manifest=False``). A spreadsheet cannot carry a receipt:
+    path, ``save_manifest=False``). A spreadsheet cannot carry a trace:
     the result says so and points at the HTML and manifest, which remain
     the checkable artifact.
 
     ``format="pdf"`` also writes ``<name>.pdf``: a print of the built HTML
-    (headless Chromium). The PDF carries no receipt; ``pdf_note`` points
+    (headless Chromium). The PDF carries no trace; ``pdf_note`` points
     at the HTML and manifest.
     """
     from tracebi.reports.template_package import TemplatePackage
@@ -1895,13 +1895,13 @@ def build_server(token: Optional[str] = None, oauth=None):
             "every figure claim against the embedded bindings, and returns "
             "the figure records, embedded fingerprints, and the "
             "transform_contracts join. Writes only its own artifact and "
-            "receipt. format='xlsx' also writes <name>.xlsx and returns "
+            "manifest. format='xlsx' also writes <name>.xlsx and returns "
             "xlsx_path; pass that as fetch_artifact(path=...). The "
-            "spreadsheet carries no receipt and is not verifiable; the HTML "
+            "spreadsheet carries no trace and is not verifiable; the HTML "
             "and manifest are the checkable artifact (see spreadsheet_note). "
             "format='pdf' also writes <name>.pdf and returns pdf_path; pass "
             "that as fetch_artifact(path=...). The PDF is a print of the "
-            "built HTML and carries no receipt (see pdf_note)."
+            "built HTML and carries no trace (see pdf_note)."
         ),
     )(gateway_build_report)
     _tool(
@@ -1921,7 +1921,7 @@ def build_server(token: Optional[str] = None, oauth=None):
         ),
     )(gateway_fetch_artifact)
     _tool(
-        name="verify_manifest", title="Verify a receipt",
+        name="verify_manifest", title="Verify a manifest",
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
             "Re-run every recorded query in a rendered manifest. The "
@@ -1930,7 +1930,7 @@ def build_server(token: Optional[str] = None, oauth=None):
             "section: reproduces, source_drift (an input "
             "fingerprint moved), unexplained (result differs but inputs "
             "match), or unverifiable (no recorded query). Closes the loop "
-            "on your own receipts. Check the receipt-level verdict, not "
+            "on your own builds. Check the report-level verdict, not "
             "just ok: only 'reproduces' means a number was re-run and "
             "matched, and a manifest with nothing to check is not a pass."
         ),
@@ -1986,7 +1986,7 @@ def build_server(token: Optional[str] = None, oauth=None):
         structured_output=True,
         description=(
             "Render the draft in memory against the project's models (no "
-            "file, no receipt) and return ok, errors, and the draft's url, "
+            "file, no manifest) and return ok, errors, and the draft's url, "
             "where the person sees it. A model draft is validated, with no "
             "page."
         ),

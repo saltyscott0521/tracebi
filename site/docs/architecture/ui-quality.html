@@ -5,7 +5,7 @@
 <title>The UI quality bar — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="The UI quality bar">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -73,6 +74,7 @@
 <a class="on" href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -190,6 +192,12 @@ registered by an app module rather than found under <code>reports/</code>). Each
 <li><strong>The model is a filter, not the frame.</strong> Four places (Reports, Ask, Data,
   Review); with more than one model, the library groups reports under their
   model's name and a chip narrows it to one.</li>
+<li><strong>The sidebar shows what the role uses.</strong> Everyone sees Reports and Ask, an
+  analyst also Review, an admin also Data (with no sign-in, all four). A place
+  the role cannot use is hidden, not disabled, in the sidebar, the rail, the
+  phone's drawer and ⌘K alike; its address shows a plain page saying who it
+  is for. Review's tabs (Attention, Drafts, History, Verify) each keep an
+  address, and Review is the current entry on all of them.</li>
 <li><strong>Hierarchy is visible.</strong> The first thing the eye lands on is the thing
   the page is for. Secondary things are quieter, not merely smaller.</li>
 <li><strong>Empty states teach.</strong> An empty list says what would fill it and how
@@ -242,6 +250,11 @@ registered by an app module rather than found under <code>reports/</code>). Each
   library shows (<code>/api/desk</code>) on a report's newest build, and a neutral
   "Not checked" on every older one. A build row stores no verdict, so it never
   reads green by itself.</li>
+<li>Forty rows of the same nine reports is a wall, not a history: a list of
+  runs shows each report or pipeline once, its newest run, with "N older
+  runs" folded under it (and how many of those failed, so a failure is never
+  folded away unsaid). The flat list stays one toggle away, in the address.
+  An empty cell's dash is quieter than any text in the row.</li>
 <li>A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the

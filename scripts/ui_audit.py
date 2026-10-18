@@ -120,8 +120,10 @@ def seeds(base: str) -> list[str]:
     without being listed. Pages reached only by a button (tabs) need a seed.
     """
     tabs = ["model", "transform", "sources", "runs"]
-    paths = ["/", "/ask", "/data", "/data?view=map", "/data/sources", "/review", "/runs",
-             "/verify", "/getting-started", "/handbook", "/workflow"]
+    # Review's tabs (/review, /review/drafts, /runs, /verify) each render in
+    # Review's frame; the sidebar marks Review on all four.
+    paths = ["/", "/ask", "/data", "/data?view=map", "/data/sources", "/review", "/review/drafts",
+             "/runs", "/verify", "/getting-started", "/handbook", "/workflow"]
     models = _safe(base, "/api/models")
     for m in models:
         name = urllib.parse.quote(m["name"])

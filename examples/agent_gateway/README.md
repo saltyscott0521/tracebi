@@ -2,7 +2,7 @@
 
 A record of the first real agent session against `tracebi mcp`, kept because
 everything the gateway exists for happened in it — including a mistake the
-receipts caught that no human reviewer would have.
+traces caught that no human reviewer would have.
 
 An AI agent (Claude), connected over the Model Context Protocol, started with
 zero knowledge of this project and ended with two published reports and a
@@ -25,7 +25,7 @@ is seeded (`rng(42)`), so even the fingerprints come out identical.
 > `build_report` / `fetch_artifact` over MCP (the `author_report` prompt walks
 > it), `tracebi new-report` locally — which folds bespoke layout into one
 > governed, verifiable render and makes the free-form hand-HTML lane
-> unnecessary. The session is kept verbatim because the mistake the receipts
+> unnecessary. The session is kept verbatim because the mistake the traces
 > caught (step 6) is the whole point.
 
 ## What went down
@@ -119,7 +119,7 @@ python examples/agent_gateway/verify_report.py
 
 ## Why this example exists
 
-A beautiful AI-generated artifact contained a wrong number, and the receipts
+A beautiful AI-generated artifact contained a wrong number, and the traces
 caught it. The page looked perfect; the error was real; nothing but the
 stamped queries would have found it — and they also proved *which kind* of
 error it was. This is the failure mode the gateway is built for, demonstrated

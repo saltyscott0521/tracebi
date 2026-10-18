@@ -5,7 +5,7 @@
 <title>report.json — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="report.json">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -73,6 +74,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -90,7 +92,7 @@ framework builds for it.</strong></p>
   template.html    the page you draw          → [template.html — the figure grammar](../reference/template-html.html)
   style.css        optional, your CSS
   script.js        optional, your JS
-  report.py        optional escape hatch      → [Receipts](../concepts/receipts.html)
+  report.py        optional escape hatch      → [The trace](../concepts/trace.html)
 </code></pre>
 <hr>
 <h2 id="minimal-example">Minimal example</h2>
@@ -117,13 +119,21 @@ framework builds for it.</strong></p>
 take. <code>GET /api/reports</code> returns it as <code>display_name</code> beside <code>name</code> (the
 path); with no <code>name</code> here, <code>display_name</code> is the directory name title-cased.</p>
 <h3 id="author-string-optional"><code>author</code> — string, optional</h3>
-<p>Recorded in the manifest as <code>rendered_by</code>.</p>
+<p>Recorded in the manifest as <code>rendered_by</code>, and shown in the trace's About
+this build ("built by …"), not on the page.</p>
 <h3 id="description-string-optional"><code>description</code> — string, optional</h3>
-<p>Shown in the web UI, in the library under the report's model.</p>
+<p>One sentence for the reader: what the page shows — its measures, breakdowns
+and period (<code>"Ending MRR, customers and logo churn, month by month and by
+plan."</code>). Shown in the library under the report's name and at the top of About
+this build. How the page is built (the lane, which file draws what, why a
+measure is declared the way it is) does not belong here: put it in <code>notes</code>.</p>
+<h3 id="notes-string-optional"><code>notes</code> — string, optional</h3>
+<p>For the people and agents who edit the package: how the page is built, what
+<code>report.py</code> or <code>script.js</code> does. Nothing renders it.</p>
 <h3 id="data-object-required"><code>data</code> — object, <strong>required</strong></h3>
 <p>Maps a <strong>binding name</strong> to a query. A binding is the unit of trust: it is
 resolved once, fingerprinted, embedded in the artifact, and recorded in the
-receipt.</p>
+trace.</p>
 <pre><code class="language-json">&quot;data&quot;: {
   &quot;&lt;binding_name&gt;&quot;: {
     &quot;model&quot;: &quot;&lt;model name&gt;&quot;,
@@ -213,7 +223,7 @@ The build itself ignores it.</p>
 </tr>
 <tr>
 <td><code>retries</code></td>
-<td>Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A receipt that does not verify, and a delivery failure, are not retried.</td>
+<td>Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A trace that does not verify, and a delivery failure, are not retried.</td>
 </tr>
 <tr>
 <td><code>owner</code></td>

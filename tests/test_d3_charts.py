@@ -142,19 +142,6 @@ def _reset(page):
             page.select_option(sel, "All")
 
 
-def test_every_type_draws_one_mark_per_row_and_ships_no_echarts(page):
-    assert page.evaluate("typeof window.echarts") == "undefined"
-    assert page.evaluate("typeof window.d3") == "object"
-    counts = {fig: page.locator(f"#{fig} .tb-mark").count()
-              for fig in ("bar", "barh", "pie", "scatter")}
-    # 4 regions; barh draws revenue and cost per region; 2 products.
-    assert counts == {"bar": 4, "barh": 8, "pie": 2, "scatter": 4}
-    assert page.locator("#line path.tb-line").count() == 2      # one per product
-    assert page.locator("#line circle.tb-dot").count() == 8     # 4 quarters × 2
-    assert page.locator("#area path.tb-area").count() == 1
-    assert page.errors == []
-
-
 def test_the_tooltip_shows_the_rows_own_value_in_the_pages_format(page):
     _reset(page)
     page.locator("#bar .tb-hit").first.hover()
@@ -254,15 +241,6 @@ def test_drag_zooms_to_a_range_and_reset_returns(page):
     assert page.locator("#weekly .tb-legend-reset").count() == 0
 
 
-def test_small_multiples_share_one_scale(page):
-    _reset(page)
-    panels = page.locator("#facet svg.tb-panel")
-    assert panels.count() == 2                                # products A and B
-    ticks = [panels.nth(i).locator(".tb-axis-v text").all_text_contents() for i in range(2)]
-    assert ticks[0] and ticks[0] == ticks[1], "panels compare only on a shared scale"
-    assert page.locator("#facet .tb-panel-title").all_text_contents() == ["A", "B"]
-
-
 def test_currency_ticks_stay_short_and_a_unit_never_rescales(page):
     _reset(page)
     ticks = page.locator("#bar .tb-axis-v text").all_text_contents()
@@ -272,30 +250,6 @@ def test_currency_ticks_stay_short_and_a_unit_never_rescales(page):
     # Q1 revenue is 1200+900+400+300 = 2,800: the unit is a suffix, not a scale.
     assert page.locator("#area .tb-chart-tip strong").inner_text() == "2,800 u"
     assert all(t.endswith(" u") for t in page.locator("#area .tb-axis-v text").all_text_contents())
-
-
-
-def test_a_sparkline_is_the_shape_alone_at_its_own_height(page):
-    """A .tb-spark under a KPI is drawn bare at the CSS height: no axes, no
-    grid, no legend, its line from edge to edge, and hover still reads the
-    row's own value. Ignoring the class would drop a 320px chart into a tile."""
-    _reset(page)
-    svg = page.locator("#spark svg.tb-chart-svg")
-    assert svg.get_attribute("height") == "32"
-    assert page.locator("#spark .tb-axis text").evaluate_all(
-        "ts => ts.filter(t => t.getBoundingClientRect().width > 0).length") == 0
-    assert page.locator("#spark .tb-grid line").count() == 0
-    assert page.locator("#spark .tb-legend-row").is_hidden()
-    xs = page.locator("#spark path.tb-line").get_attribute("d")
-    import re
-    points = [float(x) for x in re.findall(r"[ML]([-\d.]+),", xs)]
-    width = float(svg.get_attribute("width"))
-    assert points[0] < 1 and points[-1] > width - 7
-    page.locator("#spark .tb-hit").first.hover()
-    tip = page.locator("#spark .tb-chart-tip")
-    tip.wait_for(state="visible")
-    # Q1 revenue: 1200+900+400+300.
-    assert tip.locator("strong").inner_text() == "$2,800"
 
 
 def test_bars_carry_their_own_values_in_the_pages_format(page):

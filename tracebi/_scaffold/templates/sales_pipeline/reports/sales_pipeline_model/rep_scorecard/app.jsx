@@ -1,5 +1,5 @@
 // Sales Rep Scorecard: an app (the React lane) with two views, by rep and by
-// region. Every number is a kit figure, so the receipt names it. Win rate is
+// region. Every number is a kit figure, so its trace names it. Win rate is
 // won deals over closed deals inside the rep or region, a ratio of totals, not a
 // mean of per-rep rates.
 import { Users, Map } from "lucide-react";
@@ -64,7 +64,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Sales pipeline"
+        <Masthead
           title={<><Value binding="top_rep" cell="dim_rep.rep" id="head-top-rep" /> leads
             win rate</>}>
           Rep scorecard: win rate, open pipeline and won value, by rep and by region.

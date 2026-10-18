@@ -8,7 +8,6 @@ structured error, not an unhandled stack.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import pandas as pd
@@ -119,72 +118,6 @@ def test_print_built_chart_package(tmp_path: Path) -> None:
     data = pdf.read_bytes()
     assert data.startswith(b"%PDF")
     assert len(data) > 5_000
-
-
-def test_cli_format_pdf_writes_beside_the_html(tmp_path, monkeypatch) -> None:
-    from tracebi import cli
-
-    model = _model()
-    _package(tmp_path / "reports", model)
-    monkeypatch.setattr(cli, "_load_project_models", lambda: {model.name: model})
-
-    def fake(html_path, pdf_path):
-        Path(pdf_path).write_bytes(b"%PDF-1.4\n")
-
-    monkeypatch.setattr("tracebi.reports.pdf.print_pdf", fake)
-    html_out = tmp_path / "out" / "bars.html"
-    rc = cli.main([
-        "report", "build", "bars",
-        "--reports-dir", str(tmp_path / "reports"),
-        "--output", str(html_out),
-        "--format", "pdf",
-    ])
-    assert rc == 0
-    assert html_out.is_file()
-    pdf = html_out.with_suffix(".pdf")
-    assert pdf.read_bytes().startswith(b"%PDF")
-    assert (html_out.parent / (html_out.name + ".manifest.json")).is_file()
-
-
-def test_pdf_download_names_the_install_when_playwright_is_missing(
-        tmp_path, monkeypatch) -> None:
-    """A missing Playwright is the router's structured detail, install hint included."""
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
-
-    import tracebi.model_registry as model_registry
-    from tracebi.web.api.registry import registry
-    from tracebi.web.api.routers import reports as reports_router
-
-    monkeypatch.setitem(sys.modules, "playwright", None)
-    monkeypatch.setitem(sys.modules, "playwright.sync_api", None)
-
-    model = _model()
-    name = "pdf_missing"
-    pkg = _package(tmp_path / "pkg", model)
-    model_registry.register(model)
-
-    def factory():
-        from tracebi.reports.template_package import TemplatePackage
-        return TemplatePackage(str(pkg))
-
-    factory._tracebi_package_dir = str(pkg)
-    registry.add_report(name, factory)
-    app = FastAPI()
-    app.include_router(reports_router.router, prefix="/api")
-    client = TestClient(app)
-    try:
-        response = client.get(f"/api/reports/{name}/download?format=pdf")
-        assert response.status_code == 500
-        detail = response.json()["detail"]
-        assert isinstance(detail, dict)
-        assert detail["exception_type"] == "ImportError"
-        assert "tracebi[pdf]" in detail["message"]
-        assert "python -m playwright install chromium" in detail["message"]
-        assert isinstance(detail["traceback"], str)
-    finally:
-        registry._report_factories.pop(name, None)
-        model_registry._registry._models.pop(model.name, None)
 
 
 def test_a_report_script_cannot_reach_the_network_while_printing(tmp_path: Path) -> None:

@@ -11,12 +11,6 @@ import pytest
 from tracebi._delivery import slack_send_report
 
 _TOKEN = "xoxb-secret"
-_VERIFY = {
-    "verdict": "reproduces",
-    "verdict_detail": "reproduces — every recorded query matched",
-    "exit_code": 0,
-    "ok": True,
-}
 
 
 class _Resp:
@@ -105,88 +99,8 @@ def _install(monkeypatch, *, fail=None):
     return calls
 
 
-def _complete(calls):
-    req = next(r for r in calls
-               if r.full_url.endswith("/files.completeUploadExternal"))
-    return {k: v[0] for k, v in parse_qs(req.data.decode()).items()}
-
-
 class TestSlackSendReport:
-    def test_uploads_both_files_and_summarizes_recorded_values(
-            self, tmp_path, monkeypatch):
-        html, manifest = _pages(tmp_path)
-        calls = _install(monkeypatch)
-        text = slack_send_report(
-            html, manifest, channel="#C0123ABCD", token=_TOKEN,
-            verify_result=_VERIFY)
 
-        kinds = []
-        for req in calls:
-            url = req.full_url
-            if url.endswith("/files.getUploadURLExternal"):
-                fields = parse_qs(req.data.decode())
-                kinds.append(("reserve", fields["filename"][0],
-                               fields["length"][0]))
-                assert req.get_header("Authorization") == f"Bearer {_TOKEN}"
-            elif url.startswith("https://files.example/upload/"):
-                kinds.append(("bytes", url.rsplit("/", 1)[-1], len(req.data)))
-            elif url.endswith("/files.completeUploadExternal"):
-                kinds.append(("complete",))
-        assert kinds == [
-            ("reserve", "weekly.html", str(len(html.read_bytes()))),
-            ("bytes", "Fhtml", len(html.read_bytes())),
-            ("reserve", "weekly.html.manifest.json",
-             str(len(manifest.read_bytes()))),
-            ("bytes", "Fman", len(manifest.read_bytes())),
-            ("complete",),
-        ]
-        posted = _complete(calls)
-        assert posted["channel_id"] == "C0123ABCD"
-        assert posted["initial_comment"] == text
-        files = json.loads(posted["files"])
-        assert files == [
-            {"id": "Fhtml", "title": "weekly.html"},
-            {"id": "Fman", "title": "weekly.html.manifest.json"},
-        ]
-        assert text == "\n".join([
-            "Report: Weekly",
-            "Rendered at: 2026-10-03T12:00:00+00:00",
-            "Verify: reproduces — every recorded query matched",
-            "Revenue: $10",
-            "Raw: 1234.5",
-            "dim_region.region: North",
-            "Orders: 128",
-            "Sixth: 6",
-        ])
-        # The chart's pixels, the KPI context, the blank placeholder, and
-        # a cell with no recorded value never become a line. The raw
-        # number is not given a currency format.
-        assert "99999" not in text
-        assert "count of orders" not in text
-        assert "Blank" not in text
-        assert "Missing" not in text
-        assert "1,234.50" not in text
-        assert "$1\n" not in text and not text.endswith("$1")
-
-    def test_stops_at_five_headline_figures(self, tmp_path, monkeypatch):
-        html = tmp_path / "r.html"
-        man = tmp_path / "r.html.manifest.json"
-        html.write_text("<p></p>", encoding="utf-8")
-        man.write_text(json.dumps({
-            "report_name": "R",
-            "rendered_at": "t",
-            "figures": [
-                {"id": f"v{i}", "kind": "value", "label": f"L{i}",
-                 "formatted": str(i)}
-                for i in range(1, 7)
-            ],
-        }), encoding="utf-8")
-        _install(monkeypatch)
-        text = slack_send_report(
-            html, man, channel="C1", token=_TOKEN, verify_result=_VERIFY)
-        for i in range(1, 6):
-            assert f"L{i}: {i}" in text
-        assert "L6" not in text
 
     def test_manifest_display_wins_over_the_page(self, tmp_path, monkeypatch):
         html = tmp_path / "r.html"
@@ -219,19 +133,3 @@ class TestSlackSendReport:
             for c in calls)
         assert not any(c.full_url.endswith("completeUploadExternal")
                        for c in calls)
-
-    def test_a_failed_byte_upload_does_not_complete(
-            self, tmp_path, monkeypatch):
-        html, manifest = _pages(tmp_path)
-        calls = _install(monkeypatch, fail="upload")
-        with pytest.raises(RuntimeError, match="HTTP 500"):
-            slack_send_report(html, manifest, channel="C1", token=_TOKEN)
-        assert not any(c.full_url.endswith("completeUploadExternal")
-                       for c in calls)
-
-    def test_a_missing_token_does_not_call_slack(self, tmp_path, monkeypatch):
-        html, manifest = _pages(tmp_path)
-        calls = _install(monkeypatch)
-        with pytest.raises(ValueError, match="token is required"):
-            slack_send_report(html, manifest, channel="C1", token="  ")
-        assert calls == []

@@ -4,7 +4,7 @@ Standard operating procedure for an AI analyst agent producing reports over
 TraceBi's MCP gateway (`tracebi mcp`). Follow the steps in order. The
 governing principle: **you never touch the warehouse — you speak the semantic
 contract, every answer you receive is stamped, and every number you show a
-human carries its receipt.**
+human carries its trace.**
 
 **Where this sits in the three-phase workflow (see [[the-three-phase-workflow]]).** This is
 **phase ③ — REPORT**, authoring over the model boundary. You are handed two
@@ -235,7 +235,7 @@ exists to prevent. On success:
 }
 ```
 
-The manifest is the receipt: for every data-bearing section it records
+The manifest is the trace: for every data-bearing section it records
 `dataset_fingerprint`, `dataset_lineage` (connector → aggregate),
 `dataset_name` and `dataset_shape`, plus the repo `git_sha` at render time.
 Confirm that each fingerprint in `dataset_fingerprints` matches the
@@ -244,7 +244,7 @@ the rendered artifact contains the same data you analyzed — same hash,
 provably the same data. A mismatch means the data moved between exploration
 and render: re-run your exploratory queries and reconcile before publishing.
 
-## Step 6 — Self-audit: replay the receipts
+## Step 6 — Self-audit: replay the traces
 
 Before presenting anything, audit your own output. The pattern is
 `examples/agent_gateway/verify_report.py`, which caught a real $1 error in a

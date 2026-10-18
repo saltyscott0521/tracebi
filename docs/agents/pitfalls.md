@@ -72,9 +72,9 @@ no actor.
 - *Rule:* set context (`with actor(...)`) inside the job, where it runs.
 
 **10. Two downloads are two renders.**
-The web app re-renders a report on each download, so a receipt saved earlier
+The web app re-renders a report on each download, so a trace saved earlier
 can fail to match an HTML file downloaded later.
-- *Rule:* hand out a report and its receipt from the same render.
+- *Rule:* hand out a report and its trace from the same render.
 
 ## Docs and claims
 
@@ -104,7 +104,7 @@ bug; every design change broke them. They were removed (see
   implementations agree, security holds. Not how it looks.
 
 **15. Tests must write to temporary folders.**
-Some tests write receipts into the repo's `output/` folder, leaving untracked
+Some tests write traces into the repo's `output/` folder, leaving untracked
 files in every contributor's checkout.
 - *Rule:* use `tmp_path`.
 

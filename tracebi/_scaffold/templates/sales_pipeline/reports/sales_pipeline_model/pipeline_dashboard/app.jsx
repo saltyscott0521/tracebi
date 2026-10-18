@@ -1,5 +1,5 @@
 // Sales Pipeline Dashboard: an app (the React lane). Every number is a kit
-// figure, so the receipt names it. Open pipeline is the sum of amounts on deals
+// figure, so its trace names it. Open pipeline is the sum of amounts on deals
 // still open; win rate is won deals over closed deals, a ratio of totals.
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download } from "tracebi";
 
@@ -7,7 +7,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Sales pipeline"
+        <Masthead
           title={<><Value binding="top_stage" cell="dim_stage.stage" id="head-top-stage" /> holds
             the most open pipeline</>}>
           Sales pipeline dashboard: open pipeline by stage and by region, with the win rate.

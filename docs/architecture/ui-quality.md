@@ -116,6 +116,12 @@ Checked by eye, from the contact sheet:
 - **The model is a filter, not the frame.** Four places (Reports, Ask, Data,
   Review); with more than one model, the library groups reports under their
   model's name and a chip narrows it to one.
+- **The sidebar shows what the role uses.** Everyone sees Reports and Ask, an
+  analyst also Review, an admin also Data (with no sign-in, all four). A place
+  the role cannot use is hidden, not disabled, in the sidebar, the rail, the
+  phone's drawer and ⌘K alike; its address shows a plain page saying who it
+  is for. Review's tabs (Attention, Drafts, History, Verify) each keep an
+  address, and Review is the current entry on all of them.
 - **Hierarchy is visible.** The first thing the eye lands on is the thing
   the page is for. Secondary things are quieter, not merely smaller.
 - **Empty states teach.** An empty list says what would fill it and how
@@ -169,6 +175,11 @@ Each fix that taught something general adds a line here.
   library shows (`/api/desk`) on a report's newest build, and a neutral
   "Not checked" on every older one. A build row stores no verdict, so it never
   reads green by itself.
+- Forty rows of the same nine reports is a wall, not a history: a list of
+  runs shows each report or pipeline once, its newest run, with "N older
+  runs" folded under it (and how many of those failed, so a failure is never
+  folded away unsaid). The flat list stays one toggle away, in the address.
+  An empty cell's dash is quieter than any text in the row.
 - A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the

@@ -1,7 +1,7 @@
 // Draw the issuer table from the embedded, FINGERPRINTED data (the sector chart
 // is declared in template.html and drawn by the runtime from the same bytes). Each data block is
 // a <script type="application/json"> carrying the canonical triple — including
-// the exact `csv` the receipt hashes. The page parses that same csv, so a
+// the exact `csv` the trace hashes. The page parses that same csv, so a
 // displayed number cannot diverge from a verified one. Values reach the DOM only
 // through textContent, never innerHTML, so a hostile issuer name cannot execute
 // (architecture §5).

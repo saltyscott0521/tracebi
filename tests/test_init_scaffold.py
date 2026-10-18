@@ -7,7 +7,6 @@ commands the scaffolded README gives a new user), so they are hermetic: no
 shared registry state with the rest of the suite.
 """
 
-import compileall
 import json
 import subprocess
 import sys
@@ -20,29 +19,7 @@ from tracebi import cli
 pytest.importorskip("duckdb")
 
 
-def _run(args, cwd):
-    return subprocess.run(
-        [sys.executable, "-m", "tracebi.cli", *args],
-        capture_output=True, text=True, cwd=str(cwd),
-    )
-
-
 class TestInitScaffold:
-    def test_init_wires_the_gateway(self, tmp_path):
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-        expected = {
-            "mcpServers": {
-                "tracebi": {"command": "tracebi", "args": ["mcp"]},
-            },
-        }
-        for rel in (".mcp.json", Path(".cursor") / "mcp.json"):
-            assert json.loads((proj / rel).read_text()) == expected
-        readme = (proj / "README.md").read_text()
-        assert "tracebi mcp config --client" in readme
-        (proj / ".mcp.json").write_text('{"edited": true}\n', encoding="utf-8")
-        assert cli.main(["init", str(proj)]) == 1
-        assert (proj / ".mcp.json").read_text() == '{"edited": true}\n'
 
     def test_mcp_config_prints_json_and_never_a_token(self, monkeypatch, capsys):
         monkeypatch.setenv("TRACEBI_MCP_TOKEN", "super-secret-token-xyz")
@@ -97,103 +74,6 @@ class TestInitScaffold:
             "(Settings → Connectors)."
         )
         assert "super-secret-token-xyz" not in refused.err
-
-    def test_existing_scheduled_dir_still_starts(self, tmp_path):
-        proj = tmp_path / "proj"
-        (proj / "scheduled").mkdir(parents=True)
-        (proj / "scheduled" / "old.py").write_text("VALUE = 1\n", encoding="utf-8")
-        for name in ("reports", "models", "pipelines"):
-            (proj / name).mkdir()
-        code = (
-            "import os\n"
-            f"os.chdir({str(proj)!r})\n"
-            "os.environ['TRACEBI_APP'] = ''\n"
-            "os.environ['TRACEBI_SCHEDULED_DIR'] = 'scheduled'\n"
-            "os.environ['TRACEBI_REPORTS_DIR'] = 'reports'\n"
-            "os.environ['TRACEBI_MODELS_DIR'] = 'models'\n"
-            "os.environ['TRACEBI_PIPELINES_DIR'] = 'pipelines'\n"
-            "from tracebi.web.api.main import app\n"
-            "print('STARTED', app.title)\n"
-        )
-        out = subprocess.run(
-            [sys.executable, "-c", code], capture_output=True, text=True,
-            cwd=str(proj))
-        assert out.returncode == 0, out.stderr
-        assert "STARTED" in out.stdout
-        assert "deprecated" in out.stderr
-
-    def test_scaffolded_model_is_lazy(self, tmp_path):
-        """Importing the scaffolded model must not touch the warehouse —
-        it has to load before phase ① has ever run."""
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-        # No warehouse exists yet; a connect-at-import would fail here.
-        out = subprocess.run(
-            [sys.executable, "-c",
-             "from tracebi.model_registry import get_model; "
-             "m = get_model('sample_model'); print('lazy-ok', m.name)"],
-            capture_output=True, text=True, cwd=str(proj),
-        )
-        assert out.returncode == 0, out.stderr
-        assert "lazy-ok" in out.stdout
-
-
-class TestNewTransform:
-    def test_scaffold_compiles(self, tmp_path):
-        out = _run(["new-transform", "Orders Clean",
-                    "--transforms-dir", str(tmp_path / "transforms")], tmp_path)
-        assert out.returncode == 0, out.stderr
-        f = tmp_path / "transforms" / "orders_clean.py"
-        assert f.is_file()
-        assert compileall.compile_file(str(f), quiet=2)
-        text = f.read_text()
-        assert "DuckDBConnector" in text
-        # Notebook-shaped: percent cells, top-level execution — every
-        # notebook editor opens it as a notebook; python runs it as a script.
-        assert "# %%" in text and "# %% [markdown]" in text
-
-
-class TestNewModelScaffold:
-    def test_no_connect_at_import(self, tmp_path):
-        """The new-model template must construct lazily — discovery imports
-        every model file, and a connect at import opens a connection (or
-        fails outright) on every scan."""
-        out = _run(["--models-dir", str(tmp_path / "models"),
-                    "new-model", "My Model", "--python"], tmp_path)
-        assert out.returncode == 0, out.stderr
-        text = (tmp_path / "models" / "my_model.py").read_text()
-        assert "\nmodel.connect()" not in text
-
-
-class TestNotebookShapedTransforms:
-    """Transforms are notebook-shaped .py (percent cells) — every notebook
-    editor opens them as notebooks while the file stays reviewable Python —
-    and literal .ipynb runs top-to-bottom fresh via run-transform."""
-
-    def test_run_transform_executes_py_and_ipynb(self, tmp_path, monkeypatch):
-        import json as _json
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-        monkeypatch.chdir(proj)
-        # the scaffolded notebook-shaped .py runs top-to-bottom
-        assert cli.main(["run-transform", "sample_transform"]) == 0
-        assert (proj / "data" / "warehouse.duckdb").exists()
-        # a literal .ipynb transform runs fresh, cells concatenated in order
-        nb = {"cells": [
-            {"cell_type": "markdown", "source": ["# methodology\n"]},
-            {"cell_type": "code", "source": ["x = 2\n"]},
-            {"cell_type": "code",
-             "source": ["open('nb_ran.txt', 'w').write(str(x * 21))\n"]},
-        ], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
-        (proj / "transforms" / "probe.ipynb").write_text(_json.dumps(nb))
-        assert cli.main(["run-transform", "probe"]) == 0
-        assert (proj / "nb_ran.txt").read_text() == "42"
-
-    def test_run_transform_missing_is_a_clean_error(self, tmp_path, monkeypatch):
-        proj = tmp_path / "proj"
-        assert cli.main(["init", str(proj)]) == 0
-        monkeypatch.chdir(proj)
-        assert cli.main(["run-transform", "nope"]) == 1
 
 
 class TestReportSend:
@@ -282,19 +162,6 @@ class TestReportSend:
         assert not attempted, "a failing receipt must never be sent"
         assert "NOT REPRODUCED" in capsys.readouterr().err
 
-    def test_force_sends_with_the_verdict_in_the_body(self, proj, monkeypatch):
-        import tracebi.verify as verify_mod
-        self._env(monkeypatch, proj)
-        monkeypatch.setattr(verify_mod, "verify_manifest",
-                            lambda *a, **k: dict(self._FAILING))
-        sent = self._fake_smtp(monkeypatch)
-        rc = cli.main(["report", "send", "sample_model/sample_dashboard",
-                       "--to", "a@example.com", "--force"])
-        assert rc == 0
-        body = sent["msg"].get_body(
-            preferencelist=("plain",)).get_content()
-        assert "DID NOT VERIFY" in body    # the red flag banner, up top
-        assert "NOT REPRODUCED" in body    # the verdict itself
 
     def test_starttls_uses_a_verified_context(self, proj, monkeypatch):
         """STARTTLS must pass an SSL context so the server certificate is

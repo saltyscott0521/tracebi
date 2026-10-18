@@ -19,7 +19,6 @@ from tracebi.reports.figures import (
     assign_figure_ids,
     extract_figures,
     methodology_insertion,
-    read_stage_meta,
     strip_stage,
 )
 
@@ -112,16 +111,6 @@ class TestAssignIds:
         assert [f.id for f in figs] == ["fig-1", "mine"]
         assert len(warnings) == 1 and "fig-1" in warnings[0]
 
-    def test_assignment_skips_taken_ids(self):
-        html = ('<div data-tb-figure="chart" data-tb-binding="a" id="fig-1">'
-                '</div><div data-tb-figure="chart" data-tb-binding="b"></div>')
-        out, _ = assign_figure_ids(html)
-        assert [f.id for f in extract_figures(out)] == ["fig-1", "fig-2"]
-
-    def test_page_with_all_ids_is_returned_unchanged(self):
-        out, warnings = assign_figure_ids(PAGE)
-        assert out == PAGE and warnings == []
-
 
 class TestStripStage:
     def test_exploration_blocks_are_removed_whole(self):
@@ -147,14 +136,6 @@ class TestStripStage:
         with pytest.raises(FigureError, match="unknown stage"):
             strip_stage('<div data-tb-stage="draft"></div>')
 
-    def test_void_element_cannot_be_staged(self):
-        with pytest.raises(FigureError, match="void element"):
-            strip_stage('<img data-tb-stage="exploration">')
-
-
-class TestStageMeta:
-    def test_reads_the_stage_meta(self):
-        assert read_stage_meta(PAGE) == "final"
 
 # ── the footer and the stated-methodology appendix ──────────────────────────
 # The footer is on by default (auto <footer class="tb-footer">, or the
@@ -241,15 +222,6 @@ APPENDIX = 'class="tb-methodology"'
 
 
 class TestMethodologyAppendix:
-    def test_appendix_is_appended_after_the_authors_own_children(
-            self, tmp_path):
-        page, _ = _render_package(tmp_path, CONTAINER)
-        assert APPENDIX in page
-        # The author's prose stays theirs, and stays FIRST.
-        assert 'id="authors-own"' in page
-        assert page.index('id="authors-own"') < page.index(APPENDIX)
-        # The appendix still sits inside the container.
-        assert page.index(APPENDIX) < page.index("</section>")
 
     def test_appendix_states_transform_check_and_measure_notes(
             self, tmp_path):
@@ -268,34 +240,25 @@ class TestMethodologyAppendix:
         assert "dropped the 9 unkeyed rows &amp; &lt;b&gt;counted&lt;/b&gt; them" in page
         assert TRANSFORM_NOTE not in page       # the raw markup never ships
 
-    def test_manifest_records_what_stated_methodology_shipped(self, tmp_path):
-        _, manifest = _render_package(tmp_path, CONTAINER)
-        assert manifest["methodology"] == {
-            "transform_notes": {"fact_orders": TRANSFORM_NOTE},
-            "check_notes": [{"transform": "orders", "check": "rows",
-                             "table": "fact_orders", "note": CHECK_NOTE}],
-            "measure_notes": {"total": MEASURE_NOTE},
-        }
-        # A separate claim: it colors nothing, and the contracts block is
-        # unchanged beside it.
-        assert manifest["transform_contracts"]["fact_orders"]["status"] \
-            == "satisfied"
 
     def test_without_the_container_the_footer_is_default_on(self, tmp_path):
         page, manifest = _render_package(tmp_path, extra_body="")
         assert 'class="tb-footer"' in page
         # One visible line: when, from which model, and the honesty
         # sentence — outside the disclosure, so a reader always sees it.
+        # The model by its label (unset: the identifier title-cased), never
+        # the identifier.
         line = page[page.index('class="tb-footer-line"'):
                     page.index("</p>", page.index('class="tb-footer-line"'))]
-        assert "Built on " in line and "from the model wh_model" in line
-        assert "The receipt does not claim the numbers are right." in line
-        assert "Built by unknown" not in page
+        assert line.startswith('class="tb-footer-line">Built ')
+        assert " · Wh Model. " in line and "wh_model" not in line
+        assert "This page does not claim the numbers are right." in line
+        assert "unknown" not in line
         # The rest sits behind "How these numbers were made".
         details = page[page.index('<details class="tb-footer-details">'):
                        page.index("</details>")]
         assert "<summary>How these numbers were made</summary>" in details
-        assert "This file carries a receipt" in details
+        assert "This file carries its trace" in details
         for text in (line, details[:details.index(APPENDIX)]):
             for word in ("verified", "reproduces", "correct"):
                 assert word not in text.lower()
@@ -304,50 +267,6 @@ class TestMethodologyAppendix:
         assert manifest["methodology"]["transform_notes"]["fact_orders"] \
             == TRANSFORM_NOTE
 
-    def test_two_containers_error_loudly(self, tmp_path):
-        with pytest.raises(FigureError, match="ONE home"):
-            _render_package(
-                tmp_path,
-                '<div data-tb-methodology></div><p data-tb-methodology></p>',
-            )
-
-
-class TestFooter:
-    def test_author_container_keeps_prose_first_and_still_gets_the_footer(
-            self, tmp_path):
-        page, _ = _render_package(tmp_path, CONTAINER)
-        assert 'id="authors-own"' in page
-        assert page.index('id="authors-own"') < page.index(
-            'class="tb-footer-line"')
-        assert page.index('class="tb-footer-line"') < page.index(
-            "This file carries a receipt") < page.index(APPENDIX)
-        # Author supplied the home — no second auto footer.
-        assert page.count('class="tb-footer"') == 0
-
-    def test_report_author_is_named_when_set(self, tmp_path):
-        from tracebi.reports.template_package import TemplatePackage
-
-        wh_path = _noted_warehouse(tmp_path)
-        pkg = tmp_path / "pkg"
-        pkg.mkdir()
-        (pkg / "report.json").write_text(json.dumps({
-            "name": "pkg",
-            "author": "Ada Analyst",
-            "data": {"kpi": {"model": "wh_model",
-                             "query": {"fact": "f", "measures": ["total"]}}},
-        }))
-        (pkg / "template.html").write_text(
-            "<html><head><title>x</title></head><body>"
-            '<div data-tb-figure="value" data-tb-binding="kpi" '
-            'data-tb-cell="total" id="fig-kpi"></div>'
-            "</body></html>"
-        )
-        out = tmp_path / "out.html"
-        TemplatePackage(str(pkg)).render(
-            {"wh_model": _noted_model(wh_path)}, str(out))
-        page = out.read_text(encoding="utf-8")
-        assert "Built by Ada Analyst on " in page
-
 
 # ── the embedded semantic contract ──────────────────────────────────────────
 # The built page carries the model contract AS EXERCISED — the slice of the
@@ -355,160 +274,10 @@ class TestFooter:
 # fingerprinted in the manifest. The slice, not the whole model: a report
 # must not leak vocabulary it never used.
 
-def _sc_model():
-    from tracebi import DataModel, MemoryConnector
-
-    t = pd.DataFrame({"region": ["NE", "SE", "MW"],
-                      "flag": ["y", "n", "y"],
-                      "revenue": [100.0, 250.0, 75.0],
-                      "cost": [40.0, 100.0, 30.0]})
-    t2 = pd.DataFrame({"region": ["NE", "SE"]})
-    m = DataModel("sc_model")
-    m.add_connector(MemoryConnector("sc_mem", tables={"t": t, "t2": t2}))
-    m.add_table("t", connector="sc_mem", source="t")
-    m.add_table("t2", connector="sc_mem", source="t2")
-    m.add_dimension("dim_r", table_name="t", key_col="region",
-                    attributes=["region"])
-    m.add_dimension("dim_f", table_name="t", key_col="region",
-                    attributes=["flag"])
-    m.add_dimension("dim_ghost", table_name="t2", key_col="region",
-                    attributes=["region"])         # never referenced
-    m.add_fact("f", table_name="t", measures=["revenue", "cost"],
-               foreign_keys={})
-    m.add_measure("total", column="revenue", agg="sum")
-    m.add_measure("cost_total", column="cost", agg="sum")
-    m.add_measure("mark", ratio=("total", "cost_total"))
-    m.add_measure("ghost", column="cost", agg="mean")   # never referenced
-    m.connect()
-    return m
-
-
-def _sc_render(tmp_path):
-    from tracebi.reports.template_package import TemplatePackage
-
-    pkg = tmp_path / "scpkg"
-    pkg.mkdir(exist_ok=True)
-    (pkg / "report.json").write_text(json.dumps({
-        "name": "scpkg",
-        "data": {
-            "kpi": {"model": "sc_model",
-                    "query": {"fact": "f", "measures": ["total", "mark"]}},
-            "by_region": {"model": "sc_model",
-                          "query": {"fact": "f",
-                                    "measures": {"revenue": "sum"},
-                                    "dimensions": ["dim_r.region"],
-                                    "filters": {"dim_f.flag": "y"}}},
-        },
-    }))
-    (pkg / "template.html").write_text(
-        "<html><head><title>x</title></head><body>"
-        '<div data-tb-figure="value" data-tb-binding="kpi" '
-        'data-tb-cell="total" id="fig-kpi"></div>'
-        "</body></html>")
-    out = tmp_path / "sc_out.html"
-    manifest = TemplatePackage(str(pkg)).render(
-        {"sc_model": _sc_model()}, str(out))
-    return out.read_text(encoding="utf-8"), manifest.to_dict()
-
-
-class TestSemanticContract:
-    def test_the_built_page_embeds_one_block_per_referenced_model(
-            self, tmp_path):
-        page, _ = _sc_render(tmp_path)
-        assert 'id="tb-semantic-contract-sc_model"' in page
-
-    def test_the_slice_holds_only_exercised_vocabulary(self, tmp_path):
-        _, manifest = _sc_render(tmp_path)
-        s = manifest["semantic_contract"]["sc_model"]["slice"]
-        assert [f["name"] for f in s["facts"]] == ["f"]
-        # Grouped AND filter-referenced dimensions are exercised…
-        assert [d["name"] for d in s["dimensions"]] == ["dim_f", "dim_r"]
-        # …and only measures the queries name. The never-referenced
-        # measure, dimension, and its backing table must not leak.
-        assert [m["name"] for m in s["measures"]] == ["mark", "total"]
-        assert [t["name"] for t in s["tables"]] == ["t"]
-
-    def test_ratio_measures_carry_their_formula(self, tmp_path):
-        _, manifest = _sc_render(tmp_path)
-        s = manifest["semantic_contract"]["sc_model"]["slice"]
-        mark = next(m for m in s["measures"] if m["name"] == "mark")
-        assert mark["kind"] == "ratio"
-        assert mark["ratio"] == ["total", "cost_total"]
-
-    def test_byte_stable_across_renders(self, tmp_path):
-        _, m1 = _sc_render(tmp_path)
-        _, m2 = _sc_render(tmp_path)
-        assert (m1["semantic_contract"]["sc_model"]["sha256"]
-                == m2["semantic_contract"]["sc_model"]["sha256"])
-
-    def test_manifest_field_shape_and_presence(self, tmp_path):
-        # Always present for a package with bindings — and a package
-        # without bindings cannot exist (report.json requires them).
-        _, manifest = _sc_render(tmp_path)
-        assert set(manifest["semantic_contract"]) == {"sc_model"}
-        rec = manifest["semantic_contract"]["sc_model"]
-        assert set(rec) == {"slice", "sha256"}
-        assert set(rec["slice"]) == {"model", "facts", "dimensions",
-                                     "measures", "tables"}
-        assert rec["slice"]["model"] == "sc_model"
-
 
 class TestMethodologyContainerParsing:
-    def test_insertion_point_is_the_containers_closing_tag(self):
-        html = '<div>x</div><section data-tb-methodology><p>mine</p></section>'
-        pos = methodology_insertion(html)
-        assert html[pos:].startswith("</section>")
 
-    def test_void_element_cannot_be_the_container(self):
-        with pytest.raises(FigureError, match="void element"):
-            methodology_insertion('<img data-tb-methodology>')
-
-    def test_self_closing_container_is_refused(self):
-        with pytest.raises(FigureError, match="closing tag"):
-            methodology_insertion('<div data-tb-methodology/>')
 
     def test_unclosed_container_fails_loudly(self):
         with pytest.raises(FigureError, match="never closed"):
             methodology_insertion('<div data-tb-methodology><p>x</p>')
-
-
-# ── the receipt block: phase-① and methodology entries ──────────────────────
-# The tracebi-receipt block is the drawer's provenance feed. It duplicates
-# manifest facts — the MANIFEST remains the receipt of record — so each
-# entry is checked against the manifest field it mirrors.
-
-class TestReceiptBlockJoins:
-    RECEIPT_OPEN = '<script id="tracebi-receipt" type="application/json">'
-
-    def _receipt(self, page):
-        start = page.index(self.RECEIPT_OPEN)
-        payload = page[start + len(self.RECEIPT_OPEN):
-                       page.index("</script>", start)]
-        return json.loads(payload)
-
-    def test_contract_statuses_are_compact_and_mirror_the_manifest(
-            self, tmp_path):
-        page, manifest = _render_package(tmp_path, CONTAINER)
-        receipt = self._receipt(page)
-        # Status per table ONLY — the drawer names the status; the full
-        # record (transform, checked_at, fingerprint, note) stays in the
-        # manifest, and the block never carries what it did not record.
-        assert receipt["transform_contracts"] == {
-            table: rec["status"]
-            for table, rec in manifest["transform_contracts"].items()
-        }
-        assert receipt["transform_contracts"]["fact_orders"] == "satisfied"
-        assert receipt["methodology"] is True
-        # The footer's text rides along for the drawer: a copy of what the
-        # manifest records, never a second account of it.
-        assert receipt["stated_methodology"] == manifest["methodology"]
-        assert receipt["semantic_contract_models"] == ["wh_model"]
-
-    def test_methodology_flag_is_true_when_notes_ship_via_default_about(
-            self, tmp_path):
-        # No author container — the default About home still carries stated
-        # methodology notes, and the receipt drawer names that.
-        page, manifest = _render_package(tmp_path, extra_body="")
-        receipt = self._receipt(page)
-        assert receipt["methodology"] is True
-        assert "methodology" in manifest

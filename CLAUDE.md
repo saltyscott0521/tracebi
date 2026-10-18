@@ -79,10 +79,13 @@ Run `pytest tests/` before and after any change. A passing suite is the minimum 
 
 **Prefer end-to-end tests.** A new feature first gets a step in the journey
 that uses it (`tests/e2e/`: the analyst, reference-project, web, agent,
-schedule, pipeline and author journeys drive the real CLI, web app and MCP
-tools in-process, so coverage sees them). Add a unit test only for what a
-journey can't pin precisely: query semantics, number-formatting parity,
-fingerprints and verify verdicts, contracts, security, the honesty rules.
+schedule, pipeline, author, folder-permissions, push, sign-in and publishing
+journeys drive the real CLI, web app and MCP tools in-process, so coverage
+sees them). Add a unit test only for what a journey can't pin precisely: query
+semantics, number-formatting parity, fingerprints and verify verdicts,
+contracts, security, the honesty rules. Since the 2026-10-18 cull the unit
+suite holds those six, plus a test where a module no journey reaches would
+otherwise go uncovered.
 Don't add look-alikes, tests of private fields, "it didn't raise" or
 "the string appears" checks. Before adding any test, answer *what bug would
 this catch?* — `docs/architecture/test-suite-review.md`.
@@ -642,7 +645,7 @@ at startup and served in the app, in the library under its model.
 **There is one renderer.** A registered report with no package is refused
 (HTTP 422 naming the fix), never served through a second path. The old bare
 `@register.report` factory rendered a page with no `tracebi.js` runtime, no
-receipt drawer, no figure claims and a schema-1 manifest — report-shaped, but
+trace drawer, no figure claims and a schema-1 manifest — report-shaped, but
 carrying materially less of one. `registry.add_report` is still the underlying
 registration seam (discovery uses it for packages and specs alike); what was
 removed is the fallback that rendered a factory with no package.
@@ -653,7 +656,7 @@ removed is the fallback that rendered a factory with no package.
    Model this on the reference project's `reports/portfolio_model/portfolio_dashboard/`
    (one screen) or `portfolio_desk/` (a sidebar of views).
 2. Every figure is a live query against the model — `<Kpi>`, `<Chart>`,
-   `<Table>` with literal binding and cell, so the receipt names each one.
+   `<Table>` with literal binding and cell, so the trace names each one.
 3. Build it: `tracebi report build <name>` (a JSON `ReportSpec` still works and
    compiles with `tracebi migrate spec`; no shipped report uses one). The
    folder is auto-discovered and served in the app, in the library under its model.
@@ -721,7 +724,7 @@ GET  /api/runs                                       → run rows (kind, target,
 POST /mcp                                            → the agent gateway, when TRACEBI_MCP_TOKEN, TRACEBI_OIDC_ISSUER or the built-in sign-in is set (bearer; outside app auth)
 GET  /.well-known/oauth-*  /authorize /token /register /revoke /oauth/callback → per-person OAuth for /mcp (TRACEBI_OIDC_ISSUER, or the built-in TRACEBI_DEMO_LOGIN / TRACEBI_LOCAL_USERS; tracebi/mcp_oauth.py)
 GET  /api/reports/{name}/download?format=xlsx|html|pdf   → html/pdf: the last build; xlsx: rendered
-GET  /api/reports/{name}/lineage                     → transform → tables → model → queries → figures flow, from the last build's receipt
+GET  /api/reports/{name}/lineage                     → transform → tables → model → queries → figures flow, from the last build's trace (its manifest)
 GET  /api/reports/{name}/mermaid
 GET  /api/reports/{name}/source                      → the spec or package files that define it
 GET  /r/{name}                                       → share link: the last build as a full page (auth like any GET)

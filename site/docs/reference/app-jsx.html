@@ -5,7 +5,7 @@
 <title>app.jsx — the React lane — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="App behaviour.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%271%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23091a55%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%230369a1%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27url%28%23g%29%27%2F%3E%3Cpath%20d%3D%27M11%208%20H8%20V24%20H11%20M21%208%20H24%20V24%20H21%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.7%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cg%20fill%3D%27%23fff%27%3E%3Crect%20x%3D%2713.5%27%20y%3D%2716%27%20width%3D%272.4%27%20height%3D%276%27%20rx%3D%271%27%2F%3E%3Crect%20x%3D%2716.8%27%20y%3D%2712.5%27%20width%3D%272.4%27%20height%3D%279.5%27%20rx%3D%271%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -73,6 +74,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -84,7 +86,7 @@
 <h1 id="appjsx-the-react-lane"><code>app.jsx</code> — the React lane</h1>
 <p><strong>A report package can hold <code>app.jsx</code> in place of <code>template.html</code>: a React
 component for app-like dashboards (navigation, drawers, drill-downs, toggles),
-built into the same single offline file, with the same receipt.</strong></p>
+built into the same single offline file, with the same trace.</strong></p>
 <p>The data does not change: <code>report.json</code> bindings are queried, stamped and
 fingerprinted at build (<a href="../reference/report-json.html">report.json</a>). What changes is how the page is
 written. There is no Node and no server: the page carries React and the kit,
@@ -172,8 +174,8 @@ its <code>:root</code> tokens give way to the dark ground as a template's do.</p
 <pre><code class="language-jsx">import { Kpi, Value, Chart, Spark, Table, Filter, Search, Download,
          useBinding, fmt } from &quot;tracebi&quot;;
 </code></pre>
-<p><strong>Figures — numbers with a receipt.</strong> Each renders the element a template would
-hold, and the runtime fills it from the stamped rows: formatted, receipted,
+<p><strong>Figures — numbers with a trace.</strong> Each renders the element a template would
+hold, and the runtime fills it from the stamped rows: formatted, traced,
 filterable, exactly as in a template.</p>
 <table>
 <thead>
@@ -243,7 +245,7 @@ filterable, exactly as in a template.</p>
 </tr>
 <tr>
 <td><code>&lt;Segmented options value onChange label&gt;</code></td>
-<td>One choice of a few — a view, a period. Use it to pick <em>which</em> figure shows: one literal-binding figure per option (<code>{p === "YTD" ? &lt;Kpi binding="kpis_ytd" …/&gt; : &lt;Kpi binding="kpis_mtd" …/&gt;}</code>), so each number keeps its receipt.</td>
+<td>One choice of a few — a view, a period. Use it to pick <em>which</em> figure shows: one literal-binding figure per option (<code>{p === "YTD" ? &lt;Kpi binding="kpis_ytd" …/&gt; : &lt;Kpi binding="kpis_mtd" …/&gt;}</code>), so each number keeps its trace.</td>
 </tr>
 <tr>
 <td><code>useUrlState(key, initial)</code></td>
@@ -255,15 +257,15 @@ filterable, exactly as in a template.</p>
 </tr>
 <tr>
 <td><code>&lt;Masthead title kicker period mark&gt;</code></td>
-<td>Opens the page: an optional <code>mark</code> (a node; or leave it empty and size <code>.tb-masthead-mark</code> in <code>style.css</code>), a <code>kicker</code>, the <code>title</code> (a string, or text with <code>&lt;Value&gt;</code>s in it: <code>title={&lt;&gt;Marked at &lt;Value binding="kpis" cell="mark" /&gt; of cost&lt;/&gt;}</code>), the standfirst as its children, and a meta line with the <code>period</code> (presentation, <code>"Q3 2026"</code>), the build time and the verdict chip, which the runtime fills from the file itself (<code>not-checked</code> on a built file, <code>draft</code> on a preview; never green on its own say-so). Other props go on the <code>&lt;header&gt;</code>: <code>data-tb-title="center|banner|nav"</code>. A literal <code>title</code> is checked for typed numbers like the app's text; <code>kicker</code> and <code>period</code> are labels.</td>
+<td>Opens the page: an optional <code>mark</code> (a node; or leave it empty and size <code>.tb-masthead-mark</code> in <code>style.css</code>), a <code>kicker</code> (unset, the model's label; <code>kicker={null}</code> shows none), the <code>title</code> (a string, or text with <code>&lt;Value&gt;</code>s in it: <code>title={&lt;&gt;Marked at &lt;Value binding="kpis" cell="mark" /&gt; of cost&lt;/&gt;}</code>), the standfirst as its children, and a meta line with the <code>period</code> (presentation, <code>"Q3 2026"</code>), the build time and the verdict chip, which the runtime fills from the file itself (<code>not-checked</code> on a built file, <code>draft</code> on a preview; never green on its own say-so). Other props go on the <code>&lt;header&gt;</code>: <code>data-tb-title="center|banner|nav"</code>. A literal <code>title</code> is checked for typed numbers like the app's text; <code>kicker</code> and <code>period</code> are labels.</td>
 </tr>
 <tr>
 <td><code>&lt;Footer /&gt;</code></td>
-<td>Where the build's footer goes: one line on who built the file, from which model, and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's <code>&lt;main&gt;</code>); without it the footer follows the app.</td>
+<td>Where the build's footer goes: one line on when the file was built, from which model (by its label), and that the page does not claim the numbers are right, then "How these numbers were made", which opens the trace drawer. Put it at the end of the main column (a sidebar layout's <code>&lt;main&gt;</code>); without it the footer follows the app.</td>
 </tr>
 <tr>
 <td><code>&lt;Built&gt;</code></td>
-<td>When the file was built, from its receipt (<code>&lt;Masthead&gt;</code> already shows it).</td>
+<td>When the file was built, from its trace (<code>&lt;Masthead&gt;</code> already shows it).</td>
 </tr>
 <tr>
 <td><code>tb-page</code>, <code>tb-grid</code> + <code>tb-span-4/6/8/12</code></td>
@@ -274,7 +276,7 @@ filterable, exactly as in a template.</p>
 <p><strong>Data for your own components.</strong> <code>useBinding("name")</code> returns the binding's
 stamped rows (copies), and <code>fmt(value, "currency0")</code> formats a number with the
 named formats (<a href="../reference/number-formats.html">Number formats</a>).</p>
-<h2 id="what-the-receipt-covers">What the receipt covers</h2>
+<h2 id="what-the-trace-covers">What the trace covers</h2>
 <p>The build reads every kit figure's props from <code>app.jsx</code> without running it,
 records each one as a claim in the manifest, and refuses a binding or a column
 that does not exist. A <code>&lt;Kpi&gt;</code>'s delta is a claim of its own
@@ -283,14 +285,14 @@ fair value less cost, and the kit never computes one: no comparison measure,
 no delta. So <code>binding</code>, <code>cell</code>, <code>x</code> and <code>y</code> (and <code>deltaBinding</code>, <code>deltaCell</code>)
 must be literal strings:
 <code>&lt;Kpi binding={b}&gt;</code> fails the build. Two kit figures of the same binding and
-column need an <code>id</code> each — an id is the receipt's address for one number.</p>
+column need an <code>id</code> each — an id is the trace's address for one number.</p>
 <p>A number typed into the app's text (<code>&lt;p&gt;Up 1250 units&lt;/p&gt;</code>) fails the build,
 as it does in a <code>template.html</code>: bind it with <code>&lt;Value binding="…" cell="…" /&gt;</code>,
 or say it in words. A single digit ("Q3") is not a number here.</p>
 <p>Anything the app computes or draws itself — a Recharts chart, a sum, a number
 in your own markup — is the app's presentation, not a checked figure. The page's
 footer says so: <em>"This page is an app. The figures it shows through the
-TraceBi kit carry that receipt; anything else it draws is the app's own
+TraceBi kit carry that trace; anything else it draws is the app's own
 presentation and is not checked."</em> <code>tracebi verify</code> re-runs the bindings as for
 any report.</p>
 <h2 id="an-example">An example</h2>
@@ -313,7 +315,7 @@ export default function App() {
         ))}
       &lt;/aside&gt;
       &lt;main className=&quot;min-w-0 flex-1 space-y-8 px-6 py-8&quot;&gt;
-        &lt;Masthead kicker=&quot;SaaS metrics&quot; title=&quot;Recurring revenue&quot; period=&quot;Monthly&quot;&gt;
+        &lt;Masthead title=&quot;Recurring revenue&quot; period=&quot;Monthly&quot;&gt;
           Ending MRR and customers, month by month.
         &lt;/Masthead&gt;
         {view === &quot;Overview&quot; ? (
@@ -350,7 +352,7 @@ numbers; the app replaces that view when it starts. <code>tracebi report build
 <li><code>leaderboard</code> — the leader, a top-ten bar chart, the full ranking with search.</li>
 <li><code>scorecard</code> — every measure the fact runs (up to four) as a KPI, each with its trend when the model has a time dimension, then all of them by category.</li>
 <li><code>monitor</code> — is anything off right now: the latest period of every measure (up to four) with its sparkline, the series, and a watch list of the lowest members first. Needs a time dimension; without one it starts as a scorecard.</li>
-<li><code>funnel</code> — the fact's count measures (not money, not rates) as stages, widest first as the warehouse stands, with each stage's share of the first. The conversions are report-level ratios in <code>report.json</code> <code>"measures"</code>, so the receipt names them; reorder the stages to your funnel's in <code>report.json</code>. Needs two count measures; with one it starts as an overview.</li>
+<li><code>funnel</code> — the fact's count measures (not money, not rates) as stages, widest first as the warehouse stands, with each stage's share of the first. The conversions are report-level ratios in <code>report.json</code> <code>"measures"</code>, so the trace names them; reorder the stages to your funnel's in <code>report.json</code>. Needs two count measures; with one it starts as an overview.</li>
 </ul>
 <p>A broken app shows its error on the page instead of a blank one. The vendored
 bundles and their licences are listed in <code>tracebi/reports/assets/REACT_NOTICE.md</code>.</p>

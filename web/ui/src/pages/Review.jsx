@@ -1,18 +1,37 @@
-import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 
-import { useCodeRequests, useDesk, useDrafts, usePipelines, usePublishRequests, useReports, useRuns } from '../api'
+import { useCodeRequests, useDesk, usePipelines, usePublishRequests, useReports, useRuns } from '../api'
 import { attentionItems, when } from '../components/Attention'
 import { PageHeader, useReportModels } from '../components/Scope'
 import { Badge, Spinner, Verdict } from '../components/Shared'
-import { historyPath } from '../nav'
+import { REVIEW_TABS, whereAmI } from '../nav'
 import DraftList, { CodeReview, RequestDecision } from './Drafts'
-import { VerifyZone } from './Verify'
 
-// Review: what waits on a person, in the order they act on it. Needs
-// attention first (failed runs, builds that need a look, requests waiting on
-// a decision), then Drafts, then Verify a file as a quiet entry at the bottom.
-// History (/runs) and the full Verify page (/verify) keep their own pages.
+// Review: what waits on a person, as tabs in the order they act on it, each
+// at its own address: Attention (/review: failed runs, builds that need a
+// look, requests waiting on a decision), Drafts (/review/drafts), History
+// (/runs) and Verify (/verify).
+
+/** Review's heading and tab row, around one tab's page. */
+export function ReviewFrame({ children }) {
+  const here = whereAmI(useLocation().pathname)?.page
+  return (
+    <div className="fade-in review">
+      <PageHeader pageKey="review" />
+      <nav aria-label="Review: what to show">
+        <ul className="dtabs review__tabs">
+          {REVIEW_TABS.map(t => (
+            <li key={t.key}>
+              <Link to={t.path} aria-current={here === t.key ? 'page' : undefined}>{t.label}</Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div className="stage">{children}</div>
+    </div>
+  )
+}
 
 export default function Review() {
   const { data: desk, isLoading: deskLoading } = useDesk()
@@ -21,24 +40,17 @@ export default function Review() {
   const { data: runs } = useRuns('', '')
   const { data: requests } = usePublishRequests()
   const { data: codeRequests } = useCodeRequests()
-  const { data: drafts } = useDrafts()
   const modelsOf = useReportModels()
   const items = attentionItems(desk, pipelines, modelsOf, reports || [], { runs, requests, codeRequests })
 
-  // /drafts lands here as /review#drafts: scroll to the section once it is drawn.
-  const { hash } = useLocation()
-  useEffect(() => {
-    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
-  }, [hash, drafts])
+  // The old Drafts section's address is the Drafts tab now.
+  if (useLocation().hash === '#drafts') return <Navigate to="/review/drafts" replace />
 
   return (
-    <div className="fade-in review">
-      <PageHeader pageKey="review" />
-
+    <ReviewFrame>
       <section aria-labelledby="attention-h" className="review__section">
         <div className="review__head">
           <h2 id="attention-h">Needs attention {items.length > 0 && <span className="review__count">{items.length}</span>}</h2>
-          <Link to={historyPath()}>All history →</Link>
         </div>
         {items.length > 0 ? <Attention items={items} /> : deskLoading ? (
           <p className="review__quiet"><Spinner size={13} /> Checking the builds…</p>
@@ -47,21 +59,19 @@ export default function Review() {
         )}
         {items.length > 0 && deskLoading && <p className="review__quiet"><Spinner size={13} /> Checking the builds…</p>}
       </section>
+    </ReviewFrame>
+  )
+}
 
+/** The Drafts tab. */
+export function ReviewDrafts() {
+  return (
+    <ReviewFrame>
       <section aria-labelledby="drafts" className="review__section">
         <div className="review__head"><h2 id="drafts">Drafts</h2></div>
         <DraftList />
       </section>
-
-      <section aria-labelledby="verify-h" className="review__section review__section--quiet">
-        <div className="review__head">
-          <h2 id="verify-h">Verify a file</h2>
-          <Link to="/verify">Full page →</Link>
-        </div>
-        <p className="review__quiet">Check a report file you were sent.</p>
-        <VerifyZone entry />
-      </section>
-    </div>
+    </ReviewFrame>
   )
 }
 

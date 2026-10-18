@@ -1,10 +1,11 @@
 import { reportPagePath } from '../../nav'
 import { MEASURE_KINDS, measureDefinition } from '../modelGraph'
-import { reportLabel } from './geometry'
 import { reportState } from './states'
 
 // The text under the map: what is selected, said in words. A person who cannot
-// see the blue path reads the same thing here.
+// see the blue path reads the same thing here. Reports and the model by their labels.
+
+const titleOf = (a, report) => a.placed.find(r => r.name === report)?.display_name || report
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
@@ -33,14 +34,15 @@ export function projectReadout(summary, tinted) {
 }
 
 export function modelReadout({ name, info, a, sel, builds }) {
+  const label = info?.label || name
   if (sel?.type === 'measure') {
     const m = info.measures.find(x => x.name === sel.id)
     const def = measureDefinition(m)
     const facts = a.factsFor(sel.id).map(f => f.name)
-    const users = a.usedBy(sel.id).map(r => reportLabel(r, name))
+    const users = a.usedBy(sel.id).map(r => titleOf(a, r))
     const what = def ? `${m.name} = ${def}` : `${m.name} (${(MEASURE_KINDS[m.kind] || m.kind || 'measure').toLowerCase()})`
     return {
-      kind: 'Measure', name: m.name,
+      kind: 'Measure', name: m.name, mono: true,
       text: [
         sentence(`${what}${facts.length ? ` over ${list(facts)}` : ''}`),
         m.description ? sentence(m.description) : '',
@@ -54,9 +56,9 @@ export function modelReadout({ name, info, a, sel, builds }) {
     const state = reportState(builds[sel.id], a.placed.find(r => r.name === sel.id))
     const read = facts.length === 1 ? ` All read ${facts[0]}.` : facts.length ? ` They can run on ${list(facts)}.` : ''
     return {
-      kind: 'Report', name: reportLabel(sel.id, name),
+      kind: 'Report', name: titleOf(a, sel.id),
       text: [
-        asked.length ? `Asks ${name} for ${asked.join(', ')}.${read}` : `Asks ${name} for no declared measure.`,
+        asked.length ? `Asks ${label} for ${asked.join(', ')}.${read}` : `Asks ${label} for no declared measure.`,
         state ? (state.detail || (state.tone === 'ghost' ? 'It has not been built yet.' : '')) : '',
       ].filter(Boolean).join(' '),
       open: reportPagePath(sel.id),
@@ -64,7 +66,7 @@ export function modelReadout({ name, info, a, sel, builds }) {
   }
   const unused = a.declared.filter(m => a.usedBy(m).length === 0).length
   return {
-    kind: 'Model', name,
+    kind: 'Model', name: label,
     text: [
       `${plural(info.tables.length, 'table')}, ${plural(a.declared.length, 'measure')} and ${plural(a.placed.length, 'report')}.`,
       unused ? `${plural(unused, 'measure')} ${unused === 1 ? 'is' : 'are'} asked for by no report.` : '',

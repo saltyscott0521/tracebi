@@ -143,6 +143,15 @@ def test_the_showcase_carries_every_affordance(built):
                    'id="fig-treemap"', "D3 7.9.0 (ISC)"):
         assert marker in html, f"showcase lost its {marker} affordance"
     assert "Working notes" not in html, "exploration must die at build"
+    # The masthead's kicker and the footer name the model by its label; the
+    # template writes no kicker, the build adds it (an app's kit reads it
+    # from its mount point).
+    assert '<p class="tb-kicker">Direct Lending Portfolio</p>' in html
+    foot = html[html.index('class="tb-footer-line"'):]
+    foot = foot[:foot.index("</p>")]
+    assert " · Direct Lending Portfolio. " in foot and "portfolio_model" not in foot
+    app = (built / "output" / "portfolio_model" / "portfolio_dashboard.html").read_text()
+    assert 'data-tb-kicker="Direct Lending Portfolio"' in app
     # A page with a selection block asks the app to run its cut; it connects nowhere.
     assert "connect-src 'none'" in html and "connect-src 'self'" not in html
     # ...and its runtime never calls the app itself: served on its own at

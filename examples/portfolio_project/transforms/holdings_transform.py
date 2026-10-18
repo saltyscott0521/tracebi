@@ -174,7 +174,7 @@ def run() -> dict:
     # raises here, so a broken sink never freezes quietly. This says "the sink
     # satisfied its contract" — it does NOT verify the pandas above. The
     # note= is the STATED methodology: prose about what the cleaning did,
-    # recorded verbatim and carried into report receipts, never verified.
+    # recorded verbatim and carried into report traces, never verified.
     with contract(
         "holdings", warehouse=WAREHOUSE,
         note="issuer and instrument type parsed from the prose position "

@@ -4,7 +4,7 @@
  * The demo's one bespoke look: its own faces (Inter, Fraunces), its own
  * palette (pine and brass) and a hero band, on the system's frame (the
  * masthead's meta and verdict, the KPI strip, the grid, the footer and the
- * receipt are tracebi.css). Stacks after tracebi.css, so the rules here win.
+ * trace drawer are tracebi.css). Stacks after tracebi.css, so the rules here win.
  * Fonts and the hero artwork come from assets/ and are inlined at build, so
  * the file still works offline. No gradient, no shadow.
  *

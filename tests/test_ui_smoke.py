@@ -187,14 +187,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             fail_on_browser_errors()
 
             # The Map is Data's models as one picture: opening one zooms in, and
-            # picking a measure says in words which reports ask for it.
+            # picking a measure says in words which reports ask for it. Models and
+            # reports go by their labels.
             page.goto(base + "/data")
             page.get_by_role("button", name="Map", exact=True).click()
             page.wait_for_url("**/data?view=map")
-            page.get_by_role("button", name="Open portfolio_model").click()
+            page.get_by_role("button", name="Open Direct Lending Portfolio").click()
             page.wait_for_url("**/data?view=map&model=portfolio_model")
             page.get_by_role("button", name=re.compile(r"^measure: fv_share")).click()
-            expect(page.get_by_label("Selection")).to_contain_text("portfolio_concentration")
+            expect(page.get_by_label("Selection")).to_contain_text("Portfolio Concentration")
             fail_on_browser_errors()
 
             # Old addresses land on the page that replaced them, query and all.
@@ -299,24 +300,26 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             back.wait_for()
             crumb.get_by_role("link", name="Direct Lending Portfolio").wait_for()
 
-            # Export is one menu of the three files, and says which carries the receipt.
+            # Export is one menu of the three files, and says which carries the trace.
             page.get_by_role("button", name="Export").click()
             menu = page.get_by_role("menu")
             links = menu.get_by_role("menuitem").all()
             assert [link.inner_text().split("\n")[0] for link in links] == ["PDF", "Excel", "HTML"]
             assert [link.get_attribute("href").rsplit("=", 1)[1] for link in links] == ["pdf", "xlsx", "html"]
-            assert "Only the HTML file carries its receipt" in menu.inner_text()
+            assert "the file with its trace" in menu.inner_text()
+            assert "receipt" not in menu.inner_text().lower()
             page.keyboard.press("Escape")
             assert menu.count() == 0
 
             # The receipt, the lineage, the builds and the files are one panel
-            # beside the report, "About this build". Its Receipt is the build's
+            # beside the report, "About this build". Its Trace is the build's
             # own certificate, in the honesty language, sink contracts and all.
             page.get_by_role("button", name="About this build").click()
-            page.get_by_role("tab", name="Receipt").click()
+            page.get_by_role("tab", name="Trace").click()
             page.get_by_role("button", name="Check again").wait_for()
             receipt = page.frame_locator("iframe.rpanel__receipt")
-            receipt.get_by_text("The receipt does not claim the numbers are right.").wait_for()
+            receipt.get_by_text("How each number was made").wait_for()
+            receipt.get_by_text("This page does not claim the numbers are right", exact=False).wait_for()
             receipt.locator("summary", has_text="About this build").click()
             receipt.get_by_text("fact_holdings: the sink satisfied its contract").wait_for()
             page.get_by_role("tab", name="Lineage").click()
@@ -342,9 +345,20 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("button", name="Rebuild").click()
             page.get_by_text("Report ran successfully").wait_for()
             # The report's own chip says what the app's check found: the file
-            # alone says "Not checked", framed here it is told the verdict.
-            frame_chip = page.frame_locator("iframe.rp__frame").locator(".tb-masthead .tb-verdict").first
-            expect(frame_chip).to_have_text("Reproduces", timeout=60_000)
+            # alone says "Not checked", framed here it is told the verdict. The
+            # app's header shows it, so the masthead keeps only its Trace link;
+            # the frame's trace says the same as the header.
+            frame = page.frame_locator("iframe.rp__frame")
+            expect(page.locator(".rp__titlerow")).to_contain_text("Reproduces", timeout=60_000)
+            expect(frame.locator(".tb-receipt-drawer .tb-verdict").first).to_have_text(
+                "Reproduces", timeout=60_000)
+            expect(frame.locator(".tb-masthead .tb-verdict").first).to_be_hidden()
+            expect(frame.locator(".tb-masthead .tb-receipt-link").first).to_have_text("Trace")
+            # The footer is one line: its link opens the drawer, which holds
+            # what the build's disclosure says, so the disclosure stands down.
+            expect(frame.locator(".tb-footer-line .tb-receipt-link").first).to_have_text(
+                "How these numbers were made")
+            expect(frame.locator(".tb-footer-line + .tb-footer-details").first).to_be_hidden()
             back.click()
             page.wait_for_url(base + "/")
             glance = page.get_by_role("group", name="At a glance")
@@ -378,7 +392,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             why = page.get_by_role("status").filter(has_text="The data changed since it was built")
             expect(why).to_be_visible()
             assert "Reproduces" not in why.inner_text()
-            expect(frame_chip).to_have_text("Needs a look")
+            expect(frame.locator(".tb-receipt-drawer .tb-verdict").first).to_have_text("Needs a look")
             page.unroute("**/api/desk")
 
             # A library row opens the same page, titled with the report's own name.
@@ -391,7 +405,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
             # A build is not a check: History shows the list's verdict on the newest
             # build of the report, and a plain "Not checked" (never green) on
-            # every older one.
+            # every older one. By default a report is one row, its older builds
+            # folded under it.
             page.goto(base + "/runs")
             page.get_by_role("heading", name="History", exact=True).wait_for()
             # A row reads the report's name; its identifier is the row's data-target.
@@ -399,10 +414,16 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             rows.first.wait_for()
             assert _TITLE in rows.first.inner_text()
             page.get_by_text("Checking…").wait_for(state="detached")
+            expect(rows).to_have_count(1)
+            rows.first.get_by_role("button", name=re.compile(r"^\d+ older runs?")).click()
             verdicts = [r.locator(".runs__verdict").inner_text() for r in rows.all()]
             assert len(verdicts) >= 2, verdicts
             assert verdicts[0] == "Reproduces", verdicts
             assert set(verdicts[1:]) == {"Not checked"}, verdicts
+            # Every run lists them flat, and stays in the address.
+            page.get_by_role("button", name="Every run", exact=True).click()
+            page.wait_for_url("**/runs?all=1")
+            expect(rows).to_have_count(len(verdicts))
             fail_on_browser_errors()
 
             # Given room, a report's three KPI cards sit on one row. (The old
@@ -428,7 +449,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             table = page.locator("details", has_text="fact_holdings")
             table.wait_for()
             assert re.search(r"[\d,]+ rows", table.locator("summary").inner_text())
-            assert table.locator("summary").get_by_text("checks passed", exact=True).count() == 1
+            assert table.locator("summary").get_by_text("Checks passed", exact=True).count() == 1
             table.locator("summary").click()
             table.get_by_text("The sink satisfied its contract").wait_for()
             fail_on_browser_errors()
@@ -528,9 +549,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")
             fail_on_browser_errors()
 
-            # Drafts: a report draft on disk is listed on Review (the old
-            # /drafts lands on its Drafts section), rendered live, follows
-            # edits to its file without a reload, and publishes with a toast.
+            # Drafts: a report draft on disk is listed on Review's Drafts tab
+            # (the old /drafts lands there), rendered live, follows edits to
+            # its file without a reload, and publishes with a toast.
             draft = project / "drafts" / "anonymous" / "reports" / "portfolio_model" / "draft_demo"
             shutil.copytree(project / "reports" / "portfolio_model" / "portfolio_overview", draft)
             template = draft / "app.jsx"
@@ -538,7 +559,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 template.read_text(encoding="utf-8").replace("Three funds, one Schedule", "Draft Marker One"),
                 encoding="utf-8")
             page.goto(base + "/drafts")
-            page.wait_for_url("**/review#drafts")
+            page.wait_for_url("**/review/drafts")
             page.get_by_role("heading", name="Drafts", exact=True).wait_for()
             row = page.get_by_role("list", name="Drafts").get_by_role("link")
             assert "portfolio_model/draft_demo" in row.inner_text()
@@ -637,6 +658,97 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("Published model portfolio_model").wait_for()
             assert (project / "models" / "portfolio_model.yaml").read_text(encoding="utf-8") == moved
             fail_on_browser_errors()
+            browser.close()
+        assert not errors, "\n".join(errors)
+    finally:
+        log_file.close()
+        server.terminate()
+        try:
+            server.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            server.kill()
+            server.wait(timeout=10)
+
+
+def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
+    """Behind a proxy that names roles, a viewer's sidebar is Reports and Ask,
+    an analyst's adds Review (its tabs Attention, Drafts, History, Verify), and
+    an address above the role is a plain page saying who it is for. The API
+    enforces the roles; this is what the app shows."""
+    from playwright.sync_api import expect, sync_playwright
+
+    project = tmp_path / "portfolio_project"
+    shutil.copytree(
+        _PROJECT,
+        project,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "data", ".tracebi"),
+    )
+    port = _free_port()
+    env = os.environ.copy()
+    env["TRACEBI_APP"] = ""
+    for key in ("TRACEBI_REPORTS_DIR", "TRACEBI_MODELS_DIR", "TRACEBI_PIPELINES_DIR",
+                "TRACEBI_DEV_MODE", "TRACEBI_OUTPUT_ROOT"):
+        env.pop(key, None)
+    env.update({
+        "TRACEBI_AUTH_PROXY_HEADER": "X-Forwarded-User",
+        "TRACEBI_AUTH_PROXY_TRUSTED_IPS": "127.0.0.1",
+        "TRACEBI_AUTH_ROLE_HEADER": "X-Forwarded-Role",
+    })
+    log_path = tmp_path / "server.log"
+    log_file = log_path.open("w", encoding="utf-8")
+    server = subprocess.Popen(
+        [sys.executable, "-m", "tracebi.web.run", "--port", str(port), "--no-reload"],
+        cwd=project, env=env, stdout=log_file, stderr=subprocess.STDOUT,
+    )
+    base = f"http://127.0.0.1:{port}"
+    try:
+        _wait_health(f"{base}/api/health", server, log_path)
+        errors: list[str] = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+
+            def as_role(role: str):
+                page = browser.new_context(extra_http_headers={
+                    "X-Forwarded-User": f"{role}@example.com", "X-Forwarded-Role": role,
+                }).new_page()
+                page.set_default_timeout(60_000)
+                page.on("pageerror", lambda exc: errors.append(f"pageerror: {exc}"))
+                return page
+
+            # An address above the role: a plain page, in the app's frame (drawn
+            # once the role is known, so the sidebar below is the viewer's).
+            viewer = as_role("viewer")
+            viewer.goto(base + "/data")
+            viewer.get_by_role("heading", name="This part of the app is for admins.").wait_for()
+            expect(viewer.get_by_role("link", name="Go to the reports")).to_have_attribute("href", "/")
+            sidebar = viewer.get_by_role("navigation", name="Main")
+            sidebar.get_by_role("link", name="Ask", exact=True).wait_for()
+            for place in ("Data", "Review"):
+                expect(sidebar.get_by_role("link", name=place, exact=True)).to_have_count(0)
+            # ⌘K lists the same places: nothing inside Review or Data.
+            viewer.keyboard.press("Control+k")
+            viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("History")
+            viewer.get_by_text("No matches for").wait_for()
+            viewer.keyboard.press("Escape")
+            viewer.goto(base + "/review")
+            viewer.get_by_role("heading", name="This part of the app is for analysts.").wait_for()
+            # An open report keeps the same places in its rail.
+            viewer.goto(f"{base}/reports/{_REPORT}")
+            rail = viewer.get_by_role("navigation", name="Main")
+            expect(rail.get_by_role("link", name="Reports")).to_have_attribute("aria-current", "page")
+            expect(rail.get_by_role("link", name="Ask")).to_have_count(1)
+            expect(rail.get_by_role("link", name="Review")).to_have_count(0)
+
+            analyst = as_role("analyst")
+            analyst.goto(base + "/runs")
+            sidebar = analyst.get_by_role("navigation", name="Main")
+            expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")
+            expect(sidebar.get_by_role("link", name="Data", exact=True)).to_have_count(0)
+            tabs = analyst.get_by_role("navigation", name="Review: what to show")
+            assert tabs.get_by_role("link").all_inner_texts() == ["Attention", "Drafts", "History", "Verify"]
+            expect(tabs.get_by_role("link", name="History")).to_have_attribute("aria-current", "page")
+            analyst.goto(base + "/data/portfolio_model")
+            analyst.get_by_role("heading", name="This part of the app is for admins.").wait_for()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:

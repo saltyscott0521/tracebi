@@ -17,7 +17,7 @@ environment — see [[environment-variables]].
 ```bash
 tracebi dev                      # the app, in dev mode (no name = where your agent's exhibits land)
 tracebi run-transform holdings   # ① clean + sink to the warehouse
-tracebi report build my_report   # ③ render one self-contained .html + receipt
+tracebi report build my_report   # ③ render one self-contained .html + trace
 tracebi report status my_report  # what the artifact has actually earned
 tracebi verify output/my_report.html.manifest.json
 ```
@@ -203,12 +203,12 @@ Renders to one self-contained, offline `.html` plus a sibling
 `<output>.html.manifest.json`. Default output is `output/<name>.html`.
 
 `--format pdf` also writes a sibling `.pdf`: a print of that built HTML
-(headless Chromium, so charts render). The PDF carries no receipt; the HTML
+(headless Chromium, so charts render). The PDF carries no trace; the HTML
 and manifest stay the checkable artifact. Needs `pip install 'tracebi[pdf]'`
 and `python -m playwright install chromium`.
 
 - `--badges` — draw per-figure provenance badges on the page. Off by default;
-  the receipt drawer already carries provenance in one place. **The manifest is
+  the trace drawer already carries provenance in one place. **The manifest is
   identical either way.**
 
 A `.json` spec target is compiled to a package first, then rendered like a
@@ -245,7 +245,7 @@ tracebi verify <manifest.json> [--strict] [--contracts]
 tracebi verify --file <report.html> [--manifest PATH] [--strict]
 ```
 
-Two deliberately separate checks. See [[receipts]] for what each proves.
+Two deliberately separate checks. See [[trace]] for what each proves.
 
 **Mode 1 — query → model.** Re-runs every recorded query and classifies each
 section: `REPRODUCES`, `SOURCE DRIFT`, `MODEL CHANGED`, `UNEXPLAINED`, or
@@ -386,9 +386,9 @@ tracebi report send <name> --to a@b.com[,c@d.com] [--subject S] [--force]
 ```
 
 Builds, **verifies the fresh manifest in-process**, then emails the HTML and
-its receipt together.
+its trace together.
 
-**It refuses to send when the receipt does not verify** — distribution never
+**It refuses to send when the report does not verify** — distribution never
 outruns verification. `--force` sends anyway with the failing verdict pasted
 into the body, so the red flag travels *with* the report.
 
@@ -409,10 +409,10 @@ tracebi schedule serve                      # run every schedule until Ctrl+C
 A run is refresh → build → verify → email → record. It reads the `schedule`
 block in each package's `report.json` (see
 [[report-json]]). A run is `report send` with
-the recipients taken from the package: a receipt that does not verify is
+the recipients taken from the package: a report that does not verify is
 recorded `refused` and nothing is sent. A failed refresh or build is
 retried twice (1 minute, then 5 minutes) before that failure is recorded;
-`"retries"` (0–5) changes how many, and a refused receipt or a send
+`"retries"` (0–5) changes how many, and a refused trace or a send
 failure is not retried. An optional `owner` address is emailed a
 plain-text alert when a run ends `failed`, `refused`, or `empty`, and
 that run is not sent to `to`. When `TRACEBI_SLACK_BOT_TOKEN` and
@@ -441,7 +441,7 @@ tracebi report snapshot <name> [--output PATH]
 
 Writes the sendable **working state** — exploration blocks kept, a self-banner,
 a read-only code appendix, and deliberately **no manifest**, because a
-weaker-looking receipt is worse than none. `verify --file` refuses it by name.
+weaker-looking trace is worse than none. `verify --file` refuses it by name.
 
 ---
 
@@ -587,4 +587,4 @@ cutover is the directory existing and the rollback is deleting it.
 
 - [[environment-variables]] — every `TRACEBI_*` variable
 - [[quickstart]] — these commands in order, once
-- [[receipts]] — what `verify` proves
+- [[trace]] — what `verify` proves

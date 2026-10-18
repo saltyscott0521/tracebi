@@ -1,7 +1,7 @@
 {
   "name": "Portfolio Dashboard",
   "author": "workflow",
-  "description": "Fund holdings by sector, fund and issuer, on one screen: an app (app.jsx) whose every number is a kit figure, so the receipt names it. Edit app.jsx to reshape the page; nothing re-runs the pandas.",
+  "description": "Fair value, unrealized gain and the portfolio mark across the three funds, by sector, fund and issuer, with every holding listed.",
   "data": {
     "totals": {
       "model": "portfolio_model",
