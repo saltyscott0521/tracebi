@@ -37,13 +37,13 @@ export default function App() {
         </div>
 
         <div className="tb-grid">
-          <section className="tb-card tb-span-8">
+          <section className="tb-card tb-span-6">
             <h2>Ending MRR by month</h2>
             <p className="tb-note">Period-end balance each month; the last point is today's book.</p>
             <Chart binding="by_month" type="area" x="dim_month.month" y="ending_mrr"
                    valueFormat="currency0" mark="last" id="chart-by-month" />
           </section>
-          <section className="tb-card tb-span-4">
+          <section className="tb-card tb-span-6">
             <h2>Ending MRR by plan</h2>
             <p className="tb-note">The filter chooses rows; it never computes a number.</p>
             <div className="mb-3 flex flex-wrap items-center gap-2">

@@ -47,7 +47,7 @@
     <p class="tb-standfirst">Three funds, cleaned from a Schedule of Investments and
       modelled as a star schema, holding
       <span data-tb-figure="value" data-tb-binding="kpis"
-            data-tb-cell="fair_value" data-tb-format="compact"
+            data-tb-cell="fair_value" data-tb-format="currency_compact"
             id="val-fv-inline"></span> at fair value. Every number on this
       page is a live query with a fingerprint; open the receipt to see them.</p>
   </header>
@@ -62,10 +62,10 @@
     <div class="tb-kpi tb-kpi--lead">
       <span class="tb-kpi-label">Fair value</span>
       <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="kpis"
-            data-tb-cell="fair_value" data-tb-format="compact" id="kpi-fv"></span>
+            data-tb-cell="fair_value" data-tb-format="currency_compact" id="kpi-fv"></span>
       <span class="tb-kpi-context"><span class="tb-kpi-delta" data-tb-figure="value"
             data-tb-binding="gain" data-tb-cell="unrealized"
-            data-tb-format="compact" data-tb-direction="up-good"
+            data-tb-format="currency_compact" data-tb-direction="up-good"
             id="kpi-gain"></span> vs cost</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
@@ -83,6 +83,8 @@
          data-tb-note="analyst estimate" id="kpi-est">
       <span class="tb-kpi-label">Est. Q3 deployments</span>
       <span class="tb-kpi-value">4</span>
+      <!-- Typed in, so it says so where it is read, not only in the receipt. -->
+      <span class="tb-kpi-context">typed in, not a query · not re-run</span>
     </div>
   </div>
 
@@ -149,17 +151,17 @@
                data-tb-value-format="currency_compact" id="chart-top-issuers"></div>
         </div>
         <div class="tb-card tb-span-6">
-          <h2>Cumulative share, issuers by rank</h2>
-          <div data-tb-figure="chart" data-tb-binding="issuer_curve" data-tb-type="area"
-               data-tb-x="fv_rank" data-tb-y="fv_cum_share" data-tb-value-format="percent"
-               data-tb-x-title="Issuers, by rank" id="chart-issuer-curve"></div>
+          <h2>Size against mark, top issuers</h2>
+          <div data-tb-figure="chart" data-tb-binding="top_issuers" data-tb-type="scatter"
+               data-tb-x="fair_value" data-tb-y="mark" data-tb-x-title="Fair value"
+               data-tb-y-title="Mark (fair value / cost)" id="chart-size-mark"></div>
         </div>
       </div>
       <div class="tb-card">
-        <h2>Size against mark, top issuers</h2>
-        <div data-tb-figure="chart" data-tb-binding="top_issuers" data-tb-type="scatter"
-             data-tb-x="fair_value" data-tb-y="mark" data-tb-x-title="Fair value"
-             data-tb-y-title="Mark (fair value / cost)" id="chart-size-mark"></div>
+        <h2>Cumulative share, issuers by rank</h2>
+        <div data-tb-figure="chart" data-tb-binding="issuer_curve" data-tb-type="area"
+             data-tb-x="fv_rank" data-tb-y="fv_cum_share" data-tb-value-format="percent"
+             data-tb-x-title="Issuers, by rank" id="chart-issuer-curve"></div>
       </div>
     </section>
 

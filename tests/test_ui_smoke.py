@@ -343,9 +343,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("button", name="Rebuild").click()
             page.get_by_text("Report ran successfully").wait_for()
             # The report's own chip says what the app's check found: the file
-            # alone says "Not checked", framed here it is told the verdict.
-            frame_chip = page.frame_locator("iframe.rp__frame").locator(".tb-masthead .tb-verdict").first
-            expect(frame_chip).to_have_text("Reproduces", timeout=60_000)
+            # alone says "Not checked", framed here it is told the verdict. The
+            # app's header shows it, so the masthead keeps only its Receipt link;
+            # the frame's receipt says the same as the header.
+            frame = page.frame_locator("iframe.rp__frame")
+            expect(page.locator(".rp__titlerow")).to_contain_text("Reproduces", timeout=60_000)
+            expect(frame.locator(".tb-receipt-drawer .tb-verdict").first).to_have_text(
+                "Reproduces", timeout=60_000)
+            expect(frame.locator(".tb-masthead .tb-verdict").first).to_be_hidden()
+            expect(frame.locator(".tb-masthead .tb-receipt-link").first).to_be_visible()
             back.click()
             page.wait_for_url(base + "/")
             glance = page.get_by_role("group", name="At a glance")
@@ -379,7 +385,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             why = page.get_by_role("status").filter(has_text="The data changed since it was built")
             expect(why).to_be_visible()
             assert "Reproduces" not in why.inner_text()
-            expect(frame_chip).to_have_text("Needs a look")
+            expect(frame.locator(".tb-receipt-drawer .tb-verdict").first).to_have_text("Needs a look")
             page.unroute("**/api/desk")
 
             # A library row opens the same page, titled with the report's own name.

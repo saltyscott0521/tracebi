@@ -3409,6 +3409,53 @@
         attachWindow(entry);
       } catch (e) { /* defensive */ }
     });
+    hydrateMore();
+  }
+
+  /* More to scroll: a box that scrolls a table (a .tb-scroll, the kit's
+   * <Table>, or on a phone a table or card that scrolls itself) says which
+   * way more of it lies, data-tb-more="x", "y" or "xy", and tracebi.css
+   * fades that edge. Kept current on scroll, on resize, and when the table
+   * inside changes size (a filter, a tab shown). Presentation only. */
+  var _moreSeen = typeof WeakSet !== "undefined" ? new WeakSet() : null, _moreObserver = null;
+  function markMore(box) {
+    var cs = getComputedStyle(box);
+    var sx = /auto|scroll/.test(cs.overflowX), sy = /auto|scroll/.test(cs.overflowY);
+    var more = (sx && box.scrollWidth - box.clientWidth - box.scrollLeft > 1 ? "x" : "")
+      + (sy && box.scrollHeight - box.clientHeight - box.scrollTop > 1 ? "y" : "");
+    if (more) box.setAttribute("data-tb-more", more);
+    else box.removeAttribute("data-tb-more");
+  }
+  function moreBox(el) {
+    return el && el.matches && el.matches(".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card");
+  }
+  function hydrateMore() {
+    if (typeof getComputedStyle === "undefined" || !_moreSeen) return;
+    if (!_moreObserver) {
+      document.addEventListener("scroll", function (e) {
+        if (moreBox(e.target)) markMore(e.target);
+      }, true);
+      root.addEventListener("resize", hydrateMore);
+      if (typeof ResizeObserver !== "undefined") {
+        _moreObserver = new ResizeObserver(function (entries) {
+          entries.forEach(function (en) {
+            if (moreBox(en.target)) markMore(en.target);
+            if (moreBox(en.target.parentNode)) markMore(en.target.parentNode);
+          });
+        });
+      } else {
+        _moreObserver = { observe: function () {} };
+      }
+    }
+    var boxes = document.querySelectorAll(".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card"), i;
+    for (i = 0; i < boxes.length; i++) {
+      markMore(boxes[i]);
+      if (!_moreSeen.has(boxes[i])) {
+        _moreSeen.add(boxes[i]);
+        _moreObserver.observe(boxes[i]);
+        if (boxes[i].firstElementChild) _moreObserver.observe(boxes[i].firstElementChild);
+      }
+    }
   }
 
   /* ── Tabs — the bar is built from the section labels ─────────────────── */
@@ -3556,8 +3603,34 @@
         el.className = "tb-verdict";
         meta.appendChild(el);
       }
+      /* A masthead on a filled ground (the editorial hero, a banner, a
+       * report's own hero) takes its links in its own ink (tracebi.css). */
+      if (typeof getComputedStyle !== "undefined" && filledGround(getComputedStyle(head))) {
+        head.setAttribute("data-tb-ground", "filled");
+      }
     }
     paintChips();
+    hostedMeta();
+  }
+
+  function filledGround(cs) {
+    if (cs.backgroundImage && cs.backgroundImage !== "none") return true;
+    var c = cs.backgroundColor || "";
+    return !!c && c !== "transparent" && !/^rgba\(.*,\s*0\)$/.test(c);
+  }
+
+  /* Hosted: the app that frames this file said so ("tracebi:verdict" with
+   * hosted: true, Host bridge). Its header already shows when the file was
+   * built and its verdict, so each masthead's meta keeps the period and the
+   * Receipt link and hides the build time and the chip. Opened on its own,
+   * nothing is hidden. */
+  var _hosted = false;
+  function hostedMeta() {
+    if (!_hosted) return;
+    ["[data-tb-built]", ".tb-verdict"].forEach(function (sel) {
+      var els = document.querySelectorAll(".tb-masthead .tb-masthead-meta " + sel), i;
+      for (i = 0; i < els.length; i++) els[i].setAttribute("hidden", "");
+    });
   }
 
   function inReceipt(el) { return within(el, "tb-receipt"); }
@@ -4810,13 +4883,16 @@
       "selection-response": selectionAnswered,
       /* The app's verdict on this build (its re-check, in its words): the
        * masthead chip and the drawer's say it instead of "Not checked".
-       * Draft, or a state this file does not know, is ignored. */
+       * Draft, or a state this file does not know, is ignored. hosted: true
+       * says the app's header shows the build time and verdict, so the
+       * masthead's meta reduces to the Receipt link (hostedMeta). */
       "tracebi:verdict": function (m) {
         if (m.state === "draft" || !_VERDICTS.hasOwnProperty(m.state)) return;
         _hostVerdict = { state: m.state,
                          tip: (typeof m.detail === "string" && m.detail) ? m.detail
                            : _VERDICTS[m.state].tip };
         paintChips();
+        if (m.hosted === true) { _hosted = true; hostedMeta(); }
       }
     };
     root.addEventListener("message", function (e) {
