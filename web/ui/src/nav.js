@@ -120,18 +120,12 @@ export function pipelineModels(p) {
   return one ? [one] : []
 }
 
-/** The model a pipeline is mainly about (the first it names). */
-export const modelOfPipeline = p => pipelineModels(p)[0] || ''
-
 export const pipelineBelongsToModel = (p, model) =>
   !model || pipelineModels(p).includes(model)
 
 /** A report's own page: /reports/<folder>/<slug>, each segment encoded. */
 export const reportPagePath = name =>
   `/reports/${String(name).split('/').map(encodeURIComponent).join('/')}`
-
-/** Where Open goes: the report's page (one address now, from any list). */
-export const reportOpenPath = reportPagePath
 
 /** The report an address opens as a page ({name}), or null. */
 export function openedReport(pathname) {

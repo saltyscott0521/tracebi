@@ -57,8 +57,8 @@ function figureProvenance(manifest) {
 }
 
 // Start a report run, follow it, and say how it ended: what Rebuild on the
-// page and "Build it now" in the Reports stage both do. The new build shows
-// on the page (desk) and in the preview (built-report) once it ends.
+// page and "Build it now" both do. The new build shows on the page (desk,
+// built-report) once it ends.
 function useReportBuild(name) {
   const [runId, setRunId] = useState(null)
   const toast = useToast()
@@ -435,9 +435,6 @@ function readPanel() {
 
 function Facts({ children }) { return <dl className="rpanel__kv">{children}</dl> }
 function Fact({ k, children }) { return <><dt>{k}</dt><dd>{children}</dd></> }
-function Section({ title, children }) {
-  return <section className="rpanel__sec"><h2>{title}</h2>{children}</section>
-}
 
 // The Receipt tab: a few facts the receipt does not carry (whether the app's
 // check still holds, the model, the figures, the schedule, the kind), then the

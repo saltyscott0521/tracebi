@@ -389,27 +389,6 @@ export function Btn({ children, onClick, disabled, variant = 'primary', size, st
   )
 }
 
-export function StatTile({ value, label, icon }) {
-  return (
-    <div className="card-hover" style={{
-      background: 'var(--card)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)',
-      padding: '20px 22px',
-      minWidth: 130, flex: 1,
-      position: 'relative', overflow: 'hidden',
-    }}>
-      {icon && <div style={{ fontSize: 18, marginBottom: 10, opacity: .7 }}>{icon}</div>}
-      <div style={{
-        fontSize: 30, fontWeight: 600, color: 'var(--text)',
-        letterSpacing: '-0.02em',
-        lineHeight: 1, fontVariantNumeric: 'tabular-nums',
-      }}>{value ?? '—'}</div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 7, fontWeight: 500 }}>{label}</div>
-    </div>
-  )
-}
-
 export function Tabs({ tabs, active, onChange }) {
   return (
     <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 18, flexWrap: 'wrap' }}>

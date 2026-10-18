@@ -27,7 +27,7 @@ export function ago(iso, now = Date.now()) {
 
 /**
  * A report: never built, or the verdict on its last build (verdict.js, so the
- * words are the Reports page's). Reproduces and Not checked are quiet. *report*
+ * words are the library's). Reproduces and Not checked are quiet. *report*
  * (its GET /api/reports row) lets files changed since the build need a look.
  * `verdict` is the state its node shows as the verdict chip.
  */

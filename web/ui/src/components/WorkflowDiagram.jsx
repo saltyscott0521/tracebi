@@ -95,7 +95,7 @@ export default function WorkflowDiagram() {
       <Arrow i={5} />
       <div className="wf-endcap wf-served">
         <span>served</span>
-        <small>Reports page · one HTML file</small>
+        <small>in Reports · one HTML file</small>
       </div>
     </div>
   )

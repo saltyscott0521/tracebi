@@ -38,7 +38,7 @@ model_registry.register(sales_model)
 registry.add_model(sales_model, default=True)
 registry.add_model(wealth_model)
 
-# Surface each model's connectors on the Sources page.
+# Surface each model's connectors in the Sources list.
 for _conn in (*sales_model.connectors(), *wealth_model.connectors()):
     registry.add_connector(_conn)
 

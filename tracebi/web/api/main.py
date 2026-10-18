@@ -509,7 +509,7 @@ if _lib_discovered:
           f"from the report library")
 
 # Connections discovery — each connections/<name>.yaml declares a source. Done
-# before models so the Sources page lists them; nothing is resolved or opened.
+# before models so the Sources list shows them; nothing is resolved or opened.
 from tracebi.connections import connections_dir as _connections_dir
 _conn_dir = str(_connections_dir())
 if os.path.isdir(_conn_dir):

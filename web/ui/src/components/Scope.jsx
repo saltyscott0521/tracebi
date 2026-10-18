@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
 import { useModels, useReports } from '../api'
-import { PAGES, page, whereAmI, rememberModel, reportModels, openedReport, movedTo } from '../nav'
+import { page, whereAmI, rememberModel, reportModels, openedReport, movedTo } from '../nav'
 import { PageTitle, PageSub, SkeletonCard, Empty } from './Shared'
 
 /** The place, and on Data the model and tab, the URL names. */
@@ -92,5 +92,3 @@ export function NotFound() {
     </>
   )
 }
-
-export { PAGES }

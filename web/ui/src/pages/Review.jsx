@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
-import { useCodeRequests, useDesk, useDrafts, useMe, usePipelines, usePublishRequests, useReports, useRuns } from '../api'
+import { useCodeRequests, useDesk, useDrafts, usePipelines, usePublishRequests, useReports, useRuns } from '../api'
 import { attentionItems, when } from '../components/Attention'
 import { PageHeader, useReportModels } from '../components/Scope'
 import { Badge, Spinner, Verdict } from '../components/Shared'

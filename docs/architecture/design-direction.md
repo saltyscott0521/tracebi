@@ -178,8 +178,8 @@ Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
 4. **The theme pass,** one surface at a time through the audit loop.
    - Foundation (done): Hanken Grotesk and IBM Plex Mono; cobalt as the one brand colour on
      neutral grounds that follow the OS; a near-black sidebar slab; hairline
-     borders; no gradients, blur or resting shadows. The nav follows the data:
-     Build (Sources, Refresh, Data model), then Use (Explore, Reports, Runs).
+     borders; no gradients, blur or resting shadows. The nav is four places,
+     Reports, Ask, Data, Review (it was Build, then Use, before the 2026-10 IA).
      The audit enforces it: `theme-font`, `theme-brand-colour`,
      `theme-dark-ink`, `theme-shadow`, `theme-decoration`.
    - Report defaults (done): `tracebi.css` takes the same type, grounds and
@@ -188,8 +188,8 @@ Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
    - Report design system v2 (done, [[ux-plan-2026-10-17]] Step 1): the
      report's system above, the scaffolds, the reference reports and the demo
      app on it.
-   - Still to do: a report contact sheet in the audit (both modes, both
-     widths) with a baseline that may not regress; the app's own pages on
-     the four places (Reports, Ask, Data, Review) and the verdict chip
-     everywhere; lists as console rows throughout, the logo and
-     illustrations.
+   - The app on the four places (done, [[ux-plan-2026-10-17]] Steps 2 and 3):
+     Reports as home, the report page, Data and Review, the verdict chip
+     everywhere; the report contact sheet in the audit (DS-9).
+   - Still to do: Ask (Step 4); lists as console rows throughout, the logo
+     and illustrations.

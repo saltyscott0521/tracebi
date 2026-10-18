@@ -26,7 +26,7 @@ export function BrandMark() {
 
 // ── A report assembling itself ─────────────────────────────────────────────
 // mode="done": the numbers, bars, trend line and donut build in once, then the
-//   card rests with a slow float. The Reports page's empty state.
+//   card rests with a slow float. The library's empty state.
 // mode="build": the same build on a loop, while a report opens or rebuilds.
 
 const BARS = [22, 34, 28, 46, 38, 54]

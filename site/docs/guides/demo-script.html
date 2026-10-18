@@ -100,11 +100,11 @@ tracebi serve                           # → http://127.0.0.1:8000
 <p>Then, in the browser:</p>
 <ol>
 <li><strong>Build the two reports you will show</strong>, so they open instantly on the day.
-   Pick <code>portfolio_model</code> and, on its <strong>Reports</strong> stage, pick
-   <code>portfolio_dashboard</code> and <code>portfolio_showcase</code> in turn. A report that has
-   never been built says so; press <strong>Build it now</strong>, and it is kept.</li>
-<li><strong>Make the "edited" copy for beat 3.</strong> Open <code>portfolio_dashboard</code> (<strong>Open</strong>)
-   and choose <strong>Export → HTML</strong>. The build also saved the matching pair in
+   The app opens on <strong>Reports</strong>, the library. Under Direct Lending Portfolio,
+   open <strong>Portfolio Dashboard</strong> and <strong>Portfolio Showcase</strong> in turn. A report
+   that has never been built says so; press <strong>Build it now</strong>, and it is kept.</li>
+<li><strong>Make the "edited" copy for beat 3.</strong> Open Portfolio Dashboard and choose
+   <strong>Export → HTML</strong> in the bar above it. The build also saved the matching pair in
    <code>examples/portfolio_project/output/</code>:
    <code>portfolio_dashboard.html</code> and <code>portfolio_dashboard.html.manifest.json</code>.
    Copy both into a folder on your desktop called <code>demo/</code>. Then make a second
@@ -116,8 +116,8 @@ tracebi serve                           # → http://127.0.0.1:8000
    <code>295904445.21</code>. Save. Open <code>edited.html</code> in the browser and check the
    headline now reads <strong>$295,904,445</strong>, $10 million more than the real
    report.</li>
-<li>Close every other tab. The app opens on the <strong>Reports</strong> stage of the model
-   you were last in, which is where the demo starts.</li>
+<li>Close every other tab. The app opens on <strong>Reports</strong>, the library, which is
+   where the demo starts.</li>
 </ol>
 <h2 id="the-script">The script</h2>
 <h3 id="beat-0-the-problem-1-minute-no-clicks">Beat 0: the problem (1 minute, no clicks)</h3>
@@ -128,31 +128,31 @@ chart. So the question is no longer <em>who can make the chart</em>, it's <em>wh
 numbers can we believe</em>."</p>
 </blockquote>
 <h3 id="beat-1-a-report-built-from-definitions-2-minutes">Beat 1: a report built from definitions (2 minutes)</h3>
-<p>Open <code>portfolio_dashboard</code> on the <strong>Reports</strong> stage.</p>
+<p>On <strong>Reports</strong>, open <strong>Portfolio Dashboard</strong>.</p>
 <blockquote>
 <p>"This is a fund's holdings report: fair value, positions, breakdowns by
 sector and fund. It could have been built by an analyst or by an AI
 assistant. Either way, nobody typed these numbers in."</p>
 </blockquote>
-<p>Point at the green badges above the report (<strong>Verifiable</strong>,
-<strong>reproducible</strong>, <strong>satisfied</strong>).</p>
+<p>Point at the green <strong>Reproduces</strong> chip beside the report's title.</p>
 <blockquote>
 <p>"Each number was looked up from a written-down definition of what 'fair
-value' means, and the badges say the data behind it passed its checks.
-Nobody can quietly use a different formula on one page."</p>
+value' means, and the chip says the app re-ran every one of those lookups
+and got the same numbers. Nobody can quietly use a different formula on one
+page."</p>
 </blockquote>
-<p>Optional: open the model's <strong>Overview</strong> and its <strong>Model</strong> stage to show the definitions in one
-screen, then go back to <strong>Reports</strong>.</p>
+<p>Optional: click <strong>Data</strong> in the sidebar, then Direct Lending Portfolio. Its
+<strong>Model</strong> tab shows the definitions in one screen. Go back to <strong>Reports</strong>.</p>
 <h3 id="beat-2-every-number-has-a-receipt-2-minutes">Beat 2: every number has a receipt (2 minutes)</h3>
 <p>Open <code>demo/portfolio_showcase.html</code> straight from the desktop. It's an ordinary
-file in an ordinary browser tab, with no server involved. Click <strong>Receipt</strong> in
-the bottom-right corner.</p>
+file in an ordinary browser tab, with no server involved. Click <strong>Receipt</strong>
+beside the chip under the title.</p>
 <blockquote>
 <p>"This is the file you'd email. It works offline. Every figure carries a receipt, like the one from a shop. It records where
 the number came from and a fingerprint of the exact data behind it. If a
 single digit changes, the fingerprint no longer matches."</p>
 </blockquote>
-<p>Point at the yellow <strong>UNVERIFIED</strong> tag on one line of the drawer.</p>
+<p>Point at the <strong>unverified</strong> tag on one line of the receipt.</p>
 <blockquote>
 <p>"And a number that <em>can't</em> be checked, like an estimate someone typed in, is
 labelled as such. It can't pass itself off as checked."</p>
@@ -174,14 +174,12 @@ touched. This check needs no database access and no login."</p>
 <p>Then drag in the untouched pair (<code>portfolio_dashboard.html</code> and its
 <code>.manifest.json</code>) and verify again. It reads <strong>FILE INTACT</strong>.</p>
 <h3 id="beat-4-ask-a-question-1-minute-optional">Beat 4: ask a question (1 minute, optional)</h3>
-<p>Back on the <strong>Reports</strong> stage: <code>portfolio_showcase</code>. In the <strong>Ask</strong> box, type
-<code>what about Software</code> and click <strong>Apply cut</strong>.</p>
+<p>Click <strong>Ask</strong> in the sidebar. With Direct Lending Portfolio picked, tick
+<code>fair_value</code> and <code>sector</code>, then <strong>Run query</strong>.</p>
 <blockquote>
-<p>"You can ask for a slice, like just the Software sector, and the numbers are
-recalculated from the same definitions. Each answer comes with its own
-fingerprint."</p>
+<p>"You can ask your own question of the same definitions, and the answer
+comes with the exact query behind it, so it can be checked the same way."</p>
 </blockquote>
-<p>Do <strong>not</strong> click <strong>Keep this cut</strong> in a demo. It rewrites the saved report.</p>
 <h3 id="beat-5-the-honest-boundary-1-minute-dont-skip">Beat 5: the honest boundary (1 minute, don't skip)</h3>
 <blockquote>
 <p>"One thing TraceBi does <em>not</em> claim: a receipt shows a number is consistent

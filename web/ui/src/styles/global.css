@@ -303,23 +303,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Ambient wash — kept very quiet so the page reads as a product surface,
-   not a marketing landing. */
-.orb {
-  position: fixed;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0;
-  display: none;
-}
-.orb-1, .orb-2, .orb-3 { display: none; }
-
-/* Content sits above orbs */
+/* Content sits above the background */
 .layout-main { position: relative; z-index: 1; }
-
-/* Titles are plain ink. (This was a gradient; colour is for meaning now.) */
-.gradient-text, .gradient-text-on-dark { color: var(--text); }
 
 a { color: var(--link); }
 
@@ -506,12 +491,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 /* ── Animations ─────────────────────────────────────── */
 @keyframes spin { to { transform: rotate(360deg); } }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
-.cursor-blink { animation: blink .75s step-end infinite; }
-
 @keyframes skeleton-wave {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
@@ -582,9 +561,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   gap: 20px;
   align-items: start;
 }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.concept-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
 
 @media (max-width: 768px) {
   /* minmax(0,1fr), never plain 1fr: a 1fr track will not shrink below its
@@ -598,9 +574,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .split-layout--screens { overflow-x: clip; }   /* the slide never scrolls the page sideways */
   .split-layout--detail > :first-child { display: none; }
   .split-layout--detail > .split-detail { animation: slide-in .26s cubic-bezier(.2,.7,.2,1); }
-  .grid-2       { grid-template-columns: minmax(0, 1fr); }
-  .grid-3       { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .concept-grid { grid-template-columns: minmax(0, 1fr); }
   .explore-grid { grid-template-columns: minmax(0, 1fr); }
   .explore-run { position: static; margin: 20px 0 0; padding: 0; border-top: 0; }
 
@@ -618,7 +591,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .nav-close-btn { display: flex !important; }
 }
 @media (max-width: 480px) {
-  .grid-3 { grid-template-columns: minmax(0, 1fr); }
   table { min-width: 360px; }
 }
 
@@ -810,10 +782,8 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* Workflow page layout */
 .workflow-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-.workflow-run-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 760px) {
   .workflow-detail-grid { grid-template-columns: 1fr; gap: 12px; }
-  .workflow-run-grid    { grid-template-columns: 1fr; gap: 12px; }
 }
 
 /* ── Motion & illustration ──────────────────────────────────────────────
@@ -1380,7 +1350,6 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .rp__crumb { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--text-caption); color: var(--muted); }
 .rp__crumb a { color: var(--text-2); text-decoration: none; }
 .rp__crumb a:hover { color: var(--text); text-decoration: underline; }
-.rp__model { font-family: var(--font-mono); }
 .rp__crumb .rp__menu-btn { display: none; margin-left: -6px; padding: 0 6px; }
 .rp__titlerow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
 .rp__name { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }

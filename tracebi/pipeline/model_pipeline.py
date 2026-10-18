@@ -13,7 +13,7 @@ together, and one pipeline runs the whole chain:
   each with its receipt.
 
 Both are ordinary pipeline steps (see ``PipelineRunner.register_step``), so they
-appear on the Pipelines page and in ``tracebi run-pipeline`` with run history.
+appear on the model's Transform tab and in ``tracebi run-pipeline`` with run history.
 Run from the project root, like every other ``tracebi`` command.
 """
 
@@ -129,7 +129,7 @@ def model_pipeline(
         return len(names)                                       # reports rebuilt
 
     runner = PipelineRunner(db_url=db_url)
-    # The Pipelines page (and the shared model scope) join a runner to its
+    # The Transform tab (and the model filter) join a runner to its
     # model by this attribute — not by guessing from the pipeline's file name.
     runner.model = model
     runner.models = models

@@ -31,7 +31,7 @@ const STATUS = {
   running: 'amber', empty: 'amber',
 }
 
-// The chip the Reports page shows, from the same rule (verdict.js), and only
+// The chip the library shows, from the same rule (verdict.js), and only
 // `reproduces` is green. A build row stores no verdict (a build is not a
 // check). Only the newest successful build of a report is still the page on
 // disk, and the desk re-checks that one: its row shows that verdict. Any other
@@ -45,7 +45,7 @@ function runVerdict(run, latestBuild, checks) {
   }
   return {
     state: 'not-checked',
-    detail: BUILD_KINDS.has(run.kind) ? 'Only the latest build of a report is re-checked; the Reports page shows it.' : undefined,
+    detail: BUILD_KINDS.has(run.kind) ? 'Only the latest build of a report is re-checked; the library shows it.' : undefined,
   }
 }
 
@@ -63,7 +63,7 @@ function duration(start, end) {
   return `${h}h ${m % 60}m`
 }
 
-// Where a row leads: a report's page, or the Transform stage of the model a
+// Where a row leads: a report's page, or the Transform tab of the model a
 // pipeline run refreshes.
 function rowLink(run, pipelineModelsOf) {
   if (!run.target) return null

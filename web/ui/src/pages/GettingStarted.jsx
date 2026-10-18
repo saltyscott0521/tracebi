@@ -36,8 +36,8 @@ tracebi verify output/portfolio.html.manifest.json`,
   },
   {
     n: 5,
-    title: 'Open the desk',
-    desc: 'The published file is the thing a person approves. Open a model for its reports in its Overview; the app can also open them from the library.',
+    title: 'Open the app',
+    desc: 'The published file is the thing a person approves. The app opens on Reports: every report, with its verdict. Data shows how each model is made.',
     code: `python -m tracebi.web.run
 # → http://localhost:8000`,
   },
@@ -70,23 +70,36 @@ function Guides() {
   )
 }
 
-// How the pieces fit: four places, each for one job.
+// How the pieces fit: four places, each for one job, in the sidebar's order.
+const PLACES = [
+  { to: '/', name: 'Reports', text: <>
+    Where the app opens: every report you may see, by folder, each with its verdict (whether
+    its numbers still reproduce). A chip per model narrows the list. Open a report to read it as
+    delivered; About this build holds its receipt, lineage, history and files.</> },
+  { to: '/ask', name: 'Ask', text: <>
+    Put a question to one model and see the query behind the answer.</> },
+  { to: '/data', name: 'Data', text: <>
+    How the numbers are made. The models, one row each, or all of them as one picture (Map).
+    A model's page leads with its line, transform → model → reports, then tabs: Model,
+    Transform (where Refresh data is), Sources and Runs.</> },
+  { to: '/review', name: 'Review', text: <>
+    What waits on a person: what needs attention (a refresh that failed, a build that needs a
+    look, a request to publish), then drafts, then Verify a file you were sent. History, what
+    ran and when, is one link away.</> },
+]
+
 function HowItFits() {
   return (
     <div style={{ marginBottom: 36 }}>
       <h2 className="section-title">How the app fits together</h2>
-      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: 0, maxWidth: '74ch' }}>
-        Four places. <Link to="/">Reports</Link> is where the app opens: every report you may see,
-        in its folder, each saying whether its numbers still reproduce; pick a model to narrow the
-        list, and open a report to read it with its receipt. <Link to="/ask">Ask</Link> puts a
-        question to one model and shows the query behind the answer. <Link to="/data">Data</Link> is
-        how the numbers are made: the models, one row each (or every model as one picture on the
-        Map), and a page per model that leads with its line, transform → model → reports, then
-        tabs for the model, the transform that refreshes it, its sources and its runs.{' '}
-        <Link to="/review">Review</Link> holds what waits on a person: first what needs attention (a
-        refresh that failed, a build that needs a look, a request to publish), then drafts, then Verify
-        a file, which checks a report file from anywhere; the History of what ran is one link away.
-      </p>
+      <dl style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: 0, maxWidth: '74ch' }}>
+        {PLACES.map(p => (
+          <div key={p.to} style={{ marginBottom: 10 }}>
+            <dt style={{ fontWeight: 600 }}><Link to={p.to}>{p.name}</Link></dt>
+            <dd style={{ margin: 0 }}>{p.text}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }

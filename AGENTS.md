@@ -45,7 +45,8 @@ A model also gets a pipeline, `pipelines/<model>.yaml` (`transform:`, `models:`,
 `reports: all`, `schedule:`; it only names the Python transform; `.py` with
 `model_pipeline(...)` still works and wins on a name clash): `tracebi
 run-pipeline <model>` runs the transform, then builds every report in
-`reports/<model>/`, and the app's **Refresh data** runs the same. `tracebi
+`reports/<model>/`, and the app's **Refresh data** (Data, the model's
+Transform tab) runs the same. `tracebi
 new-pipeline` writes YAML; `tracebi migrate pipeline pipelines/x.py [--write]`
 converts. Sources are declarative too: `connections/<name>.yaml` (see below). `tracebi init` scaffolds exactly this
 for `sample_model`.
@@ -783,7 +784,8 @@ nothing a draft holds goes live until `publish_draft`.
    With Publish there it is published. With only Build there the answer is
    `status: "requested"`: a request, not a publish. Tell the person it waits for
    someone with Publish on that folder, who approves or rejects it with
-   `list_publish_requests` / `decide_publish_request` (or in the app); you
+   `list_publish_requests` / `decide_publish_request` (or in the app, under
+   Review); you
    cannot decide your own. A folder whose `_folder.yaml` says
    `accepts: checkable` refuses a report whose numbers a query cannot re-run,
    at publish and at request, and the message names why.

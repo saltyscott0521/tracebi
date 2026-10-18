@@ -148,7 +148,7 @@ runner.register(_final_by_region,   name="revenue_by_region", schedule="30 6 * *
 runner.register(_final_by_segment,  name="revenue_by_segment", schedule="30 6 * * *",
                 depends_on="orders_silver")
 
-# The model this pipeline builds, for the app's model switcher.
+# The model this pipeline builds, so the app shows it on that model's Data page.
 runner.model = "sales_model"
 
 #: Layers in dependency order. `tracebi run-pipeline` derives this itself from

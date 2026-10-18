@@ -1,5 +1,7 @@
 # Remote authoring
 
+> Written before the 2026-10 IA (four places: Reports, Ask, Data, Review); page names updated.
+
 **People build and change reports from wherever their agent runs: a hosted
 chat (ChatGPT or Claude, through the TraceBi connector), or Claude Code on
 their own laptop. Everything they make lands as a draft on the TraceBi server,
@@ -18,7 +20,7 @@ Order of work at the end.
 |---|---|---|
 | Where | `drafts/<owner>/` on the server | `reports/`, `models/`, `pipelines/`, `transforms/` |
 | Who changes it | The owner (their agent) | Only publishing |
-| Seen in the app | The Drafts page, rendered live | Every page, as today |
+| Seen in the app | Its draft page under Review, rendered live | Every page, as today |
 | Scheduled, delivered | No | Yes |
 
 A UAT stage can sit between them later. Nothing here assumes two.
@@ -254,7 +256,7 @@ transform reads.
   landed. The request records the run.
 
 Built 2026-10-17: `tracebi/code_requests.py`, `tracebi_code_requests`
-(Alembic 0006), **Code requests** on the Drafts page. The pipelines an approval
+(Alembic 0006), **Code requests** under Review (Needs attention). The pipelines an approval
 runs are the ones in the request plus each `pipelines/*.yaml` whose
 `transform` it changes.
 

@@ -28,9 +28,6 @@ function reportHref(name) {
 
 const NOTE = 'Review note'
 
-/** The review notes among *items*: the one thing the Overview's line and a report's row do not already say. */
-export const reviewNotes = items => items.filter(it => it.kind === NOTE)
-
 // Each item carries `models`: the models it is about (none = the project).
 // *modelsOf* maps a report name to the models it reads; *reports* is GET
 // /api/reports, so a build whose files changed since needs a look here too.

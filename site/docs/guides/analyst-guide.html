@@ -116,7 +116,7 @@ shape:</p>
                                                         │
                                                         ▼  freeze: the model (the semantic contract)
 ③  REPORT       reports/          an artifact package (or JSON ReportSpec) over the model
-     KPI cards, charts, tables — every figure a live query; served in the app, on the model's Overview
+     KPI cards, charts, tables — every figure a live query; served in the app, in the library under its model
 </code></pre>
 <p><strong>Phase ①</strong> is the real analysis: pull the queries you need and do whatever the
 data demands — window functions, prose parsing, cleaning — then <em>sink</em> clean,
@@ -181,7 +181,7 @@ carries <code>data-tb-unverified</code>; there is no third state.</p>
 <li><strong>Publishing is build + verify.</strong> <code>tracebi report build &lt;name&gt;</code> strips
   exploration, validates every figure claim against its binding, and writes
   <code>output/&lt;name&gt;.html</code> plus the <code>.manifest.json</code> receipt. The package is
-  already served in the app, on the model's Overview — there is no separate publish
+  already served in the app, in the library under its model — there is no separate publish
   step. <code>--contracts</code> also re-runs the sink contracts, so the receipt can
   say <strong>the sink satisfied its contract</strong> (never "the transform was
   verified" — contract status certifies what landed, not the pandas above
@@ -259,8 +259,8 @@ orders.help()           # cheat sheet of every DataSet verb
 <pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;   # scaffolds models/sales_model.py
 # edit it, then import with get_model(&quot;sales_model&quot;)
 </code></pre>
-<p>Or browse the web UI: a model's <strong>Model</strong> stage shows every table with previews and the ER
-diagram; <strong>Explore</strong> lets you prototype aggregations visually before
+<p>Or browse the web UI: under <strong>Data</strong>, a model's <strong>Model</strong> tab shows every table with previews
+and the ER diagram; <strong>Ask</strong> lets you prototype aggregations visually before
 committing them to code.</p>
 <h3 id="load-and-transform">Load and transform</h3>
 <p>Every verb returns a <strong>new immutable DataSet</strong> and appends a step to its

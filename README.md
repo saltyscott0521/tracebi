@@ -211,7 +211,7 @@ backlinks and the graph view, or just read it on GitHub.
 | Define a reusable model for notebooks and scripts | `tracebi new-model "My Model"` → edit `models/<name>.py` → `from tracebi.model_registry import get_model` |
 | Define a scheduled ETL pipeline | `tracebi new-pipeline "My ETL"` → edit `pipelines/<name>.py` → `from tracebi.pipeline_registry import get_runner` |
 | Point the web app at my own data / restyle the UI | [docs/guides/web-customization.md](docs/guides/web-customization.md) — app modules, registry, theming, auth, deploy |
-| Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open the **Explore** page |
+| Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open **Ask** |
 | Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
 | Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
@@ -251,7 +251,7 @@ pip install -e "."                    # core: connectors, DataSet, lineage (no q
 pip install -e ".[reports]"           # Excel + HTML renderers
 pip install -e ".[pipeline]"          # scheduling + DB write-back
 pip install -e ".[lineage]"           # lineage diagrams
-pip install -e ".[duckdb]"            # DuckDB — required to run any model query (Explore + report figures)
+pip install -e ".[duckdb]"            # DuckDB — required to run any model query (Ask + report figures)
 pip install -e ".[web]"               # FastAPI + uvicorn web UI
 pip install -e ".[e2e]"               # Playwright, for the browser smoke test
 pip install -e ".[all]"               # everything
@@ -650,7 +650,9 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 The sidebar has four places: **Reports** (the library, where the app opens:
 every report by folder, each with its verdict, built time and schedule,
 narrowed to a model by a chip), **Ask**, **Data** and **Review**. Older
-addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them.
+addresses (`/m/<model>/…`, `/models`, `/explore`, `/sources`, `/map`, `/drafts`,
+`/reports?r=<name>`) redirect into them; History (`/runs`) and Verify
+(`/verify`) keep their own pages under Review.
 
 - **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
@@ -689,6 +691,11 @@ addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them
 - **Map** (`/data?view=map`) — every model as one picture: transform → warehouse → model → reports,
   drawn with the line's nodes and verdict chips. Open a model to see its measures and the
   reports that use them.
+- **Review** (`/review`) — what waits on a person, in the order they act on it: **Needs
+  attention** (a refresh whose steps failed, a build that needs a look or does not reproduce,
+  a publish request to decide in place, their own requests waiting on approvers), then
+  **Drafts** (their own first), then **Verify a file**, a small drop zone for a report file
+  someone was sent (`/verify` is its full page).
 - **History** (under **Review**) — what ran, when, how long it took, by whom, and whether it
   reproduced, grouped by day (a card per run on a phone). A report run links to the report by
   its name, a refresh to its model's Transform tab; a failed run reads red, and a column no
@@ -723,9 +730,9 @@ package (`wealth_model` at `tracebi/web/demo_app/models/wealth_model.py`;
 `sales_model`, a star schema over the cleaned tables of the demo's sales
 pipeline, in `pipeline.py`), and it stands up a self-contained SQLite medallion
 pipeline (Landing → Manipulation → Final) at startup so the model's Transform
-stage has live run history. Reports read from those resources.
+tab has live run history. Reports read from those resources.
 
-The second model — `wealth_model` (`tracebi/web/demo_app/models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
+The second model — `wealth_model` (`tracebi/web/demo_app/models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from **Ask** (e.g. AUM by region × asset class, or net flows by client segment).
 
 To point the UI at your own app module (connectors that cannot be expressed as a file convention):
 

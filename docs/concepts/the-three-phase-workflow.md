@@ -18,9 +18,10 @@ one never blocks the fast one.
 > chip. **Ask** puts a question to one model. **Data** draws each model as these three
 > stages in a line: **Transform** (the pipeline that rebuilds its warehouse, and what the
 > sink contract says about it), **Model** (its tables, joins and measures) and **Reports**
-> (what reads it); **Refresh data** runs the pipeline, and the **Map** draws every model as
-> one picture. **Review** holds drafts and requests to publish, **History** (what ran) and
-> **Verify a file** (check a report file from anywhere). Reports and Ask only ever ask the
+> (what reads it); **Refresh data**, on the Transform tab, runs the pipeline, and the
+> **Map** draws every model as one picture. **Review** holds what needs attention (a failed
+> refresh, a build that needs a look, a request to publish), then drafts, then **Verify a
+> file** (check a report file from anywhere); **History** (what ran) is one link away. Reports and Ask only ever ask the
 > model; see [[models-and-connectors]].
 
 ## ① Transform — `transforms/`

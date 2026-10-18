@@ -137,7 +137,7 @@ def push(server: str, paths: list, note: str = "", echo=print) -> int:
     if code:
         req = _call(server, "POST", "/api/code-requests", {"files": code, "note": note})
         echo(f"  code   {len(code)} file(s) → request {req['id']}, waiting for an admin "
-             f"(Drafts page, Code requests)")
+             f"(Review, Needs attention)")
         for path in sorted(code):
             echo(f"         {path}")
     if reports or models:

@@ -105,8 +105,9 @@ swappable onto your data.</p>
 tables into a DuckDB warehouse, phase ② <code>models/</code> declares a thin <code>DataModel</code>
 over that warehouse, and phase ③ <code>reports/</code> holds artifact packages
 (<code>reports/&lt;name&gt;/</code>) and <code>ReportSpec</code> JSON files pointed at the model.
-Phases ② and ③ are auto-discovered directories (below) and land
-on a model's <strong>Overview</strong> (its <strong>Model</strong> and <strong>Reports</strong> stages); phase ① runs explicitly (e.g. via
+Phases ② and ③ are auto-discovered directories (below): a model lands
+under <strong>Data</strong> (its page, Model tab) and a report in <strong>Reports</strong>, the library, under its
+model; phase ① runs explicitly (e.g. via
 <code>python run_workflow.py</code>) and is not something the server discovers — the sink
 it produces is the input the model reads.</p>
 <h2 id="step-1-project-root-directories-recommended">Step 1: Project-root directories (recommended)</h2>
@@ -134,7 +135,7 @@ lowest-friction way to add resources — no app module configuration needed:</p>
 <tr>
 <td><code>reports/</code></td>
 <td>a <code>&lt;name&gt;/</code> <strong>artifact package</strong> (the current report lane; a package directory shadows a same-named <code>.json</code> spec), a <code>.json</code> <code>ReportSpec</code> (phase ③), or a <code>.py</code> <code>@register.report(...)</code> factory</td>
-<td>registered as a report, shown on its model's Overview</td>
+<td>registered as a report, listed in the library under its model</td>
 </tr>
 <tr>
 <td><code>requests/</code></td>
@@ -266,7 +267,7 @@ your peril):</p>
 <tr>
 <td>Pipeline</td>
 <td><code>registry.add_pipeline("name", runner)</code></td>
-<td>the <strong>Transform</strong> stage (DAG, run buttons, a live run log, history)</td>
+<td>the model's <strong>Transform</strong> tab under <strong>Data</strong> (DAG, run buttons, a live run log, history)</td>
 </tr>
 </tbody>
 </table>
@@ -293,6 +294,7 @@ npm run build    # writes tracebi/web/ui/dist/ — FastAPI serves it at / when p
 </code></pre>
 <p>Layout of <code>src/</code>:</p>
 <pre><code>api.js               # all API hooks (React Query) — one hook per endpoint
+nav.js               # the four places, their addresses, movedTo (old addresses)
 components/
   Layout.jsx         # sidebar, theme toggle, ⌘K trigger
   Scope.jsx          # page header, one-model routes, redirects from old addresses
@@ -313,8 +315,9 @@ hard-code colors. The brand gradient is <code>--brand</code>.</p>
 <code>App.jsx</code> under that place's address and teach <code>whereAmI</code> in <code>nav.js</code> which
 place it belongs to, so its sidebar entry reads as current. A model is a
 filter, not a frame: pass it in the query (<code>?model=&lt;name&gt;</code>) or, on Data, the
-path (<code>/data/&lt;model&gt;/&lt;stage&gt;</code>; <code>pages/Overview.jsx</code>, the line in
-<code>components/TheLine.jsx</code>, three stages <code>transform</code>, <code>model</code>, <code>reports</code>). An
+path (<code>/data/&lt;model&gt;/&lt;tab&gt;</code>: <code>pages/Overview.jsx</code> draws that page, the line from
+<code>components/TheLine.jsx</code> with its three stations, then the tabs in <code>TABS</code>,
+<code>model</code>, <code>transform</code>, <code>sources</code>, <code>runs</code>). An
 address that moves gets an entry in <code>movedTo</code> so old links keep working. Use
 the hooks in <code>api.js</code> for data and the primitives in <code>Shared.jsx</code> for visual
 consistency.</p>
@@ -339,7 +342,7 @@ TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.0/8,172.16.0.0/12
 <p>No auth vars set ⇒ the app is open (fine on localhost, not on a network).</p>
 <p><strong>Roles.</strong> Authentication says who a caller is; authorization says what they
 may do. Three ordered roles, split by side effect: <code>viewer</code> (read models,
-reports, lineage; run Explore queries and spec validation — they compute
+reports, lineage; run Ask queries and spec validation — they compute
 but persist nothing), <code>analyst</code> (viewer + execute report and request code),
 <code>admin</code> (analyst + run pipeline layers, which write to the warehouse,
 <code>/api/_dev/reload</code>, and keeping a selection cut, which writes the published
@@ -406,7 +409,7 @@ and leaving two "running" rows in the run history. Point
 <tr>
 <td><code>TRACEBI_REPORTS_DIR</code></td>
 <td><code>reports</code></td>
-<td>Folder scanned for <code>&lt;name&gt;/</code> artifact packages, <code>.json</code> <code>ReportSpec</code>s (phase ③), and <code>@register.report()</code> factories; all served in the app, on each model's Overview</td>
+<td>Folder scanned for <code>&lt;name&gt;/</code> artifact packages, <code>.json</code> <code>ReportSpec</code>s (phase ③), and <code>@register.report()</code> factories; all served in the app, in the library under each model</td>
 </tr>
 <tr>
 <td><code>TRACEBI_REQUESTS_DIR</code></td>

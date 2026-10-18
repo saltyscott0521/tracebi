@@ -25,11 +25,11 @@ tracebi serve                           # → http://127.0.0.1:8000
 Then, in the browser:
 
 1. **Build the two reports you will show**, so they open instantly on the day.
-   Pick `portfolio_model` and, on its **Reports** stage, pick
-   `portfolio_dashboard` and `portfolio_showcase` in turn. A report that has
-   never been built says so; press **Build it now**, and it is kept.
-2. **Make the "edited" copy for beat 3.** Open `portfolio_dashboard` (**Open**)
-   and choose **Export → HTML**. The build also saved the matching pair in
+   The app opens on **Reports**, the library. Under Direct Lending Portfolio,
+   open **Portfolio Dashboard** and **Portfolio Showcase** in turn. A report
+   that has never been built says so; press **Build it now**, and it is kept.
+2. **Make the "edited" copy for beat 3.** Open Portfolio Dashboard and choose
+   **Export → HTML** in the bar above it. The build also saved the matching pair in
    `examples/portfolio_project/output/`:
    `portfolio_dashboard.html` and `portfolio_dashboard.html.manifest.json`.
    Copy both into a folder on your desktop called `demo/`. Then make a second
@@ -41,8 +41,8 @@ Then, in the browser:
    `295904445.21`. Save. Open `edited.html` in the browser and check the
    headline now reads **$295,904,445**, $10 million more than the real
    report.
-4. Close every other tab. The app opens on the **Reports** stage of the model
-   you were last in, which is where the demo starts.
+4. Close every other tab. The app opens on **Reports**, the library, which is
+   where the demo starts.
 
 ## The script
 
@@ -55,33 +55,33 @@ Then, in the browser:
 
 ### Beat 1: a report built from definitions (2 minutes)
 
-Open `portfolio_dashboard` on the **Reports** stage.
+On **Reports**, open **Portfolio Dashboard**.
 
 > "This is a fund's holdings report: fair value, positions, breakdowns by
 > sector and fund. It could have been built by an analyst or by an AI
 > assistant. Either way, nobody typed these numbers in."
 
-Point at the green badges above the report (**Verifiable**,
-**reproducible**, **satisfied**).
+Point at the green **Reproduces** chip beside the report's title.
 
 > "Each number was looked up from a written-down definition of what 'fair
-> value' means, and the badges say the data behind it passed its checks.
-> Nobody can quietly use a different formula on one page."
+> value' means, and the chip says the app re-ran every one of those lookups
+> and got the same numbers. Nobody can quietly use a different formula on one
+> page."
 
-Optional: open the model's **Overview** and its **Model** stage to show the definitions in one
-screen, then go back to **Reports**.
+Optional: click **Data** in the sidebar, then Direct Lending Portfolio. Its
+**Model** tab shows the definitions in one screen. Go back to **Reports**.
 
 ### Beat 2: every number has a receipt (2 minutes)
 
 Open `demo/portfolio_showcase.html` straight from the desktop. It's an ordinary
-file in an ordinary browser tab, with no server involved. Click **Receipt** in
-the bottom-right corner.
+file in an ordinary browser tab, with no server involved. Click **Receipt**
+beside the chip under the title.
 
 > "This is the file you'd email. It works offline. Every figure carries a receipt, like the one from a shop. It records where
 > the number came from and a fingerprint of the exact data behind it. If a
 > single digit changes, the fingerprint no longer matches."
 
-Point at the yellow **UNVERIFIED** tag on one line of the drawer.
+Point at the **unverified** tag on one line of the receipt.
 
 > "And a number that *can't* be checked, like an estimate someone typed in, is
 > labelled as such. It can't pass itself off as checked."
@@ -107,14 +107,12 @@ Then drag in the untouched pair (`portfolio_dashboard.html` and its
 
 ### Beat 4: ask a question (1 minute, optional)
 
-Back on the **Reports** stage: `portfolio_showcase`. In the **Ask** box, type
-`what about Software` and click **Apply cut**.
+Click **Ask** in the sidebar. With Direct Lending Portfolio picked, tick
+`fair_value` and `sector`, then **Run query**.
 
-> "You can ask for a slice, like just the Software sector, and the numbers are
-> recalculated from the same definitions. Each answer comes with its own
-> fingerprint."
+> "You can ask your own question of the same definitions, and the answer
+> comes with the exact query behind it, so it can be checked the same way."
 
-Do **not** click **Keep this cut** in a demo. It rewrites the saved report.
 
 ### Beat 5: the honest boundary (1 minute, don't skip)
 
