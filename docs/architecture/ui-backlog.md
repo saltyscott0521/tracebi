@@ -46,6 +46,32 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):
     segmented bar's `repeating-linear-gradient` (`global.css:1188`,
     `theme-decoration`). Some are the audit's selectors, some the app.
 
+Left by Step 2 of the UX plan ([[ux-plan-2026-10-17]]), app side:
+
+14. **Re-run the ui-audit baselines**: the committed findings still name the
+    addresses before R-1 (`/m/<model>/…`, `/reports?r=`), so item 13 cannot
+    be retriaged against them.
+15. **The Data page's Reports-stage preview keeps its Preview/Config switch**
+    (R-4 moved Config into Files on the report page); Step 3 (D-1) retires
+    that preview.
+16. **Docs still say reports are served "on the model's Overview"**: about
+    nine lines in `CLAUDE.md`, `the-three-phase-workflow.md`,
+    `report-json.md`, `analyst-guide.md` and `notebook-guide.md` (and the
+    `site/docs` twins). For D-3.
+17. **`demo-script.md` points at "the green badges above the report"**, which
+    R-3 removed; the chip in the masthead is what to point at.
+18. **`site/sample/portfolio_showcase.html` predates Step 1**: rebuild it with
+    the current runtime.
+19. **A report build records no finish time** (`record_report_build`), so
+    History shows how long only for background runs, schedules and pipeline
+    runs. Record the build's start and finish.
+20. **Bug, not UI: `tracebi migrate model` drops `owners`.**
+    `model_yaml._document` puts `owners` in the document, but `model_to_yaml`
+    writes only `label` and the `_SECTIONS` keys, so a migrated model loses
+    who may publish it.
+21. **The phone header is translucent**: a scrolled list shows through it
+    (History's sticky day header sits under it).
+
 ## Done
 
 - **Model switcher as the frame of the app** — one control at the top of the
@@ -102,3 +128,10 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):
   `[metric:report_*]`; a page laid out wider than the phone
   `[report-phone-layout]` (every built report but one named no viewport; the
   build now adds it).
+- **Reports home (Step 2)**: names, not identifiers, with a model `label`
+  (R-2); one verdict chip and one rule for it (R-3); `/` is the library and
+  the sidebar is four places, old addresses redirect (R-1); the report page is
+  the artifact under one command bar with "About this build" (R-4); History
+  rows as sentences, grouped by day, empty columns not drawn, cards on a
+  phone; the library's two-line descriptions and the masthead receipt checked
+  at 390 (R-5). Closes the audit's findings 12 and 15.

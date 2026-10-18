@@ -681,8 +681,10 @@ addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them
   header, runs the whole pipeline.
 - **Map** (`/data/map`) — every model as one picture: transform → warehouse → model → reports. Open a
   model to see its measures and the reports that use them.
-- **History** (under **Review**) — what ran, when, for whom, and whether it reproduced. A report
-  run links to the report, and a refresh names its model. A report's newest
+- **History** (under **Review**) — what ran, when, how long it took, by whom, and whether it
+  reproduced, grouped by day (a card per run on a phone). A report run links to the report by
+  its name, a refresh to its model's Transform stage; a failed run reads red, and a column no
+  row fills (how long, who) is not shown. A report's newest
   build shows the same verdict as the report's own page; every older build reads
   "Not checked". Only a `reproduces` verdict reads green.
 

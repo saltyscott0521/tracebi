@@ -20,6 +20,60 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-17 — Step 2 of the UX plan: the reports home
+
+Step 2 turned the app around the reports: five packages, one commit each on
+`step2-reports-home` ([[ux-plan-2026-10-17]]).
+
+| Package | What shipped |
+|---|---|
+| R-2 | Names, not identifiers: a model's optional `label` (default: the name title-cased), `display_name` on `/api/reports`, `/api/runs` and `/api/desk`; identifiers only in Code and the receipt's query line. |
+| R-3 | One `Verdict` chip (`Shared.jsx`) and one rule deriving it (`verdictOf` in `verdict.js`), used by every list, header, History and Build mode. |
+| R-1 | `/` is the library (folders by model, a row per report: name, two-line description on a phone, verdict, built, schedule); four places in the sidebar; every old address redirects. |
+| R-4 | The report page is the artifact full width under one command bar, with one panel, "About this build" (Receipt, Lineage, History, Files). |
+| R-5 | History rows as sentences (what, verdict, when, how long, who), grouped by day, empty columns not drawn, cards on a phone. |
+
+**Decisions.** *Four places*: Reports (home), Ask, Data, Review; the model is
+a filter (a chip on Reports and History, the path on Data, Ask's own pick),
+not the frame of the app. *Display names*: people read `report.json`'s
+`name` and a model's `label`; `name` stays the identifier commands and
+bindings take. *One verdict*: Reproduces, Needs a look, Does not reproduce,
+Not checked (plus Draft and Never built in the app). No build: Never built;
+the re-check failed: Does not reproduce; files saved after the build, the data
+drifted, the check could not run, or a table was past its sink checks when
+built: Needs a look; numbers from `report.py`, nothing recorded or a newer
+TraceBi: Not checked; otherwise the re-check's Reproduces. Nothing else is
+ever green, and a build row in History is never a check: only the newest
+build of a report carries the list's verdict. *The host tells the frame*: the
+app posts `{type: "tracebi:verdict", state, detail}` to the report's frame,
+only a state `verdictOf` computed and never for Build mode's preview;
+`tracebi.js` puts it on the masthead chip and in the drawer. Opened on its own
+the file still says Not checked, and a draft stays Draft. *About this build*
+replaces Details, Lineage, History and Code: the Receipt tab draws the
+build's own certificate with its own `tracebi.js` in a sandboxed frame.
+
+**What the captures showed.** The library and History read in names at 1440
+and 390, light and dark. At 390 the library's descriptions wrap to two lines,
+and the dashboard, concentration and book show nothing floating over content
+in the app's frame or on `/r/`: DS-6 already moved the receipt into the
+masthead, so finding 15's floating pill is gone. History at 390 is a card
+list; most builds show no duration, because `tracebi report build` records
+no finish time, so Took appears only beside background runs, schedules and
+pipeline runs. The phone header is translucent over a scrolled list.
+
+**Deliberately left** ([[ui-backlog]]): the Data page's Reports-stage
+preview keeps its Preview/Config switch until Step 3 retires it; the
+committed ui-audit baselines still name the old addresses (re-run them);
+about nine lines in the Markdown docs (and their `site/docs` twins) still
+say reports are served "on the model's Overview", for D-3;
+`tracebi migrate model` drops `owners` (a bug, not UI);
+`docs/guides/demo-script.md` still points at "the green badges above the
+report"; `site/sample/portfolio_showcase.html` was built with the runtime
+before Step 1; a report build records no finish time, so History cannot say
+how long it took.
+
+---
+
 ## 2026-10-17 — Step 1 of the UX plan: the report design system v2
 
 The audit ([[ux-audit-2026-10-17]]) found four visual languages in the

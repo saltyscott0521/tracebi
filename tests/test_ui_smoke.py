@@ -380,10 +380,12 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # every older one.
             page.goto(base + "/runs")
             page.get_by_role("heading", name="History", exact=True).wait_for()
-            rows = page.locator("tr", has_text=_REPORT)
+            # A row reads the report's name; its identifier is the row's data-target.
+            rows = page.locator(f'tr[data-target="{_REPORT}"]')
             rows.first.wait_for()
+            assert _TITLE in rows.first.inner_text()
             page.get_by_text("Checking…").wait_for(state="detached")
-            verdicts = [r.locator("td").last.inner_text() for r in rows.all()]
+            verdicts = [r.locator(".runs__verdict").inner_text() for r in rows.all()]
             assert len(verdicts) >= 2, verdicts
             assert verdicts[0] == "Reproduces", verdicts
             assert set(verdicts[1:]) == {"Not checked"}, verdicts
@@ -466,7 +468,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.goto(base + "/runs")
             pipeline_row = page.locator("tr", has_text="Pipeline run").first
             pipeline_row.wait_for()
-            assert "portfolio_model" in pipeline_row.inner_text()
+            expect(pipeline_row).to_contain_text("Direct Lending Portfolio")   # the model, by its label
             expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")
             fail_on_browser_errors()
 
