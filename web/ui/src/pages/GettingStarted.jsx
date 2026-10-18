@@ -77,7 +77,9 @@ const PLACES = [
     its numbers still reproduce). A chip per model narrows the list. Open a report to read it as
     delivered; About this build holds its receipt, lineage, history and files.</> },
   { to: '/ask', name: 'Ask', text: <>
-    Put a question to one model and see the query behind the answer.</> },
+    Put a question to one model as a sentence of its own measures and categories; the answer is
+    a live query, with each measure&rsquo;s definition and the query behind it. Keep this turns it
+    into a draft report; Advanced is the query builder.</> },
   { to: '/data', name: 'Data', text: <>
     How the numbers are made. The models, one row each, or all of them as one picture (Map).
     A model's page leads with its line, transform → model → reports, then tabs: Model,

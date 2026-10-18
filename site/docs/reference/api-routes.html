@@ -131,7 +131,9 @@ silence gets a reason.</p>
 wrong. <code>email_configured.detail</code> is the SMTP variable names and whether each
 is set. It never includes a URL, host, user, or password.
 <code>schedules_in_server.detail</code> is <code>{"on", "count"}</code>. <code>auth.detail</code> is the
-posture line.</p>
+posture line. Beside the checks, <code>build_mode</code> says the app runs in dev mode and
+<code>gateway</code> that it serves the agent gateway at <code>/mcp</code>; Ask points at the agent
+when either is true.</p>
 <h2 id="models">Models</h2>
 <table>
 <thead>
@@ -169,6 +171,11 @@ posture line.</p>
 </tr>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/models/{name}/dimensions/{dim.attr}/values</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/models/{name}/source</code></td>
 <td>viewer</td>
 </tr>
@@ -179,6 +186,11 @@ shows; see <a href="../reference/model-json.html">Model files (YAML or JSON)</a>
 <p><code>/source</code> returns the model's file, read-only (the <strong>Code</strong> tab). A model registered in
 Python code has no file and says so. <code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
 graph. It computes but persists nothing, which is why <code>viewer</code> may call it.</p>
+<p><code>/dimensions/{dim.attr}/values</code> (<code>dim_issuer.sector</code>; <code>?limit=</code>, default 200,
+at most 1,000) lists one dimension attribute's distinct values, sorted, from the
+dimension's own table: <code>{"values", "total", "truncated"}</code>. It is what Ask offers
+to filter on. An unknown attribute is 404; one derived when a query runs (a time
+grain, a bin) has no stored values and is 422.</p>
 <p><code>/query</code> returns each row twice: <code>data</code> holds the raw values (what a CSV download
 uses) and <code>display</code> holds the same cells as text, written the way a built report's
 table writes them: a numeric column takes the model's declared format on that

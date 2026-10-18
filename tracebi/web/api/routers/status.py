@@ -110,4 +110,7 @@ def status(request: Request) -> dict:
             "update": update,
             # Build mode: point at a figure and the agent can see what you mean
             # (dev-state only; see /api/reports/{name}/workbench/pointing).
-            "build_mode": os.environ.get("TRACEBI_DEV_MODE") == "1"}
+            "build_mode": os.environ.get("TRACEBI_DEV_MODE") == "1",
+            # An agent can reach this project over MCP at /mcp (Ask says so).
+            "gateway": any(getattr(r, "path", None) == "/mcp"
+                           for r in request.app.router.routes)}

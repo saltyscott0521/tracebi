@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 
 // Where the API lives. Defaults to a same-origin /api, which is what the
 // bundled dev server and the container image serve. Set VITE_API_BASE at
@@ -211,20 +211,12 @@ export const useConnectorWarehouse = (name) =>
 export const useReportLineage =() =>
   useMutation({ mutationFn: (name) => get(`/reports/${reportPath(name)}/lineage`) })
 
-// Ask is a client of the selection endpoint: a cut, not a private query path.
-export const useReportSelection = () =>
-  useMutation({
-    mutationFn: ({ name, filters, question }) =>
-      postJson(`/reports/${reportPath(name)}/selection`,
-        question ? { question } : { filters: filters || {} }),
-  })
-
 // A cut for a report page that asked the app to run it (see frameBridge.js).
 export const postReportSelection = (name, filters) =>
   postJson(`/reports/${reportPath(name)}/selection`, { filters: filters || {} })
 
 // Build mode (local only): what the builder is pointing at, so the agent can
-// resolve "this". `pointing: null` stops pointing. Not the Ask cut above.
+// resolve "this". `pointing: null` stops pointing.
 // One scope runs these one at a time, in the order sent: a click and then
 // leaving Build mode must reach the server in that order, or the clear can
 // land first and the agent keeps acting on a figure nobody is looking at.
@@ -296,12 +288,6 @@ export const useProjectFeed = (enabled) =>
     placeholderData: (previous) => previous,
   })
 
-export const useKeepSelection = () =>
-  useMutation({
-    mutationFn: ({ name, filters }) =>
-      postJson(`/reports/${reportPath(name)}/selection/keep`, { filters }),
-  })
-
 export const usePipelines = () =>
   useQuery({ queryKey: ['pipelines'], queryFn: () => get('/pipelines'), refetchInterval: 10000 })
 
@@ -369,8 +355,28 @@ export const useLayerHistory = (pipeline, layer) =>
     enabled: !!(pipeline && layer),
   })
 
-export const useRunQuery = () =>
-  useMutation({ mutationFn: ({ model, body }) => postJson(`/models/${encodeURIComponent(model)}/query`, body) })
+// Ask's answer: the question's query, run against the model. *key* is the
+// question as the URL holds it, so going back to an earlier one is instant.
+export const useAskAnswer = (model, key, body) =>
+  useQuery({
+    queryKey: ['ask', model, key],
+    queryFn: () => postJson(`/models/${encodeURIComponent(model)}/query`, body),
+    enabled: !!(model && key && body),
+    retry: false,
+    staleTime: 60 * 1000,
+  })
+
+// The values of one dimension attribute ("dim_issuer.sector"), for Ask's filters.
+export const useDimensionValues = (model, refs, enabled) =>
+  useQueries({
+    queries: refs.map(ref => ({
+      queryKey: ['dim-values', model, ref],
+      queryFn: () => get(`/models/${encodeURIComponent(model)}/dimensions/${encodeURIComponent(ref)}/values`),
+      enabled: !!model && enabled,
+      staleTime: 5 * 60 * 1000,
+      retry: false,
+    })),
+  })
 
 // Shared run store. kind and target are the API's own filters (exact match).
 export const useRuns = (kind, target) =>
@@ -531,6 +537,25 @@ export const useWriteDraftFile = (d) => {
       qc.setQueryData(['draft-version', d.owner, d.kind, d.path], res.version)
       qc.invalidateQueries({ queryKey: ['drafts'] })
     },
+  })
+}
+
+// Keep this (Ask): a new report draft at an unused path under the model, then
+// its two files, report.json first. *files(path)* writes them for the path
+// chosen. A refusal (a folder, the role) is the server's own sentence.
+export const useKeepAnswer = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ pathFor, files }) => {
+      const [reports, mine] = await Promise.all([get('/reports'), get('/drafts')])
+      const path = pathFor([...reports.map(r => r.name), ...mine.drafts.map(d => d.path)])
+      const d = await postJson('/drafts', { kind: 'reports', path, from_published: false })
+      for (const [file, content] of Object.entries(files)) {
+        await putJson(`${draftUrl(d)}/files/${encodeURIComponent(file)}`, { content })
+      }
+      return d
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['drafts'] }),
   })
 }
 

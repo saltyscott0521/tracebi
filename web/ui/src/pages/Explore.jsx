@@ -5,10 +5,8 @@ import {
   Legend, ResponsiveContainer,
 } from 'recharts'
 
-import { useModel, useTablePreview, useRunQuery } from '../api'
+import { useModel, useTablePreview } from '../api'
 import { LineageGraph } from '../components/Lineage'
-import { CodeFiles } from '../components/CodeView'
-import { pythonOf, bindingOf } from '../queryCode'
 import {
   Card, CardTitle, Badge, Spinner,
   Empty, Btn, ErrorDetail, SkeletonCard,
@@ -63,6 +61,10 @@ const selectStyle = {
   borderRadius: 5, fontSize: 11, padding: '3px 6px', cursor: 'pointer',
 }
 
+// A filter typed as a number matches a numeric column: "12" is 12, "1." stays
+// text until it is a number.
+const typed = v => (/^-?\d+(\.\d+)?$/.test(v.trim()) ? Number(v) : v)
+
 function FilterRows({ columns, filters, setFilters }) {
   const entries = Object.entries(filters)
   const addFilter = () => {
@@ -84,8 +86,8 @@ function FilterRows({ columns, filters, setFilters }) {
           </select>
           <span style={{ color: 'var(--muted)', fontSize: 12 }}>=</span>
           <input
-            value={val}
-            onChange={e => setFilters({ ...filters, [col]: e.target.value })}
+            value={Array.isArray(val) ? val.join(', ') : String(val)}
+            onChange={e => setFilters({ ...filters, [col]: typed(e.target.value) })}
             placeholder="value"
             style={{
               flex: 1, minWidth: 60, background: 'var(--surface)', color: 'var(--text)',
@@ -247,36 +249,40 @@ function downloadCsv(result) {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-/** Explore one model's star schema: the page body under its header. */
-export default function Explore({ model: activeModel }) {
+/**
+ * Ask's Advanced: the query builder over one model's star schema. It edits
+ * the same question as Ask's sentence (*query*, changed through *onChange*),
+ * and Run asks it (*onRun*); *ran*, *result*, *error* and *isPending* are the
+ * question last asked and its answer.
+ */
+export default function Explore({ model: activeModel, query, onChange, onRun, ran, result, error, isPending }) {
   const { data: model, isLoading: loadingModel } = useModel(activeModel)
 
   const facts = model?.facts || []
   const dims = model?.dimensions || []
-  const [factName, setFactName] = useState(null)
-  const fact = facts.find(f => f.name === factName) || facts[0]
+  const fact = facts.find(f => f.name === query.fact) || facts[0]
 
   // A query names the model's measures (a list) or aggregates raw columns
   // (a {col: agg} map): the API takes one form per request, so a run uses one.
-  const [named, setNamed] = useState([])              // ["fair_value", ...]
-  const [measures, setMeasures] = useState({})        // {col: agg} — "Other columns"
-  const [dimAttrs, setDimAttrs] = useState([])        // ["dim.attr"]
-  const [filters, setFilters] = useState({})          // {col: "value"}
+  const named = Array.isArray(query.measures) ? query.measures : []          // ["fair_value", ...]
+  const measures = Array.isArray(query.measures) ? {} : query.measures || {} // {col: agg} — "Other columns"
+  const dimAttrs = query.dimensions || []                                    // ["dim.attr"]
+  const filters = query.filters || {}                                        // {col: value}
+  const set = part => onChange({ ...query, fact: fact?.name, ...part })
+  const setFilters = next => set({ filters: next })
+  const setMeasures = next => set({ measures: Object.keys(next).length ? next : named })
   const [chartType, setChartType] = useState('bar')   // bar | line | area
 
   // Fact table columns (for filters) come from a 1-row preview.
   const { data: factPreview } = useTablePreview(activeModel, fact?.table)
   const factColumns = factPreview?.columns || []
 
-  const { mutate: run, data: result, isPending, error, reset } = useRunQuery()
-  const [ran, setRan] = useState(null)             // the request the result below answers
-
   // The model's declared measures this fact can run (the model says which), and
   // the dimensions it joins (its foreign_keys): a query can group by only those.
   const offered = (model?.measures || []).filter(m => fact?.runnable_measures?.includes(m.name))
   const joined = dims.filter(d => d.name in (fact?.foreign_keys || {}))
   const toggleNamed = name =>
-    setNamed(named.includes(name) ? named.filter(n => n !== name) : [...named, name])
+    set({ measures: named.includes(name) ? named.filter(n => n !== name) : [...named, name] })
   const toggleMeasure = col => {
     const next = { ...measures }
     if (col in next) delete next[col]
@@ -284,37 +290,14 @@ export default function Explore({ model: activeModel }) {
     setMeasures(next)
   }
   const toggleDimAttr = ref =>
-    setDimAttrs(dimAttrs.includes(ref) ? dimAttrs.filter(d => d !== ref) : [...dimAttrs, ref])
+    set({ dimensions: dimAttrs.includes(ref) ? dimAttrs.filter(d => d !== ref) : [...dimAttrs, ref] })
 
-  const selectFact = name => {
-    setFactName(name)
-    setNamed([])
-    setMeasures({})
-    setDimAttrs([])
-    setFilters({})
-    reset()
-  }
+  const selectFact = name =>
+    onChange({ fact: name, measures: [], dimensions: [], filters: {} })
 
   const adHoc = Object.keys(measures).length > 0
   const canRun = fact && (named.length > 0 || adHoc)
-
-  const handleRun = () => {
-    // Coerce numeric-looking filter values so equality matches typed columns.
-    const typedFilters = {}
-    for (const [k, v] of Object.entries(filters)) {
-      if (v === '') continue
-      const n = Number(v)
-      typedFilters[k] = Number.isFinite(n) && v.trim() !== '' ? n : v
-    }
-    const body = {
-      fact: fact.name,
-      measures: named.length ? named : measures,
-      dimensions: dimAttrs,
-      filters: Object.keys(typedFilters).length ? typedFilters : null,
-    }
-    setRan(body)
-    run({ model: activeModel, body })
-  }
+  const handleRun = onRun
 
   // The columns the request asked for (a ratio's inputs come back too, as table columns only).
   const asked = Array.isArray(ran?.measures) ? ran.measures : Object.keys(ran?.measures || {})
@@ -325,7 +308,7 @@ export default function Explore({ model: activeModel }) {
   const chartCols = Array.isArray(ran?.measures)
     ? measureCols.filter(c => unitOf(c) === unitOf(measureCols[0]))
     : measureCols
-  const chartDim = result && dimAttrs.length === 1 ? dimAttrs[0] : null
+  const chartDim = result && ran?.dimensions?.length === 1 ? ran.dimensions[0] : null
 
   if (loadingModel) return <SkeletonCard />
 
@@ -502,18 +485,6 @@ export default function Explore({ model: activeModel }) {
                     </table>
                   </div>
                 </Card>
-
-                {ran && (
-                  <Card>
-                    <CardTitle>The query as code</CardTitle>
-                    <CodeFiles
-                      hint="The same query, written two ways: run it from Python, or paste it into a report's data block."
-                      files={[
-                        { path: 'Python · DataModel.query()', label: 'Python', content: pythonOf(activeModel, ran) },
-                        { path: 'report.json · a data binding', label: 'report.json', content: bindingOf(activeModel, ran) },
-                      ]} />
-                  </Card>
-                )}
 
                 <Card>
                   <CardTitle>How this number was made</CardTitle>

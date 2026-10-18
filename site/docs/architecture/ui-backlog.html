@@ -165,17 +165,39 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
     Measures, …) and its <strong>Edit as a draft</strong> button floats alone above them
     (D-1).</li>
 <li><strong>The Transform flow zooms in two steps</strong> only (D-1).</li>
-<li><strong>The report page's Ask box is off</strong> (<code>SHOW_ASK = false</code> in
-    <code>Reports.jsx</code>): <code>AskCut</code> is reachable in code but never shown. Step 4
-    decides whether it returns or goes.</li>
+<li><em>Closed by Step 4 (see Done): <code>AskCut</code> deleted.</em></li>
 <li><strong><code>notebook-guide.md</code>'s <code>@register.report</code> section predates the one
     renderer</strong>: a factory with no package is listed but refused (422). Point
     it at a package.</li>
 <li><strong><code>scripts/ui_audit.py</code>'s <code>scope-mismatch</code> detail still says "the model
     switcher"</strong>; it means the model chip.</li>
 </ol>
+<p>Left by Step 4 (Ask):</p>
+<ol start="28">
+<li><strong>An Ask answer carries no fingerprint.</strong> <code>POST /api/models/{name}/query</code>
+    returns lineage, not the stamp <code>query_model</code> gives an agent, so the
+    answer cannot quote one beside its number.</li>
+<li><strong>Ask's filters are equality on dimension values.</strong> Ranges, a measure
+    threshold (<code>having</code>) and fact columns are Advanced only; the sentence
+    shows them in words but offers no token for them.</li>
+<li><strong>A measure's label is its humanised name</strong> ("Fv share"): models have no
+    measure <code>label</code>, so Ask reads <code>fv_share</code> as "Fv share" beside its
+    description.</li>
+<li><strong>Keep this cannot pick a folder</strong>: the draft starts at
+    <code>&lt;model&gt;/&lt;slug&gt;</code>; the folder is chosen when it is published.</li>
+</ol>
 <h2 id="done">Done</h2>
 <ul>
+<li>
+<p><strong>Ask</strong> (Step 4): <code>/ask</code> is one sentence of the model's tokens ("Show
+  [measure] by [dimension] for [filter], [order], top [n]"), typed or picked;
+  the answer is the model's query drawn as a chart, table or number with each
+  measure's definition in words, the query line and a Not checked chip; a
+  Recent strip and <code>?q=</code> links; Keep this (analyst+) opens a one-figure draft
+  holding the query; Advanced is the query builder on the same question.
+  Closed item 25 (<code>AskCut</code> deleted, not reused: it cut a report's selection,
+  where Ask asks a model).</p>
+</li>
 <li>
 <p><strong>The old frame retired</strong> (D-3): dead components, helpers and CSS out
   (<code>StatTile</code>, <code>reviewNotes</code>, <code>modelOfPipeline</code>, <code>reportOpenPath</code>, the

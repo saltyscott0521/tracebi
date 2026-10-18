@@ -25,7 +25,9 @@ silence gets a reason.
 wrong. `email_configured.detail` is the SMTP variable names and whether each
 is set. It never includes a URL, host, user, or password.
 `schedules_in_server.detail` is `{"on", "count"}`. `auth.detail` is the
-posture line.
+posture line. Beside the checks, `build_mode` says the app runs in dev mode and
+`gateway` that it serves the agent gateway at `/mcp`; Ask points at the agent
+when either is true.
 
 ## Models
 
@@ -36,6 +38,7 @@ posture line.
 | `GET` | `/api/models/{name}/tables/{table}/preview` | viewer |
 | `GET` | `/api/models/{name}/tables/{table}/export.csv` | viewer |
 | `POST` | `/api/models/{name}/query` | viewer |
+| `GET` | `/api/models/{name}/dimensions/{dim.attr}/values` | viewer |
 | `GET` | `/api/models/{name}/source` | viewer |
 
 `GET /api/models` and `GET /api/models/{name}` carry each model's `label` (what a list
@@ -44,6 +47,12 @@ shows; see [[model-json]]) beside `name`, the identifier every other route takes
 `/source` returns the model's file, read-only (the **Code** tab). A model registered in
 Python code has no file and says so. `/query` takes a [[queries|QuerySpec]] and returns the result plus a lineage
 graph. It computes but persists nothing, which is why `viewer` may call it.
+
+`/dimensions/{dim.attr}/values` (`dim_issuer.sector`; `?limit=`, default 200,
+at most 1,000) lists one dimension attribute's distinct values, sorted, from the
+dimension's own table: `{"values", "total", "truncated"}`. It is what Ask offers
+to filter on. An unknown attribute is 404; one derived when a query runs (a time
+grain, a bin) has no stored values and is 422.
 
 `/query` returns each row twice: `data` holds the raw values (what a CSV download
 uses) and `display` holds the same cells as text, written the way a built report's

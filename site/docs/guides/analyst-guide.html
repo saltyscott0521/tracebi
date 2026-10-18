@@ -260,8 +260,14 @@ orders.help()           # cheat sheet of every DataSet verb
 # edit it, then import with get_model(&quot;sales_model&quot;)
 </code></pre>
 <p>Or browse the web UI: under <strong>Data</strong>, a model's <strong>Model</strong> tab shows every table with previews
-and the ER diagram; <strong>Ask</strong> lets you prototype aggregations visually before
-committing them to code.</p>
+and the ER diagram. <strong>Ask</strong> puts a question to a model as a sentence of its own
+tokens ("Show <em>fair value</em> by <em>sector</em> for <em>Software</em>, <em>largest first</em>, <em>top 8</em>"):
+typing finds the measure, dimension or value, and the answer is the model's query
+run on it, a chart, table or number with each measure's definition in words and
+the query behind it. It is marked Not checked: a live query has no receipt. <strong>Keep
+this</strong> (analyst) starts a draft report of that one figure, holding the query, not
+the numbers. <strong>Advanced</strong> under it is the query builder on the same question, and
+its "The query as code" gives the Python and the <code>report.json</code> binding to paste.</p>
 <h3 id="load-and-transform">Load and transform</h3>
 <p>Every verb returns a <strong>new immutable DataSet</strong> and appends a step to its
 lineage chain. Nothing mutates in place.</p>

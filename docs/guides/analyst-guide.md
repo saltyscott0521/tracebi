@@ -222,8 +222,14 @@ tracebi new-model "Sales Model"   # scaffolds models/sales_model.py
 ```
 
 Or browse the web UI: under **Data**, a model's **Model** tab shows every table with previews
-and the ER diagram; **Ask** lets you prototype aggregations visually before
-committing them to code.
+and the ER diagram. **Ask** puts a question to a model as a sentence of its own
+tokens ("Show *fair value* by *sector* for *Software*, *largest first*, *top 8*"):
+typing finds the measure, dimension or value, and the answer is the model's query
+run on it, a chart, table or number with each measure's definition in words and
+the query behind it. It is marked Not checked: a live query has no receipt. **Keep
+this** (analyst) starts a draft report of that one figure, holding the query, not
+the numbers. **Advanced** under it is the query builder on the same question, and
+its "The query as code" gives the Python and the `report.json` binding to paste.
 
 ### Load and transform
 
