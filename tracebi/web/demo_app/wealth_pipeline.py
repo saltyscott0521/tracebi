@@ -43,7 +43,7 @@ _branches_manip = (
     .drop_nulls().deduplicate(subset=["branch_id"]))
 
 # What the Final layer reads: the cleaned tables, joined the star-schema way.
-wealth_pipeline_model = DataModel("wealth_pipeline_model")
+wealth_pipeline_model = DataModel("wealth_pipeline_model", label="Wealth Holdings (pipeline)")
 wealth_pipeline_model.add_connector(db)
 wealth_pipeline_model.add_table("holdings_silver", connector="demo_db", source="holdings_silver")
 wealth_pipeline_model.add_table("branches_silver", connector="demo_db", source="branches_silver")

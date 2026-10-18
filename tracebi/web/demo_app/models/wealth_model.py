@@ -168,7 +168,7 @@ connector = MemoryConnector("banking", tables={
 
 # ── DataModel ──────────────────────────────────────────────────────────────────
 
-model = DataModel("wealth_model")
+model = DataModel("wealth_model", label="Wealth Management")
 model.add_connector(connector)
 
 model.add_table("clients",    connector="banking", source="clients")

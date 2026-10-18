@@ -1,16 +1,14 @@
 import { createContext, useContext, useEffect, useMemo } from 'react'
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
 import { useModels, useReports } from '../api'
-import {
-  PAGES, page, pagePath, whereAmI, rememberModel, lastModel, reportModels, openedReport,
-} from '../nav'
-import { PageTitle, PageSub, SkeletonCard, Empty, useNarrow } from './Shared'
+import { PAGES, page, whereAmI, rememberModel, reportModels, openedReport, movedTo } from '../nav'
+import { PageTitle, PageSub, SkeletonCard, Empty } from './Shared'
 
 // Below this the Reports stage has no preview pane, and a row opens the report.
 export const PREVIEW_QUERY = '(max-width: 1100px)'
 
-/** The page, model and (on the Overview) stage the URL names. */
+/** The place, and on Data the model and stage, the URL names. */
 export function useScope() {
   const { pathname } = useLocation()
   return whereAmI(pathname) || { model: '', page: null, stage: null }
@@ -23,38 +21,10 @@ export function useScope() {
 export const NavMenuContext = createContext(null)
 export const useNavMenu = () => useContext(NavMenuContext)
 
-/** The report this address opens as a page of its own ({name, model}), or null. */
+/** The report this address opens as a page of its own ({name}), or null. */
 export function useOpenReport() {
-  const { pathname, search } = useLocation()
-  return openedReport(pathname, search, useNarrow(PREVIEW_QUERY))
-}
-
-/**
- * Top of the sidebar: which model every page below is about. Hidden with one
- * model (there is nothing to switch), and with none.
- */
-export function ModelSwitcher({ model, onNavigate }) {
-  const { data } = useModels()
-  const { page: current, stage } = useScope()
-  const navigate = useNavigate()
-  const names = (data || []).map(m => m.name).sort()
-  if (names.length < 2) return null
-
-  // Switching keeps you on the same page, and the same stage of the Overview.
-  const go = next => {
-    rememberModel(next)
-    navigate(pagePath(stage || current || 'overview', next))
-    onNavigate?.()
-  }
-  return (
-    <label className="model-switcher">
-      <span className="model-switcher__label">Model</span>
-      <select value={model} onChange={e => go(e.target.value)} aria-label="Model">
-        <option value="">All models</option>
-        {names.map(n => <option key={n} value={n}>{n}</option>)}
-      </select>
-    </label>
-  )
+  const { pathname } = useLocation()
+  return openedReport(pathname)
 }
 
 /** report name → the models it reads, from the (cached) report list. */
@@ -66,12 +36,22 @@ export function useReportModels() {
   }, [data])
 }
 
+/** model name → what people read it as (its `label`), from the model list. */
+export function useModelLabel() {
+  const { data } = useModels()
+  return useMemo(() => {
+    const index = new Map((data || []).map(m => [m.name, m.label || m.name]))
+    return name => index.get(name) || name
+  }, [data])
+}
+
 /** Every page's heading: the model it is about, the page, what it is for. */
 export function PageHeader({ pageKey, model, sub, children }) {
   const p = page(pageKey)
+  const labelOf = useModelLabel()
   return (
     <header className="page-header">
-      <div className="page-header__scope">{model || 'All models'}</div>
+      {model !== undefined && <div className="page-header__scope">{model ? labelOf(model) : 'All models'}</div>}
       <PageTitle>{p.label}</PageTitle>
       <PageSub>{sub ?? p.sub}</PageSub>
       {children}
@@ -80,20 +60,18 @@ export function PageHeader({ pageKey, model, sub, children }) {
 }
 
 /**
- * An all-models page. With exactly one model there is no "all", so it opens
- * that model's page instead, keeping the query (a deep link to a report).
+ * A list of models. With exactly one model there is no list, so it opens
+ * *to(that model)* instead, keeping the query.
  */
-export function AllModels({ pageKey, children }) {
+export function AllModels({ to, children }) {
   const { data, isLoading } = useModels()
   const { search } = useLocation()
   if (isLoading) return <SkeletonCard />
-  if ((data || []).length === 1) {
-    return <Navigate to={pagePath(pageKey, data[0].name) + search} replace />
-  }
+  if ((data || []).length === 1) return <Navigate to={to(data[0].name) + search} replace />
   return children
 }
 
-/** A /m/<model>/… page: the model must exist; it becomes the remembered one. */
+/** A /data/<model>/… page: the model must exist; it becomes the remembered one. */
 export function OneModel({ children }) {
   const { model } = useParams()
   const { data, isLoading } = useModels()
@@ -105,46 +83,18 @@ export function OneModel({ children }) {
       <>
         <PageTitle>No model named “{model}”</PageTitle>
         <PageSub>It may have been renamed or removed.</PageSub>
-        <Link to="/models">See all models →</Link>
+        <Link to="/data">See all models →</Link>
       </>
     )
   }
   return children(model)
 }
 
-/** `/`: the Overview of the model you were last in, or of the only model; else the models. */
-export function Home() {
-  const { data, isLoading } = useModels()
-  if (isLoading) return <SkeletonCard />
-  const names = (data || []).map(m => m.name)
-  const last = lastModel()
-  if (names.includes(last)) return <Navigate to={pagePath('overview', last)} replace />
-  if (names.length === 1) return <Navigate to={pagePath('overview', names[0])} replace />
-  return <Navigate to="/models" replace />
-}
-
-/** A /m/<model>/<page> address that moved: it opens *stage* of the same model. */
-export function ToStage({ stage }) {
-  const { model } = useParams()
-  return <Navigate to={pagePath(stage, model)} replace />
-}
-
-/** Old URLs keep working: they land on the page that replaced them. */
-export function Legacy() {
+/** An address from before the four places: it lands where that page lives now. */
+export function Moved() {
   const { pathname, search } = useLocation()
-  const { name } = useParams()
-  const params = new URLSearchParams(search)
-  const tab = params.get('tab')
-  let to = '/'
-  if (pathname.startsWith('/models/')) {
-    const key = { refresh: 'transform', explore: 'explore', reports: 'reports' }[tab] || 'overview'
-    to = pagePath(key, name)
-  } else if (pathname === '/connectors') {
-    to = '/sources'
-  } else if (pathname === '/pipelines') {
-    to = pagePath('transform', params.get('model') || '')
-  }
-  return <Navigate to={to} replace />
+  const to = movedTo(pathname, search)
+  return to ? <Navigate to={to} replace /> : <NotFound />
 }
 
 export function NotFound() {
@@ -152,8 +102,8 @@ export function NotFound() {
     <>
       <PageTitle>Page not found</PageTitle>
       <PageSub>There is nothing at this address. It may be an old link.</PageSub>
-      <Empty message="Start from the models, or search with ⌘K."
-             action={<Link to="/" className="btn">Go to the start</Link>} />
+      <Empty message="Start from the reports, or search with ⌘K."
+             action={<Link to="/" className="btn">Go to the reports</Link>} />
     </>
   )
 }

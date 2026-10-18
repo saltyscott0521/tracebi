@@ -164,7 +164,7 @@ def _register_spec_file(full_path: str, stem: str) -> dict:
         "extras": [n for n in (getattr(spec, "theme", ""), getattr(spec, "script", "")) if n],
     }
 
-    registry.add_report(stem, factory, spec.description or "")
+    registry.add_report(stem, factory, spec.description or "", display_name=spec.name)
     return {"status": "registered", "module": stem}
 
 
@@ -220,7 +220,9 @@ def _register_template_package(dir_path: str, stem: str) -> dict:
     factory._tracebi_package_dir = dir_path
     factory._tracebi_source = {"form": "package", "path": dir_path, "extras": []}
 
-    registry.add_report(stem, factory, pkg.description or "")
+    # pkg.name falls back to the identifier when report.json has no "name".
+    registry.add_report(stem, factory, pkg.description or "",
+                        display_name="" if pkg.name == pkg.package_id else pkg.name)
     return {"status": "registered", "module": stem}
 
 

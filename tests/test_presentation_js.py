@@ -752,6 +752,64 @@ process.stdout.write(JSON.stringify({
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+class TestHostVerdict:
+    """The one way a file's chip reads green: the app that frames it says what
+    its checker found ("tracebi:verdict" over the host bridge). Without that
+    message the chip is what the file can say of itself, and a draft stays a
+    draft whatever it is told."""
+
+    _SCRIPT = """
+var listeners = [];
+var host = { postMessage: function () {} };
+globalThis.parent = host;
+globalThis.addEventListener = function (type, fn) { if (type === 'message') listeners.push(fn); };
+el('meta', { name: 'tracebi-stage', content: %s });
+var head = el('header', { 'class': 'tb-masthead' });
+el('h1', {}, head);
+if (%s) {
+  var rc = el('script', { id: 'tracebi-receipt', type: 'application/json' });
+  rc.textContent = JSON.stringify({ rendered_at: '2026-10-12T18:33:00Z', figures: [] });
+}
+loadRuntime();
+function say(source, msg) {
+  listeners.forEach(function (fn) { fn({ source: source, data: msg }); });
+}
+function chips() {
+  return document.querySelectorAll('.tb-verdict').map(function (c) {
+    return c.getAttribute('data-tb-verdict') + '|' + c.textContent + '|' + c.title;
+  });
+}
+var out = { before: chips() };
+say({}, { tracebiFrame: 1, type: 'tracebi:verdict', state: 'reproduces', detail: 'forged' });
+out.stranger = chips();
+say(host, { tracebiFrame: 1, type: 'tracebi:verdict', state: 'draft' });
+say(host, { tracebiFrame: 1, type: 'tracebi:verdict', state: 'fine' });
+out.unknown = chips();
+say(host, { tracebiFrame: 1, type: 'tracebi:verdict', state: 'reproduces',
+            detail: 'Re-running every query gave the numbers this build carries.' });
+out.told = chips();
+process.stdout.write(JSON.stringify(out));
+"""
+
+    def test_the_host_sets_the_chips_and_nothing_else_does(self):
+        out = _run_dom(self._SCRIPT % ('"final"', "true"))
+        # The masthead chip and the drawer's: Not checked until the app speaks.
+        assert len(out["before"]) == 2
+        assert all(c.startswith("not-checked|Not checked|") for c in out["before"])
+        # A message from any window but the embedding one changes nothing; nor
+        # does a state the file does not know, or "draft".
+        assert out["stranger"] == out["before"]
+        assert out["unknown"] == out["before"]
+        assert out["told"] == [
+            "reproduces|Reproduces|Re-running every query gave the numbers this build carries."] * 2
+
+    def test_a_draft_stays_a_draft(self):
+        out = _run_dom(self._SCRIPT % ('"exploration"', "false"))
+        assert out["before"] == out["told"]
+        assert all(c.startswith("draft|Draft|") for c in out["told"])
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestReceiptDrawer:
     """The drawer renders ONLY what #tracebi-receipt records — display,
     never re-judged, in the locked language."""
@@ -1039,10 +1097,12 @@ El.prototype.querySelector = function (sel) {  // class selectors only
 Object.defineProperty(El.prototype, 'firstChild', {
   get: function () { return this.children[0] || null; }
 });
+El.prototype.setAttribute = function (k, v) { this[k] = String(v); };
 
 var byId = {};
 globalThis.document = {
   readyState: 'complete',
+  querySelector: function () { return null; },   // no stage meta, no receipt: a working page
   querySelectorAll: function () { return []; },
   getElementById: function (id) { return byId[id] || null; },
   createElement: function (t) { return new El(t); },
@@ -1079,6 +1139,7 @@ globalThis.tracebi._badges();  // second pass must not double-badge or re-wrap
 var wrap = table.parentNode;
 process.stdout.write(JSON.stringify({
   kpi_children: kpi.children.map(function (c) { return c.className; }),
+  kpi_chip: kpi.children[0] ? [kpi.children[0]['data-tb-verdict'], kpi.children[0].textContent] : null,
   kpi_not_wrapped: kpi.parentNode === page,
   wrap_class: wrap ? wrap.className : null,
   wrap_in_section: wrap !== null && wrap.parentNode === section,
@@ -1098,7 +1159,10 @@ process.stdout.write(JSON.stringify({
         out = json.loads(result.stdout)
         # The KPI is its own anchor (position:relative in css): badged in
         # place, never wrapped — and exactly once across two passes.
-        assert out["kpi_children"] == ["tb-badge tb-badge--verified"]
+        assert out["kpi_children"] == ["tb-badge tb-verdict"]
+        # A query-backed figure's badge is the verdict chip with the file's own
+        # state: a working page is a Draft, never green by itself.
+        assert out["kpi_chip"] == ["draft", "Draft"]
         assert out["kpi_not_wrapped"] is True
         # The table is wrapped in the positioned anchor div, which holds
         # the badge and then the table — badge pinned to the table corner.

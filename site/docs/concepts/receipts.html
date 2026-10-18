@@ -120,6 +120,26 @@ to bottom as a certificate:</p>
 </ul>
 <p>The drawer displays what the embedded receipt block records; it re-runs
 nothing. The manifest beside the file is still the receipt of record.</p>
+<h2 id="in-the-web-app">In the web app</h2>
+<p>The app shows a report as delivered, in a sandboxed frame, and knows more
+than the file: its desk re-checks the build. So it tells the frame its
+verdict, one message over the frame bridge, <code>{type: "tracebi:verdict",
+state, detail}</code>, and the masthead's chip and the drawer's say the app's
+state in the app's words (<strong>Reproduces</strong>, <strong>Needs a look</strong>, <strong>Does not
+reproduce</strong>, <strong>Not checked</strong>). This is the one place a file's chip may read
+green, and only because the host told it:</p>
+<ul>
+<li>the app sends only a state it computed from its own re-check
+  (<code>verdictOf</code>), and nothing while it has none;</li>
+<li>opened on its own (the file, the <code>/r/</code> share link, an email) nothing tells
+  it, and the chip says what the file can say of itself: <strong>Not checked</strong>;</li>
+<li>a working preview stays <strong>Draft</strong> whatever it is told;</li>
+<li>any page that frames a file could send the message, so a green chip in a
+  frame is the framing app's claim. <code>tracebi verify</code> is the check.</li>
+</ul>
+<p>The report page's <strong>About this build</strong> panel opens on <strong>Receipt</strong>: the same
+certificate, drawn by the build's own <code>tracebi.js</code> (<code>renderReceipt</code>) in a
+sandboxed frame, its chip in the app's verdict.</p>
 <h2 id="what-you-can-check">What you can check</h2>
 <pre><code class="language-bash">tracebi verify output/my_report.html.manifest.json
 </code></pre>

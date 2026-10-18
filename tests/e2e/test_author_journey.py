@@ -441,8 +441,7 @@ def test_dev_opens_the_web_app_on_the_report_in_build_mode(scaffolded, monkeypat
     assert os.environ["TRACEBI_DEV_MODE"] == "1", "Build mode needs the server in dev mode"
     assert seen["app"] == "tracebi.web.api.main:app" and seen["port"] == 8765
     assert seen["host"] == "127.0.0.1", "dev-state endpoints stay on loopback"
-    url = "http://127.0.0.1:8765/reports?" + urllib.parse.urlencode(
-        {"r": "sample_model/sample_dashboard", "build": "1"})
+    url = "http://127.0.0.1:8765/reports/sample_model/sample_dashboard?build=1"
     assert url in out
     seen["open"]()
     assert seen["browser"] == url
@@ -464,7 +463,7 @@ def no_server(monkeypatch):
 
 
 def test_dev_with_no_name_opens_the_app_where_the_agents_exhibits_land(scaffolded, no_server):
-    """No report yet: the app, in dev mode, on Reports, where the project feed is."""
+    """No report yet: the app, in dev mode, on Data, where the project feed is."""
     import os
 
     code, out = run_cli("dev", "--no-browser", "--port", "8766")
@@ -472,7 +471,7 @@ def test_dev_with_no_name_opens_the_app_where_the_agents_exhibits_land(scaffolde
     assert os.environ["TRACEBI_DEV_MODE"] == "1"
     assert no_server["app"] == "tracebi.web.api.main:app" and no_server["port"] == 8766
     assert no_server["host"] == "127.0.0.1" and "classic" not in no_server
-    assert "http://127.0.0.1:8766/reports\n" in out
+    assert "http://127.0.0.1:8766/data\n" in out
     assert "tracebi.workbench.show" in out
 
 

@@ -148,10 +148,10 @@ transforms to a script.</p>
 <h2 id="the-discovery-workbench">The discovery workbench</h2>
 <p>While you explore, push what you find into a live, shared surface. Open the
 app with no report named, in a terminal:</p>
-<pre><code class="language-bash">tracebi dev            # no report named → the app's Reports list, with the project feed
+<pre><code class="language-bash">tracebi dev            # no report named → the app's Data page, with the project feed
 </code></pre>
 <p>Then, from any notebook cell, <code>show()</code> frames, charts, and notes into its feed
-(the app's Reports, under <em>From your agent</em>):</p>
+(the app's Data page, under <em>From your agent</em>):</p>
 <pre><code class="language-python">import tracebi.workbench as workbench
 
 workbench.show(fact_holdings_df, note=&quot;after dedupe — 3 rows dropped&quot;)

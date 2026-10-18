@@ -144,6 +144,8 @@ class Registry:
             model.disconnect()
 
     def list_models(self) -> list[dict]:
+        from tracebi.model.data_model import default_label
+
         with self._lock:
             models = list(self._models.values())
         out = []
@@ -151,6 +153,8 @@ class Registry:
             info = m.info()
             out.append({
                 "name": info["name"],
+                # What a list shows; ``name`` stays the identifier to address it by.
+                "label": info.get("label") or default_label(info["name"]),
                 "connectors": info["connectors"],
                 "tables": [t["name"] for t in info["tables"]],
                 "relationships": [r["name"] for r in info["relationships"]],
@@ -177,11 +181,17 @@ class Registry:
         name: str,
         factory: Callable,
         description: str = "",
+        display_name: str = "",
     ) -> "Registry":
-        """Register a report factory (a zero-arg callable that returns a Report)."""
+        """Register a report factory (a zero-arg callable that returns a Report).
+
+        *display_name* is what people read (``report.json`` ``name``); *name*
+        stays the path identifier everything addresses the report by.
+        """
         with self._lock:
             self._report_factories[name] = {
                 "description": description,
+                "display_name": display_name,
                 "factory": factory,
             }
         return self
@@ -204,10 +214,14 @@ class Registry:
         return decorator
 
     def list_reports(self) -> list[dict]:
+        from tracebi.model.data_model import default_label
+
         with self._lock:
             return [
                 {
                     "name": k,
+                    # report.json's "name", else the title-cased identifier.
+                    "display_name": v.get("display_name") or default_label(k),
                     "description": v["description"],
                     # "artifact": discovery backed this report with a template
                     # package (an authored package, or a spec the compiler

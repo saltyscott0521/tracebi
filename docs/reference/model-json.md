@@ -18,6 +18,7 @@ commented `models/sales.yaml`.
 ```yaml
 # models/sales_model.yaml
 name: sales_model
+label: Sales Orders
 
 connectors:
   - name: warehouse
@@ -80,7 +81,8 @@ Errors lead with their path, e.g. `measures[2].agg`.
 
 | Key | Builder call | Fields |
 |---|---|---|
-| `name` | `DataModel(name)` | **Required.** Must equal the file name without its extension. |
+| `name` | `DataModel(name)` | **Required.** Must equal the file name without its extension. The identifier: queries, bindings and commands use it. |
+| `label` | `DataModel(name, label=)` | Optional non-empty string: what people read where the model is listed (`Direct Lending Portfolio`). Unset, it is the name title-cased (`portfolio_model` → `Portfolio Model`; nothing is stripped). `GET /api/models`, `describe_model` and `tracebi list-models` carry it. |
 | `owners` | `DataModel(name, owners=)` | Optional list of non-empty sign-in names. Only an owner or an admin may publish a change to this model; anyone else can still draft it and run the impact check. Read from the *published* file, so a draft cannot grant itself ownership. No `owners` (or a brand-new model) means any analyst may publish. Names only: sign-in groups are not matched. |
 | `connectors` | `add_connector` | `{name, type: "duckdb", database}` or `{name, connection}` |
 | `tables` | `add_table` | `name`, `connector`, `source` |

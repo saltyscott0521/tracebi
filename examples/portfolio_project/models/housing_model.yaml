@@ -20,6 +20,7 @@
 #     model = get_model("housing_model")
 
 name: housing_model
+label: Housing Affordability
 
 # connectors: where the tables live (a DuckDB file inside the project)
 connectors:

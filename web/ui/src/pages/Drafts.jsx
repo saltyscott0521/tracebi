@@ -2,18 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
+  useDesk, usePipelines, useReports,
   useDrafts, useDraftVersion, useDraftFiles, useDraftPreview, useDraftImpact,
   usePublishDraft, useDeleteDraft, useWriteDraftFile, useMe,
   useDraftDestinations, usePublishRequests, useDecideRequest,
   useCodeRequests, useCodeRequest, useDecideCodeRequest,
 } from '../api'
-import { reportModels, reportPagePath } from '../nav'
+import { reportPagePath } from '../nav'
 import {
   PageTitle, PageSub, Card, Btn, Badge, Spinner, Empty, Alert, ErrorDetail,
   ReportFrame, Tabs, SkeletonList, useToast,
 } from '../components/Shared'
 import { CodeFiles } from '../components/CodeView'
-import { when } from '../components/Attention'
+import { AttentionStrip, attentionItems, when } from '../components/Attention'
+import { useReportModels } from '../components/Scope'
 
 // Drafts: what an agent (or a person) is writing before it is published. A
 // draft is private to its owner; Publish is the one step that changes what
@@ -29,18 +31,36 @@ function Differs({ differs }) {
     : <Badge variant="gray">Same as published</Badge>
 }
 
+// Review, until Step 3 builds its own page: what needs attention, then the
+// drafts, with History and Verify a file one link away.
+function ReviewLinks() {
+  return (
+    <nav aria-label="Review" className="review-links">
+      <span className="review-links__cap">Review</span>
+      <Link to="/runs">History</Link>
+      <Link to="/verify">Verify a file</Link>
+    </nav>
+  )
+}
+
 export default function Drafts() {
   const { data, isLoading, error } = useDrafts()
   const list = data?.drafts || []
   const manyOwners = new Set(list.map(d => d.owner)).size > 1
+  const { data: desk } = useDesk()
+  const { data: pipelines } = usePipelines()
+  const { data: reports } = useReports()
+  const modelsOf = useReportModels()
 
   return (
     <div className="fade-in">
+      <ReviewLinks />
       <PageTitle>Drafts</PageTitle>
       <PageSub>
         Reports and models being written before they are published, newest first.
         Nothing here changes what anyone sees until it is published.
       </PageSub>
+      <AttentionStrip items={attentionItems(desk, pipelines, modelsOf, reports || [])} />
       <PublishRequests />
       <CodeRequests />
       {error && <ErrorDetail error={error} />}
@@ -483,7 +503,7 @@ export function DraftPage() {
         <Alert variant="info">
           Published.{' '}
           {isReport
-            ? <Link to={reportPagePath(published.path, reportModels({ name: published.path }))}>Open the published report</Link>
+            ? <Link to={reportPagePath(published.path)}>Open the published report</Link>
             : 'The model is live once discovery picks it up.'}
         </Alert>
       )}

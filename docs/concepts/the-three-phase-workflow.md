@@ -13,15 +13,15 @@ one never blocks the fast one.
 
 ---
 
-> **In the app**, everything belongs to a model. Pick one in the model switcher at the top of
-> the sidebar, and its **Overview** draws how it is made as three stages in a line:
-> **Transform** (the pipeline that rebuilds its warehouse, and what the sink contract says
-> about it), **Model** (its tables, joins and measures) and **Reports** (what people read,
-> each with its receipt). **Refresh data** runs the pipeline, and **History** lists what ran.
-> The rest of the sidebar is **Map** (every model as one picture), **Explore** (ask a model a
-> question), **Drafts**, and **Verify a file** (check a report file from anywhere). Pick
-> **All models** to see everything, each row naming its model. Reports and Explore only ever
-> ask the model; see [[models-and-connectors]].
+> **In the app** there are four places. **Reports** is where it opens: the library, every
+> report in its folder with whether its numbers still reproduce, narrowed to a model by a
+> chip. **Ask** puts a question to one model. **Data** draws each model as these three
+> stages in a line: **Transform** (the pipeline that rebuilds its warehouse, and what the
+> sink contract says about it), **Model** (its tables, joins and measures) and **Reports**
+> (what reads it); **Refresh data** runs the pipeline, and the **Map** draws every model as
+> one picture. **Review** holds drafts and requests to publish, **History** (what ran) and
+> **Verify a file** (check a report file from anywhere). Reports and Ask only ever ask the
+> model; see [[models-and-connectors]].
 
 ## ① Transform — `transforms/`
 
@@ -87,7 +87,7 @@ money stored as strings.
 
 ## Exploring before a report exists
 
-`tracebi dev` with no report name opens the app's Reports list with the
+`tracebi dev` with no report name opens the app's Data page with the
 **project feed**. Any script run while it's open can call
 `tracebi.workbench.show(df, note=...)` to post an excerpt, and you can leave
 your agent notes there. The warehouse tables are on the model's Transform stage,

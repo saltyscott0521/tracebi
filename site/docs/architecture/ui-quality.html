@@ -123,8 +123,9 @@ python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
   any page <code>[browser-error]</code>. No blank page <code>[blank-page]</code>, no raw
   <code>undefined</code> / <code>NaN</code> / traceback shown to a reader <code>[raw-garbage]</code>, no
   "not found" except on a page that does not exist <code>[not-found]</code>.</li>
-<li><strong>You always know where you are.</strong> Exactly one sidebar entry is marked
-  as the current page <code>[nav-you-are-here]</code>. Exactly one <code>h1</code>, naming the
+<li><strong>You always know where you are.</strong> Exactly one sidebar entry (one of the
+  four places, or Help; on an open report, the rail's) is marked as the
+  current page <code>[nav-you-are-here]</code>. Exactly one <code>h1</code>, naming the
   page <code>[one-h1]</code>.</li>
 <li><strong>Everything works from a keyboard.</strong> Anything that looks clickable is a
   link or a button <code>[click-not-keyboard]</code>. Focus is always visible
@@ -142,9 +143,10 @@ python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
 <li><strong>It is quick.</strong> Every page settles within 2.5s on the reference project
   <code>[slow-page]</code>. The JS bundle and the count of hard-coded colours never grow
   against the baseline <code>[metric:*]</code>.</li>
-<li><strong>Picking a model shows exactly what belongs to it</strong>: each model's Reports
-  and Sources list what the API says it owns <code>[scope-mismatch]</code>; every model a
-  report reads is one the switcher lists <code>[report-model-unlisted]</code>; nothing
+<li><strong>Picking a model shows exactly what belongs to it</strong>: the library filtered
+  to a model (<code>/?model=&lt;m&gt;</code>) lists what the API says it owns
+  <code>[scope-mismatch]</code>; every model a report reads is one the model chips list
+  <code>[report-model-unlisted]</code>; nothing
   appears or vanishes while the audit runs <code>[registry-drift]</code>.</li>
 <li><strong>No model is a dead end</strong>: every model has at least one report
   <code>[model-without-reports]</code>. (The live demo showed three models with none:
@@ -185,8 +187,9 @@ registered by an app module rather than found under <code>reports/</code>). Each
 <li><strong>One idea per page.</strong> The title says what the page is, the subtitle says
   what to do on it, in words a reader uses (no "sink", "contract",
   "connector" unless the page explains them).</li>
-<li><strong>The model is the frame.</strong> With more than one model, every list says
-  which model each row belongs to, and the model switcher narrows every page.</li>
+<li><strong>The model is a filter, not the frame.</strong> Four places (Reports, Ask, Data,
+  Review); with more than one model, the library groups reports under their
+  model's name and a chip narrows it to one.</li>
 <li><strong>Hierarchy is visible.</strong> The first thing the eye lands on is the thing
   the page is for. Secondary things are quieter, not merely smaller.</li>
 <li><strong>Empty states teach.</strong> An empty list says what would fill it and how
@@ -234,13 +237,19 @@ registered by an app module rather than found under <code>reports/</code>). Each
 <li>A theme token the dark block does not set silently inherits the light value:
   <code>--blue</code> stayed near-black and every active tab and row vanished in dark.</li>
 <li>A page that shows a fact another page shows uses the same words and chips,
-  from the same data: the Runs page shows the verdict the Reports page shows
-  (<code>/api/desk</code>) on a report's newest build, and a neutral "Not checked" on every
-  older one. A build row stores no verdict, so it never reads green by itself.</li>
+  from the same data: every verdict is the <code>Verdict</code> chip, its state from
+  <code>verdictOf</code> (<code>web/ui/src/verdict.js</code>). The Runs page shows the verdict the
+  Reports page shows (<code>/api/desk</code>) on a report's newest build, and a neutral
+  "Not checked" on every older one. A build row stores no verdict, so it never
+  reads green by itself.</li>
 <li>A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the
-  page's full width; its list is one click away.</li>
+  page's full width; its list is one click away. The report page's bar is
+  what everyone may do on the left (Open, Share, Export) and what the role
+  allows on the right (Rebuild, Edit as a draft, Build, then the one panel);
+  a command the role cannot use is not rendered, never disabled. On a phone
+  it is Open, Share and a "…" menu of the rest.</li>
 <li>Focus that sits inside a report's frame belongs to the element inside it, so
   the audit judges that element; the frame draws no ring of its own.</li>
 <li>A phone is not a narrow desktop window. The Step 1 captures were taken at

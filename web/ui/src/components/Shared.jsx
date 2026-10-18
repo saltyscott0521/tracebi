@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { FRAME_SANDBOX, listenToFrame } from '../frameBridge'
+import { VERDICT_LABEL } from '../verdict'
 
 /** Track a media query, so an inline-styled layout can still be responsive. */
 export function useNarrow(query = '(max-width: 768px)') {
@@ -221,6 +222,21 @@ export function Badge({ variant = 'gray', children, style, title }) {
       ...style,
     }}>{children}</span>
   )
+}
+
+/**
+ * The verdict chip: the app's copy of the artifact's .tb-verdict, the same
+ * words and colour rule. *state* is one of verdict.js's states (derive it with
+ * verdictOf, never by hand); *detail* says why, as the chip's title. With
+ * *onClick* it is a button. `size="sm"` for a dense row.
+ */
+export function Verdict({ state, detail, size, onClick }) {
+  const label = VERDICT_LABEL[state]
+  if (!label) return null
+  const cls = `verdict verdict--${state}${size === 'sm' ? ' verdict--sm' : ''}`
+  return onClick
+    ? <button type="button" className={cls} title={detail} onClick={onClick}>{label}</button>
+    : <span className={cls} title={detail}>{label}</span>
 }
 
 export function Spinner({ size = 18 }) {

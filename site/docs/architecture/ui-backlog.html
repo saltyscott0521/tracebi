@@ -119,12 +119,39 @@ bottom with the change that closed them.</p>
 no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
 <ol start="13">
 <li><strong>App crawl findings since the 2026-10-13 Reports page</strong>: <code>scope-mismatch</code>
-    (a model's Reports list reads empty to the audit, which looks for
-    <code>.list-item__name</code>; the rows are <code>button.rrow</code> now), <code>nav-you-are-here</code> on
-    <code>/reports</code>, <code>blank-page</code> / <code>one-h1</code> / <code>small-target</code> on an open report,
+    and <code>nav-you-are-here</code> were the audit's selectors (R-1: it now reads the
+    library's <code>[data-report]</code> rows at <code>/?model=&lt;m&gt;</code> and counts the rail's
+    current entry on an open report; the committed baselines still name the
+    old addresses until the next run), <code>blank-page</code> / <code>one-h1</code> / <code>small-target</code> on an open report,
     <code>no-focus-ring</code> into the report frame, eleven <code>slow-page</code>, and the
     segmented bar's <code>repeating-linear-gradient</code> (<code>global.css:1188</code>,
     <code>theme-decoration</code>). Some are the audit's selectors, some the app.</li>
+</ol>
+<p>Left by Step 2 of the UX plan (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>), app side:</p>
+<ol start="14">
+<li><strong>Re-run the ui-audit baselines</strong>: the committed findings still name the
+    addresses before R-1 (<code>/m/&lt;model&gt;/…</code>, <code>/reports?r=</code>), so item 13 cannot
+    be retriaged against them.</li>
+<li><strong>The Data page's Reports-stage preview keeps its Preview/Config switch</strong>
+    (R-4 moved Config into Files on the report page); Step 3 (D-1) retires
+    that preview.</li>
+<li><strong>Docs still say reports are served "on the model's Overview"</strong>: about
+    nine lines in <code>CLAUDE.md</code>, <code>the-three-phase-workflow.md</code>,
+    <code>report-json.md</code>, <code>analyst-guide.md</code> and <code>notebook-guide.md</code> (and the
+    <code>site/docs</code> twins). For D-3.</li>
+<li><strong><code>demo-script.md</code> points at "the green badges above the report"</strong>, which
+    R-3 removed; the chip in the masthead is what to point at.</li>
+<li><strong><code>site/sample/portfolio_showcase.html</code> predates Step 1</strong>: rebuild it with
+    the current runtime.</li>
+<li><strong>A report build records no finish time</strong> (<code>record_report_build</code>), so
+    History shows how long only for background runs, schedules and pipeline
+    runs. Record the build's start and finish.</li>
+<li><strong>Bug, not UI: <code>tracebi migrate model</code> drops <code>owners</code>.</strong>
+    <code>model_yaml._document</code> puts <code>owners</code> in the document, but <code>model_to_yaml</code>
+    writes only <code>label</code> and the <code>_SECTIONS</code> keys, so a migrated model loses
+    who may publish it.</li>
+<li><strong>The phone header is translucent</strong>: a scrolled list shows through it
+    (History's sticky day header sits under it).</li>
 </ol>
 <h2 id="done">Done</h2>
 <ul>
@@ -182,6 +209,13 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
   <code>[metric:report_*]</code>; a page laid out wider than the phone
   <code>[report-phone-layout]</code> (every built report but one named no viewport; the
   build now adds it).</li>
+<li><strong>Reports home (Step 2)</strong>: names, not identifiers, with a model <code>label</code>
+  (R-2); one verdict chip and one rule for it (R-3); <code>/</code> is the library and
+  the sidebar is four places, old addresses redirect (R-1); the report page is
+  the artifact under one command bar with "About this build" (R-4); History
+  rows as sentences, grouped by day, empty columns not drawn, cards on a
+  phone; the library's two-line descriptions and the masthead receipt checked
+  at 390 (R-5). Closes the audit's findings 12 and 15.</li>
 </ul>
   </main>
 </div>

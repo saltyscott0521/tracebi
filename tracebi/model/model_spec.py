@@ -30,7 +30,7 @@ _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 SPEC_SUFFIXES = (".yaml", ".yml", ".json")
 
-_TOP = {"name", "owners", "connectors", "tables", "relationships", "dimensions", "facts",
+_TOP = {"name", "label", "owners", "connectors", "tables", "relationships", "dimensions", "facts",
         "measures", "time_grains", "value_bins"}
 _CONNECTOR = {"name", "type", "database", "connection"}
 _TABLE = {"name", "connector", "source"}
@@ -166,6 +166,8 @@ def validate_model_spec(doc: Any) -> list[str]:
         return ["the file must hold one object (a mapping at the top level)"]
     errors = _unknown(doc, _TOP, "model")
     _need(doc, "model", ("name",), errors)
+    if "label" in doc and not (isinstance(doc["label"], str) and doc["label"].strip()):
+        errors.append("label: must be a non-empty string (the name people read)")
     if "owners" in doc:
         errors.extend(owners_errors(doc["owners"]))
 
@@ -311,7 +313,7 @@ def load_model_spec(path: "str | os.PathLike[str]",
     if errors:
         raise ModelSpecError(path.name, errors)
 
-    model = DataModel(doc["name"], owners=doc.get("owners"))
+    model = DataModel(doc["name"], owners=doc.get("owners"), label=doc.get("label"))
     for c in doc.get("connectors", []):
         model.add_connector(_connector(c, root))
     for t in doc.get("tables", []):

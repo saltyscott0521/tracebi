@@ -93,11 +93,11 @@ While you explore, push what you find into a live, shared surface. Open the
 app with no report named, in a terminal:
 
 ```bash
-tracebi dev            # no report named → the app's Reports list, with the project feed
+tracebi dev            # no report named → the app's Data page, with the project feed
 ```
 
 Then, from any notebook cell, `show()` frames, charts, and notes into its feed
-(the app's Reports, under *From your agent*):
+(the app's Data page, under *From your agent*):
 
 ```python
 import tracebi.workbench as workbench

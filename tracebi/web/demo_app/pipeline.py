@@ -103,7 +103,7 @@ _customers_manip = (
 )
 
 # DataModel reading from silver tables — star-schema query surface
-sales_model = DataModel("sales_model")
+sales_model = DataModel("sales_model", label="Sales Orders")
 sales_model.add_connector(db)
 sales_model.add_table("orders_silver",    connector="demo_db", source="orders_silver")
 sales_model.add_table("customers_silver", connector="demo_db", source="customers_silver")

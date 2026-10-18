@@ -140,8 +140,10 @@ def _model_yaml_template_text(title: str) -> str:
 # reads no rows; a query is what opens the warehouse. If a models/{slug}.py
 # exists too, the Python file wins (a model is one file).
 
-# The name equals this file's name.
+# The name equals this file's name. The label is what people read in lists
+# (optional; unset, it is the name title-cased).
 name: {slug}
+label: {json.dumps(title.strip())}
 
 # connectors: where the tables live. `database` is a DuckDB file inside the
 # project (no absolute path, no ".."). No credentials belong here: for a
@@ -251,7 +253,7 @@ connector = DuckDBConnector("warehouse",
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 # The variable MUST be named `model` — the registry looks for it at load time.
-model = DataModel("{model_name}")
+model = DataModel("{model_name}", label={json.dumps(title.strip())})
 model.add_connector(connector)
 model.add_table("my_table", connector="warehouse", source="my_table")
 # model.add_relationship(
@@ -1041,19 +1043,20 @@ def cmd_dev(args: argparse.Namespace) -> int:
 
 def _dev_in_the_app(args: argparse.Namespace) -> int:
     """``tracebi dev [<name>]``: the web app, in dev mode. With a name it opens
-    that report with Build already on; without one, the Reports list, where what
-    the agent shows you lands before any report exists. The agent's chat goes
+    that report with Build already on; without one, Data, where what the agent
+    shows you lands before any report exists. The agent's chat goes
     beside it; the app is where you watch it work and point at what you mean
     (see docs/architecture/design-direction.md).
     """
-    from urllib.parse import urlencode
+    from urllib.parse import quote, urlencode
 
     # Build mode's endpoints write dev-state files, so the server is in dev mode
     # (the same gate as /api/_dev/reload) and stays on loopback.
     os.environ["TRACEBI_DEV_MODE"] = "1"
-    url = f"http://127.0.0.1:{args.port}/reports"
+    url = f"http://127.0.0.1:{args.port}/data"
     if args.name:
-        url += "?" + urlencode({"r": args.name, "build": "1"})
+        path = "/".join(quote(part, safe="") for part in args.name.split("/"))
+        url = f"http://127.0.0.1:{args.port}/reports/{path}?" + urlencode({"build": "1"})
         print(f"\n  TraceBi dev — {args.name} in the app, Build mode")
         print(f"  {url}")
         print("  Put your agent's chat beside it (it connects over MCP: `tracebi mcp`).")
@@ -1061,7 +1064,7 @@ def _dev_in_the_app(args: argparse.Namespace) -> int:
     else:
         print("\n  TraceBi dev — the app, before any report is open")
         print(f"  {url}")
-        print("  What your agent shows you while it works appears under Reports, "
+        print("  What your agent shows you while it works appears under Data, "
               "as From your agent.")
         print("  Any script you run can call tracebi.workbench.show(df, note=...) "
               "while this is up — no env var needed.")
@@ -1314,8 +1317,22 @@ def cmd_list_models(args: argparse.Namespace) -> int:
     if not files:
         print(f"No model files found in {models_dir}")
         return 0
+    from tracebi.model.data_model import default_label
+    from tracebi.model_registry import ModelRegistry
+
+    # A private registry: listing loads each file for its label without
+    # publishing anything to the process-wide one.
+    loaded = ModelRegistry()
+    stems = set(loaded.auto_discover(str(models_dir)))
     for p in files:
-        print(p.relative_to(models_dir.parent))
+        label = default_label(p.stem)
+        if p.stem in stems:
+            try:
+                label = getattr(loaded.get(p.stem), "label", label)
+            except Exception:  # noqa: BLE001 — a file that fails to load still lists
+                pass
+        print(f"{label} ({p.stem})  {p.relative_to(models_dir.parent)}")
+    loaded.release_all()
     return 0
 
 

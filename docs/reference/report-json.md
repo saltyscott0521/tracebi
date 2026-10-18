@@ -39,7 +39,11 @@ reports/my_report/
 
 ### `name` — string
 
-The report's display title. Defaults to the directory name.
+The report's display name: what people read in every list and title
+(`"Portfolio Overview"`), not the folder slug. The path
+(`portfolio_model/portfolio_overview`) stays the identifier commands and URLs
+take. `GET /api/reports` returns it as `display_name` beside `name` (the
+path); with no `name` here, `display_name` is the directory name title-cased.
 
 ### `author` — string, optional
 

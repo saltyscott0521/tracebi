@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { pagePath } from '../nav'
+import { dataPath } from '../nav'
 import { ReactFlow, Background, Controls, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -179,7 +179,7 @@ function Detail({ node }) {
           )}
           {d.sha256 && <Row label="Contract"><code title={d.sha256} style={{ fontSize: 11.5 }}>{short(d.sha256)}</code></Row>}
           <div style={{ marginTop: 8 }}>
-            <Link to={pagePath('model', node.label)} style={{ fontSize: 12.5 }}>Open model →</Link>
+            <Link to={dataPath(node.label, 'model')} style={{ fontSize: 12.5 }}>Open model →</Link>
           </div>
         </>
       )}

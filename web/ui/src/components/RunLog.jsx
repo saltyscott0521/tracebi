@@ -92,7 +92,7 @@ export function RunList({ runs, runId, onPick }) {
   )
 }
 
-export default function RunLog({ pipeline, runs, runId, models, onDone }) {
+export default function RunLog({ pipeline, runs, runId, onDone }) {
   const log = useRunLog(pipeline, runId)
   const run = (runs || []).find(r => r.run_id === runId)
   const box = useRef(null)
@@ -167,7 +167,7 @@ export default function RunLog({ pipeline, runs, runId, models, onDone }) {
         <div className="runlog__reports">
           <span>Rebuilt</span>
           {run.reports.map(name => (
-            <Link key={name} to={reportPagePath(name, models)} title={name}>{name.split('/').pop()}</Link>
+            <Link key={name} to={reportPagePath(name)} title={name}>{name.split('/').pop()}</Link>
           ))}
         </div>
       )}

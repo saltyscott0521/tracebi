@@ -48,8 +48,9 @@ Checked by the script (rule name in brackets):
   any page `[browser-error]`. No blank page `[blank-page]`, no raw
   `undefined` / `NaN` / traceback shown to a reader `[raw-garbage]`, no
   "not found" except on a page that does not exist `[not-found]`.
-- **You always know where you are.** Exactly one sidebar entry is marked
-  as the current page `[nav-you-are-here]`. Exactly one `h1`, naming the
+- **You always know where you are.** Exactly one sidebar entry (one of the
+  four places, or Help; on an open report, the rail's) is marked as the
+  current page `[nav-you-are-here]`. Exactly one `h1`, naming the
   page `[one-h1]`.
 - **Everything works from a keyboard.** Anything that looks clickable is a
   link or a button `[click-not-keyboard]`. Focus is always visible
@@ -67,9 +68,10 @@ Checked by the script (rule name in brackets):
 - **It is quick.** Every page settles within 2.5s on the reference project
   `[slow-page]`. The JS bundle and the count of hard-coded colours never grow
   against the baseline `[metric:*]`.
-- **Picking a model shows exactly what belongs to it**: each model's Reports
-  and Sources list what the API says it owns `[scope-mismatch]`; every model a
-  report reads is one the switcher lists `[report-model-unlisted]`; nothing
+- **Picking a model shows exactly what belongs to it**: the library filtered
+  to a model (`/?model=<m>`) lists what the API says it owns
+  `[scope-mismatch]`; every model a report reads is one the model chips list
+  `[report-model-unlisted]`; nothing
   appears or vanishes while the audit runs `[registry-drift]`.
 - **No model is a dead end**: every model has at least one report
   `[model-without-reports]`. (The live demo showed three models with none:
@@ -111,8 +113,9 @@ Checked by eye, from the contact sheet:
 - **One idea per page.** The title says what the page is, the subtitle says
   what to do on it, in words a reader uses (no "sink", "contract",
   "connector" unless the page explains them).
-- **The model is the frame.** With more than one model, every list says
-  which model each row belongs to, and the model switcher narrows every page.
+- **The model is a filter, not the frame.** Four places (Reports, Ask, Data,
+  Review); with more than one model, the library groups reports under their
+  model's name and a chip narrows it to one.
 - **Hierarchy is visible.** The first thing the eye lands on is the thing
   the page is for. Secondary things are quieter, not merely smaller.
 - **Empty states teach.** An empty list says what would fill it and how
@@ -161,13 +164,19 @@ Each fix that taught something general adds a line here.
 - A theme token the dark block does not set silently inherits the light value:
   `--blue` stayed near-black and every active tab and row vanished in dark.
 - A page that shows a fact another page shows uses the same words and chips,
-  from the same data: the Runs page shows the verdict the Reports page shows
-  (`/api/desk`) on a report's newest build, and a neutral "Not checked" on every
-  older one. A build row stores no verdict, so it never reads green by itself.
+  from the same data: every verdict is the `Verdict` chip, its state from
+  `verdictOf` (`web/ui/src/verdict.js`). The Runs page shows the verdict the
+  Reports page shows (`/api/desk`) on a report's newest build, and a neutral
+  "Not checked" on every older one. A build row stores no verdict, so it never
+  reads green by itself.
 - A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the
-  page's full width; its list is one click away.
+  page's full width; its list is one click away. The report page's bar is
+  what everyone may do on the left (Open, Share, Export) and what the role
+  allows on the right (Rebuild, Edit as a draft, Build, then the one panel);
+  a command the role cannot use is not rendered, never disabled. On a phone
+  it is Open, Share and a "…" menu of the rest.
 - Focus that sits inside a report's frame belongs to the element inside it, so
   the audit judges that element; the frame draws no ring of its own.
 - A phone is not a narrow desktop window. The Step 1 captures were taken at

@@ -324,7 +324,7 @@ keep the rest of TraceBi as the data layer.
 tracebi init my_project                              # scaffold a full three-phase project (inputs → transform → model → report)
 tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (artifact package)
 tracebi dev portfolio_book                           # live loop in the app: Build mode on that report (:8001)
-tracebi dev                                          # no name: the app's Reports list, where your agent's exhibits land (phases ①/②)
+tracebi dev                                          # no name: the app's Data page, where your agent's exhibits land (phases ①/②)
 tracebi dev portfolio_book --classic                 # the old stdlib preview + /__workbench page (fallback)
 tracebi session export --format md                   # save the session → explorations/ (lab-notebook record)
 tracebi context --brief                              # token-lean vocabulary for agents (~44% of full)
@@ -361,7 +361,7 @@ http://127.0.0.1:8001 (loopback only). The report re-renders every time you
 save the package; the panel beside it lists what changed, the data each
 binding reads, and checks (figures with no data behind them, bindings nothing
 reads, numbers typed outside figures). Click a figure to point at it, or leave
-your agent a note. With no name it opens the app's Reports list, where what your
+your agent a note. With no name it opens the app's Data page, where what your
 agent shows you appears before any report exists. Keep it next to your editor
 for a tight authoring loop. `--classic` serves the older stdlib preview and
 its `/__workbench` page instead, and is what runs when the `web` extra is not
@@ -647,33 +647,44 @@ nothing.
 
 A browser interface over your TraceBi registry — connectors, models, reports, and pipelines all in one place. Highlights:
 
-- **Explore** — a visual star-schema query builder: pick a fact, toggle
+The sidebar has four places: **Reports** (the library, where the app opens:
+every report by folder, each with its verdict, built time and schedule,
+narrowed to a model by a chip), **Ask**, **Data** and **Review**. Older
+addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them.
+
+- **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
   chart, CSV download, and the *lineage graph of the exact query that ran*.
-- **Model** — a model's Overview, Model stage: table previews with column dtypes
+- **Model** — a model's Data page, Model stage: table previews with column dtypes
   and full-table CSV export,
   plus an interactive ERD of its facts and dimensions.
-- **Reports** — a model's Overview, Reports stage: the list, and beside it the last
+- **Reports** — the library opens a report at `/reports/<name>`; a model's Data page, Reports stage, lists its reports beside the last
   build of the report you picked (Preview) or the files that define it (Config); a
-  report with no build says so and offers **Build it now**. **Open** gives a report the
-  whole page: the app's nav is a slim icon rail on the left, and a breadcrumb leads
-  back to the model, above a labeled toolbar. **Rebuild** runs it again in the background (a toast when done).
-  **Export** saves a PDF, an Excel file, or the self-contained HTML with its embedded
-  receipt. Only the HTML carries the receipt, and `tracebi verify --file` checks it.
-  **Share** copies the report's link, and **Edit as a draft** makes an editable draft
-  of it. **Lineage**, **History** and **Details** open a side panel beside the report,
-  which also has a **Code** tab. **Details** shows the build time, the re-run check
-  (**Check again**), the sink-contract status of each table, the model, figures,
-  schedule and files. **Lineage** shows where each number came from, **History** lists
-  the past builds, and **Code** shows the report's files, read-only. Failures show the
+  report with no build says so and offers **Build it now**. A report's own page is the
+  report, full width, as delivered: the app's nav is a slim icon rail on the left, and
+  above the report a slim header (a breadcrumb back to the model, its name, the
+  verdict chip and, when it asks for a look, why, and when it was built) and one
+  command bar. **Open** opens the build in a new tab (`/r/<name>`), **Share** copies
+  its link, and **Export** saves a PDF, an Excel file, or the self-contained HTML with
+  its embedded receipt (only the HTML carries the receipt, and `tracebi verify --file`
+  checks it). An analyst or admin also gets **Rebuild** (in the background, a toast
+  when done) and **Edit as a draft**, and dev mode **Build**; a command the role
+  cannot use is not shown. The report's own masthead chip says the app's verdict.
+  **About this build** opens one panel (a sheet on a phone) with four tabs:
+  **Receipt** (whether the check still holds, with **Check again**, the model,
+  figures, schedule and kind, then the build's own receipt certificate),
+  **Lineage** (where each number came from), **History** (every build of it, with
+  its verdict) and **Files** (the report's files, read-only). Failures show the
   full Python traceback.
-- **Transform** — a model's Overview, Transform stage: the medallion chain as a live DAG
-  with per-layer run buttons and run history. **Refresh data** (admin), in the Overview's
+- **Transform** — a model's Data page, Transform stage: the medallion chain as a live DAG
+  with per-layer run buttons and run history. **Refresh data** (admin), in the Data page's
   header, runs the whole pipeline.
-- **Map** — every model as one picture: transform → warehouse → model → reports. Open a
+- **Map** (`/data/map`) — every model as one picture: transform → warehouse → model → reports. Open a
   model to see its measures and the reports that use them.
-- **History** — what ran, when, for whom, and whether it reproduced. A report
-  run links to the report, and a refresh names its model. A report's newest
+- **History** (under **Review**) — what ran, when, how long it took, by whom, and whether it
+  reproduced, grouped by day (a card per run on a phone). A report run links to the report by
+  its name, a refresh to its model's Transform stage; a failed run reads red, and a column no
+  row fills (how long, who) is not shown. A report's newest
   build shows the same verdict as the report's own page; every older build reads
   "Not checked". Only a `reproduces` verdict reads green.
 

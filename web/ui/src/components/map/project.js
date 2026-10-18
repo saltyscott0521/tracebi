@@ -89,7 +89,7 @@ export function projectLayout({ models, connectors, pipelines, reports, builds, 
     }))
     const model = { id: id('model'), role: 'model', shape: 'card', x: xM, w: mW, name: b.model, tone: 'quiet', action: act }
     const cards = b.reports.map(r => {
-      const state = reportState(builds[r.name])
+      const state = reportState(builds[r.name], r)
       return {
         id: id(`report:${r.name}`), role: 'report', shape: 'card', x: xR, w: rW, name: reportLabel(r.name, b.model),
         label: state?.label || '', tone: state?.tone || 'quiet', action: { zoom: b.model, sel: `report:${r.name}` },

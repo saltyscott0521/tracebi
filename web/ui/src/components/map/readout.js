@@ -51,7 +51,7 @@ export function modelReadout({ name, info, a, sel, builds }) {
   if (sel?.type === 'report') {
     const asked = a.asks[sel.id]
     const facts = [...new Set(asked.flatMap(m => a.factsFor(m).map(f => f.name)))]
-    const state = reportState(builds[sel.id])
+    const state = reportState(builds[sel.id], a.placed.find(r => r.name === sel.id))
     const read = facts.length === 1 ? ` All read ${facts[0]}.` : facts.length ? ` They can run on ${list(facts)}.` : ''
     return {
       kind: 'Report', name: reportLabel(sel.id, name),
@@ -59,7 +59,7 @@ export function modelReadout({ name, info, a, sel, builds }) {
         asked.length ? `Asks ${name} for ${asked.join(', ')}.${read}` : `Asks ${name} for no declared measure.`,
         state ? (state.detail || (state.tone === 'ghost' ? 'It has not been built yet.' : '')) : '',
       ].filter(Boolean).join(' '),
-      open: reportPagePath(sel.id, [name]),
+      open: reportPagePath(sel.id),
     }
   }
   const unused = a.declared.filter(m => a.usedBy(m).length === 0).length

@@ -1,5 +1,5 @@
 {
-  "name": "portfolio_overview",
+  "name": "Portfolio Overview",
   "description": "The book at a glance, as an app with top tabs: an overview with the KPI strip and the sector chart, the eight largest issuers, and the funds. Every number is a kit figure.",
   "data": {
     "kpis": {

@@ -1,49 +1,15 @@
 import { Link } from 'react-router-dom'
-import { Badge } from './Shared'
-import { pipelineModels, pagePath, reportPagePath } from '../nav'
+import { Badge, Verdict } from './Shared'
+import { VERDICT_LABEL, needsAction, verdictOf } from '../verdict'
+import { pipelineModels, dataPath, reportPagePath } from '../nav'
 
 // What needs a person, from GET /api/desk plus the pipelines list: review
 // notes, receipts that don't reproduce, failed refreshes, and sink checks
-// that are stale or missing. Shown on the Reports page only when non-empty.
-
-// Receipt-level verdicts from tracebi/verify.py (plus the desk's own
-// "error"). Only `reproduces` is good; only `unverifiable` (honestly
-// python-derived) is quiet. Anything else, including a verdict this page
-// doesn't know, needs attention: the bias is toward loud.
-const VERDICT = {
-  reproduces:           { label: 'Reproduces',        variant: 'green' },
-  unverifiable:         { label: 'Not re-runnable',   variant: 'gray',
-                          detail: 'Its numbers come from report.py, so they cannot be re-run.' },
-  source_drift:         { label: 'Source changed',    variant: 'amber',
-                          detail: 'The data changed since it was built. Rebuild to refresh it.' },
-  not_reproduced:       { label: "Doesn't reproduce", variant: 'red',
-                          detail: 'Re-running its queries gave different numbers, for a reason not yet known.' },
-  nothing_to_verify:    { label: 'Nothing to check',  variant: 'amber',
-                          detail: 'Its last build recorded no numbers to check.' },
-  refused_newer_schema: { label: 'Newer build',       variant: 'amber',
-                          detail: 'Built by a newer TraceBi than this server runs.' },
-  error:                { label: 'Check failed',      variant: 'red' },
-}
+// that are stale or missing. Shown on Review only when non-empty.
 
 const SINK = {
   stale:       'Data changed since its checks last passed',
   no_contract: 'No data checks declared',
-}
-
-export function verdictOf(v) {
-  return VERDICT[v] || { label: v || 'Unknown', variant: 'amber' }
-}
-
-export const isQuiet = v => ['green', 'gray'].includes(verdictOf(v).variant)
-
-// A verdict as a flag, for a page that marks only what is not fine: ✕ it does
-// not reproduce, △ it needs a look, ○ it cannot be re-run. `reproduces` is a
-// plain fact, so it has none.
-const MARK = { red: ['bad', '✕'], amber: ['warn', '△'], gray: ['none', '○'] }
-export function verdictFlag(verdict) {
-  const v = verdictOf(verdict)
-  const [kind, glyph] = MARK[v.variant] || []
-  return kind ? { kind, glyph, text: v.label } : null
 }
 
 export function when(iso) {
@@ -56,8 +22,8 @@ export function when(iso) {
     : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function reportHref(name, models) {
-  return name && name !== '_discovery' ? reportPagePath(name, models) : null
+function reportHref(name) {
+  return name && name !== '_discovery' ? reportPagePath(name) : null
 }
 
 const NOTE = 'Review note'
@@ -66,25 +32,30 @@ const NOTE = 'Review note'
 export const reviewNotes = items => items.filter(it => it.kind === NOTE)
 
 // Each item carries `models`: the models it is about (none = the project).
-// *modelsOf* maps a report name to the models it reads.
-export function attentionItems(desk, pipelines, modelsOf = () => []) {
+// *modelsOf* maps a report name to the models it reads; *reports* is GET
+// /api/reports, so a build whose files changed since needs a look here too.
+export function attentionItems(desk, pipelines, modelsOf = () => [], reports = []) {
   const items = []
   for (const pin of desk?.pins || []) {
     items.push({
       key: `pin-${pin.report}-${pin.id}`, kind: NOTE, variant: 'blue',
       models: modelsOf(pin.report),
       title: pin.report === '_discovery' ? 'Project workbench' : pin.report,
-      detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report, modelsOf(pin.report)),
+      detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report),
     })
   }
-  for (const row of desk?.verdicts || []) {
-    if (isQuiet(row.verdict)) continue
-    const v = verdictOf(row.verdict)
+  // Every build the desk re-checked, and every receipt it could not pair with
+  // a page (`verdicts` lists those too, with what the check said).
+  const builds = new Map((desk?.builds || []).map(b => [b.report, b]))
+  for (const row of desk?.verdicts || []) builds.set(row.report, { ...builds.get(row.report), ...row })
+  for (const [name, build] of [...builds].sort(([a], [b]) => a.localeCompare(b))) {
+    const v = verdictOf({ report: reports.find(r => r.name === name), build })
+    if (!needsAction(v)) continue
     items.push({
-      key: `verdict-${row.report}`, kind: v.label, variant: v.variant,
-      models: modelsOf(row.report),
-      title: row.report, detail: v.detail || row.detail || 'Its last build needs a look.',
-      href: reportHref(row.report, modelsOf(row.report)),
+      key: `verdict-${name}`, kind: VERDICT_LABEL[v.state], verdict: v.state,
+      models: modelsOf(name),
+      title: name, detail: v.detail,
+      href: reportHref(name),
     })
   }
   for (const p of pipelines || []) {
@@ -95,7 +66,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => []) {
         models: pipelineModels(p),
         title: `${p.pipeline} / ${l.name}`,
         detail: `Last run ${when(l.last_run) || 'recently'}`,
-        href: pagePath('transform', pipelineModels(p)[0] || ''),
+        href: pipelineModels(p)[0] ? dataPath(pipelineModels(p)[0], 'transform') : '/data',
       })
     }
   }
@@ -103,7 +74,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => []) {
     items.push({
       key: `sink-${s.table}`, kind: s.status === 'stale' ? 'Checks stale' : 'No checks',
       variant: s.status === 'stale' ? 'amber' : 'gray',
-      models: [], title: s.table, detail: SINK[s.status] || s.status, href: '/models',
+      models: [], title: s.table, detail: SINK[s.status] || s.status, href: '/data',
     })
   }
   return items
@@ -130,9 +101,13 @@ export function AttentionStrip({ items }) {
         }
         const body = (
           <>
-            <Badge variant={it.variant} style={{ textTransform: 'none', flexShrink: 0, minWidth: 104, textAlign: 'center' }}>
-              {it.kind}
-            </Badge>
+            {it.verdict
+              ? <span style={{ flexShrink: 0, minWidth: 104 }}><Verdict state={it.verdict} /></span>
+              : (
+                <Badge variant={it.variant} style={{ textTransform: 'none', flexShrink: 0, minWidth: 104, textAlign: 'center' }}>
+                  {it.kind}
+                </Badge>
+              )}
             <span style={{ flex: '1 1 14rem', minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{it.title}</span>
               <span style={{ display: 'block', fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{it.detail}</span>

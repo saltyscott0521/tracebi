@@ -117,7 +117,7 @@ export function modelLayout({ name, info, a, pipelines, builds, sel }) {
   })
 
   const cards = a.placed.map(r => {
-    const state = reportState(builds[r.name])
+    const state = reportState(builds[r.name], r)
     return {
       id: `report:${r.name}`, role: 'report', shape: 'card', x: xR, w: rW, name: reportLabel(r.name, name), key: r.name,
       label: state?.label || '', tone: lit.reports.has(r.name) ? 'hot' : state?.tone || 'quiet',

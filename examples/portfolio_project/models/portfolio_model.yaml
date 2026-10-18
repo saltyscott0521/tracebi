@@ -12,6 +12,7 @@
 # reads it.
 
 name: portfolio_model
+label: Direct Lending Portfolio
 
 # connectors: where the tables live (a DuckDB file inside the project)
 connectors:

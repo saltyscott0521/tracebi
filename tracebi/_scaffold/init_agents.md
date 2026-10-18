@@ -48,6 +48,8 @@ runs them as one: `models/<model>.yaml`, `pipelines/<model>.yaml` (`transform:`,
 same pipeline. A report is named by its path (`<model>/<name>`) in every
 command, and builds to `output/<model>/<name>.html`. The sample is
 `sample_model` — `pipelines/sample_model.py`, `reports/sample_model/`.
+People read names, not identifiers: a model's `label` (optional; unset, the name
+title-cased) and a report's `report.json` `name` (human, not the folder slug).
 
 **Folder permissions.** A folder under `reports/` (a directory that is not a package) may hold a `_folder.yaml` granting `view`, `build`, `publish` and `manage` to sign-in groups or names (`docs/reference/folder-yaml.md`). With none, roles decide as before. A report in a folder you cannot view is not listed and every read of it answers as if it did not exist, so a "no such report" over the gateway can mean "not yours": do not look for it another way. A `build` or `publish` refusal names the permission it needs; ask a folder manager rather than working around it.
 
@@ -286,7 +288,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   class="tb-verdict"></span>`. `data-tb-period` names what the numbers cover. The runtime
   fills the meta, adds what is missing, and sets the chip's `data-tb-verdict` from the
   file itself — `draft` on a working preview, `not-checked` on a built file (nothing has
-  re-run it; `tracebi verify` does); a page never makes it green. An empty
+  re-run it; `tracebi verify` does); a page never makes it green (framed in the web app,
+  it shows the app's re-check, which the app tells it). An empty
   `.tb-masthead-mark` takes a logo from the report's `style.css`. Every page ends with
   `<footer class="tb-footer" data-tb-methodology>` holding your sources; the build adds
   one line and "How these numbers were made" behind a disclosure (and the whole footer
@@ -425,7 +428,7 @@ body, the same text as `tracebi knowledge <slug>`).
 
 0. **Discovery comes first — and it has a live surface.** Before any report
    exists, run `tracebi dev` with **no name** (backgrounded — it blocks):
-   it opens the web app's Reports list, where the project feed is. While it
+   it opens the web app's Data page, where the project feed is. While it
    serves, ANY script you run can call `tracebi.workbench.show(...)` — no
    env var needed — and the feed (*From your agent*) updates live; the
    human leaves you notes there. Your MCP work posts there too, with

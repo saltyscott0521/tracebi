@@ -36,6 +36,11 @@ refused). `tracebi migrate model models/<name>.py [--write]` converts a Python
 model and leaves the `.py` in place until you delete it. A model draft over the
 gateway may be `<name>.yaml` or `<name>.json`.
 
+Names, not identifiers: give a model a `label` (`label: Direct Lending Portfolio`;
+`DataModel(name, label=)` in Python; unset, the name title-cased) and a report a
+human `report.json` `name` (`"Portfolio Overview"`, not the folder slug). People
+read those; commands, bindings and URLs keep taking the identifier.
+
 A model also gets a pipeline, `pipelines/<model>.yaml` (`transform:`, `models:`,
 `reports: all`, `schedule:`; it only names the Python transform; `.py` with
 `model_pipeline(...)` still works and wins on a name clash): `tracebi
@@ -267,7 +272,8 @@ already said. With nobody in the loop, use the defaults. Then:
   the numbers cover. The runtime fills the meta and adds what is missing; it
   sets the chip's `data-tb-verdict` from the file itself: `draft` on a
   working preview, `not-checked` on a built file (nothing has re-run its
-  queries; `tracebi verify` does). A page never makes it green. An empty
+  queries; `tracebi verify` does). A page never makes it green; framed in
+  the web app, the chip shows the app's re-check, which the app tells it. An empty
   `.tb-masthead-mark` takes a logo from the report's `style.css`. `nav` moves
   the masthead to the top of the sidebar;
 - the footer, which ends every page: `<footer class="tb-footer"
@@ -514,10 +520,10 @@ does not verify is recorded `refused` and nothing is sent. When `TRACEBI_SLACK_B
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 The workbench starts BEFORE the report exists. `tracebi dev` with **no
-name** opens the app's Reports list, with the **project feed** — the live
+name** opens the app's Data page, with the **project feed** — the live
 surface for phase ① and ②: while this server is up,
 `tracebi.workbench.show(df, note=...)` from ANY script you run (a transform
-probe, a scratch analysis) posts the frame to the feed (the app's Reports, under
+probe, a scratch analysis) posts the frame to the feed (the app's Data page, under
 *From your agent*) with no configuration, and the human leaves you notes there.
 Your gateway work lands there too, with nothing to call: each `query_model`
 result as a table, and each `build_report` / `render_report_spec` as one
