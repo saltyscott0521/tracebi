@@ -1,5 +1,5 @@
 // app.jsx: this report's page, a React app (the React lane). Numbers shown
-// through the tracebi kit (<Kpi>, <Value>, <Chart>, <Table>) carry the receipt:
+// through the tracebi kit (<Kpi>, <Value>, <Chart>, <Table>) carry a trace:
 // the build reads their binding / cell / x / y as claims, so keep those literal
 // strings. A number your own code computes is the app's presentation, not a
 // checked figure. Colours: bg-page bg-card bg-surface text-ink text-muted
@@ -13,7 +13,7 @@ export default function App() {
       {/* tb-page is the page measure (1,200px); space-y-8 the rhythm between sections. */}
       <main className="tb-page space-y-8 px-6 py-8">
         {/* The masthead: what this page is, the period its numbers cover, and when
-            it was built with the verdict chip (both from the file's receipt). The
+            it was built with the verdict chip (both from the file's trace). The
             kicker above the title is the model's label unless you pass kicker="…". */}
         <Masthead title="Sample Dashboard" period="Every order date">
           Revenue, orders and units across every region.

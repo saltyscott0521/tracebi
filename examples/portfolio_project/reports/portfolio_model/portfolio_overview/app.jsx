@@ -1,6 +1,6 @@
 // Portfolio Overview: the book at a glance, an app with top tabs. Every number
 // is a kit figure (<Kpi>, <Value>, <Chart>, <Table>) with a literal binding and
-// cell, so the build records it and the receipt names it.
+// cell, so the build records it and its trace names it.
 import { LayoutDashboard, Building2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Download, useUrlState,
          usePrinting } from "tracebi";

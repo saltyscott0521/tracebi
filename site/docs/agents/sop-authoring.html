@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -87,7 +88,7 @@
 TraceBi's MCP gateway (<code>tracebi mcp</code>). Follow the steps in order. The
 governing principle: <strong>you never touch the warehouse — you speak the semantic
 contract, every answer you receive is stamped, and every number you show a
-human carries its receipt.</strong></p>
+human carries its trace.</strong></p>
 <p><strong>Where this sits in the three-phase workflow (see <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>).</strong> This is
 <strong>phase ③ — REPORT</strong>, authoring over the model boundary. You are handed two
 freeze points: a warehouse phase ① already sank (<code>data/warehouse.duckdb</code>)
@@ -352,7 +353,7 @@ exists to prevent. On success:</p>
   &quot;warnings&quot;: []
 }
 </code></pre>
-<p>The manifest is the receipt: for every data-bearing section it records
+<p>The manifest is the trace: for every data-bearing section it records
 <code>dataset_fingerprint</code>, <code>dataset_lineage</code> (connector → aggregate),
 <code>dataset_name</code> and <code>dataset_shape</code>, plus the repo <code>git_sha</code> at render time.
 Confirm that each fingerprint in <code>dataset_fingerprints</code> matches the
@@ -360,7 +361,7 @@ fingerprint of your corresponding step-2 exploratory query. A match proves
 the rendered artifact contains the same data you analyzed — same hash,
 provably the same data. A mismatch means the data moved between exploration
 and render: re-run your exploratory queries and reconcile before publishing.</p>
-<h2 id="step-6-self-audit-replay-the-receipts">Step 6 — Self-audit: replay the receipts</h2>
+<h2 id="step-6-self-audit-replay-the-traces">Step 6 — Self-audit: replay the traces</h2>
 <p>Before presenting anything, audit your own output. The pattern is
 <code>examples/agent_gateway/verify_report.py</code>, which caught a real $1 error in a
 page whose fingerprints all matched. Two independent checks, both required:</p>

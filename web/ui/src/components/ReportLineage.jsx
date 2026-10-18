@@ -231,7 +231,7 @@ export function ReportLineage({ flow }) {
   return (
     <div className="fade-in">
       <p style={{ fontSize: 12.5, color: 'var(--text-2)', margin: '0 0 10px', maxWidth: '78ch', lineHeight: 1.55 }}>
-        Where each number on the page came from, read from this build's receipt.
+        Where each number on the page came from, as this build recorded it.
         Select a node to trace it: its upstream and downstream light up.
       </p>
       <FlowGraph flow={flow} selected={selected} onSelect={setSelected} />

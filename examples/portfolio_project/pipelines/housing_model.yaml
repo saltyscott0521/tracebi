@@ -2,7 +2,7 @@
 #
 #     transform  runs transforms/affordability_transform.py: reads
 #                inputs/housing_history.csv and sinks data/housing.duckdb
-#     build      builds every report in reports/housing_model/, each with a receipt
+#     build      builds every report in reports/housing_model/, each with its trace
 #
 #     tracebi run-pipeline housing_model
 #

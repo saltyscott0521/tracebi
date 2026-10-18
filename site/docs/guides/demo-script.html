@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -87,7 +88,7 @@
 reports: finance, operations, compliance, leadership. No terminal on screen
 and no code on screen.</strong></p>
 <p>The story you are telling has three beats: <em>here is a report</em>, <em>every number
-has a receipt</em>, <em>a changed number gets caught</em>. Everything else is optional.
+has a trace</em>, <em>a changed number gets caught</em>. Everything else is optional.
 If the audience needs the concepts first, send them <a href="../guides/plain-english.html">TraceBi in plain English</a> ahead of
 the meeting.</p>
 <hr>
@@ -144,16 +145,16 @@ page."</p>
 </blockquote>
 <p>Optional: click <strong>Data</strong> in the sidebar, then Direct Lending Portfolio. Its
 <strong>Model</strong> tab shows the definitions in one screen. Go back to <strong>Reports</strong>.</p>
-<h3 id="beat-2-every-number-has-a-receipt-2-minutes">Beat 2: every number has a receipt (2 minutes)</h3>
+<h3 id="beat-2-every-number-has-a-trace-2-minutes">Beat 2: every number has a trace (2 minutes)</h3>
 <p>Open <code>demo/portfolio_showcase.html</code> straight from the desktop. It's an ordinary
-file in an ordinary browser tab, with no server involved. Click <strong>Receipt</strong>
+file in an ordinary browser tab, with no server involved. Click <strong>Trace</strong>
 beside the chip under the title.</p>
 <blockquote>
-<p>"This is the file you'd email. It works offline. Every figure carries a receipt, like the one from a shop. It records where
+<p>"This is the file you'd email. It works offline. Every figure carries its trace: how it was made. It records where
 the number came from and a fingerprint of the exact data behind it. If a
 single digit changes, the fingerprint no longer matches."</p>
 </blockquote>
-<p>Point at the <strong>unverified</strong> tag on one line of the receipt.</p>
+<p>Point at the <strong>unverified</strong> tag on one line of the trace.</p>
 <blockquote>
 <p>"And a number that <em>can't</em> be checked, like an estimate someone typed in, is
 labelled as such. It can't pass itself off as checked."</p>
@@ -183,7 +184,7 @@ comes with the exact query behind it, so it can be checked the same way."</p>
 </blockquote>
 <h3 id="beat-5-the-honest-boundary-1-minute-dont-skip">Beat 5: the honest boundary (1 minute, don't skip)</h3>
 <blockquote>
-<p>"One thing TraceBi does <em>not</em> claim: a receipt shows a number is consistent
+<p>"One thing TraceBi does <em>not</em> claim: a trace shows a number is consistent
 and unedited, not that it's <em>correct</em>. If bad data goes in at the start, the
 report will faithfully show the bad number. That's why a person still
 approves the definitions and the cleaning. TraceBi makes sure that what they
@@ -210,11 +211,11 @@ audience than any feature.</p>
 </tr>
 <tr>
 <td>"What does the reader need?"</td>
-<td>"A web browser. The report is one file that works offline. To check it, they need that file and its receipt file."</td>
+<td>"A web browser. The report is one file that works offline. To check it, they need that file and its manifest file."</td>
 </tr>
 <tr>
-<td>"Who issued the receipt? Could someone fake both?"</td>
-<td>"Today the receipt is made by whoever built the report, so between companies it's documentation. Signed receipts that prove who issued them are on the roadmap."</td>
+<td>"Who issued the trace? Could someone fake both?"</td>
+<td>"Today the trace is made by whoever built the report, so between companies it's documentation. Signed traces that prove who issued them are on the roadmap."</td>
 </tr>
 <tr>
 <td>"Where does the data live?"</td>
@@ -235,7 +236,7 @@ instead:</p>
 <tbody>
 <tr>
 <td>manifest</td>
-<td>receipt</td>
+<td>trace</td>
 </tr>
 <tr>
 <td>SHA-256 fingerprint / hash</td>

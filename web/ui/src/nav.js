@@ -30,7 +30,7 @@
 // that sees it.
 export const PAGES = [
   { key: 'reports', label: 'Reports', path: '/', minRole: 'viewer',
-    sub: 'What people read. Every number carries its receipt.' },
+    sub: 'What people read. Every report, and whether its numbers still hold.' },
   { key: 'ask',     label: 'Ask',     path: '/ask', minRole: 'viewer',
     sub: 'Ask a model a question and see the query behind the answer.' },
   { key: 'data',    label: 'Data',    path: '/data', minRole: 'admin',

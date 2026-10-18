@@ -1,6 +1,6 @@
 // Portfolio Dashboard: the whole book on one screen, an app (the React lane).
 // Every number is a kit figure (<Kpi>, <Chart>, <Table>) with a literal
-// binding and cell, so the build records it and the receipt names it. The
+// binding and cell, so the build records it and its trace names it. The
 // search and the sector filter choose which stamped rows show; they never
 // compute a number.
 import { Masthead, Footer, Kpi, Chart, Table, Filter, Search, Download } from "tracebi";

@@ -1,6 +1,6 @@
 // SaaS MRR Dashboard: an app (the React lane). Every number is a kit figure
 // (<Kpi>, <Value>, <Chart>, <Spark>, <Table>) with a literal binding and cell,
-// so the build records it and the receipt names it. The plan filter chooses
+// so the build records it and its trace names it. The plan filter chooses
 // rows; it never computes a number.
 import { Masthead, Footer, Kpi, Value, Spark, Chart, Table, Filter, Download } from "tracebi";
 

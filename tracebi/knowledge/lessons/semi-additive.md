@@ -31,7 +31,7 @@ model.query(fact="snapshots", measures=["aum"])    # total AUM at the latest sna
 
 Within each group the measure sums the balance at the group's **latest snapshot
 date** and never across snapshots — so it is summed across funds and taken at
-period-end over time, in one governed query with a receipt. Pair it with a
+period-end over time, in one governed query with a trace. Pair it with a
 [[group-by-time]] grain to get the period-end series.
 
 It assumes entities snapshot on common dates (the month-end convention). Where

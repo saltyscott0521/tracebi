@@ -4,7 +4,7 @@ title: Make a dashboard feel like a dashboard — ask how it should look, then l
 when: building a dashboard (several figures someone checks often), choosing its title, navigation, mode or density, or when a page "reads like a document"
 ---
 **The pitfall.** A dashboard built like an essay: a big title, a paragraph, then
-one wide card per figure down a long scroll. Every number is right and receipted,
+one wide card per figure down a long scroll. Every number is right and traced,
 and the reader still has to read top to bottom to find the one they came for.
 The other half of the pitfall is guessing the look: a dark sidebar dashboard for
 someone who prints it, a banner for a page that lives in a tab all day.
@@ -22,7 +22,7 @@ attribute (`presentation.layout.look` in `tracebi context`):
   inside it so the column runs top to bottom;
 - `<header class="tb-masthead" data-tb-title="…" data-tb-period="…">` with
   the `<h1>` and a `.tb-standfirst`; the runtime adds the meta line (the
-  period, the build time from the receipt and the verdict chip). Never type a
+  period, the build time from the trace and the verdict chip). Never type a
   date.
 
 `tracebi new-dashboard "<Name>" --mode … --density … --nav … --title-at …` writes

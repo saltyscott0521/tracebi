@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -114,7 +115,7 @@ accepts: checkable                     # optional: only re-checkable numbers (se
 <tbody>
 <tr>
 <td><code>view</code></td>
-<td>see the folder in lists; open its reports, past builds, receipts, lineage, downloads and share links</td>
+<td>see the folder in lists; open its reports, past builds, traces, lineage, downloads and share links</td>
 </tr>
 <tr>
 <td><code>build</code></td>
@@ -148,7 +149,7 @@ included.</p>
 <tbody>
 <tr>
 <td><code>labelled</code> (default)</td>
-<td>anything honestly labelled: a number that cannot be re-run says so in its receipt</td>
+<td>anything honestly labelled: a number that cannot be re-run says so in its trace</td>
 </tr>
 <tr>
 <td><code>checkable</code></td>
@@ -160,7 +161,7 @@ included.</p>
 message naming the cause when the report has a <code>report.py</code> (Python computes its
 numbers), or when its build holds a figure's data that is marked
 <code>verifiable: false</code> or is not a single recorded query. A figure that a page's
-<code>script.js</code> changes in the browser is marked in the receipt when the page runs,
+<code>script.js</code> changes in the browser is marked in the trace when the page runs,
 so it cannot be judged at publish time. Any other value of <code>accepts</code> makes the
 file malformed (below), and a malformed file reads as <code>checkable</code>.</p>
 <hr>

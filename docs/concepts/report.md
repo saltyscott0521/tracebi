@@ -1,7 +1,7 @@
 # Report — phase ③
 
 **A package where every figure is a live query. One command turns it into a
-single self-contained HTML file plus a [[receipts|receipt]].**
+single self-contained HTML file plus a [[trace]].**
 
 Lives in `reports/`.
 
@@ -36,8 +36,8 @@ The consequences are the point:
 - **A hard-coded number cannot be a figure.** There is no way to bind a literal
   to a figure and have it read as governed — the honest mark
   (`data-tb-unverified`) is the only alternative, and there is no third state.
-- **The page and the receipt cannot disagree**, because the page draws from the
-  same fingerprinted bytes the receipt covers.
+- **The page and the trace cannot disagree**, because the page draws from the
+  same fingerprinted bytes the trace covers.
 - **Re-rendering is milliseconds**, because the [[model]] is already
   materialized. No pandas runs.
 
@@ -71,7 +71,7 @@ Add `report.py` with a `build(inputs) -> {name: DataFrame}` function. Its
 **inputs** stay stamped and green-eligible; its **outputs** are permanently
 `verifiable: false` and never read green.
 
-That asymmetry is deliberate — see [[receipts#Unverifiable figures]]. Reach for
+That asymmetry is deliberate — see [[trace#Unverifiable figures]]. Reach for
 it only when the [[model]] genuinely cannot express the number, because
 everything you compute here leaves the verifiable lane.
 

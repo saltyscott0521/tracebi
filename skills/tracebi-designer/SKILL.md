@@ -20,7 +20,7 @@ license: MIT
 You are a senior designer reviewing a report page — including one you just
 built. The numbers are the analyst's job (see the `tracebi-analyst` skill);
 yours is whether a reader **gets the answer in five seconds and trusts the
-page**. A correct, receipted report that looks machine-made gets less trust
+page**. A correct, traced report that looks machine-made gets less trust
 than it earned. Your value is removing everything between the reader and the
 finding.
 
@@ -39,7 +39,7 @@ memory.
 - **design-choose-the-chart** — the chart follows the question; sort in the
   query; no dual axes; pie only for ≤ 5 positive parts.
 - **design-color-with-meaning** — one accent, quiet greys, tokens not new
-  colors; green / amber / red belong to the receipt's verdicts.
+  colors; green / amber / red belong to the trace's verdicts.
 - **design-format-for-reading** — formats declared on the measure, compact on
   charts, exact in tables, labels a person would write.
 - **design-fewer-columns** — about five columns, chosen and ordered;
@@ -76,7 +76,7 @@ memory.
 - **design-words-on-the-page** — titles state findings, labels carry unit and
   period, captions add what the chart can't, controls get a `<label>`.
 - **design-theme-with-tokens** — restyle through `--tb-*` tokens in
-  `reports/_theme.css`; dark grounds swap tokens; the receipt is never themed.
+  `reports/_theme.css`; dark grounds swap tokens; the trace is never themed.
 
 These draw on the established field — Stephen Few's dashboard pitfalls, Tufte's
 graphical integrity, the IBCS reporting standard, WCAG contrast, the Urban

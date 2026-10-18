@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -201,6 +202,17 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
     panel and Ask can link to History or a model's Data page, which then shows
     the plain "for analysts / admins" page. Hide those links by the same
     <code>mayUse</code> rule the sidebar uses.</li>
+</ol>
+<p>Left by A2-4 (receipt → trace):</p>
+<ol start="36">
+<li><strong>The code still says "receipt".</strong> Readers see <em>trace</em> everywhere; the
+    identifiers kept the old word so the artifact contract did not move: the
+    <code>tracebi-receipt</code> block id, <code>.tb-receipt*</code> classes, <code>data-tb-receipt-*</code>
+    attributes, <code>tracebi.renderReceipt</code> / <code>receiptFileName</code>, Python
+    <code>receipt_*</code> names, <code>ReceiptFrame.jsx</code>, the panel's <code>receipt</code> tab key and
+    the <code>receipt_drawer</code> key in <code>tracebi context</code>. Rename them together, with
+    a reader for the old block id so files built before the rename still open
+    their drawer (and <code>verify --file</code> still reads them).</li>
 </ol>
 <h2 id="done">Done</h2>
 <ul>

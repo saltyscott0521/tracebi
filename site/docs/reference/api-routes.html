@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -309,7 +310,7 @@ A build row stores no verdict (a build is not a check), so the page shows the
 build, and "Not checked" on the older ones.</p>
 <p>The <code>html</code> download is that last build, the file the reader is looking at.
 <code>pdf</code> is a print of that same file (headless Chromium, so charts render). It
-carries no receipt; the HTML file is what <code>verify --file</code> checks.
+carries no trace; the HTML file is what <code>verify --file</code> checks.
 <code>xlsx</code> goes through the Excel renderer, which derives no
 <a href="../reference/number-formats.html">formats</a>, and runs the report to do so.</p>
 <h2 id="drafts">Drafts</h2>
@@ -449,7 +450,7 @@ no groups; no owners means any analyst.</p>
 </tbody>
 </table>
 <p><code>/render</code> compiles the spec to a package and renders it like a hand-authored
-one — same figures, same receipt drawer, same schema-2 manifest.</p>
+one — same figures, same trace drawer, same schema-2 manifest.</p>
 <h2 id="verify">Verify</h2>
 <table>
 <thead>
@@ -468,7 +469,7 @@ one — same figures, same receipt drawer, same schema-2 manifest.</p>
 </tbody>
 </table>
 <p>The offline file check over HTTP: embedded bytes against the manifest. No model
-needed. See <a href="../concepts/receipts.html">Receipts</a>.</p>
+needed. See <a href="../concepts/trace.html">The trace</a>.</p>
 <h2 id="pipelines">Pipelines</h2>
 <table>
 <thead>

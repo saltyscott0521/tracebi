@@ -7,7 +7,7 @@ runnable.
 
 > **The `requests/` script lane was removed (0.8, breaking).** Earlier
 > versions of this guide centered on request scripts; that lane — with no
-> receipt and no way to earn one — is gone. The one report lane is the
+> trace and no way to earn one — is gone. The one report lane is the
 > **artifact package** (`reports/<name>/`), covered below. A JSON spec
 > migrates with `tracebi migrate spec reports/<name>.json`.
 
@@ -88,7 +88,7 @@ tracebi new-report "My Report"      # 1. scaffold reports/my_report/
 tracebi dev my_report               # 2. live loop — workbench, pins, exploration
 tracebi report build my_report      # 3. render → output/my_report.html + manifest
 tracebi verify output/my_report.html.manifest.json --strict --contracts
-                                    # 4. re-run its receipt before anyone reads it
+                                    # 4. re-run its trace before anyone reads it
 ```
 
 An artifact package is a directory `reports/<name>/`: `report.json` (the
@@ -116,9 +116,9 @@ The dev loop, step by step:
   and `verify` refuses it by name — a draft cannot impersonate a final.
 - **Publishing is build + verify.** `tracebi report build <name>` strips
   exploration, validates every figure claim against its binding, and writes
-  `output/<name>.html` plus the `.manifest.json` receipt. The package is
+  `output/<name>.html` plus the `.manifest.json` trace. The package is
   already served in the app, in the library under its model — there is no separate publish
-  step. `--contracts` also re-runs the sink contracts, so the receipt can
+  step. `--contracts` also re-runs the sink contracts, so the trace can
   say **the sink satisfied its contract** (never "the transform was
   verified" — contract status certifies what landed, not the pandas above
   it, and never colors a figure status).
@@ -157,13 +157,13 @@ A discovery session is a lab notebook, not a report. `tracebi session export`
 writes `explorations/<name>.html` (or `--format md` for the markdown twin) —
 the committed record of the frames, charts, and notes you pushed to the
 workbench. It carries **no manifest**, and `tracebi verify` refuses the file by
-name: a lab notebook must not read as a receipt. It is the honest home for the
+name: a lab notebook must not read as a trace. It is the honest home for the
 narrative a governed report deliberately does not carry.
 
 ### Delivering the report
 
-`tracebi report send` builds the report, verifies it, and emails it with the
-receipt — and **refuses to send an unverified receipt**:
+`tracebi report send` builds the report, verifies it, and emails it with its
+manifest — and **refuses to send a report that does not verify**:
 
 ```bash
 tracebi report send my_report --to team@example.com --subject "Q3 book"
@@ -174,7 +174,7 @@ than being hidden. Delivery reads `TRACEBI_SMTP_URL` / `TRACEBI_SMTP_FROM` for
 email and `TRACEBI_SLACK_WEBHOOK` for a Slack text ping. A scheduled
 run (`tracebi schedule`) also uploads the HTML and the manifest when
 `TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are both set. Point
-cron or CI at `tracebi schedule run` to run one on a timer. The refusal is the point: a receipt that does not
+cron or CI at `tracebi schedule run` to run one on a timer. The refusal is the point: a report that does not
 reproduce should never leave the building looking clean.
 
 ---
@@ -226,7 +226,7 @@ and the ER diagram. **Ask** puts a question to a model as a sentence of its own
 tokens ("Show *fair value* by *sector* for *Software*, *largest first*, *top 8*"):
 typing finds the measure, dimension or value, and the answer is the model's query
 run on it, a chart, table or number with each measure's definition in words and
-the query behind it. It is marked Not checked: a live query has no receipt. **Keep
+the query behind it. It is marked Not checked: a live query has no trace. **Keep
 this** (analyst) starts a draft report of that one figure, holding the query, not
 the numbers. **Advanced** under it is the query builder on the same question, and
 its "The query as code" gives the Python and the `report.json` binding to paste.

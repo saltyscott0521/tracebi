@@ -22,7 +22,7 @@ have no order are the usual results.
 
 - **Sort in the query, never in the chart or script.js.** An unsorted bar chart
   hides its own answer, and sorting in the browser moves ordering out of the
-  receipt.
+  trace.
 - **One measure per axis.** No dual axes: two scales on one chart invite the
   reader to compare heights that aren't comparable. Use two charts side by side
   (two `.tb-span-6` panels in a `.tb-grid`).

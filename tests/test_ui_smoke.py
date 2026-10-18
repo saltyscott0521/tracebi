@@ -300,24 +300,26 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             back.wait_for()
             crumb.get_by_role("link", name="Direct Lending Portfolio").wait_for()
 
-            # Export is one menu of the three files, and says which carries the receipt.
+            # Export is one menu of the three files, and says which carries the trace.
             page.get_by_role("button", name="Export").click()
             menu = page.get_by_role("menu")
             links = menu.get_by_role("menuitem").all()
             assert [link.inner_text().split("\n")[0] for link in links] == ["PDF", "Excel", "HTML"]
             assert [link.get_attribute("href").rsplit("=", 1)[1] for link in links] == ["pdf", "xlsx", "html"]
-            assert "Only the HTML file carries its receipt" in menu.inner_text()
+            assert "the file with its trace" in menu.inner_text()
+            assert "receipt" not in menu.inner_text().lower()
             page.keyboard.press("Escape")
             assert menu.count() == 0
 
             # The receipt, the lineage, the builds and the files are one panel
-            # beside the report, "About this build". Its Receipt is the build's
+            # beside the report, "About this build". Its Trace is the build's
             # own certificate, in the honesty language, sink contracts and all.
             page.get_by_role("button", name="About this build").click()
-            page.get_by_role("tab", name="Receipt").click()
+            page.get_by_role("tab", name="Trace").click()
             page.get_by_role("button", name="Check again").wait_for()
             receipt = page.frame_locator("iframe.rpanel__receipt")
-            receipt.get_by_text("The receipt does not claim the numbers are right.").wait_for()
+            receipt.get_by_text("How each number was made").wait_for()
+            receipt.get_by_text("This page does not claim the numbers are right", exact=False).wait_for()
             receipt.locator("summary", has_text="About this build").click()
             receipt.get_by_text("fact_holdings: the sink satisfied its contract").wait_for()
             page.get_by_role("tab", name="Lineage").click()
@@ -344,14 +346,19 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("Report ran successfully").wait_for()
             # The report's own chip says what the app's check found: the file
             # alone says "Not checked", framed here it is told the verdict. The
-            # app's header shows it, so the masthead keeps only its Receipt link;
-            # the frame's receipt says the same as the header.
+            # app's header shows it, so the masthead keeps only its Trace link;
+            # the frame's trace says the same as the header.
             frame = page.frame_locator("iframe.rp__frame")
             expect(page.locator(".rp__titlerow")).to_contain_text("Reproduces", timeout=60_000)
             expect(frame.locator(".tb-receipt-drawer .tb-verdict").first).to_have_text(
                 "Reproduces", timeout=60_000)
             expect(frame.locator(".tb-masthead .tb-verdict").first).to_be_hidden()
-            expect(frame.locator(".tb-masthead .tb-receipt-link").first).to_be_visible()
+            expect(frame.locator(".tb-masthead .tb-receipt-link").first).to_have_text("Trace")
+            # The footer is one line: its link opens the drawer, which holds
+            # what the build's disclosure says, so the disclosure stands down.
+            expect(frame.locator(".tb-footer-line .tb-receipt-link").first).to_have_text(
+                "How these numbers were made")
+            expect(frame.locator(".tb-footer-line + .tb-footer-details").first).to_be_hidden()
             back.click()
             page.wait_for_url(base + "/")
             glance = page.get_by_role("group", name="At a glance")

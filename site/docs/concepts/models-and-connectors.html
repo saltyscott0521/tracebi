@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -141,7 +142,7 @@ model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;, 
   data or plumbing.</li>
 <li><strong>The data can be rebuilt without touching the model.</strong> A <a href="../concepts/transform.html">Transform — phase ①</a>
   writes the warehouse file; the model keeps reading the same table names.</li>
-<li><strong>A <a href="../concepts/receipts.html">receipt</a> can name its source.</strong> Every query records which
+<li><strong>A <a href="../concepts/trace.html">The trace</a> can name its source.</strong> Every query records which
   connector and which table it read, plus a fingerprint of that table, so a
   number can be traced to stored data.</li>
 </ul>
@@ -154,7 +155,7 @@ pipelines/portfolio_model.yaml         rebuild its data, then those reports
 <p>One line makes the pipeline: <code>model_pipeline("portfolio_model",
 transform="holdings_transform")</code> registers a <strong>transform</strong> step (the phase ①
 script that fills the warehouse) and a <strong>build</strong> step (every report in
-<code>reports/portfolio_model/</code>, each with its receipt). It shows on the Pipelines
+<code>reports/portfolio_model/</code>, each with its trace). It shows on the Pipelines
 page and runs with <code>tracebi run-pipeline portfolio_model</code>. The build step
 refuses to run after a transform that failed, so a report is never rebuilt on
 data the transform did not refresh.</p>

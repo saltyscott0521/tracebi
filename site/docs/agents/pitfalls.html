@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -140,9 +141,9 @@ runs jobs on worker threads, which don't inherit it, so runs were recorded with
 no actor.
 - <em>Rule:</em> set context (<code>with actor(...)</code>) inside the job, where it runs.</p>
 <p><strong>10. Two downloads are two renders.</strong>
-The web app re-renders a report on each download, so a receipt saved earlier
+The web app re-renders a report on each download, so a trace saved earlier
 can fail to match an HTML file downloaded later.
-- <em>Rule:</em> hand out a report and its receipt from the same render.</p>
+- <em>Rule:</em> hand out a report and its trace from the same render.</p>
 <h2 id="docs-and-claims">Docs and claims</h2>
 <p><strong>11. A claim about behaviour must be run, not remembered.</strong>
 The docs said <code>tracebi verify --file</code> needs "only the .html". It also needs the
@@ -165,7 +166,7 @@ bug; every design change broke them. They were removed (see
 - <em>Rule:</em> test behaviour: the data is unchanged, honesty rules hold, two
   implementations agree, security holds. Not how it looks.</p>
 <p><strong>15. Tests must write to temporary folders.</strong>
-Some tests write receipts into the repo's <code>output/</code> folder, leaving untracked
+Some tests write traces into the repo's <code>output/</code> folder, leaving untracked
 files in every contributor's checkout.
 - <em>Rule:</em> use <code>tmp_path</code>.</p>
 <p><strong>16. A failing test run may be the environment.</strong>

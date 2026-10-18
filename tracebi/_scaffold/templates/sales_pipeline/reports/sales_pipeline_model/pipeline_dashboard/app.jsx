@@ -1,5 +1,5 @@
 // Sales Pipeline Dashboard: an app (the React lane). Every number is a kit
-// figure, so the receipt names it. Open pipeline is the sum of amounts on deals
+// figure, so its trace names it. Open pipeline is the sum of amounts on deals
 // still open; win rate is won deals over closed deals, a ratio of totals.
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download } from "tracebi";
 

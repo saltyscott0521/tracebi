@@ -1,5 +1,5 @@
 // Sales Rep Scorecard: an app (the React lane) with two views, by rep and by
-// region. Every number is a kit figure, so the receipt names it. Win rate is
+// region. Every number is a kit figure, so its trace names it. Win rate is
 // won deals over closed deals inside the rep or region, a ratio of totals, not a
 // mean of per-rep rates.
 import { Users, Map } from "lucide-react";

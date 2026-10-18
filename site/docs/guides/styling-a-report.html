@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -223,7 +224,7 @@ nothing requires these classes.</p>
 </code></pre>
 <p>The <code>data-tb-*</code> attributes are covered in <a href="../reference/template-html.html">template.html — the figure grammar</a>. Here <code>fv_share</code> is
 a <code>share=</code> measure and <code>fv_growth</code> a <code>growth=</code> measure (<a href="../reference/measures.html">Measures</a>), so the
-comparison is a governed number with its own receipt. <code>data-tb-direction</code> draws
+comparison is a governed number with its own trace. <code>data-tb-direction</code> draws
 the ▲/▼ and picks <code>--tb-good</code> or <code>--tb-bad</code> from that number's sign.</p>
 <h2 id="what-you-get-without-writing-css">What you get without writing CSS</h2>
 <ul>
@@ -233,8 +234,8 @@ the ▲/▼ and picks <code>--tb-good</code> or <code>--tb-bad</code> from that 
 <li>Keyboard focus is always visible, headings wrap evenly, and running text
   stops at a readable line length.</li>
 <li>An empty table or chart says "no data" instead of showing a blank.</li>
-<li>Printing keeps the receipt, the badges and every tab's content.</li>
-<li>The receipt drawer doesn't animate for people who've turned motion off.</li>
+<li>Printing keeps the trace, the badges and every tab's content.</li>
+<li>The trace drawer doesn't animate for people who've turned motion off.</li>
 </ul>
 <h2 id="design-guidance">Design guidance</h2>
 <p>The framework ships design lessons next to its analysis lessons. List them with
@@ -265,7 +266,7 @@ there and rows on a small report. <code>ready(fn)</code> behaves identically on 
 <p>Two things that belong in the query, not in JS:</p>
 <ul>
 <li><strong>Sorting and slicing</strong> — <code>order_by</code> + <code>limit</code> (<a href="../reference/queries.html">Queries</a>). Sorting in JS
-  moves the ordering out of the receipt. If readers should re-sort a table,
+  moves the ordering out of the trace. If readers should re-sort a table,
   add <code>data-tb-sort</code> to it: the query's order stays the default, and the
   reader's clicks only reorder the stamped rows.</li>
 <li><strong>Aggregation</strong> — never. Client-side aggregation mints numbers nobody can
@@ -304,7 +305,7 @@ the system: a <code>style.css</code> that is a theme preset (an accent pair and 
 inlined display face), every chart type, a KPI delta, data bars, sortable
 columns, filters, a scenario and a custom d3 figure. The demo app's
 <code>aum_by_branch</code> is the one bespoke look (its own faces, palette and hero band
-with inlined artwork) on the same masthead, grid, footer and receipt.</p>
+with inlined artwork) on the same masthead, grid, footer and trace.</p>
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup</li>

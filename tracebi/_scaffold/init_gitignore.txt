@@ -4,7 +4,7 @@ __pycache__/
 venv/
 .env
 # Rendered outputs are disposable, but the *.manifest.json files inside are
-# receipts — the audit trail. `<dir>/**` with negations (git cannot re-include
+# traces — the audit trail. `<dir>/**` with negations (git cannot re-include
 # under an excluded directory, so subfolders are re-included first) keeps outputs ignored while the manifests you
 # need to stand behind a report stay retained. data/ holds the warehouse and
 # `tracebi report build` renders; output/ holds ad-hoc renders.
@@ -16,7 +16,7 @@ output/**
 !output/.gitkeep
 *.db
 .ipynb_checkpoints/
-# Workbench dev-state (exhibit feed, pins) — session scratch, never receipts.
+# Workbench dev-state (exhibit feed, pins) — session scratch, never traces.
 .tracebi/
 # Remote-authoring drafts: private working copies, written over MCP or HTTP
 drafts/

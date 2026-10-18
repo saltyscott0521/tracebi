@@ -6,7 +6,7 @@ when: writing or reviewing an app.jsx (the React lane), or deciding whether a pa
 **The pitfall.** Full React makes anything possible, and the generated version
 shows it: a gradient hero, eight equal cards, a chart library's default
 colours, a number computed in a `.reduce()` and printed in a `<div>` — the
-receipt cannot see it, and the reader cannot tell it from a checked one. Or the
+trace cannot see it, and the reader cannot tell it from a checked one. Or the
 opposite: an app built for a page that only needed to be read, now blank in an
 email client.
 
@@ -16,7 +16,7 @@ emailed or printed is a `template.html` — it reads with JavaScript off.
 
 **Numbers through the kit, always.** Every number a reader might act on is a
 `<Kpi>`, `<Value>`, `<Chart>`, `<Spark>` or `<Table>` with literal `binding` and
-`cell`/`x`/`y`. That is what makes it a claim the receipt names. `useBinding`
+`cell`/`x`/`y`. That is what makes it a claim the trace names. `useBinding`
 rows are for layout and interaction — a list of names to navigate, which row is
 selected — not for new totals. If a figure needs arithmetic, it belongs in the
 model or in `report.json` `"measures"` (a report-level measure), where it is
@@ -49,7 +49,7 @@ colours stay meaning: `text-bad` for a problem, never for decoration
 filter that matches nothing says so, and a view with no data says why
 ([[design-plan-every-state]]).
 
-**The tell.** Open the receipt drawer and look at the page: every number you
+**The tell.** Open the trace drawer and look at the page: every number you
 would quote should be in the drawer's list. If one is not, it is either the
 app's own arithmetic — move it into the model — or it should say it is not
 checked.

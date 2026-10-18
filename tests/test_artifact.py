@@ -252,13 +252,13 @@ class TestMethodologyAppendix:
                     page.index("</p>", page.index('class="tb-footer-line"'))]
         assert line.startswith('class="tb-footer-line">Built ')
         assert " · Wh Model. " in line and "wh_model" not in line
-        assert "The receipt does not claim the numbers are right." in line
+        assert "This page does not claim the numbers are right." in line
         assert "unknown" not in line
         # The rest sits behind "How these numbers were made".
         details = page[page.index('<details class="tb-footer-details">'):
                        page.index("</details>")]
         assert "<summary>How these numbers were made</summary>" in details
-        assert "This file carries a receipt" in details
+        assert "This file carries its trace" in details
         for text in (line, details[:details.index(APPENDIX)]):
             for word in ("verified", "reproduces", "correct"):
                 assert word not in text.lower()

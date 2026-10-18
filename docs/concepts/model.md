@@ -44,7 +44,7 @@ contract** between the analysis and the reporting.
   never raw SQL.
 
 That constraint is what makes a figure re-runnable, and therefore what makes a
-[[receipts|receipt]] possible. A report cannot ask for something the model has
+[[trace]] possible. A report cannot ask for something the model has
 not declared, so anything the model *can* express is automatically replayable.
 
 ## The corollary worth internalising

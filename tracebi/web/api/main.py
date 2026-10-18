@@ -124,7 +124,7 @@ def _start_feed_heartbeat() -> threading.Event:
 app = FastAPI(
     title="TraceBi API",
     description=("The trust layer for AI-generated analytics: a code-first BI "
-                 "framework where every number has a receipt."),
+                 "framework where every number has a trace."),
     version=_tracebi_version(),
     lifespan=_lifespan,
 )

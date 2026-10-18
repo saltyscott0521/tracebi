@@ -77,7 +77,7 @@ _BANNER = (
     '<div style="position:sticky;top:0;z-index:9999;background:#b45309;'
     'color:#fff;font:600 13px/1.4 system-ui,sans-serif;padding:8px 16px;'
     'text-align:center">Exploration record — a lab notebook, not a report. '
-    'Numbers here were live when shown and carry no receipts; '
+    'Numbers here were live when shown and carry no trace; '
     'tracebi verify refuses this page by name.</div>'
 )
 
@@ -316,7 +316,7 @@ def _export_markdown(wb_dir: str, out_path: str,
         f"# {title}",
         "",
         "> **Exploration record — a lab notebook, not a report.** Numbers "
-        "here were live when shown and carry no receipts; nothing in this "
+        "here were live when shown and carry no trace; nothing in this "
         "file is a verified claim.",
         "",
     ]

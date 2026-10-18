@@ -19,7 +19,7 @@ model.add_value_bins("dim_customer", "score_band",
                      source="credit_score", edges=[600, 700, 800])
 
 model.query(fact="loans", measures=["balance"],
-            dimensions=["dim_customer.score_band"])   # by band, with a receipt
+            dimensions=["dim_customer.score_band"])   # by band, with a trace
 ```
 
 `N` edges make `N+1` bands — below the first, between each pair, and at/above

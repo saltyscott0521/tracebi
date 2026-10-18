@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -86,7 +87,7 @@
 <p><strong>Named, declarative calculations on a <a href="../concepts/model.html">Model — phase ②</a>. Ten kinds, a closed set of
 aggregations, and guardrails that refuse the arithmetic that is quietly wrong.</strong></p>
 <p>A report asks for a measure <strong>by name</strong>. That is what makes a figure
-re-runnable, and therefore <a href="../concepts/receipts.html">receiptable</a>.</p>
+re-runnable, and therefore <a href="../concepts/trace.html">traceable</a>.</p>
 <hr>
 <h2 id="declaring-one">Declaring one</h2>
 <pre><code class="language-python">model.add_measure(
@@ -148,7 +149,7 @@ tie-break so it reproduces.</p>
 </code></pre>
 <p>The Pareto/concentration direction. <code>running</code> of a share is the cumulative
 percent of total, so <code>rank</code> + <code>share</code> + <code>running(share)</code> is the whole
-concentration table — governed, with its receipt intact.</p>
+concentration table — governed, with its trace intact.</p>
 <h3 id="period_end-semi-additive-balances"><code>period_end</code> — semi-additive balances</h3>
 <pre><code class="language-python">model.add_measure(&quot;aum&quot;, period_end=(&quot;balance&quot;, &quot;dim_date.as_of_date&quot;),
                   format=&quot;currency0&quot;)
@@ -242,7 +243,7 @@ execution — so it cannot be part of a declarative contract.</p>
 every additive measure</strong>. The refusal names the duplicate values and the exact
 row multiplication.</p>
 <p>The override is a <em>query</em> argument, and taking it records a <code>warning</code> lineage
-node — so the opt-in leaves its own receipt.</p>
+node — so the opt-in leaves its own trace.</p>
 <h3 id="rate-aggregation-by-name-allow_rate_aggtrue">Rate aggregation, by name → <code>allow_rate_agg=True</code></h3>
 <p>Aggregating a rate-named measure (<code>*_pct</code>, <code>*_bps</code>, <code>*_yield</code>, <code>*_rate</code>, or
 anything described as "weighted") with <code>sum</code>/<code>mean</code>/<code>avg</code> is refused.</p>

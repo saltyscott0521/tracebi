@@ -1,6 +1,6 @@
 # TraceBi in plain English
 
-**TraceBi makes reports where every number comes with a receipt, so anyone can
+**TraceBi makes reports where every number comes with a trace, so anyone can
 check later that the number still matches what it was built from.**
 
 This page is for people who read, approve or pay for reports and don't write
@@ -23,11 +23,12 @@ can check them, that approach stops working.
 
 ## The idea, in one picture
 
-Think of a **store receipt**. When you buy something, the receipt lists each
-item and its price, so you can check it against the shelf later. You don't have
-to trust the cashier's memory.
+Think of **tracking on a parcel**. Every step it took is written down as it
+happens, so you can check the route later. You don't have to trust anyone's
+memory.
 
-TraceBi gives every number in a report a receipt like that. The receipt records:
+TraceBi gives every number in a report a trace like that: how the number was
+made. The trace records:
 
 - **where the number came from:** which data and which definition (for example
   "total fair value = the sum of fair value across all holdings"), and
@@ -66,31 +67,31 @@ page.
   engineers review code. An AI working through TraceBi's gateway can check its
   own work, but it has no write access to the data it reports on.
 - **The reader** gets one file. It opens in any web browser, works offline, and
-  carries its own receipt. They can check it with **Verify a file** in the app
-  by dropping in the report and its receipt file.
+  carries its own trace. They can check it with **Verify a file** in the app
+  by dropping in the report and its `.manifest.json` file.
 
-## What the receipt does *not* promise
+## What the trace does *not* promise
 
 This matters, and TraceBi is deliberately strict about it.
 
-- **A receipt shows a number is consistent. It does not show the number is
+- **A trace shows a number is consistent. It does not show the number is
   right.** If bad data went in at step 1, the report will faithfully and
-  repeatably show the bad number. The receipt proves it *reproduces*, not that
+  repeatably show the bad number. The trace proves it *reproduces*, not that
   it is *correct*.
-- **Step 1, the cleaning, is checked by people, not by the receipt.** TraceBi
+- **Step 1, the cleaning, is checked by people, not by the trace.** TraceBi
   can run simple checks on the cleaned tables ("no duplicate holdings", "every
   holding belongs to a known fund"). When they pass, the phrase is *"the sink
   satisfied its contract."* It is not a guarantee that the analysis was right.
-- **The receipt is made by whoever made the report.** Between two companies it
+- **The trace is made by whoever made the report.** Between two companies it
   is good documentation, not independent proof. It becomes proof when the
-  person checking also has access to the original data. Signed receipts, which
+  person checking also has access to the original data. Signed traces, which
   prove *who* issued them, are planned but not built yet.
 
 ## Words you will see in the app
 
 | Word in the app | What it means |
 | --- | --- |
-| **Receipt** / **manifest** | The record of where each number came from and its fingerprint. Saved as a small `.manifest.json` file next to the report. |
+| **Trace** / **manifest** | The record of where each number came from and its fingerprint. Saved as a small `.manifest.json` file next to the report. |
 | **Fingerprint** | A short code computed from the exact data. Any change to the data gives a different code. |
 | **Reproduces** | Running it again gave exactly the same data. |
 | **File altered** | Someone changed numbers in the file after it was built. |
@@ -101,14 +102,14 @@ This matters, and TraceBi is deliberately strict about it.
 | **Contract satisfied / no contract** | Whether the cleaned tables passed their declared checks, or have no checks declared. |
 | **Ask** | Put a question to a model by picking its own measures and categories ("fair value by sector"). The answer is a fresh query, so it says Not checked; **Keep this** turns it into a draft report. The app does not guess at free text: plain-English questions go to your agent, which uses the same definitions. |
 | **Reports, Ask, Review, Data** | The app's places. Everyone sees Reports and Ask; an analyst also sees Review (what needs attention, drafts, history, checking a file); an admin also sees Data (how the numbers are made). |
-| **Needs attention** | The first tab of Review: anything a person should look at right now, such as a receipt that no longer matches, a refresh that failed or a request to publish. When there is nothing it says so. |
+| **Needs attention** | The first tab of Review: anything a person should look at right now, such as a report that no longer reproduces, a refresh that failed or a request to publish. When there is nothing it says so. |
 | **Draft / exploration** | A report still being worked on. It contains scratch work that is removed before publishing. |
 | **Agent** | An AI assistant that builds reports using the same rules as a person. |
 
 ## The one-sentence version for your boss
 
 > "Our reports are built from written-down definitions, every number carries a
-> receipt, and anyone can check in seconds that a number still matches its
+> trace, and anyone can check in seconds that a number still matches its
 > source and hasn't been edited, including numbers an AI produced."
 
 ## Next
@@ -116,4 +117,4 @@ This matters, and TraceBi is deliberately strict about it.
 - See it working: [[demo-script]], a ten-minute walkthrough you can give to
   anyone.
 - The technical version of this page: [[the-three-phase-workflow]] and
-  [[receipts]].
+  [[trace]].

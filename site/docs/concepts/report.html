@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a class="on" href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -84,7 +85,7 @@
   <main class="doc">
 <h1 id="report-phase-3">Report — phase ③</h1>
 <p><strong>A package where every figure is a live query. One command turns it into a
-single self-contained HTML file plus a <a href="../concepts/receipts.html">receipt</a>.</strong></p>
+single self-contained HTML file plus a <a href="../concepts/trace.html">The trace</a>.</strong></p>
 <p>Lives in <code>reports/</code>.</p>
 <hr>
 <h2 id="the-shape">The shape</h2>
@@ -109,8 +110,8 @@ result, embeds the bytes, and fills the figure from them.</p>
 <li><strong>A hard-coded number cannot be a figure.</strong> There is no way to bind a literal
   to a figure and have it read as governed — the honest mark
   (<code>data-tb-unverified</code>) is the only alternative, and there is no third state.</li>
-<li><strong>The page and the receipt cannot disagree</strong>, because the page draws from the
-  same fingerprinted bytes the receipt covers.</li>
+<li><strong>The page and the trace cannot disagree</strong>, because the page draws from the
+  same fingerprinted bytes the trace covers.</li>
 <li><strong>Re-rendering is milliseconds</strong>, because the <a href="../concepts/model.html">Model — phase ②</a> is already
   materialized. No pandas runs.</li>
 </ul>
@@ -132,7 +133,7 @@ needs its own binding, and value figures never react to controls. See
 <p>Add <code>report.py</code> with a <code>build(inputs) -&gt; {name: DataFrame}</code> function. Its
 <strong>inputs</strong> stay stamped and green-eligible; its <strong>outputs</strong> are permanently
 <code>verifiable: false</code> and never read green.</p>
-<p>That asymmetry is deliberate — see <a href="../concepts/receipts.html">Receipts</a>. Reach for
+<p>That asymmetry is deliberate — see <a href="../concepts/trace.html">The trace</a>. Reach for
 it only when the <a href="../concepts/model.html">Model — phase ②</a> genuinely cannot express the number, because
 everything you compute here leaves the verifiable lane.</p>
 <h2 id="related">Related</h2>

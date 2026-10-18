@@ -34,7 +34,7 @@ The ideas. Read these once and the rest of the docs make sense.
 - [[models-and-connectors]] — a model says what the data means; a connector says where it is
 - [[report]] — phase ③: figures that are live queries, not typed-in numbers
 - [[freeze-points]] — why the three phases don't block each other
-- [[receipts]] — what a receipt proves, and what it deliberately does not
+- [[trace]] — what a trace proves, and what it deliberately does not
 - [[lineage]] — every operation leaves a node; nothing is untracked
 - [[sink-contracts]] — checks a transform must satisfy before its data counts
 
@@ -129,5 +129,5 @@ than a link, which is the one cost of this style.
 - Reference pages state what the code accepts, with the refusal it raises when
   you get it wrong — the refusals are part of the contract, not an afterthought.
 - Locked language is quoted exactly: *"the sink satisfied its contract"*,
-  *"reproduces"* (never "verified"). See [[receipts]] for why the wording is
+  *"reproduces"* (never "verified"). See [[trace]] for why the wording is
   load-bearing.

@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -90,7 +91,7 @@ runnable.</p>
 <blockquote>
 <p><strong>The <code>requests/</code> script lane was removed (0.8, breaking).</strong> Earlier
 versions of this guide centered on request scripts; that lane — with no
-receipt and no way to earn one — is gone. The one report lane is the
+trace and no way to earn one — is gone. The one report lane is the
 <strong>artifact package</strong> (<code>reports/&lt;name&gt;/</code>), covered below. A JSON spec
 migrates with <code>tracebi migrate spec reports/&lt;name&gt;.json</code>.</p>
 </blockquote>
@@ -155,7 +156,7 @@ route for reports you author as free HTML over the model — then the model and
 tracebi dev my_report               # 2. live loop — workbench, pins, exploration
 tracebi report build my_report      # 3. render → output/my_report.html + manifest
 tracebi verify output/my_report.html.manifest.json --strict --contracts
-                                    # 4. re-run its receipt before anyone reads it
+                                    # 4. re-run its trace before anyone reads it
 </code></pre>
 <p>An artifact package is a directory <code>reports/&lt;name&gt;/</code>: <code>report.json</code> (the
 data bindings — named queries against a model) plus <code>template.html</code> /
@@ -181,9 +182,9 @@ carries <code>data-tb-unverified</code>; there is no third state.</p>
   and <code>verify</code> refuses it by name — a draft cannot impersonate a final.</li>
 <li><strong>Publishing is build + verify.</strong> <code>tracebi report build &lt;name&gt;</code> strips
   exploration, validates every figure claim against its binding, and writes
-  <code>output/&lt;name&gt;.html</code> plus the <code>.manifest.json</code> receipt. The package is
+  <code>output/&lt;name&gt;.html</code> plus the <code>.manifest.json</code> trace. The package is
   already served in the app, in the library under its model — there is no separate publish
-  step. <code>--contracts</code> also re-runs the sink contracts, so the receipt can
+  step. <code>--contracts</code> also re-runs the sink contracts, so the trace can
   say <strong>the sink satisfied its contract</strong> (never "the transform was
   verified" — contract status certifies what landed, not the pandas above
   it, and never colors a figure status).</li>
@@ -216,11 +217,11 @@ screen is still a stamped number, never one the browser invented.</p>
 writes <code>explorations/&lt;name&gt;.html</code> (or <code>--format md</code> for the markdown twin) —
 the committed record of the frames, charts, and notes you pushed to the
 workbench. It carries <strong>no manifest</strong>, and <code>tracebi verify</code> refuses the file by
-name: a lab notebook must not read as a receipt. It is the honest home for the
+name: a lab notebook must not read as a trace. It is the honest home for the
 narrative a governed report deliberately does not carry.</p>
 <h3 id="delivering-the-report">Delivering the report</h3>
-<p><code>tracebi report send</code> builds the report, verifies it, and emails it with the
-receipt — and <strong>refuses to send an unverified receipt</strong>:</p>
+<p><code>tracebi report send</code> builds the report, verifies it, and emails it with its
+manifest — and <strong>refuses to send a report that does not verify</strong>:</p>
 <pre><code class="language-bash">tracebi report send my_report --to team@example.com --subject &quot;Q3 book&quot;
 </code></pre>
 <p><code>--force</code> sends anyway, but the failing verdict travels with the report rather
@@ -228,7 +229,7 @@ than being hidden. Delivery reads <code>TRACEBI_SMTP_URL</code> / <code>TRACEBI_
 email and <code>TRACEBI_SLACK_WEBHOOK</code> for a Slack text ping. A scheduled
 run (<code>tracebi schedule</code>) also uploads the HTML and the manifest when
 <code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> are both set. Point
-cron or CI at <code>tracebi schedule run</code> to run one on a timer. The refusal is the point: a receipt that does not
+cron or CI at <code>tracebi schedule run</code> to run one on a timer. The refusal is the point: a report that does not
 reproduce should never leave the building looking clean.</p>
 <hr>
 <h2 id="working-with-a-model-in-code">Working with a model in code</h2>
@@ -265,7 +266,7 @@ and the ER diagram. <strong>Ask</strong> puts a question to a model as a sentenc
 tokens ("Show <em>fair value</em> by <em>sector</em> for <em>Software</em>, <em>largest first</em>, <em>top 8</em>"):
 typing finds the measure, dimension or value, and the answer is the model's query
 run on it, a chart, table or number with each measure's definition in words and
-the query behind it. It is marked Not checked: a live query has no receipt. <strong>Keep
+the query behind it. It is marked Not checked: a live query has no trace. <strong>Keep
 this</strong> (analyst) starts a draft report of that one figure, holding the query, not
 the numbers. <strong>Advanced</strong> under it is the query builder on the same question, and
 its "The query as code" gives the Python and the <code>report.json</code> binding to paste.</p>

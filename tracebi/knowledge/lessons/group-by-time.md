@@ -18,7 +18,7 @@ model.add_dimension("dim_date", table_name="dates", key_col="d",
 model.add_time_grain("dim_date", "order_month", source="order_date", grain="month")
 
 model.query(fact="orders", measures=["revenue"],
-            dimensions=["dim_date.order_month"])   # revenue by month, with a receipt
+            dimensions=["dim_date.order_month"])   # revenue by month, with a trace
 ```
 
 Grains: `day`, `week`, `month`, `quarter`, `year`. Declare the grains you report

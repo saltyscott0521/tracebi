@@ -636,7 +636,7 @@ def promote_request(report: Optional[str], pin: dict, exhibits: list[dict]) -> s
         lines.append(f"Columns: {', '.join(ex['columns'])} ({shape[0]} rows).")
     lines.append(
         "If the model can express it, add a binding to report.json (a model "
-        "query) and a figure in template.html, so it gets a receipt. If it "
+        "query) and a figure in template.html, so it gets a trace. If it "
         "can't, compute it in report.py, where it is marked python-derived. "
         "Then resolve the pin with a one-line note "
         "(`tracebi report pins <name> --resolve <id> --note ...`).")

@@ -76,7 +76,7 @@ wh.write(fact, "fact_orders")
 # %%  The sink CONTRACT: read-only SQL checks on what just landed, recorded
 # beside the warehouse. A failed check raises — a broken sink never freezes
 # quietly. This certifies the SINK; it never verifies the pandas above. The
-# note= is the STATED methodology, carried into report receipts verbatim.
+# note= is the STATED methodology, carried into report traces verbatim.
 from tracebi.contracts import contract
 
 with contract("sample_transform", warehouse=WAREHOUSE,

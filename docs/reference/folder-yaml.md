@@ -32,7 +32,7 @@ Four keys, each a name or a list of names. Names are sign-in **groups** or
 
 | key | may |
 |---|---|
-| `view` | see the folder in lists; open its reports, past builds, receipts, lineage, downloads and share links |
+| `view` | see the folder in lists; open its reports, past builds, traces, lineage, downloads and share links |
 | `build` | view, and start and edit drafts in the folder |
 | `publish` | build, and publish a draft into the folder; change a report's schedule |
 | `manage` | publish, and change the folder's permissions |
@@ -51,14 +51,14 @@ included.
 
 | value | the folder takes |
 |---|---|
-| `labelled` (default) | anything honestly labelled: a number that cannot be re-run says so in its receipt |
+| `labelled` (default) | anything honestly labelled: a number that cannot be re-run says so in its trace |
 | `checkable` | only reports whose every number a query can re-run |
 
 Under `checkable`, publishing a draft (or asking to) is refused with a plain
 message naming the cause when the report has a `report.py` (Python computes its
 numbers), or when its build holds a figure's data that is marked
 `verifiable: false` or is not a single recorded query. A figure that a page's
-`script.js` changes in the browser is marked in the receipt when the page runs,
+`script.js` changes in the browser is marked in the trace when the page runs,
 so it cannot be judged at publish time. Any other value of `accepts` makes the
 file malformed (below), and a malformed file reads as `checkable`.
 

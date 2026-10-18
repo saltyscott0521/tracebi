@@ -125,7 +125,7 @@ services:
       TRACEBI_DEV_MODE: ${TRACEBI_DEV_MODE:-0}
       PORT: "8000"
     volumes:
-      # Report builds and their receipts land in a folder on the host, where
+      # Report builds and their traces land in a folder on the host, where
       # they can be browsed, backed up or shared. The app runs as uid 10001,
       # so output-perms (below) makes the folder writable by it first.
       - ./examples/portfolio_project/output:/app/examples/portfolio_project/output

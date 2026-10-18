@@ -8,7 +8,7 @@ positions' share of the book." The share depends on the *query's* result (the
 filtered, aggregated rows), so it can't be pre-computed in the transform — and
 the model didn't used to express it, so it fell to `report.py`. That stamps the
 number `verifiable: false`: it leaves the governed lane and can never read green
-under `verify`. A concentration figure with no receipt is the opposite of what
+under `verify`. A concentration figure with no trace is the opposite of what
 you want.
 
 **The correct pattern in TraceBi.** Declare a **share measure** — it divides each
@@ -21,7 +21,7 @@ model.add_measure("revenue_share", share="revenue", format="percent")
 
 model.query(fact="sales", measures=["revenue", "revenue_share"],
             dimensions=["dim_region.region"])
-# each region's revenue, and its share of TOTAL revenue — with a receipt
+# each region's revenue, and its share of TOTAL revenue — with a trace
 ```
 
 The share is taken over the **whole** result *before* any `limit`, so "top 10 by

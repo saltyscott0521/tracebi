@@ -11,7 +11,7 @@
                              "libs": ["d3"], which inlines D3: it
                              draws every chart and the treemap.
   report.py                  The escape hatch: python-derived data, which the
-                             receipt marks as not query-reproducible.
+                             trace marks as not query-reproducible.
   style.css                  A theme preset: the accent pair for each
                              ground and one display face. Everything
                              else is the design system's own.
@@ -22,7 +22,7 @@
 
   At build, TraceBi adds its design system (tracebi.css), its runtime
   (tracebi.js) and the charting library, each marked with a comment, plus
-  the embedded data and the receipt. The finished file is self-contained.
+  the embedded data and its trace. The finished file is self-contained.
 -->
 </head>
 <body>
@@ -33,7 +33,7 @@
        when the masthead has no <p class="tb-kicker"> of its own (write one
        to say something else). data-tb-period names what the numbers cover;
        the runtime adds the meta line: the period, when this file was built,
-       the verdict chip and the Receipt button. -->
+       the verdict chip and the Trace link. -->
   <header class="tb-masthead" data-tb-period="Latest administrator marks">
     <!-- The title states the finding, and its numbers are live figures.
          top_sector is a one-row query (largest first, limit 1); the share is
@@ -49,7 +49,7 @@
       <span data-tb-figure="value" data-tb-binding="kpis"
             data-tb-cell="fair_value" data-tb-format="currency_compact"
             id="val-fv-inline"></span> at fair value. Every number on this
-      page is a live query with a fingerprint; open the receipt to see them.</p>
+      page is a live query with a fingerprint; open the trace to see them.</p>
   </header>
 
   <div class="tb-grid">
@@ -83,7 +83,7 @@
          data-tb-note="analyst estimate" id="kpi-est">
       <span class="tb-kpi-label">Est. Q3 deployments</span>
       <span class="tb-kpi-value">4</span>
-      <!-- Typed in, so it says so where it is read, not only in the receipt. -->
+      <!-- Typed in, so it says so where it is read, not only in the trace. -->
       <span class="tb-kpi-context">typed in, not a query · not re-run</span>
     </div>
   </div>
@@ -221,7 +221,7 @@
     <p>Source: each fund's Schedule of Investments. Marks are
       administrator-reported; no independent valuation was performed.</p>
     <p>One self-contained HTML file that works offline: the data behind every
-      figure, fingerprinted, with its receipt; TraceBi's design system and
+      figure, fingerprinted, with its trace; TraceBi's design system and
       runtime (MIT); D3 for the charts and the treemap (ISC License); the
       Fraunces typeface (SIL Open Font License). Check it with
       <code>tracebi verify --file</code>.</p>

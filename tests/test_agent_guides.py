@@ -64,6 +64,19 @@ class TestGuidesCoverTheVocabulary:
             ):
                 assert phrase in text, f"{name} lost the locked line {phrase!r}"
 
+    def test_the_word_receipt_stays_retired(self):
+        """What every number carries is its trace (2026-10-18). The old word
+        survives only inside identifiers the artifact contract fixes; any
+        other use is drift back into retired vocabulary."""
+        internal = re.compile(r"tracebi-receipt|\.?tb-receipt[\w-]*|"
+                              r"data-tb-receipt-[\w-]*|renderReceipt|"
+                              r"receiptFileName|receipt_drawer")
+        surfaces = dict(_guides())
+        surfaces["tracebi context"] = json.dumps(describe())
+        for name, text in surfaces.items():
+            left = re.findall(r".{0,30}receipt.{0,30}", internal.sub("", text), re.I)
+            assert not left, f"{name} still says receipt: {left[:3]}"
+
     def test_the_loop_commands_are_taught(self):
         """The commands an agent must run appear in both guides."""
         for name, text in _guides().items():

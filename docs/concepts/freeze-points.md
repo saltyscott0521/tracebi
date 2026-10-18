@@ -34,11 +34,11 @@ A freeze point is a *contract*, so crossing it deliberately loses information.
 
 - **The model cannot see the transform.** It reads tables, not the code that
   produced them. If a number is wrong because the pandas was wrong, the model
-  has no way to know — this is the honest boundary described in [[receipts]].
+  has no way to know — this is the honest boundary described in [[trace]].
 - **The report cannot see the warehouse directly.** It speaks in
   [[measures]] and dimensions the model declares. That is what makes a figure
   re-runnable, and it is why an expressiveness gap in the model pushes work
-  into ungoverned code where the receipt weakens.
+  into ungoverned code where the trace weakens.
 
 ## Refreshing a freeze point
 

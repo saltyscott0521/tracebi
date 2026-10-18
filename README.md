@@ -9,7 +9,7 @@
 AI writes the analysis now, and a confident wrong number reads exactly like a
 right one. TraceBi makes every report *code*: an **agent** authors it, a
 **human** reviews and approves it in a pull request, guardrails refuse the bad
-numbers, and a receipt proves the rest reproduce. It is built for both authors
+numbers, and a trace proves the rest reproduce. It is built for both authors
 at once — the metric logic lives in your repo, not inside a GUI — a real **semantic layer** where a measure is
 declared once and referenced by name, a **three-phase workflow** that keeps the
 slow analysis and the fast reporting from blocking each other, and batteries
@@ -44,7 +44,7 @@ slow analysis and the fast reporting never block each other.
                                        freeze ▼  the model (the semantic contract)
 ③  REPORT       reports/             fast, iterate constantly
       an artifact package (or a ReportSpec) pointed at the model — KPI cards,
-      charts, tables, every figure a live query with an embedded receipt.
+      charts, tables, every figure a live query with an embedded trace.
       Re-renders in milliseconds; nothing re-runs ①.
 ```
 
@@ -64,7 +64,7 @@ reads the sink; it never sees the transform.
 **Phase 3 (REPORT)** is an **artifact package** pointed at the model:
 `tracebi new-report` scaffolds `reports/<name>/` (a `report.json` of data
 bindings + `template.html` / `style.css` / `script.js`); `tracebi dev` explores
-it live; `tracebi report build` renders one self-contained HTML with the receipt
+it live; `tracebi report build` renders one self-contained HTML with its trace
 inlined; `tracebi verify` re-runs it. A JSON `ReportSpec` is the lightweight
 alternative — auto-discovered and served the same way. Because the model is
 materialized, the page re-renders in milliseconds with no pandas in the loop —
@@ -121,7 +121,7 @@ workflow phases above — a "Phase" here is a development stage, not a folder):
 - [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
 - [x] **Phase 5** — Web UI (FastAPI + React), folder-based auto-discovery, optional HTTP Basic / proxy-header auth with roles, `tracebi` CLI, docker-compose deployment
 - [x] **Agent gateway** — the kernel over MCP (`tracebi mcp`): an agent queries the semantic model, validates and renders report specs, builds artifact packages (`build_report`), and fetches the built bytes (`fetch_artifact`); every response is stamped with the resolved query, lineage, and a fingerprint of the full result
-- [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable, then gives the receipt one verdict — a manifest where nothing could be checked is never reported as a pass. This operates on phase-2/3 queries against the model; it re-runs recorded queries and compares fingerprints — it does **not** read a phase-1 transform or assert a number is correct.
+- [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable, then gives the report one verdict — a manifest where nothing could be checked is never reported as a pass. This operates on phase-2/3 queries against the model; it re-runs recorded queries and compares fingerprints — it does **not** read a phase-1 transform or assert a number is correct.
 
 ---
 
@@ -261,7 +261,7 @@ pip install -e ".[all]"               # everything
 
 The repo ships a multi-stage `Dockerfile` (builds the React UI, then the
 Python app) and a `docker-compose.yml` that mounts the project's `output/` and
-`scheduled/` folders from the host, so report builds and their receipts are
+`scheduled/` folders from the host, so report builds and their traces are
 ordinary files you can browse and back up, and survive container restarts. The
 app runs as uid 10001; a one-shot `output-perms` service makes the output
 folder writable by it. The pipeline DB lives in the Postgres `pgdata` volume.
@@ -580,7 +580,7 @@ fails validation; `fetch_artifact` returns the built bytes so a remote agent
 can actually deliver what it made. `verify_manifest` closes the loop: it
 re-runs every query recorded in a manifest and classifies the outcome
 (reproduces, source drift, model changed, unexplained), so an agent can check
-its own receipt before a human sees the number.
+its own trace before a human sees the number.
 
 The full playbook — the two planes, the L0–L3 assurance ladder, all **13
 tools**, the `author_report` / `answer_question` / `address_pins` prompts, and the canonical
@@ -614,7 +614,7 @@ Pipeline execution (which writes to the warehouse) is deliberately not exposed.
 Attribution is recorded as `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`)
 in the same audit trail as web and CLI actors.
 
-### Retaining receipts
+### Retaining traces
 
 Every render writes a `<output>.manifest.json` next to the artifact —
 `render_report_spec` lands both in `output/` by default. The
@@ -625,7 +625,7 @@ and reports whether each still reproduces, whether the inputs drifted, or
 whether the model itself changed. It exits 0 only when something was
 actually checked and nothing failed: 2 for diagnosed source drift, 1 for an
 undiagnosed mismatch *or* for a manifest with no data-bearing section, which
-verifies nothing and so cannot pass. A receipt whose every section is
+verifies nothing and so cannot pass. A manifest whose every section is
 hand-transformed still exits 0, but says `NOTHING VERIFIED` rather than
 `REPRODUCES`.
 
@@ -638,7 +638,7 @@ database in reach. One asks *do these numbers still reproduce*; the other asks
 *is this the file we rendered*.
 
 Rendered HTML is disposable; manifests are not. Retain them — commit them, or
-archive whatever lands in `output/` — because a receipt you discarded proves
+archive whatever lands in `output/` — because a trace you discarded proves
 nothing.
 
 ---
@@ -674,13 +674,13 @@ all four); an address above the role says who it is for.
   verdict chip and, when it asks for a look, why, and when it was built) and one
   command bar. **Open** opens the build in a new tab (`/r/<name>`), **Share** copies
   its link, and **Export** saves a PDF, an Excel file, or the self-contained HTML with
-  its embedded receipt (only the HTML carries the receipt, and `tracebi verify --file`
+  its embedded trace (only the HTML carries it, and `tracebi verify --file`
   checks it). An analyst or admin also gets **Rebuild** (in the background, a toast
   when done) and **Edit as a draft**, and dev mode **Build**; a command the role
   cannot use is not shown. The report's own masthead chip says the app's verdict.
   **About this build** opens one panel (a sheet on a phone) with four tabs:
-  **Receipt** (whether the check still holds, with **Check again**, the model,
-  figures, schedule and kind, then the build's own receipt certificate),
+  **Trace** (whether the check still holds, with **Check again**, the model,
+  figures, schedule and kind, then the build's own certificate of how each number was made),
   **Lineage** (where each number came from), **History** (its newest build with
   its verdict, the older builds folded under it) and **Files** (the report's files, read-only). Failures show the
   full Python traceback.
@@ -898,11 +898,11 @@ scaffolds `reports/my_report/` and `tracebi dev my_report` opens the live
 loop in the app — edit the template, watch the page, explore inside
 `data-tb-stage="exploration"` blocks that die at the final build, and leave
 notes in the Build panel for the next editing pass. What matters gets built
-(`tracebi report build`) and ships with a receipt.
+(`tracebi report build`) and ships with its trace.
 
 The old `requests/` script lane (`tracebi run`, `request_params()`, the
 Requests web page) **was removed in 0.8** — it rendered a `Report` with no
-receipt and no way to earn one. Migration is mechanical: queries → bindings in
+trace and no way to earn one. Migration is mechanical: queries → bindings in
 `report.json`, pandas → `report.py`, sections → component figures. A JSON spec
 migrates with one command: `tracebi migrate spec reports/<name>.json`.
 

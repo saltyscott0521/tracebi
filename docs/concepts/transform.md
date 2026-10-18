@@ -66,7 +66,7 @@ manifests join against. See [[sink-contracts]].
 ## What this phase is *not*
 
 Lineage is **not** traced through this code, deliberately. The trust boundary
-starts at the sink — see [[receipts]] and
+starts at the sink — see [[trace]] and
 [[the-three-phase-workflow#Where trust starts]].
 
 Phase ① is trusted the way you trust reviewed code in git.

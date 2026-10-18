@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a class="on" href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -83,7 +84,7 @@
   </details>
   <main class="doc">
 <h1 id="tracebi-in-plain-english">TraceBi in plain English</h1>
-<p><strong>TraceBi makes reports where every number comes with a receipt, so anyone can
+<p><strong>TraceBi makes reports where every number comes with a trace, so anyone can
 check later that the number still matches what it was built from.</strong></p>
 <p>This page is for people who read, approve or pay for reports and don't write
 code. No technical background is needed. Engineers should start at
@@ -99,10 +100,11 @@ did this number come from?", someone digs through a spreadsheet, and the answer
 is "I think it was the March export." When reports get made faster than anyone
 can check them, that approach stops working.</p>
 <h2 id="the-idea-in-one-picture">The idea, in one picture</h2>
-<p>Think of a <strong>store receipt</strong>. When you buy something, the receipt lists each
-item and its price, so you can check it against the shelf later. You don't have
-to trust the cashier's memory.</p>
-<p>TraceBi gives every number in a report a receipt like that. The receipt records:</p>
+<p>Think of <strong>tracking on a parcel</strong>. Every step it took is written down as it
+happens, so you can check the route later. You don't have to trust anyone's
+memory.</p>
+<p>TraceBi gives every number in a report a trace like that: how the number was
+made. The trace records:</p>
 <ul>
 <li><strong>where the number came from:</strong> which data and which definition (for example
   "total fair value = the sum of fair value across all holdings"), and</li>
@@ -158,23 +160,23 @@ page.</p>
   engineers review code. An AI working through TraceBi's gateway can check its
   own work, but it has no write access to the data it reports on.</li>
 <li><strong>The reader</strong> gets one file. It opens in any web browser, works offline, and
-  carries its own receipt. They can check it with <strong>Verify a file</strong> in the app
-  by dropping in the report and its receipt file.</li>
+  carries its own trace. They can check it with <strong>Verify a file</strong> in the app
+  by dropping in the report and its <code>.manifest.json</code> file.</li>
 </ul>
-<h2 id="what-the-receipt-does-not-promise">What the receipt does <em>not</em> promise</h2>
+<h2 id="what-the-trace-does-not-promise">What the trace does <em>not</em> promise</h2>
 <p>This matters, and TraceBi is deliberately strict about it.</p>
 <ul>
-<li><strong>A receipt shows a number is consistent. It does not show the number is
+<li><strong>A trace shows a number is consistent. It does not show the number is
   right.</strong> If bad data went in at step 1, the report will faithfully and
-  repeatably show the bad number. The receipt proves it <em>reproduces</em>, not that
+  repeatably show the bad number. The trace proves it <em>reproduces</em>, not that
   it is <em>correct</em>.</li>
-<li><strong>Step 1, the cleaning, is checked by people, not by the receipt.</strong> TraceBi
+<li><strong>Step 1, the cleaning, is checked by people, not by the trace.</strong> TraceBi
   can run simple checks on the cleaned tables ("no duplicate holdings", "every
   holding belongs to a known fund"). When they pass, the phrase is <em>"the sink
   satisfied its contract."</em> It is not a guarantee that the analysis was right.</li>
-<li><strong>The receipt is made by whoever made the report.</strong> Between two companies it
+<li><strong>The trace is made by whoever made the report.</strong> Between two companies it
   is good documentation, not independent proof. It becomes proof when the
-  person checking also has access to the original data. Signed receipts, which
+  person checking also has access to the original data. Signed traces, which
   prove <em>who</em> issued them, are planned but not built yet.</li>
 </ul>
 <h2 id="words-you-will-see-in-the-app">Words you will see in the app</h2>
@@ -187,7 +189,7 @@ page.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>Receipt</strong> / <strong>manifest</strong></td>
+<td><strong>Trace</strong> / <strong>manifest</strong></td>
 <td>The record of where each number came from and its fingerprint. Saved as a small <code>.manifest.json</code> file next to the report.</td>
 </tr>
 <tr>
@@ -232,7 +234,7 @@ page.</p>
 </tr>
 <tr>
 <td><strong>Needs attention</strong></td>
-<td>The first tab of Review: anything a person should look at right now, such as a receipt that no longer matches, a refresh that failed or a request to publish. When there is nothing it says so.</td>
+<td>The first tab of Review: anything a person should look at right now, such as a report that no longer reproduces, a refresh that failed or a request to publish. When there is nothing it says so.</td>
 </tr>
 <tr>
 <td><strong>Draft / exploration</strong></td>
@@ -247,7 +249,7 @@ page.</p>
 <h2 id="the-one-sentence-version-for-your-boss">The one-sentence version for your boss</h2>
 <blockquote>
 <p>"Our reports are built from written-down definitions, every number carries a
-receipt, and anyone can check in seconds that a number still matches its
+trace, and anyone can check in seconds that a number still matches its
 source and hasn't been edited, including numbers an AI produced."</p>
 </blockquote>
 <h2 id="next">Next</h2>
@@ -255,7 +257,7 @@ source and hasn't been edited, including numbers an AI produced."</p>
 <li>See it working: <a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>, a ten-minute walkthrough you can give to
   anyone.</li>
 <li>The technical version of this page: <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> and
-  <a href="../concepts/receipts.html">Receipts</a>.</li>
+  <a href="../concepts/trace.html">The trace</a>.</li>
 </ul>
   </main>
 </div>

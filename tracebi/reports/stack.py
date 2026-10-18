@@ -220,7 +220,7 @@ def libraries_comment(libs) -> str:
         "  tracebi.css  TraceBi design system (MIT)",
         "  Hanken Grotesk  the typeface, Latin subset (SIL OFL 1.1): inlined, no font fetched",
         "  tracebi.js   TraceBi runtime (MIT): fills each figure from the "
-        "embedded, fingerprinted data; tabs, filters, receipt drawer",
+        "embedded, fingerprinted data; tabs, filters, trace drawer",
     ]
     for lib in libs or ():
         lines.append(f"  {_lib_credit(lib)}: {_LIB_ROLE.get(lib, 'draws the charts')}")

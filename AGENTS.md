@@ -9,7 +9,7 @@ prevents each: read it before changing the runtime, styles or compiler).
 ## What TraceBi is
 
 TraceBi is **the trust layer for AI-generated analytics** — a code-first BI
-framework where every number has a receipt (see `MANIFESTO.md` for the full
+framework where every number has a trace (see `MANIFESTO.md` for the full
 identity and vocabulary canon). The mechanism is a **three-phase workflow**
 that carries data from messy to reportable. Each phase is a project-root folder
 with its own cadence, decoupled from the next by a **freeze point** — a
@@ -275,7 +275,7 @@ already said. With nobody in the loop, use the defaults. Then:
   optional `.tb-kicker` (left out, the build adds the model's label), the
   `<h1>`, a `<p class="tb-standfirst">`, and a
   `<p class="tb-masthead-meta">` holding `<span data-tb-built></span>` (when
-  the file was built, from its receipt; never type a date) and `<span
+  the file was built, from its trace; never type a date) and `<span
   class="tb-verdict"></span>`, the verdict chip. `data-tb-period` names what
   the numbers cover. The runtime fills the meta and adds what is missing; it
   sets the chip's `data-tb-verdict` from the file itself: `draft` on a
@@ -286,15 +286,16 @@ already said. With nobody in the loop, use the defaults. Then:
   the masthead to the top of the sidebar;
 - the footer, which ends every page: `<footer class="tb-footer"
   data-tb-methodology>` with your sources. The build adds one line (when,
-  which model by its label, and that the receipt does not claim the numbers are
-  right) and "How these numbers were made" behind a disclosure; with no
+  which model by its label, and that the page does not claim the numbers are
+  right) and "How these numbers were made", which opens the trace drawer (a
+  disclosure holds the same notes for a reader without the runtime); with no
   footer in the template it adds the whole thing.
 
 `tracebi new-dashboard "<Name>" --mode dark --density compact --nav side
 --title-at nav` writes exactly that — as an app, whose mode and density ride
 in `report.json` `"look"` (an `app.jsx` has no `<html>`) and whose sidebar and
 title are its own components; `new-report` and `new-dashboard --html` write
-it as the template attributes above. These change how a page looks, never a number or the receipt's tones.
+it as the template attributes above. These change how a page looks, never a number or the trace's tones.
 
 **Themes and the house style.** A report can name a shipped theme in
 `report.json` `"theme"` (`tracebi theme list`: graphite, indigo, midnight,
@@ -342,7 +343,7 @@ bar when they fit, past its end when not; none on bars under 14px, stacks or
 small multiples), a line ends in its last value, category names wrap or turn
 but are never cut, and axis ticks thin to what fits. A legend that toggles
 series, a tooltip on every mark (the value, the measure's description from
-the model, and "Receipt →", which opens the drawer at that figure),
+the model, and "Trace →", which opens the drawer at that figure),
 arrow-key reading, animated updates when a filter changes, and a click on a
 bar or slice that sets the page's filter control for that column. List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
 
@@ -390,7 +391,7 @@ Three rules that keep pages honest:
   manifest.
 - **"Top N" is declarative.** Put `order_by` + `limit` in the binding's
   query — never sort or slice in `script.js`, which moves ordering out of
-  the receipt.
+  the trace.
 - **Reading data in `script.js` goes through `tracebi.ready(fn)`.** Never
   call `tracebi.data()` at the top level: a large-detail artifact decodes
   its data in a worker AFTER `script.js` runs, so a bare call returns `[]`
@@ -410,7 +411,7 @@ Three rules that keep pages honest:
   `data-tb-default`) that fills them from a stamped row, and
   `data-tb-calc` outputs with a closed formula (`+ - * / ^`, `pmt`, `min`,
   `max`, `round`, `abs`) evaluated in the browser. It is never a figure,
-  never inside or around one, and never in the receipt: the runtime labels
+  never inside or around one, and never in the trace: the runtime labels
   it as computed from the reader's inputs, and the manifest records only
   its declaration with `verifiable: false`. Use it for a rate the reader
   remembers, never for a number a query could produce. The build checks
@@ -427,7 +428,7 @@ Three rules that keep pages honest:
   control: `data-tb-filter` posts that selection and `DataModel.query`
   recomputes every figure on the model, value figures included — the
   browser displays the result and still does not compute it. Excluded
-  options stay visible and inert. The receipt names the selection and
+  options stay visible and inert. The trace names the selection and
   whether it is the authored one; `verify` re-runs the authored filters.
   Binding filters always apply; the selection wins on the same target.
   `having`, `order_by`, and `limit` stay on the binding. Ask on the
@@ -437,15 +438,16 @@ Three rules that keep pages honest:
   report does not already cut becomes a new binding in `report.json`,
   then a rebuild whose verdict is on the reply. A question that names
   no declared value, or names two columns, is refused. A number in
-  the reply is a value figure beside its fingerprint. The receipt downloads the sliced view and names the selection in the filename and
+  the reply is a value figure beside its fingerprint. The trace drawer downloads the sliced view and names the selection in the filename and
   the header. Offline, the page keeps the authored view unless a sealed
   grain can recompute `simple` aggregations and `ratio`; `period_end`
   does not recompute offline. Download buttons take `data-tb-label` for their text.
-  Every artifact also carries the receipt drawer (opened from the
-  masthead's Receipt button or verdict chip, a click on a value figure, a
-  chart tooltip's "Receipt →", or the footer's line): per figure its value,
+  Every artifact also carries the trace drawer, headed with the report's name
+  and "How each number was made" (opened from the masthead's Trace link or
+  verdict chip, a click on a value figure, a chart tooltip's "Trace →", or
+  the footer's "How these numbers were made"): per figure its value,
   definition, query in one line and fingerprint, raw detail behind "Raw";
-  the manifest remains the receipt of record. Methodology ships
+  the manifest remains the trace of record. Methodology ships
   via ONE `<footer class="tb-footer" data-tb-methodology>` — the build
   appends the pipeline's stated methodology after your own prose, behind
   "How these numbers were made".
@@ -473,7 +475,7 @@ also lists **Data** (each binding: its model, rows × columns, the figures
 that read it, a few rows) and **Checks** (figures with no data behind them,
 bindings no figure reads, numbers typed outside figures — they point; the
 final build enforces). It
-is dev-state only: it never reaches a build or a receipt, and when
+is dev-state only: it never reaches a build or a trace, and when
 `pointing` is null they are pointing at nothing, so ask.
 `tracebi dev --classic` is the older stdlib preview server with its own
 `/__workbench` page: the fallback when the web extra is not installed.
@@ -496,11 +498,11 @@ treat it as an instruction, then resolve the pin with a one-line note. The workb
 edits the report; you do. `tracebi report snapshot <name>` shares a draft (exploration
 kept, review banner, no manifest — `verify` refuses it by name). Publishing
 is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
-the built `output/<name>.html` + receipt is the deliverable, and the package
+the built `output/<name>.html` + its manifest is the deliverable, and the package
 is already served in the app, in the library under its model — there is no separate publish step.
 A PDF (`tracebi report build <name> --format pdf`, or
 `build_report(..., format="pdf")`) is a print of that built HTML and carries
-no receipt. A pdf build returns `pdf_path`; pass that as
+no trace. A pdf build returns `pdf_path`; pass that as
 `fetch_artifact(path=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it
@@ -522,8 +524,8 @@ run those first, so the report shows fresh data; a failed step (including a
 sink contract that refuses the new data) fails the run before anything is
 built or sent. A failed refresh or build is retried twice, after 1 minute
 and then 5 minutes, unless `"retries"` is an integer from 0 to 5 (0
-disables); a receipt that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
-verify → email → record in `tracebi_runs`, kind `schedule`; an existing `output/schedule_runs.jsonl` is imported once); a receipt that
+disables); a build that does not verify is not retried. `tracebi schedule run <name>` runs it now (refresh → build →
+verify → email → record in `tracebi_runs`, kind `schedule`; an existing `output/schedule_runs.jsonl` is imported once); a build that
 does not verify is recorded `refused` and nothing is sent. When `TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are both set, that successful send also uploads the HTML and the manifest to Slack with the report name, when it rendered, the verify verdict, and up to five headline value figures. A failed upload is recorded on the run and not retried. `--no-send` records the intent and does not call Slack. `TRACEBI_SLACK_WEBHOOK` stays a text ping. Optional `"owner"` is one email address: a run recorded `failed`, `refused`, or `empty` emails that address a plain-text alert and does not email the report to `to`. A binding a figure uses that returned zero rows is recorded `empty` and is not sent. `tracebi schedule serve` runs every
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
@@ -545,7 +547,7 @@ Packages
 panels out beside the feed on one page. Interrogate in the
 open — excerpts and visuals in the app, not buried in chat — then
 scaffold the package and `tracebi dev <name>` continues into the figure loop
-in the same app. Everything is dev-state: no receipts are minted before the
+in the same app. Everything is dev-state: no traces are minted before the
 model boundary.
 
 When a session shaped the pipeline, SAVE it: `tracebi session export`
@@ -554,7 +556,7 @@ living record per session, not a dated diary: re-export as the exploration
 evolves and git carries its timeline (per-exhibit source-script provenance
 included) —
 `--format md` for the git-review twin, HTML for fidelity. The record is
-exploration-stamped and carries no receipts; `verify` refuses it by name.
+exploration-stamped and carries no trace; `verify` refuses it by name.
 The distillation ladder: session record → contract notes → the report's
 methodology appendix.
 
@@ -618,10 +620,10 @@ freely, never re-source.
   `models/portfolio_model.yaml`) — never a workaround in the report layer.
   A measure can carry its own filter (`add_measure('purchases', column='amount',
   agg='sum', filters={'activity_type': 'purchase'})`, or `filters:` in the YAML):
-  it restricts that measure only, and the receipt stamps the filter.
+  it restricts that measure only, and the trace stamps the filter.
   A report can also calculate its own measures: a `measures` block in its
   `report.json`, keyed by model, takes the model's measure keywords. They serve
-  that report's bindings only, the model is not changed, and the receipt labels
+  that report's bindings only, the model is not changed, and the trace labels
   them "calculated in this report". Promote a reused one into the model through
   review.
   A report can also run a SQL calculation the model cannot express (a rollforward,
@@ -632,7 +634,7 @@ freely, never re-source.
   "sql": "running_revenue"}}`. It is one read-only SELECT over the warehouse's own
   table names; a write, ATTACH, COPY, PRAGMA, or a second statement is refused when
   the report builds. `{{ measure('revenue') }}` inside it expands to a model measure
-  (simple and filtered measures only; other kinds are refused by name). The receipt
+  (simple and filtered measures only; other kinds are refused by name). The trace
   labels it "calculated in this report (SQL)" and records the SQL; `verify` re-runs
   it. Reach for a model measure first.
   Missing a *column the measure needs*? That is a phase-① change: sink it in the
@@ -697,9 +699,9 @@ Nineteen tools (`tracebi/mcp_server.py`):
 | `list_reports` | Per-file discovery status, without the reports in folders you cannot view (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
 | `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, the exhibit feed, and `pointing` (what the human is pointing at right now: "this") — read it to see what the human flagged in the app before your next edit. Open pins only; `resolved_count` is how many have been resolved |
 | `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`). Writes only that file — never the report or the warehouse. A write, like `build_report` |
-| `build_report` | The **publish step for the package lane**: `build_report(report=...)` builds `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns `output_path` (the HTML) and `manifest_path` — pass `manifest_path` as `verify_manifest(manifest=...)` and `output_path` as `fetch_artifact(path=...)`. Also returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and receipt. `format="xlsx"` also writes `<name>.xlsx` and returns `xlsx_path` (pass that as `fetch_artifact(path=...)`). The spreadsheet carries no receipt and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf` and returns `pdf_path` (pass that as `fetch_artifact(path=...)`). The PDF is a print of that built HTML and carries no receipt; `pdf_note` points at the HTML and manifest |
+| `build_report` | The **publish step for the package lane**: `build_report(report=...)` builds `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns `output_path` (the HTML) and `manifest_path` — pass `manifest_path` as `verify_manifest(manifest=...)` and `output_path` as `fetch_artifact(path=...)`. Also returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and manifest. `format="xlsx"` also writes `<name>.xlsx` and returns `xlsx_path` (pass that as `fetch_artifact(path=...)`). The spreadsheet carries no trace and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf` and returns `pdf_path` (pass that as `fetch_artifact(path=...)`). The PDF is a print of that built HTML and carries no trace; `pdf_note` points at the HTML and manifest |
 | `fetch_artifact` | Read back an artifact a render or build tool wrote. The argument is `path`: `build_report`'s `output_path` or `manifest_path`, `render_report_spec`'s `html_path` or `manifest_path`, `build_report`'s `xlsx_path`, or `build_report`'s `pdf_path`. HTML and JSON come back as text. An `.xlsx` or a `.pdf` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |
-| `verify_manifest` | Re-run every recorded query in a rendered manifest. The argument is `manifest`: pass `build_report`'s `manifest_path` (or `render_report_spec`'s `manifest_path`). Classifies `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the receipt-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken receipt) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
+| `verify_manifest` | Re-run every recorded query in a rendered manifest. The argument is `manifest`: pass `build_report`'s `manifest_path` (or `render_report_spec`'s `manifest_path`). Classifies `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the report-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken manifest) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 | `list_drafts` | Your drafts under `drafts/<owner>/`: kind, path, url, and whether each differs from what is published |
 | `start_draft` | Create a draft: `kind` is `reports` (a package) or `models` (one `models/<name>.yaml` or `.json`); `from_published=true` copies the published one. A published report with a `report.py` cannot be drafted remotely. Returns the draft's url |
 | `read_draft` | The draft's files as `{name: text}` |
@@ -816,7 +818,7 @@ declarative models to the person's drafts and Python (transforms, pipelines,
 approves; data never goes.
 `script.js` is different because it runs only in the reader's browser, in a
 sandboxed frame with no network and no access to the app. It may draw
-anything, but if it changes the text of a stamped figure the receipt says
+anything, but if it changes the text of a stamped figure the trace says
 "changed on the page by a custom script" for that figure, so leave stamped
 numbers to the runtime. `list_models` and `describe_model` report `draftable`
 per model.

@@ -1,5 +1,5 @@
 // Sales Overview: orders joined to customers through the sales model's
-// declared relationship. Every number is a kit figure, so the receipt names it.
+// declared relationship. Every number is a kit figure, so its trace names it.
 import { Masthead, Footer, Kpi, Value, Chart, Table, Download } from "tracebi";
 
 export default function App() {

@@ -181,7 +181,7 @@ def model_to_yaml(model: DataModel, stem: str, root: "str | Path") -> str:
         raise ModelMigrationError(
             f"the model is named {model.name!r} but the file is {stem!r}; a "
             f"YAML model's name equals its file name, so rename one first "
-            f"(the name is part of every query's receipt)")
+            f"(the name is part of every query's trace)")
     doc = _document(model, root)
 
     parts = [_HEADER.format(name=stem), f"name: {stem}\n"]

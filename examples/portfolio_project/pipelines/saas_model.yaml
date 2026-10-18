@@ -2,7 +2,7 @@
 #
 #     transform  runs transforms/saas_transform.py: cleans inputs/subscriptions.csv
 #                and sinks the star schema into data/warehouse.duckdb
-#     build      builds every report in reports/saas_model/, each with a receipt
+#     build      builds every report in reports/saas_model/, each with its trace
 #
 #     tracebi run-pipeline saas_model
 name: saas_model

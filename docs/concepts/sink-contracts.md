@@ -91,11 +91,11 @@ Contract status **never colours a figure status**; it is reported in its own
 block.
 
 That wording is fixed for the same reason as the rest of the vocabulary in
-[[receipts#The locked language]]: paraphrasing is how an honest guarantee
+[[trace#The locked language]]: paraphrasing is how an honest guarantee
 becomes an overclaim.
 
 ## Related
 
 - [[transform]] — where contracts are declared
-- [[receipts]] — the separate, downstream claim
+- [[trace]] — the separate, downstream claim
 - [[cli]] — `tracebi verify --contracts`

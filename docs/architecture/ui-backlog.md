@@ -120,6 +120,17 @@ Left by A2-6 (role-aware navigation):
     the plain "for analysts / admins" page. Hide those links by the same
     `mayUse` rule the sidebar uses.
 
+Left by A2-4 (receipt → trace):
+
+36. **The code still says "receipt".** Readers see *trace* everywhere; the
+    identifiers kept the old word so the artifact contract did not move: the
+    `tracebi-receipt` block id, `.tb-receipt*` classes, `data-tb-receipt-*`
+    attributes, `tracebi.renderReceipt` / `receiptFileName`, Python
+    `receipt_*` names, `ReceiptFrame.jsx`, the panel's `receipt` tab key and
+    the `receipt_drawer` key in `tracebi context`. Rename them together, with
+    a reader for the old block id so files built before the rename still open
+    their drawer (and `verify --file` still reads them).
+
 ## Done
 
 - **The sidebar is tiered by role** (A2-6): `nav.js` gives each place a

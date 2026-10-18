@@ -139,7 +139,7 @@ class TestSessionExportMarkdown:
         md = out.read_text(encoding="utf-8")
         assert md.startswith("# Probe record")
         assert "lab notebook, not a report" in md
-        assert "carry no receipts" in md
+        assert "carry no trace" in md
         # the note is RAW markdown, verbatim — the format's whole point
         assert "## Approach" in md and "**9**" in md
         assert "**chart sketch** — bar · x: sector · y: fv" in md

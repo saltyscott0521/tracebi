@@ -1424,7 +1424,16 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
-.tb-footer-line .tb-receipt-link { margin-left: var(--tb-space-1); }
+.tb-footer-line .tb-receipt-link {
+  display: block;
+  width: fit-content;
+  margin-top: var(--tb-space-1);
+  color: var(--tb-ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+.tb-footer-line .tb-receipt-link::before { content: "\25B8\00A0"; }
+.tb-footer-line .tb-receipt-link:hover { text-decoration: underline; }
 /* On a filled ground (the hero, a banner, a report's own) a masthead's
  * links take its ink; the runtime marks the ground. An author's own link
  * colour still wins (:where). */
@@ -1519,14 +1528,6 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 
 /* The certificate. */
 .tb-receipt { color: var(--tb-ink); font-size: var(--tb-text-sm); }
-.tb-receipt-kicker {
-  margin: 0 0 var(--tb-space-1);
-  font-size: var(--tb-text-xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--tb-muted);
-}
 .tb-receipt-head {
   margin: 0;
   font-size: var(--tb-text-xl);
@@ -1534,6 +1535,11 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   line-height: 1.25;
   letter-spacing: -0.01em;
   color: var(--tb-ink);
+}
+.tb-receipt-sub {
+  margin: var(--tb-space-1) 0 0;
+  font-size: var(--tb-text-sm);
+  color: var(--tb-muted);
 }
 .tb-receipt-built {
   margin: var(--tb-space-1) 0 0;

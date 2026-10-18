@@ -1735,7 +1735,7 @@
       var link = document.createElement("button");
       link.type = "button";
       link.className = "tb-chart-tip-receipt";
-      link.textContent = "Receipt →";
+      link.textContent = "Trace →";
       link.addEventListener("click", function () { tipHide(entry); openReceipt(figId); });
       link.addEventListener("pointerenter", function () { clearTimeout(entry.hideTimer); });
       link.addEventListener("pointerleave", function () { tipLater(entry); });
@@ -3523,7 +3523,7 @@
 
   var _VERDICTS = {
     draft: { text: "Draft",
-             tip: "A working preview. It carries no receipt." },
+             tip: "A working preview. It carries no trace." },
     "not-checked": { text: "Not checked",
                      tip: "Nothing has re-run this file's queries since it was " +
                           "built. tracebi verify re-runs them against the " +
@@ -3571,7 +3571,7 @@
       chip.textContent = spec.text;
       chip.title = said.tip;
       if (chip.getAttribute("role") === "button") {
-        chip.setAttribute("aria-label", spec.text + ": open the receipt");
+        chip.setAttribute("aria-label", spec.text + ": how these numbers were made");
       }
     }
   }
@@ -4027,8 +4027,8 @@
     };
 
     var head = receiptEl(mount, "header", "tb-receipt-header");
-    receiptEl(head, "p", "tb-receipt-kicker", "Receipt");
-    receiptEl(head, "h2", "tb-receipt-head", receipt.report || "Receipt");
+    receiptEl(head, "h2", "tb-receipt-head", receipt.report || "This report");
+    receiptEl(head, "p", "tb-receipt-sub", "How each number was made");
     var models = receipt.semantic_contract_models || [], stampLine = [];
     if (!models.length) {
       (receipt.figures || []).forEach(function (f) {
@@ -4046,8 +4046,8 @@
     chip.setAttribute("data-tb-verdict", said.state);
     chip.title = said.tip;
     receiptEl(head, "p", "tb-receipt-honesty",
-              "The receipt does not claim the numbers are right. It records "
-              + "how each figure was made, so it can be checked.");
+              "This page does not claim the numbers are right; it records "
+              + "how each was made so it can be checked.");
 
     var file = opts.file || receiptFileName(receipt);
     var check = receiptEl(mount, "section", "tb-receipt-check");
@@ -4094,6 +4094,11 @@
     } else if (receipt.methodology === true) {
       receiptLine(aboutBox, "stated methodology aboard");
     }
+    if (receipt.app === true) {
+      receiptLine(aboutBox, "This page is an app. The figures it shows through "
+                  + "the TraceBi kit are traced; anything else it draws is the "
+                  + "app's own presentation and is not checked.", "tb-receipt-note");
+    }
     receiptEl(aboutBox, "h4", "tb-receipt-label", "The build");
     var mono = "tb-receipt-line tb-receipt-meta";
     if (models.length) receiptLine(aboutBox, "semantic contract: " + models.join(", "), mono);
@@ -4139,8 +4144,8 @@
     setReceiptOpen((" " + drawer.className + " ").indexOf(" tb-receipt-open ") === -1);
   }
 
-  /* A quiet "Receipt" button for the masthead's meta line (after the
-   * verdict chip) and the footer's line. */
+  /* A quiet "Trace" button for the masthead's meta line (after the
+   * verdict chip), and "How these numbers were made" on the footer's line. */
   function receiptLinkButton(text) {
     var b = document.createElement("button");
     b.type = "button";
@@ -4191,10 +4196,12 @@
     }
   }
 
-  /* Where the page offers its receipt: after the masthead's verdict chip
-   * (the chip itself opens it too), and on the footer's line. A page with
-   * no masthead keeps the floating Receipt button. Safe to call again: a
-   * masthead an app mounts later gets its link then. */
+  /* Where the page offers its trace: after the masthead's verdict chip
+   * (the chip itself opens it too), and on the footer's line, which then
+   * stands for the footer's disclosure (its notes are the drawer's About
+   * this build; the disclosure stays for a reader without the runtime). A
+   * page with no masthead keeps the floating Trace button. Safe to call
+   * again: a masthead an app mounts later gets its link then. */
   function placeReceiptTriggers() {
     var drawer = receiptDrawer();
     if (!drawer) return;
@@ -4204,16 +4211,20 @@
       if (chip && chip.getAttribute("role") !== "button") {
         chip.setAttribute("role", "button");
         chip.setAttribute("tabindex", "0");
-        chip.setAttribute("aria-label", chip.textContent + ": open the receipt");
+        chip.setAttribute("aria-label", chip.textContent + ": how these numbers were made");
       }
       if (!metas[i].querySelector(".tb-receipt-link")) {
-        metas[i].appendChild(receiptLinkButton("Receipt"));
+        metas[i].appendChild(receiptLinkButton("Trace"));
       }
     }
     var lines = document.querySelectorAll(".tb-footer-line");
     for (i = 0; i < lines.length; i++) {
       if (!lines[i].querySelector(".tb-receipt-link")) {
-        lines[i].appendChild(receiptLinkButton("Open the receipt"));
+        lines[i].appendChild(receiptLinkButton("How these numbers were made"));
+      }
+      var disclosure = lines[i].nextElementSibling;
+      if (disclosure && (" " + disclosure.className + " ").indexOf(" tb-footer-details ") !== -1) {
+        disclosure.hidden = true;
       }
     }
     var floating = document.querySelector(".tb-receipt-btn");
@@ -4223,7 +4234,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "tb-receipt-btn";
-      btn.textContent = "Receipt";
+      btn.textContent = "Trace";
       btn.setAttribute("aria-expanded", "false");
       btn.addEventListener("click", toggleReceipt);
       document.body.appendChild(btn);
@@ -4241,11 +4252,11 @@
      * its close button, and a scrolling body the certificate fills. */
     var drawer = document.createElement("aside");
     drawer.className = "tb-receipt-drawer";
-    drawer.setAttribute("aria-label", "Receipt");
+    drawer.setAttribute("aria-label", "How these numbers were made");
     var close = document.createElement("button");
     close.type = "button";
     close.className = "tb-receipt-close";
-    close.setAttribute("aria-label", "Close the receipt");
+    close.setAttribute("aria-label", "Close");
     close.textContent = "×";
     close.addEventListener("click", function () { setReceiptOpen(false); });
     drawer.appendChild(close);
@@ -4386,7 +4397,7 @@
         if (!box.querySelector(".tb-scenario-label")) {
           var label = document.createElement("div");
           label.className = "tb-scenario-label";
-          label.textContent = "Scenario · computed in your browser from these inputs · not part of the receipt";
+          label.textContent = "Scenario · computed in your browser from these inputs · not part of the trace";
           box.insertBefore(label, box.firstChild);
         }
         var inputs = box.querySelectorAll("[data-tb-input]");
@@ -4648,7 +4659,7 @@
       if (!_scriptChanged[id]) return;
       var note = document.createElement("div");
       note.className = "tb-receipt-changed";
-      note.textContent = CHANGED_BY_SCRIPT + ": the receipt covers \u201c"
+      note.textContent = CHANGED_BY_SCRIPT + ": the trace covers \u201c"
         + _stamped[id] + "\u201d, the page shows \u201c" + _scriptChanged[id] + "\u201d";
       var title = row.querySelector(".tb-receipt-title");
       row.insertBefore(note, title ? title.nextSibling : row.firstChild);

@@ -1,6 +1,6 @@
 // Portfolio Desk: the book as an app people work in. Every number is a kit
 // figure (<Kpi>, <Value>, <Chart>, <Table>) with literal binding and cell, so
-// the build records it as a claim and the receipt names it. Controls choose
+// the build records it as a claim and its trace names it. Controls choose
 // which stamped rows show; they never compute a number.
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download,

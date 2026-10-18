@@ -4,7 +4,7 @@
 aggregations, and guardrails that refuse the arithmetic that is quietly wrong.**
 
 A report asks for a measure **by name**. That is what makes a figure
-re-runnable, and therefore [[receipts|receiptable]].
+re-runnable, and therefore [[trace|traceable]].
 
 ---
 
@@ -101,7 +101,7 @@ model.add_measure("cum_share", running="revenue_share", format="percent")
 
 The Pareto/concentration direction. `running` of a share is the cumulative
 percent of total, so `rank` + `share` + `running(share)` is the whole
-concentration table — governed, with its receipt intact.
+concentration table — governed, with its trace intact.
 
 ### `period_end` — semi-additive balances
 
@@ -239,7 +239,7 @@ every additive measure**. The refusal names the duplicate values and the exact
 row multiplication.
 
 The override is a *query* argument, and taking it records a `warning` lineage
-node — so the opt-in leaves its own receipt.
+node — so the opt-in leaves its own trace.
 
 ### Rate aggregation, by name → `allow_rate_agg=True`
 

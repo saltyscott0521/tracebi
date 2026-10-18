@@ -24,7 +24,7 @@ the classic wasted afternoon. Add them when you actually need them.
 ## 2. Declare the data
 
 Open `report.json`. Each entry under `data` is a **binding** — the unit of
-trust, resolved once, fingerprinted, and recorded in the receipt.
+trust, resolved once, fingerprinted, and recorded in the trace.
 
 ```json
 {
@@ -135,7 +135,7 @@ The highest-value habit in the whole file:
 ```
 
 Narrative prose is where hard-coded numbers hide. Here the honest path costs one
-attribute — and each bound span becomes a verified figure in the receipt.
+attribute — and each bound span becomes a verified figure in the trace.
 
 ## 6. Iterate live
 
@@ -155,7 +155,7 @@ tracebi verify output/portfolio_book.html.manifest.json
 tracebi verify --file output/portfolio_book.html
 ```
 
-You want `✓ REPRODUCES` per figure. See [[receipts]] for what that does and
+You want `✓ REPRODUCES` per figure. See [[trace]] for what that does and
 does not claim.
 
 ## 8. Check what it earned

@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -215,7 +216,7 @@ tracebi session export --format md # → explorations/&lt;name&gt;.md (the markd
 <p>This writes the committed record of what you looked at — frames, charts, and
 notes from the workbench feed. It carries <strong>no manifest</strong>, because nothing in it
 is a verified figure; <code>tracebi verify</code> refuses the file by name rather than
-letting a lab notebook read as a receipt. It is the honest home for the
+letting a lab notebook read as a trace. It is the honest home for the
 narrative that a governed report deliberately does not carry.</p>
 <h2 id="publishing-a-report-from-a-notebook">Publishing a report from a notebook</h2>
 <p>The same registration decorator works in a notebook cell:</p>
@@ -230,7 +231,7 @@ server auto-discovers <code>*.py</code> and <code>*.ipynb</code> there, and the 
 library under its model. In an interactive kernel the decorator is harmless if the web
 extras aren't installed — it raises a clear <code>ImportError</code> telling you to
 <code>pip install "tracebi[web]"</code>.</p>
-<p>For a governed, receipt-bearing report, prefer the artifact package
+<p>For a governed, traced report, prefer the artifact package
 (<code>tracebi new-report</code> → <code>tracebi dev</code> → <code>tracebi report build</code>), covered in the
 <a href="analyst-guide.md">Analyst Guide</a>.</p>
 <p>Reference files: <code>examples/portfolio_project/transforms/holdings_transform.py</code>,

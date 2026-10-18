@@ -125,7 +125,7 @@ build, and "Not checked" on the older ones.
 
 The `html` download is that last build, the file the reader is looking at.
 `pdf` is a print of that same file (headless Chromium, so charts render). It
-carries no receipt; the HTML file is what `verify --file` checks.
+carries no trace; the HTML file is what `verify --file` checks.
 `xlsx` goes through the Excel renderer, which derives no
 [[number-formats|formats]], and runs the report to do so.
 
@@ -211,7 +211,7 @@ no groups; no owners means any analyst.
 | `POST` | `/api/spec/render` | analyst |
 
 `/render` compiles the spec to a package and renders it like a hand-authored
-one — same figures, same receipt drawer, same schema-2 manifest.
+one — same figures, same trace drawer, same schema-2 manifest.
 
 ## Verify
 
@@ -220,7 +220,7 @@ one — same figures, same receipt drawer, same schema-2 manifest.
 | `POST` | `/api/verify/file` | viewer |
 
 The offline file check over HTTP: embedded bytes against the manifest. No model
-needed. See [[receipts]].
+needed. See [[trace]].
 
 ## Pipelines
 

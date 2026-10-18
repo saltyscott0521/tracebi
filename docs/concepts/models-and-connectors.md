@@ -44,7 +44,7 @@ model.add_fact("fact_holdings", table_name="fact_holdings",                     
   data or plumbing.
 - **The data can be rebuilt without touching the model.** A [[transform]]
   writes the warehouse file; the model keeps reading the same table names.
-- **A [[receipts|receipt]] can name its source.** Every query records which
+- **A [[trace]] can name its source.** Every query records which
   connector and which table it read, plus a fingerprint of that table, so a
   number can be traced to stored data.
 
@@ -61,7 +61,7 @@ pipelines/portfolio_model.yaml         rebuild its data, then those reports
 One line makes the pipeline: `model_pipeline("portfolio_model",
 transform="holdings_transform")` registers a **transform** step (the phase ①
 script that fills the warehouse) and a **build** step (every report in
-`reports/portfolio_model/`, each with its receipt). It shows on the Pipelines
+`reports/portfolio_model/`, each with its trace). It shows on the Pipelines
 page and runs with `tracebi run-pipeline portfolio_model`. The build step
 refuses to run after a transform that failed, so a report is never rebuilt on
 data the transform did not refresh.

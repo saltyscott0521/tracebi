@@ -1,6 +1,6 @@
 // AUM by Region: holdings market value, aggregated by the region of the branch
 // that manages the account. Every number is a kit figure over the wealth
-// model's declared measures, so the receipt names it.
+// model's declared measures, so its trace names it.
 import { Masthead, Footer, Kpi, Value, Chart, Table, Download } from "tracebi";
 
 export default function App() {

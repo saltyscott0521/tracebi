@@ -70,7 +70,7 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.
 The warehouse is one file, `data/warehouse.duckdb`: phase ① writes it and phase
 ② reads it, so the two can run in separate processes. `output/` holds what
 `tracebi report build` renders. Both folders are gitignored except the
-`*.manifest.json` receipts inside them, which stay tracked as the audit trail
+`*.manifest.json` traces inside them, which stay tracked as the audit trail
 behind every rendered number.
 
 ## Try it on the reference project
@@ -99,7 +99,7 @@ and on the classic page (`tracebi dev --classic`), which lays the warehouse,
 models and packages out beside the feed.
 `tracebi session export` saves the session to `explorations/` as a committed
 record (`--format md` for a version that reads well in a git review). It is
-marked as exploration and carries no receipt, and `verify` refuses it by name.
+marked as exploration and carries no trace, and `verify` refuses it by name.
 
 ## Why the split
 
@@ -125,7 +125,7 @@ trust a hash.
 A transform can narrow that gap by declaring a [[sink-contracts|sink contract]]:
 closed, declarative checks its tables must satisfy before the data counts.
 
-See [[receipts]] for exactly what this does and does not prove.
+See [[trace]] for exactly what this does and does not prove.
 
 ## Related
 

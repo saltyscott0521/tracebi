@@ -2,7 +2,7 @@
 #
 #     transform  runs transforms/sample_transform.py: cleans inputs/orders.csv
 #                and sinks the star schema into data/warehouse.duckdb
-#     build      builds every report in reports/sample_model/, each with a receipt
+#     build      builds every report in reports/sample_model/, each with its trace
 #
 #     tracebi run-pipeline sample_model
 #

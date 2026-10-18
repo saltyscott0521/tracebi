@@ -76,7 +76,7 @@ const PLACES = [
   { to: '/', name: 'Reports', text: <>
     Where the app opens: every report you may see, by folder, each with its verdict (whether
     its numbers still reproduce). A chip per model narrows the list. Open a report to read it as
-    delivered; About this build holds its receipt, lineage, history and files. Everyone sees it.</> },
+    delivered; About this build holds its trace, lineage, history and files. Everyone sees it.</> },
   { to: '/ask', name: 'Ask', text: <>
     Put a question to one model as a sentence of its own measures and categories; the answer is
     a live query, with each measure&rsquo;s definition and the query behind it. Keep this turns it
@@ -119,7 +119,7 @@ export default function GettingStarted() {
   return (
     <div>
       <PageTitle>Get started</PageTitle>
-      <PageSub>Every number, traced. How TraceBi fits together, then five steps from install to your first report with a receipt.</PageSub>
+      <PageSub>Every number, traced. How TraceBi fits together, then five steps from install to your first traced report.</PageSub>
 
       <HowItFits />
 

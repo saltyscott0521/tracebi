@@ -236,7 +236,7 @@ class TestBuildReport:
         assert (out_dir / "gwpkg.html").is_file()
         assert (out_dir / "gwpkg.html.manifest.json").is_file()
         note = out["spreadsheet_note"]
-        assert "no receipt" in note and "not verifiable" in note
+        assert "no trace" in note and "not verifiable" in note
         assert "output_path" in note and "manifest_path" in note
 
         book = load_workbook(xlsx)

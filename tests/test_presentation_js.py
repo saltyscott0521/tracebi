@@ -901,9 +901,10 @@ process.stdout.write(JSON.stringify(out));
 
     def test_drawer_rows_from_sample_block(self):
         out = _run_dom(self._SCRIPT)
-        assert out["btn_text"] == "Receipt"
+        assert out["btn_text"] == "Trace"
         assert out["closed_on_load"] is True
         assert out["head_text"] == "portfolio_book"
+        assert "How each number was made" in out["drawer_text"]
         # First line names the binding and the kind. The id, kind and full
         # fingerprint sit in the Raw disclosure.
         assert out["a_name"] == "Holdings" and out["a_kind"] == "table"
@@ -928,7 +929,8 @@ process.stdout.write(JSON.stringify(out));
         assert "stated methodology aboard" in text
         # The certificate's header says what it does not claim, verbatim,
         # and its chip is never green on the file's own say-so.
-        assert "The receipt does not claim the numbers are right." in text
+        assert ("This page does not claim the numbers are right; it records "
+                "how each was made so it can be checked.") in text
         assert out["chip"] in ("draft", "not-checked")
         # The button toggles the drawer open and closed again.
         assert out["open_after_click"] is True

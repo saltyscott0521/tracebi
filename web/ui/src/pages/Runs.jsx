@@ -336,7 +336,7 @@ export default function Runs({ model: only }) {
           <h2>History</h2>
           <p>{model
             ? `Every build of ${labelOf(model)}'s reports and every refresh of its data: when, how long, by whom, and whether it reproduced.`
-            : 'What ran, when, how long it took, by whom, and whether it reproduced. Only a receipt that reproduces reads green.'}</p>
+            : 'What ran, when, how long it took, by whom, and whether it reproduced. Only a build that re-runs to the same numbers reads green.'}</p>
         </div>
       )}
 

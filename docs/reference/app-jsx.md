@@ -2,7 +2,7 @@
 
 **A report package can hold `app.jsx` in place of `template.html`: a React
 component for app-like dashboards (navigation, drawers, drill-downs, toggles),
-built into the same single offline file, with the same receipt.**
+built into the same single offline file, with the same trace.**
 
 The data does not change: `report.json` bindings are queried, stamped and
 fingerprinted at build ([[report-json]]). What changes is how the page is
@@ -61,8 +61,8 @@ import { Kpi, Value, Chart, Spark, Table, Filter, Search, Download,
          useBinding, fmt } from "tracebi";
 ```
 
-**Figures — numbers with a receipt.** Each renders the element a template would
-hold, and the runtime fills it from the stamped rows: formatted, receipted,
+**Figures — numbers with a trace.** Each renders the element a template would
+hold, and the runtime fills it from the stamped rows: formatted, traced,
 filterable, exactly as in a template.
 
 | Component | Props |
@@ -86,19 +86,19 @@ filterable, exactly as in a template.
 | Piece | What it does |
 |---|---|
 | `<Filter column label>` with no `binding` | A page-wide filter: it subsets every binding that has the column — tables and charts, including ones mounted later. KPIs and values stay the stamped totals (a filtered KPI needs its own binding, or `report.json` `"selection"`). |
-| `<Segmented options value onChange label>` | One choice of a few — a view, a period. Use it to pick *which* figure shows: one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its receipt. |
+| `<Segmented options value onChange label>` | One choice of a few — a view, a period. Use it to pick *which* figure shows: one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its trace. |
 | `useUrlState(key, initial)` | `useState` kept in the URL (`#view=Detail&period=YTD`): a reload or a shared link opens where the reader was. |
 | `usePrinting()` | `true` while the page prints (the browser's Ctrl+P, and `tracebi report build --format pdf`). An app with views renders every one then, so the PDF holds the whole report: `{printing ? <><Overview /><Detail /></> : <View />}`. Give navigation `print:hidden`. |
 | `<Masthead title kicker period mark>` | Opens the page: an optional `mark` (a node; or leave it empty and size `.tb-masthead-mark` in `style.css`), a `kicker` (unset, the model's label; `kicker={null}` shows none), the `title` (a string, or text with `<Value>`s in it: `title={<>Marked at <Value binding="kpis" cell="mark" /> of cost</>}`), the standfirst as its children, and a meta line with the `period` (presentation, `"Q3 2026"`), the build time and the verdict chip, which the runtime fills from the file itself (`not-checked` on a built file, `draft` on a preview; never green on its own say-so). Other props go on the `<header>`: `data-tb-title="center|banner|nav"`. A literal `title` is checked for typed numbers like the app's text; `kicker` and `period` are labels. |
-| `<Footer />` | Where the build's footer goes: one line on when the file was built, from which model (by its label), and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's `<main>`); without it the footer follows the app. |
-| `<Built>` | When the file was built, from its receipt (`<Masthead>` already shows it). |
+| `<Footer />` | Where the build's footer goes: one line on when the file was built, from which model (by its label), and that the page does not claim the numbers are right, then "How these numbers were made", which opens the trace drawer. Put it at the end of the main column (a sidebar layout's `<main>`); without it the footer follows the app. |
+| `<Built>` | When the file was built, from its trace (`<Masthead>` already shows it). |
 | `tb-page`, `tb-grid` + `tb-span-4/6/8/12` | The page measure (`<main className="tb-page space-y-8 px-6 py-8">`, 1,200px) and the 12-column grid (`<div className="tb-grid"><section className="tb-card tb-span-8">…`). |
 
 **Data for your own components.** `useBinding("name")` returns the binding's
 stamped rows (copies), and `fmt(value, "currency0")` formats a number with the
 named formats ([[number-formats]]).
 
-## What the receipt covers
+## What the trace covers
 
 The build reads every kit figure's props from `app.jsx` without running it,
 records each one as a claim in the manifest, and refuses a binding or a column
@@ -108,7 +108,7 @@ fair value less cost, and the kit never computes one: no comparison measure,
 no delta. So `binding`, `cell`, `x` and `y` (and `deltaBinding`, `deltaCell`)
 must be literal strings:
 `<Kpi binding={b}>` fails the build. Two kit figures of the same binding and
-column need an `id` each — an id is the receipt's address for one number.
+column need an `id` each — an id is the trace's address for one number.
 
 A number typed into the app's text (`<p>Up 1250 units</p>`) fails the build,
 as it does in a `template.html`: bind it with `<Value binding="…" cell="…" />`,
@@ -117,7 +117,7 @@ or say it in words. A single digit ("Q3") is not a number here.
 Anything the app computes or draws itself — a Recharts chart, a sum, a number
 in your own markup — is the app's presentation, not a checked figure. The page's
 footer says so: *"This page is an app. The figures it shows through the
-TraceBi kit carry that receipt; anything else it draws is the app's own
+TraceBi kit carry that trace; anything else it draws is the app's own
 presentation and is not checked."* `tracebi verify` re-runs the bindings as for
 any report.
 
@@ -184,7 +184,7 @@ numbers; the app replaces that view when it starts. `tracebi report build
 - `leaderboard` — the leader, a top-ten bar chart, the full ranking with search.
 - `scorecard` — every measure the fact runs (up to four) as a KPI, each with its trend when the model has a time dimension, then all of them by category.
 - `monitor` — is anything off right now: the latest period of every measure (up to four) with its sparkline, the series, and a watch list of the lowest members first. Needs a time dimension; without one it starts as a scorecard.
-- `funnel` — the fact's count measures (not money, not rates) as stages, widest first as the warehouse stands, with each stage's share of the first. The conversions are report-level ratios in `report.json` `"measures"`, so the receipt names them; reorder the stages to your funnel's in `report.json`. Needs two count measures; with one it starts as an overview.
+- `funnel` — the fact's count measures (not money, not rates) as stages, widest first as the warehouse stands, with each stage's share of the first. The conversions are report-level ratios in `report.json` `"measures"`, so the trace names them; reorder the stages to your funnel's in `report.json`. Needs two count measures; with one it starts as an overview.
 
 A broken app shows its error on the page instead of a blank one. The vendored
 bundles and their licences are listed in `tracebi/reports/assets/REACT_NOTICE.md`.

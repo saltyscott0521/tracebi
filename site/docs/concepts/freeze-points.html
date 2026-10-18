@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -130,11 +131,11 @@ as you like.</p>
 <ul>
 <li><strong>The model cannot see the transform.</strong> It reads tables, not the code that
   produced them. If a number is wrong because the pandas was wrong, the model
-  has no way to know — this is the honest boundary described in <a href="../concepts/receipts.html">Receipts</a>.</li>
+  has no way to know — this is the honest boundary described in <a href="../concepts/trace.html">The trace</a>.</li>
 <li><strong>The report cannot see the warehouse directly.</strong> It speaks in
   <a href="../reference/measures.html">Measures</a> and dimensions the model declares. That is what makes a figure
   re-runnable, and it is why an expressiveness gap in the model pushes work
-  into ungoverned code where the receipt weakens.</li>
+  into ungoverned code where the trace weakens.</li>
 </ul>
 <h2 id="refreshing-a-freeze-point">Refreshing a freeze point</h2>
 <p>Re-run the transform (<code>tracebi run-transform &lt;name&gt;</code>) and the sink is replaced.

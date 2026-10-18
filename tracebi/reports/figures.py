@@ -240,7 +240,7 @@ class _FigureParser(HTMLParser):
             raise ScenarioError(
                 f"scenario '{sc['name']}' holds a figure — stamped figures "
                 f"stay outside scenarios, so a computed number is never "
-                f"mistaken for a receipted one.")
+                f"mistaken for a traced one.")
         if "data-tb-input" in attrs:
             name = attrs.get("data-tb-input") or ""
             if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):

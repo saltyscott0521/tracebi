@@ -118,7 +118,7 @@ VERDICT_LABELS = {
         "REPRODUCES — every checked section matches the manifest",
     UNVERIFIABLE:
         "NOTHING VERIFIED — every section is unverifiable; no number in "
-        "this receipt was checked",
+        "this report was checked",
     NOTHING_TO_VERIFY:
         "NOTHING VERIFIED — this manifest has no data-bearing section; "
         "there was nothing to check",
@@ -173,13 +173,13 @@ def _verdict_fields(
         detail = (
             f"REPRODUCES — {checked} of {checked + unchecked} section(s) "
             f"checked and matching; {unchecked} unverifiable{pyd}, so this "
-            f"receipt does not prove them"
+            f"report does not prove them"
         )
     elif verdict == UNVERIFIABLE and python_derived:
         detail = (
             f"NOTHING VERIFIED — every section is unverifiable ({python_derived} "
             f"python-derived, its inputs stamped but its output not "
-            f"query-reproducible); no number in this receipt was checked"
+            f"query-reproducible); no number in this report was checked"
         )
     return {
         "verdict": verdict,
@@ -595,7 +595,7 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
         if strict:
             out["error"] = (
                 "--strict requires a figures-bearing (schema 2) manifest; "
-                "this receipt has no figure claims to hold to 100%"
+                "this manifest has no figure claims to hold to 100%"
             )
             out.update(_strict_fail_fields(out))
         return out
@@ -614,7 +614,7 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
             detail = f"inherits binding '{binding}'"
         else:
             status = ERROR
-            detail = (f"names binding '{binding}' which the receipt does not "
+            detail = (f"names binding '{binding}' which the manifest does not "
                       f"carry — internally inconsistent")
         figure_rows.append({"figure": fid, "kind": f.get("kind"),
                             "binding": binding, "status": status,
@@ -645,7 +645,7 @@ def verify_manifest(manifest: dict, models: Mapping[str, Any],
     if strict and any(r["status"] != REPRODUCES for r in figure_rows):
         not_green = sum(1 for r in figure_rows if r["status"] != REPRODUCES)
         out["verdict_detail"] = (
-            f"STRICT — {not_green} figure(s) carry no green receipt. "
+            f"STRICT — {not_green} figure(s) do not reproduce green. "
             + out["verdict_detail"]
         )
         out.update(_strict_fail_fields(out))
@@ -745,7 +745,7 @@ FILE_VERDICT_LABELS = {
         "file carries none; there was nothing to check",
     REFUSED_SNAPSHOT:
         "REFUSED — this is a review snapshot, not a published report; "
-        "snapshots carry no receipt and cannot be verified",
+        "snapshots carry no trace and cannot be verified",
 }
 
 #: Element-id prefix of the embedded data blocks (``tracebi-data-<name>``) —
@@ -996,7 +996,7 @@ def verify_file(html: str, manifest: dict) -> dict:
                 "computed_sha256": computed,
                 "expected_sha256": None,
                 "detail": "the file embeds this data block but the manifest "
-                          "records no binding for it — no receipt vouches for it",
+                          "records no binding for it — no trace vouches for it",
             })
             continue
         seen.add(name)
@@ -1019,7 +1019,7 @@ def verify_file(html: str, manifest: dict) -> dict:
                 "expected_sha256": expected,
                 "detail": "embedded bytes match the manifest binding, but no "
                           "report section carries this fingerprint — the "
-                          "receipt does not vouch for this number",
+                          "trace does not vouch for this number",
             })
         else:
             results.append({
@@ -1156,7 +1156,7 @@ def verify_file(html: str, manifest: dict) -> dict:
                 "computed_sha256": computed,
                 "expected_sha256": None,
                 "detail": "the file embeds a semantic contract the manifest "
-                          "does not record — no receipt vouches for it",
+                          "does not record — no trace vouches for it",
             })
             sc_failed = True
         elif computed == record.get("sha256"):
@@ -1194,7 +1194,7 @@ def verify_file(html: str, manifest: dict) -> dict:
         detail = (
             f"FILE ALTERED — the page's stage meta ({file_stage!r}) does not "
             f"match the manifest's ({manifest_stage!r}); this is not the "
-            f"file this receipt describes"
+            f"file this manifest describes"
         )
     elif (verdict == FILE_ALTERED and fig_failed
           and summary[FILE_MATCHES] == len(results)):
@@ -1215,7 +1215,7 @@ def verify_file(html: str, manifest: dict) -> dict:
     elif verdict == FILE_INTACT and fig_records is not None:
         detail += (
             ". Figure markup verified; page scripting is not provable — the "
-            "receipt covers the embedded bytes and the declared "
+            "trace covers the embedded bytes and the declared "
             "figure↔binding map"
         )
 

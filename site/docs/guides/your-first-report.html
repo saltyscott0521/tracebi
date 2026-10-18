@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -98,7 +99,7 @@ every figure from the stamped bytes, so hand-rolling a CSV parser and a chart is
 the classic wasted afternoon. Add them when you actually need them.</p>
 <h2 id="2-declare-the-data">2. Declare the data</h2>
 <p>Open <code>report.json</code>. Each entry under <code>data</code> is a <strong>binding</strong> — the unit of
-trust, resolved once, fingerprinted, and recorded in the receipt.</p>
+trust, resolved once, fingerprinted, and recorded in the trace.</p>
 <pre><code class="language-json">{
   &quot;name&quot;: &quot;Portfolio Book&quot;,
   &quot;libs&quot;: [&quot;echarts&quot;],
@@ -190,7 +191,7 @@ grammar, and both styles produce identical bytes. Mix them freely.</p>
    positions.&lt;/p&gt;
 </code></pre>
 <p>Narrative prose is where hard-coded numbers hide. Here the honest path costs one
-attribute — and each bound span becomes a verified figure in the receipt.</p>
+attribute — and each bound span becomes a verified figure in the trace.</p>
 <h2 id="6-iterate-live">6. Iterate live</h2>
 <pre><code class="language-bash">tracebi dev portfolio_book
 </code></pre>
@@ -202,7 +203,7 @@ deleted at final build.</p>
 tracebi verify output/portfolio_book.html.manifest.json
 tracebi verify --file output/portfolio_book.html
 </code></pre>
-<p>You want <code>✓ REPRODUCES</code> per figure. See <a href="../concepts/receipts.html">Receipts</a> for what that does and
+<p>You want <code>✓ REPRODUCES</code> per figure. See <a href="../concepts/trace.html">The trace</a> for what that does and
 does not claim.</p>
 <h2 id="8-check-what-it-earned">8. Check what it earned</h2>
 <pre><code class="language-bash">tracebi report status portfolio_book

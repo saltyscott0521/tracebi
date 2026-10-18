@@ -269,7 +269,7 @@ def _presentation() -> dict:
                         "the rest), so the vocabulary is the model's. A binding "
                         "that lists one by name in its measures gets it for that "
                         "query only; the model stays as it is, and a name the "
-                        "model already declares is refused. The receipt labels "
+                        "model already declares is refused. The trace labels "
                         "them 'calculated in this report' (the semantic contract "
                         "carries scope: report), and the stamped query carries "
                         "their definitions, so verify re-runs them. Report "
@@ -297,7 +297,7 @@ def _presentation() -> dict:
                         "refused by name, so write it out in SQL or query the model. Rows come back "
                         "in a canonical order (by columns, left to right); put the grouping and date "
                         "columns first. A selection or filter cannot reach a SQL binding yet. The "
-                        "receipt records the SQL and labels it 'calculated in this report (SQL)' "
+                        "trace records the SQL and labels it 'calculated in this report (SQL)' "
                         "(the semantic contract's sql_calculations); the stamped query carries the "
                         "SQL and verify re-runs it, reporting source drift when the warehouse "
                         "changes.",
@@ -306,7 +306,7 @@ def _presentation() -> dict:
         "app": {
             "what": "The React lane: app.jsx in place of template.html, for app-like "
                     "dashboards. One component (export default), compiled in the page from "
-                    "a fixed kit; still one offline file with the receipt.",
+                    "a fixed kit; still one offline file with its trace.",
             "imports": "react, react-dom, recharts, lucide-react (icons by name; only "
                        "those are embedded), tracebi. Any other import fails the build.",
             "kit": "<Masthead title kicker period mark> opens the page (children are the "
@@ -396,9 +396,10 @@ def _presentation() -> dict:
             "(red), not-checked (neutral). A page never sets it green; framed "
             "in the web app, it shows the app's re-check, which the app tells it)",
             ".tb-footer (ends the page: your sources first, then the build's "
-            "one line — when, which model by its label, and that the receipt does "
+            "one line — when, which model by its label, and that the page does "
             "not claim the numbers are right — and 'How these numbers were "
-            "made' behind a <details>: the stated methodology. The build "
+            "made', which opens the trace drawer (a <details> holds the "
+            "stated methodology for a reader without the runtime). The build "
             "adds it when the template places no data-tb-methodology)",
             ".tb-grid", ".tb-span-4 / .tb-span-6 / .tb-span-8 / .tb-span-12 "
             "(children of a .tb-grid make it the 12-column grid: a third, a "
@@ -427,7 +428,7 @@ def _presentation() -> dict:
             "badge is the verdict chip with the file's own state, 'Draft' on a "
             "preview or 'Not checked' on a build: never green on the page, "
             "since only a host that re-ran the queries may say 'Reproduces' — "
-            "the receipt attests reproduction, not correctness",
+            "the trace attests reproduction, not correctness",
         ],
         "figure_attributes": {
             "data-tb-figure": "value | chart | table | custom — on ANY "
@@ -541,7 +542,7 @@ def _presentation() -> dict:
                      "has no framework markup — draw it in script.js with "
                      "tracebi.draw.",
             "figure_id": "The declared name becomes the figure id "
-                         "(fig-<name>) — the receipt's stable address.",
+                         "(fig-<name>) — the trace's stable address.",
             "refusals": "A figure naming an undeclared binding fails when "
                         "the package loads. Declaring a figure and never "
                         "placing it fails the build (a declared number must "
@@ -565,7 +566,7 @@ def _presentation() -> dict:
                          "\"filters\": {\"dim_sector.sector\": "
                          "\"Technology\"}}. Absent keeps subset controls. "
                          "\"filters\": {} is no extra cut. The authored "
-                         "filters are the receipt; verify re-runs them. "
+                         "filters are the trace; verify re-runs them. "
                          "Binding filters always apply; the selection "
                          "wins on the same target. having, order_by, and "
                          "limit stay on the binding. Ask reads pins, "
@@ -589,9 +590,9 @@ def _presentation() -> dict:
                               "posts {filters} and refreshes every figure "
                               "on that model from the query result, "
                               "including value figures. Excluded options "
-                              "stay visible and inert. The receipt shows "
+                              "stay visible and inert. The trace shows "
                               "whether the selection is the authored one. "
-                              "Download of the sliced view is the receipt "
+                              "Download of the sliced view is the trace "
                               "action: the filename and a header line name "
                               "the selection. data-tb-download stays the "
                               "full stamped binding. When the model is "
@@ -615,15 +616,15 @@ def _presentation() -> dict:
                                 "[data-tb-label=\"…\"]> — downloads the "
                                 "binding's embedded canonical CSV — the "
                                 "stamped CSV verbatim — a "
-                                "receipt-preserving export, saved as "
+                                "trace-preserving export, saved as "
                                 "<B>.csv",
         },
         "scenarios": {
             "rule": "The one place a page computes: a what-if from the "
                     "READER's own inputs, evaluated in the browser. A "
-                    "scenario is never a figure, never in the receipt, and "
+                    "scenario is never a figure, never in the trace, and "
                     "the runtime labels every one 'computed in your browser "
-                    "… not part of the receipt'. The manifest records its "
+                    "… not part of the trace'. The manifest records its "
                     "declaration (inputs, formulas, presets) with "
                     "verifiable: false, never a value. Use it for 'what if "
                     "the rate were 7.8%', never for a number a query "
@@ -733,7 +734,7 @@ def _presentation() -> dict:
                         "(unset is \"auto\": follows the reader's system), "
                         "data-tb-density=\"compact\", data-tb-width=\"full\" "
                         "(the whole window, for a dashboard). Tokens only: "
-                        "never a number, never the receipt's tones",
+                        "never a number, never the trace's tones",
                 "sidebar": "<div class=\"tb-tabs\" data-tb-nav=\"side\"> — "
                            "the same data-tb-tab sections with the bar as a "
                            "column; put the whole page inside it",
@@ -743,7 +744,7 @@ def _presentation() -> dict:
                          "tb-masthead-meta\"><span data-tb-built></span>"
                          "<span class=\"tb-verdict\"></span></p></header> — "
                          "data-tb-built shows when the file was built, from "
-                         "its receipt; nav moves the masthead to the top of a "
+                         "its trace; nav moves the masthead to the top of a "
                          "sidebar. (.tb-title, the older title block, still "
                          "works)",
                 "app": "An app.jsx has no <html>: its mode and density are "
@@ -785,20 +786,22 @@ def _presentation() -> dict:
             "shipped and its text, who built the file, and per binding the "
             "query as run, its rows and how many ordering keys the author "
             "wrote. The drawer is a provenance display from "
-            "the recorded receipt block — it renders only what the block "
-            "records, never re-colored; the manifest remains the receipt "
-            "of record. It reads as a certificate: the verdict chip and "
-            "'The receipt does not claim the numbers are right.', how to "
+            "the recorded block — it renders only what the block "
+            "records, never re-colored; the manifest remains the trace "
+            "of record. It reads as a certificate headed with the report's "
+            "name and 'How each number was made': the verdict chip and "
+            "'This page does not claim the numbers are right; it records how "
+            "each was made so it can be checked.', how to "
             "check the file, then per figure its value as shown, label, "
             "the measure's definition, the query in one line and the "
             "fingerprint's first 8 characters, with the raw query and full "
             "fingerprint behind 'Raw', and 'About this build' last. It "
-            "opens from the masthead's Receipt button or verdict chip, a "
+            "opens from the masthead's Trace link or verdict chip, a "
             "click on a value figure (at its row), a chart tooltip's "
-            "'Receipt ->' or the footer's line; a full-height sheet on a "
-            "phone; it prints as an appendix. tracebi.renderReceipt(mount, "
-            "receipt, options) renders the same certificate into any "
-            "element. Draft snapshots carry no receipt block."
+            "'Trace ->' or the footer's 'How these numbers were made'; a "
+            "full-height sheet on a phone; it prints as an appendix. "
+            "tracebi.renderReceipt(mount, block, options) renders the same "
+            "certificate into any element. Draft snapshots carry no trace."
         ),
         "prose_values": "When explaining results in prose, BIND the numbers: "
                         "<span data-tb-figure=\"value\" data-tb-binding=... "
@@ -1044,7 +1047,7 @@ def _schedule() -> dict:
                 "receives it in its own report.json, so a reviewer approves "
                 "when and to whom in the same diff as what. One run is "
                 "build → verify → email → record. A failed refresh or build "
-                "is retried twice by default. A receipt that does not "
+                "is retried twice by default. A build that does not "
                 "verify is recorded 'refused' and nothing is sent. "
                 "A Slack file upload runs on a successful send when "
                 "TRACEBI_SLACK_BOT_TOKEN and TRACEBI_SLACK_CHANNEL are "
@@ -1062,7 +1065,7 @@ def _schedule() -> dict:
                   "before anything is built or sent. retries: integer 0 to "
                   "5, default 2. A failed refresh or build is retried that "
                   "many times, waiting 60s then 300s, and 300s for any "
-                  "further retry; 0 disables. A receipt that does not "
+                  "further retry; 0 disables. A build that does not "
                   "verify, and a delivery failure, are not retried. "
                   "owner: one email address, optional. A run recorded "
                   "failed, refused, or empty emails that address a "
@@ -1220,7 +1223,7 @@ def describe(brief: bool = False) -> dict:
                             "named measure across the WHOLE result (before any "
                             "limit), computed governed at query time. This is the "
                             "share-of-total a report.py used to compute "
-                            "ungoverned; a governed query keeps its receipt.",
+                            "ungoverned; a governed query keeps its trace.",
                 },
                 {
                     "kind": "rank",
@@ -1354,7 +1357,7 @@ def describe(brief: bool = False) -> dict:
                         "fact's own columns (equality, lists, operator dicts, "
                         "or/and groups); dimension references are refused. A "
                         "column the fact lacks is refused by name at execution. "
-                        "The stamped lineage and the receipt carry the filter, and "
+                        "The stamped lineage and the trace carry the filter, and "
                         "verify re-runs it: changing it in the model shows as "
                         "drift.",
             },
@@ -1508,7 +1511,7 @@ def describe(brief: bool = False) -> dict:
                     "for unbound figures, unused bindings and numbers typed "
                     "outside figures). Dev-state under "
                     ".tracebi/workbench/<report>/; never in a build or a "
-                    "receipt.",
+                    "trace.",
         },
         "project_feed": {
             "mcp": "workbench_state() with no report",
@@ -1606,7 +1609,7 @@ def describe(brief: bool = False) -> dict:
                     "secrets, so it comes only through a laptop and review. "
                     "script.js is accepted: it runs only in the reader's browser, "
                     "in a sandboxed frame with no network and no access to the "
-                    "app, and if it changes a stamped figure's text the receipt "
+                    "app, and if it changes a stamped figure's text the trace "
                     "says 'changed on the page by a custom script'. "
                     "list_models and describe_model say draftable per model.",
         },
@@ -1638,7 +1641,7 @@ def describe(brief: bool = False) -> dict:
                      "returned>) — encoding is base64, "
                      "content_type is the spreadsheet media type. "
                      "Every other suffix stays refused.",
-            "note": "The spreadsheet carries no receipt and is not "
+            "note": "The spreadsheet carries no trace and is not "
                     "verifiable. format='xlsx' still writes the HTML and "
                     "manifest beside the workbook; those are the checkable "
                     "artifact. The result's spreadsheet_note says so.",
@@ -1652,7 +1655,7 @@ def describe(brief: bool = False) -> dict:
                      "returned>) — encoding is base64, "
                      "content_type is application/pdf.",
             "note": "The PDF is a print of the built HTML (headless "
-                    "Chromium, so charts render). It carries no receipt "
+                    "Chromium, so charts render). It carries no trace "
                     "and is not verifiable. format='pdf' still writes the "
                     "HTML and manifest; those are the checkable artifact. "
                     "The result's pdf_note says so. Needs "

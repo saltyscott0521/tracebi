@@ -872,7 +872,7 @@ class TemplatePackage:
             if emitted[name] > 1:
                 raise ValueError(
                     f"Package '{self.name}': figure('{name}') is placed more "
-                    f"than once. A figure id is the receipt's address for one "
+                    f"than once. A figure id is the trace's address for one "
                     f"number — declare a second figure instead of reusing it."
                 )
             return self._build_figure(name, fig)
@@ -1026,11 +1026,13 @@ class TemplatePackage:
         # ONE data-tb-methodology container; otherwise the build adds a
         # <footer class="tb-footer">. Either way, after the author's own
         # children (their sources), one visible line — when, which model
-        # (by label), and that the receipt does not claim the numbers are right —
+        # (by label), and that the page does not claim the numbers are right —
         # then "How these numbers were made" behind a <details>: what the
-        # receipt is for and the stated methodology notes. Prose, never a
-        # verified claim: no badge, no status, and it never colors a figure.
-        # Stated notes are recorded in the manifest (and the receipt block)
+        # trace is for and the stated methodology notes. With the runtime the
+        # line's own link opens the drawer instead, whose About this build
+        # holds the same notes; the <details> serves a reader without it.
+        # Prose, never a verified claim: no badge, no status, and it never
+        # colors a figure. Stated notes are recorded in the manifest (and the receipt block)
         # when present.
         page, insert_at = _ensure_about_home(page)
         notes = stated_methodology_block(models, lineages)
@@ -1078,6 +1080,7 @@ class TemplatePackage:
             binding_models={n: ref.model for n, ref in self.bindings.items()},
             contracts=contracts,
             bindings=self._receipt_bindings(embed_items),
+            app=self.app_source is not None,
         )
         contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
         contract_blocks.append(embed_json(declared_formats, "tracebi-formats") + "\n")
@@ -1646,7 +1649,7 @@ class TemplatePackage:
             '<div style="position:sticky;top:0;z-index:9999;background:#b45309;'
             'color:#fff;font:600 13px/1.4 system-ui,sans-serif;padding:8px 16px;'
             'text-align:center">EXPLORATION SNAPSHOT — working state for '
-            'review. Carries no receipt; numbers here are not verified.</div>'
+            'review. Carries no trace; numbers here are not verified.</div>'
         )
         body_open = page.find("<body")
         if body_open != -1:
@@ -1919,10 +1922,12 @@ def _footer_html(manifest: ReportManifest, model_labels: list[str],
     numbers were made" behind a ``<details>``.
 
     The line says when the file was built, from which model (by its label),
-    and that the receipt does not claim the numbers are right. Who built it
-    is tooling provenance: the receipt's About this build carries it, not
-    the page. The disclosure holds what the receipt is for, the app note,
-    and the stated methodology appendix. Locked honesty: never says
+    and that the page does not claim the numbers are right. Who built it
+    is tooling provenance: the drawer's About this build carries it, not
+    the page. The disclosure holds what the trace is for, the app note,
+    and the stated methodology appendix; with the runtime the line's
+    "How these numbers were made" opens the drawer and the disclosure
+    hides (the drawer holds the same). Locked honesty: never says
     verified, reproduces, or correct.
     """
     import html as _html
@@ -1931,18 +1936,18 @@ def _footer_html(manifest: ReportManifest, model_labels: list[str],
     parts = [f"Built {_html.escape(when)}"] if when else []
     parts += [_html.escape(label) for label in model_labels]
     line = (" · ".join(parts) + ". " if parts else "")
-    line += "The receipt does not claim the numbers are right."
+    line += "This page does not claim the numbers are right."
 
     inner = [
-        '<p class="tb-footer-note">This file carries a receipt. Each '
+        '<p class="tb-footer-note">This file carries its trace: each '
         "figure names the query that produced it and a fingerprint of the "
-        "result. Running <code>tracebi verify</code> on the receipt checks "
-        "whether those numbers still match the model.</p>"
+        "result. <code>tracebi verify</code> re-runs those queries and "
+        "checks whether the numbers still match the model.</p>"
     ]
     if app:
         inner.append(
             '<p class="tb-footer-note">This page is an app. The figures it '
-            "shows through the TraceBi kit carry that receipt; anything else "
+            "shows through the TraceBi kit are traced; anything else "
             "it draws is the app's own presentation and is not checked.</p>"
         )
     return (f'<p class="tb-footer-line">{line}</p>'
@@ -2023,7 +2028,8 @@ def _embedded_payload(block: str) -> str:
 
 def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
                      fingerprints: dict, binding_models: dict,
-                     contracts: dict, bindings: Optional[dict] = None) -> dict:
+                     contracts: dict, bindings: Optional[dict] = None,
+                     app: bool = False) -> dict:
     """The ``tracebi-receipt`` block's payload — the receipt drawer's feed.
 
     Presentation feed only: it duplicates facts the manifest records so the
@@ -2079,6 +2085,10 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
         payload["rendered_by"] = who
     if manifest.methodology is not None:
         payload["stated_methodology"] = manifest.methodology
+    # The footer's app note, which the drawer states once the runtime has
+    # folded the footer's disclosure into it.
+    if app:
+        payload["app"] = True
     return payload
 
 

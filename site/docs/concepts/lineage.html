@@ -33,6 +33,7 @@
 <a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/transform.html">Transform — phase ①</a>
 <div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
 <a href="../guides/plain-english.html">TraceBi in plain English</a>
@@ -105,12 +106,12 @@ that produced it.</p>
 </code></pre>
 <h2 id="where-it-shows-up">Where it shows up</h2>
 <ul>
-<li><strong>In the receipt.</strong> A figure's manifest entry carries the resolved query and
+<li><strong>In the trace.</strong> A figure's manifest entry carries the resolved query and
   the model it ran against — recovered from lineage, not re-derived.</li>
 <li><strong>In the web UI.</strong> A report's <strong>Lineage</strong> tab draws where each number came
   from, left to right: the transform that wrote the tables, the stored tables
   (and where they live), the model, each query, and the figures on the page.
-  It is read from the last build's <a href="../concepts/receipts.html">receipt</a>, so it shows what the
+  It is read from the last build's <a href="../concepts/trace.html">The trace</a>, so it shows what the
   reader was shown, not a fresh re-run. Select a node to trace it: a figure
   lights only the tables its own query read. <code>GET /api/reports/{name}/lineage</code>
   returns the same graph; <code>/mermaid</code> returns a diagram.</li>
@@ -131,7 +132,7 @@ numbers become a contract you can query. Claiming otherwise would mean claiming
 to audit arbitrary Python.</p>
 <h2 id="related">Related</h2>
 <ul>
-<li><a href="../concepts/receipts.html">Receipts</a> — what the chain is ultimately used for</li>
+<li><a href="../concepts/trace.html">The trace</a> — what the chain is ultimately used for</li>
 <li><a href="../concepts/sink-contracts.html">Sink contracts</a> — narrowing the phase-① gap</li>
 </ul>
   </main>
