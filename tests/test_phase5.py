@@ -2217,7 +2217,7 @@ class TestSlimInstallContract:
 # the result, and so the "am I a checkout?" probe sees a tree we control.
 
 class TestHomepageNeverSilently404s:
-    def _serve_root(self, dist: str, checkout: bool = True) -> dict:
+    def _serve_root(self, tmp_path, dist: str, checkout: bool = True) -> dict:
         """Boot the app over a synthetic tree and report what / answers.
 
         ``dist`` is 'absent' (no ui/ at all), 'empty' (the directory a
@@ -2228,17 +2228,20 @@ class TestHomepageNeverSilently404s:
         The synthetic tree is a copy of ``tracebi/`` — the app lives at
         ``tracebi/web/api`` and finds its bundle at ``tracebi/web/ui/dist``,
         so the tree root the app reasons about is three levels above it.
+        It is built under ``tmp_path`` so pytest removes it; a copy left
+        under /tmp per run once filled the disk.
         """
         import json
         import subprocess
         import sys
 
         code = (
-            "import json, os, shutil, sys, tempfile\n"
-            "tmp = tempfile.mkdtemp()\n"
+            "import json, os, shutil, sys\n"
+            f"tmp = {str(tmp_path)!r}\n"
             "shutil.copytree(os.path.join(os.getcwd(), 'tracebi'),\n"
             "                os.path.join(tmp, 'tracebi'),\n"
-            "                ignore=shutil.ignore_patterns('ui', '__pycache__'))\n"
+            "                ignore=shutil.ignore_patterns('ui', '__pycache__',\n"
+            "                                              'node_modules'))\n"
             f"if {checkout!r}:\n"
             "    open(os.path.join(tmp, 'pyproject.toml'), 'w').close()\n"
             f"if {dist!r} != 'absent':\n"
@@ -2284,8 +2287,8 @@ class TestHomepageNeverSilently404s:
         result["stderr"] = out.stderr
         return result
 
-    def test_without_a_bundle_the_homepage_explains_itself(self):
-        r = self._serve_root(dist="absent")
+    def test_without_a_bundle_the_homepage_explains_itself(self, tmp_path):
+        r = self._serve_root(tmp_path, dist="absent")
 
         # The outcome that matters: no bare 404, and no response a human
         # could read without learning what to do about it.
@@ -2315,23 +2318,23 @@ class TestHomepageNeverSilently404s:
         assert "application/json" in r["refused_type"]
         assert "text/html" in r["shouty_type"]
 
-    def test_an_empty_dist_directory_is_not_mistaken_for_a_bundle(self):
+    def test_an_empty_dist_directory_is_not_mistaken_for_a_bundle(self, tmp_path):
         # `npm run build` empties tracebi/web/ui/dist before writing it (vite's
         # emptyOutDir), so a build that fails leaves the directory present
         # and empty. Keying off the directory served the bare 404 this whole
         # branch exists to prevent — key off index.html.
-        r = self._serve_root(dist="empty")
+        r = self._serve_root(tmp_path, dist="empty")
 
         assert r["html_status"] != 404
         assert "npm run build" in r["html_body"]
         assert "npm run build" in r["stderr"]
         assert r["health_status"] == 200
 
-    def test_an_installed_package_is_not_told_to_run_npm_in_site_packages(self):
+    def test_an_installed_package_is_not_told_to_run_npm_in_site_packages(self, tmp_path):
         # No pyproject.toml above tracebi/ ⇒ this is site-packages, not a
         # checkout. `npm ci && npm run build` there is not an instruction
         # anyone can act on; name the remedy that exists instead.
-        r = self._serve_root(dist="absent", checkout=False)
+        r = self._serve_root(tmp_path, dist="absent", checkout=False)
 
         assert r["html_status"] != 404
         # Match the build instruction, not the bare substring "npm" — a
@@ -2342,8 +2345,8 @@ class TestHomepageNeverSilently404s:
             assert "npm run" not in text
             assert "clone" in text or "wheel" in text
 
-    def test_with_a_bundle_the_real_index_is_served(self):
-        r = self._serve_root(dist="index")
+    def test_with_a_bundle_the_real_index_is_served(self, tmp_path):
+        r = self._serve_root(tmp_path, dist="index")
 
         # The absence assertion in the other direction: the explanation page
         # must never shadow a bundle that is actually there.
@@ -2352,14 +2355,14 @@ class TestHomepageNeverSilently404s:
         assert "npm run build" not in r["html_body"]
         assert "npm run build" not in r["stderr"]
 
-    def test_a_missing_asset_is_a_404_not_the_index(self):
+    def test_a_missing_asset_is_a_404_not_the_index(self, tmp_path):
         # A deploy swaps the bundle's hashed filenames; a browser holding the
         # old index can ask for a script the new build doesn't have (or the
         # new index can reach the CDN before the new container). Answering
         # that with index.html at 200 let Cloudflare cache HTML under a .js
         # URL for hours — a blank app for everyone. Page routes still fall
         # back to the index; missing assets are a 404 no cache keeps.
-        r = self._serve_root(dist="index")
+        r = self._serve_root(tmp_path, dist="index")
 
         assert r["asset_status"] == 404
         assert "REAL-SPA-BUNDLE" not in r["asset_body"]
