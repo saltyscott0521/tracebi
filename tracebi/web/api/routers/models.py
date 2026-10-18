@@ -96,6 +96,37 @@ def preview_table(name: str, table_name: str, rows: int = 50):
     }
 
 
+@router.get("/{name}/dimensions/{ref}/values")
+def dimension_values(name: str, ref: str, limit: int = 200):
+    """The distinct values of one dimension attribute (``dim_issuer.sector``),
+    sorted, at most *limit*: what Ask offers to filter on. Read from the
+    dimension's own table, so it lists every member, not only those a fact
+    row uses."""
+    detail = registry.describe_model(name)
+    if not detail:
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    dim_name, _, attribute = ref.partition(".")
+    dim = next((d for d in detail.get("dimensions") or [] if d["name"] == dim_name), None)
+    if dim is None or attribute not in (dim.get("attributes") or []):
+        raise HTTPException(status_code=404, detail=(
+            f"'{ref}' is not a dimension attribute of '{name}' (dimension.attribute)"))
+    df = _load_table(name, dim["table"]).to_pandas()
+    if attribute not in df.columns:      # a derived attribute (a time grain, a bin)
+        raise HTTPException(status_code=422, detail=(
+            f"'{ref}' is derived when a query runs, so it has no stored values to list"))
+    values = sorted(df[attribute].dropna().drop_duplicates().astype(object).tolist(),
+                    key=lambda v: (type(v).__name__, v))
+    limit = max(1, min(limit, 1000))
+    return {
+        "model": name,
+        "dimension": ref,
+        "values": [v if isinstance(v, (str, int, float, bool)) else str(v)
+                   for v in values[:limit]],
+        "total": len(values),
+        "truncated": len(values) > limit,
+    }
+
+
 class QueryRequest(BaseModel):
     # One grammar on every surface (architecture v2 §2.2): the body is the
     # same QuerySpec dict Python, report specs, and the MCP gateway speak —

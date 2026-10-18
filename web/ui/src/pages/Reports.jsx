@@ -4,8 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import {
   useReports, useStartReportRun, useReportRun, useRuns,
-  useReportLineage, useReportSelection, useKeepSelection, useBuiltReport,
-  useReportSource, fetchBuiltReport, reportDownloadUrl, reportShareUrl, useDesk, useModels,
+  useReportLineage, useBuiltReport,
+  useReportSource, reportDownloadUrl, reportShareUrl, useDesk, useModels,
   useAppStatus, useMe, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
   postReportSelection,
 } from '../api'
@@ -93,155 +93,6 @@ function useReportBuild(name) {
   }, [name, startRun, toast])
 
   return { build, running, runId, result, error, status: run?.status }
-}
-
-function parseCut(text) {
-  const filters = {}
-  String(text || '').split('\n').forEach(line => {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) return
-    const eq = trimmed.indexOf('=')
-    if (eq < 1) return
-    const key = trimmed.slice(0, eq).trim()
-    let val = trimmed.slice(eq + 1).trim()
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) val = val.slice(1, -1)
-    if (Object.prototype.hasOwnProperty.call(filters, key)) {
-      const prev = filters[key]
-      filters[key] = Array.isArray(prev) ? prev.concat([val]) : [prev, val]
-    } else {
-      filters[key] = val
-    }
-  })
-  return filters
-}
-
-// Ask is off for now: when it returns it answers only from what is on the
-// report or in its model's data.
-const SHOW_ASK = false
-
-function AskCut({ reportName, frameRef, onPackageChange }) {
-  const [text, setText] = useState('')
-  const [reply, setReply] = useState(null)
-  const [kept, setKept] = useState(null)
-  const select = useReportSelection()
-  const keep = useKeepSelection()
-  const quoted = (reply?.figures || []).filter(fig =>
-    fig.kind === 'value' && fig.fingerprint &&
-    (fig.formatted != null || typeof fig.value === 'number'))
-  const added = reply?.added_binding
-    ? (reply.figures || []).find(fig => fig.binding === reply.added_binding)
-    : null
-
-  const apply = () => {
-    const trimmed = text.trim()
-    const request = (!trimmed || trimmed.includes('='))
-      ? { name: reportName, filters: parseCut(text) }
-      : { name: reportName, question: trimmed }
-    setKept(null)
-    select.mutate(request, {
-      onSuccess: (payload) => {
-        setReply(payload)
-        if (payload?.added_binding) {
-          onPackageChange?.()
-          return
-        }
-        const filters = payload?.filters || {}
-        tellFrame(frameRef.current, { type: 'setSelection', filters })
-      },
-    })
-  }
-
-  const cutLine = reply
-    ? Object.entries(reply.filters || {}).map(([key, value]) => (
-      `${key} = ${Array.isArray(value) ? value.join(', ') : value}`
-    )).join('; ')
-    : ''
-
-  return (
-    <div style={{
-      border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px',
-      marginBottom: 14,
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Ask</div>
-      <textarea
-        value={text}
-        onChange={e => setText(e.target.value)}
-        placeholder={'what about Software'}
-        rows={2}
-        style={{
-          width: '100%', boxSizing: 'border-box', font: '12px/1.4 ui-monospace, monospace',
-          marginBottom: 8,
-        }}
-      />
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Btn onClick={apply} disabled={select.isPending}>Apply cut</Btn>
-        {reply && !reply.added_binding && (
-          <Btn onClick={() => keep.mutate(
-            { name: reportName, filters: reply.filters || {} },
-            { onSuccess: (payload) => { setKept(payload); onPackageChange?.() } },
-          )} disabled={keep.isPending}>
-            Keep this cut
-          </Btn>
-        )}
-      </div>
-      {select.error && (
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--red-text, #9b2c2c)' }}>
-          {select.error.message}
-        </div>
-      )}
-      {(reply?.pins || []).length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.5 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Pins first</div>
-          {reply.pins.map(pin => (
-            <div key={`${pin.report}-${pin.id}`}>
-              {pin.report}{pin.note ? ` · ${pin.note}` : ''}
-            </div>
-          ))}
-        </div>
-      )}
-      {reply?.added_binding && (
-        <div style={{ marginTop: 10, fontSize: 12 }}>
-          added binding {reply.added_binding}
-          {added?.fingerprint && (
-            <>
-              {' · '}
-              <code title={added.fingerprint}>{String(added.fingerprint).slice(0, 12)}</code>
-            </>
-          )}
-          {reply.verdict && <> · {reply.verdict}</>}
-        </div>
-      )}
-      {reply && (
-        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)' }}>
-          {cutLine ? `cut: ${cutLine}` : 'cut: none'}
-        </div>
-      )}
-      {quoted.length > 0 && (
-        <div style={{ marginTop: 10, fontSize: 12, lineHeight: 1.6 }}>
-          {quoted.map(fig => (
-            <div key={fig.id || fig.binding}>
-              <span>{fig.formatted ?? fig.value}</span>
-              {' · '}
-              <code title={fig.fingerprint}>{String(fig.fingerprint).slice(0, 12)}</code>
-            </div>
-          ))}
-        </div>
-      )}
-      {kept && (
-        <div style={{ marginTop: 8, fontSize: 12 }}>
-          verdict: {kept.verdict}
-        </div>
-      )}
-      {keep.error && (
-        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--red-text, #9b2c2c)' }}>
-          {keep.error.message}
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ── The report's own page ────────────────────────────────────────────────────
@@ -755,13 +606,6 @@ function OpenReport({ report, model }) {
     setPanel(p => ({ ...p, open: false }))
   }
 
-  const refreshBuilt = useCallback(async () => {
-    const fresh = await qc.fetchQuery({
-      queryKey: ['built-report', name],
-      queryFn: () => fetchBuiltReport(name),
-    })
-    setDisk(fresh || null)
-  }, [qc, name])
 
   // The panel's open/closed and its tab are remembered for next time.
   useEffect(() => {
@@ -902,11 +746,6 @@ function OpenReport({ report, model }) {
             </p>
           )}
           {(runErr && shown) && <div className="rp__err"><ErrorDetail error={runErr} /></div>}
-          {SHOW_ASK && shown && (
-            <div className="rp__err">
-              <AskCut reportName={name} frameRef={frameRef} onPackageChange={refreshBuilt} />
-            </div>
-          )}
           {frameHtml ? (
             <iframe ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
           ) : opening ? (

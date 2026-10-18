@@ -20,6 +20,58 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-18 — Step 4 of the UX plan: Ask
+
+Step 4 made Ask the reader's path to a stamped number without code: one
+commit on `step4-ask` ([[ux-plan-2026-10-17]]).
+
+**Decision: no language model in the app.** The app does not call a model;
+the connected agent does (`answer_question`, `query_model`). So Ask in the app
+is a *structured* question, not free text: one input that reads "Show
+[measure] by [dimension] for [filter], [order], top [n]", where each slot is a
+token from `GET /api/models/{name}` (declared measures with their
+descriptions, the dimension attributes the fact joins) or from the new
+`GET /api/models/{name}/dimensions/{dim.attr}/values`. Typing only finds
+tokens ("fair value by sector top 8" takes one per part); a question is always
+a query the model can run. When an agent can reach the app (the gateway at
+`/mcp`, or dev mode), one line says "Or ask your agent: it answers from the
+same definitions". The natural-language layer is the agent's job.
+
+**What shipped.** The answer is `POST /api/models/{name}/query` drawn from its
+own rows: the sentence and the response's row count; a bar chart (one measure,
+one dimension, at most 12 rows), a table, or the number; each measure's
+definition in words; the query line as the receipt writes it; a **Not
+checked** chip, never green (an ad hoc query has no receipt). The question is
+in the URL (`?q=`) and the session's last five sit under the input. **Keep
+this** (analyst+) starts a report draft holding one binding, `answer`, with
+the query (never the numbers) and a one-figure `app.jsx`, then opens the
+draft's page. **Advanced** is the old Explore builder editing the same
+question. The sentence, the suggestions, the definitions and Keep this's files
+are one pure module (`web/ui/src/ask.js`) that the web journey runs in node, so
+the test builds the files the page writes. `AskCut` (the report page's hidden
+Ask box) is deleted, not reused: it cut one report's selection, where Ask asks
+a model.
+
+**What the captures showed.** `/ask` with no model lists the models; a model's
+empty Ask shows the sentence's dashed slots and three questions the model can
+answer. Fair value by sector, largest first, draws six accent bars with the
+display text at each end, labels whole; the table answer (fair value, cost
+basis and mark by issuer, top 8) right-aligns three formatted columns; the
+one-number answer is $285,904,445 at 40px. Advanced opens with Fair value
+and Sector ticked. Keep this landed on the draft's page with its preview: the
+masthead titled with the question, the chart, a Draft chip. A viewer sees no
+Keep this. At 390 the sentence wraps over three lines above a full-width Ask
+button, the suggestions open under it, Advanced stays folded. Dark keeps the
+accent bars and a neutral chip. No console errors.
+
+**Deliberately left** ([[ui-backlog]] 28–31): no fingerprint on an Ask
+answer (the HTTP query returns lineage, not `query_model`'s stamp); filters
+are equality on dimension values (ranges and `having` are Advanced only);
+measure labels are humanised names ("Fv share"); Keep this starts at
+`<model>/<slug>` and the folder is chosen at publish.
+
+---
+
 ## 2026-10-18 — Step 3 of the UX plan: Data and Review
 
 Step 3 gave the app its last two places and retired the old frame: three

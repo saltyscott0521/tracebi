@@ -8,7 +8,10 @@ swapped for an empty one for the journey and restored after.
 """
 
 import json
+import shutil
+import subprocess
 import time
+from pathlib import Path
 
 import pytest
 
@@ -495,8 +498,11 @@ def test_the_app_serves_the_agent_gateway_behind_its_token(served):
     pytest.importorskip("mcp")
     from tracebi.web.api import main
 
+    # Ask offers "ask your agent" only when an agent can reach this app.
+    assert served.get("/api/status").json()["gateway"] is False
     route = main.serve_gateway("s3cret")
     try:
+        assert served.get("/api/status").json()["gateway"] is True
         with served:                  # the app's lifespan runs the MCP sessions
             assert _mcp_call(served, "initialize", token="wrong")[0].status_code == 401
             session = _mcp_session(served)
@@ -751,6 +757,77 @@ def test_an_agent_drafts_a_change_the_person_previews_and_publishes_it(served, s
     finally:
         main.app.router.routes.remove(route)
         main._mcp_server = None
+
+
+_ASK_JS = Path(__file__).resolve().parents[2] / "web" / "ui" / "src" / "ask.js"
+
+
+def _ask(fn: str, *args):
+    """Call one of Ask's own functions (web/ui/src/ask.js) in node."""
+    script = ("import(process.argv[1]).then(A => { const args = JSON.parse(process.argv[2]);"
+              f" console.log(JSON.stringify(A.{fn}(...args))) }})")
+    done = subprocess.run(["node", "-e", script, _ASK_JS.as_uri(), json.dumps(args)],
+                          capture_output=True, text=True, check=True)
+    return json.loads(done.stdout)
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
+def test_a_question_asked_in_the_app_is_kept_as_a_draft_that_builds(served, scaffolded):
+    """Ask, with the page's own code and calls: typed words resolve to the
+    model's tokens, a filter value comes from the dimension's values, the
+    question runs as a model query, and Keep this starts a draft holding the
+    query (never its numbers) whose one-figure app.jsx previews, publishes and
+    builds with that figure on its receipt."""
+    c = served
+    detail = c.get("/api/models/sample_model").json()
+    fact = detail["facts"][0]["name"]
+    listed = c.get("/api/models/sample_model/dimensions/dim_region.region/values").json()
+    values = listed["values"]
+    assert listed["total"] == len(values) == 4 and values == sorted(values)
+    assert c.get("/api/models/sample_model/dimensions/dim_region.nope/values").status_code == 404
+
+    empty = {"fact": fact, "measures": [], "dimensions": [], "filters": {}}
+    q = _ask("resolve", detail, empty, {}, "revenue by region largest", None, None)["q"]
+    assert (q["measures"], q["dimensions"]) == (["revenue"], ["dim_region.region"])
+    assert q["order_by"] == [{"column": "revenue", "desc": True}]
+    assert _ask("sentenceOf", detail, q) == "Revenue by region, largest first"
+    body = _ask("requestOf", detail, q)
+    answer = c.post("/api/models/sample_model/query", json=body).json()
+    assert answer["rows"] == 4 and answer["data"][0]["revenue"] == max(
+        r["revenue"] for r in answer["data"])
+
+    # A value of the dimension narrows it; a second question in the same session.
+    one = _ask("resolve", detail, q, {"dim_region.region": values}, f"for {values[0]}", None, None)["q"]
+    assert one["filters"] == {"dim_region.region": values[0]}
+    assert c.post("/api/models/sample_model/query",
+                  json=_ask("requestOf", detail, one)).json()["rows"] == 1
+
+    taken = [r["name"] for r in c.get("/api/reports").json()]
+    path = _ask("keepPath", "sample_model", q, taken)
+    assert path == "sample_model/revenue_by_region"
+    files = _ask("keepFiles", {"model": "sample_model", "modelLabel": detail["label"],
+                               "detail": detail, "q": q, "rows": answer["rows"]})
+    kept = json.loads(files["report.json"])
+    assert kept["data"] == {"answer": {"model": "sample_model", "query": body}}
+    assert all(f"{r['revenue']:,.0f}" not in files["app.jsx"] for r in answer["data"])
+
+    started = c.post("/api/drafts", json={"kind": "reports", "path": path, "from_published": False})
+    assert started.status_code == 201 and started.json()["created"] is True, started.text
+    base = f"/api/drafts/anonymous/reports/{path}"
+    for name in ("report.json", "app.jsx"):
+        assert c.put(f"{base}/files/{name}", json={"content": files[name]}).status_code == 200
+    preview = c.get(f"{base}/preview")
+    assert preview.status_code == 200, preview.text
+    assert c.post(f"{base}/publish", json={"note": "kept from Ask"}).status_code == 200
+
+    code, out = run_cli("report", "build", path)
+    assert code == 0, out
+    [manifest] = [m for m in (scaffolded / "output").rglob("*.manifest.json")
+                  if "revenue_by_region" in m.name]
+    receipt = json.loads(manifest.read_text(encoding="utf-8"))
+    assert receipt["figures"] == [{"binding": "answer", "id": "fig-answer", "kind": "chart"}]
+    [stamped] = receipt["embedded_data"]
+    assert (stamped["name"], stamped["query_spec"]["measures"]) == ("answer", ["revenue"])
 
 
 def test_a_person_starts_edits_previews_and_publishes_a_draft_in_the_app(served, scaffolded):

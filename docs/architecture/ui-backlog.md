@@ -84,16 +84,37 @@ Left by Step 3 of the UX plan ([[ux-plan-2026-10-17]]):
     Measures, …) and its **Edit as a draft** button floats alone above them
     (D-1).
 24. **The Transform flow zooms in two steps** only (D-1).
-25. **The report page's Ask box is off** (`SHOW_ASK = false` in
-    `Reports.jsx`): `AskCut` is reachable in code but never shown. Step 4
-    decides whether it returns or goes.
+25. *Closed by Step 4 (see Done): `AskCut` deleted.*
 26. **`notebook-guide.md`'s `@register.report` section predates the one
     renderer**: a factory with no package is listed but refused (422). Point
     it at a package.
 27. **`scripts/ui_audit.py`'s `scope-mismatch` detail still says "the model
     switcher"**; it means the model chip.
 
+Left by Step 4 (Ask):
+
+28. **An Ask answer carries no fingerprint.** `POST /api/models/{name}/query`
+    returns lineage, not the stamp `query_model` gives an agent, so the
+    answer cannot quote one beside its number.
+29. **Ask's filters are equality on dimension values.** Ranges, a measure
+    threshold (`having`) and fact columns are Advanced only; the sentence
+    shows them in words but offers no token for them.
+30. **A measure's label is its humanised name** ("Fv share"): models have no
+    measure `label`, so Ask reads `fv_share` as "Fv share" beside its
+    description.
+31. **Keep this cannot pick a folder**: the draft starts at
+    `<model>/<slug>`; the folder is chosen when it is published.
+
 ## Done
+
+- **Ask** (Step 4): `/ask` is one sentence of the model's tokens ("Show
+  [measure] by [dimension] for [filter], [order], top [n]"), typed or picked;
+  the answer is the model's query drawn as a chart, table or number with each
+  measure's definition in words, the query line and a Not checked chip; a
+  Recent strip and `?q=` links; Keep this (analyst+) opens a one-figure draft
+  holding the query; Advanced is the query builder on the same question.
+  Closed item 25 (`AskCut` deleted, not reused: it cut a report's selection,
+  where Ask asks a model).
 
 - **The old frame retired** (D-3): dead components, helpers and CSS out
   (`StatTile`, `reviewNotes`, `modelOfPipeline`, `reportOpenPath`, the

@@ -22,10 +22,10 @@ SCHEDULE ─ review → publish → run → deliver → monitor ┘
 
 | Step | What happens | Today | Target | Quarter |
 | --- | --- | --- | --- | --- |
-| **Question** | A person asks in plain words, in the app, Slack or their agent tool | Ask on an open report; any MCP agent via `query_model` | Ask anywhere in the app, not only on a report; Slack | Q2–Q3 |
-| **Answer** | The agent queries the model; every number carries its query and fingerprint | ✅ `query_model`, selections on the model | Answers with a small chart or table, and the definition used, in plain words | Q2 |
+| **Question** | A person asks in plain words, in the app, Slack or their agent tool | ✅ `/ask` in the app (a sentence of the model's tokens; no free text) and any MCP agent via `query_model` | Ask anywhere in the app, not only on a report; Slack | Q2–Q3 |
+| **Answer** | The agent queries the model; every number carries its query and fingerprint | ✅ `query_model`, selections on the model, and `/ask` (a small chart, table or number with the definitions in words) | Answers with a small chart or table, and the definition used, in plain words | Q2 |
 | **One-off report** | For a bigger question, the agent builds a report file to share | ✅ `tracebi new-report`, `tracebi dev`, `build_report` | One click from an answer to a shareable report | Q3 |
-| **Keep it** | A useful answer becomes a published report | Manual: add a package and a `schedule` block | "Keep this" opens a publish request for review | Q3 |
+| **Keep it** | A useful answer becomes a published report | ✅ in `/ask`: "Keep this" starts a one-figure draft; publishing it is the draft's own flow | "Keep this" opens a publish request for review | Q3 |
 
 No review per question: an answer uses only definitions a person already
 approved in the model. If the question needs a definition that doesn't exist,

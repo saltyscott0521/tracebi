@@ -6,6 +6,7 @@ Chromium or the ``e2e`` extra. The CI job ``ui-smoke`` sets the variable.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -431,23 +432,58 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             table.locator("summary").click()
             table.get_by_text("The sink satisfied its contract").wait_for()
             fail_on_browser_errors()
-            # Explore leads with the model's own measures (each with what it means),
-            # sends their names, and writes the results in their declared formats.
+            # Ask: a sentence of the model's tokens. A measure and a dimension
+            # picked from their slots; the answer is the query's own rows: the
+            # sentence, a chart whose first value is the API's display text for
+            # that row, and Not checked (an ad hoc query has no receipt).
             page.goto(base + "/ask?model=portfolio_model")
-            page.get_by_text("Total fair value").wait_for()
+            sentence = page.locator(".ask-sentence")
+            sentence.get_by_role("button", name="a measure").click()
+            page.get_by_role("option", name=re.compile(r"^Measure\s*Fair value")).click()
+            sentence.get_by_role("button", name="a dimension").click()
+            page.get_by_role("option", name=re.compile(r"Sector")).click()
+            sentence.get_by_role("button", name="in any order").click()
+            page.get_by_role("option", name=re.compile(r"Largest first")).click()
+            page.get_by_role("button", name="Ask", exact=True).click()
+            expect(page.locator(".ask-answer__sentence")).to_have_text(
+                "Fair value by sector, largest first — 6 rows")
+            api = json.loads(urllib.request.urlopen(urllib.request.Request(
+                f"{base}/api/models/portfolio_model/query", method="POST",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps({"fact": "fact_holdings", "measures": ["fair_value"],
+                                 "dimensions": ["dim_issuer.sector"],
+                                 "order_by": [{"column": "fair_value", "desc": True}]}).encode(),
+            )).read())
+            first = api["display"][0]["fair_value"]
+            expect(page.locator(".ask-bars .recharts-label").first).to_have_text(first)
+            answer = page.get_by_role("region", name="The answer")
+            expect(answer.locator(".verdict")).to_have_text("Not checked")
+            assert "&q=" in page.url        # the link reproduces the question
+            fail_on_browser_errors()
+
+            # Advanced is the query builder on the same question: the measure
+            # picked above is ticked there. It leads with the model's own
+            # measures (each with what it means), sends their names, and the
+            # results are in their declared formats.
+            page.get_by_text("Advanced: the query builder").click()
+            builder = page.locator(".explore-grid")
+            expect(builder.get_by_role("checkbox").first).to_be_checked()
+            builder.get_by_text("Total fair value").wait_for()
             # However long the builder is, Run stays in view.
+            builder.scroll_into_view_if_needed()
             expect(page.get_by_text("▶ Run query")).to_be_in_viewport(ratio=1)
-            page.get_by_text("fair_value", exact=True).first.click()
-            page.get_by_text("positions", exact=True).first.click()
-            page.get_by_text("sector", exact=True).first.click()
+            builder.get_by_text("positions", exact=True).first.click()
             page.get_by_text("▶ Run query").click()
-            page.get_by_text("The query as code").wait_for()
+            expect(page.locator(".ask-answer__sentence")).to_contain_text("Fair value and positions by sector")
+            page.get_by_text("The query as code").click()
+            page.locator(".codeview__tabs").get_by_role("button", name="Python").click()
             assert 'measures=["fair_value", "positions"]' in page.locator(".codeview__code").inner_text()
-            assert re.search(r"\$[\d,]+", page.locator("table tbody tr").first.inner_text())
+            assert re.search(r"\$[\d,]+", answer.locator("table tbody tr").first.inner_text())
             fail_on_browser_errors()
 
             # Group by offers only what the picked fact joins.
             page.goto(base + "/ask?model=housing_model")
+            page.get_by_text("Advanced: the query builder").click()
             builder = page.locator(".explore-grid")
             expect(builder).to_contain_text("dim_year")
             page.get_by_role("button", name="fact_ten_year").click()
