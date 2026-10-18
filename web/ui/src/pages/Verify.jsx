@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 
 import { useVerifyFile } from '../api'
 import {
-  PageTitle, PageSub, Card, Btn, Spinner, ErrorDetail, useToast, useNarrow, pressable,
+  Card, Btn, Spinner, ErrorDetail, useToast, pressable,
 } from '../components/Shared'
 import { PairArt, ScanArt } from '../components/Art'
 
@@ -119,28 +119,20 @@ function Result({ result }) {
   )
 }
 
-/**
- * The drop zone, the files it took, and the verdict: the page's body. With
- * *entry* it is Review's quiet entry: a small zone that opens into this one
- * when pointed at, clicked or dragged over, and on a phone a button that
- * opens the file picker.
- */
-export function VerifyZone({ entry = false }) {
+/** The drop zone, the files it took, and the verdict: the page's body. */
+function VerifyZone() {
   const [files, setFiles] = useState({ html: null, manifest: null })
   const [dragging, setDragging] = useState(false)
-  const [open, setOpen] = useState(!entry)
   const [result, setResult] = useState(null)
   const [checks, setChecks] = useState(0)
   const inputRef = useRef(null)
   const toast = useToast()
-  const narrow = useNarrow('(max-width: 640px)')
   const { mutate, isPending, error, reset } = useVerifyFile()
 
   const take = useCallback((list) => {
     const picked = classify(Array.from(list))
     setFiles((prev) => ({ html: picked.html || prev.html, manifest: picked.manifest || prev.manifest }))
     setResult(null)
-    setOpen(true)
     reset()
   }, [reset])
 
@@ -167,52 +159,30 @@ export function VerifyZone({ entry = false }) {
            style={{ display: 'none' }}
            onChange={(e) => { take(e.target.files); e.target.value = '' }} />
   )
-  const small = entry && !open
 
   return (
     <>
-      {entry && narrow ? (
-        <>
-          <Btn variant="outline" onClick={() => inputRef.current?.click()}
-               aria-label="Choose a report and its manifest">
-            Choose the .html and its .manifest.json
-          </Btn>
-          {picker}
-        </>
-      ) : (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); setOpen(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          onMouseEnter={entry ? () => setOpen(true) : undefined}
-          {...pressable(() => inputRef.current?.click())}
-          aria-label="Choose a report and its manifest"
-          className={entry ? 'verify-entry' : undefined}
-          style={{
-            border: `${small ? 1 : 2}px dashed ${dragging ? 'var(--accent-text)' : 'var(--border-hl)'}`,
-            borderRadius: small ? 10 : 14, background: dragging ? 'var(--blue-lt)' : 'var(--card)',
-            padding: small ? '12px 16px' : '38px 24px', textAlign: small ? 'left' : 'center', cursor: 'pointer',
-            transition: 'border-color .15s, background .15s, padding .15s', maxWidth: 640,
-          }}
-        >
-          {small ? (
-            <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-              Drop a report and its manifest here, or{' '}
-              <span style={{ color: 'var(--accent-text)', textDecoration: 'underline' }}>choose files</span>
-            </div>
-          ) : (
-            <>
-              <PairArt />
-              <div style={{ fontWeight: 600, fontSize: 16 }}>Drop a report and its manifest</div>
-              <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>
-                or <span style={{ color: 'var(--accent-text)', textDecoration: 'underline' }}>choose files</span> —
-                the <code>.html</code> and its <code>.manifest.json</code>
-              </div>
-            </>
-          )}
-          {picker}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        {...pressable(() => inputRef.current?.click())}
+        aria-label="Choose a report and its manifest"
+        style={{
+          border: `2px dashed ${dragging ? 'var(--accent-text)' : 'var(--border-hl)'}`,
+          borderRadius: 14, background: dragging ? 'var(--blue-lt)' : 'var(--card)',
+          padding: '38px 24px', textAlign: 'center', cursor: 'pointer',
+          transition: 'border-color .15s, background .15s, padding .15s', maxWidth: 640,
+        }}
+      >
+        <PairArt />
+        <div style={{ fontWeight: 600, fontSize: 16 }}>Drop a report and its manifest</div>
+        <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>
+          or <span style={{ color: 'var(--accent-text)', textDecoration: 'underline' }}>choose files</span> —
+          the <code>.html</code> and its <code>.manifest.json</code>
         </div>
-      )}
+        {picker}
+      </div>
 
       {(files.html || files.manifest) && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14, alignItems: 'center' }}>
@@ -234,16 +204,19 @@ export function VerifyZone({ entry = false }) {
   )
 }
 
+// Verify is a tab of Review (its frame holds the page's heading).
 export default function Verify() {
   return (
     <>
-      <PageTitle>Verify a file</PageTitle>
-      <PageSub>
-        Drop a report <code>.html</code> and its <code>.manifest.json</code>.
-        It re-hashes the data embedded in the file against the manifest — no model,
-        no warehouse, no account. The files are checked by this TraceBi server,
-        which keeps nothing.
-      </PageSub>
+      <div className="review__lead">
+        <h2>Verify a file</h2>
+        <p>
+          Drop a report <code>.html</code> and its <code>.manifest.json</code>.
+          It re-hashes the data embedded in the file against the manifest — no model,
+          no warehouse, no account. The files are checked by this TraceBi server,
+          which keeps nothing.
+        </p>
+      </div>
       <VerifyZone />
     </>
   )

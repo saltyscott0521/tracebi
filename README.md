@@ -651,8 +651,11 @@ The sidebar has four places: **Reports** (the library, where the app opens:
 every report by folder, each with its verdict, built time and schedule,
 narrowed to a model by a chip), **Ask**, **Data** and **Review**. Older
 addresses (`/m/<model>/…`, `/models`, `/explore`, `/sources`, `/map`, `/drafts`,
-`/reports?r=<name>`) redirect into them; History (`/runs`) and Verify
-(`/verify`) keep their own pages under Review.
+`/reports?r=<name>`) redirect into them. Review is four tabs, each at its own
+address: Attention (`/review`), Drafts (`/review/drafts`), History (`/runs`)
+and Verify (`/verify`). The sidebar shows what the role uses: everyone
+Reports and Ask, an analyst also Review, an admin also Data (with no sign-in,
+all four); an address above the role says who it is for.
 
 - **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a

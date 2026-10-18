@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
-import { useHealth, useAppStatus, useMe, signOut } from '../api'
-import { PAGES } from '../nav'
-import { useScope, useOpenReport, NavMenuContext } from './Scope'
+import { useHealth, useAppStatus, useMe, useRole, signOut } from '../api'
+import { page, placesFor, placeOf, mayUse } from '../nav'
+import { useScope, useOpenReport, NavMenuContext, NotForYou } from './Scope'
+import { SkeletonCard } from './Shared'
 import CommandPalette from './CommandPalette'
 import { BrandMark } from './Art'
 
@@ -134,6 +135,7 @@ export default function Layout({ children }) {
   const { data: appStatus } = useAppStatus()
   const update = appStatus?.update?.available ? appStatus.update : null
   const { data: me } = useMe()
+  const role = useRole()
   const person = me?.sign_in === 'oidc' && me.actor ? me : null
   // Follow the OS until the viewer picks one; their pick is remembered, the OS
   // default is not (so it keeps following the OS).
@@ -159,7 +161,8 @@ export default function Layout({ children }) {
   const closeRef = useRef(null)
   const inHelp = HELP_PATHS.some(p => pathname.startsWith(p))
   const scope = useScope()
-  const place = PAGES.find(p => p.key === scope.page)
+  const places = placesFor(role)
+  const place = places.find(p => p.key === placeOf(scope.page))
   const openReport = useOpenReport()
 
   // While the mobile menu is open, the page behind it stays put.
@@ -190,8 +193,13 @@ export default function Layout({ children }) {
   // The opener is the clicked button (a click does not focus a button in every browser).
   const openMenu = e => { openerRef.current = e?.currentTarget || document.activeElement; setOpen(true) }
 
-  // The four places. Each marks itself current on every page inside it.
-  const items = PAGES.map(p => ({ path: p.path, label: p.label, icon: p.key, active: scope.page === p.key }))
+  // The places this role sees. Each marks itself current on every page inside it.
+  const items = places.map(p => ({ path: p.path, label: p.label, icon: p.key, active: placeOf(scope.page) === p.key }))
+  // An address above the role is a plain page saying so (while the role loads,
+  // nothing of it is drawn).
+  const body = scope.page && !mayUse(role, scope.page)
+    ? (role === null ? <SkeletonCard /> : <NotForYou role={page(scope.page).minRole} />)
+    : children
 
   return (
     <div style={openReport ? undefined : { display: 'flex', minHeight: '100vh' }}
@@ -298,8 +306,9 @@ export default function Layout({ children }) {
           </button>
         </div>
 
-        {/* Reports (the library), Ask, Data and Review. A model is a filter
-            inside a place, not the frame of the app. */}
+        {/* Reports (the library), Ask, then Data and Review for the roles
+            that use them. A model is a filter inside a place, not the frame
+            of the app. */}
         <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: '12px 0 4px' }}>
           {items.map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
         </ul>
@@ -378,7 +387,7 @@ export default function Layout({ children }) {
           marginLeft: 'var(--nav-w)', flex: 1, minWidth: 0,
           padding: '36px 44px', maxWidth: 1340,
         }} className="layout-main">
-          {children}
+          {body}
         </main>
       )}
 

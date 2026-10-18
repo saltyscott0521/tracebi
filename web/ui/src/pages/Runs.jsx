@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useDesk, useModels, usePipelines, useReports, useRuns } from '../api'
 import { ago } from '../components/map/states'
 import { checkedVerdict, verdictOf } from '../verdict'
-import { PageHeader, useModelLabel, useReportModels } from '../components/Scope'
+import { useModelLabel, useReportModels } from '../components/Scope'
 import { dataPath, historyPath, pipelineModels, reportPagePath } from '../nav'
 import {
   Badge, Spinner, Empty, ErrorDetail, Verdict, useNarrow,
@@ -331,10 +331,13 @@ export default function Runs({ model: only }) {
             and whether it reproduced. <Link to={historyPath(model)}>Open in History</Link></p>
         </div>
       ) : (
-        <PageHeader pageKey="runs" model={model}
-          sub={model
+        // History is a tab of Review (its frame holds the page's heading).
+        <div className="review__lead">
+          <h2>History</h2>
+          <p>{model
             ? `Every build of ${labelOf(model)}'s reports and every refresh of its data: when, how long, by whom, and whether it reproduced.`
-            : 'What ran, when, how long it took, by whom, and whether it reproduced. Only a receipt that reproduces reads green.'} />
+            : 'What ran, when, how long it took, by whom, and whether it reproduced. Only a receipt that reproduces reads green.'}</p>
+        </div>
       )}
 
       {/* Before anything has run there is nothing to filter. */}

@@ -41,8 +41,9 @@ proxy in front of TraceBi has a login of its own, let `/login`, `/logout`,
 ## In the browser
 
 Open the app. Without a session you are sent to the company login and, once
-signed in, back to the page you asked for. The sidebar footer shows who you are
-and a **Sign out** button. Signing out ends the session at TraceBi; your
+signed in, back to the page you asked for. The sidebar shows the places your
+role uses: a viewer Reports and Ask, an analyst also Review, an admin also
+Data. The sidebar footer shows who you are and a **Sign out** button. Signing out ends the session at TraceBi; your
 identity provider may still be signed in, so the next visit signs you back in
 without a password.
 

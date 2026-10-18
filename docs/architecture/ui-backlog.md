@@ -113,7 +113,25 @@ Left by A2-3 (the app, audit pass 2):
 34. **The Steps table's status is an upper-case badge** ("SUCCESS"), not the
     verdict-shaped `Chip` the table checks now use.
 
+Left by A2-6 (role-aware navigation):
+
+35. **Links inside a page still point past the role**: a viewer's report
+    panel and Ask can link to History or a model's Data page, which then shows
+    the plain "for analysts / admins" page. Hide those links by the same
+    `mayUse` rule the sidebar uses.
+
 ## Done
+
+- **The sidebar is tiered by role** (A2-6): `nav.js` gives each place a
+  `minRole` and `placesFor(role)` is the one list the sidebar, the phone's
+  drawer, the report page's rail and ⌘K draw: everyone Reports and Ask, an
+  analyst also Review, an admin also Data; with no sign-in (`/api/me` names
+  admin) all four, and while the role loads only Reports and Ask. An address
+  above the role shows a plain page in the frame ("This part of the app is
+  for admins. You can read reports and ask questions."). Review is four tabs
+  at their own addresses: Attention (`/review`), Drafts (`/review/drafts`;
+  `/drafts` and `/review#drafts` land there), History (`/runs`) and Verify
+  (`/verify`); its "All history →" link and the small Verify entry are gone.
 
 - **The app, audit pass 2** (A2-3): the Model tab's views are one segmented
   row in its card's header with Edit as a draft at its right (no badge

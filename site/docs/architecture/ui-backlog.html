@@ -195,8 +195,27 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
 <li><strong>The Steps table's status is an upper-case badge</strong> ("SUCCESS"), not the
     verdict-shaped <code>Chip</code> the table checks now use.</li>
 </ol>
+<p>Left by A2-6 (role-aware navigation):</p>
+<ol start="35">
+<li><strong>Links inside a page still point past the role</strong>: a viewer's report
+    panel and Ask can link to History or a model's Data page, which then shows
+    the plain "for analysts / admins" page. Hide those links by the same
+    <code>mayUse</code> rule the sidebar uses.</li>
+</ol>
 <h2 id="done">Done</h2>
 <ul>
+<li>
+<p><strong>The sidebar is tiered by role</strong> (A2-6): <code>nav.js</code> gives each place a
+  <code>minRole</code> and <code>placesFor(role)</code> is the one list the sidebar, the phone's
+  drawer, the report page's rail and ⌘K draw: everyone Reports and Ask, an
+  analyst also Review, an admin also Data; with no sign-in (<code>/api/me</code> names
+  admin) all four, and while the role loads only Reports and Ask. An address
+  above the role shows a plain page in the frame ("This part of the app is
+  for admins. You can read reports and ask questions."). Review is four tabs
+  at their own addresses: Attention (<code>/review</code>), Drafts (<code>/review/drafts</code>;
+  <code>/drafts</code> and <code>/review#drafts</code> land there), History (<code>/runs</code>) and Verify
+  (<code>/verify</code>); its "All history →" link and the small Verify entry are gone.</p>
+</li>
 <li>
 <p><strong>The app, audit pass 2</strong> (A2-3): the Model tab's views are one segmented
   row in its card's header with Edit as a draft at its right (no badge

@@ -82,6 +82,20 @@ export function Moved() {
   return to ? <Navigate to={to} replace /> : <NotFound />
 }
 
+/**
+ * An address above the person's role (a viewer at /data): a plain page in the
+ * app's frame. The API refuses the work anyway; this says so in words.
+ */
+export function NotForYou({ role }) {
+  return (
+    <>
+      <PageTitle>This part of the app is for {role === 'admin' ? 'admins' : 'analysts'}.</PageTitle>
+      <PageSub>You can read reports and ask questions.</PageSub>
+      <Link to="/" className="btn">Go to the reports</Link>
+    </>
+  )
+}
+
 export function NotFound() {
   return (
     <>

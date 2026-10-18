@@ -536,9 +536,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")
             fail_on_browser_errors()
 
-            # Drafts: a report draft on disk is listed on Review (the old
-            # /drafts lands on its Drafts section), rendered live, follows
-            # edits to its file without a reload, and publishes with a toast.
+            # Drafts: a report draft on disk is listed on Review's Drafts tab
+            # (the old /drafts lands there), rendered live, follows edits to
+            # its file without a reload, and publishes with a toast.
             draft = project / "drafts" / "anonymous" / "reports" / "portfolio_model" / "draft_demo"
             shutil.copytree(project / "reports" / "portfolio_model" / "portfolio_overview", draft)
             template = draft / "app.jsx"
@@ -546,7 +546,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 template.read_text(encoding="utf-8").replace("Three funds, one Schedule", "Draft Marker One"),
                 encoding="utf-8")
             page.goto(base + "/drafts")
-            page.wait_for_url("**/review#drafts")
+            page.wait_for_url("**/review/drafts")
             page.get_by_role("heading", name="Drafts", exact=True).wait_for()
             row = page.get_by_role("list", name="Drafts").get_by_role("link")
             assert "portfolio_model/draft_demo" in row.inner_text()
@@ -645,6 +645,97 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("Published model portfolio_model").wait_for()
             assert (project / "models" / "portfolio_model.yaml").read_text(encoding="utf-8") == moved
             fail_on_browser_errors()
+            browser.close()
+        assert not errors, "\n".join(errors)
+    finally:
+        log_file.close()
+        server.terminate()
+        try:
+            server.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            server.kill()
+            server.wait(timeout=10)
+
+
+def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
+    """Behind a proxy that names roles, a viewer's sidebar is Reports and Ask,
+    an analyst's adds Review (its tabs Attention, Drafts, History, Verify), and
+    an address above the role is a plain page saying who it is for. The API
+    enforces the roles; this is what the app shows."""
+    from playwright.sync_api import expect, sync_playwright
+
+    project = tmp_path / "portfolio_project"
+    shutil.copytree(
+        _PROJECT,
+        project,
+        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "data", ".tracebi"),
+    )
+    port = _free_port()
+    env = os.environ.copy()
+    env["TRACEBI_APP"] = ""
+    for key in ("TRACEBI_REPORTS_DIR", "TRACEBI_MODELS_DIR", "TRACEBI_PIPELINES_DIR",
+                "TRACEBI_DEV_MODE", "TRACEBI_OUTPUT_ROOT"):
+        env.pop(key, None)
+    env.update({
+        "TRACEBI_AUTH_PROXY_HEADER": "X-Forwarded-User",
+        "TRACEBI_AUTH_PROXY_TRUSTED_IPS": "127.0.0.1",
+        "TRACEBI_AUTH_ROLE_HEADER": "X-Forwarded-Role",
+    })
+    log_path = tmp_path / "server.log"
+    log_file = log_path.open("w", encoding="utf-8")
+    server = subprocess.Popen(
+        [sys.executable, "-m", "tracebi.web.run", "--port", str(port), "--no-reload"],
+        cwd=project, env=env, stdout=log_file, stderr=subprocess.STDOUT,
+    )
+    base = f"http://127.0.0.1:{port}"
+    try:
+        _wait_health(f"{base}/api/health", server, log_path)
+        errors: list[str] = []
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+
+            def as_role(role: str):
+                page = browser.new_context(extra_http_headers={
+                    "X-Forwarded-User": f"{role}@example.com", "X-Forwarded-Role": role,
+                }).new_page()
+                page.set_default_timeout(60_000)
+                page.on("pageerror", lambda exc: errors.append(f"pageerror: {exc}"))
+                return page
+
+            # An address above the role: a plain page, in the app's frame (drawn
+            # once the role is known, so the sidebar below is the viewer's).
+            viewer = as_role("viewer")
+            viewer.goto(base + "/data")
+            viewer.get_by_role("heading", name="This part of the app is for admins.").wait_for()
+            expect(viewer.get_by_role("link", name="Go to the reports")).to_have_attribute("href", "/")
+            sidebar = viewer.get_by_role("navigation", name="Main")
+            sidebar.get_by_role("link", name="Ask", exact=True).wait_for()
+            for place in ("Data", "Review"):
+                expect(sidebar.get_by_role("link", name=place, exact=True)).to_have_count(0)
+            # ⌘K lists the same places: nothing inside Review or Data.
+            viewer.keyboard.press("Control+k")
+            viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("History")
+            viewer.get_by_text("No matches for").wait_for()
+            viewer.keyboard.press("Escape")
+            viewer.goto(base + "/review")
+            viewer.get_by_role("heading", name="This part of the app is for analysts.").wait_for()
+            # An open report keeps the same places in its rail.
+            viewer.goto(f"{base}/reports/{_REPORT}")
+            rail = viewer.get_by_role("navigation", name="Main")
+            expect(rail.get_by_role("link", name="Reports")).to_have_attribute("aria-current", "page")
+            expect(rail.get_by_role("link", name="Ask")).to_have_count(1)
+            expect(rail.get_by_role("link", name="Review")).to_have_count(0)
+
+            analyst = as_role("analyst")
+            analyst.goto(base + "/runs")
+            sidebar = analyst.get_by_role("navigation", name="Main")
+            expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")
+            expect(sidebar.get_by_role("link", name="Data", exact=True)).to_have_count(0)
+            tabs = analyst.get_by_role("navigation", name="Review: what to show")
+            assert tabs.get_by_role("link").all_inner_texts() == ["Attention", "Drafts", "History", "Verify"]
+            expect(tabs.get_by_role("link", name="History")).to_have_attribute("aria-current", "page")
+            analyst.goto(base + "/data/portfolio_model")
+            analyst.get_by_role("heading", name="This part of the app is for admins.").wait_for()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:

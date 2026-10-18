@@ -70,24 +70,25 @@ function Guides() {
   )
 }
 
-// How the pieces fit: four places, each for one job, in the sidebar's order.
+// How the pieces fit: four places, each for one job, in the sidebar's order,
+// and who sees each (nav.js placesFor).
 const PLACES = [
   { to: '/', name: 'Reports', text: <>
     Where the app opens: every report you may see, by folder, each with its verdict (whether
     its numbers still reproduce). A chip per model narrows the list. Open a report to read it as
-    delivered; About this build holds its receipt, lineage, history and files.</> },
+    delivered; About this build holds its receipt, lineage, history and files. Everyone sees it.</> },
   { to: '/ask', name: 'Ask', text: <>
     Put a question to one model as a sentence of its own measures and categories; the answer is
     a live query, with each measure&rsquo;s definition and the query behind it. Keep this turns it
-    into a draft report; Advanced is the query builder.</> },
+    into a draft report; Advanced is the query builder. Everyone sees it.</> },
   { to: '/data', name: 'Data', text: <>
     How the numbers are made. The models, one row each, or all of them as one picture (Map).
     A model's page leads with its line, transform → model → reports, then tabs: Model,
-    Transform (where Refresh data is), Sources and Runs.</> },
+    Transform (where Refresh data is), Sources and Runs. Only admins see it.</> },
   { to: '/review', name: 'Review', text: <>
-    What waits on a person: what needs attention (a refresh that failed, a build that needs a
-    look, a request to publish), then drafts, then Verify a file you were sent. History, what
-    ran and when, is one link away.</> },
+    What waits on a person, in four tabs: Attention (a refresh that failed, a build that needs a
+    look, a request to publish), Drafts, History (what ran and when) and Verify (a file you were
+    sent). Analysts and admins see it.</> },
 ]
 
 function HowItFits() {
@@ -102,6 +103,9 @@ function HowItFits() {
           </div>
         ))}
       </dl>
+      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: 0, maxWidth: '74ch' }}>
+        With no sign-in, everyone sees all four.
+      </p>
     </div>
   )
 }

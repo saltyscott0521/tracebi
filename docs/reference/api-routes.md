@@ -282,12 +282,17 @@ The app's addresses, four places in the sidebar (`web/ui/src/nav.js`):
 | Reports | `/` the library (`?model=<m>` narrows it); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on) |
 | Ask | `/ask` (`?model=<m>` picks the model) |
 | Data | `/data` the models (`?view=map` the Map); `/data/<m>` one model, then `/transform`, `/sources`, `/runs`; `/data/sources` every source |
-| Review | `/review` what needs attention, drafts, Verify a file; `/runs` History; `/verify` the full Verify page; `/drafts/<owner>/<kind>/<path>` one draft |
+| Review | four tabs: `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
+
+The sidebar shows the places a role uses (`placesFor` in `web/ui/src/nav.js`):
+everyone Reports and Ask, an analyst also Review, an admin also Data. With no
+sign-in `/api/me` names everyone admin, so all four show. An address above the
+role renders a plain page saying who it is for; the API enforces the roles.
 
 Older addresses redirect, keeping their query (`movedTo`): `/m/<m>/…` to the
 same thing under Data, Ask, History or the library; `/models` to `/data`;
 `/explore` to `/ask`; `/sources` and `/connectors` to `/data/sources`; `/map`
-to `/data?view=map`; `/drafts` to `/review#drafts`; `/reports?r=<name>` to
+to `/data?view=map`; `/drafts` and `/review#drafts` to `/review/drafts`; `/reports?r=<name>` to
 `/reports/<name>`.
 
 ---

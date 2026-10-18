@@ -613,14 +613,18 @@ says so and names the build command rather than 404ing.</p>
 </tr>
 <tr>
 <td>Review</td>
-<td><code>/review</code> what needs attention, drafts, Verify a file; <code>/runs</code> History; <code>/verify</code> the full Verify page; <code>/drafts/&lt;owner&gt;/&lt;kind&gt;/&lt;path&gt;</code> one draft</td>
+<td>four tabs: <code>/review</code> Attention, <code>/review/drafts</code> Drafts, <code>/runs</code> History, <code>/verify</code> Verify; <code>/drafts/&lt;owner&gt;/&lt;kind&gt;/&lt;path&gt;</code> one draft</td>
 </tr>
 </tbody>
 </table>
+<p>The sidebar shows the places a role uses (<code>placesFor</code> in <code>web/ui/src/nav.js</code>):
+everyone Reports and Ask, an analyst also Review, an admin also Data. With no
+sign-in <code>/api/me</code> names everyone admin, so all four show. An address above the
+role renders a plain page saying who it is for; the API enforces the roles.</p>
 <p>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
 same thing under Data, Ask, History or the library; <code>/models</code> to <code>/data</code>;
 <code>/explore</code> to <code>/ask</code>; <code>/sources</code> and <code>/connectors</code> to <code>/data/sources</code>; <code>/map</code>
-to <code>/data?view=map</code>; <code>/drafts</code> to <code>/review#drafts</code>; <code>/reports?r=&lt;name&gt;</code> to
+to <code>/data?view=map</code>; <code>/drafts</code> and <code>/review#drafts</code> to <code>/review/drafts</code>; <code>/reports?r=&lt;name&gt;</code> to
 <code>/reports/&lt;name&gt;</code>.</p>
 <hr>
 <h2 id="error-shape">Error shape</h2>

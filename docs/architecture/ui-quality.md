@@ -116,6 +116,12 @@ Checked by eye, from the contact sheet:
 - **The model is a filter, not the frame.** Four places (Reports, Ask, Data,
   Review); with more than one model, the library groups reports under their
   model's name and a chip narrows it to one.
+- **The sidebar shows what the role uses.** Everyone sees Reports and Ask, an
+  analyst also Review, an admin also Data (with no sign-in, all four). A place
+  the role cannot use is hidden, not disabled, in the sidebar, the rail, the
+  phone's drawer and ⌘K alike; its address shows a plain page saying who it
+  is for. Review's tabs (Attention, Drafts, History, Verify) each keep an
+  address, and Review is the current entry on all of them.
 - **Hierarchy is visible.** The first thing the eye lands on is the thing
   the page is for. Secondary things are quieter, not merely smaller.
 - **Empty states teach.** An empty list says what would fill it and how
