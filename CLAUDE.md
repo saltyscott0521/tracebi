@@ -143,7 +143,7 @@ phase to the next):
    materialized, the page re-renders in milliseconds with no pandas in the
    loop. Reference:
    `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/`;
-   served in the web UI, on the model's Overview. `reports/` also holds template
+   served in the web UI, in the library (Reports) under its model. `reports/` also holds template
    packages and
    `@register.report` factories — every report form lives in the one folder.
 
@@ -200,7 +200,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   mcp_server.py        # agent gateway over MCP — 22 tools + 3 prompts (author_report, answer_question, address_pins)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
-  _dev_server.py       # the classic stdlib preview server (loopback), `tracebi dev --classic`; `tracebi dev` itself opens the app in dev mode
+  _dev_server.py       # the classic stdlib preview server (loopback), `tracebi dev --classic`; `tracebi dev` itself opens the app in dev mode (`/reports/<name>` with Build on; `/data` with no name)
   _delivery.py         # `tracebi report send` — SMTP / Slack delivery of a built artifact
   _session_export.py   # session export — the committed lab-notebook record (HTML or md twin)
   _notebook.py         # notebook_to_source() — concatenates code cells for exec
@@ -253,7 +253,7 @@ cd examples/portfolio_project && python run_workflow.py
                                                 # phase ① builds data/warehouse.duckdb,
                                                 #   phase ③ renders the report HTML once, offline
 python -m tracebi.web.run                       # serves it; auto-discovers models/ + reports/
-                                                #   → the model's Overview (TRACEBI_REPORTS_DIR, default reports)
+                                                #   → the library at / (TRACEBI_REPORTS_DIR, default reports)
 
 # Run (dev)
 python -m tracebi.web.run                              # http://127.0.0.1:8000
@@ -637,7 +637,7 @@ package shadows the same-named spec at discovery.)
 Put a report **package** in `reports/` — a `<name>/` directory (`report.json` +
 `template.html`, plus optional `style.css` / `script.js`), or a `<name>.json`
 spec that is compiled into exactly that at discovery. Either is auto-discovered
-at startup and served in the app, on the model's Overview.
+at startup and served in the app, in the library under its model.
 
 **There is one renderer.** A registered report with no package is refused
 (HTTP 422 naming the fix), never served through a second path. The old bare
@@ -656,7 +656,7 @@ removed is the fallback that rendered a factory with no package.
    `<Table>` with literal binding and cell, so the receipt names each one.
 3. Build it: `tracebi report build <name>` (a JSON `ReportSpec` still works and
    compiles with `tracebi migrate spec`; no shipped report uses one). The
-   folder is auto-discovered and served in the app, on the model's Overview.
+   folder is auto-discovered and served in the app, in the library under its model.
 
 ### New report as a template package (freeform HTML)
 When the spec's section vocabulary is too rigid — a bespoke layout, your own
@@ -750,8 +750,11 @@ GET  /api/code-requests[/{id}]                       → the caller's own (admin
 POST /api/code-requests/{id}/approve|reject          → copy the files in (history under .tracebi/history/code/) and run the pipelines they touch once / reject with a {note} (admin)
 POST /api/library/sync                               → git webhook: pull each library checkout, rescan; outside sign-in, needs TRACEBI_LIBRARY_SYNC_SECRET (X-Hub-Signature-256 or X-TraceBi-Sync-Token); 404 without it
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
-GET  /                                               → React SPA (tracebi/web/ui/dist); when it has not
-                                                       been built, a page naming the build command
+GET  /                                               → React SPA (tracebi/web/ui/dist): four places, Reports (/, the
+                                                       library) · Ask (/ask) · Data (/data) · Review (/review), plus
+                                                       History (/runs) and Verify (/verify); older addresses redirect
+                                                       (movedTo in web/ui/src/nav.js). When it has not been built, a
+                                                       page naming the build command
 ```
 
 Failed report/query runs return a structured ``detail``:
@@ -790,6 +793,7 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
+| Change the web app's pages | `web/ui/src/nav.js` (the four places; `movedTo` for old addresses) + `web/ui/src/App.jsx` |
 | Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
