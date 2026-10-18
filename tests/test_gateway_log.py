@@ -101,28 +101,6 @@ def test_mask_replaces_whole_tokens_only():
     assert "<value>s" not in got
 
 
-def test_a_wrong_argument_name_is_logged(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("TRACEBI_MCP_LOG", "1")
-    _gateway_log._build_attempts.clear()
-
-    with pytest.raises(Exception):
-        _call("build_report", {"name": "weighted_spread"})
-    _call("build_report", {"report": "weighted_spread"})
-
-    lines = _lines(tmp_path)
-    assert len(lines) == 2
-    rejected, followed = lines
-    assert rejected["ok"] is False
-    assert rejected["error_type"] == "ValidationError"
-    assert rejected["arguments"] == ["name"]
-    assert rejected["attempt"] == 1
-    assert "weighted_spread" not in json.dumps(rejected)
-    assert followed["tool"] == "build_report"
-    assert followed["attempt"] == 2
-    assert "report" in followed["arguments"]
-
-
 def test_a_raised_error_is_recorded_masked_and_reraised(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("TRACEBI_MCP_LOG", "1")
@@ -200,10 +178,3 @@ def test_agent_log_summarizes_a_fixture(tmp_path, monkeypatch, capsys):
     assert "6 gateway calls" in text
     assert "first-build success: 1 of 2 (50%)" in text
     assert "figure claim mismatch" in text
-
-
-def test_agent_log_without_a_log_says_how_to_start_one(tmp_path, monkeypatch, capsys):
-    monkeypatch.chdir(tmp_path)
-    assert main(["agent", "log"]) == 1
-    assert "TRACEBI_MCP_LOG=1" in capsys.readouterr().err
-    assert main(["agent", "log", "--since", "soon"]) == 1

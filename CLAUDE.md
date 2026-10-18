@@ -79,10 +79,13 @@ Run `pytest tests/` before and after any change. A passing suite is the minimum 
 
 **Prefer end-to-end tests.** A new feature first gets a step in the journey
 that uses it (`tests/e2e/`: the analyst, reference-project, web, agent,
-schedule, pipeline and author journeys drive the real CLI, web app and MCP
-tools in-process, so coverage sees them). Add a unit test only for what a
-journey can't pin precisely: query semantics, number-formatting parity,
-fingerprints and verify verdicts, contracts, security, the honesty rules.
+schedule, pipeline, author, folder-permissions, push, sign-in and publishing
+journeys drive the real CLI, web app and MCP tools in-process, so coverage
+sees them). Add a unit test only for what a journey can't pin precisely: query
+semantics, number-formatting parity, fingerprints and verify verdicts,
+contracts, security, the honesty rules. Since the 2026-10-18 cull the unit
+suite holds those six, plus a test where a module no journey reaches would
+otherwise go uncovered.
 Don't add look-alikes, tests of private fields, "it didn't raise" or
 "the string appears" checks. Before adding any test, answer *what bug would
 this catch?* — `docs/architecture/test-suite-review.md`.

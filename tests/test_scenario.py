@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from tracebi.reports.figures import extract_scenarios, lint_numeric_literals
+from tracebi.reports.figures import extract_scenarios
 from tracebi.reports.scenario import (
-    ScenarioError, Scenario, evaluate, names, parse, validate,
+    ScenarioError, evaluate, parse,
 )
 
 _JS = Path(__file__).resolve().parent.parent / "tracebi" / "reports" / "assets" / "tracebi.js"
@@ -24,12 +24,6 @@ _FORMULAS = [
     ("(a + b) * c / 4", {"a": 1, "b": 2, "c": 3}),
     ("2 ^ 3 ^ 2", {}),
 ]
-
-
-def test_pmt_matches_the_standard_formula():
-    got = evaluate("pmt(r, n, p)", {"r": 0.05 / 12, "n": 360, "p": 100000})
-    assert got == pytest.approx(536.82, abs=0.01)
-    assert evaluate("pmt(0, 10, 1000)", {}) == 100
 
 
 @pytest.mark.parametrize("formula, message", [
@@ -45,36 +39,8 @@ def test_bad_formulas_are_refused(formula, message):
         parse(formula)
 
 
-def test_names_are_the_inputs_a_formula_reads():
-    assert names(parse("pmt(rate/12, years*12, price) * 12 / income")) == {
-        "rate", "years", "price", "income"}
-
-
 def _page(body: str) -> str:
     return f"<html><body>{body}</body></html>"
-
-
-_GOOD = _page("""
-<form data-tb-scenario="then">
-  <label>Year <select data-tb-preset="history" data-tb-key="year"
-      data-tb-default="1985" data-tb-fill="rate=rate_col, price=price_col"></select></label>
-  <input data-tb-input="rate"><input data-tb-input="price"/>
-  <output data-tb-calc="pmt(rate / 1200, 360, price)" data-tb-format="currency"
-          id="out-pay"></output>
-</form>""")
-
-
-def test_extract_and_validate_a_scenario():
-    (sc,) = extract_scenarios(_GOOD)
-    assert sc.name == "then"
-    assert sc.inputs == ("rate", "price")
-    assert sc.calcs[0]["formula"] == "pmt(rate / 1200, 360, price)"
-    assert sc.presets[0] == {"binding": "history", "key": "year",
-                             "fill": {"rate": "rate_col", "price": "price_col"},
-                             "default": "1985"}
-    validate(sc, {"history": ["year", "rate_col", "price_col"]})
-    # The form's own text has no numerals; outputs start empty.
-    assert lint_numeric_literals(_GOOD) == 0
 
 
 @pytest.mark.parametrize("body, message", [
@@ -96,28 +62,6 @@ def test_extract_and_validate_a_scenario():
 def test_unsafe_shapes_are_refused(body, message):
     with pytest.raises(ScenarioError, match=message):
         extract_scenarios(_page(body))
-
-
-def test_an_unclosed_scenario_is_refused():
-    with pytest.raises(ScenarioError, match="never closed"):
-        extract_scenarios('<div data-tb-scenario="s"><output data-tb-calc="1">')
-
-
-@pytest.mark.parametrize("scenario, message", [
-    (Scenario("s", ("a",), ({"formula": "a + b"},)), "'b', which is not an input"),
-    (Scenario("s", ("a",), ()), "no data-tb-calc"),
-    (Scenario("s", ("a",), ({"formula": "a"},),
-              ({"binding": "nope", "key": "year", "fill": {}},)), "not embedded"),
-    (Scenario("s", ("a",), ({"formula": "a"},),
-              ({"binding": "h", "key": "yr", "fill": {}},)), "key 'yr'"),
-    (Scenario("s", ("a",), ({"formula": "a"},),
-              ({"binding": "h", "key": "year", "fill": {"b": "x"}},)), "fills 'b'"),
-    (Scenario("s", ("a",), ({"formula": "a"},),
-              ({"binding": "h", "key": "year", "fill": {"a": "zz"}},)), "from 'zz'"),
-])
-def test_validate_names_what_to_fix(scenario, message):
-    with pytest.raises(ScenarioError, match=message):
-        validate(scenario, {"h": ["year", "x"]})
 
 
 def test_the_runtime_evaluates_like_python():

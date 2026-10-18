@@ -280,6 +280,422 @@ pick the one case that matters), never an assert on a private field, never
 "it didn't raise" or "the string appears" on its own. See
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a> for the bugs that did happen, and the checks that would have
 caught them.</p>
+<h2 id="the-cull-2026-10-18">The cull, 2026-10-18</h2>
+<p>The suite took about six minutes (5 min 54 s here; about seven on a
+slower machine) and held 1,668 unit cases beside 232 journey cases. Most of the unit cases re-checked what a journey already drives,
+or checked a private field, a printout or a sentence. The decision was a hard
+cull: keep every journey, keep the unit tests in six categories, and delete the
+rest.</p>
+<p><strong>The rule.</strong> Keep, whole: <code>tests/e2e/**</code>, <code>test_ui_smoke.py</code>, and unit tests
+in six categories:</p>
+<ol>
+<li>DataModel query semantics: the calculator (<code>test_phase2.py</code>,
+   <code>test_phase25.py</code>, <code>test_measure_filters.py</code>, <code>test_binding_grammar.py</code>,
+   <code>test_sql_calc.py</code>, and the calculator part of <code>test_knowledge.py</code>).</li>
+<li>Number-format parity, SSR = JS (<code>test_presentation_js.py</code>,
+   <code>test_engine_float_parity.py</code>, the scenario evaluator).</li>
+<li>Verify and fingerprints (<code>test_verify.py</code>, <code>test_verify_v2.py</code>,
+   <code>test_parquet_embed.py</code>, the fingerprint and <code>verify --file</code> tests).</li>
+<li>Sink contracts (<code>test_contracts.py</code>).</li>
+<li>Security: auth, roles, folder permissions, OAuth, CSRF, CSP, path guards,
+   escaping, secrets kept out of output.</li>
+<li>The honesty rules (<code>test_agent_guides.py</code>, <code>test_receipt_monotonicity.py</code>,
+   "never green by itself", unverified and <code>verifiable: false</code> marks, the
+   locked sentences, the typed-number refusal, exploration stripped at build).</li>
+</ol>
+<p>A test outside the six went when a journey exercises its failure mode, or when
+it checked a private field, "it didn't raise" or "the string appears". After
+the cut, the coverage comparison below decided what came back: where a module
+lost more than 10 points, or a security, verify, query or format module lost any
+line, one unit test was restored, or the lost lines are named below as not
+product behaviour.</p>
+<h3 id="per-file">Per file</h3>
+<p>"Trimmed" keeps the named tests; everything else in the file went.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Before → after</th>
+<th>Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>e2e/*</code> (19 journeys), <code>test_ui_smoke.py</code></td>
+<td>232 → 232</td>
+<td>Kept whole.</td>
+</tr>
+<tr>
+<td><code>test_phase2.py</code>, <code>test_phase25.py</code>, <code>test_measure_filters.py</code>, <code>test_binding_grammar.py</code>, <code>test_sql_calc.py</code></td>
+<td>kept</td>
+<td>Query semantics (1); the binding-grammar corpus also pins fingerprints (3).</td>
+</tr>
+<tr>
+<td><code>test_presentation_js.py</code>, <code>test_engine_float_parity.py</code></td>
+<td>kept</td>
+<td>Format parity (2).</td>
+</tr>
+<tr>
+<td><code>test_verify.py</code>, <code>test_verify_v2.py</code>, <code>test_contracts.py</code></td>
+<td>kept</td>
+<td>Verify (3), contracts (4).</td>
+</tr>
+<tr>
+<td><code>test_permissions.py</code>, <code>test_csrf.py</code>, <code>test_mcp_auth.py</code>, <code>test_drafts.py</code>, <code>test_ui_sandbox.py</code></td>
+<td>kept</td>
+<td>Security (5). <code>test_drafts.py</code> is the drafts' security edges; the happy path is the web journey.</td>
+</tr>
+<tr>
+<td><code>test_agent_guides.py</code>, <code>test_receipt_monotonicity.py</code>, <code>test_custom_script_integrity.py</code></td>
+<td>kept</td>
+<td>Honesty (6).</td>
+</tr>
+<tr>
+<td><code>test_docs_site.py</code></td>
+<td>kept</td>
+<td>The only check that the committed site matches <code>docs/</code>.</td>
+</tr>
+<tr>
+<td><code>test_table_window.py</code>, <code>test_ui_build_mode.py</code></td>
+<td>kept</td>
+<td>The only cover of table windowing; Build mode in a browser (gated, costs the default run nothing).</td>
+</tr>
+<tr>
+<td><code>test_knowledge.py</code></td>
+<td>86 → 74</td>
+<td>Trimmed. Most of this file is the calculator (rate guards, median, percentiles, shares, rank, time grain, bins, period-end, OR filters, period-over-period, to-date), not lesson files: kept as (1). The 12 lesson-file and "documented in the vocabulary" tests went; <code>test_agent_guides.py</code> holds the vocabulary to the guides.</td>
+</tr>
+<tr>
+<td><code>test_parquet_embed.py</code></td>
+<td>49 → 47</td>
+<td>Trimmed. Kept the fingerprint and verify tests (3) and the bounded decode (5); the two "which transport, how small" tests went.</td>
+</tr>
+<tr>
+<td><code>test_phase1.py</code></td>
+<td>80 → 23</td>
+<td>Trimmed to DataSet fingerprints (3), repr escaping (5), Decimal writes landing exact (a wrong number), and, restored by coverage, the DataSet lineage and immutability tests, <code>DataModel.resolve</code>, and two DuckDB reader/writer tests. Connector and verb demos went.</td>
+</tr>
+<tr>
+<td><code>test_phase4.py</code></td>
+<td>41 → 8</td>
+<td>Trimmed to audit attribution (actor never leaks; old databases gain the columns) and, restored by coverage, a Gold layer write, the per-layer run lock, schema persistence, per-dialect DDL and the advisory key. The pipeline journey covers the runner.</td>
+</tr>
+<tr>
+<td><code>test_phase5.py</code></td>
+<td>187 → 73</td>
+<td>Trimmed to Basic/proxy auth, authorization and role-header trust (5), identifier quoting and SQL push-down (5, 1), star-schema query results (1), <code>verify --file</code> over the API and web/CLI parity (3), traceback hidden by default, docs path traversal, the one-renderer refusal, the enum/vocabulary match and the cheat-sheet kwargs, and the <code>TestPipelineRunEndpoint</code> isolation test that CLAUDE.md names. Restored by coverage: notebook source extraction, dev reload, docs guide, lineage join edges, concurrent registration, structured render error. <code>TestHomepageNeverSilently404s</code> went, and with it the ~120 MB <code>mkdtemp</code> copy of <code>tracebi/</code> it leaked per run; the slim-install and wheel tests went because CI's <code>base-install</code> and <code>wheel</code> jobs check the same things for real.</td>
+</tr>
+<tr>
+<td><code>test_report_generator.py</code></td>
+<td>78 → 27</td>
+<td>Trimmed to the embed injection guard, fingerprints, <code>verify --file</code> verdicts, the typed-number gate, CSP, escape-hatch honesty (<code>verifiable: false</code>, never green), loopback preview and srcdoc escaping; restored by coverage: fragment wrapping and the missing-<code>&lt;/head&gt;</code> refusal.</td>
+</tr>
+<tr>
+<td><code>test_artifact.py</code></td>
+<td>36 → 17</td>
+<td>Trimmed to the figure parser <code>verify --file</code> shares (unverified marks, hostile markup fails loudly), the exploration strip, the methodology "states" language and escaping, and the footer's locked sentence; restored by coverage: id assignment, an unknown stage and an unclosed methodology container refused.</td>
+</tr>
+<tr>
+<td><code>test_presentation.py</code></td>
+<td>28 → 10</td>
+<td>Trimmed to CSP and self-containment, provenance in the manifest without badges, the receipt's fingerprints, SSR never altering embedded data, and declared formats. Layer order went (not one of the six).</td>
+</tr>
+<tr>
+<td><code>test_selection.py</code></td>
+<td>32 → 12</td>
+<td>Trimmed to the conjoined fingerprint, <code>connect-src</code> CSP, and the offline port matching the model; restored by coverage: keeping a cut, the selection endpoint's fingerprint, a longer value beating its prefix, a new grain that reproduces.</td>
+</tr>
+<tr>
+<td><code>test_mcp_gateway.py</code></td>
+<td>45 → 9</td>
+<td>Trimmed to stamp re-verification, fingerprints unchanged by preview caps and tie-breaks, the path and output guards; restored by coverage: the schema-checking client and the XLSX build. The agent journey covers the rest.</td>
+</tr>
+<tr>
+<td><code>test_schedule.py</code></td>
+<td>72 → 5</td>
+<td>Trimmed to the verdict gate: a schedule cannot force a bad receipt, a refused receipt is not uploaded; restored by coverage: an owner alert, per-value burst recipients, firing in the declared time zone. The schedule journey covers the rest.</td>
+</tr>
+<tr>
+<td><code>test_workbench.py</code></td>
+<td>49 → 7</td>
+<td>Trimmed to markdown/frame escaping, CSPs, DNS-rebinding refusal, a session export that verify refuses; restored: the markdown export. The author and web journeys cover the workbench.</td>
+</tr>
+<tr>
+<td><code>test_compile_spec.py</code></td>
+<td>36 → 7</td>
+<td>Trimmed to markdown/link escaping, the honestly unverified literal metric, the compiled package as a verify superset; restored: every section type compiles, the totals row.</td>
+</tr>
+<tr>
+<td><code>test_manifest_lineage.py</code></td>
+<td>27 → 4</td>
+<td>Trimmed to: every rendered figure is fingerprinted, every dataset reaches the manifest, no unauditable artifact on failure, verify classifies from the last query node.</td>
+</tr>
+<tr>
+<td><code>test_report_folders.py</code></td>
+<td>19 → 13</td>
+<td>Trimmed to names that cannot leave <code>reports/</code>, every read through <code>open_report</code>, mount label parsing; restored: two mounts each holding <code>weekly</code>.</td>
+</tr>
+<tr>
+<td><code>test_scenario.py</code></td>
+<td>25 → 15</td>
+<td>Trimmed to the runtime evaluating like Python (2) and unsafe or bad formulas refused (5).</td>
+</tr>
+<tr>
+<td><code>test_model_spec.py</code></td>
+<td>17 → 10</td>
+<td>Trimmed to the security refusals: credentials, a database outside the project, repeated keys, object tags.</td>
+</tr>
+<tr>
+<td><code>test_journey_fixes.py</code></td>
+<td>13 → 5</td>
+<td>Trimmed to the dependency-confusion guards (kept by the 2026-09-22 review) and two real-bug pins: a commitless repo records <code>unknown</code>, and <code>.gitignore</code> really keeps manifests.</td>
+</tr>
+<tr>
+<td><code>test_warehouse_connectors.py</code></td>
+<td>17 → 8</td>
+<td>Trimmed to identifier injection, parameterised filters and credentials kept out of <code>describe()</code>; restored: Snowflake push-down, BigQuery's unsupported filter type and missing driver.</td>
+</tr>
+<tr>
+<td><code>test_init_scaffold.py</code></td>
+<td>12 → 4</td>
+<td>Trimmed to the MCP config never printing a token, <code>report send</code> refusing a failing verify, STARTTLS verification and no cleartext credentials. The analyst and author journeys run the scaffold.</td>
+</tr>
+<tr>
+<td><code>test_api_status.py</code></td>
+<td>8 → 4</td>
+<td>Trimmed to the three "never echoes a secret" tests; restored: the route's checks.</td>
+</tr>
+<tr>
+<td><code>test_gateway_log.py</code></td>
+<td>7 → 5</td>
+<td>Trimmed to argument names never values, masking, off by default; restored: the <code>agent log</code> summary.</td>
+</tr>
+<tr>
+<td><code>test_connect.py</code></td>
+<td>13 → 3</td>
+<td>Trimmed to the secret never reaching stdout or the module; restored: a failing test writes nothing, an existing <code>.env</code> key is not overwritten.</td>
+</tr>
+<tr>
+<td><code>test_d3_charts.py</code></td>
+<td>13 → 10</td>
+<td>Trimmed to tooltip, click → filter, legend toggle, arrow keys, brush, value labels, currency ticks, tooltip → receipt. Every-type, small-multiples and sparkline geometry went. The stacked-bars test stays because the brush test silently depends on it (see below).</td>
+</tr>
+<tr>
+<td><code>test_validate_gaps.py</code></td>
+<td>22 → 3</td>
+<td>Restored by coverage: three pathed filter errors in <code>check_query_spec</code>. The agent journey covers validate wrong-then-right.</td>
+</tr>
+<tr>
+<td><code>test_live_discovery.py</code></td>
+<td>8 → 2</td>
+<td>Restored by coverage: a deleted package is forgotten, a broken one retried only when it changes.</td>
+</tr>
+<tr>
+<td><code>test_desk.py</code></td>
+<td>3 → 2</td>
+<td>Restored by coverage: the review desk lists and its endpoint.</td>
+</tr>
+<tr>
+<td><code>test_import_dbt.py</code></td>
+<td>10 → 1</td>
+<td>Restored by coverage: the draft from a manifest.</td>
+</tr>
+<tr>
+<td><code>test_state_store.py</code></td>
+<td>10 → 2</td>
+<td>Trimmed to an upgrade keeping history; restored: the legacy schedule-log import is idempotent.</td>
+</tr>
+<tr>
+<td><code>test_engine_assets.py</code></td>
+<td>6 → 2</td>
+<td>Trimmed to the CSP granting WASM but never JS eval; restored: the engine ships only with Parquet.</td>
+</tr>
+<tr>
+<td><code>test_delivery.py</code></td>
+<td>6 → 2</td>
+<td>Trimmed to the manifest's numbers beating the page's, and a Slack error without the token.</td>
+</tr>
+<tr>
+<td><code>test_pdf.py</code></td>
+<td>4 → 2</td>
+<td>Trimmed to a script never reaching the network while printing (5); restored: printing a built chart package.</td>
+</tr>
+<tr>
+<td><code>test_runlog.py</code></td>
+<td>5 → 2</td>
+<td>Trimmed to one thread's output never in another's capture, and a capped log.</td>
+</tr>
+<tr>
+<td><code>test_updates.py</code></td>
+<td>12 → 2</td>
+<td>Trimmed to "off means no request"; restored: the update instructions per install kind.</td>
+</tr>
+<tr>
+<td><code>test_report_source.py</code></td>
+<td>5 → 1</td>
+<td>Trimmed to a theme that cannot point outside <code>reports/</code>.</td>
+</tr>
+<tr>
+<td><code>test_react_app.py</code></td>
+<td>6 → 1</td>
+<td>Trimmed to the dark-ground cascade (DS-8). The author journey builds and verifies an <code>app.jsx</code> report.</td>
+</tr>
+<tr>
+<td><code>test_agent_eval.py</code>, <code>test_chart_grouping.py</code>, <code>test_collect_changes.py</code>, <code>test_design_warnings.py</code>, <code>test_init_template.py</code>, <code>test_library_list.py</code>, <code>test_model_pipeline_scope.py</code>, <code>test_resolve_pin.py</code>, <code>test_spec_render.py</code>, <code>test_warehouse_tables.py</code></td>
+<td>→ 0</td>
+<td>Deleted. The agent-eval scorer and changelog script are tooling; chart grouping is the legacy SVG renderer; design warnings, library columns and warehouse table listings are not among the six; templates (author journey), pin resolve (author journey), spec render (agent journey) and the pipeline scope stamp (web journey) are journey-covered.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="coverage">Coverage</h3>
+<p>Measured with <code>pytest-cov</code>, line coverage of <code>tracebi/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Run</th>
+<th>Covered lines</th>
+<th>Coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The suite before the cull</td>
+<td>18,729 / 21,362</td>
+<td>87.7%</td>
+</tr>
+<tr>
+<td>The journeys alone (<code>tests/e2e</code>, <code>test_ui_smoke.py</code>)</td>
+<td>14,641 / 21,362</td>
+<td>68.5%</td>
+</tr>
+<tr>
+<td>The suite after the cull</td>
+<td>17,735 / 21,362</td>
+<td>83.0%</td>
+</tr>
+</tbody>
+</table>
+<p>Modules still more than 10 points down after the restorations, and every line
+lost in a security, verify, query or format module, with why the remainder is
+not restored:</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Before → after</th>
+<th>Why it stays</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_updates.py</code></td>
+<td>90.6 → 60.2</td>
+<td>The release-check cache and its fallback key. One request when on, none when off; both are tested.</td>
+</tr>
+<tr>
+<td><code>web/register.py</code>, <code>registry.py</code></td>
+<td>59.2 → 40.8, 96.9 → 80.8</td>
+<td>The <code>@register.scheduled</code> decorator and default-model helpers: the deprecated scheduled lane (CLAUDE.md, <code>TRACEBI_SCHEDULED_DIR</code>).</td>
+</tr>
+<tr>
+<td><code>connectors/memory_connector.py</code></td>
+<td>100 → 81.8</td>
+<td><code>write</code> and <code>add_table</code> replace a dict entry.</td>
+</tr>
+<tr>
+<td><code>schedule.py</code></td>
+<td>93.1 → 75.0</td>
+<td>Slack upload branches, alert retries and the in-server scheduler's start and log lines. The verdict gate, burst recipients, owner alert and time zone are tested; the schedule and state-workers journeys run the rest.</td>
+</tr>
+<tr>
+<td><code>pipeline/runner.py</code></td>
+<td>92.6 → 80.5</td>
+<td><code>lineage()</code> and <code>status()</code> print to the terminal: notebook helpers, as the 2026-09-28 review already decided.</td>
+</tr>
+<tr>
+<td><code>reports/compile_spec.py</code></td>
+<td>89.4 → 77.3</td>
+<td>Markdown subset branches (lists, emphasis) and the totals-under-a-limit warning. The escaping tests and the compiled-package verify stay.</td>
+</tr>
+<tr>
+<td><code>connectors/snowflake_connector.py</code></td>
+<td>98.0 → 86.3</td>
+<td><code>connect()</code> forwarding constructor arguments to a fake driver.</td>
+</tr>
+<tr>
+<td><code>cli.py</code></td>
+<td>80.1 → 68.6</td>
+<td>Argument handling and printing for <code>migrate</code>, <code>session</code>, <code>new-model</code>, <code>update</code>, <code>list-pipelines</code>. What they call is tested; the journeys run <code>init</code>, <code>report build</code>, <code>verify</code>, <code>run-pipeline</code>, <code>schedule</code>, <code>dev</code>, <code>push</code>, <code>login</code>.</td>
+</tr>
+<tr>
+<td><code>web/api/routers/docs.py</code>, <code>status.py</code></td>
+<td>94.3 → 82.9, 100 → 88.9</td>
+<td>The docs-dir resolution fallback and two status probes flipping.</td>
+</tr>
+<tr>
+<td><code>dbt_import.py</code></td>
+<td>88.7 → 77.8</td>
+<td>The command wrapper's refusals (missing manifest, existing file).</td>
+</tr>
+<tr>
+<td><code>web/api/routers/reports.py</code></td>
+<td>85.6 → 75.4</td>
+<td>The PDF route over the last build, stored-build listing and the selection route's error paths. PDF printing itself is tested from the CLI.</td>
+</tr>
+<tr>
+<td><code>model/dataset.py</code></td>
+<td>91.6 → 82.8</td>
+<td><code>cast</code>, <code>select</code> and column-check helpers, and <code>_repr_html_</code>. Lineage, immutability, join, aggregate and assign stay tested.</td>
+</tr>
+<tr>
+<td><code>connectors/bigquery_connector.py</code></td>
+<td>98.1 → 94.3</td>
+<td>A <code>SELECT</code> source filtered in pandas. Quoting and parameterisation stay tested.</td>
+</tr>
+<tr>
+<td><code>reports/figures.py</code></td>
+<td>97.8 → 95.2</td>
+<td>Seven <code>raise FigureError</code> lines: void-element and self-closing misuse of <code>data-tb-stage</code> / <code>data-tb-methodology</code>. The parser's other refusals are tested.</td>
+</tr>
+<tr>
+<td><code>report_paths.py</code></td>
+<td>97.2 → 95.8</td>
+<td>The one-time notice that <code>TRACEBI_REPORTS_DIR</code> is ignored under mounts.</td>
+</tr>
+<tr>
+<td><code>model/model_spec.py</code></td>
+<td>81.0 → 79.7</td>
+<td>The name-must-equal-the-file-stem refusal.</td>
+</tr>
+<tr>
+<td><code>model/data_model.py</code></td>
+<td>90.9 → 90.0</td>
+<td>Thirteen lines of <code>check_query_spec</code>'s warnings (undeclared columns with a hint) and two <code>load</code> / <code>add_table</code> refusals. Query results lose no line.</td>
+</tr>
+<tr>
+<td><code>drafts.py</code></td>
+<td>88.9 → 88.7</td>
+<td>The MCP listing's copy of the Python-model refusal that <code>start_draft</code> makes (tested).</td>
+</tr>
+</tbody>
+</table>
+<p>No line was lost in <code>web/api/auth.py</code>, <code>sso.py</code>, <code>mcp_oauth.py</code>,
+<code>permissions.py</code>, <code>verify.py</code>, <code>contracts.py</code> or the format code.</p>
+<h3 id="count-and-runtime">Count and runtime</h3>
+<p>1,900 collected cases → 1,180 (948 unit + 232 journey). The full run without
+coverage went from 5 min 54 s to 4 min 18 s on the same machine.</p>
+<p>The target was under three minutes, and the cull cannot reach it: the
+journeys alone take 2 min 44 s (measured under coverage), and three kept
+files cost about another 85 s by
+themselves: the PDF network refusal waits out a 30-second print timeout
+(security), the Parquet fingerprint corpus takes 38 s (verify) and the
+format-parity browser tests 18 s (format parity). Getting under three minutes
+needs a faster journey harness or a separate slow lane, not more deletion.</p>
+<p><strong>A hidden order dependency.</strong> <code>test_d3_charts.py</code> shares one browser page
+across the module. <code>test_drag_zooms_to_a_range_and_reset_returns</code> passes only
+after <code>test_stacked_bars_share_one_slot_and_end_where_their_rows_end</code> has run;
+alone, the brush drag times out. The stacked test stays so the brush test keeps
+passing; the dependency itself is a test bug worth fixing on its own.</p>
   </main>
 </div>
 <script>
