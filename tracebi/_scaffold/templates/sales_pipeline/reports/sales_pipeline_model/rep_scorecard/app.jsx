@@ -64,7 +64,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Sales pipeline"
+        <Masthead
           title={<><Value binding="top_rep" cell="dim_rep.rep" id="head-top-rep" /> leads
             win rate</>}>
           Rep scorecard: win rate, open pipeline and won value, by rep and by region.

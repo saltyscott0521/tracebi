@@ -73,7 +73,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Direct lending · Portfolio overview"
+        <Masthead
           title={<>The book is marked at <Value binding="kpis" cell="mark" id="head-mark" /> of
             cost</>}>
           Three funds, one Schedule of Investments. Every number is a query against the model.

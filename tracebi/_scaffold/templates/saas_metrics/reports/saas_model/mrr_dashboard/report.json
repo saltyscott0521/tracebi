@@ -1,7 +1,7 @@
 {
   "name": "SaaS MRR Dashboard",
   "author": "tracebi init --template saas-metrics",
-  "description": "Ending MRR, customers, and logo churn, with the monthly trend and a plan cut. Every figure claims a binding on saas_model.",
+  "description": "Ending MRR, customers and logo churn, month by month and by plan.",
   "data": {
     "kpis": {
       "model": "saas_model",

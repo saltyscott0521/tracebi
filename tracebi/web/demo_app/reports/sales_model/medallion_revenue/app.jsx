@@ -68,7 +68,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Sales" title="Medallion revenue">
+        <Masthead title="Medallion revenue">
           Landing → Manipulation → Final: revenue from the model that reads the cleaned
           silver tables.
         </Masthead>

@@ -47,11 +47,21 @@ path); with no `name` here, `display_name` is the directory name title-cased.
 
 ### `author` — string, optional
 
-Recorded in the manifest as `rendered_by`.
+Recorded in the manifest as `rendered_by`, and shown in the receipt's About
+this build ("built by …"), not on the page.
 
 ### `description` — string, optional
 
-Shown in the web UI, in the library under the report's model.
+One sentence for the reader: what the page shows — its measures, breakdowns
+and period (`"Ending MRR, customers and logo churn, month by month and by
+plan."`). Shown in the library under the report's name and at the top of About
+this build. How the page is built (the lane, which file draws what, why a
+measure is declared the way it is) does not belong here: put it in `notes`.
+
+### `notes` — string, optional
+
+For the people and agents who edit the package: how the page is built, what
+`report.py` or `script.js` does. Nothing renders it.
 
 ### `data` — object, **required**
 

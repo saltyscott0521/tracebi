@@ -29,11 +29,12 @@
 <main class="tb-page">
 
   <!-- The masthead opens the page: a kicker, the <h1> that states the
-       finding, the standfirst. data-tb-period names what the numbers cover;
+       finding, the standfirst. The build adds the kicker, the model's label,
+       when the masthead has no <p class="tb-kicker"> of its own (write one
+       to say something else). data-tb-period names what the numbers cover;
        the runtime adds the meta line: the period, when this file was built,
        the verdict chip and the Receipt button. -->
   <header class="tb-masthead" data-tb-period="Latest administrator marks">
-    <p class="tb-kicker">Direct lending · Portfolio showcase</p>
     <!-- The title states the finding, and its numbers are live figures.
          top_sector is a one-row query (largest first, limit 1); the share is
          computed over the whole book before the limit applies. -->
@@ -212,7 +213,7 @@
   </div>
 
   <!-- The footer ends the page: the author's sources and notes first; the
-       build adds one line on who built it and from which model, then "How
+       build adds one line on when it was built and from which model, then "How
        these numbers were made" (the stated methodology) behind a disclosure. -->
   <footer class="tb-footer" data-tb-methodology>
     <p>Source: each fund's Schedule of Investments. Marks are

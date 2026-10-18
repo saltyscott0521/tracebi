@@ -50,6 +50,9 @@ command, and builds to `output/<model>/<name>.html`. The sample is
 `sample_model` — `pipelines/sample_model.py`, `reports/sample_model/`.
 People read names, not identifiers: a model's `label` (optional; unset, the name
 title-cased) and a report's `report.json` `name` (human, not the folder slug).
+A report's `description` is one sentence for the reader, what the page shows; how
+it is built goes in `"notes"` or a comment. The masthead's kicker is the model's
+label (added by the build when you write none); the `<h1>` is the name or finding.
 
 **Folder permissions.** A folder under `reports/` (a directory that is not a package) may hold a `_folder.yaml` granting `view`, `build`, `publish` and `manage` to sign-in groups or names (`docs/reference/folder-yaml.md`). With none, roles decide as before. A report in a folder you cannot view is not listed and every read of it answers as if it did not exist, so a "no such report" over the gateway can mean "not yours": do not look for it another way. A `build` or `publish` refusal names the permission it needs; ask a folder manager rather than working around it.
 
@@ -120,7 +123,8 @@ toggle is one literal-binding figure per option, never arithmetic; and
 shared link opens on it; while the page prints, `usePrinting()` is true and
 an app with views renders all of them, so the PDF holds the whole report.
 Open the page with `<Masthead title kicker period>` (children are the
-standfirst; it shows the build time and the verdict chip) and end its main
+standfirst; it shows the build time and the verdict chip; `kicker` defaults to
+the model's label) and end its main
 column with `<Footer />`, where the build's footer goes; `<main
 className="tb-page px-6 py-8">` is the 1,200px page measure.
 `tracebi new-dashboard --job overview|trend|leaderboard|scorecard|monitor|funnel`
@@ -282,7 +286,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   reader's system), `data-tb-density="compact"`, `data-tb-width="full"`. A sidebar is
   `<div class="tb-tabs" data-tb-nav="side">` with the whole page inside. Every page
   opens with the masthead, `<header class="tb-masthead" data-tb-title="left|center|banner|nav"
-  data-tb-period="Q3 2026">`: an optional `.tb-kicker`, the `<h1>`, `<p
+  data-tb-period="Q3 2026">`: an optional `.tb-kicker` (left out, the build adds the
+  model's label), the `<h1>`, `<p
   class="tb-standfirst">`, and `<p class="tb-masthead-meta">` with `<span
   data-tb-built></span>` (the build time, from the receipt; never type a date) and `<span
   class="tb-verdict"></span>`. `data-tb-period` names what the numbers cover. The runtime

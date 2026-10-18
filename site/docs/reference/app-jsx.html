@@ -73,6 +73,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -255,11 +256,11 @@ filterable, exactly as in a template.</p>
 </tr>
 <tr>
 <td><code>&lt;Masthead title kicker period mark&gt;</code></td>
-<td>Opens the page: an optional <code>mark</code> (a node; or leave it empty and size <code>.tb-masthead-mark</code> in <code>style.css</code>), a <code>kicker</code>, the <code>title</code> (a string, or text with <code>&lt;Value&gt;</code>s in it: <code>title={&lt;&gt;Marked at &lt;Value binding="kpis" cell="mark" /&gt; of cost&lt;/&gt;}</code>), the standfirst as its children, and a meta line with the <code>period</code> (presentation, <code>"Q3 2026"</code>), the build time and the verdict chip, which the runtime fills from the file itself (<code>not-checked</code> on a built file, <code>draft</code> on a preview; never green on its own say-so). Other props go on the <code>&lt;header&gt;</code>: <code>data-tb-title="center|banner|nav"</code>. A literal <code>title</code> is checked for typed numbers like the app's text; <code>kicker</code> and <code>period</code> are labels.</td>
+<td>Opens the page: an optional <code>mark</code> (a node; or leave it empty and size <code>.tb-masthead-mark</code> in <code>style.css</code>), a <code>kicker</code> (unset, the model's label; <code>kicker={null}</code> shows none), the <code>title</code> (a string, or text with <code>&lt;Value&gt;</code>s in it: <code>title={&lt;&gt;Marked at &lt;Value binding="kpis" cell="mark" /&gt; of cost&lt;/&gt;}</code>), the standfirst as its children, and a meta line with the <code>period</code> (presentation, <code>"Q3 2026"</code>), the build time and the verdict chip, which the runtime fills from the file itself (<code>not-checked</code> on a built file, <code>draft</code> on a preview; never green on its own say-so). Other props go on the <code>&lt;header&gt;</code>: <code>data-tb-title="center|banner|nav"</code>. A literal <code>title</code> is checked for typed numbers like the app's text; <code>kicker</code> and <code>period</code> are labels.</td>
 </tr>
 <tr>
 <td><code>&lt;Footer /&gt;</code></td>
-<td>Where the build's footer goes: one line on who built the file, from which model, and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's <code>&lt;main&gt;</code>); without it the footer follows the app.</td>
+<td>Where the build's footer goes: one line on when the file was built, from which model (by its label), and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's <code>&lt;main&gt;</code>); without it the footer follows the app.</td>
 </tr>
 <tr>
 <td><code>&lt;Built&gt;</code></td>
@@ -313,7 +314,7 @@ export default function App() {
         ))}
       &lt;/aside&gt;
       &lt;main className=&quot;min-w-0 flex-1 space-y-8 px-6 py-8&quot;&gt;
-        &lt;Masthead kicker=&quot;SaaS metrics&quot; title=&quot;Recurring revenue&quot; period=&quot;Monthly&quot;&gt;
+        &lt;Masthead title=&quot;Recurring revenue&quot; period=&quot;Monthly&quot;&gt;
           Ending MRR and customers, month by month.
         &lt;/Masthead&gt;
         {view === &quot;Overview&quot; ? (

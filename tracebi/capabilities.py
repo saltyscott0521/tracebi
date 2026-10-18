@@ -247,6 +247,11 @@ def _presentation() -> dict:
             "name": "The display name people read in every list and title "
                     "(\"Sales by region\"), not the folder slug: the path "
                     "(reports/<model>/<slug>/) is the identifier commands take.",
+            "description": "One sentence for the reader: what the page shows "
+                           "(measures, breakdowns, period), shown under the name "
+                           "in the library. How the page is built goes in "
+                           "\"notes\" (for authors; nothing renders it) or a "
+                           "comment, never here.",
             "libs": REPORT_JSON_LIBS_NOTE,
             "report_measures": {
                 "key": "measures",
@@ -305,7 +310,7 @@ def _presentation() -> dict:
             "imports": "react, react-dom, recharts, lucide-react (icons by name; only "
                        "those are embedded), tracebi. Any other import fails the build.",
             "kit": "<Masthead title kicker period mark> opens the page (children are the "
-                   "standfirst; title is a string or text with <Value>s in it; period "
+                   "standfirst; kicker defaults to the model's label; title is a string or text with <Value>s in it; period "
                    "is presentation, \"Q3 2026\"; it holds the build time and the "
                    "verdict chip), <Footer /> where the build's footer goes (the end "
                    "of the main column; without it the footer follows the app), "
@@ -374,8 +379,10 @@ def _presentation() -> dict:
             "className=\"tb-page px-6 py-8\">)",
             ".tb-masthead (opens every page: optional .tb-masthead-mark — "
             "empty; a report's style.css gives it a logo, e.g. width, height "
-            "and background: url(assets/logo.svg) — .tb-kicker, <h1>, "
-            ".tb-standfirst, .tb-masthead-meta. data-tb-period=\"…\" on the "
+            "and background: url(assets/logo.svg) — .tb-kicker (the model's "
+            "label: the build adds it when the masthead has none), <h1> (the "
+            "report's name or its finding), .tb-standfirst, .tb-masthead-meta."
+            " data-tb-period=\"…\" on the "
             "masthead names what the numbers cover; the runtime fills the "
             "meta with the period, the build time and the verdict chip, "
             "adding whichever is missing. data-tb-title=\"center|banner|nav\" "
@@ -389,7 +396,7 @@ def _presentation() -> dict:
             "(red), not-checked (neutral). A page never sets it green; framed "
             "in the web app, it shows the app's re-check, which the app tells it)",
             ".tb-footer (ends the page: your sources first, then the build's "
-            "one line — who, when, which model, and that the receipt does "
+            "one line — when, which model by its label, and that the receipt does "
             "not claim the numbers are right — and 'How these numbers were "
             "made' behind a <details>: the stated methodology. The build "
             "adds it when the template places no data-tb-methodology)",

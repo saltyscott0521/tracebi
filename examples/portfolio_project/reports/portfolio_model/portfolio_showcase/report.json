@@ -1,7 +1,8 @@
 {
   "name": "Portfolio Showcase",
   "author": "tracebi reference",
-  "description": "The maintained kitchen-sink demo: every figure kind, controls, layouts, and trust affordance the artifact offers, on the reference data.",
+  "description": "Fair value, mark and unrealized gain by sector, fund and issuer, with how concentrated the book is and every holding.",
+  "notes": "The maintained kitchen-sink demo: every figure kind, control, layout and trust affordance the artifact offers, on the reference data.",
   "libs": ["d3"],
   "data": {
     "kpis": {

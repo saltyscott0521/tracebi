@@ -9,7 +9,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Direct lending" title="Portfolio book">
+        <Masthead title="Portfolio Dashboard">
           Three funds, cleaned from a Schedule-of-Investments export. Every number is a
           query against the model.
         </Masthead>

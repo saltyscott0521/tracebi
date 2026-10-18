@@ -73,6 +73,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -291,14 +292,17 @@ they didn't ask for (<code>tracebi context</code> → <code>presentation.layout.
 <p><strong>The masthead</strong> — every page opens with one:</p>
 <pre><code class="language-html">&lt;header class=&quot;tb-masthead&quot; data-tb-title=&quot;left&quot; data-tb-period=&quot;Q3 2026&quot;&gt;
   &lt;div class=&quot;tb-masthead-mark&quot;&gt;&lt;/div&gt;              &lt;!-- optional: your logo --&gt;
-  &lt;p class=&quot;tb-kicker&quot;&gt;Direct lending&lt;/p&gt;           &lt;!-- optional --&gt;
+  &lt;p class=&quot;tb-kicker&quot;&gt;Direct Lending Portfolio&lt;/p&gt; &lt;!-- optional: the model's label --&gt;
   &lt;h1&gt;Portfolio Book&lt;/h1&gt;
   &lt;p class=&quot;tb-standfirst&quot;&gt;One line on what this page is for.&lt;/p&gt;
   &lt;p class=&quot;tb-masthead-meta&quot;&gt;&lt;span data-tb-built&gt;&lt;/span&gt;
     &lt;span class=&quot;tb-verdict&quot;&gt;&lt;/span&gt;&lt;/p&gt;
 &lt;/header&gt;
 </code></pre>
-<p><code>data-tb-title</code> is <code>left</code>, <code>center</code>, <code>banner</code> (accent band) or <code>nav</code> (moved
+<p>The kicker is the model's label: leave it out and the build adds
+<code>&lt;p class="tb-kicker"&gt;</code> with the label of the model the bindings read; write
+one to say something else. The <code>&lt;h1&gt;</code> is the report's name or its finding.
+<code>data-tb-title</code> is <code>left</code>, <code>center</code>, <code>banner</code> (accent band) or <code>nav</code> (moved
 to the top of a sidebar). <code>data-tb-period</code> names what the numbers cover; it
 is a label, so it may hold a year. The runtime fills the meta line: the
 period, the build time from the receipt (never type a date) and the verdict
@@ -330,8 +334,9 @@ gradient, no shadow, no second set of components.</p>
   &lt;p&gt;Source: the funds' Schedules of Investments.&lt;/p&gt;
 &lt;/footer&gt;
 </code></pre>
-<p>Your sources come first. The build adds one line — who built the file, when,
-from which model, and <em>"The receipt does not claim the numbers are right."</em> —
+<p>Your sources come first. The build adds one line — when the file was built and
+from which model, by its label ("Built 18 Oct 2026 · Direct Lending Portfolio."),
+and <em>"The receipt does not claim the numbers are right."</em> —
 then "How these numbers were made" behind a <code>&lt;details&gt;</code>: what the receipt is
 for, and the stated methodology (below). A template with no
 <code>data-tb-methodology</code> gets the whole footer at the end of the page. The
@@ -363,7 +368,6 @@ width. With no <code>style.css</code> this is the page: one accent, no texture, 
 shadow.</p>
 <pre><code class="language-html">&lt;article class=&quot;tb-article&quot;&gt;
   &lt;header class=&quot;tb-masthead tb-article-head&quot;&gt;  &lt;!-- data-tb-title=&quot;center&quot; to centre it --&gt;
-    &lt;p class=&quot;tb-kicker&quot;&gt;Revenue&lt;/p&gt;
     &lt;h1&gt;&lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_region.region&quot;&gt;&lt;/span&gt;
         leads on revenue&lt;/h1&gt;
     &lt;p class=&quot;tb-standfirst&quot;&gt;What this report finds, and why it matters.&lt;/p&gt;

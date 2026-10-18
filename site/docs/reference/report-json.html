@@ -73,6 +73,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -117,9 +118,17 @@ framework builds for it.</strong></p>
 take. <code>GET /api/reports</code> returns it as <code>display_name</code> beside <code>name</code> (the
 path); with no <code>name</code> here, <code>display_name</code> is the directory name title-cased.</p>
 <h3 id="author-string-optional"><code>author</code> — string, optional</h3>
-<p>Recorded in the manifest as <code>rendered_by</code>.</p>
+<p>Recorded in the manifest as <code>rendered_by</code>, and shown in the receipt's About
+this build ("built by …"), not on the page.</p>
 <h3 id="description-string-optional"><code>description</code> — string, optional</h3>
-<p>Shown in the web UI, in the library under the report's model.</p>
+<p>One sentence for the reader: what the page shows — its measures, breakdowns
+and period (<code>"Ending MRR, customers and logo churn, month by month and by
+plan."</code>). Shown in the library under the report's name and at the top of About
+this build. How the page is built (the lane, which file draws what, why a
+measure is declared the way it is) does not belong here: put it in <code>notes</code>.</p>
+<h3 id="notes-string-optional"><code>notes</code> — string, optional</h3>
+<p>For the people and agents who edit the package: how the page is built, what
+<code>report.py</code> or <code>script.js</code> does. Nothing renders it.</p>
 <h3 id="data-object-required"><code>data</code> — object, <strong>required</strong></h3>
 <p>Maps a <strong>binding name</strong> to a query. A binding is the unit of trust: it is
 resolved once, fingerprinted, embedded in the artifact, and recorded in the

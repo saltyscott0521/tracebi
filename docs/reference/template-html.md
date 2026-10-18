@@ -202,7 +202,7 @@ they didn't ask for (`tracebi context` → `presentation.layout.look`).
 ```html
 <header class="tb-masthead" data-tb-title="left" data-tb-period="Q3 2026">
   <div class="tb-masthead-mark"></div>              <!-- optional: your logo -->
-  <p class="tb-kicker">Direct lending</p>           <!-- optional -->
+  <p class="tb-kicker">Direct Lending Portfolio</p> <!-- optional: the model's label -->
   <h1>Portfolio Book</h1>
   <p class="tb-standfirst">One line on what this page is for.</p>
   <p class="tb-masthead-meta"><span data-tb-built></span>
@@ -210,6 +210,9 @@ they didn't ask for (`tracebi context` → `presentation.layout.look`).
 </header>
 ```
 
+The kicker is the model's label: leave it out and the build adds
+`<p class="tb-kicker">` with the label of the model the bindings read; write
+one to say something else. The `<h1>` is the report's name or its finding.
 `data-tb-title` is `left`, `center`, `banner` (accent band) or `nav` (moved
 to the top of a sidebar). `data-tb-period` names what the numbers cover; it
 is a label, so it may hold a year. The runtime fills the meta line: the
@@ -249,8 +252,9 @@ gradient, no shadow, no second set of components.
 </footer>
 ```
 
-Your sources come first. The build adds one line — who built the file, when,
-from which model, and *"The receipt does not claim the numbers are right."* —
+Your sources come first. The build adds one line — when the file was built and
+from which model, by its label ("Built 18 Oct 2026 · Direct Lending Portfolio."),
+and *"The receipt does not claim the numbers are right."* —
 then "How these numbers were made" behind a `<details>`: what the receipt is
 for, and the stated methodology (below). A template with no
 `data-tb-methodology` gets the whole footer at the end of the page. The
@@ -287,7 +291,6 @@ shadow.
 ```html
 <article class="tb-article">
   <header class="tb-masthead tb-article-head">  <!-- data-tb-title="center" to centre it -->
-    <p class="tb-kicker">Revenue</p>
     <h1><span data-tb-figure="value" data-tb-binding="top" data-tb-cell="dim_region.region"></span>
         leads on revenue</h1>
     <p class="tb-standfirst">What this report finds, and why it matters.</p>

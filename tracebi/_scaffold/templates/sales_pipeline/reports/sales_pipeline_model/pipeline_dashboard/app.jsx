@@ -7,7 +7,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Sales pipeline"
+        <Masthead
           title={<><Value binding="top_stage" cell="dim_stage.stage" id="head-top-stage" /> holds
             the most open pipeline</>}>
           Sales pipeline dashboard: open pipeline by stage and by region, with the win rate.

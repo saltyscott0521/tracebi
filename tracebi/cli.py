@@ -2220,21 +2220,26 @@ def _report_json_text(title: str, model: str, query: dict,
             data["top10"] = {"model": model, "query": {
                 "fact": fact, "measures": measures[:1], "dimensions": dims,
                 "order_by": ["-" + measures[0]], "limit": 10}}
+    # The library's line under the name: one sentence a reader would use,
+    # what the page shows. The bracket is the author's to fill; how the page
+    # is built belongs in "notes", never here.
+    def joined(words: list) -> str:
+        return ", ".join(words[:-1]) + " and " + words[-1] if len(words) > 1 else words[0]
+
+    labels = [_humanise_label(m) for m in measures]
+    shows = joined(labels[:1] + [_in_sentence(lbl) for lbl in labels[1:]])
+    if dims:
+        shows += " by " + joined([_in_sentence(_humanise_label(d)) for d in dims])
     declaration = {
         "name": title,
         "author": "",
-        "description": "Freeform report package scaffolded by tracebi "
-                       "new-report. Every figure claims a stamped binding; edit "
-                       "template.html to reshape the page — nothing re-runs the "
-                       "pandas.",
+        "description": f"{shows}, over [the period these numbers cover].",
         "data": data,
     }
     if calculated:
         declaration["measures"] = {model: calculated}
     if look is not None:
         # An app page has no <html> of its own: its mode and density live here.
-        declaration["description"] = declaration["description"].replace(
-            "edit template.html", "edit app.jsx")
         if look:
             declaration["look"] = look
     if theme:
@@ -2359,11 +2364,12 @@ def _report_editorial_html(title: str, measure: str, dim_ref: "str | None", *,
         "     states the finding; every number in the prose is a value figure",
         "     bound to report.json, so the receipt names it. Never type one in. -->",
         '<article class="tb-article">',
-        "  <!-- The masthead, in the editorial's register: kicker, the headline",
-        "       that states the finding, the standfirst, and the meta line (when",
-        "       it was built and the verdict chip, filled from the receipt). -->",
+        "  <!-- The masthead, in the editorial's register: the kicker (the build",
+        "       adds the model's label; write <p class=\"tb-kicker\"> above the",
+        "       headline to say something else), the headline that states the",
+        "       finding, the standfirst, and the meta line (when it was built and",
+        "       the verdict chip, filled from the receipt). -->",
         f'  <header class="tb-masthead tb-article-head"{centered}>',
-        f'    <p class="tb-kicker">{esc(m_label)}</p>',
     ]
     if dim_ref:
         parts += [

@@ -39,7 +39,12 @@ gateway may be `<name>.yaml` or `<name>.json`.
 Names, not identifiers: give a model a `label` (`label: Direct Lending Portfolio`;
 `DataModel(name, label=)` in Python; unset, the name title-cased) and a report a
 human `report.json` `name` (`"Portfolio Overview"`, not the folder slug). People
-read those; commands, bindings and URLs keep taking the identifier.
+read those; commands, bindings and URLs keep taking the identifier. A report's
+`description` is one sentence for the reader, what the page shows ("Ending MRR,
+customers and logo churn, month by month and by plan"); how the page is built
+goes in `"notes"` or a comment, never there. The masthead's kicker is the
+model's label (the build adds it when you write none); the `<h1>` is the
+report's name or its finding.
 
 A model also gets a pipeline, `pipelines/<model>.yaml` (`transform:`, `models:`,
 `reports: all`, `schedule:`; it only names the Python transform; `.py` with
@@ -172,7 +177,8 @@ toggle is one literal-binding figure per option, never arithmetic; and
 shared link opens on it; while the page prints, `usePrinting()` is true and
 an app with views renders all of them, so the PDF holds the whole report.
 Open the page with `<Masthead title kicker period>` (children are the
-standfirst; it shows the build time and the verdict chip) and end its main
+standfirst; it shows the build time and the verdict chip; `kicker` defaults to
+the model's label) and end its main
 column with `<Footer />`, where the build's footer goes; `<main
 className="tb-page px-6 py-8">` is the 1,200px page measure.
 `tracebi new-dashboard --job overview|trend|leaderboard|scorecard|monitor|funnel`
@@ -266,7 +272,8 @@ already said. With nobody in the loop, use the defaults. Then:
   `data-tb-tab` sections, and the whole page inside it;
 - the masthead, which opens every page: `<header class="tb-masthead"
   data-tb-title="left|center|banner|nav" data-tb-period="Q3 2026">` with an
-  optional `.tb-kicker`, the `<h1>`, a `<p class="tb-standfirst">`, and a
+  optional `.tb-kicker` (left out, the build adds the model's label), the
+  `<h1>`, a `<p class="tb-standfirst">`, and a
   `<p class="tb-masthead-meta">` holding `<span data-tb-built></span>` (when
   the file was built, from its receipt; never type a date) and `<span
   class="tb-verdict"></span>`, the verdict chip. `data-tb-period` names what
@@ -278,8 +285,8 @@ already said. With nobody in the loop, use the defaults. Then:
   `.tb-masthead-mark` takes a logo from the report's `style.css`. `nav` moves
   the masthead to the top of the sidebar;
 - the footer, which ends every page: `<footer class="tb-footer"
-  data-tb-methodology>` with your sources. The build adds one line (who,
-  when, which model, and that the receipt does not claim the numbers are
+  data-tb-methodology>` with your sources. The build adds one line (when,
+  which model by its label, and that the receipt does not claim the numbers are
   right) and "How these numbers were made" behind a disclosure; with no
   footer in the template it adds the whole thing.
 

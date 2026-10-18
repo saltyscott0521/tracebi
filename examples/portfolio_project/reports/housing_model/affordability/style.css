@@ -60,7 +60,7 @@ body {
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
   background: linear-gradient(90deg, transparent, var(--mp-gold-2), var(--mp-gold), transparent);
 }
-.mp-eyebrow {
+.mp-hero .tb-kicker {
   text-transform: uppercase; letter-spacing: .14em; font-size: 11px;
   color: var(--mp-gold-2); margin: 0 0 6px; font-weight: 600;
 }

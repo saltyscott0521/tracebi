@@ -6,7 +6,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Sales" title="Sales overview">
+        <Masthead title="Sales overview">
           Revenue, units and cost by region and customer segment. Nothing here is typed in.
         </Masthead>
 

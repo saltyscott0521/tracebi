@@ -286,11 +286,14 @@ class TestMethodologyAppendix:
         assert 'class="tb-footer"' in page
         # One visible line: when, from which model, and the honesty
         # sentence — outside the disclosure, so a reader always sees it.
+        # The model by its label (unset: the identifier title-cased), never
+        # the identifier.
         line = page[page.index('class="tb-footer-line"'):
                     page.index("</p>", page.index('class="tb-footer-line"'))]
-        assert "Built on " in line and "from the model wh_model" in line
+        assert line.startswith('class="tb-footer-line">Built ')
+        assert " · Wh Model. " in line and "wh_model" not in line
         assert "The receipt does not claim the numbers are right." in line
-        assert "Built by unknown" not in page
+        assert "unknown" not in line
         # The rest sits behind "How these numbers were made".
         details = page[page.index('<details class="tb-footer-details">'):
                        page.index("</details>")]
@@ -346,7 +349,12 @@ class TestFooter:
         TemplatePackage(str(pkg)).render(
             {"wh_model": _noted_model(wh_path)}, str(out))
         page = out.read_text(encoding="utf-8")
-        assert "Built by Ada Analyst on " in page
+        # Who built it is provenance: the receipt's About this build names
+        # them; the page's footer line does not.
+        line = page[page.index('class="tb-footer-line"'):
+                    page.index("</p>", page.index('class="tb-footer-line"'))]
+        assert "Ada Analyst" not in line
+        assert TestReceiptBlockJoins()._receipt(page)["rendered_by"] == "Ada Analyst"
 
 
 # ── the embedded semantic contract ──────────────────────────────────────────

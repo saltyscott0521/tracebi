@@ -8,7 +8,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <div className="wm-hero">
-        <Masthead className="wm-hero-inner" kicker="Wealth management · Demo"
+        <Masthead className="wm-hero-inner"
           title={<>Where the book sits, <em>branch by branch.</em></>}>
           Assets under management across six branches and four asset classes. The book
           stands at{" "}

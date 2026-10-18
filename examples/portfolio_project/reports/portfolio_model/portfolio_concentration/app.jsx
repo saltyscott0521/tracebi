@@ -7,7 +7,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Direct lending · Concentration"
+        <Masthead
           title={<>The five largest issuers hold{" "}
             <Value binding="fifth" cell="fv_cum_share" id="head-top5" /> of the book</>}>
           Issuer concentration across the three funds. Rank, share and cumulative share are

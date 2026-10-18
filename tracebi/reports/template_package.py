@@ -86,7 +86,7 @@ from tracebi.reports.report import (
     ARTIFACT_MANIFEST_SCHEMA_VERSION, PARQUET_MANIFEST_SCHEMA_VERSION,
     Report, ReportManifest, TableSection,
 )
-from tracebi.model.data_model import DataModel, measure_references
+from tracebi.model.data_model import DataModel, default_label, measure_references
 from tracebi.model.sql_calc import SqlQuery, check_read_only
 from tracebi.spec import DataRef
 
@@ -825,6 +825,19 @@ class TemplatePackage:
             + " where the figure belongs, or remove the declaration."
         )
 
+    def model_labels(self, models: dict) -> list[str]:
+        """The label of each model the bindings read, in binding order: what
+        the masthead's kicker defaults to and the footer names. A model's
+        declared label, else its identifier title-cased."""
+        labels: list[str] = []
+        for name in dict.fromkeys(ref.model for ref in self.bindings.values()):
+            label = getattr((models or {}).get(name), "label", None)
+            if not (isinstance(label, str) and label.strip()):
+                label = default_label(name)
+            if label not in labels:
+                labels.append(label)
+        return labels
+
     def render_page(self, report: Report, *, strip_exploration: bool):
         """Render a carrier *report* through this package's template.
 
@@ -951,6 +964,10 @@ class TemplatePackage:
                 f"data-tb-stage=\"exploration\", which this build strips. "
                 f"A hand-typed number cannot ship as if it were checked."
             )
+        # The kicker a masthead shows when its author wrote none: the model's
+        # label. After the lint: the label is the model's, not typed prose.
+        page = _with_kicker(page, " · ".join(self.model_labels(models)),
+                            app=self.app_source is not None)
 
         # Server-side render (SSR): fill each figure's value/table/chart with the
         # resolved data at build, so a reader with JavaScript off still sees the
@@ -1008,21 +1025,20 @@ class TemplatePackage:
         # The footer that ends the page (default on). A template may place
         # ONE data-tb-methodology container; otherwise the build adds a
         # <footer class="tb-footer">. Either way, after the author's own
-        # children (their sources), one visible line — who, when, which
-        # model, and that the receipt does not claim the numbers are right —
+        # children (their sources), one visible line — when, which model
+        # (by label), and that the receipt does not claim the numbers are right —
         # then "How these numbers were made" behind a <details>: what the
         # receipt is for and the stated methodology notes. Prose, never a
         # verified claim: no badge, no status, and it never colors a figure.
         # Stated notes are recorded in the manifest (and the receipt block)
         # when present.
-        model_names = sorted({ref.model for ref in self.bindings.values()})
         page, insert_at = _ensure_about_home(page)
         notes = stated_methodology_block(models, lineages)
         measure_notes = self._measure_notes(models)
         if measure_notes:
             notes["measure_notes"] = measure_notes
         notes_html = (_methodology_html(notes, contracts) if notes else "")
-        footer = _footer_html(manifest, model_names, notes_html,
+        footer = _footer_html(manifest, self.model_labels(models), notes_html,
                               app=self.app_source is not None)
         page = page[:insert_at] + footer + page[insert_at:]
         if notes:
@@ -1589,6 +1605,8 @@ class TemplatePackage:
 
         page, _warnings, unplaced = self.render_page(
             report, strip_exploration=False)
+        page = _with_kicker(page, " · ".join(self.model_labels(models)),
+                            app=self.app_source is not None)
         if require_placed:
             self._refuse_unplaced(unplaced)
         try:
@@ -1861,32 +1879,58 @@ def _ensure_about_home(page: str) -> tuple[str, int]:
     return page, insert_at
 
 
-def _footer_html(manifest: ReportManifest, model_names: list[str],
+_MASTHEAD_OPEN = re.compile(
+    r"<(header|div|section)\b[^>]*\bclass=\"[^\"]*\btb-masthead\b[^\"]*\"[^>]*>", re.I)
+
+
+def _with_kicker(page: str, kicker: str, *, app: bool) -> str:
+    """Give the masthead its default kicker, the model's label, when the
+    author wrote none; a kicker the author wrote always wins.
+
+    A template page gets a ``<p class="tb-kicker">`` before the masthead's
+    ``<h1>``, so a reader without JavaScript sees it too. An app page's
+    masthead is drawn by the kit, which reads the label from the app's
+    mount point, ``<div id="tb-app" data-tb-kicker>``.
+    """
+    import html as _html
+
+    if not kicker:
+        return page
+    text = _html.escape(kicker)
+    if app:
+        return page.replace('<div id="tb-app">',
+                            f'<div id="tb-app" data-tb-kicker="{text}">', 1)
+    head = _MASTHEAD_OPEN.search(page)
+    if head is None:
+        return page
+    h1 = re.compile(r"<h1\b", re.I).search(page, head.end())
+    if h1 is None:
+        return page
+    before = page[head.end():h1.start()]
+    if "tb-kicker" in before or f"</{head.group(1).lower()}>" in before.lower():
+        return page
+    return (page[:h1.start()] + f'<p class="tb-kicker">{text}</p>\n'
+            + page[h1.start():])
+
+
+def _footer_html(manifest: ReportManifest, model_labels: list[str],
                  notes_html: str = "", app: bool = False) -> str:
     """The footer's build-written part: one visible line, then "How these
     numbers were made" behind a ``<details>``.
 
-    The line says who built the file, when, from which model, and that the
-    receipt does not claim the numbers are right. The disclosure holds what
-    the receipt is for, the app note, and the stated methodology appendix.
-    Locked honesty: never says verified, reproduces, or correct.
+    The line says when the file was built, from which model (by its label),
+    and that the receipt does not claim the numbers are right. Who built it
+    is tooling provenance: the receipt's About this build carries it, not
+    the page. The disclosure holds what the receipt is for, the app note,
+    and the stated methodology appendix. Locked honesty: never says
+    verified, reproduces, or correct.
     """
     import html as _html
 
-    who = (manifest.rendered_by or "").strip()
-    if who == "unknown":
-        who = ""
     when = _about_when(manifest.rendered_at)
-    stamp = "Built"
-    if who:
-        stamp += f" by {_html.escape(who)}"
-    if when:
-        stamp += f" on {_html.escape(when)}"
-    if model_names:
-        label = "model" if len(model_names) == 1 else "models"
-        names = ", ".join(_html.escape(n) for n in model_names)
-        stamp += f" from the {label} {names}"
-    line = (stamp + ". " if stamp != "Built" else "")
+    parts = [f"Built {_html.escape(when)}"] if when else []
+    parts += [_html.escape(label) for label in model_labels]
+    line = (" · ".join(parts) + ". " if parts else "")
     line += "The receipt does not claim the numbers are right."
 
     inner = [
@@ -1908,13 +1952,15 @@ def _footer_html(manifest: ReportManifest, model_names: list[str],
 
 
 def _about_when(rendered_at: str) -> str:
-    """UTC calendar day from an ISO stamp, or empty when unusable."""
+    """UTC calendar day from an ISO stamp ("18 Oct 2026"), or empty when
+    unusable."""
     if not rendered_at:
         return ""
     try:
         # Accept trailing Z; date-only is enough for a reader.
         stamp = rendered_at.replace("Z", "+00:00")
-        return datetime.fromisoformat(stamp).date().isoformat()
+        day = datetime.fromisoformat(stamp).date()
+        return f"{day.day} {day.strftime('%b %Y')}"
     except ValueError:
         return rendered_at[:10] if len(rendered_at) >= 10 else ""
 

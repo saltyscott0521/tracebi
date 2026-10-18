@@ -8,7 +8,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="SaaS metrics"
+        <Masthead
           title={<><Value binding="top_plan" cell="dim_plan.plan" id="head-top-plan" /> leads
             ending MRR</>}>
           SaaS MRR dashboard: recurring revenue, customers and churn, month by month.

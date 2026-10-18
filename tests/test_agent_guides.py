@@ -187,6 +187,37 @@ class TestTheDesignSystemIsTaught:
             assert opens and ends, f"{name} is not on the frame (masthead and footer)"
 
 
+class TestDescriptionsAreForTheReader:
+    """A report's description is the library's second line, the first thing a
+    reader scans. It was written for agents once ("an app (app.jsx) whose every
+    number is a kit figure"); this keeps how a page is built out of it."""
+
+    # Each of these once stood in a shipped description.
+    _BUILD_TALK = re.compile(
+        r"app\.jsx|template\.html|\bkit\b|bound figure|house CSS|receipt names it|"
+        r"editorial report|stamped binding|React lane|as an app\b|scaffolded by|"
+        r"re-runs the pandas|kitchen-sink|\w+_model\b", re.I)
+
+    def test_no_shipped_description_says_how_the_page_is_built(self):
+        from tracebi.cli import _report_json_text
+
+        found = {}
+        roots = [_REPO / "examples", _REPO / "tracebi" / "_scaffold",
+                 _REPO / "tracebi" / "web" / "demo_app"]
+        for root in roots:
+            for path in [*root.rglob("report.json"), *root.rglob("init_sample_report.json")]:
+                found[str(path.relative_to(_REPO))] = json.loads(
+                    path.read_text(encoding="utf-8")).get("description", "")
+        query = {"fact": "f", "measures": ["revenue"], "dimensions": ["dim_region.region"]}
+        for look in (None, {}):
+            found[f"new-report (look={look})"] = json.loads(
+                _report_json_text("T", "sales_model", query, look=look))["description"]
+        assert len(found) >= 15
+        for where, text in found.items():
+            hit = self._BUILD_TALK.search(text)
+            assert not hit, f"{where}: the description says {hit.group(0)!r}"
+
+
 class TestLargeDetailArtifactIsTaught:
     """The discoverability definition of done for the Parquet embed.
 

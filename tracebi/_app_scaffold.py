@@ -29,8 +29,9 @@ const VIEWS = { Overview: LayoutDashboard, Detail: Table2 };
 _APP_HEADERS = {
     "left": '''
 function Header() {
-  // The masthead: the title, what this page is for, when it was built and the
-  // verdict chip (from the file's receipt). period="…" names what the numbers cover.
+  // The masthead: the kicker (the model's label unless you pass kicker="…"), the
+  // title, what this page is for, when it was built and the verdict chip (from
+  // the file's receipt). period="…" names what the numbers cover.
   return <Masthead title={TITLE}>One line on what this page is for.</Masthead>;
 }
 ''',

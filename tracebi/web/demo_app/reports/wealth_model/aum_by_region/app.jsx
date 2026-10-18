@@ -7,7 +7,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
-        <Masthead kicker="Wealth" title="Assets under management, by region">
+        <Masthead title="Assets under management, by region">
           Market value by the branch that manages the account.
         </Masthead>
 

@@ -89,8 +89,8 @@ filterable, exactly as in a template.
 | `<Segmented options value onChange label>` | One choice of a few — a view, a period. Use it to pick *which* figure shows: one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its receipt. |
 | `useUrlState(key, initial)` | `useState` kept in the URL (`#view=Detail&period=YTD`): a reload or a shared link opens where the reader was. |
 | `usePrinting()` | `true` while the page prints (the browser's Ctrl+P, and `tracebi report build --format pdf`). An app with views renders every one then, so the PDF holds the whole report: `{printing ? <><Overview /><Detail /></> : <View />}`. Give navigation `print:hidden`. |
-| `<Masthead title kicker period mark>` | Opens the page: an optional `mark` (a node; or leave it empty and size `.tb-masthead-mark` in `style.css`), a `kicker`, the `title` (a string, or text with `<Value>`s in it: `title={<>Marked at <Value binding="kpis" cell="mark" /> of cost</>}`), the standfirst as its children, and a meta line with the `period` (presentation, `"Q3 2026"`), the build time and the verdict chip, which the runtime fills from the file itself (`not-checked` on a built file, `draft` on a preview; never green on its own say-so). Other props go on the `<header>`: `data-tb-title="center|banner|nav"`. A literal `title` is checked for typed numbers like the app's text; `kicker` and `period` are labels. |
-| `<Footer />` | Where the build's footer goes: one line on who built the file, from which model, and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's `<main>`); without it the footer follows the app. |
+| `<Masthead title kicker period mark>` | Opens the page: an optional `mark` (a node; or leave it empty and size `.tb-masthead-mark` in `style.css`), a `kicker` (unset, the model's label; `kicker={null}` shows none), the `title` (a string, or text with `<Value>`s in it: `title={<>Marked at <Value binding="kpis" cell="mark" /> of cost</>}`), the standfirst as its children, and a meta line with the `period` (presentation, `"Q3 2026"`), the build time and the verdict chip, which the runtime fills from the file itself (`not-checked` on a built file, `draft` on a preview; never green on its own say-so). Other props go on the `<header>`: `data-tb-title="center|banner|nav"`. A literal `title` is checked for typed numbers like the app's text; `kicker` and `period` are labels. |
+| `<Footer />` | Where the build's footer goes: one line on when the file was built, from which model (by its label), and that the receipt does not claim the numbers are right, then "How these numbers were made" behind a disclosure. Put it at the end of the main column (a sidebar layout's `<main>`); without it the footer follows the app. |
 | `<Built>` | When the file was built, from its receipt (`<Masthead>` already shows it). |
 | `tb-page`, `tb-grid` + `tb-span-4/6/8/12` | The page measure (`<main className="tb-page space-y-8 px-6 py-8">`, 1,200px) and the 12-column grid (`<div className="tb-grid"><section className="tb-card tb-span-8">…`). |
 
@@ -143,7 +143,7 @@ export default function App() {
         ))}
       </aside>
       <main className="min-w-0 flex-1 space-y-8 px-6 py-8">
-        <Masthead kicker="SaaS metrics" title="Recurring revenue" period="Monthly">
+        <Masthead title="Recurring revenue" period="Monthly">
           Ending MRR and customers, month by month.
         </Masthead>
         {view === "Overview" ? (

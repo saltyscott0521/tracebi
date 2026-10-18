@@ -13,8 +13,9 @@ export default function App() {
       {/* tb-page is the page measure (1,200px); space-y-8 the rhythm between sections. */}
       <main className="tb-page space-y-8 px-6 py-8">
         {/* The masthead: what this page is, the period its numbers cover, and when
-            it was built with the verdict chip (both from the file's receipt). */}
-        <Masthead kicker="Orders" title="Sample Dashboard" period="Every order date">
+            it was built with the verdict chip (both from the file's receipt). The
+            kicker above the title is the model's label unless you pass kicker="…". */}
+        <Masthead title="Sample Dashboard" period="Every order date">
           Revenue, orders and units across every region.
         </Masthead>
 

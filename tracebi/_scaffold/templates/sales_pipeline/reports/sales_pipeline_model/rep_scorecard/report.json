@@ -1,7 +1,8 @@
 {
   "name": "Sales Rep Scorecard",
   "author": "tracebi init --template sales-pipeline",
-  "description": "Which rep leads win rate, then open pipeline and win rate by rep and by region. Win rate is won deals over closed deals, a ratio of totals.",
+  "description": "Which rep leads win rate, then open pipeline, won value and win rate by rep and by region.",
+  "notes": "Win rate is won deals over closed deals, a ratio of totals.",
   "data": {
     "kpis": {
       "model": "sales_pipeline_model",
