@@ -95,7 +95,7 @@ def _pipeline_yaml_template_text(title: str) -> str:
 #
 # A pipeline: run a phase-1 transform, then rebuild the reports. Scaffolded by
 # `tracebi new-pipeline` on {today}. It only NAMES things; the transform stays
-# Python. Run it with `tracebi run-pipeline {slug}`, or with Refresh data on the model's Overview.
+# Python. Run it with `tracebi run-pipeline {slug}`, or with Refresh data on the model's Transform tab.
 #
 # If a pipelines/{slug}.py exists too, the Python file wins (a pipeline is one file).
 

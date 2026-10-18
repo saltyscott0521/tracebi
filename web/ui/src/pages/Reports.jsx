@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, forwardRef } from 'react'
-import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -15,15 +15,13 @@ import ReceiptFrame from '../components/ReceiptFrame'
 import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
 import { ReportLineage } from '../components/ReportLineage'
-import {
-  AttentionStrip, attentionItems, reviewNotes, when,
-} from '../components/Attention'
+import { when } from '../components/Attention'
 import { VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
 import { stamp, useLineFacts } from '../components/TheLine'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
 import {
-  Moved, useModelLabel, useReportModels, useOpenReport, useNavMenu, PREVIEW_QUERY,
+  Moved, useModelLabel, useOpenReport, useNavMenu,
 } from '../components/Scope'
 import {
   PAGES, dataPath, folderOf, libraryPath, movedTo, reportBelongsToModel, reportModels, reportPagePath,
@@ -965,241 +963,6 @@ export function ReportPage({ name }) {
     )
   }
   return <OpenReport key={name} report={report} model={reportModels(report)[0] || ''} />
-}
-
-// ── The Reports stage: the list, and the last build of the one picked ───────
-
-// The width a report is laid out at in the preview; it is shrunk to the pane.
-const PREVIEW_W = 1100
-// The preview shows the top of the page at most this tall; Open reads the rest.
-const PREVIEW_MAX = 520
-
-// The last build as readers see it, scaled to fit and read-only.
-function PreviewFrame({ html, title, verdict }) {
-  const box = useRef(null)
-  const frame = useRef(null)
-  const [scale, setScale] = useState(0.6)
-  const [height, setHeight] = useState(480)
-
-  useEffect(() => {
-    const el = box.current
-    const fit = () => { if (el.clientWidth) setScale(el.clientWidth / PREVIEW_W) }
-    fit()
-    if (typeof ResizeObserver === 'undefined') return undefined
-    const observer = new ResizeObserver(fit)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
-  // The frame is as tall as the report, at the width it is laid out at; the
-  // sandboxed report says how tall that is.
-  useEffect(() => listenToFrame(frame.current, m => {
-    if (m.type === 'size' && m.height) setHeight(m.height)
-  }), [html])
-  // Its chip says what the list beside it says.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => tellVerdict(frame.current, verdict), [html, verdict?.state, verdict?.detail])
-
-  const full = height * scale
-  return (
-    <div ref={box} className={`rprev__box${full > PREVIEW_MAX ? ' rprev__box--clipped' : ''}`}
-         style={{ height: Math.min(full, PREVIEW_MAX) }}>
-      <iframe ref={frame} srcDoc={html} sandbox={FRAME_SANDBOX} title={title} tabIndex={-1} className="rprev__frame"
-              style={{ width: PREVIEW_W, height, transform: `scale(${scale})` }} />
-    </div>
-  )
-}
-
-function BuiltPreview({ name, verdict }) {
-  const built = useBuiltReport(name)
-  if (built.isLoading) return <div className="rp__none"><Spinner /> Opening the last build…</div>
-  if (built.error) return <ErrorDetail error={built.error} />
-  if (!built.data) return null
-  return (
-    <>
-      <PreviewFrame html={built.data.html} title={`Preview of ${name}`} verdict={verdict} />
-      <p className="rprev__note">The last build, as readers see it. Open it to trace any number.</p>
-    </>
-  )
-}
-
-// The files that define the report, read-only; a copy of them to edit.
-function ConfigView({ report }) {
-  return (
-    <div className="rconfig">
-      <div className="rconfig__code"><ReportSource name={report.name} /></div>
-      <div className="rconfig__foot"><EditAsDraft kind="reports" path={report.name} /></div>
-    </div>
-  )
-}
-
-// Worst first: the state the summary sentence leads with.
-const WORST = ['does-not-reproduce', 'needs-a-look', 'not-checked', 'reproduces']
-const COUNTED = {
-  'needs-a-look': n => `${n} ${n === 1 ? 'needs' : 'need'} a look`,
-  'does-not-reproduce': n => `${n} ${n === 1 ? 'does' : 'do'} not reproduce`,
-  'not-checked': n => `${n} not checked`,
-}
-
-// The one sentence under the list that says whether the built reports still
-// hold, led by the chip of the worst of them. The good news only when it is
-// true; otherwise how many of each.
-function ReceiptLine({ reports, builds, checkedAt }) {
-  const built = reports.filter(r => builds[r.name])
-  if (!built.length) return 'No report here is built yet.'
-  const when = checkedAt ? ` (checked ${stamp(new Date(checkedAt).toISOString())})` : ''
-  const count = {}
-  built.forEach(r => {
-    const { state } = verdictOf({ report: r, build: builds[r.name] })
-    count[state] = (count[state] || 0) + 1
-  })
-  const held = count.reproduces || 0
-  const lead = <Verdict state={WORST.find(st => count[st])} size="sm" />
-  if (held === built.length) {
-    return <>{lead} {built.length === 1
-      ? `The built report reproduces${when}.`
-      : `All ${built.length} built reports reproduce${when}.`}</>
-  }
-  const said = WORST.filter(st => COUNTED[st] && count[st]).map(st => COUNTED[st](count[st]))
-  return <>{lead} {`${held} of ${built.length} built reports reproduce${when}. ${said.join('; ')}.`}</>
-}
-
-function ReportRow({ report, verdict, builtAt, selected, onPick }) {
-  const words = scheduleWords(report.schedule)
-  return (
-    <li>
-      <button type="button" className="rrow" aria-pressed={selected} onClick={onPick}>
-        <span className="rrow__main">
-          <span className="rrow__name" title={report.name}>{report.name.slice(report.name.lastIndexOf('/') + 1)}</span>
-          {report.description && <span className="rrow__desc" title={report.description}>{report.description}</span>}
-        </span>
-        <span className="rrow__side">
-          {verdict && <Verdict state={verdict.state} detail={verdict.detail} size="sm" />}
-          {builtAt && <span className="rrow__built">Built {builtAt}</span>}
-          {words && <span className="rrow__sched">{words.short}</span>}
-        </span>
-      </button>
-    </li>
-  )
-}
-
-// The pane beside the list: the picked report's header, and its last build
-// (Preview) or the files that define it (Config).
-function ReportView({ report, desk, deskFailed, build, canBuild, view, onView }) {
-  const buildRun = useReportBuild(report.name)
-  const words = scheduleWords(report.schedule)
-  const verdict = desk ? verdictOf({ report, build }) : null
-  const label = report.name.slice(report.name.lastIndexOf('/') + 1)
-  return (
-    <div className="rview">
-      <div className="rview__head">
-        <div className="rview__id">
-          <div className="rview__name" title={report.name}>{label}</div>
-          <div className="rview__built">
-            {build && <span>Built {stamp(build.built_at)}</span>}
-            {verdict && <Verdict state={verdict.state} detail={verdict.detail} size="sm" />}
-            {words && <span>{words.long}</span>}
-          </div>
-        </div>
-        <div className="seg" role="group" aria-label="Show">
-          {[['preview', 'Preview'], ['config', 'Config']].map(([key, text]) => (
-            <button key={key} type="button" aria-pressed={view === key} onClick={() => onView(key)}>{text}</button>
-          ))}
-        </div>
-        <Link to={reportPagePath(report.name)} className="open-btn">
-          Open
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4"
-               strokeLinecap="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8" /></svg>
-        </Link>
-      </div>
-      {view === 'config' ? <ConfigView report={report} /> : (
-        <div className="rview__body">
-          {desk && !build && <NeverBuilt build={buildRun} canBuild={canBuild} />}
-          {(build || deskFailed) && <BuiltPreview name={report.name} verdict={verdict} />}
-          {!desk && !deskFailed && <SkeletonCard />}
-        </div>
-      )}
-    </div>
-  )
-}
-
-const FILTERS = [['all', 'All'], ['look', 'Needs a look'], ['scheduled', 'Scheduled']]
-
-// A model's reports on its Data page: the list on the left, and the one picked
-// on the right (?r=<name>). Without room for a preview a row opens the report.
-export function ReportsStage({ model }) {
-  const { data, isLoading } = useReports()
-  const { data: desk, dataUpdatedAt, isError: deskFailed } = useDesk()
-  const { data: me } = useMe()
-  const canBuild = me?.role === 'analyst' || me?.role === 'admin'
-  const narrow = useNarrow(PREVIEW_QUERY)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState('all')
-  const [view, setView] = useState('preview')
-
-  const reports = (data || []).filter(r => reportBelongsToModel(r, model))
-  const modelsOf = useReportModels()
-  const notes = reviewNotes(attentionItems(desk, [], modelsOf)).filter(it => it.models.includes(model))
-  const builds = Object.fromEntries((desk?.builds || []).map(b => [b.report, b]))
-  // Before the desk has answered nothing is claimed about any build.
-  const verdictFor = r => (desk ? verdictOf({ report: r, build: builds[r.name] }) : null)
-  const needsLook = r => { const v = verdictFor(r); return v?.state === 'never-built' || needsAction(v) }
-  // How many each filter would show (Needs a look is not known until the desk answers).
-  const count = key => (key === 'look' ? (desk ? reports.filter(needsLook).length : null)
-    : key === 'scheduled' ? reports.filter(r => r.schedule).length : null)
-  const keep = { all: () => true, look: needsLook, scheduled: r => !!r.schedule }[filter]
-  const needle = query.toLowerCase()
-  const listed = reports.filter(r => keep(r) && (
-    r.name.toLowerCase().includes(needle) || (r.description || '').toLowerCase().includes(needle)))
-
-  // The URL says which is picked (?r=name), so a link can name one; none named,
-  // the first.
-  const picked = searchParams.get('r')
-  const selected = narrow ? null : reports.find(r => r.name === picked) || reports[0]
-  const navigate = useNavigate()
-  const pick = name => (narrow ? navigate(reportPagePath(name))
-    : setSearchParams(new URLSearchParams({ r: name }), { replace: true }))
-
-  if (isLoading) return <SkeletonCard />
-  if (!reports.length) {
-    return <Empty message={`No reports for ${model} yet. Reports for it live in reports/${model}/: scaffold one with tracebi new-report.`} />
-  }
-  return (
-    <>
-      <AttentionStrip items={notes} />
-      <div className={narrow ? 'rsplit rsplit--list' : 'rsplit'}>
-        <div className="rsplit__list">
-          <div className="rsplit__find">
-            <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" label="Search reports"
-                         style={{ padding: 0, borderBottom: 0 }} />
-            <div className="rsplit__chips" role="group" aria-label="Show">
-              {FILTERS.map(([key, text]) => (
-                <button key={key} type="button" className="rsplit__chip" aria-pressed={filter === key}
-                        onClick={() => setFilter(key)}>
-                  {text}{count(key) != null && ` (${count(key)})`}
-                </button>
-              ))}
-            </div>
-          </div>
-          <ul className="rsplit__rows">
-            {listed.map(r => (
-              <ReportRow key={r.name} report={r} verdict={verdictFor(r)}
-                         builtAt={builds[r.name] ? stamp(builds[r.name].built_at) : null}
-                         selected={narrow ? undefined : selected?.name === r.name}
-                         onPick={() => pick(r.name)} />
-            ))}
-          </ul>
-          {!listed.length && <p className="rsplit__none">No report matches. Clear the search or pick “All”.</p>}
-          {desk && <p className="rsplit__receipt"><ReceiptLine reports={reports} builds={builds} checkedAt={dataUpdatedAt} /></p>}
-        </div>
-        {selected && (
-          <ReportView key={selected.name} report={selected} desk={desk} deskFailed={deskFailed}
-                      build={builds[selected.name]} canBuild={canBuild} view={view} onView={setView} />
-        )}
-      </div>
-    </>
-  )
 }
 
 // How a report is authored, from the reports API's `form` field: a JSON spec

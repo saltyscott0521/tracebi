@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines } from '../api'
-import { PAGES, page, dataPath, reportPagePath, pipelineModels } from '../nav'
+import { PAGES, page, dataPath, mapPath, reportPagePath, pipelineModels } from '../nav'
 
 // Static page destinations — always available, even before data loads. The
 // four places, the pages inside them, then help.
@@ -9,7 +9,7 @@ const PAGES_ALL = [
   ...PAGES.map(p => ({ label: p.label, path: p.path, kind: 'page', sub: p.sub })),
   { label: 'History', path: '/runs', kind: 'page', sub: page('runs').sub },
   { label: 'Verify a file', path: '/verify', kind: 'page' },
-  { label: 'Map', path: '/data/map', kind: 'page', sub: 'Every model as one picture: what feeds what.' },
+  { label: 'Map', path: mapPath(), kind: 'page', sub: 'Every model as one picture: what feeds what.' },
   { label: 'Get started', path: '/getting-started', kind: 'page' },
   { label: 'Docs', path: '/handbook', kind: 'page' },
 ]

@@ -29,7 +29,7 @@ model.add_fact("fact_holdings", table_name="fact_holdings",                     
 - **In the app**, pick a model and open its **Model** stage: the header says
   *Defined in* `models/portfolio_model.yaml` and *Data in*
   `data/warehouse.duckdb`, and whether the file is there yet and how big it is.
-  The Model stage's **Storage** tab lists each connector, what kind of place it is, and
+  The Model tab's **Storage** view lists each connector, what kind of place it is, and
   exactly which tables it serves. The **Sources** list (`/sources`; a source is
   a connector) is the same list
   across all models, with the models that use each one.

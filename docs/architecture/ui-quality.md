@@ -77,7 +77,7 @@ Checked by the script (rule name in brackets):
   `[model-without-reports]`. (The live demo showed three models with none:
   see the discovery fix under Rules learned.)
 - **Every model has a pipeline** `[model-without-pipeline]`: something its
-  Refresh page can run. A pipeline belongs to the models it names
+  Transform tab can run. A pipeline belongs to the models it names
   (`runner.models`), else the one `model_pipeline` stamped, else its own name.
 - **The look** ([[design-direction]]): Hanken Grotesk loads `[theme-font-loaded]`
   `[theme-font]`; the brand is cobalt and stays in its blue family, and other

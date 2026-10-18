@@ -489,7 +489,7 @@ edits the report; you do. `tracebi report snapshot <name>` shares a draft (explo
 kept, review banner, no manifest — `verify` refuses it by name). Publishing
 is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
 the built `output/<name>.html` + receipt is the deliverable, and the package
-is already served in the app, on its model's Overview — there is no separate publish step.
+is already served in the app, in the library under its model — there is no separate publish step.
 A PDF (`tracebi report build <name> --format pdf`, or
 `build_report(..., format="pdf")`) is a print of that built HTML and carries
 no receipt. A pdf build returns `pdf_path`; pass that as
@@ -531,8 +531,8 @@ line, refusals included — so the human watches you work
 (MCP: `workbench_state` with no `report` returns the feed and pins, plus
 the warehouse's tables with row counts and contract status as sinks land,
 and the models' star schemas taking shape as you edit `models/`). The human
-browses the warehouse and the model in the app's Transform and Model stages (on
-the model's Overview); `tracebi dev --classic` lays the Warehouse, Models and
+browses the warehouse and the model in the app's Transform and Model tabs (on
+the model's Data page); `tracebi dev --classic` lays the Warehouse, Models and
 Packages
 panels out beside the feed on one page. Interrogate in the
 open — excerpts and visuals in the app, not buried in chat — then

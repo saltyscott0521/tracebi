@@ -80,8 +80,9 @@ function HowItFits() {
         in its folder, each saying whether its numbers still reproduce; pick a model to narrow the
         list, and open a report to read it with its receipt. <Link to="/ask">Ask</Link> puts a
         question to one model and shows the query behind the answer. <Link to="/data">Data</Link> is
-        how the numbers are made: each model drawn as its transform, the model itself and the
-        reports that read it, with every model as one picture on its Map.{' '}
+        how the numbers are made: the models, one row each (or every model as one picture on the
+        Map), and a page per model that leads with its line, transform → model → reports, then
+        tabs for the model, the transform that refreshes it, its sources and its runs.{' '}
         <Link to="/review">Review</Link> holds what waits on a person: drafts and requests to
         publish, the History of what ran, and Verify a file, which checks a report file from anywhere.
       </p>

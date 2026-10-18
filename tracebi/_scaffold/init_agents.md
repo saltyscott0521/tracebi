@@ -443,7 +443,7 @@ body, the same text as `tracebi knowledge <slug>`).
    `workbench_state` (no `report`) lists the warehouse's tables, row counts,
    column profiles, and sink-contract status as transforms land, and the
    star schema taking shape as you edit `models/`; the human sees them in
-   the app's Transform and Model stages (`tracebi dev --classic` lays
+   the model's Transform and Model tabs on Data (`tracebi dev --classic` lays
    them out beside the feed on one page). Column names of a sunk
    table come from the MCP `describe_table` tool (or `tracebi warehouse
    tables --table T`) — connector metadata, no row scan. A connector
@@ -509,7 +509,7 @@ body, the same text as `tracebi knowledge <slug>`).
    The build strips exploration, validates every figure claim against the
    embedded bindings, and writes the receipt. `output/<name>.html` (+ its
    `.manifest.json`) is the deliverable to hand over or commit — and the
-   package is already served live in the app (`tracebi serve`), on its model's Overview;
+   package is already served live in the app (`tracebi serve`), in the library under its model;
    there is no separate publish step. The gateway's
    `build_report(..., format="xlsx")` also writes `<name>.xlsx` in the
    same output directory. The spreadsheet carries no receipt and is not

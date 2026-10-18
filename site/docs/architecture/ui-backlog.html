@@ -86,8 +86,7 @@
 bottom with the change that closed them.</p>
 <h2 id="open">Open</h2>
 <ol>
-<li><strong>Words a reader doesn't use</strong>: "semantic contract", "DuckDBConnector"
-   as a badge, "STEP / never run" in the Refresh flow.</li>
+<li><em>Closed by D-1 (see Done).</em></li>
 <li><strong>"Checks stale" items name no model</strong>: a stale sink check shows only
     under All models. Attribute warehouse tables to the models that read them.</li>
 <li><strong>Bundle is 1.1 MB of JS.</strong> Split routes (React Flow, Markdown, Recharts
@@ -132,9 +131,7 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
 <li><strong>Re-run the ui-audit baselines</strong>: the committed findings still name the
     addresses before R-1 (<code>/m/&lt;model&gt;/…</code>, <code>/reports?r=</code>), so item 13 cannot
     be retriaged against them.</li>
-<li><strong>The Data page's Reports-stage preview keeps its Preview/Config switch</strong>
-    (R-4 moved Config into Files on the report page); Step 3 (D-1) retires
-    that preview.</li>
+<li><em>Closed by D-1 (see Done).</em></li>
 <li><strong>Docs still say reports are served "on the model's Overview"</strong>: about
     nine lines in <code>CLAUDE.md</code>, <code>the-three-phase-workflow.md</code>,
     <code>report-json.md</code>, <code>analyst-guide.md</code> and <code>notebook-guide.md</code> (and the
@@ -155,11 +152,25 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
 </ol>
 <h2 id="done">Done</h2>
 <ul>
-<li><strong>Model switcher as the frame of the app</strong> — one control at the top of the
+<li>
+<p><strong>Data is one page per model</strong> (D-1): the line as its header (three
+  stations, the warehouse file and the measures between them, the reports'
+  verdicts as chip counts), then tabs Model · Transform · Sources · Runs;
+  <code>/data</code> lists the models one row each, and the Map is its picture view
+  (<code>/data?view=map</code>) drawn with the line's nodes. Refresh data is the
+  Transform tab's one primary action, and it and every run button render for
+  an admin only. Closed item 1 ("DuckDBConnector" is "DuckDB file", "STEP /
+  never run" is gone, sink checks read "checks passed when last written") and
+  the Reports-stage preview with its Preview/Config switch (retired: the
+  Reports station opens the library).</p>
+</li>
+<li>
+<p><strong>Model switcher as the frame of the app</strong> — one control at the top of the
   sidebar narrows every page (Data model, Explore, Refresh, Reports, Sources,
   Runs) to a model; <code>/m/&lt;model&gt;/&lt;page&gt;</code> and an all-models <code>/&lt;page&gt;</code>; the last
   pick is remembered; old addresses redirect. "Contract" is "Data model"
-  again. Removed the dead nav code from earlier designs.</li>
+  again. Removed the dead nav code from earlier designs.</p>
+</li>
 <li><strong>"You are here" on every page</strong> <code>[nav-you-are-here]</code> — every frame page
   marks its sidebar entry.</li>
 <li><strong>Unknown URLs render a real "Page not found"</strong> <code>[blank-page]</code>.</li>

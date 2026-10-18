@@ -129,9 +129,9 @@ your peril):
 
 | Directory | File convention | Result |
 |---|---|---|
-| `models/` | `model = DataModel(...)` variable | the model's **Data** page (Model stage) + **Ask** |
-| `pipelines/` | `runner = PipelineRunner(...)` variable | the **Transform** stage |
-| `reports/` | a `<name>/` **artifact package** (current lane; shadows a same-named `.json` spec), a `.json` `ReportSpec`, or a `@register.report("name")` factory | the **Reports** stage of its model |
+| `models/` | `model = DataModel(...)` variable | the model's **Data** page (Model tab) + **Ask** |
+| `pipelines/` | `runner = PipelineRunner(...)` variable | the model's **Transform** tab on **Data** |
+| `reports/` | a `<name>/` **artifact package** (current lane; shadows a same-named `.json` spec), a `.json` `ReportSpec`, or a `@register.report("name")` factory | **Reports** (the library), under its model |
 | `requests/` | any `.py` / `.ipynb` with `run()` — **deprecated, removed in 0.8** | **Requests** page (through 0.7) |
 
 **Or register explicitly** (in your app module's `registry.py`, or the notebook facade `tracebi.web.register`):
@@ -139,8 +139,8 @@ your peril):
 | Resource | Call | Appears in UI as |
 |---|---|---|
 | Connector | `registry.add_connector(conn)` | the **Sources** list (`/data/sources`) |
-| Model | `registry.add_model(model, default=False)` | a model chip on **Reports**, the model's **Data** page (its Model stage) + **Ask** |
-| Report | `@registry.report("name", description="…")` on a zero-arg factory | the **Reports** stage of its model |
+| Model | `registry.add_model(model, default=False)` | a model chip on **Reports**, the model's **Data** page (its Model tab) + **Ask** |
+| Report | `@registry.report("name", description="…")` on a zero-arg factory | **Reports** (the library), under its model |
 | Scheduled report | `@registry.scheduled("name", cron="0 7 * * *")` | **Reports** + scheduler |
 | Pipeline | `registry.add_pipeline("name", runner)` | the **Transform** stage (DAG, run buttons, a live run log, history) |
 

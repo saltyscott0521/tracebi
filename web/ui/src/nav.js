@@ -3,9 +3,10 @@
 //   Reports  /                  the library: every report, by folder; ?model=<m> filters it
 //            /reports/<name>    one report as a page of its own (<name> is folder/slug)
 //   Ask      /ask               a question of one model; ?model=<m> picks it
-//   Data     /data              the models; /data/<m> one model's line, with its three
-//                               stages at /data/<m>/transform|model|reports;
-//                               /data/map every model as one picture; /data/sources
+//   Data     /data              the models, one row each; ?view=map draws them as one
+//                               picture. /data/<m> one model: its line, then the tabs
+//                               /data/<m>/model|transform|sources|runs (Model at /data/<m>).
+//                               /data/sources every source
 //   Review   /review            drafts and publish requests; /drafts, /runs (History)
 //                               and /verify (Verify a file) are part of it
 //
@@ -35,8 +36,8 @@ const INNER = [
   { key: 'sources', label: 'Sources', sub: 'Where the data is kept: a file, a folder or a database.' },
 ]
 
-// The three stations of a model's line, in the order a number is made.
-export const STAGES = ['transform', 'model', 'reports']
+// The tabs of a model's Data page, in order (the first opens at /data/<m>).
+export const TABS = ['model', 'transform', 'sources', 'runs']
 
 export const page = key => PAGES.find(p => p.key === key) || INNER.find(p => p.key === key)
 
@@ -51,12 +52,15 @@ export const libraryPath = (model = '') => `/${qs({ model })}`
 /** Ask, with *model* picked when one is given. */
 export const askPath = (model = '') => `/ask${qs({ model })}`
 
-/** Data: the models; one model's line; or one stage of it. */
-export function dataPath(model = '', stage = '') {
+/** Data: the models; one model's page; or one tab of it. */
+export function dataPath(model = '', tab = '') {
   if (!model) return '/data'
   const base = `/data/${encodeURIComponent(model)}`
-  return stage ? `${base}/${stage}` : base
+  return tab ? `${base}/${tab}` : base
 }
+
+/** Data with the models drawn as one picture (the Map). */
+export const mapPath = (model = '') => `/data${qs({ view: 'map', model })}`
 
 /** History, narrowed to *model* when one is given. */
 export const historyPath = (model = '') => `/runs${qs({ model })}`
@@ -69,9 +73,9 @@ const PLACE_OF = [
 ]
 
 /**
- * Which place a pathname is in ({page, model, stage}), or null for pages
- * outside the four (Help, an unknown address). On Data, `model` and `stage`
- * say which model's line and which of its stages.
+ * Which place a pathname is in ({page, model, tab}), or null for pages
+ * outside the four (Help, an unknown address). On Data, `model` and `tab`
+ * say which model's page and which of its tabs.
  */
 export function whereAmI(pathname) {
   const path = pathname.replace(/(.)\/+$/, '$1')
@@ -79,10 +83,10 @@ export function whereAmI(pathname) {
   if (!hit) return null
   const scoped = hit[1] === 'data' && path.match(/^\/data\/([^/]+)(?:\/([^/]+))?$/)
   if (scoped && !['map', 'sources'].includes(scoped[1])) {
-    const stage = STAGES.includes(scoped[2]) ? scoped[2] : null
-    return { page: 'data', model: decodeURIComponent(scoped[1]), stage }
+    const tab = TABS.includes(scoped[2]) ? scoped[2] : null
+    return { page: 'data', model: decodeURIComponent(scoped[1]), tab }
   }
-  return { page: hit[1], model: '', stage: null }
+  return { page: hit[1], model: '', tab: null }
 }
 
 /** The folder a report sits in: reports/<folder>/<name>. */
@@ -161,7 +165,8 @@ export function movedTo(pathname, search = '') {
     if (sub === 'explore') return to('/ask', { model })
     if (sub === 'runs') return to('/runs', { model })
     if (sub === 'model' || sub === 'transform') return to(dataPath(model, sub))
-    if (sub === 'refresh' || sub === 'sources') return to(dataPath(model, 'transform'))
+    if (sub === 'refresh') return to(dataPath(model, 'transform'))
+    if (sub === 'sources') return to(dataPath(model, 'sources'))
     return to(dataPath(model))
   }
   const legacy = path.match(/^\/models\/([^/]+)$/)
@@ -172,10 +177,14 @@ export function movedTo(pathname, search = '') {
     if (tab === 'reports') return to('/', { model })
     return to(dataPath(model, tab === 'refresh' ? 'transform' : ''))
   }
+  // A model's Reports stage is the library, narrowed to it (Step 3 retired the stage).
+  const stage = path.match(/^\/data\/([^/]+)\/reports$/)
+  if (stage) return r ? to(reportPagePath(r), {}, ['model']) : to('/', { model: decodeURIComponent(stage[1]) })
+  if (path === '/map' || path === '/data/map') return to('/data', { view: 'map' })
   if (path === '/pipelines') return to(dataPath(q.get('model') || '', q.get('model') ? 'transform' : ''), {}, ['model'])
   const flat = {
     '/reports': '/', '/models': '/data', '/explore': '/ask', '/refresh': '/data',
-    '/sources': '/data/sources', '/connectors': '/data/sources', '/map': '/data/map',
+    '/sources': '/data/sources', '/connectors': '/data/sources',
   }[path]
   return flat ? to(flat) : null
 }

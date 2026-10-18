@@ -5,7 +5,7 @@ import { useDesk, useModels, usePipelines, useReports, useRuns } from '../api'
 import { ago } from '../components/map/states'
 import { checkedVerdict, verdictOf } from '../verdict'
 import { PageHeader, useModelLabel, useReportModels } from '../components/Scope'
-import { dataPath, pipelineModels, reportPagePath } from '../nav'
+import { dataPath, historyPath, pipelineModels, reportPagePath } from '../nav'
 import {
   Badge, Spinner, Empty, ErrorDetail, Verdict, useNarrow,
 } from '../components/Shared'
@@ -146,12 +146,16 @@ function runModels(run, modelsOf, pipelineModelsOf) {
   return []
 }
 
-export default function Runs() {
+/**
+ * History: what ran. On its own page (/runs) a model is a filter; given
+ * *model* it is that model's Runs tab on Data, with no heading of its own.
+ */
+export default function Runs({ model: only }) {
   // The owner alert links here as /runs?kind=schedule&target=<report>, and a
-  // model's line as /runs?model=<model>. The filters are that query string, so
+  // model's page as /runs?model=<model>. The filters are that query string, so
   // the link arrives already selected and a change stays in the URL.
   const [searchParams, setSearchParams] = useSearchParams()
-  const model = searchParams.get('model') || ''
+  const model = only || searchParams.get('model') || ''
   const kind = searchParams.get('kind') || ''
   const target = searchParams.get('target') || ''
   const setFilter = (key, value) => {
@@ -222,14 +226,21 @@ export default function Runs() {
 
   return (
     <>
-      <PageHeader pageKey="runs" model={model}
-        sub={model
-          ? `Every build of ${labelOf(model)}'s reports and every refresh of its data: when, how long, by whom, and whether it reproduced.`
-          : 'What ran, when, how long it took, by whom, and whether it reproduced. Only a receipt that reproduces reads green.'} />
+      {only ? (
+        <div className="dtab__head">
+          <p>Every build of {labelOf(model)}&rsquo;s reports and every refresh of its data: when, how long, by whom,
+            and whether it reproduced. <Link to={historyPath(model)}>Open in History</Link></p>
+        </div>
+      ) : (
+        <PageHeader pageKey="runs" model={model}
+          sub={model
+            ? `Every build of ${labelOf(model)}'s reports and every refresh of its data: when, how long, by whom, and whether it reproduced.`
+            : 'What ran, when, how long it took, by whom, and whether it reproduced. Only a receipt that reproduces reads green.'} />
+      )}
 
       {/* Before anything has run there is nothing to filter. */}
       {(recorded || filtered || model) && <div className="runs__find">
-        {(modelList || []).length > 1 && (
+        {!only && (modelList || []).length > 1 && (
           <div className="library__chips" role="group" aria-label="Model">
             <button type="button" className="rsplit__chip" aria-pressed={!model} onClick={() => setFilter('model', '')}>
               All models

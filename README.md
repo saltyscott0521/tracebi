@@ -74,8 +74,8 @@ report, not a different thing.)
 | Phase | Folder | Artifact | Discovered by the server as |
 |---|---|---|---|
 | ① Transform | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
-| ② Model | `models/` | `DataModel` (a `model` variable) | a model, on its Overview's Model stage |
-| ③ Report | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report, on its model's Overview (Reports stage) |
+| ② Model | `models/` | `DataModel` (a `model` variable) | a model: its page on **Data**, Model tab |
+| ③ Report | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report, in **Reports** (the library), under its model |
 
 ```bash
 cd examples/portfolio_project   # the reference project ships in the repo
@@ -655,12 +655,15 @@ addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them
 - **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
   chart, CSV download, and the *lineage graph of the exact query that ran*.
-- **Model** — a model's Data page, Model stage: table previews with column dtypes
+- **Data** (`/data`) — the models, one row each (its shape, its reports' verdicts as counts,
+  when its data was last refreshed); **Map** draws them as one picture (`/data?view=map`).
+  A model's page (`/data/<model>`) leads with its line (Transform → Model → Reports, the
+  warehouse file and the measures between them), then four tabs: Model, Transform, Sources, Runs.
+- **Model** — a model's Data page, Model tab: table previews with column dtypes
   and full-table CSV export,
   plus an interactive ERD of its facts and dimensions.
-- **Reports** — the library opens a report at `/reports/<name>`; a model's Data page, Reports stage, lists its reports beside the last
-  build of the report you picked (Preview) or the files that define it (Config); a
-  report with no build says so and offers **Build it now**. A report's own page is the
+- **Reports** — the library opens a report at `/reports/<name>` (a model's line links to
+  the library narrowed to it); a report with no build says so and offers **Build it now**. A report's own page is the
   report, full width, as delivered: the app's nav is a slim icon rail on the left, and
   above the report a slim header (a breadcrumb back to the model, its name, the
   verdict chip and, when it asks for a look, why, and when it was built) and one
@@ -676,14 +679,19 @@ addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them
   **Lineage** (where each number came from), **History** (every build of it, with
   its verdict) and **Files** (the report's files, read-only). Failures show the
   full Python traceback.
-- **Transform** — a model's Data page, Transform stage: the medallion chain as a live DAG
-  with per-layer run buttons and run history. **Refresh data** (admin), in the Data page's
-  header, runs the whole pipeline.
-- **Map** (`/data/map`) — every model as one picture: transform → warehouse → model → reports. Open a
-  model to see its measures and the reports that use them.
+- **Transform** — a model's Data page, Transform tab: the medallion chain as a live DAG
+  and a list of steps, its runs and code, and the tables it produces. **Refresh data**, the
+  tab's one primary action, runs the whole pipeline; it and the per-step run buttons are
+  shown only to an admin.
+- **Sources** — a model's Data page, Sources tab: where its data is kept (a DuckDB file, a
+  CSV folder, a database); every source is at `/data/sources`.
+- **Runs** — a model's Data page, Runs tab: History narrowed to the model.
+- **Map** (`/data?view=map`) — every model as one picture: transform → warehouse → model → reports,
+  drawn with the line's nodes and verdict chips. Open a model to see its measures and the
+  reports that use them.
 - **History** (under **Review**) — what ran, when, how long it took, by whom, and whether it
   reproduced, grouped by day (a card per run on a phone). A report run links to the report by
-  its name, a refresh to its model's Transform stage; a failed run reads red, and a column no
+  its name, a refresh to its model's Transform tab; a failed run reads red, and a column no
   row fills (how long, who) is not shown. A report's newest
   build shows the same verdict as the report's own page; every older build reads
   "Not checked". Only a `reproduces` verdict reads green.

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useConnectors } from '../api'
-import { StorageLine, KIND_LABEL } from '../components/Storage'
-import { PageHeader } from '../components/Scope'
+import { StorageLine, sourceKind } from '../components/Storage'
+import { PageHeader, useModelLabel } from '../components/Scope'
 import CodeView from '../components/CodeView'
 import Warehouse from '../components/Warehouse'
 import { dataPath } from '../nav'
@@ -17,6 +17,7 @@ function Section({ label, children }) {
 }
 
 function ConnectorDetail({ c }) {
+  const labelOf = useModelLabel()
   const [code, setCode] = useState(false)
   const [warehouse, setWarehouse] = useState(false)
   if (!c) return (
@@ -34,15 +35,14 @@ function ConnectorDetail({ c }) {
         </span>
       )}>{c.name}</CardTitle>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-        <Badge variant="blue">{c.type}</Badge>
-        {c.storage?.kind && <Badge variant="gray">{KIND_LABEL[c.storage.kind]}</Badge>}
+        <Badge variant="gray" style={{ textTransform: 'none' }} title={c.type}>{sourceKind(c)}</Badge>
       </div>
       <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
       <Section label="Used by">
         {(c.used_by || []).length === 0
           ? <span style={{ color: 'var(--muted)', fontSize: 12.5 }}>No model reads from this connector.</span>
           : (c.used_by || []).map(m => (
-            <Link key={m} to={dataPath(m, 'model')} style={{ marginRight: 12, fontSize: 13 }}>{m}</Link>
+            <Link key={m} to={dataPath(m)} style={{ marginRight: 12, fontSize: 13 }}>{labelOf(m)}</Link>
           ))}
       </Section>
       {warehouse && <Section label="Warehouse"><Warehouse connector={c} /></Section>}
@@ -61,25 +61,32 @@ function ConnectorDetail({ c }) {
   )
 }
 
-export default function Connectors() {
+/**
+ * Where the data is kept: every source (/data/sources), or with *model* only
+ * the ones that model reads (its Sources tab).
+ */
+export default function Connectors({ model }) {
   const { data, isLoading } = useConnectors()
+  const labelOf = useModelLabel()
   const [selected, setSelected] = useState(null)
   const [query, setQuery] = useState('')
 
-  const connectors = data || []
+  const connectors = (data || []).filter(c => !model || (c.used_by || []).includes(model))
   const filtered = connectors.filter(c =>
     c.name.toLowerCase().includes(query.toLowerCase()) ||
-    c.type.toLowerCase().includes(query.toLowerCase())
+    sourceKind(c).toLowerCase().includes(query.toLowerCase())
   )
   // Open on the first source rather than a blank "select one" pane.
   const current = connectors.find(c => c.name === selected) || filtered[0]
 
   return (
     <>
-      <PageHeader pageKey="sources" model="" />
+      {!model && <PageHeader pageKey="sources" model="" />}
 
       {!isLoading && connectors.length === 0 ? (
-        <Empty message="No sources yet. A model declares its own (add_connector); one can also be registered in an app module." />
+        <Empty message={model
+          ? 'This model reads no source, so its tables have no data behind them. Its file names one under connectors.'
+          : 'No sources yet. A model declares its own (add_connector); one can also be registered in an app module.'} />
       ) : (
         <SplitLayout
           left={
@@ -89,16 +96,17 @@ export default function Connectors() {
                 {filtered.length === 0
                   ? <Empty message="No matches." />
                   : filtered.map(c => (
-                    <ListItem
-                      key={c.name}
-                      selected={current?.name === c.name}
-                      onClick={() => setSelected(c.name)}
-                      name={c.name}
-                      sub={KIND_LABEL[c.storage?.kind] || c.type}
-                      meta={(c.used_by || []).length > 0
-                        ? (c.used_by || []).map(m => <Badge key={m} variant="gray" style={{ textTransform: 'none' }}>{m}</Badge>)
-                        : null}
-                    />
+                    <div key={c.name} data-source={c.name}>
+                      <ListItem
+                        selected={current?.name === c.name}
+                        onClick={() => setSelected(c.name)}
+                        name={c.name}
+                        sub={sourceKind(c)}
+                        meta={(c.used_by || []).length > 0
+                          ? (c.used_by || []).map(m => <Badge key={m} variant="gray" style={{ textTransform: 'none' }}>{labelOf(m)}</Badge>)
+                          : null}
+                      />
+                    </div>
                   ))
                 }
               </>

@@ -5,8 +5,7 @@ bottom with the change that closed them.
 
 ## Open
 
-1. **Words a reader doesn't use**: "semantic contract", "DuckDBConnector"
-   as a badge, "STEP / never run" in the Refresh flow.
+1. *Closed by D-1 (see Done).*
 2. **"Checks stale" items name no model**: a stale sink check shows only
     under All models. Attribute warehouse tables to the models that read them.
 3. **Bundle is 1.1 MB of JS.** Split routes (React Flow, Markdown, Recharts
@@ -51,9 +50,7 @@ Left by Step 2 of the UX plan ([[ux-plan-2026-10-17]]), app side:
 14. **Re-run the ui-audit baselines**: the committed findings still name the
     addresses before R-1 (`/m/<model>/…`, `/reports?r=`), so item 13 cannot
     be retriaged against them.
-15. **The Data page's Reports-stage preview keeps its Preview/Config switch**
-    (R-4 moved Config into Files on the report page); Step 3 (D-1) retires
-    that preview.
+15. *Closed by D-1 (see Done).*
 16. **Docs still say reports are served "on the model's Overview"**: about
     nine lines in `CLAUDE.md`, `the-three-phase-workflow.md`,
     `report-json.md`, `analyst-guide.md` and `notebook-guide.md` (and the
@@ -73,6 +70,17 @@ Left by Step 2 of the UX plan ([[ux-plan-2026-10-17]]), app side:
     (History's sticky day header sits under it).
 
 ## Done
+
+- **Data is one page per model** (D-1): the line as its header (three
+  stations, the warehouse file and the measures between them, the reports'
+  verdicts as chip counts), then tabs Model · Transform · Sources · Runs;
+  `/data` lists the models one row each, and the Map is its picture view
+  (`/data?view=map`) drawn with the line's nodes. Refresh data is the
+  Transform tab's one primary action, and it and every run button render for
+  an admin only. Closed item 1 ("DuckDBConnector" is "DuckDB file", "STEP /
+  never run" is gone, sink checks read "checks passed when last written") and
+  the Reports-stage preview with its Preview/Config switch (retired: the
+  Reports station opens the library).
 
 - **Model switcher as the frame of the app** — one control at the top of the
   sidebar narrows every page (Data model, Explore, Refresh, Reports, Sources,

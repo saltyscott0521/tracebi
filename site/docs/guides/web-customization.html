@@ -214,17 +214,17 @@ your peril):</p>
 <tr>
 <td><code>models/</code></td>
 <td><code>model = DataModel(...)</code> variable</td>
-<td>the model's <strong>Data</strong> page (Model stage) + <strong>Ask</strong></td>
+<td>the model's <strong>Data</strong> page (Model tab) + <strong>Ask</strong></td>
 </tr>
 <tr>
 <td><code>pipelines/</code></td>
 <td><code>runner = PipelineRunner(...)</code> variable</td>
-<td>the <strong>Transform</strong> stage</td>
+<td>the model's <strong>Transform</strong> tab on <strong>Data</strong></td>
 </tr>
 <tr>
 <td><code>reports/</code></td>
 <td>a <code>&lt;name&gt;/</code> <strong>artifact package</strong> (current lane; shadows a same-named <code>.json</code> spec), a <code>.json</code> <code>ReportSpec</code>, or a <code>@register.report("name")</code> factory</td>
-<td>the <strong>Reports</strong> stage of its model</td>
+<td><strong>Reports</strong> (the library), under its model</td>
 </tr>
 <tr>
 <td><code>requests/</code></td>
@@ -251,12 +251,12 @@ your peril):</p>
 <tr>
 <td>Model</td>
 <td><code>registry.add_model(model, default=False)</code></td>
-<td>a model chip on <strong>Reports</strong>, the model's <strong>Data</strong> page (its Model stage) + <strong>Ask</strong></td>
+<td>a model chip on <strong>Reports</strong>, the model's <strong>Data</strong> page (its Model tab) + <strong>Ask</strong></td>
 </tr>
 <tr>
 <td>Report</td>
 <td><code>@registry.report("name", description="…")</code> on a zero-arg factory</td>
-<td>the <strong>Reports</strong> stage of its model</td>
+<td><strong>Reports</strong> (the library), under its model</td>
 </tr>
 <tr>
 <td>Scheduled report</td>

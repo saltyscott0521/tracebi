@@ -148,13 +148,13 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.</p
 <td>② Model</td>
 <td><code>models/</code></td>
 <td>a <code>DataModel</code> in a variable named <code>model</code></td>
-<td>listed on the model's Overview, Model stage</td>
+<td>its page on <strong>Data</strong> (<code>/data/&lt;model&gt;</code>), Model tab</td>
 </tr>
 <tr>
 <td>③ Report</td>
 <td><code>reports/</code></td>
 <td>a package (<code>report.json</code> + an <code>app.jsx</code> dashboard or a <code>template.html</code> page), or a JSON spec that compiles into one</td>
-<td>listed on the model's Overview, Reports stage</td>
+<td>listed in <strong>Reports</strong> (the library), under its model</td>
 </tr>
 </tbody>
 </table>
@@ -176,8 +176,8 @@ money stored as strings.</p>
 <p><code>tracebi dev</code> with no report name opens the app's Data page with the
 <strong>project feed</strong>. Any script run while it's open can call
 <code>tracebi.workbench.show(df, note=...)</code> to post an excerpt, and you can leave
-your agent notes there. The warehouse tables are on the model's Transform stage,
-and the Model stage shows the star
+your agent notes there (folded under one line, below the models). The
+warehouse tables are on the model's Transform tab, and the Model tab shows the star
 schema taking shape. Sink-contract status and
 column profiles of the warehouse tables are in the agent's <code>workbench_state</code>,
 and on the classic page (<code>tracebi dev --classic</code>), which lays the warehouse,

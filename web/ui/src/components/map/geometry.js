@@ -9,7 +9,7 @@
 export const MONO_W = 7.8      // one character of a 13px name
 const SANS_W = 5.9             // one character of an 11px label, on average
 export const NAME_LINE = 19    // a 13px name at line-height 1.45
-const KIND_LINE = 13           // an 11px label above it
+const KIND_LINE = 20           // a mark (a verdict chip, a flag) or a fact with the name
 const PAD_X = 12               // node padding, left and right
 const EDGE_GAP = 6             // arrowheads are 7 long; the line stops short of them
 

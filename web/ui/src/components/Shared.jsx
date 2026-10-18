@@ -228,11 +228,12 @@ export function Badge({ variant = 'gray', children, style, title }) {
  * The verdict chip: the app's copy of the artifact's .tb-verdict, the same
  * words and colour rule. *state* is one of verdict.js's states (derive it with
  * verdictOf, never by hand); *detail* says why, as the chip's title. With
- * *onClick* it is a button. `size="sm"` for a dense row.
+ * *onClick* it is a button. `size="sm"` for a dense row. *children* replace the
+ * state's words with a count of it ("6 reproduce"), in the same chip.
  */
-export function Verdict({ state, detail, size, onClick }) {
-  const label = VERDICT_LABEL[state]
-  if (!label) return null
+export function Verdict({ state, detail, size, onClick, children }) {
+  if (!VERDICT_LABEL[state]) return null
+  const label = children ?? VERDICT_LABEL[state]
   const cls = `verdict verdict--${state}${size === 'sm' ? ' verdict--sm' : ''}`
   return onClick
     ? <button type="button" className={cls} title={detail} onClick={onClick}>{label}</button>

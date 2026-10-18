@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
+import { useMe, usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
 import RunLog, { RunList } from '../components/RunLog'
 import CodeView from '../components/CodeView'
 import { pipelineBelongsToModel } from '../nav'
@@ -22,6 +22,11 @@ const TYPE_LABEL = {
   landing: 'Landing', manipulation: 'Manipulation', final: 'Final',
 }
 const STATUS_BADGE = { success: 'green', error: 'red', running: 'amber' }
+
+// The queries that read the warehouse's data. One answered while a transform is
+// writing it can fail the run ("another process holds the warehouse open"), so
+// a run starts only when the page is not in the middle of them.
+const READS = ['warehouse', 'desk', 'models', 'model']
 
 // ── Medallion DAG view ───────────────────────────────────────────────────────
 
@@ -61,11 +66,11 @@ function LayerNode({ data }) {
       </div>
       <div style={{ padding: '7px 13px 9px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-          <span style={{
+          {TYPE_LABEL[data.layer.type] && <span style={{
             fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
             padding: '1px 7px', borderRadius: 20,
             background: `color-mix(in srgb, ${accent} 8%, transparent)`, color: accent, border: `1px solid color-mix(in srgb, ${accent} 23%, transparent)`,
-          }}>{TYPE_LABEL[data.layer.type] || data.layer.type}</span>
+          }}>{TYPE_LABEL[data.layer.type]}</span>}
           {data.layer.schedule && (
             <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
               {data.layer.schedule}
@@ -74,9 +79,11 @@ function LayerNode({ data }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>
-            {data.layer.last_rows_out != null ? `${data.layer.last_rows_out} rows` : 'never run'}
+            {data.layer.last_rows_out != null ? `${data.layer.last_rows_out} rows`
+              : data.layer.last_status === 'failed' ? 'Failed'
+                : data.layer.last_status ? 'Ran' : 'Not run yet'}
           </span>
-          <button
+          {data.onRun && <button
             onClick={e => { e.stopPropagation(); data.onRun(data.layer.name) }}
             disabled={data.running}
             title={`Run ${data.layer.name}`}
@@ -86,7 +93,7 @@ function LayerNode({ data }) {
               background: `color-mix(in srgb, ${accent} 7%, transparent)`, color: accent, border: `1px solid color-mix(in srgb, ${accent} 25%, transparent)`,
               opacity: data.running ? .5 : 1,
             }}
-          >▶ run</button>
+          >▶ run</button>}
         </div>
       </div>
       <Handle type="source" position={Position.Right}
@@ -192,11 +199,20 @@ function LayerHistory({ pipeline, layer }) {
   )
 }
 
-export function PipelineDetail({ pipeline, layers }) {
+/**
+ * One pipeline: its steps as a flow and as a list, its runs and its code.
+ * Only an admin may run it (it writes the warehouse), so only an admin sees a
+ * run button; with no sign-in everyone is admin. *primary*: this is the
+ * pipeline that refreshes the model, and its run is the page's Refresh data.
+ */
+export function PipelineDetail({ pipeline, layers, primary }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
   const { data: runs } = usePipelineRuns(pipeline)
+  const { data: me } = useMe()
+  const admin = !!me && (!me.role || me.role === 'admin')
+  const reading = useIsFetching({ predicate: q => READS.includes(q.queryKey[0]) }) > 0
   const [picked, setPicked] = useState(null)
   const [openStep, setOpenStep] = useState(null)
   // A phone fits the flow into 350px and its run buttons shrink past tapping;
@@ -229,6 +245,8 @@ export function PipelineDetail({ pipeline, layers }) {
     })
   }
   const handleRunAll = () => begin(undefined)
+  // The medallion layers have a type worth a column; a model pipeline's steps do not.
+  const typed = layers.some(l => TYPE_LABEL[l.type] || /Layer$/.test(l.type || ''))
   const handleRunLayer = layer => begin(layer)
   // A run that ends changes what the page says about every step.
   const finished = () => {
@@ -238,16 +256,16 @@ export function PipelineDetail({ pipeline, layers }) {
 
   return (
     <Card className="fade-in">
-      <CardTitle action={
+      <CardTitle action={admin && (
         <Btn
           size="sm"
-          variant="outline"
-          disabled={busy}
+          variant={primary ? 'primary' : 'outline'}
+          disabled={busy || reading}
           onClick={handleRunAll}
         >
-          {busy ? <><Spinner size={12} /> Running…</> : '▶ Run all'}
+          {busy ? <><Spinner size={12} /> Running…</> : primary ? 'Refresh data' : '▶ Run all'}
         </Btn>
-      }>
+      )}>
         {pipeline}
       </CardTitle>
 
@@ -255,28 +273,31 @@ export function PipelineDetail({ pipeline, layers }) {
 
       {tab === 'Flow' && (
         <div className="fade-in">
-          <PipelineDag layers={layers} onRun={handleRunLayer} running={busy} />
+          <PipelineDag layers={layers} onRun={admin ? handleRunLayer : undefined} running={busy} />
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
-            Each step runs after the one it depends on. Status updates every 10 s; run any step from its node.
+            Each step runs after the one it depends on. Status updates every 10 s{admin ? '; run any step from its node' : ''}.
           </p>
         </div>
       )}
 
       {tab === 'Steps' && (
-        <div style={{ overflowX: 'auto' }}>
+        // relative: the sr-only "Actions" header is clipped by this scroller, not left to widen the page
+        <div style={{ overflowX: 'auto', position: 'relative' }}>
           <table>
             <thead>
-              <tr><th>Step</th><th>Type</th><th>Schedule</th><th>Runs after</th><th>Last status</th><th>Rows out</th><th>Last run</th><th><span className="sr-only">Actions</span></th></tr>
+              <tr><th>Step</th>{typed && <th>Type</th>}<th>Schedule</th><th>Runs after</th><th>Last status</th><th>Rows out</th><th>Last run</th><th><span className="sr-only">Actions</span></th></tr>
             </thead>
             <tbody>
               {layers.map(l => (
                 <tr key={l.name}>
                   <td><code style={{ fontSize: 12 }}>{l.name}</code></td>
-                  <td>
-                    <Badge variant={TYPE_BADGE[l.type] || 'gray'}>
-                      {TYPE_LABEL[l.type] || l.type?.replace('Layer', '') || l.type}
-                    </Badge>
-                  </td>
+                  {typed && (
+                    <td>
+                      <Badge variant={TYPE_BADGE[l.type] || 'gray'}>
+                        {TYPE_LABEL[l.type] || l.type?.replace('Layer', '') || l.type}
+                      </Badge>
+                    </td>
+                  )}
                   <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.schedule || '—'}</td>
                   <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.depends_on || '—'}</td>
                   <td>
@@ -294,16 +315,20 @@ export function PipelineDetail({ pipeline, layers }) {
                     {l.last_run ? new Date(l.last_run).toLocaleString() : '—'}
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    <Btn
-                      size="sm"
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => handleRunLayer(l.name)}
-                      aria-label={`Run ${l.name}`}
-                    >
-                      {busy ? <Spinner size={12} /> : '▶ Run'}
-                    </Btn>
-                    {' '}
+                    {admin && (
+                      <>
+                        <Btn
+                          size="sm"
+                          variant="outline"
+                          disabled={busy || reading}
+                          onClick={() => handleRunLayer(l.name)}
+                          aria-label={`Run ${l.name}`}
+                        >
+                          {busy ? <Spinner size={12} /> : '▶ Run'}
+                        </Btn>
+                        {' '}
+                      </>
+                    )}
                     <Btn
                       size="sm"
                       variant="outline"
@@ -343,7 +368,8 @@ export function PipelineDetail({ pipeline, layers }) {
 
 /**
  * The pipeline that rebuilds a model's data, then the reports that read it:
- * the Transform stage of its Overview.
+ * the Transform tab of its Data page. The one made for the model (else the
+ * first) is its Refresh data.
  */
 export default function Pipelines({ model }) {
   const { data, isLoading } = usePipelines()
@@ -358,9 +384,10 @@ export default function Pipelines({ model }) {
       </Card>
     )
   }
+  const own = pipelines.find(p => p.model === model) || pipelines[0]
   return pipelines.map(p => (
     <div key={p.pipeline} style={{ marginBottom: 16 }}>
-      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} />
+      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary={p === own} />
     </div>
   ))
 }

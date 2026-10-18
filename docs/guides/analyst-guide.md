@@ -138,7 +138,7 @@ script in the project), and the notes you leave it. It is the live surface for
 phases ① and ② before any report package exists. `tracebi dev <name>` anchors
 the workbench to one package; `tracebi dev` alone is where you look while you
 are still building the model underneath. The warehouse tables and the model's
-schema are on the app's Transform and Model stages (`tracebi dev --classic`
+schema are on the model's Transform and Model tabs on Data (`tracebi dev --classic`
 lays them out beside the feed on one page).
 
 ### Interactive controls subset — they never compute

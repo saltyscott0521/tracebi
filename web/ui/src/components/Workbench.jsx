@@ -257,7 +257,7 @@ export default function Workbench({ pointed, onClearPointing, name, state, previ
 
 // The same feed with no report open: what the agent shows you and the notes you
 // leave it while it works on the transform and the model, before there is a
-// report to build. Shown on the Reports page in dev mode.
+// report to build. Shown on Data in dev mode, folded (ProjectFeedFold).
 export function ProjectFeed() {
   const { data } = useProjectFeed(true)
   const exhibits = data?.exhibits || []
@@ -274,5 +274,20 @@ export function ProjectFeed() {
         {exhibits.map(ex => <Exhibit key={ex.seq ?? ex.at} ex={ex} />)}
       </Section>
     </div>
+  )
+}
+
+/** The project feed, folded under one line that says how much is in it. */
+export function ProjectFeedFold() {
+  const { data } = useProjectFeed(true)
+  const shown = (data?.exhibits || []).length
+  const notes = (data?.pins || []).length
+  const said = [shown && `${shown} from your agent`, notes && `${notes} ${notes === 1 ? 'note' : 'notes'}`]
+    .filter(Boolean).join(' · ')
+  return (
+    <details className="feedfold">
+      <summary>Your agent&rsquo;s work and your notes{said && <span className="feedfold__count"> · {said}</span>}</summary>
+      <ProjectFeed />
+    </details>
   )
 }

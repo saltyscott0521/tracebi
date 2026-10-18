@@ -47,7 +47,7 @@ def list_pipelines():
         named = getattr(runner, "models", None)
         models = [m for m in (named or []) if isinstance(m, str) and m]
         # What a pipelines/<name>.yaml says about itself: the transform it runs
-        # and its one-line description (the model's Overview shows both).
+        # and its one-line description (the model's Data page shows both).
         transform = getattr(runner, "transform", None)
         description = getattr(runner, "description", None)
         result.append({
