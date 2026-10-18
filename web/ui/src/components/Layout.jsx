@@ -271,13 +271,8 @@ export default function Layout({ children }) {
         <div style={{ padding: '22px 20px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <BrandMark />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                TraceBi
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--sidebar-text)', marginTop: 1 }}>
-                Analytics trust layer
-              </div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+              TraceBi
             </div>
           </div>
           <button

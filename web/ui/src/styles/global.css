@@ -970,8 +970,8 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 
 /* ── Reports: the library ──────────────────────────────────────────────────
    A slim count strip, the model chips and search, then folders of rows: name,
-   one line of what it is (two on a phone), and on the right the verdict, when
-   it was built and when it is built again. */
+   two lines of what it is (all of it in the title), and on the right the
+   verdict, when it was built and when it is built again. */
 .glance { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0 0 18px; font-size: var(--text-caption); color: var(--text-2); }
 .glance__item { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .glance__item b { font-weight: 600; color: var(--text); }
@@ -1019,7 +1019,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .lrow__name { font-size: var(--text-base); font-weight: 600; overflow-wrap: anywhere; }
 .lrow__desc {
   font-size: var(--text-caption); line-height: 1.45; color: var(--text-2);
-  display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .lrow__side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; }
 .lrow__built, .lrow__sched { font-size: var(--text-sm); white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -1027,7 +1027,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .lrow__sched { display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); }
 @media (max-width: 640px) {
   .lrow { grid-template-columns: minmax(0, 1fr); gap: 6px; padding-left: 16px; }
-  .lrow__desc { -webkit-line-clamp: 2; }
   .lrow__side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
   .lfolder__note, .lfolder__none { padding-left: 16px; }
 }
@@ -1069,6 +1068,23 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .runs-card__name { font-weight: 600; font-size: var(--text-base); overflow-wrap: anywhere; min-width: 0; }
 .runs-card__meta { font-size: var(--text-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
 .runs-card--failed { background: var(--red-lt); box-shadow: inset 3px 0 0 var(--red); }
+/* Grouped by report or pipeline: the newest run, then "N older runs" folded.
+   An unfolded older run is indented under its newest; an empty cell's dash is
+   quieter than any text. */
+.runs__show { margin: 0; align-self: flex-end; }
+.runs-older {
+  appearance: none; display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 0 4px;
+  border: 0; border-radius: 4px; background: transparent; cursor: pointer;
+  font: inherit; font-size: var(--text-sm); color: var(--muted); white-space: nowrap;
+}
+.runs-older:hover { color: var(--text); background: var(--card-hl); }
+.runs-older__caret { font-size: 10px; }
+.runs__row--older td:first-child { padding-left: 32px; }
+.runs__row--older td { font-size: var(--text-caption); }
+.runs-card__fold { padding: 0 14px 10px; margin-top: -4px; }
+.runs-card__fold .runs-older { margin-left: -4px; }
+.runs-card--older .runs-card__body { padding-left: 28px; }
+.runs__dash { color: var(--muted); opacity: .6; }
 .ask-model { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; font-size: var(--text-caption); color: var(--muted); }
 .ask-model select { font: inherit; font-size: var(--text-base); color: var(--text); background: var(--card); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: 6px 10px; }
 
@@ -1259,6 +1275,8 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .verdict--draft { border-style: dashed; }
 .verdict--never-built::before { background: transparent; border: 1px solid currentColor; }
 .verdict--sm { padding: 0 7px; font-size: var(--text-xs); gap: 5px; }
+.chip--warn { color: var(--amber-text); }
+.chip--none::before { background: transparent; border: 1px solid currentColor; }
 button.verdict { cursor: pointer; }
 button.verdict:hover { border-color: currentColor; }
 
@@ -1369,7 +1387,13 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
   .stage { margin-top: 14px; }
 }
 
-.stage__actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+/* The Model tab's card: its views as one segmented row (sideways on a phone,
+   never two lines) with Edit as a draft at the row's right. */
+.mdetail__head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.mdetail__head .mdetail__views { margin: 0; min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.mdetail__views::-webkit-scrollbar { display: none; }
+.mdetail__views button { flex: none; white-space: nowrap; }
+.mdetail__action { flex: none; margin-left: auto; }
 
 /* A filter chip (the library's models, History's) and the dashed card a
    report shows before it has a build. */
@@ -1517,6 +1541,8 @@ button.rp__item:disabled { opacity: .5; cursor: default; }
 .rp__runs { margin: 0; padding: 0; list-style: none; }
 .rp__runs li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 9px 0; border-top: 1px solid var(--border); font-size: var(--text-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
 .rp__runs li:first-child { border-top: 0; }
+.rp__runs .rp__runs-fold { padding: 6px 0; }
+.rp__runs-fold .runs-older { margin-left: -4px; }
 
 /* The panel beside the report */
 .rpanel {

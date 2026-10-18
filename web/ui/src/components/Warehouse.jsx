@@ -1,5 +1,5 @@
 import { useConnectorWarehouse } from '../api'
-import { Badge, ErrorDetail, Spinner } from './Shared'
+import { Chip, ErrorDetail, Spinner } from './Shared'
 
 // What a file-backed warehouse holds and whether each table was certified:
 // rows, columns with a profile, and the sink contract's status per table, in
@@ -8,9 +8,9 @@ import { Badge, ErrorDetail, Spinner } from './Shared'
 // anything else.
 
 const CONTRACT = {
-  satisfied: { variant: 'green', label: 'checks passed', title: 'The sink satisfied its contract, and the table is unchanged since.' },
-  stale: { variant: 'amber', label: 'changed since checked', title: 'The table changed after its checks last passed: they no longer describe this data.' },
-  no_contract: { variant: 'gray', label: 'no checks', title: 'No checks cover this table.' },
+  satisfied: { tone: '', label: 'Checks passed', title: 'The sink satisfied its contract, and the table is unchanged since.' },
+  stale: { tone: 'warn', label: 'Changed since checked', title: 'The table changed after its checks last passed: they no longer describe this data.' },
+  no_contract: { tone: 'none', label: 'No checks', title: 'No checks cover this table.' },
 }
 
 const when = iso => String(iso).slice(0, 16).replace('T', ' ') + ' UTC'
@@ -91,7 +91,7 @@ export default function Warehouse({ connector, only }) {
             <summary>
               <code>{t.name}</code>{' '}
               <span className="wb-meta">{t.rows.toLocaleString()} rows · {Object.keys(t.columns).length} columns</span>{' '}
-              <Badge variant={c.variant} title={c.title}>{c.label}</Badge>
+              <Chip tone={c.tone} title={c.title}>{c.label}</Chip>
             </summary>
             <div style={{ paddingLeft: 16 }}>
               <ContractLine contract={t.contract || { status: 'no_contract' }} />

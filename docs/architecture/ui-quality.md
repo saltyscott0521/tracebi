@@ -169,6 +169,11 @@ Each fix that taught something general adds a line here.
   library shows (`/api/desk`) on a report's newest build, and a neutral
   "Not checked" on every older one. A build row stores no verdict, so it never
   reads green by itself.
+- Forty rows of the same nine reports is a wall, not a history: a list of
+  runs shows each report or pipeline once, its newest run, with "N older
+  runs" folded under it (and how many of those failed, so a failure is never
+  folded away unsaid). The flat list stays one toggle away, in the address.
+  An empty cell's dash is quieter than any text in the row.
 - A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the

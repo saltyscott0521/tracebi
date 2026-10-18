@@ -1,5 +1,5 @@
 import { reportBelongsToModel } from '../../nav'
-import { bus, byTone, clamp, heightOf, nameLines, reportLabel, widest, MONO_W, NAME_LINE } from './geometry'
+import { bus, byTone, clamp, heightOf, nameLines, widest, widestLabel, MONO_W, NAME_LINE } from './geometry'
 import { pipelineFor } from './project'
 import { reportState, transformState } from './states'
 
@@ -83,7 +83,7 @@ export function modelLayout({ name, info, a, pipelines, builds, sel }) {
   const tW = clamp(Math.ceil(widest(transformName ? [transformName] : []) + 28), 184, 260)
   const bW = clamp(Math.ceil(widest(tables.map(t => t.source)) + 28), 150, 220)
   const mW = clamp(Math.ceil(Math.max(0, ...a.declared.map(m => m.length * MONO_W + 34 + (unused(m) ? 56 : 0)))), 212, 320)
-  const rW = clamp(Math.ceil(widest(a.placed.map(r => reportLabel(r.name, name))) + 28), 210, 280)
+  const rW = clamp(Math.ceil(widestLabel(a.placed.map(r => r.display_name || r.name)) + 28), 210, 280)
   const xT = SIDE
   const xB = xT + tW + RUN
   const xC = xB + bW + RUN
@@ -119,7 +119,7 @@ export function modelLayout({ name, info, a, pipelines, builds, sel }) {
   const cards = a.placed.map(r => {
     const state = reportState(builds[r.name], r)
     return {
-      id: `report:${r.name}`, role: 'report', shape: 'card', x: xR, w: rW, name: reportLabel(r.name, name), key: r.name,
+      id: `report:${r.name}`, role: 'report', shape: 'card', x: xR, w: rW, name: r.display_name || r.name, sans: true, title: r.name, key: r.name,
       label: state?.label || '', tone: lit.reports.has(r.name) ? 'hot' : state?.tone || 'quiet',
       verdict: state?.verdict, detail: state?.detail,
       action: { select: `report:${r.name}` }, pressed: sel?.type === 'report' && sel.id === r.name,
@@ -180,7 +180,7 @@ export function modelLayout({ name, info, a, pipelines, builds, sel }) {
       { x: xB, y: 16, label: 'Warehouse tables' },
       { x: xR, y: 16, label: 'Reports', n: 3 },
     ],
-    card: { x: xC, y: cardTop, w: cardW, h: cardH, name, empty: measures.length ? '' : 'No measures declared.' },
+    card: { x: xC, y: cardTop, w: cardW, h: cardH, name, label: info?.label || name, empty: measures.length ? '' : 'No measures declared.' },
     nodes: [transform, ...tableNodes, ...measures, ...cards].filter(Boolean),
     edges: byTone(edges),
     empty: {

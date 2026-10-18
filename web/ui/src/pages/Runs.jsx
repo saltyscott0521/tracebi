@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { useDesk, useModels, usePipelines, useReports, useRuns } from '../api'
@@ -96,16 +96,55 @@ function dayOf(iso) {
   })
 }
 
-// Rows (newest first) in runs of the same day.
-function byDay(rows) {
+// Entries (newest first) in runs of the same day: an entry's day is its newest run's.
+function byDay(entries) {
   const days = []
-  for (const row of rows) {
-    const day = dayOf(row.run.started)
-    if (days.length && days[days.length - 1].day === day) days[days.length - 1].rows.push(row)
-    else days.push({ day, rows: [row] })
+  for (const entry of entries) {
+    const day = dayOf(entry.row.run.started)
+    if (days.length && days[days.length - 1].day === day) days[days.length - 1].entries.push(entry)
+    else days.push({ day, entries: [entry] })
   }
   return days
 }
+
+// One entry per report or pipeline: its newest run, then the older ones
+// (folded by default). A report's builds and scheduled runs are one entry; a
+// run with no target stands alone.
+function byTarget(rows) {
+  const groups = []
+  const index = new Map()
+  for (const row of rows) {
+    const { kind, target } = row.run
+    const key = target && `${REPORT_KINDS.has(kind) ? 'report' : kind}:${target}`
+    if (key && index.has(key)) index.get(key).older.push(row)
+    else {
+      const group = { key: key || `#${row.run.id}`, row, older: [] }
+      if (key) index.set(key, group)
+      groups.push(group)
+    }
+  }
+  return groups
+}
+
+// "3 older runs", and how many of them failed: a failure is never folded away unsaid.
+function olderWords(older, noun) {
+  const failed = older.filter(r => failedRun(r.run)).length
+  return `${older.length} older ${older.length === 1 ? noun : `${noun}s`}${failed ? ` · ${failed} failed` : ''}`
+}
+
+/** The disclosure under a report's or pipeline's newest run. */
+export function Older({ older, open, onToggle, noun = 'run' }) {
+  if (!older.length) return null
+  return (
+    <button type="button" className="runs-older" aria-expanded={open} onClick={onToggle}>
+      <span aria-hidden="true" className="runs-older__caret">{open ? '▾' : '▸'}</span>
+      {olderWords(older, noun)}
+    </button>
+  )
+}
+
+// An empty cell: a dash quieter than any text in the row.
+const Dash = () => <span className="runs__dash" aria-label="none">—</span>
 
 function actorOf(run) {
   if (!run.actor && !run.actor_role) return null
@@ -158,6 +197,17 @@ export default function Runs({ model: only }) {
   const model = only || searchParams.get('model') || ''
   const kind = searchParams.get('kind') || ''
   const target = searchParams.get('target') || ''
+  // By default one row per report or pipeline (its newest run, older ones
+  // folded); ?all=1 lists every run. A single target's runs are listed whole.
+  const every = searchParams.get('all') === '1'
+  const grouped = !every && !target.trim()
+  const [unfolded, setUnfolded] = useState(() => new Set())
+  const toggle = key => setUnfolded(prev => {
+    const next = new Set(prev)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    return next
+  })
   const setFilter = (key, value) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
@@ -223,6 +273,55 @@ export default function Runs({ model: only }) {
     took: rows.some(r => r.took),
     who: rows.some(r => r.who),
   }
+  const entries = grouped ? byTarget(rows) : rows.map(row => ({ key: `#${row.run.id}`, row, older: [] }))
+  const openOf = e => unfolded.has(e.key)
+
+  const fold = e => e.older.length > 0 && <Older older={e.older} open={openOf(e)} onToggle={() => toggle(e.key)} />
+
+  const tableRow = (r, older, folded) => {
+    const { run } = r
+    return (
+      <tr key={run.id} data-target={run.target || undefined}
+          className={[failedRun(run) && 'runs__row--failed', older && 'runs__row--older'].filter(Boolean).join(' ') || undefined}>
+        <td>
+          <span className="runs__kind">{KIND_LABEL[run.kind] || run.kind}</span>
+          {' · '}
+          {r.link
+            ? <Link to={r.link} title={run.target}>{nameOf(run)}</Link>
+            : <span title={run.target || undefined}>{nameOf(run)}</span>}
+          {folded}
+        </td>
+        {show.model && <td className="runs__muted">{r.models.map(labelOf).join(', ') || <Dash />}</td>}
+        <td className="runs__verdict"><Outcome run={run} verdict={r.verdict} /></td>
+        <td className="runs__muted runs__nowrap" title={absolute(run.started)}>{ago(run.started) || <Dash />}</td>
+        {show.took && <td className="runs__muted runs__nowrap">{r.took || <Dash />}</td>}
+        {show.who && <td className="runs__muted">{r.who || <Dash />}</td>}
+      </tr>
+    )
+  }
+
+  const card = (r, older, folded) => {
+    const { run } = r
+    const body = (
+      <>
+        <span className="runs-card__top">
+          <span className="runs-card__name" title={run.target || undefined}>{nameOf(run)}</span>
+          <Outcome run={run} verdict={r.verdict} />
+        </span>
+        <span className="runs-card__meta">
+          {[KIND_LABEL[run.kind] || run.kind, ago(run.started), r.took, r.who].filter(Boolean).join(' · ')}
+        </span>
+      </>
+    )
+    return (
+      <li key={run.id} data-target={run.target || undefined}
+          className={['runs-card', failedRun(run) && 'runs-card--failed', older && 'runs-card--older'].filter(Boolean).join(' ')}>
+        {r.link ? <Link to={r.link} className="runs-card__body">{body}</Link>
+          : <div className="runs-card__body">{body}</div>}
+        {folded && <div className="runs-card__fold">{folded}</div>}
+      </li>
+    )
+  }
 
   return (
     <>
@@ -270,6 +369,12 @@ export default function Runs({ model: only }) {
               ))}
             </select>
           </label>
+          {!target.trim() && (
+            <div className="seg runs__show" role="group" aria-label="Show">
+              <button type="button" aria-pressed={!every} onClick={() => setFilter('all', '')}>Latest of each</button>
+              <button type="button" aria-pressed={every} onClick={() => setFilter('all', '1')}>Every run</button>
+            </div>
+          )}
         </div>
       </div>}
 
@@ -285,31 +390,16 @@ export default function Runs({ model: only }) {
           : <>Nothing has run yet. A build from the app, <code>tracebi report build</code>, or a schedule appears here.</>} />
       ) : narrow ? (
         <div className="runs-cards fade-in">
-          {byDay(rows).map(({ day, rows: dayRows }) => (
+          {byDay(entries).map(({ day, entries: dayEntries }) => (
             <section key={day} aria-label={day}>
               <h2 className="runs__day">{day}</h2>
               <ol className="runs-cards__list">
-                {dayRows.map(r => {
-                  const { run } = r
-                  const body = (
-                    <>
-                      <span className="runs-card__top">
-                        <span className="runs-card__name" title={run.target || undefined}>{nameOf(run)}</span>
-                        <Outcome run={run} verdict={r.verdict} />
-                      </span>
-                      <span className="runs-card__meta">
-                        {[KIND_LABEL[run.kind] || run.kind, ago(run.started), r.took, r.who].filter(Boolean).join(' · ')}
-                      </span>
-                    </>
-                  )
-                  return (
-                    <li key={run.id} data-target={run.target || undefined}
-                        className={`runs-card${failedRun(run) ? ' runs-card--failed' : ''}`}>
-                      {r.link ? <Link to={r.link} className="runs-card__body">{body}</Link>
-                        : <div className="runs-card__body">{body}</div>}
-                    </li>
-                  )
-                })}
+                {dayEntries.map(e => (
+                  <Fragment key={e.key}>
+                    {card(e.row, false, fold(e))}
+                    {openOf(e) && e.older.map(r => card(r, true))}
+                  </Fragment>
+                ))}
               </ol>
             </section>
           ))}
@@ -326,29 +416,15 @@ export default function Runs({ model: only }) {
               {show.who && <th>Who</th>}
             </tr>
           </thead>
-          {byDay(rows).map(({ day, rows: dayRows }) => (
+          {byDay(entries).map(({ day, entries: dayEntries }) => (
             <tbody key={day}>
               <tr className="runs__dayrow"><th colSpan={6} scope="colgroup" className="runs__day">{day}</th></tr>
-              {dayRows.map(r => {
-                const { run } = r
-                return (
-                  <tr key={run.id} data-target={run.target || undefined}
-                      className={failedRun(run) ? 'runs__row--failed' : undefined}>
-                    <td>
-                      <span className="runs__kind">{KIND_LABEL[run.kind] || run.kind}</span>
-                      {' · '}
-                      {r.link
-                        ? <Link to={r.link} title={run.target}>{nameOf(run)}</Link>
-                        : <span title={run.target || undefined}>{nameOf(run)}</span>}
-                    </td>
-                    {show.model && <td className="runs__muted">{r.models.map(labelOf).join(', ') || '—'}</td>}
-                    <td className="runs__verdict"><Outcome run={run} verdict={r.verdict} /></td>
-                    <td className="runs__muted runs__nowrap" title={absolute(run.started)}>{ago(run.started) || '—'}</td>
-                    {show.took && <td className="runs__muted runs__nowrap">{r.took || '—'}</td>}
-                    {show.who && <td className="runs__muted">{r.who || '—'}</td>}
-                  </tr>
-                )
-              })}
+              {dayEntries.map(e => (
+                <Fragment key={e.key}>
+                  {tableRow(e.row, false, fold(e))}
+                  {openOf(e) && e.older.map(r => tableRow(r, true))}
+                </Fragment>
+              ))}
             </tbody>
           ))}
         </table>

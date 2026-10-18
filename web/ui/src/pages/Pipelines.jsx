@@ -6,10 +6,13 @@ import '@xyflow/react/dist/style.css'
 import { useMe, usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
 import RunLog, { RunList } from '../components/RunLog'
 import CodeView from '../components/CodeView'
+import { useModelLabel } from '../components/Scope'
+import { since } from '../components/TheLine'
+import { humanise } from '../ask'
 import { pipelineBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Spinner,
-  Empty, Btn, Tabs, SkeletonCard, useToast,
+  Empty, Btn, Tabs, SkeletonCard, useNarrow, useToast,
 } from '../components/Shared'
 
 const TYPE_BADGE = {
@@ -37,10 +40,27 @@ const TYPE_ACCENT = {
 }
 const STATUS_DOT = { success: 'var(--muted)', failed: 'var(--red)', running: 'var(--amber)' }
 
+// A model pipeline's two steps, in words: what the step is and what its last
+// run left ("wrote 3 tables", "6 reports"), where a medallion layer counts rows.
+const STEP_WORDS = {
+  transform: { what: 'Transform', out: n => `wrote ${n} ${n === 1 ? 'table' : 'tables'}` },
+  build: { what: 'Build', out: n => `${n} ${n === 1 ? 'report' : 'reports'}` },
+}
+
+function stepLine(layer) {
+  const words = STEP_WORDS[layer.name]
+  const when = layer.last_status === 'running' ? 'running'
+    : !layer.last_run ? 'not run yet'
+      : `${layer.last_status === 'failed' ? 'failed' : 'ran'} ${since(layer.last_run)}`
+  const out = layer.last_rows_out != null && layer.last_status !== 'failed' ? words.out(layer.last_rows_out) : null
+  return [words.what, when, out].filter(Boolean).join(' · ')
+}
+
 function LayerNode({ data }) {
   const accent = TYPE_ACCENT[data.layer.type] || 'var(--role-table)'
   const status = data.layer.last_status
   const dot = STATUS_DOT[status] || 'var(--muted)'
+  const step = data.layer.type === 'step' && STEP_WORDS[data.layer.name]
   return (
     <div style={{
       background: 'var(--surface)',
@@ -60,9 +80,16 @@ function LayerNode({ data }) {
         <span className={status === 'running' ? 'pulse-glow' : undefined} style={{
           width: 8, height: 8, borderRadius: '50%', background: dot, flexShrink: 0,
         }} />
-        <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
-          {data.layer.name}
-        </span>
+        {step ? (
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+            <span style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--text)' }}>{stepLine(data.layer)}</span>
+            <span style={{ fontSize: 10.5, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{data.layer.name}</span>
+          </span>
+        ) : (
+          <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+            {data.layer.name}
+          </span>
+        )}
       </div>
       <div style={{ padding: '7px 13px 9px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
@@ -78,11 +105,11 @@ function LayerNode({ data }) {
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>
+          {!step && <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>
             {data.layer.last_rows_out != null ? `${data.layer.last_rows_out} rows`
               : data.layer.last_status === 'failed' ? 'Failed'
                 : data.layer.last_status ? 'Ran' : 'Not run yet'}
-          </span>
+          </span>}
           {data.onRun && <button
             onClick={e => { e.stopPropagation(); data.onRun(data.layer.name) }}
             disabled={data.running}
@@ -122,7 +149,7 @@ function PipelineDag({ layers, onRun, running }) {
       return {
         id: l.name,
         type: 'layerNode',
-        position: { x: depth * 280, y: row * 125 },
+        position: { x: depth * 340, y: row * 125 },
         data: { layer: l, onRun, running },
       }
     })
@@ -154,7 +181,8 @@ function PipelineDag({ layers, onRun, running }) {
         edges={edges}
         nodeTypes={DAG_NODE_TYPES}
         fitView
-        fitViewOptions={{ padding: 0.22 }}
+        // Two steps fitted to the card would be drawn at twice the app's type size.
+        fitViewOptions={{ padding: 0.22, maxZoom: 1 }}
         proOptions={{ hideAttribution: true }}
         nodesDraggable
         nodesConnectable={false}
@@ -205,7 +233,7 @@ function LayerHistory({ pipeline, layer }) {
  * run button; with no sign-in everyone is admin. *primary*: this is the
  * pipeline that refreshes the model, and its run is the page's Refresh data.
  */
-export function PipelineDetail({ pipeline, layers, primary }) {
+export function PipelineDetail({ pipeline, layers, primary, label }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
@@ -219,6 +247,8 @@ export function PipelineDetail({ pipeline, layers, primary }) {
   // the list of steps keeps them full size.
   const [tab, setTab] = useState(() =>
     window.matchMedia?.('(max-width: 768px)').matches ? 'Steps' : 'Flow')
+  // On a phone the Steps table drops Schedule and Runs after, so Status shows.
+  const phone = useNarrow('(max-width: 640px)')
 
   if (!pipeline) {
     return (
@@ -266,7 +296,7 @@ export function PipelineDetail({ pipeline, layers, primary }) {
           {busy ? <><Spinner size={12} /> Running…</> : primary ? 'Refresh data' : '▶ Run all'}
         </Btn>
       )}>
-        {pipeline}
+        <span title={pipeline}>{label || pipeline}</span>
       </CardTitle>
 
       <Tabs tabs={['Flow', 'Steps', 'Runs', 'Code']} active={tab} onChange={t => setTab(t)} />
@@ -285,7 +315,7 @@ export function PipelineDetail({ pipeline, layers, primary }) {
         <div style={{ overflowX: 'auto', position: 'relative' }}>
           <table>
             <thead>
-              <tr><th>Step</th>{typed && <th>Type</th>}<th>Schedule</th><th>Runs after</th><th>Last status</th><th>Rows out</th><th>Last run</th><th><span className="sr-only">Actions</span></th></tr>
+              <tr><th>Step</th>{typed && <th>Type</th>}{!phone && <><th>Schedule</th><th>Runs after</th></>}<th>Last status</th><th>Rows out</th><th>Last run</th><th><span className="sr-only">Actions</span></th></tr>
             </thead>
             <tbody>
               {layers.map(l => (
@@ -298,8 +328,8 @@ export function PipelineDetail({ pipeline, layers, primary }) {
                       </Badge>
                     </td>
                   )}
-                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.schedule || '—'}</td>
-                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.depends_on || '—'}</td>
+                  {!phone && <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.schedule || '—'}</td>}
+                  {!phone && <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.depends_on || '—'}</td>}
                   <td>
                     {l.last_status
                       ? l.last_status.startsWith('error:')
@@ -373,6 +403,7 @@ export function PipelineDetail({ pipeline, layers, primary }) {
  */
 export default function Pipelines({ model }) {
   const { data, isLoading } = usePipelines()
+  const labelOf = useModelLabel()
   const pipelines = (data || []).filter(p => pipelineBelongsToModel(p, model))
 
   if (isLoading) return <SkeletonCard />
@@ -387,7 +418,9 @@ export default function Pipelines({ model }) {
   const own = pipelines.find(p => p.model === model) || pipelines[0]
   return pipelines.map(p => (
     <div key={p.pipeline} style={{ marginBottom: 16 }}>
-      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary={p === own} />
+      {/* A pipeline has no label of its own: the model's is its name when it is the model's. */}
+      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary={p === own}
+                      label={p.model ? labelOf(p.model) : humanise(p.pipeline)} />
     </div>
   ))
 }

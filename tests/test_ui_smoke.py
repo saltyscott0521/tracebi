@@ -187,14 +187,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             fail_on_browser_errors()
 
             # The Map is Data's models as one picture: opening one zooms in, and
-            # picking a measure says in words which reports ask for it.
+            # picking a measure says in words which reports ask for it. Models and
+            # reports go by their labels.
             page.goto(base + "/data")
             page.get_by_role("button", name="Map", exact=True).click()
             page.wait_for_url("**/data?view=map")
-            page.get_by_role("button", name="Open portfolio_model").click()
+            page.get_by_role("button", name="Open Direct Lending Portfolio").click()
             page.wait_for_url("**/data?view=map&model=portfolio_model")
             page.get_by_role("button", name=re.compile(r"^measure: fv_share")).click()
-            expect(page.get_by_label("Selection")).to_contain_text("portfolio_concentration")
+            expect(page.get_by_label("Selection")).to_contain_text("Portfolio Concentration")
             fail_on_browser_errors()
 
             # Old addresses land on the page that replaced them, query and all.
@@ -391,7 +392,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
             # A build is not a check: History shows the list's verdict on the newest
             # build of the report, and a plain "Not checked" (never green) on
-            # every older one.
+            # every older one. By default a report is one row, its older builds
+            # folded under it.
             page.goto(base + "/runs")
             page.get_by_role("heading", name="History", exact=True).wait_for()
             # A row reads the report's name; its identifier is the row's data-target.
@@ -399,10 +401,16 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             rows.first.wait_for()
             assert _TITLE in rows.first.inner_text()
             page.get_by_text("Checking…").wait_for(state="detached")
+            expect(rows).to_have_count(1)
+            rows.first.get_by_role("button", name=re.compile(r"^\d+ older runs?")).click()
             verdicts = [r.locator(".runs__verdict").inner_text() for r in rows.all()]
             assert len(verdicts) >= 2, verdicts
             assert verdicts[0] == "Reproduces", verdicts
             assert set(verdicts[1:]) == {"Not checked"}, verdicts
+            # Every run lists them flat, and stays in the address.
+            page.get_by_role("button", name="Every run", exact=True).click()
+            page.wait_for_url("**/runs?all=1")
+            expect(rows).to_have_count(len(verdicts))
             fail_on_browser_errors()
 
             # Given room, a report's three KPI cards sit on one row. (The old
@@ -428,7 +436,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             table = page.locator("details", has_text="fact_holdings")
             table.wait_for()
             assert re.search(r"[\d,]+ rows", table.locator("summary").inner_text())
-            assert table.locator("summary").get_by_text("checks passed", exact=True).count() == 1
+            assert table.locator("summary").get_by_text("Checks passed", exact=True).count() == 1
             table.locator("summary").click()
             table.get_by_text("The sink satisfied its contract").wait_for()
             fail_on_browser_errors()

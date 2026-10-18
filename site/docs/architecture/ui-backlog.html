@@ -73,6 +73,7 @@
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a class="on" href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -160,10 +161,8 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
 </ol>
 <p>Left by Step 3 of the UX plan (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>):</p>
 <ol start="22">
-<li><strong>The Map's labels are in mono</strong> where the line's are in the sans (D-1).</li>
-<li><strong>The Model tab has a second row of tabs inside it</strong> (Diagram, Tables,
-    Measures, …) and its <strong>Edit as a draft</strong> button floats alone above them
-    (D-1).</li>
+<li><em>Closed by A2-3 (see Done).</em></li>
+<li><em>Closed by A2-3 (see Done).</em></li>
 <li><strong>The Transform flow zooms in two steps</strong> only (D-1).</li>
 <li><em>Closed by Step 4 (see Done): <code>AskCut</code> deleted.</em></li>
 <li><strong><code>notebook-guide.md</code>'s <code>@register.report</code> section predates the one
@@ -186,8 +185,33 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
 <li><strong>Keep this cannot pick a folder</strong>: the draft starts at
     <code>&lt;model&gt;/&lt;slug&gt;</code>; the folder is chosen when it is published.</li>
 </ol>
+<p>Left by A2-3 (the app, audit pass 2):</p>
+<ol start="32">
+<li><strong>A pipeline run in History goes by its identifier</strong> (<code>portfolio_model</code>):
+    <code>/api/runs</code> gives a report run a <code>display_name</code> and a pipeline run none.
+    Give it its model's label, as the Transform card now reads.</li>
+<li><strong>History's "N older runs" counts what <code>/api/runs</code> returned</strong> (the last
+    50 runs, default <code>limit</code>), not every run the store holds.</li>
+<li><strong>The Steps table's status is an upper-case badge</strong> ("SUCCESS"), not the
+    verdict-shaped <code>Chip</code> the table checks now use.</li>
+</ol>
 <h2 id="done">Done</h2>
 <ul>
+<li>
+<p><strong>The app, audit pass 2</strong> (A2-3): the Model tab's views are one segmented
+  row in its card's header with Edit as a draft at its right (no badge
+  repeating the line; the grain in labels, identifiers in its title), sideways
+  on a phone where Tables opens first; the Transform card goes by its model's
+  label, its steps read "Transform · ran 2 h ago · wrote 3 tables" and
+  "Build · 6 reports" in the sans at the app's size, table checks are
+  sentence-case chips in the verdict's shape (<code>Chip</code>), and the phone's Steps
+  table drops Schedule and Runs after; History is one row per report or
+  pipeline with "N older runs" folded (Every run, <code>?all=1</code>, lists them flat;
+  a fold says how many failed), the report panel's History folds older builds
+  the same way, and an empty cell's dash is muted; the Map's models and
+  reports go by their labels, measured in the sans; library descriptions
+  wrap to two lines; the sidebar's tagline is gone. Closed items 22 and 23.</p>
+</li>
 <li>
 <p><strong>Ask</strong> (Step 4): <code>/ask</code> is one sentence of the model's tokens ("Show
   [measure] by [dimension] for [filter], [order], top [n]"), typed or picked;

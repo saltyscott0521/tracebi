@@ -18,6 +18,7 @@ import { ReportLineage } from '../components/ReportLineage'
 import { when } from '../components/Attention'
 import { VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
 import { stamp, useLineFacts } from '../components/TheLine'
+import { Older } from './Runs'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
 import {
@@ -358,6 +359,7 @@ const FAILED = new Set(['failed', 'error', 'refused'])
 // check recorded, and every older build a plain "Not checked".
 function HistoryTab({ name, verdict }) {
   const { data, isLoading, error } = useRuns('', name)
+  const [open, setOpen] = useState(false)
   if (isLoading) return <div className="rp__none"><Spinner /> Loading builds…</div>
   if (error) return <ErrorDetail error={error} />
   const runs = (Array.isArray(data) ? data : []).filter(r => RUN_KIND[r.kind])
@@ -369,26 +371,36 @@ function HistoryTab({ name, verdict }) {
     if (r === newest) return verdict
     return { state: 'not-checked', detail: 'Only the latest build of a report is re-checked.' }
   }
+  // As on History: the newest build (and anything since it) shows; older builds fold.
+  const shown = runs.indexOf(newest) + 1 || 1
+  const older = runs.slice(shown)
+  const row = r => {
+    const dur = runDuration(r)
+    const v = said(r)
+    return (
+      <li key={r.id}>
+        <span>{r.status === 'running' ? '… Running' : stamp(r.started)}</span>
+        <span>{RUN_KIND[r.kind]}{dur ? ` · ${dur}` : ''}{r.actor ? ` · ${r.actor}` : ''}</span>
+        {v && <Verdict state={v.state} detail={v.detail} size="sm" />}
+        {FAILED.has(r.status) && (
+          <span className="flag flag--bad">
+            <span aria-hidden="true">✕</span> {r.status === 'refused' ? 'Refused' : 'Failed'}
+            {r.detail?.error ? `: ${r.detail.error}` : ''}
+          </span>
+        )}
+      </li>
+    )
+  }
   return (
     <>
       <ul className="rp__runs">
-        {runs.map(r => {
-          const dur = runDuration(r)
-          const v = said(r)
-          return (
-            <li key={r.id}>
-              <span>{r.status === 'running' ? '… Running' : stamp(r.started)}</span>
-              <span>{RUN_KIND[r.kind]}{dur ? ` · ${dur}` : ''}{r.actor ? ` · ${r.actor}` : ''}</span>
-              {v && <Verdict state={v.state} detail={v.detail} size="sm" />}
-              {FAILED.has(r.status) && (
-                <span className="flag flag--bad">
-                  <span aria-hidden="true">✕</span> {r.status === 'refused' ? 'Refused' : 'Failed'}
-                  {r.detail?.error ? `: ${r.detail.error}` : ''}
-                </span>
-              )}
-            </li>
-          )
-        })}
+        {runs.slice(0, shown).map(row)}
+        {older.length > 0 && (
+          <li className="rp__runs-fold">
+            <Older older={older.map(run => ({ run }))} open={open} onToggle={() => setOpen(o => !o)} noun="build" />
+          </li>
+        )}
+        {open && older.map(row)}
       </ul>
       <Link to={`/runs?target=${encodeURIComponent(name)}`} className="rpanel__link">Every run in History</Link>
     </>

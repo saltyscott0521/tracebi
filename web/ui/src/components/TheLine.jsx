@@ -251,10 +251,11 @@ export function Flag({ flag }) {
  * chip or a flag, only when something is not fine. With *to* it is a link
  * (*current* when it is the page you are on), with *onClick* a button,
  * otherwise a labelled group. *tone* `hot` is a lit path; `unused` is quiet.
+ * *title* is the name's hover text: the identifier, when the name is a label.
  */
 export function LineNode({
   shape = 'card', kind, n, name, sans, fact, marks, note, to, onClick, pressed, current,
-  tone, label, className, style,
+  tone, label, className, style, title = name,
 }) {
   const cls = ['node', `node--${shape}`, tone && `node--${tone}`, note && 'node--noted', className]
     .filter(Boolean).join(' ')
@@ -266,7 +267,7 @@ export function LineNode({
         </span>
       )}
       {name && (
-        <span className={`node__name${sans ? ' node__name--sans' : ''}`} title={name}><Breakable name={name} /></span>
+        <span className={`node__name${sans ? ' node__name--sans' : ''}`} title={title}><Breakable name={name} /></span>
       )}
       {fact && <span className="node__fact">{fact}</span>}
       {marks?.length > 0 && <span className="node__marks">{marks}</span>}

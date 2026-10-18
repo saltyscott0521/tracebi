@@ -678,8 +678,8 @@ addresses (`/m/<model>/…`, `/models`, `/explore`, `/sources`, `/map`, `/drafts
   **About this build** opens one panel (a sheet on a phone) with four tabs:
   **Receipt** (whether the check still holds, with **Check again**, the model,
   figures, schedule and kind, then the build's own receipt certificate),
-  **Lineage** (where each number came from), **History** (every build of it, with
-  its verdict) and **Files** (the report's files, read-only). Failures show the
+  **Lineage** (where each number came from), **History** (its newest build with
+  its verdict, the older builds folded under it) and **Files** (the report's files, read-only). Failures show the
   full Python traceback.
 - **Transform** — a model's Data page, Transform tab: the medallion chain as a live DAG
   and a list of steps, its runs and code, and the tables it produces. **Refresh data**, the
@@ -697,7 +697,9 @@ addresses (`/m/<model>/…`, `/models`, `/explore`, `/sources`, `/map`, `/drafts
   **Drafts** (their own first), then **Verify a file**, a small drop zone for a report file
   someone was sent (`/verify` is its full page).
 - **History** (under **Review**) — what ran, when, how long it took, by whom, and whether it
-  reproduced, grouped by day (a card per run on a phone). A report run links to the report by
+  reproduced, grouped by day (a card per run on a phone): each report or pipeline once, its
+  newest run, with its older runs folded under it (**Every run**, `/runs?all=1`, lists them
+  all). A report run links to the report by
   its name, a refresh to its model's Transform tab; a failed run reads red, and a column no
   row fills (how long, who) is not shown. A report's newest
   build shows the same verdict as the report's own page; every older build reads

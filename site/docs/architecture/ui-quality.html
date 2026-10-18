@@ -73,6 +73,7 @@
 <a class="on" href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -242,6 +243,11 @@ registered by an app module rather than found under <code>reports/</code>). Each
   library shows (<code>/api/desk</code>) on a report's newest build, and a neutral
   "Not checked" on every older one. A build row stores no verdict, so it never
   reads green by itself.</li>
+<li>Forty rows of the same nine reports is a wall, not a history: a list of
+  runs shows each report or pipeline once, its newest run, with "N older
+  runs" folded under it (and how many of those failed, so a failure is never
+  folded away unsaid). The flat list stays one toggle away, in the address.
+  An empty cell's dash is quieter than any text in the row.</li>
 <li>A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the

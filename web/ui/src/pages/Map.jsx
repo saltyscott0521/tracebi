@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { useConnectors, useDesk, useModel, useModels, usePipelines, useReports } from '../api'
@@ -48,6 +48,9 @@ export default function MapPage() {
   // The model you were last in stays tinted on the whole-project map.
   useEffect(() => { if (zoomed) rememberModel(zoomed) }, [zoomed])
   const tinted = names.includes(lastModel()) ? lastModel() : ''
+  // Labels are measured in the app's sans; lay out again once it has loaded.
+  const [fontsReady, setFontsReady] = useState(false)
+  useEffect(() => { document.fonts?.ready.then(() => setFontsReady(true)) }, [])
 
   const builds = useMemo(
     () => Object.fromEntries((desk.data?.builds || []).map(b => [b.report, b])), [desk.data])
@@ -70,7 +73,7 @@ export default function MapPage() {
     return analysis && modelLayout({
       name: zoomed, info: info.data, a: analysis, pipelines: pipelines.data || [], builds, sel,
     })
-  }, [models.data, zoomed, byName, pipelines.data, reports.data, builds, tinted, analysis, info.data, sel])
+  }, [models.data, zoomed, byName, pipelines.data, reports.data, builds, tinted, analysis, info.data, sel, fontsReady])
 
   if (models.error) return <ErrorDetail error={models.error} />
   const waiting = [models, reports, pipelines, connectors, desk].some(q => q.isLoading) || (zoomed && info.isLoading)
