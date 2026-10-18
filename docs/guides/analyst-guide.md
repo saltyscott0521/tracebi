@@ -39,7 +39,7 @@ shape:
                                                         │
                                                         ▼  freeze: the model (the semantic contract)
 ③  REPORT       reports/          an artifact package (or JSON ReportSpec) over the model
-     KPI cards, charts, tables — every figure a live query; served in the app, on the model's Overview
+     KPI cards, charts, tables — every figure a live query; served in the app, in the library under its model
 ```
 
 **Phase ①** is the real analysis: pull the queries you need and do whatever the
@@ -117,7 +117,7 @@ The dev loop, step by step:
 - **Publishing is build + verify.** `tracebi report build <name>` strips
   exploration, validates every figure claim against its binding, and writes
   `output/<name>.html` plus the `.manifest.json` receipt. The package is
-  already served in the app, on the model's Overview — there is no separate publish
+  already served in the app, in the library under its model — there is no separate publish
   step. `--contracts` also re-runs the sink contracts, so the receipt can
   say **the sink satisfied its contract** (never "the transform was
   verified" — contract status certifies what landed, not the pandas above
@@ -138,7 +138,7 @@ script in the project), and the notes you leave it. It is the live surface for
 phases ① and ② before any report package exists. `tracebi dev <name>` anchors
 the workbench to one package; `tracebi dev` alone is where you look while you
 are still building the model underneath. The warehouse tables and the model's
-schema are on the app's Transform and Model stages (`tracebi dev --classic`
+schema are on the model's Transform and Model tabs on Data (`tracebi dev --classic`
 lays them out beside the feed on one page).
 
 ### Interactive controls subset — they never compute
@@ -221,8 +221,8 @@ tracebi new-model "Sales Model"   # scaffolds models/sales_model.py
 # edit it, then import with get_model("sales_model")
 ```
 
-Or browse the web UI: a model's **Model** stage shows every table with previews and the ER
-diagram; **Explore** lets you prototype aggregations visually before
+Or browse the web UI: under **Data**, a model's **Model** tab shows every table with previews
+and the ER diagram; **Ask** lets you prototype aggregations visually before
 committing them to code.
 
 ### Load and transform

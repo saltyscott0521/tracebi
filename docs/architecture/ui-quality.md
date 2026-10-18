@@ -77,7 +77,7 @@ Checked by the script (rule name in brackets):
   `[model-without-reports]`. (The live demo showed three models with none:
   see the discovery fix under Rules learned.)
 - **Every model has a pipeline** `[model-without-pipeline]`: something its
-  Refresh page can run. A pipeline belongs to the models it names
+  Transform tab can run. A pipeline belongs to the models it names
   (`runner.models`), else the one `model_pipeline` stamped, else its own name.
 - **The look** ([[design-direction]]): Hanken Grotesk loads `[theme-font-loaded]`
   `[theme-font]`; the brand is cobalt and stays in its blue family, and other
@@ -165,8 +165,8 @@ Each fix that taught something general adds a line here.
   `--blue` stayed near-black and every active tab and row vanished in dark.
 - A page that shows a fact another page shows uses the same words and chips,
   from the same data: every verdict is the `Verdict` chip, its state from
-  `verdictOf` (`web/ui/src/verdict.js`). The Runs page shows the verdict the
-  Reports page shows (`/api/desk`) on a report's newest build, and a neutral
+  `verdictOf` (`web/ui/src/verdict.js`). History shows the verdict the
+  library shows (`/api/desk`) on a report's newest build, and a neutral
   "Not checked" on every older one. A build row stores no verdict, so it never
   reads green by itself.
 - A row of seven buttons is a grouping problem, not a wrapping problem: one

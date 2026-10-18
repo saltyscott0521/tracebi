@@ -6,16 +6,22 @@ import {
   useConnectorWarehouse, useReports, useDesk,
 } from '../api'
 import { buildModelGraph } from './modelGraph'
+import { Verdict } from './Shared'
 import { verdictOf } from '../verdict'
-import { dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 
 // The line: how a model is made, as three stations and the two hand-offs
 // between them. ① transforms/ writes tables into the warehouse; ② the model
 // names the numbers over those tables; ③ reports show them. Each fact on it is
-// read from what exists (the pipeline's runs, the warehouse's sink contract,
-// the desk's re-checks); what is not known is left off rather than guessed.
+// read from what exists (the pipeline's runs, the warehouse's checks, the
+// desk's re-checks); what is not known is left off rather than guessed.
 // Colour and a glyph mark only an exception: "✕" failed, "△" changed or does
 // not match, "○" never built or not declared. A fine thing is a plain fact.
+// Reports say what they say everywhere else: the verdict chip, as counts.
+//
+// A station and a hand-off are drawn by LineNode, which the Map draws its
+// nodes with too: one look for "something you write" (a card) and "what gets
+// handed on" (a pill), wherever the project is drawn.
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 const pad = n => String(n).padStart(2, '0')
@@ -71,7 +77,7 @@ const mark = (kind, text) => ({ kind, glyph: GLYPH[kind], text })
 // ── The facts ────────────────────────────────────────────────────────────────
 
 /**
- * Everything the Overview says about *model*, from the queries the other pages
+ * Everything a model's Data page says about *model*, from the queries the other pages
  * already use (they share the cache), as the line and the header read it.
  */
 export function useLineFacts(model) {
@@ -121,8 +127,8 @@ export function useLineFacts(model) {
   const listed = (reports || []).filter(r => reportBelongsToModel(r, model))
   const builds = new Map((desk?.builds || []).map(b => [b.report, b]))
   const built = listed.filter(r => builds.has(r.name))
-  const looks = built.map(r => verdictOf({ report: r, build: builds.get(r.name) }).state)
-    .filter(state => state === 'needs-a-look' || state === 'does-not-reproduce')
+  const states = desk ? reportStates(listed, desk) : []
+  const looks = states.filter(state => state === 'needs-a-look' || state === 'does-not-reproduce')
 
   // The tables of the model's warehouse, with the sink contract's word on each
   const read = new Set((detail?.tables || []).filter(t => t.connector === source?.name).map(t => t.source))
@@ -130,8 +136,8 @@ export function useLineFacts(model) {
 
   const line = {
     transform: transformStation(pipelines, transform),
-    model: modelStation(model, detail, graph),
-    reports: reportsStation(reports, listed, desk, built, looks),
+    model: modelStation(detail, graph),
+    reports: reportsStation(reports, listed, desk, built, states),
   }
   const pill1 = warehousePill(source, file, detail, warehouse, tables, transform)
   const pill2 = detail ? { name: plural(detail.measures?.length || 0, 'measure'), sans: true } : null
@@ -147,6 +153,30 @@ export function useLineFacts(model) {
   }
 }
 
+/** The verdict on each report's last build (verdict.js), once the desk has answered. */
+export function reportStates(reports, desk) {
+  const builds = new Map((desk?.builds || []).map(b => [b.report, b]))
+  return reports.map(r => verdictOf({ report: r, build: builds.get(r.name) }).state)
+}
+
+// Worst first; each count in the chip's own words.
+const COUNTED = [
+  ['does-not-reproduce', n => `${n} ${n === 1 ? 'does' : 'do'} not reproduce`],
+  ['needs-a-look', n => `${n} ${n === 1 ? 'needs' : 'need'} a look`],
+  ['never-built', n => `${n} never built`],
+  ['not-checked', n => `${n} not checked`],
+  ['reproduces', n => `${n} ${n === 1 ? 'reproduces' : 'reproduce'}`],
+]
+
+/** Verdict chips counting *states* ("6 reproduce", "1 needs a look"), worst first. */
+export function VerdictSummary({ states }) {
+  const count = {}
+  states.forEach(st => { count[st] = (count[st] || 0) + 1 })
+  return COUNTED.filter(([st]) => count[st]).map(([st, words]) => (
+    <Verdict key={st} state={st} size="sm">{words(count[st])}</Verdict>
+  ))
+}
+
 function transformStation(pipelines, t) {
   const s = { name: t.name, flags: [] }
   if (!t.pipeline) {
@@ -158,33 +188,26 @@ function transformStation(pipelines, t) {
     if (t.goodAt) s.fact = `Last good run ${stamp(t.goodAt)}`
     s.flags.push(mark('bad', `Failed ${since(t.lastAt)}`))
   } else if (t.lastAt) s.fact = `Ran ${stamp(t.lastAt)}`
-  else if (t.known) s.flags.push(mark('none', 'Never run'))
+  else if (t.known) s.flags.push(mark('none', 'Not run yet'))
   return s
 }
 
-function modelStation(model, detail, graph) {
-  const s = { name: model, flags: [] }
+function modelStation(detail, graph) {
+  const s = { name: detail?.label || detail?.name, sans: true, flags: [] }
   if (detail) s.fact = `${plural(detail.tables.length, 'table')} · ${plural(graph.edges.length, 'join')}`
   return s
 }
 
-function reportsStation(reports, listed, desk, built, looks) {
-  const s = { name: reports ? plural(listed.length, 'report') : null, sans: true, flags: [] }
+function reportsStation(reports, listed, desk, built, states) {
+  const s = { name: reports ? plural(listed.length, 'report') : null, sans: true, flags: [], states }
   if (!desk || !listed.length) return s
   const scheduled = listed.filter(r => r.schedule).length
   s.fact = [built.length && `${built.length} built`, scheduled && `${scheduled} scheduled`].filter(Boolean).join(' · ')
-  const never = listed.length - built.length
-  if (never) s.flags.push(mark('none', `${never} never built`))
-  // The chip's words, on a count.
-  const broken = looks.filter(state => state === 'does-not-reproduce').length
-  const look = looks.length - broken
-  if (broken) s.flags.push(mark('bad', `${broken} ${broken === 1 ? 'does' : 'do'} not reproduce`))
-  if (look) s.flags.push(mark('warn', `${look} ${look === 1 ? 'needs' : 'need'} a look`))
   return s
 }
 
-// The first hand-off: the warehouse file, and what the sink contract says of
-// the tables in it. A failed check is the loudest word, then a table that no
+// The first hand-off: the warehouse file, and what its checks say of the
+// tables in it. A failed check is the loudest word, then a table that no
 // longer matches its last check, then tables with no checks; all fine says
 // only how many tables.
 function warehousePill(source, file, detail, warehouse, tables, transform) {
@@ -207,13 +230,10 @@ function warehousePill(source, file, detail, warehouse, tables, transform) {
 // ── The line ─────────────────────────────────────────────────────────────────
 
 const STATIONS = [
-  { key: 'transform', n: 1, title: 'Transform', role: 'writes the tables' },
-  { key: 'model',     n: 2, title: 'Model',     role: 'names the numbers' },
-  { key: 'reports',   n: 3, title: 'Reports',   role: 'show them' },
+  { key: 'transform', n: 1, title: 'Transform' },
+  { key: 'model',     n: 2, title: 'Model' },
+  { key: 'reports',   n: 3, title: 'Reports' },
 ]
-
-// A hand-off's track runs, and shows it, beside the stage you are looking at.
-const HOT = [['transform', 'model'], ['model', 'reports']]
 
 export function Flag({ flag }) {
   return (
@@ -223,45 +243,70 @@ export function Flag({ flag }) {
   )
 }
 
-function Station({ model, stage, s, info }) {
-  const current = stage === s.key
+/**
+ * One node, on the line and on the Map. A card (`shape="card"`) is something
+ * you write: a transform, a model, a report. A pill is what gets handed on: a
+ * file, its tables, a measure. It says what kind it is (*kind*, with the
+ * phase's number *n*), its *name*, one plain *fact*, and *marks*: a verdict
+ * chip or a flag, only when something is not fine. With *to* it is a link
+ * (*current* when it is the page you are on), with *onClick* a button,
+ * otherwise a labelled group. *tone* `hot` is a lit path; `unused` is quiet.
+ */
+export function LineNode({
+  shape = 'card', kind, n, name, sans, fact, marks, note, to, onClick, pressed, current,
+  tone, label, className, style,
+}) {
+  const cls = ['node', `node--${shape}`, tone && `node--${tone}`, note && 'node--noted', className]
+    .filter(Boolean).join(' ')
+  const body = (
+    <>
+      {kind && (
+        <span className="node__kind">
+          {n && <span className="node__n" aria-hidden="true">{n}</span>}{kind}
+        </span>
+      )}
+      {name && (
+        <span className={`node__name${sans ? ' node__name--sans' : ''}`} title={name}><Breakable name={name} /></span>
+      )}
+      {fact && <span className="node__fact">{fact}</span>}
+      {marks?.length > 0 && <span className="node__marks">{marks}</span>}
+      {note && <span className="node__note">{note}</span>}
+    </>
+  )
+  if (to) {
+    return <Link to={to} className={cls} style={style} aria-label={label} aria-current={current ? 'page' : undefined}>{body}</Link>
+  }
+  if (onClick) {
+    return <button type="button" className={cls} style={style} aria-label={label} aria-pressed={pressed} onClick={onClick}>{body}</button>
+  }
+  return <div role="group" className={cls} style={style} aria-label={label}>{body}</div>
+}
+
+function Station({ model, tab, s, info }) {
+  // Transform and Model are tabs of this page; Reports is the library, narrowed to the model.
+  const to = s.key === 'reports' ? libraryPath(model) : dataPath(model, s.key === 'model' ? '' : s.key)
+  const marks = [
+    ...info.flags.map(f => <Flag key={f.text} flag={f} />),
+    ...(info.states?.length ? [<VerdictSummary key="v" states={info.states} />] : []),
+  ]
   return (
     <li>
-      <Link to={dataPath(model, s.key)} className="station" aria-current={current ? 'page' : undefined}>
-        <span className="station__head">
-          <span className="station__n" aria-hidden="true">{s.n}</span>
-          <span className="station__title">{s.title}</span>
-          <span className="station__role">{s.role}</span>
-        </span>
-        {info.name && (
-          <span className={`station__name${info.sans ? ' station__name--sans' : ''}`} title={info.name}>
-            <Breakable name={info.name} />
-          </span>
-        )}
-        {info.fact && <span className="station__fact">{info.fact}</span>}
-        {info.flags.map(f => <Flag key={f.text} flag={f} />)}
-        <span className="station__notch" aria-hidden="true" />
-      </Link>
+      <LineNode to={to} current={tab === s.key} kind={s.title} n={s.n}
+                name={info.name} sans={info.sans} fact={info.fact} marks={marks} />
     </li>
   )
 }
 
-function Hand({ stage, i, hand }) {
-  const hot = HOT[i].includes(stage)
+// A hand-off: what passes from one station to the next, a pill on the track.
+function Hand({ hand }) {
   const { pill } = hand
+  const marks = pill?.kind ? [<Flag key="f" flag={{ kind: pill.kind, glyph: pill.glyph, text: pill.text }} />] : []
   return (
-    <li className={`hand${hand.tone ? ` hand--${hand.tone}` : ''}${hot ? ' hand--hot' : ''}`}>
+    <li className={`hand${hand.tone ? ` hand--${hand.tone}` : ''}`}>
       <span className="hand__seg" aria-hidden="true" />
       {pill && (
-        <span className="hand__pill">
-          <span className="sr-only">Hand-off: </span>
-          <span className={`hand__name${pill.mono ? ' hand__name--mono' : ''}`}><Breakable name={pill.name} /></span>
-          {(pill.sub || pill.kind) && (
-            <span className={`hand__sub${pill.kind ? ` flag--${pill.kind}` : ''}`}>
-              {pill.kind && <><span aria-hidden="true">{pill.glyph}</span> </>}{pill.sub || pill.text}
-            </span>
-          )}
-        </span>
+        <LineNode shape="pill" name={pill.name} sans={!pill.mono} fact={pill.sub} marks={marks}
+                  label={`Hand-off: ${[pill.name, pill.sub || pill.text].filter(Boolean).join(', ')}`} />
       )}
       <span className="hand__seg" aria-hidden="true" />
       <span className="hand__head" aria-hidden="true" />
@@ -269,15 +314,18 @@ function Hand({ stage, i, hand }) {
   )
 }
 
-/** The three stations as links (the one you are on is the current page), and the hand-offs between them. */
-export default function TheLine({ model, stage, line }) {
+/**
+ * The three stations as links (the tab you are on is the current page; Reports
+ * opens the library, narrowed to the model), and the hand-offs between them.
+ */
+export default function TheLine({ model, tab, line }) {
   return (
     <nav aria-label={`How ${model} is made`}>
       <ol className="line">
         {STATIONS.map((s, i) => (
           <Fragment key={s.key}>
-            <Station model={model} stage={stage} s={s} info={line[s.key]} />
-            {i < 2 && <Hand stage={stage} i={i} hand={line.hands[i]} />}
+            <Station model={model} tab={tab} s={s} info={line[s.key]} />
+            {i < 2 && <Hand hand={line.hands[i]} />}
           </Fragment>
         ))}
       </ol>

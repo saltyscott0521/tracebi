@@ -93,6 +93,7 @@ export function projectLayout({ models, connectors, pipelines, reports, builds, 
       return {
         id: id(`report:${r.name}`), role: 'report', shape: 'card', x: xR, w: rW, name: reportLabel(r.name, b.model),
         label: state?.label || '', tone: state?.tone || 'quiet', action: { zoom: b.model, sel: `report:${r.name}` },
+        verdict: state?.verdict, detail: state?.detail,
       }
     })
 

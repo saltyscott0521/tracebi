@@ -95,7 +95,7 @@ def _pipeline_yaml_template_text(title: str) -> str:
 #
 # A pipeline: run a phase-1 transform, then rebuild the reports. Scaffolded by
 # `tracebi new-pipeline` on {today}. It only NAMES things; the transform stays
-# Python. Run it with `tracebi run-pipeline {slug}`, or with Refresh data on the model's Overview.
+# Python. Run it with `tracebi run-pipeline {slug}`, or with Refresh data on the model's Transform tab.
 #
 # If a pipelines/{slug}.py exists too, the Python file wins (a pipeline is one file).
 
@@ -1062,7 +1062,7 @@ def _dev_in_the_app(args: argparse.Namespace) -> int:
         print("  Put your agent's chat beside it (it connects over MCP: `tracebi mcp`).")
         print("  Click a figure in the report to point at it; tell the agent in chat.\n")
     else:
-        print("\n  TraceBi dev — the app, before any report is open")
+        print("\n  TraceBi dev — the app on Data, before any report is open")
         print(f"  {url}")
         print("  What your agent shows you while it works appears under Data, "
               "as From your agent.")
@@ -3530,13 +3530,13 @@ def build_parser() -> argparse.ArgumentParser:
              "package (reports/<name>/) opens with Build mode on: the report "
              "re-renders as your agent saves, a timeline shows what changed, "
              "you point at a figure, and Data and Checks show what it reads. "
-             "With no name it opens the app where what your agent shows you "
-             "lands, before any report exists. --classic keeps the old "
+             "With no name it opens Data (/data), where what your agent shows "
+             "you lands, before any report exists. --classic keeps the old "
              "stdlib preview server.",
     )
     p_dev.add_argument("name", nargs="?",
-                       help="Package name under reports/. Omit to open the app "
-                            "before any report is open.")
+                       help="Package name under reports/ (opens /reports/<name> "
+                            "with Build on). Omit to open Data.")
     p_dev.add_argument("--port", type=int, default=8001,
                        help="Port to serve on (default 8001).")
     p_dev.add_argument("--no-browser", action="store_true",

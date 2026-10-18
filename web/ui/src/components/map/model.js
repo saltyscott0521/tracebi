@@ -121,6 +121,7 @@ export function modelLayout({ name, info, a, pipelines, builds, sel }) {
     return {
       id: `report:${r.name}`, role: 'report', shape: 'card', x: xR, w: rW, name: reportLabel(r.name, name), key: r.name,
       label: state?.label || '', tone: lit.reports.has(r.name) ? 'hot' : state?.tone || 'quiet',
+      verdict: state?.verdict, detail: state?.detail,
       action: { select: `report:${r.name}` }, pressed: sel?.type === 'report' && sel.id === r.name,
     }
   })

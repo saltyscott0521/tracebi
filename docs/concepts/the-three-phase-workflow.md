@@ -18,9 +18,10 @@ one never blocks the fast one.
 > chip. **Ask** puts a question to one model. **Data** draws each model as these three
 > stages in a line: **Transform** (the pipeline that rebuilds its warehouse, and what the
 > sink contract says about it), **Model** (its tables, joins and measures) and **Reports**
-> (what reads it); **Refresh data** runs the pipeline, and the **Map** draws every model as
-> one picture. **Review** holds drafts and requests to publish, **History** (what ran) and
-> **Verify a file** (check a report file from anywhere). Reports and Ask only ever ask the
+> (what reads it); **Refresh data**, on the Transform tab, runs the pipeline, and the
+> **Map** draws every model as one picture. **Review** holds what needs attention (a failed
+> refresh, a build that needs a look, a request to publish), then drafts, then **Verify a
+> file** (check a report file from anywhere); **History** (what ran) is one link away. Reports and Ask only ever ask the
 > model; see [[models-and-connectors]].
 
 ## ① Transform — `transforms/`
@@ -63,8 +64,8 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.
 |---|---|---|---|
 | ⓪ Input | `inputs/` | a raw pull: a CSV, an API export, a SQL dump | it doesn't; you put it there |
 | ① Transform | `transforms/` | pandas (a `.py` or `.ipynb`) that writes DuckDB tables | it doesn't; you run it with `tracebi run-transform` |
-| ② Model | `models/` | a `DataModel` in a variable named `model` | listed on the model's Overview, Model stage |
-| ③ Report | `reports/` | a package (`report.json` + an `app.jsx` dashboard or a `template.html` page), or a JSON spec that compiles into one | listed on the model's Overview, Reports stage |
+| ② Model | `models/` | a `DataModel` in a variable named `model` | its page on **Data** (`/data/<model>`), Model tab |
+| ③ Report | `reports/` | a package (`report.json` + an `app.jsx` dashboard or a `template.html` page), or a JSON spec that compiles into one | listed in **Reports** (the library), under its model |
 
 The warehouse is one file, `data/warehouse.duckdb`: phase ① writes it and phase
 ② reads it, so the two can run in separate processes. `output/` holds what
@@ -90,8 +91,8 @@ money stored as strings.
 `tracebi dev` with no report name opens the app's Data page with the
 **project feed**. Any script run while it's open can call
 `tracebi.workbench.show(df, note=...)` to post an excerpt, and you can leave
-your agent notes there. The warehouse tables are on the model's Transform stage,
-and the Model stage shows the star
+your agent notes there (folded under one line, below the models). The
+warehouse tables are on the model's Transform tab, and the Model tab shows the star
 schema taking shape. Sink-contract status and
 column profiles of the warehouse tables are in the agent's `workbench_state`,
 and on the classic page (`tracebi dev --classic`), which lays the warehouse,

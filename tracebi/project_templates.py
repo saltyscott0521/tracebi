@@ -117,7 +117,7 @@ def _bundle_files(bundle_id: str) -> dict[Path, str]:
 
 def _pipeline(model: str, transform: str) -> str:
     """``pipelines/<model>.yaml``: the transform, then the model's reports — what
-    ``tracebi run-pipeline`` and the app's Refresh page run."""
+    ``tracebi run-pipeline`` and the app's Refresh data run."""
     return f"""\
 # Pipeline for {model}: rebuild the warehouse, then its reports.
 #

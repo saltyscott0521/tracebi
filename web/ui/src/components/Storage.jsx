@@ -8,6 +8,20 @@ export const KIND_LABEL = {
   cloud: 'Cloud warehouse', memory: 'Memory', unknown: 'Unknown',
 }
 
+// The engine a connector type reads with, in a reader's words.
+const ENGINE = {
+  DuckDBConnector: 'DuckDB', CSVConnector: 'CSV', SQLConnector: 'SQL',
+  BigQueryConnector: 'BigQuery', SnowflakeConnector: 'Snowflake',
+}
+
+/** What kind of source a connector is, in words: "DuckDB file", "CSV folder", "SQL database". */
+export function sourceKind(c) {
+  const kind = c?.storage?.kind
+  if (c?.type === 'MemoryConnector' || kind === 'memory') return 'In memory'
+  const engine = ENGINE[c?.type] || (c?.type || '').replace(/Connector$/, '')
+  return ['file', 'directory', 'database'].includes(kind) ? `${engine} ${KIND_LABEL[kind].toLowerCase()}` : engine
+}
+
 export function fmtBytes(n) {
   if (n == null) return ''
   if (n < 1024) return `${n} B`

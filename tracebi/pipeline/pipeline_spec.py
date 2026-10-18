@@ -4,7 +4,7 @@ A pipeline as data: ``pipelines/<name>.yaml`` (also ``.yml``).
 A pipeline file only *names* things: the phase-① transform to run, the models
 it feeds, the reports to rebuild, and an optional schedule. It compiles to the
 runner :func:`tracebi.pipeline.model_pipeline.model_pipeline` builds, so
-``tracebi run-pipeline`` and the Refresh page behave exactly as they do for
+``tracebi run-pipeline`` and the app's Refresh data behave exactly as they do for
 the Python form: run the transform fresh, then rebuild the reports, recording
 each run. The transform stays Python; nothing here can express code.
 

@@ -119,24 +119,25 @@ def seeds(base: str) -> list[str]:
     The crawl follows links from here, so a page reachable by a link is found
     without being listed. Pages reached only by a button (tabs) need a seed.
     """
-    stages = ["transform", "model", "reports"]
-    paths = ["/", "/ask", "/data", "/data/map", "/data/sources", "/review", "/drafts", "/runs",
+    tabs = ["model", "transform", "sources", "runs"]
+    paths = ["/", "/ask", "/data", "/data?view=map", "/data/sources", "/review", "/runs",
              "/verify", "/getting-started", "/handbook", "/workflow"]
     models = _safe(base, "/api/models")
     for m in models:
         name = urllib.parse.quote(m["name"])
         paths += [f"/?model={name}", f"/ask?model={name}", f"/data/{name}"]
-        paths += [f"/data/{name}/{p}" for p in stages]
+        paths += [f"/data/{name}/{p}" for p in tabs]
     reports = _safe(base, "/api/reports")
     for r in reports[:PER_PATTERN]:
         paths.append("/reports/" + "/".join(urllib.parse.quote(p, safe="") for p in r["name"].split("/")))
     # Old addresses must still land somewhere real.
-    paths += ["/models", "/explore", "/refresh", "/reports", "/sources", "/map",
-              "/connectors", "/pipelines"]
+    paths += ["/models", "/explore", "/refresh", "/reports", "/sources", "/map", "/data/map",
+              "/connectors", "/pipelines", "/drafts"]
     if models:
         name = urllib.parse.quote(models[0]["name"])
         paths += [f"/m/{name}", f"/m/{name}/reports", f"/m/{name}/explore", f"/m/{name}/runs",
-                  f"/models/{name}?tab=explore", f"/m/{name}/refresh", f"/m/{name}/sources"]
+                  f"/models/{name}?tab=explore", f"/m/{name}/refresh", f"/m/{name}/sources",
+                  f"/data/{name}/reports"]
     if reports:
         paths.append("/reports?" + urllib.parse.urlencode({"r": reports[0]["name"]}))
     paths.append("/no-such-page")
@@ -680,27 +681,32 @@ def scope_findings(browser, base: str) -> list[dict]:
             out.append({"page": f"/data/{m['name']}/transform", "pattern": "/data/<m>/transform",
                         "viewport": "desktop", "theme": "light", "rule": "model-without-pipeline",
                         "severity": "serious", "target": m["name"],
-                        "detail": f"nothing refreshes {m['name']}; its Transform stage is empty"})
+                        "detail": f"nothing refreshes {m['name']}; its Transform tab is empty"})
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     for m in models:
         name = m["name"]
-        # The library filtered to a model: each row names its report in data-report.
+        # The library filtered to a model names each report in data-report; the
+        # model's Sources tab names each source in data-source.
+        q = urllib.parse.quote(name)
         expect = {
-            "reports": {r["name"] for r in reports if name in (r.get("models") or [])},
+            "reports": (f"/?model={q}", "/?model", "report",
+                        {r["name"] for r in reports if name in (r.get("models") or [])}),
+            "sources": (f"/data/{q}/sources", "/data/<m>/sources", "source",
+                        {c["name"] for c in _safe(base, "/api/connectors") if name in (c.get("used_by") or [])}),
         }
-        for key, want in expect.items():
-            page.goto(f"{base}/?model={urllib.parse.quote(name)}")
+        for key, (path, pattern, attr, want) in expect.items():
+            page.goto(base + path)
             _settle(page)
             try:   # the list can land after the page settles; give it a moment
                 page.wait_for_function(
-                    "n => document.querySelectorAll('main [data-report]').length >= n",
-                    arg=len(want), timeout=5000)
+                    "([a, n]) => document.querySelectorAll(`main [data-${a}]`).length >= n",
+                    arg=[attr, len(want)], timeout=5000)
             except Exception:
                 pass
             shown = set(page.eval_on_selector_all(
-                "main [data-report]", "els => els.map(e => e.dataset.report)"))
+                f"main [data-{attr}]", f"els => els.map(e => e.getAttribute('data-{attr}'))"))
             if shown != want:
-                out.append({"page": f"/?model={name}", "pattern": "/?model", "viewport": "desktop",
+                out.append({"page": path, "pattern": pattern, "viewport": "desktop",
                             "theme": "light", "rule": "scope-mismatch", "severity": "critical",
                             "target": f"{key} of {name}",
                             "detail": f"shows {sorted(shown)}; belongs: {sorted(want)}"})

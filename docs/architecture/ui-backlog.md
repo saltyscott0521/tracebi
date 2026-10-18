@@ -5,12 +5,15 @@ bottom with the change that closed them.
 
 ## Open
 
-1. **Words a reader doesn't use**: "semantic contract", "DuckDBConnector"
-   as a badge, "STEP / never run" in the Refresh flow.
+1. *Closed by D-1 (see Done).*
 2. **"Checks stale" items name no model**: a stale sink check shows only
     under All models. Attribute warehouse tables to the models that read them.
-3. **Bundle is 1.1 MB of JS.** Split routes (React Flow, Markdown, Recharts
-    load only on the pages that use them).
+3. **Bundle is 1.2 MB of JS** (1,243,903 bytes, 364 KB gzipped, after D-3).
+    D-3's dead-code pass did not move it: the bundler already dropped what
+    nothing imported. Split routes (React Flow, Markdown, Recharts load only
+    on the pages that use them). The Step 1 baselines' `bundle_js_kb` 2,345
+    counted a stale second bundle left in `dist/assets/`; build into an empty
+    `dist` before an audit.
 4. **90 hard-coded colours in JSX** — each is a dark-mode bug waiting.
     Move them to tokens.
 5. **The theme ignores the OS setting**: a first visit is always light. Follow
@@ -45,21 +48,23 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):
     `no-focus-ring` into the report frame, eleven `slow-page`, and the
     segmented bar's `repeating-linear-gradient` (`global.css:1188`,
     `theme-decoration`). Some are the audit's selectors, some the app.
+    *Retriaged after D-3's re-run:* `scope-mismatch`, `nav-you-are-here` and
+    `theme-decoration` are gone. Left, on an open report only: `blank-page`,
+    `no-focus-ring` into the frame and `one-h1` (affordability; the demo's
+    medallion_revenue), and `small-target` on the rail's "Reports" crumb and
+    the header's verdict chip; plus `small-target` on Review's "All history →"
+    and thirteen `slow-page`.
 
 Left by Step 2 of the UX plan ([[ux-plan-2026-10-17]]), app side:
 
-14. **Re-run the ui-audit baselines**: the committed findings still name the
-    addresses before R-1 (`/m/<model>/…`, `/reports?r=`), so item 13 cannot
-    be retriaged against them.
-15. **The Data page's Reports-stage preview keeps its Preview/Config switch**
-    (R-4 moved Config into Files on the report page); Step 3 (D-1) retires
-    that preview.
-16. **Docs still say reports are served "on the model's Overview"**: about
-    nine lines in `CLAUDE.md`, `the-three-phase-workflow.md`,
-    `report-json.md`, `analyst-guide.md` and `notebook-guide.md` (and the
-    `site/docs` twins). For D-3.
-17. **`demo-script.md` points at "the green badges above the report"**, which
-    R-3 removed; the chip in the masthead is what to point at.
+14. *Closed by D-3 (see Done).*
+15. *Closed by D-1 (see Done).*
+16. **`CLAUDE.md` still says "on the model's Overview"** (four lines: the
+    phase ③ paragraph, the run-command comment, How to Add Things twice) and
+    does not say where `tracebi dev` opens. D-3 fixed every other file; the
+    project instructions are the owner's to edit (the proposed wording is in
+    D-3's report).
+17. *Closed by D-3 (see Done).*
 18. **`site/sample/portfolio_showcase.html` predates Step 1**: rebuild it with
     the current runtime.
 19. **A report build records no finish time** (`record_report_build`), so
@@ -72,7 +77,53 @@ Left by Step 2 of the UX plan ([[ux-plan-2026-10-17]]), app side:
 21. **The phone header is translucent**: a scrolled list shows through it
     (History's sticky day header sits under it).
 
+Left by Step 3 of the UX plan ([[ux-plan-2026-10-17]]):
+
+22. **The Map's labels are in mono** where the line's are in the sans (D-1).
+23. **The Model tab has a second row of tabs inside it** (Diagram, Tables,
+    Measures, …) and its **Edit as a draft** button floats alone above them
+    (D-1).
+24. **The Transform flow zooms in two steps** only (D-1).
+25. **The report page's Ask box is off** (`SHOW_ASK = false` in
+    `Reports.jsx`): `AskCut` is reachable in code but never shown. Step 4
+    decides whether it returns or goes.
+26. **`notebook-guide.md`'s `@register.report` section predates the one
+    renderer**: a factory with no package is listed but refused (422). Point
+    it at a package.
+27. **`scripts/ui_audit.py`'s `scope-mismatch` detail still says "the model
+    switcher"**; it means the model chip.
+
 ## Done
+
+- **The old frame retired** (D-3): dead components, helpers and CSS out
+  (`StatTile`, `reviewNotes`, `modelOfPipeline`, `reportOpenPath`, the
+  stylesheet's orb, gradient-text, grid and workflow-run rules, …); every old
+  address checked to land (34 in a browser, the whole `movedTo` table in the
+  smoke test); the words follow the four places in the README, guides,
+  concepts, reference, agent guides, CLI and Get started ("How the app fits
+  together" one entry per place). Closed items 14 (baselines re-run), 16 for
+  every file but `CLAUDE.md`, and 17 (the demo script points at the masthead
+  chip and its Receipt link).
+
+- **Review is one page** (D-2): Needs attention first (failed runs and
+  refreshes with what went wrong, builds that need a look, publish requests to
+  decide in place, the person's own requests waiting on approvers), then
+  Drafts (own first, an admin's Mine | Everyone's; an empty state written for
+  a person, the MCP tool names under "For your agent"; decided requests
+  folded under Requests), then Verify a file as a small drop zone that opens
+  into the full one. `/drafts` lands on `/review#drafts`; a draft's page says
+  Review › Drafts.
+
+- **Data is one page per model** (D-1): the line as its header (three
+  stations, the warehouse file and the measures between them, the reports'
+  verdicts as chip counts), then tabs Model · Transform · Sources · Runs;
+  `/data` lists the models one row each, and the Map is its picture view
+  (`/data?view=map`) drawn with the line's nodes. Refresh data is the
+  Transform tab's one primary action, and it and every run button render for
+  an admin only. Closed item 1 ("DuckDBConnector" is "DuckDB file", "STEP /
+  never run" is gone, sink checks read "checks passed when last written") and
+  the Reports-stage preview with its Preview/Config switch (retired: the
+  Reports station opens the library).
 
 - **Model switcher as the frame of the app** — one control at the top of the
   sidebar narrows every page (Data model, Explore, Refresh, Reports, Sources,

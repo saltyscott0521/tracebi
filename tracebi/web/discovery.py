@@ -106,7 +106,7 @@ def _register_spec_file(full_path: str, stem: str) -> dict:
     # Compile the spec to the artifact package ONCE, here at discovery — this is
     # structural (no models, no queries), the same as the validation above — and
     # serve it through the artifact path (via the _tracebi_package_dir tag). So a
-    # reports/<name>.json spec on the Reports page gets figures, the receipt
+    # reports/<name>.json spec in the library gets figures, the receipt
     # drawer, badges, and a schema-2 manifest, exactly like /api/spec/render and
     # a hand-authored package — not the legacy carrier render. Model resolution
     # still happens at CALL time, inside TemplatePackage.render.
@@ -156,7 +156,7 @@ def _register_spec_file(full_path: str, stem: str) -> dict:
     # real artifact render (embedded data, figure claims, schema-2 manifest)
     # instead of the carrier — the same mechanism a hand-authored package uses.
     factory._tracebi_package_dir = pkg_dir
-    # Where the report is defined, for the Reports page's Source view: the
+    # Where the report is defined, for a report page's Files tab: the
     # spec file itself (the compiled package above is a temp dir, not source).
     factory._tracebi_source = {
         "form": "spec",

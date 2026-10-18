@@ -1,5 +1,7 @@
 # Report library
 
+> Written before the 2026-10 IA (four places: Reports, Ask, Data, Review); page names updated.
+
 **Reports live in folders people can browse in the app, the way QlikView showed
 the documents on its server. The folders can sit on the server, on a network
 share, or in any source control system. Drafts are free to edit; published
@@ -174,7 +176,7 @@ These cost little today and are expensive to retrofit:
 
 | Step | What | Why first |
 |---|---|---|
-| 1 | Scan folders recursively; a Library page that browses them read-only | Useful on day one; no new security surface |
+| 1 | Scan folders recursively; a library (now Reports, the app's home) that browses them read-only | Useful on day one; no new security surface |
 | 2 | Mounts in configuration (local folder, network share) | Matches how BI teams already store files |
 | 3 | Folder permissions, enforced in the one check ✅ | Needed before anyone shares a server widely |
 | 4 | My work, publish with approval, TraceBi's own version history | The Build → Schedule path, without git |

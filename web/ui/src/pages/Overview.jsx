@@ -1,28 +1,24 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { useIsFetching, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 
-import { useAppStatus, useMe, useStartPipelineRun } from '../api'
-import TheLine, { Breakable, stamp, since, useLineFacts } from '../components/TheLine'
+import { useAppStatus, useModel } from '../api'
+import TheLine, { stamp, since, useLineFacts } from '../components/TheLine'
 import Warehouse from '../components/Warehouse'
 import EditAsDraft from '../components/EditAsDraft'
 import { ModelDetail } from './Models'
 import Pipelines from './Pipelines'
-import { ReportsStage } from './Reports'
-import { ProjectFeed } from '../components/Workbench'
-import { dataPath, historyPath } from '../nav'
-import { Btn, Card, Spinner, useToast } from '../components/Shared'
+import Connectors from './Connectors'
+import Runs from './Runs'
+import { ProjectFeedFold } from '../components/Workbench'
+import { dataPath } from '../nav'
+import { Card, useToast } from '../components/Shared'
 
-// What changed on the line when a run ends: every stage may read differently.
+// What changed on the line when a run ends: every station may read differently.
 const AFTER_A_RUN = ['pipelines', 'history', 'warehouse', 'desk', 'reports', 'models', 'model']
 
-// The queries that read the warehouse's data. One answered while a transform is
-// writing it can fail the run ("another process holds the warehouse open"), so
-// a refresh starts only when the page is not in the middle of them.
-const READS = ['warehouse', 'desk', 'models', 'model']
-
-// The failing check, open: what the sink contract said, in its own words. A
-// failure that was not the contract shows what the run printed.
+// The failing check, open: what the checks said when the tables were written,
+// in their own words. A failure that was not a check shows what the run printed.
 function WhyItFailed({ transform, lastCheck, stale }) {
   const f = transform.failure
   const message = (transform.message || '').trim()
@@ -31,15 +27,15 @@ function WhyItFailed({ transform, lastCheck, stale }) {
       <details open className="why">
         <summary>
           <span aria-hidden="true">✕</span>{' '}
-          {f ? `Sink contract failed: ${f.failed} of ${f.total} ${f.total === 1 ? 'check' : 'checks'}` : 'The last run failed'}
+          {f ? `Checks failed when the tables were written: ${f.failed} of ${f.total}` : 'The last run failed'}
         </summary>
         {f ? (
           <>
             <p className="why__note">
               The latest run wrote these tables, then {f.failed} of {f.total} {f.total === 1 ? 'check' : 'checks'} failed.
               {lastCheck && (stale
-                ? ` They no longer match their last certificate, from ${stamp(lastCheck)}.`
-                : ` Their last certificate, from ${stamp(lastCheck)}, still matches them.`)}
+                ? ` They no longer match the checks that last passed, on ${stamp(lastCheck)}.`
+                : ` The checks that last passed, on ${stamp(lastCheck)}, still describe them.`)}
             </p>
             <ul className="why__checks">
               {f.checks.map(c => (
@@ -58,16 +54,28 @@ function WhyItFailed({ transform, lastCheck, stale }) {
   )
 }
 
-// ① the pipeline's steps, runs and code; then the tables it writes.
-function TransformStage({ model, facts }) {
+// The Transform tab: when it last ran, why it failed if it did, the pipeline's
+// steps, runs and code (its Refresh data is this page's one primary action),
+// then the tables it writes.
+function TransformTab({ model, facts }) {
   const file = facts.source
+  const { transform } = facts
+  const refreshed = transform.goodAt && `Last refreshed ${stamp(transform.goodAt)}${transform.failed ? ' (the latest run failed)' : ''}.`
   return (
     <>
-      {facts.transform.failed && (
-        <WhyItFailed transform={facts.transform} lastCheck={facts.lastCheck}
+      {(facts.description || refreshed) && (
+        <div className="dtab__head">
+          <p>
+            {facts.description && <>{facts.description} </>}
+            {refreshed && <span className="overview__muted">{refreshed}</span>}
+          </p>
+        </div>
+      )}
+      {transform.failed && (
+        <WhyItFailed transform={transform} lastCheck={facts.lastCheck}
                      stale={facts.tables.some(t => t.contract?.status === 'stale')} />
       )}
-      <Pipelines model={model} embedded />
+      <Pipelines model={model} />
       {file && (
         <>
           <h2 className="stage__heading">
@@ -80,97 +88,89 @@ function TransformStage({ model, facts }) {
   )
 }
 
-const STAGE_LABEL = { transform: 'Transform', model: 'Model', reports: 'Reports' }
+const TABS = [['model', 'Model'], ['transform', 'Transform'], ['sources', 'Sources'], ['runs', 'Runs']]
 
 /**
- * A model's page: how it is made, as the line (nav.js says which address is
- * which stage), and under it the stage you are looking at.
+ * A model's Data page: its name and where it is defined, the line as the
+ * header (nav.js says which address is which tab), then the tab you are on.
  */
-function ModelPage({ model, stage }) {
+function ModelPage({ model, tab }) {
   const facts = useLineFacts(model)
   const { transform } = facts
-  const { data: me } = useMe()
+  const { data: detail } = useModel(model)
   const { data: appStatus } = useAppStatus()
   const dev = !!appStatus?.build_mode
   const toast = useToast()
   const qc = useQueryClient()
-  const { mutate: start, isPending: isStarting } = useStartPipelineRun()
+  const label = detail?.label || model
 
-  // Refresh data runs the model's pipeline: the same run as "Run all" on its
-  // Transform stage, in the background. The line follows it; a toast says how it ended.
-  const busy = isStarting || transform.running
-  const reading = useIsFetching({ predicate: q => READS.includes(q.queryKey[0]) }) > 0
-  const refresh = () => start({ pipeline: transform.pipeline.pipeline }, {
-    onSuccess: res => { if (res.already_running) toast('Already refreshing.', 'info') },
-    onError: err => toast(`Could not start: ${err.message}`, 'error'),
-  })
+  // A refresh (Refresh data on the Transform tab, or a run started elsewhere)
+  // changes what every station says; a toast says how it ended.
   const was = useRef(false)
   useEffect(() => {
     if (was.current && !transform.running) {
       AFTER_A_RUN.forEach(key => qc.invalidateQueries({ queryKey: [key] }))
-      toast(transform.failed ? 'The refresh failed. See why on the Transform stage.' : `Refreshed ${model}.`,
+      toast(transform.failed ? 'The refresh failed. The Transform tab says why.' : `Refreshed ${label}.`,
         transform.failed ? 'error' : 'info')
     }
     was.current = transform.running
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transform.running])
 
-  const refreshed = transform.goodAt && `Last refreshed ${stamp(transform.goodAt)}${transform.failed ? ' (the latest run failed)' : ''}.`
+  const reads = (detail?.connector_details || []).map(c => c.storage?.where).filter(Boolean)
 
   return (
     <div className="overview">
       <header className="overview__head">
-        <div className="overview__id">
-          <div className="overview__cap">Data</div>
-          <h1 className="overview__title"><Breakable name={model} /></h1>
+        <div className="overview__cap"><Link to="/data">Data</Link></div>
+        <h1 className="overview__title">{label} {label !== model && <span className="overview__id">{model}</span>}</h1>
+        {detail && (
           <p className="overview__sub">
-            {facts.description && <>{facts.description} </>}
-            {refreshed && <span className="overview__muted">{refreshed} </span>}
-            <Link to={historyPath(model)}>History</Link>
+            {detail.source_file && <>Defined in <code>{detail.source_file}</code></>}
+            {detail.source_file && reads.length > 0 && ' · '}
+            {reads.length > 0 && <>reads {reads.map((w, i) => <span key={w}>{i > 0 && ', '}<code>{w}</code></span>)}</>}
           </p>
-        </div>
-        {me?.role === 'admin' && transform.pipeline && (
-          <Btn onClick={refresh} disabled={busy || reading}>
-            {busy ? <><Spinner size={12} /> Refreshing…</> : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
-                     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />
-                </svg>
-                Refresh data
-              </>
-            )}
-          </Btn>
         )}
       </header>
 
       {transform.failed && (
         <p role="status" className="overview__alert">
           <strong>
-            <span aria-hidden="true">✕</span> <span className="overview__name">{transform.name}</span> failed {since(transform.lastAt)}
-            {transform.failure ? ' at its sink contract' : ''}.
+            <span aria-hidden="true">✕</span> <span className="overview__name">{transform.name}</span> failed
+            {transform.failure ? ' its checks' : ''} {since(transform.lastAt)}.
           </strong>
           {transform.failure && facts.builtCount > 0 && <span>The built reports were made from the tables it replaced.</span>}
-          {stage !== 'transform' && <Link to={dataPath(model, 'transform')}>See why</Link>}
+          {tab !== 'transform' && <Link to={dataPath(model, 'transform')}>See why</Link>}
         </p>
       )}
 
-      <TheLine model={model} stage={stage} line={facts.line} />
+      <TheLine model={model} tab={tab} line={facts.line} />
 
-      <section className="stage" aria-label={STAGE_LABEL[stage]}>
-        {stage === 'reports' && <ReportsStage model={model} />}
-        {stage === 'model' && (
+      <nav aria-label={`${label}: what to show`}>
+        <ul className="dtabs">
+          {TABS.map(([key, text]) => (
+            <li key={key}>
+              <Link to={dataPath(model, key === 'model' ? '' : key)} aria-current={tab === key ? 'page' : undefined}>{text}</Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <section className="stage" key={tab} aria-label={TABS.find(([key]) => key === tab)[1]}>
+        {tab === 'model' && (
           <>
             <div className="stage__actions"><EditAsDraft kind="models" path={model} /></div>
             <ModelDetail name={model} />
           </>
         )}
-        {stage === 'transform' && <TransformStage model={model} facts={facts} />}
+        {tab === 'transform' && <TransformTab model={model} facts={facts} />}
+        {tab === 'sources' && <Connectors model={model} />}
+        {tab === 'runs' && <Runs model={model} />}
       </section>
       {/* In dev mode (`tracebi dev`) what the agent shows you while it works on
-          the transform and the model, and your notes to it, are here, even
-          before a report exists. */}
-      {dev && <ProjectFeed />}
+          the transform and the model, and your notes to it, are here, folded,
+          even before a report exists. */}
+      {dev && <ProjectFeedFold />}
     </div>
   )
 }

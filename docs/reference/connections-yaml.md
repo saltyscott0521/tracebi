@@ -63,14 +63,14 @@ Any value may be a reference, written as the whole value and named
   Lookup is the process environment, then the project's `.env`. `.env` is
   never copied into `os.environ`, and only the names a connection references
   are read.
-- **Never shown.** `/api/connectors` and the Sources list (`/sources`) show a referenced
+- **Never shown.** `/api/connectors` and the Sources list (`/data/sources`) show a referenced
   value as `${NAME}` and a literal URL with its password redacted; a
   credential is never resolved to describe a connection.
 
 ## Discovery and precedence
 
 Files in `connections/` are registered at startup and as they change, so the
-Sources list (`/sources`) shows them. A model's `connection: <x>` reads
+Sources list (`/data/sources`) shows them. A model's `connection: <x>` reads
 `connections/<x>.yaml` first, then the legacy `models/_connections/<x>.py`
 that `tracebi connect --python` writes. `tracebi migrate connection
 models/_connections/<x>.py [--write]` converts one (it never deletes the

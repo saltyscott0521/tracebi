@@ -2,14 +2,15 @@ import { useConnectorWarehouse } from '../api'
 import { Badge, ErrorDetail, Spinner } from './Shared'
 
 // What a file-backed warehouse holds and whether each table was certified:
-// rows, columns with a profile, and the sink contract's status per table. The
-// contract line is what the sink said about itself (never "verified") and it
-// does not colour anything else.
+// rows, columns with a profile, and the sink contract's status per table, in
+// plain words ("checks passed when last written"). The contract line is what
+// the sink said about itself (never "verified") and it does not colour
+// anything else.
 
 const CONTRACT = {
-  satisfied: { variant: 'green', label: 'satisfied', title: 'The sink satisfied its contract, and the table is unchanged since.' },
-  stale: { variant: 'amber', label: 'stale', title: 'The table changed after its contract was checked: the certificate no longer describes this data.' },
-  no_contract: { variant: 'gray', label: 'no contract', title: 'No sink contract covers this table.' },
+  satisfied: { variant: 'green', label: 'checks passed', title: 'The sink satisfied its contract, and the table is unchanged since.' },
+  stale: { variant: 'amber', label: 'changed since checked', title: 'The table changed after its checks last passed: they no longer describe this data.' },
+  no_contract: { variant: 'gray', label: 'no checks', title: 'No checks cover this table.' },
 }
 
 const when = iso => String(iso).slice(0, 16).replace('T', ' ') + ' UTC'
@@ -27,12 +28,12 @@ function ContractLine({ contract }) {
   if (contract.status === 'stale') {
     return (
       <p className="wb-meta">
-        This table changed after <code>{contract.transform}</code> checked its contract
-        {contract.checked_at ? ` (${when(contract.checked_at)})` : ''}. Re-run the transform to certify it again.
+        This table changed after the checks in <code>{contract.transform}</code> last passed
+        {contract.checked_at ? ` (${when(contract.checked_at)})` : ''}. Re-run the transform to check it again.
       </p>
     )
   }
-  return <p className="wb-meta">No sink contract covers this table.</p>
+  return <p className="wb-meta">No checks cover this table: its transform declares none for it.</p>
 }
 
 function Profile({ table }) {

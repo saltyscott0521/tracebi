@@ -1,19 +1,19 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import { TABS } from './nav'
 import { ToastProvider } from './components/Shared'
-import { AllModels, OneModel, Moved } from './components/Scope'
-import { dataPath } from './nav'
+import { OneModel, Moved } from './components/Scope'
 import GettingStarted from './pages/GettingStarted'
 import Docs from './pages/Docs'
 import Connectors from './pages/Connectors'
-import Models from './pages/Models'
+import Data from './pages/Data'
 import Overview from './pages/Overview'
 import Library, { ReportRoute } from './pages/Reports'
 import Ask from './pages/Ask'
 import Verify from './pages/Verify'
 import Runs from './pages/Runs'
-import Drafts, { DraftPage } from './pages/Drafts'
-import Map from './pages/Map'
+import { DraftPage } from './pages/Drafts'
+import Review from './pages/Review'
 
 // Four places: Reports (/), Ask, Data and Review. Every older address lands in
 // one of them (Moved). See nav.js.
@@ -27,19 +27,22 @@ export default function App() {
 
           <Route path="/ask" element={<Ask />} />
 
-          {/* Data: the models, then one model's line with its three stages. */}
-          <Route path="/data" element={<AllModels to={m => dataPath(m)}><Models /></AllModels>} />
-          <Route path="/data/map" element={<Map />} />
+          {/* Data: the models (as a list, or ?view=map as one picture), then one
+              model's page: its line, and its tabs. /data/map and a model's
+              /reports (the library, now) are Moved. */}
+          <Route path="/data" element={<Data />} />
           <Route path="/data/sources" element={<Connectors />} />
-          <Route path="/data/:model" element={<OneModel>{m => <Overview key={m} model={m} stage="model" />}</OneModel>} />
-          {['transform', 'model', 'reports'].map(stage => (
-            <Route key={stage} path={`/data/:model/${stage}`}
-                   element={<OneModel>{m => <Overview key={m} model={m} stage={stage} />}</OneModel>} />
+          <Route path="/data/map" element={<Moved />} />
+          <Route path="/data/:model" element={<OneModel>{m => <Overview key={m} model={m} tab="model" />}</OneModel>} />
+          {TABS.map(tab => (
+            <Route key={tab} path={`/data/:model/${tab}`}
+                   element={<OneModel>{m => <Overview key={m} model={m} tab={tab} />}</OneModel>} />
           ))}
 
-          {/* Review: drafts, History and Verify a file. */}
-          <Route path="/review" element={<Drafts />} />
-          <Route path="/drafts" element={<Drafts />} />
+          {/* Review: what needs attention, drafts, and Verify a file; History
+              and the full Verify page keep their own addresses. */}
+          <Route path="/review" element={<Review />} />
+          <Route path="/drafts" element={<Navigate to="/review#drafts" replace />} />
           <Route path="/drafts/:owner/:kind/*" element={<DraftPage />} />
           <Route path="/runs" element={<Runs />} />
           <Route path="/verify" element={<Verify />} />

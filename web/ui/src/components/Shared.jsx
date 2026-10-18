@@ -228,11 +228,12 @@ export function Badge({ variant = 'gray', children, style, title }) {
  * The verdict chip: the app's copy of the artifact's .tb-verdict, the same
  * words and colour rule. *state* is one of verdict.js's states (derive it with
  * verdictOf, never by hand); *detail* says why, as the chip's title. With
- * *onClick* it is a button. `size="sm"` for a dense row.
+ * *onClick* it is a button. `size="sm"` for a dense row. *children* replace the
+ * state's words with a count of it ("6 reproduce"), in the same chip.
  */
-export function Verdict({ state, detail, size, onClick }) {
-  const label = VERDICT_LABEL[state]
-  if (!label) return null
+export function Verdict({ state, detail, size, onClick, children }) {
+  if (!VERDICT_LABEL[state]) return null
+  const label = children ?? VERDICT_LABEL[state]
   const cls = `verdict verdict--${state}${size === 'sm' ? ' verdict--sm' : ''}`
   return onClick
     ? <button type="button" className={cls} title={detail} onClick={onClick}>{label}</button>
@@ -385,27 +386,6 @@ export function Btn({ children, onClick, disabled, variant = 'primary', size, st
     >
       {children}
     </button>
-  )
-}
-
-export function StatTile({ value, label, icon }) {
-  return (
-    <div className="card-hover" style={{
-      background: 'var(--card)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)',
-      padding: '20px 22px',
-      minWidth: 130, flex: 1,
-      position: 'relative', overflow: 'hidden',
-    }}>
-      {icon && <div style={{ fontSize: 18, marginBottom: 10, opacity: .7 }}>{icon}</div>}
-      <div style={{
-        fontSize: 30, fontWeight: 600, color: 'var(--text)',
-        letterSpacing: '-0.02em',
-        lineHeight: 1, fontVariantNumeric: 'tabular-nums',
-      }}>{value ?? '—'}</div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 7, fontWeight: 500 }}>{label}</div>
-    </div>
   )
 }
 

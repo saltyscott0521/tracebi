@@ -264,7 +264,7 @@ the spec, or the package's <code>report.json</code>, <code>template.html</code>,
 <code>script.js</code> and <code>report.py</code> — read-only, and only the files discovery
 registered for it. It also gives each report <code>models</code> (the models its data
 bindings read) and <code>measures</code> (the declared measure names they ask for, read
-from the file, never from a warehouse); the Map draws both. <code>display_name</code> is
+from the file, never from a warehouse); Data's Map draws both. <code>display_name</code> is
 <code>report.json</code>'s <code>name</code> (what a list or title shows); <code>name</code> stays the path
 identifier the routes take. <code>GET /api/runs</code> rows and the <code>report</code> entries of
 <code>GET /api/desk</code> carry <code>display_name</code> beside <code>target</code> / <code>report</code> (a model
@@ -511,10 +511,10 @@ needed. See <a href="../concepts/receipts.html">Receipts</a>.</p>
 <p><code>GET /api/pipelines</code> lists each pipeline with its <code>layers</code> and last run of each,
 the <code>model</code>(s) it feeds, and, from its <code>pipelines/&lt;name&gt;.yaml</code>, the <code>transform</code>
 it runs (the phase ① script; <code>null</code> for a hand-built runner) and its
-<code>description</code>; a model's Overview and the Map show them.</p>
+<code>description</code>; a model's Data page (its line and Transform tab) and the Map (<code>/data?view=map</code>) show them.</p>
 <p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
 in the role model is by side effect, not by resource.</p>
-<p><code>POST …/runs</code> is what <strong>Refresh data</strong> (the Transform stage's <strong>Run all</strong>) and
+<p><code>POST …/runs</code> is what <strong>Refresh data</strong> (the primary action on a model's Transform tab, shown only to an admin) and
 per-step <strong>Run</strong> use. It
 starts the run in the background and returns at once (<code>202</code>; <code>?layer=</code> runs one
 step, <code>?refresh=true</code> adds what it depends on). A pipeline already running
@@ -577,6 +577,38 @@ reports its build step rebuilt, only those it actually built).</p>
 <h2 id="the-spa">The SPA</h2>
 <p><code>GET /</code> serves the built React bundle. When it has not been built, the page
 says so and names the build command rather than 404ing.</p>
+<p>The app's addresses, four places in the sidebar (<code>web/ui/src/nav.js</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Place</th>
+<th>Addresses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reports</td>
+<td><code>/</code> the library (<code>?model=&lt;m&gt;</code> narrows it); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on)</td>
+</tr>
+<tr>
+<td>Ask</td>
+<td><code>/ask</code> (<code>?model=&lt;m&gt;</code> picks the model)</td>
+</tr>
+<tr>
+<td>Data</td>
+<td><code>/data</code> the models (<code>?view=map</code> the Map); <code>/data/&lt;m&gt;</code> one model, then <code>/transform</code>, <code>/sources</code>, <code>/runs</code>; <code>/data/sources</code> every source</td>
+</tr>
+<tr>
+<td>Review</td>
+<td><code>/review</code> what needs attention, drafts, Verify a file; <code>/runs</code> History; <code>/verify</code> the full Verify page; <code>/drafts/&lt;owner&gt;/&lt;kind&gt;/&lt;path&gt;</code> one draft</td>
+</tr>
+</tbody>
+</table>
+<p>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
+same thing under Data, Ask, History or the library; <code>/models</code> to <code>/data</code>;
+<code>/explore</code> to <code>/ask</code>; <code>/sources</code> and <code>/connectors</code> to <code>/data/sources</code>; <code>/map</code>
+to <code>/data?view=map</code>; <code>/drafts</code> to <code>/review#drafts</code>; <code>/reports?r=&lt;name&gt;</code> to
+<code>/reports/&lt;name&gt;</code>.</p>
 <hr>
 <h2 id="error-shape">Error shape</h2>
 <p>A failed run returns a structured <code>detail</code>:</p>

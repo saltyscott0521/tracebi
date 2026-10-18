@@ -113,7 +113,7 @@ published into it is shareable and schedulable without the shared folders.
 In the app, a draft's **Publish** step lists the places it can go (My published,
 each folder where you hold `build` or more, and its own place) and says for
 each whether it publishes directly or sends a request. Approvers (`publish` on
-the folder) see pending requests under **Drafts** and approve, or decline with
+the folder) see pending requests under **Review** (Needs attention) and approve, or decline with
 a reason the requester sees.
 
 ---

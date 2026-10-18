@@ -2,16 +2,13 @@ import { createContext, useContext, useEffect, useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
 import { useModels, useReports } from '../api'
-import { PAGES, page, whereAmI, rememberModel, reportModels, openedReport, movedTo } from '../nav'
+import { page, whereAmI, rememberModel, reportModels, openedReport, movedTo } from '../nav'
 import { PageTitle, PageSub, SkeletonCard, Empty } from './Shared'
 
-// Below this the Reports stage has no preview pane, and a row opens the report.
-export const PREVIEW_QUERY = '(max-width: 1100px)'
-
-/** The place, and on Data the model and stage, the URL names. */
+/** The place, and on Data the model and tab, the URL names. */
 export function useScope() {
   const { pathname } = useLocation()
-  return whereAmI(pathname) || { model: '', page: null, stage: null }
+  return whereAmI(pathname) || { model: '', page: null, tab: null }
 }
 
 /**
@@ -59,18 +56,6 @@ export function PageHeader({ pageKey, model, sub, children }) {
   )
 }
 
-/**
- * A list of models. With exactly one model there is no list, so it opens
- * *to(that model)* instead, keeping the query.
- */
-export function AllModels({ to, children }) {
-  const { data, isLoading } = useModels()
-  const { search } = useLocation()
-  if (isLoading) return <SkeletonCard />
-  if ((data || []).length === 1) return <Navigate to={to(data[0].name) + search} replace />
-  return children
-}
-
 /** A /data/<model>/… page: the model must exist; it becomes the remembered one. */
 export function OneModel({ children }) {
   const { model } = useParams()
@@ -107,5 +92,3 @@ export function NotFound() {
     </>
   )
 }
-
-export { PAGES }

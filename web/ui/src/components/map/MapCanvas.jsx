@@ -1,13 +1,17 @@
 import { Fragment } from 'react'
 
 import { useConnectorWarehouse } from '../../api'
+import { Flag, LineNode } from '../TheLine'
+import { Verdict } from '../Shared'
 import { NEVER, splitGlyph, tableLive, warehouseState } from './states'
 import './map.css'
 
 // Draws a layout: edges in one SVG layer, nodes as absolutely positioned HTML
-// above it. A node that does something is a <button>; one that only says
-// something is a labelled group, so a reader is never offered a control that
-// does nothing.
+// above it. A node is the line's LineNode, so the Map and a model's line look
+// alike and mark the same things the same way: a report's verdict chip, a flag
+// for a failed transform or a table past its checks. A node that does
+// something is a <button>; one that only says something is a labelled group,
+// so a reader is never offered a control that does nothing.
 
 /** A name, breaking only after an underscore. The text itself is untouched. */
 function Name({ text }) {
@@ -40,28 +44,22 @@ function Edges({ edges, width, height }) {
   )
 }
 
+// A state's tone, as the line's flag: failed, needs a look, not built.
+const FLAG = { bad: 'bad', warn: 'warn', ghost: 'none' }
+
 function MapNode({ node, label = node.label || '', tone = node.tone || 'quiet', onActivate }) {
   const { glyph, words } = splitGlyph(label)
   const note = node.note || ''
   const said = [words, note].filter(Boolean).join(', ')
   const aria = `${node.role}: ${node.name}${said ? ` (${said})` : ''}`
-  const className = `map-node map-node--${node.shape} map-node--${tone}${note ? ' map-node--noted' : ''}`
-  const style = { left: node.x, top: node.y, width: node.w, height: node.h }
-  const body = (
-    <>
-      {label && (
-        <span className="map-node__kind">{glyph && <span aria-hidden="true">{glyph} </span>}{words}</span>
-      )}
-      <span className="map-node__name"><Name text={node.name} /></span>
-      {note && <span className="map-node__note">{note}</span>}
-    </>
-  )
-  if (!node.action) return <div role="group" className={className} style={style} aria-label={aria}>{body}</div>
+  const flag = !node.verdict && FLAG[tone] && words
+  const marks = node.verdict ? [<Verdict key="v" state={node.verdict} detail={node.detail} size="sm" />]
+    : flag ? [<Flag key="f" flag={{ kind: FLAG[tone], glyph, text: words }} />] : []
   return (
-    <button type="button" className={className} style={style} aria-label={aria}
-            aria-pressed={node.pressed} onClick={() => onActivate(node)}>
-      {body}
-    </button>
+    <LineNode shape={node.shape} name={node.name} fact={!node.verdict && !flag ? words : null} marks={marks} note={note}
+              tone={['hot', 'unused'].includes(tone) ? tone : ''} className="map-node" label={aria}
+              style={{ left: node.x, top: node.y, width: node.w, height: node.h }}
+              pressed={node.pressed} onClick={node.action ? () => onActivate(node) : undefined} />
   )
 }
 

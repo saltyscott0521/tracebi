@@ -3,14 +3,13 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { StorageLine, KIND_LABEL } from '../components/Storage'
+import { StorageLine, sourceKind } from '../components/Storage'
 import { buildModelGraph, measureDefinition, MEASURE_KINDS, summary } from '../components/modelGraph'
 import {
-  useModels, useModel, useTablePreview, useDesk, useReports, usePipelines, useAppStatus, tableCsvUrl,
+  useModels, useModel, useTablePreview, useDesk, useReports, usePipelines, tableCsvUrl,
 } from '../api'
 import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
-import { ProjectFeed } from '../components/Workbench'
 import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 import {
   Card, Badge, Spinner, Empty, Tabs, SkeletonList, SkeletonCard,
@@ -310,8 +309,7 @@ function ModelStorage({ details, tables }) {
             <div key={c.name} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', background: 'var(--surface)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                 <strong style={{ fontSize: 13 }}>{c.name}</strong>
-                <Badge variant="blue">{c.type}</Badge>
-                <Badge variant="gray">{KIND_LABEL[c.storage?.kind] || 'Unknown'}</Badge>
+                <Badge variant="gray" style={{ textTransform: 'none' }} title={c.type}>{sourceKind(c)}</Badge>
               </div>
               <div style={{ marginBottom: 10 }}><StorageLine storage={c.storage} /></div>
               <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>
@@ -331,6 +329,9 @@ function ModelStorage({ details, tables }) {
     </div>
   )
 }
+
+// What the desk says of a warehouse table, in plain words.
+const SINK_WORDS = { stale: 'changed since its checks last passed', no_contract: 'no checks declared' }
 
 export function ModelDetail({ name }) {
   const { data, isLoading } = useModel(name)
@@ -362,10 +363,6 @@ export function ModelDetail({ name }) {
   return (
     <Card className="fade-in">
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
-        {data.source_file && <div>Defined in <code>{data.source_file}</code></div>}
-        {(data.connector_details || []).map(c => (
-          <div key={c.name}>Data in <StorageLine storage={c.storage} /></div>
-        ))}
         {grain && <div>Grain: {grain}</div>}
         {(data.owners || []).length > 0 && (
           <div>Owners: {data.owners.join(', ')} (only they or an admin publish changes to it)</div>
@@ -373,12 +370,11 @@ export function ModelDetail({ name }) {
         {desk?.warehouse && sinks.length === 0 && <div>Its tables satisfied their checks when they were last written.</div>}
         {sinks.length > 0 && (
           <div>
-            {sinks.map(s => `${s.table} ${s.status}`).join(' · ')}
+            {sinks.map(s => `${s.table}: ${SINK_WORDS[s.status] || s.status}`).join(' · ')}
           </div>
         )}
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-        {data.connectors.map(c => <Badge key={c} variant="blue">{c}</Badge>)}
         <Badge variant="purple">{summary(data)}</Badge>
         <Badge variant="gray">{data.tables.length} table{data.tables.length !== 1 ? 's' : ''}</Badge>
       </div>
@@ -479,8 +475,8 @@ export function ModelDetail({ name }) {
 // ── All models: pick one ─────────────────────────────────────────────────────
 
 /**
- * The models, each opening *pageKey* for itself: its line on Data
- * ('data'), or Ask with it picked ('ask').
+ * The models, each opening *pageKey* for itself: Ask with it picked ('ask'),
+ * or its page on Data ('data'; Data's own list is pages/Data.jsx).
  */
 export default function Models({ pageKey = 'data' }) {
   const { data, isLoading } = useModels()
@@ -488,8 +484,6 @@ export default function Models({ pageKey = 'data' }) {
   const { data: pipelines } = usePipelines()
   const [params] = useSearchParams()
   const open = pageKey === 'ask' ? askPath : dataPath
-  const { data: appStatus } = useAppStatus()
-  const dev = !!appStatus?.build_mode
   // Old links: /models?m=<model>, /explore?model=<model>.
   const legacy = params.get('m') || params.get('model')
   if (legacy) return <Navigate to={open(legacy)} replace />
@@ -525,9 +519,6 @@ export default function Models({ pageKey = 'data' }) {
           })}
         </div>
       )}
-      {/* In dev mode (`tracebi dev`) the agent's exhibits and your notes to it
-          are on Data, before any report exists. */}
-      {pageKey === 'data' && dev && <ProjectFeed />}
     </>
   )
 }

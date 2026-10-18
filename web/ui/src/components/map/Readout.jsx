@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Verdict } from '../Shared'
 import './map.css'
 
 // Under the map: the selection in words (announced when it changes), and the
@@ -21,7 +22,7 @@ export function Legend() {
       <span><i className="map-key map-key--card" aria-hidden="true" />A card is something you write: a transform, a model, a report</span>
       <span><i className="map-key map-key--pill" aria-hidden="true" />A pill is what gets handed on: files, tables, measures</span>
       <span><i className="map-key map-key--path" aria-hidden="true" />The selected path, with its boxes in bold</span>
-      <span><i className="map-key map-key--ghost" aria-hidden="true" />○ Never built (a report with no page yet)</span>
+      <span><Verdict state="never-built" size="sm" />A report with no page yet; a report&rsquo;s chip says whether its numbers still reproduce</span>
     </section>
   )
 }

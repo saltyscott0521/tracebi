@@ -80,7 +80,7 @@ the spec, or the package's `report.json`, `template.html`, `style.css`,
 `script.js` and `report.py` — read-only, and only the files discovery
 registered for it. It also gives each report `models` (the models its data
 bindings read) and `measures` (the declared measure names they ask for, read
-from the file, never from a warehouse); the Map draws both. `display_name` is
+from the file, never from a warehouse); Data's Map draws both. `display_name` is
 `report.json`'s `name` (what a list or title shows); `name` stays the path
 identifier the routes take. `GET /api/runs` rows and the `report` entries of
 `GET /api/desk` carry `display_name` beside `target` / `report` (a model
@@ -229,12 +229,12 @@ needed. See [[receipts]].
 `GET /api/pipelines` lists each pipeline with its `layers` and last run of each,
 the `model`(s) it feeds, and, from its `pipelines/<name>.yaml`, the `transform`
 it runs (the phase ① script; `null` for a hand-built runner) and its
-`description`; a model's Overview and the Map show them.
+`description`; a model's Data page (its line and Transform tab) and the Map (`/data?view=map`) show them.
 
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
 
-`POST …/runs` is what **Refresh data** (the Transform stage's **Run all**) and
+`POST …/runs` is what **Refresh data** (the primary action on a model's Transform tab, shown only to an admin) and
 per-step **Run** use. It
 starts the run in the background and returns at once (`202`; `?layer=` runs one
 step, `?refresh=true` adds what it depends on). A pipeline already running
@@ -265,6 +265,21 @@ reports its build step rebuilt, only those it actually built).
 
 `GET /` serves the built React bundle. When it has not been built, the page
 says so and names the build command rather than 404ing.
+
+The app's addresses, four places in the sidebar (`web/ui/src/nav.js`):
+
+| Place | Addresses |
+| --- | --- |
+| Reports | `/` the library (`?model=<m>` narrows it); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on) |
+| Ask | `/ask` (`?model=<m>` picks the model) |
+| Data | `/data` the models (`?view=map` the Map); `/data/<m>` one model, then `/transform`, `/sources`, `/runs`; `/data/sources` every source |
+| Review | `/review` what needs attention, drafts, Verify a file; `/runs` History; `/verify` the full Verify page; `/drafts/<owner>/<kind>/<path>` one draft |
+
+Older addresses redirect, keeping their query (`movedTo`): `/m/<m>/…` to the
+same thing under Data, Ask, History or the library; `/models` to `/data`;
+`/explore` to `/ask`; `/sources` and `/connectors` to `/data/sources`; `/map`
+to `/data?view=map`; `/drafts` to `/review#drafts`; `/reports?r=<name>` to
+`/reports/<name>`.
 
 ---
 

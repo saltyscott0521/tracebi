@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { useConnectors, useDesk, useModel, useModels, usePipelines, useReports } from '../api'
+import { useModelLabel } from '../components/Scope'
 import { lastModel, rememberModel } from '../nav'
 import { Empty, ErrorDetail, SkeletonCard } from '../components/Shared'
 import MapCanvas from '../components/map/MapCanvas'
@@ -11,17 +12,18 @@ import { projectLayout } from '../components/map/project'
 import { modelReadout, projectReadout } from '../components/map/readout'
 import '../components/map/map.css'
 
-// The Map: the project as one picture, from what is written (transform, model,
-// report) to what is handed on (the warehouse, its tables, the measures).
+// The Map: Data's models as one picture (/data?view=map), from what is written
+// (transform, model, report) to what is handed on (the warehouse, its tables,
+// the measures). Its nodes are the line's (LineNode in TheLine.jsx): a card
+// for what you write, a pill for what is handed on, and the same marks.
 //
-//   ?model=<name>             zoomed into one model; absent: every model
-//   ?model=<name>&sel=measure:<m>   a measure's path is lit
-//   ?model=<name>&sel=report:<r>    a report's path is lit
+//   &model=<name>             zoomed into one model; absent: every model
+//   &model=<name>&sel=measure:<m>   a measure's path is lit
+//   &model=<name>&sel=report:<r>    a report's path is lit
 //
 // The URL holds the zoom and the selection, so the browser's back and forward
-// buttons walk through them. This page is not routed yet: mount it wherever
-// the sidebar's Map item points. (Named MapPage so it does not shadow the
-// global Map; it is the default export.)
+// buttons walk through them. (Named MapPage so it does not shadow the global
+// Map; it is the default export.)
 
 const Back = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
@@ -36,6 +38,7 @@ export default function MapPage() {
   const pipelines = usePipelines()
   const connectors = useConnectors()
   const desk = useDesk()
+  const labelOf = useModelLabel()
 
   const names = (models.data || []).map(m => m.name)
   const asked = params.get('model') || ''
@@ -78,7 +81,7 @@ export default function MapPage() {
   if (zoomed && info.error) return <ErrorDetail error={info.error} />
   if (!layout) return <SkeletonCard />
 
-  const go = next => setParams(next)
+  const go = next => setParams({ view: 'map', ...next })
   const open = (model, pick) => go(pick ? { model, sel: pick } : { model })
   const activate = node => {
     const { zoom, select } = node.action
@@ -94,11 +97,12 @@ export default function MapPage() {
     <div className="map-page">
       <header className="map-head">
         <div className="map-head__main">
-          <nav aria-label="Zoom" className="map-head__crumb">
-            {zoomed && <button type="button" className="map-btn" onClick={() => go({})}><Back />All models</button>}
-            <span className="map-cap">Map</span>
-          </nav>
-          <h1 className={zoomed ? 'map-mono' : ''}>{zoomed || 'All models'}</h1>
+          {zoomed && (
+            <nav aria-label="Zoom" className="map-head__crumb">
+              <button type="button" className="map-btn" onClick={() => go({})}><Back />All models</button>
+            </nav>
+          )}
+          {zoomed && <h2>{labelOf(zoomed)}</h2>}
         </div>
         <p className="map-head__hint">
           {zoomed ? 'Pick a measure or a report to light its path.' : 'Open a model to see its measures and which reports use them.'}
@@ -106,7 +110,7 @@ export default function MapPage() {
       </header>
 
       {asked && !zoomed && <p className="map-note" role="status">No model named “{asked}”. Showing every model.</p>}
-      <p className="map-narrow">The map is wide; scroll sideways, or use Overview, which shows the same line stacked.</p>
+      <p className="map-narrow">The map is wide; scroll sideways, or open a model: its page shows the same line, stacked.</p>
 
       <MapCanvas layout={layout} label={zoomed ? `Map of ${zoomed}` : 'Map of every model'}
                  onActivate={activate} onOpen={model => open(model)} />

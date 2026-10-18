@@ -45,7 +45,8 @@ A model also gets a pipeline, `pipelines/<model>.yaml` (`transform:`, `models:`,
 `reports: all`, `schedule:`; it only names the Python transform; `.py` with
 `model_pipeline(...)` still works and wins on a name clash): `tracebi
 run-pipeline <model>` runs the transform, then builds every report in
-`reports/<model>/`, and the app's **Refresh data** runs the same. `tracebi
+`reports/<model>/`, and the app's **Refresh data** (Data, the model's
+Transform tab) runs the same. `tracebi
 new-pipeline` writes YAML; `tracebi migrate pipeline pipelines/x.py [--write]`
 converts. Sources are declarative too: `connections/<name>.yaml` (see below). `tracebi init` scaffolds exactly this
 for `sample_model`.
@@ -489,7 +490,7 @@ edits the report; you do. `tracebi report snapshot <name>` shares a draft (explo
 kept, review banner, no manifest — `verify` refuses it by name). Publishing
 is `tracebi report build <name>` + `tracebi verify … --strict --contracts`:
 the built `output/<name>.html` + receipt is the deliverable, and the package
-is already served in the app, on its model's Overview — there is no separate publish step.
+is already served in the app, in the library under its model — there is no separate publish step.
 A PDF (`tracebi report build <name> --format pdf`, or
 `build_report(..., format="pdf")`) is a print of that built HTML and carries
 no receipt. A pdf build returns `pdf_path`; pass that as
@@ -531,8 +532,8 @@ line, refusals included — so the human watches you work
 (MCP: `workbench_state` with no `report` returns the feed and pins, plus
 the warehouse's tables with row counts and contract status as sinks land,
 and the models' star schemas taking shape as you edit `models/`). The human
-browses the warehouse and the model in the app's Transform and Model stages (on
-the model's Overview); `tracebi dev --classic` lays the Warehouse, Models and
+browses the warehouse and the model in the app's Transform and Model tabs (on
+the model's Data page); `tracebi dev --classic` lays the Warehouse, Models and
 Packages
 panels out beside the feed on one page. Interrogate in the
 open — excerpts and visuals in the app, not buried in chat — then
@@ -783,7 +784,8 @@ nothing a draft holds goes live until `publish_draft`.
    With Publish there it is published. With only Build there the answer is
    `status: "requested"`: a request, not a publish. Tell the person it waits for
    someone with Publish on that folder, who approves or rejects it with
-   `list_publish_requests` / `decide_publish_request` (or in the app); you
+   `list_publish_requests` / `decide_publish_request` (or in the app, under
+   Review); you
    cannot decide your own. A folder whose `_folder.yaml` says
    `accepts: checkable` refuses a report whose numbers a query cannot re-run,
    at publish and at request, and the message names why.

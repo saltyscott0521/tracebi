@@ -152,7 +152,7 @@ python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
   <code>[model-without-reports]</code>. (The live demo showed three models with none:
   see the discovery fix under Rules learned.)</li>
 <li><strong>Every model has a pipeline</strong> <code>[model-without-pipeline]</code>: something its
-  Refresh page can run. A pipeline belongs to the models it names
+  Transform tab can run. A pipeline belongs to the models it names
   (<code>runner.models</code>), else the one <code>model_pipeline</code> stamped, else its own name.</li>
 <li><strong>The look</strong> (<a href="../architecture/design-direction.html">Design direction</a>): Hanken Grotesk loads <code>[theme-font-loaded]</code>
   <code>[theme-font]</code>; the brand is cobalt and stays in its blue family, and other
@@ -238,8 +238,8 @@ registered by an app module rather than found under <code>reports/</code>). Each
   <code>--blue</code> stayed near-black and every active tab and row vanished in dark.</li>
 <li>A page that shows a fact another page shows uses the same words and chips,
   from the same data: every verdict is the <code>Verdict</code> chip, its state from
-  <code>verdictOf</code> (<code>web/ui/src/verdict.js</code>). The Runs page shows the verdict the
-  Reports page shows (<code>/api/desk</code>) on a report's newest build, and a neutral
+  <code>verdictOf</code> (<code>web/ui/src/verdict.js</code>). History shows the verdict the
+  library shows (<code>/api/desk</code>) on a report's newest build, and a neutral
   "Not checked" on every older one. A build row stores no verdict, so it never
   reads green by itself.</li>
 <li>A row of seven buttons is a grouping problem, not a wrapping problem: one

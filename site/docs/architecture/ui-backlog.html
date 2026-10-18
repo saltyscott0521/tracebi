@@ -86,12 +86,15 @@
 bottom with the change that closed them.</p>
 <h2 id="open">Open</h2>
 <ol>
-<li><strong>Words a reader doesn't use</strong>: "semantic contract", "DuckDBConnector"
-   as a badge, "STEP / never run" in the Refresh flow.</li>
+<li><em>Closed by D-1 (see Done).</em></li>
 <li><strong>"Checks stale" items name no model</strong>: a stale sink check shows only
     under All models. Attribute warehouse tables to the models that read them.</li>
-<li><strong>Bundle is 1.1 MB of JS.</strong> Split routes (React Flow, Markdown, Recharts
-    load only on the pages that use them).</li>
+<li><strong>Bundle is 1.2 MB of JS</strong> (1,243,903 bytes, 364 KB gzipped, after D-3).
+    D-3's dead-code pass did not move it: the bundler already dropped what
+    nothing imported. Split routes (React Flow, Markdown, Recharts load only
+    on the pages that use them). The Step 1 baselines' <code>bundle_js_kb</code> 2,345
+    counted a stale second bundle left in <code>dist/assets/</code>; build into an empty
+    <code>dist</code> before an audit.</li>
 <li><strong>90 hard-coded colours in JSX</strong> — each is a dark-mode bug waiting.
     Move them to tokens.</li>
 <li><strong>The theme ignores the OS setting</strong>: a first visit is always light. Follow
@@ -125,22 +128,24 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
     old addresses until the next run), <code>blank-page</code> / <code>one-h1</code> / <code>small-target</code> on an open report,
     <code>no-focus-ring</code> into the report frame, eleven <code>slow-page</code>, and the
     segmented bar's <code>repeating-linear-gradient</code> (<code>global.css:1188</code>,
-    <code>theme-decoration</code>). Some are the audit's selectors, some the app.</li>
+    <code>theme-decoration</code>). Some are the audit's selectors, some the app.
+    <em>Retriaged after D-3's re-run:</em> <code>scope-mismatch</code>, <code>nav-you-are-here</code> and
+    <code>theme-decoration</code> are gone. Left, on an open report only: <code>blank-page</code>,
+    <code>no-focus-ring</code> into the frame and <code>one-h1</code> (affordability; the demo's
+    medallion_revenue), and <code>small-target</code> on the rail's "Reports" crumb and
+    the header's verdict chip; plus <code>small-target</code> on Review's "All history →"
+    and thirteen <code>slow-page</code>.</li>
 </ol>
 <p>Left by Step 2 of the UX plan (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>), app side:</p>
 <ol start="14">
-<li><strong>Re-run the ui-audit baselines</strong>: the committed findings still name the
-    addresses before R-1 (<code>/m/&lt;model&gt;/…</code>, <code>/reports?r=</code>), so item 13 cannot
-    be retriaged against them.</li>
-<li><strong>The Data page's Reports-stage preview keeps its Preview/Config switch</strong>
-    (R-4 moved Config into Files on the report page); Step 3 (D-1) retires
-    that preview.</li>
-<li><strong>Docs still say reports are served "on the model's Overview"</strong>: about
-    nine lines in <code>CLAUDE.md</code>, <code>the-three-phase-workflow.md</code>,
-    <code>report-json.md</code>, <code>analyst-guide.md</code> and <code>notebook-guide.md</code> (and the
-    <code>site/docs</code> twins). For D-3.</li>
-<li><strong><code>demo-script.md</code> points at "the green badges above the report"</strong>, which
-    R-3 removed; the chip in the masthead is what to point at.</li>
+<li><em>Closed by D-3 (see Done).</em></li>
+<li><em>Closed by D-1 (see Done).</em></li>
+<li><strong><code>CLAUDE.md</code> still says "on the model's Overview"</strong> (four lines: the
+    phase ③ paragraph, the run-command comment, How to Add Things twice) and
+    does not say where <code>tracebi dev</code> opens. D-3 fixed every other file; the
+    project instructions are the owner's to edit (the proposed wording is in
+    D-3's report).</li>
+<li><em>Closed by D-3 (see Done).</em></li>
 <li><strong><code>site/sample/portfolio_showcase.html</code> predates Step 1</strong>: rebuild it with
     the current runtime.</li>
 <li><strong>A report build records no finish time</strong> (<code>record_report_build</code>), so
@@ -153,13 +158,64 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
 <li><strong>The phone header is translucent</strong>: a scrolled list shows through it
     (History's sticky day header sits under it).</li>
 </ol>
+<p>Left by Step 3 of the UX plan (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>):</p>
+<ol start="22">
+<li><strong>The Map's labels are in mono</strong> where the line's are in the sans (D-1).</li>
+<li><strong>The Model tab has a second row of tabs inside it</strong> (Diagram, Tables,
+    Measures, …) and its <strong>Edit as a draft</strong> button floats alone above them
+    (D-1).</li>
+<li><strong>The Transform flow zooms in two steps</strong> only (D-1).</li>
+<li><strong>The report page's Ask box is off</strong> (<code>SHOW_ASK = false</code> in
+    <code>Reports.jsx</code>): <code>AskCut</code> is reachable in code but never shown. Step 4
+    decides whether it returns or goes.</li>
+<li><strong><code>notebook-guide.md</code>'s <code>@register.report</code> section predates the one
+    renderer</strong>: a factory with no package is listed but refused (422). Point
+    it at a package.</li>
+<li><strong><code>scripts/ui_audit.py</code>'s <code>scope-mismatch</code> detail still says "the model
+    switcher"</strong>; it means the model chip.</li>
+</ol>
 <h2 id="done">Done</h2>
 <ul>
-<li><strong>Model switcher as the frame of the app</strong> — one control at the top of the
+<li>
+<p><strong>The old frame retired</strong> (D-3): dead components, helpers and CSS out
+  (<code>StatTile</code>, <code>reviewNotes</code>, <code>modelOfPipeline</code>, <code>reportOpenPath</code>, the
+  stylesheet's orb, gradient-text, grid and workflow-run rules, …); every old
+  address checked to land (34 in a browser, the whole <code>movedTo</code> table in the
+  smoke test); the words follow the four places in the README, guides,
+  concepts, reference, agent guides, CLI and Get started ("How the app fits
+  together" one entry per place). Closed items 14 (baselines re-run), 16 for
+  every file but <code>CLAUDE.md</code>, and 17 (the demo script points at the masthead
+  chip and its Receipt link).</p>
+</li>
+<li>
+<p><strong>Review is one page</strong> (D-2): Needs attention first (failed runs and
+  refreshes with what went wrong, builds that need a look, publish requests to
+  decide in place, the person's own requests waiting on approvers), then
+  Drafts (own first, an admin's Mine | Everyone's; an empty state written for
+  a person, the MCP tool names under "For your agent"; decided requests
+  folded under Requests), then Verify a file as a small drop zone that opens
+  into the full one. <code>/drafts</code> lands on <code>/review#drafts</code>; a draft's page says
+  Review › Drafts.</p>
+</li>
+<li>
+<p><strong>Data is one page per model</strong> (D-1): the line as its header (three
+  stations, the warehouse file and the measures between them, the reports'
+  verdicts as chip counts), then tabs Model · Transform · Sources · Runs;
+  <code>/data</code> lists the models one row each, and the Map is its picture view
+  (<code>/data?view=map</code>) drawn with the line's nodes. Refresh data is the
+  Transform tab's one primary action, and it and every run button render for
+  an admin only. Closed item 1 ("DuckDBConnector" is "DuckDB file", "STEP /
+  never run" is gone, sink checks read "checks passed when last written") and
+  the Reports-stage preview with its Preview/Config switch (retired: the
+  Reports station opens the library).</p>
+</li>
+<li>
+<p><strong>Model switcher as the frame of the app</strong> — one control at the top of the
   sidebar narrows every page (Data model, Explore, Refresh, Reports, Sources,
   Runs) to a model; <code>/m/&lt;model&gt;/&lt;page&gt;</code> and an all-models <code>/&lt;page&gt;</code>; the last
   pick is remembered; old addresses redirect. "Contract" is "Data model"
-  again. Removed the dead nav code from earlier designs.</li>
+  again. Removed the dead nav code from earlier designs.</p>
+</li>
 <li><strong>"You are here" on every page</strong> <code>[nav-you-are-here]</code> — every frame page
   marks its sidebar entry.</li>
 <li><strong>Unknown URLs render a real "Page not found"</strong> <code>[blank-page]</code>.</li>

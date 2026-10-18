@@ -1,4 +1,4 @@
-"""The Reports page's Source view: which form a report takes, and its files."""
+"""A report page's Files tab: which form a report takes, and its files."""
 
 import json
 

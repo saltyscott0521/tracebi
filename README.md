@@ -74,8 +74,8 @@ report, not a different thing.)
 | Phase | Folder | Artifact | Discovered by the server as |
 |---|---|---|---|
 | ① Transform | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
-| ② Model | `models/` | `DataModel` (a `model` variable) | a model, on its Overview's Model stage |
-| ③ Report | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report, on its model's Overview (Reports stage) |
+| ② Model | `models/` | `DataModel` (a `model` variable) | a model: its page on **Data**, Model tab |
+| ③ Report | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report, in **Reports** (the library), under its model |
 
 ```bash
 cd examples/portfolio_project   # the reference project ships in the repo
@@ -211,7 +211,7 @@ backlinks and the graph view, or just read it on GitHub.
 | Define a reusable model for notebooks and scripts | `tracebi new-model "My Model"` → edit `models/<name>.py` → `from tracebi.model_registry import get_model` |
 | Define a scheduled ETL pipeline | `tracebi new-pipeline "My ETL"` → edit `pipelines/<name>.py` → `from tracebi.pipeline_registry import get_runner` |
 | Point the web app at my own data / restyle the UI | [docs/guides/web-customization.md](docs/guides/web-customization.md) — app modules, registry, theming, auth, deploy |
-| Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open the **Explore** page |
+| Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open **Ask** |
 | Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
 | Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
 | Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
@@ -251,7 +251,7 @@ pip install -e "."                    # core: connectors, DataSet, lineage (no q
 pip install -e ".[reports]"           # Excel + HTML renderers
 pip install -e ".[pipeline]"          # scheduling + DB write-back
 pip install -e ".[lineage]"           # lineage diagrams
-pip install -e ".[duckdb]"            # DuckDB — required to run any model query (Explore + report figures)
+pip install -e ".[duckdb]"            # DuckDB — required to run any model query (Ask + report figures)
 pip install -e ".[web]"               # FastAPI + uvicorn web UI
 pip install -e ".[e2e]"               # Playwright, for the browser smoke test
 pip install -e ".[all]"               # everything
@@ -650,17 +650,22 @@ A browser interface over your TraceBi registry — connectors, models, reports, 
 The sidebar has four places: **Reports** (the library, where the app opens:
 every report by folder, each with its verdict, built time and schedule,
 narrowed to a model by a chip), **Ask**, **Data** and **Review**. Older
-addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them.
+addresses (`/m/<model>/…`, `/models`, `/explore`, `/sources`, `/map`, `/drafts`,
+`/reports?r=<name>`) redirect into them; History (`/runs`) and Verify
+(`/verify`) keep their own pages under Review.
 
 - **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
   chart, CSV download, and the *lineage graph of the exact query that ran*.
-- **Model** — a model's Data page, Model stage: table previews with column dtypes
+- **Data** (`/data`) — the models, one row each (its shape, its reports' verdicts as counts,
+  when its data was last refreshed); **Map** draws them as one picture (`/data?view=map`).
+  A model's page (`/data/<model>`) leads with its line (Transform → Model → Reports, the
+  warehouse file and the measures between them), then four tabs: Model, Transform, Sources, Runs.
+- **Model** — a model's Data page, Model tab: table previews with column dtypes
   and full-table CSV export,
   plus an interactive ERD of its facts and dimensions.
-- **Reports** — the library opens a report at `/reports/<name>`; a model's Data page, Reports stage, lists its reports beside the last
-  build of the report you picked (Preview) or the files that define it (Config); a
-  report with no build says so and offers **Build it now**. A report's own page is the
+- **Reports** — the library opens a report at `/reports/<name>` (a model's line links to
+  the library narrowed to it); a report with no build says so and offers **Build it now**. A report's own page is the
   report, full width, as delivered: the app's nav is a slim icon rail on the left, and
   above the report a slim header (a breadcrumb back to the model, its name, the
   verdict chip and, when it asks for a look, why, and when it was built) and one
@@ -676,14 +681,24 @@ addresses (`/m/<model>/…`, `/explore`, `/reports?r=<name>`) redirect into them
   **Lineage** (where each number came from), **History** (every build of it, with
   its verdict) and **Files** (the report's files, read-only). Failures show the
   full Python traceback.
-- **Transform** — a model's Data page, Transform stage: the medallion chain as a live DAG
-  with per-layer run buttons and run history. **Refresh data** (admin), in the Data page's
-  header, runs the whole pipeline.
-- **Map** (`/data/map`) — every model as one picture: transform → warehouse → model → reports. Open a
-  model to see its measures and the reports that use them.
+- **Transform** — a model's Data page, Transform tab: the medallion chain as a live DAG
+  and a list of steps, its runs and code, and the tables it produces. **Refresh data**, the
+  tab's one primary action, runs the whole pipeline; it and the per-step run buttons are
+  shown only to an admin.
+- **Sources** — a model's Data page, Sources tab: where its data is kept (a DuckDB file, a
+  CSV folder, a database); every source is at `/data/sources`.
+- **Runs** — a model's Data page, Runs tab: History narrowed to the model.
+- **Map** (`/data?view=map`) — every model as one picture: transform → warehouse → model → reports,
+  drawn with the line's nodes and verdict chips. Open a model to see its measures and the
+  reports that use them.
+- **Review** (`/review`) — what waits on a person, in the order they act on it: **Needs
+  attention** (a refresh whose steps failed, a build that needs a look or does not reproduce,
+  a publish request to decide in place, their own requests waiting on approvers), then
+  **Drafts** (their own first), then **Verify a file**, a small drop zone for a report file
+  someone was sent (`/verify` is its full page).
 - **History** (under **Review**) — what ran, when, how long it took, by whom, and whether it
   reproduced, grouped by day (a card per run on a phone). A report run links to the report by
-  its name, a refresh to its model's Transform stage; a failed run reads red, and a column no
+  its name, a refresh to its model's Transform tab; a failed run reads red, and a column no
   row fills (how long, who) is not shown. A report's newest
   build shows the same verdict as the report's own page; every older build reads
   "Not checked". Only a `reproduces` verdict reads green.
@@ -715,9 +730,9 @@ package (`wealth_model` at `tracebi/web/demo_app/models/wealth_model.py`;
 `sales_model`, a star schema over the cleaned tables of the demo's sales
 pipeline, in `pipeline.py`), and it stands up a self-contained SQLite medallion
 pipeline (Landing → Manipulation → Final) at startup so the model's Transform
-stage has live run history. Reports read from those resources.
+tab has live run history. Reports read from those resources.
 
-The second model — `wealth_model` (`tracebi/web/demo_app/models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from the Explore page (e.g. AUM by region × asset class, or net flows by client segment).
+The second model — `wealth_model` (`tracebi/web/demo_app/models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from **Ask** (e.g. AUM by region × asset class, or net flows by client segment).
 
 To point the UI at your own app module (connectors that cannot be expressed as a file convention):
 

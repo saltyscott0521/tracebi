@@ -74,7 +74,7 @@ class Registry:
         """Every connector the project uses, by name, and which models use each.
 
         A connector is usually built inside a model file, not registered, so
-        listing only the registry left the Sources page empty for a project
+        listing only the registry left the Sources list empty for a project
         whose data is in plain sight in its models.
         """
         with self._lock:
@@ -200,7 +200,7 @@ class Registry:
         """Forget a report. True when it was registered.
 
         Used by live discovery when a report's package or spec is deleted
-        from disk, so the Reports page stops listing a report that can no
+        from disk, so the library stops listing a report that can no
         longer be built.
         """
         with self._lock:

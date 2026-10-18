@@ -259,6 +259,8 @@ def test_build_mode_shows_the_data_and_checks_and_the_project_feed(tmp_path: Pat
             show(pd.DataFrame({"region": ["East", "West"], "revenue": [10.5, 20.5]}),
                  note="revenue by region", name="region_scan")
             page.goto(f"{base}/data")
+            # Folded under one line, below the models.
+            page.locator(".feedfold > summary").click()
             feed = page.locator(".wb--project")
             feed.get_by_text("region_scan").wait_for()
             assert "East" in feed.inner_text()

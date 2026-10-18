@@ -44,8 +44,8 @@ runs them as one: `models/<model>.yaml`, `pipelines/<model>.yaml` (`transform:`,
 `models:`, `reports: all`, `schedule:`; it only names the Python transform),
 `reports/<model>/`. A source is `connections/<name>.yaml`.
 `tracebi run-pipeline <model>` runs the transform, then builds every report in
-`reports/<model>/`, each with its receipt; the app's **Refresh data** runs the
-same pipeline. A report is named by its path (`<model>/<name>`) in every
+`reports/<model>/`, each with its receipt; the app's **Refresh data** (Data,
+the model's Transform tab) runs the same pipeline. A report is named by its path (`<model>/<name>`) in every
 command, and builds to `output/<model>/<name>.html`. The sample is
 `sample_model` — `pipelines/sample_model.py`, `reports/sample_model/`.
 People read names, not identifiers: a model's `label` (optional; unset, the name
@@ -443,7 +443,7 @@ body, the same text as `tracebi knowledge <slug>`).
    `workbench_state` (no `report`) lists the warehouse's tables, row counts,
    column profiles, and sink-contract status as transforms land, and the
    star schema taking shape as you edit `models/`; the human sees them in
-   the app's Transform and Model stages (`tracebi dev --classic` lays
+   the model's Transform and Model tabs on Data (`tracebi dev --classic` lays
    them out beside the feed on one page). Column names of a sunk
    table come from the MCP `describe_table` tool (or `tracebi warehouse
    tables --table T`) — connector metadata, no row scan. A connector
@@ -509,7 +509,7 @@ body, the same text as `tracebi knowledge <slug>`).
    The build strips exploration, validates every figure claim against the
    embedded bindings, and writes the receipt. `output/<name>.html` (+ its
    `.manifest.json`) is the deliverable to hand over or commit — and the
-   package is already served live in the app (`tracebi serve`), on its model's Overview;
+   package is already served live in the app (`tracebi serve`), in the library under its model;
    there is no separate publish step. The gateway's
    `build_report(..., format="xlsx")` also writes `<name>.xlsx` in the
    same output directory. The spreadsheet carries no receipt and is not

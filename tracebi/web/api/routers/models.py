@@ -41,7 +41,7 @@ def get_model(name: str):
 
 @router.get("/{name}/source")
 def model_source(name: str):
-    """The model's file, read-only: the contract the Data model page describes."""
+    """The model's file, read-only: the contract a model's Data page describes."""
     detail = registry.describe_model(name)
     if not detail:
         raise HTTPException(status_code=404, detail=f"Model '{name}' not found")

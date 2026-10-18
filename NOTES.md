@@ -20,6 +20,59 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-18 — Step 3 of the UX plan: Data and Review
+
+Step 3 gave the app its last two places and retired the old frame: three
+packages, one commit each on `step3-data-review` ([[ux-plan-2026-10-17]]).
+
+| Package | What shipped |
+|---|---|
+| D-1 | Data: `/data` lists the models one row each (shape, the reports' verdicts as counts, last refresh), with the Map as its picture view (`?view=map`, drawn with the line's nodes); `/data/<model>` leads with the line, then tabs Model · Transform · Sources · Runs. |
+| D-2 | Review: Needs attention first (failed refreshes and runs, builds that need a look, publish requests decided in place, the person's own requests), then Drafts, then Verify a file as a small drop zone. |
+| D-3 | Retire: dead code and CSS out, every old address checked to land (and the whole `movedTo` table in the smoke test), the words follow the four places everywhere but `CLAUDE.md`, the ui-audit baselines re-run. |
+
+**Decisions.** *The line as navigation*: on a model's Data page the three
+stations are the page's header and its links: Transform and Model select their
+tabs, Reports opens the library narrowed to the model; the Reports stage with
+its preview is gone. *Refresh data is admin-only, on Transform*: the one
+primary action of the Transform tab, and it, Run all and every step's run
+button render only for an admin (with no sign-in everyone is admin), because
+they write to the warehouse. *Review's three sections*, in the order a person
+acts: what needs attention, drafts, then checking a file; *requests are rows*:
+a publish request waiting on the person is a Needs attention row they decide
+in place, their own shows "Waiting on <folder>'s approvers", and decided ones
+fold under Requests. `/runs` (History) and `/verify` keep their own pages under
+Review; every other old address redirects (`movedTo`).
+
+**What the captures showed.** The four places, a report page, History and
+Verify at 1440 and 390, light and dark, after the cleanup: nothing regressed,
+no console errors. The Data page's line stacks on a phone with the Transform
+station current; Review empty reads "Nothing needs attention" and a person's
+drafts empty state; Get started's "How the app fits together" is one entry per
+place. 34 old addresses land where `movedTo` says in a browser.
+The re-run ui-audit baselines (reference / demo, against Step 1's): score 34 →
+62 / 33 → 75; findings 30 → 19 / 30 → 17. Gone: `scope-mismatch`,
+`nav-you-are-here` on the old Reports page, `theme-decoration` (the
+segmented bar's gradient), the model link's `small-target` on an open report,
+and the open report's findings repeated under each old address. Left:
+`blank-page`, `no-focus-ring` and `one-h1` on the open affordability report
+(the demo: `one-h1` on medallion_revenue), the rail's "Reports" crumb and the
+header's verdict chip as `small-target`, Review's "All history →" as
+`small-target` (new with D-2), and `slow-page` (13 each, a timing check).
+Report metrics did not move (fonts 5, accents 4 / 5, shadows 16, gradients 60,
+looks 5 / 6); `bundle_js_kb` reads 1,215, not 2,345: the Step 1 run counted a
+stale second bundle in `dist/`.
+
+**Deliberately left** ([[ui-backlog]]): `CLAUDE.md` still says reports are
+served "on the model's Overview" (the project instructions are the owner's to
+edit); the Map's labels in mono; the Model tab's inner tab row and its lone
+Edit as a draft button; the Transform flow's two-step zoom; the report page's
+Ask box, off (`SHOW_ASK`), for Step 4; `notebook-guide.md`'s factory section
+predates the one renderer; route splitting for the 1.2 MB bundle (the dead-code
+pass did not move it: the bundler already dropped what nothing imported).
+
+---
+
 ## 2026-10-17 — Step 2 of the UX plan: the reports home
 
 Step 2 turned the app around the reports: five packages, one commit each on
