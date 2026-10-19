@@ -12,7 +12,11 @@
   <header class="tb-masthead mp-hero">
     <div class="mp-hero-copy">
       <h1>Was it harder to buy a home then, or now?</h1>
-      <p class="mp-lede">
+      <!-- Each comparison has a one-year form. script.js shows one or the
+           other from how many years are in view (the "span" binding's
+           count, a figure in the meta line below): comparing a year with
+           itself is true but says nothing. Every number in both is a figure. -->
+      <p class="mp-lede" data-mp-many>
         In <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="then-year"></span>
         the thirty-year rate averaged
         <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="mortgage_rate" id="then-rate"></span>%,
@@ -24,26 +28,45 @@
         and the home cost about
         <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="existing_price" id="now-price"></span>.
       </p>
+      <p class="mp-lede" data-mp-one hidden>
+        In <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year" id="one-year"></span>
+        the thirty-year rate averaged
+        <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="mortgage_rate" id="one-rate"></span>%
+        and the median existing home cost about
+        <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="existing_price" id="one-price"></span>,
+        <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="price_to_income" id="one-pti"></span>
+        years of household income. The comparison needs a second year in view.
+      </p>
       <!-- Every number here is a figure, so the sentence stays true under
            any selection: it names the buyers it compares rather than
            asserting "the worst on record". -->
-      <p class="mp-lede mp-lede--strong">Add it all up — the cash to get in and
+      <p class="mp-lede mp-lede--strong" data-mp-many>Add it all up — the cash to get in and
         ten years of payments — and the buyer from
         <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="lede-today-year"></span>
         comes to <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="housing_share" id="lede-today"></span>
-        of ten years' income, against
+        of ten years' income<span data-mp-measured>, against
         <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="housing_share" id="lede-worst"></span>
         for the buyer from
         <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="dim_cohort.purchase_year" id="lede-worst-year"></span>,
-        the hardest of the buyers counted.</p>
+        the hardest of the buyers counted</span><span data-mp-unmeasured hidden>; no buyer in
+        view has all ten years measured yet</span>.</p>
+      <p class="mp-lede mp-lede--strong" data-mp-one hidden>Add it all up — the cash
+        to get in and ten years of payments — and the
+        <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="one-ten-year"></span>
+        buyer comes to
+        <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="housing_share" id="one-ten"></span>
+        of ten years' income.</p>
       <p class="mp-hero-sources">Sources: Freddie Mac · FHFA · NAR · U.S. Census Bureau · BLS ·
         <a href="#sources">details</a></p>
       <!-- The masthead's meta line: the years compared (figures, never typed),
            when this file was built and the verdict chip. -->
-      <p class="tb-masthead-meta"><span class="tb-masthead-period"><span data-tb-figure="value"
+      <p class="tb-masthead-meta"><span class="tb-masthead-period"><span data-mp-many><span data-tb-figure="value"
         data-tb-binding="peak" data-tb-cell="dim_year.year" id="period-then"></span> against
         <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year"
-        id="period-now"></span></span> <span data-tb-built></span> <span class="tb-verdict"></span></p>
+        id="period-now"></span> ·
+        <span data-tb-figure="value" data-tb-binding="span" data-tb-cell="years_in_view" id="years-in-view"></span>
+        years in view</span><span data-mp-one hidden><span data-tb-figure="value" data-tb-binding="latest"
+        data-tb-cell="dim_year.year" id="period-one"></span> only</span></span> <span data-tb-built></span> <span class="tb-verdict"></span></p>
     </div>
 
     <figure class="mp-scene" aria-hidden="true">
@@ -112,7 +135,7 @@
         <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="tag-then-year"></span>
         <strong data-tb-figure="value" data-tb-binding="peak" data-tb-cell="existing_price" id="tag-then-price"></strong>
       </div>
-      <div class="mp-tag mp-tag--now">
+      <div class="mp-tag mp-tag--now" data-mp-many>
         <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year" id="tag-now-year"></span>
         <strong data-tb-figure="value" data-tb-binding="latest" data-tb-cell="existing_price" id="tag-now-price"></strong>
       </div>
@@ -157,18 +180,18 @@
         picked, from the data. Click a bar to pick that year's buyer.</p>
     </div>
     <div class="tb-grid mp-kpis mp-kpis--three">
-      <div class="tb-kpi mp-kpi">
+      <div class="tb-kpi mp-kpi" data-mp-many data-mp-measured>
         <span class="tb-kpi-label">Hardest year to buy</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="housing_share" id="ten-worst"></span>
         <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="dim_cohort.purchase_year" id="ten-worst-year"></span> · all ten years measured</span>
       </div>
-      <div class="tb-kpi mp-kpi">
+      <div class="tb-kpi mp-kpi" data-mp-many data-mp-measured>
         <span class="tb-kpi-label">Easiest year to buy</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_best" data-tb-cell="housing_share" id="ten-best"></span>
         <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_best" data-tb-cell="dim_cohort.purchase_year" id="ten-best-year"></span> · all ten years measured</span>
       </div>
       <div class="tb-kpi mp-kpi mp-kpi--alert">
-        <span class="tb-kpi-label">Latest buyer</span>
+        <span class="tb-kpi-label"><span data-mp-many>Latest buyer</span><span data-mp-one hidden>The buyer in view</span></span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="housing_share" id="ten-today"></span>
         <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="ten-today-year"></span> · <span class="mp-basis" data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.basis" id="ten-today-basis"></span> · years measured so far: <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="years_measured" id="ten-today-measured"></span> of ten</span>
       </div>
@@ -230,7 +253,7 @@
 
   <!-- ── Why ──────────────────────────────────────────────────────────── -->
   <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Why: the highest-rate year against the latest</h2>
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg><span data-mp-many>Why: the highest-rate year against the latest</span><span data-mp-one hidden>What the year in view asked of a buyer</span></h2>
     <div class="tb-grid mp-kpis">
       <div class="tb-kpi mp-kpi mp-vs" data-mp-vs>
         <span class="mp-kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>
@@ -240,7 +263,7 @@
           <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="pk-pay-then-year"></span></span>
           <strong data-tb-figure="value" data-tb-binding="peak" data-tb-cell="payment_share" id="pk-pay-then"></strong>
         </div>
-        <div class="mp-vs-row" data-tb-vs="b">
+        <div class="mp-vs-row" data-tb-vs="b" data-mp-many>
           <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year" id="pk-pay-now-year"></span></span>
           <strong data-tb-figure="value" data-tb-binding="latest" data-tb-cell="payment_share" id="pk-pay-now"></strong>
         </div>
@@ -253,7 +276,7 @@
           <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="pk-earner-then-year"></span></span>
           <strong data-tb-figure="value" data-tb-binding="peak" data-tb-cell="earner_share" id="pk-earner-then"></strong>
         </div>
-        <div class="mp-vs-row" data-tb-vs="b">
+        <div class="mp-vs-row" data-tb-vs="b" data-mp-many>
           <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year" id="pk-earner-now-year"></span></span>
           <strong data-tb-figure="value" data-tb-binding="latest" data-tb-cell="earner_share" id="pk-earner-now"></strong>
         </div>
@@ -266,7 +289,7 @@
           <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="pk-entry-then-year"></span></span>
           <strong data-tb-figure="value" data-tb-binding="peak" data-tb-cell="entry_share" id="pk-entry-then"></strong>
         </div>
-        <div class="mp-vs-row" data-tb-vs="b">
+        <div class="mp-vs-row" data-tb-vs="b" data-mp-many>
           <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year" id="pk-entry-now-year"></span></span>
           <strong data-tb-figure="value" data-tb-binding="latest" data-tb-cell="entry_share" id="pk-entry-now"></strong>
         </div>
@@ -285,6 +308,8 @@
         </div>
       </div>
     </div>
+    <p class="mp-note" data-mp-one hidden>One year is in view, so each card shows
+      it alone. The comparison needs a second year in view.</p>
     <p class="mp-note">Over the whole series: the eighties buyer paid more each month; today's buyer
       pays far more to get in. The eighties burden was mostly the rate, and rates
       fell: those buyers refinanced and their payments shrank. Today's burden is
