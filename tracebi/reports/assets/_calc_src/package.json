@@ -1,0 +1,11 @@
+{
+  "name": "tracebi-calc",
+  "private": true,
+  "description": "Sources for the vendored page engine bundle (tracebi-calc.js). See ../CALC_NOTICE.md.",
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": {
+    "esbuild": "0.24.2",
+    "hyparquet": "1.31.5"
+  }
+}

@@ -45,3 +45,28 @@ def test_csp_grants_wasm_and_blob_worker_but_never_js_eval():
     # ...but JS eval is still never granted, and nothing may phone home.
     assert "'unsafe-eval'" not in CSP.replace("'wasm-unsafe-eval'", "")
     assert "connect-src 'none'" in CSP
+
+
+# ── the page engine bundle (tracebi-calc.js) ─────────────────────────────────
+
+
+def test_calc_bundle_is_built_from_its_sources():
+    """A source edit to ``_calc_src`` that was never rebuilt would ship an
+    engine the parity suite never ran. ``build.mjs`` stamps a SHA-256 of the
+    sources into the bundle's banner; recompute it here, with no node."""
+    import hashlib
+    import re
+    from pathlib import Path
+
+    assets = Path(__file__).resolve().parents[1] / "tracebi" / "reports" / "assets"
+    src = assets / "_calc_src"
+    sources = re.findall(r'"([^"]+)"', re.search(
+        r"SOURCES = \[(.*?)\]", (src / "build.mjs").read_text()).group(1))
+    digest = hashlib.sha256()
+    for name in sources:
+        digest.update(f"{name}\n".encode())
+        digest.update((src / name).read_bytes())
+    banner = (assets / "tracebi-calc.js").read_text(encoding="utf-8").split("\n", 1)[0]
+    assert f"src-sha256:{digest.hexdigest()}" in banner, (
+        "tracebi-calc.js is stale: run `npm ci && node build.mjs` in "
+        "tracebi/reports/assets/_calc_src (see CALC_NOTICE.md)")

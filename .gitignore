@@ -35,6 +35,7 @@ data/
 
 web/ui/node_modules/
 tracebi/reports/assets/_react_src/node_modules/
+tracebi/reports/assets/_calc_src/node_modules/
 # vite's build.outDir writes the bundle into the Python package so the wheel
 # can carry it; the build output is still disposable and stays untracked.
 tracebi/web/ui/dist/
