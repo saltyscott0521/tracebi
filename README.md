@@ -515,6 +515,19 @@ final = FinalLayer(model=model, fact="fact_orders",
 ds_final = final.execute()   # queries → aggregates → writes serving table
 ```
 
+The Manipulation steps (`cast`, `drop_nulls`, `deduplicate`, `rename`,
+`filter(where=...)`) compile to SQL and run in DuckDB. When the source and the
+sink are the same `DuckDBConnector` database, Landing and Manipulation run
+inside it as `CREATE OR REPLACE TABLE … AS SELECT …` and no rows are loaded
+into pandas; any other source's `load()` frame is handed to the same SQL as an
+Arrow table. Each step's lineage node records `engine: duckdb` and its SELECT.
+`deduplicate` keeps the first row in the source's order, as pandas did. A
+`cast` takes pandas dtype names (`int64`, `float64`, `str`,
+`datetime64[ns]` …) and refuses any other by name. `.transform(func)` is the
+escape hatch: a pandas callable, marked `escape_hatch: python` in its lineage
+node and in the layer's run record (`tracebi run-pipeline <name> --status`
+says which layers left SQL). Needs `pip install 'tracebi[pipeline]'`.
+
 ### 5. Schedule pipelines
 
 ```python

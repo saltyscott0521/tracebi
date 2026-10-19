@@ -1478,6 +1478,11 @@ def cmd_run_pipeline(args: argparse.Namespace) -> int:
             else:
                 status = (last or {}).get("status") or "never run"
                 when = (last or {}).get("completed_at") or (last or {}).get("started_at") or ""
+                # A layer whose last run went through transform(func) left SQL
+                # for Python; the run row records it (PipelineRunner).
+                detail = json.loads((last or {}).get("detail") or "{}")
+                if isinstance(detail, dict) and detail.get("escape_hatch"):
+                    when += f"  ({detail['escape_hatch']} escape hatch)"
             print(f"  {r['name']:<{width}}  {r['type']:<12} {status:<10} {when}")
         return 0
 

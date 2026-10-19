@@ -20,6 +20,43 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-19 — The medallion layers run in DuckDB (S-4)
+
+Decision 22 of the live-reports plan. `tracebi/etl/_sql.py` compiles each
+Manipulation step to one SELECT over the relation the step before left
+(`cast` → `SELECT * REPLACE (CAST(…))`, `drop_nulls` / `filter` → `WHERE`,
+`deduplicate` → `QUALIFY row_number() OVER (PARTITION BY … ORDER BY
+__tb_row) = 1`, `rename` → `SELECT * RENAME (…)`), each materialized as a
+temporary table so every lineage node still reports rows before and after.
+Where it runs depends on the source: the same DuckDB database as the sink
+means the whole step runs inside it and ends in `CREATE OR REPLACE TABLE …
+AS SELECT`, with no frame loaded (Landing too: one CTAS); any other source's
+`load()` frame enters an in-memory DuckDB as an Arrow table and the result
+goes to the sink's `write()` as before. `execute()` on the in-warehouse path
+returns a `SinkTable` (`len()`, `lineage`, `columns`, `to_pandas()` reading
+the sink on demand) rather than a `DataSet`, because a `DataSet` is a frame.
+
+**Order is part of the fingerprint, so it is carried, not hoped for.** A
+hidden `__tb_row` is taken from the source (`rowid` for a DuckDB table, the
+frame's position for Arrow, `row_number() OVER ()` for a DuckDB view, which
+has no stored order) and the result is written `ORDER BY __tb_row`; dedupe
+keeps the lowest, which is pandas' first occurrence. The demo pipelines'
+tables fingerprint identically before and after.
+
+**A cast never changes a number silently.** DuckDB rounds `10.7` to `11`
+casting to an integer where pandas truncated, and reads the text `'10.5'` as
+`11` where pandas refused it; integer targets compile to `trunc()` and to an
+`error()` for text that is not a whole number. Text and boolean casts follow
+DuckDB's spelling (`true`, a null stays null) and are documented in
+`CAST_TYPES`. `object` is refused: in pandas it is no cast at all.
+
+**`transform(func)` is the escape hatch.** It still hands a pandas frame to
+the callable; its node says `escape_hatch: python` and the runner writes
+`{"escape_hatch": "python"}` into that layer's run row (`detail`), which
+`run-pipeline --status` prints. The Data page does not show it yet.
+
+---
+
 ## 2026-10-19 — Decision: DuckDB-first on the server, a small engine of our own in the page
 
 **Decision.** DuckDB becomes the only engine on the server. Transforms are

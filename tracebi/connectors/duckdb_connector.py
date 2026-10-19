@@ -6,6 +6,7 @@ import decimal
 import os
 import threading
 import time
+from contextlib import contextmanager
 from typing import Any, Optional
 
 import pandas as pd
@@ -250,45 +251,59 @@ class DuckDBConnector(BaseConnector):
             self._write(df, table, if_exists)
 
     def _write(self, df: pd.DataFrame, table: str, if_exists: str) -> None:
-        if self.database == ":memory:":
-            if self._conn is None:
-                self.connect()
-            self._write_into(self._conn, df, table, if_exists)
-            return
-        # File-backed: release the read-only handle, write through a
-        # short-lived read-write connection, and leave the connector lazy —
-        # the next load reopens read-only.
-        duckdb = self._duckdb()
-        if self._conn is not None:
-            self._conn.close()
-            self._conn = None
-        # A reader holds the file only for that read, so wait a moment for it
-        # to let go rather than failing the transform. That reader may be
-        # another process (the dev app answering a request) or this one: the
-        # web app opens a short read-only handle per request (the model page's
-        # warehouse status), and one landing between the pipeline releasing
-        # its models and this write is gone a few milliseconds later. A holder
-        # that never lets go still fails, after WRITE_LOCK_WAIT.
-        deadline = time.monotonic() + self.WRITE_LOCK_WAIT
-        while True:
+        with self.write_connection() as conn:
+            self._write_into(conn, df, table, if_exists)
+
+    @contextmanager
+    def write_connection(self):
+        """A read-write connection to this database, for SQL that writes.
+
+        ``write()`` goes through it, and so do the medallion layers when they
+        run a step entirely inside the warehouse (``tracebi/etl``), so both
+        wait for a reader the same way. For ``":memory:"`` it is the
+        persistent connection itself, since the tables live there.
+        """
+        with self._lock:
+            if self.database == ":memory:":
+                if self._conn is None:
+                    self.connect()
+                yield self._conn
+                return
+            # File-backed: release the read-only handle, write through a
+            # short-lived read-write connection, and leave the connector lazy
+            # — the next load reopens read-only.
+            duckdb = self._duckdb()
+            if self._conn is not None:
+                self._conn.close()
+                self._conn = None
+            # A reader holds the file only for that read, so wait a moment for
+            # it to let go rather than failing the transform. That reader may
+            # be another process (the dev app answering a request) or this
+            # one: the web app opens a short read-only handle per request (the
+            # model page's warehouse status), and one landing between the
+            # pipeline releasing its models and this write is gone a few
+            # milliseconds later. A holder that never lets go still fails,
+            # after WRITE_LOCK_WAIT.
+            deadline = time.monotonic() + self.WRITE_LOCK_WAIT
+            while True:
+                try:
+                    write_conn = duckdb.connect(self.database)
+                    break
+                except duckdb.Error as exc:
+                    if not self._is_lock_conflict(exc):
+                        raise
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError(
+                            f"Cannot open '{self.database}' read-write: another "
+                            "tracebi process holds the warehouse open — stop "
+                            "`tracebi serve` (or close the notebook holding it) "
+                            "first; `tracebi dev` lets go between requests."
+                        ) from exc
+                    time.sleep(0.2)
             try:
-                write_conn = duckdb.connect(self.database)
-                break
-            except duckdb.Error as exc:
-                if not self._is_lock_conflict(exc):
-                    raise
-                if time.monotonic() >= deadline:
-                    raise RuntimeError(
-                        f"Cannot open '{self.database}' read-write: another "
-                        "tracebi process holds the warehouse open — stop "
-                        "`tracebi serve` (or close the notebook holding it) "
-                        "first; `tracebi dev` lets go between requests."
-                    ) from exc
-                time.sleep(0.2)
-        try:
-            self._write_into(write_conn, df, table, if_exists)
-        finally:
-            write_conn.close()
+                yield write_conn
+            finally:
+                write_conn.close()
 
     @staticmethod
     def _decimal_columns(df: pd.DataFrame) -> set:

@@ -52,6 +52,80 @@ def test_a_pipeline_runs_upstream_first_and_records_its_runs(pipeline):
     assert (landed["rows_out"], cleaned["rows_out"]) == (12, 11)
 
 
+WAREHOUSE_LAYERS = '''
+from tracebi import DuckDBConnector, LandingLayer, ManipulationLayer
+
+_wh = DuckDBConnector("orders_wh", database="data/orders_wh.duckdb")
+landed = LandingLayer(connector=_wh, source="orders_raw", sink=_wh, sink_table="orders_landed")
+cleaned = (ManipulationLayer(source=_wh, source_table="orders_landed", sink=_wh, sink_table="orders_clean")
+           .filter("order_id IS NOT NULL")
+           .cast({"qty": "int32"})
+           .deduplicate(subset=["order_id"])
+           .rename({"qty": "units"}))
+scored = (ManipulationLayer(source=_wh, source_table="orders_clean", sink=_wh, sink_table="orders_scored")
+          .transform(lambda df: df.assign(big=df["units"] >= 10), description="flag big orders"))
+runner.register(landed, name="orders_landed")
+runner.register(cleaned, name="orders_clean", depends_on="orders_landed")
+runner.register(scored, name="orders_scored", depends_on="orders_clean")
+'''
+
+
+def test_a_warehouse_pipeline_runs_in_duckdb_and_names_its_python_step(scaffolded, monkeypatch):
+    """Landing and Manipulation over one DuckDB warehouse run as SQL inside it:
+    no frame is loaded, each step's lineage carries its SELECT, the first of
+    each duplicate is the one kept, and the one Python step says so."""
+    import runpy
+
+    import duckdb
+
+    from tracebi import DataSet, DuckDBConnector
+
+    code, out = run_cli("new-pipeline", "--python", "Warehouse ETL")
+    assert code == 0, out
+    path = scaffolded / "pipelines" / "warehouse_etl.py"
+    marker = "runner = PipelineRunner(db_url=_DB_URL)\n"
+    path.write_text(path.read_text().replace(marker, marker + WAREHOUSE_LAYERS))
+    (scaffolded / "data").mkdir(exist_ok=True)
+    raw = duckdb.connect("data/orders_wh.duckdb")
+    raw.execute("CREATE TABLE orders_raw AS SELECT * FROM read_csv('inputs/orders.csv')")
+    raw.close()
+
+    def no_frame(*args, **kwargs):
+        raise AssertionError("a SQL layer loaded the rows into pandas")
+
+    with monkeypatch.context() as m:
+        m.setattr(DataSet, "to_pandas", no_frame)
+        m.setattr(DuckDBConnector, "load", no_frame)
+        code, out = run_cli("run-pipeline", "warehouse_etl", "--layer", "orders_clean", "--refresh")
+        assert code == 0, out
+        # Twelve rows land; the one with no order id is filtered and order 1009's copy dropped.
+        assert "[orders_clean] ✓  12 in → 10 out" in out
+        cleaned = runpy.run_path(str(path))["cleaned"].execute()
+
+    load, *steps = [dict(n.metadata) for n in cleaned.lineage]
+    assert load["rows_loaded"] == 12 and load["engine"] == "duckdb"
+    assert [s["step"] for s in steps] == ["filter", "cast", "deduplicate", "rename"]
+    assert all(s["engine"] == "duckdb" and s["sql"].startswith("SELECT ") for s in steps)
+    dedupe = steps[2]
+    assert dedupe["duplicates_dropped"] == 1
+    assert dedupe["sql"] == ('SELECT * FROM "__tb_step_2" QUALIFY row_number() '
+                             'OVER (PARTITION BY "order_id" ORDER BY __tb_row) = 1')
+    with duckdb.connect("data/orders_wh.duckdb", read_only=True) as wh:
+        rows = wh.execute("SELECT order_id, units FROM orders_clean").fetchall()
+        units_type = wh.execute("SELECT data_type FROM information_schema.columns "
+                                "WHERE table_name = 'orders_clean' AND column_name = 'units'").fetchone()
+    # In the source's order, with the cast and the rename applied.
+    assert rows[:2] == [(1001, 12), (1002, 8)] and len(rows) == 10 and units_type == ("INTEGER",)
+
+    # A transform(func) step is Python: the layer runs, and its run record says it left SQL.
+    code, out = run_cli("run-pipeline", "warehouse_etl")
+    assert code == 0, out
+    code, out = run_cli("run-pipeline", "warehouse_etl", "--status")
+    lines = {line.split()[0]: line for line in out.splitlines() if line.strip()}
+    assert "(python escape hatch)" in lines["orders_scored"]
+    assert "escape hatch" not in lines["orders_clean"] and "escape hatch" not in lines["orders_landed"]
+
+
 def test_the_refresh_page_runs_a_layer_and_shows_its_history(pipeline, monkeypatch):
     from fastapi.testclient import TestClient
 

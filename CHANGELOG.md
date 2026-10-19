@@ -6,6 +6,28 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the medallion layers run in DuckDB
+
+- `ManipulationLayer` / `SilverLayer` steps (`cast`, `drop_nulls`,
+  `deduplicate`, `rename`, and the new `filter(where=...)`) compile to SQL and
+  run in DuckDB. With the source and the sink in one DuckDB database, Landing
+  and Manipulation run inside it (`CREATE OR REPLACE TABLE … AS SELECT`) and
+  load no frame; `execute()` then returns a `SinkTable` (`len()`, `lineage`,
+  `to_pandas()` reading the sink). Any other source's rows reach the SQL as an
+  Arrow table. Each step's lineage node carries `engine: duckdb` and its
+  SELECT. Identical data writes identical tables: `deduplicate` keeps the
+  first row in the source's order, and the result keeps that order.
+- `cast` takes the pandas dtype names it always did and refuses any other by
+  name (`object` included). Casting a fraction to an integer truncates, as
+  pandas did; text that is not a whole number is refused rather than rounded.
+  Casting to text spells booleans `true`/`false` and keeps nulls null.
+- `transform(func)` is the escape hatch: it still runs a pandas callable, and
+  its lineage node and the layer's run record say `escape_hatch: python`;
+  `tracebi run-pipeline <name> --status` shows it.
+- The `pipeline` extra now includes `duckdb` and `pyarrow`.
+- `examples/phase4_example.py` builds `customers_silver` before the gold
+  layers that join it (it failed on a fresh seed).
+
 ### Changed — the cascade: every shipped report uses the selection grammar
 
 - The portfolio reports (book, concentration, overview, dashboard, desk), the
