@@ -3674,6 +3674,8 @@ pdf = [
 pipeline = [
     { name = "alembic" },
     { name = "apscheduler" },
+    { name = "duckdb" },
+    { name = "pyarrow" },
     { name = "sqlalchemy" },
 ]
 postgres = [
@@ -3720,6 +3722,7 @@ requires-dist = [
     { name = "duckdb", marker = "extra == 'analyst'", specifier = ">=1.5.5" },
     { name = "duckdb", marker = "extra == 'dev'", specifier = ">=1.5.5" },
     { name = "duckdb", marker = "extra == 'duckdb'", specifier = ">=1.5.5" },
+    { name = "duckdb", marker = "extra == 'pipeline'", specifier = ">=1.5.5" },
     { name = "fastapi", marker = "extra == 'all'", specifier = ">=0.100" },
     { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.100" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.100" },
@@ -3757,6 +3760,7 @@ requires-dist = [
     { name = "pyarrow", marker = "extra == 'all'", specifier = ">=14.0" },
     { name = "pyarrow", marker = "extra == 'analyst'", specifier = ">=14.0" },
     { name = "pyarrow", marker = "extra == 'dev'", specifier = ">=14.0" },
+    { name = "pyarrow", marker = "extra == 'pipeline'", specifier = ">=14.0" },
     { name = "pyarrow", marker = "extra == 'reports'", specifier = ">=14.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
