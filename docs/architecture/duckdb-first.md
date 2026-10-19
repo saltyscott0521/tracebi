@@ -332,6 +332,10 @@ Kept, and doing more (this is the library):
 
 ## 13. Packages
 
+**Execution order changed 2026-10-19:** the page half (D5–D9) goes first, as
+[[live-reports-plan]] (packages L-1 to L-5); the server half (Q-2, Q-4, Q-5)
+follows. The table below stays as the full inventory.
+
 Each lands with the discoverability trio (vocabulary, scaffold or
 showcase, both guides), the full gate, and a journey step. In order,
 because each one's seam is the next one's input.
