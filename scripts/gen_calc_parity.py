@@ -12,7 +12,11 @@ The reference cases use the reference project's model as declared
 (examples/portfolio_project/models/portfolio_model.yaml) over a small,
 fixed holdings book defined here, so the fixtures need no warehouse. The
 two-fact cases use a tiny model of their own, since the reference model has
-one fact.
+one fact. The time-intelligence cases (period_end, offset, growth, to_date)
+and the stddev and raw-row ones use a snapshot model in the shape of the
+reference project's SaaS model (examples/portfolio_project/models/
+saas_model.yaml), with declared month, quarter and year grains. Expected
+rows spell time grains as the slice does (``_grain_strings``).
 
     python scripts/gen_calc_parity.py [--out DIR]
 
@@ -22,9 +26,11 @@ The output is deterministic: running it again writes the same bytes.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import sys
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 
@@ -40,6 +46,7 @@ from tracebi.reports.calc_plan import (  # noqa: E402
     compile_plan,
     selection_query,
 )
+from tracebi.reports.slice import _grain_strings  # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "calc_parity"
 PROJECT = ROOT / "examples" / "portfolio_project"
@@ -142,6 +149,73 @@ def two_fact_model() -> DataModel:
     m.add_measure("fair_value", column="fair_value", agg="sum")
     m.add_measure("net_flow", column="amount", agg="sum")
     m.add_measure("flows", column="flow_id", agg="count")
+    m.connect()
+    return m
+
+
+_ACCOUNTS = [("A", "Software"), ("B", "Energy"), ("C", "Software"),
+             ("D", "Energy"), ("E", "Software")]
+
+
+def time_model() -> DataModel:
+    """A snapshot fact in the shape of the reference project's SaaS model:
+    one row per account per month-end, a balance taken at the latest
+    snapshot (period_end) and a deposit flow summed, over eighteen month-ends
+    from October 2024 to March 2026, so months and quarters cross two year
+    ends.
+
+    D closes after December 2025 and E opens in December 2025, so
+    accounts' latest snapshots differ, and E has a single month in 2025
+    (a stddev of one value). One deposit is missing (sums skip it) and one is
+    zero (a growth over it is null).
+    """
+    month_ends = [pd.Timestamp(2024, 10, 31) + pd.offsets.MonthEnd(i)
+                  for i in range(18)]
+    dates = pd.DataFrame({"date_id": list(range(1, 19)), "date": month_ends})
+    accounts = pd.DataFrame({"account_id": list(range(1, 6)),
+                             "account": [a for a, _ in _ACCOUNTS],
+                             "sector": [s for _, s in _ACCOUNTS]})
+    rows = []
+    for a in range(1, 6):
+        for i, day in enumerate(month_ends):
+            if (a == 4 and day > pd.Timestamp(2025, 12, 31)) or (
+                    a == 5 and day < pd.Timestamp(2025, 12, 31)):
+                continue
+            balance = round(10_000.0 * a + 1234.56 * ((i * a) % 7) + 0.37 * i, 2)
+            deposit = round(500.0 + 137.25 * ((i + 2 * a) % 5) - 0.03 * a, 2)
+            if a == 3 and i == 5:
+                deposit = None
+            if a == 2 and i == 3:
+                deposit = 0.0
+            rows.append((len(rows) + 1, a, i + 1, balance, deposit, 1))
+    balances = pd.DataFrame(rows, columns=["balance_id", "account_id", "date_id",
+                                           "balance", "deposits", "active"])
+    m = DataModel("time_model")
+    m.add_connector(MemoryConnector("time", tables={
+        "balances": balances, "dates": dates, "accounts": accounts}))
+    for t in ("balances", "dates", "accounts"):
+        m.add_table(t, connector="time", source=t)
+    m.add_dimension("dim_date", table_name="dates", key_col="date_id",
+                    attributes=["date"])
+    for grain in ("month", "quarter", "year"):
+        m.add_time_grain("dim_date", grain, source="date", grain=grain)
+    m.add_dimension("dim_account", table_name="accounts", key_col="account_id",
+                    attributes=["account", "sector"])
+    m.add_fact("fact_balances", table_name="balances",
+               measures=["balance", "deposits", "active"],
+               foreign_keys={"dim_date": "date_id", "dim_account": "account_id"})
+    m.add_measure("ending_balance", period_end=("balance", "dim_date.date"))
+    m.add_measure("accounts_open", period_end=("active", "dim_date.date"))
+    m.add_measure("avg_balance", ratio=("ending_balance", "accounts_open"))
+    m.add_measure("deposits", column="deposits", agg="sum")
+    m.add_measure("deposit_sd", column="deposits", agg="stddev")
+    m.add_measure("deposits_mom", offset=("deposits", "month", 1))
+    m.add_measure("deposits_growth", growth=("deposits", "month", 1))
+    m.add_measure("deposits_yoy", growth=("deposits", "year", 1))
+    m.add_measure("deposits_ytd", to_date=("deposits", "year"))
+    m.add_measure("deposits_qtd", to_date=("deposits", "quarter"))
+    m.add_measure("balance_last_month", offset=("ending_balance", "month", 1))
+    m.add_measure("balance_qoq", growth=("ending_balance", "quarter", 1))
     m.connect()
     return m
 
@@ -283,6 +357,111 @@ TWO_FACT_SEL = {"dim_fund.fund": ["Fund I"],
                 "dim_issuer.sector": ["Software"],
                 "dim_date.month": {"gte": "2026-02", "lte": "2026-03"}}
 
+# The aggregated slice carries the grains its cases group by, plus the
+# snapshot date a period_end needs; the base-grain one the raw columns.
+_TIME_GRAIN = ["dim_account.sector", "dim_account.account", "dim_date.date",
+               "dim_date.month", "dim_date.quarter"]
+_TIME_PARTS = {"ending_balance:sum": ("balance", "sum"),
+               "accounts_open:sum": ("active", "sum"),
+               "deposits:sum": ("deposits", "sum")}
+_TIME_BASE = ["dim_account.sector", "dim_account.account", "dim_date.date",
+              "dim_date.month", "dim_date.year"]
+_TIME_COLS = ["balance", "deposits"]
+
+SOFTWARE = {"dim_account.sector": ["Software"]}
+TWO_ACCOUNTS = {"dim_account.account": ["A", "D"]}
+# Months 2025-01 to 2025-06, as the page selects them (labels), and as the
+# full model can filter them (the dates the month grain is derived from).
+FIRST_HALF = {"dim_date.month": {"gte": "2025-01", "lte": "2025-06"}}
+FIRST_HALF_DATES = {"and": [{"dim_date.date": {"gte": "2025-01-01"}},
+                            {"dim_date.date": {"lt": "2025-07-01"}}]}
+
+
+def _t(measures, dims=(), **kw) -> dict:
+    return {"fact": "fact_balances", "measures": measures,
+            "dimensions": list(dims), **kw}
+
+
+def time_cases() -> list[tuple]:
+    """Cases over the aggregated slice (the grain a period_end page embeds)."""
+    by_month, by_quarter = ["dim_date.month"], ["dim_date.quarter"]
+    by_sector, by_account = ["dim_account.sector"], ["dim_account.account"]
+    return [
+        *_pair("period_end_total", "period_end with no groups: the latest "
+               "month-end across every account, summed.",
+               _t(["ending_balance", "accounts_open"]), SOFTWARE),
+        *_pair("period_end_by_sector", "period_end by a dimension, and a ratio "
+               "of two period_ends.",
+               _t(["ending_balance", "accounts_open", "avg_balance"], by_sector),
+               TWO_ACCOUNTS),
+        *_pair("period_end_by_account", "Each account at its own latest "
+               "snapshot: D closed in December 2025.",
+               _t(["ending_balance"], by_account), SOFTWARE),
+        *_pair("period_end_by_quarter", "period_end by a time grain: each "
+               "quarter at its last month-end.",
+               _t(["ending_balance", "accounts_open"], by_quarter), SOFTWARE),
+        ("period_end_date_range", "A month range selection: the latest "
+         "snapshot is the range's last month.",
+         _t(["ending_balance", "accounts_open"]), FIRST_HALF, FIRST_HALF_DATES),
+        ("period_end_by_sector_date_range", "period_end by sector under a month "
+         "range.", _t(["ending_balance"], by_sector), FIRST_HALF, FIRST_HALF_DATES),
+        ("period_end_empty", "A selection nothing matches: a query of "
+         "period_ends alone has no row at all (DataModel's skeleton row).",
+         _t(["ending_balance", "avg_balance"]),
+         {"dim_account.sector": ["No such sector"]}),
+        ("period_end_beside_a_sum_empty", "Nothing matches, beside a sum: the "
+         "one row an aggregate always has, null sum and a period_end of 0.",
+         _t(["deposits", "ending_balance"]),
+         {"dim_account.sector": ["No such sector"]}),
+        *_pair("offset_month", "offset one month back; the first month has no "
+               "prior.", _t(["deposits", "deposits_mom"], by_month), SOFTWARE),
+        *_pair("growth_year", "growth over a year back on monthly rows: only "
+               "months with a month a year earlier have one.",
+               _t(["deposits", "deposits_yoy"], by_month), SOFTWARE),
+        *_pair("growth_by_account", "growth matched within each account: a "
+               "prior of 0 or null gives null, a new account has no prior.",
+               _t(["deposits", "deposits_growth"], by_account + by_month),
+               TWO_ACCOUNTS),
+        *_pair("offset_period_end", "An offset of a period_end: last month's "
+               "ending balance.",
+               _t(["ending_balance", "balance_last_month"], by_month),
+               TWO_ACCOUNTS),
+        *_pair("growth_quarter", "Quarter-over-quarter growth of a period_end "
+               "on the quarter grain.",
+               _t(["ending_balance", "balance_qoq"], by_quarter), SOFTWARE),
+        *_pair("ytd", "Year to date over months, restarting each January.",
+               _t(["deposits", "deposits_ytd"], by_month), SOFTWARE),
+        ("qtd", "Quarter to date over months, under a month range.",
+         _t(["deposits", "deposits_qtd"], by_month), FIRST_HALF, FIRST_HALF_DATES),
+        *_pair("ytd_by_sector", "Year to date within each sector.",
+               _t(["deposits_ytd"], by_sector + by_month), TWO_ACCOUNTS),
+    ]
+
+
+def time_base_cases() -> list[tuple]:
+    """Cases over the base-grain slice (what stddev and raw rows embed)."""
+    return [
+        *_pair("stddev", "stddev, the sample standard deviation; E has one "
+               "deposit in 2025, so null.",
+               _t(["deposit_sd"], ["dim_account.account", "dim_date.year"]),
+               SOFTWARE),
+        ("period_end_base_grain", "period_end over a base-grain slice: the "
+         "value column itself.", _t(["ending_balance"], ["dim_date.year"]),
+         SOFTWARE),
+        *_pair("raw_rows", "Raw rows (aggregate=False): ordered by balance, "
+               "ties broken by every column, top five.",
+               _t({"balance": "sum", "deposits": "sum"},
+                  ["dim_account.account", "dim_date.month"], aggregate=False,
+                  order_by=[{"column": "balance", "desc": True}], limit=5),
+               SOFTWARE),
+        ("raw_rows_all", "Raw rows with no order_by: every column ascending; a "
+         "datetime column and a row expression with a null operand.",
+         _t({"net": {"expr": "balance - deposits", "agg": "sum"}},
+            ["dim_date.date", "dim_account.account"], aggregate=False,
+            filters={"dim_account.account": ["C", "E"]}),
+         FIRST_HALF, FIRST_HALF_DATES),
+    ]
+
 
 # ── Writing ──────────────────────────────────────────────────
 
@@ -299,6 +478,8 @@ def _type(series: pd.Series) -> str:
 def _cell(value):
     if value is None or (not isinstance(value, str) and pd.isna(value)):
         return None
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
     if hasattr(value, "item"):
         value = value.item()
     if isinstance(value, float) and value.is_integer():
@@ -315,14 +496,24 @@ def _slice_json(fact: str, frame: pd.DataFrame) -> dict:
 
 
 def fixture(model, name: str, about: str, query: dict, selection: dict,
-            frame: pd.DataFrame) -> dict:
+            frame: pd.DataFrame, oracle: Optional[dict] = None) -> dict:
+    """One case. The expected rows are the full model's answer under the
+    selection, with time grains spelled as the slice spells them. A
+    selection on a time-grain label is one DataModel cannot run (a grain is
+    groupable, not filterable), so such a case names *oracle*: the same rows
+    as a filter on the date the grain is derived from."""
     spec = QuerySpec.from_dict(query)
     sl = _slice_json(spec.fact, frame)
     plan = compile_plan(model, spec, sl["columns"])
     if "fixed" in plan:
         raise SystemExit(f"{name}: the plan is fixed: {plan['fixed']}")
     applied = apply_selection(plan, selection)
-    result = model.execute(selection_query(spec, applied)).to_pandas()
+    if oracle is None:
+        server = selection_query(spec, applied)
+    else:
+        filters = [dict(spec.filters)] if spec.filters else []
+        server = dataclasses.replace(spec, filters={"and": filters + [oracle]})
+    result = _grain_strings(model, model.execute(server).to_pandas())
     cols, rows = canonical_rows(result, total_order=False)
     return {
         "case": name,
@@ -332,6 +523,7 @@ def fixture(model, name: str, about: str, query: dict, selection: dict,
         "slice": sl,
         "plan": plan,
         "selection": selection,
+        **({"oracle_filters": oracle} if oracle else {}),
         "expected": {"cols": cols, "rows": rows,
                      "unfiltered_by": applied["unfiltered_by"]},
     }
@@ -366,6 +558,16 @@ def build() -> dict[str, dict]:
         "fund and months still apply.",
         {"fact": "fact_cashflows", "measures": ["net_flow", "flows"],
          "dimensions": ["dim_date.month"]}, TWO_FACT_SEL, cashflows)
+
+    timed = time_model()
+    parts = _grain_strings(timed, parts_slice(timed, "fact_balances", _TIME_GRAIN,
+                                              _TIME_PARTS))
+    for case in time_cases():
+        out[case[0]] = fixture(timed, *case[:4], parts, *case[4:])
+    base = _grain_strings(timed, base_slice(timed, "fact_balances", _TIME_BASE,
+                                            _TIME_COLS))
+    for case in time_base_cases():
+        out[case[0]] = fixture(timed, *case[:4], base, *case[4:])
     return out
 
 

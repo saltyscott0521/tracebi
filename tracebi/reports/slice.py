@@ -27,7 +27,8 @@ aggregated) when a measure the page uses cannot be recombined from grain rows:
 over a row expression (``expr``), whose arithmetic the engine evaluates on the
 fact's own columns. A binding that filters on a raw fact column also keeps its
 fact at base grain, because a grain is made of dimension attributes and that
-column must survive for the filter to apply. Otherwise every measure is
+column must survive for the filter to apply, and so does a raw-row binding
+(``aggregate=False``), which lists the fact's own rows. Otherwise every measure is
 additive at the grain: ``sum``, ``count``, ``min`` and ``max`` are aggregated
 to it as the parts ``<measure>:sum``, ``<measure>:count``, ``<measure>:min``
 and ``<measure>:max``, which re-aggregate with ``sum``, ``sum``, ``min`` and
@@ -35,8 +36,14 @@ and ``<measure>:max``, which re-aggregate with ``sum``, ``sum``, ``min`` and
 the page divides after it filters and an average is recomputed, never
 averaged. Parts are keyed by the measure's output name, so two bindings that
 give one name two definitions keep the fact at base grain.
-Ratios, shares, ranks, runnings and calculated combinations are computed after
-aggregation, so they add nothing to the slice beyond the measures they read.
+A ``period_end`` measure puts its snapshot date attribute into the grain and
+is stored as ``<measure>:sum``, its value column summed at that grain: the
+page groups those rows by the query's dimensions and the date, finds each
+group's latest date, and sums there. Ratios, shares, ranks, runnings,
+calculated combinations, ``offset`` / ``growth`` and ``to_date`` are computed
+after aggregation, so they add nothing to the slice beyond the measures they
+read; the time grain an offset or a to_date runs along is one of its
+binding's dimensions, so it is in the grain like any other.
 
 **What the slice holds.** Grain columns are named as the query names them,
 ``dim.attribute``, which is also how the selection state names a field: a
@@ -56,8 +63,7 @@ show it differently from the server. Column types are recorded as
 
 **What contributes nothing.** A ``{"model", "sql"}`` binding and a
 ``report.py`` output have no query the engine can re-run, so they stay fixed at
-build. A binding whose measures include ``period_end``, ``offset``, ``growth``
-or ``to_date`` is fixed this round too. None of them widen any grain.
+build and widen no grain.
 
 ``report.json`` chooses how much is embedded: ``"embed": "required"`` (the
 default) embeds the grain above, ``"model"`` every fact the page reads at base
@@ -73,7 +79,6 @@ import base64
 import hashlib
 import re
 from dataclasses import dataclass, field
-from typing import Optional
 
 import pandas as pd
 
@@ -89,9 +94,6 @@ CALC_PLANS_ID = "tracebi-calc-plans"
 
 #: Aggregations a grain row cannot be recombined from.
 _BASE_GRAIN_AGGS = {"nunique", "median", "stddev"}
-#: Measure kinds the page does not recompute this round (decision 6).
-_FIXED_KINDS = (("period_ends", "period_end"), ("pops", "offset"),
-                ("to_dates", "to_date"))
 _IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _PERCENTILE = re.compile(r"^p\d{1,3}$")
 _SLICE_MEASURE = "slice__"
@@ -177,13 +179,6 @@ def page_controls(package) -> list[dict]:
 
 # ── The grain ────────────────────────────────────────────────────────────────
 
-def _fixed_reason(resolved) -> Optional[str]:
-    for attr, kind in _FIXED_KINDS:
-        if getattr(resolved, attr):
-            return kind
-    return None
-
-
 def _add(seq: list, item) -> None:
     if item not in seq:
         seq.append(item)
@@ -220,8 +215,6 @@ def _grain_for(package, model_key: str, model, controls: list[dict]) -> dict:
         if fact_def is None:
             continue
         resolved = view._resolve_measures(query.measures, fact_def)
-        if _fixed_reason(resolved):
-            continue
         entry = facts.setdefault(query.fact, {
             "dimensions": [], "base_grain": False, "reason": "",
             "bindings": [], "leaves": {}, "raw": [],
@@ -232,6 +225,8 @@ def _grain_for(package, model_key: str, model, controls: list[dict]) -> dict:
                 entry["base_grain"], entry["reason"] = True, why
 
         entry["bindings"].append(name)
+        if not query.aggregate:
+            base(f"binding '{name}' lists raw rows")
         for dim in query.dimensions or ():
             _add(entry["dimensions"], str(dim))
         for column in sorted(_filter_columns(query.filters or {})):
@@ -259,6 +254,14 @@ def _grain_for(package, model_key: str, model, controls: list[dict]) -> dict:
                 base(f"measure '{out}' is {func}")
             elif not _IDENT.fullmatch(str(source)):
                 base(f"measure '{out}' is a row expression")
+        for out, (value_col, date_ref) in resolved.period_ends.items():
+            # The value summed at a grain that includes the snapshot date, so
+            # the page can find each group's latest date and sum at it.
+            _add(entry["dimensions"], str(date_ref))
+            leaf = {"func": "sum", "source": value_col, "filters": None}
+            if entry["leaves"].setdefault(out, leaf) != leaf:
+                base(f"measure '{out}' is defined two ways")
+            _add(entry["raw"], value_col)
 
     selected = []
     selection = getattr(package, "selection", None)
@@ -323,9 +326,11 @@ def _slice_query(fact: str, grain: dict):
     Aggregated: each additive leaf becomes a measure this query declares for
     itself (``calculated``), named ``slice__<measure>__<part>`` because a
     report's own measure may not shadow the model's; the rename gives it its
-    slice name, ``<measure>:<part>``. ``allow_rate_agg`` is set because the
-    slice re-expresses measures the model already accepted (and a mean's
-    ``:sum`` part is never shown).
+    slice name, ``<measure>:<part>``. ``allow_rate_agg`` and
+    ``allow_additive`` are set because the slice re-expresses measures the
+    model already accepted (a mean's ``:sum`` part is never shown, and a
+    period_end's balance is summed only within one snapshot date, since the
+    date is in the grain).
     Base grain: the raw fact columns, unaggregated."""
     from tracebi.model.data_model import QuerySpec
 
@@ -338,7 +343,8 @@ def _slice_query(fact: str, grain: dict):
     renames: dict[str, str] = {}
 
     def part(out: str, source: str, agg: str, filters) -> None:
-        definition = {"column": source, "agg": agg, "allow_rate_agg": True}
+        definition = {"column": source, "agg": agg, "allow_rate_agg": True,
+                      "allow_additive": True}
         if filters:
             definition["filters"] = dict(filters)
         name = f"{_SLICE_MEASURE}{out}__{agg}"
@@ -489,9 +495,7 @@ def binding_plans(package, models: dict, blocks: dict,
     """Every binding's plan, by name: a SQL binding and a ``report.py``
     output are fixed by construction; the rest compile against the columns
     (with their types) of their fact's slice. A fact with no slice is
-    passed as an empty one: the build only leaves a fact out when none of
-    its bindings can recompute (period_end, offset, to_date), and an empty
-    slice lets the compiler say which measure that is."""
+    passed as an empty one, so the compiler names what is missing."""
     from tracebi.model.sql_calc import SqlQuery
 
     columns = {(b.model, b.fact): [dict(c) for c in b.columns]

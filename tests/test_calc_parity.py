@@ -214,6 +214,72 @@ def test_engine_reproduces_the_rest_of_the_vocabulary(tmp_path):
                     assert a == b, (name, mine, theirs)
 
 
+def test_engine_shifts_and_resets_labels_like_datamodel(tmp_path):
+    """The engine's label arithmetic against DataModel's time axis, at every
+    grain, over days chosen for their edges: three year ends (one into a
+    53-week ISO year), a leap day, quarter and month ends. Each grain's plan
+    carries an offset and a growth for every unit, and a to_date for every
+    coarser period, beside a second group column with a null in it. The
+    oracle is execute_plan: the same plan through DataModel.execute."""
+    from tracebi.reports.calc_plan import grain_label
+
+    days = [d for lo, hi in (("2020-12-20", "2021-01-12"), ("2023-12-20", "2024-03-10"),
+                             ("2025-12-15", "2026-04-05"))
+            for d in pd.date_range(lo, hi, freq="D")]
+    grains = ("year", "quarter", "month", "week", "day")
+    frame = pd.DataFrame({
+        "dim_k.kind": [("a", "b", None)[i % 3] for i in range(len(days))],
+        **{f"dim_t.{g}": [grain_label(d.date(), g) for d in days] for g in grains},
+        "amount": [round(10 + (i * 37) % 23 * 1.25, 2) for i in range(len(days))],
+    })
+    columns = [{"name": c, "type": "number" if c == "amount" else "string"}
+               for c in frame.columns]
+    rank = {g: r for r, g in enumerate(grains[::-1])}
+    plans = {}
+    for g in grains:
+        col, group_by = f"dim_t.{g}", ["dim_k.kind", f"dim_t.{g}"]
+        pops = [{"name": f"{mode}_{u}_{n}", "base": "amount", "unit": u, "n": n,
+                 "mode": mode}
+                for u in grains for n in (1, 2) for mode in ("value", "growth")]
+        to_dates = [{"name": f"to_{p}", "base": "amount", "period": p}
+                    for p in ("year", "quarter", "month", "week")
+                    if rank[p] > rank[g]]
+        plans[g] = {
+            "version": 1, "model": "m", "fact": "f",
+            "slice_columns": list(frame.columns), "filters": None,
+            "group_by": group_by,
+            "aggregates": [{"name": "amount", "func": "sum", "source": {"col": "amount"}}],
+            "means": [], "ratios": [], "shares": [], "combines": [], "ranks": [],
+            "runnings": [], "having": [],
+            "order_by": [{"column": c, "desc": False} for c in group_by],
+            "limit": None,
+            "columns": group_by + ["amount"] + [p["name"] for p in pops]
+                       + [t["name"] for t in to_dates],
+            "pops": pops, "to_dates": to_dates,
+            "time_grain": {"column": col, "grain": g}}
+    path = tmp_path / "labels.parquet"
+    slice_frame(columns, frame.values.tolist()).to_parquet(
+        path, engine="pyarrow", compression="snappy", index=False)
+    got = _run_node(tmp_path, [{"id": g, "fact": "f", "parquet": str(path),
+                                "plan": plan, "selection": {}}
+                               for g, plan in plans.items()])
+    for g, plan in plans.items():
+        want = execute_plan(plan, slice_frame(columns, frame.values.tolist()))
+        rows = [[None if pd.isna(v) else v.item() if hasattr(v, "item") else v for v in row]
+                for row in want.itertuples(index=False, name=None)]
+        engine = got[g]["raw"]
+        assert len(engine) == len(rows), g
+        # Some prior must exist and some must not, or the case tests nothing.
+        priors = [v for r in rows for v in r[3:3 + len(plan["pops"])]]
+        assert None in priors and any(v is not None for v in priors), g
+        for mine, theirs in zip(engine, rows):
+            for c, a, b in zip(plan["columns"], mine, theirs):
+                if isinstance(a, float) or isinstance(b, float):
+                    assert b is not None and abs(a - b) <= 1e-12 * abs(b), (g, c, mine, theirs)
+                else:
+                    assert a == b, (g, c, mine, theirs)
+
+
 def test_domains_list_present_values_first(tmp_path):
     """A control's options: values present under the rest of the selection,
     then the others; the column's own condition never narrows its options."""

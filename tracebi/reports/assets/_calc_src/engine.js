@@ -54,7 +54,10 @@ function coerce(kind, v) {
 }
 
 /* Comparable when both sides are the same kind of value; otherwise undefined,
- * and every comparison against it is false. */
+ * and every comparison against it is false. Strings compare by code point,
+ * so a range selection over ISO datetimes, or over the labels of one time
+ * grain ("2025-01" to "2025-06", "2026-W01" to "2026-W09"), is a range in
+ * time: the labels are zero-padded, largest unit first. */
 function compare(cell, value) {
   if (typeof cell !== typeof value || value === null) return undefined;
   return cmpValues(cell, value);
@@ -389,6 +392,25 @@ function aggregate(table, agg, idx, grouping) {
     for (let g = 0; g < count; g++) out[g] = sets[g] ? sets[g].size : 0;
     return out;
   }
+  if (func === "stddev") {
+    if (coded) throw new Error(`cannot take a stddev of the string column '${src.col}'`);
+    // Two passes, each a compensated sum: the mean, then the squared
+    // deviations from it. Sample variance (n - 1), as DuckDB's STDDEV.
+    const vals = gather();
+    const mean = sums(count);
+    for (let k = 0; k < n; k++) if (vals[k] === vals[k]) add(mean, gid[k], vals[k]);
+    const dev = sums(count);
+    for (let k = 0; k < n; k++) {
+      const v = vals[k];
+      if (v !== v) continue;
+      const g = gid[k], d = v - total(mean, g) / mean.n[g];
+      add(dev, g, d * d);
+    }
+    for (let g = 0; g < count; g++) {
+      out[g] = mean.n[g] < 2 ? null : Math.sqrt(total(dev, g) / (mean.n[g] - 1));
+    }
+    return out;
+  }
   if (func === "quantile") {
     if (coded) throw new Error(`cannot take a quantile of the string column '${src.col}'`);
     const q = agg.q;
@@ -414,6 +436,79 @@ function aggregate(table, agg, idx, grouping) {
     return out;
   }
   throw new Error(`unknown aggregate func '${func}'`);
+}
+
+/* ── Label arithmetic ────────────────────────────────────────────────────── */
+
+/* A port of label_start / grain_label / shift_label / reset_label in
+ * calc_plan.py ("Label arithmetic" in its docstring). A time grain is a
+ * string label; each names the UTC day its period starts on. Days are whole
+ * numbers since the epoch, so nothing here depends on the reader's zone. */
+const DAY_MS = 86400000;
+const LABEL = {
+  year: /^(\d{4})$/, quarter: /^(\d{4})-Q([1-4])$/, month: /^(\d{4})-(\d{2})$/,
+  week: /^(\d{4})-W(\d{2})$/, day: /^(\d{4})-(\d{2})-(\d{2})$/,
+};
+const MONTHS_PER = { year: 12, quarter: 3, month: 1 };
+
+const dayOf = (y, m, d) => Date.UTC(y, m - 1, d) / DAY_MS;
+const pad = (n, w) => String(n).padStart(w, "0");
+
+/* The Monday of ISO week 1 of ISO year y: the week holding 4 January. */
+function isoWeekOne(y) {
+  const jan4 = dayOf(y, 1, 4);
+  return jan4 - ((new Date(jan4 * DAY_MS).getUTCDay() + 6) % 7);
+}
+
+function labelStart(label, grain) {
+  const m = LABEL[grain] && LABEL[grain].exec(label);
+  if (!m) throw new Error(`'${label}' is not a ${grain} label`);
+  const y = Number(m[1]);
+  if (grain === "year") return dayOf(y, 1, 1);
+  if (grain === "quarter") return dayOf(y, 3 * Number(m[2]) - 2, 1);
+  if (grain === "month") return dayOf(y, Number(m[2]), 1);
+  if (grain === "week") return isoWeekOne(y) + 7 * (Number(m[2]) - 1);
+  return dayOf(y, Number(m[2]), Number(m[3]));
+}
+
+function grainLabel(day, grain) {
+  const t = new Date(day * DAY_MS);
+  const y = t.getUTCFullYear(), mo = t.getUTCMonth() + 1;
+  if (grain === "year") return pad(y, 4);
+  if (grain === "quarter") return `${pad(y, 4)}-Q${Math.floor((mo - 1) / 3) + 1}`;
+  if (grain === "month") return `${pad(y, 4)}-${pad(mo, 2)}`;
+  if (grain === "week") {
+    // The ISO year is the year of the week's Thursday.
+    const thursday = day - ((t.getUTCDay() + 6) % 7) + 3;
+    const iy = new Date(thursday * DAY_MS).getUTCFullYear();
+    return `${pad(iy, 4)}-W${pad(Math.floor((thursday - isoWeekOne(iy)) / 7) + 1, 2)}`;
+  }
+  return `${pad(y, 4)}-${pad(mo, 2)}-${pad(t.getUTCDate(), 2)}`;
+}
+
+/* The label n units before, or null when the moved day starts no period of
+ * the grain (DataModel matches the shifted date exactly, so there is no
+ * prior). Month units clamp the day to the target month's last. */
+function shiftLabel(label, grain, unit, n) {
+  const start = labelStart(label, grain);
+  let moved;
+  if (unit in MONTHS_PER) {
+    const t = new Date(start * DAY_MS);
+    const months = t.getUTCFullYear() * 12 + t.getUTCMonth() - n * MONTHS_PER[unit];
+    const y = Math.floor(months / 12), mo = months - 12 * y + 1;
+    const last = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    moved = dayOf(y, mo, Math.min(t.getUTCDate(), last));
+  } else if (unit === "week" || unit === "day") {
+    moved = start - n * (unit === "week" ? 7 : 1);
+  } else {
+    throw new Error(`unknown period unit '${unit}'`);
+  }
+  const out = grainLabel(moved, grain);
+  return labelStart(out, grain) === moved ? out : null;
+}
+
+function resetLabel(label, grain, period) {
+  return grainLabel(labelStart(label, grain), period);
 }
 
 /* ── Post-aggregate steps ────────────────────────────────────────────────── */
@@ -474,6 +569,159 @@ function windowed(res, groupBy, count, spec, running) {
   return out;
 }
 
+/* A period_end over the passing rows: each group's latest date, then the
+ * value summed over the group's rows at it. Dates order as cmpValues does,
+ * which is time order for ISO datetimes and for labels of one grain; a
+ * coded column is ranked once through its dictionary. A group with no date
+ * is null, and with no group columns 0, as DataModel's pandas reduction
+ * gives. */
+function periodEnd(table, pe, idx, grouping, grouped) {
+  const { gid, count } = grouping;
+  const dcol = column(table, pe.date);
+  const vcol = column(table, pe.value);
+  if (vcol.kind !== "number" && vcol.kind !== "boolean") {
+    throw new Error(`period_end '${pe.name}' sums '${pe.value}', which is not a number column`);
+  }
+  const dd = dcol.data;
+  let key;
+  if (dcol.kind === "string" || dcol.kind === "datetime") {
+    const order = Array.from(dcol.dict.keys()).sort((a, b) => cmpValues(dcol.dict[a], dcol.dict[b]));
+    const rank = new Float64Array(dcol.dict.length);
+    order.forEach((code, r) => { rank[code] = r; });
+    key = (i) => { const c = dd[i]; return c < 0 ? NaN : rank[c]; };
+  } else {
+    key = (i) => dd[i];
+  }
+  const latest = new Float64Array(count).fill(NaN);
+  for (let k = 0; k < idx.length; k++) {
+    const v = key(idx[k]), g = gid[k];
+    if (v === v && (latest[g] !== latest[g] || v > latest[g])) latest[g] = v;
+  }
+  const acc = sums(count);
+  const vd = vcol.data;
+  for (let k = 0; k < idx.length; k++) {
+    const i = idx[k], g = gid[k];
+    if (latest[g] !== latest[g] || key(i) !== latest[g]) continue;
+    const x = vd[i];
+    if (x === x) add(acc, g, x);
+  }
+  const out = new Array(count);
+  for (let g = 0; g < count; g++) {
+    out[g] = latest[g] !== latest[g] ? (grouped ? null : 0) : acc.n[g] ? total(acc, g) : 0;
+  }
+  return out;
+}
+
+/* A row's other group columns (every one but the time axis) as one map
+ * key; null stays distinct from any value, and null matches null, as the
+ * pandas merge DataModel matches on does. */
+function otherKey(res, others, g, extra) {
+  return JSON.stringify([others.map((c) => res[c][g]), extra]);
+}
+
+function timeAxis(plan, res, groupBy) {
+  const tg = plan.time_grain;
+  if (!tg || !res[tg.column]) throw new Error("pops and to_dates need the plan's time_grain column");
+  return { labels: res[tg.column], grain: tg.grain, others: groupBy.filter((c) => c !== tg.column) };
+}
+
+/* offset / growth: each row's base one (unit, n) earlier along the time
+ * axis, matched on the other group columns. */
+function pop(res, axis, count, spec) {
+  const base = res[spec.base];
+  if (!base) throw new Error(`'${spec.name}' reads '${spec.base}', which is not a result column`);
+  const { labels, grain, others } = axis;
+  const at = new Map();
+  for (let g = 0; g < count; g++) at.set(otherKey(res, others, g, labels[g]), g);
+  const out = new Array(count);
+  for (let g = 0; g < count; g++) {
+    const label = labels[g];
+    const prior = label === null ? null : shiftLabel(label, grain, spec.unit, spec.n);
+    const p = label !== null && prior === null ? undefined : at.get(otherKey(res, others, g, prior));
+    const was = p === undefined ? null : num(base[p]);
+    if (spec.mode === "value") { out[g] = was; continue; }
+    if (spec.mode !== "growth") throw new Error(`unknown pop mode '${spec.mode}'`);
+    const now = num(base[g]);
+    out[g] = was === null || was === 0 || now === null ? null : (now - was) / was;
+  }
+  return out;
+}
+
+/* to_date: the base accumulated in label order within each partition of the
+ * other group columns and the label's reset period. */
+function toDate(res, axis, count, spec) {
+  const base = res[spec.base];
+  if (!base) throw new Error(`'${spec.name}' reads '${spec.base}', which is not a result column`);
+  const { labels, grain, others } = axis;
+  const parts = new Map();
+  for (let g = 0; g < count; g++) {
+    if (others.some((c) => res[c][g] === null)) continue;
+    const label = labels[g];
+    const key = otherKey(res, others, g, label === null ? null : resetLabel(label, grain, spec.period));
+    (parts.get(key) || parts.set(key, []).get(key)).push(g);
+  }
+  const out = new Array(count).fill(null);
+  for (const rows of parts.values()) {
+    rows.sort((a, b) => cmpKey(labels[a], labels[b], false));
+    const acc = sums(1);
+    for (const g of rows) {
+      const v = num(base[g]);
+      if (v === null) continue;
+      add(acc, 0, v);
+      out[g] = total(acc, 0);
+    }
+  }
+  return out;
+}
+
+/* A raw-row plan: filter, project every passing row, order, limit. */
+function runRaw(table, plan, idx) {
+  const res = {};
+  for (const name of plan.group_by || []) {
+    const col = column(table, name);
+    res[name] = Array.from(idx, (i) => cellAt(col, i));
+  }
+  for (const p of plan.project || []) {
+    const src = p.source || {};
+    if ("col" in src) {
+      const col = column(table, src.col);
+      res[p.name] = Array.from(idx, (i) => cellAt(col, i));
+    } else {
+      const f = compileRowExpr(table, src);
+      res[p.name] = Array.from(idx, (i) => { const v = f(i); return v === undefined || v !== v ? null : v; });
+    }
+  }
+  return finish(plan, res, Array.from({ length: idx.length }, (_, k) => k));
+}
+
+/* order_by (a stable sort, nulls last in each key), limit, columns. */
+function finish(plan, res, rows) {
+  const keys = (plan.order_by || []).map((o) => {
+    if (!res[o.column]) throw new Error(`order_by reads '${o.column}', which is not a result column`);
+    return [res[o.column], !!o.desc];
+  });
+  if (keys.length) {
+    rows.sort((a, b) => {
+      for (const [values, desc] of keys) {
+        const c = cmpKey(values[a], values[b], desc);
+        if (c) return c;
+      }
+      return 0;
+    });
+  }
+  if (plan.limit !== null && plan.limit !== undefined) rows = rows.slice(0, plan.limit);
+  const cols = plan.columns.slice();
+  for (const c of cols) if (!res[c]) throw new Error(`the plan lists '${c}', which no step computed`);
+  return {
+    cols,
+    rows: rows.map((g) => {
+      const o = {};
+      for (const c of cols) o[c] = res[c][g];
+      return o;
+    }),
+  };
+}
+
 /* ── The plan ────────────────────────────────────────────────────────────── */
 
 /**
@@ -501,19 +749,29 @@ export function runPlan(table, plan, leaves) {
     idx = new Int32Array(table.rows);
     for (let i = 0; i < table.rows; i++) idx[i] = i;
   }
+  if (plan.raw) return runRaw(table, plan, idx);
 
   // 2. Group, 3. aggregate.
   const groupBy = plan.group_by || [];
+  const aggregates = plan.aggregates || [];
   const grouping = group(table, groupBy, idx);
+  // DataModel's skeleton row: a plan with no groups and no aggregates (its
+  // measures are period_ends) has a row only when some row passed.
+  if (!groupBy.length && !aggregates.length && !idx.length) grouping.count = 0;
   const count = grouping.count;
   const res = {};
   for (const name of groupBy) {
     const col = column(table, name);
     res[name] = Array.from(grouping.first, (i) => cellAt(col, i));
   }
-  for (const agg of plan.aggregates || []) res[agg.name] = aggregate(table, agg, idx, grouping);
+  for (const agg of aggregates) res[agg.name] = aggregate(table, agg, idx, grouping);
 
-  // 4. means, 5. ratios: a quotient of two aggregated columns, null over zero.
+  // 4. period_ends: each group's latest snapshot, summed.
+  for (const pe of plan.period_ends || []) {
+    res[pe.name] = periodEnd(table, pe, idx, grouping, groupBy.length > 0);
+  }
+
+  // 5. means, 6. ratios: a quotient of two aggregated columns, null over zero.
   const quotient = (name, a, b) => {
     const x = res[a], y = res[b];
     if (!x || !y) throw new Error(`'${name}' reads '${x ? b : a}', which is not a result column`);
@@ -525,7 +783,7 @@ export function runPlan(table, plan, leaves) {
   for (const m of plan.means || []) quotient(m.name, m.sum, m.count);
   for (const r of plan.ratios || []) quotient(r.name, r.num, r.den);
 
-  // 6. shares: each row's base over the base summed across every result row.
+  // 7. shares: each row's base over the base summed across every result row.
   for (const s of plan.shares || []) {
     const base = res[s.base];
     if (!base) throw new Error(`'${s.name}' reads '${s.base}', which is not a result column`);
@@ -535,7 +793,7 @@ export function runPlan(table, plan, leaves) {
     res[s.name] = base.map((v) => (num(v) === null || t === null || t === 0 ? null : v / t));
   }
 
-  // 7. combines, in order, so a later one may read an earlier one.
+  // 8. combines, in order, so a later one may read an earlier one.
   for (const c of plan.combines || []) {
     const f = compileRefExpr(res, c.expr);
     const out = new Array(count);
@@ -543,11 +801,19 @@ export function runPlan(table, plan, leaves) {
     res[c.name] = out;
   }
 
-  // 8. ranks, then runnings.
+  // 9. ranks, then runnings.
   for (const r of plan.ranks || []) res[r.name] = windowed(res, groupBy, count, r, false);
   for (const r of plan.runnings || []) res[r.name] = windowed(res, groupBy, count, r, true);
 
-  // 9. having (pandas' null rules).
+  // 10. pops, 11. to_dates, along the time axis.
+  const pops = plan.pops || [], toDates = plan.to_dates || [];
+  if (pops.length || toDates.length) {
+    const axis = timeAxis(plan, res, groupBy);
+    for (const p of pops) res[p.name] = pop(res, axis, count, p);
+    for (const t of toDates) res[t.name] = toDate(res, axis, count, t);
+  }
+
+  // 12. having (pandas' null rules).
   let rows = Array.from({ length: count }, (_, g) => g);
   for (const h of plan.having || []) {
     const values = res[h.column];
@@ -555,33 +821,8 @@ export function runPlan(table, plan, leaves) {
     rows = rows.filter((g) => test(h.op, values[g] === undefined ? null : values[g], h.value, false));
   }
 
-  // 10. order_by: a stable sort, nulls last in each key.
-  const keys = (plan.order_by || []).map((o) => {
-    if (!res[o.column]) throw new Error(`order_by reads '${o.column}', which is not a result column`);
-    return [res[o.column], !!o.desc];
-  });
-  if (keys.length) {
-    rows.sort((a, b) => {
-      for (const [values, desc] of keys) {
-        const c = cmpKey(values[a], values[b], desc);
-        if (c) return c;
-      }
-      return 0;
-    });
-  }
-
-  // 11. limit, 12. columns.
-  if (plan.limit !== null && plan.limit !== undefined) rows = rows.slice(0, plan.limit);
-  const cols = plan.columns.slice();
-  for (const c of cols) if (!res[c]) throw new Error(`the plan lists '${c}', which no step computed`);
-  return {
-    cols,
-    rows: rows.map((g) => {
-      const o = {};
-      for (const c of cols) o[c] = res[c][g];
-      return o;
-    }),
-  };
+  // 13. order_by, 14. limit, 15. columns.
+  return finish(plan, res, rows);
 }
 
 /**

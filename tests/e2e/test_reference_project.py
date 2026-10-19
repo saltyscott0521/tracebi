@@ -332,8 +332,7 @@ def test_every_reports_slice_answers_its_bindings_plans(built):
     from tracebi.reports.parquet_embed import from_parquet_bytes
     from tracebi.reports.slice import _grain_strings
 
-    legitimate = ("a SQL binding", "report.py", "period_end", "offset/growth",
-                  "to_date", "stddev", "raw-row", "having 'contains'")
+    legitimate = ("sql binding", "report.py", "having 'contains'")
     previous = os.getcwd()
     os.chdir(built)
     try:

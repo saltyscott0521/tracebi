@@ -8,7 +8,7 @@ JavaScript, no wasm, no worker, nothing fetched; it is inlined like
 
 | File | What it is |
 |---|---|
-| `tracebi-calc.js` | `window.tracebiCalc`: `load`, `run`, `domains`, `canonical`, `version`. Built from `_calc_src/` (`index.js`, `engine.js`, `select.js`, `parquet.js`) with the parts of hyparquet a flat Snappy or uncompressed block needs. 42 KB, 13 KB gzipped (budget: 50 KB gzipped, `tests/test_calc_parity.py`). |
+| `tracebi-calc.js` | `window.tracebiCalc`: `load`, `run`, `domains`, `canonical`, `version`. Built from `_calc_src/` (`index.js`, `engine.js`, `select.js`, `parquet.js`) with the parts of hyparquet a flat Snappy or uncompressed block needs. 44 KB, 14.6 KB gzipped (budget: 50 KB gzipped, `tests/test_calc_parity.py`). |
 
 ## Third-party components (bundled into `tracebi-calc.js`)
 
@@ -61,3 +61,11 @@ risks follow, and neither is a bug in either engine:
   15010403.949999999 here (rounds to 15010403.9) and 15010403.950000001 in
   DuckDB (rounds to 15010404). A rounded fingerprint of the two results then
   differs although both are right to within an ulp.
+
+`stddev` takes two compensated passes (the mean, then the squared
+deviations); DuckDB streams one, so the two agree to the rounding, not to
+the bit. Time grains are string labels, and the engine shifts and resets
+them with whole UTC days (`shiftLabel`, `resetLabel` in `engine.js`, a port
+of `calc_plan.py`'s label arithmetic), so the reader's time zone never moves
+a period; `tests/test_calc_parity.py` checks them at every grain against
+DataModel's own time axis.
