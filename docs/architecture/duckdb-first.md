@@ -29,9 +29,10 @@ number it shows is still a query the trace can name.
    measured at 8.8 MB gzipped (§10). The page does not need a database: the
    build flattens each fact with its exposed dimension attributes, so the
    page never joins, and the query vocabulary is the closed JSON spec the
-   server already compiles to SQL. A ~50 KB engine over typed, dictionary-
-   encoded columns executes that spec directly and replaces parquet-wasm,
-   Arquero and the sealed-grain evaluator. Parity with DuckDB is proved per
+   server already compiles to SQL. A ~50 KB engine (a 20 KB pure-JavaScript Parquet
+   reader included) over the blocks' dictionary-encoded columns executes
+   that spec directly and replaces parquet-wasm, Arquero and the
+   sealed-grain evaluator. Parity with DuckDB is proved per
    measure kind by test, which is finite because the spec is closed.
 4. **Controls are released, offline.** A report is assumed to work with no
    server: a `file://` page and the hosted page behave identically.
@@ -55,7 +56,7 @@ number it shows is still a query the trace can name.
 | D4 | SQL is a first-class figure binding on the server. `{"model", "sql"}` (already in `sql_calc.py`) is promoted, documented and scaffolded; `{{ measure() }}` expands before it runs. It runs at build time and is **fixed in the file**: it does not react to filters, hosted or not. | Authors and agents write what they mean when the spec cannot. The JSON spec stays the governed lane and the only live one; a gap that drives an author to SQL is a gap to close in the spec. |
 | D5 | The report file embeds a **sub-star**: for each fact its figures use, that fact at the coarsest grain that still answers every figure and every filter combination, plus the dimensions the report exposes. The build derives it. `embed: model` widens to the whole star; `embed: none` makes a hosted-only report. A size budget refuses a file past it. | Enough to recompute locally, not the whole warehouse in every email. Additive measures let the fact pre-aggregate; a distinct count or percentile forces the finer grain, and the model knows which is which. |
 | D6 | The page holds one **selection state**; every spec figure's query is composed with it; a figure whose fact has no declared path to a selected field stays as it was and says so; a SQL figure is fixed and says so. | Live filtering as Power BI, Tableau and Looker do it, in a few dozen lines once the engine is in the page. |
-| D7 | **`tracebi-calc`**: our own page engine, plain JavaScript, one file, inlined like the rest of the runtime. Budgets: ≤ 50 KB gzipped, and every spec query over the largest block the embed budget allows completes in ≤ 100 ms on a mid-range laptop; `scripts/ui_audit.py` ratchets both. Blocks are gzipped typed columns with dictionary-encoded strings, decoded by the browser's own `DecompressionStream`. No wasm, so no CSP change. A Rust port is the fallback if the time budget fails; the block format and message protocol are designed so the port swaps the engine and nothing else. `engine: duckdb` (DuckDB-wasm inlined, ~12 MB) is a later opt-in for a report that must recompute arbitrary SQL offline, shipped only when a real report needs it. | Offline is the baseline, so the engine must be in the file; a database engine is 36 MB because it is general, and the page's work is a closed spec over flat, typed columns. Small because it does little, correct because parity is finite, fast because the data is laid out for it. |
+| D7 | **`tracebi-calc`**: our own page engine, plain JavaScript, one file, inlined like the rest of the runtime. Budgets: ≤ 50 KB gzipped, and every spec query over the largest block the embed budget allows completes in ≤ 100 ms on a mid-range laptop; `scripts/ui_audit.py` ratchets both. Blocks stay **Parquet** (uncompressed or Snappy pages, the whole block gzipped for the file), unzipped by the browser's own `DecompressionStream` and read by a pure-JavaScript reader (hyparquet, 20 KB gzipped measured; counted inside the 50 KB budget). Parquet's dictionary pages give the engine integer-coded strings for free. No wasm, so no CSP change. A Rust port is the fallback if the time budget fails; the block format and message protocol are designed so the port swaps the engine and nothing else. `engine: duckdb` (DuckDB-wasm inlined, ~12 MB) is a later opt-in for a report that must recompute arbitrary SQL offline, shipped only when a real report needs it. | Offline is the baseline, so the engine must be in the file; a database engine is 36 MB because it is general, and the page's work is a closed spec over flat, typed columns. Small because it does little, correct because parity is finite, fast because the data is laid out for it. |
 | D8 | The chip gains two states and one figure mark. **Local**: this number was computed on this page by the embedded engine from the embedded, fingerprinted data. **Live**: this figure reads a `materialized: view` over a source that can move; never green. **Fixed at build**: a SQL figure that does not react to the selection. | A reader must be able to tell a build-time server number from a click-time page number from a number that may have changed since. |
 | D9 | Result fingerprints round floating-point columns to a declared precision (default 9 significant digits) and every stamped query carries a total order. `CURRENT_FINGERPRINT_ALGO` bumps. | DuckDB's parallel aggregation can return a different last bit for the same `SUM`; a byte hash would then read "drifted" on identical data. |
 | D10 | Query connections set `enable_external_access = false` and `lock_configuration = true`. Only the transform connection may load `httpfs` and friends. Credentials go through `CREATE TEMPORARY SECRET`, resolved from `${VAR}` in `connections/*.yaml` at run time, never persisted. | `read_csv('http://…')` is a read. Without this, Ask is a server-side request tool. |
@@ -157,8 +158,12 @@ filter exposes, and any grain-dependent measure needs. Additive measures
 pre-aggregate to that grain. A measure that is not additive at it
 (`nunique`, `p90`, a `median`) forces the base grain for that fact. The
 dimensions the report exposes are embedded whole; a conformed dimension is
-embedded once. Each block is Parquet, fingerprinted, and listed in the
-manifest with its grain, so the trace says what the file holds.
+embedded once. Each block is Parquet, fingerprinted by content as today (the same hash
+`verify --file` checks, independent of the container), and listed in the
+manifest with its grain, so the trace says what the file holds. A measure
+that is a ratio of aggregates (`mean`, `ratio`, `share`) is stored as its
+parts (sum and count, numerator and denominator) per grain row, so the page
+divides after it filters: an average is recomputed, never averaged.
 
 `report.json`:
 
@@ -274,7 +279,8 @@ recorded Local queries against the manifest's blocks.
   |---|---|---|---|
   | today's engine (worker JS + parquet-wasm) | 7.3 MB | 2.9 MB | ~3.5 MB |
   | `@duckdb/duckdb-wasm` 1.33 `eh` + worker | 36.7 MB | 8.8 MB | ~11.7 MB |
-  | **`tracebi-calc` budget** | | **≤ 50 KB** | |
+  | hyparquet 1.31 (pure-JS Parquet reader), bundled + minified | 64 KB | 20 KB | |
+  | **`tracebi-calc` + reader budget** | | **≤ 50 KB** | |
 
   Browsers decompress only gzip and deflate in `DecompressionStream`, so
   brotli would not have helped an inlined DuckDB. The measurement is why
