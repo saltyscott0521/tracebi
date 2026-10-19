@@ -267,3 +267,6 @@ body {
 .mp-controls .tb-range { font-size: 13px; }
 .mp-controls-note { margin: 8px 0 0; font-size: 12px; color: var(--tb-muted); max-width: 70ch; }
 .mp-basis { font-weight: 700; }
+
+/* A worded form not in use (script.js): hidden whatever its own display. */
+.mp [hidden] { display: none !important; }
