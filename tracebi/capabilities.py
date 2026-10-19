@@ -1167,6 +1167,21 @@ def _conventions() -> dict:
                         "`connection: <name>`. Written by `tracebi connect`.",
             },
             {
+                "path": "tracebi.yaml",
+                "must_define": None,
+                "type": "project settings",
+                "note": "Optional, at the project root; `tracebi init` writes "
+                        "a commented one. engine: {memory_limit (default 1GB), "
+                        "threads (min(4, CPUs)), temp_directory (default "
+                        "data/.duckdb-tmp), query_timeout_s (default 30)}: the "
+                        "limits of the read-only DuckDB connection every model "
+                        "query runs in. That connection reads the warehouse and "
+                        "nothing else (no file, URL, extension, ATTACH or "
+                        "COPY; the settings are locked); an Explore, Ask or "
+                        "agent query stops at query_timeout_s with an error "
+                        "naming it. Reference: docs/reference/tracebi-yaml.md.",
+            },
+            {
                 "path": "reports/",
                 "must_define": None,
                 "type": "report package",

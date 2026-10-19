@@ -6,6 +6,33 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — a model query runs in the warehouse, in a locked connection
+
+- `DataModel.execute` no longer loads a DuckDB warehouse's tables into
+  pandas. Each query opens one in-memory DuckDB connection, attaches the
+  warehouse file read-only, and reads the model's tables as views over it;
+  row-level measure expressions compile to SQL. A table from a source with no
+  engine (`MemoryConnector`, CSV, a SQL database, a DuckDB connector's file
+  source) is loaded through its connector as before and registered as Arrow.
+  Results, dtypes, the stamped fingerprints and every `load` node's input
+  fingerprint are unchanged; a manifest built before this change still
+  verifies as Reproduces. The input fingerprint of a warehouse table is
+  computed once per warehouse version and reused across a build's figures.
+- Every query connection, and every SQL calculation's, sets
+  `enable_external_access = false` and `lock_configuration = true`: a model
+  source, an Explore or Ask query or a SQL calculation that reaches for a
+  file, a URL, `ATTACH`, `COPY`, `INSTALL` or `LOAD` is refused by DuckDB, by
+  name. A model `SELECT` source that read files must move into a transform.
+
+### Added — `tracebi.yaml`
+
+- A project settings file at the root, written (commented) by `tracebi
+  init`: `engine: {memory_limit, threads, temp_directory, query_timeout_s}`
+  (defaults 1GB, min(4, CPUs), `data/.duckdb-tmp`, 30). Explore and Ask
+  (`POST /api/models/{name}/query`), the selection endpoint and the
+  gateway's `query_model` stop a query at `query_timeout_s` with an error
+  naming the limit (HTTP 504). Reference: `docs/reference/tracebi-yaml.md`.
+
 ### Changed — the cascade: every shipped report uses the selection grammar
 
 - The portfolio reports (book, concentration, overview, dashboard, desk), the

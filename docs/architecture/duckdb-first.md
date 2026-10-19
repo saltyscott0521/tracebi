@@ -1,7 +1,12 @@
 # DuckDB-first — one engine from the sink to the page
 
 **Status: design, decisions closed 2026-10-19.** Written from a maintainer
-discussion; the packages at the end are the plan. Supersedes the
+discussion; the packages at the end are the plan. **D3 and D10 shipped in S-1
+(2026-10-19)**: a model query runs in one locked, read-only DuckDB connection
+over views of the attached warehouse (`tracebi/model/engine.py`), limits in
+[[../reference/tracebi-yaml]]. Not yet: the per-measure `MACRO`s (`{{ measure() }}`
+still expands to inline SQL) and credentials through `CREATE TEMPORARY SECRET`
+(S-2). Supersedes the
 engine choice in [[large-detail-artifacts]] (parquet-wasm + Arquero) and the
 "controls never compute new numbers" rule in `tracebi/capabilities.py`.
 Everything in the three-phase workflow and the honesty rules

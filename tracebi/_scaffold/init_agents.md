@@ -680,6 +680,16 @@ first, then that.) `tracebi migrate connection models/_connections/<name>.py
 drafts a star schema from column metadata only. Edit every line marked
 `# DRAFT: review` before a report depends on it.
 
+The query engine's limits live in `tracebi.yaml` at the project root
+(`tracebi init` writes a commented one): `engine: {memory_limit, threads,
+temp_directory, query_timeout_s}`. Every model query runs in one read-only
+DuckDB connection over the warehouse that cannot open a file, a URL, an
+extension or another database: a model source that reaches for
+`read_csv('http://…')` is refused by DuckDB, by name. An Explore, Ask or agent
+query stops at `query_timeout_s` (default 30) with an error naming the limit.
+Only a transform reaches the outside world. Reference:
+`docs/reference/tracebi-yaml.md`.
+
 Already have dbt marts? `tracebi import dbt <path>` reads a `manifest.json`
 (a project root, or the file; it does not run dbt) and drafts `models/<name>.py`
 the same way. `--connection <name>` wires the connection `tracebi connect`

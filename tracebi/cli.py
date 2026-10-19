@@ -429,6 +429,8 @@ _INIT_SAMPLE_MODEL = _scaffold_text("init_sample_model.yaml.txt")
 
 # The source the model reads (connections/warehouse.yaml): where phase ① sinks.
 _INIT_CONNECTION = _scaffold_text("init_connection_warehouse.yaml.txt")
+# tracebi.yaml: the project's settings, every key commented with its default.
+_INIT_TRACEBI_YAML = _scaffold_text("init_tracebi.yaml.txt")
 
 # The pipeline every model gets (tracebi.pipeline.model_pipeline): the
 # transform, then the model's reports. It is what Refresh data runs in the app.
@@ -605,6 +607,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         target / ".gitignore":              _INIT_GITIGNORE,
         target / ".env.example":            _INIT_ENV_EXAMPLE,
         target / "README.md":               _init_project_readme(target.name),
+        target / "tracebi.yaml":            _INIT_TRACEBI_YAML,
         target / "AGENTS.md":               _INIT_AGENTS_MD,
         target / "inputs" / "orders.csv":   _INIT_SAMPLE_CSV,
         target / "transforms" / "sample_transform.py": _INIT_SAMPLE_TRANSFORM,

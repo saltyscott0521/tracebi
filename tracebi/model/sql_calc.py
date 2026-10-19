@@ -31,6 +31,7 @@ from tracebi.model.dataset import (
     LineageNode,
     frame_fingerprint,
 )
+from tracebi.model.engine import query_connection
 
 _MEASURE_REF = re.compile(
     r"\{\{\s*measure\(\s*(['\"])([A-Za-z_][A-Za-z0-9_]*)\1\s*\)\s*\}\}")
@@ -291,15 +292,14 @@ def run(model, query: SqlQuery) -> DataSet:
             f"DuckDB database file '{connector.database}' does not exist. Run the "
             "transform that sinks this warehouse first.")
 
-    quoted = path.replace("'", "''")
-    con = duckdb.connect(":memory:")
-    try:
-        con.execute(f"ATTACH '{quoted}' AS wh (READ_ONLY)")
-        con.execute("USE wh")
-        # Locked before the author's SQL runs: no file, extension, or network
-        # access, and no way to switch it back on.
-        con.execute("SET enable_external_access = false")
-        con.execute("SET lock_configuration = true")
+    # The query connection (tracebi.model.engine) is locked before the
+    # author's SQL runs: no file, extension, or network access, and no way to
+    # switch it back on.
+    with query_connection({"wh": path}, default="wh") as con:
+        if "wh" not in con.attached:
+            raise RuntimeError(
+                f"Cannot attach '{connector.database}' read-only: "
+                f"{con.attach_errors.get('wh')}")
         base = {row[0] for row in con.execute(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_catalog = 'wh' AND table_schema = 'main' "
@@ -308,8 +308,6 @@ def run(model, query: SqlQuery) -> DataSet:
                   for t in sorted(_tables_read(con, resolved) & base)]
         df = con.execute(resolved).df()
         engine_version = duckdb.__version__
-    finally:
-        con.close()
 
     cols = list(df.columns)
     if cols and len(df):

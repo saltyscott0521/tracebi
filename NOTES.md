@@ -20,6 +20,26 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-19 — S-1: the model as a schema, in a locked connection
+
+`DataModel.execute` opens one read-only DuckDB connection per call
+(`tracebi/model/engine.py`; per call, not per request, because a call is the
+one seam every caller shares: the web routes, the gateway, builds, `verify`
+and `execute_plan`). It attaches each file-backed warehouse READ_ONLY, makes
+the tables the query reads into views (or, for a source with no engine,
+loads the frame through its connector and registers it as Arrow), locks the
+connection, and runs the same star SQL as before. The views reproduce the
+frame round trip the old path did (NaN to null, DECIMAL to double, DATE to
+timestamp), which is why every fingerprint and the parity fixtures stayed
+byte-identical. Kept in pandas this round: the post-aggregation steps
+(ratios, shares, windows, pops, to-dates, HAVING, ordering, labels), on the
+small result. Not done: per-measure macros. Follow-up: the warehouse input
+fingerprint still loads the table through the connector into pandas (once
+per warehouse version, cached); a warehouse-side hash would avoid the load,
+but it is a new fingerprint algorithm and was out of scope.
+
+---
+
 ## 2026-10-19 — Decision: DuckDB-first on the server, a small engine of our own in the page
 
 **Decision.** DuckDB becomes the only engine on the server. Transforms are
