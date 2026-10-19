@@ -351,6 +351,20 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   exactly (`payload_sha256`), and `verify --file` checks both offline with no
   extra dependency. Only BUILDING the Parquet form needs PyArrow
   (`pip install 'tracebi[reports]'`).
+- The slice: besides each binding's stamped rows, the build embeds, per fact
+  the page reads, one Parquet block (`tracebi-slice-<fact>`) at the coarsest
+  grain that answers every figure and every filter control (base grain when a
+  measure is `nunique`, a percentile or a row expression; a mean is stored as
+  its sum and count), and a `tracebi-calc-plans` block with each binding's
+  calc plan. `report.json` says how much: `"embed": "required"` (the default)
+  embeds that grain, `"embed": "model"` every fact at base grain with every
+  dimension attribute it reaches, `"embed": "none"` nothing new (the figures
+  stay as built). `"embed_budget_mb"` (default 25) caps the slice; past it the
+  build fails and names the fix (remove a control or a grouping, raise the
+  budget, or `"embed": "none"`). A slice holds numbers, booleans, strings and
+  naive datetimes only; another type in a column the page needs fails the
+  build by name. A SQL binding and a `report.py` output are never in a slice:
+  they stay fixed at build.
 - Methodology travels the pipeline: `contract(..., note=...)` (and per-check
   `note=`) records the transform's STATED methodology in the certificate;
   measure `description=` carries modeling intent. Add ONE

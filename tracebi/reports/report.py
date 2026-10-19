@@ -602,6 +602,14 @@ class ReportManifest:
     #: inputs in the browser, so no receipt can reproduce it; recording it
     #: says the page computes there, and where. None (omitted) otherwise.
     scenarios: Optional[list] = None
+    #: The slice the page recomputes from (``tracebi/reports/slice.py``):
+    #: per fact, its block id, grain, columns with types, row count and the
+    #: ``payload_sha256`` of the Parquet bytes shipped. None (omitted) for
+    #: ``embed: none`` and every lane without slices.
+    slice: Optional[dict] = None
+    #: Every binding's calc plan, or ``{"fixed": reason}``, as embedded in
+    #: the page's ``tracebi-calc-plans`` block. None (omitted) with no slice.
+    plans: Optional[dict] = None
 
     def to_dict(self) -> dict:
         d = {
@@ -631,6 +639,10 @@ class ReportManifest:
             d["semantic_contract"] = self.semantic_contract
         if self.scenarios is not None:
             d["scenarios"] = self.scenarios
+        if self.slice is not None:
+            d["slice"] = self.slice
+        if self.plans is not None:
+            d["plans"] = self.plans
         return d
 
     def to_json(self, indent: int = 2) -> str:
