@@ -241,7 +241,7 @@ what `tracebi report status` and `workbench_state` show.
 ### `tracebi verify`
 
 ```bash
-tracebi verify <manifest.json> [--strict] [--contracts]
+tracebi verify <manifest.json> [--strict] [--contracts] [--local]
 tracebi verify --file <report.html> [--manifest PATH] [--strict]
 ```
 
@@ -265,6 +265,13 @@ the file after the fact.
 - `--contracts` — also re-run the warehouse's recorded [[sink-contracts]] and
   compare certified fingerprints to the data now. Reported separately; it never
   colours a figure status.
+- `--local` — also replay what the built page (the file beside the manifest)
+  recomputes under a selection: every plan not fixed at build, over the slice
+  the file carries (its `payload_sha256` checked first), under the authored
+  selection and one per filter, by the page engine in node and by the server.
+  They must agree cell by cell; the first disagreement is named. Without node
+  the engine half is skipped and says so. A separate claim: the page's
+  arithmetic is the server's, not that a figure is right.
 
 Verify is read-only and refuses a review snapshot by name rather than printing
 a check that looks like it ran.

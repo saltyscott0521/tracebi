@@ -263,7 +263,7 @@ resolved list in that session's <code>pins.json</code>, keeping it with a timest
 the current actor, and the note. An unknown id is an error. Open pins are
 what <code>tracebi report status</code> and <code>workbench_state</code> show.</p>
 <h3 id="tracebi-verify"><code>tracebi verify</code></h3>
-<pre><code class="language-bash">tracebi verify &lt;manifest.json&gt; [--strict] [--contracts]
+<pre><code class="language-bash">tracebi verify &lt;manifest.json&gt; [--strict] [--contracts] [--local]
 tracebi verify --file &lt;report.html&gt; [--manifest PATH] [--strict]
 </code></pre>
 <p>Two deliberately separate checks. See <a href="../concepts/trace.html">The trace</a> for what each proves.</p>
@@ -300,6 +300,13 @@ the file after the fact.</p>
 <li><code>--contracts</code> — also re-run the warehouse's recorded <a href="../concepts/sink-contracts.html">Sink contracts</a> and
   compare certified fingerprints to the data now. Reported separately; it never
   colours a figure status.</li>
+<li><code>--local</code> — also replay what the built page (the file beside the manifest)
+  recomputes under a selection: every plan not fixed at build, over the slice
+  the file carries (its <code>payload_sha256</code> checked first), under the authored
+  selection and one per filter, by the page engine in node and by the server.
+  They must agree cell by cell; the first disagreement is named. Without node
+  the engine half is skipped and says so. A separate claim: the page's
+  arithmetic is the server's, not that a figure is right.</li>
 </ul>
 <p>Verify is read-only and refuses a review snapshot by name rather than printing
 a check that looks like it ran.</p>

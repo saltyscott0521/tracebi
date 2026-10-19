@@ -143,6 +143,7 @@ from __future__ import annotations
 
 import ast
 import dataclasses
+import math
 from typing import Any, Mapping, Optional, Sequence
 
 import pandas as pd
@@ -594,3 +595,63 @@ def slice_frame(columns: Sequence[Mapping], rows: Sequence[Sequence]) -> pd.Data
         elif col.get("type") == "datetime":
             frame[col["name"]] = pd.to_datetime(frame[col["name"]])
     return frame
+
+
+# ── Comparing two engines' answers ───────────────────────────
+
+def _cells(result) -> "tuple[list, list]":
+    if isinstance(result, pd.DataFrame):
+        return ([str(c) for c in result.columns],
+                [list(r) for r in result.itertuples(index=False, name=None)])
+    return [str(c) for c in result["cols"]], [list(r) for r in result["rows"]]
+
+
+def _number(value) -> Optional[float]:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(number) else number
+
+
+def first_mismatch(a, b, rel: float = 1e-9) -> Optional[dict]:
+    """Where two results of one plan first differ, or ``None`` when they match.
+
+    *a* and *b* are frames or ``{"cols", "rows"}`` (rows as lists, in column
+    order). The columns must be the same, in the same order, and so must the
+    rows, compared in order since the order is part of the answer. Two cells
+    match when they are equal after :func:`~tracebi.model.dataset.canonical_cell`
+    (nine significant digits; every null alike), or when both are numbers
+    within *rel* of each other (within *rel* absolutely near zero). The
+    rounded fingerprint alone is not enough between two engines: a correct
+    sum can sit an ulp either side of a nine-digit rounding boundary
+    (``CALC_NOTICE.md``), and then the two round apart.
+    """
+    from tracebi.model.dataset import canonical_cell
+
+    cols_a, rows_a = _cells(a)
+    cols_b, rows_b = _cells(b)
+    if cols_a != cols_b:
+        return {"row": None, "column": None, "left": cols_a, "right": cols_b,
+                "detail": "the columns differ"}
+    if len(rows_a) != len(rows_b):
+        return {"row": None, "column": None, "left": len(rows_a),
+                "right": len(rows_b), "detail": "the row counts differ"}
+    for i, (ra, rb) in enumerate(zip(rows_a, rows_b)):
+        for col, x, y in zip(cols_a, ra, rb):
+            if canonical_cell(x) == canonical_cell(y):
+                continue
+            nx, ny = _number(x), _number(y)
+            if (nx is not None and ny is not None
+                    and abs(nx - ny) <= max(rel * max(abs(nx), abs(ny)), rel)):
+                continue
+            return {"row": i, "column": col, "left": x, "right": y,
+                    "detail": f"row {i}, column '{col}': {x!r} against {y!r}"}
+    return None
+
+
+def rows_match(a, b, rel: float = 1e-9) -> bool:
+    """Whether two results of one plan agree, by :func:`first_mismatch`'s rule."""
+    return first_mismatch(a, b, rel) is None

@@ -77,7 +77,7 @@ filterable, exactly as in a template.
 
 | Component | Props |
 |---|---|
-| `<Filter>` | `binding`, `column`, `label` |
+| `<Filter>` | `binding`, `column`, `label`, `multiple` |
 | `<Search>` | `binding`, `placeholder`, `label` |
 | `<Download>` | `binding`, `label` — the stamped CSV, verbatim |
 
@@ -85,7 +85,8 @@ filterable, exactly as in a template.
 
 | Piece | What it does |
 |---|---|
-| `<Filter column label>` with no `binding` | A page-wide filter: it subsets every binding that has the column — tables and charts, including ones mounted later. KPIs and values stay the stamped totals (a filtered KPI needs its own binding, or `report.json` `"selection"`). |
+| `<Filter column label>` with no `binding` | A page-wide filter. On a page built with a slice (the default `"embed"`) every filter, page-wide or bound, writes one selection state and every figure whose fact reaches the column recomputes from the embedded data — values, tables, charts, sparks, including ones mounted later; the chip reads Local, the state rides in the URL hash beside `useUrlState`'s keys, and a figure that cannot recompute carries `data-tb-fixed` (one the field does not reach, `data-tb-unfiltered-by`). With `"embed": "none"`, or on a column no slice carries, it subsets the stamped rows of every binding that has the column and KPIs stay the stamped totals. |
+| `<Filter column multiple>` | A list box: the reader picks several values; the selection holds all of them. |
 | `<Segmented options value onChange label>` | One choice of a few — a view, a period. Use it to pick *which* figure shows: one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its trace. |
 | `useUrlState(key, initial)` | `useState` kept in the URL (`#view=Detail&period=YTD`): a reload or a shared link opens where the reader was. |
 | `usePrinting()` | `true` while the page prints (the browser's Ctrl+P, and `tracebi report build --format pdf`). An app with views renders every one then, so the PDF holds the whole report: `{printing ? <><Overview /><Detail /></> : <View />}`. Give navigation `print:hidden`. |
