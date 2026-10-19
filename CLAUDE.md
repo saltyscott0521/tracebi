@@ -98,7 +98,7 @@ this catch?* — `docs/architecture/test-suite-review.md`.
 
 - **DataSet**: immutable wrapper around a pandas DataFrame + lineage chain. Every operation returns a new DataSet; nothing mutates in place.
 - **DataModel**: the star-schema semantic contract — tables, relationships, facts, dimensions, named measures — with a query surface on the same class.
-- **Medallion ETL**: Landing (raw ingest) → Manipulation (declarative cleaning) → Final (DataModel star-schema aggregation). `BronzeLayer` / `SilverLayer` / `GoldLayer` remain as aliases.
+- **Medallion ETL**: Landing (raw ingest) → Manipulation (declarative cleaning, compiled to DuckDB SQL; `transform(func)` is the marked pandas escape hatch) → Final (DataModel star-schema aggregation). `BronzeLayer` / `SilverLayer` / `GoldLayer` remain as aliases.
 - **PipelineRunner**: registers layers, schedules with APScheduler, persists run history to SQLite.
 - **Report engine**: builds structured reports (text, tables, charts) and renders to Excel, HTML, or PDF.
 - **Web layer** (`web/`): FastAPI REST API + React UI exposing all of the above via a singleton registry.
@@ -171,7 +171,8 @@ does not assert a number is correct. Never claim it verifies the phase-① analy
 tracebi/               # Core Python package (~24,000 LOC)
   connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory, DuckDB
   model/               # DataSet, DataModel (with star-schema query)
-  etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer
+  etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer;
+                       #   _sql.py compiles the steps to DuckDB SQL
   reports/             # Report, Section types, ExcelRenderer, HTMLRenderer; the artifact
                        #   lane: template_package, figures, stack, compile_spec, derive,
                        #   slice (what a page carries to recompute), calc_plan (each binding's
@@ -722,6 +723,15 @@ layer = ManipulationLayer(source=bronze_connector, source_table="orders_bronze",
 runner.register(layer, name="orders_silver", schedule="0 * * * *",
                 depends_on="orders_bronze")
 ```
+Steps (`cast`, `drop_nulls`, `deduplicate`, `rename`, `filter(where=)`) compile to
+one SELECT each (`tracebi/etl/_sql.py`) and run in DuckDB. With the source and the
+sink in one DuckDB database the layer runs inside it (`CREATE OR REPLACE TABLE … AS
+SELECT`, no frame loaded) and `execute()` returns a `SinkTable`. Each node's metadata
+carries `engine: duckdb` and its SQL. `deduplicate` keeps the first row in source
+order, and the result keeps that order, because order is part of the fingerprint.
+`cast` takes pandas dtype names from `CAST_TYPES` and refuses others by name.
+`transform(func)` is the escape hatch: marked `escape_hatch: python` in lineage and
+in the run row.
 
 ### New FastAPI route
 Add a file under `tracebi/web/api/routers/`, include it in `tracebi/web/api/main.py`, and read resources only from the registry — never import app-specific objects directly.
