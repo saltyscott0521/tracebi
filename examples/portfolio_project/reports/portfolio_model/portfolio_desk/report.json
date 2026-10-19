@@ -15,6 +15,11 @@
       "query": {"fact": "fact_holdings", "measures": ["mark"],
                 "dimensions": ["dim_fund.fund"], "order_by": ["mark"], "limit": 1}
     },
+    "funds_in_view": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings",
+                "measures": {"funds": {"expr": "fund_id", "agg": "nunique"}}}
+    },
     "by_sector": {
       "model": "portfolio_model",
       "query": {"fact": "fact_holdings", "measures": ["fair_value", "unrealized"],

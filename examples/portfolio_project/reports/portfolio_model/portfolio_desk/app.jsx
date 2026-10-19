@@ -5,6 +5,7 @@
 // and so does every other gesture: a click on a bar or a watch-list row, the
 // spread range. The filters and the range live in the sidebar, so what they
 // pick holds on every view. The selection bar says what is picked.
+import { useState, useEffect } from "react";
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download, Range,
          SelectionBar, useUrlState, usePrinting } from "tracebi";
@@ -16,15 +17,41 @@ function Header({ view }) {
   return <h1 className="text-2xl font-semibold tracking-tight">{view}</h1>;
 }
 
+// How many funds are in view, from the funds_in_view figure's own query
+// result; null as built, when the authored sentence stands. "The lowest of
+// any fund" needs more than one fund to compare.
+function useFundsInView() {
+  const [funds, setFunds] = useState(null);
+  useEffect(() => {
+    const tb = window.tracebi;
+    if (!tb || !tb.onSelection) return undefined;
+    const read = () => {
+      const res = tb.result("val-funds-in-view");
+      setFunds(!res ? null
+        : res.rows.length ? Number(res.rows[0][res.cols.indexOf("funds")]) || 0 : 0);
+    };
+    read();
+    return tb.onSelection(read);
+  }, []);
+  return funds;
+}
+
 function Overview() {
+  const funds = useFundsInView();
   return (
     <>
       <p className="tb-lede">
         The holdings in view are worth{" "}
         <Value binding="totals" cell="fair_value" format="currency_compact" />, marked
         at <Value binding="totals" cell="mark" /> of cost.{" "}
-        <Value binding="weakest_fund" cell="dim_fund.fund" /> carries the lowest mark of
-        any fund in view, at <Value binding="weakest_fund" cell="mark" />.
+        <span hidden={funds !== null && funds < 2}>
+          <Value binding="weakest_fund" cell="dim_fund.fund" /> carries the lowest mark of
+          the <Value binding="funds_in_view" cell="funds" id="val-funds-in-view" /> funds
+          in view, at <Value binding="weakest_fund" cell="mark" />.</span>
+        <span hidden={funds !== 1}>
+          <Value binding="weakest_fund" cell="dim_fund.fund" id="val-only-fund" /> is the
+          only fund in view, marked at{" "}
+          <Value binding="weakest_fund" cell="mark" id="val-only-fund-mark" />.</span>
       </p>
       <div className="tb-grid">
         <Kpi lead binding="totals" cell="fair_value" format="currency_compact"
