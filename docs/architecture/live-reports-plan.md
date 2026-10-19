@@ -210,3 +210,129 @@ are closed and portable:
 
 The server half of [[duckdb-first]] (Q-2, Q-4, Q-5), `engine: duckdb`, a
 Rust port, Qlik-style excluded values.
+
+## Round 2 — the cascade (2026-10-19)
+
+Round 1 made the page able to recompute. Round 2 makes every shipped report
+use it, and gives the page the full interaction grammar a state-driven
+report needs. Branch `cascade`.
+
+### Decisions (closed)
+
+11. **Every interaction is the one selection state.** A control, a click on a
+    chart mark, a click on a table row, a range, a chip in the selection bar,
+    the URL hash and `tracebi.setSelection` all write the same object; every
+    figure re-runs from it. Nothing else moves a number.
+12. **A chart mark click selects without a control.** On a live page a click
+    on a bar, slice, point or legend entry writes `{column: [value]}` for the
+    mark's x (or series) column when that column is in any fact's slice; a
+    second click on the same value removes it; shift-click adds to the list.
+    No `data-tb-filter` is needed for the column. Pages with `embed: none`
+    keep today's control-only behaviour.
+13. **A selection bar is always present on a live page.** The runtime
+    inserts one under the masthead (`.tb-selection-bar`, or where the author
+    put `<div data-tb-selection>` / kit `<SelectionBar/>`): one chip per
+    selected field and value ("Sector: Software ×"), a "Clear" when more than
+    one, hidden when the state equals the authored one. Escape clears.
+14. **Ranges are a control.** `data-tb-range` (kit `<Range column min max step>`)
+    writes `{column: {gte, lte}}` for a number column or a grain-label
+    column (lexical, ISO-ordered); a two-handle slider for numbers, two
+    month/quarter pickers for grains. Domain from `tracebiCalc.domains`.
+15. **Cross-highlighting is presentation only.** Marks whose category is not
+    in the current selection of their column draw at reduced emphasis in
+    every chart on the page; numbers are untouched; off with
+    `data-tb-highlight="off"`.
+16. **Prose stays honest under a selection.** An inline `<Value>` in editorial
+    copy recomputes like any figure; copy that asserts scope ("across all
+    three funds") is either bound to a figure or rewritten so it is true
+    under any selection. The reference reports are the example of how.
+17. **The proof is mechanical.** One table-driven journey walks EVERY shipped
+    report with a slice (reference, scaffold templates, demo): for each
+    control picks its first present value, for each chart clicks its first
+    mark, and asserts every non-fixed figure equals `execute_plan` over the
+    slice under the resulting state, and that the trace rows record it. A
+    new report with a control is covered the day it is added.
+
+### Packages
+
+- **C-1 Interaction grammar** (runtime, kit, CSS, vocabulary, guides,
+  showcase, the table-driven journey of decision 17): 11–15 and 17.
+- **C-2 Cascade: the portfolio reports** (book, concentration, overview,
+  dashboard, desk): controls where each layout has a natural place (sector,
+  fund, a fair-value range, a spread range), chart clicks, honest prose,
+  bindings re-cut so no figure on these pages is `unfiltered-by` under the
+  page's own controls; captures before/after, light/dark, desk/phone.
+- **C-3 Cascade: housing, SaaS, templates, demo**: affordability (a year
+  range and a cohort filter beside its scenarios), cohort_brief (cohort,
+  month range), mrr_dashboard (plan + month range), the two scaffold
+  templates, the two demo reports; same bar as C-2.
+- **C-4 Audit pass** (orchestrator): fresh captures of every report, the
+  audit script's ratchet, a fix round if needed.
+
+## Round 3 — the server half
+
+After the cascade: [[duckdb-first]] Q-2 (the model as a DuckDB schema and
+locked read-only query connections), Q-4 (storage tiers, Parquet on object
+storage as the hosted default), Q-5 (SQL transforms with Python as the
+escape hatch), and the pandas medallion layers in `tracebi/etl/` moved to
+DuckDB. Packages S-1 to S-4, briefed when Round 2 merges.
+
+### Round 3 — decisions and packages (2026-10-19)
+
+Branch `server-half`. The report file is done; this round makes the server
+side DuckDB-first per [[duckdb-first]] D1–D3 and D10, and removes the last
+pandas from the query path.
+
+18. **A model query runs in the warehouse, not in pandas.** Today
+    `DataModel.execute` loads the fact and dimension tables into pandas
+    frames (`load()` → `to_pandas()`) and registers them in an in-memory
+    DuckDB. It becomes: one read-only DuckDB connection per request that
+    `ATTACH`es the warehouse (file tier) or reads Parquet in place (object
+    tier), the model compiled to a schema of views (one per `tables:`
+    entry) and macros (one per simple measure), and the query compiled to
+    SQL over those views. Lineage, stamps, fingerprints and `execute_plan`
+    are unchanged in meaning; the `fact_df`/`dim_dfs` path survives only
+    for `MemoryConnector` and CSV sources that have no engine (they are
+    registered as DuckDB views from Arrow, still no pandas arithmetic).
+19. **Query connections cannot reach outside the warehouse.**
+    `enable_external_access = false`, `lock_configuration = true`,
+    `memory_limit`, `threads`, `temp_directory` from `tracebi.yaml`
+    (defaults sane), a statement timeout with `interrupt` on request
+    cancellation. The transform connection is the only one that may load
+    `httpfs` and friends, and it runs only from the CLI, the scheduler and
+    an approved code request.
+20. **Three storage tiers, one setting.** `tracebi.yaml` `warehouse:
+    {tier: file|object|remote, location: ...}`; `{{ sink }}` in a
+    transform and a model's `connectors:` resolve from it; `${VAR}` rules
+    as in `connections/*.yaml`; object tier through `httpfs` with
+    `CREATE TEMPORARY SECRET`; the certificate records engine version and,
+    on the object tier, each file's ETag.
+21. **Transforms are SQL by default.** `transforms/<name>.sql`, statements
+    in order in a fresh connection, `{{ sink }}` for the destination, the
+    contract beside it as `<name>.contract.yaml` (same vocabulary); `.py`
+    and `.ipynb` keep running and must end in an Arrow-readable frame
+    (pandas or polars); `run-transform` reports the form; `new-transform`
+    scaffolds SQL (`--python` for the escape hatch). The reference
+    transform is rewritten in SQL with the pandas one kept beside it as
+    the escape-hatch example; both sink identical tables.
+22. **The medallion layers run in DuckDB.** `tracebi/etl/` Landing /
+    Manipulation / Final compile their declarative steps (dedupe, rename,
+    cast, filter, aggregate) to SQL over the source connector's tables;
+    a custom Python step remains the escape hatch, marked.
+
+Packages:
+- **S-1 Model as schema + locked connections** (18, 19): the compiler,
+  views + macros, the per-request connection, the MemoryConnector/CSV
+  fallback as Arrow views, the Ask timeout; every existing query
+  semantics test, the parity fixtures (regenerated byte-identically) and
+  the reference journeys hold; `read_csv('http://…')` from Ask is refused
+  by name; the reference project's slowest report build is measured
+  before and after.
+- **S-2 Storage tiers** (20): `tracebi.yaml`, the object tier in the
+  reference project behind an env var, a MinIO-style endpoint in the
+  pipeline journey, stale-on-rewrite via ETag.
+- **S-3 SQL transforms** (21): the `.sql` form, scaffolds, `run-transform`,
+  the reference transform in SQL beside the pandas one, contracts beside.
+- **S-4 Medallion in DuckDB** (22): `etl/` layers compiled to SQL, the
+  demo seeds and phase examples still run, pandas no longer a required
+  dependency of the query path (`pyproject` extras adjusted).

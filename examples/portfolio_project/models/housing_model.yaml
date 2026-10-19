@@ -69,8 +69,12 @@ facts:
   - name: fact_housing
     table: fact_housing
     measures: [mortgage_rate, existing_price, new_home_price, median_income, earner_income, payment, entry_cost]
+    # A year's row is also what that year's buyer faced (the price, the cash to
+    # close, the first payment), and a buyer's cohort_id is the year bought, so
+    # the same key reaches dim_cohort: picking buyers cuts these rows too.
     foreign_keys:
       dim_year: year_id
+      dim_cohort: year_id
   - name: fact_cohort_path
     table: fact_cohort_path
     measures: [annual_payment, outlay, median_income, rate_held]
@@ -82,8 +86,11 @@ facts:
     table: fact_ten_year
     measures: [outlay, median_income, years_measured, rate_at_purchase, price_at_purchase, income_at_purchase,
       assumed_rate, growth_pct]
+    # cohort_id is the year bought, so it is also that year's dim_year key:
+    # picking years picks the buyers who bought in them.
     foreign_keys:
       dim_cohort: cohort_id
+      dim_year: cohort_id
 
 # measures: the named vocabulary reports ask for
 measures:

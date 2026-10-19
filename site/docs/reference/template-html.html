@@ -231,6 +231,18 @@ react: summing the rows on screen would be a number no query produced.</p>
 <td><code>&lt;select data-tb-filter data-tb-binding="B" data-tb-column="C"&gt;</code></td>
 </tr>
 <tr>
+<td>Range</td>
+<td><code>&lt;span data-tb-range data-tb-column="C" data-tb-label="…"&gt;</code> (optional <code>data-tb-min</code>, <code>data-tb-max</code>, <code>data-tb-step</code>)</td>
+</tr>
+<tr>
+<td>Row selection</td>
+<td><code>data-tb-select-rows</code> on a table figure (<code>="dim_issuer.issuer"</code> names the columns a row writes)</td>
+</tr>
+<tr>
+<td>Selection bar</td>
+<td><code>&lt;div data-tb-selection&gt;&lt;/div&gt;</code> (optional: where the bar goes)</td>
+</tr>
+<tr>
 <td>Search</td>
 <td><code>&lt;input data-tb-search data-tb-binding="B"&gt;</code></td>
 </tr>
@@ -242,7 +254,34 @@ react: summing the rows on screen would be a number no query produced.</p>
 </table>
 <p>Filters AND-combine, and search ANDs with them. Download exports
 the binding's <strong>stamped CSV verbatim</strong> — a trace-preserving export, always the
-full binding, never the filtered view.</p>
+full binding, never the filtered view; taken under a selection, its first line
+says <code># selection: none (full binding)</code>.</p>
+<p><strong>Every gesture is the one selection.</strong> On a live page a click on a bar, a pie
+slice, a line's category or a legend entry selects that value of the chart's
+<code>data-tb-x</code> (or <code>data-tb-color</code>) column whenever a slice carries it, with no
+filter for it on the page; the same value again removes it, shift-click adds
+it. A click on a row of a <code>data-tb-select-rows</code> table selects the row's values
+of the dimension columns the table shows. A range writes <code>{gte, lte}</code>: two
+handles over a number column (a dimension attribute, or a fact's own column,
+which keeps that fact's slice at base grain), or from/to pickers over a time
+grain's labels; it lets go when both ends are back at the domain, the column's
+values under the rest of the selection. A chart keeps its own field's other
+values and draws the ones not picked at reduced emphasis (cross-highlighting;
+its trace row says what it highlights); <code>data-tb-highlight="off"</code> on the figure
+or the page root makes it narrow like every other figure.</p>
+<p>The <strong>selection bar</strong> (<code>.tb-selection-bar</code>) goes under the masthead, or where
+<code>data-tb-selection</code> says: one chip per value with a ×, Clear when there are two
+or more, and "Download what I see" (one CSV of each visible figure's current
+rows, the selection in its header line and file name). It is hidden while the
+page is as built; Escape clears the selection (not while typing). Printed, and
+in the PDF, it is one plain line, "Filtered to: Sector Software · Fund Fund I",
+and the footer's built line adds " · filtered on this page". A field has one
+name wherever the page says it (chips, the print line, the download header, the
+"Not filtered by" notes, the trace): its control's <code>data-tb-label</code> or the
+<code>&lt;label&gt;</code> around it, else the header a table or the x title a chart gives the
+column, else one derived from the column name.
+<code>tracebi.onSelection(fn)</code> is called with <code>{selection, authored, figures}</code> on
+every change; <code>tracebi.result(id)</code> reads a figure's current answer.</p>
 <p>Tables scroll past <code>data-tb-rows</code> (default 10); <code>data-tb-rows="all"</code> opts out.
 Tables past 500 rows render only the visible rows; printing and download still
 use every row. Find-in-page cannot see rows outside that window — <code>data-tb-search</code>

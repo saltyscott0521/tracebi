@@ -55,8 +55,9 @@ Under `reports/portfolio_model/`:
   search, a sector filter, a CSV download and a stamped total row.
 - `portfolio_model/portfolio_desk/` — the book as an app (`app.jsx`, the React
   lane): a sidebar with Overview, Holdings and Funds, a KPI strip with a lead, a
-  watch list of the lowest marks, and a holdings list with search, sector and
-  fund filters and a CSV download. Every number is a kit figure the trace names.
+  watch list of the lowest marks, and a holdings list with search and a CSV
+  download; the sector and fund filters and the spread range sit in the sidebar,
+  so they cut every view. Every number is a kit figure the trace names.
 - `portfolio_model/portfolio_book/` — an editorial report with its own house CSS:
   the headline is the finding ("marked at 97.9% of cost"), every number in the
   prose is a bound figure, and `script.js` draws the issuer table from the same

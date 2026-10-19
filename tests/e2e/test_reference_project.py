@@ -261,7 +261,7 @@ def test_explore_speaks_the_models_language(built, monkeypatch):
         # Likewise a dimension: a fact joins the ones in its foreign_keys, and
         # grouping by any other cannot run.
         joins = {f["name"]: set(f["foreign_keys"]) for f in info["facts"]}
-        assert joins["fact_ten_year"] == {"dim_cohort"}
+        assert joins["fact_ten_year"] == {"dim_cohort", "dim_year"}
         for fact in offered:
             measure = sorted(offered[fact])[0]
             for dim in info["dimensions"]:
@@ -523,6 +523,14 @@ _READ = """() => Array.from(document.querySelectorAll('[data-tb-figure][data-tb-
   })"""
 
 
+def _undimmed(svg):
+    """A chart's svg less what cross-highlighting adds (a class, a label)."""
+    if svg is None:
+        return None
+    svg = re.sub(r' aria-label="(select|clear) [^"]*"', '', svg)
+    return re.sub(r' (tb-dimmed|tb-picked)(?=[ "])', '', svg).replace(' class=""', '')
+
+
 def _settle(page):
     page.wait_for_selector("html[data-tb-ready]")
     page.wait_for_timeout(900)     # chart transitions finish
@@ -575,7 +583,10 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
             if binding not in answers:
                 assert "fixed" in plans[binding]
                 assert now["fixed"] == plans[binding]["fixed"] == "report.py"
-                assert now["svg"] == was["svg"] and now["value"] == was["value"]
+                # Its marks may recede for the sector picked (cross-highlighting,
+                # presentation only); what it draws is as built.
+                assert _undimmed(now["svg"]) == _undimmed(was["svg"])
+                assert now["value"] == was["value"]
                 assert now["note"] == "Fixed at build · report.py"
                 continue
             authored, cut = answers[binding]
@@ -691,6 +702,22 @@ def test_the_desks_page_filters_recompute_every_view(built):
         assert positions.text_content() != authored
         assert positions.text_content().replace(",", "") == str(int(totals["positions"][0]))
         assert page.locator(".tb-verdict[data-tb-verdict='local']").count() >= 1
+
+        # The filters live in the sidebar, so the selection holds on every
+        # view: each view, opened after it, shows one figure's query re-run
+        # under it, exactly as execute_plan over the slice gives it.
+        from tracebi.reports.calc_plan import first_mismatch
+        for view, figure, binding in (("Overview", "kpi-unrealized", "totals"),
+                                      ("Holdings", "holdings-table", "holdings"),
+                                      ("Funds", "funds-table", "by_fund")):
+            page.get_by_role("button", name=view).click()
+            _settle(page)
+            want = execute_plan(plans[binding], frame, selection)
+            got = page.evaluate("(id) => window.tracebi.result(id)", figure)
+            assert got["selection"] == selection, (view, got["selection"])
+            assert first_mismatch(got, want) is None, (view, first_mismatch(got, want))
+            if figure.endswith("-table"):
+                assert page.locator(f"#{figure} tbody tr").count() == len(want), view
     finally:
         browser.close()
         pw.stop()
@@ -701,7 +728,7 @@ def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):
     plan picked in mrr_dashboard's filter recomputes every KPI, spark, chart
     and table exactly where execute_plan over the slice says (each month's
     latest balance, under the plan), none is fixed, and the chip reads Local.
-    cohort_brief has no control; its slice still reproduces on the server."""
+    cohort_brief's slice reproduces on the server too."""
     from tracebi.reports.calc_plan import execute_plan, rows_match
 
     name = "saas_model/mrr_dashboard"

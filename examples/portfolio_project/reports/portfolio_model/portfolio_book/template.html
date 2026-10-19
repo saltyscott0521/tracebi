@@ -8,37 +8,72 @@
 <!-- An editorial report with its own accent (style.css). The headline is
      the finding; every number in the prose is a value figure bound to
      report.json, so its trace names it. The issuer table is drawn by
-     script.js from the same fingerprinted rows (a custom figure). -->
+     script.js from the same rows (a custom figure, through tracebi.draw).
+     The page is live: a sector or a fund picked under the masthead, or a
+     click on a bar, re-runs every figure, the prose included. So the prose
+     never asserts the scope it was written against ("the three funds",
+     "three sectors carry the loss"): a sentence either names what it
+     counts with a figure or is true of any selection. A comparison needs
+     something to compare: where a selection leaves one sector, fund or
+     issuer, script.js shows the sentence written for one instead (the
+     data-book-when variants), and every number in either is a figure. With
+     nothing in view, the lede says so and the blocks that would name a
+     sector, a fund or an issuer step aside. -->
 <main class="book">
 <article class="tb-article">
   <header class="tb-masthead tb-article-head">
-    <h1>The book is marked at
+    <h1><span data-book-when="sectors>1">The holdings in view are marked at
       <span data-tb-figure="value" data-tb-binding="totals" data-tb-cell="mark"
-            id="head-mark">—</span> of cost, and three sectors carry the loss</h1>
-    <p class="tb-standfirst">Consumer, healthcare and software names are marked
-      below what the funds paid. Everything else is at or above cost.</p>
+            id="head-mark">—</span> of cost, and
+      <span data-tb-figure="value" data-tb-binding="lowest_sector"
+            data-tb-cell="dim_issuer.sector" id="head-lowest-sector">—</span>
+      is marked lowest</span><span data-book-when="sectors=1" hidden>Only
+      <span data-tb-figure="value" data-tb-binding="lowest_sector"
+            data-tb-cell="dim_issuer.sector" id="head-only-sector">—</span>
+      is in view, marked at
+      <span data-tb-figure="value" data-tb-binding="totals" data-tb-cell="mark"
+            id="head-only-mark">—</span> of cost</span><span
+      data-book-when="sectors=0" hidden>No holding is in view under this
+      selection</span></h1>
+    <p class="tb-standfirst">Where the funds' holdings stand against what was
+      paid for them, by sector, fund and issuer. Pick a sector or a fund and
+      every number on the page re-runs for it, the prose included.</p>
     <p class="tb-masthead-meta"><span data-tb-built></span>
       <span class="tb-verdict"></span></p>
   </header>
 
+  <!-- Page filters (data-tb-binding="*"): each writes the page's one
+       selection, and the bar under them says what is picked. -->
+  <p class="book-filters">
+    <label>Sector <select data-tb-filter data-tb-binding="*"
+                          data-tb-column="dim_issuer.sector"></select></label>
+    <label>Fund <select data-tb-filter data-tb-binding="*"
+                        data-tb-column="dim_fund.fund"></select></label>
+  </p>
+  <div data-tb-selection></div>
+
   <p class="tb-lede">
-    Three funds hold
+    <span data-book-when="positions>1">The
     <span data-tb-figure="value" data-tb-binding="totals" data-tb-cell="positions"
-          id="val-positions">—</span> positions worth
+          id="val-positions">—</span> positions in view are</span><span
+    data-book-when="positions=1" hidden>The one position in view is</span><span
+    data-book-when="positions>0"> worth
     <span data-tb-figure="value" data-tb-binding="totals" data-tb-cell="fair_value"
           data-tb-format="currency_compact" id="val-fair-value">—</span>, against
     <span data-tb-figure="value" data-tb-binding="totals" data-tb-cell="cost_basis"
           data-tb-format="currency_compact" id="val-cost">—</span> paid for them: an
     unrealized change of
     <span data-tb-figure="value" data-tb-binding="totals" data-tb-cell="unrealized"
-          data-tb-format="currency_compact" id="val-unrealized">—</span>.</p>
+          data-tb-format="currency_compact" id="val-unrealized">—</span>.</span><span
+    data-book-when="positions=0" hidden>No position is in view: no holding
+    matches everything picked.</span></p>
 
   <div class="tb-grid">
     <div class="tb-kpi tb-kpi--lead" data-tb-figure="value" data-tb-binding="totals"
          data-tb-cell="fair_value" data-tb-format="currency_compact" id="kpi-fair-value">
       <span class="tb-kpi-label">Fair value</span>
       <span class="tb-kpi-value"></span>
-      <span class="tb-kpi-context">administrator marks, three funds</span>
+      <span class="tb-kpi-context">administrator marks</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="totals"
          data-tb-cell="unrealized" data-tb-format="currency_compact" id="kpi-unrealized">
@@ -54,10 +89,18 @@
     </div>
   </div>
 
-  <h2>Consumer is the largest sector</h2>
-  <p>A quarter of the book sits in consumer names, then industrials and
-    software. The two largest sectors are also the two to watch: one is marked
-    down and the other is flat.</p>
+  <!-- One span around the claim: a section head is a flex row (its accent
+       bar, then the words), and a bare figure would be a flex item of its
+       own with a gap after it. -->
+  <h2 data-book-when="positions>0"><span><span data-tb-figure="value" data-tb-binding="largest_sector"
+            data-tb-cell="dim_issuer.sector" id="val-largest-sector">—</span>
+    <span data-book-when="sectors>1">is the largest sector</span><span
+      data-book-when="sectors=1" hidden>is the only sector in view</span></span></h2>
+  <p><span data-book-when="sectors>1">It holds
+    <span data-tb-figure="value" data-tb-binding="largest_sector"
+          data-tb-cell="fv_share" id="val-largest-sector-share">—</span> of the
+    fair value in view. </span>Click a bar to read the page for that sector alone;
+    shift-click adds another, and the bars not picked stay drawn behind.</p>
   <figure class="tb-figure">
     <div id="by-sector" data-tb-figure="chart" data-tb-binding="by_sector"
          data-tb-type="barh" data-tb-x="dim_issuer.sector" data-tb-y="fair_value"
@@ -65,36 +108,39 @@
     <figcaption>Fair value by sector, largest first. US dollars.</figcaption>
   </figure>
 
-  <h2>The loss sits in three sectors</h2>
-  <p>Read the table from the top: the first three rows are almost the whole
-    loss, and energy is the only other sector below cost. Industrials and
-    financials are marked at or above it.</p>
+  <h2>Where the marks fall below cost</h2>
+  <p>Read the table from the top: sectors run from the largest unrealized
+    loss to the largest gain, so the loss sits in the first rows. A mark is
+    fair value over cost: below par, the funds paid more than the holdings
+    are now marked at.</p>
   <table data-tb-figure="table" data-tb-binding="sector_marks" id="tbl-sector-marks"
          data-tb-columns="dim_issuer.sector,unrealized,mark,fair_value"
          data-tb-labels="dim_issuer.sector=Sector; unrealized=Unrealized; mark=Mark; fair_value=Fair value"></table>
 
-  <aside class="tb-pullstat">
+  <aside class="tb-pullstat" data-book-when="positions>0">
     <span class="tb-pullstat-value" data-tb-figure="value" data-tb-binding="weakest_fund"
           data-tb-cell="mark" id="pull-fund-mark">—</span>
     <span class="tb-pullstat-text">The mark at
       <span data-tb-figure="value" data-tb-binding="weakest_fund"
-            data-tb-cell="dim_fund.fund" id="val-weakest-fund">—</span>, the
-      lowest of the three funds.</span>
+            data-tb-cell="dim_fund.fund" id="val-weakest-fund">—</span><span
+      data-book-when="funds>1">, the lowest of the
+      <span data-tb-figure="value" data-tb-binding="in_view" data-tb-cell="funds"
+            id="val-funds-in-view">—</span> funds in view.</span><span
+      data-book-when="funds=1" hidden>, the only fund in view.</span></span>
   </aside>
 
-  <h2>Ten issuers make up most of the book</h2>
-  <p>The largest exposures, by fair value. A single issuer holds up to
-    three positions across the funds.</p>
-  <table id="top-issuers" class="tb-table" data-tb-figure="custom" data-tb-binding="top_issuers">
-    <thead>
-      <tr><th>Issuer</th><th class="tb-num">Fair value</th><th class="tb-num">Positions</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <h2>The largest issuers</h2>
+  <p>The largest exposures in view, by fair value, at most ten of them. One
+    issuer can hold several positions across the funds.</p>
+  <div id="top-issuers" data-tb-figure="custom" data-tb-binding="top_issuers"
+       aria-label="The largest issuers in view, by fair value"></div>
 
-  <h2>What to watch</h2>
-  <p>The lowest mark in the book is
-    <span data-tb-figure="value" data-tb-binding="lowest_mark"
+  <h2 data-book-when="positions>0">What to watch</h2>
+  <p data-book-when="positions>0"><span data-book-when="issuers>1">The lowest mark of the
+    <span data-tb-figure="value" data-tb-binding="in_view" data-tb-cell="issuers"
+          id="val-issuers-in-view">—</span> issuers in view is </span><span
+    data-book-when="issuers=1" hidden>The one issuer in view is </span><span
+    data-tb-figure="value" data-tb-binding="lowest_mark"
           data-tb-cell="dim_issuer.issuer" id="val-lowest-issuer">—</span>, at
     <span data-tb-figure="value" data-tb-binding="lowest_mark" data-tb-cell="mark"
           id="val-lowest-mark">—</span> of cost. The valuation committee should

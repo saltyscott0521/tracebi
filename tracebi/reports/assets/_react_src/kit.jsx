@@ -115,7 +115,12 @@ export function Spark(props) {
     style={props.style} {...chartProps("spark", props)} />;
 }
 
-export function Table({ binding, columns, labels, formats, sort, bars, totals, rows, id, className }) {
+/** A table. `selectRows`: on a live page a click on a row selects its values
+ * of the dimension columns the table shows (again, it clears them), and every
+ * figure re-runs under the selection; `selectRows="dim_issuer.issuer"` (or a
+ * list) names the columns a row click writes. */
+export function Table({ binding, columns, labels, formats, sort, bars, totals, rows, id, className,
+                        selectRows }) {
   useHydrate();
   const n = rows === "all" ? null : Number(rows || 10);
   // The scroll box is rendered here, not wrapped in by the runtime: React owns
@@ -127,7 +132,8 @@ export function Table({ binding, columns, labels, formats, sort, bars, totals, r
         data-tb-columns={list(columns)} data-tb-labels={pairs(labels)}
         data-tb-formats={pairs(formats)} data-tb-sort={flag(sort)}
         data-tb-bars={list(bars)} data-tb-totals={totals}
-        data-tb-rows={rows === undefined ? undefined : String(rows)} />
+        data-tb-rows={rows === undefined ? undefined : String(rows)}
+        data-tb-select-rows={selectRows === true ? "" : selectRows ? list(selectRows) : undefined} />
     </div>
   );
 }
@@ -142,6 +148,24 @@ export function Filter({ binding, column, label, className, multiple }) {
   const select = <select data-tb-filter="" data-tb-binding={binding || "*"} data-tb-column={column}
     multiple={multiple || undefined} />;
   return label ? <label className={className}>{label} {select}</label> : select;
+}
+
+/** A range on the page's selection: two handles over a number column (a
+ * holding's fair value), or from/to pickers over a time grain's labels
+ * (dim_date.month). It writes {gte, lte} and lets go at the full domain.
+ * `min` / `max` bound the track; `step` its increments. */
+export function Range({ column, label, min, max, step, className }) {
+  useHydrate();
+  return <div className={className} data-tb-range="" data-tb-column={column}
+    data-tb-label={label} data-tb-min={min} data-tb-max={max} data-tb-step={step} />;
+}
+
+/** Where the selection bar goes: one chip per picked value, Clear, and
+ * "Download what I see". Without one, the runtime puts the bar above the
+ * app. Hidden while the page is as built. */
+export function SelectionBar({ className }) {
+  useHydrate();
+  return <div className={className} data-tb-selection="" />;
 }
 
 export function Search({ binding, placeholder, label, className }) {

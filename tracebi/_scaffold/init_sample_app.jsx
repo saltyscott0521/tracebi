@@ -5,9 +5,29 @@
 // checked figure. Colours: bg-page bg-card bg-surface text-ink text-muted
 // border-rule bg-accent follow the page's theme and mode.
 // The kit and patterns: docs/reference/app-jsx.md.
-import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download } from "tracebi";
+import { useEffect, useState } from "react";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download,
+         SelectionBar, useBinding } from "tracebi";
+
+// One value in view: "Midwest led with $4,846 of the $4,846" compares a region
+// with itself, so a sentence that compares has a one-value form. The count is
+// a table's current row count (tracebi.result), as built its stamped rows.
+function useRowsInView(binding, tableId) {
+  const built = useBinding(binding).length;
+  const [rows, setRows] = useState(built);
+  useEffect(() => {
+    const read = () => {
+      const now = window.tracebi.result(tableId);
+      setRows(now && now.rows ? now.rows.length : built);
+    };
+    read();
+    return window.tracebi.onSelection(read);
+  }, [binding, tableId, built]);
+  return rows;
+}
 
 export default function App() {
+  const regions = useRowsInView("region_detail", "tbl-regions");
   return (
     <div className="min-h-screen bg-page text-ink">
       {/* tb-page is the page measure (1,200px); space-y-8 the rhythm between sections. */}
@@ -26,13 +46,18 @@ export default function App() {
         <div className="flex flex-wrap items-center gap-2">
           <Filter column="dim_region.region" label="Region" />
         </div>
+        {/* What the reader picked: one chip per value, each with a ×, Clear and
+            "Download what I see". A click on a bar selects too. Hidden as built. */}
+        <SelectionBar />
 
         {/* Lead with the answer: one sentence, its numbers bound. Never type one in. */}
         <p className="tb-lede">
-          <Value binding="top_region" cell="dim_region.region" id="val-top-region" /> led with{" "}
-          <Value binding="top_region" cell="revenue" format="currency0" id="val-top-revenue" /> of
-          the <Value binding="kpis" cell="revenue" format="currency0" id="val-revenue-inline" /> in
-          revenue.
+          <Value binding="top_region" cell="dim_region.region" id="val-top-region" />
+          {regions === 1 ? " is the only region in view, with " : " led with "}
+          <Value binding="top_region" cell="revenue" format="currency0" id="val-top-revenue" />
+          <span hidden={regions === 1}> of the{" "}
+            <Value binding="kpis" cell="revenue" format="currency0" id="val-revenue-inline" /></span>{" "}
+          in revenue.
         </p>
 
         {/* One KPI strip: the lead number larger, then what explains it. */}

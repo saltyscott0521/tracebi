@@ -2,7 +2,24 @@
   "name": "Then vs Now: Buying the Median Home",
   "author": "tracebi reference",
   "description": "What buying the median home took of a household's income over ten years \u2014 the cash to get in plus every payment \u2014 for every buyer since 1979, today's projected, with the worst of the eighties set against today.",
+  "measures": {
+    "housing_model": {
+      "years_in_view": {
+        "column": "mortgage_rate", "agg": "count", "format": "comma",
+        "description": "Years in view: fact_housing has one row per year"
+      }
+    }
+  },
   "data": {
+    "span": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": [
+          "years_in_view"
+        ]
+      }
+    },
     "peak": {
       "model": "housing_model",
       "query": {
@@ -32,6 +49,7 @@
         "fact": "fact_housing",
         "measures": [
           "mortgage_rate",
+          "price_to_income",
           "existing_price",
           "median_income",
           "entry_cost",
@@ -58,7 +76,8 @@
           "rate_held"
         ],
         "dimensions": [
-          "dim_year.year"
+          "dim_year.year",
+          "dim_cohort.purchase_year"
         ],
         "filters": {
           "dim_cohort.purchase_year": 1981,
@@ -87,8 +106,8 @@
           }
         },
         "order_by": [
-          "dim_cohort.purchase_year",
-          "dim_held.years_owned"
+          "dim_held.years_owned",
+          "dim_cohort.purchase_year"
         ]
       }
     },

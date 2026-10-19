@@ -507,8 +507,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("Advanced: the query builder").click()
             builder = page.locator(".explore-grid")
             expect(builder).to_contain_text("dim_year")
+            expect(builder).not_to_contain_text("dim_held")
+            page.get_by_role("button", name="fact_cohort_path").click()
+            expect(builder).to_contain_text("dim_held")
             page.get_by_role("button", name="fact_ten_year").click()
-            expect(builder).not_to_contain_text("dim_year")
+            expect(builder).not_to_contain_text("dim_held")
             expect(builder).to_contain_text("dim_cohort")
             fail_on_browser_errors()
 
@@ -556,7 +559,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             shutil.copytree(project / "reports" / "portfolio_model" / "portfolio_overview", draft)
             template = draft / "app.jsx"
             template.write_text(
-                template.read_text(encoding="utf-8").replace("Three funds, one Schedule", "Draft Marker One"),
+                template.read_text(encoding="utf-8").replace("The funds' Schedule", "Draft Marker One"),
                 encoding="utf-8")
             page.goto(base + "/drafts")
             page.wait_for_url("**/review/drafts")

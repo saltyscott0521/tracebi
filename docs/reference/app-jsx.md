@@ -71,7 +71,7 @@ filterable, exactly as in a template.
 | `<Value>` | `binding`, `cell`, `format`, `id` — a number inside a sentence |
 | `<Chart>` | `binding`, `type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`), `x`, `y` (a string or a list), `color`, `valueFormat`, `stack`, `mark`, `annotate`, `facet`, `unit`, `xTitle`, `yTitle`, `palette`, `height`, `id` |
 | `<Spark>` | as `<Chart>` (default `type="area"`): the trend's shape alone, under a KPI |
-| `<Table>` | `binding`, `columns`, `labels`, `formats`, `sort`, `bars`, `totals`, `rows` (default 10; `"all"`), `id` |
+| `<Table>` | `binding`, `columns`, `labels`, `formats`, `sort`, `bars`, `totals`, `rows` (default 10; `"all"`), `selectRows` (or `selectRows="dim_issuer.issuer"`: the columns a row click writes), `id` |
 
 **Controls.** A figure's number is only ever a query result. On a live page (the
 default) a `<Filter>` recomputes every figure it reaches by re-running each
@@ -82,8 +82,23 @@ and KPIs stay the stamped totals.
 | Component | Props |
 |---|---|
 | `<Filter>` | `binding`, `column`, `label`, `multiple` |
+| `<Range>` | `column`, `label`, `min`, `max`, `step` — `data-tb-range` |
+| `<SelectionBar />` | `className` — where the selection bar goes (`data-tb-selection`) |
 | `<Search>` | `binding`, `placeholder`, `label` |
 | `<Download>` | `binding`, `label` — the stamped CSV, verbatim |
+
+Every gesture on a live page writes the same selection state: a click on a
+bar, a pie slice, a line's category or a legend entry selects that value of the
+chart's `x` (or `color`) column, no `<Filter>` needed (again, it clears it;
+shift-click adds one; a `<Spark>` does not select); a click on a row of a
+`<Table selectRows>` selects the row's dimension values; a `<Range>` writes
+`{gte, lte}` (two handles for a number column, from/to pickers for a time
+grain's labels). A chart keeps its own field's other values and draws them back
+(cross-highlighting); `data-tb-highlight="off"` on it, or on an ancestor, makes
+it narrow like every other figure. `<SelectionBar />` shows one chip per picked
+value, Clear and "Download what I see"; without it the runtime puts the bar
+above the app. Escape clears; printed, the bar is one line ("Filtered to: …").
+`window.tracebi.onSelection(fn)` hears every change.
 
 **App behaviour.**
 

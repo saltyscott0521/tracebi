@@ -52,6 +52,13 @@
       page is a live query with a fingerprint; open the trace to see them.</p>
   </header>
 
+  <!-- The selection bar: one chip per value the reader picked (a filter, a
+       click on a bar, slice, point, legend entry or row, a range), each with
+       a x that removes it, Clear, and "Download what I see". The runtime puts
+       one under the masthead on every live page; this element only says
+       where. Escape clears; printed, it is one line ("Filtered to: ..."). -->
+  <div data-tb-selection></div>
+
   <div class="tb-grid">
     <!-- One KPI strip: the lead is the number the page is about (larger,
          not wider). The book has one as-of date, so the comparison is
@@ -114,7 +121,10 @@
         <div class="tb-card tb-span-8">
           <h2>Top issuers <button data-tb-download
               data-tb-binding="top_issuers">CSV</button></h2>
+          <!-- data-tb-select-rows: a click on a row selects its issuer (the
+               table's dimension column) on the whole page; again, clears it. -->
           <table data-tb-figure="table" data-tb-binding="top_issuers"
+                 data-tb-select-rows
                  data-tb-labels="mark=Mark (FV / cost)"
                  data-tb-formats="fair_value=currency0; cost_basis=currency0; mark=percent"
                  data-tb-bars="fair_value"
@@ -130,10 +140,14 @@
       </div>
 
       <!-- Small multiples: one panel per fund on one shared scale, each
-           fund's largest sector labelled with its own row's value. -->
+           fund's largest sector labelled with its own row's value. A click
+           on a bar selects its sector, and a chart keeps its own field's
+           other bars, drawn back (cross-highlighting); data-tb-highlight="off"
+           makes this one narrow to the sector like every other figure. -->
       <div class="tb-card">
         <h2>Each fund's book by sector</h2>
         <div data-tb-figure="chart" data-tb-binding="fund_sector" data-tb-type="bar"
+             data-tb-highlight="off"
              data-tb-x="dim_issuer.sector" data-tb-y="fair_value"
              data-tb-facet="dim_fund.fund" data-tb-mark="max"
              data-tb-y-title="Fair value" data-tb-value-format="compact"
@@ -183,6 +197,10 @@
           <label>Sector
             <select data-tb-filter data-tb-binding="holdings_detail"
                     data-tb-column="dim_issuer.sector"></select></label>
+          <!-- A range over a number column: each holding's own fair value.
+               Two handles; it writes {gte, lte} and lets go at the ends. -->
+          <span data-tb-range data-tb-column="fair_value"
+                data-tb-label="Holding fair value"></span>
           <button data-tb-download data-tb-binding="holdings_detail"
                   data-tb-label="Download CSV"></button>
         </p>
@@ -240,7 +258,10 @@
           on the Detail tab, reaches both facts through the issuer.</p>
         <p><label>Flow type
           <select data-tb-filter data-tb-binding="*"
-                  data-tb-column="dim_flow_type.flow_type"></select></label></p>
+                  data-tb-column="dim_flow_type.flow_type"></select></label>
+          <!-- A range over a time grain's labels: from and to months. -->
+          <span data-tb-range data-tb-column="dim_date.month"
+                data-tb-label="Months"></span></p>
         <div data-tb-figure="chart" data-tb-binding="flows_by_month" data-tb-type="line"
              data-tb-x="dim_date.month" data-tb-y="net_flow"
              data-tb-value-format="currency_compact" data-tb-mark="last"

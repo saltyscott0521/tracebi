@@ -178,7 +178,9 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   query as a closed plan; execute_plan is the oracle; parity fixtures
                        #   in tests/fixtures/calc_parity/ from scripts/gen_calc_parity.py),
                        #   assets/ (tracebi.js + tracebi.css + tracebi-calc.js, the page
-                       #   engine: pure JS, _calc_src/, CALC_NOTICE.md + vendored ECharts and D3)
+                       #   engine: pure JS, _calc_src/, CALC_NOTICE.md + vendored ECharts and D3; the
+                       #   interaction grammar in tracebi.js: mark/row/range clicks, the selection
+                       #   bar, cross-highlighting, tracebi.onSelection/result)
   pipeline/            # PipelineRunner + APScheduler integration; run_record (a recorded run: row + log)
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
   web/                 # register facade + auto-discovery for discovered modules (.py and .ipynb)
@@ -692,7 +694,17 @@ the URL hash (`#sel=`), and `tracebi-calc.js` re-runs every plan under it: value
 tables, charts, sparks and `tracebi.draw` figures recompute, the chip reads
 Local, a figure its field cannot reach carries `data-tb-unfiltered-by`, one the
 engine cannot run (SQL binding, `report.py`) `data-tb-fixed`. `tracebi.setSelection`
-sets it from code. `"embed": "none"` builds the old page: filters subset stamped
+sets it from code. Every gesture writes that one state too: a click on a bar,
+slice, point or legend entry (no control needed; shift adds), a row of a
+`data-tb-select-rows` table, a `data-tb-range`; a chart keeps its own field's
+other values and dims them (`data-tb-highlight="off"` to narrow instead); the
+selection bar (`data-tb-selection`, kit `<SelectionBar/>`) shows it, prints as
+one line, and Escape clears it. A row-select table keeps the other values only
+of the fields its own row clicks wrote (`data-tb-select-rows="dim.attr"` names
+them); any other writer of the field takes it back, and the hash carries no
+owner. `tests/e2e/test_live_cascade.py` walks every
+shipped live report through every gesture against `execute_plan`.
+`"embed": "none"` builds the old page: filters subset stamped
 rows and value figures never react. There is no worker, no wasm and no server
 round trip; Python (`calc_plan.execute_plan` over `DataModel.execute`) is the
 source of truth, `tests/test_calc_parity.py` holds the port to it, and a page

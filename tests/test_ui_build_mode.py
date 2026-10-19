@@ -100,19 +100,19 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
             # the report in the pane changes on its own, with what changed listed.
             template = project / "reports" / "saas_model" / "cohort_brief" / "template.html"
             template.write_text(template.read_text()
-                .replace("The earliest cohort still holds the most ending MRR", "Edited while you watch")
+                .replace("holds the most ending MRR", "Edited while you watch")
                 .replace('data-tb-format="currency0" id="kpi-mrr"',
                          'data-tb-format="currency2" id="kpi-mrr"'))
-            frame.get_by_role("heading", name="Edited while you watch").wait_for(timeout=15_000)
+            frame.get_by_role("heading", name=re.compile("Edited while you watch")).wait_for(timeout=15_000)
             newest = page.locator(".wb-version").first
             newest.get_by_text("kpi-mrr").wait_for(timeout=15_000)
             assert "→" in newest.inner_text()
 
             # Flip back to the report as it was before the edit, then to the latest.
             page.locator(".wb-version", has_text="Opened").click()
-            frame.get_by_role("heading", name="The earliest cohort still holds the most ending MRR").wait_for()
+            frame.get_by_role("heading", name=re.compile("holds the most ending MRR")).wait_for()
             page.get_by_role("button", name="Back to latest").click()
-            frame.get_by_role("heading", name="Edited while you watch").wait_for()
+            frame.get_by_role("heading", name=re.compile("Edited while you watch")).wait_for()
             frame.locator("#kpi-mrr").wait_for()
 
             # Escape stops pointing; so does leaving Build mode.

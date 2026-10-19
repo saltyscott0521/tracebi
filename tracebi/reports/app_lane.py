@@ -292,6 +292,20 @@ def scan_controls(src: str) -> list[tuple[str, str]]:
     return out
 
 
+_RANGE_TAG = re.compile(r"<Range\b([^>]*)>")
+
+
+def scan_ranges(src: str) -> list[str]:
+    """The literal ``column`` of every ``<Range>`` in *src*, as
+    ``selection.range_controls`` reads a template's ``data-tb-range``."""
+    out: list[str] = []
+    for m in _RANGE_TAG.finditer(_strip_comments(src)):
+        for p in _PROP.finditer(m.group(1)):
+            if p.group(1) == "column":
+                out.append(next(v for v in p.groups()[1:] if v is not None))
+    return out
+
+
 def _join(v) -> str:
     return v if isinstance(v, str) else ""
 

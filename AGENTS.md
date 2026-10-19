@@ -171,7 +171,9 @@ the stamped rows; a number your code computes or draws (a Recharts chart, a
 sum) is the app's presentation, not a checked figure, and the page says so.
 For app behaviour: `<Filter column>` with no `binding` filters the whole page
 (every binding with that column; on a live page every figure it reaches
-recomputes, and `multiple` picks several values);
+recomputes, and `multiple` picks several values); `<Range column>` is a range
+on the page's selection, `<Table selectRows>` selects by row, and
+`<SelectionBar />` places the bar of what is picked;
 `<Segmented options value onChange>` picks which figure shows — a period
 toggle is one literal-binding figure per option, never arithmetic; and
 `useUrlState("view", "Overview")` keeps a view or period in the URL so a
@@ -438,6 +440,37 @@ Three rules that keep pages honest:
   `data-tb-unfiltered-by` ("Not filtered by Sector"). A filter on a column
   no slice carries subsets stamped rows as before. `tracebi verify <manifest>
   --local` replays every plan by the page engine and by the server.
+- **Every gesture is the one selection.** On a live page a click on a bar,
+  a pie slice, a line's category or a legend entry selects that value of the
+  chart's x (or `data-tb-color` series) column whenever a slice carries it, no
+  `data-tb-filter` needed; the same value again removes it, shift-click adds
+  it (a sparkline does not select). `data-tb-select-rows` on a table (kit
+  `<Table selectRows>`) makes a row click select the row's dimension values;
+  `data-tb-select-rows="dim_issuer.issuer"` names the columns it writes, so a
+  table can show a sector without selecting by it. The table keeps the other
+  rows only for fields its own clicks wrote; a filter on the same field
+  narrows it.
+  `data-tb-range` with `data-tb-column` (optional `data-tb-label`,
+  `data-tb-min`, `data-tb-max`, `data-tb-step`; kit `<Range column label min
+  max step>`) is a range control: two handles for a number column (a fact's own
+  column, such as a holding's fair value, keeps that fact's slice at base
+  grain), from/to pickers for a time grain's labels; it writes `{gte, lte}`.
+  A chart keeps its own field's other values and draws the ones not picked at
+  reduced emphasis (cross-highlighting; its trace row says Highlights);
+  `data-tb-highlight="off"` on a figure or the page root makes it narrow like
+  every other figure. The selection bar (`.tb-selection-bar`) sits under the
+  masthead on every live page, or where you put `<div data-tb-selection>`
+  (kit `<SelectionBar />`): one chip per value with a ×, Clear, and "Download
+  what I see" (each visible figure's current rows, the selection in the
+  header and the file name). It is hidden as built, Escape clears it, and
+  printed (or in the PDF) it is one line, "Filtered to: Sector Software", with
+  " · filtered on this page" on the footer's built line. A `data-tb-download`
+  taken under a selection starts "# selection: none (full binding)". A field
+  is named once for the whole page, chips, notes and trace alike: its
+  control's `data-tb-label` or `<label>`, else a table header or chart x
+  title for the column, else the column name made readable.
+  `tracebi.onSelection(fn)` hears every change as `{selection, authored,
+  figures}`; `tracebi.result(id)` reads a figure's current answer.
 - **Scenarios are the one place a page computes.** A
   `data-tb-scenario` block lets the reader ask "what if": `data-tb-input`
   fields, a `data-tb-preset` picker (`data-tb-key`, `data-tb-fill`,

@@ -2,7 +2,7 @@
   "name": "Portfolio Book",
   "author": "workflow",
   "description": "A written review of the book: how it is marked against cost, which sectors carry the loss, the weakest fund and issuer, and the largest issuers.",
-  "notes": "An editorial page with its own house CSS; the issuer table is drawn by script.js from the same fingerprinted rows.",
+  "notes": "An editorial page with its own house CSS; the issuer table is drawn by script.js from the same rows. The sector and fund filters re-run every figure, the prose included.",
   "data": {
     "totals": {
       "model": "portfolio_model",
@@ -18,6 +18,36 @@
         "measures": ["fair_value"],
         "dimensions": ["dim_issuer.sector"],
         "order_by": [{"column": "fair_value", "desc": true}]
+      }
+    },
+    "in_view": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": {
+          "funds": {"expr": "fund_id", "agg": "nunique"},
+          "issuers": {"expr": "issuer_id", "agg": "nunique"}
+        }
+      }
+    },
+    "largest_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["fv_share"],
+        "dimensions": ["dim_issuer.sector"],
+        "order_by": ["-fv_share"],
+        "limit": 1
+      }
+    },
+    "lowest_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["mark"],
+        "dimensions": ["dim_issuer.sector"],
+        "order_by": ["mark"],
+        "limit": 1
       }
     },
     "sector_marks": {
@@ -54,7 +84,9 @@
       "query": {
         "fact": "fact_holdings",
         "measures": ["fair_value", "positions"],
-        "dimensions": ["dim_issuer.issuer"]
+        "dimensions": ["dim_issuer.issuer"],
+        "order_by": ["-fair_value"],
+        "limit": 10
       }
     }
   }

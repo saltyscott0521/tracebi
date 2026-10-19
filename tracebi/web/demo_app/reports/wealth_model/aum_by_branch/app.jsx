@@ -2,7 +2,10 @@
 // style.css (fonts, the hero band, colours) on the system's frame; its
 // numbers are kit figures, so the trace names every one. Net new assets is
 // this report's own calculation (report.json "measures"), stamped like the rest.
-import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download } from "tracebi";
+// The filters, the account-opened range and a click on a bar or a slice cut the
+// whole page; the activity table reaches every one of them too.
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Range, SelectionBar,
+         Download } from "tracebi";
 
 export default function App() {
   return (
@@ -10,7 +13,7 @@ export default function App() {
       <div className="wm-hero">
         <Masthead className="wm-hero-inner"
           title={<>Where the book sits, <em>branch by branch.</em></>}>
-          Assets under management across six branches and four asset classes. The book
+          Assets under management by branch and asset class. The book in view
           stands at{" "}
           <Value binding="at_a_glance" cell="market_value" format="currency_compact"
                  id="val-aum-inline" />; every number on this page is a live query against the
@@ -19,12 +22,17 @@ export default function App() {
       </div>
 
       <main className="tb-page space-y-8 px-6 py-8">
-        {/* A page filter (no binding): every figure recomputes for the region
-            picked; one the region cannot reach says so. */}
-        <Filter column="dim_branch.region" label="Region" />
+        {/* Page controls (no binding): every figure recomputes for what is
+            picked; one a pick cannot reach would say so. */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Filter column="dim_branch.region" label="Region" />
+          <Filter column="dim_client.segment" label="Segment" />
+          <Range column="dim_account.opened" label="Account opened" />
+        </div>
+        <SelectionBar />
         <div className="tb-grid wm-kpis">
           <Kpi lead binding="at_a_glance" cell="market_value" format="currency_compact"
-               label="Total AUM" context="market value, every branch" id="kpi-aum" />
+               label="Total AUM" context="market value, the accounts in view" id="kpi-aum" />
           <Kpi binding="at_a_glance" cell="unrealized_gain" format="currency_compact"
                label="Unrealized gain" context="market value less cost" id="kpi-gain" />
           <Kpi binding="at_a_glance" cell="gain_pct" format="percent" label="Gain on cost"

@@ -6,6 +6,63 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the cascade: every shipped report uses the selection grammar
+
+- The portfolio reports (book, concentration, overview, dashboard, desk), the
+  housing affordability page, the SaaS reports, both `init --template`
+  bundles, the `init` sample and the demo app's reports now offer filters,
+  ranges, mark clicks and row selection where each layout has a place for
+  them, with the selection bar; prose that asserted a scope is bound to
+  figures or rewritten so it is true under any selection. The desk's filters
+  and spread range sit in its sidebar and cut every view.
+- A row-select table narrows by every selected field except the ones its own
+  row clicks wrote (any other control, mark or table takes a field back, and
+  a link opens with none owned); a row stands out when its value of any of
+  its select columns is picked, unless every row is.
+  `data-tb-select-rows="dim_issuer.issuer"` (kit
+  `selectRows="dim_issuer.issuer"`) names the columns a row click writes, so
+  a table can show a sector without selecting by it.
+- A range's track is the column's whole domain, so it no longer collapses
+  when another field narrows the page. Years and other identity-like numbers
+  (`year`, `*_year`, `id`, `*_key`, or whole numbers all within 1800-2200)
+  print without separators in the range, the chips and the print line.
+- A filter's "not in view" separator is short, so it no longer widens the
+  select. A line or area over whole numbers spaces them as numbers, so a gap
+  in the data reads as a gap. A pick that none of a chart's marks carries
+  dims nothing; a receded bar's value label stays readable.
+
+### Added — every gesture on a live page is the one selection
+
+- A click on a bar, a pie slice, a line's category or a legend entry selects
+  that value of the chart's x (or series) column whenever a slice carries it,
+  with no filter for the column on the page; the same value again removes it,
+  shift-click adds it. Pages built with `"embed": "none"` keep the old
+  behaviour (a click sets an existing filter).
+- `data-tb-select-rows` (kit `<Table selectRows>`): a row click selects the
+  row's dimension values. `data-tb-range` (kit `<Range column label min max
+  step>`): a range control, two handles over a number column or from/to
+  pickers over a time grain's labels, writing `{gte, lte}`. A range on a
+  fact's own column keeps that fact's slice at base grain.
+- Cross-highlighting: a chart (and a row-select table) keeps its own field's
+  other values and draws the ones not picked at reduced emphasis; its trace
+  row states what it highlights. `data-tb-highlight="off"` on a figure or the
+  page root makes it narrow like every other figure.
+- The selection bar (`.tb-selection-bar`, or where `data-tb-selection` / kit
+  `<SelectionBar />` puts it): one chip per value, Clear, and "Download what
+  I see" (each visible figure's current rows, the selection in the header and
+  file name). Escape clears. Printed, and in the PDF, it is one line
+  ("Filtered to: …") and the footer's built line says " · filtered on this
+  page". A `data-tb-download` taken under a selection starts with
+  `# selection: none (full binding)`.
+- `tracebi.onSelection(fn)` hears every change of the selection as
+  `{selection, authored, figures}`; `tracebi.result(id)` reads a figure's
+  current answer. The showcase's treemap uses `onSelection` to add to the
+  reader's selection instead of replacing it.
+- `tests/e2e/test_live_cascade.py` walks every shipped live report (the
+  reference project, the scaffold's sample, both templates, the demo app's
+  wealth reports) through every gesture it offers and checks each figure
+  against the server's answer for the slice it carries.
+
 ### Changed — a built report is live: a filter recomputes every figure
 
 - The rule is now **a figure's number is only ever a query result** (it was

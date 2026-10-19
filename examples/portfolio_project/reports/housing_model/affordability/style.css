@@ -248,3 +248,25 @@ body {
 .mp-assume[open] > summary { margin-bottom: 12px; }
 
 .mp-trends { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+
+/* ── The selection: what the reader picks, apart from the what-if ────────
+ * A plain strip with the page's own rule, so it reads as a control over the
+ * figures; the calculator keeps its ledger look and its dashed frame. */
+.mp-controls {
+  margin-top: 20px; padding: 12px 16px; border-radius: 12px;
+  border: 1px solid #d3e6da; background: #fffdf6;
+}
+.mp-controls--inline { margin: 0 0 14px; }
+.mp-controls-title {
+  margin: 0 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--mp-green-7);
+}
+.mp-controls-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 24px; }
+.mp-controls label { font-size: 13px; color: var(--tb-muted); }
+.mp-controls select[data-tb-filter] { margin: 0 0 0 6px; }
+.mp-controls .tb-range { font-size: 13px; }
+.mp-controls-note { margin: 8px 0 0; font-size: 12px; color: var(--tb-muted); max-width: 70ch; }
+.mp-basis { font-weight: 700; }
+
+/* A worded form not in use (script.js): hidden whatever its own display. */
+.mp [hidden] { display: none !important; }
