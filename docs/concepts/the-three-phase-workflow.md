@@ -26,12 +26,17 @@ one never blocks the fast one.
 
 ## ① Transform — `transforms/`
 
-Ordinary, unconstrained pandas. Pull the queries, do the real analysis — window
+SQL by default: `transforms/<name>.sql`, DuckDB statements run top to bottom
+in one fresh connection. Pull the queries, do the real analysis — window
 functions, prose parsing, cleaning, dedupe — then **sink** clean star-schema
-tables into a DuckDB warehouse file.
+tables into the warehouse. When the work outgrows SQL, the escape hatch is
+pandas or polars (a `.py` or `.ipynb`); both forms run with
+`tracebi run-transform`, which says which one ran.
 
 The framework does not constrain this phase. The contract is not *how* you
-clean; it is **what lands**: the named tables at the end of the script.
+clean; it is **what lands**: the named tables at the end of the script. The
+[[sink-contracts|sink contract]] that checks them sits beside the transform, in
+`<name>.contract.yaml`.
 
 → [[transform]]
 
@@ -63,7 +68,7 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.
 | Stage | Folder | What you write | How the server finds it |
 |---|---|---|---|
 | ⓪ Input | `inputs/` | a raw pull: a CSV, an API export, a SQL dump | it doesn't; you put it there |
-| ① Transform | `transforms/` | pandas (a `.py` or `.ipynb`) that writes DuckDB tables | it doesn't; you run it with `tracebi run-transform` |
+| ① Transform | `transforms/` | DuckDB SQL (a `.sql`, with its `.contract.yaml` beside it), or pandas as the escape hatch (a `.py` or `.ipynb`), that lands warehouse tables | it doesn't; you run it with `tracebi run-transform` |
 | ② Model | `models/` | a `DataModel` in a variable named `model` | its page on **Data** (`/data/<model>`), Model tab |
 | ③ Report | `reports/` | a package (`report.json` + an `app.jsx` dashboard or a `template.html` page), or a JSON spec that compiles into one | listed in **Reports** (the library), under its model |
 

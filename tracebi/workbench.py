@@ -1167,8 +1167,11 @@ def warehouse_view(path: str) -> dict:
     introspection the classic discovery panel uses, on short-lived read-only
     connections closed before this returns. Failures land in ``"error"``."""
     from tracebi.contracts import table_statuses
+    from tracebi.warehouse import as_warehouse
 
-    view: dict = {"path": path, "exists": os.path.isfile(path), "tables": []}
+    # A warehouse address from tracebi.yaml knows its tier (Parquet under a
+    # prefix, an attached database); a plain path is the file.
+    view: dict = {"path": str(path), "exists": as_warehouse(path).exists(), "tables": []}
     if not view["exists"]:
         return view
     try:
@@ -1197,10 +1200,10 @@ def _warehouse_tables(path: str) -> list[dict]:
     SQL aggregates), on one short-lived read-only connection closed
     deterministically. A table's profile failure lands in that entry's
     ``"error"``, never raised."""
-    import duckdb
+    from tracebi.contracts import _reader
 
     tables: list[dict] = []
-    con = duckdb.connect(path, read_only=True)
+    con = _reader(path)
     try:
         names = [r[0] for r in con.execute(
             "SELECT table_name FROM information_schema.tables "

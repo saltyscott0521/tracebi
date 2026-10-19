@@ -30,7 +30,7 @@ one phase to the next. [[the-three-phase-workflow]] is the full account; the
 shape:
 
 ```
-①  TRANSFORM    transforms/       ordinary, unconstrained pandas
+①  TRANSFORM    transforms/       SQL by default; pandas is the escape hatch
      read a messy source → parse, clean, key, dedupe → WRITE star-schema tables
                                                         │
                                                         ▼  freeze: data/warehouse.duckdb
@@ -47,7 +47,9 @@ data demands — window functions, prose parsing, cleaning — then *sink* clean
 named star-schema tables into a file-backed DuckDB warehouse with
 `DuckDBConnector(...).write(df, "table")`. The framework does not constrain how
 you clean; the contract is *what lands*. Reference impl:
-[transforms/holdings_transform.py](../examples/portfolio_project/transforms/holdings_transform.py).
+[transforms/holdings_transform.sql](../examples/portfolio_project/transforms/holdings_transform.sql)
+(the same work in pandas:
+[holdings_transform_pandas.py](../examples/portfolio_project/transforms/holdings_transform_pandas.py)).
 
 **Phase ②** declares a star schema over the warehouse — it reads the sink and
 never sees the transform above it. Reference impl:

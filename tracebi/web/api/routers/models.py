@@ -152,6 +152,7 @@ def run_query(name: str, body: QueryRequest):
     the result rows plus the full lineage of the query that was executed.
     """
     from tracebi.model.data_model import QuerySpec
+    from tracebi.model.engine import QueryTimeout, statement_timeout
 
     model = registry.get_model(name)
     if not model:
@@ -172,7 +173,12 @@ def run_query(name: str, body: QueryRequest):
                 "limit": body.limit,
             }.items() if v is not None
         })
-        ds = model.execute(spec)
+        # A reader's query stops at the project's statement timeout
+        # (tracebi.yaml engine.query_timeout_s) instead of holding a worker.
+        with statement_timeout():
+            ds = model.execute(spec)
+    except QueryTimeout as exc:
+        raise HTTPException(status_code=504, detail=error_detail("Query stopped", exc))
     except ValueError as exc:
         # Unknown fact/dimension/agg or malformed reference — caller error.
         raise HTTPException(status_code=400, detail=str(exc))

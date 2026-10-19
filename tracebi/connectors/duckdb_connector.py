@@ -6,6 +6,7 @@ import decimal
 import os
 import threading
 import time
+from contextlib import contextmanager
 from typing import Any, Optional
 
 import pandas as pd
@@ -58,6 +59,9 @@ class DuckDBConnector(BaseConnector):
         super().__init__(name)
         self.database = database
         self.directory = directory
+        # A warehouse address from tracebi.yaml (sink_target(), or a model's
+        # `type: warehouse`) carries its tier; a plain path is the file tier.
+        self.warehouse = getattr(database, "warehouse", None)
         self._conn = None
         self._views: dict[str, pd.DataFrame] = {}
         # One DuckDB connection is not safe to use from several threads at
@@ -66,6 +70,18 @@ class DuckDBConnector(BaseConnector):
         # pool, so every use of the shared connection goes through this lock.
         self._lock = threading.RLock()
 
+    @classmethod
+    def for_warehouse(cls, warehouse, name: str = "warehouse") -> "DuckDBConnector":
+        """The connector for the project's warehouse
+        (:func:`tracebi.project_config.warehouse`), whatever its tier: a model's
+        ``connectors: - type: warehouse``. Opens nothing."""
+        return cls(name, database=warehouse.sink)
+
+    @property
+    def tier(self) -> str:
+        """``file``, ``object`` or ``remote`` (:mod:`tracebi.warehouse`)."""
+        return self.warehouse.tier if self.warehouse is not None else "file"
+
     def supports_pushdown(self) -> bool:
         return True
 
@@ -73,7 +89,17 @@ class DuckDBConnector(BaseConnector):
         out = {**super().describe(), "database": self.database}
         if self.directory:
             out["directory"] = self.directory
+        if self.tier != "file":
+            out["tier"] = self.tier
         return out
+
+    def storage(self) -> dict:
+        if self.tier == "file":
+            return super().storage()
+        where = self.warehouse.address
+        kind = "cloud" if self.warehouse.is_url or self.tier == "remote" else "directory"
+        exists = os.path.isdir(where) if kind == "directory" else None
+        return {"kind": kind, "where": where, "exists": exists, "size": None}
 
     def list_tables(self) -> list[str]:
         """Table names from ``information_schema``. No row scan."""
@@ -129,6 +155,11 @@ class DuckDBConnector(BaseConnector):
             # An in-memory database lives on its connection — keep one
             # persistent read-write connection.
             self._conn = duckdb.connect(self.database)
+        elif self.tier != "file":
+            # Parquet under a prefix (one view per file, defined when the
+            # connection opens) or an attached database. write() closes this
+            # connection, so the next read sees the tables it wrote.
+            self._conn = self.warehouse.connect()
         else:
             if not os.path.exists(self.database):
                 raise FileNotFoundError(
@@ -250,45 +281,86 @@ class DuckDBConnector(BaseConnector):
             self._write(df, table, if_exists)
 
     def _write(self, df: pd.DataFrame, table: str, if_exists: str) -> None:
-        if self.database == ":memory:":
-            if self._conn is None:
-                self.connect()
-            self._write_into(self._conn, df, table, if_exists)
-            return
-        # File-backed: release the read-only handle, write through a
-        # short-lived read-write connection, and leave the connector lazy —
-        # the next load reopens read-only.
-        duckdb = self._duckdb()
-        if self._conn is not None:
-            self._conn.close()
-            self._conn = None
-        # A reader holds the file only for that read, so wait a moment for it
-        # to let go rather than failing the transform. That reader may be
-        # another process (the dev app answering a request) or this one: the
-        # web app opens a short read-only handle per request (the model page's
-        # warehouse status), and one landing between the pipeline releasing
-        # its models and this write is gone a few milliseconds later. A holder
-        # that never lets go still fails, after WRITE_LOCK_WAIT.
-        deadline = time.monotonic() + self.WRITE_LOCK_WAIT
-        while True:
+        with self.write_connection() as conn:
+            if self.tier == "object":
+                self._copy_into(conn, df, table, if_exists)
+            else:
+                self._write_into(conn, df, table, if_exists)
+
+    @contextmanager
+    def write_connection(self):
+        """A read-write connection to this database, for SQL that writes.
+
+        ``write()`` goes through it, and so do the medallion layers when they
+        run a step entirely inside the warehouse (``tracebi/etl``), so both
+        wait for a reader the same way. For ``":memory:"`` it is the
+        persistent connection itself, since the tables live there. On the
+        object tier it is an in-memory connection holding httpfs and the
+        secret, which ``write()`` uses to ``COPY`` each table to its Parquet
+        file; on the remote tier, the attached database, read-write.
+
+        Not locked like a query connection, but the project's ``engine``
+        limits (memory, threads, spill directory) apply: limits are not a lock.
+        """
+        with self._lock:
+            if self.database == ":memory:":
+                if self._conn is None:
+                    self.connect()
+                yield self._conn
+                return
+            if self.tier != "file":
+                if self._conn is not None:
+                    self._conn.close()
+                    self._conn = None
+                write_conn = self.warehouse.connect(write=True)
+                try:
+                    yield write_conn
+                finally:
+                    write_conn.close()
+                return
+            # File-backed: release the read-only handle, write through a
+            # short-lived read-write connection, and leave the connector lazy
+            # — the next load reopens read-only. This connection is
+            # deliberately not locked like a query connection
+            # (tracebi.model.engine): a write is the transform's sink,
+            # reviewed code run from the CLI, the scheduler or an approved
+            # code request, never a reader's query.
+            duckdb = self._duckdb()
+            if self._conn is not None:
+                self._conn.close()
+                self._conn = None
+            # The first write of a fresh clone creates data/ as well as the file.
+            os.makedirs(os.path.dirname(os.path.abspath(self.database)), exist_ok=True)
+            # A reader holds the file only for that read, so wait a moment for
+            # it to let go rather than failing the transform. That reader may
+            # be another process (the dev app answering a request) or this
+            # one: the web app opens a short read-only handle per request (the
+            # model page's warehouse status), and one landing between the
+            # pipeline releasing its models and this write is gone a few
+            # milliseconds later. A holder that never lets go still fails,
+            # after WRITE_LOCK_WAIT.
+            deadline = time.monotonic() + self.WRITE_LOCK_WAIT
+            while True:
+                try:
+                    write_conn = duckdb.connect(self.database)
+                    break
+                except duckdb.Error as exc:
+                    if not self._is_lock_conflict(exc):
+                        raise
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError(
+                            f"Cannot open '{self.database}' read-write: another "
+                            "tracebi process holds the warehouse open — stop "
+                            "`tracebi serve` (or close the notebook holding it) "
+                            "first; `tracebi dev` lets go between requests."
+                        ) from exc
+                    time.sleep(0.2)
             try:
-                write_conn = duckdb.connect(self.database)
-                break
-            except duckdb.Error as exc:
-                if not self._is_lock_conflict(exc):
-                    raise
-                if time.monotonic() >= deadline:
-                    raise RuntimeError(
-                        f"Cannot open '{self.database}' read-write: another "
-                        "tracebi process holds the warehouse open — stop "
-                        "`tracebi serve` (or close the notebook holding it) "
-                        "first; `tracebi dev` lets go between requests."
-                    ) from exc
-                time.sleep(0.2)
-        try:
-            self._write_into(write_conn, df, table, if_exists)
-        finally:
-            write_conn.close()
+                from tracebi.warehouse import apply_limits
+                apply_limits(write_conn, self.warehouse.root if self.warehouse else None)
+                yield write_conn
+            finally:
+                write_conn.close()
 
     @staticmethod
     def _decimal_columns(df: pd.DataFrame) -> set:
@@ -389,5 +461,45 @@ class DuckDBConnector(BaseConnector):
                 raise ValueError(
                     f"Invalid if_exists={if_exists!r}; expected replace, append, or fail."
                 )
+        finally:
+            conn.unregister("__tracebi_tmp__")
+
+    def _copy_into(self, conn, df: pd.DataFrame, table: str, if_exists: str) -> None:
+        """The object tier's write: the table becomes ``<location>/<table>.parquet``.
+
+        The same Decimal widening and append check as a table write. A local
+        directory gets the file under a temporary name first and renamed into
+        place, so a reader never opens half a file; an object store's PUT is
+        already all-or-nothing.
+        """
+        if if_exists not in ("replace", "append", "fail"):
+            raise ValueError(
+                f"Invalid if_exists={if_exists!r}; expected replace, append, or fail."
+            )
+        if '"' in table or "/" in table:
+            raise ValueError(f"Invalid table name: {table!r}")
+        path = self.warehouse.table_path(table)
+        lit = "'" + path.replace("'", "''") + "'"
+        exists = bool(conn.execute(f"SELECT count(*) FROM glob({lit})").fetchone()[0])
+        if exists and if_exists == "fail":
+            raise ValueError(
+                f"Table '{table}' already exists in DuckDBConnector '{self.name}'."
+            )
+        select = self._decimal_select(df)
+        conn.register("__tracebi_tmp__", df)
+        try:
+            source = f"(SELECT {select} FROM __tracebi_tmp__)"
+            if exists and if_exists == "append":
+                conn.execute(f'CREATE TEMP TABLE "{table}" AS SELECT * FROM read_parquet({lit})')
+                self._check_append_decimal_types(conn, df, table)
+                conn.execute(f'INSERT INTO "{table}" SELECT {select} FROM __tracebi_tmp__')
+                source = f'"{table}"'
+            if self.warehouse.is_url:
+                conn.execute(f"COPY {source} TO {lit} (FORMAT PARQUET)")
+                return
+            staged = f"{path}.tmp-{os.getpid()}"
+            staged_lit = "'" + staged.replace("'", "''") + "'"
+            conn.execute(f"COPY {source} TO {staged_lit} (FORMAT PARQUET)")
+            os.replace(staged, path)
         finally:
             conn.unregister("__tracebi_tmp__")

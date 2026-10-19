@@ -427,6 +427,7 @@ def report_selection(name: str, payload: dict):
     before that write. Auth is the report-run rule: this is a POST, so
     analyst when enforcement is on.
     """
+    from tracebi.model.engine import QueryTimeout, statement_timeout
     from tracebi.reports.selection import (
         answer_question, evaluate_selection, open_pins,
     )
@@ -464,11 +465,16 @@ def report_selection(name: str, payload: dict):
             return result
         if not filters:
             filters = {}
-        result = evaluate_selection(package, models, filters)
+        with statement_timeout():
+            result = evaluate_selection(package, models, filters)
         result["pins"] = open_pins(os.getcwd(), package.package_id)
         return result
     except HTTPException:
         raise
+    except QueryTimeout as exc:
+        raise HTTPException(
+            status_code=504, detail=_error_detail("Selection stopped", exc)
+        )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except KeyError as exc:

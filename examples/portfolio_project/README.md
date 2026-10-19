@@ -7,8 +7,9 @@ it is the worked version of that scaffold with real cleaning to do.
 
 ```
 ⓪  INPUT       inputs/holdings.csv               a messy raw pull (generated)
-①  TRANSFORM   transforms/holdings_transform.py  parse prose blobs, dedupe,
+①  TRANSFORM   transforms/holdings_transform.sql parse prose blobs, dedupe,
                                                  normalise → SINK star tables
+                                                 (+ .contract.yaml beside it)
                           ── freeze: data/warehouse.duckdb ──
 ②  MODEL       models/portfolio_model.yaml         grain, keys, measures — the contract
                           ── freeze: the model ──
@@ -36,7 +37,13 @@ tracebi run-pipeline portfolio_model   # or: a model's pipeline — rebuild its 
 to parse into issuers, trailing position counters to strip, sectors spelled
 six ways, money stored as strings.
 
-Phase ① ends with a declared sink contract — `rows`, `unique`, `not_null`,
+Phase ① is SQL: `transforms/holdings_transform.sql`, DuckDB statements run top
+to bottom in one fresh connection by `tracebi run-transform holdings_transform`.
+`transforms/holdings_transform_pandas.py` does the same work in pandas, the
+escape hatch for cleaning that outgrows SQL; both sink identical tables.
+
+Phase ① ends with a declared sink contract, beside the SQL in
+`transforms/holdings_transform.contract.yaml` — `rows`, `unique`, `not_null`,
 `foreign_key` checked as read-only SQL against the tables that just landed and
 recorded in `data/warehouse.contracts.json`. A failed check raises at sink
 time; a green one lets a report say *the sink satisfied its contract* — never

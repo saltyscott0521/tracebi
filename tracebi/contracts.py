@@ -67,13 +67,144 @@ CONTRACTS_SCHEMA_VERSION = 1
 
 
 def contracts_path(warehouse: str) -> str:
-    """``data/warehouse.duckdb`` → ``data/warehouse.contracts.json``."""
+    """``data/warehouse.duckdb`` → ``data/warehouse.contracts.json``.
+
+    A warehouse address from ``tracebi.yaml`` (:mod:`tracebi.warehouse`) on
+    the object tier keeps it inside the prefix (``<location>/_contracts.json``),
+    so the freeze point still carries its own certificate; on the remote tier,
+    in the project's ``data/``."""
+    wh = getattr(warehouse, "warehouse", None)
+    if wh is not None and wh.tier != "file":
+        return wh.certificate
     root, _ext = os.path.splitext(warehouse)
     return root + CONTRACTS_SUFFIX
 
 
+def _warehouse(warehouse: str):
+    from tracebi.warehouse import as_warehouse
+    return as_warehouse(warehouse)
+
+
+def _reader(warehouse: str):
+    """A read-only connection in which the sunk tables resolve by name: the
+    file itself, or (object and remote tiers) the warehouse's own reader."""
+    import duckdb
+
+    wh = getattr(warehouse, "warehouse", None)
+    if wh is None or wh.tier == "file":
+        return duckdb.connect(warehouse, read_only=True)
+    return wh.connect()
+
+
+def _object_moved(rec: dict, table: str, warehouse: str) -> bool:
+    """Object tier: has *table*'s file been rewritten since *rec* certified it?
+    Decided by the ETag when both sides have one, else by size and
+    last-modified; a table the record holds no object for never reads moved
+    here (its fingerprint still decides)."""
+    recorded = (rec.get("objects") or {}).get(table)
+    if not recorded:
+        return False
+    now = _warehouse(warehouse).object_version(table)
+    if recorded.get("etag") and now.get("etag"):
+        return recorded["etag"] != now["etag"]
+    return (recorded.get("size"), recorded.get("last_modified")) != (
+        now.get("size"), now.get("last_modified"))
+
+
 class ContractViolation(RuntimeError):
     """The sink did not satisfy its declared contract."""
+
+
+class ContractSpecError(ValueError):
+    """A check outside the closed vocabulary, or a contract file that does
+    not parse. The message names the check (and, from a file, the file and
+    the entry)."""
+
+
+# ── The closed check vocabulary, declared once ─────────────────────────────
+# The ``c.rows(...)`` methods and the ``<transform>.contract.yaml`` loader
+# both go through :func:`declare`, so the two forms build the same
+# declaration — ``{check, table, params, note?}``, the shape the certificate
+# records — and cannot grow two vocabularies.
+
+def _whole(v: Any) -> bool:
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _number(v: Any) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _name(v: Any) -> bool:
+    return isinstance(v, str) and bool(v)
+
+
+def _names(v: Any) -> bool:
+    return isinstance(v, (list, tuple)) and bool(v) and all(_name(x) for x in v)
+
+
+def _pair(v: Any) -> bool:
+    return isinstance(v, (list, tuple)) and len(v) == 2 and all(_name(x) for x in v)
+
+
+def _items(v: Any) -> bool:
+    return isinstance(v, (list, tuple, set, frozenset)) and bool(v)
+
+
+_SHAPE = {_whole: "a whole number", _number: "a number", _name: "a name",
+          _names: "a list of column names", _pair: "a [table, column] pair",
+          _items: "a non-empty list"}
+
+#: Each check: its required parameters, then its optional ones, in the order
+#: the certificate records them.
+VOCABULARY: dict[str, tuple[dict, dict]] = {
+    "rows": ({}, {"at_least": _whole, "at_most": _whole, "exactly": _whole}),
+    "unique": ({"columns": _names}, {}),
+    "not_null": ({"columns": _names}, {}),
+    "foreign_key": ({"column": _name, "refers_to": _pair}, {}),
+    "values": ({"column": _name, "within": _items}, {}),
+    "reconcile": ({"column": _name, "against": _pair, "by": _name},
+                  {"tolerance": _number}),
+}
+
+
+def declare(check: str, table: str, note: Optional[str] = None, **params: Any) -> dict:
+    """One check as data, held to the closed vocabulary: ``{check, table,
+    params, note?}``. An optional parameter left ``None`` is not recorded;
+    ``reconcile``'s ``tolerance`` defaults to 0.0 and always is. Lists are
+    recorded as lists (a ``refers_to`` tuple becomes ``[table, column]``), as
+    the Python methods always recorded them."""
+    if check not in VOCABULARY:
+        raise ContractSpecError(f"{check!r} is not a contract check; the vocabulary "
+                                f"is closed: {', '.join(VOCABULARY)}")
+    if not _name(table):
+        raise ContractSpecError(f"{check}: the table must be a name, got {table!r}")
+    required, optional = VOCABULARY[check]
+    given = {k: v for k, v in params.items() if v is not None}
+    unknown = sorted(set(given) - set(required) - set(optional))
+    if unknown:
+        raise ContractSpecError(f"{check}({table}): unknown parameter(s) {unknown}; "
+                                f"it takes {[*required, *optional]}")
+    missing = [k for k in required if k not in given]
+    if missing:
+        raise ContractSpecError(f"{check}({table}): missing {missing}")
+    if note is not None and not isinstance(note, str):
+        raise ContractSpecError(f"{check}({table}): note must be prose (a string)")
+    if check == "reconcile":
+        given.setdefault("tolerance", 0.0)
+    out: dict = {}
+    for key, test in {**required, **optional}.items():
+        if key not in given:
+            continue
+        if not test(given[key]):
+            raise ContractSpecError(f"{check}({table}): {key} must be {_SHAPE[test]}, "
+                                    f"got {given[key]!r}")
+        value = given[key]
+        out[key] = list(value) if isinstance(value, (tuple, set, frozenset)) else value
+    decl = {"check": check, "table": table, "params": out}
+    if note is not None:
+        decl["note"] = note
+    return decl
 
 
 class _Contract:
@@ -101,60 +232,30 @@ class _Contract:
              exactly: Optional[int] = None,
              note: Optional[str] = None) -> None:
         """Row-count bounds on a sunk table."""
-        n = self._one(f'SELECT COUNT(*) FROM "{table}"')
-        ok = ((at_least is None or n >= at_least)
-              and (at_most is None or n <= at_most)
-              and (exactly is None or n == exactly))
-        self._record("rows", table, ok, observed=n, params={
-            k: v for k, v in (("at_least", at_least), ("at_most", at_most),
-                              ("exactly", exactly)) if v is not None},
-            note=note)
+        self.check(declare("rows", table, note, at_least=at_least,
+                           at_most=at_most, exactly=exactly))
 
     def unique(self, table: str, columns: list[str],
                note: Optional[str] = None) -> None:
         """The columns form a unique key — no duplicated combination."""
-        cols = ", ".join(f'"{c}"' for c in columns)
-        dupes = self._one(
-            f'SELECT COUNT(*) FROM (SELECT {cols} FROM "{table}" '
-            f"GROUP BY {cols} HAVING COUNT(*) > 1)"
-        )
-        self._record("unique", table, dupes == 0, observed=dupes,
-                     params={"columns": list(columns)}, note=note)
+        self.check(declare("unique", table, note, columns=columns))
 
     def not_null(self, table: str, columns: list[str],
                  note: Optional[str] = None) -> None:
         """No NULLs in any of the named columns."""
-        clauses = " OR ".join(f'"{c}" IS NULL' for c in columns)
-        nulls = self._one(f'SELECT COUNT(*) FROM "{table}" WHERE {clauses}')
-        self._record("not_null", table, nulls == 0, observed=nulls,
-                     params={"columns": list(columns)}, note=note)
+        self.check(declare("not_null", table, note, columns=columns))
 
     def foreign_key(self, table: str, column: str,
                     refers_to: tuple[str, str],
                     note: Optional[str] = None) -> None:
         """Every non-null value in *column* exists in the referenced key."""
-        ref_table, ref_col = refers_to
-        orphans = self._one(
-            f'SELECT COUNT(*) FROM "{table}" t WHERE t."{column}" IS NOT NULL '
-            f'AND NOT EXISTS (SELECT 1 FROM "{ref_table}" r '
-            f'WHERE r."{ref_col}" = t."{column}")'
-        )
-        self._tables.add(ref_table)
-        self._record("foreign_key", table, orphans == 0, observed=orphans,
-                     params={"column": column,
-                             "refers_to": [ref_table, ref_col]}, note=note)
+        self.check(declare("foreign_key", table, note, column=column,
+                           refers_to=refers_to))
 
     def values(self, table: str, column: str, within: list,
                note: Optional[str] = None) -> None:
         """Every non-null value in *column* is drawn from the closed set."""
-        marks = ", ".join("?" for _ in within)
-        outside = self._one(
-            f'SELECT COUNT(*) FROM "{table}" WHERE "{column}" IS NOT NULL '
-            f'AND "{column}" NOT IN ({marks})', list(within)
-        )
-        self._record("values", table, outside == 0, observed=outside,
-                     params={"column": column, "within": list(within)},
-                     note=note)
+        self.check(declare("values", table, note, column=column, within=within))
 
     def reconcile(self, table: str, column: str, against: tuple[str, str],
                   by: str, tolerance: float = 0.0,
@@ -164,7 +265,60 @@ class _Contract:
         The cross-table position-for-position check: e.g. every fund's book
         in the marks fact reconciles against the positions fact.
         """
-        other_table, other_col = against
+        self.check(declare("reconcile", table, note, column=column,
+                           against=against, by=by, tolerance=tolerance))
+
+    def check(self, decl: dict) -> None:
+        """Run one declaration (:func:`declare`) against the sunk tables and
+        record what it observed."""
+        kind, table, p = decl["check"], decl["table"], decl["params"]
+        passed, observed = getattr(self, f"_observe_{kind}")(table, p)
+        self._record(kind, table, passed, observed=observed, params=p,
+                     note=decl.get("note"))
+
+    # ── What each check observes: read-only SQL ─────────────────────────
+
+    def _observe_rows(self, table: str, p: dict) -> tuple[bool, Any]:
+        n = self._one(f'SELECT COUNT(*) FROM "{table}"')
+        return ((p.get("at_least") is None or n >= p["at_least"])
+                and (p.get("at_most") is None or n <= p["at_most"])
+                and (p.get("exactly") is None or n == p["exactly"])), n
+
+    def _observe_unique(self, table: str, p: dict) -> tuple[bool, Any]:
+        cols = ", ".join(f'"{c}"' for c in p["columns"])
+        dupes = self._one(
+            f'SELECT COUNT(*) FROM (SELECT {cols} FROM "{table}" '
+            f"GROUP BY {cols} HAVING COUNT(*) > 1)"
+        )
+        return dupes == 0, dupes
+
+    def _observe_not_null(self, table: str, p: dict) -> tuple[bool, Any]:
+        clauses = " OR ".join(f'"{c}" IS NULL' for c in p["columns"])
+        nulls = self._one(f'SELECT COUNT(*) FROM "{table}" WHERE {clauses}')
+        return nulls == 0, nulls
+
+    def _observe_foreign_key(self, table: str, p: dict) -> tuple[bool, Any]:
+        column, (ref_table, ref_col) = p["column"], p["refers_to"]
+        orphans = self._one(
+            f'SELECT COUNT(*) FROM "{table}" t WHERE t."{column}" IS NOT NULL '
+            f'AND NOT EXISTS (SELECT 1 FROM "{ref_table}" r '
+            f'WHERE r."{ref_col}" = t."{column}")'
+        )
+        self._tables.add(ref_table)
+        return orphans == 0, orphans
+
+    def _observe_values(self, table: str, p: dict) -> tuple[bool, Any]:
+        column, within = p["column"], p["within"]
+        marks = ", ".join("?" for _ in within)
+        outside = self._one(
+            f'SELECT COUNT(*) FROM "{table}" WHERE "{column}" IS NOT NULL '
+            f'AND "{column}" NOT IN ({marks})', list(within)
+        )
+        return outside == 0, outside
+
+    def _observe_reconcile(self, table: str, p: dict) -> tuple[bool, Any]:
+        column, by = p["column"], p["by"]
+        other_table, other_col = p["against"]
         row = self._con.execute(
             f'SELECT COUNT(*), COALESCE(MAX(ABS(a.s - b.s)), 0) FROM '
             f'(SELECT "{by}" k, SUM("{column}") s FROM "{table}" GROUP BY 1) a '
@@ -172,16 +326,12 @@ class _Contract:
             f'(SELECT "{by}" k, SUM("{other_col}") s FROM "{other_table}" '
             f'GROUP BY 1) b USING (k) '
             f'WHERE a.s IS NULL OR b.s IS NULL OR ABS(a.s - b.s) > ?',
-            [tolerance],
+            [p["tolerance"]],
         ).fetchone()
         mismatched, worst = int(row[0]), float(row[1])
         self._tables.add(other_table)
-        self._record("reconcile", table, mismatched == 0,
-                     observed={"mismatched_keys": mismatched,
-                               "worst_abs_diff": worst},
-                     params={"column": column,
-                             "against": [other_table, other_col],
-                             "by": by, "tolerance": tolerance}, note=note)
+        return mismatched == 0, {"mismatched_keys": mismatched,
+                                 "worst_abs_diff": worst}
 
     # ── Mechanics ───────────────────────────────────────────────────────
 
@@ -233,28 +383,33 @@ class _Contract:
         if not self._checks:
             return   # an empty block declares nothing; write nothing.
 
+        import duckdb
+
         record = {
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "transform": self.name,
             "checks": self._checks,
             "tables": self._table_fingerprints(),
+            # The engine that read the tables back: a fingerprint is only
+            # comparable across one engine's reading of the bytes.
+            "engine_version": duckdb.__version__,
         }
+        wh = _warehouse(self.warehouse)
+        if wh.tier == "object":
+            # Each table's file as it is now: a rewrite that bypasses the
+            # transform (no new certificate) changes its ETag, or its size
+            # and last-modified where the store gives no ETag, and reads
+            # stale without re-hashing a byte.
+            record["objects"] = {t: wh.object_version(t) for t in sorted(self._tables)}
         # The transform-level stated methodology, omitted when unset.
         if self.note is not None:
             record["note"] = self.note
-        path = contracts_path(self.warehouse)
-        existing: dict = {"schema_version": CONTRACTS_SCHEMA_VERSION,
-                          "transforms": {}}
-        if os.path.isfile(path):
-            try:
-                with open(path, encoding="utf-8") as f:
-                    existing = json.load(f)
-            except (OSError, json.JSONDecodeError):
-                pass   # a corrupt certificate is replaced, not obeyed
+        existing = read_contracts(self.warehouse) or {
+            "schema_version": CONTRACTS_SCHEMA_VERSION, "transforms": {}}
         existing.setdefault("transforms", {})[self.name] = record
         existing["schema_version"] = CONTRACTS_SCHEMA_VERSION
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(existing, f, indent=2, default=str)
+        wh.write_text(contracts_path(self.warehouse),
+                      json.dumps(existing, indent=2, default=str))
 
 
 class contract:
@@ -270,9 +425,7 @@ class contract:
         self._c = _Contract(name, warehouse, note=note)
 
     def __enter__(self) -> _Contract:
-        import duckdb
-
-        self._c._con = duckdb.connect(self._c.warehouse, read_only=True)
+        self._c._con = _reader(self._c.warehouse)
         return self._c
 
     def __exit__(self, exc_type, exc, tb) -> bool:
@@ -284,16 +437,105 @@ class contract:
         return False
 
 
+#: A transform's contract as a file beside it: ``transforms/<name>.contract.yaml``.
+CONTRACT_FILE_SUFFIX = ".contract.yaml"
+_CONTRACT_FILE_KEYS = {"name", "note", "checks"}
+
+
+def read_contract_file(path: "str | os.PathLike[str]", default_name: str) -> dict:
+    """A ``<transform>.contract.yaml``, parsed into the declarations the
+    Python form builds: ``{name, note, checks: [declaration, ...]}``.
+
+    The file holds ``name`` (the certificate's record; default
+    *default_name*, the transform's file name), ``note`` (the stated
+    methodology) and ``checks``, a list in which each entry names its kind
+    with the table as the value and the check's parameters beside it::
+
+        checks:
+          - rows: fact_holdings
+            at_least: 10
+          - foreign_key: fact_holdings
+            column: issuer_id
+            refers_to: [dim_issuer, issuer_id]
+
+    Same vocabulary as ``c.rows(...)``, through the same :func:`declare`.
+    """
+    import yaml
+
+    from tracebi.model.model_spec import _unique_key_loader
+
+    where = str(path)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            doc = yaml.load(fh.read(), Loader=_unique_key_loader())  # noqa: S506 — a SafeLoader subclass
+    except yaml.YAMLError as exc:
+        raise ContractSpecError(f"{where}: not valid YAML ({' '.join(str(exc).split())})") from exc
+    if not isinstance(doc, dict):
+        raise ContractSpecError(f"{where}: the file must hold one mapping "
+                                f"(name, note, checks)")
+    unknown = sorted(set(doc) - _CONTRACT_FILE_KEYS)
+    if unknown:
+        raise ContractSpecError(f"{where}: unknown key(s) {unknown}; a contract "
+                                f"file holds {sorted(_CONTRACT_FILE_KEYS)}")
+    name = doc.get("name", default_name)
+    if not _name(name):
+        raise ContractSpecError(f"{where}: name must be a non-empty string")
+    note = doc.get("note")
+    if note is not None and not isinstance(note, str):
+        raise ContractSpecError(f"{where}: note must be prose (a string)")
+    # No checks (or all of them commented out, as the scaffold has them)
+    # declares nothing, as an empty `with contract(...)` block does.
+    entries = doc.get("checks") or []
+    if not isinstance(entries, list):
+        raise ContractSpecError(f"{where}: checks must be a list")
+    checks = []
+    for i, entry in enumerate(entries):
+        kinds = [k for k in (entry if isinstance(entry, dict) else ()) if k in VOCABULARY]
+        if len(kinds) != 1:
+            raise ContractSpecError(
+                f"{where}: checks[{i}] must name exactly one check, with its "
+                f"table as the value ({', '.join(VOCABULARY)}), got {entry!r}")
+        rest = {k: v for k, v in entry.items() if k != kinds[0]}
+        check_note = rest.pop("note", None)
+        try:
+            checks.append(declare(kinds[0], entry[kinds[0]], check_note, **rest))
+        except ContractSpecError as exc:
+            raise ContractSpecError(f"{where}: checks[{i}]: {exc}") from None
+    return {"name": name, "note": note, "checks": checks}
+
+
+def run_contract_file(path: "str | os.PathLike[str]", warehouse: str,
+                      default_name: str) -> dict:
+    """Run a ``<transform>.contract.yaml`` against the sunk tables, exactly as
+    the ``with contract(...)`` block it stands for: the same checks, the same
+    raise on failure, the same certificate on success. Returns the parsed file."""
+    spec = read_contract_file(path, default_name)
+    if not spec["checks"]:
+        return spec     # declares nothing; writes nothing
+    with contract(spec["name"], warehouse=warehouse, note=spec["note"]) as c:
+        for decl in spec["checks"]:
+            c.check(decl)
+    return spec
+
+
 def read_contracts(warehouse: str) -> Optional[dict]:
     """The certificate beside *warehouse*, or None."""
     path = contracts_path(warehouse)
-    if not os.path.isfile(path):
+    wh = getattr(warehouse, "warehouse", None)
+    if wh is not None and wh.tier != "file":
+        text = wh.read_text(path)
+    elif not os.path.isfile(path):
         return None
+    else:
+        try:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            return None
     try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return None
+        data = json.loads(text) if text else None
+    except json.JSONDecodeError:
+        return None   # a corrupt certificate is replaced, not obeyed
     return data if isinstance(data, dict) else None
 
 
@@ -308,13 +550,11 @@ def rerun_checks(warehouse: str, transform: Optional[str] = None) -> list[dict]:
     is the author's prose, not an input to the check and not something a
     re-run may rewrite. Execution diagnostics ride in ``error``.
     """
-    import duckdb
-
     data = read_contracts(warehouse)
     if not data:
         return []
     results: list[dict] = []
-    con = duckdb.connect(warehouse, read_only=True)
+    con = _reader(warehouse)
     try:
         for tname, rec in (data.get("transforms") or {}).items():
             if transform and tname != transform:
@@ -359,7 +599,10 @@ def check_fingerprints(warehouse: str,
 
     Returns one row per recorded table:
     ``{transform, table, recorded, current, matches}`` — ``current`` is None
-    (``matches`` False) when the table is now missing. A legitimate re-sink
+    (``matches`` False) when the table is now missing. On the object tier a
+    row also says ``rewritten``: the file's ETag (or size and last-modified)
+    differs from the certificate's, which alone makes ``matches`` False.
+    A legitimate re-sink
     rewrites the certificate, so a mismatch means the warehouse moved *without*
     re-certifying: out-of-band mutation.
     """
@@ -380,9 +623,16 @@ def check_fingerprints(warehouse: str,
                     current = frame_fingerprint(wh.load(table))
                 except Exception:  # noqa: BLE001 — a dropped table is a result
                     current = None
-                results.append({"transform": tname, "table": table,
-                                "recorded": recorded, "current": current,
-                                "matches": current == recorded})
+                row = {"transform": tname, "table": table,
+                       "recorded": recorded, "current": current,
+                       "matches": current == recorded}
+                if rec.get("objects"):
+                    # The object tier: a file rewritten since the certificate
+                    # reads stale on its ETag (or size and last-modified)
+                    # alone, even when the bytes hash the same.
+                    row["rewritten"] = current is not None and _object_moved(rec, table, warehouse)
+                    row["matches"] = row["matches"] and not row["rewritten"]
+                results.append(row)
     finally:
         wh.disconnect()
     return results
@@ -433,17 +683,20 @@ def transform_contracts_block(models: dict,
                 block.setdefault(table, {"status": "no_contract"})
                 continue
             block[table] = _status_entry(
-                rec, table, frame_fingerprint(conn.load(table)))
+                rec, table, frame_fingerprint(conn.load(table)),
+                _object_moved(rec, table, wh))
     return block
 
 
-def _status_entry(rec: dict, table: str, current: str) -> dict:
+def _status_entry(rec: dict, table: str, current: str, moved: bool = False) -> dict:
     """One table's contract status: the record covering it, judged against the
     fingerprint the table has *right now* (read through the connector load
-    path). Shared by the manifest join and the Warehouse view."""
+    path), and on the object tier against the file's recorded version
+    (*moved*: rewritten since, which alone reads stale). Shared by the
+    manifest join and the Warehouse view."""
     recorded = rec["tables"][table]
     entry = {
-        "status": "satisfied" if current == recorded else "stale",
+        "status": "satisfied" if current == recorded and not moved else "stale",
         "transform": rec.get("transform"),
         "checked_at": rec.get("checked_at"),
         "checks": sum(1 for c in rec.get("checks", [])
@@ -473,7 +726,8 @@ def table_statuses(warehouse: str, tables: list[str]) -> dict[str, dict]:
             rec = _record_covering(certs, table)
             out[table] = ({"status": "no_contract"} if rec is None else
                           _status_entry(rec, table,
-                                        frame_fingerprint(wh.load(table))))
+                                        frame_fingerprint(wh.load(table)),
+                                        _object_moved(rec, table, warehouse)))
     finally:
         wh.disconnect()
     return out

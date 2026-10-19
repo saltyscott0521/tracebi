@@ -47,13 +47,16 @@ const STEP_WORDS = {
   build: { what: 'Build', out: n => `${n} ${n === 1 ? 'report' : 'reports'}` },
 }
 
+// Which form of transform the last run ran (the run records it).
+const FORM_LABEL = { sql: 'SQL', python: 'Python', notebook: 'Notebook' }
+
 function stepLine(layer) {
   const words = STEP_WORDS[layer.name]
   const when = layer.last_status === 'running' ? 'running'
     : !layer.last_run ? 'not run yet'
       : `${layer.last_status === 'failed' ? 'failed' : 'ran'} ${since(layer.last_run)}`
   const out = layer.last_rows_out != null && layer.last_status !== 'failed' ? words.out(layer.last_rows_out) : null
-  return [words.what, when, out].filter(Boolean).join(' · ')
+  return [words.what, FORM_LABEL[layer.last_detail?.form], when, out].filter(Boolean).join(' · ')
 }
 
 function LayerNode({ data }) {
@@ -320,7 +323,12 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
             <tbody>
               {layers.map(l => (
                 <tr key={l.name}>
-                  <td><code style={{ fontSize: 12 }}>{l.name}</code></td>
+                  <td>
+                    <code style={{ fontSize: 12 }}>{l.name}</code>
+                    {FORM_LABEL[l.last_detail?.form] && (
+                      <span style={{ color: 'var(--muted)', fontSize: 12 }}> · {FORM_LABEL[l.last_detail.form]}</span>
+                    )}
+                  </td>
                   {typed && (
                     <td>
                       <Badge variant={TYPE_BADGE[l.type] || 'gray'}>

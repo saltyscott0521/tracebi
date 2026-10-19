@@ -110,6 +110,10 @@ naming the owners. The owners are shown on the model's page in the app.
 
 ### Connectors, and no credentials
 
+- `type: warehouse` (no other key) is the project's warehouse, wherever the
+  `warehouse:` block of [`tracebi.yaml`](tracebi-yaml.md) puts it: a DuckDB
+  file (the default, `data/warehouse.duckdb`), Parquet on object storage, or a
+  remote engine.
 - `type: duckdb` with `database: data/warehouse.duckdb` is a DuckDB file
   **inside the project**. An absolute path or one with `..` is refused.
 - `{name: warehouse, connection: warehouse}` reuses the connector in

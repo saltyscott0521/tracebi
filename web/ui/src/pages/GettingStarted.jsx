@@ -15,7 +15,7 @@ tracebi init`,
   {
     n: 2,
     title: 'Sink the warehouse',
-    desc: 'Phase ① is ordinary pandas in transforms/. It ends by writing named tables. The sink contract checks what landed.',
+    desc: 'Phase ① is SQL in transforms/ (pandas is the escape hatch). It ends by creating named tables. The sink contract beside it checks what landed.',
     code: `tracebi new-transform "holdings"
 tracebi run-transform holdings`,
   },

@@ -1051,6 +1051,18 @@ def _transform_contracts() -> dict:
                  "              note='unkeyed rows dropped and counted') as c:\n"
                  "    c.rows('fact_holdings', at_least=10)\n"
                  "    c.unique('dim_issuer', ['issuer_id'])",
+        "file_form": "Beside a transform (SQL or Python): "
+                     "transforms/<name>.contract.yaml, run after it by "
+                     "`tracebi run-transform`, the same vocabulary through "
+                     "the same parser, the same certificate:\n"
+                     "name: holdings            # the record; default <name>\n"
+                     "note: unkeyed rows dropped and counted\n"
+                     "checks:\n"
+                     "  - rows: fact_holdings\n"
+                     "    at_least: 10\n"
+                     "  - foreign_key: fact_holdings\n"
+                     "    column: issuer_id\n"
+                     "    refers_to: [dim_issuer, issuer_id]",
         "checks": [
             {"check": "rows",
              "args": ["table", "at_least?", "at_most?", "exactly?", "note?"],
@@ -1120,10 +1132,30 @@ def _conventions() -> dict:
                 "path": "transforms/",
                 "must_define": None,
                 "type": "phase-① transform",
-                "note": "Unconstrained pandas run explicitly (python "
-                        "transforms/<name>.py). The contract is what lands: "
-                        "named star tables sunk to the DuckDB warehouse. Not "
-                        "discovered by the server; models read the sink.",
+                "note": "SQL by default: transforms/<name>.sql, DuckDB "
+                        "statements run top to bottom in ONE fresh warehouse "
+                        "connection by `tracebi run-transform <name>`, which "
+                        "reports form: sql | python | notebook (the run "
+                        "records it). A table it creates (not TEMP) is a sink "
+                        "table: it lands in the warehouse on the file and "
+                        "remote tiers and as <location>/<table>.parquet on the "
+                        "object tier, or write COPY (…) TO "
+                        "'{{ sink }}/<table>.parquet' (FORMAT PARQUET) "
+                        "yourself. Exactly two placeholders: {{ sink }} (the "
+                        "warehouse address from tracebi.yaml) and {{ root }} "
+                        "(the project root); any other {{ … }} is an error. "
+                        "Relative reads (read_csv('inputs/x.csv')) resolve "
+                        "against the project root. The sink contract sits "
+                        "beside it as <name>.contract.yaml (honoured beside a "
+                        ".py too). `tracebi new-transform \"Name\"` scaffolds "
+                        "both in the idiom of the project's tier; --python "
+                        "scaffolds the escape hatch, notebook-shaped pandas "
+                        "(# %% cells) ending in DuckDBConnector(...).write(df, "
+                        "table); a literal .ipynb runs too. x.sql and x.py "
+                        "together are refused. The contract is what lands: "
+                        "named star tables. Not discovered by the server; "
+                        "models read the sink. Reference: "
+                        "docs/reference/transform-sql.md.",
             },
             {
                 "path": "models/",
@@ -1165,6 +1197,32 @@ def _conventions() -> dict:
                         "is used (an unset one is an error naming it), never "
                         "at discovery. A model's connector says "
                         "`connection: <name>`. Written by `tracebi connect`.",
+            },
+            {
+                "path": "tracebi.yaml",
+                "must_define": None,
+                "type": "project settings",
+                "note": "Optional, at the project root; `tracebi init` writes "
+                        "a commented one. engine: {memory_limit (default 1GB), "
+                        "threads (min(4, CPUs)), temp_directory (default "
+                        "data/.duckdb-tmp), query_timeout_s (default 30)}: the "
+                        "limits of the read-only DuckDB connection every model "
+                        "query runs in. That connection reads the warehouse and "
+                        "nothing else (no file, URL, extension, ATTACH or "
+                        "COPY; the settings are locked); an Explore, Ask or "
+                        "agent query stops at query_timeout_s with an error "
+                        "naming it. warehouse: {tier: file (default, location "
+                        "data/warehouse.duckdb) | object (a Parquet file per "
+                        "table under s3://, gs:// or a directory; endpoint, "
+                        "region, url_style, and key_id / secret that MUST be "
+                        "${ENV_VAR}) | remote (a DuckDB database to ATTACH, "
+                        "md:…), location}: where transforms sink and models "
+                        "read. A model's connector `type: warehouse` and a "
+                        "transform's `sink_target()` (tracebi.project_config) "
+                        "follow it, so neither names a path; the certificate "
+                        "records engine_version and, on the object tier, each "
+                        "file's ETag, and a rewritten file reads stale. "
+                        "Reference: docs/reference/tracebi-yaml.md.",
             },
             {
                 "path": "reports/",

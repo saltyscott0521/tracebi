@@ -14,11 +14,12 @@
 name: portfolio_model
 label: Direct Lending Portfolio
 
-# connectors: where the tables live (a DuckDB file inside the project)
+# connectors: where the tables live. `type: warehouse` is the project's
+# warehouse, wherever tracebi.yaml puts it (data/warehouse.duckdb by default;
+# Parquet on object storage, or a remote engine, by changing that one file).
 connectors:
   - name: warehouse
-    type: duckdb
-    database: data/warehouse.duckdb
+    type: warehouse
 
 # tables: each table the phase-1 transform sank, by its warehouse name
 tables:

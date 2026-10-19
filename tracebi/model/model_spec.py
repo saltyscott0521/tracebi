@@ -5,7 +5,8 @@ YAML is the human form of the same schema: comments, no quoting, one loader
 (``yaml.safe_load`` semantics only, and a repeated key is an error rather than
 last-wins). The document mirrors the :class:`DataModel` builder calls one to one, so a model
 can be drafted without running anyone's Python. The schema is closed —
-unknown keys are errors — and carries no credentials: a connector is either a
+unknown keys are errors — and carries no credentials: a connector is the
+project's warehouse (``type: warehouse``, wherever ``tracebi.yaml`` puts it), a
 DuckDB file under the project, or a reference (``connection: <x>``) to
 ``connections/<x>.yaml`` or, failing that, the legacy
 ``models/_connections/<x>.py``; either way the secret stays in ``.env``.
@@ -183,8 +184,15 @@ def validate_model_spec(doc: Any) -> list[str]:
                 errors.append(f"{path}.connection: must name a "
                               "connections/<name>.yaml (letters, digits, "
                               "underscore)")
+        elif c.get("type") == "warehouse":
+            extra = [k for k in c if k not in ("name", "type")]
+            if extra:
+                errors.append(f"{path}: type 'warehouse' takes only name and type "
+                              f"(tracebi.yaml says where the warehouse is), not "
+                              f"{', '.join(sorted(extra))}")
         elif c.get("type") != "duckdb":
-            errors.append(f"{path}.type: must be 'duckdb' (or give 'connection' "
+            errors.append(f"{path}.type: must be 'warehouse' (the project's, from "
+                          f"tracebi.yaml), 'duckdb' (or give 'connection' "
                           f"to reuse connections/<name>.yaml), got "
                           f"{c.get('type')!r}")
         else:
@@ -287,6 +295,10 @@ def _connector(c: dict, root: Path):
         return connector
     from tracebi.connectors.duckdb_connector import DuckDBConnector
 
+    if c.get("type") == "warehouse":
+        from tracebi.project_config import warehouse
+
+        return DuckDBConnector.for_warehouse(warehouse(str(root)), name=c["name"])
     database = (root / c["database"]).resolve()
     if root.resolve() not in database.parents:
         raise ValueError(f"connector '{c['name']}': database must stay inside "

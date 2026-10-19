@@ -111,13 +111,15 @@ def run():
     runner.register(revenue_by_segment, name="revenue_by_segment", schedule="30 6 * * *",
                     depends_on="orders_silver")
 
-    # ── On-demand: full refresh of one gold table ─────────────────
-    print("\n[1] Full refresh: orders_bronze → orders_silver → revenue_by_region")
-    runner.run("revenue_by_region", refresh=True)
-
     # ── On-demand: run a single layer ────────────────────────────
-    print("\n[2] Run customers_silver only (reads existing customers_bronze)")
+    # First: the gold layers join the customer dimension, so customers_silver
+    # must exist before either of them runs.
+    print("\n[1] Run customers_silver only (reads existing customers_bronze)")
     runner.run("customers_silver")
+
+    # ── On-demand: full refresh of one gold table ─────────────────
+    print("\n[2] Full refresh: orders_bronze → orders_silver → revenue_by_region")
+    runner.run("revenue_by_region", refresh=True)
 
     print("\n[3] Run revenue_by_segment only")
     runner.run("revenue_by_segment")

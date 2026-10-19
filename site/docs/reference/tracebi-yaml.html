@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Project settings (tracebi.yaml) — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Project settings (tracebi.yaml)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a class="on" href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="project-settings-tracebiyaml">Project settings (<code>tracebi.yaml</code>)</h1>
+<p><strong>Where the warehouse lives, and the limits of the engine that answers model
+queries, in one file at the project root.</strong></p>
+<p><code>tracebi.yaml</code> sits beside <code>models/</code> and <code>reports/</code>. <code>tracebi init</code> writes a
+commented one. Every key is optional: a missing file, block or key means the
+default. A key the file does not know, or a value of the wrong shape, is an
+error naming the file and the key, never a silent default, because a limit an
+operator wrote must be the limit that applies. The file is read from the
+working directory (the project root) and re-read when it changes.</p>
+<hr>
+<h2 id="example">Example</h2>
+<pre><code class="language-yaml"># tracebi.yaml
+warehouse:
+  tier: file                         # file (default) | object | remote
+  location: data/warehouse.duckdb
+engine:
+  memory_limit: 1GB                  # past it, a query spills to temp_directory
+  threads: 4                         # default: min(4, CPUs)
+  temp_directory: data/.duckdb-tmp   # relative to the project root
+  query_timeout_s: 30                # Explore, Ask and agent queries stop here
+</code></pre>
+<hr>
+<h2 id="warehouse"><code>warehouse</code></h2>
+<p>The freeze point between phase ① and phase ②: where a transform sinks its
+tables and where a model reads them. Three tiers, one setting; the tables are
+the same on each, only their address moves.</p>
+<table>
+<thead>
+<tr>
+<th>tier</th>
+<th>location</th>
+<th>a transform's <code>write(df, table)</code></th>
+<th>the model reads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>file</code> (default)</td>
+<td>a <code>.duckdb</code> path, default <code>data/warehouse.duckdb</code></td>
+<td>a table in the file</td>
+<td>the file, attached read-only</td>
+</tr>
+<tr>
+<td><code>object</code></td>
+<td><code>s3://bucket/prefix</code>, <code>gs://bucket/prefix</code> (R2 and MinIO: <code>s3://</code> plus an <code>endpoint</code>), or a local directory</td>
+<td><code>COPY … TO '&lt;location&gt;/&lt;table&gt;.parquet' (FORMAT PARQUET)</code></td>
+<td>one view per file over <code>read_parquet</code>, in place</td>
+</tr>
+<tr>
+<td><code>remote</code></td>
+<td>a DuckDB database to <code>ATTACH</code>: <code>md:my_db</code> (MotherDuck), a path, or the name of a <code>connections/&lt;name&gt;.yaml</code> of type duckdb</td>
+<td>a table in that database</td>
+<td>the database, attached read-only</td>
+</tr>
+</tbody>
+</table>
+<p>Two files follow it without naming a path:</p>
+<ul>
+<li><strong>A model</strong> says <code>connectors: - {name: warehouse, type: warehouse}</code>. That is
+  the project's warehouse on whichever tier. <code>type: duckdb</code> with a
+  <code>database:</code> path still names one file explicitly (the file tier).</li>
+<li><strong>A transform</strong> writes to <code>sink_target()</code>:</li>
+</ul>
+<p><code>python
+  from tracebi.project_config import sink_target
+  WAREHOUSE = sink_target(ROOT)           # the path, the prefix, or the attach string
+  DuckDBConnector("warehouse", database=WAREHOUSE).write(df, "fact_orders")
+  with contract("orders", warehouse=WAREHOUSE) as c:
+      ...</code></p>
+<p><code>sink_target()</code> returns a string that remembers its warehouse, so the
+  connector and the contract follow the tier. <code>write()</code> creates <code>data/</code> (or
+  the local directory) on a fresh clone. A medallion layer whose sink is the
+  project's warehouse writes through the same <code>write()</code>.</p>
+<h3 id="object-tier-keys">Object-tier keys</h3>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>endpoint</code></td>
+<td>An S3-compatible endpoint (MinIO, R2): <code>http://host:port</code> or <code>https://…</code>. <code>http://</code> turns TLS off. Omitted: AWS (or Google Cloud Storage for <code>gs://</code>).</td>
+</tr>
+<tr>
+<td><code>region</code></td>
+<td>The bucket's region.</td>
+</tr>
+<tr>
+<td><code>key_id</code></td>
+<td>The access key id. <strong>Must be <code>${VAR}</code>.</strong></td>
+</tr>
+<tr>
+<td><code>secret</code></td>
+<td>The secret access key. <strong>Must be <code>${VAR}</code>.</strong></td>
+</tr>
+<tr>
+<td><code>url_style</code></td>
+<td><code>path</code> (MinIO, most endpoints) or <code>vhost</code> (AWS's default).</td>
+</tr>
+</tbody>
+</table>
+<p><code>${VAR}</code> is the whole value, as in <code>connections/*.yaml</code>: looked up in the
+environment, then the project's <code>.env</code>, when a connection is made (never when
+the file is read, never copied into <code>os.environ</code>). An unset variable is an
+error naming it, the key and the file. A literal <code>key_id</code> or <code>secret</code> is
+refused, naming the key. <code>tier</code> and <code>location</code> are written out, because a
+model reads them when it loads; a remote location that carries a credential
+(<code>md:db?motherduck_token=…</code>) is refused, so keep it in a
+<code>connections/&lt;name&gt;.yaml</code> (or MotherDuck's own <code>motherduck_token</code> variable)
+and name that.</p>
+<p>The object tier reads remote storage through DuckDB's <code>httpfs</code> extension. A
+query connection only loads it; the first transform installs it if it is
+missing (an air-gapped server needs it in <code>~/.duckdb/extensions</code>
+beforehand). The credentials become a <code>CREATE TEMPORARY SECRET</code> scoped to the
+prefix, on that one connection, before it is locked.</p>
+<h3 id="what-the-query-connection-may-read-on-each-tier">What the query connection may read on each tier</h3>
+<p>The lock below applies on every tier. On the object tier the connection is
+allowed exactly the Parquet files its views read (<code>allowed_paths</code>), found
+when it opens; any other file or URL is refused as before. Because DuckDB
+would let a statement write an allowed path, a query connection that allows
+files also refuses <code>COPY</code>, <code>EXPORT</code>, <code>ATTACH</code> and <code>DETACH</code> by statement type,
+from DuckDB's own parser. The transform's write connection is not locked; the
+<code>engine</code> limits below apply to it as well (limits are not a lock).</p>
+<h3 id="the-certificate-on-each-tier">The certificate on each tier</h3>
+<p>A sink contract's certificate lives beside the warehouse: beside the file on
+the file tier, <code>&lt;location&gt;/_contracts.json</code> inside the prefix on the object
+tier, and <code>data/remote_warehouse.contracts.json</code> on the remote tier. Every
+record carries <code>engine_version</code> (the DuckDB that read the tables back). On the
+object tier it also carries <code>objects</code>: per table, the file's <code>path</code>, <code>etag</code>
+(from a HEAD request signed with the resolved credentials; <code>null</code> where the
+store gives none, as on a local directory), <code>size</code>, <code>last_modified</code> and
+<code>version_by</code> (<code>etag</code> or <code>size+last_modified</code>, which of them decides). A file
+rewritten since the certificate reads <strong>stale</strong> on that version alone, before
+any fingerprint is compared, in report manifests, the Warehouse tab and
+<code>tracebi verify --contracts</code> (<code>REWRITTEN</code>).</p>
+<hr>
+<h2 id="engine"><code>engine</code></h2>
+<p>Every model query (a report build, Explore and Ask in the app, the agent
+gateway's <code>query_model</code>, a selection recompute, <code>tracebi verify</code>) and every
+SQL calculation runs in its own DuckDB connection. It attaches the warehouse
+file read-only and holds the model's tables as views over it; a table from a
+source with no engine (a <code>MemoryConnector</code>, CSV files, a SQL database) is
+loaded through its connector and registered as Arrow. Then, before any query
+runs, the connection is locked.</p>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>default</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>memory_limit</code></td>
+<td><code>1GB</code></td>
+<td>DuckDB's memory limit for one query connection, as a size (<code>512MB</code>, <code>2GiB</code>). Past it a query spills to <code>temp_directory</code> instead of taking the process down.</td>
+</tr>
+<tr>
+<td><code>threads</code></td>
+<td><code>min(4, CPUs)</code></td>
+<td>Worker threads per query connection, a whole number of at least 1.</td>
+</tr>
+<tr>
+<td><code>temp_directory</code></td>
+<td><code>data/.duckdb-tmp</code></td>
+<td>Where a query spills. Relative paths are from the project root. DuckDB creates it only when it spills.</td>
+</tr>
+<tr>
+<td><code>query_timeout_s</code></td>
+<td><code>30</code></td>
+<td>Seconds a reader's query may run: <code>POST /api/models/{name}/query</code> (Explore, Ask), <code>POST /api/reports/{name}/selection</code> and the gateway's <code>query_model</code>. Past it the query is interrupted and the caller gets an error naming the limit (HTTP 504 with the usual <code>{message, exception_type, traceback}</code> detail; the gateway's <code>{ok: false, errors}</code>). Builds and <code>verify</code> run without a timeout.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="what-a-query-connection-cannot-do">What a query connection cannot do</h3>
+<p>The connection sets <code>enable_external_access = false</code> and then
+<code>lock_configuration = true</code>. DuckDB itself then refuses, by name:</p>
+<ul>
+<li>reading a file or a URL (<code>read_csv('http://…')</code>, <code>read_parquet</code>, <code>glob</code>,
+  <code>SELECT * FROM 'file.csv'</code>), in a model's <code>SELECT</code> source, a SQL
+  calculation or anything else;</li>
+<li><code>ATTACH</code>, <code>COPY</code>, <code>INSTALL</code> and <code>LOAD</code>;</li>
+<li>any <code>SET</code> or <code>RESET</code>, so none of this can be switched back on from SQL.</li>
+</ul>
+<p>A source that has to read a file or the network belongs in a transform: the
+transform connection (<code>tracebi run-transform</code>, <code>DuckDBConnector.write</code>, the
+sink contracts) is not locked, and runs only from the CLI, the scheduler or an
+approved code request. A DuckDB connector's file source (<code>source:
+orders.parquet</code> with a <code>directory</code>) is still read, through the connector, as
+before.</p>
+<h3 id="what-stays-as-it-was">What stays as it was</h3>
+<p>The numbers and the trace. A view keeps the values the connector's frame held
+(a NaN is a null, a DECIMAL a double, a DATE a timestamp), so every result,
+dtype and fingerprint is the one the previous engine path produced, and each
+<code>load</code> node still records the fingerprint of the table as <code>load()</code> returns it.
+That fingerprint is computed through the connector once per warehouse version
+(the file's size and modification time) and reused by every figure of a build.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

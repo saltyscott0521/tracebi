@@ -30,6 +30,17 @@ def test_a_database_must_stay_inside_the_project(database):
     assert any(e.startswith("connectors[0].database") for e in validate_model_spec(doc))
 
 
+@pytest.mark.parametrize("key", ["database", "secret"])
+def test_the_project_warehouse_connector_names_no_place_and_no_credential(key):
+    # `type: warehouse` is wherever tracebi.yaml says; a path or a secret here
+    # would be a second answer to that question.
+    assert validate_model_spec(_doc(connectors=[{"name": "w", "type": "warehouse"}])) == []
+    doc = _doc(connectors=[{"name": "w", "type": "warehouse", key: "x"}])
+    errors = validate_model_spec(doc)
+    assert errors and all(e.startswith("connectors[0]") for e in errors)
+    assert any(key in e for e in errors)
+
+
 def _yaml(tmp_path, text, stem="m"):
     (tmp_path / "models").mkdir(exist_ok=True)
     path = tmp_path / "models" / f"{stem}.yaml"

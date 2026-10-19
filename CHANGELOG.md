@@ -6,6 +6,114 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — SQL transforms
+
+- A phase ① transform is SQL by default: `transforms/<name>.sql`, DuckDB
+  statements run top to bottom in one fresh read-write connection to the
+  warehouse. A table it creates (not `TEMP`) lands in the warehouse on the
+  file and remote tiers and as `<location>/<table>.parquet` on the object
+  tier; a script may also `COPY (…) TO '{{ sink }}/<table>.parquet'` itself.
+  Two placeholders, `{{ sink }}` and `{{ root }}`; any other is an error
+  naming it. Relative reads resolve against the project root. A failing
+  statement names its number and line. Reference:
+  `docs/reference/transform-sql.md`.
+- The sink contract as a file: `transforms/<name>.contract.yaml` (`name`,
+  `note`, `checks`), the same closed vocabulary as `with contract(...)`
+  through one shared parser (`tracebi.contracts.declare`), run after the
+  transform of any form and writing the same certificate.
+- `tracebi run-transform` runs `.sql`, `.py` or `.ipynb` and prints
+  `form: sql | python | notebook`; a pipeline's transform step records the
+  form in the run's `detail`, shown by `tracebi run-pipeline --status`
+  (`(form: sql)`) and the model's Transform tab, whose Code view shows the
+  SQL and its contract file. Two forms of one name (`x.sql` and `x.py`) are
+  refused, naming both.
+- `tracebi new-transform` scaffolds the SQL and its contract file, the sink
+  written in the idiom of the project's warehouse tier; `--python` scaffolds
+  the notebook-shaped pandas transform as before.
+- The reference project's `holdings_transform` is SQL, with the pandas
+  original kept beside it as `holdings_transform_pandas.py`, the
+  escape-hatch example. Both sink identical tables (all six fingerprints
+  equal, row order included); manifests built from the pandas warehouse
+  still verify as reproducing.
+- A code request (`tracebi push`) may carry `transforms/<name>.sql` and
+  `<name>.contract.yaml`.
+
+### Added — storage tiers for the warehouse
+
+- `tracebi.yaml` `warehouse: {tier, location}`: `file` (the default,
+  `data/warehouse.duckdb`), `object` (one Parquet file per table under
+  `s3://`, `gs://`, an S3-compatible `endpoint`, or a local directory) or
+  `remote` (a DuckDB database to `ATTACH`, e.g. `md:…`). Object-tier
+  credentials (`key_id`, `secret`) must be `${VAR}`, resolved from the
+  environment then `.env` when a connection is made, and become a
+  `CREATE TEMPORARY SECRET` scoped to the prefix. An unknown key, a bad tier
+  or a literal credential is an error naming the file and the key.
+- A model's connector `type: warehouse` reads the project's warehouse on any
+  tier; `tracebi.project_config.sink_target()` is what a transform writes to.
+  `DuckDBConnector.for_warehouse(wh)` builds the connector. The reference
+  project's models and transforms use both.
+- On the object tier, `write(df, table)` lands `<location>/<table>.parquet`
+  (`COPY … TO`), and the model's tables are views over them in the locked
+  query connection, which may read exactly those files and refuses `COPY`,
+  `EXPORT`, `ATTACH` and `DETACH`.
+- The sink certificate records `engine_version`, and on the object tier each
+  file's ETag (or size and last-modified where there is none); a rewritten
+  file reads stale in manifests, the Warehouse tab and `tracebi verify
+  --contracts` (`REWRITTEN`). The object tier keeps the certificate inside
+  the prefix (`_contracts.json`).
+- `DuckDBConnector.write()` creates the warehouse's folder on a fresh clone and
+  applies the `engine` limits (memory, threads, spill directory) to its
+  connection. `tracebi new-model` scaffolds `type: warehouse`.
+
+### Changed — the medallion layers run in DuckDB
+
+- `ManipulationLayer` / `SilverLayer` steps (`cast`, `drop_nulls`,
+  `deduplicate`, `rename`, and the new `filter(where=...)`) compile to SQL and
+  run in DuckDB. With the source and the sink in one DuckDB database, Landing
+  and Manipulation run inside it (`CREATE OR REPLACE TABLE … AS SELECT`) and
+  load no frame; `execute()` then returns a `SinkTable` (`len()`, `lineage`,
+  `to_pandas()` reading the sink). Any other source's rows reach the SQL as an
+  Arrow table. Each step's lineage node carries `engine: duckdb` and its
+  SELECT. Identical data writes identical tables: `deduplicate` keeps the
+  first row in the source's order, and the result keeps that order.
+- `cast` takes the pandas dtype names it always did and refuses any other by
+  name (`object` included). Casting a fraction to an integer truncates, as
+  pandas did; text that is not a whole number is refused rather than rounded.
+  Casting to text spells booleans `true`/`false` and keeps nulls null.
+- `transform(func)` is the escape hatch: it still runs a pandas callable, and
+  its lineage node and the layer's run record say `escape_hatch: python`;
+  `tracebi run-pipeline <name> --status` shows it.
+- The `pipeline` extra now includes `duckdb` and `pyarrow`.
+- `examples/phase4_example.py` builds `customers_silver` before the gold
+  layers that join it (it failed on a fresh seed).
+
+### Changed — a model query runs in the warehouse, in a locked connection
+
+- `DataModel.execute` no longer loads a DuckDB warehouse's tables into
+  pandas. Each query opens one in-memory DuckDB connection, attaches the
+  warehouse file read-only, and reads the model's tables as views over it;
+  row-level measure expressions compile to SQL. A table from a source with no
+  engine (`MemoryConnector`, CSV, a SQL database, a DuckDB connector's file
+  source) is loaded through its connector as before and registered as Arrow.
+  Results, dtypes, the stamped fingerprints and every `load` node's input
+  fingerprint are unchanged; a manifest built before this change still
+  verifies as Reproduces. The input fingerprint of a warehouse table is
+  computed once per warehouse version and reused across a build's figures.
+- Every query connection, and every SQL calculation's, sets
+  `enable_external_access = false` and `lock_configuration = true`: a model
+  source, an Explore or Ask query or a SQL calculation that reaches for a
+  file, a URL, `ATTACH`, `COPY`, `INSTALL` or `LOAD` is refused by DuckDB, by
+  name. A model `SELECT` source that read files must move into a transform.
+
+### Added — `tracebi.yaml`
+
+- A project settings file at the root, written (commented) by `tracebi
+  init`: `engine: {memory_limit, threads, temp_directory, query_timeout_s}`
+  (defaults 1GB, min(4, CPUs), `data/.duckdb-tmp`, 30). Explore and Ask
+  (`POST /api/models/{name}/query`), the selection endpoint and the
+  gateway's `query_model` stop a query at `query_timeout_s` with an error
+  naming the limit (HTTP 504). Reference: `docs/reference/tracebi-yaml.md`.
+
 ### Changed — the cascade: every shipped report uses the selection grammar
 
 - The portfolio reports (book, concentration, overview, dashboard, desk), the

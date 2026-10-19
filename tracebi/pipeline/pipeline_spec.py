@@ -6,7 +6,8 @@ it feeds, the reports to rebuild, and an optional schedule. It compiles to the
 runner :func:`tracebi.pipeline.model_pipeline.model_pipeline` builds, so
 ``tracebi run-pipeline`` and the app's Refresh data behave exactly as they do for
 the Python form: run the transform fresh, then rebuild the reports, recording
-each run. The transform stays Python; nothing here can express code.
+each run. The transform stays its own file (SQL, or Python as the escape
+hatch); nothing here can express code.
 
 The schema is closed, the file loads with ``yaml.safe_load`` semantics, and a
 repeated key is an error (the model loader's rules).
@@ -58,10 +59,10 @@ def validate_pipeline_spec(doc: Any) -> list[str]:
     transform = doc.get("transform")
     if not isinstance(transform, str) or not _TRANSFORM.fullmatch(transform) \
             or ".." in transform:
-        errors.append("transform: required, the name of a transforms/<x>.py "
-                      "or .ipynb (a bare name, no folder)")
-    elif "." in transform and not transform.endswith((".py", ".ipynb")):
-        errors.append(f"transform: '{transform}' is not a .py or .ipynb")
+        errors.append("transform: required, the name of a transforms/<x>.sql, "
+                      ".py or .ipynb (a bare name, no folder)")
+    elif "." in transform and not transform.endswith((".sql", ".py", ".ipynb")):
+        errors.append(f"transform: '{transform}' is not a .sql, .py or .ipynb")
     if not _strings(doc.get("models")):
         errors.append("models: required, a list of model names")
     reports = doc.get("reports", "all")
@@ -94,7 +95,7 @@ def load_pipeline_spec(path: "str | os.PathLike[str]"):
     if errors:
         raise ModelSpecError(path.name, errors)
     transform = doc["transform"]
-    for ext in (".py", ".ipynb"):
+    for ext in (".sql", ".py", ".ipynb"):
         if transform.endswith(ext):
             transform = transform[: -len(ext)]
     reports = doc.get("reports", "all")
@@ -155,7 +156,7 @@ def pipeline_to_yaml(runner, stem: str) -> str:
         lines.append(f"description: {json.dumps(description)}")
     lines += [
         "",
-        "# transform: the phase-1 script to run first (transforms/<name>.py or .ipynb)",
+        "# transform: the phase-1 transform to run first (transforms/<name>.sql, .py or .ipynb)",
         f"transform: {declared['transform']}",
         "",
         "# models: what the transform feeds",

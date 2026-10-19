@@ -1,20 +1,27 @@
 """
-Phase ① — TRANSFORM.
+Phase ① — TRANSFORM, the escape hatch: the same work in pandas.
 
-Ordinary pandas. Read the messy Schedule-of-Investments export, do the work a
-fund-ops analyst (or their agent) actually does — parse prose instrument blobs
-into issuers, strip trailing position counters, normalise sectors spelled six
-ways, coerce money stored as strings, dedupe — and SINK the clean, star-shaped
-result into the warehouse.
+The reference project's transform is holdings_transform.sql (with its sink
+contract beside it in holdings_transform.contract.yaml); that is what the
+pipeline runs. This file is the escape-hatch example: when the cleaning needs
+more than SQL says comfortably, write ordinary pandas (or polars), end by
+writing the frames, and the trace line is still drawn at the sink. Both forms
+sink IDENTICAL tables, fingerprint for fingerprint
+(tests/e2e/test_reference_project.py proves it), so either can feed the model.
 
-This is the phase the framework does NOT constrain: write as much pandas as the
-data needs. The contract is not *how* you clean, it is *what lands* — the named
-tables at the bottom of this file. Phase ② (models/) reads those tables and
-never sees this code.
+Read the messy Schedule-of-Investments export, do the work a fund-ops analyst
+(or their agent) actually does — parse prose instrument blobs into issuers,
+strip trailing position counters, normalise sectors spelled six ways, coerce
+money stored as strings, dedupe — and SINK the clean, star-shaped result into
+the warehouse. The contract is not *how* you clean, it is *what lands* — the
+named tables at the bottom of this file. Phase ② (models/) reads those tables
+and never sees this code.
 
-Reads a raw pull from inputs/ and sinks to the warehouse in data/.
+Reads a raw pull from inputs/ and sinks to the project's warehouse: the
+DuckDB file data/warehouse.duckdb unless tracebi.yaml's warehouse block puts
+it on object storage (Parquet per table) or a remote engine.
 
-    python transforms/holdings_transform.py
+    tracebi run-transform holdings_transform_pandas
 
 Idempotent: rerun any time; it replaces the warehouse tables.
 """
@@ -28,11 +35,13 @@ import pandas as pd
 
 from tracebi.connectors.duckdb_connector import DuckDBConnector
 from tracebi.contracts import contract
+from tracebi.project_config import sink_target
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RAW = os.path.join(ROOT, "inputs", "holdings.csv")
-WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+# Where tracebi.yaml says the warehouse is, on whichever tier.
+WAREHOUSE = sink_target(ROOT)
 
 
 # ── cleaning helpers ─────────────────────────────────────────────────────────
@@ -193,7 +202,6 @@ def run() -> dict:
     dim_date = pd.DataFrame({"flow_date": sorted(fact_cashflows["flow_date"].unique())})
 
     # ── SINK to the warehouse ─────────────────────────────────────────────────
-    os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
     # No connect() here: write() manages its own short-lived read-write
     # connection, and a read-only connect would fail on a fresh clone whose
     # warehouse file does not exist yet (first-run bug caught by the

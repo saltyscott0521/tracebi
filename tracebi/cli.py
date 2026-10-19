@@ -28,7 +28,6 @@ import html as _html
 import json
 import os
 import re
-import runpy
 import shutil
 import sys
 from datetime import date
@@ -145,13 +144,15 @@ def _model_yaml_template_text(title: str) -> str:
 name: {slug}
 label: {json.dumps(title.strip())}
 
-# connectors: where the tables live. `database` is a DuckDB file inside the
-# project (no absolute path, no ".."). No credentials belong here: for a
-# database, run `tracebi connect` and use `connection: <name>` instead.
+# connectors: where the tables live. `type: warehouse` is the project's
+# warehouse, wherever tracebi.yaml puts it (a DuckDB file by default, Parquet
+# on object storage, or a remote engine). `type: duckdb` with a `database`
+# path names one DuckDB file inside the project instead. No credentials
+# belong here: for a database, run `tracebi connect` and use
+# `connection: <name>`.
 connectors:
   - name: warehouse
-    type: duckdb
-    database: data/warehouse.duckdb
+    type: warehouse
 
 # tables: each table the transform sank, by the name it has in the warehouse.
 tables:
@@ -415,6 +416,118 @@ print(f"sunk → {{WAREHOUSE}}")
 '''
 
 
+def _transform_sql_template_text(title: str, tier: str) -> str:
+    """``tracebi new-transform``'s default: a SQL transform, its sink written
+    in the idiom of the project's warehouse tier (tracebi.yaml)."""
+    today = date.today().isoformat()
+    slug = _slugify(title)
+    if tier == "object":
+        where = ("This project's warehouse is the OBJECT tier: a table lands as\n"
+                 "-- Parquet under {{ sink }}. Write each one with COPY, as below; a\n"
+                 "-- table you CREATE (not TEMP) also lands there, as <table>.parquet.\n"
+                 "-- On the file or remote tier, CREATE OR REPLACE TABLE x AS … lands\n"
+                 "-- in the warehouse itself.")
+        sink = ("-- CREATE OR REPLACE TEMP TABLE dim_x AS\n"
+                "-- SELECT row_number() OVER (ORDER BY x) AS x_id, x FROM (SELECT DISTINCT x FROM clean);\n"
+                "-- COPY dim_x TO '{{ sink }}/dim_x.parquet' (FORMAT PARQUET);\n"
+                "-- COPY (SELECT c.id, d.x_id, c.value FROM clean c JOIN dim_x d USING (x))\n"
+                f"--   TO '{{{{ sink }}}}/fact_{slug}.parquet' (FORMAT PARQUET);")
+    else:
+        where = (f"This project's warehouse is the {tier.upper()} tier: a table you CREATE\n"
+                 "-- (not TEMP) lands in it. On the object tier a table is a Parquet file\n"
+                 "-- under {{ sink }} instead: CREATE still lands it there, as\n"
+                 "-- <table>.parquet, or write it yourself:\n"
+                 "--   COPY (SELECT …) TO '{{ sink }}/dim_x.parquet' (FORMAT PARQUET);")
+        sink = ("-- CREATE OR REPLACE TABLE dim_x AS\n"
+                "-- SELECT row_number() OVER (ORDER BY x) AS x_id, x FROM (SELECT DISTINCT x FROM clean);\n"
+                f"-- CREATE OR REPLACE TABLE fact_{slug} AS\n"
+                "-- SELECT c.id, d.x_id, c.value FROM clean c JOIN dim_x d USING (x);")
+    return f'''\
+-- %% [markdown]
+-- # {title}
+--
+-- Phase ① — TRANSFORM. Scaffolded by `tracebi new-transform` on {today}.
+--
+-- DuckDB SQL, statements in order, run top to bottom in ONE fresh
+-- connection to the warehouse:
+--
+--     tracebi run-transform {slug}
+--
+-- Read the raw pull, do whatever the data needs — window functions, prose
+-- parsing (regexp_extract, regexp_replace), money as text (TRY_CAST), dedupe
+-- (QUALIFY row_number() …) — then SINK clean, star-shaped tables. The
+-- contract is not *how* you clean, it is *what lands*: the tables at the
+-- bottom of this file. Phase ② (models/) reads those tables and never sees
+-- this file. The checks they must pass go beside it, in
+-- {slug}.contract.yaml.
+--
+-- {where}
+--
+-- Two placeholders, and only two: {{{{ sink }}}} (where tracebi.yaml puts the
+-- warehouse: a .duckdb file, an object prefix, or an attach string) and
+-- {{{{ root }}}} (the project root). Relative paths in reads (inputs/…) resolve
+-- against the project root. TEMP tables and TEMP MACROs are scratch: they
+-- vanish with the connection. The `-- %%` markers are cells for editors that
+-- fold them; they mean nothing to the run. Keep it idempotent (CREATE OR
+-- REPLACE): a rerun replaces the tables.
+--
+-- When the cleaning outgrows SQL, the escape hatch is pandas or polars:
+-- `tracebi new-transform "{title}" --python`.
+
+-- %% [markdown]
+-- ## Methodology
+--
+-- Narrate the cleaning here — what gets dropped and why, how keys are
+-- chosen. Distill the load-bearing claims into the contract's `note:`;
+-- they travel with the certificate.
+
+-- %%  Read the raw input (inputs/, or a connection's tables)
+-- CREATE OR REPLACE TEMP TABLE raw AS
+-- SELECT * FROM read_csv('inputs/orders.csv', header = true);
+
+-- %%  Clean — none of this is traced, by design
+-- CREATE OR REPLACE TEMP TABLE clean AS
+-- SELECT * FROM raw
+-- WHERE id IS NOT NULL
+-- QUALIFY row_number() OVER (PARTITION BY id ORDER BY id) = 1;
+
+-- %%  Sink — the contract: these named tables are what phase ② models
+{sink}
+'''
+
+
+def _transform_contract_template_text(slug: str) -> str:
+    """The ``<name>.contract.yaml`` a SQL transform is scaffolded with."""
+    return f'''\
+# The sink CONTRACT of {slug}.sql: what must be true of the tables that just
+# landed. `tracebi run-transform {slug}` runs these as read-only SQL against
+# the warehouse after the transform and records them beside it. A failed
+# check raises; this certifies the SINK, never the SQL above it.
+#
+# The closed vocabulary (the same as Python's `with contract(...)`):
+#   rows (at_least, at_most, exactly) · unique (columns) · not_null (columns)
+#   foreign_key (column, refers_to: [table, column]) · values (column, within)
+#   reconcile (column, against: [table, column], by, tolerance)
+# Each check takes a `note:`, and so does the contract: your STATED
+# methodology, recorded verbatim in the certificate, never verified.
+
+name: {slug}
+note: >-
+  stated methodology: what was dropped, and why
+
+checks:
+  # - rows: fact_{slug}
+  #   at_least: 1
+  # - unique: dim_x
+  #   columns: [x_id]
+  # - not_null: fact_{slug}
+  #   columns: [id, value]
+  # - foreign_key: fact_{slug}
+  #   column: x_id
+  #   refers_to: [dim_x, x_id]
+'''
+
+
 # ── init project scaffolding ────────────────────────────────────────────────
 
 _INIT_GITIGNORE = _scaffold_text("init_gitignore.txt")
@@ -429,6 +542,8 @@ _INIT_SAMPLE_MODEL = _scaffold_text("init_sample_model.yaml.txt")
 
 # The source the model reads (connections/warehouse.yaml): where phase ① sinks.
 _INIT_CONNECTION = _scaffold_text("init_connection_warehouse.yaml.txt")
+# tracebi.yaml: the project's settings, every key commented with its default.
+_INIT_TRACEBI_YAML = _scaffold_text("init_tracebi.yaml.txt")
 
 # The pipeline every model gets (tracebi.pipeline.model_pipeline): the
 # transform, then the model's reports. It is what Refresh data runs in the app.
@@ -605,6 +720,7 @@ def cmd_init(args: argparse.Namespace) -> int:
         target / ".gitignore":              _INIT_GITIGNORE,
         target / ".env.example":            _INIT_ENV_EXAMPLE,
         target / "README.md":               _init_project_readme(target.name),
+        target / "tracebi.yaml":            _INIT_TRACEBI_YAML,
         target / "AGENTS.md":               _INIT_AGENTS_MD,
         target / "inputs" / "orders.csv":   _INIT_SAMPLE_CSV,
         target / "transforms" / "sample_transform.py": _INIT_SAMPLE_TRANSFORM,
@@ -1198,49 +1314,53 @@ def _project_path(path) -> str:
 
 
 def find_transform(name: str) -> Optional[Path]:
-    """The file ``tracebi run-transform <name>`` runs: ``transforms/<name>`` as
-    given, or with ``.py`` or ``.ipynb`` added."""
-    tdir = Path(os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms"))
-    candidates = [tdir / name, tdir / f"{name}.py", tdir / f"{name}.ipynb"]
-    return next((c for c in candidates if c.is_file()), None)
+    """The file ``tracebi run-transform <name>`` runs (:mod:`tracebi.transforms`)."""
+    from tracebi.transforms import find_transform as _find
+    return _find(name)
 
 
 def cmd_run_transform(args: argparse.Namespace) -> int:
     """
-    Execute a phase-① transform — ``.py`` or ``.ipynb`` — top-to-bottom in
-    a FRESH namespace.
+    Execute a phase-① transform top-to-bottom, fresh, and report its form:
+    ``sql`` (``transforms/<name>.sql``, one fresh connection to the
+    warehouse), ``python`` (``.py``) or ``notebook`` (``.ipynb``), each in a
+    FRESH namespace. Then the ``<name>.contract.yaml`` beside it, if any.
 
     ``python transforms/<name>.py`` works for scripts already; this verb
-    adds the notebook form and, for both, the honesty guarantee that
+    adds the SQL and notebook forms and, for all, the honesty guarantee that
     matters at the sink: the warehouse comes from a clean top-to-bottom
     execution of the committed file, never from out-of-order kernel state.
-    Transforms may be notebook-shaped ``.py`` (``# %%`` cells — every
-    notebook editor opens them as notebooks) or literal ``.ipynb``, whose
-    code cells are concatenated in order and executed fresh.
+    Transforms may be notebook-shaped (``-- %%`` or ``# %%`` cells — every
+    notebook editor folds them) or literal ``.ipynb``, whose code cells are
+    concatenated in order and executed fresh.
     """
-    path = find_transform(args.name)
+    from tracebi.contracts import ContractSpecError, ContractViolation
+    from tracebi.transforms import TransformError, run_transform, transform_form
+
+    try:
+        path = find_transform(args.name)
+    except TransformError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     if path is None:
         tdir = os.environ.get("TRACEBI_TRANSFORMS_DIR", "transforms")
         print(f"transform not found in {tdir}: {args.name}", file=sys.stderr)
         return 1
-    print(f"Running {path} (top-to-bottom, fresh namespace)…")
-    from tracebi.contracts import ContractViolation
+    form = transform_form(path)
+    print(f"Running {path} (form: {form}; top-to-bottom, "
+          f"{'fresh connection' if form == 'sql' else 'fresh namespace'})…")
     try:
-        if path.suffix == ".ipynb":
-            from tracebi._notebook import notebook_to_source
-            source = notebook_to_source(path)
-            ns: dict = {"__name__": "__main__", "__file__": str(path)}
-            exec(compile(source, str(path), "exec"), ns)
-        else:
-            runpy.run_path(str(path), run_name="__main__")
-    except ContractViolation as exc:
-        # The sink refused to certify. This is an expected, well-worded
-        # failure — print it clean, not as a runpy stack trace (the full
-        # trace is behind TRACEBI_DEBUG for anyone debugging the check itself).
+        run_transform(path)
+    except (ContractViolation, ContractSpecError, TransformError) as exc:
+        # The sink refused to certify, or the SQL or its contract file did not
+        # run. These are expected, well-worded failures — print them clean, not
+        # as a stack trace (the full trace is behind TRACEBI_DEBUG for anyone
+        # debugging the check itself).
         if os.environ.get("TRACEBI_DEBUG"):
             raise
         print(f"\n{exc}", file=sys.stderr)
         return 1
+    print(f"form: {form}")
     return 0
 
 
@@ -1290,20 +1410,46 @@ def cmd_new_model(args: argparse.Namespace) -> int:
 
 
 def cmd_new_transform(args: argparse.Namespace) -> int:
-    transforms_dir: Path = args.transforms_dir
-    transforms_dir.mkdir(parents=True, exist_ok=True)
+    from tracebi.contracts import CONTRACT_FILE_SUFFIX
+    from tracebi.transforms import FORMS
 
+    transforms_dir: Path = args.transforms_dir
     slug = _slugify(args.title)
-    out_path = transforms_dir / f"{slug}.py"
+    out_path = transforms_dir / f"{slug}.{'py' if args.python else 'sql'}"
     if out_path.exists() and not args.force:
         print(f"refusing to overwrite existing {out_path}; pass --force to replace",
               file=sys.stderr)
         return 1
+    twins = [transforms_dir / f"{slug}{e}" for e in FORMS
+             if (transforms_dir / f"{slug}{e}").exists() and transforms_dir / f"{slug}{e}" != out_path]
+    if twins:
+        print(f"refusing: {twins[0]} exists; a transform is one file, so delete one",
+              file=sys.stderr)
+        return 1
 
-    out_path.write_text(_transform_template_text(args.title), encoding="utf-8")
-    print(f"Created {out_path}")
-    print(f"  Write the pandas, end by sinking named tables, then run it:")
-    print(f"    python {out_path}")
+    if args.python:
+        transforms_dir.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(_transform_template_text(args.title), encoding="utf-8")
+        print(f"Created {out_path}")
+        print(f"  Write the pandas, end by sinking named tables, then run it:")
+        print(f"    python {out_path}")
+        return 0
+
+    # The sink is written in the idiom of the project's warehouse tier.
+    from tracebi.project_config import warehouse
+    try:
+        tier = warehouse().tier
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    transforms_dir.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(_transform_sql_template_text(args.title, tier), encoding="utf-8")
+    contract_path = transforms_dir / f"{slug}{CONTRACT_FILE_SUFFIX}"
+    if not contract_path.exists() or args.force:
+        contract_path.write_text(_transform_contract_template_text(slug), encoding="utf-8")
+    print(f"Created {out_path} ({tier} tier) and {contract_path}")
+    print(f"  Write the SQL, end by creating the named tables, declare their checks, then run it:")
+    print(f"    tracebi run-transform {slug}")
     return 0
 
 
@@ -1478,6 +1624,14 @@ def cmd_run_pipeline(args: argparse.Namespace) -> int:
             else:
                 status = (last or {}).get("status") or "never run"
                 when = (last or {}).get("completed_at") or (last or {}).get("started_at") or ""
+                # A layer whose last run went through transform(func) left SQL
+                # for Python; the run row records it (PipelineRunner).
+                detail = json.loads((last or {}).get("detail") or "{}")
+                if isinstance(detail, dict) and detail.get("escape_hatch"):
+                    when += f"  ({detail['escape_hatch']} escape hatch)"
+                # A transform step records which form ran: sql | python | notebook.
+                if isinstance(detail, dict) and detail.get("form"):
+                    when += f"  (form: {detail['form']})"
             print(f"  {r['name']:<{width}}  {r['type']:<12} {status:<10} {when}")
         return 0
 
@@ -1875,7 +2029,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
             for r in fp_rows:
                 ok = r["matches"]
                 state = "unchanged" if ok else (
-                    "MISSING" if r["current"] is None else "CHANGED")
+                    "MISSING" if r["current"] is None else
+                    "REWRITTEN" if r.get("rewritten") else "CHANGED")
                 print(f"{'✓' if ok else '✗'} {state:<12} "
                       f"{r['transform']}: {r['table']}",
                       file=sys.stdout if ok else sys.stderr)
@@ -3747,10 +3902,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_run_transform = sub.add_parser(
         "run-transform",
-        help="Execute a phase-① transform (.py or .ipynb) top-to-bottom in "
-             "a fresh namespace — the sink never comes from out-of-order "
-             "kernel state. Notebook-shaped .py (# %% cells) and literal "
-             ".ipynb both work.",
+        help="Execute a phase-① transform top-to-bottom and report its form: "
+             ".sql (one fresh warehouse connection) or the .py / .ipynb escape "
+             "hatch (a fresh namespace) — the sink never comes from "
+             "out-of-order kernel state. Then the <name>.contract.yaml beside "
+             "it, if any.",
     )
     p_run_transform.add_argument(
         "name", help="Transform name under transforms/ (suffix optional).")
@@ -3758,11 +3914,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_new_transform = sub.add_parser(
         "new-transform",
-        help="Scaffold a phase-① transform (transforms/<name>.py): pandas "
-             "that reads a raw input and sinks star tables to the warehouse.",
+        help="Scaffold a phase-① transform: transforms/<name>.sql (DuckDB SQL "
+             "that reads a raw input and sinks star tables to the warehouse, in "
+             "the idiom of its tier) and <name>.contract.yaml beside it.",
     )
     p_new_transform.add_argument("title", help='Free-form title, e.g. "Orders Clean".')
     p_new_transform.add_argument("--force", action="store_true", help="Overwrite if exists.")
+    p_new_transform.add_argument(
+        "--python", action="store_true",
+        help="The escape hatch: transforms/<name>.py, notebook-shaped pandas, instead of SQL.")
     p_new_transform.add_argument(
         "--transforms-dir", type=Path, default=_default_transforms_dir(),
         help="Directory holding transforms (default: ./transforms).",

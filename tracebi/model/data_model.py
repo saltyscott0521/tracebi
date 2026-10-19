@@ -23,6 +23,7 @@ from __future__ import annotations
 import ast
 import copy
 import operator
+import os
 import re
 from dataclasses import dataclass, field, replace
 from typing import Any, Optional
@@ -30,6 +31,7 @@ from typing import Any, Optional
 import pandas as pd
 
 from tracebi.connectors.base import BaseConnector
+from tracebi.model.engine import query_connection, warehouse_table_fingerprint
 from tracebi.model.sql_calc import SqlQuery, run as run_sql_query
 from tracebi.model.dataset import (
     CURRENT_FINGERPRINT_ALGO,
@@ -409,6 +411,80 @@ _EXPR_ALLOWED = re.compile(r"^[A-Za-z0-9_+\-*/(). ]+$")
 # An identifier immediately followed by "(" is a function call. Row
 # expressions are arithmetic only — aggregation is declared via agg=.
 _EXPR_CALL = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\s*\(")
+
+
+def _ident(name: Any) -> str:
+    """A quoted SQL identifier."""
+    return '"' + str(name).replace('"', '""') + '"'
+
+
+def _relation_types(con, relation: str) -> dict[str, str]:
+    """``{column: DuckDB type}`` of a relation (a name, or a ``FROM``
+    expression already quoted), without reading a row."""
+    ref = relation if relation[:1] in ('"', "(") else f'"{relation}"'
+    return {str(r[0]): str(r[1])
+            for r in con.execute(f"DESCRIBE SELECT * FROM {ref}").fetchall()}
+
+
+_ROW_OPS = {ast.Add: "+", ast.Sub: "-", ast.Mult: "*", ast.Div: "/"}
+
+
+def _row_expr_sql(expression: str) -> str:
+    """A row-level measure expression (arithmetic over column names and
+    numbers) as DuckDB SQL. Built from the parsed tree, never from the text,
+    so nothing but arithmetic can reach the engine.
+
+    The semantics are the ones the expression had when pandas evaluated it:
+    ``/`` is true division (``x / 0`` is infinite), a decimal literal is a
+    double (not DECIMAL), ``**`` is ``power`` and ``//`` is ``floor`` of the
+    quotient. Anything else (a call, a comparison, ``%``) is refused by name.
+    """
+    def walk(node: ast.AST) -> str:
+        if isinstance(node, ast.Name):
+            return _ident(node.id)
+        if (isinstance(node, ast.Constant) and isinstance(node.value, (int, float))
+                and not isinstance(node.value, bool)):
+            if isinstance(node.value, int):
+                return str(node.value)
+            return f"CAST({node.value!r} AS DOUBLE)"
+        if isinstance(node, ast.BinOp):
+            left, right = walk(node.left), walk(node.right)
+            if type(node.op) in _ROW_OPS:
+                return f"({left} {_ROW_OPS[type(node.op)]} {right})"
+            if isinstance(node.op, ast.Pow):
+                return f"power({left}, {right})"
+            if isinstance(node.op, ast.FloorDiv):
+                return f"floor({left} / {right})"
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+            return f"(-{walk(node.operand)})"
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.UAdd):
+            return walk(node.operand)
+        what = (type(node.op).__name__ if isinstance(node, (ast.BinOp, ast.UnaryOp))
+                else type(node).__name__)
+        raise ValueError(f"{what} is not row arithmetic (only + - * / ** // "
+                         f"over columns and numbers)")
+
+    try:
+        tree = ast.parse(str(expression).strip(), mode="eval").body
+    except SyntaxError as exc:
+        raise ValueError(f"it does not parse: {exc.msg}") from exc
+    return walk(tree)
+
+
+def _register_frame(con, name: str, df: "pd.DataFrame") -> None:
+    """Register a loaded frame with the query connection, as Arrow.
+
+    A frame Arrow cannot hold (an object column of mixed types) is registered
+    as the frame itself, as the engine always read it. Either way the engine
+    computes; pandas only carried the rows here.
+    """
+    try:
+        import pyarrow as pa
+
+        table = pa.Table.from_pandas(df, preserve_index=False)
+    except Exception:  # noqa: BLE001 — ImportError, ArrowInvalid, ArrowTypeError…
+        table = df
+    con.register(name, table)
 
 
 def _normalize_order_by(raw: Any) -> tuple[dict, ...]:
@@ -1393,6 +1469,26 @@ class DataModel:
         tdef = self._tables[table_name]
         connector = self._connectors[tdef.connector_name]
         df = connector.load(tdef.source, filter=filter, columns=columns)
+        nodes = self._load_lineage(table_name, filter, columns,
+                                   frame_fingerprint(df), len(df))
+        return DataSet(df=df, name=table_name, lineage=nodes)
+
+    def _load_lineage(
+        self,
+        table_name: str,
+        filter: Optional[dict[str, Any]],
+        columns: Optional[list[str]],
+        fingerprint: str,
+        rows: int,
+    ) -> list[LineageNode]:
+        """The lineage of one table read: its ``load`` node (with the input
+        fingerprint every stamped query records) and, past
+        ``LARGE_LOAD_WARN_ROWS``, the large-load warning. Shared by
+        :meth:`load` and the warehouse path of :meth:`execute`, which reads
+        the table in place and takes the fingerprint from
+        :func:`tracebi.model.engine.warehouse_table_fingerprint`."""
+        tdef = self._tables[table_name]
+        connector = self._connectors[tdef.connector_name]
         pushdown = connector.supports_pushdown() and (filter or columns)
         load_node = LineageNode(
             operation="load",
@@ -1403,38 +1499,127 @@ class DataModel:
             },
             source=tdef.source,
             metadata={
-                "rows_loaded": len(df),
+                "rows_loaded": rows,
                 "filter":      filter,
                 "columns":     columns,
                 "pushdown":    bool(pushdown),
-                # The frame is already in memory here, so fingerprint it now.
                 # Every stamped query — and every manifest section built from
-                # one — then records exactly which inputs produced it, which
-                # is what lets `tracebi verify` tell source drift apart from
-                # an unexplained mismatch.
+                # one — records exactly which inputs produced it, which is
+                # what lets `tracebi verify` tell source drift apart from an
+                # unexplained mismatch.
                 "input": {
                     "table":       table_name,
-                    "fingerprint": frame_fingerprint(df),
-                    "rows":        len(df),
+                    "fingerprint": fingerprint,
+                    "rows":        rows,
                 },
             },
         )
         nodes = [load_node]
-        if not filter and not columns and len(df) > LARGE_LOAD_WARN_ROWS:
+        if not filter and not columns and rows > LARGE_LOAD_WARN_ROWS:
             nodes.append(LineageNode(
                 operation="warning",
                 description=(
-                    f"Large unfiltered load: {len(df):,} rows from "
+                    f"Large unfiltered load: {rows:,} rows from "
                     f"'{table_name}'. Consider passing filter= or columns= "
                     "to push the predicate to the source."
                 ),
                 metadata={
-                    "rows_loaded": len(df),
+                    "rows_loaded": rows,
                     "threshold":   LARGE_LOAD_WARN_ROWS,
                     "table":       table_name,
                 },
             ))
-        return DataSet(df=df, name=table_name, lineage=nodes)
+        return nodes
+
+    # ── The query connection's relations ──────────────────────
+
+    def _warehouse_aliases(self) -> "tuple[dict[str, Any], dict[str, str]]":
+        """``({alias: database path}, {connector name: alias})`` for every
+        file-backed DuckDB warehouse this model reads, to attach READ_ONLY.
+        An object- or remote-tier warehouse (``type: warehouse``) maps to its
+        :class:`tracebi.warehouse.Warehouse`, which the query connection
+        attaches its own way."""
+        from tracebi.connectors.duckdb_connector import DuckDBConnector
+
+        files: dict[str, Any] = {}
+        aliases: dict[str, str] = {}
+        by_path: dict[str, str] = {}
+        for cname, connector in self._connectors.items():
+            if not (isinstance(connector, DuckDBConnector)
+                    and connector.database != ":memory:"):
+                continue
+            if connector.tier == "file":
+                path = target = os.path.abspath(connector.database)
+            else:
+                path, target = f"{connector.tier}:{connector.database}", connector.warehouse
+            if path not in by_path:
+                by_path[path] = f"wh{len(by_path)}"
+                files[by_path[path]] = target
+            aliases[cname] = by_path[path]
+        return files, aliases
+
+    def _read_table(
+        self,
+        con,
+        aliases: dict[str, str],
+        table_name: str,
+        rel: str,
+        filter: Optional[dict[str, Any]],
+    ) -> "tuple[list[LineageNode], bool]":
+        """Make *table_name* the relation *rel* of the query connection and
+        return ``(its load lineage, read in place)``.
+
+        A table of an attached warehouse becomes a view over it, through the
+        connector's own source resolution; its lineage carries the fingerprint
+        of the frame ``load()`` would have returned, computed once per
+        warehouse version. Anything else is loaded through its connector, as
+        :meth:`load` always did, and registered as Arrow. A file source of a
+        DuckDB connector (``*.parquet``, ``*.csv``) is in the second group:
+        the query connection cannot open files, the connector can.
+        """
+        tdef = self._tables[table_name]
+        connector = self._connectors[tdef.connector_name]
+        alias = aliases.get(tdef.connector_name)
+        ref = None
+        if alias is not None and alias in con.attached:
+            ref = connector._resolve_source(tdef.source)
+            if ref.startswith("("):
+                # An author's SELECT names its tables unqualified: it resolves
+                # only in the warehouse the connection USEs (the fact's).
+                if alias != con.execute("SELECT current_database()").fetchone()[0]:
+                    ref = None
+            elif ref.startswith('"'):
+                ref = f'"{alias}"."main".{ref}'
+            else:
+                ref = None
+        if ref is None:
+            ds = self.load(table_name, filter=filter)
+            _register_frame(con, rel, ds.to_pandas())
+            return list(ds.lineage), False
+
+        # The view keeps the values a frame read through the connector held:
+        # NaN is a null, a DECIMAL or HUGEINT a double, a DATE a timestamp. The
+        # engine answered over that frame until now, so its numbers, dtypes and
+        # fingerprints stay exactly as they were.
+        replace = []
+        for name, dtype in _relation_types(con, ref).items():
+            col = _ident(name)
+            if dtype in ("DOUBLE", "FLOAT"):
+                replace.append(f"CASE WHEN isnan({col}) THEN NULL ELSE {col} END AS {col}")
+            elif dtype.startswith("DECIMAL") or dtype in ("HUGEINT", "UHUGEINT"):
+                replace.append(f"CAST({col} AS DOUBLE) AS {col}")
+            elif dtype == "DATE":
+                replace.append(f"CAST({col} AS TIMESTAMP) AS {col}")
+        select = f"* REPLACE ({', '.join(replace)})" if replace else "*"
+        con.execute(f'CREATE TEMP VIEW "{rel}" AS SELECT {select} FROM {ref}')
+        fingerprint, rows = warehouse_table_fingerprint(connector, tdef.source, filter)
+        return self._load_lineage(table_name, filter, None, fingerprint, rows), True
+
+    @staticmethod
+    def _pushdown_where(pushdown: dict[str, Any]) -> "tuple[str, list]":
+        """The WHERE a connector's pushed-down load applies (column = value)."""
+        return (" AND ".join(f"{_ident(c)} = ?" for c in pushdown),
+                list(pushdown.values()))
 
     def resolve(self, relationship_name: str) -> DataSet:
         """
@@ -1739,11 +1924,19 @@ class DataModel:
                 )
             parsed_dims.append((dim_name, attribute))
 
-        # ── Load fact ─────────────────────────────────────────
+        # ── Read the fact, in place ───────────────────────────
+        # One locked, read-only DuckDB connection answers the whole query
+        # (tracebi.model.engine). A table in a file-backed DuckDB warehouse
+        # is a view over the attached table: nothing is loaded into pandas.
+        # A table from any other source (memory, CSV, a SQL database) is
+        # loaded through its connector as before and registered as Arrow.
+        # Either way the engine sees one relation per table the query reads,
+        # and the lineage records the same load nodes and fingerprints.
         lineage: list[LineageNode] = []
 
-        # Parse filters before loading so equality predicates on fact columns
-        # can still be pushed down to the connector. A first load without a
+        # Simple equality predicates on fact columns are pushed down to the
+        # connector's load where it supports it, as before; the engine
+        # re-applies every predicate regardless. A first load without a
         # filter is needed to know the fact's columns; use the declared
         # measures/foreign keys to avoid it where possible.
         probe_cols = set(fact_def.measures) | set(fact_def.foreign_keys.values())
@@ -1756,215 +1949,242 @@ class DataModel:
             )
             (pushdown if simple else deferred)[key] = raw
 
-        fact_ds = self.load(fact_def.table_name, filter=pushdown or None)
-        lineage.extend(fact_ds.lineage)
-        fact_df = fact_ds.to_pandas()
-        # Materialise row-level measure expressions before validation, so
-        # derived columns are visible to everything downstream.
-        if derived:
-            fact_df = self._apply_derived(fact_df, derived, fact_def)
-            lineage.append(LineageNode(
-                operation="assign",
-                description=(
-                    "Derived measure column(s): "
-                    + ", ".join(f"{k} = {v}" for k, v in derived.items())
-                ),
-                metadata={"derived": dict(derived)},
-            ))
-        fact_cols = set(fact_df.columns) | probe_cols
+        warehouses, aliases = self._warehouse_aliases()
+        with query_connection(
+            warehouses,
+            default=aliases.get(self._tables[fact_def.table_name].connector_name),
+        ) as con:
+            fact_nodes, in_place = self._read_table(
+                con, aliases, fact_def.table_name, "q_fact_base",
+                pushdown or None)
+            lineage.extend(fact_nodes)
+            # The rows the fact load would have held: a table read in place
+            # still answers the row-level checks below over its pushed-down
+            # filter, as the loaded frame did.
+            fact_where = (self._pushdown_where(pushdown)
+                          if in_place and pushdown else ("", []))
+            # Row-level measure expressions become columns of the fact
+            # relation, compiled to SQL, so derived columns are visible to
+            # everything downstream.
+            self._derived_view(con, "q_fact_base", "q_fact", derived, fact_def)
+            if derived:
+                lineage.append(LineageNode(
+                    operation="assign",
+                    description=(
+                        "Derived measure column(s): "
+                        + ", ".join(f"{k} = {v}" for k, v in derived.items())
+                    ),
+                    metadata={"derived": dict(derived)},
+                ))
+            fact_types = _relation_types(con, "q_fact")
+            fact_cols = set(fact_types) | probe_cols
 
-        # A measure's own filters: parsed against this fact's columns here, so
-        # a column the fact does not have is refused by name, before any
-        # aggregation runs. They restrict only their measure, never the rows.
-        measure_filters: dict[str, "_FilterNode"] = {}
-        if resolved.filtered and not aggregate:
-            raise ValueError(
-                f"Filtered measure(s) {sorted(resolved.filtered)} apply to an "
-                f"aggregation, but this query has aggregate=False. Query them "
-                f"with aggregate=True (the default)."
-            )
-        for out_name, raw in resolved.filtered.items():
-            try:
-                node = self._parse_filter_dict(raw, fact_def, fact_cols)
-            except ValueError as exc:
-                raise ValueError(f"Measure '{out_name}': {exc}") from exc
-            if any(p.is_dim for p in _filter_leaves(node)):
+            # A measure's own filters: parsed against this fact's columns here,
+            # so a column the fact does not have is refused by name, before any
+            # aggregation runs. They restrict only their measure, never the rows.
+            measure_filters: dict[str, "_FilterNode"] = {}
+            if resolved.filtered and not aggregate:
                 raise ValueError(
-                    f"Measure '{out_name}': a measure's filters apply to the "
-                    f"fact's own columns, not a dimension attribute."
+                    f"Filtered measure(s) {sorted(resolved.filtered)} apply to an "
+                    f"aggregation, but this query has aggregate=False. Query them "
+                    f"with aggregate=True (the default)."
                 )
-            measure_filters[out_name] = node
-
-        # Value-based rate guard. The name guard at add_measure is blind to a
-        # per-row ratio whose column name matches no token (mark_cost =
-        # fair_value / cost, ~1.0); at execution the values are here, so refuse
-        # an additive aggregation of a column that LOOKS like per-row ratios —
-        # the same silent-wrong number (a mean of ratios), caught where the name
-        # could not see it. The author (a declared measure's allow_rate_agg) or
-        # the query (spec.allow_rate_agg) may vouch that the column is additive.
-        if not spec.allow_rate_agg:
-            for out_name, func in measures.items():
-                if func not in _RATE_GUARD_AGGS:
-                    continue
-                md = self._measures.get(out_name)
-                if md is not None and md.allow_rate_agg:
-                    continue
-                src = derived.get(out_name, out_name)
-                if not (isinstance(src, str)
-                        and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", src)
-                        and src in fact_df.columns):
-                    continue
-                if self._looks_like_per_row_ratio(fact_df[src]):
+            for out_name, raw in resolved.filtered.items():
+                try:
+                    node = self._parse_filter_dict(raw, fact_def, fact_cols)
+                except ValueError as exc:
+                    raise ValueError(f"Measure '{out_name}': {exc}") from exc
+                if any(p.is_dim for p in _filter_leaves(node)):
                     raise ValueError(
-                        f"Measure '{out_name}': agg='{func}' aggregates column "
-                        f"'{src}', whose values look like per-row ratios (a "
-                        f"floating column centred near 1.0) — summing per-row "
-                        f"ratios is meaningless and their mean overweights small "
-                        f"rows. The blended rate is sum(numerator) / "
-                        f"sum(denominator): declare a ratio measure "
-                        f"(ratio=(numerator, denominator)). See `tracebi "
-                        f"knowledge ratio-of-totals`. If this column really is an "
-                        f"additive quantity, pass allow_rate_agg=True (on the "
-                        f"measure or the query)."
+                        f"Measure '{out_name}': a measure's filters apply to the "
+                        f"fact's own columns, not a dimension attribute."
                     )
+                measure_filters[out_name] = node
 
-        filter_tree = self._parse_filters(filters, fact_def, fact_cols)
-        # The flat leaf set drives dim loading, per-condition lineage, and
-        # dim-value validation — none of which cares about the AND/OR structure;
-        # only the WHERE renderer (via filter_tree) does.
-        predicates = _filter_leaves(filter_tree)
-        # A predicate is `pushed_down` only when the connector ACTUALLY filtered
-        # at source — which its load node records as pushdown=True (it requires
-        # supports_pushdown() and a filter). The old guard `fact_ds.lineage` is
-        # always truthy (a DataSet always has a load node), so it marked every
-        # simple equality filter pushed_down even against a connector that
-        # ignored the hint and returned every row. The engine re-applies all
-        # predicates regardless (idempotent), so this only corrects the lineage
-        # flag — but a receipt that claims a source-side filter that never
-        # happened is exactly the kind of untruth this project refuses.
-        load_pushed_down = any(
-            (node.metadata or {}).get("pushdown") for node in fact_ds.lineage
-        )
-        pushed = set(pushdown) if load_pushed_down else set()
+            # Value-based rate guard. The name guard at add_measure is blind to a
+            # per-row ratio whose column name matches no token (mark_cost =
+            # fair_value / cost, ~1.0); at execution the values are here, so
+            # refuse an additive aggregation of a column that LOOKS like per-row
+            # ratios — the same silent-wrong number (a mean of ratios), caught
+            # where the name could not see it. The author (a declared measure's
+            # allow_rate_agg) or the query (spec.allow_rate_agg) may vouch that
+            # the column is additive.
+            if not spec.allow_rate_agg:
+                for out_name, func in measures.items():
+                    if func not in _RATE_GUARD_AGGS:
+                        continue
+                    md = self._measures.get(out_name)
+                    if md is not None and md.allow_rate_agg:
+                        continue
+                    src = derived.get(out_name, out_name)
+                    if not (isinstance(src, str)
+                            and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", src)
+                            and src in fact_types):
+                        continue
+                    if self._looks_like_per_row_ratio(
+                            con, "q_fact", src, fact_types[src], fact_where):
+                        raise ValueError(
+                            f"Measure '{out_name}': agg='{func}' aggregates column "
+                            f"'{src}', whose values look like per-row ratios (a "
+                            f"floating column centred near 1.0) — summing per-row "
+                            f"ratios is meaningless and their mean overweights small "
+                            f"rows. The blended rate is sum(numerator) / "
+                            f"sum(denominator): declare a ratio measure "
+                            f"(ratio=(numerator, denominator)). See `tracebi "
+                            f"knowledge ratio-of-totals`. If this column really is an "
+                            f"additive quantity, pass allow_rate_agg=True (on the "
+                            f"measure or the query)."
+                        )
 
-        # ── Load dimensions: those grouped by, those filtered on, AND the
-        # snapshot-date dimension each period_end measure names ───
-        needed_dims = {dim_name for dim_name, _ in parsed_dims}
-        needed_dims |= {p.dim_name for p in predicates if p.is_dim}
-        period_end_dims: dict[str, tuple[str, str]] = {}   # {name: (dim, attr)}
-        for pname, (value_col, date_ref) in period_ends.items():
-            date_dim, date_attr = date_ref.split(".", 1)
-            if date_dim not in self._dimensions:
-                raise ValueError(
-                    f"period_end measure '{pname}': dimension '{date_dim}' is "
-                    f"not registered in model '{self.name}'. Available: "
-                    f"{list(self._dimensions.keys())}"
-                )
-            period_end_dims[pname] = (date_dim, date_attr)
-            needed_dims.add(date_dim)
-        dim_dfs: dict[str, pd.DataFrame] = {}
-        for dim_name in needed_dims:
-            dim_def = self._dimensions[dim_name]
-            dim_ds = self.load(dim_def.table_name)
-            lineage.extend(dim_ds.lineage)
-            dim_dfs[dim_name] = dim_ds.to_pandas()
+            filter_tree = self._parse_filters(filters, fact_def, fact_cols)
+            # The flat leaf set drives dim loading, per-condition lineage, and
+            # dim-value validation — none of which cares about the AND/OR
+            # structure; only the WHERE renderer (via filter_tree) does.
+            predicates = _filter_leaves(filter_tree)
+            # A predicate is `pushed_down` only when the connector ACTUALLY
+            # filtered at source — which its load node records as pushdown=True
+            # (it requires supports_pushdown() and a filter). The old guard
+            # `fact_ds.lineage` is always truthy (a DataSet always has a load
+            # node), so it marked every simple equality filter pushed_down even
+            # against a connector that ignored the hint and returned every row.
+            # The engine re-applies all predicates regardless (idempotent), so
+            # this only corrects the lineage flag — but a receipt that claims a
+            # source-side filter that never happened is exactly the kind of
+            # untruth this project refuses.
+            load_pushed_down = any(
+                (node.metadata or {}).get("pushdown") for node in fact_nodes
+            )
+            pushed = set(pushdown) if load_pushed_down else set()
 
-        # A typo'd column must never produce a silently wrong result.
-        self._validate_query_columns(
-            fact_def, fact_df, dim_dfs, parsed_dims, measures, {}
-        )
-        # period_end measures name a fact value column and a snapshot-date
-        # dimension attribute — both outside `measures`/`parsed_dims`, so
-        # validate them here rather than letting a typo surface as a raw engine
-        # error deep in the internal aggregation.
-        for pname, (value_col, date_ref) in period_ends.items():
-            if value_col not in fact_df.columns:
-                raise ValueError(
-                    f"period_end measure '{pname}': value column '{value_col}' "
-                    f"is not a column of fact '{fact_def.table_name}'. "
-                    f"Columns: {sorted(fact_df.columns)}."
-                )
-            date_dim, date_attr = period_end_dims[pname]
-            if date_attr not in dim_dfs[date_dim].columns:
-                raise ValueError(
-                    f"period_end measure '{pname}': '{date_attr}' is not a "
-                    f"column of dimension '{date_dim}'. Columns: "
-                    f"{sorted(dim_dfs[date_dim].columns)}."
-                )
-        self._validate_dim_predicates(predicates, dim_dfs)
-        # Neither must a non-unique dimension key. Every joined dimension is
-        # checked, including ones joined only to satisfy a filter.
-        join_dims = [(d, "") for d in needed_dims]
-        self._check_dimension_keys(
-            dim_dfs, join_dims, fact_df, fact_def, allow_fanout, lineage
-        )
+            # ── Read dimensions: those grouped by, those filtered on, AND the
+            # snapshot-date dimension each period_end measure names ───
+            needed_dims = {dim_name for dim_name, _ in parsed_dims}
+            needed_dims |= {p.dim_name for p in predicates if p.is_dim}
+            period_end_dims: dict[str, tuple[str, str]] = {}   # {name: (dim, attr)}
+            for pname, (value_col, date_ref) in period_ends.items():
+                date_dim, date_attr = date_ref.split(".", 1)
+                if date_dim not in self._dimensions:
+                    raise ValueError(
+                        f"period_end measure '{pname}': dimension '{date_dim}' is "
+                        f"not registered in model '{self.name}'. Available: "
+                        f"{list(self._dimensions.keys())}"
+                    )
+                period_end_dims[pname] = (date_dim, date_attr)
+                needed_dims.add(date_dim)
+            dim_rels: dict[str, str] = {}
+            dim_cols: dict[str, set[str]] = {}
+            for dim_name in needed_dims:
+                dim_def = self._dimensions[dim_name]
+                rel = f"q_dim_{len(dim_rels)}"
+                dim_nodes, _ = self._read_table(con, aliases, dim_def.table_name,
+                                                rel, None)
+                lineage.extend(dim_nodes)
+                dim_rels[dim_name] = rel
+                dim_cols[dim_name] = set(_relation_types(con, rel))
 
-        for p in predicates:
-            lineage.append(LineageNode(
-                operation="filter",
-                description=f"Filter: {p.describe()}",
-                metadata={
-                    "target": p.target,
-                    "operator": p.op,
-                    "value": p.value,
-                    "on": "dimension" if p.is_dim else "fact",
-                    "pushed_down": p.target in pushed,
-                },
-            ))
-        for out_name, node in measure_filters.items():
-            for p in _filter_leaves(node):
+            # A typo'd column must never produce a silently wrong result.
+            self._validate_query_columns(
+                fact_def, set(fact_types), dim_cols, parsed_dims, measures, {}
+            )
+            # period_end measures name a fact value column and a snapshot-date
+            # dimension attribute — both outside `measures`/`parsed_dims`, so
+            # validate them here rather than letting a typo surface as a raw
+            # engine error deep in the internal aggregation.
+            for pname, (value_col, date_ref) in period_ends.items():
+                if value_col not in fact_types:
+                    raise ValueError(
+                        f"period_end measure '{pname}': value column '{value_col}' "
+                        f"is not a column of fact '{fact_def.table_name}'. "
+                        f"Columns: {sorted(fact_types)}."
+                    )
+                date_dim, date_attr = period_end_dims[pname]
+                if date_attr not in dim_cols[date_dim]:
+                    raise ValueError(
+                        f"period_end measure '{pname}': '{date_attr}' is not a "
+                        f"column of dimension '{date_dim}'. Columns: "
+                        f"{sorted(dim_cols[date_dim])}."
+                    )
+            self._validate_dim_predicates(predicates, dim_cols)
+            # Neither must a non-unique dimension key. Every joined dimension is
+            # checked, including ones joined only to satisfy a filter.
+            join_dims = [(d, "") for d in needed_dims]
+            self._check_dimension_keys(
+                con, dim_rels, join_dims, "q_fact", set(fact_types), fact_where,
+                fact_def, allow_fanout, lineage
+            )
+
+            for p in predicates:
                 lineage.append(LineageNode(
                     operation="filter",
-                    description=(f"Measure '{out_name}' filter: {p.describe()}"),
+                    description=f"Filter: {p.describe()}",
                     metadata={
-                        "measure": out_name,
                         "target": p.target,
                         "operator": p.op,
                         "value": p.value,
-                        "on": "fact",
-                        "pushed_down": False,
+                        "on": "dimension" if p.is_dim else "fact",
+                        "pushed_down": p.target in pushed,
                     },
                 ))
+            for out_name, node in measure_filters.items():
+                for p in _filter_leaves(node):
+                    lineage.append(LineageNode(
+                        operation="filter",
+                        description=(f"Measure '{out_name}' filter: {p.describe()}"),
+                        metadata={
+                            "measure": out_name,
+                            "target": p.target,
+                            "operator": p.op,
+                            "value": p.value,
+                            "on": "fact",
+                            "pushed_down": False,
+                        },
+                    ))
 
-        # ── Single canonical query engine: DuckDB ─────────────
-        # One engine means one semantics and one set of bytes, so a receipt
-        # reproduces no matter which environment re-runs it. DuckDB is a
-        # required extra (guarded at the top of execute); its absence is a
-        # clear install error rather than a silent pandas fallback that
-        # returned different numbers for NULL groups, integer sums,
-        # `contains`, and non-aggregate row order.
-        result_df = self._execute_duckdb(
-            fact_df=fact_df,
-            fact_def=fact_def,
-            dim_dfs=dim_dfs,
-            parsed_dims=parsed_dims,
-            measures=measures,
-            filter_tree=filter_tree,
-            aggregate=aggregate,
-            lineage=lineage,
-            measure_filters=measure_filters,
-        )
-        engine = "duckdb"
-        engine_version = duckdb.__version__
-
-        # Semi-additive (period_end) measures run their own internal
-        # aggregation over (query dims + snapshot date), then reduce to each
-        # group's latest snapshot — computed first so a ratio/share/rank can
-        # reference a period_end measure like any other aggregated column.
-        if period_ends:
-            result_df = self._apply_period_ends(
-                result_df, period_ends, period_end_dims,
-                fact_df=fact_df, fact_def=fact_def, dim_dfs=dim_dfs,
-                parsed_dims=parsed_dims, filter_tree=filter_tree,
+            # ── Single canonical query engine: DuckDB ─────────────
+            # One engine means one semantics and one set of bytes, so a receipt
+            # reproduces no matter which environment re-runs it. DuckDB is a
+            # required extra (guarded at the top of execute); its absence is a
+            # clear install error rather than a silent pandas fallback that
+            # returned different numbers for NULL groups, integer sums,
+            # `contains`, and non-aggregate row order.
+            result_df = self._execute_duckdb(
+                con=con,
+                fact_rel="q_fact",
+                fact_def=fact_def,
+                dim_rels=dim_rels,
+                parsed_dims=parsed_dims,
+                measures=measures,
+                filter_tree=filter_tree,
+                aggregate=aggregate,
+                lineage=lineage,
+                measure_filters=measure_filters,
             )
-            lineage.append(LineageNode(
-                operation="assign",
-                description=("Semi-additive measure(s): " + ", ".join(
-                    f"{k} = period_end({v[0]} over {v[1]})"
-                    for k, v in period_ends.items())),
-                metadata={"period_ends": {k: list(v)
-                                          for k, v in period_ends.items()}},
-            ))
+            engine = "duckdb"
+            engine_version = duckdb.__version__
+
+            # Semi-additive (period_end) measures run their own internal
+            # aggregation over (query dims + snapshot date), then reduce to each
+            # group's latest snapshot — computed first so a ratio/share/rank can
+            # reference a period_end measure like any other aggregated column.
+            # The inner aggregation runs through the same connection.
+            if period_ends:
+                result_df = self._apply_period_ends(
+                    result_df, period_ends, period_end_dims,
+                    con=con, fact_def=fact_def, dim_rels=dim_rels,
+                    parsed_dims=parsed_dims, filter_tree=filter_tree,
+                )
+                lineage.append(LineageNode(
+                    operation="assign",
+                    description=("Semi-additive measure(s): " + ", ".join(
+                        f"{k} = period_end({v[0]} over {v[1]})"
+                        for k, v in period_ends.items())),
+                    metadata={"period_ends": {k: list(v)
+                                              for k, v in period_ends.items()}},
+                ))
+
+        # The post steps below (ratios, shares, combines, windows, period over
+        # period, to-date, HAVING, ordering, labels) run on the aggregated
+        # result, which is small: one row per group, not per fact row.
 
         # Ratios divide the aggregated totals, so they must run after the
         # engine — sum(margin)/sum(revenue), not the mean of row ratios.
@@ -2393,26 +2613,30 @@ class DataModel:
                          runnings, period_ends, partitions, pops, to_dates,
                          filtered, combines)
 
-    def _apply_derived(
+    def _derived_view(
         self,
-        df: pd.DataFrame,
+        con,
+        base_rel: str,
+        rel: str,
         derived: dict[str, str],
         fact_def: "_FactDef",
-    ) -> pd.DataFrame:
+    ) -> None:
         """
-        Materialise row-level measure expressions onto the fact frame.
+        Create *rel*: the fact relation *base_rel* with each row-level measure
+        expression materialised as a column, compiled to SQL.
 
-        Validates every referenced name against the frame's actual columns
+        Validates every referenced name against the relation's actual columns
         first — an unknown column must fail loudly, never evaluate to NaN
         and quietly poison a total.
         """
         if not derived:
-            return df
-        cols = set(df.columns)
-        out = df.copy()
+            con.execute(f'CREATE TEMP VIEW "{rel}" AS SELECT * FROM "{base_rel}"')
+            return
+        cols = set(_relation_types(con, base_rel))
+        exprs: dict[str, str] = {}
         for out_col, expression in derived.items():
             if expression in cols:            # plain rename/alias
-                out[out_col] = out[expression]
+                exprs[out_col] = _ident(expression)
                 continue
             referenced = [
                 t for t in _EXPR_TOKEN.findall(expression)
@@ -2427,13 +2651,26 @@ class DataModel:
                         f"Available columns: {sorted(cols)}"
                     )
             try:
-                out[out_col] = out.eval(expression)
+                sql = _row_expr_sql(expression)
+                # Bound here, one expression at a time, so a type error names
+                # its measure.
+                dtype = con.execute(
+                    f'DESCRIBE SELECT {sql} AS x FROM "{base_rel}"').fetchone()[1]
             except Exception as exc:  # noqa: BLE001 — re-raised with context
                 raise ValueError(
                     f"Measure '{out_col}' expression {expression!r} could not "
                     f"be evaluated: {type(exc).__name__}: {exc}"
                 ) from exc
-        return out
+            # A NaN the arithmetic makes (0 / 0) is a null, as it always was
+            # when the derived column reached the engine from a frame: sum
+            # skips it rather than becoming NaN.
+            exprs[out_col] = (f"CASE WHEN isnan({sql}) THEN NULL ELSE {sql} END"
+                              if dtype in ("DOUBLE", "FLOAT") else sql)
+        replaced = [c for c in exprs if c in cols]
+        star = ("* EXCLUDE (" + ", ".join(_ident(c) for c in replaced) + ")"
+                if replaced else "*")
+        select = ", ".join([star] + [f"{e} AS {_ident(c)}" for c, e in exprs.items()])
+        con.execute(f'CREATE TEMP VIEW "{rel}" AS SELECT {select} FROM "{base_rel}"')
 
     def _apply_ratios(
         self,
@@ -2681,9 +2918,9 @@ class DataModel:
         period_ends: dict[str, tuple[str, str]],
         period_end_dims: dict[str, tuple[str, str]],
         *,
-        fact_df: pd.DataFrame,
+        con,
         fact_def: "_FactDef",
-        dim_dfs: dict[str, pd.DataFrame],
+        dim_rels: dict[str, str],
         parsed_dims: list[tuple[str, str]],
         filter_tree: "_FilterNode",
     ) -> pd.DataFrame:
@@ -2718,7 +2955,7 @@ class DataModel:
             if (date_dim, date_attr) not in inner_dims:
                 inner_dims.append((date_dim, date_attr))
             snap = self._execute_duckdb(
-                fact_df=fact_df, fact_def=fact_def, dim_dfs=dim_dfs,
+                con=con, fact_rel="q_fact", fact_def=fact_def, dim_rels=dim_rels,
                 parsed_dims=inner_dims, measures={value_col: "sum"},
                 filter_tree=filter_tree, aggregate=True, lineage=[],
             )
@@ -2736,24 +2973,31 @@ class DataModel:
         return out
 
     @staticmethod
-    def _looks_like_per_row_ratio(series: "pd.Series") -> bool:
+    def _looks_like_per_row_ratio(con, rel: str, column: str, dtype: str,
+                                  where: "tuple[str, list]") -> bool:
         """Value-based signal that a column holds per-row ratios (marks,
         multiples) rather than an additive quantity: floating, mostly
         non-integer, and a robust centre within a 2× band of 1.0. Additive
         business quantities (money, counts, sizes) are essentially never centred
         at ~1, so this fires narrowly. Uses the median, so a heavy tail (one
         316,000× warrant) does not hide the ~1.0 centre; gated on row count so
-        small fixtures never trip it."""
-        if not pd.api.types.is_float_dtype(series):
+        small fixtures never trip it. Computed in the engine over the fact's
+        rows (*where*: the pushed-down filter its load held)."""
+        if dtype not in ("DOUBLE", "FLOAT"):
             return False
-        a = series[series.notna()].abs()
-        a = a[a != float("inf")]
-        if len(a) < _RATE_MIN_ROWS:
+        where_sql, params = where
+        n, non_integer, med = con.execute(
+            "SELECT count(*), avg(CASE WHEN x % 1 <> 0 THEN 1.0 ELSE 0.0 END), "
+            f"median(x) FROM (SELECT abs({_ident(column)}) AS x FROM \"{rel}\""
+            + (f" WHERE {where_sql}" if where_sql else "")
+            + ") WHERE x IS NOT NULL AND NOT isnan(x) AND x <> 'inf'::DOUBLE",
+            params,
+        ).fetchone()
+        if n < _RATE_MIN_ROWS:
             return False
-        if float((a.mod(1.0) != 0.0).mean()) < 0.5:   # mostly non-integer
+        if float(non_integer) < 0.5:   # mostly non-integer
             return False
-        med = float(a.median())
-        return _RATE_BAND_LO <= med <= _RATE_BAND_HI
+        return _RATE_BAND_LO <= float(med) <= _RATE_BAND_HI
 
     def _parse_filters(
         self,
@@ -2990,7 +3234,7 @@ class DataModel:
     def _validate_dim_predicates(
         self,
         preds: list[_Predicate],
-        dim_dfs: dict[str, pd.DataFrame],
+        dim_cols: dict[str, set[str]],
     ) -> None:
         """Check that every dimension predicate's attribute actually exists."""
         for p in preds:
@@ -3004,7 +3248,7 @@ class DataModel:
                     f"dimension '{p.dim_name}'.{self._hint(p.attribute, declared)} "
                     f"Declared attributes: {declared}"
                 )
-            cols = set(dim_dfs[p.dim_name].columns)
+            cols = dim_cols[p.dim_name]
             if p.attribute not in cols:
                 raise ValueError(
                     f"Filter attribute '{p.attribute}' not found on dimension "
@@ -3015,9 +3259,12 @@ class DataModel:
 
     def _check_dimension_keys(
         self,
-        dim_dfs: dict[str, pd.DataFrame],
+        con,
+        dim_rels: dict[str, str],
         parsed_dims: list[tuple[str, str]],
-        fact_df: pd.DataFrame,
+        fact_rel: str,
+        fact_cols: set[str],
+        fact_where: "tuple[str, list]",
         fact_def: "_FactDef",
         allow_fanout: bool,
         lineage: list[LineageNode],
@@ -3035,28 +3282,48 @@ class DataModel:
         many-to-many) but the opt-in is recorded as a warning lineage node
         so the audit trail shows the multiplication was intentional.
         """
+        where_sql, where_params = fact_where
+        fact_rows_sql = (f'SELECT * FROM "{fact_rel}"'
+                         + (f" WHERE {where_sql}" if where_sql else ""))
         for dim_name in {d for d, _ in parsed_dims}:
             dim_def = self._dimensions[dim_name]
-            dim_df = dim_dfs[dim_name]
+            rel = dim_rels[dim_name]
             key = dim_def.key_col
+            k = _ident(key)
 
-            n_null = int(dim_df[key].isna().sum())
-            dup_mask = dim_df[key].duplicated(keep=False)
-            n_dup_rows = int(dup_mask.sum())
+            n_null = int(con.execute(
+                f'SELECT count(*) FROM "{rel}" WHERE {k} IS NULL').fetchone()[0])
+            # Every repeated key (a null counts, as it repeats too), in the
+            # order it first appears.
+            dups = con.execute(
+                f"SELECT k, c FROM (SELECT {k} AS k, count(*) AS c, min(rn) AS rn "
+                f'FROM (SELECT {k}, row_number() OVER () AS rn FROM "{rel}") '
+                f"GROUP BY {k}) WHERE c > 1 ORDER BY rn"
+            ).fetchall()
+            n_dup_rows = sum(int(c) for _, c in dups)
 
             if n_dup_rows:
-                dup_values = dim_df.loc[dup_mask, key].drop_duplicates()
-                sample = [repr(v) for v in dup_values.head(3).tolist()]
+                dup_values = [v for v, _ in dups]
+                sample = [repr(v) for v in dup_values[:3]]
                 if len(dup_values) > 3:
                     sample.append("…")
-                # Rows the fact side would gain, for the keys it actually uses.
+                # Rows the fact side would gain, for the keys it actually uses:
+                # each fact row counts its key's dimension rows, or 1.
+                fact_rows = int(con.execute(
+                    f"SELECT count(*) FROM ({fact_rows_sql})", where_params
+                ).fetchone()[0])
                 fk_col = fact_def.foreign_keys.get(dim_name, key)
-                if fk_col in fact_df.columns:
-                    counts = dim_df[key].value_counts()
-                    rows_after = int(fact_df[fk_col].map(counts).fillna(1).sum())
+                if fk_col in fact_cols:
+                    rows_after = int(con.execute(
+                        f"SELECT coalesce(sum(coalesce(d.c, 1)), 0) "
+                        f"FROM ({fact_rows_sql}) f LEFT JOIN (SELECT {k} AS k, "
+                        f'count(*) AS c FROM "{rel}" WHERE {k} IS NOT NULL '
+                        f"GROUP BY {k}) d ON f.{_ident(fk_col)} = d.k",
+                        where_params,
+                    ).fetchone()[0])
                 else:
-                    rows_after = len(fact_df)
-                factor = (rows_after / len(fact_df)) if len(fact_df) else 1.0
+                    rows_after = fact_rows
+                factor = (rows_after / fact_rows) if fact_rows else 1.0
 
                 if not allow_fanout:
                     raise ValueError(
@@ -3064,7 +3331,7 @@ class DataModel:
                         f"'{dim_def.table_name}.{key}' repeats across "
                         f"{n_dup_rows} rows ({len(dup_values)} duplicated "
                         f"value(s): {', '.join(sample)}). Joining would fan "
-                        f"out the fact table {len(fact_df)} → {rows_after} "
+                        f"out the fact table {fact_rows} → {rows_after} "
                         f"rows (x{factor:.2f}) and inflate every additive "
                         f"measure. Deduplicate the dimension, pick a key "
                         f"column that is unique, or pass allow_fanout=True "
@@ -3083,7 +3350,7 @@ class DataModel:
                         "key_column": key,
                         "duplicate_rows": n_dup_rows,
                         "duplicate_values": len(dup_values),
-                        "rows_before": len(fact_df),
+                        "rows_before": fact_rows,
                         "rows_after": rows_after,
                         "fanout_factor": round(factor, 4),
                         "allow_fanout": True,
@@ -3170,8 +3437,8 @@ class DataModel:
     def _validate_query_columns(
         self,
         fact_def,
-        fact_df: pd.DataFrame,
-        dim_dfs: dict[str, pd.DataFrame],
+        fact_cols: set[str],
+        dim_cols_by_name: dict[str, set[str]],
         parsed_dims: list[tuple[str, str]],
         measures: dict[str, str],
         filters: dict[str, Any],
@@ -3179,7 +3446,6 @@ class DataModel:
         """Raise ValueError for any measure, filter, or dimension-attribute
         reference that doesn't exist. The query engine relies on this —
         a typo must fail loudly, never return a silently wrong result."""
-        fact_cols = set(fact_df.columns)
         for col in measures:
             if col not in fact_cols:
                 raise ValueError(
@@ -3196,7 +3462,7 @@ class DataModel:
                 )
         for dim_name, attribute in parsed_dims:
             dim_def = self._dimensions[dim_name]
-            dim_cols = set(dim_dfs[dim_name].columns)
+            dim_cols = dim_cols_by_name[dim_name]
             derived = dim_def.derived.get(attribute)
             if derived is not None:
                 # A declared derived attribute (e.g. a date grain): valid as a
@@ -3558,9 +3824,10 @@ class DataModel:
     def _execute_duckdb(
         self,
         *,
-        fact_df: pd.DataFrame,
+        con,
+        fact_rel: str,
         fact_def: _FactDef,
-        dim_dfs: dict[str, pd.DataFrame],
+        dim_rels: dict[str, str],
         parsed_dims: list[tuple[str, str]],
         measures: dict[str, str],
         filter_tree: "_FilterNode",
@@ -3568,134 +3835,126 @@ class DataModel:
         lineage: list[LineageNode],
         measure_filters: "Optional[dict[str, _FilterNode]]" = None,
     ) -> pd.DataFrame:
-        import duckdb
-
-        con = duckdb.connect(":memory:")
-        try:
-            con.register("fact", fact_df)
-            for dim_name, dim_df in dim_dfs.items():
-                con.register(f"dim_{dim_name}", dim_df)
-
-            group_cols_sql: list[str] = []
-            select_cols_sql: list[str] = []
-            for dim_name, attribute in parsed_dims:
-                alias = f'"{dim_name}.{attribute}"'
-                derived = self._dimensions[dim_name].derived.get(attribute)
-                if derived and derived["kind"] == "date_trunc":
-                    # A declared date grain: group by date_trunc(grain, source).
-                    # grain is validated against a closed set at declaration, so
-                    # it is never attacker/free text here.
-                    col_sql = (f"date_trunc('{derived['grain']}', "
-                               f'dim_{dim_name}."{derived["source"]}")')
-                elif derived and derived["kind"] == "bin":
-                    # A declared value band: CASE the source into ranges. edges
-                    # are validated floats (never free text); labels are quoted
-                    # with '' escaping. NULL groups as NULL, not the top band.
-                    src_sql = f'dim_{dim_name}."{derived["source"]}"'
-                    edges, labels = derived["edges"], derived["labels"]
-                    whens = [f"WHEN {src_sql} IS NULL THEN NULL"]
-                    for i, edge in enumerate(edges):
-                        lit = labels[i].replace("'", "''")
-                        whens.append(f"WHEN {src_sql} < {edge} THEN '{lit}'")
-                    else_lit = labels[-1].replace("'", "''")
-                    col_sql = ("CASE " + " ".join(whens)
-                               + f" ELSE '{else_lit}' END")
-                else:
-                    col_sql = f'dim_{dim_name}."{attribute}"'
-                select_cols_sql.append(f"{col_sql} AS {alias}")
-                group_cols_sql.append(alias)
-
-            # Parameters of the SELECT list (a measure's FILTER clause), which
-            # come before the WHERE's in the SQL text, so they lead the list.
-            select_params: list[Any] = []
-            if aggregate:
-                for col, func in measures.items():
-                    func_l = func.lower()
-                    frac = _percentile_fraction(func_l)
-                    if not (frac is not None or func_l in _AGG_FUNCS):
-                        raise ValueError(
-                            f"Unsupported aggregation '{func}' for measure '{col}'"
-                        )
-                    if frac is not None:
-                        # Interpolated percentile (p90 → quantile_cont(col, 0.9)).
-                        # Deterministic; the fraction comes from a validated
-                        # p0–p100 integer, never free text.
-                        agg_sql = f'quantile_cont(fact."{col}", {frac})'
-                    elif func_l == "nunique":
-                        agg_sql = f'COUNT(DISTINCT fact."{col}")'
-                    else:
-                        sql_func = "AVG" if func_l == "mean" else func_l.upper()
-                        agg_sql = f'{sql_func}(fact."{col}")'
-                    node = (measure_filters or {}).get(col)
-                    if node is not None:
-                        # The measure's own filter: aggregate only the rows it
-                        # matches. Other measures in the same query are unaffected.
-                        f_sql, f_params = self._filter_where(node)
-                        agg_sql += f" FILTER (WHERE {f_sql})"
-                        select_params.extend(f_params)
-                    select_cols_sql.append(f'{agg_sql} AS "{col}"')
+        """The star query, over the relations the query connection holds:
+        *fact_rel* as ``fact`` and each of *dim_rels* as ``dim_<name>``."""
+        group_cols_sql: list[str] = []
+        select_cols_sql: list[str] = []
+        for dim_name, attribute in parsed_dims:
+            alias = f'"{dim_name}.{attribute}"'
+            derived = self._dimensions[dim_name].derived.get(attribute)
+            if derived and derived["kind"] == "date_trunc":
+                # A declared date grain: group by date_trunc(grain, source).
+                # grain is validated against a closed set at declaration, so
+                # it is never attacker/free text here.
+                col_sql = (f"date_trunc('{derived['grain']}', "
+                           f'dim_{dim_name}."{derived["source"]}")')
+            elif derived and derived["kind"] == "bin":
+                # A declared value band: CASE the source into ranges. edges
+                # are validated floats (never free text); labels are quoted
+                # with '' escaping. NULL groups as NULL, not the top band.
+                src_sql = f'dim_{dim_name}."{derived["source"]}"'
+                edges, labels = derived["edges"], derived["labels"]
+                whens = [f"WHEN {src_sql} IS NULL THEN NULL"]
+                for i, edge in enumerate(edges):
+                    lit = labels[i].replace("'", "''")
+                    whens.append(f"WHEN {src_sql} < {edge} THEN '{lit}'")
+                else_lit = labels[-1].replace("'", "''")
+                col_sql = ("CASE " + " ".join(whens)
+                           + f" ELSE '{else_lit}' END")
             else:
-                for col in measures.keys():
-                    select_cols_sql.append(f'fact."{col}" AS "{col}"')
+                col_sql = f'dim_{dim_name}."{attribute}"'
+            select_cols_sql.append(f"{col_sql} AS {alias}")
+            group_cols_sql.append(alias)
 
-            # Join every loaded dimension — those grouped by and those only
-            # referenced in a filter.
-            from_clause = "fact"
-            for dim_name in dim_dfs:
-                dim_def = self._dimensions[dim_name]
-                fk_col = fact_def.foreign_keys.get(dim_name, dim_def.key_col)
-                from_clause += (
-                    f' LEFT JOIN dim_{dim_name} '
-                    f'ON fact."{fk_col}" = dim_{dim_name}."{dim_def.key_col}"'
-                )
-                lineage.append(LineageNode(
-                    operation="join",
-                    description=(
-                        f"Joined fact '{fact_def.table_name}' → dim "
-                        f"'{dim_def.table_name}' on {fk_col} = "
-                        f"{dim_def.key_col} (left)"
-                    ),
-                    metadata={
-                        "fact":      fact_def.table_name,
-                        "dimension": dim_def.table_name,
-                        "fact_key":  fk_col,
-                        "dim_key":   dim_def.key_col,
-                        "engine":    "duckdb",
-                    },
-                ))
+        # Parameters of the SELECT list (a measure's FILTER clause), which
+        # come before the WHERE's in the SQL text, so they lead the list.
+        select_params: list[Any] = []
+        if aggregate:
+            for col, func in measures.items():
+                func_l = func.lower()
+                frac = _percentile_fraction(func_l)
+                if not (frac is not None or func_l in _AGG_FUNCS):
+                    raise ValueError(
+                        f"Unsupported aggregation '{func}' for measure '{col}'"
+                    )
+                if frac is not None:
+                    # Interpolated percentile (p90 → quantile_cont(col, 0.9)).
+                    # Deterministic; the fraction comes from a validated
+                    # p0–p100 integer, never free text.
+                    agg_sql = f'quantile_cont(fact."{col}", {frac})'
+                elif func_l == "nunique":
+                    agg_sql = f'COUNT(DISTINCT fact."{col}")'
+                else:
+                    sql_func = "AVG" if func_l == "mean" else func_l.upper()
+                    agg_sql = f'{sql_func}(fact."{col}")'
+                node = (measure_filters or {}).get(col)
+                if node is not None:
+                    # The measure's own filter: aggregate only the rows it
+                    # matches. Other measures in the same query are unaffected.
+                    f_sql, f_params = self._filter_where(node)
+                    agg_sql += f" FILTER (WHERE {f_sql})"
+                    select_params.extend(f_params)
+                select_cols_sql.append(f'{agg_sql} AS "{col}"')
+        else:
+            for col in measures.keys():
+                select_cols_sql.append(f'fact."{col}" AS "{col}"')
 
-            # The filter tree renders to one parameterised boolean expression —
-            # a flat AND for the common case, parenthesised AND/OR when the
-            # query used an `or`/`and` group.
-            where_sql, params = self._filter_where(filter_tree)
+        # Join every loaded dimension — those grouped by and those only
+        # referenced in a filter.
+        from_clause = f'"{fact_rel}" AS fact'
+        for dim_name, rel in dim_rels.items():
+            dim_def = self._dimensions[dim_name]
+            fk_col = fact_def.foreign_keys.get(dim_name, dim_def.key_col)
+            from_clause += (
+                f' LEFT JOIN "{rel}" AS dim_{dim_name} '
+                f'ON fact."{fk_col}" = dim_{dim_name}."{dim_def.key_col}"'
+            )
+            lineage.append(LineageNode(
+                operation="join",
+                description=(
+                    f"Joined fact '{fact_def.table_name}' → dim "
+                    f"'{dim_def.table_name}' on {fk_col} = "
+                    f"{dim_def.key_col} (left)"
+                ),
+                metadata={
+                    "fact":      fact_def.table_name,
+                    "dimension": dim_def.table_name,
+                    "fact_key":  fk_col,
+                    "dim_key":   dim_def.key_col,
+                    "engine":    "duckdb",
+                },
+            ))
 
-            # A dimensionless aggregate with no engine measures (its only
-            # measures are semi-additive period_ends, filled in afterwards)
-            # would emit an empty SELECT list. Emit a single-row skeleton the
-            # post-passes attach to, then drop the placeholder column.
-            skeleton = aggregate and not select_cols_sql
-            if skeleton:
-                select_cols_sql = ["1 AS __skeleton__"]
+        # The filter tree renders to one parameterised boolean expression —
+        # a flat AND for the common case, parenthesised AND/OR when the
+        # query used an `or`/`and` group.
+        where_sql, params = self._filter_where(filter_tree)
 
-            sql = "SELECT " + ", ".join(select_cols_sql) + f" FROM {from_clause}"
-            if where_sql:
-                sql += " WHERE " + where_sql
-            if skeleton:
-                sql += " LIMIT 1"
-            if aggregate and group_cols_sql:
-                sql += " GROUP BY " + ", ".join(group_cols_sql)
-                # Deterministic row order. Without it DuckDB returns groups in
-                # hash-table order, which varies between identical runs — so
-                # DataSet.fingerprint() differed across runs of the same query
-                # and manifest fingerprints were not re-verifiable.
-                sql += " ORDER BY " + ", ".join(group_cols_sql)
+        # A dimensionless aggregate with no engine measures (its only
+        # measures are semi-additive period_ends, filled in afterwards)
+        # would emit an empty SELECT list. Emit a single-row skeleton the
+        # post-passes attach to, then drop the placeholder column.
+        skeleton = aggregate and not select_cols_sql
+        if skeleton:
+            select_cols_sql = ["1 AS __skeleton__"]
 
-            out = con.execute(sql, select_params + params).df()
-            if skeleton:
-                out = out.drop(columns=["__skeleton__"])
-            return out
-        finally:
-            con.close()
+        sql = "SELECT " + ", ".join(select_cols_sql) + f" FROM {from_clause}"
+        if where_sql:
+            sql += " WHERE " + where_sql
+        if skeleton:
+            sql += " LIMIT 1"
+        if aggregate and group_cols_sql:
+            sql += " GROUP BY " + ", ".join(group_cols_sql)
+            # Deterministic row order. Without it DuckDB returns groups in
+            # hash-table order, which varies between identical runs — so
+            # DataSet.fingerprint() differed across runs of the same query
+            # and manifest fingerprints were not re-verifiable.
+            sql += " ORDER BY " + ", ".join(group_cols_sql)
+
+        out = con.execute(sql, select_params + params).df()
+        if skeleton:
+            out = out.drop(columns=["__skeleton__"])
+        return out
 
     # ── Inspection ─────────────────────────────────────────────
 

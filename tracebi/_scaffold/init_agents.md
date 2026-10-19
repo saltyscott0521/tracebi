@@ -24,9 +24,10 @@ honest path costs one attribute.
 
 ```
 ⓪  inputs/       raw data lands here (a CSV, an API export, a SQL dump)
-①  transforms/   ordinary pandas: clean it, then SINK clean star-schema
-                 tables into the warehouse (data/warehouse.duckdb) and
-                 declare a SINK CONTRACT on what landed
+①  transforms/   SQL by default (<name>.sql; pandas is the escape hatch):
+                 clean it, then SINK clean star-schema tables into the
+                 warehouse (data/warehouse.duckdb) and declare a SINK
+                 CONTRACT on what landed (<name>.contract.yaml beside it)
                         ── freeze: the warehouse + its contract ──
 ②  models/       a declarative DataModel over the sink: grain, keys, measures.
                  It reads the warehouse; it never sees the transform.
@@ -41,7 +42,7 @@ honest path costs one attribute.
 
 A model, its transform and its reports belong together, and a **pipeline**
 runs them as one: `models/<model>.yaml`, `pipelines/<model>.yaml` (`transform:`,
-`models:`, `reports: all`, `schedule:`; it only names the Python transform),
+`models:`, `reports: all`, `schedule:`; it only names the transform),
 `reports/<model>/`. A source is `connections/<name>.yaml`.
 `tracebi run-pipeline <model>` runs the transform, then builds every report in
 `reports/<model>/`, each with its trace; the app's **Refresh data** (Data,
@@ -56,21 +57,32 @@ label (added by the build when you write none); the `<h1>` is the name or findin
 
 **Folder permissions.** A folder under `reports/` (a directory that is not a package) may hold a `_folder.yaml` granting `view`, `build`, `publish` and `manage` to sign-in groups or names (`docs/reference/folder-yaml.md`). With none, roles decide as before. A report in a folder you cannot view is not listed and every read of it answers as if it did not exist, so a "no such report" over the gateway can mean "not yours": do not look for it another way. A `build` or `publish` refusal names the permission it needs; ask a folder manager rather than working around it.
 
-The phases are decoupled: editing a report never re-runs the pandas. Phase ①
-is unconstrained — write whatever pandas the data needs; the contract is the
-named tables you sink, not how you cleaned them. **Transforms are
-notebook-shaped**: the scaffolds use `# %%` percent cells with markdown
-cells, so your editor opens them as notebooks (collapse cells, run
-cell-by-cell, prose beside code) while the file stays plain, reviewable
-Python; literal `.ipynb` works too, and `tracebi run-transform` executes
-either top-to-bottom in a fresh namespace so the sink never comes from
-out-of-order kernel state. End the transform with a
+The phases are decoupled: editing a report never re-runs the transform. Phase ①
+is unconstrained — write whatever the data needs; the contract is the
+named tables you sink, not how you cleaned them. **Transforms are SQL by
+default**: `tracebi new-transform "<Name>"` writes `transforms/<name>.sql`,
+DuckDB statements run top to bottom in ONE fresh warehouse connection
+(`read_csv('inputs/…')` resolves against the project root; a table you
+`CREATE OR REPLACE` — not `TEMP` — is a sink table; on the object tier
+write `COPY (…) TO '{{ sink }}/<table>.parquet' (FORMAT PARQUET)`, or let
+the created table land there). Exactly two placeholders: `{{ sink }}` (the
+warehouse tracebi.yaml names) and `{{ root }}` (the project root). The
+escape hatch is pandas or polars (`--python`, which is what
+`transforms/sample_transform.py` is). **Transforms are notebook-shaped**:
+the scaffolds use `-- %%` / `# %%` cells with markdown cells, so your
+editor folds them (and opens the Python as a notebook) while the file stays
+plain, reviewable code; literal `.ipynb` works too, and
+`tracebi run-transform` executes any form top-to-bottom fresh and reports
+`form: sql | python | notebook`, so the sink never comes from
+out-of-order kernel state. Declare the sink contract beside the transform
+in `transforms/<name>.contract.yaml` (`checks:` — `- rows: fact_x` with
+`at_least: 1` beside it), or end a Python transform with a
 `with contract(...)` block (see `transforms/sample_transform.py`): declared
 checks — `rows`, `unique`, `not_null`, `foreign_key`, `values`, `reconcile` —
 run as read-only SQL at sink time, raise on failure, and record a certificate
 (`data/warehouse.contracts.json`) that report manifests join against. The
 exact claim is "the sink satisfied its contract" — never "the transform was
-verified"; nothing machine-checks the pandas above the sink.
+verified"; nothing machine-checks the SQL or pandas above the sink.
 
 ## Starter templates
 
@@ -416,7 +428,7 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `tracebi.onSelection(fn)` hears every change as `{selection, authored,
   figures}`; `tracebi.result(id)` reads a figure's current answer.
 - Methodology travels the pipeline: `contract(..., note=...)` (and per-check
-  `note=`) records the transform's STATED methodology in the certificate;
+  `note=`; `note:` in a `.contract.yaml`) records the transform's STATED methodology in the certificate;
   measure `description=` carries modeling intent. Add ONE
   `<footer class="tb-footer" data-tb-methodology></footer>` to the template and the build
   appends them after your own prose, behind "How these numbers were made" — an appendix of what the pipeline
@@ -425,10 +437,11 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
 ## The loop you run
 
 ```bash
+tracebi new-transform "<Name>"              # ① scaffold transforms/<name>.sql +
+                                            #   <name>.contract.yaml (--python: pandas)
 tracebi run-transform <name>                # ① clean + sink + contract —
-                                            #   runs .py or .ipynb top-to-bottom
-                                            #   fresh (python transforms/<name>.py
-                                            #   works too for .py)
+                                            #   runs .sql, .py or .ipynb top-to-bottom
+                                            #   fresh; says which form ran
 tracebi new-model "<Name>"                  # ② scaffold models/<name>.yaml (--python: a .py); edit it
 tracebi migrate model models/<name>.py [--write]  # a Python model → YAML; the .py stays until you delete it
 tracebi new-report "<model>/<Name>" [--layout editorial|brief|tabbed]
@@ -679,6 +692,22 @@ first, then that.) `tracebi migrate connection models/_connections/<name>.py
 [--write]` converts one. Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
 drafts a star schema from column metadata only. Edit every line marked
 `# DRAFT: review` before a report depends on it.
+
+The query engine's limits live in `tracebi.yaml` at the project root
+(`tracebi init` writes a commented one): `engine: {memory_limit, threads,
+temp_directory, query_timeout_s}`. Every model query runs in one read-only
+DuckDB connection over the warehouse that cannot open a file, a URL, an
+extension or another database: a model source that reaches for
+`read_csv('http://…')` is refused by DuckDB, by name. An Explore, Ask or agent
+query stops at `query_timeout_s` (default 30) with an error naming the limit.
+Only a transform reaches the outside world. The same file's `warehouse:`
+block says where the warehouse lives: `tier: file` (the default,
+`data/warehouse.duckdb`), `object` (a Parquet file per table under `s3://`,
+`gs://` or a directory; `key_id` and `secret` must be `${ENV_VAR}`) or
+`remote` (`md:…`). Write a model's connector as `type: warehouse` and sink a
+transform to `sink_target()` (`from tracebi.project_config import
+sink_target`), and both follow the tier without naming a path. Reference:
+`docs/reference/tracebi-yaml.md`.
 
 Already have dbt marts? `tracebi import dbt <path>` reads a `manifest.json`
 (a project root, or the file; it does not run dbt) and drafts `models/<name>.py`

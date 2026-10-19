@@ -60,8 +60,10 @@
 <a href="reference/model-json.html">Model files (YAML or JSON)</a>
 <a href="reference/number-formats.html">Number formats</a>
 <a href="reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="reference/queries.html">Queries</a>
 <a href="reference/report-json.html">report.json</a>
+<a href="reference/transform-sql.html">SQL transforms</a>
 <a href="reference/template-html.html">template.html — the figure grammar</a>
 <a href="reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
@@ -139,7 +141,7 @@ graph.</p>
 <p>The ideas. Read these once and the rest of the docs make sense.</p>
 <ul>
 <li><a href="concepts/the-three-phase-workflow.html">The three-phase workflow</a> — the spine: transform → model → report</li>
-<li><a href="concepts/transform.html">Transform — phase ①</a> — phase ①: unconstrained pandas that lands clean tables</li>
+<li><a href="concepts/transform.html">Transform — phase ①</a> — phase ①: SQL (or pandas, the escape hatch) that lands clean tables</li>
 <li><a href="concepts/model.html">Model — phase ②</a> — phase ②: the star-schema contract over those tables</li>
 <li><a href="concepts/models-and-connectors.html">Models and connectors</a> — a model says what the data means; a connector says where it is</li>
 <li><a href="concepts/report.html">Report — phase ③</a> — phase ③: figures that are live queries, not typed-in numbers</li>
@@ -174,6 +176,7 @@ vocabulary, so they describe what the code actually accepts.</p>
 <li><a href="reference/figure-helper.html">{{ figure("name") }}</a> — <code>{{ figure("name") }}</code>: framework-built figures, your layout</li>
 <li><a href="reference/measures.html">Measures</a> — every measure kind the semantic layer knows</li>
 <li><a href="reference/model-json.html">Model files (YAML or JSON)</a> — a model as data: <code>models/&lt;name&gt;.yaml</code> (or <code>.json</code>)</li>
+<li><a href="reference/transform-sql.html">SQL transforms</a> — a transform as SQL, and its <code>.contract.yaml</code></li>
 <li><a href="reference/queries.html">Queries</a> — filters, <code>having</code>, ordering, limits</li>
 <li><a href="reference/number-formats.html">Number formats</a> — the named formats and how defaults are derived</li>
 <li><a href="reference/cli.html">CLI reference</a> — every <code>tracebi</code> command</li>

@@ -20,6 +20,146 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-19 — SQL transforms, the contract beside them (S-3)
+
+Decision 21 of the live-reports plan. A transform is `transforms/<name>.sql`
+by default (`tracebi/transforms.py`): statements in order, in one fresh
+read-write connection taken the way `write()` takes it (so it waits for a
+reader on the file tier and carries the engine limits). Two placeholders,
+`{{ sink }}` and `{{ root }}`, substituted as text with quotes doubled;
+anything else in `{{ }}` is refused by name. Relative reads resolve against
+the project root through DuckDB's `file_search_path`; writes are not covered
+by it (DuckDB resolves a write against the process's working directory), so
+a write names `{{ sink }}` or `{{ root }}`.
+
+**A created table is a sink table, on every tier.** The reference project
+runs on the file tier and, in the pipeline journey, on the object tier, and
+no single explicit idiom works on both (`{{ sink }}` is a `.duckdb` path on
+one and a prefix on the other). So a table the script creates (not `TEMP`)
+lands where the tier says: in the file, in the attached remote database, or,
+on the object tier, copied to `<location>/<table>.parquet` after the script
+(staged and renamed in a directory, as `write()` does). The explicit `COPY …
+TO '{{ sink }}/x.parquet'` stays available and is what `new-transform`
+scaffolds on the object tier, with the staging tables `TEMP`.
+
+**The contract file shares the Python form's parser.** `contracts.declare()`
+holds the closed vocabulary once; the `c.rows(...)` methods and the
+`.contract.yaml` loader both build `{check, table, params, note?}` through it,
+and `_Contract.check()` runs a declaration. The checks run after the
+transform's connection is closed, not in it as the plan put it: on the object
+tier that connection holds in-memory tables that are not the sink, and the
+certificate's fingerprints read through the connector load path, which
+cannot open a DuckDB file the transform still holds read-write.
+
+**Both forms sink identical tables, which took two roundings.** The pandas
+transform rounds a coupon that is a numpy float (its `spread_bps` comes out
+of an `Int64` column as a numpy integer), so it rounds as numpy does: scale
+by 100, round half to even, scale back. DuckDB's `round(x, 2)` rounds a tie
+away from zero (505711.125 → .13) and `round_even(x, 2)` does not scale the
+same way (296054.975, held as 296054.97499…, → .98); the SQL spells it as
+`round_even(x * 100, 0) / 100`. Row order follows the file: `row_number()
+OVER ()` over `read_csv` numbers rows in file order, the dedupe keeps the
+first by it, and the flows carry their holding and their place within it so
+ties sort as pandas' stable sort left them. All six tables' fingerprints are
+equal, and the nine reference manifests built from the pandas warehouse
+verify as reproducing against the SQL one.
+
+Left as they were: the `init` sample, the `saas-metrics` and
+`sales-pipeline` templates, and the reference project's `saas_transform.py`
+and `affordability_transform.py` stay Python (journeys and starters depend on
+them; the plan converts only the reference transform).
+
+## 2026-10-19 — Storage tiers: one `warehouse:` block (S-2)
+
+Decision 20 of the live-reports plan. `tracebi.yaml` gains `warehouse: {tier:
+file | object | remote, location, …}`, read by `project_config.warehouse()`
+into a `tracebi.warehouse.Warehouse`. The seam that made it small is
+`Warehouse.sink`: a `str` subclass (`SinkTarget`) that remembers its
+warehouse. A transform writes `DuckDBConnector(name, database=sink_target())`
+and `contract(name, warehouse=sink_target())` exactly as before, and every
+place that already passed `connector.database` around (the contract join,
+`verify --contracts`, the Warehouse tab) carries the tier along without a new
+parameter. A model says `type: warehouse`; `type: duckdb, database:` still
+names one file.
+
+**The object tier's lock needed a second wall.** A locked connection cannot
+read files, so the views over `read_parquet` are allowed through DuckDB's
+`allowed_paths` (the exact files, globbed when the connection opens). DuckDB
+lets a statement write an allowed path as well as read it (`COPY … TO … 
+(USE_TMP_FILE false)` overwrote the warehouse in a probe), so a query
+connection that allows paths refuses `COPY`, `EXPORT`, `ATTACH` and `DETACH`
+by statement type, from `extract_statements`. The file tier is unchanged: it
+attaches READ_ONLY and allows nothing.
+
+**Stale without re-hashing.** On the object tier the certificate
+(`<location>/_contracts.json`, inside the prefix, so the freeze point still
+carries it) records each file's ETag from a SigV4-signed HEAD (checked
+against botocore's S3 signer), size and last-modified, and every record
+carries `engine_version`. A file whose version moved reads stale even when
+its bytes hash the same; `verify --contracts` says `REWRITTEN`.
+
+Not reachable here: DuckDB's `httpfs` extension cannot be fetched in this
+environment, so the S3 journey step (moto) skips with that reason and the
+same code path runs on a local directory. Not done: AWS session tokens and
+credential chains (only key_id/secret), a remote tier over Postgres (the
+model's views assume a DuckDB `main` schema), and atomic multi-table swaps on
+the object tier (each file is replaced on its own).
+
+## 2026-10-19 — The medallion layers run in DuckDB (S-4)
+
+Decision 22 of the live-reports plan. `tracebi/etl/_sql.py` compiles each
+Manipulation step to one SELECT over the relation the step before left
+(`cast` → `SELECT * REPLACE (CAST(…))`, `drop_nulls` / `filter` → `WHERE`,
+`deduplicate` → `QUALIFY row_number() OVER (PARTITION BY … ORDER BY
+__tb_row) = 1`, `rename` → `SELECT * RENAME (…)`), each materialized as a
+temporary table so every lineage node still reports rows before and after.
+Where it runs depends on the source: the same DuckDB database as the sink
+means the whole step runs inside it and ends in `CREATE OR REPLACE TABLE …
+AS SELECT`, with no frame loaded (Landing too: one CTAS); any other source's
+`load()` frame enters an in-memory DuckDB as an Arrow table and the result
+goes to the sink's `write()` as before. `execute()` on the in-warehouse path
+returns a `SinkTable` (`len()`, `lineage`, `columns`, `to_pandas()` reading
+the sink on demand) rather than a `DataSet`, because a `DataSet` is a frame.
+
+**Order is part of the fingerprint, so it is carried, not hoped for.** A
+hidden `__tb_row` is taken from the source (`rowid` for a DuckDB table, the
+frame's position for Arrow, `row_number() OVER ()` for a DuckDB view, which
+has no stored order) and the result is written `ORDER BY __tb_row`; dedupe
+keeps the lowest, which is pandas' first occurrence. The demo pipelines'
+tables fingerprint identically before and after.
+
+**A cast never changes a number silently.** DuckDB rounds `10.7` to `11`
+casting to an integer where pandas truncated, and reads the text `'10.5'` as
+`11` where pandas refused it; integer targets compile to `trunc()` and to an
+`error()` for text that is not a whole number. Text and boolean casts follow
+DuckDB's spelling (`true`, a null stays null) and are documented in
+`CAST_TYPES`. `object` is refused: in pandas it is no cast at all.
+
+**`transform(func)` is the escape hatch.** It still hands a pandas frame to
+the callable; its node says `escape_hatch: python` and the runner writes
+`{"escape_hatch": "python"}` into that layer's run row (`detail`), which
+`run-pipeline --status` prints. The Data page does not show it yet.
+
+## 2026-10-19 — S-1: the model as a schema, in a locked connection
+
+`DataModel.execute` opens one read-only DuckDB connection per call
+(`tracebi/model/engine.py`; per call, not per request, because a call is the
+one seam every caller shares: the web routes, the gateway, builds, `verify`
+and `execute_plan`). It attaches each file-backed warehouse READ_ONLY, makes
+the tables the query reads into views (or, for a source with no engine,
+loads the frame through its connector and registers it as Arrow), locks the
+connection, and runs the same star SQL as before. The views reproduce the
+frame round trip the old path did (NaN to null, DECIMAL to double, DATE to
+timestamp), which is why every fingerprint and the parity fixtures stayed
+byte-identical. Kept in pandas this round: the post-aggregation steps
+(ratios, shares, windows, pops, to-dates, HAVING, ordering, labels), on the
+small result. Not done: per-measure macros. Follow-up: the warehouse input
+fingerprint still loads the table through the connector into pandas (once
+per warehouse version, cached); a warehouse-side hash would avoid the load,
+but it is a new fingerprint algorithm and was out of scope.
+
+---
+
 ## 2026-10-19 — Decision: DuckDB-first on the server, a small engine of our own in the page
 
 **Decision.** DuckDB becomes the only engine on the server. Transforms are
@@ -619,7 +759,7 @@ pitch.
 
 | Phase | Folder | What it is | Reference impl |
 |---|---|---|---|
-| ① **Transform** | `transforms/` | Ordinary, unconstrained pandas — window functions, prose parsing, cleaning — that *sinks* clean star-schema tables into a file-backed DuckDB warehouse. The framework does not constrain this phase. | `examples/portfolio_project/transforms/holdings_transform.py` |
+| ① **Transform** | `transforms/` | Ordinary, unconstrained pandas — window functions, prose parsing, cleaning — that *sinks* clean star-schema tables into a file-backed DuckDB warehouse. The framework does not constrain this phase. | `examples/portfolio_project/transforms/holdings_transform.sql` (SQL since S-3; the pandas original is `holdings_transform_pandas.py`) |
 | ② **Model** | `models/` | A declarative `DataModel` (grain, keys, measures) over the warehouse, read by a reviewer without opening the pandas above it. It reads the sink; it never sees the transform. | `examples/portfolio_project/models/portfolio_model.yaml` |
 | ③ **Report** | `reports/` | A `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables — where every figure is a live query, re-rendered in milliseconds. (Also the home of template packages and `@register.report` factories — one folder for every report form.) | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json` |
 
