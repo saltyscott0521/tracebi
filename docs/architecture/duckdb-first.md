@@ -8,10 +8,11 @@ Everything in the three-phase workflow and the honesty rules
 ([[../../MANIFESTO]]) stands; this changes *how* each phase computes, and
 how much the report file may do on its own.
 
-**One line:** DuckDB is the only engine. Transforms are SQL by default, the
-model is a DuckDB schema the server and the page both run, the report file
-carries the slice of the model it needs and recomputes every figure live on
-a filter, and every number it shows is still a query the trace can name.
+**One line:** DuckDB is the only engine on the server. Transforms are SQL by
+default, the model is a DuckDB schema, and the report file carries the slice
+of the model it needs plus a small engine of our own that recomputes every
+figure live on a filter, offline, with no server anywhere in the loop. Every
+number it shows is still a query the trace can name.
 
 ---
 
@@ -24,13 +25,21 @@ a filter, and every number it shows is still a query the trace can name.
 2. **The server holds the model, not the data.** A hosted TraceBi should not
    need the warehouse on its own disk. DuckDB reads Parquet on object
    storage, or a remote engine, in place.
-3. **The browser gets the same engine.** DuckDB-wasm replaces parquet-wasm,
-   Arquero and the sealed-grain evaluator. What the page computes is then
-   admissible in the trace, because it is the same SQL on the same engine.
-4. **Controls are released.** A figure may run any SQL over the data the
-   file carries. Filtering one control updates every figure on the page.
-   The rule that remains is the honesty rule: the data is fingerprinted,
-   the SQL is visible, and the chip says where the number was computed.
+3. **The page gets a small engine of our own, not DuckDB.** DuckDB-wasm was
+   measured at 8.8 MB gzipped (§10). The page does not need a database: the
+   build flattens each fact with its exposed dimension attributes, so the
+   page never joins, and the query vocabulary is the closed JSON spec the
+   server already compiles to SQL. A ~50 KB engine over typed, dictionary-
+   encoded columns executes that spec directly and replaces parquet-wasm,
+   Arquero and the sealed-grain evaluator. Parity with DuckDB is proved per
+   measure kind by test, which is finite because the spec is closed.
+4. **Controls are released, offline.** A report is assumed to work with no
+   server: a `file://` page and the hosted page behave identically.
+   Filtering one control recomputes every spec figure on the page from the
+   embedded data. The rule that remains is the honesty rule: the data is
+   fingerprinted, the query is visible, and the chip says where the number
+   was computed. A SQL binding is the power lane and runs at build time
+   only; it sits fixed in the file and says so.
 5. **Not Qlik.** Live cross-filtering across every object, yes. The
    associative green-white-grey state, synthetic keys and the one-path
    constraint, no. A model's declared relationships are the paths, and a
@@ -43,32 +52,34 @@ a filter, and every number it shows is still a query the trace can name.
 | D1 | A transform is a `.sql` file by default; `.py` and `.ipynb` still run and end by handing DuckDB an Arrow table (pandas or polars). The UI names which form ran. | The trace line is drawn at the sink, so a Python transform is exactly as traceable as a SQL one. Only `report.py`, which computes after the model, stays `verifiable: false`. |
 | D2 | The warehouse has three storage tiers, chosen per project: a local `.duckdb` file (today), **Parquet on object storage** (the hosted default), or a remote engine (`ATTACH`). The freeze point is the same in all three; only its address moves. | The storage concern. Parquet also sidesteps DuckDB's storage-format versioning and the single-writer file. |
 | D3 | The model compiles to a DuckDB schema: one view per table, one `MACRO` per simple measure, and the star-schema joins as the query planner's input. Measures that need the grain (ratio, share, rank, running, percentile) stay model-level and compile per query, as now. | One SQL text the server, the page and `verify` all run. The YAML stays the contract a reviewer reads. |
-| D4 | SQL is a first-class figure binding. `{"model", "sql"}` (already in `sql_calc.py`) is promoted, documented, scaffolded, and allowed in the browser. `{{ measure() }}` and `{{ selection }}` expand before it runs. | Authors and agents write what they mean. The JSON query stays as the governed, guard-checked lane; both are stamped the same way. |
+| D4 | SQL is a first-class figure binding on the server. `{"model", "sql"}` (already in `sql_calc.py`) is promoted, documented and scaffolded; `{{ measure() }}` expands before it runs. It runs at build time and is **fixed in the file**: it does not react to filters, hosted or not. | Authors and agents write what they mean when the spec cannot. The JSON spec stays the governed lane and the only live one; a gap that drives an author to SQL is a gap to close in the spec. |
 | D5 | The report file embeds a **sub-star**: for each fact its figures use, that fact at the coarsest grain that still answers every figure and every filter combination, plus the dimensions the report exposes. The build derives it. `embed: model` widens to the whole star; `embed: none` makes a hosted-only report. A size budget refuses a file past it. | Enough to recompute locally, not the whole warehouse in every email. Additive measures let the fact pre-aggregate; a distinct count or percentile forces the finer grain, and the model knows which is which. |
-| D6 | The page holds one **selection state**; every figure's SQL is composed with it; a figure whose fact has no declared path to a selected field stays as it was and says so. | Live filtering as Power BI, Tableau and Looker do it, in a few dozen lines once the engine is in the page. |
-| D7 | DuckDB-wasm, the single-threaded `eh` build. A hosted page loads it from the app as one cached asset; a file built for sending inlines it only when it embeds data (`embed` is not `none`). CSP gains `'wasm-unsafe-eval'` and nothing else. | The identical-engine guarantee. The engine is large (§10): inlining it everywhere would add ~11 MB to every emailed file, so a file pays for it only when it carries data to compute over. The threaded build needs cross-origin isolation headers a `file://` page cannot have. |
-| D8 | The chip gains two states. **Local**: this number was computed on this page by the embedded engine from the embedded, fingerprinted data. **Live**: this figure reads a `materialized: view` over a source that can move; never green. | A reader must be able to tell a build-time server number from a click-time page number from a number that may have changed since. |
+| D6 | The page holds one **selection state**; every spec figure's query is composed with it; a figure whose fact has no declared path to a selected field stays as it was and says so; a SQL figure is fixed and says so. | Live filtering as Power BI, Tableau and Looker do it, in a few dozen lines once the engine is in the page. |
+| D7 | **`tracebi-calc`**: our own page engine, plain JavaScript, one file, inlined like the rest of the runtime. Budgets: ≤ 50 KB gzipped, and every spec query over the largest block the embed budget allows completes in ≤ 100 ms on a mid-range laptop; `scripts/ui_audit.py` ratchets both. Blocks are gzipped typed columns with dictionary-encoded strings, decoded by the browser's own `DecompressionStream`. No wasm, so no CSP change. A Rust port is the fallback if the time budget fails; the block format and message protocol are designed so the port swaps the engine and nothing else. `engine: duckdb` (DuckDB-wasm inlined, ~12 MB) is a later opt-in for a report that must recompute arbitrary SQL offline, shipped only when a real report needs it. | Offline is the baseline, so the engine must be in the file; a database engine is 36 MB because it is general, and the page's work is a closed spec over flat, typed columns. Small because it does little, correct because parity is finite, fast because the data is laid out for it. |
+| D8 | The chip gains two states and one figure mark. **Local**: this number was computed on this page by the embedded engine from the embedded, fingerprinted data. **Live**: this figure reads a `materialized: view` over a source that can move; never green. **Fixed at build**: a SQL figure that does not react to the selection. | A reader must be able to tell a build-time server number from a click-time page number from a number that may have changed since. |
 | D9 | Result fingerprints round floating-point columns to a declared precision (default 9 significant digits) and every stamped query carries a total order. `CURRENT_FINGERPRINT_ALGO` bumps. | DuckDB's parallel aggregation can return a different last bit for the same `SUM`; a byte hash would then read "drifted" on identical data. |
 | D10 | Query connections set `enable_external_access = false` and `lock_configuration = true`. Only the transform connection may load `httpfs` and friends. Credentials go through `CREATE TEMPORARY SECRET`, resolved from `${VAR}` in `connections/*.yaml` at run time, never persisted. | `read_csv('http://…')` is a read. Without this, Ask is a server-side request tool. |
 
-## 3. The engine, in two places
+## 3. Two engines, one spec
 
 ```
  source files ──SQL transform──▶ sink (Parquet or .duckdb) ──▶ model schema (views + macros)
                                        │                              │
-                                       │ fingerprinted               ├── server: build, Ask, verify
+                                       │ fingerprinted               ├── server (DuckDB): build, Ask, verify
                                        ▼                              │
-                                 sink contract                        └── page: the embedded sub-star,
-                                                                           DuckDB-wasm, the selection state
+                                 sink contract                        └── page (tracebi-calc): the flattened
+                                                                           sub-star, the selection state
 ```
 
-The same SQL text runs in both places. A figure's trace records the SQL,
-the fingerprint of every table it read (on the server, the sink tables; on
-the page, the embedded blocks), and the result fingerprint. `verify`
+The **JSON query spec** is the contract between them. The server compiles
+it to SQL and runs DuckDB; the page executes it directly over the embedded
+blocks. A figure's trace records the spec, the selection, the fingerprint
+of every table or block it read, and the result fingerprint. `verify`
 re-runs the server form. A **Local** number re-runs on the page, and the
-server can replay it from the manifest because the embedded blocks are
-fingerprinted and the SQL is recorded; that replay is what makes a page
-number admissible rather than merely displayed.
+server can replay it from the manifest because the blocks are fingerprinted
+and the spec is recorded; that replay, plus the per-measure-kind parity
+suite, is what makes a page number admissible rather than merely displayed.
+A SQL binding has only the server form.
 
 ## 4. Phase ① — transforms
 
@@ -171,39 +182,49 @@ One object on the page, replacing the single filter tuple the
 ```
 
 Composition is one function, `apply_selection(query, selection, model)`,
-shared by the server (`DataModel.query`), the page (the wasm engine) and
+shared by the server (`DataModel.query`), the page (`tracebi-calc`) and
 Ask. For each selected field it finds the path from the figure's fact
 through the model's relationships; with a path it adds the predicate, and
 without one it leaves the figure untouched and marks it
 `data-tb-unfiltered-by="dim_customer.region"` so the page can say so. A
 figure may declare `ignore: [dim_date]` to opt out of one field.
 
-Every figure re-runs on every change of the state. A value figure
-re-stamps its text with the new result and its trace row records the SQL
-with the selection expanded. The state is in the URL hash so a view can be
+Every spec figure re-runs on every change of the state; a SQL figure stays
+fixed and is marked. A value figure re-stamps its text with the new result
+and its trace row records the spec with the selection folded in. The state is in the URL hash so a view can be
 shared, and the server-side build records the empty selection as the
 canonical one `verify` re-runs.
 
 ### 7.3 What a figure may do
 
-Anything expressible as a SELECT over the embedded blocks:
+Any spec query over the embedded blocks, live:
 
 ```jsx
-<Kpi sql="SELECT {{ measure('fair_value') }} FROM fact_holdings WHERE {{ selection }}" />
-<Chart binding="by_sector" />           // a JSON query, as today, now live
-<Table sql="… QUALIFY row_number() OVER (PARTITION BY sector ORDER BY fv DESC) <= 3" />
+<Kpi binding="total_fv" />               // a JSON query; recomputed on every selection change
+<Chart binding="by_sector" />            // as today, now live
+<Table binding="top3_per_sector" />      // having + partitioned rank, in the spec, live
+<Kpi binding="sql_oddity" />             // a {"model","sql"} binding: fixed at build, marked
 ```
+
+The spec vocabulary the engine executes: measures of every declared kind
+(`sum`, `count`, `mean`, `min`, `max`, `nunique`, percentiles, filtered
+measures, `expr` over fact columns, `ratio`, `share`, `rank` with
+`partition_by`, `running`), dimensions with time grains and bins, filters,
+having, order_by, limit. Each kind has a parity test against DuckDB with
+the same inputs; a kind the engine does not implement fails the build by
+name rather than falling back to a static value.
 
 The lint that today refuses arithmetic in JSX (`lint_jsx_numbers`) stays:
 a number is still minted by a query, never by `a / b` in the template.
 What goes away is the sealed grain, the "value figures never react"
 exception, the selection evaluator, and the limit of one posted filter.
 
-### 7.4 Hosted and offline
+### 7.4 Hosted and offline are the same page
 
-A hosted page (the app, `/r/<name>`) runs the same SQL on the page when the
-block is embedded and on the server when it is not, and the app's header
-shows which. A `file://` page has only what it carries. Both show the
+A report is assumed to work offline. The hosted page (`/r/<name>`, the app)
+and the `file://` page are the same bytes and compute the same way, from
+what the file carries. `embed: none` therefore means a report with no live
+filtering anywhere, not one that filters only when hosted. Both show the
 **Local** chip for anything recomputed after the build.
 
 ## 8. Trust
@@ -247,38 +268,60 @@ recorded Local queries against the manifest's blocks.
 - **One writer**: on the file tier the transform writes to a temp file and
   renames; the server reopens read-only after a build. On the object tier
   a `COPY` to a new key and a manifest swap is atomic enough.
-- **Browser size, measured** (`@duckdb/duckdb-wasm` 1.33, 2026-10-19):
+- **Page engine size, measured and budgeted** (2026-10-19):
 
-  | | raw | gzip | inlined (base64 of gzip) |
+  | | raw | gzip | inlined |
   |---|---|---|---|
   | today's engine (worker JS + parquet-wasm) | 7.3 MB | 2.9 MB | ~3.5 MB |
-  | `duckdb-eh.wasm` + its worker | 36.7 MB | 8.8 MB | ~11.7 MB |
+  | `@duckdb/duckdb-wasm` 1.33 `eh` + worker | 36.7 MB | 8.8 MB | ~11.7 MB |
+  | **`tracebi-calc` budget** | | **≤ 50 KB** | |
 
   Browsers decompress only gzip and deflate in `DecompressionStream`, so
-  brotli does not help an inlined file. This is why D7 inlines the engine
-  only into a file that embeds data: an `embed: none` file carries neither
-  the engine nor detail rows and stays the size it is today, a hosted page
-  fetches the engine once and caches it, and a file built to be filtered
-  offline is ~12 MB larger and says so in `tracebi report build`'s output.
-  `scripts/ui_audit.py` ratchets the built sizes per report.
+  brotli would not have helped an inlined DuckDB. The measurement is why
+  the page engine is ours (D7). `scripts/ui_audit.py` ratchets the engine
+  size, each built report's size, and the slowest spec query over the
+  reference project's largest block.
 
-## 11. What goes away
+## 11. What goes away, and what stays
 
-- `tracebi-engine.worker.js`, `parquet_wasm_bg.wasm.gz`, `_engine_src/`,
-  `selection_eval.py` and the sealed-grain payload.
+Removed (small, and mostly third-party):
+
+- `tracebi-engine.worker.js` (1.1 MB: parquet-wasm, Arquero and Arrow
+  wrapped by ~200 lines of our protocol), `parquet_wasm_bg.wasm.gz`
+  (1.8 MB), `_engine_src/`.
+- `selection_eval.py` (365 lines) and `selection_eval.js` (214 lines), the
+  sealed-grain evaluator, and the subset-only branch of the runtime's
+  selection path.
 - The "controls never compute new numbers" paragraph in `capabilities.py`,
   `AGENTS.md` and `init_agents.md`, replaced by §7.3's rule.
-- The parity test between the Python and JavaScript evaluators (one engine,
-  nothing to compare); the query-semantics test narrows to the compiler.
 - Pandas as a required dependency of the query path. It remains an optional
   extra for the escape hatch and `ExcelRenderer`.
+
+Kept, and doing more (this is the library):
+
+- `tracebi.js` (~5,000 lines: hydration, the D3 chart engine, controls,
+  tabs, scenarios, the trace drawer, downloads, the stamped-figure watch).
+  Live filtering plugs into its existing selection path; the charts redraw
+  as they do today. `tracebi.css` and the React kit, untouched.
+- The query compiler in `data_model.py`: the page engine executes the spec
+  it compiles, so it becomes the parity oracle rather than being replaced.
+- `template_package.py`, stamping, manifests, `verify`, contracts, the model
+  loader, discovery, the web app, Ask, drafts, permissions.
+- The parity suite, now per measure kind against DuckDB; the query-semantics
+  test, which already pins the spec.
+- On the server, `tracebi/etl/` (~450 lines of pandas medallion layers)
+  migrates to DuckDB SQL over time; `DataSet` and lineage stay for
+  connectors and the model load path.
 
 ## 12. Not building
 
 - Qlik's associative state (possible / excluded values per field).
 - Association across models. Within a model, shared dimensions do it.
 - `ref()`-style dependencies between SQL transform files.
-- DuckDB-wasm's threaded build, or any page that needs network to open.
+- DuckDB-wasm in the page by default, or any page that needs a network or
+  a server to filter. `engine: duckdb` is the opt-in, later, if a report
+  needs arbitrary SQL recomputed offline.
+- A Rust page engine before the 100 ms budget fails on a real block.
 - A migration that rewrites pandas transforms into SQL.
 
 ## 13. Packages
@@ -290,30 +333,29 @@ because each one's seam is the next one's input.
 | # | Package | Verify |
 |---|---|---|
 | Q-1 | **Fingerprint rule** (D9): rounding + total order, algo bump, `verify` reads both algos. | The verify journey re-runs the reference project with `threads=1` and `threads=8` and reads Reproduces on both. |
-| Q-2 | **Model as schema** (D3, D10): compile views + macros, locked read-only connections, `apply_selection` as the one composition function, multi-key dimension joins. | A model with two facts and one calendar dimension on different keys; one selection reaches both; `read_csv('http://…')` from Ask is refused by name. |
-| Q-3 | **SQL binding promoted** (D4): `{{ selection }}`, scaffold and showcase figures, Ask "Keep this" writes SQL. | The author journey builds a report with a SQL KPI and a SQL table; verify reads green. |
+| Q-2 | **Model as schema** (D3, D10): compile views + macros, locked read-only connections, `apply_selection` as the one composition function (Python now, ported to the page in Q-6b), multi-key dimension joins. | A model with two facts and one calendar dimension on different keys; one selection reaches both; `read_csv('http://…')` from Ask is refused by name. |
+| Q-3 | **SQL binding promoted** (D4): scaffold and showcase figures, the fixed-at-build mark, the guides say when to reach for it. | The author journey builds a report with a SQL KPI; verify reads green; the figure carries the fixed mark and ignores a selection. |
 | Q-4 | **Storage tiers** (D2): `tracebi.yaml` warehouse block, `{{ sink }}`, secrets, object tier in the reference project behind an env var, certificate records ETags and engine version. | The pipeline journey sinks to a local MinIO-style endpoint and the model reads it; a rewritten Parquet reads stale. |
 | Q-5 | **SQL transforms** (D1): `.sql` form, `new-transform` scaffolds it, `run-transform` reports the form, the reference project's transform rewritten in SQL with the pandas one kept beside it as the escape-hatch example. | Both forms sink identical tables (fingerprints equal). |
-| Q-6 | **The page engine** (D5–D8): DuckDB-wasm inlined, the sub-star build, the selection state, live figures, Local chip, `verify --local`, `embed:` and the budget, folder `accepts`. The largest package; it splits into the build side (blocks + manifest) and the page side (engine + state) with the manifest as the seam. | The web journey filters a sector and every figure on the showcase changes, the trace shows the SQL with the selection in it, and `verify --local` replays it from the file. The audit ratchet holds the size. |
+| Q-6a | **Blocks and parity** (D5, D9): the flattened sub-star build, the typed-column block format with dictionary-encoded strings, the manifest entries, and the parity suite: every measure kind, time grain and bin, DuckDB against a reference implementation, with the fixtures Q-6b's engine must pass. | Each parity case runs the spec through DuckDB and through the reference and the fingerprints match; a rewritten block reads stale. |
+| Q-6b | **`tracebi-calc`** (D6–D8): the engine against Q-6a's fixtures, the selection state, live figures through the runtime's existing selection path, Local chip and fixed-at-build mark, `verify --local`, `embed:` and the two budgets, folder `accepts`. | The web journey filters a sector on the showcase opened from `file://` and every spec figure changes, the trace shows the spec with the selection in it, `verify --local` replays it, and the audit ratchet holds 50 KB and 100 ms. |
 | Q-7 | **Retire** (§11): remove the old engine and the evaluator, prune the tests, update the docs that describe them. | The suite passes with the three libraries gone from the tree. |
 
 Q-1 through Q-3 touch nothing a reader sees and can merge while Q-6 is
-being built. Q-4 and Q-5 are independent of Q-6. Nothing in Q-6 merges
-until the size is measured.
+being built. Q-4 and Q-5 are independent of Q-6. Q-6a's parity fixtures
+exist before Q-6b writes a line of the engine.
 
 ## 14. Open questions
 
-0. **A smaller engine.** DuckDB-wasm ships every type and the core
-   extensions; a custom build without `json`, `icu` and the parsers a page
-   never uses may come in well under the measured 8.8 MB gzipped. Worth one
-   timeboxed spike inside Q-6 before the inlining rule is final. It changes
-   the cost of D7, not the decision.
+0. **Three parity definitions to write down before Q-6a:** week and
+   quarter truncation (ISO weeks, and in which time zone a date-only column
+   is truncated), percentile interpolation (DuckDB's `quantile_cont`
+   semantics), and float summation order (covered by D9's rounding).
 
-1. **Default `embed`.** `required` makes every report live by default and
-   every file larger; `none` keeps today's files and makes live filtering a
-   hosted feature until an author opts in. The draft says `required` with
-   the budget as the guard. To confirm against real file sizes after Q-6's
-   build side exists.
+1. **Default `embed`.** `required` makes every report live by default;
+   `none` keeps a report static until an author opts in. With a 50 KB
+   engine the cost is only the blocks, so the draft says `required` with
+   the budget as the guard. To confirm against real file sizes after Q-6a.
 2. **Local in the library chip.** Whether a report whose last build is
    green but whose page is mostly Local shows Reproduces or Local in the
    Reports list. The draft says Reproduces (the build is what the list
