@@ -71,7 +71,7 @@ filterable, exactly as in a template.
 | `<Value>` | `binding`, `cell`, `format`, `id` — a number inside a sentence |
 | `<Chart>` | `binding`, `type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`), `x`, `y` (a string or a list), `color`, `valueFormat`, `stack`, `mark`, `annotate`, `facet`, `unit`, `xTitle`, `yTitle`, `palette`, `height`, `id` |
 | `<Spark>` | as `<Chart>` (default `type="area"`): the trend's shape alone, under a KPI |
-| `<Table>` | `binding`, `columns`, `labels`, `formats`, `sort`, `bars`, `totals`, `rows` (default 10; `"all"`), `selectRows`, `id` |
+| `<Table>` | `binding`, `columns`, `labels`, `formats`, `sort`, `bars`, `totals`, `rows` (default 10; `"all"`), `selectRows` (or `selectRows="dim_issuer.issuer"`: the columns a row click writes), `id` |
 
 **Controls.** A figure's number is only ever a query result. On a live page (the
 default) a `<Filter>` recomputes every figure it reaches by re-running each

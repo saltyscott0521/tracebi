@@ -697,12 +697,16 @@ span > .tb-badge.tb-verdict { display: inline-flex; }
 .tb-legend-item--select.tb-dimmed { opacity: .5; }
 .tb-chart-svg .tb-dimmed { opacity: .28; transition: opacity .15s; }
 .tb-chart-svg g.tb-series.tb-dimmed .tb-dimmed { opacity: 1; }
+/* A receded bar's own value stays readable: muted ink, not faded white. */
+.tb-chart-svg g.tb-values text.tb-dimmed { opacity: 1; fill: var(--tb-muted); }
 .tb-chart-svg circle.tb-dot.tb-picked { r: 4px; }
 
 /* A row-select table (data-tb-select-rows): the row is the target. */
 .tb-table tr.tb-row-select, table[data-tb-select-rows] tr.tb-row-select { cursor: pointer; }
 table[data-tb-select-rows] tr.tb-row-select:hover td { background: var(--tb-surface); }
 table[data-tb-select-rows] tr.tb-row-select:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
+/* Rows not picked while some are: muted text, never faded below contrast. */
+table[data-tb-select-rows] tr.tb-row-dimmed td { color: var(--tb-muted); }
 table[data-tb-select-rows] tr[aria-selected="true"] td {
   background: var(--tb-surface-accent);
   box-shadow: inset 0 -1px 0 var(--tb-accent);

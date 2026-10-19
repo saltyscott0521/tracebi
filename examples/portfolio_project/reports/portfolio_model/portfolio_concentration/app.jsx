@@ -69,19 +69,16 @@ export default function App() {
           <p className="tb-note">Every issuer in view, largest first; rank and shares are
             within the selection. Click a row to select its issuer; again to clear.</p>
           <div className="mb-3"><Download binding="concentration" /></div>
-          {/* The table narrows with its own picks (highlight off): it shows
-              the sector column, and a highlighting table keeps every value of
-              the columns it selects, so a sector picked above would leave its
-              ranks taken over the whole book. */}
-          <div data-tb-highlight="off">
-            <Table binding="concentration" selectRows sort rows="all" bars="fv_share" id="fig-ranking"
-                   columns={["fv_rank", "dim_issuer.issuer", "dim_issuer.sector", "fair_value",
-                             "fv_share", "fv_cum_share"]}
-                   labels={{ fv_rank: "Rank", "dim_issuer.issuer": "Issuer",
-                             "dim_issuer.sector": "Sector", fv_share: "Share in view",
-                             fv_cum_share: "Cumulative share" }}
-                   formats={{ fair_value: "currency0", fv_share: "percent", fv_cum_share: "percent" }} />
-          </div>
+          {/* A row click picks its issuer (not its sector); a sector picked
+              above cuts the ranking, so its ranks are taken within it. */}
+          <Table binding="concentration" selectRows="dim_issuer.issuer" sort rows="all"
+                 bars="fv_share" id="fig-ranking"
+                 columns={["fv_rank", "dim_issuer.issuer", "dim_issuer.sector", "fair_value",
+                           "fv_share", "fv_cum_share"]}
+                 labels={{ fv_rank: "Rank", "dim_issuer.issuer": "Issuer",
+                           "dim_issuer.sector": "Sector", fv_share: "Share in view",
+                           fv_cum_share: "Cumulative share" }}
+                 formats={{ fair_value: "currency0", fv_share: "percent", fv_cum_share: "percent" }} />
         </section>
         <Footer />
       </main>

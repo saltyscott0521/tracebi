@@ -445,7 +445,11 @@ Three rules that keep pages honest:
   chart's x (or `data-tb-color` series) column whenever a slice carries it, no
   `data-tb-filter` needed; the same value again removes it, shift-click adds
   it (a sparkline does not select). `data-tb-select-rows` on a table (kit
-  `<Table selectRows>`) makes a row click select the row's dimension values.
+  `<Table selectRows>`) makes a row click select the row's dimension values;
+  `data-tb-select-rows="dim_issuer.issuer"` names the columns it writes, so a
+  table can show a sector without selecting by it. The table keeps the other
+  rows only for fields its own clicks wrote; a filter on the same field
+  narrows it.
   `data-tb-range` with `data-tb-column` (optional `data-tb-label`,
   `data-tb-min`, `data-tb-max`, `data-tb-step`; kit `<Range column label min
   max step>`) is a range control: two handles for a number column (a fact's own

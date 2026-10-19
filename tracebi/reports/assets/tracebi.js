@@ -993,6 +993,11 @@
       /* A grand total under a filtered view would not add up to the rows
        * shown, so the totals row steps aside while a filter or search is on. */
       if (entry.tfoot) entry.tfoot.hidden = rows.length !== entry.rowCount;
+      /* Rows stand out only when some do not: a sector filter that leaves
+       * one sector picks every row, and then none is marked. */
+      entry._pickAll = !!(entry.selectCols && _calc && rows.length && rows.every(function (r) {
+        return rowPicked(entry, r) === true;
+      }));
       paintRows(entry, displayRows(entry));
     } finally {
       entry._rendering = false;
@@ -1237,10 +1242,15 @@
         });
         entry.tfoot = totalsRow(el, cols, numeric, formats, entry.bars);
         /* data-tb-select-rows: a row click selects the row's values of the
-         * dimension columns the table shows, on a live page. */
-        if (el.getAttribute("data-tb-select-rows") !== null && _calc) {
-          entry.selectCols = el.__tbSelectCols = cols.filter(function (c) {
-            return c.indexOf(".") !== -1 && selectableField(c);
+         * dimension columns the table shows, on a live page; a value
+         * ("dim_issuer.issuer") names the columns it writes instead, so a
+         * table can show a sector without selecting by it. */
+        var picks = el.getAttribute("data-tb-select-rows");
+        if (picks !== null && _calc) {
+          var named = trim(picks) ? splitList(picks) : null;
+          entry.selectCols = el.__tbSelectCols = (named || cols).filter(function (c) {
+            return c.indexOf(".") !== -1 && selectableField(c)
+              && (!named || block.cols.indexOf(c) !== -1);
           });
         }
         hydrateSort(entry);
@@ -1954,7 +1964,9 @@
     var d3 = root.d3, plan = entry.plan, svg = host;
     opt = opt || {};
     var series = chartSeries(entry, rows, kind);
-    var allCats = opt.cats || categories(plan, rows);
+    var allCats = evenSteps(kind, opt.cats || categories(plan, rows));
+    var drawnCats = {};
+    series.forEach(function (sr) { sr.points.forEach(function (p) { drawnCats[p.cat] = true; }); });
     var cats = allCats;
     if (opt.zoom && zoomable(kind, allCats.length)) {
       cats = allCats.slice(opt.zoom[0], opt.zoom[1] + 1);
@@ -2374,7 +2386,11 @@
       var y = py === undefined ? o.y + m.top + (horizontal ? centre(c) : ih / 3) : py;
       tipShow(entry, x, y, (opt.title ? opt.title + " · " : "") + c, rowsOut, about);
     };
-    var choose = act ? function (i, event) { act(cats[i], event); } : null;
+    var choose = act ? function (i, event) {
+      /* An empty step (evenSteps) has no value to pick. */
+      if (allCats.filled && !drawnCats[cats[i]]) return;
+      act(cats[i], event);
+    } : null;
     var catAt = function (px) {
       var best = 0, bd = Infinity;
       cats.forEach(function (c, i) {
@@ -2418,7 +2434,9 @@
         .on("dblclick.tb", function () { opt.brush(null); });
     } else {
       g.selectAll("g.tb-brush").remove();
-      var hits = g.selectAll("rect.tb-hit").data(cats, function (c) { return c; }).join("rect")
+      var hits = g.selectAll("rect.tb-hit").data(cats.filter(function (c) {
+        return !allCats.filled || drawnCats[c];
+      }), function (c) { return c; }).join("rect")
         .attr("class", "tb-hit").attr("fill", "transparent")
         .style("cursor", choose ? "pointer" : null)
         .attr(horizontal ? "y" : "x", function (c) { return band(c) - band.step() * band.paddingInner() / 2; })
@@ -2430,6 +2448,28 @@
       hits.raise();
     }
     return { count: cats.length, show: showAt, choose: choose };
+  }
+
+  /* A line or area over whole numbers (years owned, a year) spaces them as
+   * numbers: the missing steps between them become empty slots, so a gap in
+   * the data reads as a gap, not as neighbours. Labels that are not whole
+   * numbers, or not ascending, stay as they are; bars keep their bands. */
+  function evenSteps(kind, cats) {
+    if ((kind !== "line" && kind !== "area") || cats.length < 2) return cats;
+    var ns = [], i, step = Infinity;
+    for (i = 0; i < cats.length; i++) {
+      if (!/^-?\d+$/.test(cats[i])) return cats;
+      ns.push(Number(cats[i]));
+      if (i && ns[i] <= ns[i - 1]) return cats;
+      if (i) step = Math.min(step, ns[i] - ns[i - 1]);
+    }
+    var span = (ns[ns.length - 1] - ns[0]) / step;
+    if (span === cats.length - 1 || span > 400) return cats;
+    for (i = 1; i < ns.length; i++) if ((ns[i] - ns[0]) % step) return cats;
+    var out = [];
+    for (i = 0; i <= span; i++) out.push(String(ns[0] + i * step));
+    out.filled = true;
+    return out;
   }
 
   function stackTop(series, cat, sign) {
@@ -3022,6 +3062,7 @@
   function setSelection(filters) {
     if (!_calc) return;
     _calc.state = offered(_calc, normalSelection(filters)) || {};
+    _calc.sources = {};
     selectionChanged();
   }
 
@@ -3332,7 +3373,7 @@
     if (!payload || typeof payload !== "object" || !payload.bindings) return;
     var calc = { plans: payload.bindings, facts: payload.facts || {}, columns: {},
                  types: {}, grain: {}, hashes: {}, error: null, results: {},
-                 variants: {}, local: false,
+                 variants: {}, sources: {}, local: false,
                  authored: normalSelection(payload.authored_selection) };
     var key, fact, block, carrier;
     for (key in calc.facts) {
@@ -3711,10 +3752,21 @@
     return -1;
   }
 
+  /* Which table's row click wrote a field ({field: "table:<id>"}). Only
+   * that table keeps the field's other rows (it highlights them); every
+   * other gesture that writes the field takes it back, and the address
+   * carries the plain state, so a link opens with no field owned. */
+  function ownSource(el) { return "table:" + (el.id || attr(el, "data-tb-binding")); }
+
+  function disown(column) {
+    if (_calc && _calc.sources) delete _calc.sources[column];
+  }
+
   /* A click picks the value; the same value again removes it; with shift
    * the value joins (or leaves) the field's list. */
   function toggleValue(column, text, additive) {
     if (!_calc) return;
+    disown(column);
     var cur = isArray(_calc.state[column]) ? _calc.state[column].slice() : [];
     var i = pickedIndex(cur, text);
     if (i !== -1) cur.splice(i, 1);
@@ -3729,13 +3781,14 @@
     var cur = isArray(_calc.state[column]) ? _calc.state[column] : [];
     cur = cur.filter(function (v) { return liveCell(v) !== liveCell(value); });
     if (cur.length) _calc.state[column] = cur;
-    else delete _calc.state[column];
+    else { delete _calc.state[column]; disown(column); }
     selectionChanged();
   }
 
   /* Back to the view as built: what Clear and Escape do. */
   function clearSelection() {
     _calc.state = normalSelection(_calc.authored);
+    _calc.sources = {};
     selectionChanged();
   }
 
@@ -3747,34 +3800,50 @@
 
   /* ── Table rows (data-tb-select-rows) ── */
 
-  function rowPicked(entry, r) {
-    return entry.selectCols.every(function (c) {
-      return isArray(_calc.state[c]) && pickedIndex(_calc.state[c], String(r[c])) !== -1;
-    });
+  /* Whether a row's value of column *c* is picked. */
+  function cellPicked(r, c) {
+    return isArray(_calc.state[c]) && pickedIndex(_calc.state[c], String(r[c])) !== -1;
   }
 
-  /* A row writes every dimension column the table shows; again, it clears
-   * them; with shift its values join the lists. */
+  /* A row is picked when its value of ANY of the table's select columns is
+   * (a sector filter marks every row of that sector); null when none of
+   * them is picked at all, so no row stands out. */
+  function rowPicked(entry, r) {
+    var any = false, hit = false;
+    entry.selectCols.forEach(function (c) {
+      if (!isArray(_calc.state[c])) return;
+      any = true;
+      if (cellPicked(r, c)) hit = true;
+    });
+    return any ? hit : null;
+  }
+
+  /* A row writes its select columns, owned by this table; clicking a row
+   * this table picked clears them; with shift its values join the lists. */
   function selectRow(entry, r, event) {
-    var on = rowPicked(entry, r), additive = !!(event && event.shiftKey);
+    var source = ownSource(entry.el), additive = !!(event && event.shiftKey);
+    var on = entry.selectCols.every(function (c) {
+      return _calc.sources[c] === source && cellPicked(r, c);
+    });
     entry.selectCols.forEach(function (c) {
       var text = String(r[c]);
-      var cur = isArray(_calc.state[c]) ? _calc.state[c].slice() : [];
+      var cur = isArray(_calc.state[c]) && _calc.sources[c] === source ? _calc.state[c].slice() : [];
       var i = pickedIndex(cur, text);
       if (on) { if (i !== -1) cur.splice(i, 1); }
       else if (additive) { if (i === -1) cur.push(typedValue(c, text)); }
       else cur = [typedValue(c, text)];
-      if (cur.length) _calc.state[c] = cur;
-      else delete _calc.state[c];
+      if (cur.length) { _calc.state[c] = cur; _calc.sources[c] = source; }
+      else { delete _calc.state[c]; disown(c); }
     });
     selectionChanged();
   }
 
   function selectableRow(entry, tr, r) {
     if (!entry.selectCols || !entry.selectCols.length) return;
-    var picked = rowPicked(entry, r);
+    var picked = entry._pickAll ? null : rowPicked(entry, r);
     tr.setAttribute("aria-selected", picked ? "true" : "false");
-    tr.className = (tr.className ? tr.className + " " : "") + "tb-row-select";
+    tr.className = (tr.className ? tr.className + " " : "") + "tb-row-select"
+      + (picked === false ? " tb-row-dimmed" : "");
     tr.tabIndex = 0;
     tr.addEventListener("click", function (e) { selectRow(entry, r, e); });
     tr.addEventListener("keydown", function (e) {
@@ -3804,7 +3873,12 @@
     if (!_calc || !_calc.local || !el || highlightOff(el)) return [];
     var kind = attr(el, "data-tb-figure"), cols = [];
     if (kind === "chart") cols = [attr(el, "data-tb-x"), attr(el, "data-tb-color")];
-    else if (kind === "table") cols = el.__tbSelectCols || [];
+    else if (kind === "table") {
+      /* Only what this table's own rows picked: a field a filter, a mark or
+       * another table wrote narrows it like any figure. */
+      var source = ownSource(el);
+      cols = (el.__tbSelectCols || []).filter(function (c) { return _calc.sources[c] === source; });
+    }
     return cols.filter(function (c, i) {
       return c && cols.indexOf(c) === i && isArray(_calc.state[c]) && selectableField(c);
     });
@@ -3867,6 +3941,17 @@
     var xs = on ? pickedSet(plan.x) : null;
     var cs = on && plan.color ? pickedSet(plan.color) : null;
     var svg = entry.svg;
+    /* A pick none of this chart's marks carries (a year it does not draw)
+     * dims nothing: a chart all faint says nothing. */
+    var drawn = function (set, cats) {
+      if (!set) return null;
+      for (var i = 0; i < cats.length; i++) if (set[cats[i]]) return set;
+      return null;
+    };
+    xs = drawn(xs, svg.selectAll(kind === "pie" ? "path.tb-mark" : "rect.tb-hit, circle.tb-dot, path.tb-mark")
+      .data().map(function (d) { return d && d.data ? d.data.key : (d && d.cat !== undefined ? d.cat : d); })
+      .map(String));
+    cs = drawn(cs, entry.keys.map(String));
     var catOf = function (d) {
       if (!d) return undefined;
       return kind === "pie" ? (d.data ? d.data.key : undefined) : d.cat;
@@ -3924,7 +4009,13 @@
     var column = el._tbRangeColumn, dom;
     try { dom = root.tracebiCalc.domains(_calc.columns[column], column, _calc.state); }
     catch (e) { dom = { present: [], rest: [] }; }
-    var values = dom.present.length ? dom.present : dom.present.concat(dom.rest);
+    /* The track is the column's whole domain, present or not under the rest
+     * of the selection, so it never collapses to one value when another
+     * field narrows the page, and "back at both ends" always means the
+     * same two values. dom.present stays what the rest of the page shows. */
+    var values = dom.present.concat(dom.rest).sort(function (a, b) {
+      return a < b ? -1 : a > b ? 1 : 0;
+    });
     if (el._tbRangeNumber) {
       values = values.filter(function (v) { return typeof v === "number"; });
       var lo = toNum(attr(el, "data-tb-min")), hi = toNum(attr(el, "data-tb-max"));
@@ -3937,9 +4028,29 @@
 
   /* A bound as the bar and the range write it: large numbers compact
    * (11.7M), so a chip stays short; the trace and the address keep it whole. */
-  function rangeText(v) {
+  function rangeText(v, column) {
     if (typeof v !== "number") return String(v);
-    return Math.abs(v) >= 1e4 ? fmt(v, "compact") : fmt(v);
+    if (column && plainColumn(column)) return String(v);
+    return Math.abs(v) >= 1000 ? fmt(v, "compact") : fmt(v);
+  }
+
+  /* A column whose numbers are names, not amounts: derive.py's rule (year,
+   * *_year, id, *_key) or, failing that, whole numbers all within
+   * 1800-2200, which read as years. Written as they are: 1990, never 1,990. */
+  function plainColumn(column) {
+    var cache = _calc.plain || (_calc.plain = {});
+    if (cache.hasOwnProperty(column)) return cache[column];
+    var plain = isIdentity(column), dom, all;
+    if (!plain && _calc.types[column] === "number") {
+      try {
+        dom = root.tracebiCalc.domains(_calc.columns[column], column, {});
+        all = dom.present.concat(dom.rest);
+        plain = all.length > 0 && all.every(function (v) {
+          return typeof v === "number" && v % 1 === 0 && v >= 1800 && v <= 2200;
+        });
+      } catch (e) { plain = false; }
+    }
+    return (cache[column] = plain);
   }
 
   function writeRange(el, lo, hi) {
@@ -3948,6 +4059,7 @@
     var out = {};
     if (lo > d.lo) out.gte = lo;
     if (hi < d.hi) out.lte = hi;
+    disown(column);
     if (out.gte === undefined && out.lte === undefined) delete _calc.state[column];
     else _calc.state[column] = out;
     selectionChanged();
@@ -3998,8 +4110,8 @@
       el._tbOutputs = [oa, ob];
       var show = function () {
         var lo = Number(a.value), hi = Number(b.value);
-        oa.textContent = rangeText(Math.min(lo, hi));
-        ob.textContent = rangeText(Math.max(lo, hi));
+        oa.textContent = rangeText(Math.min(lo, hi), column);
+        ob.textContent = rangeText(Math.max(lo, hi), column);
       };
       var commit = function () {
         var d = el._tbDomain, lo = Number(a.value), hi = Number(b.value);
@@ -4045,8 +4157,8 @@
       inputs.forEach(function (x) { x.min = bottom; x.max = top; x.step = step; });
       inputs[0].value = lo <= d.lo ? bottom : lo;
       inputs[1].value = hi >= d.hi ? top : hi;
-      el._tbOutputs[0].textContent = rangeText(lo);
-      el._tbOutputs[1].textContent = rangeText(hi);
+      el._tbOutputs[0].textContent = rangeText(lo, el._tbRangeColumn);
+      el._tbOutputs[1].textContent = rangeText(hi, el._tbRangeColumn);
       el.setAttribute("data-tb-range-active", cur.gte !== undefined || cur.lte !== undefined
         || cur.gt !== undefined || cur.lt !== undefined ? "true" : "false");
       return;
@@ -4126,9 +4238,10 @@
   function fieldText(column, v) {
     if (isArray(v)) return v.map(liveCell).join(", ");
     return RANGE_KEYS.filter(function (op) { return v.hasOwnProperty(op); }).length === 2
-      ? rangeText(v.hasOwnProperty("gte") ? v.gte : v.gt) + "–" + rangeText(v.hasOwnProperty("lte") ? v.lte : v.lt)
+      ? rangeText(v.hasOwnProperty("gte") ? v.gte : v.gt, column) + "–"
+        + rangeText(v.hasOwnProperty("lte") ? v.lte : v.lt, column)
       : RANGE_KEYS.filter(function (op) { return v.hasOwnProperty(op); })
-        .map(function (op) { return { gt: ">", gte: "≥", lt: "<", lte: "≤" }[op] + " " + rangeText(v[op]); })
+        .map(function (op) { return { gt: ">", gte: "≥", lt: "<", lte: "≤" }[op] + " " + rangeText(v[op], column); })
         .join(" ");
   }
 
@@ -4356,7 +4469,9 @@
     if (!el.multiple) add("All", "All", false).selected = !isArray(chosen);
     dom.present.forEach(each);
     if (dom.rest.length) {
-      add("", "Not under this selection", true);
+      /* Short: a select is as wide as its longest option, and the
+       * separator must not be what sets the width. */
+      add("", "Not in view", true).title = "Not under this selection";
       dom.rest.forEach(each);
     }
   }
@@ -4384,6 +4499,7 @@
               values.push(el._tbValues[o.value]);
             }
           }
+          disown(column);
           if (values.length) _calc.state[column] = values;
           else delete _calc.state[column];
           selectionChanged();

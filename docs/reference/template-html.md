@@ -155,7 +155,7 @@ react: summing the rows on screen would be a number no query produced.
 | --- | --- |
 | Dropdown filter | `<select data-tb-filter data-tb-binding="B" data-tb-column="C">` |
 | Range | `<span data-tb-range data-tb-column="C" data-tb-label="…">` (optional `data-tb-min`, `data-tb-max`, `data-tb-step`) |
-| Row selection | `data-tb-select-rows` on a table figure |
+| Row selection | `data-tb-select-rows` on a table figure (`="dim_issuer.issuer"` names the columns a row writes) |
 | Selection bar | `<div data-tb-selection></div>` (optional: where the bar goes) |
 | Search | `<input data-tb-search data-tb-binding="B">` |
 | Download | `<button data-tb-download data-tb-binding="B" data-tb-label="…">` |

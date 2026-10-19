@@ -117,7 +117,8 @@ export function Spark(props) {
 
 /** A table. `selectRows`: on a live page a click on a row selects its values
  * of the dimension columns the table shows (again, it clears them), and every
- * figure re-runs under the selection. */
+ * figure re-runs under the selection; `selectRows="dim_issuer.issuer"` (or a
+ * list) names the columns a row click writes. */
 export function Table({ binding, columns, labels, formats, sort, bars, totals, rows, id, className,
                         selectRows }) {
   useHydrate();
@@ -132,7 +133,7 @@ export function Table({ binding, columns, labels, formats, sort, bars, totals, r
         data-tb-formats={pairs(formats)} data-tb-sort={flag(sort)}
         data-tb-bars={list(bars)} data-tb-totals={totals}
         data-tb-rows={rows === undefined ? undefined : String(rows)}
-        data-tb-select-rows={flag(selectRows)} />
+        data-tb-select-rows={selectRows === true ? "" : selectRows ? list(selectRows) : undefined} />
     </div>
   );
 }

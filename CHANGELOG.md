@@ -6,6 +6,31 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the cascade: every shipped report uses the selection grammar
+
+- The portfolio reports (book, concentration, overview, dashboard, desk), the
+  housing affordability page, the SaaS reports, both `init --template`
+  bundles, the `init` sample and the demo app's reports now offer filters,
+  ranges, mark clicks and row selection where each layout has a place for
+  them, with the selection bar; prose that asserted a scope is bound to
+  figures or rewritten so it is true under any selection. The desk's filters
+  and spread range sit in its sidebar and cut every view.
+- A row-select table narrows by every selected field except the ones its own
+  row clicks wrote (any other control, mark or table takes a field back, and
+  a link opens with none owned); a row stands out when its value of any of
+  its select columns is picked, unless every row is.
+  `data-tb-select-rows="dim_issuer.issuer"` (kit
+  `selectRows="dim_issuer.issuer"`) names the columns a row click writes, so
+  a table can show a sector without selecting by it.
+- A range's track is the column's whole domain, so it no longer collapses
+  when another field narrows the page. Years and other identity-like numbers
+  (`year`, `*_year`, `id`, `*_key`, or whole numbers all within 1800-2200)
+  print without separators in the range, the chips and the print line.
+- A filter's "not in view" separator is short, so it no longer widens the
+  select. A line or area over whole numbers spaces them as numbers, so a gap
+  in the data reads as a gap. A pick that none of a chart's marks carries
+  dims nothing; a receded bar's value label stays readable.
+
 ### Added — every gesture on a live page is the one selection
 
 - A click on a bar, a pie slice, a line's category or a legend entry selects

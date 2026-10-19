@@ -752,9 +752,6 @@ def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):
             plan_name)
         _settle(page)
         after = {f["key"]: f for f in page.evaluate(_READ)}
-        picked = page.evaluate("""() => Object.fromEntries(Array.from(
-          document.querySelectorAll('table[data-tb-select-rows][id]')).map(t => [t.id,
-            Array.from(t.querySelectorAll('tbody tr[aria-selected="true"]')).map(r => r.textContent)]))""")
         kinds = set()
         for key, now in after.items():
             was = before[key]
@@ -764,12 +761,6 @@ def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):
             if now["kind"] == "value":
                 moves = not rows_match(authored[[now["cell"]]], cut[[now["cell"]]])
                 assert (now["value"] != was["value"]) == moves, (key, was["value"], now["value"])
-            elif now["kind"] == "table" and key in picked:
-                # A row-select table keeps its own field's other rows
-                # (cross-highlighting); the plan's own rows are the picked ones.
-                assert len(now["rows"]) == len(authored), key
-                assert len(picked[key]) == len(cut), key
-                assert all(plan_name in row for row in picked[key]), key
             elif now["kind"] == "table":
                 assert len(now["rows"]) == len(cut) and now["rows"] != was["rows"], key
                 assert all(plan_name in row for row in now["rows"]), key

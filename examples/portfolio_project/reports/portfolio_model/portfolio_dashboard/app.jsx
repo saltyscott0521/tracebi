@@ -60,17 +60,14 @@ export default function App() {
             <Search binding="holdings" placeholder="Find an issuer…" />
             <Download binding="holdings" />
           </div>
-          {/* The table narrows with its own picks (highlight off): a
-              highlighting row-select table keeps every value of the columns it
-              shows, so the sector filter would not cut it. */}
-          <div data-tb-highlight="off">
-            <Table binding="holdings" id="holdings-table" selectRows sort rows="all" bars="fair_value"
-                   totals="holdings_totals"
-                   columns={["dim_issuer.issuer", "dim_issuer.sector", "fair_value",
-                             "cost_basis", "unrealized", "mark", "positions"]}
-                   labels={{ "dim_issuer.issuer": "Issuer", "dim_issuer.sector": "Sector",
-                             "cost_basis": "Cost" }} />
-          </div>
+          {/* A row click picks its issuer (not its sector); the sector
+              filter cuts the table like every other figure. */}
+          <Table binding="holdings" id="holdings-table" selectRows="dim_issuer.issuer" sort
+                 rows="all" bars="fair_value" totals="holdings_totals"
+                 columns={["dim_issuer.issuer", "dim_issuer.sector", "fair_value",
+                           "cost_basis", "unrealized", "mark", "positions"]}
+                 labels={{ "dim_issuer.issuer": "Issuer", "dim_issuer.sector": "Sector",
+                           "cost_basis": "Cost" }} />
         </section>
         <Footer />
       </main>
