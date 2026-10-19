@@ -20,6 +20,35 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-19 — Decision: DuckDB-first on the server, a small engine of our own in the page
+
+**Decision.** DuckDB becomes the only engine on the server. Transforms are
+SQL by default (pandas and polars stay as a declared escape hatch that ends
+in an Arrow table), the warehouse gets three storage tiers with Parquet on
+object storage as the hosted default so the server holds the model and not
+the data, the model compiles to a DuckDB schema (views + measure macros),
+and SQL is a first-class binding that runs at build time and sits fixed in
+the file. The report file is assumed to work **offline**: it carries the
+flattened sub-star its figures need and `tracebi-calc`, a ~50 KB engine of
+our own that executes the closed JSON query spec directly, so every spec
+figure recomputes live on a filter with no server in the loop. The
+"controls never compute new numbers" rule is replaced by: any spec query
+over the embedded, fingerprinted data, the query in the trace, and a new
+**Local** chip state. Parity with DuckDB is proved per measure kind by
+test. Not Qlik: live cross-filtering through the model's declared
+relationships, no associative state, no one-path rule.
+
+**Measured before deciding:** DuckDB-wasm is 8.8 MB gzipped (~11.7 MB
+inlined) against 2.9 MB for today's parquet-wasm + Arquero engine, and the
+page's work is a closed spec over flat typed columns, so the page engine is
+ours. A Rust port is the fallback if the 100 ms query budget fails;
+`engine: duckdb` is a later opt-in for arbitrary SQL offline.
+
+Design, closed decisions and the eight packages:
+`docs/architecture/duckdb-first.md`.
+
+---
+
 ## 2026-10-18 — Decision: "receipt" becomes "trace"
 
 **Decision.** The word *receipt* is retired from the canon and from every
