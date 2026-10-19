@@ -7,8 +7,9 @@ Reports are organised by model — ``reports/<model>/`` — so a model, the
 transform that fills its warehouse, and the reports that read it belong
 together, and one pipeline runs the whole chain:
 
-* **transform**: ``tracebi run-transform <transform>``, the phase ① script that
-  sinks the model's tables (and checks their sink contract).
+* **transform**: ``tracebi run-transform <transform>``, the phase ① transform
+  (``transforms/<name>.sql``, or ``.py`` / ``.ipynb``) that sinks the model's
+  tables and checks their sink contract. The run records which form ran.
 * **build**: ``tracebi report build`` for every report in ``reports/<model>/``,
   each with its receipt.
 
@@ -105,10 +106,15 @@ def model_pipeline(
         release_all()
 
     def run_transform():
+        from tracebi.transforms import find_transform, transform_form
+
         release()
         _cli("run-transform", transform)
         release()
-        return sum(len(get_model(m).info()["tables"]) for m in models)   # tables now in place
+        tables = sum(len(get_model(m).info()["tables"]) for m in models)   # tables now in place
+        # The run records which form ran (sql | python | notebook), for
+        # `run-pipeline --status` and the model's Transform tab.
+        return tables, tables, {"form": transform_form(find_transform(transform))}
 
     def build_reports():
         # `run-pipeline` keeps going after a failure so it can report them all;

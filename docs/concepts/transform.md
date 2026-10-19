@@ -1,7 +1,7 @@
 # Transform — phase ①
 
-**Unconstrained pandas that ends by landing clean star-schema tables in the
-warehouse.**
+**Unconstrained work that ends by landing clean star-schema tables in the
+warehouse. SQL by default; Python is the escape hatch.**
 
 Lives in `transforms/`. This is the one phase the framework does not constrain.
 
@@ -14,52 +14,83 @@ dedupe, three APIs and a spreadsheet — whatever the data needs.
 
 The contract is **what lands**: the named tables at the end of the script.
 
-```python
-from tracebi import DuckDBConnector
+```sql
+-- transforms/holdings.sql — DuckDB, top to bottom, one fresh connection
+CREATE OR REPLACE TEMP TABLE raw AS
+SELECT * FROM read_csv('inputs/holdings.csv', all_varchar = true);
 
-# … whatever pandas the data needs …
+-- … whatever the data needs: regexp_replace, TRY_CAST, QUALIFY row_number() …
 
-DuckDBConnector("warehouse", database=WAREHOUSE).write(dim_issuer, "dim_issuer")
-DuckDBConnector("warehouse", database=WAREHOUSE).write(fact_holdings, "fact_holdings")
+CREATE OR REPLACE TABLE dim_issuer AS
+SELECT row_number() OVER (ORDER BY issuer) AS issuer_id, issuer, sector
+FROM (SELECT DISTINCT issuer, sector FROM keyed);
+CREATE OR REPLACE TABLE fact_holdings AS SELECT …;
 ```
 
 Those table names are the [[freeze-points|freeze point]]. Nothing downstream
-imports this file.
+reads this file. Where a created table lands follows the project's warehouse
+tier (`tracebi.yaml`), and two placeholders, `{{ sink }}` and `{{ root }}`,
+cover the rest: see [[transform-sql]].
 
-## Notebook-shaped by default
-
-Scaffolded transforms use `# %%` percent cells with `# %% [markdown]` prose, so
-every notebook editor — VS Code, Cursor, PyCharm, Jupyter via jupytext — opens
-the file **as a notebook**: collapse cells, run cell by cell, markdown beside
-code.
-
-It stays plain, reviewable Python that runs top to bottom.
-
-Literal `.ipynb` transforms work too. Either form runs the same way:
+## Run it
 
 ```bash
-tracebi run-transform holdings
+tracebi new-transform "Holdings"     # transforms/holdings.sql + holdings.contract.yaml
+tracebi run-transform holdings       # prints form: sql
 ```
 
-which executes it **top to bottom in a fresh namespace** — the sink never comes
-from out-of-order kernel state.
+`run-transform` executes the file **top to bottom, fresh** — a SQL file in one
+new connection, a Python file in a new namespace — so the sink never comes
+from out-of-order state. It reports which form ran, and a pipeline run records
+it.
+
+## The escape hatch: pandas or polars
+
+When the cleaning outgrows SQL, write Python:
+`tracebi new-transform "Holdings" --python` scaffolds a notebook-shaped `.py`
+(`# %%` percent cells with `# %% [markdown]` prose, so VS Code, Cursor,
+PyCharm and Jupyter via jupytext open it as a notebook) that ends by writing
+frames:
+
+```python
+from tracebi import DuckDBConnector
+from tracebi.project_config import sink_target
+
+wh = DuckDBConnector("warehouse", database=sink_target(ROOT))
+wh.write(dim_issuer, "dim_issuer")
+wh.write(fact_holdings, "fact_holdings")
+```
+
+A literal `.ipynb` works too. The reference project keeps
+`holdings_transform_pandas.py` beside `holdings_transform.sql` as the example:
+both sink identical tables. A transform is one file: `x.sql` beside `x.py` is
+refused, naming both.
 
 ## Keep it idempotent
 
-A rerun replaces the warehouse tables rather than appending. This is what makes
+A rerun replaces the warehouse tables rather than appending
+(`CREATE OR REPLACE` in SQL, `write()` in Python). This is what makes
 refreshing a [[freeze-points|freeze point]] safe to do at any time.
 
 ## Declare a sink contract
 
-After the writes, state what the tables must satisfy:
+Beside the transform, state what the tables must satisfy:
 
-```python
-with contract("holdings", warehouse=WAREHOUSE) as c:
-    c.rows("fact_holdings", min=1)
-    c.not_null("fact_holdings", "issuer_id")
-    c.foreign_key("fact_holdings", "issuer_id", "dim_issuer", "issuer_id")
+```yaml
+# transforms/holdings.contract.yaml
+name: holdings
+checks:
+  - rows: fact_holdings
+    at_least: 1
+  - not_null: fact_holdings
+    columns: [issuer_id]
+  - foreign_key: fact_holdings
+    column: issuer_id
+    refers_to: [dim_issuer, issuer_id]
 ```
 
+A Python transform may instead end with the same checks in code,
+`with contract("holdings", warehouse=sink_target(ROOT)) as c: c.rows("fact_holdings", at_least=1)`.
 A failed check raises at sink time. Success records a certificate the report
 manifests join against. See [[sink-contracts]].
 
@@ -73,6 +104,7 @@ Phase ① is trusted the way you trust reviewed code in git.
 
 ## Related
 
+- [[transform-sql]] — the SQL form, the tiers, the placeholders, the contract file
 - [[sink-contracts]] — checks at the boundary
 - [[model]] — what reads the tables you land
 - [[cli]] — `tracebi new-transform`, `tracebi run-transform`

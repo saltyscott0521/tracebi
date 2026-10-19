@@ -206,6 +206,6 @@ For a governed, traced report, prefer the artifact package
 (`tracebi new-report` → `tracebi dev` → `tracebi report build`), covered in the
 [Analyst Guide](analyst-guide.md).
 
-Reference files: `examples/portfolio_project/transforms/holdings_transform.py`,
+Reference files: `examples/portfolio_project/transforms/holdings_transform_pandas.py`,
 `examples/portfolio_project/models/portfolio_model.yaml`, and
 `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/`.

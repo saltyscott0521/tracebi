@@ -63,6 +63,7 @@
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
@@ -108,11 +109,16 @@ file</strong> (check a report file from anywhere); <strong>History</strong> (wha
 model; see <a href="../concepts/models-and-connectors.html">Models and connectors</a>.</p>
 </blockquote>
 <h2 id="1-transform-transforms">① Transform — <code>transforms/</code></h2>
-<p>Ordinary, unconstrained pandas. Pull the queries, do the real analysis — window
+<p>SQL by default: <code>transforms/&lt;name&gt;.sql</code>, DuckDB statements run top to bottom
+in one fresh connection. Pull the queries, do the real analysis — window
 functions, prose parsing, cleaning, dedupe — then <strong>sink</strong> clean star-schema
-tables into a DuckDB warehouse file.</p>
+tables into the warehouse. When the work outgrows SQL, the escape hatch is
+pandas or polars (a <code>.py</code> or <code>.ipynb</code>); both forms run with
+<code>tracebi run-transform</code>, which says which one ran.</p>
 <p>The framework does not constrain this phase. The contract is not <em>how</em> you
-clean; it is <strong>what lands</strong>: the named tables at the end of the script.</p>
+clean; it is <strong>what lands</strong>: the named tables at the end of the script. The
+<a href="../concepts/sink-contracts.html">sink contract</a> that checks them sits beside the transform, in
+<code>&lt;name&gt;.contract.yaml</code>.</p>
 <p>→ <a href="../concepts/transform.html">Transform — phase ①</a></p>
 <p><em>Freeze: <code>data/warehouse.duckdb</code> — materialized tables.</em></p>
 <h2 id="2-model-models">② Model — <code>models/</code></h2>
@@ -147,7 +153,7 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.</p
 <tr>
 <td>① Transform</td>
 <td><code>transforms/</code></td>
-<td>pandas (a <code>.py</code> or <code>.ipynb</code>) that writes DuckDB tables</td>
+<td>DuckDB SQL (a <code>.sql</code>, with its <code>.contract.yaml</code> beside it), or pandas as the escape hatch (a <code>.py</code> or <code>.ipynb</code>), that lands warehouse tables</td>
 <td>it doesn't; you run it with <code>tracebi run-transform</code></td>
 </tr>
 <tr>

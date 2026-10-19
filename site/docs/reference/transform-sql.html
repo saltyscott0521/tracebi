@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SQL transforms — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="SQL transforms">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a class="on" href="../reference/transform-sql.html">SQL transforms</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="sql-transforms">SQL transforms</h1>
+<p><strong>A phase ① transform is a <code>.sql</code> file by default: DuckDB statements, run top
+to bottom in one fresh connection to the warehouse. Python is the escape hatch.
+The sink contract sits beside it as a <code>.contract.yaml</code>.</strong></p>
+<pre><code>transforms/
+  holdings_transform.sql             # the transform
+  holdings_transform.contract.yaml   # what the tables it lands must satisfy
+</code></pre>
+<pre><code class="language-bash">tracebi new-transform &quot;Holdings&quot;      # → transforms/holdings.sql + holdings.contract.yaml
+tracebi run-transform holdings        # runs it, then the contract; prints form: sql
+</code></pre>
+<p>The reference is
+<code>examples/portfolio_project/transforms/holdings_transform.sql</code>; the same work
+in pandas, <code>holdings_transform_pandas.py</code>, sinks identical tables (every
+table's fingerprint equal, row order included).</p>
+<hr>
+<h2 id="how-it-runs">How it runs</h2>
+<p><code>tracebi run-transform &lt;name&gt;</code> (and the <code>transform</code> step of a
+<a href="../reference/pipeline-yaml.html">pipeline</a>, and a report's <code>refresh</code>) finds
+<code>transforms/&lt;name&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code>, runs it and prints
+<code>form: sql | python | notebook</code>; a pipeline run records the form, and
+<code>tracebi run-pipeline &lt;name&gt; --status</code> and the model's Transform tab show it.</p>
+<p>A SQL transform:</p>
+<ol>
+<li>has its two placeholders substituted (below);</li>
+<li>runs statement by statement, in order, in <strong>one</strong> fresh read-write DuckDB
+   connection to the warehouse <code>tracebi.yaml</code> names, with the project's
+   <code>engine</code> limits. A failing statement stops the run with its number and
+   line: <code>transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …</code>;</li>
+<li>on the object tier, lands every table it created (below);</li>
+<li>closes the connection, then runs <code>&lt;name&gt;.contract.yaml</code> if there is one.</li>
+</ol>
+<p>Nothing persists between runs but the tables that landed: <code>TEMP</code> tables and
+<code>TEMP MACRO</code>s are scratch and vanish with the connection. Keep it idempotent
+with <code>CREATE OR REPLACE</code>, so a rerun replaces the tables.</p>
+<p>The connection is not locked like a model's query connection: it may read
+files and, on the object tier, load <code>httpfs</code>. It runs only from the CLI, the
+scheduler and an approved code request, never to answer a reader.</p>
+<h2 id="where-a-table-lands-per-tier">Where a table lands, per tier</h2>
+<p>A table the script creates (<code>CREATE OR REPLACE TABLE fact_x AS …</code>, not <code>TEMP</code>)
+is a <strong>sink table</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Tier (<code>tracebi.yaml</code> <code>warehouse.tier</code>)</th>
+<th><code>CREATE OR REPLACE TABLE fact_x</code> lands</th>
+<th><code>{{ sink }}</code> is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>file</code> (default)</td>
+<td>in <code>data/warehouse.duckdb</code> itself</td>
+<td>the <code>.duckdb</code> path</td>
+</tr>
+<tr>
+<td><code>object</code></td>
+<td>as <code>&lt;location&gt;/fact_x.parquet</code>, written after the script</td>
+<td>the prefix (<code>s3://bucket/project</code>, or a directory)</td>
+</tr>
+<tr>
+<td><code>remote</code></td>
+<td>in the attached database (<code>USE</code>d for the run)</td>
+<td>the attach string</td>
+</tr>
+</tbody>
+</table>
+<p>On the object tier a script may also write a table itself, which is the idiom
+<code>tracebi new-transform</code> scaffolds there:</p>
+<pre><code class="language-sql">CREATE OR REPLACE TEMP TABLE dim_x AS SELECT …;
+COPY dim_x TO '{{ sink }}/dim_x.parquet' (FORMAT PARQUET);
+</code></pre>
+<p>Use one or the other for a table: a <code>CREATE</code>d table that is also <code>COPY</code>'d is
+written twice.</p>
+<h2 id="placeholders">Placeholders</h2>
+<p>Exactly two, substituted as text with any single quote doubled, so each
+belongs inside a <code>'…'</code> literal:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Becomes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{{ sink }}</code></td>
+<td><code>str(sink_target(root))</code>: the warehouse address on its tier</td>
+</tr>
+<tr>
+<td><code>{{ root }}</code></td>
+<td>the project root, absolute</td>
+</tr>
+</tbody>
+</table>
+<p>Anything else between <code>{{</code> and <code>}}</code> is an error naming it:
+<code>transforms/x.sql: {{ warehouse }} is not a placeholder; a SQL transform has
+two, {{ sink }} and {{ root }}</code>. There are no loops, conditionals or
+<code>ref()</code>s: one transform file per pipeline, statements in order.</p>
+<h2 id="relative-paths">Relative paths</h2>
+<p>A <strong>read</strong> with a relative path, <code>read_csv('inputs/holdings.csv')</code>, resolves
+against the project root: the connection's <code>file_search_path</code> is set to it, so
+the transform reads the same file whichever directory it was started from. A
+<strong>write</strong> names its destination with <code>{{ sink }}</code> or <code>{{ root }}</code>.</p>
+<h2 id="cells">Cells</h2>
+<p><code>-- %% [markdown]</code> and <code>-- %%</code> lines mark cells, as <code># %%</code> does in a Python
+transform, so an editor that understands percent cells folds them. They are
+comments: the run ignores them.</p>
+<h2 id="the-contract-file">The contract file</h2>
+<p><code>&lt;name&gt;.contract.yaml</code> beside the transform declares the
+<a href="../concepts/sink-contracts.html">sink contract</a> in the same closed vocabulary as
+<code>with contract(...)</code> in Python, through the same parser, and writes the same
+certificate. It is honoured beside a <code>.py</code> or <code>.ipynb</code> transform too (run after
+the script).</p>
+<pre><code class="language-yaml">name: holdings          # the certificate's record; default: the transform's file name
+note: &gt;-                # the STATED methodology, recorded verbatim, never verified
+  rows with no keyable issuer dropped and counted
+checks:
+  - rows: fact_holdings          # the check, with its table as the value
+    at_least: 10                 # its parameters beside it
+    note: under 10 means a truncated pull
+  - unique: dim_issuer
+    columns: [issuer_id]
+  - foreign_key: fact_holdings
+    column: issuer_id
+    refers_to: [dim_issuer, issuer_id]
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rows</code></td>
+<td><code>at_least</code>, <code>at_most</code>, <code>exactly</code> (whole numbers, any of them)</td>
+</tr>
+<tr>
+<td><code>unique</code></td>
+<td><code>columns</code> (a list)</td>
+</tr>
+<tr>
+<td><code>not_null</code></td>
+<td><code>columns</code> (a list)</td>
+</tr>
+<tr>
+<td><code>foreign_key</code></td>
+<td><code>column</code>, <code>refers_to: [table, column]</code></td>
+</tr>
+<tr>
+<td><code>values</code></td>
+<td><code>column</code>, <code>within</code> (a list)</td>
+</tr>
+<tr>
+<td><code>reconcile</code></td>
+<td><code>column</code>, <code>against: [table, column]</code>, <code>by</code>, <code>tolerance</code> (default 0)</td>
+</tr>
+</tbody>
+</table>
+<p>Every check takes a <code>note</code>. The top level holds only <code>name</code>, <code>note</code> and
+<code>checks</code>; an unknown key, a check outside the vocabulary or a parameter it
+does not take is an error naming the file and the entry
+(<code>checks[0] must name exactly one check …</code>). No checks, or all of them
+commented out, declares nothing and writes nothing.</p>
+<p>The checks run after the transform's connection is closed, through the
+warehouse's own reader, so they check what landed (on the object tier the
+transform's connection also holds in-memory tables that are not the sink).
+A failed check raises and no certificate is written; the claim is <strong>the sink
+satisfied its contract</strong>, never that the transform was verified.</p>
+<h2 id="the-escape-hatch-python">The escape hatch: Python</h2>
+<p><code>tracebi new-transform "Name" --python</code> scaffolds <code>transforms/&lt;name&gt;.py</code>,
+notebook-shaped pandas that ends by writing frames:
+<code>DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")</code>.
+A literal <code>.ipynb</code> runs too. Either runs top to bottom in a fresh namespace.
+Nothing is converted: a pandas transform keeps working until its author
+rewrites it. The trace line is drawn at the sink, so a Python transform is as
+traceable as a SQL one.</p>
+<h2 id="one-file-per-name">One file per name</h2>
+<p>A transform is one file. <code>x.sql</code> beside <code>x.py</code> (or <code>x.ipynb</code>) is refused by
+<code>run-transform</code>, naming both, and <code>new-transform</code> will not create the second.</p>
+<h2 id="related">Related</h2>
+<ul>
+<li><a href="../concepts/transform.html">Transform — phase ①</a> — the phase, and why it is unconstrained</li>
+<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — what a certificate says, and what it does not</li>
+<li><a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a> — the pipeline that runs a transform, then the reports</li>
+<li><a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a> — the warehouse block that decides the tier</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

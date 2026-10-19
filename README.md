@@ -33,7 +33,7 @@ each a project-root folder with its own cadence. The phases are decoupled by
 slow analysis and the fast reporting never block each other.
 
 ```
-①  TRANSFORM    transforms/          slow, runs rarely — unconstrained pandas
+①  TRANSFORM    transforms/          slow, runs rarely — SQL (pandas the escape hatch)
       read messy sources → parse, clean, key, dedupe → WRITE star-schema tables
                                                         │
                                        freeze ▼  data/warehouse.duckdb
@@ -48,15 +48,17 @@ slow analysis and the fast reporting never block each other.
       Re-renders in milliseconds; nothing re-runs ①.
 ```
 
-**Phase 1 (TRANSFORM)** is ordinary, unconstrained pandas — pull the queries
-you need, do the real analysis (window functions, prose parsing, cleaning),
-then *sink* clean star-schema tables into a file-backed DuckDB warehouse. The
-framework does not constrain how you clean; the contract is *what lands* — the
-named tables at the end of the script. A transform may end with a **sink
-contract** (`with contract(...) as c:` — declared checks like row counts,
+**Phase 1 (TRANSFORM)** is SQL by default (`transforms/<name>.sql`, DuckDB
+statements run top to bottom in one fresh connection), with ordinary pandas or
+polars as the escape hatch — pull the queries you need, do the real analysis
+(window functions, prose parsing, cleaning), then *sink* clean star-schema
+tables into the warehouse. The framework does not constrain how you clean; the
+contract is *what lands* — the named tables at the end of the script. A
+transform may carry a **sink contract** (`<name>.contract.yaml` beside it, or a
+`with contract(...) as c:` block in Python — declared checks like row counts,
 unique keys, foreign keys) that runs at sink time, raises on failure, and
 records a certificate report manifests join against; it certifies the sink,
-never the pandas above it.
+never the SQL or pandas above it.
 
 **Phase 2 (MODEL)** is a thin declarative star schema over the warehouse. It
 reads the sink; it never sees the transform.
@@ -86,7 +88,7 @@ python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → portfolio_
 The reference implementation ships in the repo at `examples/portfolio_project/`
 — a complete project with the same shape `tracebi init` scaffolds (plus its own
 `run_workflow.py` driver):
-`transforms/holdings_transform.py`, `models/portfolio_model.yaml`,
+`transforms/holdings_transform.sql`, `models/portfolio_model.yaml`,
 `reports/portfolio_model/portfolio_dashboard/`, driven by `run_workflow.py`. Full
 walkthrough: **[the three-phase workflow](docs/concepts/the-three-phase-workflow.md)**.
 
@@ -329,7 +331,7 @@ tracebi dev portfolio_book --classic                 # the old stdlib preview + 
 tracebi session export --format md                   # save the session → explorations/ (lab-notebook record)
 tracebi context --brief                              # token-lean vocabulary for agents (~44% of full)
 tracebi migrate spec reports/sales.json              # compile a JSON spec into reports/sales/ (shadows the spec)
-tracebi run-transform holdings                       # run a phase-① transform (.py or .ipynb) top-to-bottom
+tracebi run-transform holdings                       # run a phase-① transform (.sql, .py or .ipynb) top-to-bottom
 tracebi validate                                     # load every model; check dimension keys are unique
 tracebi serve                                        # browse the project at http://127.0.0.1:8000
 tracebi new-model "Sales Model"                      # → models/sales_model.py

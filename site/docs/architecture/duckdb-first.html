@@ -63,6 +63,7 @@
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
@@ -152,7 +153,7 @@ number it shows is still a query the trace can name.</p>
 <tbody>
 <tr>
 <td>D1</td>
-<td>A transform is a <code>.sql</code> file by default; <code>.py</code> and <code>.ipynb</code> still run and end by handing DuckDB an Arrow table (pandas or polars). The UI names which form ran.</td>
+<td>A transform is a <code>.sql</code> file by default; <code>.py</code> and <code>.ipynb</code> still run and end by handing DuckDB an Arrow table (pandas or polars). The UI names which form ran. <strong>Built (S-3, 2026-10-19):</strong> <code>tracebi run-transform</code> runs either form and reports it, the pipeline run records it, <code>&lt;name&gt;.contract.yaml</code> beside the transform; the reference transform is SQL with the pandas one beside it, fingerprints equal (<a href="../reference/transform-sql.html">SQL transforms</a>).</td>
 <td>The trace line is drawn at the sink, so a Python transform is exactly as traceable as a SQL one. Only <code>report.py</code>, which computes after the model, stays <code>verifiable: false</code>.</td>
 </tr>
 <tr>

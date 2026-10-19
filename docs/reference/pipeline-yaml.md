@@ -1,7 +1,8 @@
 # Pipeline files (YAML)
 
 **A pipeline as data: which transform to run, which models it feeds, which
-reports to rebuild, and when. Transforms stay Python; a pipeline only names one.**
+reports to rebuild, and when. A transform stays its own file (SQL by default,
+Python as the escape hatch); a pipeline only names one.**
 
 `pipelines/<name>.yaml` (or `.yml`) compiles to the same runner as
 `model_pipeline(...)`: `tracebi run-pipeline <name>` and the app's **Refresh data**
@@ -20,7 +21,7 @@ and the schema is closed.
 # pipelines/portfolio_model.yaml
 name: portfolio_model          # equals the file name
 description: Rebuild the portfolio warehouse, then its reports.
-transform: holdings_transform  # transforms/holdings_transform.py (or .ipynb)
+transform: holdings_transform  # transforms/holdings_transform.sql (or .py, .ipynb)
 models: [portfolio_model]
 reports: all
 schedule: null
@@ -33,7 +34,7 @@ schedule: null
 | key | |
 |---|---|
 | `name` | required; letters, digits, underscore; equals the file name |
-| `transform` | required; a bare name of `transforms/<x>.py` or `.ipynb` (an extension is allowed, a folder is not) |
+| `transform` | required; a bare name of `transforms/<x>.sql`, `.py` or `.ipynb` (an extension is allowed, a folder is not). The step runs it with `tracebi run-transform`, then the `<x>.contract.yaml` beside it, and records which form ran (`sql`, `python`, `notebook`): `tracebi run-pipeline <name> --status` and the model's Transform tab show it. See [[transform-sql]] |
 | `models` | required; a list of model names the transform feeds |
 | `reports` | `all` (default): every report in `reports/<model>/` of each model; or a list of report names (`<model>/<report>`) |
 | `schedule` | a 5-field cron expression, or `null` (on demand only). When the scheduler fires it, the whole chain runs: transform, then reports |

@@ -20,6 +20,55 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-19 — SQL transforms, the contract beside them (S-3)
+
+Decision 21 of the live-reports plan. A transform is `transforms/<name>.sql`
+by default (`tracebi/transforms.py`): statements in order, in one fresh
+read-write connection taken the way `write()` takes it (so it waits for a
+reader on the file tier and carries the engine limits). Two placeholders,
+`{{ sink }}` and `{{ root }}`, substituted as text with quotes doubled;
+anything else in `{{ }}` is refused by name. Relative reads resolve against
+the project root through DuckDB's `file_search_path`; writes are not covered
+by it (DuckDB resolves a write against the process's working directory), so
+a write names `{{ sink }}` or `{{ root }}`.
+
+**A created table is a sink table, on every tier.** The reference project
+runs on the file tier and, in the pipeline journey, on the object tier, and
+no single explicit idiom works on both (`{{ sink }}` is a `.duckdb` path on
+one and a prefix on the other). So a table the script creates (not `TEMP`)
+lands where the tier says: in the file, in the attached remote database, or,
+on the object tier, copied to `<location>/<table>.parquet` after the script
+(staged and renamed in a directory, as `write()` does). The explicit `COPY …
+TO '{{ sink }}/x.parquet'` stays available and is what `new-transform`
+scaffolds on the object tier, with the staging tables `TEMP`.
+
+**The contract file shares the Python form's parser.** `contracts.declare()`
+holds the closed vocabulary once; the `c.rows(...)` methods and the
+`.contract.yaml` loader both build `{check, table, params, note?}` through it,
+and `_Contract.check()` runs a declaration. The checks run after the
+transform's connection is closed, not in it as the plan put it: on the object
+tier that connection holds in-memory tables that are not the sink, and the
+certificate's fingerprints read through the connector load path, which
+cannot open a DuckDB file the transform still holds read-write.
+
+**Both forms sink identical tables, which took two roundings.** The pandas
+transform rounds a coupon that is a numpy float (its `spread_bps` comes out
+of an `Int64` column as a numpy integer), so it rounds as numpy does: scale
+by 100, round half to even, scale back. DuckDB's `round(x, 2)` rounds a tie
+away from zero (505711.125 → .13) and `round_even(x, 2)` does not scale the
+same way (296054.975, held as 296054.97499…, → .98); the SQL spells it as
+`round_even(x * 100, 0) / 100`. Row order follows the file: `row_number()
+OVER ()` over `read_csv` numbers rows in file order, the dedupe keeps the
+first by it, and the flows carry their holding and their place within it so
+ties sort as pandas' stable sort left them. All six tables' fingerprints are
+equal, and the nine reference manifests built from the pandas warehouse
+verify as reproducing against the SQL one.
+
+Left as they were: the `init` sample, the `saas-metrics` and
+`sales-pipeline` templates, and the reference project's `saas_transform.py`
+and `affordability_transform.py` stay Python (journeys and starters depend on
+them; the plan converts only the reference transform).
+
 ## 2026-10-19 — Storage tiers: one `warehouse:` block (S-2)
 
 Decision 20 of the live-reports plan. `tracebi.yaml` gains `warehouse: {tier:
@@ -710,7 +759,7 @@ pitch.
 
 | Phase | Folder | What it is | Reference impl |
 |---|---|---|---|
-| ① **Transform** | `transforms/` | Ordinary, unconstrained pandas — window functions, prose parsing, cleaning — that *sinks* clean star-schema tables into a file-backed DuckDB warehouse. The framework does not constrain this phase. | `examples/portfolio_project/transforms/holdings_transform.py` |
+| ① **Transform** | `transforms/` | Ordinary, unconstrained pandas — window functions, prose parsing, cleaning — that *sinks* clean star-schema tables into a file-backed DuckDB warehouse. The framework does not constrain this phase. | `examples/portfolio_project/transforms/holdings_transform.sql` (SQL since S-3; the pandas original is `holdings_transform_pandas.py`) |
 | ② **Model** | `models/` | A declarative `DataModel` (grain, keys, measures) over the warehouse, read by a reviewer without opening the pandas above it. It reads the sink; it never sees the transform. | `examples/portfolio_project/models/portfolio_model.yaml` |
 | ③ **Report** | `reports/` | A `ReportSpec` (JSON) pointed at the model — KPI cards, charts, tables — where every figure is a live query, re-rendered in milliseconds. (Also the home of template packages and `@register.report` factories — one folder for every report form.) | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard.json` |
 

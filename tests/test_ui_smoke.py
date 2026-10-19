@@ -443,7 +443,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.goto(base + "/data/portfolio_model/transform")
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_role("button", name="transform", exact=True).click()
-            page.get_by_text("transforms/holdings_transform.py").first.wait_for()
+            page.get_by_text("transforms/holdings_transform.sql").first.wait_for()
             # The Transform tab says what the warehouse holds, and that its checks
             # passed when it was last written, before any report is opened.
             table = page.locator("details", has_text="fact_holdings")

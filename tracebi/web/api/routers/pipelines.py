@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -32,12 +33,20 @@ def list_pipelines():
                 # anything executed without an actor in scope.
                 layer["last_actor"] = last.get("actor")
                 layer["last_actor_role"] = last.get("actor_role")
+                # What the run recorded about itself: a transform step's form
+                # (sql | python | notebook), a layer's escape hatch.
+                try:
+                    detail = json.loads(last.get("detail") or "null")
+                except ValueError:
+                    detail = None
+                layer["last_detail"] = detail if isinstance(detail, dict) else None
             else:
                 layer.setdefault("last_status", None)
                 layer["last_run"] = None
                 layer["last_rows_out"] = None
                 layer["last_actor"] = None
                 layer["last_actor_role"] = None
+                layer["last_detail"] = None
             layers.append(layer)
         # model_pipeline stamps .model; a hand-built runner may leave it unset.
         # A pipeline can touch more than one model (it lands data from one and
@@ -224,13 +233,18 @@ def pipeline_source(pipeline_name: str):
     runner = registry.get_pipeline(pipeline_name)
     if not runner:
         raise HTTPException(status_code=404, detail=f"Pipeline '{pipeline_name}' not found")
-    from tracebi.cli import find_transform
     from tracebi.pipeline_registry import pipeline_path
+    from tracebi.transforms import TransformError, contract_file, find_transform
 
     transform = getattr(runner, "transform", None)
-    found = find_transform(transform) if isinstance(transform, str) else None
+    try:
+        found = find_transform(transform) if isinstance(transform, str) else None
+    except TransformError:
+        found = None     # two forms of one name: the run says so; show neither
+    contract = contract_file(found) if found else None
     return source_payload(
-        [("pipeline", pipeline_path(pipeline_name)), ("transform", str(found) if found else None)],
+        [("pipeline", pipeline_path(pipeline_name)), ("transform", str(found) if found else None),
+         ("contract", str(contract) if contract else None)],
         missing_hint="This pipeline is registered in Python code (an app module), not from a pipelines/ file.",
         hint="Run all runs the pipeline's steps in order; the transform is the first, and writes the warehouse.",
     )

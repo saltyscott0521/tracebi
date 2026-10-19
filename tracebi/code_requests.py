@@ -37,7 +37,8 @@ MAX_FILES = 50
 _NAME = r"[A-Za-z0-9_][A-Za-z0-9_-]*"
 #: The paths a request may hold: (pattern, folder, environment variable).
 _CODE_PATHS = (
-    (re.compile(rf"transforms/{_NAME}\.(py|ipynb)"), "transforms", "TRACEBI_TRANSFORMS_DIR"),
+    (re.compile(rf"transforms/{_NAME}\.(sql|py|ipynb|contract\.yaml)"), "transforms",
+     "TRACEBI_TRANSFORMS_DIR"),
     (re.compile(rf"pipelines/{_NAME}\.(py|yaml|yml)"), "pipelines", "TRACEBI_PIPELINES_DIR"),
     (re.compile(rf"models/{_NAME}\.py"), "models", "TRACEBI_MODELS_DIR"),
     (re.compile(rf"connections/{_NAME}\.(yaml|yml)"), "connections", "TRACEBI_CONNECTIONS_DIR"),
@@ -55,8 +56,8 @@ def library_path(path: str) -> Path:
     """Where project path *path* lives on this server."""
     if not is_code_path(path):
         raise DraftError(
-            f"{path!r} is not a file a code request holds: transforms/<name>.py or "
-            f".ipynb, pipelines/<name>.py or .yaml, models/<name>.py, "
+            f"{path!r} is not a file a code request holds: transforms/<name>.sql, "
+            f".py, .ipynb or .contract.yaml, pipelines/<name>.py or .yaml, models/<name>.py, "
             f"connections/<name>.yaml, reports/<package>/report.py")
     folder, rest = path.split("/", 1)
     if folder == "reports":
@@ -192,7 +193,8 @@ def pipelines_touched(paths: list) -> list:
     names, transforms = set(), set()
     for path in paths:
         folder, rest = path.split("/", 1)
-        stem = rest.rsplit(".", 1)[0]
+        # x.contract.yaml belongs to transform x, as x.sql does.
+        stem = rest.split(".", 1)[0] if folder == "transforms" else rest.rsplit(".", 1)[0]
         if folder == "pipelines":
             names.add(stem)
         elif folder == "transforms":

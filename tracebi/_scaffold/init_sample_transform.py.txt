@@ -14,6 +14,13 @@ and never sees this code.
     python transforms/sample_transform.py
 
 Idempotent: rerun any time; it replaces the warehouse tables.
+
+This sample is the Python form, the escape hatch. A transform is SQL by
+default: `tracebi new-transform "Orders Clean"` scaffolds
+transforms/orders_clean.sql (DuckDB statements, run top to bottom in one
+fresh connection; {{ sink }} is the warehouse) and the sink contract beside
+it, orders_clean.contract.yaml. `tracebi run-transform <name>` runs either
+form and reports which ran.
 """
 
 from __future__ import annotations

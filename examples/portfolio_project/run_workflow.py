@@ -5,7 +5,7 @@ over.
     python run_workflow.py
 
     ⓪  INPUT        inputs/holdings.csv                (a raw pull; API export / CSV / SQL)
-    ①  TRANSFORM    transforms/holdings_transform.py   → data/warehouse.duckdb
+    ①  TRANSFORM    transforms/holdings_transform.sql  → data/warehouse.duckdb
                     transforms/saas_transform.py       → data/warehouse.duckdb
                     transforms/affordability_transform.py → data/housing.duckdb
     ②  MODEL        models/portfolio_model.yaml          (a star schema over the sink)
@@ -44,11 +44,13 @@ def main() -> None:
         print("· generating a messy source file into inputs/")
         _load(os.path.join(ROOT, "inputs", "generate_raw.py"))
 
+    # The SQL form: statements run top to bottom in one fresh connection, then
+    # the sink contract beside it (holdings_transform.contract.yaml).
+    # transforms/holdings_transform_pandas.py sinks the same tables in pandas.
     print("① transform → sink")
-    transform = _load(os.path.join(ROOT, "transforms", "holdings_transform.py"))
-    summary = transform.run()
-    for k, v in summary.items():
-        print(f"    {k:20} {v}")
+    from tracebi.transforms import run_transform
+    form = run_transform(os.path.join(ROOT, "transforms", "holdings_transform.sql"), root=ROOT)
+    print(f"    form: {form}")
 
     # The SaaS metrics sample (reports/saas_model) sinks its own tables into the
     # same warehouse: a billing export cleaned to one row per account per month.

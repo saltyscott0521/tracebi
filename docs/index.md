@@ -29,7 +29,7 @@ request, versioned, tested, and authored as easily by an agent as by a person.
 The ideas. Read these once and the rest of the docs make sense.
 
 - [[the-three-phase-workflow]] — the spine: transform → model → report
-- [[transform]] — phase ①: unconstrained pandas that lands clean tables
+- [[transform]] — phase ①: SQL (or pandas, the escape hatch) that lands clean tables
 - [[model]] — phase ②: the star-schema contract over those tables
 - [[models-and-connectors]] — a model says what the data means; a connector says where it is
 - [[report]] — phase ③: figures that are live queries, not typed-in numbers
@@ -66,6 +66,7 @@ vocabulary, so they describe what the code actually accepts.
 - [[figure-helper]] — `{{ figure("name") }}`: framework-built figures, your layout
 - [[measures]] — every measure kind the semantic layer knows
 - [[model-json]] — a model as data: `models/<name>.yaml` (or `.json`)
+- [[transform-sql]] — a transform as SQL, and its `.contract.yaml`
 - [[queries]] — filters, `having`, ordering, limits
 - [[number-formats]] — the named formats and how defaults are derived
 - [[cli]] — every `tracebi` command

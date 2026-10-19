@@ -24,15 +24,15 @@ function Card({ children, style }) {
 const PHASE_DETAIL = [
   {
     n: '1', color: 'var(--phase-transform)', folder: 'transforms/', title: 'Transform',
-    lead: 'The phase the framework does not constrain. Pull the queries you need and write as much Python as the work takes — window functions, algorithmic passes, prose parsing, cleaning — then write the result into the warehouse.',
-    point: 'The contract is not how you clean, it is what lands: the named tables at the end of the script.',
-    code: `# transforms/holdings_transform.py
-df = pd.read_csv(RAW)
-df["issuer"] = parse_issuer(df["position"])   # any pandas you like
+    lead: 'The phase the framework does not constrain. SQL by default: read the raw pull and do the work it takes — window functions, prose parsing, cleaning, dedupe — then create the tables the warehouse holds. Python (pandas or polars) is the escape hatch.',
+    point: 'The contract is not how you clean, it is what lands: the named tables at the end of the script, checked by the contract beside it.',
+    code: `-- transforms/holdings_transform.sql
+CREATE OR REPLACE TEMP TABLE raw AS
+SELECT * FROM read_csv('inputs/holdings.csv', all_varchar = true);
 ...
-wh = DuckDBConnector("warehouse", database=WAREHOUSE)
-wh.write(fact,  "fact_holdings")   # ← sink
-wh.write(dim_issuer, "dim_issuer")`,
+CREATE OR REPLACE TABLE dim_issuer AS        -- ← sink
+SELECT row_number() OVER (ORDER BY issuer) AS issuer_id, issuer, sector
+FROM (SELECT DISTINCT issuer, sector FROM keyed);`,
   },
   {
     n: '2', color: 'var(--phase-model)', folder: 'models/', title: 'Model',

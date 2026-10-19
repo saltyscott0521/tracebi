@@ -1,0 +1,57 @@
+# The sink CONTRACT of holdings_transform.sql: what must be true of the
+# tables that just landed. `tracebi run-transform holdings_transform` runs
+# these as read-only SQL against the warehouse after the transform, and
+# records them beside it. A failed check raises, so a broken sink never
+# freezes quietly. This says "the sink satisfied its contract" — it does NOT
+# verify the SQL above. The notes are the STATED methodology: prose about
+# what the cleaning did, recorded verbatim and carried into report traces,
+# never verified.
+#
+# The same closed vocabulary as `with contract(...)` in Python (the pandas
+# form, holdings_transform_pandas.py, declares the same checks in code):
+# rows, unique, not_null, foreign_key, values, reconcile.
+
+name: holdings
+note: >-
+  issuer and instrument type parsed from the prose position blob; sectors
+  normalised from each administrator's spelling; money coerced from strings;
+  exact double-booked positions deduped; rows with no keyable issuer dropped
+  and counted
+
+checks:
+  - rows: fact_holdings
+    at_least: 10
+    note: >-
+      a Schedule of Investments under 10 positions means the raw pull is
+      truncated, not that the book shrank
+  - unique: dim_issuer
+    columns: [issuer_id]
+  - not_null: fact_holdings
+    columns: [fund_id, issuer_id, fair_value]
+  - foreign_key: fact_holdings
+    column: issuer_id
+    refers_to: [dim_issuer, issuer_id]
+  - foreign_key: fact_holdings
+    column: fund_id
+    refers_to: [dim_fund, fund_id]
+  - rows: fact_cashflows
+    at_least: 10
+  - not_null: fact_cashflows
+    columns: [fund_id, issuer_id, flow_date, flow_type_id, amount]
+  - unique: dim_date
+    columns: [flow_date]
+  - values: dim_flow_type
+    column: flow_type
+    within: [Drawdown, Interest, Repayment]
+  - foreign_key: fact_cashflows
+    column: fund_id
+    refers_to: [dim_fund, fund_id]
+  - foreign_key: fact_cashflows
+    column: issuer_id
+    refers_to: [dim_issuer, issuer_id]
+  - foreign_key: fact_cashflows
+    column: flow_date
+    refers_to: [dim_date, flow_date]
+  - foreign_key: fact_cashflows
+    column: flow_type_id
+    refers_to: [dim_flow_type, flow_type_id]

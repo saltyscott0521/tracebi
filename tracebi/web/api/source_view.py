@@ -7,7 +7,8 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-SOURCE_LANG = {".json": "json", ".html": "html", ".css": "css", ".js": "javascript", ".py": "python", ".ipynb": "json"}
+SOURCE_LANG = {".json": "json", ".html": "html", ".css": "css", ".js": "javascript", ".py": "python", ".ipynb": "json",
+               ".sql": "sql"}
 SOURCE_MAX_BYTES = 256 * 1024
 
 

@@ -17,14 +17,16 @@ materialized artifact handed across the boundary:
 
 | Phase | Folder | You write | Freeze it hands on |
 |---|---|---|---|
-| ① **Transform** | `transforms/` | ordinary, unconstrained pandas — pull queries, clean, parse, key, dedupe, then **sink** clean star-schema tables. Notebook-shaped by scaffold (`# %%` percent cells + markdown cells — editors open them AS notebooks; the file stays reviewable Python); literal `.ipynb` works too, and `tracebi run-transform` executes either top-to-bottom fresh | `data/warehouse.duckdb` (materialized tables) |
+| ① **Transform** | `transforms/` | **SQL by default**: `transforms/<name>.sql`, DuckDB statements run top to bottom in one fresh warehouse connection — read, clean, parse (`regexp_extract`), key, dedupe (`QUALIFY row_number()`), then **sink** clean star-schema tables (`CREATE OR REPLACE TABLE`, or on the object tier `COPY (…) TO '{{ sink }}/<table>.parquet'`). Two placeholders only: `{{ sink }}` and `{{ root }}`. The sink contract sits beside it as `<name>.contract.yaml`. The escape hatch is pandas or polars (`tracebi new-transform --python`: notebook-shaped `# %%` cells; literal `.ipynb` works too). `tracebi run-transform` executes any form top-to-bottom fresh and reports `form: sql \| python \| notebook` | `data/warehouse.duckdb` (materialized tables) |
 | ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
 | ③ **Report** | `reports/` | an **artifact package**, in a folder named for its model (`reports/<model>/<name>/`, named `<model>/<name>` in every command: free HTML whose figures each name a stamped binding or carry `data-tb-unverified`) — or a `ReportSpec` (JSON), which is a serialization of the same thing: `tracebi migrate spec reports/<name>.json` compiles it into the package form, and the package shadows the same-named spec at discovery | the rendered page + its lineage manifest |
 
 **Folder permissions.** A folder under `reports/` (a directory that is not a package) may hold a `_folder.yaml` granting `view`, `build`, `publish` and `manage` to sign-in groups or names (`docs/reference/folder-yaml.md`). With none, roles decide as before. A report in a folder you cannot view is not listed and every read of it answers as if it did not exist, so a "no such report" over the gateway can mean "not yours": do not look for it another way. A `build` or `publish` refusal names the permission it needs; ask a folder manager rather than working around it.
 
 Reference implementation, end to end, at `examples/portfolio_project/`:
-`transforms/holdings_transform.py` → `models/portfolio_model.yaml` →
+`transforms/holdings_transform.sql` (+ `holdings_transform.contract.yaml`; the
+same work in pandas is `holdings_transform_pandas.py`, the escape hatch) →
+`models/portfolio_model.yaml` →
 `reports/portfolio_model/portfolio_dashboard/` (an `app.jsx` dashboard), wired by `run_workflow.py`.
 `docs/concepts/the-three-phase-workflow.md` is the full tour; read it first.
 
@@ -47,7 +49,7 @@ model's label (the build adds it when you write none); the `<h1>` is the
 report's name or its finding.
 
 A model also gets a pipeline, `pipelines/<model>.yaml` (`transform:`, `models:`,
-`reports: all`, `schedule:`; it only names the Python transform; `.py` with
+`reports: all`, `schedule:`; it only names the transform; `.py` with
 `model_pipeline(...)` still works and wins on a name clash): `tracebi
 run-pipeline <model>` runs the transform, then builds every report in
 `reports/<model>/`, and the app's **Refresh data** (Data, the model's
@@ -121,14 +123,17 @@ the boundary. **The trust machinery governs from the model boundary onward — i
 covers phases ② and ③, not ①.**
 
 - **Phase ① (`transforms/`) is unconstrained and unverified by design.** It is
-  ordinary pandas that writes the warehouse. The framework draws the line at the
+  ordinary SQL (or pandas, the escape hatch) that writes the warehouse. The framework draws the line at the
   **sink**, where the numbers become a contract you can report against. Lineage
   is *not* traced through the raw analysis, and nothing machine-checks that the
   transform's numbers are right. Phase ① is trusted the way reviewed code is
   trusted — in git — not the way a fingerprint is trusted.
-- **What phase ① CAN declare is a sink contract.** End the transform with a
+- **What phase ① CAN declare is a sink contract.** Put it beside the
+  transform as `transforms/<name>.contract.yaml` (`name:`, `note:`, `checks:`
+  — each entry `- rows: fact_x` with its parameters beside it), or end a
+  Python transform with a
   `with contract(name, warehouse=...) as c:` block (`tracebi.contracts`) —
-  closed, declarative checks (`rows`, `unique`, `not_null`, `foreign_key`,
+  the same closed, declarative checks (`rows`, `unique`, `not_null`, `foreign_key`,
   `values`, `reconcile`) run as read-only SQL against the tables just sunk and
   recorded beside the warehouse with connector-path fingerprints. A failed
   check **raises**, so a broken sink never freezes quietly. At report build,
@@ -137,7 +142,7 @@ covers phases ② and ③, not ①.**
   contract was checked; never reads green), or `no_contract` — and
   `tracebi verify --contracts` re-runs the declaration. The exact claim is
   **"the sink satisfied its contract"** — never "the transform was verified":
-  the checks certify the landed tables' shape, not the pandas above them, and
+  the checks certify the landed tables' shape, not the SQL or pandas above them, and
   contract status never colors a figure status. Declare one whenever you write
   a transform; it is the difference between a warehouse that says nothing and
   one that carries its own certificate.
@@ -693,7 +698,7 @@ freely, never re-source.
 
 **Change the contract in git. Use the contract over MCP.**
 
-- **Definition plane** (git): `transforms/*.py`, `models/*.py`,
+- **Definition plane** (git): `transforms/*.sql` (and `*.py`), `models/*.py`,
   `reports/*` (specs, packages, and factories; plus `pipelines/*.py`). Every phase is
   authored and code-reviewed here. Missing a measure? The fix is a code-reviewed
   edit to the model file (e.g. `model.add_measure(...)` in

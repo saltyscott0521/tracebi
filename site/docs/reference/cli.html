@@ -63,6 +63,7 @@
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
@@ -96,7 +97,7 @@ environment — see <a href="../reference/environment-variables.html">Environmen
 <hr>
 <h2 id="the-everyday-loop">The everyday loop</h2>
 <pre><code class="language-bash">tracebi dev                      # the app, in dev mode (no name = where your agent's exhibits land)
-tracebi run-transform holdings   # ① clean + sink to the warehouse
+tracebi run-transform holdings   # ① clean + sink to the warehouse (.sql, .py or .ipynb; says which)
 tracebi report build my_report   # ③ render one self-contained .html + trace
 tracebi report status my_report  # what the artifact has actually earned
 tracebi verify output/my_report.html.manifest.json

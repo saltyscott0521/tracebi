@@ -73,6 +73,43 @@ def test_every_report_reproduces_and_its_file_is_intact(built, name):
     assert "FILE INTACT" in out
 
 
+HOLDINGS_TABLES = ("dim_fund", "dim_issuer", "fact_holdings", "dim_date", "dim_flow_type",
+                   "fact_cashflows")
+
+
+def test_the_sql_transform_and_its_pandas_escape_hatch_sink_identical_tables(built, tmp_path, monkeypatch):
+    """The reference transform is SQL (holdings_transform.sql, which `built`
+    ran); holdings_transform_pandas.py does the same work in pandas. Run into a
+    second copy of the project, every table they sink fingerprints the same,
+    row order included, read back through the connector load path the model
+    and the certificate use. So a report reads the same numbers whichever
+    form fed it, and the pandas file stays an honest example of the escape hatch."""
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.model.dataset import frame_fingerprint
+
+    other = tmp_path / "pandas_project"
+    shutil.copytree(REFERENCE_PROJECT, other, ignore=shutil.ignore_patterns(
+        "data", "output", ".tracebi", "explorations", "__pycache__", "*.duckdb"))
+    monkeypatch.chdir(other)
+    code, out = run_cli("run-transform", "holdings_transform_pandas")
+    assert code == 0 and "form: python" in out, out
+
+    def fingerprints(root):
+        wh = DuckDBConnector("warehouse", database=str(root / "data" / "warehouse.duckdb"))
+        try:
+            return {t: frame_fingerprint(wh.load(t)) for t in HOLDINGS_TABLES}
+        finally:
+            wh.disconnect()
+
+    assert fingerprints(built) == fingerprints(other)
+    # And the two forms' contracts certify the same tables with the same checks.
+    sql_rec, pandas_rec = (json.loads((root / "data" / "warehouse.contracts.json").read_text())
+                           ["transforms"]["holdings"] for root in (built, other))
+    assert sql_rec["tables"] == pandas_rec["tables"]
+    assert [(c["check"], c["table"], c["params"]) for c in sql_rec["checks"]] == [
+        (c["check"], c["table"], c["params"]) for c in pandas_rec["checks"]]
+
+
 def test_the_working_preview_formats_numbers_like_the_build(built):
     """The dev preview and the Build-mode preview render the working state
     (`render_exploration`); a snapshot is the same render, on disk. It must

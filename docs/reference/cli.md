@@ -16,7 +16,7 @@ environment — see [[environment-variables]].
 
 ```bash
 tracebi dev                      # the app, in dev mode (no name = where your agent's exhibits land)
-tracebi run-transform holdings   # ① clean + sink to the warehouse
+tracebi run-transform holdings   # ① clean + sink to the warehouse (.sql, .py or .ipynb; says which)
 tracebi report build my_report   # ③ render one self-contained .html + trace
 tracebi report status my_report  # what the artifact has actually earned
 tracebi verify output/my_report.html.manifest.json

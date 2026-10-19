@@ -51,11 +51,14 @@ class _LayerReg:
 class _StepResult:
     """What a step hands the runner: rows out (``len``) and rows in (lineage)."""
 
-    def __init__(self, rows_in: int, rows_out: int) -> None:
+    def __init__(self, rows_in: int, rows_out: int, detail: Optional[dict] = None) -> None:
         from types import SimpleNamespace
 
         self._rows_out = rows_out
-        self.lineage = [SimpleNamespace(metadata={"rows_ingested": rows_in})]
+        metadata = {"rows_ingested": rows_in}
+        if detail:
+            metadata["run_detail"] = detail
+        self.lineage = [SimpleNamespace(metadata=metadata)]
 
     def __len__(self) -> int:
         return self._rows_out
@@ -70,11 +73,14 @@ class _StepLayer:
 
     def execute(self) -> _StepResult:
         out = self._fn()
-        if isinstance(out, tuple):
+        detail = None
+        if isinstance(out, tuple) and len(out) == 3:
+            rows_in, rows_out, detail = out
+        elif isinstance(out, tuple):
             rows_in, rows_out = out
         else:
             rows_in = rows_out = int(out or 0)
-        return _StepResult(rows_in, rows_out)
+        return _StepResult(rows_in, rows_out, detail)
 
 
 class PipelineRunner:
@@ -262,8 +268,10 @@ class PipelineRunner:
         layers: run a transform, pull from an API, build reports.
 
         ``fn()`` returns the rows it produced, or ``(rows_in, rows_out)``, or
-        ``None``; the run history records those counts. Steps get the same
-        history, locking, dependency order and schedule as a layer::
+        ``None``; the run history records those counts. ``(rows_in, rows_out,
+        detail)`` also records *detail*, a small dict, as the run's
+        ``detail``. Steps get the same history, locking, dependency order and
+        schedule as a layer::
 
             runner.register_step("transform", run_transform)
             runner.register_step("build", build_reports, depends_on="transform")
@@ -634,8 +642,15 @@ class PipelineRunner:
             # A layer's steps are SQL; a transform(func) step is the Python
             # escape hatch, and the run says so, so the Data page and
             # `run-pipeline --status` can name the layers that left SQL.
+            recorded: dict = {}
             if any(node.metadata.get("escape_hatch") for node in ds.lineage):
-                detail = json.dumps({"escape_hatch": "python"})
+                recorded["escape_hatch"] = "python"
+            # A step may say more about its run (the transform step: which
+            # form ran, sql | python | notebook).
+            for node in ds.lineage:
+                recorded.update(node.metadata.get("run_detail") or {})
+            if recorded:
+                detail = json.dumps(recorded)
             status = "success"
             print(f"  [{name}] ✓  {rows_in} in → {rows_out} out  ({time.monotonic() - began:.1f}s)")
         except Exception as exc:

@@ -63,6 +63,7 @@
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/report-json.html">report.json</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
@@ -88,7 +89,8 @@
   <main class="doc">
 <h1 id="pipeline-files-yaml">Pipeline files (YAML)</h1>
 <p><strong>A pipeline as data: which transform to run, which models it feeds, which
-reports to rebuild, and when. Transforms stay Python; a pipeline only names one.</strong></p>
+reports to rebuild, and when. A transform stays its own file (SQL by default,
+Python as the escape hatch); a pipeline only names one.</strong></p>
 <p><code>pipelines/&lt;name&gt;.yaml</code> (or <code>.yml</code>) compiles to the same runner as
 <code>model_pipeline(...)</code>: <code>tracebi run-pipeline &lt;name&gt;</code> and the app's <strong>Refresh data</strong>
 run the transform fresh (<code>tracebi run-transform</code>), then rebuild the reports,
@@ -101,7 +103,7 @@ and the schema is closed.</p>
 <pre><code class="language-yaml"># pipelines/portfolio_model.yaml
 name: portfolio_model          # equals the file name
 description: Rebuild the portfolio warehouse, then its reports.
-transform: holdings_transform  # transforms/holdings_transform.py (or .ipynb)
+transform: holdings_transform  # transforms/holdings_transform.sql (or .py, .ipynb)
 models: [portfolio_model]
 reports: all
 schedule: null
@@ -122,7 +124,7 @@ schedule: null
 </tr>
 <tr>
 <td><code>transform</code></td>
-<td>required; a bare name of <code>transforms/&lt;x&gt;.py</code> or <code>.ipynb</code> (an extension is allowed, a folder is not)</td>
+<td>required; a bare name of <code>transforms/&lt;x&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code> (an extension is allowed, a folder is not). The step runs it with <code>tracebi run-transform</code>, then the <code>&lt;x&gt;.contract.yaml</code> beside it, and records which form ran (<code>sql</code>, <code>python</code>, <code>notebook</code>): <code>tracebi run-pipeline &lt;name&gt; --status</code> and the model's Transform tab show it. See <a href="../reference/transform-sql.html">SQL transforms</a></td>
 </tr>
 <tr>
 <td><code>models</code></td>

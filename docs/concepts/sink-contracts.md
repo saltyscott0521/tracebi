@@ -46,7 +46,10 @@ the report's methodology appendix shows beside it:
 
 No callables, for the same reason [[measures]] rejects them: a check that cannot
 be serialized cannot be re-run by someone else. The reference declaration is
-`examples/portfolio_project/transforms/holdings_transform.py`.
+`examples/portfolio_project/transforms/holdings_transform.contract.yaml`
+(beside the SQL transform it checks; the pandas form,
+`holdings_transform_pandas.py`, declares the same checks in a `with contract`
+block). The file form is in [[transform-sql#The contract file]].
 
 The checks run as read-only SQL against the tables you just sank.
 

@@ -6,6 +6,7 @@ warehouse to the object tier (``tracebi.yaml``) and run the same pipeline.
 """
 
 import json
+import os
 
 import pytest
 
@@ -316,7 +317,10 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
     text, done = follow_run(c, "sample_model", run["run_id"])
     assert done["status"] == "succeeded", text
     # The transform ran through `tracebi run-transform`, whose own output used to be thrown away.
-    assert "Running transforms/sample_transform.py" in text
+    # init's sample is the Python form, and the run says so.
+    assert "Running transforms/sample_transform.py (form: python" in text
+    [step] = [la for la in c.get("/api/pipelines").json()[0]["layers"] if la["name"] == "transform"]
+    assert step["last_detail"] == {"form": "python"}
     # Paths read as the project's own, not the machine's.
     assert "→ output/sample_model/sample_dashboard.html\n" in text
     assert text.index("[transform]") < text.index("[build]")
@@ -330,6 +334,75 @@ def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, m
         ("pipeline", "pipelines/sample_model.yaml"), ("transform", "transforms/sample_transform.py")]
     assert "transform: sample_transform" in code["files"][0]["content"] and "sink" in code["files"][1]["content"].lower()
     assert c.get("/api/pipelines/nope/source").status_code == 404
+
+
+def test_a_sql_transform_runs_top_to_bottom_and_its_contract_beside_it_certifies_the_sink(scaffolded):
+    """`new-transform` scaffolds SQL and a contract file; the analyst writes the
+    statements (a relative read from inputs/, a sink table, scratch TEMP
+    tables), declares checks in YAML, and `run-transform` runs both: a failed
+    check refuses the certificate, a passing one records it as the Python
+    `with contract(...)` block would."""
+    import duckdb
+
+    from tracebi.contracts import read_contracts
+
+    code, out = run_cli("new-transform", "Orders Clean")
+    assert code == 0, out
+    sql = scaffolded / "transforms" / "orders_clean.sql"
+    contract = scaffolded / "transforms" / "orders_clean.contract.yaml"
+    assert "(file tier)" in out and sql.is_file() and contract.is_file()
+    # The scaffold runs as written (every statement is a comment), declaring nothing.
+    code, out = run_cli("run-transform", "orders_clean")
+    assert code == 0 and "form: sql" in out, out
+
+    warehouse = str(scaffolded / "data" / "warehouse.duckdb")
+    sql.write_text(
+        "-- %% read relative to the project root\n"
+        "CREATE OR REPLACE TEMP TABLE raw AS\n"
+        "SELECT * FROM read_csv('inputs/orders.csv', header = true, all_varchar = true);\n"
+        "-- %% sink: a table that is not TEMP lands in the warehouse\n"
+        "CREATE OR REPLACE TABLE fact_orders AS\n"
+        "SELECT CAST(order_id AS BIGINT) AS order_id,\n"
+        "       TRY_CAST(regexp_replace(revenue, '[^0-9.]', '', 'g') AS DOUBLE) AS revenue,\n"
+        "       '{{ root }}' AS loaded_from\n"
+        "FROM raw QUALIFY row_number() OVER (PARTITION BY order_id ORDER BY order_id) = 1;\n")
+    contract.write_text(
+        "name: orders\nnote: deduped on order_id\nchecks:\n"
+        "  - unique: fact_orders\n    columns: [order_id]\n"
+        "  - rows: fact_orders\n    at_least: 1000\n    note: a full month\n")
+    code, out = run_cli("run-transform", "orders_clean")
+    assert code == 1 and "did not satisfy contract 'orders'" in out and "rows(fact_orders" in out, out
+    assert "orders" not in ((read_contracts(warehouse) or {}).get("transforms") or {})
+
+    contract.write_text(contract.read_text().replace("at_least: 1000", "at_least: 1"))
+    code, out = run_cli("run-transform", "orders_clean")
+    assert code == 0, out
+    rec = read_contracts(warehouse)["transforms"]["orders"]
+    assert rec["note"] == "deduped on order_id" and set(rec["tables"]) == {"fact_orders"}
+    assert [(c["check"], c["params"], c.get("note")) for c in rec["checks"]] == [
+        ("unique", {"columns": ["order_id"]}, None), ("rows", {"at_least": 1}, "a full month")]
+    con = duckdb.connect(warehouse, read_only=True)
+    try:
+        tables = {r[0] for r in con.execute("SELECT table_name FROM duckdb_tables()").fetchall()}
+        [(loaded_from,)] = con.execute("SELECT DISTINCT loaded_from FROM fact_orders").fetchall()
+    finally:
+        con.close()
+    assert "fact_orders" in tables and "raw" not in tables       # TEMP is scratch
+    assert loaded_from == os.path.abspath(os.getcwd())            # {{ root }}: the project root
+
+    # A check outside the closed vocabulary, and a placeholder that is not one, are named.
+    contract.write_text("checks:\n  - looks_right: fact_orders\n")
+    code, out = run_cli("run-transform", "orders_clean")
+    assert code == 1 and "checks[0] must name exactly one check" in out, out
+    contract.unlink()
+    sql.write_text(sql.read_text() + "SELECT '{{ warehouse }}';\n")
+    code, out = run_cli("run-transform", "orders_clean")
+    assert code == 1 and "{{ warehouse }} is not a placeholder" in out, out
+
+    # Two forms of one name are one transform too many.
+    (scaffolded / "transforms" / "orders_clean.py").write_text("print('pandas')\n")
+    code, out = run_cli("run-transform", "orders_clean")
+    assert code == 1 and "orders_clean.sql and " in out and "orders_clean.py" in out, out
 
 
 def test_a_run_lists_only_the_reports_it_actually_rebuilt(scaffolded, monkeypatch):
@@ -367,6 +440,18 @@ def test_the_app_refreshes_a_model_while_another_model_holds_the_same_warehouse_
     from tracebi.pipeline.model_pipeline import reports_of
     rebuilt = c.get(f"/api/pipelines/portfolio_model/runs/{run['run_id']}").json()["reports"]
     assert len(rebuilt) > 1 and sorted(rebuilt) == reports_of("portfolio_model")
+
+    # The reference transform is SQL: the run records the form, the Transform
+    # tab's Code view shows the SQL and the contract beside it, and --status names it.
+    assert "Running transforms/holdings_transform.sql (form: sql" in text
+    [pipe] = [p for p in c.get("/api/pipelines").json() if p["pipeline"] == "portfolio_model"]
+    assert {la["name"]: la["last_detail"] for la in pipe["layers"]}["transform"] == {"form": "sql"}
+    code = c.get("/api/pipelines/portfolio_model/source").json()
+    assert [(f["label"], f["path"], f["language"]) for f in code["files"]][1:] == [
+        ("transform", "transforms/holdings_transform.sql", "sql"),
+        ("contract", "transforms/holdings_transform.contract.yaml", "text")]
+    status, out = run_cli("run-pipeline", "portfolio_model", "--status")
+    assert status == 0 and "(form: sql)" in out, out
 
 
 def test_a_model_and_its_connector_show_the_file_that_declares_them(reference, monkeypatch):

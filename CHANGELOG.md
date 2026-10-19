@@ -6,6 +6,38 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — SQL transforms
+
+- A phase ① transform is SQL by default: `transforms/<name>.sql`, DuckDB
+  statements run top to bottom in one fresh read-write connection to the
+  warehouse. A table it creates (not `TEMP`) lands in the warehouse on the
+  file and remote tiers and as `<location>/<table>.parquet` on the object
+  tier; a script may also `COPY (…) TO '{{ sink }}/<table>.parquet'` itself.
+  Two placeholders, `{{ sink }}` and `{{ root }}`; any other is an error
+  naming it. Relative reads resolve against the project root. A failing
+  statement names its number and line. Reference:
+  `docs/reference/transform-sql.md`.
+- The sink contract as a file: `transforms/<name>.contract.yaml` (`name`,
+  `note`, `checks`), the same closed vocabulary as `with contract(...)`
+  through one shared parser (`tracebi.contracts.declare`), run after the
+  transform of any form and writing the same certificate.
+- `tracebi run-transform` runs `.sql`, `.py` or `.ipynb` and prints
+  `form: sql | python | notebook`; a pipeline's transform step records the
+  form in the run's `detail`, shown by `tracebi run-pipeline --status`
+  (`(form: sql)`) and the model's Transform tab, whose Code view shows the
+  SQL and its contract file. Two forms of one name (`x.sql` and `x.py`) are
+  refused, naming both.
+- `tracebi new-transform` scaffolds the SQL and its contract file, the sink
+  written in the idiom of the project's warehouse tier; `--python` scaffolds
+  the notebook-shaped pandas transform as before.
+- The reference project's `holdings_transform` is SQL, with the pandas
+  original kept beside it as `holdings_transform_pandas.py`, the
+  escape-hatch example. Both sink identical tables (all six fingerprints
+  equal, row order included); manifests built from the pandas warehouse
+  still verify as reproducing.
+- A code request (`tracebi push`) may carry `transforms/<name>.sql` and
+  `<name>.contract.yaml`.
+
 ### Added — storage tiers for the warehouse
 
 - `tracebi.yaml` `warehouse: {tier, location}`: `file` (the default,
