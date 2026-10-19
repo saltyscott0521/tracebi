@@ -707,3 +707,40 @@ def test_reproduces_verdict_names_the_sections_it_could_not_check(
         "section this report does not prove"
     )
     assert mixed["verdict_detail"] != fully_checked["verdict_detail"]
+
+
+def test_a_receipt_that_stamped_a_time_grain_as_a_timestamp_still_reproduces(monkeypatch):
+    """Builds before time grains were stamped as period labels recorded the
+    date_trunc timestamp (2026-01-01, datetime64[us]). Re-run today the column
+    reads 2026-01; that is a spelling change, not drift, so the old receipt
+    still reads Reproduces. A different number still does not."""
+    import tracebi.model.data_model as dm
+
+    model = DataModel("grain_model")
+    model.add_connector(MemoryConnector("g", tables={
+        "f": pd.DataFrame({"d_id": [1, 2, 3], "x": [1.5, 2.0, 4.25]}),
+        "d": pd.DataFrame({"d_id": [1, 2, 3], "day": pd.to_datetime(
+            ["2026-01-05", "2026-01-20", "2026-02-07"])})}))
+    model.add_table("f", "g", "f").add_table("d", "g", "d")
+    model.add_dimension("dim_d", "d", "d_id", ["day"])
+    model.add_time_grain("dim_d", "month", source="day", grain="month")
+    model.add_fact("fact_f", "f", ["x"], {"dim_d": "d_id"})
+    model.add_measure("x", column="x", agg="sum")
+
+    assert list(model.query("fact_f", ["x"], ["dim_d.month"]).to_pandas()[
+        "dim_d.month"]) == ["2026-01", "2026-02"]
+    with monkeypatch.context() as m:           # how an older build stamped it
+        m.setattr(dm, "time_grain_labels", lambda series, grain: series)
+        old = model.query("fact_f", ["x"], ["dim_d.month"])
+    lineage = old.lineage_to_dict()
+    lineage[-1]["metadata"].pop("time_labels")
+    assert str(old.to_pandas()["dim_d.month"].dtype) == "datetime64[us]"
+    manifest = {"sections": [{"dataset_fingerprint": old.fingerprint(),
+                              "dataset_lineage": lineage}]}
+    (checked,) = verify_manifest(manifest, {"grain_model": model})["sections"]
+    assert checked["status"] == REPRODUCES, checked["detail"]
+
+    moved = old.to_pandas().assign(x=[3.5, 4.0])
+    manifest["sections"][0]["dataset_fingerprint"] = frame_fingerprint(moved)
+    (checked,) = verify_manifest(manifest, {"grain_model": model})["sections"]
+    assert checked["status"] != REPRODUCES

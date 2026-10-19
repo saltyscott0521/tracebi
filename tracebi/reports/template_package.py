@@ -360,8 +360,16 @@ def declared_column_formats(model, columns) -> dict:
     their own columns. Presentation only: it picks how a number is written,
     never which number."""
     declared = model.measures()
-    return {c: declared[c].format for c in sorted(str(c) for c in columns)
-            if c in declared and declared[c].format}
+    out = {c: declared[c].format for c in sorted(str(c) for c in columns)
+           if c in declared and declared[c].format}
+    # A declared time grain is a period label ("2026", "2026-03"): "label"
+    # tells the runtime to write it as it is, never as a number ("2,026").
+    for c in sorted(str(c) for c in columns):
+        dim, dot, attr = c.partition(".")
+        dim_def = model._dimensions.get(dim) if dot else None
+        if dim_def is not None and (dim_def.derived.get(attr) or {}).get("kind") == "date_trunc":
+            out[c] = "label"
+    return out
 
 
 def table_number_formats(df, declared=None) -> dict:

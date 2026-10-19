@@ -219,6 +219,9 @@ model.query(fact=&quot;fact_orders&quot;, measures=[&quot;revenue&quot;],
             dimensions=[&quot;dim_date.order_month&quot;])
 </code></pre>
 <p>A governed <code>date_trunc</code>. Grains: <code>day</code>, <code>week</code>, <code>month</code>, <code>quarter</code>, <code>year</code>.
+The result holds each period as its label: <code>2026-03-14</code>, <code>2026-W11</code> (ISO
+week), <code>2026-03</code>, <code>2026-Q1</code>, <code>2026</code>, the spelling a built page's filters and
+recomputed figures use too.
 This is "group by month" without dropping to <code>report.py</code> or pre-baking the
 bucket in the <a href="../concepts/transform.html">Transform — phase ①</a>.</p>
 <h3 id="add_value_bins-group-by-a-numeric-band"><code>add_value_bins</code> — group by a numeric band</h3>

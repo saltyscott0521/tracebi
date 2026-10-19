@@ -850,10 +850,9 @@ def execute_plan(plan: dict, frame: pd.DataFrame,
     )
     out = model.execute(selection_query(spec, applied)).to_pandas()
     if time_grain:
-        grain = time_grain["grain"]
-        out[time_grain["column"]] = [
-            None if pd.isna(v) else grain_label(pd.Timestamp(v).date(), grain)
-            for v in out.pop(time_alias)]
+        # DataModel returns the grain as its period label, the slice's own
+        # spelling, so the axis column goes back under its slice name as is.
+        out[time_grain["column"]] = out.pop(time_alias)
     out = out[plan["columns"]]
     for agg in plan["aggregates"]:
         # A re-aggregated count keeps COUNT's zero over no rows; SUM gives null.

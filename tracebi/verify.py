@@ -307,6 +307,39 @@ def _apply_figure_kinds(results: list[dict], figures: Any) -> None:
             row["section_type"] = next(iter(found))
 
 
+#: The dtypes an older build could have stamped a date_trunc column in.
+_STAMPED_GRAIN_DTYPES = ("datetime64[us]", "datetime64[ns]", "datetime64[ms]",
+                         "datetime64[s]")
+
+
+def _as_timestamps_matches(ds, expected: str, recorded_md: dict) -> bool:
+    """Whether a re-run whose time grains are period labels (``2026-03``)
+    equals a receipt stamped before that, when the grain column held the
+    date_trunc timestamp (``2026-03-01``). The spelling changed, not the
+    data: each label is put back to the timestamp its period starts on, in
+    each dtype an older build could have written, and hashed under the
+    receipt's own algorithm. Nothing else is normalised."""
+    import pandas as pd
+
+    from tracebi.model.dataset import frame_fingerprint, last_query_node
+    from tracebi.reports.calc_plan import label_start
+
+    node = last_query_node(ds.lineage_to_dict())
+    labels = ((node or {}).get("metadata") or {}).get("time_labels")
+    if not labels:
+        return False
+    frame = ds.to_pandas()
+    for dtype in _STAMPED_GRAIN_DTYPES:
+        old = frame.copy()
+        for col, grain in labels.items():
+            old[col] = pd.Series(
+                [None if v is None else label_start(v, grain) for v in frame[col]],
+                index=frame.index, dtype="object").astype(dtype)
+        if frame_fingerprint(old, algo=recorded_md.get("fingerprint_algo")) == expected:
+            return True
+    return False
+
+
 def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dict:
     """Classify one data-bearing manifest section."""
     from tracebi.model.data_model import QuerySpec
@@ -391,6 +424,10 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
     if actual == expected:
         return {**base, "status": REPRODUCES,
                 "detail": "result fingerprint matches the manifest"}
+    if "time_labels" not in md and _as_timestamps_matches(ds, expected, md):
+        return {**base, "status": REPRODUCES,
+                "detail": "result fingerprint matches the manifest (its time "
+                          "grains stamped as timestamps, read as period labels)"}
     if not recorded_inputs:
         return {**base, "status": MISMATCH_UNKNOWN,
                 "detail": "result differs and no input fingerprints recorded "

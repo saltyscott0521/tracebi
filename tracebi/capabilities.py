@@ -1394,7 +1394,9 @@ def describe(brief: bool = False) -> dict:
                 "declare": "model.add_time_grain(dim, name, source, grain)",
                 "grains": sorted(_TIME_GRAINS),
                 "note": "Group by a date rolled up to a grain (month/quarter/…) "
-                        "— a governed date_trunc. Declared on a dimension over a "
+                        "— a governed date_trunc, returned as the period's "
+                        "label (2026, 2026-Q1, 2026-03, 2026-W09, 2026-03-14). "
+                        "Declared on a dimension over a "
                         "date column, referenced as dim.name like any attribute; "
                         "a model's declared grains show under its dimensions' "
                         "'derived'. This is 'group by month' without dropping to "

@@ -647,6 +647,7 @@
   function valueFormat(el, rows, cell) {
     var name = attr(el, "data-tb-format");
     if (name || !isNumericColumn(rows, cell)) return name;
+    /* "label": a time-grain period, written as it is (no "2,026"). */
     return (declaredFormats()[attr(el, "data-tb-binding")] || {})[cell] ||
            deriveFormat(rows, cell);
   }
@@ -1201,7 +1202,8 @@
         var declared = declaredFormats()[binding] || {};
         var numeric = {}, formats = {};
         cols.forEach(function (col) {
-          numeric[col] = isNumericColumn(rows, col);
+          /* A time-grain label ("2026") is text, however numeric it looks. */
+          numeric[col] = declared[col] !== "label" && isNumericColumn(rows, col);
           formats[col] = numeric[col]
             ? (ownFormats[col] || declared[col] || deriveFormat(rows, col)) : null;
         });

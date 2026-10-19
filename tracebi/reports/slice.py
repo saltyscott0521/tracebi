@@ -362,6 +362,8 @@ def _slice_query(fact: str, grain: dict):
 def _grain_strings(model, frame: pd.DataFrame) -> pd.DataFrame:
     """Time grains and bins as strings, so the page groups and compares
     them as text (decision 8)."""
+    from tracebi.model.data_model import time_grain_labels
+
     out = frame.copy()
     for column in frame.columns:
         dim, dot, attr = str(column).partition(".")
@@ -373,20 +375,8 @@ def _grain_strings(model, frame: pd.DataFrame) -> pd.DataFrame:
         if derived["kind"] == "bin":
             out[column] = series.astype(object).where(series.notna(), None)
             continue
-        stamps = pd.to_datetime(series)
-        grain = derived["grain"]
-        if grain == "year":
-            text = stamps.dt.strftime("%Y")
-        elif grain == "quarter":
-            text = (stamps.dt.year.astype("Int64").astype(str) + "-Q"
-                    + stamps.dt.quarter.astype("Int64").astype(str))
-        elif grain == "month":
-            text = stamps.dt.strftime("%Y-%m")
-        elif grain == "week":
-            text = stamps.dt.strftime("%G-W%V")
-        else:
-            text = stamps.dt.strftime("%Y-%m-%d")
-        out[column] = text.astype(object).where(stamps.notna(), None)
+        # DataModel already returns a time grain as its labels; one rule.
+        out[column] = time_grain_labels(series, derived["grain"])
     return out
 
 

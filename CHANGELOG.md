@@ -38,6 +38,14 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   `tracebi init` sample, both templates and two demo dashboards carry a page
   filter.
 
+### Changed — a time grain is returned as its period label
+
+- A declared time grain (`add_time_grain`) comes back from a query as
+  `2026`, `2026-Q1`, `2026-03`, `2026-W09` or `2026-03-14`, not the
+  `date_trunc` timestamp, so a built page and a recomputed one spell the axis
+  the same way (and the Excel renderer writes the label). `verify` still
+  reads a receipt stamped with the timestamp as Reproduces.
+
 ### Removed — the old offline engine and the server round trip
 
 - The parquet-wasm + Arquero worker (`tracebi-engine.worker.js`,

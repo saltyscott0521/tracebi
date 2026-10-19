@@ -141,14 +141,18 @@ Left by the live-reports round ([[live-reports-plan]], L-5):
     holds one slice per fact name, so a page reading two models that each
     have a fact of the same name would load one over the other. Key by
     `model.fact` (the calc payload already records both).
-39. **A time grain reads two ways on one page.** As built, a binding grouped
-    by a time grain shows the stamped label the model returned
-    (`2025-03-01`); once the page recomputes it shows the slice's grain label
-    (`2025-03`). The numbers agree; the axis labels change spelling on the
-    first selection (the showcase's Cash flows chart). Stamp the grain label,
-    or format it the same way on both paths.
+39. *Closed by L-5b (see Done).*
 
 ## Done
+
+- **A time grain reads one way** (L-5b, item 39): `DataModel` returns a
+  declared time grain as its period label (`2026`, `2026-Q1`, `2026-03`,
+  `2026-W09`, `2026-03-14`), the spelling the slice and the page engine use,
+  so a built axis and a recomputed one agree. The query's lineage records
+  `time_labels`; `verify` reads an older receipt that stamped the
+  `date_trunc` timestamp as Reproduces when only the spelling differs. The
+  runtime writes a grain column as text (`tracebi-formats` marks it
+  `label`), never `2,026`.
 
 - **The live page in the app** (L-5): a report's frame tells the app its
   selection (`tracebi-selection`, tagged like every bridge message); while it
