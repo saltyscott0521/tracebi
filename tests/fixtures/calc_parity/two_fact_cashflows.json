@@ -1,0 +1,64 @@
+{
+  "case": "two_fact_cashflows",
+  "about": "The same page's cash flows: the sector does not reach this fact, so it is listed in unfiltered_by and the fund and months still apply.",
+  "model": "two_fact_model",
+  "query": {
+    "fact": "fact_cashflows",
+    "measures": ["net_flow", "flows"],
+    "dimensions": ["dim_date.month"],
+    "filters": {},
+    "aggregate": true,
+    "allow_fanout": false
+  },
+  "slice": {
+    "fact": "fact_cashflows",
+    "columns": [
+      {"name": "dim_fund.fund", "type": "string"},
+      {"name": "dim_date.month", "type": "string"},
+      {"name": "flow_id", "type": "number"},
+      {"name": "amount", "type": "number"}
+    ],
+    "rows": [
+      ["Fund I", "2026-01", 1, 10.5],
+      ["Fund I", "2026-02", 3, 12],
+      ["Fund I", "2026-03", 5, -7.75],
+      ["Fund I", "2026-04", 7, 6.1],
+      ["Fund II", "2026-01", 2, -4.25],
+      ["Fund II", "2026-02", 4, 3.3],
+      ["Fund II", "2026-03", 6, 8],
+      ["Fund II", "2026-04", 8, -2.2]
+    ]
+  },
+  "plan": {
+    "version": 1,
+    "model": "two_fact_model",
+    "fact": "fact_cashflows",
+    "slice_columns": ["dim_fund.fund", "dim_date.month", "flow_id", "amount"],
+    "filters": null,
+    "group_by": ["dim_date.month"],
+    "aggregates": [
+      {"name": "net_flow", "func": "sum", "source": {"col": "amount"}},
+      {"name": "flows", "func": "count", "source": {"col": "flow_id"}}
+    ],
+    "means": [],
+    "ratios": [],
+    "shares": [],
+    "combines": [],
+    "ranks": [],
+    "runnings": [],
+    "having": [],
+    "order_by": [{"column": "dim_date.month", "desc": false}],
+    "limit": null,
+    "columns": ["dim_date.month", "net_flow", "flows"]
+  },
+  "selection": {
+    "dim_fund.fund": ["Fund I"],
+    "dim_issuer.sector": ["Software"],
+    "dim_date.month": {"gte": "2026-02", "lte": "2026-03"}
+  },
+  "expected": {
+    "cols": ["dim_date.month", "net_flow", "flows"],
+    "rows": [["2026-02", 12, 1], ["2026-03", -7.75, 1]],
+    "unfiltered_by": ["dim_issuer.sector"]
+  }
+}

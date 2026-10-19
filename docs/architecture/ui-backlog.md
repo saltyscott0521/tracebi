@@ -33,7 +33,7 @@ Left by Step 1 of the UX plan ([[ux-plan-2026-10-17]]), report side:
    is one accent, and ratchet the count down.
 9. **Small multiples are dense on a phone** (DS-4).
 10. **The showcase's striped frozen column keeps a light shade in dark** (DS-5).
-11. **The selection handshake with a parent that is not the app** (DS-8).
+11. *Closed by L-5 (see Done): there is no handshake left.*
 12. **A line's end label is cut at the plot's top edge on a phone**
     (`portfolio_concentration`'s cumulative share at 390px).
 
@@ -131,7 +131,35 @@ Left by A2-4 (receipt → trace):
     a reader for the old block id so files built before the rename still open
     their drawer (and `verify --file` still reads them).
 
+Left by the live-reports round ([[live-reports-plan]], L-5):
+
+37. **Ask's "Keep this" does not carry a selection into the page.** A kept
+    answer opens a one-figure draft; it could instead open the report it came
+    from with the selection in the frame's hash (`#sel=`), so the reader lands
+    on the same cut, Local, without a draft.
+38. **The page engine keys slices by fact name.** `tracebiCalc.load(fact, …)`
+    holds one slice per fact name, so a page reading two models that each
+    have a fact of the same name would load one over the other. Key by
+    `model.fact` (the calc payload already records both).
+39. *Closed by L-5b (see Done).*
+
 ## Done
+
+- **A time grain reads one way** (L-5b, item 39): `DataModel` returns a
+  declared time grain as its period label (`2026`, `2026-Q1`, `2026-03`,
+  `2026-W09`, `2026-03-14`), the spelling the slice and the page engine use,
+  so a built axis and a recomputed one agree. The query's lineage records
+  `time_labels`; `verify` reads an older receipt that stamped the
+  `date_trunc` timestamp as Reproduces when only the spelling differs. The
+  runtime writes a grain column as text (`tracebi-formats` marks it
+  `label`), never `2,026`.
+
+- **The live page in the app** (L-5): a report's frame tells the app its
+  selection (`tracebi-selection`, tagged like every bridge message); while it
+  is not the authored one the header's chip reads **Local** with the page's
+  own detail, and each selected field is a chip ("Sector: Technology ×")
+  that clears it through the frame (`tracebi-set-selection`). The
+  `selection-request` round trip is gone on both sides (item 11).
 
 - **The sidebar is tiered by role** (A2-6): `nav.js` gives each place a
   `minRole` and `placesFor(role)` is the one list the sidebar, the phone's

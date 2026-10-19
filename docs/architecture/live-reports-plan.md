@@ -51,7 +51,9 @@ as a DuckDB schema) is a later round; nothing here depends on it.
 8. **Parquet types in a slice** are numbers, booleans, strings and naive
    datetimes only; grains are strings (`2026-03`, `2026-Q1`, `2026-W09`);
    anything else fails the build by name. Snappy or uncompressed pages (what
-   the reader decodes natively), the block gzipped whole for the file.
+   the reader decodes natively). **Amended after L-2:** the block travels as
+   today's Parquet blocks do, raw bytes base64, not gzipped, so the page has
+   one carrier.
 9. **The old path goes.** parquet-wasm, Arquero, the worker, the sealed-grain
    evaluator and the host selection round trip for filters are removed in the
    last package. Ask keeps its server endpoint (it answers questions, it does
@@ -182,8 +184,29 @@ the page recorded in a `data-tb-local` manifest block) reads Reproduces.
 Verify: the full gate, `TRACEBI_E2E=1 test_ui_smoke.py`, the audit against
 the new baselines, and a fresh `tracebi init` project builds and filters.
 
+### L-6 — Time intelligence on the page (added after L-2b)
+
+The SaaS reports are entirely `period_end` measures, so "every chart and
+table type live" needs them. `period_end` is a grouped sum over (dims +
+snapshot date) reduced to each group's latest date (`_apply_period_ends`);
+`offset`/`growth` read a base measure one period earlier along the query's
+time grain; `to_date` accumulates a base within a reset period. All three
+are closed and portable:
+
+- `calc_plan.py`: `period_ends: [{name, value_part, date_column}]` run after
+  aggregates (the slice must carry the snapshot date column and `value:sum`
+  at a grain that includes it; `slice.py` adds the date to the required
+  grain for any fact with a period_end binding), `pops: [{name, base, unit,
+  n, mode}]` and `to_dates: [{name, base, period}]` run after windows, over
+  the result's time-grain column (string grains: the engine shifts
+  `2026-03` by n months and derives the reset period from the grain label).
+- Fixtures for each, with and without a selection; engine port; the
+  reference journey's fixed-reason list shrinks to `sql binding`,
+  `report.py`, `stddev`, `raw rows`, `having-contains`.
+- `stddev` too if it is one function; raw-row tables (`aggregate=False`) as
+  a plain filtered projection.
+
 ## Out of this round
 
-The server half of [[duckdb-first]] (Q-2, Q-4, Q-5), `period_end` /
-`offset` / `to_date` on the page (fixed at build this round), `engine:
-duckdb`, a Rust port, Qlik-style excluded values.
+The server half of [[duckdb-first]] (Q-2, Q-4, Q-5), `engine: duckdb`, a
+Rust port, Qlik-style excluded values.

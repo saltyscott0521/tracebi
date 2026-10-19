@@ -26,7 +26,6 @@ Two jobs, kept together because they are two halves of one contract:
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import html as html_lib
 import json
@@ -57,21 +56,13 @@ KNOWN_LIBS = {"echarts", "d3"}
 #: script/style are unavoidable in a static self-contained file; ``connect-src
 #: 'none'`` is the real win — a bundled library cannot phone home with the
 #: embedded data. JavaScript ``'unsafe-eval'`` is NOT granted (ECharts needs
-#: none, and neither does the runtime).
-#:
-#: Three grants serve the artifact's worker engine, which decodes embedded
-#: Parquet off the main thread: ``worker-src blob:`` and ``script-src blob:``
-#: let the runtime start the inlined worker from a blob URL (the only way to
-#: run a worker in a self-contained file with no sidecar), and
-#: ``'wasm-unsafe-eval'`` permits compiling the inlined WebAssembly module.
-#: ``'wasm-unsafe-eval'`` is strictly narrower than ``'unsafe-eval'``: it allows
-#: WebAssembly compilation ONLY — it does not enable ``eval()`` or
-#: ``new Function()`` on JavaScript strings. ``connect-src 'none'`` still holds,
-#: so the engine cannot phone home either.
+#: none, and neither does the runtime). The page engine (``tracebi-calc.js``)
+#: is plain inlined JavaScript on the main thread: no worker, no WebAssembly,
+#: so the policy grants neither (the parquet-wasm worker it replaced needed
+#: ``worker-src blob:`` and ``'wasm-unsafe-eval'``).
 CSP = (
     "default-src 'none'; "
-    "script-src 'unsafe-inline' 'wasm-unsafe-eval' blob:; "
-    "worker-src blob:; "
+    "script-src 'unsafe-inline'; "
     "style-src 'unsafe-inline'; "
     "img-src data:; font-src data:; connect-src 'none'; base-uri 'none'; "
     "form-action 'none'"
@@ -302,8 +293,9 @@ def stamp_frame(
 #:                 directly, so the artifact stays small (KBs). Right for the
 #:                 aggregate-shaped dashboards that are the common case.
 #: ``"parquet"`` — compact columnar data (≈50× smaller than JSON) decoded by the
-#:                 inlined worker engine. Costs ~9 MB of engine, and is what
-#:                 makes large-detail, client-side-filterable artifacts possible.
+#:                 inlined page engine (``tracebi-calc.js``, ~45 KB, already
+#:                 on every page that carries a slice). What makes
+#:                 large-detail artifacts possible.
 EMBED_FORMAT_CSV = "csv"
 EMBED_FORMAT_PARQUET = "parquet"
 
@@ -314,18 +306,18 @@ DEFAULT_EMBED_FORMAT = EMBED_FORMAT_CSV
 
 
 def engine_cost_bytes() -> int:
-    """Roughly what inlining the worker engine adds to an artifact.
+    """What inlining the page engine adds to an artifact that would not
+    otherwise carry it: ``tracebi-calc.js`` verbatim.
 
-    The worker source verbatim plus the gzipped wasm base64'd (4/3 expansion).
-    This is a fixed cost **per artifact**, paid once however many bindings the
-    report has — which is why the format choice belongs to the artifact rather
-    than the block.
+    A fixed cost **per artifact**, paid once however many bindings the report
+    has — which is why the format choice belongs to the artifact rather than
+    the block. It was ~2.9 MB while the engine was a parquet-wasm worker; the
+    plain-JavaScript engine is ~45 KB, so Parquet now pays for itself from
+    tens of kilobytes of CSV rather than megabytes. (A page with a slice
+    carries the engine anyway; the choice still prices it, which only keeps
+    small pages on CSV, readable as text.)
     """
-    worker = os.path.getsize(
-        os.path.join(_ASSETS_DIR, "tracebi-engine.worker.js"))
-    wasm_gz = os.path.getsize(
-        os.path.join(_ASSETS_DIR, "parquet_wasm_bg.wasm.gz"))
-    return worker + (wasm_gz * 4) // 3
+    return os.path.getsize(os.path.join(_ASSETS_DIR, "tracebi-calc.js"))
 
 
 def _renders_identically(series) -> bool:
@@ -335,58 +327,56 @@ def _renders_identically(series) -> bool:
     the receipt no longer cares what Parquet does to a dtype (the shipped bytes
     are hashed as shipped), but the READER still must see the same string on
     either transport. So the question asked of each column is precise: does the
-    worker's rendering of the Arrow-decoded values equal the strings pandas'
+    runtime's rendering of the decoded values (``stampedRows`` in
+    ``tracebi.js``, over ``tracebiCalc.decode``) equal the strings pandas'
     ``to_csv`` writes?
 
-    Allowed: ints (incl. nullable, incl. beyond 2^53 — the worker keeps BigInt
-    exact), floats (the worker writes pandas' spellings), booleans, strings,
-    NAIVE whole-second datetimes of any unit, and categoricals/object columns
-    whose VALUES are one of those (Arrow may store an int-categorical as plain
-    int64 — the dtype changes, the displayed value does not, and the receipt no
+    Allowed: ints within ±2^53 (incl. nullable; the engine holds a number as
+    a double, so a larger one would print as a different integer), floats
+    (the runtime writes pandas' spellings), booleans, strings, NAIVE
+    whole-second datetimes of any unit, and categoricals/object columns whose
+    VALUES are one of those (Arrow may store an int-categorical as plain int64
+    — the dtype changes, the displayed value does not, and the receipt no
     longer depends on the dtype surviving).
 
     Excluded, each for a concrete display reason: tz-aware timestamps (the
-    engine renders UTC, dropping the zone — an hours-long visible shift),
-    sub-second timestamps (sliced to seconds — distinct rows collapse),
-    timedelta (raw nanoseconds), Decimal (Arrow hands the worker the unscaled
-    integer), mixed-type object columns (Arrow unifies, changing spellings),
-    datetime-valued categoricals (pandas ``to_csv`` writes ``str(Timestamp)``
-    per value while the engine applies the datetime-column rule). A type added
-    to pandas or Arrow later starts out excluded, never silently mis-rendered.
+    engine refuses them), sub-second timestamps (sliced to seconds — distinct
+    rows collapse), timedelta (raw nanoseconds), Decimal (the engine reads the
+    unscaled integer), mixed-type object columns (Arrow unifies, changing
+    spellings), datetime-valued categoricals (pandas ``to_csv`` writes
+    ``str(Timestamp)`` per value while the runtime applies the datetime-column
+    rule). A type added to pandas or Arrow later starts out excluded, never
+    silently mis-rendered.
     """
     import pandas as pd
 
     dtype = series.dtype
     if isinstance(dtype, pd.CategoricalDtype):
         cats = series.cat.categories
-        # A categorical reaches the worker as Arrow Dictionary<Int32, VALUE>,
-        # and only two value kinds render identically AND decode at all:
+        # A categorical is written as a dictionary-encoded column, and only
+        # two value kinds are known to render identically:
         #   • integer/unsigned categories — the engine sees the plain integer;
         #   • string categories — verbatim.
-        # Everything else is excluded for a concrete reason, not caution:
-        #   • FLOAT categories bypass the certified float formatter entirely —
-        #     the worker tags float COLUMNS by Arrow type "Float*", but a
-        #     dictionary's type is "Dictionary<Int32, Float64>", so cellToText
-        #     renders the value with String() and "1.0" shows as "1";
-        #   • BOOL categories cannot even be decoded — parquet-wasm 0.7.2 raises
-        #     "Unsupported output type for dictionary packing: Boolean", killing
-        #     the binding's whole interactive lane;
-        #   • DATETIME categories: to_csv writes str(Timestamp) per value while
-        #     the engine applies the datetime-column midnight rule.
-        # (A plain, non-categorical bool or float column is fine — it is only
-        # the DICTIONARY encoding of those that breaks.)
-        return getattr(cats.dtype, "kind", "") in "iu" or _all_strings(cats)
+        # FLOAT, BOOL and DATETIME categories stay CSV: to_csv spells a
+        # category's value per value (str(Timestamp), "1.0"), while the
+        # runtime spells a column by its stored type, and the two were never
+        # certified equal. (A plain, non-categorical bool or float column is
+        # fine.)
+        if getattr(cats.dtype, "kind", "") in "iu":
+            return _within_double(cats)
+        return _all_strings(cats)
     kind = getattr(dtype, "kind", "")
     if kind == "f":
-        # float64 only. The engine's pyRepr reproduces pandas' float64
-        # spellings exactly (certified against 80k random bit patterns —
-        # tests/test_engine_float_parity.py), but float32 ties round
-        # differently: numpy's dragon4 rounds half-to-even where JS
-        # toPrecision rounds half-away, so ~0.2% of float32 values display
-        # one last-digit ULP off. Rare dtype, real divergence → CSV.
+        # float64 only. The runtime's pyRepr reproduces Python's float64
+        # repr (the shortest round-trip digits, which JS toExponential() also
+        # gives; only the notation is rebuilt), but a float32 column would
+        # need its own shortest-digits search, and ties there round
+        # differently in numpy and JS. Rare dtype, real divergence → CSV.
         return getattr(dtype, "itemsize", 8) == 8
-    if kind in "ibu":                     # int, bool, unsigned
+    if kind == "b":                       # bool
         return True
+    if kind in "iu":                      # int, unsigned
+        return _within_double(series.dropna())
     if kind in "UT":                      # numpy unicode / pandas-3 string
         return True
     if kind == "M":
@@ -435,12 +425,23 @@ def _renders_identically(series) -> bool:
         if _all_strings(non_null):
             return True
         types = {type(v) for v in non_null}
-        return types in ({bool}, {int}, {float})
+        if types == {int}:
+            return _within_double(non_null)
+        return types in ({bool}, {float})
     return False                          # timedelta, period, interval, bytes, …
 
 
 def _all_strings(values) -> bool:
     return all(isinstance(v, str) for v in values)
+
+
+#: The largest integer a double holds exactly. The page engine decodes every
+#: number to a double, so an integer past it would print as another integer.
+_MAX_EXACT_INT = 2 ** 53
+
+
+def _within_double(values) -> bool:
+    return all(-_MAX_EXACT_INT <= int(v) <= _MAX_EXACT_INT for v in values)
 
 
 def choose_embed_format(stamped: "list[StampedData]") -> str:
@@ -449,10 +450,8 @@ def choose_embed_format(stamped: "list[StampedData]") -> str:
     **The rule: embed Parquet only once the data is big enough that the engine
     pays for itself.** Parquet is ~8–17× smaller than the same CSV, but it costs
     a fixed ~:func:`engine_cost_bytes` of inlined engine, so below the crossover
-    the CSV artifact is genuinely smaller — a KPI dashboard stays tens of KB
-    instead of megabytes, keeps its numbers readable as text in the file, needs
-    no Worker/WebAssembly/DecompressionStream, and needs none of the CSP grants
-    the engine requires.
+    the CSV artifact is genuinely smaller — and keeps its numbers readable as
+    text in the file.
 
     One format per artifact, never a mix inside a file: the engine cost is
     per-file, so once any binding justifies it every block may as well use it.
@@ -489,9 +488,9 @@ def _display_safe(stamped) -> bool:
         cols = list(frame.columns)
         if len(set(cols)) != len(cols) or any(not isinstance(c, str) for c in cols):
             return False
-        # A column name that is a JS prototype key (`__proto__`) breaks Arquero's
-        # table construction in the worker (numRows() → undefined, zero rows),
-        # inside the library, so it cannot be fixed downstream — keep it on CSV.
+        # A column name that is a JS prototype key (`__proto__`) would become
+        # a row object's prototype, not a cell, when the runtime builds rows —
+        # keep it on CSV.
         if any(c in _UNSAFE_COL_NAMES for c in cols):
             return False
         if not all(_renders_identically(frame[c]) for c in cols):
@@ -635,7 +634,7 @@ def embed_block(stamped: StampedData, elem_id: Optional[str] = None,
 
     With ``fmt="csv"`` (the default) the block carries the canonical triple —
     the exact bytes the checker hashes and the same bytes the page parses to
-    draw. With ``fmt="parquet"`` it carries the data as Parquet for the worker
+    draw. With ``fmt="parquet"`` it carries the data as Parquet for the page
     engine (:func:`embed_block_parquet`); the receipt is identical either way.
     Embedded through :func:`embed_json` so any hostile cell value is neutralised.
     """
@@ -653,8 +652,8 @@ def embed_block(stamped: StampedData, elem_id: Optional[str] = None,
 def embed_block_parquet(stamped: StampedData, elem_id: Optional[str] = None,
                         parquet: Optional[bytes] = None) -> str:
     """A binding's data embedded as **Parquet** (base64) — the transport the
-    client-side worker engine (parquet-wasm + Arquero) decodes to draw and
-    filter, and ≈50× smaller than the CSV triple on real data.
+    page engine (``tracebi-calc.js``) decodes to draw, and ≈50× smaller than
+    the CSV triple on real data.
 
     The receipt for a Parquet block is a hash of these exact bytes
     (``payload_sha256`` in the manifest record), which is why *parquet* should
@@ -677,41 +676,6 @@ def embed_block_parquet(stamped: StampedData, elem_id: Optional[str] = None,
         "parquet_b64": base64.b64encode(parquet).decode("ascii"),
     }
     return embed_json(payload, elem_id or f"tracebi-data-{stamped.name}")
-
-
-#: Element ids the runtime (``tracebi.js``) reads to start the worker engine.
-ENGINE_WORKER_ID = "tracebi-engine-worker"
-ENGINE_WASM_ID = "tracebi-engine-wasm"
-
-
-def engine_blocks_html() -> str:
-    """The inlined worker-engine assets, as the two blocks the runtime reads.
-
-    A self-contained artifact carries its own query engine: the bundled worker
-    source (started from a blob URL — the only way to run a worker with no
-    sidecar file) and the gzipped ``parquet-wasm`` module, base64'd and
-    decompressed in the browser via ``DecompressionStream``. Together they let a
-    figure decode and filter its embedded Parquet **offline, with no network**
-    (see ``assets/ENGINE_NOTICE.md``).
-
-    Emitted only for artifacts that embed Parquet — a CSV artifact would pay
-    megabytes for an engine it never starts.
-    """
-    # Read from _ASSETS_DIR directly rather than stack.read_asset: stack
-    # imports from this module, so importing back would be circular.
-    with open(os.path.join(_ASSETS_DIR, "tracebi-engine.worker.js"),
-              encoding="utf-8") as fh:
-        worker_src = fh.read()
-    with open(os.path.join(_ASSETS_DIR, "parquet_wasm_bg.wasm.gz"), "rb") as fh:
-        wasm_b64 = base64.b64encode(fh.read()).decode("ascii")
-    # The worker source goes in a non-executable text block (the runtime reads
-    # its textContent and builds the blob); "</script" is neutralised the same
-    # way embed_json neutralises it in data.
-    safe_worker = worker_src.replace("</script", "<\\/script")
-    return (
-        f'<script type="text/plain" id="{ENGINE_WORKER_ID}">{safe_worker}</script>\n'
-        f'<script type="application/base64" id="{ENGINE_WASM_ID}">{wasm_b64}</script>\n'
-    )
 
 
 def embedded_record(stamped: StampedData, verifiable: bool = True) -> dict:

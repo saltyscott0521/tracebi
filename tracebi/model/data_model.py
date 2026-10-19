@@ -66,6 +66,34 @@ def _pop_offset(unit: str, n: int):
 #: fine; MTD over monthly is degenerate — one row per bucket).
 _GRAIN_RANK = {"day": 1, "week": 2, "month": 3, "quarter": 4, "year": 5}
 
+
+def time_grain_labels(series: "pd.Series", grain: str) -> "pd.Series":
+    """A time-grain column as its period labels: ``2026``, ``2026-Q1``,
+    ``2026-03``, ``2026-W09`` (ISO week), ``2026-03-14``.
+
+    This is how a query returns a declared time grain, so the stamped rows, a
+    page's slice and the page engine all write a period one way (the label
+    arithmetic in ``tracebi/reports/calc_plan.py`` reads the same spelling).
+    A column that already holds labels (strings) is returned as it is; nulls
+    stay null.
+    """
+    if not pd.api.types.is_datetime64_any_dtype(series) and not series.dropna().map(
+            lambda v: hasattr(v, "year")).any():
+        return series
+    stamps = pd.to_datetime(series)
+    if grain == "year":
+        text = stamps.dt.strftime("%Y")
+    elif grain == "quarter":
+        text = (stamps.dt.year.astype("Int64").astype(str) + "-Q"
+                + stamps.dt.quarter.astype("Int64").astype(str))
+    elif grain == "month":
+        text = stamps.dt.strftime("%Y-%m")
+    elif grain == "week":
+        text = stamps.dt.strftime("%G-W%V")
+    else:
+        text = stamps.dt.strftime("%Y-%m-%d")
+    return text.astype(object).where(stamps.notna(), None)
+
 #: The pandas period frequency each to-date reset partition truncates to.
 _PERIOD_FREQ = {"year": "Y", "quarter": "Q", "month": "M", "week": "W"}
 
@@ -2145,6 +2173,22 @@ class DataModel:
                     by=cols, key=lambda s: s.astype(str), kind="mergesort"
                 ).reset_index(drop=True)
 
+        # A declared time grain leaves as its period labels (2026-03), not the
+        # date_trunc timestamp the engine grouped by: the one spelling the
+        # stamped rows, a page's slice and the page engine share. Last, after
+        # every step that does date arithmetic on it (period_end, offset,
+        # to_date) and after ordering, which labels preserve.
+        time_labels = {
+            f"{d}.{a}": self._dimensions[d].derived[a]["grain"]
+            for d, a in parsed_dims
+            if (self._dimensions[d].derived.get(a) or {}).get("kind") == "date_trunc"
+            and f"{d}.{a}" in result_df.columns
+        }
+        if time_labels:
+            result_df = result_df.copy()
+            for col, grain in time_labels.items():
+                result_df[col] = time_grain_labels(result_df[col], grain)
+
         lineage.append(LineageNode(
             operation="transform",
             description=f"Star-schema query executed via {engine}",
@@ -2154,6 +2198,10 @@ class DataModel:
                 "fingerprint_algo": CURRENT_FINGERPRINT_ALGO,
                 "rows_out": len(result_df),
                 "measures": dict(measures),
+                # The label rule each time-grain column was written in, so a
+                # verifier knows the column is a period label (and a receipt
+                # without this key stamped the date_trunc timestamp).
+                **({"time_labels": time_labels} if time_labels else {}),
                 # The resolved WHERE of each filtered measure, so the receipt
                 # shows the definition the number was computed under.
                 **({"measure_filters": {

@@ -58,11 +58,13 @@ class TestGuidesCoverTheVocabulary:
         load-bearing and must not be paraphrased into drift."""
         for name, text in _guides().items():
             for phrase in (
-                "never compute new numbers",
+                "a figure's number is only ever a query result",
                 "the sink satisfied its contract",
                 "data-tb-unverified",
             ):
                 assert phrase in text, f"{name} lost the locked line {phrase!r}"
+        # The control grammar's law is the vocabulary's too.
+        assert "a figure's number is only ever a query result" in json.dumps(describe())
 
     def test_the_word_receipt_stays_retired(self):
         """What every number carries is its trace (2026-10-18). The old word
@@ -269,6 +271,13 @@ class TestLargeDetailArtifactIsTaught:
             assert "PyArrow" in text or "pyarrow" in text, (
                 f"{name} does not name the dependency the Parquet form needs"
             )
+
+    def test_the_embed_keys_are_in_the_vocabulary_and_both_guides(self):
+        note = " ".join(describe(brief=True)["presentation"]["report_json"]["embed"].values())
+        for name, text in {"tracebi context": note, **_guides()}.items():
+            for phrase in ('"embed"', "embed_budget_mb", "tracebi-slice-",
+                           "tracebi-calc-plans"):
+                assert phrase in text, f"{name} does not teach {phrase}"
 
 
 def test_a_value_figure_is_taught_as_a_one_row_binding():

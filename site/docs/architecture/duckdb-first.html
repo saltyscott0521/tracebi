@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DuckDB-first — one engine from the sink to the page — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="DuckDB-first — one engine from the sink to the page">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a class="on" href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="duckdb-first-one-engine-from-the-sink-to-the-page">DuckDB-first — one engine from the sink to the page</h1>
+<p><strong>Status: design, decisions closed 2026-10-19.</strong> Written from a maintainer
+discussion; the packages at the end are the plan. Supersedes the
+engine choice in <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a> (parquet-wasm + Arquero) and the
+"controls never compute new numbers" rule in <code>tracebi/capabilities.py</code>.
+Everything in the three-phase workflow and the honesty rules
+(<strong>../../MANIFESTO</strong>) stands; this changes <em>how</em> each phase computes, and
+how much the report file may do on its own.</p>
+<p><strong>One line:</strong> DuckDB is the only engine on the server. Transforms are SQL by
+default, the model is a DuckDB schema, and the report file carries the slice
+of the model it needs plus a small engine of our own that recomputes every
+figure live on a filter, offline, with no server anywhere in the loop. Every
+number it shows is still a query the trace can name.</p>
+<hr>
+<h2 id="1-what-the-discussion-settled">1. What the discussion settled</h2>
+<ol>
+<li><strong>Pandas is not the engine any more.</strong> DuckDB already runs every model
+   query (<code>data_model.py</code>, <code>_execute_duckdb</code>). The transform phase is the
+   last place pandas does the computing; it becomes SQL, with pandas and
+   polars kept as a declared escape hatch.</li>
+<li><strong>The server holds the model, not the data.</strong> A hosted TraceBi should not
+   need the warehouse on its own disk. DuckDB reads Parquet on object
+   storage, or a remote engine, in place.</li>
+<li><strong>The page gets a small engine of our own, not DuckDB.</strong> DuckDB-wasm was
+   measured at 8.8 MB gzipped (§10). The page does not need a database: the
+   build flattens each fact with its exposed dimension attributes, so the
+   page never joins, and the query vocabulary is the closed JSON spec the
+   server already compiles to SQL. A ~50 KB engine (a 20 KB pure-JavaScript Parquet
+   reader included) over the blocks' dictionary-encoded columns executes
+   that spec directly and replaces parquet-wasm, Arquero and the
+   sealed-grain evaluator. Parity with DuckDB is proved per
+   measure kind by test, which is finite because the spec is closed.</li>
+<li><strong>Controls are released, offline.</strong> A report is assumed to work with no
+   server: a <code>file://</code> page and the hosted page behave identically.
+   Filtering one control recomputes every spec figure on the page from the
+   embedded data. The rule that remains is the honesty rule: the data is
+   fingerprinted, the query is visible, and the chip says where the number
+   was computed. A SQL binding is the power lane and runs at build time
+   only; it sits fixed in the file and says so.</li>
+<li><strong>Not Qlik.</strong> Live cross-filtering across every object, yes. The
+   associative green-white-grey state, synthetic keys and the one-path
+   constraint, no. A model's declared relationships are the paths, and a
+   dimension may join two facts on different keys.</li>
+</ol>
+<h2 id="2-decisions-closed">2. Decisions (closed)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D1</td>
+<td>A transform is a <code>.sql</code> file by default; <code>.py</code> and <code>.ipynb</code> still run and end by handing DuckDB an Arrow table (pandas or polars). The UI names which form ran.</td>
+<td>The trace line is drawn at the sink, so a Python transform is exactly as traceable as a SQL one. Only <code>report.py</code>, which computes after the model, stays <code>verifiable: false</code>.</td>
+</tr>
+<tr>
+<td>D2</td>
+<td>The warehouse has three storage tiers, chosen per project: a local <code>.duckdb</code> file (today), <strong>Parquet on object storage</strong> (the hosted default), or a remote engine (<code>ATTACH</code>). The freeze point is the same in all three; only its address moves.</td>
+<td>The storage concern. Parquet also sidesteps DuckDB's storage-format versioning and the single-writer file.</td>
+</tr>
+<tr>
+<td>D3</td>
+<td>The model compiles to a DuckDB schema: one view per table, one <code>MACRO</code> per simple measure, and the star-schema joins as the query planner's input. Measures that need the grain (ratio, share, rank, running, percentile) stay model-level and compile per query, as now.</td>
+<td>One SQL text the server, the page and <code>verify</code> all run. The YAML stays the contract a reviewer reads.</td>
+</tr>
+<tr>
+<td>D4</td>
+<td>SQL is a first-class figure binding on the server. <code>{"model", "sql"}</code> (already in <code>sql_calc.py</code>) is promoted, documented and scaffolded; <code>{{ measure() }}</code> expands before it runs. It runs at build time and is <strong>fixed in the file</strong>: it does not react to filters, hosted or not.</td>
+<td>Authors and agents write what they mean when the spec cannot. The JSON spec stays the governed lane and the only live one; a gap that drives an author to SQL is a gap to close in the spec.</td>
+</tr>
+<tr>
+<td>D5</td>
+<td>The report file embeds a <strong>sub-star</strong>: for each fact its figures use, that fact at the coarsest grain that still answers every figure and every filter combination, plus the dimensions the report exposes. The build derives it. <code>embed: model</code> widens to the whole star; <code>embed: none</code> makes a hosted-only report. A size budget refuses a file past it.</td>
+<td>Enough to recompute locally, not the whole warehouse in every email. Additive measures let the fact pre-aggregate; a distinct count or percentile forces the finer grain, and the model knows which is which.</td>
+</tr>
+<tr>
+<td>D6</td>
+<td>The page holds one <strong>selection state</strong>; every spec figure's query is composed with it; a figure whose fact has no declared path to a selected field stays as it was and says so; a SQL figure is fixed and says so.</td>
+<td>Live filtering as Power BI, Tableau and Looker do it, in a few dozen lines once the engine is in the page.</td>
+</tr>
+<tr>
+<td>D7</td>
+<td><strong><code>tracebi-calc</code></strong>: our own page engine, plain JavaScript, one file, inlined like the rest of the runtime. Budgets: ≤ 50 KB gzipped, and every spec query over the largest block the embed budget allows completes in ≤ 100 ms on a mid-range laptop; <code>scripts/ui_audit.py</code> ratchets both. Blocks stay <strong>Parquet</strong> (uncompressed or Snappy pages, the whole block gzipped for the file), unzipped by the browser's own <code>DecompressionStream</code> and read by a pure-JavaScript reader (hyparquet, 20 KB gzipped measured; counted inside the 50 KB budget). Parquet's dictionary pages give the engine integer-coded strings for free. No wasm, so no CSP change. A Rust port is the fallback if the time budget fails; the block format and message protocol are designed so the port swaps the engine and nothing else. <code>engine: duckdb</code> (DuckDB-wasm inlined, ~12 MB) is a later opt-in for a report that must recompute arbitrary SQL offline, shipped only when a real report needs it.</td>
+<td>Offline is the baseline, so the engine must be in the file; a database engine is 36 MB because it is general, and the page's work is a closed spec over flat, typed columns. Small because it does little, correct because parity is finite, fast because the data is laid out for it.</td>
+</tr>
+<tr>
+<td>D8</td>
+<td>The chip gains two states and one figure mark. <strong>Local</strong>: this number was computed on this page by the embedded engine from the embedded, fingerprinted data. <strong>Live</strong>: this figure reads a <code>materialized: view</code> over a source that can move; never green. <strong>Fixed at build</strong>: a SQL figure that does not react to the selection.</td>
+<td>A reader must be able to tell a build-time server number from a click-time page number from a number that may have changed since.</td>
+</tr>
+<tr>
+<td>D9</td>
+<td>Result fingerprints round floating-point columns to a declared precision (default 9 significant digits) and every stamped query carries a total order. <code>CURRENT_FINGERPRINT_ALGO</code> bumps.</td>
+<td>DuckDB's parallel aggregation can return a different last bit for the same <code>SUM</code>; a byte hash would then read "drifted" on identical data.</td>
+</tr>
+<tr>
+<td>D10</td>
+<td>Query connections set <code>enable_external_access = false</code> and <code>lock_configuration = true</code>. Only the transform connection may load <code>httpfs</code> and friends. Credentials go through <code>CREATE TEMPORARY SECRET</code>, resolved from <code>${VAR}</code> in <code>connections/*.yaml</code> at run time, never persisted.</td>
+<td><code>read_csv('http://…')</code> is a read. Without this, Ask is a server-side request tool.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-two-engines-one-spec">3. Two engines, one spec</h2>
+<pre><code> source files ──SQL transform──▶ sink (Parquet or .duckdb) ──▶ model schema (views + macros)
+                                       │                              │
+                                       │ fingerprinted               ├── server (DuckDB): build, Ask, verify
+                                       ▼                              │
+                                 sink contract                        └── page (tracebi-calc): the flattened
+                                                                           sub-star, the selection state
+</code></pre>
+<p>The <strong>JSON query spec</strong> is the contract between them. The server compiles
+it to SQL and runs DuckDB; the page executes it directly over the embedded
+blocks. A figure's trace records the spec, the selection, the fingerprint
+of every table or block it read, and the result fingerprint. <code>verify</code>
+re-runs the server form. A <strong>Local</strong> number re-runs on the page, and the
+server can replay it from the manifest because the blocks are fingerprinted
+and the spec is recorded; that replay, plus the per-measure-kind parity
+suite, is what makes a page number admissible rather than merely displayed.
+A SQL binding has only the server form.</p>
+<h2 id="4-phase-1-transforms">4. Phase ① — transforms</h2>
+<p><strong>Default form.</strong> <code>transforms/&lt;name&gt;.sql</code>, statements in order, run
+top-to-bottom in a fresh connection:</p>
+<pre><code class="language-sql">-- transforms/holdings_transform.sql
+CREATE OR REPLACE TABLE dim_issuer AS
+SELECT row_number() OVER () AS issuer_id, issuer, sector
+FROM (SELECT DISTINCT regexp_replace(position, ' — .*$', '') AS issuer,
+                      sector_canon(sector) AS sector
+      FROM read_csv('inputs/holdings.csv'));
+-- …
+COPY fact_holdings TO '{{ sink }}/fact_holdings.parquet';
+</code></pre>
+<p><code>{{ sink }}</code> resolves to the project's tier (§5). A <code>connections/&lt;name&gt;.yaml</code>
+becomes an <code>ATTACH</code> or a secret before the script runs. The contract block
+moves beside it as <code>transforms/&lt;name&gt;.contract.yaml</code>, same closed vocabulary.</p>
+<p><strong>Escape hatch.</strong> A <code>.py</code> or <code>.ipynb</code> transform runs as today and must end by
+registering or writing an Arrow-compatible frame; DuckDB reads pandas and
+polars without a copy. <code>tracebi run-transform</code> reports <code>form: sql | python</code>.
+Nothing is converted automatically; a pandas transform keeps working until
+its author rewrites it.</p>
+<p><strong>Not built.</strong> Dependencies between SQL files (<code>ref()</code>). One transform file
+per pipeline, order inside it, dependencies between pipelines in
+<code>pipelines/*.yaml</code>. <code>dbt_import.py</code> stays the bridge for a real dbt project.</p>
+<h2 id="5-where-the-data-lives">5. Where the data lives</h2>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Sink</th>
+<th>Model reads</th>
+<th>Server disk</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>file</strong></td>
+<td><code>data/warehouse.duckdb</code></td>
+<td>the file, read-only</td>
+<td>the whole warehouse</td>
+<td>today; dev, demos, one process</td>
+</tr>
+<tr>
+<td><strong>object</strong></td>
+<td><code>COPY … TO 's3://bucket/project/&lt;table&gt;.parquet'</code></td>
+<td><code>read_parquet</code> through <code>httpfs</code></td>
+<td>a cache DuckDB manages</td>
+<td>hosted default; R2, S3, GCS</td>
+</tr>
+<tr>
+<td><strong>remote</strong></td>
+<td>runs in the remote engine</td>
+<td><code>ATTACH 'md:…'</code> or a Postgres warehouse</td>
+<td>nothing</td>
+<td>MotherDuck or an existing warehouse</td>
+</tr>
+</tbody>
+</table>
+<p>Set once in <code>tracebi.yaml</code> (<code>warehouse: {tier, location}</code>); <code>{{ sink }}</code> in a
+transform and <code>connectors:</code> in a model resolve from it, so neither file
+names a path. Every tier sets <code>memory_limit</code>, <code>threads</code> and
+<code>temp_directory</code> on the server so a heavy query spills instead of taking
+the process down. The sink certificate records the engine version and, for
+the object tier, each file's ETag or footer hash, so a silent overwrite
+reads stale.</p>
+<h2 id="6-phase-2-the-model-as-a-schema">6. Phase ② — the model as a schema</h2>
+<p>The YAML does not change shape. It compiles to:</p>
+<ul>
+<li>one view per <code>tables:</code> entry, over the tier's location;</li>
+<li>one <code>MACRO</code> per simple measure (<code>sum</code>, <code>count</code>, <code>mean</code>, <code>min</code>, <code>max</code>,
+  <code>nunique</code> of one column, with its filter);</li>
+<li>the relationships, which the query compiler uses to join a fact to the
+  dimensions a query or a selection names.</li>
+</ul>
+<p>A model holds many facts; a query names one. A dimension joins each fact
+on that fact's own declared key, so a calendar dimension can join
+<code>fact_orders</code> on <code>order_date_key</code> and <code>fact_shipments</code> on <code>ship_date_key</code>,
+and a filter on month reaches both. There is no synthetic key, no link
+table and no one-path constraint.</p>
+<p>Grain-dependent measures (ratio of sums, share, rank, running, percentile,
+<code>partition_by</code>) stay as they are: the compiler emits them per query, with
+the selection folded in before the window. A macro cannot know the grain.</p>
+<h2 id="7-phase-3-the-report-file">7. Phase ③ — the report file</h2>
+<h3 id="71-what-the-build-embeds">7.1 What the build embeds</h3>
+<p>For each fact the report's figures and filters touch, the build computes
+the <strong>required grain</strong>: the union of every field any figure groups by, any
+filter exposes, and any grain-dependent measure needs. Additive measures
+pre-aggregate to that grain. A measure that is not additive at it
+(<code>nunique</code>, <code>p90</code>, a <code>median</code>) forces the base grain for that fact. The
+dimensions the report exposes are embedded whole; a conformed dimension is
+embedded once. Each block is Parquet, fingerprinted by content as today (the same hash
+<code>verify --file</code> checks, independent of the container), and listed in the
+manifest with its grain, so the trace says what the file holds. A measure
+that is a ratio of aggregates (<code>mean</code>, <code>ratio</code>, <code>share</code>) is stored as its
+parts (sum and count, numerator and denominator) per grain row, so the page
+divides after it filters: an average is recomputed, never averaged.</p>
+<p><code>report.json</code>:</p>
+<pre><code class="language-json">&quot;embed&quot;: &quot;required&quot; | &quot;model&quot; | &quot;none&quot;,
+&quot;embed_budget_mb&quot;: 25
+</code></pre>
+<p>Past the budget the build refuses and names the fix (<code>embed: none</code>, or a
+coarser grain by removing a filter). <code>embed: none</code> is a hosted-only report:
+the page asks the server for every recomputation, with the same SQL.</p>
+<h3 id="72-the-selection-state">7.2 The selection state</h3>
+<p>One object on the page, replacing the single filter tuple the
+<code>selection</code> block posts today:</p>
+<pre><code class="language-json">{&quot;dim_issuer.sector&quot;: [&quot;Technology&quot;, &quot;Software&quot;],
+ &quot;dim_date.month&quot;: {&quot;gte&quot;: &quot;2026-01&quot;, &quot;lte&quot;: &quot;2026-06&quot;}}
+</code></pre>
+<p>Composition is one function, <code>apply_selection(query, selection, model)</code>,
+shared by the server (<code>DataModel.query</code>), the page (<code>tracebi-calc</code>) and
+Ask. For each selected field it finds the path from the figure's fact
+through the model's relationships; with a path it adds the predicate, and
+without one it leaves the figure untouched and marks it
+<code>data-tb-unfiltered-by="dim_customer.region"</code> so the page can say so. A
+figure may declare <code>ignore: [dim_date]</code> to opt out of one field.</p>
+<p>Every spec figure re-runs on every change of the state; a SQL figure stays
+fixed and is marked. A value figure re-stamps its text with the new result
+and its trace row records the spec with the selection folded in. The state is in the URL hash so a view can be
+shared, and the server-side build records the empty selection as the
+canonical one <code>verify</code> re-runs.</p>
+<h3 id="73-what-a-figure-may-do">7.3 What a figure may do</h3>
+<p>Any spec query over the embedded blocks, live:</p>
+<pre><code class="language-jsx">&lt;Kpi binding=&quot;total_fv&quot; /&gt;               // a JSON query; recomputed on every selection change
+&lt;Chart binding=&quot;by_sector&quot; /&gt;            // as today, now live
+&lt;Table binding=&quot;top3_per_sector&quot; /&gt;      // having + partitioned rank, in the spec, live
+&lt;Kpi binding=&quot;sql_oddity&quot; /&gt;             // a {&quot;model&quot;,&quot;sql&quot;} binding: fixed at build, marked
+</code></pre>
+<p>The spec vocabulary the engine executes: measures of every declared kind
+(<code>sum</code>, <code>count</code>, <code>mean</code>, <code>min</code>, <code>max</code>, <code>nunique</code>, percentiles, filtered
+measures, <code>expr</code> over fact columns, <code>ratio</code>, <code>share</code>, <code>rank</code> with
+<code>partition_by</code>, <code>running</code>), dimensions with time grains and bins, filters,
+having, order_by, limit. Each kind has a parity test against DuckDB with
+the same inputs; a kind the engine does not implement fails the build by
+name rather than falling back to a static value.</p>
+<p>The lint that today refuses arithmetic in JSX (<code>lint_jsx_numbers</code>) stays:
+a number is still minted by a query, never by <code>a / b</code> in the template.
+What goes away is the sealed grain, the "value figures never react"
+exception, the selection evaluator, and the limit of one posted filter.</p>
+<h3 id="74-hosted-and-offline-are-the-same-page">7.4 Hosted and offline are the same page</h3>
+<p>A report is assumed to work offline. The hosted page (<code>/r/&lt;name&gt;</code>, the app)
+and the <code>file://</code> page are the same bytes and compute the same way, from
+what the file carries. <code>embed: none</code> therefore means a report with no live
+filtering anywhere, not one that filters only when hosted. Both show the
+<strong>Local</strong> chip for anything recomputed after the build.</p>
+<h2 id="8-trust">8. Trust</h2>
+<ul>
+<li><strong>Reproduces</strong> (green): the build-time server result, re-run by <code>verify</code>,
+  fingerprints equal. Unchanged.</li>
+<li><strong>Local</strong>: recomputed on this page from embedded, fingerprinted blocks by
+  the embedded engine; the SQL is in the trace; the server can replay it.
+  Never green on its own, never red: it is a different claim.</li>
+<li><strong>Live</strong>: a <code>materialized: view</code> over a source that can change between
+  reads. The trace names the source; the chip never reads green.</li>
+<li><strong>Not checked</strong> and <strong>Draft</strong>: as today.</li>
+</ul>
+<p>D9 is the correctness condition for all four: a fingerprint over rounded
+numerics in a total order. <code>verify</code> grows <code>--local</code> to replay the page's
+recorded Local queries against the manifest's blocks.</p>
+<h2 id="9-security">9. Security</h2>
+<ul>
+<li>The connection that serves a model query, an Ask query or a page replay
+  cannot reach outside the attached tables (D10). The one that runs a
+  transform can, and runs only from the CLI, the scheduler or an approved
+  code request.</li>
+<li>Ask gets a statement timeout and a row cap, and DuckDB's <code>interrupt</code> is
+  wired to request cancellation.</li>
+<li>Embedded blocks are data leaving the server. <code>_folder.yaml</code>'s <code>accepts:</code>
+  gains <code>embed: none</code> so a folder can refuse files that carry detail rows,
+  and the manifest lists each block's grain so a reviewer can see what a
+  file holds before it is sent.</li>
+</ul>
+<h2 id="10-operations">10. Operations</h2>
+<ul>
+<li><strong>Extensions</strong> (<code>httpfs</code>, <code>iceberg</code>, <code>delta</code>, <code>postgres</code>) are pinned to the
+  DuckDB version and pre-installed in the Docker image and the wheel's
+  optional extras, so an air-gapped install does not fail on its first
+  remote read.</li>
+<li><strong>Versions</strong>: <code>duckdb</code> is pinned in <code>pyproject.toml</code>; the certificate and
+  every manifest record it. The object tier needs no storage-format
+  migration; the file tier gets <code>tracebi migrate warehouse</code> (export,
+  reimport) when the pin moves a major.</li>
+<li><strong>One writer</strong>: on the file tier the transform writes to a temp file and
+  renames; the server reopens read-only after a build. On the object tier
+  a <code>COPY</code> to a new key and a manifest swap is atomic enough.</li>
+<li><strong>Page engine size, measured and budgeted</strong> (2026-10-19):</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>raw</th>
+<th>gzip</th>
+<th>inlined</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>today's engine (worker JS + parquet-wasm)</td>
+<td>7.3 MB</td>
+<td>2.9 MB</td>
+<td>~3.5 MB</td>
+</tr>
+<tr>
+<td><code>@duckdb/duckdb-wasm</code> 1.33 <code>eh</code> + worker</td>
+<td>36.7 MB</td>
+<td>8.8 MB</td>
+<td>~11.7 MB</td>
+</tr>
+<tr>
+<td>hyparquet 1.31 (pure-JS Parquet reader), bundled + minified</td>
+<td>64 KB</td>
+<td>20 KB</td>
+<td></td>
+</tr>
+<tr>
+<td><strong><code>tracebi-calc</code> + reader budget</strong></td>
+<td></td>
+<td><strong>≤ 50 KB</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Browsers decompress only gzip and deflate in <code>DecompressionStream</code>, so
+  brotli would not have helped an inlined DuckDB. The measurement is why
+  the page engine is ours (D7). <code>scripts/ui_audit.py</code> ratchets the engine
+  size, each built report's size, and the slowest spec query over the
+  reference project's largest block.</p>
+<h2 id="11-what-goes-away-and-what-stays">11. What goes away, and what stays</h2>
+<p>Removed (small, and mostly third-party):</p>
+<ul>
+<li><code>tracebi-engine.worker.js</code> (1.1 MB: parquet-wasm, Arquero and Arrow
+  wrapped by ~200 lines of our protocol), <code>parquet_wasm_bg.wasm.gz</code>
+  (1.8 MB), <code>_engine_src/</code>.</li>
+<li><code>selection_eval.py</code> (365 lines) and <code>selection_eval.js</code> (214 lines), the
+  sealed-grain evaluator, and the subset-only branch of the runtime's
+  selection path.</li>
+<li>The "controls never compute new numbers" paragraph in <code>capabilities.py</code>,
+  <code>AGENTS.md</code> and <code>init_agents.md</code>, replaced by §7.3's rule.</li>
+<li>Pandas as a required dependency of the query path. It remains an optional
+  extra for the escape hatch and <code>ExcelRenderer</code>.</li>
+</ul>
+<p>Kept, and doing more (this is the library):</p>
+<ul>
+<li><code>tracebi.js</code> (~5,000 lines: hydration, the D3 chart engine, controls,
+  tabs, scenarios, the trace drawer, downloads, the stamped-figure watch).
+  Live filtering plugs into its existing selection path; the charts redraw
+  as they do today. <code>tracebi.css</code> and the React kit, untouched.</li>
+<li>The query compiler in <code>data_model.py</code>: the page engine executes the spec
+  it compiles, so it becomes the parity oracle rather than being replaced.</li>
+<li><code>template_package.py</code>, stamping, manifests, <code>verify</code>, contracts, the model
+  loader, discovery, the web app, Ask, drafts, permissions.</li>
+<li>The parity suite, now per measure kind against DuckDB; the query-semantics
+  test, which already pins the spec.</li>
+<li>On the server, <code>tracebi/etl/</code> (~450 lines of pandas medallion layers)
+  migrates to DuckDB SQL over time; <code>DataSet</code> and lineage stay for
+  connectors and the model load path.</li>
+</ul>
+<h2 id="12-not-building">12. Not building</h2>
+<ul>
+<li>Qlik's associative state (possible / excluded values per field).</li>
+<li>Association across models. Within a model, shared dimensions do it.</li>
+<li><code>ref()</code>-style dependencies between SQL transform files.</li>
+<li>DuckDB-wasm in the page by default, or any page that needs a network or
+  a server to filter. <code>engine: duckdb</code> is the opt-in, later, if a report
+  needs arbitrary SQL recomputed offline.</li>
+<li>A Rust page engine before the 100 ms budget fails on a real block.</li>
+<li>A migration that rewrites pandas transforms into SQL.</li>
+</ul>
+<h2 id="13-packages">13. Packages</h2>
+<p><strong>Execution order changed 2026-10-19:</strong> the page half (D5–D9) goes first, as
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a> (packages L-1 to L-5); the server half (Q-2, Q-4, Q-5)
+follows. The table below stays as the full inventory.</p>
+<p>Each lands with the discoverability trio (vocabulary, scaffold or
+showcase, both guides), the full gate, and a journey step. In order,
+because each one's seam is the next one's input.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Package</th>
+<th>Verify</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q-1</td>
+<td><strong>Fingerprint rule</strong> (D9): rounding + total order, algo bump, <code>verify</code> reads both algos.</td>
+<td>The verify journey re-runs the reference project with <code>threads=1</code> and <code>threads=8</code> and reads Reproduces on both.</td>
+</tr>
+<tr>
+<td>Q-2</td>
+<td><strong>Model as schema</strong> (D3, D10): compile views + macros, locked read-only connections, <code>apply_selection</code> as the one composition function (Python now, ported to the page in Q-6b), multi-key dimension joins.</td>
+<td>A model with two facts and one calendar dimension on different keys; one selection reaches both; <code>read_csv('http://…')</code> from Ask is refused by name.</td>
+</tr>
+<tr>
+<td>Q-3</td>
+<td><strong>SQL binding promoted</strong> (D4): scaffold and showcase figures, the fixed-at-build mark, the guides say when to reach for it.</td>
+<td>The author journey builds a report with a SQL KPI; verify reads green; the figure carries the fixed mark and ignores a selection.</td>
+</tr>
+<tr>
+<td>Q-4</td>
+<td><strong>Storage tiers</strong> (D2): <code>tracebi.yaml</code> warehouse block, <code>{{ sink }}</code>, secrets, object tier in the reference project behind an env var, certificate records ETags and engine version.</td>
+<td>The pipeline journey sinks to a local MinIO-style endpoint and the model reads it; a rewritten Parquet reads stale.</td>
+</tr>
+<tr>
+<td>Q-5</td>
+<td><strong>SQL transforms</strong> (D1): <code>.sql</code> form, <code>new-transform</code> scaffolds it, <code>run-transform</code> reports the form, the reference project's transform rewritten in SQL with the pandas one kept beside it as the escape-hatch example.</td>
+<td>Both forms sink identical tables (fingerprints equal).</td>
+</tr>
+<tr>
+<td>Q-6a</td>
+<td><strong>Blocks and parity</strong> (D5, D9): the flattened sub-star build, the typed-column block format with dictionary-encoded strings, the manifest entries, and the parity suite: every measure kind, time grain and bin, DuckDB against a reference implementation, with the fixtures Q-6b's engine must pass.</td>
+<td>Each parity case runs the spec through DuckDB and through the reference and the fingerprints match; a rewritten block reads stale.</td>
+</tr>
+<tr>
+<td>Q-6b</td>
+<td><strong><code>tracebi-calc</code></strong> (D6–D8): the engine against Q-6a's fixtures, the selection state, live figures through the runtime's existing selection path, Local chip and fixed-at-build mark, <code>verify --local</code>, <code>embed:</code> and the two budgets, folder <code>accepts</code>.</td>
+<td>The web journey filters a sector on the showcase opened from <code>file://</code> and every spec figure changes, the trace shows the spec with the selection in it, <code>verify --local</code> replays it, and the audit ratchet holds 50 KB and 100 ms.</td>
+</tr>
+<tr>
+<td>Q-7</td>
+<td><strong>Retire</strong> (§11): remove the old engine and the evaluator, prune the tests, update the docs that describe them.</td>
+<td>The suite passes with the three libraries gone from the tree.</td>
+</tr>
+</tbody>
+</table>
+<p>Q-1 through Q-3 touch nothing a reader sees and can merge while Q-6 is
+being built. Q-4 and Q-5 are independent of Q-6. Q-6a's parity fixtures
+exist before Q-6b writes a line of the engine.</p>
+<h2 id="14-open-questions">14. Open questions</h2>
+<ol start="0">
+<li>
+<p><strong>Three parity definitions to write down before Q-6a:</strong> week and
+   quarter truncation (ISO weeks, and in which time zone a date-only column
+   is truncated), percentile interpolation (DuckDB's <code>quantile_cont</code>
+   semantics), and float summation order (covered by D9's rounding).</p>
+</li>
+<li>
+<p><strong>Default <code>embed</code>.</strong> <code>required</code> makes every report live by default;
+   <code>none</code> keeps a report static until an author opts in. With a 50 KB
+   engine the cost is only the blocks, so the draft says <code>required</code> with
+   the budget as the guard. To confirm against real file sizes after Q-6a.</p>
+</li>
+<li><strong>Local in the library chip.</strong> Whether a report whose last build is
+   green but whose page is mostly Local shows Reproduces or Local in the
+   Reports list. The draft says Reproduces (the build is what the list
+   describes) with Local only on the figure.</li>
+</ol>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

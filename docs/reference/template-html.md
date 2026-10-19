@@ -141,9 +141,15 @@ one attribute, and each bound span gets its own entry in the trace.
 
 ## Interactivity
 
-**Controls subset which stamped rows a figure displays. They never compute new
-numbers** — client-side aggregation would mint numbers nobody can re-run, so a
-filtered KPI needs its own binding, and value figures never react to controls.
+**A figure's number is only ever a query result.** On a page built with a
+slice (`report.json` `"embed"`, the default) a filter writes the page's one
+selection state, and the page engine re-runs each binding's own query (its calc
+plan) over the embedded slice: values, tables, charts and sparks recompute. A
+figure the selected field cannot reach keeps its number and is marked
+`data-tb-unfiltered-by`; one the engine cannot run is marked `data-tb-fixed`.
+Search only narrows the rows shown. On a page built with `"embed": "none"`
+filters subset the stamped rows of tables and charts, and value figures never
+react: summing the rows on screen would be a number no query produced.
 
 | Control | Markup |
 | --- | --- |
@@ -151,7 +157,7 @@ filtered KPI needs its own binding, and value figures never react to controls.
 | Search | `<input data-tb-search data-tb-binding="B">` |
 | Download | `<button data-tb-download data-tb-binding="B" data-tb-label="…">` |
 
-Filters on one binding AND-combine, and search ANDs with them. Download exports
+Filters AND-combine, and search ANDs with them. Download exports
 the binding's **stamped CSV verbatim** — a trace-preserving export, always the
 full binding, never the filtered view.
 

@@ -1265,6 +1265,7 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .verdict--does-not-reproduce { color: var(--red-text); }
 .verdict--draft { border-style: dashed; }
 .verdict--never-built::before { background: transparent; border: 1px solid currentColor; }
+.verdict--local { color: var(--blue); }
 .verdict--sm { padding: 0 7px; font-size: var(--text-xs); gap: 5px; }
 .chip--warn { color: var(--amber-text); }
 .chip--none::before { background: transparent; border: 1px solid currentColor; }
@@ -1457,6 +1458,15 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .rp__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: var(--text-caption); color: var(--muted); }
 .rp__meta > span { display: inline-flex; align-items: center; gap: 5px; }
 .rp__meta > span + span::before { content: "·"; margin-right: 9px; color: var(--border-strong); }
+/* The live report's selection, one chip per field; a click clears that field. */
+.rp__sel { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.rp__selchip {
+  appearance: none; padding: 1px 9px; border: 1px solid var(--border-strong); border-radius: 999px;
+  background: var(--surface); color: var(--text); font: inherit; font-size: var(--text-caption);
+  line-height: 1.6; cursor: pointer;
+}
+.rp__selchip:hover { border-color: var(--blue); }
+.rp__selchip span { color: var(--muted); }
 /* Why the chip asks for a look: the chip's own detail, in its colour, not a bar. */
 .rp__why { margin: 0; font-size: var(--text-caption); line-height: 1.45; color: var(--flag-warn); }
 .rp__why--bad { color: var(--red-text); }

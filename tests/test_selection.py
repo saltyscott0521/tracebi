@@ -1,16 +1,14 @@
-"""Selection through DataModel, then the offline port that has to match it.
+"""Selection through DataModel.
 
 The authored selection is the receipt. A reader selection is the same filter
 grammar, conjoined, re-run by the model. The fingerprint equals that query.
-A report with no selection block still does not recompute. The worker port
-of simple aggregations and ratio matches the model; period_end refuses.
+A report with no selection block still does not recompute. (The page's own
+recompute is the calc plan: tests/test_calc_plan.py and the live journeys.)
 """
 
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 
 import pandas as pd
 import pytest
@@ -23,17 +21,7 @@ from tracebi.reports.selection import (
     keep_cut,
     match_question,
 )
-from tracebi.reports.selection_eval import (
-    OfflineRefusal,
-    aggregate_frame,
-    plan_binding,
-)
 from tracebi.reports.template_package import TemplatePackage
-
-_EVAL_JS = (
-    __import__("pathlib").Path(__file__).parent.parent
-    / "tracebi" / "reports" / "assets" / "selection_eval.js"
-)
 
 
 def _model():
@@ -159,8 +147,8 @@ class TestEvaluate:
         assert 'id="tracebi-selection"' not in html
 
     def test_opted_in_page_still_cannot_connect_anywhere(self, tmp_path):
-        """A selection is run by the app on the page's behalf (the page is sandboxed
-        and asks by message), so opting in does not loosen the page's CSP."""
+        """A selection is recomputed in the page from the data it carries, so
+        opting in does not loosen the page's CSP."""
         model = _model()
         pkg = TemplatePackage(str(_package(
             tmp_path, selection={"model": "selection_model", "filters": {}},
@@ -171,7 +159,6 @@ class TestEvaluate:
         assert "connect-src 'none'" in html
         assert "connect-src 'self'" not in html
         assert 'id="tracebi-selection"' in html
-        assert 'id="tracebi-grain"' in html
         from tracebi.verify import verify_file
         manifest = json.loads((tmp_path / "cut.html.manifest.json").read_text())
         checked = verify_file(html, manifest)
@@ -328,136 +315,3 @@ class TestNewGrain:
         assert fig["kind"] == "table"
         # The thread cites the fingerprint. The table cells are not a value.
         assert "value" not in fig
-
-
-class TestOfflinePort:
-    def _plan(self, measures, dimensions=(), filters=None, order_by=(), limit=None):
-        return plan_binding(_model(), QuerySpec(
-            fact="fact_orders", measures=measures, dimensions=tuple(dimensions),
-            filters=filters, order_by=order_by, limit=limit,
-        ))
-
-    def _grain(self, model, plan):
-        sources = []
-        for agg in plan["aggs"]:
-            if agg["source"] not in sources:
-                sources.append(agg["source"])
-        spec = QuerySpec(
-            fact=plan["fact"],
-            measures={src: "sum" for src in sources},
-            dimensions=tuple(plan["dimensions"]),
-            aggregate=False,
-        )
-        return model.execute(spec).to_pandas()
-
-    def _js(self, rows, plan, filters):
-        node = shutil.which("node")
-        if node is None:
-            pytest.skip("node not available")
-        script = r"""
-const fs = require('fs');
-const src = fs.readFileSync(process.argv[1], 'utf8');
-const payload = JSON.parse(process.argv[2]);
-eval(src);
-const result = tracebiSelectionEval(payload.rows, payload.plan, payload.filters);
-process.stdout.write(JSON.stringify(result));
-"""
-        proc = subprocess.run(
-            [node, "-e", script, str(_EVAL_JS), json.dumps({
-                "rows": rows, "plan": plan, "filters": filters,
-            })],
-            capture_output=True, text=True, timeout=30,
-        )
-        assert proc.returncode == 0, proc.stderr
-        return json.loads(proc.stdout)
-
-    def _as_frame(self, js_rows, plan, grain):
-        from tracebi.reports.selection_eval import _cast_agg, _empty_result
-        dims = plan["dimensions"]
-        aggs = plan["aggs"]
-        ratios = plan["ratios"]
-        if not js_rows:
-            return _empty_result(grain, dims, aggs, ratios)
-        df = pd.DataFrame(js_rows)
-        cols = dims + [a["name"] for a in aggs] + [r["name"] for r in ratios]
-        df = df[cols]
-        for agg in aggs:
-            df[agg["name"]] = _cast_agg(df[agg["name"]], agg["func"], grain[agg["source"]])
-        for dim in dims:
-            df[dim] = df[dim].astype(grain[dim].dtype)
-        for ratio in ratios:
-            df[ratio["name"]] = df[ratio["name"]].astype("float64")
-        return df.reset_index(drop=True)
-
-    def test_simple_and_ratio_match_the_model(self):
-        model = _model()
-        plan = self._plan(
-            ["revenue", "orders", "margin"], ["dim_customer.region"],
-        )
-        assert plan["offline"] is True
-        grain = self._grain(model, plan)
-        port = aggregate_frame(grain, plan, {})
-        expected = model.query(
-            "fact_orders", ["revenue", "orders", "margin"],
-            ["dim_customer.region"],
-        ).to_pandas()
-        assert frame_fingerprint(port) == frame_fingerprint(expected)
-        js = self._js(
-            json.loads(grain.to_json(orient="records")), plan, {},
-        )
-        assert js.get("refused") in (None, False) or "rows" in js
-        js_frame = self._as_frame(js["rows"], plan, grain)
-        assert frame_fingerprint(js_frame) == frame_fingerprint(expected)
-
-    def test_a_one_row_drift_changes_the_fingerprint(self):
-        model = _model()
-        plan = self._plan(["revenue", "margin"])
-        grain = self._grain(model, plan)
-        expected = model.query(
-            "fact_orders", ["revenue", "margin"],
-        ).fingerprint()
-        js = self._js(json.loads(grain.to_json(orient="records")), plan, {})
-        assert frame_fingerprint(self._as_frame(js["rows"], plan, grain)) == expected
-        drifted = json.loads(grain.to_json(orient="records"))
-        drifted[0]["revenue"] = drifted[0]["revenue"] + 1
-        js_drift = self._js(drifted, plan, {})
-        assert frame_fingerprint(
-            self._as_frame(js_drift["rows"], plan, grain)
-        ) != expected
-
-    def test_selection_filter_matches_the_model(self):
-        model = _model()
-        plan = self._plan(["revenue", "margin"], ["dim_customer.region"])
-        grain = self._grain(model, plan)
-        filters = {"dim_customer.region": "East"}
-        port = aggregate_frame(grain, plan, filters)
-        expected = model.query(
-            "fact_orders", ["revenue", "margin"],
-            ["dim_customer.region"], filters=filters,
-        ).to_pandas()
-        assert frame_fingerprint(port) == frame_fingerprint(expected)
-
-    def test_period_end_refuses_offline(self):
-        plan = self._plan(["balance"])
-        assert plan["offline"] is False
-        assert plan["reason"] == "period_end"
-        with pytest.raises(OfflineRefusal):
-            aggregate_frame(pd.DataFrame({"revenue": [1]}), plan, {})
-        js = self._js([], plan, {})
-        assert js["refused"] == "period_end"
-
-    def test_top_n_stays_inside_the_selection(self):
-        model = _model()
-        plan = self._plan(
-            ["revenue"], ["dim_customer.region"],
-            order_by=("-revenue",), limit=1,
-        )
-        grain = self._grain(model, plan)
-        filters = {"dim_customer.region": ["East", "West"]}
-        port = aggregate_frame(grain, plan, filters)
-        expected = model.query(
-            "fact_orders", ["revenue"], ["dim_customer.region"],
-            filters=filters, order_by=["-revenue"], limit=1,
-        ).to_pandas()
-        assert frame_fingerprint(port) == frame_fingerprint(expected)
-        assert len(port) == 1

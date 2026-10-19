@@ -135,7 +135,7 @@ def test_the_showcase_carries_every_affordance(built):
                    "tb-tabs", "tb-span-8", "tb-kpi--lead", 'id="tracebi-receipt"',
                    "tb-methodology", "data-tb-unverified",
                    "tb-semantic-contract-portfolio_model",
-                   'id="tracebi-selection"', 'id="tracebi-grain"',
+                   'id="tracebi-selection"',
                    'class="tb-total"',
                    "data-tb-sort", "data-tb-bars", "data-tb-direction",
                    "tb-table--freeze", "tb-footer-line", "tb-masthead",
@@ -314,3 +314,442 @@ def test_explore_speaks_the_models_language(built, monkeypatch):
         assert blown.json()["display"][0]["inv"] == ""
     finally:
         release_warehouses()
+
+
+def test_every_reports_slice_answers_its_bindings_plans(built):
+    """The slice is enough: in every reference report, each binding whose
+    plan compiled, run by execute_plan over the slice embedded in the page
+    (under the authored selection), matches the binding's stamped rows cell by
+    cell (calc_plan.rows_match). Every other plan is fixed for a reason this
+    round names, never because the slice lacks a column."""
+    import base64
+    import hashlib
+
+    from tracebi.model.data_model import QuerySpec
+    from tracebi.model_registry import ModelRegistry
+    from tracebi.reports.calc_plan import execute_plan, first_mismatch, rows_match
+    from tracebi.reports.parquet_embed import from_parquet_bytes
+    from tracebi.reports.slice import _grain_strings
+
+    legitimate = ("sql binding", "report.py", "having 'contains'")
+    previous = os.getcwd()
+    os.chdir(built)
+    try:
+        registry = ModelRegistry()
+        registry.auto_discover(str(built / "models"))
+        live = 0
+        for name in REPORTS:
+            manifest = json.loads(_manifest(built, name).read_text())
+            html = (built / "output" / f"{name}.html").read_text()
+            payload = json.loads(re.search(
+                r'<script id="tracebi-calc-plans" type="application/json">(.*?)</script>',
+                html).group(1))
+            assert payload["bindings"] == manifest["plans"]
+            frames = {}
+            for rec in manifest["slice"].values():
+                block = re.search(r'<script id="%s" type="application/json">(.*?)</script>'
+                                  % re.escape(rec["block"]), html)
+                raw = base64.b64decode(json.loads(block.group(1))["parquet_b64"])
+                assert hashlib.sha256(raw).hexdigest() == rec["payload_sha256"]
+                frames[(rec["model"], rec["fact"])] = from_parquet_bytes(raw)
+            stamped = {r["name"]: r for r in manifest["embedded_data"]}
+            for binding, plan in manifest["plans"].items():
+                if "fixed" in plan:
+                    assert any(w in plan["fixed"] for w in legitimate), (name, binding, plan)
+                    continue
+                model = registry.get(stamped[binding]["model"])
+                got = execute_plan(plan, frames[(plan["model"], plan["fact"])],
+                                   payload["authored_selection"])
+                want = _grain_strings(model, model.execute(
+                    QuerySpec.from_dict(stamped[binding]["query_spec"])).to_pandas())
+                assert rows_match(got, want), (
+                    name, binding, first_mismatch(got, want))
+                live += 1
+        assert live >= 45, f"only {live} bindings recompute from their slice"
+    finally:
+        os.chdir(previous)
+
+
+def test_a_reports_embed_setting_bounds_what_it_carries(built, tmp_path):
+    """embed: none ships the page as it was before slices; embed: model
+    ships every fact at base grain with every attribute it reaches; a slice
+    over embed_budget_mb fails the build naming the fix; a column of a type
+    the page engine cannot show the same way fails the build naming it."""
+    import pandas as pd
+
+    from tracebi import DataModel, MemoryConnector
+    from tracebi.model_registry import ModelRegistry
+    from tracebi.reports.slice import SliceError
+    from tracebi.reports.template_package import TemplatePackage
+
+    showcase = built / "reports" / "portfolio_model" / "portfolio_showcase"
+    declared = json.loads((showcase / "report.json").read_text())
+
+    def variant(name, **keys):
+        target = tmp_path / name
+        shutil.copytree(showcase, target)
+        (target / "report.json").write_text(json.dumps({**declared, **keys}))
+        return TemplatePackage(str(target))
+
+    previous = os.getcwd()
+    os.chdir(built)
+    try:
+        registry = ModelRegistry()
+        registry.auto_discover(str(built / "models"))
+        models = {"portfolio_model": registry.get("portfolio_model")}
+
+        out = tmp_path / "none.html"
+        manifest = variant("none", embed="none").render(models, str(out))
+        assert manifest.slice is None and manifest.plans is None
+        page = out.read_text()
+        # No block, and no engine to run one (the runtime's own source names
+        # both ids, so the elements and the inlined engine are what count).
+        assert 'id="tracebi-slice-' not in page and 'id="tracebi-calc-plans"' not in page
+        assert "<!-- tracebi-calc.js" not in page
+
+        manifest = variant("model", embed="model").render(
+            models, str(tmp_path / "model.html"))
+        rec = manifest.slice["fact_holdings"]
+        assert rec["base_grain"] and rec["embed"] == "model"
+        assert {"dim_fund.fund", "dim_issuer.issuer", "dim_issuer.sector"} <= set(rec["grain"])
+        assert rec["rows"] == len(models["portfolio_model"].load("fact_holdings").to_pandas())
+
+        with pytest.raises(SliceError, match='"embed": "none"') as refused:
+            variant("tight", embed_budget_mb=0.0001).render(
+                models, str(tmp_path / "tight.html"))
+        assert "embed_budget_mb" in str(refused.value)
+        assert not (tmp_path / "tight.html").exists()
+    finally:
+        os.chdir(previous)
+
+    # A dimension attribute holding zoned timestamps: the page engine would
+    # show them in the reader's zone, so a slice that needs it fails by name.
+    package = tmp_path / "zoned"
+    package.mkdir()
+    (package / "report.json").write_text(json.dumps({"data": {"total": {
+        "model": "zoned_model", "query": {"fact": "fact_t", "measures": ["amount"]}}}}))
+    (package / "template.html").write_text(
+        '<html><head></head><body><span data-tb-figure="value" data-tb-binding="total" '
+        'data-tb-cell="amount"></span><select data-tb-filter data-tb-binding="total" '
+        'data-tb-column="dim_t.at"></select></body></html>')
+    model = DataModel("zoned_model")
+    model.add_connector(MemoryConnector("mem", tables={
+        "fact": pd.DataFrame({"t_id": [1, 2], "amount": [1.5, 2.5]}),
+        "dim": pd.DataFrame({"t_id": [1, 2], "at": pd.to_datetime(
+            ["2026-01-01", "2026-02-01"]).tz_localize("America/New_York")})}))
+    model.add_table("fact", "mem", "fact").add_table("dim", "mem", "dim")
+    model.add_dimension("dim_t", "dim", "t_id", ["at"])
+    model.add_fact("fact_t", "fact", ["amount"], {"dim_t": "t_id"})
+    model.add_measure("amount", column="amount", agg="sum")
+    with pytest.raises(SliceError, match=r"slice column 'dim_t\.at'.*\"embed\": \"none\""):
+        TemplatePackage(str(package)).render({"zoned_model": model},
+                                             str(tmp_path / "zoned.html"))
+
+
+# ── The live page ────────────────────────────────────────────────────────────
+
+def test_verify_local_replays_what_every_page_recomputes(built, tmp_path):
+    """verify --local: on every reference report the page engine and the
+    server agree on every plan under the authored selection and one per
+    filter; a slice block edited after the build is refused by its hash."""
+    import shutil as _shutil
+
+    node = _shutil.which("node")
+    for name in REPORTS:
+        code, out = run_cli("verify", str(_manifest(built, name)), "--local")
+        assert code == 0, f"{name}: {out}"
+        manifest = json.loads(_manifest(built, name).read_text())
+        if manifest.get("slice"):
+            assert ("reproduce" in out) if node else ("node not found" in out), f"{name}: {out}"
+        else:
+            assert "fixed at build" in out, f"{name}: {out}"
+
+    showcase = built / "output" / "portfolio_model" / "portfolio_showcase.html"
+    html = showcase.read_text()
+    block = re.search(r'id="tracebi-slice-fact_holdings" type="application/json">'
+                      r'\{[^<]*?"parquet_b64": "(.)', html)
+    at = block.start(1) + 40
+    swap = "A" if html[at] != "A" else "B"
+    (tmp_path / "s.html").write_text(html[:at] + swap + html[at + 1:])
+    (tmp_path / "s.html.manifest.json").write_text(
+        _manifest(built, "portfolio_model/portfolio_showcase").read_text())
+    code, out = run_cli("verify", str(tmp_path / "s.html.manifest.json"), "--local")
+    assert code == 1 and "payload_sha256" in out, out
+
+
+def _browser():
+    sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
+    pw = sync_playwright().start()
+    try:
+        return pw, pw.chromium.launch(headless=True)
+    except Exception as exc:  # noqa: BLE001 — no browser here: skip, never fail
+        pw.stop()
+        pytest.skip(f"Chromium is not installed: {exc}")
+
+
+def _slices(built, name):
+    """The page's slices as frames, its manifest's plans, and its calc payload."""
+    import base64
+
+    from tracebi.reports.parquet_embed import from_parquet_bytes
+
+    html = (built / "output" / f"{name}.html").read_text()
+    manifest = json.loads(_manifest(built, name).read_text())
+    frames = {}
+    for rec in (manifest.get("slice") or {}).values():
+        body = re.search(r'<script id="%s" type="application/json">(.*?)</script>'
+                         % re.escape(rec["block"]), html).group(1)
+        frames[(rec["model"], rec["fact"])] = from_parquet_bytes(
+            base64.b64decode(json.loads(body)["parquet_b64"]))
+    return frames, manifest["plans"]
+
+
+# Every figure the page draws, read the way a reader sees it: a value's text,
+# a table's rows, a chart's svg (and its text and mark count, which a reload
+# must reproduce exactly), with the live marks the runtime set.
+_READ = """() => Array.from(document.querySelectorAll('[data-tb-figure][data-tb-binding]'))
+  .filter(el => el.getAttribute('data-tb-figure') !== 'custom').map((el, i) => {
+    const kind = el.getAttribute('data-tb-figure');
+    const svg = el.querySelector('svg');
+    return {key: el.id || ('#' + i), binding: el.getAttribute('data-tb-binding'), kind,
+      cell: el.getAttribute('data-tb-cell'),
+      value: kind === 'value' ? (el.querySelector('.tb-kpi-value') || el).textContent.trim() : null,
+      rows: kind === 'table' ? Array.from(el.querySelectorAll('tbody tr')).map(r => r.textContent) : null,
+      svg: svg ? svg.outerHTML : null,
+      text: kind === 'chart' ? el.textContent : null,
+      marks: svg ? svg.querySelectorAll('path, rect, circle').length : null,
+      fixed: el.getAttribute('data-tb-fixed'),
+      note: el.__tbLiveNote ? el.__tbLiveNote.textContent : null};
+  })"""
+
+
+def _settle(page):
+    page.wait_for_selector("html[data-tb-ready]")
+    page.wait_for_timeout(900)     # chart transitions finish
+
+
+def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
+    """Opened from disk, the showcase is live: picking a sector recomputes
+    every value, chart and table whose query that sector reaches, exactly
+    where the data says the answer moves, from the slice the file carries.
+    The report.py figure stays as built and says so; the chip reads Local;
+    the address carries the selection, and opening it restores the view."""
+    from tracebi.reports.calc_plan import execute_plan, rows_match
+
+    name = "portfolio_model/portfolio_showcase"
+    frames, plans = _slices(built, name)
+    frame = frames[("portfolio_model", "fact_holdings")]
+    sector = sorted(frame["dim_issuer.sector"].dropna().unique())[0]
+    selection = {"dim_issuer.sector": [sector]}
+    answers = {b: (execute_plan(p, frames[(p["model"], p["fact"])], {}),
+                   execute_plan(p, frames[(p["model"], p["fact"])], selection))
+               for b, p in plans.items() if "fixed" not in p}
+    # Both facts are on the page, and the sector reaches both.
+    assert {p["fact"] for p in plans.values() if "fixed" not in p} == {
+        "fact_holdings", "fact_cashflows"}
+
+    pw, browser = _browser()
+    try:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        url = (built / "output" / f"{name}.html").as_uri()
+        page.goto(url)
+        _settle(page)
+        before = {f["key"]: f for f in page.evaluate(_READ)}
+        assert page.locator(".tb-masthead .tb-verdict").first.text_content() == "Not checked"
+        page.locator('select[data-tb-filter][data-tb-column="dim_issuer.sector"]').select_option(
+            sector, force=True)
+        _settle(page)
+        after = {f["key"]: f for f in page.evaluate(_READ)}
+        # A chart in a hidden tab redraws when its tab is shown.
+        page.locator(".tb-tab-bar button", has_text="Cash flows").click()
+        _settle(page)
+        after.update({f["key"]: f for f in page.evaluate(_READ)
+                      if f["binding"].startswith("flows")})
+        page.locator(".tb-tab-bar button", has_text="Overview").click()
+
+        kinds = set()
+        for key, now in after.items():
+            was, binding = before[key], now["binding"]
+            if binding not in answers:
+                assert "fixed" in plans[binding]
+                assert now["fixed"] == plans[binding]["fixed"] == "report.py"
+                assert now["svg"] == was["svg"] and now["value"] == was["value"]
+                assert now["note"] == "Fixed at build · report.py"
+                continue
+            authored, cut = answers[binding]
+            kinds.add(now["kind"])
+            assert now["fixed"] is None
+            if now["kind"] == "value":
+                moves = (len(cut) == 0
+                         or not rows_match(authored[[now["cell"]]], cut[[now["cell"]]]))
+                assert (now["value"] != was["value"]) == moves, (key, was["value"], now["value"])
+            elif now["kind"] == "table":
+                assert not rows_match(authored, cut)
+                assert len(now["rows"]) == len(cut) and now["rows"] != was["rows"], key
+            else:
+                assert not rows_match(authored, cut)
+                assert now["svg"] != was["svg"], key
+        assert kinds == {"value", "table", "chart"}
+
+        chip = page.locator(".tb-masthead .tb-verdict").first
+        assert chip.text_content() == "Local"
+        assert chip.get_attribute("title") == "Recomputed on this page from the embedded data"
+        assert "sel=" in page.evaluate("location.hash")
+        # The trace counts its own figure rows: one, the report.py chart, is fixed.
+        summary = page.locator(".tb-receipt-local-summary").text_content()
+        assert re.fullmatch(r"\d+ recomputed on this page · 1 fixed at build · 0 unchanged",
+                            summary), summary
+
+        again = browser.new_page(viewport={"width": 1440, "height": 900})
+        again.goto(page.evaluate("location.href"))
+        _settle(again)
+        reread = {f["key"]: f for f in again.evaluate(_READ)}
+        again.locator(".tb-tab-bar button", has_text="Cash flows").click()
+        _settle(again)
+        reread.update({f["key"]: f for f in again.evaluate(_READ)
+                       if f["binding"].startswith("flows")})
+        for key, now in after.items():
+            for part in ("value", "rows", "text", "marks", "fixed"):
+                assert reread[key][part] == now[part], (key, part)
+        assert again.locator(".tb-masthead .tb-verdict").first.text_content() == "Local"
+
+        # A field only one fact reaches: the flow type cuts the cash flows,
+        # and every holdings figure keeps its built number and says why.
+        flows = frames[("portfolio_model", "fact_cashflows")]
+        flow_type = sorted(flows["dim_flow_type.flow_type"].dropna().unique())[0]
+        typed = {"dim_flow_type.flow_type": [flow_type]}
+        page.goto(url)
+        _settle(page)
+        built_view = {f["key"]: f for f in page.evaluate(_READ)}
+        page.locator('select[data-tb-filter][data-tb-column="dim_flow_type.flow_type"]'
+                     ).select_option(flow_type, force=True)
+        _settle(page)
+        reached = set()
+        for key, now in {f["key"]: f for f in page.evaluate(_READ)}.items():
+            plan = plans[now["binding"]]
+            if "fixed" in plan:
+                continue
+            if plan["fact"] == "fact_holdings":
+                assert now["value"] == built_view[key]["value"], key
+                assert now["rows"] == built_view[key]["rows"], key
+                assert page.locator(f'[data-tb-binding="{now["binding"]}"]'
+                                    '[data-tb-unfiltered-by="dim_flow_type.flow_type"]'
+                                    ).count() >= 1, key
+            else:
+                reached.add(now["binding"])
+                cut = execute_plan(plan, flows, typed)
+                if now["kind"] == "table":
+                    assert len(now["rows"]) == len(cut), key
+        assert reached == {"flows", "flows_by_month", "flows_by_fund"}
+        assert page.get_by_text("Not filtered by Flow type").count() >= 1
+        assert errors == []
+    finally:
+        browser.close()
+        pw.stop()
+
+
+def test_the_desks_page_filters_recompute_every_view(built):
+    """The React lane: two page filters, one of them multiple, cut the desk's
+    holdings to exactly the rows the slice says; a view the app mounts after
+    the selection opens already recomputed; the hash keeps the view and the
+    selection side by side."""
+    from tracebi.reports.calc_plan import execute_plan
+
+    name = "portfolio_model/portfolio_desk"
+    frames, plans = _slices(built, name)
+    frame = frames[("portfolio_model", "fact_holdings")]
+    sector = sorted(frame["dim_issuer.sector"].dropna().unique())[-1]
+    funds = sorted(frame["dim_fund.fund"].dropna().unique())[:2]
+    selection = {"dim_issuer.sector": [sector], "dim_fund.fund": funds}
+    holdings = execute_plan(plans["holdings"], frame, selection)
+    totals = execute_plan(plans["totals"], frame, selection)
+    assert 0 < len(holdings) < len(execute_plan(plans["holdings"], frame, {}))
+
+    pw, browser = _browser()
+    try:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        url = (built / "output" / f"{name}.html").as_uri()
+        page.goto(url)
+        _settle(page)
+        overview = page.locator('[data-tb-binding="totals"][data-tb-cell="positions"] .tb-kpi-value').first
+        authored = overview.text_content()
+        page.get_by_role("button", name="Holdings").click()
+        page.wait_for_selector("select[data-tb-filter][multiple]")
+        page.locator('select[data-tb-column="dim_issuer.sector"]').select_option(sector)
+        page.locator('select[data-tb-column="dim_fund.fund"]').select_option(funds)
+        _settle(page)
+        assert page.locator("#holdings-table tbody tr").count() == len(holdings)
+        shown = set(page.locator("#holdings-table tbody tr td:nth-child(3)").all_text_contents())
+        assert shown == set(funds) & set(holdings["dim_fund.fund"])
+        hash_ = page.evaluate("location.hash")
+        assert "view=Holdings" in hash_ and "sel=" in hash_
+        page.get_by_role("button", name="Overview").click()
+        _settle(page)
+        positions = page.locator('[data-tb-binding="totals"][data-tb-cell="positions"] .tb-kpi-value').first
+        assert positions.text_content() != authored
+        assert positions.text_content().replace(",", "") == str(int(totals["positions"][0]))
+        assert page.locator(".tb-verdict[data-tb-verdict='local']").count() >= 1
+    finally:
+        browser.close()
+        pw.stop()
+
+
+def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):
+    """The SaaS measures are period_end balances, and the page runs them: a
+    plan picked in mrr_dashboard's filter recomputes every KPI, spark, chart
+    and table exactly where execute_plan over the slice says (each month's
+    latest balance, under the plan), none is fixed, and the chip reads Local.
+    cohort_brief has no control; its slice still reproduces on the server."""
+    from tracebi.reports.calc_plan import execute_plan, rows_match
+
+    name = "saas_model/mrr_dashboard"
+    frames, plans = _slices(built, name)
+    frame = frames[("saas_model", "fact_account_month")]
+    assert not [b for b, p in plans.items() if "fixed" in p]
+    plan_name = sorted(frame["dim_plan.plan"].dropna().unique())[0]
+    selection = {"dim_plan.plan": [plan_name]}
+    answers = {b: (execute_plan(p, frame, {}), execute_plan(p, frame, selection))
+               for b, p in plans.items()}
+
+    pw, browser = _browser()
+    try:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.goto((built / "output" / f"{name}.html").as_uri())
+        _settle(page)
+        before = {f["key"]: f for f in page.evaluate(_READ)}
+        page.locator('select[data-tb-filter][data-tb-column="dim_plan.plan"]').select_option(
+            plan_name)
+        _settle(page)
+        after = {f["key"]: f for f in page.evaluate(_READ)}
+        kinds = set()
+        for key, now in after.items():
+            was = before[key]
+            authored, cut = answers[now["binding"]]
+            kinds.add(now["kind"])
+            assert now["fixed"] is None, key
+            if now["kind"] == "value":
+                moves = not rows_match(authored[[now["cell"]]], cut[[now["cell"]]])
+                assert (now["value"] != was["value"]) == moves, (key, was["value"], now["value"])
+            elif now["kind"] == "table":
+                assert len(now["rows"]) == len(cut) and now["rows"] != was["rows"], key
+                assert all(plan_name in row for row in now["rows"]), key
+            else:
+                assert not rows_match(authored, cut)
+                assert now["svg"] != was["svg"], key
+        assert {"value", "table", "chart"} <= kinds
+        assert page.locator("[data-tb-fixed]").count() == 0
+        assert page.locator(".tb-verdict[data-tb-verdict='local']").count() >= 1
+        assert "sel=" in page.evaluate("location.hash")
+        assert errors == []
+    finally:
+        browser.close()
+        pw.stop()
+
+    manifest = json.loads(_manifest(built, "saas_model/cohort_brief").read_text())
+    assert manifest["slice"] and not [p for p in manifest["plans"].values() if "fixed" in p]
+    code, out = run_cli("verify", str(_manifest(built, "saas_model/cohort_brief")), "--local")
+    assert code == 0 and "reproduce" in out, out

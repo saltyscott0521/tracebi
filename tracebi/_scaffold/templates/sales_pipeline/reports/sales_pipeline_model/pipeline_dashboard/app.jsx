@@ -38,9 +38,9 @@ export default function App() {
           </section>
           <section className="tb-card tb-span-4">
             <h2>Pipeline by region</h2>
-            <p className="tb-note">The filter chooses rows; it never computes a number.</p>
+            <p className="tb-note">The region filter recomputes every figure on the page.</p>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Filter binding="by_region" column="dim_region.region" label="Region" />
+              <Filter column="dim_region.region" label="Region" />
               <Download binding="by_region" />
             </div>
             <Table binding="by_region" id="tbl-region" sort bars="pipeline_value"

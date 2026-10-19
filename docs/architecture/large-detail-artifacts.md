@@ -1,7 +1,11 @@
 # Large-detail artifacts — data-heavy, offline, still verifiable
 
 **Status:** shipped (built on `feat/artifact-parquet-embed`, merged to `main` in
-August 2026). The design below is the plan as agreed; §11 records where the implementation deliberately diverged after two
+August 2026); **the engine is superseded by [[live-reports-plan]] (2026-10)**:
+parquet-wasm, Arquero and the Web Worker are gone, and a Parquet block is
+decoded by the pure-JS page engine (`tracebi-calc.js`, Snappy only, no CSP
+grant). The Parquet lessons below stand: hash the shipped bytes, restrict the
+types, never re-derive. The design below is the plan as agreed; §11 records where the implementation deliberately diverged after two
 adversarial reviews. Supersedes the "just add a size guard" stopgap and the
 DuckDB-vs-Parquet open question in the scale audit (ROADMAP 11c).
 

@@ -1,7 +1,7 @@
 // Portfolio Desk: the book as an app people work in. Every number is a kit
 // figure (<Kpi>, <Value>, <Chart>, <Table>) with literal binding and cell, so
-// the build records it as a claim and its trace names it. Controls choose
-// which stamped rows show; they never compute a number.
+// the build records it as a claim and its trace names it. Search narrows the
+// rows shown; the filters recompute every view, each figure by its own query.
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download,
          useUrlState, usePrinting } from "tracebi";
@@ -53,12 +53,13 @@ function Holdings() {
   return (
     <section className="tb-card">
       <h2>Every holding</h2>
-      <p className="tb-note">One row per issuer and fund. Search and the filters choose
-        rows; the CSV is the stamped data, verbatim.</p>
+      <p className="tb-note">One row per issuer and fund. Search chooses rows; the
+        filters (pick several funds) recompute every view. The CSV is the stamped
+        data, verbatim.</p>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Search binding="holdings" placeholder="Find an issuer…" />
         <Filter column="dim_issuer.sector" label="Sector" />
-        <Filter column="dim_fund.fund" label="Fund" />
+        <Filter column="dim_fund.fund" label="Fund" multiple />
         <Download binding="holdings" />
       </div>
       <Table binding="holdings" id="holdings-table" sort rows="all" bars="fair_value"

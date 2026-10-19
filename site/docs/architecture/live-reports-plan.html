@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live reports — the plan — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Live reports — the plan">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a class="on" href="../architecture/live-reports-plan.html">Live reports — the plan</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="live-reports-the-plan">Live reports — the plan</h1>
+<p><strong>Status: in execution, 2026-10-19.</strong> The package plan for the page half of
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> (D5–D9), re-ordered around the maintainer's goal:</p>
+<blockquote>
+<p>The built report is one file, works offline, covers every chart and table
+type, and is state-driven: a filter changes every figure on the page.</p>
+</blockquote>
+<p>The server half of <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> (SQL transforms, storage tiers, the model
+as a DuckDB schema) is a later round; nothing here depends on it.</p>
+<h2 id="decisions-closed">Decisions (closed)</h2>
+<ol>
+<li><strong>The page engine is ours.</strong> <code>tracebi-calc.js</code>: plain JavaScript, inlined
+   like <code>tracebi.js</code>, executing a closed <strong>calc plan</strong> over embedded Parquet
+   blocks. Budget ≤ 50 KB gzipped including the Parquet reader (hyparquet,
+   20 KB measured). No wasm, no CSP change.</li>
+<li><strong>The build does the thinking.</strong> For each report the build derives the
+   <strong>slice</strong>: per fact, the coarsest grain that answers every figure and every
+   control, flattened with the dimension attributes the page exposes, time
+   grains and bins pre-computed as columns, ratio measures stored as their
+   parts. The page only filters, groups, sums, divides and post-processes.</li>
+<li><strong>One calc plan per binding, compiled on the server.</strong> <code>calc_plan.py</code>
+   turns a <code>QuerySpec</code> + model into closed JSON (group columns, aggregates
+   with source columns, ratio parts, post-ops for share / rank / running /
+   having / order / limit, and the binding's fixed filters). The plan is what
+   the engine runs and what the trace records. The engine never sees a model.</li>
+<li><strong>One selection state per page</strong>, <code>{"dim_issuer.sector": ["Technology"], …}</code>,
+   composed onto every binding's plan by one rule: a selected field applies
+   to a fact when the slice for that fact carries that column (the build put
+   it there because a declared relationship reaches it); otherwise the figure
+   is untouched and marked <code>data-tb-unfiltered-by</code>. Multi-select. The state
+   lives in the URL hash.</li>
+<li><strong>Every figure kind recomputes</strong>: value, chart (bar, barh, line, area, pie,
+   scatter, with facets, stacks and annotations), table (sort, bars, totals,
+   windowing), spark, and custom <code>tracebi.draw</code> figures through
+   <code>tracebi.rows</code>. The runtime's existing <code>_liveRows</code> → <code>refreshBinding</code> /
+   <code>paintValues</code> path is the plug-in point; the React kit changes nothing in
+   how authors write figures.</li>
+<li><strong>What cannot recompute is marked, never silently stale.</strong> A <code>{"model","sql"}</code>
+   binding, a <code>report.py</code> output, and any measure kind the engine does not
+   implement (<code>period_end</code>, <code>offset</code>, <code>to_date</code> in this round) carry
+   <code>data-tb-fixed</code> and the trace row says "fixed at build". A binding whose
+   plan the server refused to compile is fixed too, with the reason.</li>
+<li><strong>Trust.</strong> The chip gains <strong>Local</strong> (recomputed on this page from embedded,
+   fingerprinted blocks; the trace row records plan + selection + block
+   hashes; <code>verify --local</code> replays it on the server). Fingerprints round
+   floats to 9 significant digits under a total order before hashing (new
+   algo version; verify reads both). Parquet blocks hash the shipped bytes
+   (<code>payload_sha256</code>), as <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a> §11 settled.</li>
+<li><strong>Parquet types in a slice</strong> are numbers, booleans, strings and naive
+   datetimes only; grains are strings (<code>2026-03</code>, <code>2026-Q1</code>, <code>2026-W09</code>);
+   anything else fails the build by name. Snappy or uncompressed pages (what
+   the reader decodes natively). <strong>Amended after L-2:</strong> the block travels as
+   today's Parquet blocks do, raw bytes base64, not gzipped, so the page has
+   one carrier.</li>
+<li><strong>The old path goes.</strong> parquet-wasm, Arquero, the worker, the sealed-grain
+   evaluator and the host selection round trip for filters are removed in the
+   last package. Ask keeps its server endpoint (it answers questions, it does
+   not filter pages). The locked guide line "never compute new numbers"
+   becomes "<strong>a figure's number is only ever a query result</strong>", changed in
+   the test, both guides and the vocabulary in one commit.</li>
+<li><strong>Budgets the audit ratchets</strong>: engine ≤ 50 KB gz; every binding on the
+    reference project's largest slice recomputes ≤ 100 ms (Playwright,
+    <code>performance.now()</code> around the engine call); each built report's size
+    against its baseline.</li>
+</ol>
+<h2 id="packages">Packages</h2>
+<p>Branch <code>live-reports</code>. L-1 and L-2 are Python and disjoint, so they run in
+parallel worktrees; L-3 needs both; L-4 needs L-3; L-5 closes.</p>
+<h3 id="l-1-the-calc-plan-and-the-parity-oracle-python">L-1 — The calc plan and the parity oracle (Python)</h3>
+<ul>
+<li><code>tracebi/reports/calc_plan.py</code>: <code>compile_plan(model, query, slice_columns)
+  -&gt; dict</code> for every <code>_Resolved</code> kind: <code>agg_map</code> (sum, count, mean as
+  sum/count parts, min, max, nunique, <code>p&lt;N&gt;</code> as <code>quantile_cont</code>), <code>derived</code>
+  row expressions (closed arithmetic over fact columns; parsed to an AST the
+  engine evaluates, no eval), <code>ratios</code>, <code>shares</code>, <code>ranks</code> with
+  <code>partition_by</code>, <code>runnings</code>, <code>having</code>, <code>order_by</code>, <code>limit</code>, binding
+  <code>filters</code>, per-query <code>calculated</code> measures. Kinds not implemented this
+  round return <code>{"fixed": reason}</code>.</li>
+<li><code>apply_selection(plan, selection)</code>: the one composition rule (decision 4),
+  in Python, with the engine's port tested against it.</li>
+<li>Fingerprint rounding (decision 7): <code>frame_fingerprint</code> v3, <code>verify</code> accepts
+  v2 and v3.</li>
+<li>Parity fixtures: <code>tests/fixtures/calc_parity/&lt;case&gt;.json</code>, each a small
+  slice (rows + column types), a plan, a selection, and the expected rows
+  from DuckDB. One case per measure kind × with/without selection, plus
+  having, order, limit, partitioned rank, nunique, p50/p90, a derived
+  expression, a two-fact page with a shared dimension and one unreachable
+  field. Generated by <code>scripts/gen_calc_parity.py</code> from the reference model;
+  committed, so L-3 runs without DuckDB.</li>
+<li>Unit test (kept family: query semantics): every fixture's expected rows
+  equal <code>DataModel.execute</code> on the same slice under the same selection.</li>
+</ul>
+<p>Verify: fixtures regenerate byte-identically; the suite passes.</p>
+<h3 id="l-2-the-slice-python">L-2 — The slice (Python)</h3>
+<ul>
+<li><code>tracebi/reports/slice.py</code>: <code>required_grain(package, model)</code> per fact =
+  union of every binding's dimensions, every control's column, every
+  <code>partition_by</code>, every time grain / bin the page names; <code>build_slice(...)</code>
+  runs ONE DuckDB query per fact: filter nothing, group by the required
+  grain, aggregate every additive measure the page uses, keep base-grain
+  rows for a fact whose page uses <code>nunique</code> / percentiles / <code>derived</code>
+  expressions over row values; join the exposed dimension attributes;
+  emit grains and bins as string columns; ratio parts as columns.</li>
+<li><code>report.json</code>: <code>"embed": "required" | "model" | "none"</code> (default
+  <code>required</code>) and <code>"embed_budget_mb"</code> (default 25). Over budget fails the
+  build naming the fix.</li>
+<li>Blocks: one Parquet block per fact (<code>tracebi-slice-&lt;fact&gt;</code>), decision 8,
+  <code>payload_sha256</code> in the manifest with the block's grain and columns; the
+  calc payload (<code>tracebi-calc-plans</code>: every binding's plan, the control
+  columns, the model label) embedded as JSON. The existing per-binding
+  stamped blocks stay (they are the build-time values and the trace).</li>
+<li><code>embed: none</code> emits neither and the page behaves as today.</li>
+</ul>
+<p>Verify: for every reference report, each binding's plan run by
+<code>DataModel.execute</code> over the slice equals the binding's stamped rows
+(fingerprints equal under the rounding rule). A journey step in
+<code>test_reference_project.py</code> asserts it for all of them.</p>
+<h3 id="l-3-tracebi-calcjs-javascript">L-3 — <code>tracebi-calc.js</code> (JavaScript)</h3>
+<ul>
+<li><code>tracebi/reports/assets/_calc_src/</code>: <code>engine.js</code> (filter, group,
+  aggregate, post-ops, exactly the plan vocabulary), <code>parquet.js</code>
+  (hyparquet vendored, Snappy only), <code>index.js</code> (the message-free API:
+  <code>tracebiCalc.load(blocks)</code>, <code>.run(plan, selection) -&gt; {cols, rows}</code>,
+  <code>.domains(column) -&gt; values</code>). esbuild to <code>tracebi-calc.js</code>;
+  <code>CALC_NOTICE.md</code> with attribution; <code>test_engine_assets.py</code> checks the
+  bundle is rebuilt from source.</li>
+<li>Parity in node: <code>tests/test_calc_parity.py</code> runs every L-1 fixture through
+  the bundle and compares rows after the rounding rule; float summation uses
+  pairwise (Kahan) sums so 1e6-row columns stay within the rounding.</li>
+<li>Budget tests: bundle ≤ 50 KB gz; every fixture ≤ 100 ms in node.</li>
+</ul>
+<p>Verify: parity suite green in node; budgets hold.</p>
+<h3 id="l-4-the-live-page-javascript-both-lanes">L-4 — The live page (JavaScript, both lanes)</h3>
+<ul>
+<li><code>tracebi.js</code>: when <code>tracebi-calc-plans</code> is present, controls write the
+  selection state (multi-select <code>data-tb-filter</code>, <code>data-tb-search</code> stays a
+  display subset), the state goes to the URL hash, every binding's plan runs
+  through <code>tracebiCalc.run</code>, results land in <code>_liveRows</code> and <code>paintValues</code>,
+  <code>refreshBinding</code> redraws tables, charts, sparks and drawers. Control
+  domains come from <code>tracebiCalc.domains</code> (values present under the current
+  selection first, the rest after, none hidden). <code>data-tb-unfiltered-by</code>
+  and <code>data-tb-fixed</code> set and shown as a small note. The trace drawer's row
+  for a Local figure shows the plan, the selection and the block hash; the
+  chip reads Local while the selection is not the authored one.</li>
+<li>Kit: <code>&lt;Filter&gt;</code> without <code>binding</code> is the page filter (already <code>"*"</code>);
+  <code>&lt;Filter multiple&gt;</code>; nothing else changes for authors.</li>
+<li>Host bridge: the app stops answering <code>selection-request</code>; it still
+  receives <code>tracebi-selection</code> to show the state in its header. Ask's
+  "Keep this" posts the selection into the URL hash of the frame.</li>
+<li>Captures of every reference report at 1440 and 390, light and dark,
+  before and after a selection; look at them.</li>
+</ul>
+<p>Verify: the web journey opens the showcase from <code>file://</code>, selects a sector,
+and asserts every value, chart, table and spark changed and the SQL figure
+did not and is marked; <code>verify --local</code> (added here: replay the Local rows
+the page recorded in a <code>data-tb-local</code> manifest block) reads Reproduces.</p>
+<h3 id="l-5-coverage-retirement-the-guides">L-5 — Coverage, retirement, the guides</h3>
+<ul>
+<li>The showcase exercises every figure kind and chart type live, with a
+  two-fact model (add <code>fact_cashflows</code> to the reference project's transform
+  and model, joined on <code>dim_fund</code> and <code>dim_date</code>) so an unreachable field is
+  demonstrated. <code>_INIT_SAMPLE_APP_JSX</code> carries a page filter. The two
+  scaffold templates and the demo app's reports get a <code>&lt;Filter&gt;</code>.</li>
+<li>Remove: <code>tracebi-engine.worker.js</code>, <code>parquet_wasm_bg.wasm.gz</code>,
+  <code>_engine_src/</code>, <code>selection_eval.py/.js</code>, the <code>tracebi-grain</code> block, the
+  host <code>selection-request</code> path, <code>test_engine_float_parity.py</code>,
+  <code>TestOfflinePort</code>, the "Further slices need the model" strings.</li>
+<li>Vocabulary (<code>capabilities.py</code> controls section rewritten around the
+  selection state and <code>data-tb-fixed</code> / <code>data-tb-unfiltered-by</code>), both
+  guides, the locked line (decision 9), <code>docs/reference/app-jsx.md</code>,
+  <code>report-architecture-v2.md</code> §controls, <code>large-detail-artifacts.md</code> status
+  line, CHANGELOG.</li>
+<li>Audit: <code>scripts/ui_audit.py</code> gains the engine-size and recompute-time
+  metrics; baselines regenerated.</li>
+</ul>
+<p>Verify: the full gate, <code>TRACEBI_E2E=1 test_ui_smoke.py</code>, the audit against
+the new baselines, and a fresh <code>tracebi init</code> project builds and filters.</p>
+<h3 id="l-6-time-intelligence-on-the-page-added-after-l-2b">L-6 — Time intelligence on the page (added after L-2b)</h3>
+<p>The SaaS reports are entirely <code>period_end</code> measures, so "every chart and
+table type live" needs them. <code>period_end</code> is a grouped sum over (dims +
+snapshot date) reduced to each group's latest date (<code>_apply_period_ends</code>);
+<code>offset</code>/<code>growth</code> read a base measure one period earlier along the query's
+time grain; <code>to_date</code> accumulates a base within a reset period. All three
+are closed and portable:</p>
+<ul>
+<li><code>calc_plan.py</code>: <code>period_ends: [{name, value_part, date_column}]</code> run after
+  aggregates (the slice must carry the snapshot date column and <code>value:sum</code>
+  at a grain that includes it; <code>slice.py</code> adds the date to the required
+  grain for any fact with a period_end binding), <code>pops: [{name, base, unit,
+  n, mode}]</code> and <code>to_dates: [{name, base, period}]</code> run after windows, over
+  the result's time-grain column (string grains: the engine shifts
+  <code>2026-03</code> by n months and derives the reset period from the grain label).</li>
+<li>Fixtures for each, with and without a selection; engine port; the
+  reference journey's fixed-reason list shrinks to <code>sql binding</code>,
+  <code>report.py</code>, <code>stddev</code>, <code>raw rows</code>, <code>having-contains</code>.</li>
+<li><code>stddev</code> too if it is one function; raw-row tables (<code>aggregate=False</code>) as
+  a plain filtered projection.</li>
+</ul>
+<h2 id="out-of-this-round">Out of this round</h2>
+<p>The server half of <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> (Q-2, Q-4, Q-5), <code>engine: duckdb</code>, a
+Rust port, Qlik-style excluded values.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

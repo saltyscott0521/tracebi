@@ -200,6 +200,9 @@ model.query(fact="fact_orders", measures=["revenue"],
 ```
 
 A governed `date_trunc`. Grains: `day`, `week`, `month`, `quarter`, `year`.
+The result holds each period as its label: `2026-03-14`, `2026-W11` (ISO
+week), `2026-03`, `2026-Q1`, `2026`, the spelling a built page's filters and
+recomputed figures use too.
 This is "group by month" without dropping to `report.py` or pre-baking the
 bucket in the [[transform]].
 

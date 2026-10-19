@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Report — phase ③ — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="subset which stamped rows a figure displays. They never compute new numbers.">
+<meta name="description" content="a figure&#x27;s number is only ever a query result.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,8 +66,10 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -124,10 +126,14 @@ strict CSP, no CDN — plus <code>my_report.html.manifest.json</code>.</p>
 <pre><code class="language-bash">tracebi verify --file output/my_report.html
 </code></pre>
 <h2 id="interactivity-and-its-one-rule">Interactivity, and its one rule</h2>
-<p>Filters, search, tabs, scrolling tables and CSV download all ship. They
-<strong>subset which stamped rows a figure displays. They never compute new numbers.</strong></p>
-<p>Client-side aggregation would mint numbers nobody can re-run, so a filtered KPI
-needs its own binding, and value figures never react to controls. See
+<p>Filters, search, tabs, scrolling tables and CSV download all ship. The rule:
+<strong>a figure's number is only ever a query result.</strong></p>
+<p>The built page carries a slice of the model (the rows its figures and filters
+need) and each binding's query as a calc plan. A filter writes the page's
+selection, and the page engine re-runs every figure's own query under it:
+values, tables, charts and sparks all recompute, the chip reads Local, and
+<code>tracebi verify --local</code> replays the same plans on the server. Nothing sums the
+rows on screen. Search only narrows the rows shown. See
 <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
 <h2 id="when-the-query-surface-isnt-enough">When the query surface isn't enough</h2>
 <p>Add <code>report.py</code> with a <code>build(inputs) -&gt; {name: DataFrame}</code> function. Its

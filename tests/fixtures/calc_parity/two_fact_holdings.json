@@ -1,0 +1,61 @@
+{
+  "case": "two_fact_holdings",
+  "about": "One page, two facts: every selected field reaches holdings (fund, sector, a month range).",
+  "model": "two_fact_model",
+  "query": {
+    "fact": "fact_holdings",
+    "measures": ["fair_value"],
+    "dimensions": ["dim_date.month"],
+    "filters": {},
+    "aggregate": true,
+    "allow_fanout": false
+  },
+  "slice": {
+    "fact": "fact_holdings",
+    "columns": [
+      {"name": "dim_fund.fund", "type": "string"},
+      {"name": "dim_issuer.sector", "type": "string"},
+      {"name": "dim_date.month", "type": "string"},
+      {"name": "fair_value", "type": "number"}
+    ],
+    "rows": [
+      ["Fund I", "Energy", "2026-02", 198.2],
+      ["Fund I", "Energy", "2026-04", 161],
+      ["Fund I", "Software", "2026-01", 101.25],
+      ["Fund I", "Software", "2026-01", 303.75],
+      ["Fund I", "Software", "2026-03", 120],
+      ["Fund I", "Software", "2026-03", 360.02],
+      ["Fund II", "Energy", "2026-01", 202.5],
+      ["Fund II", "Energy", "2026-03", 240.01],
+      ["Fund II", "Software", "2026-02", 99.1],
+      ["Fund II", "Software", "2026-02", 297.3],
+      ["Fund II", "Software", "2026-04", 80.5],
+      ["Fund II", "Software", "2026-04", 241.5]
+    ]
+  },
+  "plan": {
+    "version": 1,
+    "model": "two_fact_model",
+    "fact": "fact_holdings",
+    "slice_columns": ["dim_fund.fund", "dim_issuer.sector", "dim_date.month", "fair_value"],
+    "filters": null,
+    "group_by": ["dim_date.month"],
+    "aggregates": [{"name": "fair_value", "func": "sum", "source": {"col": "fair_value"}}],
+    "means": [],
+    "ratios": [],
+    "shares": [],
+    "combines": [],
+    "ranks": [],
+    "runnings": [],
+    "having": [],
+    "order_by": [{"column": "dim_date.month", "desc": false}],
+    "limit": null,
+    "columns": ["dim_date.month", "fair_value"]
+  },
+  "selection": {
+    "dim_fund.fund": ["Fund I"],
+    "dim_issuer.sector": ["Software"],
+    "dim_date.month": {"gte": "2026-02", "lte": "2026-03"}
+  },
+  "expected": {"cols": ["dim_date.month", "fair_value"], "rows": [["2026-03", 480.02]], "unfiltered_by": []}
+}

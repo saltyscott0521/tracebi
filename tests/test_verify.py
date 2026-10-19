@@ -195,6 +195,45 @@ def test_tampered_fingerprint_is_unexplained(
     assert all(i["match"] for i in checked["inputs"])
 
 
+def test_a_receipt_is_checked_under_the_algorithm_it_records(
+    vf_model, tmp_path, empty_models_dir,
+):
+    """Algo 3 (rounded, total order) is what a page-recomputed figure is
+    stamped with; verify must re-hash the re-run under it, and still read an
+    algo-2 receipt the way it always has."""
+    manifest = json.loads(_render(tmp_path).read_text(encoding="utf-8"))
+    section = next(s for s in manifest["sections"] if s.get("dataset_fingerprint"))
+    v2 = section["dataset_fingerprint"]
+    node = next(n for n in reversed(section["dataset_lineage"])
+                if (n.get("metadata") or {}).get("query_spec"))
+    assert node["metadata"]["fingerprint_algo"] == 2
+    (checked,) = verify_manifest(manifest, load_models(empty_models_dir))["sections"]
+    assert checked["status"] == REPRODUCES
+
+    result = vf_model.query(fact="fact_orders", measures={"revenue": "sum"},
+                            dimensions=["dim_customer.region"]).to_pandas()
+    node["metadata"]["fingerprint_algo"] = 3
+    section["dataset_fingerprint"] = frame_fingerprint(result, algo=3)
+    assert section["dataset_fingerprint"] != v2
+    (checked,) = verify_manifest(manifest, load_models(empty_models_dir))["sections"]
+    assert checked["status"] == REPRODUCES, checked["detail"]
+
+    section["dataset_fingerprint"] = v2      # an algo-2 hash under an algo-3 label
+    (checked,) = verify_manifest(manifest, load_models(empty_models_dir))["sections"]
+    assert checked["status"] == UNEXPLAINED
+
+
+def test_the_rounded_fingerprint_ignores_last_bits_dtype_and_row_order():
+    a = pd.DataFrame({"region": ["NE", "SE"], "revenue": [0.1 + 0.2, 3.0]})
+    b = pd.DataFrame({"region": ["SE", "NE"], "revenue": [3, 0.3]})
+    assert frame_fingerprint(a, algo=3) == frame_fingerprint(b, algo=3)
+    assert frame_fingerprint(a) != frame_fingerprint(b)
+    moved = pd.DataFrame({"region": ["SE", "NE"], "revenue": [3, 0.3000001]})
+    assert frame_fingerprint(moved, algo=3) != frame_fingerprint(a, algo=3)
+    with pytest.raises(ValueError, match="fingerprint algorithm 4"):
+        frame_fingerprint(a, algo=4)
+
+
 def test_engine_version_change_is_named_in_the_unexplained_detail(
     vf_model, tmp_path, empty_models_dir,
 ):
@@ -668,3 +707,40 @@ def test_reproduces_verdict_names_the_sections_it_could_not_check(
         "section this report does not prove"
     )
     assert mixed["verdict_detail"] != fully_checked["verdict_detail"]
+
+
+def test_a_receipt_that_stamped_a_time_grain_as_a_timestamp_still_reproduces(monkeypatch):
+    """Builds before time grains were stamped as period labels recorded the
+    date_trunc timestamp (2026-01-01, datetime64[us]). Re-run today the column
+    reads 2026-01; that is a spelling change, not drift, so the old receipt
+    still reads Reproduces. A different number still does not."""
+    import tracebi.model.data_model as dm
+
+    model = DataModel("grain_model")
+    model.add_connector(MemoryConnector("g", tables={
+        "f": pd.DataFrame({"d_id": [1, 2, 3], "x": [1.5, 2.0, 4.25]}),
+        "d": pd.DataFrame({"d_id": [1, 2, 3], "day": pd.to_datetime(
+            ["2026-01-05", "2026-01-20", "2026-02-07"])})}))
+    model.add_table("f", "g", "f").add_table("d", "g", "d")
+    model.add_dimension("dim_d", "d", "d_id", ["day"])
+    model.add_time_grain("dim_d", "month", source="day", grain="month")
+    model.add_fact("fact_f", "f", ["x"], {"dim_d": "d_id"})
+    model.add_measure("x", column="x", agg="sum")
+
+    assert list(model.query("fact_f", ["x"], ["dim_d.month"]).to_pandas()[
+        "dim_d.month"]) == ["2026-01", "2026-02"]
+    with monkeypatch.context() as m:           # how an older build stamped it
+        m.setattr(dm, "time_grain_labels", lambda series, grain: series)
+        old = model.query("fact_f", ["x"], ["dim_d.month"])
+    lineage = old.lineage_to_dict()
+    lineage[-1]["metadata"].pop("time_labels")
+    assert str(old.to_pandas()["dim_d.month"].dtype) == "datetime64[us]"
+    manifest = {"sections": [{"dataset_fingerprint": old.fingerprint(),
+                              "dataset_lineage": lineage}]}
+    (checked,) = verify_manifest(manifest, {"grain_model": model})["sections"]
+    assert checked["status"] == REPRODUCES, checked["detail"]
+
+    moved = old.to_pandas().assign(x=[3.5, 4.0])
+    manifest["sections"][0]["dataset_fingerprint"] = frame_fingerprint(moved)
+    (checked,) = verify_manifest(manifest, {"grain_model": model})["sections"]
+    assert checked["status"] != REPRODUCES

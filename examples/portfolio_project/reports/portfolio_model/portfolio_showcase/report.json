@@ -4,6 +4,8 @@
   "description": "Fair value, mark and unrealized gain by sector, fund and issuer, with how concentrated the book is and every holding.",
   "notes": "The maintained kitchen-sink demo: every figure kind, control, layout and trust affordance the artifact offers, on the reference data.",
   "libs": ["d3"],
+  "embed": "required",
+  "embed_budget_mb": 25,
   "data": {
     "kpis": {
       "model": "portfolio_model",
@@ -69,6 +71,25 @@
         "fact": "fact_holdings", "measures": ["fair_value", "mark"],
         "dimensions": ["dim_issuer.issuer"],
         "order_by": ["-fair_value"], "limit": 8
+      }
+    },
+    "flows": {
+      "model": "portfolio_model",
+      "query": { "fact": "fact_cashflows", "measures": ["net_flow", "flow_count"] }
+    },
+    "flows_by_month": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_cashflows", "measures": ["net_flow"],
+        "dimensions": ["dim_date.month"], "order_by": ["dim_date.month"]
+      }
+    },
+    "flows_by_fund": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_cashflows", "measures": ["net_flow", "flow_count"],
+        "dimensions": ["dim_fund.fund", "dim_flow_type.flow_type"],
+        "order_by": ["dim_fund.fund", "dim_flow_type.flow_type"]
       }
     }
   },

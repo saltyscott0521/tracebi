@@ -5,7 +5,7 @@
 // DOM. That also means the app cannot read the frame's DOM. The report runtime
 // (tracebi.js, "Host bridge") and the app talk by postMessage instead, and only
 // about presentation: how tall the report is, which figures it holds, what the
-// person pointed at, which cut to apply, and what the app's check says of it.
+// person pointed at, what its selection is, and what the app's check says of it.
 //
 // A message counts only if it came from this frame's own window (its origin is
 // "null", so the origin is no use) and carries the bridge tag.
@@ -26,19 +26,20 @@ export function listenToFrame(frame, handler) {
 }
 
 /**
- * Run the selections a report frame asks for, as the signed-in viewer. The frame
- * has no network of its own. Only the report this frame is showing may ask, and
- * only for filters (never a free-text question, which can change the package).
- * *run(filters)* resolves to the payload.
+ * Follow a live report's selection. The page recomputes its own figures from
+ * the data it carries (tracebi.js, "The live page"); it tells the app the state
+ * after every change, so the header can say so. *handler* gets
+ * `{ selection: {field: [values]}, local, authored, figures }`.
  */
-export function answerSelections(frame, report, run) {
+export function followSelection(frame, handler) {
   return listenToFrame(frame, m => {
-    if (m.type !== 'selection-request' || m.report !== report) return
-    run(m.filters && typeof m.filters === 'object' ? m.filters : {}).then(
-      payload => tellFrame(frame, { type: 'selection-response', id: m.id, ok: true, payload }),
-      () => tellFrame(frame, { type: 'selection-response', id: m.id, ok: false }),
-    )
+    if (m.type === 'tracebi-selection' && m.payload && typeof m.payload === 'object') handler(m.payload)
   })
+}
+
+/** Set the selection of the live report in *frame* (`{}` is the authored view). */
+export function setFrameSelection(frame, selection) {
+  tellFrame(frame, { type: 'tracebi-set-selection', selection })
 }
 
 /** Send a command to the report running in *frame*. */

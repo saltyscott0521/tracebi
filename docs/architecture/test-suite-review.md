@@ -145,8 +145,9 @@ in six categories:
 1. DataModel query semantics: the calculator (`test_phase2.py`,
    `test_phase25.py`, `test_measure_filters.py`, `test_binding_grammar.py`,
    `test_sql_calc.py`, and the calculator part of `test_knowledge.py`).
-2. Number-format parity, SSR = JS (`test_presentation_js.py`,
-   `test_engine_float_parity.py`, the scenario evaluator).
+2. Number-format parity, SSR = JS (`test_presentation_js.py`, the Parquet
+   block's spelling in `test_parquet_embed.py`, the page engine against the
+   calc plans in `test_calc_parity.py`, the scenario evaluator).
 3. Verify and fingerprints (`test_verify.py`, `test_verify_v2.py`,
    `test_parquet_embed.py`, the fingerprint and `verify --file` tests).
 4. Sink contracts (`test_contracts.py`).

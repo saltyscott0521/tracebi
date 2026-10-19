@@ -7,16 +7,16 @@ import {
   useReportLineage, useBuiltReport,
   useReportSource, reportDownloadUrl, reportShareUrl, useDesk, useModels,
   useAppStatus, useMe, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
-  postReportSelection,
 } from '../api'
-import { FRAME_SANDBOX, answerSelections, listenToFrame, tellFrame, tellVerdict } from '../frameBridge'
+import { FRAME_SANDBOX, followSelection, listenToFrame, setFrameSelection, tellFrame, tellVerdict } from '../frameBridge'
 import Workbench from '../components/Workbench'
 import ReceiptFrame from '../components/ReceiptFrame'
 import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
 import { ReportLineage } from '../components/ReportLineage'
 import { when } from '../components/Attention'
-import { VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
+import { LOCAL_DETAIL, VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
+import { humanise } from '../ask'
 import { stamp, useLineFacts } from '../components/TheLine'
 import { Older } from './Runs'
 import EditAsDraft from '../components/EditAsDraft'
@@ -582,12 +582,21 @@ function OpenReport({ report, model }) {
   })
   const frameHtml = pointOn && timeline.shownHtml ? timeline.shownHtml : shown?.html
   const clearPointing = () => { setPointed(null); sendPointing({ name, pointing: null }) }
-  // The report's controls recompute a cut on the server. The frame has no
-  // network, so it asks here and this runs it as the signed-in viewer.
+  // A live report recomputes its figures in the frame when its reader picks
+  // a filter, and says so: the header shows Local and the selection, each
+  // field a chip that clears it. A new page starts as authored.
+  const [selection, setSelection] = useState(null)
   useEffect(() => {
+    setSelection(null)
     const frame = frameRef.current
-    return frame ? answerSelections(frame, name, filters => postReportSelection(name, filters)) : undefined
-  }, [frameHtml, name])
+    return frame ? followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
+      : undefined
+  }, [frameHtml])
+  const clearField = field => {
+    const rest = { ...selection }
+    delete rest[field]
+    setFrameSelection(frameRef.current, rest)
+  }
   useEffect(() => {
     // Pointing is at the live report; an earlier version is only for looking.
     if (!pointOn || !timeline.isLatest) return undefined
@@ -694,7 +703,21 @@ function OpenReport({ report, model }) {
         </nav>
         <div className="rp__titlerow">
           <h1 className="rp__name" title={name}>{label}</h1>
-          {verdict && <Verdict state={verdict.state} detail={verdict.detail} onClick={e => openPanel('receipt', e)} />}
+          {selection ? <Verdict state="local" detail={LOCAL_DETAIL} onClick={e => openPanel('receipt', e)} />
+            : verdict && <Verdict state={verdict.state} detail={verdict.detail} onClick={e => openPanel('receipt', e)} />}
+          {selection && (
+            <ul className="rp__sel" aria-label="Selection">
+              {Object.entries(selection).map(([field, values]) => (
+                <li key={field}>
+                  <button type="button" className="rp__selchip" onClick={() => clearField(field)}
+                          title={`Clear ${humanise(field)}`}>
+                    {humanise(field)}: {Array.isArray(values) ? values.join(', ') : JSON.stringify(values)}
+                    <span aria-hidden="true"> ×</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="rp__meta">
             {builtAt && (
               <span title="Opening a report shows its last build. Rebuild or a schedule refreshes the data.">Built {builtAt}</span>

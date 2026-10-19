@@ -58,11 +58,15 @@ tracebi verify --file output/my_report.html
 
 ## Interactivity, and its one rule
 
-Filters, search, tabs, scrolling tables and CSV download all ship. They
-**subset which stamped rows a figure displays. They never compute new numbers.**
+Filters, search, tabs, scrolling tables and CSV download all ship. The rule:
+**a figure's number is only ever a query result.**
 
-Client-side aggregation would mint numbers nobody can re-run, so a filtered KPI
-needs its own binding, and value figures never react to controls. See
+The built page carries a slice of the model (the rows its figures and filters
+need) and each binding's query as a calc plan. A filter writes the page's
+selection, and the page engine re-runs every figure's own query under it:
+values, tables, charts and sparks all recompute, the chip reads Local, and
+`tracebi verify --local` replays the same plans on the server. Nothing sums the
+rows on screen. Search only narrows the rows shown. See
 [[template-html#Interactivity]].
 
 ## When the query surface isn't enough

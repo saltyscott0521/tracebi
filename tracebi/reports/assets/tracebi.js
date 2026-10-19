@@ -15,12 +15,15 @@
  *                                bytes after merging (restyle, never re-source)
  *
  * Controls (data-tb-filter / data-tb-search / data-tb-download, tabs) obey
- * the same law: they subset WHICH STAMPED ROWS figures display — they NEVER
- * compute new numbers. See the view layer below. A package that embeds
- * #tracebi-selection opts in: data-tb-filter POSTs the selection and paints
- * the query result, value figures included. The browser still does not
- * compute the measure. Offline, further slices need the model unless a
- * sealed grain can recompute simple aggregations and ratio.
+ * the same law: a figure's number is only ever a query result. A page built
+ * with a slice (#tracebi-calc-plans, the default) is live: its filters write
+ * one selection state and tracebi-calc.js runs each binding's own query plan
+ * over the embedded data under it, so every figure the selection reaches is
+ * recomputed as a query result (The live page, below). A page built without
+ * one ("embed": "none") has no data to recompute from: its filters subset
+ * which stamped rows tables and charts display, and value figures keep their
+ * stamped numbers (the view layer below). Search only ever narrows the rows
+ * shown.
  *
  * Every hydration step is defensive: a missing block, empty rows, or absent
  * echarts skips that figure silently — the author's content still shows.
@@ -97,7 +100,7 @@
   /* ── Data readiness ───────────────────────────────────────────────────────
    * On a CSV artifact every block is parseable the moment the page exists, so
    * an author's script.js can call tracebi.data() inline. A Parquet artifact
-   * decodes in a worker first, and script.js runs BEFORE that finishes — so a
+   * decodes its blocks at DOM-ready, and script.js runs BEFORE that — so a
    * bare data() call would see an empty table on one transport and full data on
    * the other. tracebi.ready(fn) runs fn once the data is loaded either way
    * (immediately, if it already is), so author code is written once and behaves
@@ -331,10 +334,11 @@
   }
 
   /* ── The view layer — the control grammar's one law ─────────────────────
-   * Controls subset WHICH STAMPED ROWS figures display — they NEVER compute
-   * new numbers. Client-side aggregation would mint numbers; it is
-   * forbidden. Value figures never react to controls (a filtered KPI needs
-   * its own binding). */
+   * A figure's number is only ever a query result. On a live page the engine
+   * reruns each binding's plan (The live page, below); everywhere else a
+   * control only subsets WHICH STAMPED ROWS tables and charts display, and
+   * value figures never react: summing the rows shown here would be a number
+   * no query produced. */
 
   /* binding → { filters: {column: value}, search: "lowercased term" } */
   var _views = {};
@@ -365,28 +369,24 @@
     return true;
   }
 
-  /* binding → rows from the last selection response (or an offline port).
-   * Absent on a package that did not opt in, so filteredRows stays the
-   * stamped-row subset. */
+  /* binding → rows the page engine recomputed under the selection. Absent
+   * on a page with no slice, so filteredRows stays the stamped-row subset. */
   var _liveRows = {};
   var _lastSelection = null;
 
-  /* The one gate reactive figures re-render through. Without a selection
-   * block: the stamped rows, subset by the binding's filters and search.
-   * With one: column filters were already applied by the query, so only
-   * search subsets the live rows — and value figures are painted from the
-   * result, not from this gate. */
+  /* The one gate reactive figures re-render through: the stamped rows,
+   * subset by the binding's filters and search, or on a live page the
+   * engine's rows, subset by search. */
   function filteredRows(binding) {
     var block = readBlock(binding);
-    if (selectionConfig()) {
-      var live = _liveRows[binding];
-      var rows = live || (block ? block.rows : []);
-      var cols = block ? block.cols : [];
-      var view = _views[binding];
-      if (!view || !view.search) return rows;
-      return rows.filter(function (r) {
-        return rowMatches(r, cols, { filters: {}, search: view.search });
-      });
+    /* A live page (tracebi-calc-plans): the engine already applied the
+     * selection, so its rows replace the stamped ones; search, and a filter
+     * on a column no slice carries, still subset what is shown. */
+    if (_calc) {
+      var current = _liveRows[binding] || (block ? block.rows : []);
+      var subset = _views[binding];
+      if (!subset || !block) return current;
+      return current.filter(function (r) { return rowMatches(r, block.cols, subset); });
     }
     if (!block) return [];
     var plain = _views[binding];
@@ -410,11 +410,10 @@
   var _tables = []; /* { el, binding, cols, numeric, formats, rowCount } */
   var _charts = []; /* { el, binding, plan, chart } */
 
-  /* Re-render the binding's table and chart figures from the filtered
-   * stamped rows. Value figures are exempt BY CODE: controls subset which
-   * stamped rows figures display — they never compute new numbers, and a
-   * filtered KPI would be client-side aggregation, which would mint a
-   * number. A filtered KPI needs its own binding. */
+  /* Re-render the binding's table and chart figures from its current rows.
+   * Value figures are exempt BY CODE: a live page paints them from the
+   * engine's result (paintLiveValues), and summing the rows shown would be a
+   * number no query produced. */
   function refreshBinding(binding) {
     var rows = filteredRows(binding), i, entry;
     for (i = 0; i < _tables.length; i++) {
@@ -648,6 +647,7 @@
   function valueFormat(el, rows, cell) {
     var name = attr(el, "data-tb-format");
     if (name || !isNumericColumn(rows, cell)) return name;
+    /* "label": a time-grain period, written as it is (no "2,026"). */
     return (declaredFormats()[attr(el, "data-tb-binding")] || {})[cell] ||
            deriveFormat(rows, cell);
   }
@@ -710,7 +710,7 @@
     if (!name) return null;
     var old = el.querySelector("tfoot");
     if (old) el.removeChild(old);           /* the server-rendered copy */
-    var block = readBlock(name);
+    var block = currentBlock(name);  /* recomputed with the table on a live page */
     if (!block || block.rows.length !== 1) return null;
     var row = block.rows[0];
     if (!el.querySelector("tbody")) el.appendChild(document.createElement("tbody"));
@@ -1202,7 +1202,8 @@
         var declared = declaredFormats()[binding] || {};
         var numeric = {}, formats = {};
         cols.forEach(function (col) {
-          numeric[col] = isNumericColumn(rows, col);
+          /* A time-grain label ("2026") is text, however numeric it looks. */
+          numeric[col] = declared[col] !== "label" && isNumericColumn(rows, col);
           formats[col] = numeric[col]
             ? (ownFormats[col] || declared[col] || deriveFormat(rows, col)) : null;
         });
@@ -2892,6 +2893,7 @@
         var badge = document.createElement("span");
         badge.className = "tb-badge " + spec.cls;
         if (spec.verdict) {
+          badge.__tbFig = host;
           var state = verdictState();
           badge.setAttribute("data-tb-verdict", state);
           badge.textContent = _VERDICTS[state].text;
@@ -2917,65 +2919,6 @@
 
   function noteUnknown(el, what) {
     try { el.title = what; } catch (e) { /* defensive */ }
-  }
-
-  function collectFilters() {
-    var cfg = selectionConfig() || {};
-    var filters = {}, k, base = cfg.filters || {};
-    for (k in base) if (base.hasOwnProperty(k)) filters[k] = base[k];
-    controlEls("data-tb-filter").forEach(function (el) {
-      var column = attr(el, "data-tb-column");
-      if (!column) return;
-      if (!el.value || el.value === "All") delete filters[column];
-      else filters[column] = el.value;
-    });
-    return filters;
-  }
-
-  function failClosed(filters) {
-    /* Do not subset-and-sum. The authored view stays. A sealed grain may
-     * recompute simple aggregations and ratio; anything else needs the model. */
-    if (!tryOffline(filters)) {
-      controlEls("data-tb-filter").forEach(function (el) {
-        if (el._tbValue !== undefined) el.value = el._tbValue;
-        el.title = "Further slices need the model";
-      });
-    }
-  }
-
-  function tryOffline(filters) {
-    var el = document.getElementById("tracebi-grain");
-    if (!el || typeof tracebiSelectionEval !== "function") return false;
-    var grain;
-    try { grain = JSON.parse(el.textContent); } catch (e) { return false; }
-    if (!grain || !grain.bindings || !grain.facts) return false;
-    var any = false, refused = false, name, plan, fact, result, seen = {};
-    for (name in grain.bindings) {
-      if (!grain.bindings.hasOwnProperty(name)) continue;
-      plan = grain.bindings[name];
-      fact = grain.facts[plan.fact];
-      if (!fact) { refused = true; continue; }
-      result = tracebiSelectionEval(fact.rows || [], plan, filters || {});
-      if (result.refused) { refused = true; continue; }
-      any = true;
-      _liveRows[name] = result.rows;
-      seen[name] = true;
-      paintValues(name, result.rows);
-    }
-    for (name in seen) if (seen.hasOwnProperty(name)) refreshBinding(name);
-    if (any) {
-      paintSelectionReceipt({
-        filters: filters || {},
-        authored: false,
-        offline: true
-      });
-    }
-    if (refused) {
-      controlEls("data-tb-filter").forEach(function (ctrl) {
-        ctrl.title = "Further slices need the model";
-      });
-    }
-    return any;
   }
 
   function paintValues(binding, rows) {
@@ -3009,112 +2952,16 @@
     });
   }
 
-  function applySelection(payload) {
-    if (!payload) return;
-    _lastSelection = payload;
-    var figs = payload.figures || [], i, fig, el, text, target, seen = {};
-    for (i = 0; i < figs.length; i++) {
-      fig = figs[i];
-      if (fig.binding && fig.rows) {
-        _liveRows[fig.binding] = fig.rows;
-        seen[fig.binding] = true;
-      }
-      if (fig.kind !== "value" || !fig.id) continue;
-      el = document.getElementById(fig.id);
-      if (!el) continue;
-      text = fig.formatted;
-      if (text === null || text === undefined || text === "") {
-        text = (fig.value === null || fig.value === undefined) ? "" : String(fig.value);
-      }
-      target = el.querySelector(".tb-kpi-value") || el;
-      target.textContent = text;
-    }
-    for (i in seen) if (seen.hasOwnProperty(i)) refreshBinding(i);
-    try { stampFigures(); } catch (e) { /* the runtime wrote these: they are the new baseline */ }
-    applyControlDomains(payload.controls);
-    paintSelectionReceipt(payload);
-    controlEls("data-tb-filter").forEach(function (ctrl) {
-      ctrl._tbValue = ctrl.value;
-    });
-    try {
-      if (root.parent && root.parent !== root) {
-        root.parent.postMessage({ type: "tracebi-selection", payload: payload }, "*");
-      }
-    } catch (e) { /* defensive */ }
-  }
-
-  function applyControlDomains(controls) {
-    (controls || []).forEach(function (c) {
-      var el = null;
-      controlEls("data-tb-filter").forEach(function (candidate) {
-        if (attr(candidate, "data-tb-binding") === c.binding &&
-            attr(candidate, "data-tb-column") === c.column) el = candidate;
-      });
-      if (!el) return;
-      var current = el.value;
-      while (el.firstChild) el.removeChild(el.firstChild);
-      appendOption(el, "All", false);
-      (c.included || []).forEach(function (v) { appendOption(el, v, false); });
-      (c.excluded || []).forEach(function (v) { appendOption(el, v, true); });
-      el.value = current || "All";
-    });
-  }
-
-  function appendOption(el, value, disabled) {
-    var o = document.createElement("option");
-    o.value = String(value);
-    o.textContent = String(value);
-    if (disabled) {
-      o.disabled = true;
-      try { o.setAttribute("disabled", "disabled"); } catch (e) { /* defensive */ }
-    }
-    el.appendChild(o);
-  }
-
-  /* A page never calls the server itself: shown in the web app it runs in a
-   * sandboxed frame with no network, so it asks the app (the host bridge
-   * below) to run the selection as the signed-in viewer and send the answer
-   * back. With no app around (a file from disk, a share link) there is no one
-   * to ask: take the offline path directly. */
+  /* The host bridge's post, once a window embeds this page (hostBridge). */
   var _hostPost = null;
-  var _selectionSeq = 0;
-  var _selectionPending = {};
 
-  function postSelection(filters) {
-    var cfg = selectionConfig();
-    if (!cfg || !cfg.report || !_hostPost) { failClosed(filters); return; }
-    var id = ++_selectionSeq;
-    _selectionPending[id] = filters;
-    setTimeout(function () {
-      if (!_selectionPending.hasOwnProperty(id)) return;
-      delete _selectionPending[id];
-      failClosed(filters);
-    }, 8000);
-    _hostPost({ type: "selection-request", id: id, report: cfg.report, filters: filters || {} });
-  }
-
-  function selectionAnswered(m) {
-    if (!_selectionPending.hasOwnProperty(m.id)) return;
-    var filters = _selectionPending[m.id];
-    delete _selectionPending[m.id];
-    if (m.ok && m.payload) applySelection(m.payload);
-    else failClosed(filters);
-  }
-
+  /* Set the page's selection, as its filters would ({field: value or
+   * [values]}; {} is every row). Only a live page has one: a page with no
+   * slice has nothing to recompute from, and ignores it. */
   function setSelection(filters) {
-    if (!selectionConfig()) return;
-    var wanted = filters || {};
-    controlEls("data-tb-filter").forEach(function (el) {
-      var column = attr(el, "data-tb-column");
-      if (!column) return;
-      if (wanted.hasOwnProperty(column) && wanted[column] !== null &&
-          wanted[column] !== undefined) {
-        el.value = String(wanted[column]);
-      } else {
-        el.value = "All";
-      }
-    });
-    postSelection(wanted);
+    if (!_calc) return;
+    _calc.state = offered(_calc, normalSelection(filters)) || {};
+    selectionChanged();
   }
 
   function selectionSlug(filters) {
@@ -3187,57 +3034,8 @@
     var filters = payload.filters || {}, parts = [], k, text;
     for (k in filters) if (filters.hasOwnProperty(k)) parts.push(k + " = " + filters[k]);
     text = "selection: " + (parts.length ? parts.join(", ") : "no extra cut");
-    if (payload.offline) text += " · offline";
-    else text += payload.authored ? " · authored" : " · live";
+    text += payload.local ? " · local" : " · authored";
     line.textContent = text;
-  }
-
-  function populateFilterOptions(el, column, block) {
-    var values = [];
-    block.rows.forEach(function (r) {
-      var v = r[column];
-      if (v === undefined) return;
-      v = String(v);
-      if (values.indexOf(v) === -1) values.push(v);
-    });
-    values.sort();
-    var all = document.createElement("option");
-    all.value = "All";
-    all.textContent = "All";
-    el.appendChild(all);
-    values.forEach(function (v) {
-      var o = document.createElement("option");
-      o.value = v;
-      o.textContent = v;
-      el.appendChild(o);
-    });
-  }
-
-  function hydrateSelectionFilters() {
-    var cfg = selectionConfig();
-    controlEls("data-tb-filter").forEach(function (el) {
-      try {
-        var binding = attr(el, "data-tb-binding");
-        var column = attr(el, "data-tb-column");
-        var block = readBlock(binding);
-        if (!block) { noteUnknown(el, "unknown binding: " + binding); return; }
-        if (!column || block.cols.indexOf(column) === -1) {
-          noteUnknown(el, "unknown column: " + column);
-          return;
-        }
-        populateFilterOptions(el, column, block);
-        var authored = cfg && cfg.filters && cfg.filters.hasOwnProperty(column)
-          ? String(cfg.filters[column]) : "All";
-        el.value = authored;
-        el._tbValue = el.value;
-        el.addEventListener("change", function () {
-          postSelection(collectFilters());
-        });
-      } catch (e) { /* defensive */ }
-    });
-    /* Learn excluded values when the model answers. On failure the authored
-     * view stays and the title says further slices need the model. */
-    postSelection(collectFilters());
   }
 
   /* Every binding the page embeds, by name. */
@@ -3248,11 +3046,11 @@
     return out;
   }
 
-  /* data-tb-binding="*": one filter for the whole page. It subsets the rows
-   * of every binding that has the column — each binding's tables and charts
-   * redraw — and, like every control, never touches a value figure: a KPI
-   * stays the stamped total (a filtered KPI needs its own binding, or a
-   * report.json selection). */
+  /* data-tb-binding="*" on a page with no slice: one filter for the whole
+   * page. It subsets the rows of every binding that has the column — each
+   * binding's tables and charts redraw — and never touches a value figure:
+   * a KPI stays the stamped total. (On a live page every filter is a page
+   * filter and recomputes the KPI too: hydrateCalcControls.) */
   function pageFilter(el, column) {
     var targets = allBindings().filter(function (b) {
       var blk = readBlock(b);
@@ -3285,47 +3083,51 @@
     });
   }
 
+  /* A filter that subsets one binding's stamped rows (or, with
+   * data-tb-binding="*", every binding that has the column). */
+  function plainFilter(el) {
+    try {
+      var binding = attr(el, "data-tb-binding");
+      var column = attr(el, "data-tb-column");
+      if (binding === "*") { pageFilter(el, column); return; }
+      var block = readBlock(binding);
+      if (!block) { noteUnknown(el, "unknown binding: " + binding); return; }
+      if (!column || block.cols.indexOf(column) === -1) {
+        noteUnknown(el, "unknown column: " + column);
+        return;
+      }
+      /* Sorted distinct values from the stamped rows, plus "All". */
+      var values = [];
+      block.rows.forEach(function (r) {
+        var v = r[column];
+        if (v === undefined) return;
+        v = String(v);
+        if (values.indexOf(v) === -1) values.push(v);
+      });
+      values.sort();
+      var all = document.createElement("option");
+      all.value = "All";
+      all.textContent = "All";
+      el.appendChild(all);
+      values.forEach(function (v) {
+        var o = document.createElement("option");
+        o.value = v;
+        o.textContent = v;
+        el.appendChild(o);
+      });
+      el.addEventListener("change", function () {
+        var view = viewOf(binding);
+        if (el.value === "All") delete view.filters[column];
+        else view.filters[column] = el.value;
+        refreshBinding(binding);
+      });
+    } catch (e) { /* defensive */ }
+  }
+
   function hydrateControls() {
-    if (selectionConfig()) {
-      try { hydrateSelectionFilters(); } catch (e) { /* defensive */ }
-    } else fresh(controlEls("data-tb-filter"), "filter").forEach(function (el) {
-      try {
-        var binding = attr(el, "data-tb-binding");
-        var column = attr(el, "data-tb-column");
-        if (binding === "*") { pageFilter(el, column); return; }
-        var block = readBlock(binding);
-        if (!block) { noteUnknown(el, "unknown binding: " + binding); return; }
-        if (!column || block.cols.indexOf(column) === -1) {
-          noteUnknown(el, "unknown column: " + column);
-          return;
-        }
-        /* Sorted distinct values from the stamped rows, plus "All". */
-        var values = [];
-        block.rows.forEach(function (r) {
-          var v = r[column];
-          if (v === undefined) return;
-          v = String(v);
-          if (values.indexOf(v) === -1) values.push(v);
-        });
-        values.sort();
-        var all = document.createElement("option");
-        all.value = "All";
-        all.textContent = "All";
-        el.appendChild(all);
-        values.forEach(function (v) {
-          var o = document.createElement("option");
-          o.value = v;
-          o.textContent = v;
-          el.appendChild(o);
-        });
-        el.addEventListener("change", function () {
-          var view = viewOf(binding);
-          if (el.value === "All") delete view.filters[column];
-          else view.filters[column] = el.value;
-          refreshBinding(binding);
-        });
-      } catch (e) { /* defensive */ }
-    });
+    if (_calc) {
+      try { hydrateCalcControls(); } catch (e) { /* defensive */ }
+    } else fresh(controlEls("data-tb-filter"), "filter").forEach(plainFilter);
     fresh(controlEls("data-tb-search"), "search").forEach(function (el) {
       try {
         var binding = attr(el, "data-tb-binding");
@@ -3339,6 +3141,563 @@
         });
       } catch (e) { /* defensive */ }
     });
+  }
+
+  /* ── The live page — a selection recomputes every figure it can ────────
+   * A page built with a slice (report.json "embed"; tracebi/reports/slice.py)
+   * carries #tracebi-calc-plans, every binding's calc plan or why it is
+   * fixed, and one Parquet block per fact. tracebi-calc.js
+   * (window.tracebiCalc) runs a binding's plan over its fact's slice under
+   * the page's selection state: the binding's own query, answered here
+   * under the reader's filters, so its result is a query result and is
+   * painted through the same path as a stamped row. What the engine cannot
+   * run keeps its build value and says so (data-tb-fixed); a figure the
+   * selection cannot reach says that too (data-tb-unfiltered-by). The state
+   * lives in the URL hash (#sel=), so a link carries the view. While the
+   * state is the authored one the page is exactly as built: the stamped
+   * rows and the file's own chip. Nothing persists. */
+
+  var _calc = null;
+  var _liveBlocks = {}; /* binding → {cols, rows, csv}, as readBlock gives */
+  var RANGE_KEYS = ["gt", "gte", "lt", "lte"];
+
+  function isArray(v) { return Object.prototype.toString.call(v) === "[object Array]"; }
+  function errorText(e) { return e && e.message ? e.message : String(e); }
+
+  /* A selection as the engine reads it: {field: [values]} or a range
+   * {field: {gte|gt|lte|lt: v}}. The authored selection block spells a
+   * single value as a scalar and may use {"in": [...]} or {"eq": v}; an
+   * empty list selects nothing and is dropped. */
+  function normalSelection(raw) {
+    var out = {}, k, v, keys, i, range;
+    if (!raw || typeof raw !== "object") return out;
+    for (k in raw) {
+      if (!raw.hasOwnProperty(k)) continue;
+      v = raw[k];
+      if (v === null || v === undefined) continue;
+      if (isArray(v)) {
+        if (v.length) out[k] = v.slice();
+      } else if (typeof v === "object") {
+        if (isArray(v["in"])) { if (v["in"].length) out[k] = v["in"].slice(); continue; }
+        if (v.hasOwnProperty("eq")) { out[k] = [v.eq]; continue; }
+        keys = Object.keys(v);
+        range = {};
+        for (i = 0; i < keys.length; i++) {
+          if (RANGE_KEYS.indexOf(keys[i]) === -1) { range = null; break; }
+          range[keys[i]] = v[keys[i]];
+        }
+        if (range && keys.length) out[k] = range;
+      } else {
+        out[k] = [v];
+      }
+    }
+    return out;
+  }
+
+  /* Two selections are the same view when they select the same values,
+   * whatever order a control listed them in. */
+  function selectionKey(sel) {
+    return JSON.stringify(Object.keys(sel || {}).sort().map(function (k) {
+      var v = sel[k];
+      return [k, isArray(v) ? v.map(String).sort() : v];
+    }));
+  }
+
+  /* The hash holds key=value pairs joined by "&", as the kit's useUrlState
+   * writes them (#view=Holdings&sel=...), so the selection and an app's own
+   * state share the address without either erasing the other. */
+  function hashParts() {
+    var out = [], hash = "";
+    try { hash = String(root.location.hash || "").replace(/^#/, ""); } catch (e) { return out; }
+    hash.split("&").forEach(function (part) {
+      if (!part) return;
+      var i = part.indexOf("=");
+      out.push([i < 0 ? part : part.slice(0, i), i < 0 ? "" : part.slice(i + 1)]);
+    });
+    return out;
+  }
+
+  function hashSelection() {
+    var parts = hashParts(), i;
+    for (i = 0; i < parts.length; i++) {
+      if (parts[i][0] !== "sel") continue;
+      try { return normalSelection(JSON.parse(decodeURIComponent(parts[i][1]))); }
+      catch (e) { return null; }
+    }
+    return null;
+  }
+
+  /* The state in the address, so a reload or a shared link opens the same
+   * view; the authored state leaves no sel= at all. */
+  function writeHash() {
+    try {
+      if (!root.history || !root.history.replaceState) return;
+      var parts = hashParts().filter(function (p) { return p[0] !== "sel"; });
+      if (_calc.local) parts.push(["sel", encodeURIComponent(JSON.stringify(_calc.state))]);
+      var hash = parts.map(function (p) { return p[0] + "=" + p[1]; }).join("&");
+      root.history.replaceState(root.history.state, "", hash ? "#" + hash
+        : String(root.location.pathname || "") + String(root.location.search || ""));
+    } catch (e) { /* a sandboxed frame may refuse; the view still applies */ }
+  }
+
+  /* A link carries only a view the page offers: the fields its filters
+   * and its authored selection name. A page with no filter ignores sel=, so
+   * an edited address cannot recut a page its author never made cuttable. */
+  function offered(calc, sel) {
+    if (!sel) return null;
+    var out = {}, k, asked = 0, kept = 0;
+    for (k in sel) {
+      if (!sel.hasOwnProperty(k)) continue;
+      asked++;
+      if (calc.fields[k]) { out[k] = sel[k]; kept++; }
+    }
+    return (kept || !asked) ? out : null;
+  }
+
+  function bootCalc() {
+    if (typeof document === "undefined" || !root.tracebiCalc) return;
+    var el = document.getElementById("tracebi-calc-plans");
+    if (!el) return;
+    var payload;
+    try { payload = JSON.parse(el.textContent); } catch (e) { return; }
+    if (!payload || typeof payload !== "object" || !payload.bindings) return;
+    var calc = { plans: payload.bindings, facts: payload.facts || {}, columns: {},
+                 hashes: {}, error: null, results: {}, local: false,
+                 authored: normalSelection(payload.authored_selection) };
+    var key, fact, block, carrier;
+    for (key in calc.facts) {
+      if (!calc.facts.hasOwnProperty(key)) continue;
+      fact = calc.facts[key];
+      (fact.columns || []).forEach(function (c) {
+        if (!calc.columns.hasOwnProperty(c.name)) calc.columns[c.name] = fact.fact;
+      });
+      if (calc.error) continue;
+      /* One failure is said once, in the trace, and leaves every figure as
+       * built: a page that half-loaded its data must not half-recompute. */
+      try {
+        block = document.getElementById(fact.block);
+        if (!block) throw new Error("its block " + fact.block + " is missing");
+        carrier = JSON.parse(block.textContent);
+        root.tracebiCalc.load(fact.fact, b64ToBytes(carrier.parquet_b64));
+        calc.hashes[fact.fact] = carrier.payload_sha256 || null;
+      } catch (e) {
+        calc.error = "the embedded data for " + fact.fact + " could not be read: " + errorText(e);
+      }
+    }
+    /* A control the reader can turn: one whose column a slice carries. */
+    calc.fields = {};
+    (payload.controls || []).forEach(function (c) {
+      if (calc.columns.hasOwnProperty(c.column)) calc.fields[c.column] = true;
+    });
+    calc.controls = Object.keys(calc.fields).length > 0;
+    for (key in calc.authored) if (calc.authored.hasOwnProperty(key)) calc.fields[key] = true;
+    calc.state = offered(calc, hashSelection()) || normalSelection(payload.authored_selection);
+    _calc = calc;
+  }
+
+  /* An engine value as the stamped CSV spells it, so every figure reads a
+   * live row exactly as it reads a stamped one. */
+  function liveCell(v) {
+    if (v === null || v === undefined) return "";
+    if (v === true) return "True";
+    if (v === false) return "False";
+    return String(v);
+  }
+
+  function liveBlock(res) {
+    var rows = res.rows.map(function (r) {
+      var o = {};
+      res.cols.forEach(function (c) { o[c] = liveCell(r[c]); });
+      return o;
+    });
+    return { cols: res.cols.slice(), rows: rows,
+             csv: rows.length ? selectionCsv(rows) : res.cols.join(",") };
+  }
+
+  function isFixed(res) { return !!res && res.fixed !== undefined; }
+
+  /* local: recomputed under the selection; unfiltered: recomputable, but no
+   * selected field reaches it, so it is the unfiltered answer; fixed: the
+   * build value. */
+  function figureState(res) {
+    if (isFixed(res)) return "fixed";
+    var applied = Object.keys(res.selection || {}).length;
+    return (!applied && res.unfiltered_by && res.unfiltered_by.length) ? "unfiltered" : "local";
+  }
+
+  /* The slowest single plan run of the last recompute, in milliseconds, as
+   * data-tb-calc-ms on <html>: what the audit's budget (100 ms per binding)
+   * reads. A measurement of the page, never shown and never a figure. */
+  function now() {
+    return root.performance && root.performance.now ? root.performance.now() : Date.now();
+  }
+
+  function computeLocal() {
+    var calc = _calc, name, plan, res, t0, slowest = 0;
+    calc.local = selectionKey(calc.state) !== selectionKey(calc.authored);
+    calc.results = {};
+    for (name in calc.plans) {
+      if (!calc.plans.hasOwnProperty(name)) continue;
+      plan = calc.plans[name];
+      if (plan && plan.fixed !== undefined) res = { fixed: String(plan.fixed) };
+      else if (calc.error) res = { fixed: calc.error };
+      else {
+        t0 = now();
+        try { res = root.tracebiCalc.run(plan, calc.state); }
+        catch (e) { res = { fixed: "the page engine could not run its plan: " + errorText(e) }; }
+        slowest = Math.max(slowest, now() - t0);
+      }
+      calc.results[name] = res;
+      if (calc.local && !isFixed(res)) {
+        _liveBlocks[name] = liveBlock(res);
+        _liveRows[name] = _liveBlocks[name].rows;
+      } else {
+        delete _liveBlocks[name];
+        delete _liveRows[name];
+      }
+    }
+    try {
+      document.documentElement.setAttribute("data-tb-calc-ms", slowest.toFixed(1));
+    } catch (e) { /* defensive */ }
+  }
+
+  function currentBlock(name) { return _liveBlocks[name] || readBlock(name); }
+
+  /* Value figures from the binding's current rows. A recomputed result can
+   * hold no row (a grouped query nothing matched) or a null (a sum over no
+   * rows): the figure shows "—" rather than keeping a number the selection
+   * no longer supports. */
+  function paintLiveValues(binding, block) {
+    var rows = block ? block.rows : [];
+    var els = figureEls("value").filter(function (el) {
+      if (attr(el, "data-tb-binding") !== binding) return false;
+      /* What the build left, so the authored view can be put back. */
+      if (el.__tbBuilt === undefined) el.__tbBuilt = (el.querySelector(".tb-kpi-value") || el).textContent;
+      return true;
+    });
+    paintValues(binding, rows);
+    els.forEach(function (el) {
+      try {
+        var target = el.querySelector(".tb-kpi-value") || el;
+        var cell = attr(el, "data-tb-cell") || (block && block.cols.length === 1 ? block.cols[0] : null);
+        var raw = rows.length && cell ? rows[0][cell] : undefined;
+        var missing = raw === undefined || raw === null || raw === "";
+        el.__tbEmpty = _calc.local && missing;
+        if (el.__tbEmpty) target.textContent = "—";
+        else if (missing) target.textContent = el.__tbBuilt;
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  function paintLocal() {
+    var calc = _calc, name, i, entry, block;
+    for (name in calc.results) {
+      if (calc.results.hasOwnProperty(name) && !isFixed(calc.results[name])) {
+        paintLiveValues(name, currentBlock(name));
+      }
+    }
+    /* A table's row count, bars and totals follow its current result: the
+     * totals row is its own binding (data-tb-totals), recomputed above. */
+    for (i = 0; i < _tables.length; i++) {
+      entry = _tables[i];
+      try {
+        block = currentBlock(entry.binding);
+        if (!block) continue;
+        entry.rowCount = block.rows.length;
+        entry.bars = barScales(entry.el, block.rows, entry.cols, entry.numeric);
+        if (attr(entry.el, "data-tb-totals")) {
+          entry.tfoot = totalsRow(entry.el, entry.cols, entry.numeric, entry.formats, entry.bars);
+        }
+      } catch (e) { /* defensive */ }
+    }
+    for (name in calc.results) {
+      if (calc.results.hasOwnProperty(name) && !isFixed(calc.results[name])) refreshBinding(name);
+    }
+    paintLiveMarks();
+    try { stampFigures(); } catch (e) { /* the runtime wrote these: they are the new baseline */ }
+  }
+
+  /* "Fixed at build · period_end": the kind of reason, in a word or two;
+   * the note's title and the trace carry the whole of it. */
+  function shortReason(reason) {
+    var r = String(reason), m = /^(period_end|offset\/growth|to_date) measure/.exec(r);
+    if (m) return m[1];
+    if (r === "report.py") return "report.py";
+    if (/^sql binding/.test(r) || /^a SQL binding/.test(r)) return "SQL";
+    if (/^the embedded data/.test(r)) return "the embedded data could not be read";
+    return r.length > 48 ? r.slice(0, 47) + "…" : r;
+  }
+
+  function fieldNames(fields) {
+    return fields.map(function (f) { return humanise(f); }).join(", ");
+  }
+
+  /* The figure's note: after a table's scroll box and badge row, inside a
+   * KPI card, after anything else. An inline value (a number in a sentence)
+   * gets no words dropped into the prose: it is underlined, dotted, and the
+   * note is its title. Chrome: Build mode and the stamped-text watcher both
+   * look past it. */
+  function setLiveNote(el, text, title) {
+    var card = el.querySelector(".tb-kpi-value");
+    if (!card && el.tagName === "SPAN") {
+      if (text) {
+        if (el.__tbTitle === undefined) el.__tbTitle = el.getAttribute("title");
+        el.title = title || text;
+        addClass(el, "tb-live-marked");
+      } else if (el.__tbTitle !== undefined) {
+        if (el.__tbTitle === null) el.removeAttribute("title"); else el.title = el.__tbTitle;
+        delete el.__tbTitle;
+        removeClass(el, "tb-live-marked");
+      }
+      el.__tbLiveNote = null;
+      return;
+    }
+    var note = el.__tbLiveNote;
+    if (!text) {
+      if (note && note.parentNode) note.parentNode.removeChild(note);
+      el.__tbLiveNote = null;
+      return;
+    }
+    if (!note || !note.parentNode) {
+      note = document.createElement("div");
+      note.className = "tb-live-note";
+      note.setAttribute("data-tb-chrome", "");
+      if (card) {
+        el.appendChild(note);
+      } else {
+        var host = el;
+        while (host.parentNode && host.parentNode.className !== undefined &&
+               /(^| )(tb-scroll|tb-badge-anchor)( |$)/.test(host.parentNode.className)) {
+          host = host.parentNode;
+        }
+        if (!host.parentNode) return;
+        host.parentNode.insertBefore(note, host.nextSibling);
+      }
+      el.__tbLiveNote = note;
+    }
+    note.textContent = text;
+    note.title = title || text;
+  }
+
+  function paintLiveMarks() {
+    var calc = _calc;
+    var els = document.querySelectorAll("[data-tb-figure][data-tb-binding]");
+    Array.prototype.forEach.call(els, function (el) {
+      try {
+        var res = calc.results[attr(el, "data-tb-binding")];
+        if (!res) return;
+        var notes = [], title = null;
+        if (isFixed(res)) {
+          el.setAttribute("data-tb-fixed", res.fixed);
+          el.removeAttribute("data-tb-unfiltered-by");
+          if (calc.local) {
+            notes.push("Fixed at build · " + shortReason(res.fixed));
+            title = "Fixed at build: " + res.fixed;
+          }
+        } else {
+          el.removeAttribute("data-tb-fixed");
+          if (calc.local && res.unfiltered_by && res.unfiltered_by.length) {
+            el.setAttribute("data-tb-unfiltered-by", res.unfiltered_by.join(","));
+            notes.push("Not filtered by " + fieldNames(res.unfiltered_by));
+          } else {
+            el.removeAttribute("data-tb-unfiltered-by");
+          }
+          if (el.__tbEmpty) notes.push("No rows under this selection");
+        }
+        setLiveNote(el, notes.join(" · "), title);
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  /* The trace, while the page is Local: per figure the binding's plan, the
+   * selection it applied, what it could not apply and the hash of the slice
+   * block it read; above them, how many figures are local, fixed and
+   * unchanged. As built, the trace is the build's alone. */
+  function paintLocalTrace() {
+    var calc = _calc;
+    var mount = document.querySelector(".tb-receipt-drawer .tb-receipt");
+    if (!mount) return;
+    var old = mount.querySelectorAll(".tb-receipt-local, .tb-receipt-local-summary"), i;
+    for (i = 0; i < old.length; i++) old[i].parentNode.removeChild(old[i]);
+    var shown = calc.local || calc.error;
+    var counts = { local: 0, fixed: 0, unfiltered: 0 };
+    var rows = mount.querySelectorAll(".tb-receipt-row[data-tb-receipt-fig]");
+    Array.prototype.forEach.call(rows, function (row) {
+      var page = document.getElementById(row.getAttribute("data-tb-receipt-fig"));
+      var binding = page ? attr(page, "data-tb-binding") : null;
+      var res = binding ? calc.results[binding] : null;
+      if (!res) return;
+      var state = figureState(res);
+      counts[state]++;
+      /* The row shows what the page shows now. */
+      var value = row.querySelector(".tb-receipt-value");
+      if (value && attr(page, "data-tb-figure") === "value") {
+        value.textContent = trim((page.querySelector(".tb-kpi-value") || page).textContent || "");
+      }
+      if (!shown) return;
+      var box = document.createElement("div");
+      box.className = "tb-receipt-local";
+      var title = row.querySelector(".tb-receipt-title");
+      row.insertBefore(box, title ? title.nextSibling : row.firstChild);
+      if (state === "fixed") {
+        receiptEl(box, "div", "tb-receipt-local-line", "Fixed at build: " + res.fixed);
+        return;
+      }
+      var kind = attr(page, "data-tb-figure");
+      var line = "Recomputed on this page";
+      if (kind !== "value") line += ", " + res.rows.length + (res.rows.length === 1 ? " row" : " rows");
+      receiptEl(box, "div", "tb-receipt-local-line",
+                line + "; the query and fingerprint below are the build's.");
+      var facts = receiptEl(box, "dl", "tb-receipt-facts");
+      receiptEl(facts, "dt", null, "Selection");
+      receiptEl(facts, "dd", null, describeSelection(res.selection) || "none applies");
+      if (res.unfiltered_by && res.unfiltered_by.length) {
+        receiptEl(facts, "dt", null, "Not filtered by");
+        receiptEl(facts, "dd", null, res.unfiltered_by.join(", "));
+      }
+      var plan = calc.plans[binding];
+      var hash = calc.hashes[plan.fact];
+      if (hash) {
+        receiptEl(facts, "dt", null, "Slice");
+        var dd = receiptEl(facts, "dd");
+        var code = receiptEl(dd, "code", "tb-receipt-fp-short", String(hash).slice(0, 8));
+        code.title = "payload_sha256 " + hash;
+      }
+      var details = receiptEl(box, "details", "tb-receipt-details");
+      receiptEl(details, "summary", null, "Plan");
+      var pre = receiptEl(details, "pre", "tb-receipt-json");
+      try { pre.textContent = JSON.stringify(plan, null, 2); } catch (e) { /* defensive */ }
+    });
+    if (!shown) return;
+    var section = mount.querySelector(".tb-receipt-figures");
+    if (!section) return;
+    var summary = document.createElement("p");
+    summary.className = "tb-receipt-local-summary";
+    summary.textContent = calc.error
+      ? "As built: " + calc.error + "."
+      : counts.local + " recomputed on this page · " + counts.fixed
+        + " fixed at build · " + counts.unfiltered + " unchanged";
+    var label = section.querySelector(".tb-receipt-label");
+    section.insertBefore(summary, label ? label.nextSibling : section.firstChild);
+  }
+
+  function describeSelection(sel) {
+    return Object.keys(sel || {}).map(function (k) {
+      var v = sel[k];
+      if (isArray(v)) return humanise(k) + " = " + v.map(String).join(", ");
+      return humanise(k) + " " + RANGE_KEYS.filter(function (op) { return v.hasOwnProperty(op); })
+        .map(function (op) { return { gt: ">", gte: "≥", lt: "<", lte: "≤" }[op] + " " + v[op]; })
+        .join(" and ");
+    }).join("; ");
+  }
+
+  function postLocal() {
+    try {
+      if (!_hostPost) return;
+      var figures = [];
+      Array.prototype.forEach.call(document.querySelectorAll("[data-tb-figure][data-tb-binding]"),
+        function (el) {
+          var binding = attr(el, "data-tb-binding"), res = _calc.results[binding];
+          if (!res) return;
+          figures.push({ id: el.id || null, binding: binding,
+                         kind: attr(el, "data-tb-figure"), state: figureState(res) });
+        });
+      _hostPost({ type: "tracebi-selection", payload: {
+        selection: JSON.parse(JSON.stringify(_calc.state)), local: true,
+        authored: !_calc.local, figures: figures } });
+    } catch (e) { /* defensive */ }
+  }
+
+  /* The options of a filter on a column a slice carries: the values present
+   * under the rest of the selection first, then, after a separator, the
+   * values it excludes. None is hidden and every one can be chosen. */
+  function fillCalcOptions(el) {
+    var column = el._tbCalcColumn, dom;
+    try { dom = root.tracebiCalc.domains(_calc.columns[column], column, _calc.state); }
+    catch (e) { dom = { present: [], rest: [] }; }
+    var chosen = _calc.state[column], picked = {};
+    if (isArray(chosen)) chosen.forEach(function (v) { picked[String(v)] = true; });
+    while (el.firstChild) el.removeChild(el.firstChild);
+    el._tbValues = {};
+    var add = function (value, text, disabled) {
+      var o = document.createElement("option");
+      o.value = value;
+      o.textContent = text;
+      if (disabled) { o.disabled = true; o.setAttribute("disabled", "disabled"); }
+      if (!disabled && value !== "" && picked[value]) o.selected = true;
+      el.appendChild(o);
+      return o;
+    };
+    var each = function (v) { el._tbValues[String(v)] = v; add(String(v), String(v), false); };
+    if (!el.multiple) add("All", "All", false).selected = !isArray(chosen);
+    dom.present.forEach(each);
+    if (dom.rest.length) {
+      add("", "Not under this selection", true);
+      dom.rest.forEach(each);
+    }
+  }
+
+  function hydrateCalcControls() {
+    fresh(controlEls("data-tb-filter"), "filter").forEach(function (el) {
+      try {
+        var column = attr(el, "data-tb-column");
+        if (!column || !_calc.columns.hasOwnProperty(column)) {
+          /* No slice carries it: the filter subsets stamped rows as it
+           * always has, and says it does not reach the figures' numbers. */
+          el.setAttribute("data-tb-fixed", "column not in slice");
+          el.title = "This filter narrows the rows shown; the page has no data to recompute by "
+            + humanise(column || "");
+          plainFilter(el);
+          return;
+        }
+        el._tbCalcColumn = column;
+        fillCalcOptions(el);
+        el.addEventListener("change", function () {
+          var values = [], i, o;
+          for (i = 0; i < el.options.length; i++) {
+            o = el.options[i];
+            if (o.selected && !o.disabled && el._tbValues.hasOwnProperty(o.value)) {
+              values.push(el._tbValues[o.value]);
+            }
+          }
+          if (values.length) _calc.state[column] = values;
+          else delete _calc.state[column];
+          selectionChanged();
+        });
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  function selectionChanged() {
+    applyLocal(false);
+    writeHash();
+  }
+
+  /* Run every plan under the state, then paint: figures first, then the
+   * control domains, the chips, the trace and the host. On the first pass
+   * of a page opened as authored only the marks are set: its figures are
+   * already the stamped ones. */
+  function applyLocal(initial) {
+    computeLocal();
+    if (initial && !_calc.local) {
+      paintLiveMarks();
+      paintLocalTrace();
+      return;
+    }
+    paintLocal();
+    controlEls("data-tb-filter").forEach(function (el) {
+      if (el._tbCalcColumn) { try { fillCalcOptions(el); } catch (e) { /* defensive */ } }
+    });
+    paintChips();
+    paintLocalTrace();
+    _lastSelection = _calc.local ? {
+      filters: _calc.state,
+      figures: Object.keys(_liveBlocks).map(function (b) {
+        return { binding: b, rows: _liveBlocks[b].rows };
+      })
+    } : null;
+    paintSelectionReceipt({ filters: _calc.state, local: _calc.local });
+    postLocal();
   }
 
   /* ── Download — the binding's embedded canonical CSV, byte-verbatim ──── */
@@ -3536,7 +3895,12 @@
     "needs-a-look": { text: "Needs a look",
                       tip: "The source or the model changed since this build." },
     "does-not-reproduce": { text: "Does not reproduce",
-                            tip: "Re-running a query gave different data." }
+                            tip: "Re-running a query gave different data." },
+    /* The reader's selection, not the build's: the page recomputed its
+     * figures from the embedded data (The live page). Never green; a
+     * figure fixed at build keeps the file's own state. */
+    local: { text: "Local",
+             tip: "Recomputed on this page from the embedded data" }
   };
 
   function verdictState() {
@@ -3553,20 +3917,38 @@
    * an email) nothing can say it, and a draft stays a draft whatever it is
    * told. */
   var _hostVerdict = null;
-  function chipVerdict() {
+  function builtVerdict() {
     var own = verdictState();
     if (own === "draft" || !_hostVerdict) return { state: own, tip: _VERDICTS[own].tip };
     return _hostVerdict;
   }
 
+  /* While the reader's selection is not the authored one, a built file says
+   * Local: what it shows was recomputed here, not what was built or
+   * checked. */
+  function chipVerdict() {
+    var built = builtVerdict();
+    if (built.state !== "draft" && _calc && _calc.local) {
+      return { state: "local", tip: _VERDICTS.local.tip };
+    }
+    return built;
+  }
+
   function paintChips() {
-    var said = chipVerdict(), spec = _VERDICTS[said.state];
+    var said = chipVerdict(), spec;
     var chips = document.querySelectorAll(".tb-verdict"), i, chip;
     for (i = 0; i < chips.length; i++) {
       chip = chips[i];
       /* A certificate mounted elsewhere states what its host passed it; the
        * page's own drawer follows the page. */
       if (inReceipt(chip) && !inDrawer(chip)) continue;
+      /* A figure's own chip on a binding fixed at build keeps the build's
+       * state: Local would claim a recompute that did not happen. */
+      said = chipVerdict();
+      if (said.state === "local" && chip.__tbFig && chip.__tbFig.getAttribute("data-tb-fixed") !== null) {
+        said = builtVerdict();
+      }
+      spec = _VERDICTS[said.state];
       chip.setAttribute("data-tb-verdict", said.state);
       chip.textContent = spec.text;
       chip.title = said.tip;
@@ -4267,7 +4649,8 @@
     scroll.appendChild(mount);
     renderReceipt(mount, receipt);
 
-    if (selectionConfig()) {
+    var selecting = _calc && _calc.controls;
+    if (selecting) {
       var about = mount.querySelector(".tb-receipt-about");
       var sel = document.createElement("section");
       sel.className = "tb-receipt-selection";
@@ -4287,12 +4670,7 @@
     document.addEventListener("click", onReceiptClick);
     document.addEventListener("keydown", onReceiptKey);
     if (document.documentElement) addClass(document.documentElement, "tb-has-receipt");
-    if (selectionConfig()) {
-      paintSelectionReceipt(_lastSelection || {
-        filters: (selectionConfig().filters || {}),
-        authored: true
-      });
-    }
+    if (selecting) paintSelectionReceipt({ filters: _calc.state, local: false });
   }
 
   /* ── Scenarios — the one place the page computes ───────────────────────
@@ -4485,6 +4863,12 @@
     try { hydrateControls(); } catch (e) {}
     try { hydrateDownloads(); } catch (e) {}
     try { hydrateTitle(); } catch (e) {}
+    /* Figures an app mounted since were filled from the stamped rows: under
+     * a selection they take the current result, and every figure its mark. */
+    if (_calc) {
+      try { if (_calc.local) paintLocal(); else paintLiveMarks(); } catch (e) {}
+      try { paintChips(); } catch (e) {}
+    }
   }
 
   function hydrate() {
@@ -4506,6 +4890,9 @@
     try { hydrateDownloads(); } catch (e) {}
     try { hydrateReceipt(); } catch (e) {}
     try { hydrateScenarios(); } catch (e) {}
+    /* A selection from the address applies here, before the first paint;
+     * as authored, this only marks the figures fixed at build. */
+    if (_calc) { try { applyLocal(true); } catch (e) {} }
     try { watchStampedFigures(); } catch (e) {}
     /* Set once figures are drawn, charts included, and their first fade has
      * finished. A printer waits for this; it changes no number. */
@@ -4526,15 +4913,11 @@
   }
 
   /* ── Parquet data blocks ───────────────────────────────────────────────
-   * Large-detail artifacts embed each binding as Parquet, decoded by the
-   * inlined worker engine (parquet-wasm + Arquero) before hydration and cached
-   * in _blocks in the SAME {cols, rows} shape readBlock() produces — so the
-   * whole sync runtime below is untouched. A CSV-only artifact carries no
-   * Parquet block, takes the early return, and behaves exactly as before. */
-  function inlinedText(id) {
-    var el = document.getElementById(id);
-    return el ? el.textContent : null;
-  }
+   * Large-detail artifacts embed each binding as Parquet. The page engine
+   * (tracebi-calc.js, inlined with any Parquet block) decodes them at boot,
+   * before hydration, into _blocks in the SAME {cols, rows, csv} shape
+   * readBlock() produces, so the whole runtime below is untouched. A
+   * CSV-only artifact carries no Parquet block and behaves exactly as before. */
   function b64ToBytes(b64) {
     var bin = atob(String(b64).replace(/\s+/g, "")), n = bin.length, u = new Uint8Array(n);
     for (var i = 0; i < n; i++) u[i] = bin.charCodeAt(i);
@@ -4556,67 +4939,91 @@
     }
     return out;
   }
-  function gunzip(bytes) {
-    var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-    return new Response(stream).arrayBuffer().then(function (buf) { return new Uint8Array(buf); });
+
+  /* Values leave the decode as the STRINGS the CSV embed would have carried.
+   * The runtime was written against the CSV path, where every cell is a
+   * string it then parses and formats; handing it numbers would make the
+   * same receipted data DISPLAY differently either side of the size
+   * threshold. So each cell is spelt as pandas' to_csv spells it: an
+   * integral float keeps its ".0", a boolean is True/False, a missing value
+   * is empty, and a datetime column is a bare date when EVERY value is
+   * midnight (pandas decides per column) and "YYYY-MM-DD HH:MM:SS"
+   * otherwise. The build sends only columns this rule covers
+   * (embed._renders_identically); anything else stays CSV. */
+  function pyRepr(v) {
+    /* Python's repr of a finite float: shortest round-trip digits (what
+     * toExponential() gives), fixed while the exponent is in [-4, 16) with
+     * ".0" kept on integral values, else e+NN / e-NN. */
+    var parts = v.toExponential().split("e"), exp = parseInt(parts[1], 10);
+    if (exp >= 16 || exp < -4) {
+      var mag = String(Math.abs(exp));
+      if (mag.length < 2) mag = "0" + mag;
+      return parts[0] + "e" + (exp < 0 ? "-" : "+") + mag;
+    }
+    var m = parts[0], neg = "";
+    if (m.charAt(0) === "-") { neg = "-"; m = m.slice(1); }
+    var digits = m.replace(".", ""), out;
+    if (exp >= 0) {
+      out = exp + 1 >= digits.length
+        ? digits + new Array(exp + 2 - digits.length).join("0") + ".0"
+        : digits.slice(0, exp + 1) + "." + digits.slice(exp + 1);
+    } else {
+      out = "0." + new Array(-exp).join("0") + digits;
+    }
+    return neg + out;
   }
-  /* Decode every Parquet block into _blocks, then call done(). Any failure
-   * (no engine inlined, unsupported browser, a bad block) degrades to done()
-   * so hydration still runs — the figure falls back to its server-rendered
-   * value / "no data" rather than hanging. */
-  function ensureData(done) {
+  function stampedCell(col, v, dateOnly) {
+    if (col.type === "number") {
+      if (v !== v) return "";
+      if (col.integer) return String(v);
+      if (v === Infinity) return "inf";
+      if (v === -Infinity) return "-inf";
+      if (v === 0 && 1 / v < 0) return "-0.0";
+      return pyRepr(v);
+    }
+    if (col.type === "boolean") return v !== v ? "" : (v ? "True" : "False");
+    if (v === null || v === undefined) return "";
+    if (col.type === "datetime") return dateOnly ? v.slice(0, 10) : v.slice(0, 19).replace("T", " ");
+    return v;
+  }
+  function stampedRows(table) {
+    var cols = table.columns.map(function (c) { return c.name; }), rows = [], r, i, c;
+    var values = table.columns.map(function (col) {
+      var data = table.data[col.name], dict = table.dict[col.name], out = new Array(table.rows);
+      for (r = 0; r < table.rows; r++) {
+        out[r] = dict ? (data[r] < 0 ? null : dict[data[r]]) : data[r];
+      }
+      var dateOnly = col.type === "datetime" && out.every(function (v) {
+        return v === null || v.length === 10 || /T00:00:00$/.test(v);
+      });
+      return out.map(function (v) { return stampedCell(col, v, dateOnly); });
+    });
+    for (r = 0; r < table.rows; r++) {
+      var row = {};
+      for (i = 0; i < cols.length; i++) row[cols[i]] = values[i][r];
+      rows.push(row);
+    }
+    /* readBlock() always sets .csv (the download control reads it). */
+    var esc = function (s) { return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    var lines = [cols.map(esc).join(",")];
+    for (r = 0; r < rows.length; r++) {
+      c = rows[r];
+      lines.push(cols.map(function (k) { return esc(c[k]); }).join(","));
+    }
+    return { cols: cols, rows: rows, csv: lines.join("\n") + "\n" };
+  }
+
+  /* Decode every Parquet block into _blocks. A block that cannot be read (no
+   * engine inlined, a bad block) is skipped: its figures fall back to their
+   * server-rendered value or "no data", and the rest of the page hydrates. */
+  function decodeDataBlocks() {
     var blocks;
     try { blocks = parquetDataBlocks(); } catch (e) { blocks = []; }
-    if (!blocks.length) { done(); return; }
-    var wsrc = inlinedText("tracebi-engine-worker");
-    var wasmB64 = inlinedText("tracebi-engine-wasm");
-    if (!wsrc || !wasmB64 || typeof Worker === "undefined" ||
-        typeof DecompressionStream === "undefined") { done(); return; }
-    gunzip(b64ToBytes(wasmB64)).then(function (wasm) {
-      var worker = new Worker(URL.createObjectURL(new Blob([wsrc], { type: "text/javascript" })));
-      var remaining = blocks.length, idx = 0, settled = false, timer = null;
-      /* done() must run EXACTLY once, and must run even if the worker dies,
-       * throws, or never answers — otherwise hydration never happens and the
-       * whole page stays blank. Guarded three ways: onerror, a watchdog, and
-       * the settled latch. */
-      var finish = function () {
-        if (settled) return;
-        settled = true;
-        if (timer) clearTimeout(timer);
-        try { worker.terminate(); } catch (e) {}
-        done();
-      };
-      timer = setTimeout(finish, 30000);
-      worker.onerror = finish;
-      worker.onmessageerror = finish;
-      function loadNext() {
-        if (idx >= blocks.length) return;
-        var b = blocks[idx++], bytes;
-        try { bytes = b64ToBytes(b.b64); } catch (e) { step(); return; }
-        worker.postMessage({ type: "load", name: b.name, parquet: bytes.buffer }, [bytes.buffer]);
-      }
-      function step() { if (--remaining <= 0) finish(); else loadNext(); }
-      worker.onmessage = function (e) {
-        var m = e.data || {};
-        try {
-          if (m.type === "inited") { loadNext(); }
-          else if (m.type === "loaded") { worker.postMessage({ type: "rows", name: m.name, id: 1 }); }
-          else if (m.type === "rows") {
-            var rows = m.rows || [];
-            _blocks[m.name] = {
-              cols: m.cols || (rows[0] ? Object.keys(rows[0]) : []),
-              rows: rows,
-              /* readBlock() always sets .csv (the verbatim download reads it);
-               * without it the download control writes the text "undefined". */
-              csv: m.csv || ""
-            };
-            step();
-          } else if (m.type === "error") { step(); }
-        } catch (err) { finish(); }
-      };
-      var wbuf = wasm.buffer;
-      worker.postMessage({ type: "init", wasm: wbuf }, [wbuf]);
-    })["catch"](function () { done(); });
+    if (!blocks.length || !root.tracebiCalc) return;
+    blocks.forEach(function (b) {
+      try { _blocks[b.name] = stampedRows(root.tracebiCalc.decode(b64ToBytes(b.b64))); }
+      catch (e) { /* defensive */ }
+    });
   }
 
   /* ── Stamped figures a script changed ─────────────────────────────────────
@@ -4851,9 +5258,9 @@
    * The web app shows a report in a sandboxed frame with an opaque origin: the
    * app cannot read the frame's DOM and the frame cannot read the app's. The
    * two talk by postMessage, and only about presentation: the frame tells the
-   * app how tall it is and asks it to run a selection; the app answers it, applies a
-   * cut, tells it its verdict on this build, or has it take part in Build mode
-   * (above). Every
+   * app how tall it is and what its selection is (tracebi-selection, from
+   * postLocal); the app sets a selection, tells it its verdict on this build,
+   * or has it take part in Build mode (above). Every
    * message carries tracebiFrame: 1; the frame accepts commands only from the
    * window that embeds it. A report opened on its own (no embedding window)
    * does none of this. */
@@ -4887,11 +5294,11 @@
     else root.addEventListener("load", watch);
 
     var commands = {
-      setSelection: function (m) { setSelection(m.filters || {}); },
+      /* The app's header clears a field from the selection it shows. */
+      "tracebi-set-selection": function (m) { setSelection(m.selection || {}); },
       point: function (m) { if (m.on) startPointing(post); else if (_stopPointing) _stopPointing(); },
       snapshot: function () { post({ type: "snapshot", figures: snapshotFigures() }); },
       flash: function (m) { flashFigures(m.ids); },
-      "selection-response": selectionAnswered,
       /* The app's verdict on this build (its re-check, in its words): the
        * masthead chip and the drawer's say it instead of "Not checked".
        * Draft, or a state this file does not know, is ignored. hosted: true
@@ -4942,7 +5349,12 @@
       else hydrate();
     };
     var boot = function () {
-      ensureData(function () { _dataReady = true; runReady(); schedule(); });
+      try { decodeDataBlocks(); } catch (e) { /* defensive */ }
+      /* A live page decodes its slices and reads its selection before
+       * anything hydrates: an app's figures can mount (and call refresh)
+       * before the first hydrate runs. */
+      try { bootCalc(); } catch (e) { _calc = null; }
+      _dataReady = true; runReady(); schedule();
     };
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", boot);

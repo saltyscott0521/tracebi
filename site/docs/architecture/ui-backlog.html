@@ -66,8 +66,10 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -116,7 +118,7 @@ bottom with the change that closed them.</p>
    is one accent, and ratchet the count down.</li>
 <li><strong>Small multiples are dense on a phone</strong> (DS-4).</li>
 <li><strong>The showcase's striped frozen column keeps a light shade in dark</strong> (DS-5).</li>
-<li><strong>The selection handshake with a parent that is not the app</strong> (DS-8).</li>
+<li><em>Closed by L-5 (see Done): there is no handshake left.</em></li>
 <li><strong>A line's end label is cut at the plot's top edge on a phone</strong>
     (<code>portfolio_concentration</code>'s cumulative share at 390px).</li>
 </ol>
@@ -214,8 +216,38 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
     a reader for the old block id so files built before the rename still open
     their drawer (and <code>verify --file</code> still reads them).</li>
 </ol>
+<p>Left by the live-reports round (<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>, L-5):</p>
+<ol start="37">
+<li><strong>Ask's "Keep this" does not carry a selection into the page.</strong> A kept
+    answer opens a one-figure draft; it could instead open the report it came
+    from with the selection in the frame's hash (<code>#sel=</code>), so the reader lands
+    on the same cut, Local, without a draft.</li>
+<li><strong>The page engine keys slices by fact name.</strong> <code>tracebiCalc.load(fact, …)</code>
+    holds one slice per fact name, so a page reading two models that each
+    have a fact of the same name would load one over the other. Key by
+    <code>model.fact</code> (the calc payload already records both).</li>
+<li><em>Closed by L-5b (see Done).</em></li>
+</ol>
 <h2 id="done">Done</h2>
 <ul>
+<li>
+<p><strong>A time grain reads one way</strong> (L-5b, item 39): <code>DataModel</code> returns a
+  declared time grain as its period label (<code>2026</code>, <code>2026-Q1</code>, <code>2026-03</code>,
+  <code>2026-W09</code>, <code>2026-03-14</code>), the spelling the slice and the page engine use,
+  so a built axis and a recomputed one agree. The query's lineage records
+  <code>time_labels</code>; <code>verify</code> reads an older receipt that stamped the
+  <code>date_trunc</code> timestamp as Reproduces when only the spelling differs. The
+  runtime writes a grain column as text (<code>tracebi-formats</code> marks it
+  <code>label</code>), never <code>2,026</code>.</p>
+</li>
+<li>
+<p><strong>The live page in the app</strong> (L-5): a report's frame tells the app its
+  selection (<code>tracebi-selection</code>, tagged like every bridge message); while it
+  is not the authored one the header's chip reads <strong>Local</strong> with the page's
+  own detail, and each selected field is a chip ("Sector: Technology ×")
+  that clears it through the frame (<code>tracebi-set-selection</code>). The
+  <code>selection-request</code> round trip is gone on both sides (item 11).</p>
+</li>
 <li>
 <p><strong>The sidebar is tiered by role</strong> (A2-6): <code>nav.js</code> gives each place a
   <code>minRole</code> and <code>placesFor(role)</code> is the one list the sidebar, the phone's

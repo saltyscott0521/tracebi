@@ -360,8 +360,16 @@ def declared_column_formats(model, columns) -> dict:
     their own columns. Presentation only: it picks how a number is written,
     never which number."""
     declared = model.measures()
-    return {c: declared[c].format for c in sorted(str(c) for c in columns)
-            if c in declared and declared[c].format}
+    out = {c: declared[c].format for c in sorted(str(c) for c in columns)
+           if c in declared and declared[c].format}
+    # A declared time grain is a period label ("2026", "2026-03"): "label"
+    # tells the runtime to write it as it is, never as a number ("2,026").
+    for c in sorted(str(c) for c in columns):
+        dim, dot, attr = c.partition(".")
+        dim_def = model._dimensions.get(dim) if dot else None
+        if dim_def is not None and (dim_def.derived.get(attr) or {}).get("kind") == "date_trunc":
+            out[c] = "label"
+    return out
 
 
 def table_number_formats(df, declared=None) -> dict:
@@ -644,6 +652,26 @@ class TemplatePackage:
                         f"{report_json_path}: the selection filters model "
                         f"'{ref.model}', and binding '{binding_name}' is a SQL "
                         f"calculation, which a selection cannot filter yet.")
+
+        # What the built page carries so it can recompute (the slice):
+        # "required" (the default) embeds per fact the grain the page needs,
+        # "model" every fact at base grain, "none" nothing new.
+        from tracebi.reports.slice import (
+            DEFAULT_EMBED_BUDGET_MB, EMBED_MODES, EMBED_REQUIRED,
+        )
+        self.embed = declaration.get("embed", EMBED_REQUIRED)
+        if self.embed not in EMBED_MODES:
+            raise ValueError(
+                f"{report_json_path}: 'embed' must be one of "
+                f"{', '.join(repr(m) for m in EMBED_MODES)}; got {self.embed!r}.")
+        self.embed_budget_mb = declaration.get(
+            "embed_budget_mb", DEFAULT_EMBED_BUDGET_MB)
+        if (isinstance(self.embed_budget_mb, bool)
+                or not isinstance(self.embed_budget_mb, (int, float))
+                or self.embed_budget_mb <= 0):
+            raise ValueError(
+                f"{report_json_path}: 'embed_budget_mb' must be a positive "
+                f"number of megabytes; got {self.embed_budget_mb!r}.")
 
         # Optional: when this report runs and who receives it. Read by
         # `tracebi schedule`; the build itself ignores it.
@@ -1084,7 +1112,9 @@ class TemplatePackage:
         )
         contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
         contract_blocks.append(embed_json(declared_formats, "tracebi-formats") + "\n")
-        contract_blocks.append(self._selection_blocks(models))
+        contract_blocks.append(self._selection_blocks())
+        contract_blocks.append(self._slice_blocks(
+            models, manifest, [sd.name for sd in outputs]))
 
         # Provenance for the runtime's badges, decided from what was actually
         # embedded (v2 §2.4): a stylesheet can restyle a badge, never re-color
@@ -1629,7 +1659,7 @@ class TemplatePackage:
             page, data_blocks_html(inputs + outputs),
             stage="exploration", figures_cfg=cfg,
             extra_blocks_html=(embed_json(formats, "tracebi-formats") + "\n"
-                               + self._selection_blocks(models)))
+                               + self._selection_blocks()))
         return page, inputs, outputs
 
     def snapshot(self, models: dict, output_path: str) -> None:
@@ -1749,41 +1779,47 @@ class TemplatePackage:
 
     # ── Injection ───────────────────────────────────────────────────────────
 
-    def _selection_blocks(self, models: dict) -> str:
-        """The selection marker, and the sealed grain when a port exists.
-
-        The marker is what opts the runtime into posting ``data-tb-filter``
-        instead of subsetting. The grain is the offline port's input; a
-        package whose measures are all server-only still gets the marker
-        and recomputes only while the model is reachable. A grain that
-        cannot be built does not fail the render — the server path remains
-        the calculator.
+    def _selection_blocks(self) -> str:
+        """The selection marker: the report's authored selection, stated in
+        the file. The page engine reads the same selection from the calc
+        payload (``authored_selection``) and recomputes under it.
         """
         if not self.selection:
             return ""
         from tracebi.reports.embed import embed_json
-        from tracebi.reports.selection import filter_controls
-        from tracebi.reports.selection_eval import build_grain_payload
 
         payload = {
             "report": self.package_id,
             "model": self.selection["model"],
             "filters": self.selection["filters"],
         }
-        blocks = embed_json(payload, "tracebi-selection") + "\n"
-        model = (models or {}).get(self.selection["model"])
-        if model is None:
-            return blocks
-        try:
-            grain = build_grain_payload(
-                model, self.bindings, self.selection,
-                filter_controls(self.template_html),
-            )
-        except Exception:  # noqa: BLE001 — the server path still answers
-            grain = None
-        if grain:
-            blocks += embed_json(grain, "tracebi-grain") + "\n"
-        return blocks
+        return embed_json(payload, "tracebi-selection") + "\n"
+
+    def _slice_blocks(self, models: dict, manifest: ReportManifest,
+                      outputs: list[str]) -> str:
+        """The slice blocks and the calc payload, recorded in *manifest*.
+
+        One Parquet block per fact (``tracebi-slice-<fact>``) and one JSON
+        block (``tracebi-calc-plans``) with every binding's plan. The
+        manifest's ``slice`` entry holds each block's ``payload_sha256``,
+        the hash of the bytes shipped, from the one encoding that made the
+        block. ``embed: none`` adds nothing, so the page is what it was
+        before slices existed.
+        """
+        from tracebi.reports.slice import (
+            CALC_PLANS_ID, binding_plans, build_slice, calc_plans_payload,
+        )
+
+        if self.embed == "none":
+            return ""
+        blocks = build_slice(self, models)
+        plans = binding_plans(self, models, blocks, outputs)
+        manifest.slice = {key: b.manifest_record(self.embed)
+                          for key, b in blocks.items()}
+        manifest.plans = plans
+        html = "".join(b.block_html() + "\n" for b in blocks.values())
+        return html + embed_json(
+            calc_plans_payload(self, models, blocks, plans), CALC_PLANS_ID) + "\n"
 
     def _libs_for_page(self, page: str) -> list:
         """Declared ``libs``, plus D3 when *page* contains a chart figure.

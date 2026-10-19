@@ -66,8 +66,10 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -207,9 +209,15 @@ isn't numeric fails the build.</p>
 <p>Narrative prose is where hard-coded numbers hide. Here the honest path costs
 one attribute, and each bound span gets its own entry in the trace.</p>
 <h2 id="interactivity">Interactivity</h2>
-<p><strong>Controls subset which stamped rows a figure displays. They never compute new
-numbers</strong> — client-side aggregation would mint numbers nobody can re-run, so a
-filtered KPI needs its own binding, and value figures never react to controls.</p>
+<p><strong>A figure's number is only ever a query result.</strong> On a page built with a
+slice (<code>report.json</code> <code>"embed"</code>, the default) a filter writes the page's one
+selection state, and the page engine re-runs each binding's own query (its calc
+plan) over the embedded slice: values, tables, charts and sparks recompute. A
+figure the selected field cannot reach keeps its number and is marked
+<code>data-tb-unfiltered-by</code>; one the engine cannot run is marked <code>data-tb-fixed</code>.
+Search only narrows the rows shown. On a page built with <code>"embed": "none"</code>
+filters subset the stamped rows of tables and charts, and value figures never
+react: summing the rows on screen would be a number no query produced.</p>
 <table>
 <thead>
 <tr>
@@ -232,7 +240,7 @@ filtered KPI needs its own binding, and value figures never react to controls.</
 </tr>
 </tbody>
 </table>
-<p>Filters on one binding AND-combine, and search ANDs with them. Download exports
+<p>Filters AND-combine, and search ANDs with them. Download exports
 the binding's <strong>stamped CSV verbatim</strong> — a trace-preserving export, always the
 full binding, never the filtered view.</p>
 <p>Tables scroll past <code>data-tb-rows</code> (default 10); <code>data-tb-rows="all"</code> opts out.

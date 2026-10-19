@@ -9,12 +9,16 @@ The underlying DataFrame is never mutated in place.
 from __future__ import annotations
 
 import hashlib
+import json
+import math
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from types import MappingProxyType
 from typing import Any, Callable, Mapping, Optional, Union
 
 import pandas as pd
+from numpy import bool_ as np_bool, datetime64 as np_datetime64
 
 
 #: pandas 3.0 (PDEP-14) renamed the default string dtype: a column pandas 2
@@ -43,7 +47,7 @@ def canonical_dtypes_repr(df: pd.DataFrame) -> str:
                  for s in (str(t) for t in df.dtypes)])
 
 
-def frame_fingerprint(df: pd.DataFrame) -> str:
+def frame_fingerprint(df: pd.DataFrame, algo: Optional[int] = None) -> str:
     """
     SHA-256 hash of a DataFrame's content — the audit primitive.
 
@@ -57,7 +61,19 @@ def frame_fingerprint(df: pd.DataFrame) -> str:
     Dtype names are canonicalized (:data:`_DTYPE_CANON`) so the fingerprint
     is stable across the pandas 2→3 string-dtype rename: same bytes, same
     receipt, whichever pandas rendered it.
+
+    ``algo`` picks the algorithm a receipt was stamped under. ``None``, 1 and
+    2 hash the bytes above (they differ only in how the engine ordered the
+    rows it handed over); 3 is :func:`rounded_fingerprint`, the one that
+    compares two engines.
     """
+    if algo == FINGERPRINT_ALGO_ROUNDED:
+        return rounded_fingerprint(df)
+    if algo not in (None, FINGERPRINT_ALGO_LEGACY, FINGERPRINT_ALGO_TOTAL_ORDER):
+        raise ValueError(
+            f"fingerprint algorithm {algo!r} is not one this tracebi knows "
+            f"(1, 2 or 3); upgrade tracebi to check it"
+        )
     h = hashlib.sha256()
     h.update(repr(list(df.columns)).encode("utf-8"))
     h.update(canonical_dtypes_repr(df).encode("utf-8"))
@@ -69,18 +85,122 @@ def frame_fingerprint(df: pd.DataFrame) -> str:
 # Fingerprint algorithm versioning
 # ─────────────────────────────────────────────────────────────
 # Every stamped query result records which algorithm produced its fingerprint.
-# This is the SEAM a future verifier needs: when a new algorithm lands (algo 3,
-# the Merkle-columnar leaf), verify can reproduce each receipt under the rules
-# it was stamped with instead of silently re-classifying it. Verify surfaces
-# this field today but does not yet branch on it — there is only one live
-# difference so far (algo 2's total order), and a legacy algo-1 non-aggregate
-# receipt was nondeterministic, so was never reliably reproducible anyway.
+# This is the SEAM a verifier needs: when a new algorithm lands (algo 3 below;
+# a Merkle-columnar leaf would be another), verify reproduces each receipt
+# under the rules it was stamped with instead of silently re-classifying it. Verify hashes the
+# re-run under the recorded algorithm: 1 and 2 share bytes (a legacy algo-1
+# non-aggregate receipt was nondeterministic, so was never reliably
+# reproducible anyway), and 3 is the rounded algorithm below.
 # The bytes are identical across 1 and 2; the difference is purely that algo 2
 # gives a non-aggregate result a canonical total row order (algo 1 left it in
 # engine scan order, which varied between identical runs).
 FINGERPRINT_ALGO_LEGACY = 1        # columns+dtypes+to_csv, rows in engine order
 FINGERPRINT_ALGO_TOTAL_ORDER = 2   # same bytes; aggregate=False rows total-ordered
+FINGERPRINT_ALGO_ROUNDED = 3       # numbers to 9 significant digits, rows sorted
 CURRENT_FINGERPRINT_ALGO = FINGERPRINT_ALGO_TOTAL_ORDER
+
+# Algo 3 exists so that two engines can agree on a number. The page engine
+# (tracebi-calc.js) sums in a different order than DuckDB, so the last bits of
+# a float differ, and it hands back JSON numbers with no dtype. Algo 3 rounds
+# every number to 9 significant digits, drops dtypes, and sorts the rows, so
+# the same result reads the same from either side. A server stamp stays on
+# algo 2: the CSV embed ships those exact bytes in display order and its
+# offline check hashes them, which rounding or re-sorting would break.
+# ``verify`` re-runs a receipt under whichever algorithm it records.
+FINGERPRINT_SIG_DIGITS = 9
+
+
+def round_significant(value: float, digits: int = FINGERPRINT_SIG_DIGITS) -> float:
+    """*value* rounded to *digits* significant digits, half away from zero.
+
+    The tie rule is the one JavaScript's ``Number(x.toPrecision(9))`` uses
+    (it rounds the exact binary value, ties away from zero), so the page
+    engine ports it in one line. ``Decimal(value)`` is the exact binary value,
+    which is why a tie is decided the same way on both sides. Python's own
+    ``format(x, ".9g")`` rounds ties to even and would differ on them.
+    """
+    if value == 0 or not math.isfinite(value):
+        return value + 0.0                     # -0.0 reads as 0.0
+    exact = Decimal(value)
+    step = Decimal(1).scaleb(exact.adjusted() - (digits - 1))
+    return float(exact.quantize(step, rounding=ROUND_HALF_UP)) + 0.0
+
+
+def canonical_cell(value: Any) -> Any:
+    """One cell as algo 3 sees it: a JSON scalar with no dtype.
+
+    Every number (int, float, Decimal, numpy) is rounded with
+    :func:`round_significant` and written as an int when the rounded value is
+    whole, so a count that one engine returns as ``3`` and another as ``3.0``
+    reads the same. A null of any kind (None, NaN, NaT, pd.NA) is None.
+    Infinities are the strings ``"Infinity"`` / ``"-Infinity"``, since JSON
+    has no spelling for them. Datetimes are ISO-8601 strings; strings and
+    booleans are themselves.
+    """
+    if value is None or value is pd.NaT:
+        return None
+    if isinstance(value, (bool, np_bool)):
+        return bool(value)
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (datetime, date, pd.Timestamp, np_datetime64)):
+        return pd.Timestamp(value).isoformat()
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        return str(value)
+    if isinstance(value, (int, float, Decimal)) or hasattr(value, "dtype"):
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return str(value)
+        if math.isinf(number):
+            return "Infinity" if number > 0 else "-Infinity"
+        rounded = round_significant(number)
+        return int(rounded) if rounded.is_integer() else rounded
+    return str(value)
+
+
+def _cell_order(value: Any) -> tuple:
+    # Numbers, then booleans, then strings, then nulls: a total order over
+    # whatever a column holds, nulls last as in every other sort here.
+    if value is None:
+        return (3,)
+    if isinstance(value, bool):
+        return (1, value)
+    if isinstance(value, str):
+        return (2, value)
+    return (0, value)
+
+
+def canonical_rows(df: pd.DataFrame, total_order: bool = True) -> "tuple[list, list]":
+    """``(columns, rows)`` with every cell through :func:`canonical_cell`.
+
+    With *total_order* the rows are sorted by every column, left to right
+    (numbers by value, strings by code point, nulls last), so two engines
+    that return the same rows in a different order agree. Without it the
+    rows keep the frame's order, which is what a parity check compares when
+    the order is itself part of the answer (an ``order_by``).
+    """
+    cols = [str(c) for c in df.columns]
+    rows = [[canonical_cell(v) for v in row]
+            for row in df.itertuples(index=False, name=None)]
+    if total_order:
+        rows.sort(key=lambda r: [_cell_order(v) for v in r])
+    return cols, rows
+
+
+def rounded_fingerprint(df: pd.DataFrame) -> str:
+    """Fingerprint algo 3: SHA-256 of the canonical rows as compact JSON.
+
+    Column names and every cell after :func:`canonical_rows` (rounded, total
+    order); dtypes are not hashed, because a page engine has none to report.
+    """
+    cols, rows = canonical_rows(df, total_order=True)
+    text = json.dumps({"algo": FINGERPRINT_ALGO_ROUNDED, "cols": cols, "rows": rows},
+                      ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -219,16 +339,17 @@ class DataSet:
         """Return a copy of the underlying DataFrame."""
         return self._df.copy()
 
-    def fingerprint(self) -> str:
+    def fingerprint(self, algo: Optional[int] = None) -> str:
         """
         SHA-256 hash of the DataFrame content — a stable audit primitive.
 
         Covers column names, dtypes, and every cell value in row order,
         via a canonical CSV serialization. Deterministic across sessions
         and pandas versions, so a manifest fingerprint can be re-verified
-        long after the report was rendered.
+        long after the report was rendered. ``algo`` re-hashes under the
+        algorithm a receipt recorded (see :func:`frame_fingerprint`).
         """
-        return frame_fingerprint(self._df)
+        return frame_fingerprint(self._df, algo=algo)
 
     def lineage_to_dict(self) -> list[dict]:
         return [node.to_dict() for node in self._lineage]

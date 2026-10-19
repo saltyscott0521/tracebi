@@ -171,8 +171,9 @@ Two things that belong in the query, not in JS:
   moves the ordering out of the trace. If readers should re-sort a table,
   add `data-tb-sort` to it: the query's order stays the default, and the
   reader's clicks only reorder the stamped rows.
-- **Aggregation** — never. Client-side aggregation mints numbers nobody can
-  re-run; a filtered KPI needs its own binding.
+- **Aggregation** — never in `script.js`. A figure's number is only ever a
+  query result: a filter re-runs the binding's own query on the page; a sum in
+  your script is a number nobody can re-run.
 
 ## What you cannot load
 

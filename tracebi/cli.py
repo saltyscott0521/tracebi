@@ -1887,12 +1887,59 @@ def cmd_verify(args: argparse.Namespace) -> int:
                       f"warehouse.", file=sys.stderr)
                 exit_code = 1
 
+    # --local: what the page recomputes under a selection, replayed. The
+    # page engine and the server's reading of each plan must agree over the
+    # slice the built file carries. Its own claim, beside the figures': it
+    # says the page's arithmetic is the server's, not that a figure is right.
+    if getattr(args, "local", False):
+        exit_code = max(exit_code, _verify_local_section(path, manifest))
+
     # Routed by exit code, not by verdict: a run that exits 0 must write
     # nothing to stderr, or CI wrappers that treat stderr as failure will
     # fail a receipt this command just called fine.
     print(result["verdict_detail"],
           file=sys.stdout if exit_code == 0 else sys.stderr)
     return exit_code
+
+
+def _verify_local_section(manifest_path: Path, manifest: dict) -> int:
+    """Print ``verify --local`` for the built file beside *manifest_path*;
+    return 0 when every recomputed figure reproduces, else 1."""
+    from tracebi.verify import verify_local
+
+    print("\nlocal recompute (tracebi-calc.js against the server, over the "
+          "embedded slice):")
+    name = manifest_path.name
+    html_path = manifest_path.with_name(name[:-len(".manifest.json")]
+                                        if name.endswith(".manifest.json") else name)
+    if not html_path.is_file() or html_path == manifest_path:
+        print(f"✗ the built file is not beside the manifest: expected {html_path}",
+              file=sys.stderr)
+        return 1
+    res = verify_local(html_path.read_text(encoding="utf-8"), manifest)
+    if res["error"]:
+        print(f"✗ {res['error']}", file=sys.stderr)
+        return 1
+    if res["note"]:
+        print(f"· {res['note']}")
+        return 0
+    if res["fixed"]:
+        print(f"· fixed at build, not recomputed: {', '.join(res['fixed'])}")
+    shape = f"{res['bindings']} binding(s) × {res['selections']} selection(s)"
+    miss = res["mismatch"]
+    if miss:
+        print(f"✗ Local: {miss['binding']} under "
+              f"{json.dumps(miss['selection'], default=str)} does not reproduce — "
+              f"{miss['detail']}"
+              + (f" (page {miss['page']!r}, server {miss['server']!r})"
+                 if miss.get("column") else ""), file=sys.stderr)
+        return 1
+    if not res["engine"]:
+        print(f"· node not found: the page engine half was skipped; {shape} "
+              f"ran on the server only")
+        return 0
+    print(f"✓ Local: {shape} reproduce")
+    return 0
 
 
 def _migrate_model(args: argparse.Namespace) -> int:
@@ -2314,9 +2361,9 @@ def _layout_tabbed_body(measure: str, dim_ref: "str | None", table_binding: str,
         '    <section data-tb-tab="Detail">',
         '      <div class="tb-card">',
         "        <h2>Detail</h2>",
-        '        <p class="tb-note">Filter and search subset which stamped rows',
-        "          display — they never compute new numbers. The CSV button",
-        "          exports the stamped bytes verbatim.</p>",
+        '        <p class="tb-note">A filter recomputes every figure it reaches,',
+        "          each by its own query; search only narrows the rows shown.",
+        "          The CSV button exports the stamped bytes verbatim.</p>",
         "        <p>",
         "          <label>Search",
         '            <input data-tb-search data-tb-binding="breakdown"',
@@ -2594,9 +2641,9 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
             "    </div>",
             '    <div class="tb-card tb-span-4">',
             "      <h2>Detail</h2>",
-            '      <p class="tb-note">Filter and search subset which stamped rows',
-            "        display — they never compute new numbers. The CSV button",
-            "        exports the stamped bytes verbatim.</p>",
+            '      <p class="tb-note">A filter recomputes every figure it reaches,',
+            "        each by its own query; search only narrows the rows shown.",
+            "        The CSV button exports the stamped bytes verbatim.</p>",
             "      <p>",
             "        <label>Search",
             '          <input data-tb-search data-tb-binding="breakdown"',
@@ -4094,6 +4141,15 @@ def build_parser() -> argparse.ArgumentParser:
              "that still passes the checks). A separate claim, reported "
              "separately: it says whether today's sink still satisfies its "
              "declared contract — never that the transform was verified.",
+    )
+    p_verify.add_argument(
+        "--local", action="store_true",
+        help="Also replay what the built page recomputes under a selection: "
+             "every plan that is not fixed at build, over the slice the "
+             "<manifest minus .manifest.json> file carries, under the authored "
+             "selection and one per filter, by the page engine (node) and by "
+             "the server. They must agree cell by cell. A separate claim: "
+             "the page's arithmetic is the server's.",
     )
     p_verify.add_argument(
         "--manifest", dest="file_manifest", default=None,

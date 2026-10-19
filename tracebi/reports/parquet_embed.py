@@ -1,8 +1,8 @@
 """Parquet embed transport for the artifact data layer.
 
 The artifact embeds a figure's data as **Parquet** — compact (≈8–17× smaller
-than the same CSV), and the format the client-side worker engine decodes in the
-browser. See ``docs/architecture/large-detail-artifacts.md``.
+than the same CSV), and the format the page engine (``tracebi-calc.js``)
+decodes in the browser. See ``docs/architecture/large-detail-artifacts.md``.
 
 The receipt for a Parquet block hashes the SHIPPED BYTES. The manifest records
 ``payload_sha256`` — SHA-256 over the exact base64-decoded Parquet payload the
@@ -45,8 +45,12 @@ def _require_pyarrow():
         ) from exc
 
 
-def to_parquet_bytes(df: "pd.DataFrame") -> bytes:
-    """Serialize *df* to Parquet (ZSTD) bytes for embedding.
+def to_parquet_bytes(df: "pd.DataFrame", compression: str = "snappy") -> bytes:
+    """Serialize *df* to Snappy-compressed Parquet bytes for embedding.
+
+    Snappy because the page reads every Parquet block (a binding's, a slice)
+    with the page engine's pure-JS reader, which decodes Snappy natively and
+    has no ZSTD; ZSTD would be smaller and unreadable on the page.
 
     The caller (``plan_embed``) hashes the returned bytes into the manifest's
     ``payload_sha256`` and embeds the SAME bytes in the page — encode once,
@@ -57,7 +61,7 @@ def to_parquet_bytes(df: "pd.DataFrame") -> bytes:
     _require_pyarrow()
     buf = io.BytesIO()
     # index=False: the fingerprint covers columns/dtypes/values, never the index.
-    df.to_parquet(buf, engine="pyarrow", compression="zstd", index=False)
+    df.to_parquet(buf, engine="pyarrow", compression=compression, index=False)
     return buf.getvalue()
 
 

@@ -66,8 +66,10 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a class="on" href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -85,7 +87,11 @@
   <main class="doc">
 <h1 id="large-detail-artifacts-data-heavy-offline-still-verifiable">Large-detail artifacts — data-heavy, offline, still verifiable</h1>
 <p><strong>Status:</strong> shipped (built on <code>feat/artifact-parquet-embed</code>, merged to <code>main</code> in
-August 2026). The design below is the plan as agreed; §11 records where the implementation deliberately diverged after two
+August 2026); <strong>the engine is superseded by <a href="../architecture/live-reports-plan.html">Live reports — the plan</a> (2026-10)</strong>:
+parquet-wasm, Arquero and the Web Worker are gone, and a Parquet block is
+decoded by the pure-JS page engine (<code>tracebi-calc.js</code>, Snappy only, no CSP
+grant). The Parquet lessons below stand: hash the shipped bytes, restrict the
+types, never re-derive. The design below is the plan as agreed; §11 records where the implementation deliberately diverged after two
 adversarial reviews. Supersedes the "just add a size guard" stopgap and the
 DuckDB-vs-Parquet open question in the scale audit (ROADMAP 11c).</p>
 <p><strong>One-line:</strong> let a single self-contained artifact embed up to ~500MB-of-JSON-equivalent

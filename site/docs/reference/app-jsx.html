@@ -66,8 +66,10 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -207,7 +209,11 @@ filterable, exactly as in a template.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Controls</strong> subset the rows the figures of one binding show; they never compute.</p>
+<p><strong>Controls.</strong> A figure's number is only ever a query result. On a live page (the
+default) a <code>&lt;Filter&gt;</code> recomputes every figure it reaches by re-running each
+binding's own query over the data the file carries; <code>&lt;Search&gt;</code> only narrows the
+rows shown. On a page built with <code>"embed": "none"</code> a filter subsets stamped rows
+and KPIs stay the stamped totals.</p>
 <table>
 <thead>
 <tr>
@@ -218,7 +224,7 @@ filterable, exactly as in a template.</p>
 <tbody>
 <tr>
 <td><code>&lt;Filter&gt;</code></td>
-<td><code>binding</code>, <code>column</code>, <code>label</code></td>
+<td><code>binding</code>, <code>column</code>, <code>label</code>, <code>multiple</code></td>
 </tr>
 <tr>
 <td><code>&lt;Search&gt;</code></td>
@@ -241,7 +247,11 @@ filterable, exactly as in a template.</p>
 <tbody>
 <tr>
 <td><code>&lt;Filter column label&gt;</code> with no <code>binding</code></td>
-<td>A page-wide filter: it subsets every binding that has the column — tables and charts, including ones mounted later. KPIs and values stay the stamped totals (a filtered KPI needs its own binding, or <code>report.json</code> <code>"selection"</code>).</td>
+<td>A page-wide filter. On a page built with a slice (the default <code>"embed"</code>) every filter, page-wide or bound, writes one selection state and every figure whose fact reaches the column recomputes from the embedded data — values, tables, charts, sparks, including ones mounted later; the chip reads Local, the state rides in the URL hash beside <code>useUrlState</code>'s keys, and a figure that cannot recompute carries <code>data-tb-fixed</code> (one the field does not reach, <code>data-tb-unfiltered-by</code>). With <code>"embed": "none"</code>, or on a column no slice carries, it subsets the stamped rows of every binding that has the column and KPIs stay the stamped totals.</td>
+</tr>
+<tr>
+<td><code>&lt;Filter column multiple&gt;</code></td>
+<td>A list box: the reader picks several values; the selection holds all of them.</td>
 </tr>
 <tr>
 <td><code>&lt;Segmented options value onChange label&gt;</code></td>

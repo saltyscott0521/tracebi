@@ -273,6 +273,25 @@ def scan_figures(src: str) -> list[KitFigure]:
     return figs
 
 
+_FILTER_TAG = re.compile(r"<Filter\b([^>]*)>")
+_PROP = re.compile(r"""\b(binding|column)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*"([^"]*)"\s*\}|\{\s*'([^']*)'\s*\})""")
+
+
+def scan_controls(src: str) -> list[tuple[str, str]]:
+    """Every ``<Filter>`` in *src* as ``(binding, column)``, like
+    ``selection.filter_controls`` reads a template. The kit renders a filter
+    with no ``binding`` as the page filter, ``data-tb-binding="*"``, and so
+    does this. Only literal props are read (a computed ``column`` names no
+    field the build can see); a tag without one is skipped."""
+    out: list[tuple[str, str]] = []
+    for m in _FILTER_TAG.finditer(_strip_comments(src)):
+        props = {p.group(1): next(v for v in p.groups()[1:] if v is not None)
+                 for p in _PROP.finditer(m.group(1))}
+        if props.get("column"):
+            out.append((props.get("binding") or "*", props["column"]))
+    return out
+
+
 def _join(v) -> str:
     return v if isinstance(v, str) else ""
 

@@ -82,7 +82,7 @@ that uses it (`tests/e2e/`: the analyst, reference-project, web, agent,
 schedule, pipeline, author, folder-permissions, push, sign-in and publishing
 journeys drive the real CLI, web app and MCP tools in-process, so coverage
 sees them). Add a unit test only for what a journey can't pin precisely: query
-semantics, number-formatting parity, fingerprints and verify verdicts,
+semantics, number-formatting parity (the page engine: `test_calc_parity.py`), fingerprints and verify verdicts,
 contracts, security, the honesty rules. Since the 2026-10-18 cull the unit
 suite holds those six, plus a test where a module no journey reaches would
 otherwise go uncovered.
@@ -174,7 +174,11 @@ tracebi/               # Core Python package (~24,000 LOC)
   etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer
   reports/             # Report, Section types, ExcelRenderer, HTMLRenderer; the artifact
                        #   lane: template_package, figures, stack, compile_spec, derive,
-                       #   assets/ (tracebi.js + tracebi.css + vendored ECharts and D3)
+                       #   slice (what a page carries to recompute), calc_plan (each binding's
+                       #   query as a closed plan; execute_plan is the oracle; parity fixtures
+                       #   in tests/fixtures/calc_parity/ from scripts/gen_calc_parity.py),
+                       #   assets/ (tracebi.js + tracebi.css + tracebi-calc.js, the page
+                       #   engine: pure JS, _calc_src/, CALC_NOTICE.md + vendored ECharts and D3)
   pipeline/            # PipelineRunner + APScheduler integration; run_record (a recorded run: row + log)
   lineage/             # LineageDiagram (matplotlib / mermaid / HTML export)
   web/                 # register facade + auto-discovery for discovered modules (.py and .ipynb)
@@ -296,6 +300,7 @@ tracebi mcp --transport http --port 8765       # remote agent — needs TRACEBI_
 tracebi agent log [--since 7d]                 # summarize the opt-in gateway call log (TRACEBI_MCP_LOG=1)
 tracebi verify output/report.manifest.json     # re-run recorded queries; classify drift
 tracebi verify output/report.manifest.json --contracts  # + re-run the sink contracts
+tracebi verify output/report.manifest.json --local     # replay every calc plan by the page engine and by the server
 tracebi schedule list                          # packages with a report.json "schedule" block
 tracebi schedule run <name> [--no-send]        # build → verify → email → record, now
 tracebi schedule serve                         # run every schedule (needs [pipeline])
@@ -676,6 +681,26 @@ It draws only the rows' own values and colours series from the unfiltered rows.
 A report that lists `"libs": ["echarts"]` keeps the older ECharts engine, the only
 place `tracebi.configureChart` applies. The server-side SVG path is kept only for
 the (unshipped) PDF renderer.
+
+**A built page is live.** The locked rule: a figure's number is only ever a
+query result. The build embeds a slice per fact (`tracebi-slice-<fact>`,
+Snappy Parquet) and every binding's calc plan (`tracebi-calc-plans`);
+`report.json` `"embed": "required" | "model" | "none"` (default `required`) and
+`"embed_budget_mb"` (default 25) say how much. Every `data-tb-filter` (kit
+`<Filter>`, `multiple` for several values) writes one selection state, kept in
+the URL hash (`#sel=`), and `tracebi-calc.js` re-runs every plan under it: values,
+tables, charts, sparks and `tracebi.draw` figures recompute, the chip reads
+Local, a figure its field cannot reach carries `data-tb-unfiltered-by`, one the
+engine cannot run (SQL binding, `report.py`) `data-tb-fixed`. `tracebi.setSelection`
+sets it from code. `"embed": "none"` builds the old page: filters subset stamped
+rows and value figures never react. There is no worker, no wasm and no server
+round trip; Python (`calc_plan.execute_plan` over `DataModel.execute`) is the
+source of truth, `tests/test_calc_parity.py` holds the port to it, and a page
+result is compared to the server's cell by cell within 1e-9 (`calc_plan.rows_match`),
+never by a rounded hash. Fingerprint algo 3 (`frame_fingerprint(df, algo=3)`:
+9 significant digits, no dtypes, rows total-ordered) is the cross-engine canonical
+form; server stamps stay algo 2 and `verify` re-hashes under the recorded algo.
+Design: `docs/architecture/duckdb-first.md`; plan: `docs/architecture/live-reports-plan.md`.
 
 ### New medallion layer
 ```python
