@@ -699,7 +699,10 @@ slice, point or legend entry (no control needed; shift adds), a row of a
 `data-tb-select-rows` table, a `data-tb-range`; a chart keeps its own field's
 other values and dims them (`data-tb-highlight="off"` to narrow instead); the
 selection bar (`data-tb-selection`, kit `<SelectionBar/>`) shows it, prints as
-one line, and Escape clears it. `tests/e2e/test_live_cascade.py` walks every
+one line, and Escape clears it. A row-select table keeps the other values only
+of the fields its own row clicks wrote (`data-tb-select-rows="dim.attr"` names
+them); any other writer of the field takes it back, and the hash carries no
+owner. `tests/e2e/test_live_cascade.py` walks every
 shipped live report through every gesture against `execute_plan`.
 `"embed": "none"` builds the old page: filters subset stamped
 rows and value figures never react. There is no worker, no wasm and no server
