@@ -20,6 +20,30 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-19 — Decision: DuckDB-first, one engine from the sink to the page
+
+**Decision.** DuckDB becomes the only engine. Transforms are SQL by default
+(pandas and polars stay as a declared escape hatch that ends in an Arrow
+table), the warehouse gets three storage tiers with Parquet on object
+storage as the hosted default so the server holds the model and not the
+data, the model compiles to a DuckDB schema (views + measure macros), SQL is
+a first-class figure binding, and the report file carries DuckDB-wasm with
+the sub-star of the model its figures need, so every object recomputes
+live on a filter. The "controls never compute new numbers" rule is
+replaced by: a figure may run any SQL over the embedded, fingerprinted
+data, the SQL is in the trace, and a new **Local** chip state says the
+number was computed on the page. Not Qlik: live cross-filtering through the
+model's declared relationships, no associative state, no one-path rule.
+
+**Measured before deciding:** DuckDB-wasm is 8.8 MB gzipped (~11.7 MB
+inlined), against 2.9 MB for today's engine, so the engine is inlined only
+into a file that embeds data; hosted pages fetch it once.
+
+Design, closed decisions and the seven packages:
+`docs/architecture/duckdb-first.md`.
+
+---
+
 ## 2026-10-18 — Decision: "receipt" becomes "trace"
 
 **Decision.** The word *receipt* is retired from the canon and from every
