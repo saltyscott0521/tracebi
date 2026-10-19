@@ -1,0 +1,83 @@
+{
+  "case": "parts_empty",
+  "about": "A slice pre-aggregated at (sector, fund): sums and counts re-aggregate, the mean divides its parts. No rows match: the count part stays 0.",
+  "model": "portfolio_model",
+  "query": {
+    "fact": "fact_holdings",
+    "measures": ["fair_value", "positions", "avg_spread"],
+    "dimensions": [],
+    "filters": {},
+    "aggregate": true,
+    "allow_fanout": false,
+    "calculated": {"avg_spread": {"column": "spread_bps", "agg": "mean", "allow_rate_agg": true}}
+  },
+  "slice": {
+    "fact": "fact_holdings",
+    "columns": [
+      {"name": "dim_issuer.sector", "type": "string"},
+      {"name": "dim_fund.fund", "type": "string"},
+      {"name": "fair_value:sum", "type": "number"},
+      {"name": "positions:count", "type": "number"},
+      {"name": "cost_basis:sum", "type": "number"},
+      {"name": "avg_spread:sum", "type": "number"},
+      {"name": "avg_spread:count", "type": "number"},
+      {"name": "max_par:max", "type": "number"}
+    ],
+    "rows": [
+      ["Energy", "Fund I", 4249553.640000001, 2, 4152500, 875, 2, 2500000],
+      ["Energy", "Fund II", 5015436.140000001, 2, 5149500, 1025, 2, 3000000],
+      ["Energy", "Fund III", 1150875.77, 1, 1237500, null, 0, 1250000],
+      ["Healthcare", "Fund I", 3576329.9699999997, 2, 3425000, 1050, 2, 2500000],
+      ["Healthcare", "Fund II", 1466552.71, 1, 1461000, 700, 1, 1500000],
+      ["Healthcare", "Fund III", 4499585.02, 2, 4678500, 900, 2, 2750000],
+      ["Industrials", "Fund I", 2677605.81, 2, 2679500, 1125, 2, 1750000],
+      ["Industrials", "Fund II", 3485669.21, 2, 3670500, 850, 2, 2250000],
+      ["Industrials", "Fund III", 2798963.63, 1, 2689500, 600, 1, 2750000],
+      ["Software", "Fund I", 1619343.6, 1, 1718500, 500, 1, 1750000],
+      ["Software", "Fund II", 2281506.1, 1, 2218500, 575, 1, 2250000],
+      ["Software", "Fund III", 3877982.5, 2, 3945000, 1075, 2, 2750000],
+      [null, "Fund I", 2344733.25, 1, 2425000, 375, 1, 2500000],
+      [null, "Fund II", 4452338, 2, 4401000, 1100, 2, 3000000],
+      [null, "Fund III", 3380420.25, 2, 3202500, 825, 2, 2000000]
+    ]
+  },
+  "plan": {
+    "version": 1,
+    "model": "portfolio_model",
+    "fact": "fact_holdings",
+    "slice_columns": [
+      "dim_issuer.sector",
+      "dim_fund.fund",
+      "fair_value:sum",
+      "positions:count",
+      "cost_basis:sum",
+      "avg_spread:sum",
+      "avg_spread:count",
+      "max_par:max"
+    ],
+    "filters": null,
+    "group_by": [],
+    "aggregates": [
+      {"name": "fair_value", "func": "sum", "source": {"col": "fair_value:sum"}},
+      {"name": "positions", "func": "sum_counts", "source": {"col": "positions:count"}},
+      {"name": "avg_spread:sum", "func": "sum", "source": {"col": "avg_spread:sum"}},
+      {"name": "avg_spread:count", "func": "sum_counts", "source": {"col": "avg_spread:count"}}
+    ],
+    "means": [{"name": "avg_spread", "sum": "avg_spread:sum", "count": "avg_spread:count"}],
+    "ratios": [],
+    "shares": [],
+    "combines": [],
+    "ranks": [],
+    "runnings": [],
+    "having": [],
+    "order_by": [],
+    "limit": null,
+    "columns": ["fair_value", "positions", "avg_spread"]
+  },
+  "selection": {"dim_fund.fund": ["No such fund"]},
+  "expected": {
+    "cols": ["fair_value", "positions", "avg_spread"],
+    "rows": [[null, 0, null]],
+    "unfiltered_by": []
+  }
+}

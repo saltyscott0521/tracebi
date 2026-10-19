@@ -368,7 +368,13 @@ def _verify_section(section: dict, models: Mapping[str, Any], label: str) -> dic
                 "detail": f"recorded query failed to re-run: "
                           f"{type(exc).__name__}: {exc}"}
 
-    actual = ds.fingerprint()
+    # Hash the re-run under the algorithm the receipt was stamped with: an
+    # algo-2 receipt (every server build) and an algo-3 one (a figure the page
+    # recomputed, rounded and total-ordered) each compare like with like.
+    try:
+        actual = ds.fingerprint(algo=md.get("fingerprint_algo"))
+    except ValueError as exc:
+        return {**base, "status": ERROR, "detail": str(exc)}
     recorded_inputs = _input_index(lineage)
     current_inputs = _input_index(ds.lineage_to_dict())
     inputs = [

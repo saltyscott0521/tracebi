@@ -195,6 +195,45 @@ def test_tampered_fingerprint_is_unexplained(
     assert all(i["match"] for i in checked["inputs"])
 
 
+def test_a_receipt_is_checked_under_the_algorithm_it_records(
+    vf_model, tmp_path, empty_models_dir,
+):
+    """Algo 3 (rounded, total order) is what a page-recomputed figure is
+    stamped with; verify must re-hash the re-run under it, and still read an
+    algo-2 receipt the way it always has."""
+    manifest = json.loads(_render(tmp_path).read_text(encoding="utf-8"))
+    section = next(s for s in manifest["sections"] if s.get("dataset_fingerprint"))
+    v2 = section["dataset_fingerprint"]
+    node = next(n for n in reversed(section["dataset_lineage"])
+                if (n.get("metadata") or {}).get("query_spec"))
+    assert node["metadata"]["fingerprint_algo"] == 2
+    (checked,) = verify_manifest(manifest, load_models(empty_models_dir))["sections"]
+    assert checked["status"] == REPRODUCES
+
+    result = vf_model.query(fact="fact_orders", measures={"revenue": "sum"},
+                            dimensions=["dim_customer.region"]).to_pandas()
+    node["metadata"]["fingerprint_algo"] = 3
+    section["dataset_fingerprint"] = frame_fingerprint(result, algo=3)
+    assert section["dataset_fingerprint"] != v2
+    (checked,) = verify_manifest(manifest, load_models(empty_models_dir))["sections"]
+    assert checked["status"] == REPRODUCES, checked["detail"]
+
+    section["dataset_fingerprint"] = v2      # an algo-2 hash under an algo-3 label
+    (checked,) = verify_manifest(manifest, load_models(empty_models_dir))["sections"]
+    assert checked["status"] == UNEXPLAINED
+
+
+def test_the_rounded_fingerprint_ignores_last_bits_dtype_and_row_order():
+    a = pd.DataFrame({"region": ["NE", "SE"], "revenue": [0.1 + 0.2, 3.0]})
+    b = pd.DataFrame({"region": ["SE", "NE"], "revenue": [3, 0.3]})
+    assert frame_fingerprint(a, algo=3) == frame_fingerprint(b, algo=3)
+    assert frame_fingerprint(a) != frame_fingerprint(b)
+    moved = pd.DataFrame({"region": ["SE", "NE"], "revenue": [3, 0.3000001]})
+    assert frame_fingerprint(moved, algo=3) != frame_fingerprint(a, algo=3)
+    with pytest.raises(ValueError, match="fingerprint algorithm 4"):
+        frame_fingerprint(a, algo=4)
+
+
 def test_engine_version_change_is_named_in_the_unexplained_detail(
     vf_model, tmp_path, empty_models_dir,
 ):
