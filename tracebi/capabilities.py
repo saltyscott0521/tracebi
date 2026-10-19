@@ -732,7 +732,14 @@ def _presentation() -> dict:
                                  "it is one plain line, \"Filtered to: "
                                  "Sector Software · Fund Fund I\", and the "
                                  "footer's built line adds \" · filtered "
-                                 "on this page\"",
+                                 "on this page\". A field has one name "
+                                 "everywhere the page says it (chips, the "
+                                 "print line, the download header, \"Not "
+                                 "filtered by\" notes, the trace): its "
+                                 "control's data-tb-label or the <label> "
+                                 "around it, else the header a table or "
+                                 "the x title a chart gives the column, "
+                                 "else one derived from the column name",
             "data-tb-highlight": "cross-highlighting: a chart keeps the "
                                  "other values of its own x and series "
                                  "columns (drawn from its query under the "

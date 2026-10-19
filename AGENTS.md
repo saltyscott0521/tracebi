@@ -465,7 +465,10 @@ Three rules that keep pages honest:
   header and the file name). It is hidden as built, Escape clears it, and
   printed (or in the PDF) it is one line, "Filtered to: Sector Software", with
   " · filtered on this page" on the footer's built line. A `data-tb-download`
-  taken under a selection starts "# selection: none (full binding)".
+  taken under a selection starts "# selection: none (full binding)". A field
+  is named once for the whole page, chips, notes and trace alike: its
+  control's `data-tb-label` or `<label>`, else a table header or chart x
+  title for the column, else the column name made readable.
   `tracebi.onSelection(fn)` hears every change as `{selection, authored,
   figures}`; `tracebi.result(id)` reads a figure's current answer.
 - **Scenarios are the one place a page computes.** A

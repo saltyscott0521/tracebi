@@ -3554,7 +3554,50 @@
   }
 
   function fieldNames(fields) {
-    return fields.map(function (f) { return humanise(f); }).join(", ");
+    return fields.map(fieldLabel).join(", ");
+  }
+
+  /* A field's one name on the page, wherever the page names it (chips, the
+   * print line, the download header, the notes, the trace): the label of a
+   * control for the column (data-tb-label, else the <label> around it; the
+   * kit's label prop renders one of those), else the header a table or the
+   * axis title a chart gives the column, else humanise(column). Read from
+   * the page each time, since an app mounts its controls later. */
+  function controlText(el) {
+    var own = attr(el, "data-tb-label");
+    if (own) return own;
+    for (var n = el.parentNode; n && n.tagName; n = n.parentNode) {
+      if (n.tagName !== "LABEL") continue;
+      var text = "";
+      Array.prototype.forEach.call(n.childNodes, function (c) {
+        if (c === el || (c.nodeType === 1 && c.contains(el))) return;
+        if (c.nodeType === 3 || (c.nodeType === 1 && !/^(SELECT|INPUT)$/.test(c.tagName))) {
+          text += c.textContent;
+        }
+      });
+      return trim(text) || null;
+    }
+    return null;
+  }
+
+  function fieldLabel(column) {
+    if (typeof document === "undefined") return humanise(column);
+    var els = document.querySelectorAll("[data-tb-filter][data-tb-column], [data-tb-range][data-tb-column]");
+    var i, text;
+    for (i = 0; i < els.length; i++) {
+      if (els[i].getAttribute("data-tb-column") !== column) continue;
+      text = controlText(els[i]);
+      if (text) return text;
+    }
+    for (i = 0; i < _tables.length; i++) {
+      var at = _tables[i].cols.indexOf(column);
+      var th = at === -1 ? null : _tables[i].el.querySelectorAll("thead th")[at];
+      if (th && trim(th.textContent)) return trim(th.textContent);
+    }
+    for (i = 0; i < _charts.length; i++) {
+      if (_charts[i].plan.x === column && _charts[i].plan.xTitle) return _charts[i].plan.xTitle;
+    }
+    return humanise(column);
   }
 
   /* The figure's note: after a table's scroll box and badge row, inside a
@@ -3715,8 +3758,8 @@
   function describeSelection(sel) {
     return Object.keys(sel || {}).map(function (k) {
       var v = sel[k];
-      if (isArray(v)) return humanise(k) + " = " + v.map(String).join(", ");
-      return humanise(k) + " " + RANGE_KEYS.filter(function (op) { return v.hasOwnProperty(op); })
+      if (isArray(v)) return fieldLabel(k) + " = " + v.map(String).join(", ");
+      return fieldLabel(k) + " " + RANGE_KEYS.filter(function (op) { return v.hasOwnProperty(op); })
         .map(function (op) { return { gt: ">", gte: "≥", lt: "<", lte: "≤" }[op] + " " + v[op]; })
         .join(" and ");
     }).join("; ");
@@ -4277,7 +4320,7 @@
       count++;
     };
     Object.keys(calc.state).forEach(function (k) {
-      var v = calc.state[k], name = humanise(k);
+      var v = calc.state[k], name = fieldLabel(k);
       if (isArray(v)) {
         v.forEach(function (one) {
           chip(name + ": " + liveCell(one), function () { removeValue(k, one); });
