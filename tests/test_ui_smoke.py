@@ -556,7 +556,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             shutil.copytree(project / "reports" / "portfolio_model" / "portfolio_overview", draft)
             template = draft / "app.jsx"
             template.write_text(
-                template.read_text(encoding="utf-8").replace("Three funds, one Schedule", "Draft Marker One"),
+                template.read_text(encoding="utf-8").replace("The funds' Schedule", "Draft Marker One"),
                 encoding="utf-8")
             page.goto(base + "/drafts")
             page.wait_for_url("**/review/drafts")

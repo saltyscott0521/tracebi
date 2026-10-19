@@ -3,7 +3,8 @@
 // the build records it as a claim and its trace names it. Search narrows the
 // rows shown; the filters recompute every view, each figure by its own query,
 // and so does every other gesture: a click on a bar or a watch-list row, the
-// spread range. The selection bar says what is picked.
+// spread range. The filters and the range live in the sidebar, so what they
+// pick holds on every view. The selection bar says what is picked.
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download, Range,
          SelectionBar, useUrlState, usePrinting } from "tracebi";
@@ -19,17 +20,15 @@ function Overview() {
   return (
     <>
       <p className="tb-lede">
-        The book is worth <Value binding="totals" cell="fair_value" format="currency_compact" />,
-        marked at <Value binding="totals" cell="mark" /> of cost.{" "}
-        <Value binding="weakest_fund" cell="dim_fund.fund" /> carries the lowest mark,
-        at <Value binding="weakest_fund" cell="mark" />.
+        The holdings in view are worth{" "}
+        <Value binding="totals" cell="fair_value" format="currency_compact" />, marked
+        at <Value binding="totals" cell="mark" /> of cost.{" "}
+        <Value binding="weakest_fund" cell="dim_fund.fund" /> carries the lowest mark of
+        any fund in view, at <Value binding="weakest_fund" cell="mark" />.
       </p>
-      {/* A range over each holding's own spread: two handles, and the page
-          recomputes from the holdings inside it. */}
-      <Range column="spread_bps" label="Spread, bps" />
       <div className="tb-grid">
         <Kpi lead binding="totals" cell="fair_value" format="currency_compact"
-             label="Fair value" context="three funds, administrator marks" id="kpi-fv" />
+             label="Fair value" context="administrator marks" id="kpi-fv" />
         <Kpi binding="totals" cell="unrealized" format="currency_compact"
              label="Unrealized" context="fair value less cost" id="kpi-unrealized" />
         <Kpi binding="totals" cell="positions" label="Positions" id="kpi-positions" />
@@ -46,7 +45,7 @@ function Overview() {
         </section>
         <section className="tb-card tb-span-4">
           <h2>Watch list</h2>
-          <p className="tb-note">The five lowest marks in the book. Click an issuer
+          <p className="tb-note">The five lowest marks in view. Click an issuer
             to select it.</p>
           <Table binding="watch" selectRows columns={["dim_issuer.issuer", "mark"]}
                  labels={{ "dim_issuer.issuer": "Issuer" }} />
@@ -60,13 +59,11 @@ function Holdings() {
   return (
     <section className="tb-card">
       <h2>Every holding</h2>
-      <p className="tb-note">One row per issuer and fund. Search chooses rows; the
-        filters (pick several funds) recompute every view. The CSV is the stamped
-        data, verbatim.</p>
+      <p className="tb-note">One row per issuer and fund in view. Search chooses rows;
+        the sidebar's filters (pick several funds) recompute every view. The CSV is
+        the stamped data, verbatim.</p>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Search binding="holdings" placeholder="Find an issuer…" />
-        <Filter column="dim_issuer.sector" label="Sector" />
-        <Filter column="dim_fund.fund" label="Fund" multiple />
         <Download binding="holdings" />
       </div>
       <Table binding="holdings" id="holdings-table" sort rows="all" bars="fair_value"
@@ -85,18 +82,20 @@ function Funds() {
       <div className="tb-grid">
         <section className="tb-card tb-span-6">
           <h2>Fair value by fund</h2>
+          <p className="tb-note">Click a bar to select its fund.</p>
           <Chart binding="by_fund" type="bar" x="dim_fund.fund" y="fair_value"
                  valueFormat="currency_compact" />
         </section>
         <section className="tb-card tb-span-6">
           <h2>Unrealized by fund</h2>
-          <p className="tb-note">Fair value less cost. Every fund is below what it paid.</p>
+          <p className="tb-note">Fair value less cost. A bar below zero is a fund whose
+            holdings in view are marked below what it paid.</p>
           <Chart binding="by_fund" type="bar" x="dim_fund.fund" y="unrealized"
                  valueFormat="currency_compact" id="chart-fund-unrealized" />
         </section>
       </div>
       <section className="tb-card">
-        <h2>The three funds</h2>
+        <h2>The funds side by side</h2>
         <Table binding="by_fund" id="funds-table" sort
                columns={["dim_fund.fund", "fair_value", "unrealized", "mark", "positions",
                          "wtd_spread_bps"]}
@@ -123,7 +122,7 @@ export default function App() {
             and the verdict chip. */}
         <Masthead title={TITLE} data-tb-title="nav"
           className="mb-3 border-b border-rule px-2.5 pb-3">
-          Three funds, one book.
+          The funds' holdings, one desk.
         </Masthead>
         <nav className="flex gap-1 md:flex-col">
           {Object.entries(VIEWS).map(([name, Icon]) => (
@@ -136,6 +135,14 @@ export default function App() {
             </button>
           ))}
         </nav>
+        {/* Page filters and a range over each holding's own spread: in the
+            sidebar, so they stay put while the views change. */}
+        <div className="mt-3 flex flex-wrap items-start gap-2 border-t border-rule
+                        px-2.5 pt-3 md:flex-col">
+          <Filter column="dim_issuer.sector" label="Sector" />
+          <Filter column="dim_fund.fund" label="Fund" multiple />
+          <Range column="spread_bps" label="Spread, bps" />
+        </div>
       </aside>
       <main className="min-w-0 flex-1 space-y-8 px-6 py-7">
         <Header view={printing ? TITLE : view} />

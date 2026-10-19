@@ -1,9 +1,11 @@
 // Portfolio Overview: the book at a glance, an app with top tabs. Every number
 // is a kit figure (<Kpi>, <Value>, <Chart>, <Table>) with a literal binding and
-// cell, so the build records it and its trace names it.
+// cell, so the build records it and its trace names it. The filters and the
+// range sit above the tabs, so what they pick holds on every tab; each figure
+// re-runs its own query under it, and so does a click on a bar.
 import { LayoutDashboard, Building2, Landmark } from "lucide-react";
-import { Masthead, Footer, Kpi, Value, Chart, Table, Download, useUrlState,
-         usePrinting } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Range, Download,
+         SelectionBar, useUrlState, usePrinting } from "tracebi";
 
 const VIEWS = { Overview: LayoutDashboard, Issuers: Building2, Funds: Landmark };
 
@@ -12,19 +14,19 @@ function Overview() {
     <>
       <div className="tb-grid">
         {/* The delta is the model's unrealized (fair value less cost): a
-            stamped change, not one computed here. */}
+            query result, not one computed here; it re-runs with the rest. */}
         <Kpi lead binding="kpis" cell="fair_value" format="currency_compact" label="Fair value"
              deltaBinding="kpis" deltaCell="unrealized" deltaFormat="currency_compact"
              deltaGood="up" context="vs cost" id="fig-fv" />
-        <Kpi binding="kpis" cell="positions" label="Positions" context="three funds"
+        <Kpi binding="kpis" cell="positions" label="Positions" context="holdings in view"
              id="fig-pos" />
         <Kpi binding="kpis" cell="cost_basis" format="currency_compact" label="Cost"
-             context="what the book paid" id="fig-cost" />
+             context="what was paid for them" id="fig-cost" />
       </div>
       <div className="tb-grid">
         <section className="tb-card tb-span-8">
           <h2>Fair value by sector</h2>
-          <p className="tb-note">Largest first.</p>
+          <p className="tb-note">Largest first. Click a bar to select its sector.</p>
           <Chart binding="by_sector" type="barh" x="dim_issuer.sector" y="fair_value"
                  valueFormat="currency_compact" id="fig-chart" />
         </section>
@@ -45,7 +47,8 @@ function Issuers() {
   return (
     <section className="tb-card">
       <h2>Top issuers</h2>
-      <p className="tb-note">The eight largest exposures. Mark is fair value over cost.</p>
+      <p className="tb-note">The eight largest exposures in view (fewer when the
+        selection holds fewer). Mark is fair value over cost.</p>
       <div className="mb-3"><Download binding="top_issuers" /></div>
       <Table binding="top_issuers" sort bars="fair_value" id="fig-top"
              labels={{ "dim_issuer.issuer": "Issuer", cost_basis: "Cost" }} />
@@ -57,6 +60,7 @@ function Funds() {
   return (
     <section className="tb-card">
       <h2>Fair value by fund</h2>
+      <p className="tb-note">Click a bar to select its fund.</p>
       <Chart binding="by_fund" type="bar" x="dim_fund.fund" y="fair_value"
              valueFormat="currency_compact" id="fig-fund-chart" />
     </section>
@@ -74,10 +78,21 @@ export default function App() {
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
         <Masthead
-          title={<>The book is marked at <Value binding="kpis" cell="mark" id="head-mark" /> of
+          title={<>The holdings in view are marked at <Value binding="kpis" cell="mark" id="head-mark" /> of
             cost</>}>
-          Three funds, one Schedule of Investments. Every number is a query against the model.
+          The funds' Schedule of Investments. Every number is a query against the model,
+          and re-runs for what you pick below.
         </Masthead>
+        {/* Page controls: a sector, a fund (several), and a range over each
+            holding's own fair value. The bar under them says what is picked. */}
+        <div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 print:hidden">
+            <Filter column="dim_issuer.sector" label="Sector" />
+            <Filter column="dim_fund.fund" label="Fund" />
+            <Range column="fair_value" label="Holding fair value" />
+          </div>
+          <SelectionBar />
+        </div>
         <nav className="flex gap-1 border-b border-rule print:hidden">
           {Object.entries(VIEWS).map(([name, Icon]) => (
             <button key={name} onClick={() => setView(name)}

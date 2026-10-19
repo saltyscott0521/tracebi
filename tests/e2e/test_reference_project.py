@@ -702,6 +702,22 @@ def test_the_desks_page_filters_recompute_every_view(built):
         assert positions.text_content() != authored
         assert positions.text_content().replace(",", "") == str(int(totals["positions"][0]))
         assert page.locator(".tb-verdict[data-tb-verdict='local']").count() >= 1
+
+        # The filters live in the sidebar, so the selection holds on every
+        # view: each view, opened after it, shows one figure's query re-run
+        # under it, exactly as execute_plan over the slice gives it.
+        from tracebi.reports.calc_plan import first_mismatch
+        for view, figure, binding in (("Overview", "kpi-unrealized", "totals"),
+                                      ("Holdings", "holdings-table", "holdings"),
+                                      ("Funds", "funds-table", "by_fund")):
+            page.get_by_role("button", name=view).click()
+            _settle(page)
+            want = execute_plan(plans[binding], frame, selection)
+            got = page.evaluate("(id) => window.tracebi.result(id)", figure)
+            assert got["selection"] == selection, (view, got["selection"])
+            assert first_mismatch(got, want) is None, (view, first_mismatch(got, want))
+            if figure.endswith("-table"):
+                assert page.locator(f"#{figure} tbody tr").count() == len(want), view
     finally:
         browser.close()
         pw.stop()
