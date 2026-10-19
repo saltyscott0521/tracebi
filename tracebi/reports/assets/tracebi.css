@@ -738,8 +738,10 @@ span > .tb-badge.tb-verdict { display: inline-flex; }
   margin-bottom: var(--tb-space-2);
 }
 
-/* ── 10. Controls — subset which stamped rows figures display ──────────── */
-/* Controls never compute a number; they choose among rows already stamped. */
+/* ── 10. Controls — the page's selection and search ────────────────────── */
+/* A figure's number is only ever a query result: a filter reruns each
+   binding's query on the page (tracebi.js, The live page); search only
+   narrows the rows shown. Presentation only here. */
 
 select[data-tb-filter],
 input[data-tb-search] {

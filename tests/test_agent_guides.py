@@ -58,11 +58,13 @@ class TestGuidesCoverTheVocabulary:
         load-bearing and must not be paraphrased into drift."""
         for name, text in _guides().items():
             for phrase in (
-                "never compute new numbers",
+                "a figure's number is only ever a query result",
                 "the sink satisfied its contract",
                 "data-tb-unverified",
             ):
                 assert phrase in text, f"{name} lost the locked line {phrase!r}"
+        # The control grammar's law is the vocabulary's too.
+        assert "a figure's number is only ever a query result" in json.dumps(describe())
 
     def test_the_word_receipt_stays_retired(self):
         """What every number carries is its trace (2026-10-18). The old word

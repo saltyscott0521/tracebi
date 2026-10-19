@@ -132,9 +132,11 @@ export function Table({ binding, columns, labels, formats, sort, bars, totals, r
   );
 }
 
-/** A filter on one binding's column — or, with no binding, on the whole
- * page: every binding that has the column. It chooses rows; KPIs stay the
- * stamped totals. */
+/** A filter on the page's selection. On a live page (a slice, the default)
+ * every filter cuts the whole page: each figure it reaches reruns its own
+ * query, KPIs included; `multiple` picks several values. On a page built with
+ * embed none it subsets one binding's rows (or, with no binding, every
+ * binding that has the column) and KPIs stay the stamped totals. */
 export function Filter({ binding, column, label, className, multiple }) {
   useHydrate();
   const select = <select data-tb-filter="" data-tb-binding={binding || "*"} data-tb-column={column}

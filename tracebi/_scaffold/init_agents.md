@@ -234,26 +234,25 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   its declaration with `verifiable: false`. Use it for a rate the reader
   remembers, never for a number a query could produce. The build checks
   every formula and preset. See `examples/portfolio_project/reports/housing_model/affordability/`.
-- Interactivity: `data-tb-filter` dropdowns + `data-tb-search` inputs subset
-  WHICH stamped rows a binding's tables/charts display — they never compute
-  new numbers (client-side aggregation would mint numbers; value figures
-  never react; a filtered KPI needs its own binding). A `selection` block
-  in `report.json` (`{"model", "filters"}`) opts in: `data-tb-filter` posts
-  the selection and the model recomputes every figure on it, value figures
-  included. The browser displays that result. Ask reads pins, then
-  resolves a question to a value one of those controls already has,
-  then posts that filter tuple. A question that names one declared
+- Interactivity: a figure's number is only ever a query result. On a live
+  page (the default) `data-tb-filter` dropdowns recompute every figure they
+  reach by re-running each binding's plan (The live page, below);
+  `data-tb-search` only narrows the rows shown. On a page built with
+  `"embed": "none"` filters only subset WHICH stamped rows a binding's
+  tables/charts display, and value figures never react (summing the rows
+  on screen would be a number no query produced). A `selection` block in
+  `report.json` (`{"model", "filters"}`) sets the AUTHORED selection: the
+  state the page opens in and the build's trace. Ask reads pins, then
+  resolves a question to a value one of those controls already has, then
+  recomputes it on the server. A question that names one declared
   dimension the report does not already cut becomes a new binding in
   `report.json`, then a rebuild whose verdict is on the reply. A
   question that names no declared value, or names two columns, is
   refused. A number in the reply is a value figure beside its
-  fingerprint. Excluded options stay visible
-  and inert. The trace names the selection and whether it is the authored
-  one. `data-tb-download` stays the full stamped binding; the trace drawer
-  downloads the sliced view and names the selection in the filename and the
-  header. Offline, further slices need the model unless a sealed grain can
-  recompute `simple` aggregations and `ratio`; `period_end` does not
-  recompute offline. Tables scroll past
+  fingerprint. The trace names the selection and whether it is the
+  authored one. `data-tb-download` stays the full stamped binding; the trace
+  drawer downloads the sliced view and names the selection in the filename
+  and the header. Tables scroll past
   `data-tb-rows` (default 10). `data-tb-download` buttons export the
   stamped CSV verbatim (`data-tb-label` sets their text). Layout: tabs via `data-tb-tab` sections inside
   `.tb-tabs`; side-by-side via the 12-column grid (a `.tb-grid` whose panels carry
@@ -331,8 +330,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   the data is loaded and again whenever the figure's rows change (filter,
   search, selection) or its width does; `rows` are the binding's stamped rows
   as the filters leave them, `theme` the page's tokens (`tracebi.theme()`).
-  Draw from `rows` only; `tracebi.setSelection({column: value})` filters the
-  page from a click. Provenance badges pick their state
+  Draw from `rows` only; `tracebi.setSelection({column: value})` sets the
+  page's selection from a click, as a filter would. Provenance badges pick their state
   from the manifest; a stylesheet can restyle a badge, never re-color honesty.
   Fonts and images go in the package's `assets/` folder: `url(assets/…)` in
   `style.css` and `src="assets/…"` in `template.html` are inlined as `data:`
@@ -341,12 +340,13 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `assets/` fails the load).
 - Reading data in `script.js`: ALWAYS wrap it in `tracebi.ready(fn)`, never
   call `tracebi.data()` at the top level. A large-detail report embeds its
-  data as Parquet and decodes it in a worker AFTER `script.js` runs, so a bare
+  data as Parquet and decodes it at DOM-ready, AFTER `script.js` runs, so a bare
   call returns `[]` there and rows on a small report. `ready(fn)` behaves the
   same on both.
 - The embed format is chosen FOR you, per report, by size: CSV for a normal
-  dashboard (tiny), Parquet plus an inlined worker engine once the data is
-  large enough that the engine pays for itself. You never declare it and one
+  dashboard (small, readable as text), Parquet, decoded by the inlined page
+  engine (`tracebi-calc.js`), once the data is large enough that the engine
+  pays for itself. You never declare it and one
   report never mixes both. It is transport, not trust — a CSV block ships the
   fingerprinted triple verbatim, a Parquet block's shipped bytes are hashed
   exactly (`payload_sha256`), and `verify --file` checks both offline with no
@@ -370,14 +370,14 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   (and `<Filter>`, `<Filter multiple>` to pick several values) writes one
   selection state, and `tracebi-calc.js` re-runs each binding's own calc plan
   over the embedded slice under it, so values, tables, charts, sparks and
-  `tracebi.draw` figures all redraw; a figure's number is still that query's
-  result. Options list the values present under the rest of the selection
+  `tracebi.draw` figures all redraw; a figure's number is only ever a query
+  result, here the binding's own query re-run under the selection. Options list the values present under the rest of the selection
   first, the others after a separator. The state lives in the URL hash
   (`#sel=…`), so a link opens the same view. While it is not the authored
   selection the chip reads **Local** (never green) and each trace row shows
   the plan, the selection and the slice block's `payload_sha256`. A figure
-  that cannot recompute (SQL binding, `report.py`, `period_end` / `offset` /
-  `to_date`) carries `data-tb-fixed` ("Fixed at build · period_end"); one
+  that cannot recompute (a SQL binding, a `report.py` output, a `having` on
+  `contains`) carries `data-tb-fixed` ("Fixed at build · report.py"); one
   whose fact the selected field does not reach carries
   `data-tb-unfiltered-by` ("Not filtered by Sector"). A filter on a column
   no slice carries subsets stamped rows as before. `tracebi verify <manifest>

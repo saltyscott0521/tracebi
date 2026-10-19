@@ -1,6 +1,6 @@
 {
- "base": "http://127.0.0.1:36497",
- "when": "2026-10-18 01:36:44",
+ "base": "http://127.0.0.1:37597",
+ "when": "2026-10-19 04:55:45",
  "pages": [
   {
    "path": "/",
@@ -12,10 +12,10 @@
     "phone-dark": "shots/root_42099b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4040,
-    "desktop-dark": 3920,
-    "phone-light": 4047,
-    "phone-dark": 3892
+    "desktop-light": 3739,
+    "desktop-dark": 3547,
+    "phone-light": 3377,
+    "phone-dark": 3403
    }
   },
   {
@@ -28,9 +28,9 @@
     "phone-dark": "shots/ask_8ae0d7__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 939,
+    "desktop-light": 897,
     "desktop-dark": 899,
-    "phone-light": 910,
+    "phone-light": 914,
     "phone-dark": 896
    }
   },
@@ -44,10 +44,10 @@
     "phone-dark": "shots/data_9112fb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 3979,
-    "desktop-dark": 4103,
-    "phone-light": 3911,
-    "phone-dark": 4096
+    "desktop-light": 3286,
+    "desktop-dark": 3345,
+    "phone-light": 3234,
+    "phone-dark": 3224
    }
   },
   {
@@ -60,10 +60,10 @@
     "phone-dark": "shots/data_view_map_ad566d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 3957,
-    "desktop-dark": 4180,
-    "phone-light": 4431,
-    "phone-dark": 4165
+    "desktop-light": 3447,
+    "desktop-dark": 3594,
+    "phone-light": 3673,
+    "phone-dark": 3576
    }
   },
   {
@@ -76,10 +76,10 @@
     "phone-dark": "shots/data_sources_b315ee__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 899,
-    "desktop-dark": 1041,
-    "phone-light": 920,
-    "phone-dark": 922
+    "desktop-light": 965,
+    "desktop-dark": 900,
+    "phone-light": 868,
+    "phone-dark": 877
    }
   },
   {
@@ -92,10 +92,26 @@
     "phone-dark": "shots/review_2a50c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 3941,
-    "desktop-dark": 4055,
-    "phone-light": 4362,
-    "phone-dark": 4537
+    "desktop-light": 3506,
+    "desktop-dark": 3535,
+    "phone-light": 3376,
+    "phone-dark": 3438
+   }
+  },
+  {
+   "path": "/review/drafts",
+   "pattern": "/review/drafts",
+   "shots": {
+    "desktop-light": "shots/review_drafts_2541b2__desktop-light.png",
+    "desktop-dark": "shots/review_drafts_2541b2__desktop-dark.png",
+    "phone-light": "shots/review_drafts_2541b2__phone-light.png",
+    "phone-dark": "shots/review_drafts_2541b2__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 875,
+    "desktop-dark": 883,
+    "phone-light": 865,
+    "phone-dark": 889
    }
   },
   {
@@ -108,10 +124,10 @@
     "phone-dark": "shots/runs_6e4bd5__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4347,
-    "desktop-dark": 4269,
-    "phone-light": 4289,
-    "phone-dark": 4270
+    "desktop-light": 3361,
+    "desktop-dark": 3250,
+    "phone-light": 3342,
+    "phone-dark": 3426
    }
   },
   {
@@ -124,10 +140,10 @@
     "phone-dark": "shots/verify_c77e84__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 917,
-    "desktop-dark": 953,
-    "phone-light": 928,
-    "phone-dark": 927
+    "desktop-light": 887,
+    "desktop-dark": 893,
+    "phone-light": 901,
+    "phone-dark": 882
    }
   },
   {
@@ -140,10 +156,10 @@
     "phone-dark": "shots/getting_started_0f76e0__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 976,
-    "desktop-dark": 982,
-    "phone-light": 952,
-    "phone-dark": 937
+    "desktop-light": 914,
+    "desktop-dark": 908,
+    "phone-light": 918,
+    "phone-dark": 924
    }
   },
   {
@@ -156,10 +172,10 @@
     "phone-dark": "shots/handbook_e17828__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1015,
-    "desktop-dark": 1046,
-    "phone-light": 1002,
-    "phone-dark": 958
+    "desktop-light": 956,
+    "desktop-dark": 916,
+    "phone-light": 961,
+    "phone-dark": 956
    }
   },
   {
@@ -179,10 +195,10 @@
     "phone-dark": "shots/model_housing_model_5f65a0__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4310,
-    "desktop-dark": 4185,
-    "phone-light": 4327,
-    "phone-dark": 4163
+    "desktop-light": 3451,
+    "desktop-dark": 3380,
+    "phone-light": 3629,
+    "phone-dark": 3851
    }
   },
   {
@@ -195,10 +211,10 @@
     "phone-dark": "shots/ask_model_housing_model_2ace0d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 981,
-    "desktop-dark": 1072,
-    "phone-light": 934,
-    "phone-dark": 964
+    "desktop-light": 954,
+    "desktop-dark": 948,
+    "phone-light": 929,
+    "phone-dark": 937
    }
   },
   {
@@ -211,10 +227,10 @@
     "phone-dark": "shots/data_housing_model_33bb86__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4474,
-    "desktop-dark": 4498,
-    "phone-light": 4578,
-    "phone-dark": 4494
+    "desktop-light": 3379,
+    "desktop-dark": 3440,
+    "phone-light": 3398,
+    "phone-dark": 3445
    }
   },
   {
@@ -227,10 +243,10 @@
     "phone-dark": "shots/data_housing_model_model_c731b6__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4749,
-    "desktop-dark": 4837,
-    "phone-light": 4564,
-    "phone-dark": 4542
+    "desktop-light": 3731,
+    "desktop-dark": 3555,
+    "phone-light": 3298,
+    "phone-dark": 3359
    }
   },
   {
@@ -243,10 +259,10 @@
     "phone-dark": "shots/data_housing_model_transform_59e0c3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4447,
-    "desktop-dark": 4578,
-    "phone-light": 4268,
-    "phone-dark": 4487
+    "desktop-light": 3421,
+    "desktop-dark": 3629,
+    "phone-light": 3472,
+    "phone-dark": 3701
    }
   },
   {
@@ -259,10 +275,10 @@
     "phone-dark": "shots/data_housing_model_sources_683952__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4608,
-    "desktop-dark": 4548,
-    "phone-light": 4351,
-    "phone-dark": 4444
+    "desktop-light": 3459,
+    "desktop-dark": 3568,
+    "phone-light": 3306,
+    "phone-dark": 3396
    }
   },
   {
@@ -275,10 +291,10 @@
     "phone-dark": "shots/data_housing_model_runs_a59cca__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4753,
-    "desktop-dark": 4434,
-    "phone-light": 4528,
-    "phone-dark": 4486
+    "desktop-light": 3479,
+    "desktop-dark": 3963,
+    "phone-light": 3950,
+    "phone-dark": 3814
    }
   },
   {
@@ -291,10 +307,10 @@
     "phone-dark": "shots/model_portfolio_model_755db1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4224,
-    "desktop-dark": 4221,
-    "phone-light": 4370,
-    "phone-dark": 4396
+    "desktop-light": 3588,
+    "desktop-dark": 3380,
+    "phone-light": 3310,
+    "phone-dark": 3279
    }
   },
   {
@@ -307,10 +323,10 @@
     "phone-dark": "shots/ask_model_portfolio_model_3d4b30__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 948,
-    "desktop-dark": 1141,
-    "phone-light": 953,
-    "phone-dark": 956
+    "desktop-light": 934,
+    "desktop-dark": 931,
+    "phone-light": 941,
+    "phone-dark": 965
    }
   },
   {
@@ -323,10 +339,10 @@
     "phone-dark": "shots/data_portfolio_model_2d3331__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4444,
-    "desktop-dark": 4548,
-    "phone-light": 4339,
-    "phone-dark": 4161
+    "desktop-light": 3587,
+    "desktop-dark": 3415,
+    "phone-light": 3455,
+    "phone-dark": 3444
    }
   },
   {
@@ -339,10 +355,10 @@
     "phone-dark": "shots/data_portfolio_model_model_0719d6__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 3761,
-    "desktop-dark": 4141,
-    "phone-light": 4231,
-    "phone-dark": 4206
+    "desktop-light": 3479,
+    "desktop-dark": 3551,
+    "phone-light": 3754,
+    "phone-dark": 3545
    }
   },
   {
@@ -355,10 +371,10 @@
     "phone-dark": "shots/data_portfolio_model_transform_3a0dc2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4379,
-    "desktop-dark": 4140,
-    "phone-light": 4334,
-    "phone-dark": 4073
+    "desktop-light": 3729,
+    "desktop-dark": 3590,
+    "phone-light": 3544,
+    "phone-dark": 3360
    }
   },
   {
@@ -371,10 +387,10 @@
     "phone-dark": "shots/data_portfolio_model_sources_60a145__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4246,
-    "desktop-dark": 4196,
-    "phone-light": 4410,
-    "phone-dark": 4108
+    "desktop-light": 3430,
+    "desktop-dark": 3352,
+    "phone-light": 3676,
+    "phone-dark": 3490
    }
   },
   {
@@ -387,10 +403,10 @@
     "phone-dark": "shots/data_portfolio_model_runs_0288cf__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4297,
-    "desktop-dark": 4051,
-    "phone-light": 4108,
-    "phone-dark": 4538
+    "desktop-light": 3711,
+    "desktop-dark": 3511,
+    "phone-light": 3736,
+    "phone-dark": 3885
    }
   },
   {
@@ -403,10 +419,10 @@
     "phone-dark": "shots/model_saas_model_14e7a4__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4188,
-    "desktop-dark": 4462,
-    "phone-light": 4227,
-    "phone-dark": 5187
+    "desktop-light": 3463,
+    "desktop-dark": 3767,
+    "phone-light": 3483,
+    "phone-dark": 4055
    }
   },
   {
@@ -419,10 +435,10 @@
     "phone-dark": "shots/ask_model_saas_model_e1362c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 995,
-    "desktop-dark": 1001,
-    "phone-light": 972,
-    "phone-dark": 966
+    "desktop-light": 937,
+    "desktop-dark": 929,
+    "phone-light": 933,
+    "phone-dark": 922
    }
   },
   {
@@ -435,10 +451,10 @@
     "phone-dark": "shots/data_saas_model_553471__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4532,
-    "desktop-dark": 4328,
-    "phone-light": 4357,
-    "phone-dark": 4318
+    "desktop-light": 3662,
+    "desktop-dark": 3327,
+    "phone-light": 3538,
+    "phone-dark": 3491
    }
   },
   {
@@ -451,10 +467,10 @@
     "phone-dark": "shots/data_saas_model_model_06392c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4365,
-    "desktop-dark": 4113,
-    "phone-light": 4471,
-    "phone-dark": 4328
+    "desktop-light": 3544,
+    "desktop-dark": 3506,
+    "phone-light": 3257,
+    "phone-dark": 3567
    }
   },
   {
@@ -467,10 +483,10 @@
     "phone-dark": "shots/data_saas_model_transform_00b675__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4738,
-    "desktop-dark": 4407,
-    "phone-light": 4197,
-    "phone-dark": 4210
+    "desktop-light": 3725,
+    "desktop-dark": 3899,
+    "phone-light": 3467,
+    "phone-dark": 3429
    }
   },
   {
@@ -483,10 +499,10 @@
     "phone-dark": "shots/data_saas_model_sources_540a9c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4124,
-    "desktop-dark": 4291,
-    "phone-light": 4063,
-    "phone-dark": 4318
+    "desktop-light": 3314,
+    "desktop-dark": 3351,
+    "phone-light": 3591,
+    "phone-dark": 3727
    }
   },
   {
@@ -499,10 +515,10 @@
     "phone-dark": "shots/data_saas_model_runs_5e19dc__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4289,
-    "desktop-dark": 4255,
-    "phone-light": 4600,
-    "phone-dark": 4061
+    "desktop-light": 3692,
+    "desktop-dark": 3595,
+    "phone-light": 3765,
+    "phone-dark": 3380
    }
   },
   {
@@ -515,10 +531,10 @@
     "phone-dark": "shots/reports_housing_model_affordability_1e6f5a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4417,
-    "desktop-dark": 4530,
-    "phone-light": 4468,
-    "phone-dark": 4558
+    "desktop-light": 3398,
+    "desktop-dark": 3454,
+    "phone-light": 3781,
+    "phone-dark": 3712
    }
   },
   {
@@ -531,10 +547,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_book_290cd8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4478,
-    "desktop-dark": 4463,
-    "phone-light": 4689,
-    "phone-dark": 4600
+    "desktop-light": 3725,
+    "desktop-dark": 3564,
+    "phone-light": 3628,
+    "phone-dark": 3528
    }
   },
   {
@@ -547,10 +563,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_concentration_f5b920__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4601,
-    "desktop-dark": 4913,
-    "phone-light": 4577,
-    "phone-dark": 4749
+    "desktop-light": 3583,
+    "desktop-dark": 3496,
+    "phone-light": 3933,
+    "phone-dark": 3455
    }
   },
   {
@@ -621,7 +637,7 @@
    "pattern": "/drafts",
    "shots": {},
    "ms": {},
-   "redirect": "/review"
+   "redirect": "/review/drafts"
   },
   {
    "path": "/m/housing_model",
@@ -696,10 +712,10 @@
     "phone-dark": "shots/no_such_page_01c67c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 978,
-    "desktop-dark": 921,
-    "phone-light": 947,
-    "phone-dark": 958
+    "desktop-light": 884,
+    "desktop-dark": 865,
+    "phone-light": 874,
+    "phone-dark": 876
    }
   },
   {
@@ -712,10 +728,10 @@
     "phone-dark": "shots/runs_model_housing_model_a4c247__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4857,
-    "desktop-dark": 4922,
-    "phone-light": 4953,
-    "phone-dark": 5154
+    "desktop-light": 3393,
+    "desktop-dark": 3508,
+    "phone-light": 3360,
+    "phone-dark": 3307
    }
   },
   {
@@ -728,10 +744,10 @@
     "phone-dark": "shots/runs_model_portfolio_model_bb7ee3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4792,
-    "desktop-dark": 4651,
-    "phone-light": 4664,
-    "phone-dark": 4370
+    "desktop-light": 3487,
+    "desktop-dark": 4190,
+    "phone-light": 3586,
+    "phone-dark": 3432
    }
   },
   {
@@ -744,10 +760,10 @@
     "phone-dark": "shots/runs_model_saas_model_214de2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4671,
-    "desktop-dark": 4745,
-    "phone-light": 4602,
-    "phone-dark": 4331
+    "desktop-light": 3399,
+    "desktop-dark": 3596,
+    "phone-light": 3676,
+    "phone-dark": 3393
    }
   }
  ],
@@ -778,6 +794,22 @@
    ]
   },
   {
+   "page": "/ask?model=housing_model",
+   "pattern": "/ask?model",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "no-focus-ring",
+   "severity": "serious",
+   "target": "input \"Your question\"",
+   "detail": "keyboard focus is invisible",
+   "key": "no-focus-ring|/ask?model|input",
+   "seen_in": [
+    "desktop-light",
+    "desktop-light",
+    "desktop-light"
+   ]
+  },
+  {
    "page": "/reports/housing_model/affordability",
    "pattern": "/reports/<r>",
    "viewport": "desktop",
@@ -788,8 +820,6 @@
    "detail": "keyboard focus is invisible",
    "key": "no-focus-ring|/reports/<r>|iframe",
    "seen_in": [
-    "desktop-light",
-    "desktop-light",
     "desktop-light",
     "desktop-light",
     "desktop-light",
@@ -853,7 +883,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4040ms",
+   "detail": "settles in a median 3547ms",
    "key": "slow-page|/|page",
    "seen_in": [
     "---"
@@ -867,7 +897,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4096ms",
+   "detail": "settles in a median 3286ms",
    "key": "slow-page|/data|page",
    "seen_in": [
     "---"
@@ -881,7 +911,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4180ms",
+   "detail": "settles in a median 3594ms",
    "key": "slow-page|/data?view|page",
    "seen_in": [
     "---"
@@ -895,7 +925,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4362ms",
+   "detail": "settles in a median 3506ms",
    "key": "slow-page|/review|page",
    "seen_in": [
     "---"
@@ -909,7 +939,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4289ms",
+   "detail": "settles in a median 3361ms",
    "key": "slow-page|/runs|page",
    "seen_in": [
     "---"
@@ -923,7 +953,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4310ms",
+   "detail": "settles in a median 3629ms",
    "key": "slow-page|/?model|page",
    "seen_in": [
     "---",
@@ -939,7 +969,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4498ms",
+   "detail": "settles in a median 3440ms",
    "key": "slow-page|/data/<m>|page",
    "seen_in": [
     "---",
@@ -955,7 +985,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4749ms",
+   "detail": "settles in a median 3555ms",
    "key": "slow-page|/data/<m>/model|page",
    "seen_in": [
     "---",
@@ -971,7 +1001,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4487ms",
+   "detail": "settles in a median 3629ms",
    "key": "slow-page|/data/<m>/transform|page",
    "seen_in": [
     "---",
@@ -987,7 +1017,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4548ms",
+   "detail": "settles in a median 3459ms",
    "key": "slow-page|/data/<m>/sources|page",
    "seen_in": [
     "---",
@@ -1003,7 +1033,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4528ms",
+   "detail": "settles in a median 3950ms",
    "key": "slow-page|/data/<m>/runs|page",
    "seen_in": [
     "---",
@@ -1019,7 +1049,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4530ms",
+   "detail": "settles in a median 3712ms",
    "key": "slow-page|/reports/<r>|page",
    "seen_in": [
     "---",
@@ -1035,7 +1065,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4953ms",
+   "detail": "settles in a median 3393ms",
    "key": "slow-page|/runs?model|page",
    "seen_in": [
     "---",
@@ -1044,18 +1074,91 @@
    ]
   },
   {
-   "page": "/review",
-   "pattern": "/review",
+   "page": "/data/housing_model",
+   "pattern": "/data/<m>",
    "viewport": "phone",
    "theme": "light",
    "rule": "small-target",
    "severity": "moderate",
-   "target": "a \"All history \u2192\"",
-   "detail": "74x20px tap target",
-   "key": "small-target|/review|a",
+   "target": "button \"Preview\"",
+   "detail": "64x20px tap target",
+   "key": "small-target|/data/<m>|button",
    "seen_in": [
     "phone-light",
     "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark"
+   ]
+  },
+  {
+   "page": "/data/housing_model/model",
+   "pattern": "/data/<m>/model",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "small-target",
+   "severity": "moderate",
+   "target": "button \"Preview\"",
+   "detail": "64x20px tap target",
+   "key": "small-target|/data/<m>/model|button",
+   "seen_in": [
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-dark",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-light",
+    "phone-dark",
+    "phone-dark",
     "phone-dark",
     "phone-dark"
    ]
@@ -1103,18 +1206,63 @@
     "phone-light",
     "phone-dark"
    ]
+  },
+  {
+   "page": "/data/housing_model",
+   "pattern": "/data/<m>",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "axe:empty-table-header",
+   "severity": "minor",
+   "target": "th:nth-child(4)",
+   "detail": "Table header text should not be empty \u2014 th:nth-child(4) ::   Element does not have text that is visible to screen readers",
+   "key": "axe:empty-table-header|/data/<m>|th:nth-child(#)",
+   "seen_in": [
+    "phone-light",
+    "phone-light",
+    "phone-light"
+   ]
+  },
+  {
+   "page": "/data/housing_model/model",
+   "pattern": "/data/<m>/model",
+   "viewport": "phone",
+   "theme": "light",
+   "rule": "axe:empty-table-header",
+   "severity": "minor",
+   "target": "th:nth-child(4)",
+   "detail": "Table header text should not be empty \u2014 th:nth-child(4) ::   Element does not have text that is visible to screen readers",
+   "key": "axe:empty-table-header|/data/<m>/model|th:nth-child(#)",
+   "seen_in": [
+    "phone-light",
+    "phone-light",
+    "phone-light"
+   ]
   }
  ],
  "metrics": {
-  "hardcoded_colors_in_jsx": 13,
-  "inline_style_blocks": 439,
-  "bundle_js_kb": 1215,
-  "bundle_css_kb": 86,
+  "hardcoded_colors_in_jsx": 11,
+  "inline_style_blocks": 434,
+  "bundle_js_kb": 1248,
+  "bundle_css_kb": 94,
+  "engine_gz_kb": 14.7,
   "report_font_families": 5,
   "report_accents": 4,
   "report_box_shadows": 16,
   "report_gradients": 60,
-  "report_looks": 5
+  "report_looks": 5,
+  "report_html_kb": {
+   "housing_model/affordability": 734,
+   "portfolio_model/portfolio_book": 584,
+   "portfolio_model/portfolio_concentration": 1188,
+   "portfolio_model/portfolio_dashboard": 1189,
+   "portfolio_model/portfolio_desk": 1211,
+   "portfolio_model/portfolio_overview": 1187,
+   "portfolio_model/portfolio_showcase": 669,
+   "saas_model/cohort_brief": 578,
+   "saas_model/mrr_dashboard": 1188
+  },
+  "calc_ms_max": 2.4
  },
  "report_pass": {
   "sheet": "report-sheet.png",
@@ -1161,8 +1309,8 @@
      "phone-dark": "report-shots/housing_model_affordability_118bc4__phone-dark.png"
     },
     "families": {
-     "Inter": 1052,
-     "ui-monospace": 16
+     "Inter": 964,
+     "ui-monospace": 12
     },
     "shadows": [
      "header.tb-masthead.mp-hero (desktop-light)",
@@ -1245,6 +1393,8 @@
      "lineargradient (phone-dark)"
     ],
     "accent": "#1f7a4d/#1f7a4d",
+    "html_kb": 734,
+    "calc_ms": 2.4,
     "display": "Inter"
    },
    "portfolio_model/portfolio_book": {
@@ -1255,13 +1405,14 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_book_baec1f__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 454,
-     "Iowan Old Style": 84,
-     "ui-monospace": 4
+     "Hanken Grotesk": 414,
+     "Iowan Old Style": 84
     },
     "shadows": [],
     "gradients": [],
     "accent": "#1f4e79/#8bb4e0",
+    "html_kb": 584,
+    "calc_ms": 1.7,
     "display": "Iowan Old Style"
    },
    "portfolio_model/portfolio_concentration": {
@@ -1272,12 +1423,13 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_concentration_a93b0b__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 708,
-     "ui-monospace": 4
+     "Hanken Grotesk": 668
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
+    "html_kb": 1188,
+    "calc_ms": 1.6,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_dashboard": {
@@ -1288,12 +1440,13 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_dashboard_a12461__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 682,
-     "ui-monospace": 4
+     "Hanken Grotesk": 561
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
+    "html_kb": 1189,
+    "calc_ms": 1.0,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_desk": {
@@ -1304,12 +1457,13 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_desk_6cadf0__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 306,
-     "ui-monospace": 4
+     "Hanken Grotesk": 262
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
+    "html_kb": 1211,
+    "calc_ms": 1.2,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_overview": {
@@ -1320,12 +1474,13 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_overview_3930b0__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 270,
-     "ui-monospace": 4
+     "Hanken Grotesk": 226
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
+    "html_kb": 1187,
+    "calc_ms": 1.4,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_showcase": {
@@ -1336,13 +1491,15 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_showcase_1de249__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 860,
+     "Hanken Grotesk": 747,
      "Fraunces": 20,
-     "ui-monospace": 8
+     "ui-monospace": 4
     },
     "shadows": [],
     "gradients": [],
     "accent": "#0d6b73/#5cc4bd",
+    "html_kb": 669,
+    "calc_ms": 0.8,
     "display": "Fraunces"
    },
    "saas_model/cohort_brief": {
@@ -1353,13 +1510,14 @@
      "phone-dark": "report-shots/saas_model_cohort_brief_bcb608__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 364,
-     "Iowan Old Style": 80,
-     "ui-monospace": 4
+     "Hanken Grotesk": 336,
+     "Iowan Old Style": 80
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
+    "html_kb": 578,
+    "calc_ms": 1.2,
     "display": "Iowan Old Style"
    },
    "saas_model/mrr_dashboard": {
@@ -1370,15 +1528,16 @@
      "phone-dark": "report-shots/saas_model_mrr_dashboard_0048a3__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 280,
-     "ui-monospace": 4
+     "Hanken Grotesk": 244
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
+    "html_kb": 1188,
+    "calc_ms": 1.1,
     "display": "Hanken Grotesk"
    }
   }
  },
- "score": 62
+ "score": 58
 }

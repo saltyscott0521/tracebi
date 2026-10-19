@@ -395,12 +395,12 @@ Three rules that keep pages honest:
   the trace.
 - **Reading data in `script.js` goes through `tracebi.ready(fn)`.** Never
   call `tracebi.data()` at the top level: a large-detail artifact decodes
-  its data in a worker AFTER `script.js` runs, so a bare call returns `[]`
+  its data at DOM-ready, AFTER `script.js` runs, so a bare call returns `[]`
   there and rows on a small report. `ready(fn)` behaves the same on both.
 - **The embed format is chosen for you, per artifact, by size.** CSV for a
-  normal dashboard (tiny, no engine); Parquet plus an inlined worker engine
-  (parquet-wasm + Arquero) once the data is large enough that the engine
-  pays for itself. You never declare it, and one artifact never mixes both.
+  normal dashboard (small, readable as text); Parquet, decoded by the
+  inlined page engine (`tracebi-calc.js`), once the data is large enough
+  that the engine pays for itself. You never declare it, and one artifact never mixes both.
   It is transport, not trust: a CSV block ships the fingerprinted triple
   verbatim, a Parquet block's shipped bytes are hashed exactly
   (`payload_sha256`), and `verify --file` checks both offline — the Parquet
@@ -426,14 +426,14 @@ Three rules that keep pages honest:
   (and `<Filter>`, `<Filter multiple>` to pick several values) writes one
   selection state, and `tracebi-calc.js` re-runs each binding's own calc plan
   over the embedded slice under it, so values, tables, charts, sparks and
-  `tracebi.draw` figures all redraw; a figure's number is still that query's
-  result. Options list the values present under the rest of the selection
+  `tracebi.draw` figures all redraw; a figure's number is only ever a query
+  result, here the binding's own query re-run under the selection. Options list the values present under the rest of the selection
   first, the others after a separator. The state lives in the URL hash
   (`#sel=…`), so a link opens the same view. While it is not the authored
   selection the chip reads **Local** (never green) and each trace row shows
   the plan, the selection and the slice block's `payload_sha256`. A figure
-  that cannot recompute (SQL binding, `report.py`, `period_end` / `offset` /
-  `to_date`) carries `data-tb-fixed` ("Fixed at build · period_end"); one
+  that cannot recompute (a SQL binding, a `report.py` output, a `having` on
+  `contains`) carries `data-tb-fixed` ("Fixed at build · report.py"); one
   whose fact the selected field does not reach carries
   `data-tb-unfiltered-by` ("Not filtered by Sector"). A filter on a column
   no slice carries subsets stamped rows as before. `tracebi verify <manifest>
@@ -449,32 +449,30 @@ Three rules that keep pages honest:
   its declaration with `verifiable: false`. Use it for a rate the reader
   remembers, never for a number a query could produce. The build checks
   every formula and preset. See `examples/portfolio_project/reports/housing_model/affordability/`.
-- **Interactivity subsets, never computes.** The premium objects —
-  `data-tb-filter` dropdowns, `data-tb-search`, scrollable tables
+- **Interactivity recomputes by query, never by arithmetic.** The rule
+  is that a figure's number is only ever a query result. On a live page (the
+  default) a `data-tb-filter` recomputes every figure it reaches by re-running
+  each binding's plan (above); on a page built with `"embed": "none"` the
+  controls — `data-tb-filter` dropdowns, `data-tb-search`, scrollable tables
   (`data-tb-rows`, default 10), tabs (`data-tb-tab`), `.tb-cols-2/3`
-  layouts, `data-tb-download` (always the FULL binding, never the filtered
-  view — the stamped CSV verbatim on a CSV artifact, that same data
-  re-serialised on a Parquet one) — all subset WHICH stamped rows figures
-  display. They never compute new numbers: client-side aggregation would
-  mint numbers, so value figures never react and a filtered KPI needs its
-  own binding. A `selection` block on `report.json` opts in to a different
-  control: `data-tb-filter` posts that selection and `DataModel.query`
-  recomputes every figure on the model, value figures included — the
-  browser displays the result and still does not compute it. Excluded
-  options stay visible and inert. The trace names the selection and
-  whether it is the authored one; `verify` re-runs the authored filters.
-  Binding filters always apply; the selection wins on the same target.
-  `having`, `order_by`, and `limit` stay on the binding. Ask on the
-  desk reads pins, then resolves a question to a value one of those
+  layouts — only subset WHICH stamped rows tables and charts display, and
+  value figures never react: summing the rows on screen would be a number no
+  query produced. `data-tb-download` is always the FULL binding, never the
+  filtered view — the stamped CSV verbatim on a CSV artifact, that same data
+  re-serialised on a Parquet one. A `selection` block on `report.json` sets
+  the AUTHORED selection: the state the page opens in and the build's trace;
+  `verify` re-runs the authored filters. Binding filters always apply; the
+  selection wins on the same target. `having`, `order_by`, and `limit` stay
+  on the binding. Ask on the desk reads pins, then resolves a question to a value one of those
   controls already has ("software" becomes the sector filter), then
   posts that tuple. A question that names one declared dimension the
   report does not already cut becomes a new binding in `report.json`,
   then a rebuild whose verdict is on the reply. A question that names
   no declared value, or names two columns, is refused. A number in
   the reply is a value figure beside its fingerprint. The trace drawer downloads the sliced view and names the selection in the filename and
-  the header. Offline, the page keeps the authored view unless a sealed
-  grain can recompute `simple` aggregations and `ratio`; `period_end`
-  does not recompute offline. Download buttons take `data-tb-label` for their text.
+  the header. In the web app the report's header shows the page's state too:
+  **Local** and a chip per selected field ("Sector: Technology ×") that
+  clears it. Download buttons take `data-tb-label` for their text.
   Every artifact also carries the trace drawer, headed with the report's name
   and "How each number was made" (opened from the masthead's Trace link or
   verdict chip, a click on a value figure, a chart tooltip's "Trace →", or

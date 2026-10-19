@@ -384,8 +384,9 @@ front of a person should carry a trace. This gateway is how you produce one.
    `data-tb-unverified` — no third state). Any element works, including a
    `<span>` inside a sentence: bind prose numbers instead of typing them.
    Blocks marked `data-tb-stage="exploration"` die at build. Interactive
-   objects are declarative too: `data-tb-filter` / `data-tb-search` subset
-   which stamped rows display (never compute — value figures are exempt),
+   objects are declarative too: `data-tb-filter` recomputes every figure it
+   reaches by re-running its query on the page (a figure's number is only
+   ever a query result), `data-tb-search` narrows the rows shown,
    tables scroll past `data-tb-rows`, `data-tb-download` exports the
    stamped CSV verbatim, tabs via `data-tb-tab`, layouts via
    `.tb-cols-2/3`; every built page carries the trace drawer. Details

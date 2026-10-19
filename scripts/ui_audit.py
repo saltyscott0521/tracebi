@@ -16,7 +16,13 @@ script can't make.
 It then opens every report as delivered (``/r/<name>``) at 1440 and 390 wide,
 light and dark, into one ``report-sheet.png``, and counts what makes a project
 look like more than one system: font families, accents, resting shadows,
-gradients, and "looks" (display face + accent) per project.
+gradients, and "looks" (display face + accent) per project. On each report it
+also weighs the delivered file (``report_html_kb``) and, on a live page (one
+built with a slice), picks the first value of its first filter and reads how
+long the page engine took: the runtime writes the slowest single plan run of
+each recompute, in milliseconds, to ``data-tb-calc-ms`` on ``<html>``
+(``calc_ms_max``; over ``CALC_MS`` is a finding). ``engine_gz_kb`` is the
+gzipped page engine, ``tracebi-calc.js`` (over ``ENGINE_GZ_KB`` is a finding).
 
 ``--baseline`` compares against an earlier run: a finding that is new fails
 the run (exit 1), so a fix can never quietly undo another. That ratchet is the
@@ -53,6 +59,10 @@ VIEWPORTS = {"desktop": (1440, 900), "phone": (390, 844)}
 THEMES = ("light", "dark")
 SEVERITY_WEIGHT = {"critical": 10, "serious": 4, "moderate": 1, "minor": 0}
 SLOW_MS = 2500
+CALC_MS = 100            # the slowest plan run on a live page (live-reports plan, decision 10)
+ENGINE_GZ_KB = 50        # tracebi-calc.js, gzipped (decision 1)
+REPORT_GROWTH = 1.10     # a report's file may grow 10% against its baseline before it is a finding
+ENGINE = REPO / "tracebi" / "reports" / "assets" / "tracebi-calc.js"
 MAX_PAGES = 120
 PER_PATTERN = 3          # e.g. at most 3 different ?r=<report> pages
 PER_MODEL_PAGE = 8       # every model's pages, up to 8 models
@@ -520,6 +530,11 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
                          "rule": "registry-drift", "severity": "critical", "target": name,
                          "detail": f"{name} {'vanished' if name in at_start else 'appeared'} during the audit"})
 
+    engine_kb = static_metrics()["engine_gz_kb"]
+    if engine_kb > ENGINE_GZ_KB:
+        findings.append({"page": "(assets)", "pattern": "(assets)", "viewport": "-", "theme": "-",
+                         "rule": "engine-size", "severity": "serious", "target": "tracebi-calc.js",
+                         "detail": f"the page engine is {engine_kb} KB gzipped (budget {ENGINE_GZ_KB} KB)"})
     findings = _dedupe(findings + token_findings() + report_style_findings()
                        + theme_findings() + source_findings())
     report = {"base": base, "when": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -576,6 +591,12 @@ def report_sheet(browser, base: str, out: Path, deep: bool = True) -> tuple[dict
                 ctx.close()
                 break
             page.wait_for_timeout(800)            # charts draw in
+            if vp == "desktop" and theme == "light":
+                rec["html_kb"] = round(len(resp.body()) / 1024)
+                rec["calc_ms"] = _calc_ms(page)
+                if rec["calc_ms"] is not None and rec["calc_ms"] > CALC_MS:
+                    findings.append({**where, "rule": "calc-slow", "severity": "serious", "target": name,
+                                     "detail": f"a plan took {rec['calc_ms']}ms to recompute (budget {CALC_MS}ms)"})
             look = page.evaluate(REPORT_LOOK_JS)
             for e in errors:
                 findings.append({**where, "rule": "browser-error", "severity": "critical",
@@ -607,11 +628,34 @@ def report_sheet(browser, base: str, out: Path, deep: bool = True) -> tuple[dict
     families = sorted({f for p in built.values() for f in p["families"]})
     accents = sorted({p["accent"] for p in built.values()})
     sheet = _report_sheet_png(browser, out, built, combos)
+    timed = [p["calc_ms"] for p in built.values() if p.get("calc_ms") is not None]
     return {"sheet": sheet, "families": families, "accents": accents, "looks": looks, "reports": per,
             "metrics": {"report_font_families": len(families), "report_accents": len(accents),
                         "report_box_shadows": sum(len(p["shadows"]) for p in built.values()),
                         "report_gradients": sum(len(p["gradients"]) for p in built.values()),
-                        "report_looks": len(looks)}}, findings
+                        "report_looks": len(looks),
+                        "report_html_kb": {n: p["html_kb"] for n, p in built.items() if "html_kb" in p},
+                        "calc_ms_max": max(timed) if timed else None}}, findings
+
+
+def _calc_ms(page) -> float | None:
+    """How long the page engine takes on a live page: pick the first value of
+    the first filter it recomputes by and read ``data-tb-calc-ms``. None on a
+    page with no slice (the runtime sets the attribute only when it runs
+    plans). Both the authored pass at load and the selection count."""
+    at_load = page.evaluate("document.documentElement.getAttribute('data-tb-calc-ms')")
+    if at_load is None:
+        return None
+    picked = page.evaluate("""() => {
+      const el = Array.from(document.querySelectorAll('select[data-tb-filter]'))
+        .find(s => !s.hasAttribute('data-tb-fixed'));
+      const opt = el && Array.from(el.options).find(o => !o.disabled && o.value && o.value !== 'All');
+      if (!opt || !window.tracebi) return false;
+      window.tracebi.setSelection({[el.getAttribute('data-tb-column')]: [opt.value]});
+      return true;
+    }""")
+    after = page.evaluate("document.documentElement.getAttribute('data-tb-calc-ms')") if picked else None
+    return max(float(at_load), float(after or 0))
 
 
 def _report_sheet_png(browser, out: Path, built: dict, combos: list) -> str | None:
@@ -932,8 +976,11 @@ def static_metrics() -> dict:
         inline_styles += text.count("style={{")
     js = sum(f.stat().st_size for f in (DIST / "assets").glob("*.js")) if DIST.is_dir() else 0
     css = sum(f.stat().st_size for f in (DIST / "assets").glob("*.css")) if DIST.is_dir() else 0
+    import gzip
+    engine = len(gzip.compress(ENGINE.read_bytes(), 9)) if ENGINE.is_file() else 0
     return {"hardcoded_colors_in_jsx": hex_colors, "inline_style_blocks": inline_styles,
-            "bundle_js_kb": round(js / 1024), "bundle_css_kb": round(css / 1024)}
+            "bundle_js_kb": round(js / 1024), "bundle_css_kb": round(css / 1024),
+            "engine_gz_kb": round(engine / 1024, 1)}
 
 
 # ── the contact sheet ─────────────────────────────────────────────────────────
@@ -991,11 +1038,24 @@ def compare(report: dict, baseline_path: Path) -> list[dict]:
     print(f"\nvs baseline: score {old['score']} → {report['score']} · fixed {len(fixed)} · new {len(new)}")
     # Counts that only go down: a new hard-coded colour is a dark-mode bug
     # waiting, and the bundle is what every visitor downloads.
-    for key in ("hardcoded_colors_in_jsx", "bundle_js_kb"):
+    for key in ("hardcoded_colors_in_jsx", "bundle_js_kb", "engine_gz_kb"):
         before, after = old.get("metrics", {}).get(key), report["metrics"].get(key)
         if before is not None and after is not None and after > before * 1.02:
             new.append({"severity": "serious", "rule": f"metric:{key}", "page": "(metrics)",
                         "target": f"{before} → {after}"})
+    # Each delivered report against its own size, and the page engine's
+    # slowest recompute against the budget (machines differ, so the budget,
+    # not the baseline, is the line).
+    sizes = old.get("metrics", {}).get("report_html_kb") or {}
+    for name, after in (report["metrics"].get("report_html_kb") or {}).items():
+        before = sizes.get(name)
+        if before and after > before * REPORT_GROWTH:
+            new.append({"severity": "serious", "rule": "metric:report_html_kb", "page": f"/r/{name}",
+                        "target": f"{before} KB → {after} KB"})
+    calc = report["metrics"].get("calc_ms_max")
+    if calc is not None and calc > CALC_MS:
+        new.append({"severity": "serious", "rule": "metric:calc_ms_max", "page": "(reports)",
+                    "target": f"{calc}ms > {CALC_MS}ms"})
     # The report pass: a project is one system. A new face, accent, shadow,
     # gradient or look is a regression, not noise.
     for key in ("report_font_families", "report_accents", "report_box_shadows",

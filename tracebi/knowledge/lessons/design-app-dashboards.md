@@ -38,7 +38,8 @@ colours stay meaning: `text-bad` for a problem, never for decoration
   `.tb-card`; a `.tb-note` under the `<h2>` is the subtitle
   ([[design-dashboard-feel]]).
 - **Controls next to what they change**, in one row above the table: `<Search>`,
-  `<Filter>`, `<Download>`. They choose rows; they never compute.
+  `<Filter>`, `<Download>`. A `<Filter>` recomputes every figure it reaches,
+  each by its own query; `<Search>` only narrows the rows shown.
 - **Drill-down opens beside, not instead.** A selected row opens a side panel
   or drawer; the list stays where it was.
 - **Plain chrome.** Icons only where they label navigation; no gradients, glass

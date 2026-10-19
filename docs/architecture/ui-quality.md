@@ -103,6 +103,15 @@ Checked by the script (rule name in brackets):
   keep theirs), and `report_looks` (display face + accent; a look not in the
   baseline fails the run even if the count does not grow). The target is one
   look per project, plus a named bespoke example.
+- **A live page stays light and quick** ([[live-reports-plan]], decision 10):
+  the page engine, `tracebi-calc.js`, is at most 50 KB gzipped
+  `[engine-size]` and never grows against the baseline
+  `[metric:engine_gz_kb]`; each delivered report's file grows at most 10%
+  against its own baseline `[metric:report_html_kb]`; and on every live page
+  the slowest single plan run, at load and after picking its first filter's
+  first value, is at most 100 ms `[calc-slow]` `[metric:calc_ms_max]`. The
+  runtime writes that time to `data-tb-calc-ms` on `<html>` after each
+  recompute (a measurement, never shown).
 
 Run it on both projects: the reference project, and the demo app
 (`--app tracebi.web.demo_app`: its own models, reports folder and pipelines,

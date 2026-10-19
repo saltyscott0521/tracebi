@@ -206,14 +206,14 @@ the workbench to one package; <code>tracebi dev</code> alone is where you look w
 are still building the model underneath. The warehouse tables and the model's
 schema are on the model's Transform and Model tabs on Data (<code>tracebi dev --classic</code>
 lays them out beside the feed on one page).</p>
-<h3 id="interactive-controls-subset-they-never-compute">Interactive controls subset — they never compute</h3>
+<h3 id="interactive-controls-recompute-by-query">Interactive controls recompute by query</h3>
 <p>A built artifact can carry <code>data-tb-filter</code> dropdowns, <code>data-tb-search</code>, and
 <code>data-tb-rows</code> (scrollable tables). The honesty rule is locked in the runtime:
-<strong>controls subset which stamped rows a figure displays; they never compute a
-new number.</strong> So a value figure never reacts to a control, and a filtered KPI
-needs its <strong>own binding</strong> rather than a client-side recomputation. This is what
-keeps an interactive page as trustworthy as a static one — every number on
-screen is still a stamped number, never one the browser invented.</p>
+<strong>a figure's number is only ever a query result.</strong> A filter re-runs each
+figure's own query over the slice the page carries (the chip reads Local, the
+trace shows the plan and the selection, and <code>tracebi verify --local</code> replays it
+on the server); search only narrows the rows shown. Nothing sums the rows on
+screen, which is what keeps an interactive page as trustworthy as a static one.</p>
 <h3 id="capturing-the-exploration-record">Capturing the exploration record</h3>
 <p>A discovery session is a lab notebook, not a report. <code>tracebi session export</code>
 writes <code>explorations/&lt;name&gt;.html</code> (or <code>--format md</code> for the markdown twin) —

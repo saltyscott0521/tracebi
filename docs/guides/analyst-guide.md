@@ -141,15 +141,15 @@ are still building the model underneath. The warehouse tables and the model's
 schema are on the model's Transform and Model tabs on Data (`tracebi dev --classic`
 lays them out beside the feed on one page).
 
-### Interactive controls subset — they never compute
+### Interactive controls recompute by query
 
 A built artifact can carry `data-tb-filter` dropdowns, `data-tb-search`, and
 `data-tb-rows` (scrollable tables). The honesty rule is locked in the runtime:
-**controls subset which stamped rows a figure displays; they never compute a
-new number.** So a value figure never reacts to a control, and a filtered KPI
-needs its **own binding** rather than a client-side recomputation. This is what
-keeps an interactive page as trustworthy as a static one — every number on
-screen is still a stamped number, never one the browser invented.
+**a figure's number is only ever a query result.** A filter re-runs each
+figure's own query over the slice the page carries (the chip reads Local, the
+trace shows the plan and the selection, and `tracebi verify --local` replays it
+on the server); search only narrows the rows shown. Nothing sums the rows on
+screen, which is what keeps an interactive page as trustworthy as a static one.
 
 ### Capturing the exploration record
 

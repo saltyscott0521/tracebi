@@ -6,6 +6,49 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — a built report is live: a filter recomputes every figure
+
+- The rule is now **a figure's number is only ever a query result** (it was
+  "controls never compute new numbers"). A built page carries a **slice** per
+  fact it reads (`tracebi-slice-<fact>`: Parquet, at the coarsest grain that
+  answers every figure and every filter) and each binding's query compiled to
+  a closed **calc plan** (`tracebi-calc-plans`; `tracebi/reports/calc_plan.py`).
+  The page engine, `tracebi-calc.js` (plain JavaScript, 15 KB gzipped, inlined,
+  no wasm, no worker), re-runs every plan under the page's one selection
+  state, so values, tables, charts, sparks and `tracebi.draw` figures all
+  recompute: sums, counts, means, min/max, distinct counts, percentiles,
+  ratios, shares, ranks, running totals, `having`, `period_end`,
+  `offset`/growth, `to_date`, `stddev` and raw-row tables.
+- Every `data-tb-filter` (kit `<Filter>`, `<Filter multiple>` for several
+  values) writes the selection; it lives in the URL hash (`#sel=`), so a link
+  opens the same view. While it is not the authored selection the chip reads
+  **Local** and each trace row shows the plan, the selection and the slice's
+  `payload_sha256`. A figure the engine cannot run (a SQL binding, a
+  `report.py` output) carries `data-tb-fixed`; one whose fact the selected
+  field does not reach carries `data-tb-unfiltered-by`. `tracebi.setSelection`
+  sets it from code.
+- `report.json` `"embed"`: `"required"` (default), `"model"` or `"none"`, and
+  `"embed_budget_mb"` (default 25). `"none"` builds the page as before.
+- `tracebi verify <manifest> --local` replays every plan by the page engine
+  and by the server and says whether they agree.
+- The web app's report header follows the page: **Local** and one chip per
+  selected field ("Sector: Technology ×") that clears it.
+- The reference project has a second fact, `fact_cashflows`, and the showcase
+  a Cash flows tab: a sector reaches both facts, a flow type only one. The
+  `tracebi init` sample, both templates and two demo dashboards carry a page
+  filter.
+
+### Removed — the old offline engine and the server round trip
+
+- The parquet-wasm + Arquero worker (`tracebi-engine.worker.js`,
+  `parquet_wasm_bg.wasm.gz`, `_engine_src/`, `ENGINE_NOTICE.md`), the sealed
+  grain (`selection_eval.py`, `selection_eval.js`, the `tracebi-grain` block)
+  and the page's `selection-request` round trip to the app. A Parquet data
+  block is decoded by `tracebi-calc.js`, written with Snappy instead of ZSTD.
+  The CSP no longer grants `worker-src blob:`, `script-src blob:` or
+  `'wasm-unsafe-eval'`. `POST /api/reports/{name}/selection` stays: it
+  answers a `question` and recomputes a cut for an API caller.
+
 ## [0.6.0] — 2026-09-25
 
 ### Added — a version tag publishes the image and a GitHub release

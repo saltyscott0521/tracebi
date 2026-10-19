@@ -93,12 +93,12 @@ function Overview() {
   );
 }
 
-// Controls choose which stamped rows show; they never compute a number.
+// Search narrows the rows shown; a filter recomputes every figure it reaches.
 function Detail() {
   return (
     <section className="tb-card">
       <h2>Detail</h2>
-      <p className="tb-note">Search and filter choose rows; the CSV is the stamped data, verbatim.</p>
+      <p className="tb-note">The filter recomputes every figure on the page; the CSV is the stamped data, verbatim.</p>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Search binding="breakdown" />
         <Filter binding="breakdown" column="__DIM__" label="__DLABEL__" />

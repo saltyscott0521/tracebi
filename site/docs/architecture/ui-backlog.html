@@ -118,7 +118,7 @@ bottom with the change that closed them.</p>
    is one accent, and ratchet the count down.</li>
 <li><strong>Small multiples are dense on a phone</strong> (DS-4).</li>
 <li><strong>The showcase's striped frozen column keeps a light shade in dark</strong> (DS-5).</li>
-<li><strong>The selection handshake with a parent that is not the app</strong> (DS-8).</li>
+<li><em>Closed by L-5 (see Done): there is no handshake left.</em></li>
 <li><strong>A line's end label is cut at the plot's top edge on a phone</strong>
     (<code>portfolio_concentration</code>'s cumulative share at 390px).</li>
 </ol>
@@ -216,8 +216,33 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
     a reader for the old block id so files built before the rename still open
     their drawer (and <code>verify --file</code> still reads them).</li>
 </ol>
+<p>Left by the live-reports round (<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>, L-5):</p>
+<ol start="37">
+<li><strong>Ask's "Keep this" does not carry a selection into the page.</strong> A kept
+    answer opens a one-figure draft; it could instead open the report it came
+    from with the selection in the frame's hash (<code>#sel=</code>), so the reader lands
+    on the same cut, Local, without a draft.</li>
+<li><strong>The page engine keys slices by fact name.</strong> <code>tracebiCalc.load(fact, …)</code>
+    holds one slice per fact name, so a page reading two models that each
+    have a fact of the same name would load one over the other. Key by
+    <code>model.fact</code> (the calc payload already records both).</li>
+<li><strong>A time grain reads two ways on one page.</strong> As built, a binding grouped
+    by a time grain shows the stamped label the model returned
+    (<code>2025-03-01</code>); once the page recomputes it shows the slice's grain label
+    (<code>2025-03</code>). The numbers agree; the axis labels change spelling on the
+    first selection (the showcase's Cash flows chart). Stamp the grain label,
+    or format it the same way on both paths.</li>
+</ol>
 <h2 id="done">Done</h2>
 <ul>
+<li>
+<p><strong>The live page in the app</strong> (L-5): a report's frame tells the app its
+  selection (<code>tracebi-selection</code>, tagged like every bridge message); while it
+  is not the authored one the header's chip reads <strong>Local</strong> with the page's
+  own detail, and each selected field is a chip ("Sector: Technology ×")
+  that clears it through the frame (<code>tracebi-set-selection</code>). The
+  <code>selection-request</code> round trip is gone on both sides (item 11).</p>
+</li>
 <li>
 <p><strong>The sidebar is tiered by role</strong> (A2-6): <code>nav.js</code> gives each place a
   <code>minRole</code> and <code>placesFor(role)</code> is the one list the sidebar, the phone's

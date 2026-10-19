@@ -182,6 +182,15 @@ python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
   keep theirs), and <code>report_looks</code> (display face + accent; a look not in the
   baseline fails the run even if the count does not grow). The target is one
   look per project, plus a named bespoke example.</li>
+<li><strong>A live page stays light and quick</strong> (<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>, decision 10):
+  the page engine, <code>tracebi-calc.js</code>, is at most 50 KB gzipped
+  <code>[engine-size]</code> and never grows against the baseline
+  <code>[metric:engine_gz_kb]</code>; each delivered report's file grows at most 10%
+  against its own baseline <code>[metric:report_html_kb]</code>; and on every live page
+  the slowest single plan run, at load and after picking its first filter's
+  first value, is at most 100 ms <code>[calc-slow]</code> <code>[metric:calc_ms_max]</code>. The
+  runtime writes that time to <code>data-tb-calc-ms</code> on <code>&lt;html&gt;</code> after each
+  recompute (a measurement, never shown).</li>
 </ul>
 <p>Run it on both projects: the reference project, and the demo app
 (<code>--app tracebi.web.demo_app</code>: its own models, reports folder and pipelines,

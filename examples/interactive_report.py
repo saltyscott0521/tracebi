@@ -10,11 +10,10 @@ claimed: the check at the end greps the rendered file and fails if a single
 
 **Should an agent be able to add JavaScript?** It can — the shipped interactive
 runtime lets an agent author its own ``script.js`` — but under a locked honesty
-rule the runtime enforces: **controls subset which stamped rows a figure
-displays; they never compute a new number.** A dropdown may narrow a table to
-one region; it may not sum that region into a fresh figure — **a filtered KPI
-needs its own binding**, its own stamped query, not a client-side
-recomputation. The old fear is real but defused: a script *can* read the DOM and
+rule the runtime enforces: **a figure's number is only ever a query result.**
+A dropdown may cut the page to one region, and each figure is then its own
+query re-run under that cut (the page engine runs the binding's plan); it may
+not sum the rows on screen into a fresh figure. The old fear is real but defused: a script *can* read the DOM and
 rewrite a number, yet it cannot make that number read as verified, because a
 figure is verified only while a stamped query backs it. Interactivity that
 subsets is safe; computation that invents has nowhere to hide. So the line is

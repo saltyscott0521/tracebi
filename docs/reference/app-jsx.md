@@ -73,7 +73,11 @@ filterable, exactly as in a template.
 | `<Spark>` | as `<Chart>` (default `type="area"`): the trend's shape alone, under a KPI |
 | `<Table>` | `binding`, `columns`, `labels`, `formats`, `sort`, `bars`, `totals`, `rows` (default 10; `"all"`), `id` |
 
-**Controls** subset the rows the figures of one binding show; they never compute.
+**Controls.** A figure's number is only ever a query result. On a live page (the
+default) a `<Filter>` recomputes every figure it reaches by re-running each
+binding's own query over the data the file carries; `<Search>` only narrows the
+rows shown. On a page built with `"embed": "none"` a filter subsets stamped rows
+and KPIs stay the stamped totals.
 
 | Component | Props |
 |---|---|

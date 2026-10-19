@@ -271,8 +271,9 @@ there and rows on a small report. <code>ready(fn)</code> behaves identically on 
   moves the ordering out of the trace. If readers should re-sort a table,
   add <code>data-tb-sort</code> to it: the query's order stays the default, and the
   reader's clicks only reorder the stamped rows.</li>
-<li><strong>Aggregation</strong> — never. Client-side aggregation mints numbers nobody can
-  re-run; a filtered KPI needs its own binding.</li>
+<li><strong>Aggregation</strong> — never in <code>script.js</code>. A figure's number is only ever a
+  query result: a filter re-runs the binding's own query on the page; a sum in
+  your script is a number nobody can re-run.</li>
 </ul>
 <h2 id="what-you-cannot-load">What you cannot load</h2>
 <p>The artifact ships with a strict CSP and is meant to work offline, on a plane,

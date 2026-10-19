@@ -209,7 +209,11 @@ filterable, exactly as in a template.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Controls</strong> subset the rows the figures of one binding show; they never compute.</p>
+<p><strong>Controls.</strong> A figure's number is only ever a query result. On a live page (the
+default) a <code>&lt;Filter&gt;</code> recomputes every figure it reaches by re-running each
+binding's own query over the data the file carries; <code>&lt;Search&gt;</code> only narrows the
+rows shown. On a page built with <code>"embed": "none"</code> a filter subsets stamped rows
+and KPIs stay the stamped totals.</p>
 <table>
 <thead>
 <tr>
