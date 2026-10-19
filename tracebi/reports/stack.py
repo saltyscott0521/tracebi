@@ -280,6 +280,12 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
     # grain. A report that did not opt in stays byte-for-byte as before.
     if 'id="tracebi-grain"' in data_blocks_html:
         tail += f"<script>\n{read_asset('selection_eval.js')}\n</script>\n"
+    # The page engine ships only with a slice to run it over: the runtime
+    # finds window.tracebiCalc at boot and recomputes the page under the
+    # reader's selection. A page built with "embed": "none" carries neither.
+    if 'id="tracebi-calc-plans"' in data_blocks_html:
+        tail += ("<!-- tracebi-calc.js: the page engine (CALC_NOTICE.md) -->\n"
+                 f"<script>\n{read_asset('tracebi-calc.js')}\n</script>\n")
     tail += ("<!-- tracebi.js: the TraceBi runtime -->\n"
              f"<script>\n{read_asset('tracebi.js')}\n</script>\n")
     # The worker engine ships ONLY when a binding is embedded as Parquet — a

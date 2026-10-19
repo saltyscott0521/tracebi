@@ -135,9 +135,10 @@ export function Table({ binding, columns, labels, formats, sort, bars, totals, r
 /** A filter on one binding's column — or, with no binding, on the whole
  * page: every binding that has the column. It chooses rows; KPIs stay the
  * stamped totals. */
-export function Filter({ binding, column, label, className }) {
+export function Filter({ binding, column, label, className, multiple }) {
   useHydrate();
-  const select = <select data-tb-filter="" data-tb-binding={binding || "*"} data-tb-column={column} />;
+  const select = <select data-tb-filter="" data-tb-binding={binding || "*"} data-tb-column={column}
+    multiple={multiple || undefined} />;
   return label ? <label className={className}>{label} {select}</label> : select;
 }
 
