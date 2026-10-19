@@ -1,0 +1,11 @@
+# tracebi.yaml: this project's settings. Every key is optional; a missing key
+# is the default shown. Reference: docs/reference/tracebi-yaml.md
+#
+# engine: the DuckDB connection that answers model queries (Explore, Ask,
+# agents, builds, verify). It reads the warehouse read-only and nothing else:
+# no file, URL, extension or other database. These are its limits.
+engine:
+  memory_limit: 1GB                  # past it, a query spills to temp_directory
+  # threads: 4                       # default: min(4, CPUs)
+  temp_directory: data/.duckdb-tmp   # relative to this file
+  query_timeout_s: 30                # Explore, Ask and agent queries stop here

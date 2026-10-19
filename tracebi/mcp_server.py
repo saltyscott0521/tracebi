@@ -948,6 +948,7 @@ def _query(
     fingerprints.
     """
     from tracebi.model.data_model import QuerySpec
+    from tracebi.model.engine import statement_timeout
 
     preview_rows = max(1, min(int(preview_rows), _ROW_HARD_CAP))
 
@@ -982,7 +983,9 @@ def _query(
     except Exception as exc:  # noqa: BLE001 — a malformed query is data, not a crash
         return {"ok": False, "errors": [f"invalid query: {exc}"]}
     try:
-        with _acting():
+        # An agent's query stops at the project's statement timeout
+        # (tracebi.yaml engine.query_timeout_s); the error names the limit.
+        with _acting(), statement_timeout():
             ds = m.execute(spec)
     except Exception as exc:  # noqa: BLE001 — a bad fact/dim/filter is data
         return {"ok": False, "errors": [str(exc)]}

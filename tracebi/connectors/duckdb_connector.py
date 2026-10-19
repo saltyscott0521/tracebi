@@ -271,7 +271,11 @@ class DuckDBConnector(BaseConnector):
                 return
             # File-backed: release the read-only handle, write through a
             # short-lived read-write connection, and leave the connector lazy
-            # — the next load reopens read-only.
+            # — the next load reopens read-only. This connection is
+            # deliberately not locked like a query connection
+            # (tracebi.model.engine): a write is the transform's sink,
+            # reviewed code run from the CLI, the scheduler or an approved
+            # code request, never a reader's query.
             duckdb = self._duckdb()
             if self._conn is not None:
                 self._conn.close()

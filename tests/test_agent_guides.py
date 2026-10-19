@@ -279,6 +279,14 @@ class TestLargeDetailArtifactIsTaught:
                            "tracebi-calc-plans"):
                 assert phrase in text, f"{name} does not teach {phrase}"
 
+    def test_the_project_settings_file_is_in_the_vocabulary_and_both_guides(self):
+        settings = next(d for d in describe(brief=True)["conventions"]["directories"]
+                        if d["path"] == "tracebi.yaml")
+        for name, text in {"tracebi context": settings["note"], **_guides()}.items():
+            for phrase in ("tracebi init", "query_timeout_s", "memory_limit",
+                           "docs/reference/tracebi-yaml.md"):
+                assert phrase in text, f"{name} does not teach {phrase}"
+
 
 def test_a_value_figure_is_taught_as_a_one_row_binding():
     """data-tb-cell reads one row. A multi-row binding is a build error,
