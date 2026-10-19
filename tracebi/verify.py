@@ -1241,3 +1241,208 @@ def verify_file(html: str, manifest: dict) -> dict:
     if manifest_stage is not None or file_stage is not None:
         out["stage"] = {"file": file_stage, "manifest": manifest_stage}
     return out
+
+
+# ── verify --local: the page engine against the server's reading ──────────────
+
+#: Loads the page engine as a page does (an IIFE that sets tracebiCalc on the
+#: global) and answers each job: one plan run over its slice under a selection.
+_LOCAL_RUNNER = r"""
+const fs = require('fs');
+const vm = require('vm');
+vm.runInThisContext(fs.readFileSync(process.argv[2], 'utf8'));
+const jobs = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+const out = {};
+for (const job of jobs) {
+  try {
+    tracebiCalc.load(job.fact, fs.readFileSync(job.parquet));
+    const res = tracebiCalc.run(job.plan, job.selection);
+    out[job.id] = {cols: res.cols, rows: res.rows.map(r => res.cols.map(c => r[c]))};
+  } catch (e) {
+    out[job.id] = {error: String(e && e.message || e)};
+  }
+}
+console.log(JSON.stringify(out));
+"""
+
+
+def _authored_state(raw: Any) -> dict:
+    """The authored selection block as the page's state: a scalar is a
+    one-value list, ``{"in": [...]}`` a list, ``{"eq": v}`` one value, and a
+    range stays a range (``normalSelection`` in tracebi.js)."""
+    out: dict = {}
+    for field, value in (raw or {}).items():
+        if value is None:
+            continue
+        if isinstance(value, list):
+            if value:
+                out[field] = list(value)
+        elif isinstance(value, dict):
+            if isinstance(value.get("in"), list):
+                if value["in"]:
+                    out[field] = list(value["in"])
+            elif "eq" in value:
+                out[field] = [value["eq"]]
+            else:
+                out[field] = dict(value)
+        else:
+            out[field] = [value]
+    return out
+
+
+def _first_present(frame, column: str, state: dict) -> Any:
+    """A control column's first value present under the rest of *state*, in
+    the engine's order (numbers, then booleans, then strings by code point)."""
+    keep = frame
+    for field, cond in state.items():
+        if field == column or field not in keep.columns:
+            continue
+        if isinstance(cond, list):
+            keep = keep[keep[field].isin(cond)]
+            continue
+        for op, value in cond.items():
+            series = keep[field]
+            keep = keep[{"gt": series > value, "gte": series >= value,
+                         "lt": series < value, "lte": series <= value}[op]]
+    values = [v.item() if hasattr(v, "item") else v
+              for v in keep[column].dropna().unique()]
+    if not values:
+        return None
+    return sorted(values, key=lambda v: (2, v) if isinstance(v, str)
+                  else (1, v) if isinstance(v, bool) else (0, v))[0]
+
+
+def verify_local(html: str, manifest: dict, node: Optional[str] = None) -> dict:
+    """Replay what the page recomputes (``tracebi verify --local``).
+
+    Every plan the manifest records that is not fixed is run over the slice
+    decoded from the built *html* (each slice block's bytes checked first
+    against the manifest's ``payload_sha256``), under the authored selection
+    and under one selection per control column (its first present value),
+    twice: by :func:`tracebi.reports.calc_plan.execute_plan`, the server's
+    reading of a plan through ``DataModel.execute``, and by the bundled
+    ``tracebi-calc.js`` in node, the engine the page runs. The two must agree
+    cell by cell (:func:`tracebi.reports.calc_plan.rows_match`). This says the
+    page's arithmetic is the server's; it does not re-run the model, which is
+    what ``verify`` on the manifest does.
+
+    *node* is the node executable (default: the one on PATH). Without one the
+    engine half is skipped and says so; the server half still runs.
+
+    Returns ``{"report_name", "bindings", "selections", "fixed", "engine",
+    "mismatch", "error", "note", "ok"}``: ``bindings`` how many plans
+    recompute, ``selections`` how many states were replayed, ``fixed`` the
+    bindings fixed at build, ``engine`` whether node ran, ``mismatch`` the
+    first disagreement ``{binding, selection, column, row, page, server,
+    detail}`` or None, ``error`` why nothing could be replayed (an altered or
+    unreadable slice block, an engine that would not start), or None, and
+    ``note`` why there was nothing to replay (no slice; every plan fixed).
+    """
+    import base64
+    import shutil
+    import subprocess
+    import tempfile
+
+    from tracebi.reports.calc_plan import execute_plan, first_mismatch
+    from tracebi.reports.parquet_embed import from_parquet_bytes
+    from tracebi.reports.slice import CALC_PLANS_ID
+
+    out: dict = {"report_name": manifest.get("report_name"), "bindings": 0,
+                 "selections": 0, "fixed": [], "engine": False,
+                 "mismatch": None, "error": None, "note": None, "ok": False}
+    plans = manifest.get("plans")
+    records = manifest.get("slice")
+    if not plans:
+        out.update(ok=True, note="this build carries no slice, so nothing on its "
+                                 "page recomputes (\"embed\": \"none\", or built "
+                                 "before slices)")
+        return out
+    if not records:
+        out.update(ok=True, fixed=sorted(plans),
+                   note="every binding on this page is fixed at build, so "
+                        "nothing on it recomputes")
+        return out
+
+    blocks = dict(_json_blocks(html))
+    try:
+        payload = json.loads(blocks.get(CALC_PLANS_ID) or "{}")
+    except ValueError:
+        payload = {}
+    raws: dict = {}
+    frames: dict = {}
+    for rec in records.values():
+        try:
+            raw = base64.b64decode(json.loads(blocks[rec["block"]])["parquet_b64"],
+                                   validate=True)
+        except Exception:  # noqa: BLE001 — a missing or unreadable block is named
+            out["error"] = f"the slice block {rec['block']} is missing or unreadable"
+            return out
+        if hashlib.sha256(raw).hexdigest() != rec.get("payload_sha256"):
+            out["error"] = (f"the slice block {rec['block']} does not match its "
+                            f"payload_sha256 in the manifest: the file was "
+                            f"altered after it was built")
+            return out
+        raws[(rec["model"], rec["fact"])] = raw
+        frames[(rec["model"], rec["fact"])] = from_parquet_bytes(raw)
+
+    authored = _authored_state(payload.get("authored_selection"))
+    selections = [authored]
+    for column in dict.fromkeys(c.get("column") for c in payload.get("controls") or ()):
+        frame = next((f for f in frames.values() if column in f.columns), None)
+        value = None if frame is None else _first_present(frame, column, authored)
+        if value is not None:
+            selections.append({**authored, column: [value]})
+    live = {b: p for b, p in plans.items() if "fixed" not in p}
+    out.update(selections=len(selections), bindings=len(live),
+               fixed=sorted(b for b, p in plans.items() if "fixed" in p))
+
+    server: dict = {}
+    for binding, plan in live.items():
+        frame = frames.get((plan["model"], plan["fact"]))
+        for i, selection in enumerate(selections):
+            server[(binding, i)] = (None if frame is None
+                                    else execute_plan(plan, frame, selection))
+
+    node = node or shutil.which("node")
+    if node and live:
+        bundle = Path(__file__).resolve().parent / "reports" / "assets" / "tracebi-calc.js"
+        with tempfile.TemporaryDirectory(prefix="tracebi-local-") as tmp:
+            tmp_path = Path(tmp)
+            paths = {}
+            for n, (key, raw) in enumerate(raws.items()):
+                paths[key] = tmp_path / f"slice{n}.parquet"
+                paths[key].write_bytes(raw)
+            jobs = [{"id": f"{binding}\n{i}", "fact": plan["fact"],
+                     "parquet": str(paths[(plan["model"], plan["fact"])]),
+                     "plan": plan, "selection": selection}
+                    for binding, plan in live.items()
+                    if (plan["model"], plan["fact"]) in paths
+                    for i, selection in enumerate(selections)]
+            (tmp_path / "jobs.json").write_text(json.dumps(jobs, default=str))
+            (tmp_path / "run.js").write_text(_LOCAL_RUNNER)
+            proc = subprocess.run(
+                [node, str(tmp_path / "run.js"), str(bundle), str(tmp_path / "jobs.json")],
+                capture_output=True, text=True, timeout=600)
+        if proc.returncode != 0:
+            out["error"] = ("the page engine did not run in node: "
+                            + proc.stderr.strip()[-400:])
+            return out
+        page = json.loads(proc.stdout.strip().splitlines()[-1])
+        out["engine"] = True
+        for (binding, i), want in server.items():
+            got = page.get(f"{binding}\n{i}")
+            if want is None or got is None:
+                miss = {"detail": "the page carries no slice for its fact"}
+            elif "error" in got:
+                miss = {"detail": f"the page engine refused it: {got['error']}"}
+            else:
+                miss = first_mismatch(got, want)
+            if miss is not None:
+                out["mismatch"] = {
+                    "binding": binding, "selection": selections[i],
+                    "column": miss.get("column"), "row": miss.get("row"),
+                    "page": miss.get("left"), "server": miss.get("right"),
+                    "detail": miss["detail"]}
+                return out
+    out["ok"] = True
+    return out

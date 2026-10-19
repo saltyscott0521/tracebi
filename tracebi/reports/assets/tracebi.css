@@ -668,6 +668,28 @@ span > .tb-badge {
 .tb-badge-anchor > .tb-badge.tb-verdict { display: flex; }
 span > .tb-badge.tb-verdict { display: inline-flex; }
 
+/* A live figure's note (tracebi.js, The live page): fixed at build, not
+ * filtered by a field, or no rows under the selection. Small and muted, in
+ * the trace's words; it says what the figure is, never a verdict. */
+.tb-live-note {
+  display: block;
+  margin-top: var(--tb-space-1);
+  font-size: var(--tb-text-xs);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--tb-muted);
+}
+/* An inline value keeps its sentence: the note is its title, the mark a
+ * dotted underline. */
+.tb-live-marked {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--tb-muted);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
 /* Scenarios — the reader's what-if, computed in the browser. Visibly apart
  * from the stamped figures: a dashed frame and the runtime's label, so a
  * computed number is never read as a receipted one. */
@@ -745,6 +767,17 @@ select[data-tb-filter] {
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
+/* <Filter multiple>: a short list box, every option visible to pick from,
+ * with no dropdown arrow; it scrolls past five rows. */
+select[data-tb-filter][multiple] {
+  height: auto;
+  max-height: calc(5 * 1.6em + 10px);
+  padding: 4px;
+  background-image: none;
+  vertical-align: top;
+  overflow-y: auto;
+}
+select[data-tb-filter][multiple] option { padding: 1px 6px; border-radius: 4px; }
 
 button[data-tb-download] {
   font: inherit;
@@ -1135,6 +1168,9 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-verdict[data-tb-verdict="needs-a-look"] { color: var(--tb-warn); }
 .tb-verdict[data-tb-verdict="does-not-reproduce"] { color: var(--tb-bad); }
 .tb-verdict[data-tb-verdict="draft"] { border-style: dashed; }
+/* Local: the reader's selection, recomputed on the page from the embedded
+ * data. The accent's ink, never the good green. */
+.tb-verdict[data-tb-verdict="local"] { color: var(--tb-accent-text); }
 
 /* ── 12c. Editorial — a report written to be read ─────────────────────────
  * <article class="tb-article">: a sheet of paper on the page, opened by the
@@ -1632,6 +1668,13 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   color: var(--tb-bad);
   font-size: var(--tb-text-xs);
   margin-top: 2px;
+}
+.tb-receipt-local { margin-top: 2px; font-size: var(--tb-text-xs); }
+.tb-receipt-local-line { color: var(--tb-accent-text); }
+.tb-receipt-local-summary {
+  margin: 0 0 var(--tb-space-2);
+  font-size: var(--tb-text-xs);
+  color: var(--tb-muted);
 }
 .tb-receipt-def { margin: 2px 0 0; color: var(--tb-muted); }
 .tb-receipt-term { color: var(--tb-ink); font-weight: 500; }

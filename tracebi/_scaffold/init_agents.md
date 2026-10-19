@@ -116,7 +116,8 @@ the model measures a comparison; no comparison measure, no delta. `useBinding("n
 the stamped rows; a number your code computes or draws (a Recharts chart, a
 sum) is the app's presentation, not a checked figure, and the page says so.
 For app behaviour: `<Filter column>` with no `binding` filters the whole page
-(every binding with that column; KPIs stay the stamped totals);
+(every binding with that column; on a live page every figure it reaches
+recomputes, and `multiple` picks several values);
 `<Segmented options value onChange>` picks which figure shows — a period
 toggle is one literal-binding figure per option, never arithmetic; and
 `useUrlState("view", "Overview")` keeps a view or period in the URL so a
@@ -365,6 +366,22 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   naive datetimes only; another type in a column the page needs fails the
   build by name. A SQL binding and a `report.py` output are never in a slice:
   they stay fixed at build.
+- **The live page.** On a page built with a slice, every `data-tb-filter`
+  (and `<Filter>`, `<Filter multiple>` to pick several values) writes one
+  selection state, and `tracebi-calc.js` re-runs each binding's own calc plan
+  over the embedded slice under it, so values, tables, charts, sparks and
+  `tracebi.draw` figures all redraw; a figure's number is still that query's
+  result. Options list the values present under the rest of the selection
+  first, the others after a separator. The state lives in the URL hash
+  (`#sel=…`), so a link opens the same view. While it is not the authored
+  selection the chip reads **Local** (never green) and each trace row shows
+  the plan, the selection and the slice block's `payload_sha256`. A figure
+  that cannot recompute (SQL binding, `report.py`, `period_end` / `offset` /
+  `to_date`) carries `data-tb-fixed` ("Fixed at build · period_end"); one
+  whose fact the selected field does not reach carries
+  `data-tb-unfiltered-by` ("Not filtered by Sector"). A filter on a column
+  no slice carries subsets stamped rows as before. `tracebi verify <manifest>
+  --local` replays every plan by the page engine and by the server.
 - Methodology travels the pipeline: `contract(..., note=...)` (and per-check
   `note=`) records the transform's STATED methodology in the certificate;
   measure `description=` carries modeling intent. Add ONE
