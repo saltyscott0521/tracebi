@@ -116,32 +116,37 @@ export default function App() {
   const printing = usePrinting();
   return (
     <div className="min-h-screen bg-page text-ink md:flex">
-      <aside className="shrink-0 border-b border-rule bg-card p-3 md:sticky md:top-0
-                        md:h-screen md:w-60 md:border-r md:border-b-0 print:hidden">
-        {/* The masthead in the sidebar: the title, what it is, when it was built
-            and the verdict chip. */}
-        <Masthead title={TITLE} data-tb-title="nav"
-          className="mb-3 border-b border-rule px-2.5 pb-3">
-          The funds' holdings, one desk.
-        </Masthead>
-        <nav className="flex gap-1 md:flex-col">
-          {Object.entries(VIEWS).map(([name, Icon]) => (
-            <button key={name} onClick={() => setView(name)}
-              aria-current={view === name ? "page" : undefined}
-              className={"flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm " +
-                (view === name ? "bg-surface font-medium text-ink"
-                               : "text-muted hover:bg-surface hover:text-ink")}>
-              <Icon size={16} />{name}
-            </button>
-          ))}
-        </nav>
-        {/* Page filters and a range over each holding's own spread: in the
-            sidebar, so they stay put while the views change. */}
-        <div className="mt-3 flex flex-wrap items-start gap-2 border-t border-rule
-                        px-2.5 pt-3 md:flex-col">
-          <Filter column="dim_issuer.sector" label="Sector" />
-          <Filter column="dim_fund.fund" label="Fund" multiple />
-          <Range column="spread_bps" label="Spread, bps" />
+      {/* The column runs the page's whole height (its ground never stops
+          short of a long view); its contents stay in sight as the view
+          scrolls. */}
+      <aside className="shrink-0 border-b border-rule bg-card p-3 md:min-h-screen md:w-60
+                        md:border-r md:border-b-0 print:hidden">
+        <div className="md:sticky md:top-3 md:max-h-screen md:overflow-y-auto">
+          {/* The masthead in the sidebar: the title, what it is, when it was built
+              and the verdict chip. */}
+          <Masthead title={TITLE} data-tb-title="nav"
+            className="mb-3 border-b border-rule px-2.5 pb-3">
+            The funds' holdings, one desk.
+          </Masthead>
+          <nav className="flex gap-1 md:flex-col">
+            {Object.entries(VIEWS).map(([name, Icon]) => (
+              <button key={name} onClick={() => setView(name)}
+                aria-current={view === name ? "page" : undefined}
+                className={"flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm " +
+                  (view === name ? "bg-surface font-medium text-ink"
+                                 : "text-muted hover:bg-surface hover:text-ink")}>
+                <Icon size={16} />{name}
+              </button>
+            ))}
+          </nav>
+          {/* Page filters and a range over each holding's own spread: in the
+              sidebar, so they stay put while the views change. */}
+          <div className="mt-3 flex flex-wrap items-start gap-2 border-t border-rule
+                          px-2.5 pt-3 md:flex-col">
+            <Filter column="dim_issuer.sector" label="Sector" />
+            <Filter column="dim_fund.fund" label="Fund" multiple />
+            <Range column="spread_bps" label="Spread, bps" />
+          </div>
         </div>
       </aside>
       <main className="min-w-0 flex-1 space-y-8 px-6 py-7">

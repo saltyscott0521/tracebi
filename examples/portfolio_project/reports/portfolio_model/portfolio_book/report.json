@@ -20,6 +20,16 @@
         "order_by": [{"column": "fair_value", "desc": true}]
       }
     },
+    "in_view": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": {
+          "funds": {"expr": "fund_id", "agg": "nunique"},
+          "issuers": {"expr": "issuer_id", "agg": "nunique"}
+        }
+      }
+    },
     "largest_sector": {
       "model": "portfolio_model",
       "query": {

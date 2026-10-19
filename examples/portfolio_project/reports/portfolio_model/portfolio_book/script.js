@@ -36,4 +36,45 @@
     });
     surface.appendChild(table);
   });
+
+  // A sentence that compares (the lowest, the largest, of the funds in view)
+  // needs more than one thing in view. Each data-book-when="<what><op><n>"
+  // variant shows only while its count holds; the counts are query results
+  // the page already has: the sector table's rows, the positions count, and
+  // the in_view binding's distinct funds and issuers. As built (no
+  // selection, tracebi.result is null) the template's own visible variants
+  // stand.
+  var COUNTED = { positions: "val-positions", funds: "val-funds-in-view",
+                  issuers: "val-issuers-in-view" };
+
+  function counts() {
+    var tb = window.tracebi, out = {};
+    var sectors = tb.result("tbl-sector-marks");
+    if (sectors) out.sectors = sectors.rows.length;
+    Object.keys(COUNTED).forEach(function (name) {
+      var res = tb.result(COUNTED[name]);
+      if (res) out[name] = res.rows.length ? Number(res.rows[0][res.cols.indexOf(name)]) || 0 : 0;
+    });
+    return out;
+  }
+
+  function showVariants() {
+    var n = counts();
+    document.querySelectorAll("[data-book-when]").forEach(function (el) {
+      var m = /^(\w+)([<=>])(\d+)$/.exec(el.getAttribute("data-book-when"));
+      if (!m || !(m[1] in n)) {
+        el.hidden = el.hasAttribute("data-book-hidden");
+        return;
+      }
+      var v = n[m[1]], k = Number(m[3]);
+      el.hidden = !(m[2] === ">" ? v > k : m[2] === "<" ? v < k : v === k);
+    });
+  }
+
+  // Remember which variants the template hides, for the return to as built.
+  document.querySelectorAll("[data-book-when][hidden]").forEach(function (el) {
+    el.setAttribute("data-book-hidden", "");
+  });
+  tracebi.onSelection(showVariants);
+  showVariants();
 })();

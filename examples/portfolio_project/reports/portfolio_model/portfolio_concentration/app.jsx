@@ -3,17 +3,52 @@
 // the model; every number is a kit figure, so its trace names it. A window
 // measure re-runs over what the page picks (a sector, a bar, a row), so under
 // a selection a rank or a share is within it, and the copy says so.
+import { useState, useEffect } from "react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download,
          SelectionBar } from "tracebi";
 
+// How far the headline's row reached: the rank of the fifth issuer, or of the
+// last when fewer are in view (so under five it counts them, 0 is none),
+// read from the figure's own query result; null as built, when the authored
+// copy stands. The headline compares only while there is something to
+// compare: the top five of five or more, else what the few in view are.
+function useReach() {
+  const [reach, setReach] = useState(null);
+  useEffect(() => {
+    const tb = window.tracebi;
+    if (!tb || !tb.onSelection) return undefined;
+    const read = () => {
+      const res = tb.result("head-top5");
+      setReach(!res ? null
+        : res.rows.length ? Number(res.rows[0][res.cols.indexOf("fv_rank")]) : 0);
+    };
+    read();
+    return tb.onSelection(read);
+  }, []);
+  return reach;
+}
+
 export default function App() {
+  const reach = useReach();
   return (
     <div className="min-h-screen bg-page text-ink">
       <main className="tb-page space-y-8 px-6 py-8">
         <Masthead
-          title={<>The five largest issuers hold{" "}
-            <Value binding="fifth" cell="fv_cum_share" id="head-top5" /> of the fair value in
-            view</>}>
+          title={<>
+            <span hidden={reach !== null && reach < 5}>The five largest issuers
+              hold <Value binding="fifth" cell="fv_cum_share" id="head-top5" /> of the fair
+              value in view</span>
+            <span hidden={reach === null || reach < 2 || reach >= 5}>Only{" "}
+              <Value binding="fifth" cell="fv_rank" id="head-top-rank" /> issuers are in
+              view, and the largest,{" "}
+              <Value binding="largest" cell="dim_issuer.issuer" id="head-few-issuer" />,
+              holds <Value binding="largest" cell="fv_share" id="head-few-share" /> of their
+              fair value</span>
+            <span hidden={reach !== 1}>
+              <Value binding="largest" cell="dim_issuer.issuer" id="head-only-issuer" /> is
+              the only issuer in view, the whole of its fair value</span>
+            <span hidden={reach !== 0}>No issuer is in view under this selection</span>
+          </>}>
           Issuer concentration across the funds. Rank, share and cumulative share are
           window measures declared in the model; pick a sector and they are taken
           within it.
