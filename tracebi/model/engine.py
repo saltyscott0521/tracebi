@@ -29,7 +29,7 @@ import contextlib
 import contextvars
 import os
 import threading
-from typing import Iterator, Optional
+from typing import Any, Iterator, Optional
 
 #: The timeout, in seconds, the current context's queries run under; None is
 #: no limit (a build, ``verify``, a notebook).
@@ -60,11 +60,16 @@ def _sql_str(value: str) -> str:
 
 
 @contextlib.contextmanager
-def query_connection(warehouses: "Optional[dict[str, str]]" = None,
+def query_connection(warehouses: "Optional[dict[str, Any]]" = None,
                      default: Optional[str] = None):
     """A locked in-memory DuckDB with each of *warehouses* (``{alias: path}``)
     attached READ_ONLY. *default* is the alias ``USE``d, so an unqualified
     table name in a model's ``SELECT`` source resolves in that warehouse.
+
+    A value may also be a :class:`tracebi.warehouse.Warehouse` on the object or
+    remote tier: its :meth:`~tracebi.warehouse.Warehouse.attach` runs before
+    the lock (httpfs and the secret, then the attach, or one view per Parquet
+    file), and the lock then allows exactly the files those views read.
 
     A file that cannot be attached (missing, or held read-write by a writer)
     is left out rather than failing the connection; its tables then fail by
@@ -85,16 +90,27 @@ def query_connection(warehouses: "Optional[dict[str, str]]" = None,
         con.execute(f"SET temp_directory = {_sql_str(settings['temp_directory'])}")
         attached: list[str] = []
         errors: dict[str, str] = {}
+        allowed: list[str] = []
         for alias, path in (warehouses or {}).items():
             try:
-                con.execute(f"ATTACH {_sql_str(os.path.abspath(path))} "
-                            f'AS "{alias}" (READ_ONLY)')
-            except duckdb.Error as exc:
+                if isinstance(path, str):
+                    con.execute(f"ATTACH {_sql_str(os.path.abspath(path))} "
+                                f'AS "{alias}" (READ_ONLY)')
+                else:
+                    # A tracebi.warehouse.Warehouse on the object or remote
+                    # tier: httpfs, the secret, the attach or the Parquet views,
+                    # all before the lock.
+                    allowed += path.attach(con, alias)
+            except (duckdb.Error, ValueError) as exc:
                 errors[alias] = str(exc)
                 continue
             attached.append(alias)
         if default in attached:
             con.execute(f'USE "{default}"')
+        if allowed:
+            # The object tier's views read these files and only these.
+            con.execute("SET allowed_paths = ["
+                        + ", ".join(_sql_str(p) for p in allowed) + "]")
         # Locked before any query runs: no file, extension, or network access,
         # and no way to switch it back on from SQL.
         con.execute("SET enable_external_access = false")
@@ -106,7 +122,7 @@ def query_connection(warehouses: "Optional[dict[str, str]]" = None,
             timer = threading.Timer(limit, _stop)
             timer.daemon = True
             timer.start()
-        yield _Connection(con, attached, errors)
+        yield _Connection(con, attached, errors, guard=bool(allowed))
         if fired.is_set():
             raise _timed_out(limit)
     except duckdb.InterruptException as exc:
@@ -126,14 +142,48 @@ def _timed_out(limit: Optional[float]) -> QueryTimeout:
         f"fewer dimensions or a limit, or raise the limit.")
 
 
+#: Statements that write a file or open a database. The lock refuses them
+#: everywhere except an allowed path, which DuckDB lets a statement write as
+#: well as read; so on a connection that allows the object tier's files, they
+#: are refused here, by statement type from DuckDB's own parser.
+_WRITES = frozenset({"COPY", "COPY_DATABASE", "EXPORT", "ATTACH", "DETACH"})
+
+
 class _Connection:
     """The DuckDB connection, plus which warehouses it attached (and why
     any it could not)."""
 
-    def __init__(self, con, attached: list[str], errors: dict[str, str]) -> None:
+    def __init__(self, con, attached: list[str], errors: dict[str, str],
+                 guard: bool = False) -> None:
         self._con = con
         self.attached = attached
         self.attach_errors = errors
+        self._guard = guard
+
+    def _check(self, query) -> None:
+        if self._guard and isinstance(query, str):
+            import duckdb
+
+            for statement in self._con.extract_statements(query):
+                if statement.type.name in _WRITES:
+                    raise duckdb.PermissionException(
+                        f"Permission Error: {statement.type.name} is disabled by "
+                        f"configuration on a query connection: the object-tier "
+                        f"warehouse is read, never written, from here")
+
+    def execute(self, query, *args, **kwargs):
+        self._check(query)
+        return self._con.execute(query, *args, **kwargs)
+
+    def executemany(self, query, *args, **kwargs):
+        self._check(query)
+        return self._con.executemany(query, *args, **kwargs)
+
+    def sql(self, query, *args, **kwargs):
+        self._check(query)
+        return self._con.sql(query, *args, **kwargs)
+
+    query = sql
 
     def __getattr__(self, name):
         return getattr(self._con, name)
@@ -171,16 +221,26 @@ def warehouse_table_fingerprint(connector, source: str,
     """``(fingerprint, rows)`` of ``connector.load(source, filter=filter)``."""
     from tracebi.model.dataset import frame_fingerprint
 
-    path = os.path.abspath(connector.database)
-    key = (path, _file_stamp(path), connector.directory, source,
+    wh = getattr(connector, "warehouse", None)
+    if wh is None or wh.tier == "file":
+        path = os.path.abspath(connector.database)
+        stamp = _file_stamp(path)
+    else:
+        # The object tier keys on every Parquet file's size and modification
+        # time; the remote tier cannot say when it changed, so it is hashed
+        # every time rather than risk a stale fingerprint.
+        path, stamp = str(connector.database), wh.stamp()
+    key = (path, stamp, connector.directory, source,
            tuple(sorted((str(k), type(v).__name__, repr(v))
                         for k, v in (filter or {}).items())))
     with _fp_lock:
-        hit = _FP_CACHE.get(key)
+        hit = _FP_CACHE.get(key) if stamp is not None else None
     if hit is not None:
         return hit
     df = connector.load(source, filter=filter or None)
     value = (frame_fingerprint(df), len(df))
+    if stamp is None:
+        return value
     with _fp_lock:
         if len(_FP_CACHE) >= _FP_CACHE_MAX:
             _FP_CACHE.pop(next(iter(_FP_CACHE)))

@@ -20,6 +20,42 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-19 — Storage tiers: one `warehouse:` block (S-2)
+
+Decision 20 of the live-reports plan. `tracebi.yaml` gains `warehouse: {tier:
+file | object | remote, location, …}`, read by `project_config.warehouse()`
+into a `tracebi.warehouse.Warehouse`. The seam that made it small is
+`Warehouse.sink`: a `str` subclass (`SinkTarget`) that remembers its
+warehouse. A transform writes `DuckDBConnector(name, database=sink_target())`
+and `contract(name, warehouse=sink_target())` exactly as before, and every
+place that already passed `connector.database` around (the contract join,
+`verify --contracts`, the Warehouse tab) carries the tier along without a new
+parameter. A model says `type: warehouse`; `type: duckdb, database:` still
+names one file.
+
+**The object tier's lock needed a second wall.** A locked connection cannot
+read files, so the views over `read_parquet` are allowed through DuckDB's
+`allowed_paths` (the exact files, globbed when the connection opens). DuckDB
+lets a statement write an allowed path as well as read it (`COPY … TO … 
+(USE_TMP_FILE false)` overwrote the warehouse in a probe), so a query
+connection that allows paths refuses `COPY`, `EXPORT`, `ATTACH` and `DETACH`
+by statement type, from `extract_statements`. The file tier is unchanged: it
+attaches READ_ONLY and allows nothing.
+
+**Stale without re-hashing.** On the object tier the certificate
+(`<location>/_contracts.json`, inside the prefix, so the freeze point still
+carries it) records each file's ETag from a SigV4-signed HEAD (checked
+against botocore's S3 signer), size and last-modified, and every record
+carries `engine_version`. A file whose version moved reads stale even when
+its bytes hash the same; `verify --contracts` says `REWRITTEN`.
+
+Not reachable here: DuckDB's `httpfs` extension cannot be fetched in this
+environment, so the S3 journey step (moto) skips with that reason and the
+same code path runs on a local directory. Not done: AWS session tokens and
+credential chains (only key_id/secret), a remote tier over Postgres (the
+model's views assume a DuckDB `main` schema), and atomic multi-table swaps on
+the object tier (each file is replaced on its own).
+
 ## 2026-10-19 — The medallion layers run in DuckDB (S-4)
 
 Decision 22 of the live-reports plan. `tracebi/etl/_sql.py` compiles each

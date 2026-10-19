@@ -1533,22 +1533,28 @@ class DataModel:
 
     # ── The query connection's relations ──────────────────────
 
-    def _warehouse_aliases(self) -> "tuple[dict[str, str], dict[str, str]]":
+    def _warehouse_aliases(self) -> "tuple[dict[str, Any], dict[str, str]]":
         """``({alias: database path}, {connector name: alias})`` for every
-        file-backed DuckDB warehouse this model reads, to attach READ_ONLY."""
+        file-backed DuckDB warehouse this model reads, to attach READ_ONLY.
+        An object- or remote-tier warehouse (``type: warehouse``) maps to its
+        :class:`tracebi.warehouse.Warehouse`, which the query connection
+        attaches its own way."""
         from tracebi.connectors.duckdb_connector import DuckDBConnector
 
-        files: dict[str, str] = {}
+        files: dict[str, Any] = {}
         aliases: dict[str, str] = {}
         by_path: dict[str, str] = {}
         for cname, connector in self._connectors.items():
             if not (isinstance(connector, DuckDBConnector)
                     and connector.database != ":memory:"):
                 continue
-            path = os.path.abspath(connector.database)
+            if connector.tier == "file":
+                path = target = os.path.abspath(connector.database)
+            else:
+                path, target = f"{connector.tier}:{connector.database}", connector.warehouse
             if path not in by_path:
                 by_path[path] = f"wh{len(by_path)}"
-                files[by_path[path]] = path
+                files[by_path[path]] = target
             aliases[cname] = by_path[path]
         return files, aliases
 

@@ -8,7 +8,10 @@ cannot be switched back on from SQL, and a query past the statement timeout
 is stopped with an error naming the limit.
 """
 
+import os
+
 import duckdb
+import pandas as pd
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -153,3 +156,75 @@ def test_the_project_limits_apply_and_a_slow_query_stops_at_the_timeout(
     assert r.status_code == 504
     assert r.json()["detail"]["exception_type"] == "QueryTimeout"
     assert "engine.query_timeout_s" in r.json()["detail"]["message"]
+
+
+# ── The object tier (tracebi.yaml warehouse: tier: object) ───────────────────
+
+def _lake(tmp_path, monkeypatch):
+    from tracebi.project_config import sink_target
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "tracebi.yaml").write_text("warehouse:\n  tier: object\n  location: lake\n")
+    sink = sink_target(str(tmp_path))
+    DuckDBConnector("w", database=sink).write(
+        pd.DataFrame({"grp": ["a", "a", "b"], "v": [1.0, 2.0, 5.0]}), "fact_x")
+    return sink
+
+
+def test_the_object_tier_reads_its_parquet_and_writes_nothing(tmp_path, monkeypatch):
+    # An allowed path is writable as well as readable to DuckDB, so on this
+    # connection the engine refuses the statements that write by type.
+    sink = _lake(tmp_path, monkeypatch)
+    lake_file = tmp_path / "lake" / "fact_x.parquet"
+    before = lake_file.read_bytes()
+    with query_connection({"wh0": sink.warehouse}, default="wh0") as con:
+        assert con.execute("SELECT sum(v) FROM fact_x").fetchone() == (8.0,)
+        # USE_TMP_FILE false: DuckDB itself would let this one overwrite the file.
+        for sql in (f"COPY (SELECT 1 AS v) TO '{lake_file}' (FORMAT PARQUET, USE_TMP_FILE false)",
+                    f"ATTACH '{tmp_path / 'lake' / 'x.duckdb'}' AS x",
+                    f"SELECT * FROM read_csv('{tmp_path / 'tracebi.yaml'}')"):
+            with pytest.raises(duckdb.PermissionException):
+                con.execute(sql)
+    assert lake_file.read_bytes() == before
+    assert sorted(p.name for p in (tmp_path / "lake").iterdir()) == ["fact_x.parquet"]
+
+
+@pytest.mark.parametrize("block, says", [
+    ("tier: object\n  location: s3://b/p\n  secret: hunter2\n", "warehouse.secret is a credential"),
+    ("tier: object\n  location: s3://b/p\n  key_id: AKIA123\n", "warehouse.key_id is a credential"),
+    ("tier: file\n  region: us-east-1\n", "applies to the object tier only"),
+    ("tier: cloud\n", "warehouse.tier must be one of"),
+    ("tier: object\n  location: s3://b/p\n  bucket: b\n", "unknown warehouse key"),
+    ("tier: remote\n  location: md:db?motherduck_token=abc\n", "carries a credential"),
+])
+def test_the_warehouse_block_refuses_a_literal_credential_and_a_bad_shape(tmp_path, block, says):
+    from tracebi.project_config import warehouse
+
+    (tmp_path / "tracebi.yaml").write_text("warehouse:\n  " + block)
+    with pytest.raises(ValueError, match=says) as err:
+        warehouse(str(tmp_path))
+    assert "tracebi.yaml" in str(err.value)
+    assert "hunter2" not in str(err.value) and "AKIA123" not in str(err.value)
+
+
+def test_the_object_tier_secret_is_built_from_the_environment_when_used(tmp_path, monkeypatch):
+    from tracebi.project_config import warehouse
+
+    (tmp_path / "tracebi.yaml").write_text(
+        "warehouse:\n  tier: object\n  location: s3://bucket/project/\n"
+        "  endpoint: ${TB_T_ENDPOINT}\n  key_id: ${TB_T_KEY}\n  secret: ${TB_T_SECRET}\n"
+        "  url_style: path\n")
+    (tmp_path / ".env").write_text("TB_T_SECRET=from-dotenv\n")
+    monkeypatch.setenv("TB_T_KEY", "AKIDEXAMPLE")
+    monkeypatch.delenv("TB_T_SECRET", raising=False)
+    monkeypatch.delenv("TB_T_ENDPOINT", raising=False)
+    wh = warehouse(str(tmp_path))            # reads no variable yet
+    assert str(wh.sink) == "s3://bucket/project"
+    with pytest.raises(ValueError, match="TB_T_ENDPOINT is not set"):
+        wh.secret_sql()
+    monkeypatch.setenv("TB_T_ENDPOINT", "http://127.0.0.1:9000")
+    assert wh.secret_sql() == (
+        "CREATE OR REPLACE TEMPORARY SECRET tracebi_warehouse (TYPE s3, "
+        "KEY_ID 'AKIDEXAMPLE', SECRET 'from-dotenv', URL_STYLE 'path', "
+        "ENDPOINT '127.0.0.1:9000', USE_SSL false, SCOPE 's3://bucket/project/')")
+    assert "TB_T_SECRET" not in os.environ

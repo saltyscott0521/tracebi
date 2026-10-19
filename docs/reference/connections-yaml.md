@@ -8,6 +8,12 @@ the folder) declares a place data lives. `tracebi connect <name> --kind ...`
 tests a warehouse, writes the file, and puts any secret in `.env`. A model
 points at it with `connection: <name>` in its `connectors:`.
 
+The project's own warehouse (the one its transforms sink into) is not a
+connection file: it is the `warehouse:` block of
+[`tracebi.yaml`](tracebi-yaml.md), and a model reads it with `type:
+warehouse`. That block resolves `${VAR}` exactly as this file does, and its
+remote tier may name a duckdb connection file here.
+
 The file loads with `yaml.safe_load` semantics, a repeated key is an error,
 and the schema is closed: an unknown key is refused with a suggestion.
 

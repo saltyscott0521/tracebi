@@ -92,8 +92,13 @@ discussion; the packages at the end are the plan. <strong>D3 and D10 shipped in 
 (2026-10-19)</strong>: a model query runs in one locked, read-only DuckDB connection
 over views of the attached warehouse (<code>tracebi/model/engine.py</code>), limits in
 <strong>../reference/tracebi-yaml</strong>. Not yet: the per-measure <code>MACRO</code>s (<code>{{ measure() }}</code>
-still expands to inline SQL) and credentials through <code>CREATE TEMPORARY SECRET</code>
-(S-2). Supersedes the
+still expands to inline SQL). <strong>D2 shipped in S-2 (2026-10-19)</strong>: the
+<code>warehouse:</code> block of <strong>../reference/tracebi-yaml</strong> (file, object, remote),
+<code>type: warehouse</code> in a model, <code>sink_target()</code> in a transform, object-tier
+credentials through <code>CREATE TEMPORARY SECRET</code>, and ETags plus the engine
+version in the certificate. Not yet: the object tier's manifest swap (§10;
+each Parquet file is replaced on its own) and <code>tracebi migrate warehouse</code>.
+Supersedes the
 engine choice in <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a> (parquet-wasm + Arquero) and the
 "controls never compute new numbers" rule in <code>tracebi/capabilities.py</code>.
 Everything in the three-phase workflow and the honesty rules

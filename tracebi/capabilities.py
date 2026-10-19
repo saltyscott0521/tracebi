@@ -1179,7 +1179,18 @@ def _conventions() -> dict:
                         "nothing else (no file, URL, extension, ATTACH or "
                         "COPY; the settings are locked); an Explore, Ask or "
                         "agent query stops at query_timeout_s with an error "
-                        "naming it. Reference: docs/reference/tracebi-yaml.md.",
+                        "naming it. warehouse: {tier: file (default, location "
+                        "data/warehouse.duckdb) | object (a Parquet file per "
+                        "table under s3://, gs:// or a directory; endpoint, "
+                        "region, url_style, and key_id / secret that MUST be "
+                        "${ENV_VAR}) | remote (a DuckDB database to ATTACH, "
+                        "md:…), location}: where transforms sink and models "
+                        "read. A model's connector `type: warehouse` and a "
+                        "transform's `sink_target()` (tracebi.project_config) "
+                        "follow it, so neither names a path; the certificate "
+                        "records engine_version and, on the object tier, each "
+                        "file's ETag, and a rewritten file reads stale. "
+                        "Reference: docs/reference/tracebi-yaml.md.",
             },
             {
                 "path": "reports/",

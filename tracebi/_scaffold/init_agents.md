@@ -687,7 +687,13 @@ DuckDB connection over the warehouse that cannot open a file, a URL, an
 extension or another database: a model source that reaches for
 `read_csv('http://…')` is refused by DuckDB, by name. An Explore, Ask or agent
 query stops at `query_timeout_s` (default 30) with an error naming the limit.
-Only a transform reaches the outside world. Reference:
+Only a transform reaches the outside world. The same file's `warehouse:`
+block says where the warehouse lives: `tier: file` (the default,
+`data/warehouse.duckdb`), `object` (a Parquet file per table under `s3://`,
+`gs://` or a directory; `key_id` and `secret` must be `${ENV_VAR}`) or
+`remote` (`md:…`). Write a model's connector as `type: warehouse` and sink a
+transform to `sink_target()` (`from tracebi.project_config import
+sink_target`), and both follow the tier without naming a path. Reference:
 `docs/reference/tracebi-yaml.md`.
 
 Already have dbt marts? `tracebi import dbt <path>` reads a `manifest.json`

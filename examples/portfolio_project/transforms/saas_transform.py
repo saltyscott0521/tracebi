@@ -20,10 +20,12 @@ import os
 import pandas as pd
 
 from tracebi.connectors.duckdb_connector import DuckDBConnector
+from tracebi.project_config import sink_target
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, "inputs", "subscriptions.csv")
-WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+# Where tracebi.yaml says the warehouse is, on whichever tier.
+WAREHOUSE = sink_target(ROOT)
 
 _PLANS = {"starter": "Starter", "growth": "Growth", "scale": "Scale"}
 _STATUSES = {"active", "churned", "inactive"}
@@ -88,8 +90,7 @@ fact = (
 )
 
 # %%  Sink — the contract. These named tables are what phase ② models.
-os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
-wh = DuckDBConnector("warehouse", database=WAREHOUSE)
+wh =DuckDBConnector("warehouse", database=WAREHOUSE)
 wh.write(dim_month, "dim_month")
 wh.write(dim_plan, "dim_plan")
 wh.write(dim_cohort, "dim_cohort")

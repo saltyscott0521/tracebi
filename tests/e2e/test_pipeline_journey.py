@@ -1,8 +1,11 @@
 """The pipeline journey: ``tracebi new-pipeline`` scaffolds an empty runner,
 the analyst fills in a landing layer and a cleaning layer (as the scaffold's
 docstring shows), then runs it from the CLI and from the web Pipelines page, and
-reads the run history back.
+reads the run history back. The last steps move the reference project's
+warehouse to the object tier (``tracebi.yaml``) and run the same pipeline.
 """
+
+import json
 
 import pytest
 
@@ -382,3 +385,112 @@ def test_a_model_and_its_connector_show_the_file_that_declares_them(reference, m
     nothing = c.get("/api/models/in_code/source").json()
     assert nothing["files"] == [] and "Python code" in nothing["hint"]
     assert c.get("/api/models/nope/source").status_code == 404
+
+
+def _object_tier_journey(proj, monkeypatch, warehouse_block, rewrite):
+    """One tracebi.yaml block moves the reference project's warehouse to the
+    object tier: the pipeline's transform sinks one Parquet file per table and
+    the certificate beside them, the model reads them where they lie, a
+    report built from them reproduces, and a file rewritten behind the
+    transform's back reads stale. Returns the warehouse."""
+    from tracebi.project_config import warehouse
+
+    (proj / "tracebi.yaml").write_text(warehouse_block)
+    wh = warehouse(str(proj))
+    code, out = run_cli("run-pipeline", "portfolio_model", "--layer", "transform")
+    assert code == 0, out
+    assert not (proj / "data" / "warehouse.duckdb").exists()
+    rec = json.loads(wh.read_text(wh.certificate))["transforms"]["holdings"]
+    assert rec["engine_version"] and set(rec["objects"]) == set(rec["tables"])
+    fact = rec["objects"]["fact_holdings"]
+    assert fact["path"] == wh.table_path("fact_holdings") and fact["size"] > 0
+
+    # The model reads the Parquet in place, through the locked query connection.
+    name = "portfolio_model/portfolio_overview"
+    code, out = run_cli("report", "build", name)
+    assert code == 0, out
+    manifest = proj / "output" / f"{name}.html.manifest.json"
+    contracts = json.loads(manifest.read_text())["transform_contracts"]
+    assert contracts and {v["status"] for v in contracts.values()} == {"satisfied"}
+    code, out = run_cli("verify", str(manifest), "--contracts")
+    assert code == 0 and "REPRODUCES" in out, out
+
+    # The Warehouse tab reads the tier too.
+    c = serve_app(monkeypatch, models=True)
+    view = c.get("/api/connectors/warehouse/warehouse").json()
+    assert view["supported"] and view["exists"]
+    assert {t["name"]: t["contract"]["status"] for t in view["tables"]}["fact_holdings"] == "satisfied"
+
+    rewrite(wh, "dim_fund")
+    code, out = run_cli("verify", str(manifest), "--contracts")
+    assert code == 1, out
+    assert "dim_fund" in out and ("REWRITTEN" in out or "CHANGED" in out), out
+    return wh
+
+
+def test_the_object_tier_sinks_parquet_the_model_reads_in_place(reference, monkeypatch):
+    """The object tier on a local directory: no S3 needed, the same code path
+    (views over read_parquet, COPY … TO, the certificate inside the prefix)."""
+    import time
+
+    def rewrite_same_bytes(wh, table):
+        # Identical bytes, written again: the file's size and modification
+        # time are what a directory can offer, so the stamp alone reads stale.
+        path = wh.table_path(table)
+        data = open(path, "rb").read()
+        time.sleep(0.01)
+        with open(path, "wb") as fh:
+            fh.write(data)
+
+    wh = _object_tier_journey(reference, monkeypatch,
+                              "warehouse:\n  tier: object\n  location: data/lake\n",
+                              rewrite_same_bytes)
+    assert sorted(p.name for p in (reference / "data" / "lake").iterdir()) == [
+        "_contracts.json", "dim_date.parquet", "dim_flow_type.parquet", "dim_fund.parquet",
+        "dim_issuer.parquet", "fact_cashflows.parquet", "fact_holdings.parquet"]
+    from tracebi.contracts import check_fingerprints
+    [row] = [r for r in check_fingerprints(wh.sink) if r["table"] == "dim_fund"]
+    assert row["rewritten"] and row["current"] == row["recorded"] and not row["matches"]
+
+
+def test_the_object_tier_on_an_s3_endpoint(reference, monkeypatch):
+    """The same journey against a local S3-compatible endpoint (moto), through
+    httpfs and a temporary secret; the certificate records each object's
+    ETag. Skipped, saying why, where httpfs or moto is not installed."""
+    import urllib.request
+
+    import duckdb
+
+    try:
+        duckdb.connect().execute("LOAD httpfs")
+    except duckdb.Error:
+        pytest.skip("DuckDB's httpfs extension is not installed here; the "
+                    "local-directory object tier journey covers the same code path")
+    server_mod = pytest.importorskip(
+        "moto.server", reason="moto[server] is not installed: no local S3 endpoint")
+    server = server_mod.ThreadedMotoServer(ip_address="127.0.0.1", port=0, verbose=False)
+    server.start()
+    try:
+        host, port = server.get_host_and_port()
+        endpoint = f"http://{host}:{port}"
+        urllib.request.urlopen(urllib.request.Request(f"{endpoint}/tbjourney", method="PUT"))
+        monkeypatch.setenv("TB_S3_KEY", "testing")
+        monkeypatch.setenv("TB_S3_SECRET", "testing")
+
+        def rewrite_fewer_rows(wh, table):
+            con = wh.connect(write=True)
+            try:
+                con.execute(f"CREATE TEMP TABLE t AS SELECT * FROM "
+                            f"read_parquet('{wh.table_path(table)}') LIMIT 1")
+                con.execute(f"COPY t TO '{wh.table_path(table)}' (FORMAT PARQUET)")
+            finally:
+                con.close()
+
+        wh = _object_tier_journey(reference, monkeypatch, (
+            "warehouse:\n  tier: object\n  location: s3://tbjourney/portfolio\n"
+            f"  endpoint: {endpoint}\n  region: us-east-1\n  url_style: path\n"
+            "  key_id: ${TB_S3_KEY}\n  secret: ${TB_S3_SECRET}\n"), rewrite_fewer_rows)
+        rec = json.loads(wh.read_text(wh.certificate))["transforms"]["holdings"]
+        assert rec["objects"]["fact_holdings"]["version_by"] == "etag"
+    finally:
+        server.stop()

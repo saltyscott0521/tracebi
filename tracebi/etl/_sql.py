@@ -102,6 +102,10 @@ def same_database(source: Any, sink: Any) -> bool:
     from tracebi.connectors.duckdb_connector import DuckDBConnector
     if not (isinstance(source, DuckDBConnector) and isinstance(sink, DuckDBConnector)):
         return False
+    if "object" in (source.tier, sink.tier):
+        # Parquet files, not tables: the step reads through the source and
+        # lands through write(), which writes each table's file.
+        return False
     if source is sink:
         return True
     if ":memory:" in (source.database, sink.database):

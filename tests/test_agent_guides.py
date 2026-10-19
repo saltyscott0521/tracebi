@@ -284,7 +284,8 @@ class TestLargeDetailArtifactIsTaught:
                         if d["path"] == "tracebi.yaml")
         for name, text in {"tracebi context": settings["note"], **_guides()}.items():
             for phrase in ("tracebi init", "query_timeout_s", "memory_limit",
-                           "docs/reference/tracebi-yaml.md"):
+                           "docs/reference/tracebi-yaml.md", "warehouse:",
+                           "type: warehouse", "sink_target()", "${ENV_VAR}"):
                 assert phrase in text, f"{name} does not teach {phrase}"
 
 

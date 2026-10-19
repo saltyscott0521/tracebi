@@ -93,6 +93,11 @@ file as a <code>${ENV_VAR}</code> reference.</strong></p>
 the folder) declares a place data lives. <code>tracebi connect &lt;name&gt; --kind ...</code>
 tests a warehouse, writes the file, and puts any secret in <code>.env</code>. A model
 points at it with <code>connection: &lt;name&gt;</code> in its <code>connectors:</code>.</p>
+<p>The project's own warehouse (the one its transforms sink into) is not a
+connection file: it is the <code>warehouse:</code> block of
+<a href="tracebi-yaml.md"><code>tracebi.yaml</code></a>, and a model reads it with <code>type:
+warehouse</code>. That block resolves <code>${VAR}</code> exactly as this file does, and its
+remote tier may name a duckdb connection file here.</p>
 <p>The file loads with <code>yaml.safe_load</code> semantics, a repeated key is an error,
 and the schema is closed: an unknown key is refused with a suggestion.</p>
 <hr>

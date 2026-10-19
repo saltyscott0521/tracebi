@@ -53,4 +53,7 @@ def connector_warehouse(name: str):
         return {"supported": False, "tables": []}
     from tracebi.workbench import warehouse_view
 
-    return {"supported": True, **warehouse_view(str(database))}
+    # The project's warehouse (`type: warehouse`) is read on its own tier.
+    wh = getattr(c, "warehouse", None)
+    return {"supported": True,
+            **warehouse_view(wh.sink if wh is not None else str(database))}

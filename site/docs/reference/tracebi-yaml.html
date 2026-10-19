@@ -87,8 +87,8 @@
   </details>
   <main class="doc">
 <h1 id="project-settings-tracebiyaml">Project settings (<code>tracebi.yaml</code>)</h1>
-<p><strong>The limits of the engine that answers model queries, in one file at the
-project root.</strong></p>
+<p><strong>Where the warehouse lives, and the limits of the engine that answers model
+queries, in one file at the project root.</strong></p>
 <p><code>tracebi.yaml</code> sits beside <code>models/</code> and <code>reports/</code>. <code>tracebi init</code> writes a
 commented one. Every key is optional: a missing file, block or key means the
 default. A key the file does not know, or a value of the wrong shape, is an
@@ -98,12 +98,132 @@ working directory (the project root) and re-read when it changes.</p>
 <hr>
 <h2 id="example">Example</h2>
 <pre><code class="language-yaml"># tracebi.yaml
+warehouse:
+  tier: file                         # file (default) | object | remote
+  location: data/warehouse.duckdb
 engine:
   memory_limit: 1GB                  # past it, a query spills to temp_directory
   threads: 4                         # default: min(4, CPUs)
   temp_directory: data/.duckdb-tmp   # relative to the project root
   query_timeout_s: 30                # Explore, Ask and agent queries stop here
 </code></pre>
+<hr>
+<h2 id="warehouse"><code>warehouse</code></h2>
+<p>The freeze point between phase ① and phase ②: where a transform sinks its
+tables and where a model reads them. Three tiers, one setting; the tables are
+the same on each, only their address moves.</p>
+<table>
+<thead>
+<tr>
+<th>tier</th>
+<th>location</th>
+<th>a transform's <code>write(df, table)</code></th>
+<th>the model reads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>file</code> (default)</td>
+<td>a <code>.duckdb</code> path, default <code>data/warehouse.duckdb</code></td>
+<td>a table in the file</td>
+<td>the file, attached read-only</td>
+</tr>
+<tr>
+<td><code>object</code></td>
+<td><code>s3://bucket/prefix</code>, <code>gs://bucket/prefix</code> (R2 and MinIO: <code>s3://</code> plus an <code>endpoint</code>), or a local directory</td>
+<td><code>COPY … TO '&lt;location&gt;/&lt;table&gt;.parquet' (FORMAT PARQUET)</code></td>
+<td>one view per file over <code>read_parquet</code>, in place</td>
+</tr>
+<tr>
+<td><code>remote</code></td>
+<td>a DuckDB database to <code>ATTACH</code>: <code>md:my_db</code> (MotherDuck), a path, or the name of a <code>connections/&lt;name&gt;.yaml</code> of type duckdb</td>
+<td>a table in that database</td>
+<td>the database, attached read-only</td>
+</tr>
+</tbody>
+</table>
+<p>Two files follow it without naming a path:</p>
+<ul>
+<li><strong>A model</strong> says <code>connectors: - {name: warehouse, type: warehouse}</code>. That is
+  the project's warehouse on whichever tier. <code>type: duckdb</code> with a
+  <code>database:</code> path still names one file explicitly (the file tier).</li>
+<li><strong>A transform</strong> writes to <code>sink_target()</code>:</li>
+</ul>
+<p><code>python
+  from tracebi.project_config import sink_target
+  WAREHOUSE = sink_target(ROOT)           # the path, the prefix, or the attach string
+  DuckDBConnector("warehouse", database=WAREHOUSE).write(df, "fact_orders")
+  with contract("orders", warehouse=WAREHOUSE) as c:
+      ...</code></p>
+<p><code>sink_target()</code> returns a string that remembers its warehouse, so the
+  connector and the contract follow the tier. <code>write()</code> creates <code>data/</code> (or
+  the local directory) on a fresh clone. A medallion layer whose sink is the
+  project's warehouse writes through the same <code>write()</code>.</p>
+<h3 id="object-tier-keys">Object-tier keys</h3>
+<table>
+<thead>
+<tr>
+<th>key</th>
+<th>meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>endpoint</code></td>
+<td>An S3-compatible endpoint (MinIO, R2): <code>http://host:port</code> or <code>https://…</code>. <code>http://</code> turns TLS off. Omitted: AWS (or Google Cloud Storage for <code>gs://</code>).</td>
+</tr>
+<tr>
+<td><code>region</code></td>
+<td>The bucket's region.</td>
+</tr>
+<tr>
+<td><code>key_id</code></td>
+<td>The access key id. <strong>Must be <code>${VAR}</code>.</strong></td>
+</tr>
+<tr>
+<td><code>secret</code></td>
+<td>The secret access key. <strong>Must be <code>${VAR}</code>.</strong></td>
+</tr>
+<tr>
+<td><code>url_style</code></td>
+<td><code>path</code> (MinIO, most endpoints) or <code>vhost</code> (AWS's default).</td>
+</tr>
+</tbody>
+</table>
+<p><code>${VAR}</code> is the whole value, as in <code>connections/*.yaml</code>: looked up in the
+environment, then the project's <code>.env</code>, when a connection is made (never when
+the file is read, never copied into <code>os.environ</code>). An unset variable is an
+error naming it, the key and the file. A literal <code>key_id</code> or <code>secret</code> is
+refused, naming the key. <code>tier</code> and <code>location</code> are written out, because a
+model reads them when it loads; a remote location that carries a credential
+(<code>md:db?motherduck_token=…</code>) is refused, so keep it in a
+<code>connections/&lt;name&gt;.yaml</code> (or MotherDuck's own <code>motherduck_token</code> variable)
+and name that.</p>
+<p>The object tier reads remote storage through DuckDB's <code>httpfs</code> extension. A
+query connection only loads it; the first transform installs it if it is
+missing (an air-gapped server needs it in <code>~/.duckdb/extensions</code>
+beforehand). The credentials become a <code>CREATE TEMPORARY SECRET</code> scoped to the
+prefix, on that one connection, before it is locked.</p>
+<h3 id="what-the-query-connection-may-read-on-each-tier">What the query connection may read on each tier</h3>
+<p>The lock below applies on every tier. On the object tier the connection is
+allowed exactly the Parquet files its views read (<code>allowed_paths</code>), found
+when it opens; any other file or URL is refused as before. Because DuckDB
+would let a statement write an allowed path, a query connection that allows
+files also refuses <code>COPY</code>, <code>EXPORT</code>, <code>ATTACH</code> and <code>DETACH</code> by statement type,
+from DuckDB's own parser. The transform's write connection is not locked; the
+<code>engine</code> limits below apply to it as well (limits are not a lock).</p>
+<h3 id="the-certificate-on-each-tier">The certificate on each tier</h3>
+<p>A sink contract's certificate lives beside the warehouse: beside the file on
+the file tier, <code>&lt;location&gt;/_contracts.json</code> inside the prefix on the object
+tier, and <code>data/remote_warehouse.contracts.json</code> on the remote tier. Every
+record carries <code>engine_version</code> (the DuckDB that read the tables back). On the
+object tier it also carries <code>objects</code>: per table, the file's <code>path</code>, <code>etag</code>
+(from a HEAD request signed with the resolved credentials; <code>null</code> where the
+store gives none, as on a local directory), <code>size</code>, <code>last_modified</code> and
+<code>version_by</code> (<code>etag</code> or <code>size+last_modified</code>, which of them decides). A file
+rewritten since the certificate reads <strong>stale</strong> on that version alone, before
+any fingerprint is compared, in report manifests, the Warehouse tab and
+<code>tracebi verify --contracts</code> (<code>REWRITTEN</code>).</p>
 <hr>
 <h2 id="engine"><code>engine</code></h2>
 <p>Every model query (a report build, Explore and Ask in the app, the agent

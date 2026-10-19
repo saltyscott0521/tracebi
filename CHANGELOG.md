@@ -6,6 +6,33 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — storage tiers for the warehouse
+
+- `tracebi.yaml` `warehouse: {tier, location}`: `file` (the default,
+  `data/warehouse.duckdb`), `object` (one Parquet file per table under
+  `s3://`, `gs://`, an S3-compatible `endpoint`, or a local directory) or
+  `remote` (a DuckDB database to `ATTACH`, e.g. `md:…`). Object-tier
+  credentials (`key_id`, `secret`) must be `${VAR}`, resolved from the
+  environment then `.env` when a connection is made, and become a
+  `CREATE TEMPORARY SECRET` scoped to the prefix. An unknown key, a bad tier
+  or a literal credential is an error naming the file and the key.
+- A model's connector `type: warehouse` reads the project's warehouse on any
+  tier; `tracebi.project_config.sink_target()` is what a transform writes to.
+  `DuckDBConnector.for_warehouse(wh)` builds the connector. The reference
+  project's models and transforms use both.
+- On the object tier, `write(df, table)` lands `<location>/<table>.parquet`
+  (`COPY … TO`), and the model's tables are views over them in the locked
+  query connection, which may read exactly those files and refuses `COPY`,
+  `EXPORT`, `ATTACH` and `DETACH`.
+- The sink certificate records `engine_version`, and on the object tier each
+  file's ETag (or size and last-modified where there is none); a rewritten
+  file reads stale in manifests, the Warehouse tab and `tracebi verify
+  --contracts` (`REWRITTEN`). The object tier keeps the certificate inside
+  the prefix (`_contracts.json`).
+- `DuckDBConnector.write()` creates the warehouse's folder on a fresh clone and
+  applies the `engine` limits (memory, threads, spill directory) to its
+  connection. `tracebi new-model` scaffolds `type: warehouse`.
+
 ### Changed — the medallion layers run in DuckDB
 
 - `ManipulationLayer` / `SilverLayer` steps (`cast`, `drop_nulls`,

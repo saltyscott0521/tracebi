@@ -241,7 +241,8 @@ def expand(model, sql: str) -> tuple[str, dict]:
 
 
 def _warehouse(model):
-    """The model's one file-backed DuckDB warehouse."""
+    """The model's one DuckDB warehouse (a file, or the project's warehouse
+    on any tier)."""
     from tracebi.connectors.duckdb_connector import DuckDBConnector
 
     files = [c for c in model.connectors()
@@ -286,24 +287,29 @@ def run(model, query: SqlQuery) -> DataSet:
     connector = _warehouse(model)
     resolved, used = expand(model, query.sql)
     check_read_only(resolved)
-    path = os.path.abspath(connector.database)
-    if not os.path.isfile(path):
-        raise FileNotFoundError(
-            f"DuckDB database file '{connector.database}' does not exist. Run the "
-            "transform that sinks this warehouse first.")
+    if connector.tier == "file":
+        target = os.path.abspath(connector.database)
+        if not os.path.isfile(target):
+            raise FileNotFoundError(
+                f"DuckDB database file '{connector.database}' does not exist. Run the "
+                "transform that sinks this warehouse first.")
+    else:
+        target = connector.warehouse
 
     # The query connection (tracebi.model.engine) is locked before the
     # author's SQL runs: no file, extension, or network access, and no way to
     # switch it back on.
-    with query_connection({"wh": path}, default="wh") as con:
+    with query_connection({"wh": target}, default="wh") as con:
         if "wh" not in con.attached:
             raise RuntimeError(
                 f"Cannot attach '{connector.database}' read-only: "
                 f"{con.attach_errors.get('wh')}")
+        # On the object tier the warehouse's tables are views over its Parquet.
+        kinds = ("BASE TABLE",) if connector.tier == "file" else ("BASE TABLE", "VIEW")
         base = {row[0] for row in con.execute(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_catalog = 'wh' AND table_schema = 'main' "
-            "AND table_type = 'BASE TABLE'").fetchall()}
+            f"AND table_type IN ({', '.join(repr(k) for k in kinds)})").fetchall()}
         inputs = [(t, con.execute(f"SELECT * FROM {_ident(t)}").df())
                   for t in sorted(_tables_read(con, resolved) & base)]
         df = con.execute(resolved).df()

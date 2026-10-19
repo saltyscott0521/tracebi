@@ -12,7 +12,9 @@ data needs. The contract is not *how* you clean, it is *what lands* — the name
 tables at the bottom of this file. Phase ② (models/) reads those tables and
 never sees this code.
 
-Reads a raw pull from inputs/ and sinks to the warehouse in data/.
+Reads a raw pull from inputs/ and sinks to the project's warehouse: the
+DuckDB file data/warehouse.duckdb unless tracebi.yaml's warehouse block puts
+it on object storage (Parquet per table) or a remote engine.
 
     python transforms/holdings_transform.py
 
@@ -28,11 +30,13 @@ import pandas as pd
 
 from tracebi.connectors.duckdb_connector import DuckDBConnector
 from tracebi.contracts import contract
+from tracebi.project_config import sink_target
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RAW = os.path.join(ROOT, "inputs", "holdings.csv")
-WAREHOUSE = os.path.join(ROOT, "data", "warehouse.duckdb")
+# Where tracebi.yaml says the warehouse is, on whichever tier.
+WAREHOUSE = sink_target(ROOT)
 
 
 # ── cleaning helpers ─────────────────────────────────────────────────────────
@@ -193,7 +197,6 @@ def run() -> dict:
     dim_date = pd.DataFrame({"flow_date": sorted(fact_cashflows["flow_date"].unique())})
 
     # ── SINK to the warehouse ─────────────────────────────────────────────────
-    os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
     # No connect() here: write() manages its own short-lived read-write
     # connection, and a read-only connect would fail on a fresh clone whose
     # warehouse file does not exist yet (first-run bug caught by the

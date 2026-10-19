@@ -21,11 +21,10 @@
 name: saas_model
 label: SaaS Subscriptions
 
-# connectors: where the tables live (a DuckDB file inside the project)
+# connectors: where the tables live: the project's warehouse (tracebi.yaml)
 connectors:
   - name: warehouse
-    type: duckdb
-    database: data/warehouse.duckdb
+    type: warehouse
 
 # tables: each table the phase-1 transform sank, by its warehouse name
 tables:

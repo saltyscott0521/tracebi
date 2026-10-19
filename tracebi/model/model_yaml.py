@@ -79,6 +79,9 @@ def _connector(c, root: Path) -> dict:
         raise ModelMigrationError(
             f"connector '{c.name}' reads a directory of files; a YAML "
             f"connector declares one DuckDB file")
+    if getattr(c, "warehouse", None) is not None:
+        # DuckDBConnector.for_warehouse: the project's warehouse, any tier.
+        return {"name": c.name, "type": "warehouse"}
     database = str(described["database"])
     if database == ":memory:" or not database:
         raise ModelMigrationError(

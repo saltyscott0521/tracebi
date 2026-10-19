@@ -145,13 +145,15 @@ def _model_yaml_template_text(title: str) -> str:
 name: {slug}
 label: {json.dumps(title.strip())}
 
-# connectors: where the tables live. `database` is a DuckDB file inside the
-# project (no absolute path, no ".."). No credentials belong here: for a
-# database, run `tracebi connect` and use `connection: <name>` instead.
+# connectors: where the tables live. `type: warehouse` is the project's
+# warehouse, wherever tracebi.yaml puts it (a DuckDB file by default, Parquet
+# on object storage, or a remote engine). `type: duckdb` with a `database`
+# path names one DuckDB file inside the project instead. No credentials
+# belong here: for a database, run `tracebi connect` and use
+# `connection: <name>`.
 connectors:
   - name: warehouse
-    type: duckdb
-    database: data/warehouse.duckdb
+    type: warehouse
 
 # tables: each table the transform sank, by the name it has in the warehouse.
 tables:
@@ -1883,7 +1885,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
             for r in fp_rows:
                 ok = r["matches"]
                 state = "unchanged" if ok else (
-                    "MISSING" if r["current"] is None else "CHANGED")
+                    "MISSING" if r["current"] is None else
+                    "REWRITTEN" if r.get("rewritten") else "CHANGED")
                 print(f"{'✓' if ok else '✗'} {state:<12} "
                       f"{r['transform']}: {r['table']}",
                       file=sys.stdout if ok else sys.stderr)

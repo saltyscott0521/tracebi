@@ -67,9 +67,48 @@ CONTRACTS_SCHEMA_VERSION = 1
 
 
 def contracts_path(warehouse: str) -> str:
-    """``data/warehouse.duckdb`` → ``data/warehouse.contracts.json``."""
+    """``data/warehouse.duckdb`` → ``data/warehouse.contracts.json``.
+
+    A warehouse address from ``tracebi.yaml`` (:mod:`tracebi.warehouse`) on
+    the object tier keeps it inside the prefix (``<location>/_contracts.json``),
+    so the freeze point still carries its own certificate; on the remote tier,
+    in the project's ``data/``."""
+    wh = getattr(warehouse, "warehouse", None)
+    if wh is not None and wh.tier != "file":
+        return wh.certificate
     root, _ext = os.path.splitext(warehouse)
     return root + CONTRACTS_SUFFIX
+
+
+def _warehouse(warehouse: str):
+    from tracebi.warehouse import as_warehouse
+    return as_warehouse(warehouse)
+
+
+def _reader(warehouse: str):
+    """A read-only connection in which the sunk tables resolve by name: the
+    file itself, or (object and remote tiers) the warehouse's own reader."""
+    import duckdb
+
+    wh = getattr(warehouse, "warehouse", None)
+    if wh is None or wh.tier == "file":
+        return duckdb.connect(warehouse, read_only=True)
+    return wh.connect()
+
+
+def _object_moved(rec: dict, table: str, warehouse: str) -> bool:
+    """Object tier: has *table*'s file been rewritten since *rec* certified it?
+    Decided by the ETag when both sides have one, else by size and
+    last-modified; a table the record holds no object for never reads moved
+    here (its fingerprint still decides)."""
+    recorded = (rec.get("objects") or {}).get(table)
+    if not recorded:
+        return False
+    now = _warehouse(warehouse).object_version(table)
+    if recorded.get("etag") and now.get("etag"):
+        return recorded["etag"] != now["etag"]
+    return (recorded.get("size"), recorded.get("last_modified")) != (
+        now.get("size"), now.get("last_modified"))
 
 
 class ContractViolation(RuntimeError):
@@ -233,28 +272,33 @@ class _Contract:
         if not self._checks:
             return   # an empty block declares nothing; write nothing.
 
+        import duckdb
+
         record = {
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "transform": self.name,
             "checks": self._checks,
             "tables": self._table_fingerprints(),
+            # The engine that read the tables back: a fingerprint is only
+            # comparable across one engine's reading of the bytes.
+            "engine_version": duckdb.__version__,
         }
+        wh = _warehouse(self.warehouse)
+        if wh.tier == "object":
+            # Each table's file as it is now: a rewrite that bypasses the
+            # transform (no new certificate) changes its ETag, or its size
+            # and last-modified where the store gives no ETag, and reads
+            # stale without re-hashing a byte.
+            record["objects"] = {t: wh.object_version(t) for t in sorted(self._tables)}
         # The transform-level stated methodology, omitted when unset.
         if self.note is not None:
             record["note"] = self.note
-        path = contracts_path(self.warehouse)
-        existing: dict = {"schema_version": CONTRACTS_SCHEMA_VERSION,
-                          "transforms": {}}
-        if os.path.isfile(path):
-            try:
-                with open(path, encoding="utf-8") as f:
-                    existing = json.load(f)
-            except (OSError, json.JSONDecodeError):
-                pass   # a corrupt certificate is replaced, not obeyed
+        existing = read_contracts(self.warehouse) or {
+            "schema_version": CONTRACTS_SCHEMA_VERSION, "transforms": {}}
         existing.setdefault("transforms", {})[self.name] = record
         existing["schema_version"] = CONTRACTS_SCHEMA_VERSION
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(existing, f, indent=2, default=str)
+        wh.write_text(contracts_path(self.warehouse),
+                      json.dumps(existing, indent=2, default=str))
 
 
 class contract:
@@ -270,9 +314,7 @@ class contract:
         self._c = _Contract(name, warehouse, note=note)
 
     def __enter__(self) -> _Contract:
-        import duckdb
-
-        self._c._con = duckdb.connect(self._c.warehouse, read_only=True)
+        self._c._con = _reader(self._c.warehouse)
         return self._c
 
     def __exit__(self, exc_type, exc, tb) -> bool:
@@ -287,13 +329,21 @@ class contract:
 def read_contracts(warehouse: str) -> Optional[dict]:
     """The certificate beside *warehouse*, or None."""
     path = contracts_path(warehouse)
-    if not os.path.isfile(path):
+    wh = getattr(warehouse, "warehouse", None)
+    if wh is not None and wh.tier != "file":
+        text = wh.read_text(path)
+    elif not os.path.isfile(path):
         return None
+    else:
+        try:
+            with open(path, encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            return None
     try:
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return None
+        data = json.loads(text) if text else None
+    except json.JSONDecodeError:
+        return None   # a corrupt certificate is replaced, not obeyed
     return data if isinstance(data, dict) else None
 
 
@@ -308,13 +358,11 @@ def rerun_checks(warehouse: str, transform: Optional[str] = None) -> list[dict]:
     is the author's prose, not an input to the check and not something a
     re-run may rewrite. Execution diagnostics ride in ``error``.
     """
-    import duckdb
-
     data = read_contracts(warehouse)
     if not data:
         return []
     results: list[dict] = []
-    con = duckdb.connect(warehouse, read_only=True)
+    con = _reader(warehouse)
     try:
         for tname, rec in (data.get("transforms") or {}).items():
             if transform and tname != transform:
@@ -359,7 +407,10 @@ def check_fingerprints(warehouse: str,
 
     Returns one row per recorded table:
     ``{transform, table, recorded, current, matches}`` — ``current`` is None
-    (``matches`` False) when the table is now missing. A legitimate re-sink
+    (``matches`` False) when the table is now missing. On the object tier a
+    row also says ``rewritten``: the file's ETag (or size and last-modified)
+    differs from the certificate's, which alone makes ``matches`` False.
+    A legitimate re-sink
     rewrites the certificate, so a mismatch means the warehouse moved *without*
     re-certifying: out-of-band mutation.
     """
@@ -380,9 +431,16 @@ def check_fingerprints(warehouse: str,
                     current = frame_fingerprint(wh.load(table))
                 except Exception:  # noqa: BLE001 — a dropped table is a result
                     current = None
-                results.append({"transform": tname, "table": table,
-                                "recorded": recorded, "current": current,
-                                "matches": current == recorded})
+                row = {"transform": tname, "table": table,
+                       "recorded": recorded, "current": current,
+                       "matches": current == recorded}
+                if rec.get("objects"):
+                    # The object tier: a file rewritten since the certificate
+                    # reads stale on its ETag (or size and last-modified)
+                    # alone, even when the bytes hash the same.
+                    row["rewritten"] = current is not None and _object_moved(rec, table, warehouse)
+                    row["matches"] = row["matches"] and not row["rewritten"]
+                results.append(row)
     finally:
         wh.disconnect()
     return results
@@ -433,17 +491,20 @@ def transform_contracts_block(models: dict,
                 block.setdefault(table, {"status": "no_contract"})
                 continue
             block[table] = _status_entry(
-                rec, table, frame_fingerprint(conn.load(table)))
+                rec, table, frame_fingerprint(conn.load(table)),
+                _object_moved(rec, table, wh))
     return block
 
 
-def _status_entry(rec: dict, table: str, current: str) -> dict:
+def _status_entry(rec: dict, table: str, current: str, moved: bool = False) -> dict:
     """One table's contract status: the record covering it, judged against the
     fingerprint the table has *right now* (read through the connector load
-    path). Shared by the manifest join and the Warehouse view."""
+    path), and on the object tier against the file's recorded version
+    (*moved*: rewritten since, which alone reads stale). Shared by the
+    manifest join and the Warehouse view."""
     recorded = rec["tables"][table]
     entry = {
-        "status": "satisfied" if current == recorded else "stale",
+        "status": "satisfied" if current == recorded and not moved else "stale",
         "transform": rec.get("transform"),
         "checked_at": rec.get("checked_at"),
         "checks": sum(1 for c in rec.get("checks", [])
@@ -473,7 +534,8 @@ def table_statuses(warehouse: str, tables: list[str]) -> dict[str, dict]:
             rec = _record_covering(certs, table)
             out[table] = ({"status": "no_contract"} if rec is None else
                           _status_entry(rec, table,
-                                        frame_fingerprint(wh.load(table))))
+                                        frame_fingerprint(wh.load(table)),
+                                        _object_moved(rec, table, warehouse)))
     finally:
         wh.disconnect()
     return out

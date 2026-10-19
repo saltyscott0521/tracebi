@@ -1,6 +1,23 @@
 # tracebi.yaml: this project's settings. Every key is optional; a missing key
 # is the default shown. Reference: docs/reference/tracebi-yaml.md
 #
+# warehouse: where transforms sink and models read. A model's connector
+# `type: warehouse` and a transform's sink_target() follow it (the sample here
+# names the same file through connections/warehouse.yaml instead; switch both
+# before moving tiers). tier: file (one DuckDB file), object (a Parquet file
+# per table under s3://, gs:// or a directory; key_id and secret MUST be
+# ${VAR}), or remote (a DuckDB database to ATTACH, e.g. md:my_db).
+warehouse:
+  tier: file
+  location: data/warehouse.duckdb
+  # tier: object
+  # location: s3://my-bucket/my-project
+  # endpoint: ${TRACEBI_S3_ENDPOINT}     # MinIO / R2; omit for AWS
+  # region: ${AWS_REGION}
+  # key_id: ${AWS_ACCESS_KEY_ID}
+  # secret: ${AWS_SECRET_ACCESS_KEY}
+  # url_style: path
+#
 # engine: the DuckDB connection that answers model queries (Explore, Ask,
 # agents, builds, verify). It reads the warehouse read-only and nothing else:
 # no file, URL, extension or other database. These are its limits.
