@@ -1,10 +1,11 @@
 // Sales Rep Scorecard: an app (the React lane) with two views, by rep and by
 // region. Every number is a kit figure, so its trace names it. Win rate is
 // won deals over closed deals inside the rep or region, a ratio of totals, not a
-// mean of per-rep rates.
+// mean of per-rep rates. The filters, the amount range, a click on a rep's
+// row or a bar all cut the whole page, in either view.
 import { Users, Map } from "lucide-react";
-import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download, useUrlState,
-         usePrinting } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Range, SelectionBar, Download,
+         useUrlState, usePrinting } from "tracebi";
 
 const VIEWS = { Reps: Users, Regions: Map };
 
@@ -18,11 +19,9 @@ function Reps() {
       </section>
       <section className="tb-card tb-span-8">
         <h2>Rep scorecard</h2>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Filter binding="by_rep" column="dim_rep.rep" label="Rep" />
-          <Download binding="by_rep" />
-        </div>
-        <Table binding="by_rep" id="tbl-rep" sort bars="pipeline_value"
+        <p className="tb-note">Click a rep to select them; shift-click adds one.</p>
+        <div className="mb-3"><Download binding="by_rep" /></div>
+        <Table binding="by_rep" id="tbl-rep" sort selectRows bars="pipeline_value"
                columns={["dim_rep.rep", "pipeline_value", "won_value", "win_rate", "closed_deals"]}
                labels={{ "dim_rep.rep": "Rep", pipeline_value: "Open pipeline" }}
                formats={{ pipeline_value: "currency0", won_value: "currency0",
@@ -70,16 +69,25 @@ export default function App() {
           Rep scorecard: win rate, open pipeline and won value, by rep and by region.
         </Masthead>
 
+        {/* The page's controls. The range is over each deal's own amount, so
+            the page keeps one row per deal to filter. */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Filter column="dim_rep.rep" label="Rep" />
+          <Filter column="dim_region.region" label="Region" />
+          <Range column="amount" label="Deal amount" />
+        </div>
+        <SelectionBar />
+
         <p className="tb-lede">
           <Value binding="top_rep" cell="dim_rep.rep" /> leads at{" "}
           <Value binding="top_rep" cell="win_rate" format="percent" />, on{" "}
           <Value binding="top_rep" cell="won_value" format="currency0" /> won. Open pipeline
-          across the team is <Value binding="kpis" cell="pipeline_value" format="currency0" />.
+          across the reps shown is <Value binding="kpis" cell="pipeline_value" format="currency0" />.
         </p>
 
         <div className="tb-grid">
           <Kpi lead binding="kpis" cell="win_rate" format="percent" label="Win rate"
-               context="won deals / closed deals, the team" id="kpi-win" />
+               context="won deals / closed deals, the reps shown" id="kpi-win" />
           <Kpi binding="kpis" cell="pipeline_value" format="currency0" label="Open pipeline"
                context="sum of open-stage amounts" id="kpi-pipeline" />
           <Kpi binding="kpis" cell="won_value" format="currency0" label="Won value"

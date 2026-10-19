@@ -1,8 +1,10 @@
 // Medallion Revenue: Landing (raw ingest) → Manipulation (deduplication) →
 // Final (star schema). This app queries the model that reads the silver
-// tables; no pandas in the loop. Every number is a kit figure.
+// tables; no pandas in the loop. Every number is a kit figure. The filters
+// and the revenue range cut both views.
 import { Layers, Truck } from "lucide-react";
-import { Masthead, Footer, Kpi, Chart, Table, useUrlState, usePrinting } from "tracebi";
+import { Masthead, Footer, Kpi, Chart, Table, Filter, Range, SelectionBar, useUrlState,
+         usePrinting } from "tracebi";
 
 const VIEWS = { "All orders": Layers, "Shipped orders": Truck };
 
@@ -11,7 +13,7 @@ function AllOrders() {
     <>
       <div className="tb-grid">
         <Kpi lead binding="totals" cell="revenue" format="currency0" label="Revenue"
-             context="every order the pipeline kept" id="kpi-revenue" />
+             context="the orders in view, as the pipeline kept them" id="kpi-revenue" />
         <Kpi binding="totals" cell="qty" format="comma" label="Units" id="kpi-units" />
         <Kpi binding="totals" cell="cost" format="currency0" label="Cost" id="kpi-cost" />
       </div>
@@ -72,6 +74,12 @@ export default function App() {
           Landing → Manipulation → Final: revenue from the model that reads the cleaned
           silver tables.
         </Masthead>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Filter column="dim_customer.region" label="Region" />
+          <Filter column="dim_customer.segment" label="Segment" />
+          <Range column="revenue" label="Order revenue" />
+        </div>
+        <SelectionBar />
         <nav className="flex gap-1 border-b border-rule print:hidden">
           {Object.entries(VIEWS).map(([name, Icon]) => (
             <button key={name} onClick={() => setView(name)}

@@ -58,7 +58,8 @@
           "rate_held"
         ],
         "dimensions": [
-          "dim_year.year"
+          "dim_year.year",
+          "dim_cohort.purchase_year"
         ],
         "filters": {
           "dim_cohort.purchase_year": 1981,
@@ -87,8 +88,8 @@
           }
         },
         "order_by": [
-          "dim_cohort.purchase_year",
-          "dim_held.years_owned"
+          "dim_held.years_owned",
+          "dim_cohort.purchase_year"
         ]
       }
     },

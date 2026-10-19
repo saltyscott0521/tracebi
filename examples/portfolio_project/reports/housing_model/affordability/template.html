@@ -16,18 +16,26 @@
         In <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="then-year"></span>
         the thirty-year rate averaged
         <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="mortgage_rate" id="then-rate"></span>%,
-        the highest in the series, and the median existing home cost about
+        the highest of the years shown, and the median existing home cost about
         <span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="existing_price" id="then-price"></span>.
         In <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="dim_year.year" id="now-year"></span>,
-        the latest full year, the rate averaged
+        the latest year shown, the rate averaged
         <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="mortgage_rate" id="now-rate"></span>%
         and the home cost about
         <span data-tb-figure="value" data-tb-binding="latest" data-tb-cell="existing_price" id="now-price"></span>.
       </p>
+      <!-- Every number here is a figure, so the sentence stays true under
+           any selection: it names the buyers it compares rather than
+           asserting "the worst on record". -->
       <p class="mp-lede mp-lede--strong">Add it all up — the cash to get in and
-        ten years of payments — and today's buyer is on track to land close to
-        the worst on record. How close depends on whether rates fall enough to
-        refinance.</p>
+        ten years of payments — and the buyer from
+        <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="lede-today-year"></span>
+        comes to <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="housing_share" id="lede-today"></span>
+        of ten years' income, against
+        <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="housing_share" id="lede-worst"></span>
+        for the buyer from
+        <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="dim_cohort.purchase_year" id="lede-worst-year"></span>,
+        the hardest of the buyers counted.</p>
       <p class="mp-hero-sources">Sources: Freddie Mac · FHFA · NAR · U.S. Census Bureau · BLS ·
         <a href="#sources">details</a></p>
       <!-- The masthead's meta line: the years compared (figures, never typed),
@@ -111,27 +119,58 @@
     </figure>
   </header>
 
+  <!-- ── The selection ─────────────────────────────────────────────────
+       What the reader picks. Every figure is re-run from the data this file
+       carries, as a query, under it. A year is a calendar year on the trends
+       and the year bought on the ten-year numbers (the model joins each by
+       the year bought); on the buyers' paths it is the year lived. Buyers,
+       picked by year bought, reach every figure too. dim_year.year is a
+       number in the model, so the range is two handles. The what-if
+       calculator further down is not a selection: it computes from the
+       reader's own inputs. -->
+  <section class="mp-controls" aria-label="Pick the years">
+    <p class="mp-controls-title">Pick the years</p>
+    <div class="mp-controls-row">
+      <span data-tb-range data-tb-column="dim_year.year" data-tb-label="Years"></span>
+      <label>Decade
+        <select data-tb-filter data-tb-binding="*" data-tb-column="dim_year.decade"></select></label>
+    </div>
+    <p class="mp-controls-note">The years' rates, prices and payments, the buyers
+      who bought in them, and the years each buyer's path passes through. Click a
+      point on a trend to pick its year. Each figure recomputes from the data in
+      this file.</p>
+  </section>
+  <div data-tb-selection></div>
+
   <!-- ── The one number ───────────────────────────────────────────────── -->
   <section class="mp-section">
     <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 16V9M12 16V5M17 16v-4"/></svg>The one number</h2>
     <p class="mp-intro">The cash to close plus every payment over the first ten
       years — property tax, insurance, any refinance — as a share of what the
       median household earned in those ten years.</p>
+    <!-- The cohort is a selection, like the years above: it recomputes the
+         figures. It sits apart from the what-if below, which does not. -->
+    <div class="mp-controls mp-controls--inline">
+      <label>Buyers, by year bought
+        <select data-tb-filter data-tb-binding="*" data-tb-column="dim_cohort.purchase_year"></select></label>
+      <p class="mp-controls-note">Recomputes every figure on the page for the buyers
+        picked, from the data. Click a bar to pick that year's buyer.</p>
+    </div>
     <div class="tb-grid mp-kpis mp-kpis--three">
       <div class="tb-kpi mp-kpi">
-        <span class="tb-kpi-label">Worst on record</span>
+        <span class="tb-kpi-label">Hardest year to buy</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="housing_share" id="ten-worst"></span>
-        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="dim_cohort.purchase_year" id="ten-worst-year"></span> · measured</span>
+        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_worst" data-tb-cell="dim_cohort.purchase_year" id="ten-worst-year"></span> · all ten years measured</span>
       </div>
       <div class="tb-kpi mp-kpi">
-        <span class="tb-kpi-label">Easiest on record</span>
+        <span class="tb-kpi-label">Easiest year to buy</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_best" data-tb-cell="housing_share" id="ten-best"></span>
-        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_best" data-tb-cell="dim_cohort.purchase_year" id="ten-best-year"></span> · measured</span>
+        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_best" data-tb-cell="dim_cohort.purchase_year" id="ten-best-year"></span> · all ten years measured</span>
       </div>
       <div class="tb-kpi mp-kpi mp-kpi--alert">
-        <span class="tb-kpi-label">Today's buyer</span>
+        <span class="tb-kpi-label">Latest buyer</span>
         <span class="tb-kpi-value" data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="housing_share" id="ten-today"></span>
-        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="ten-today-year"></span> · <strong>projected</strong> · years measured so far: <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="years_measured" id="ten-today-measured"></span> of ten</span>
+        <span class="tb-kpi-context">bought in <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.purchase_year" id="ten-today-year"></span> · <span class="mp-basis" data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="dim_cohort.basis" id="ten-today-basis"></span> · years measured so far: <span data-tb-figure="value" data-tb-binding="ten_today" data-tb-cell="years_measured" id="ten-today-measured"></span> of ten</span>
       </div>
     </div>
     <div class="tb-card mp-chart-card mp-chart-card--wide">
@@ -147,20 +186,21 @@
         with no refinance, and income and home values grow
         <span data-tb-figure="value" data-tb-binding="projection" data-tb-cell="growth_pct" id="assumed-growth"></span>%
         a year, income's pace over the last decade.</p>
-      <p class="mp-source"><strong>How close is close?</strong> Within about a
-        point, with no refinance. One refinance about a point lower would put
-        today's buyer well below the worst on record. The eighties prices are NAR's
+      <p class="mp-source"><strong>How close is close?</strong> Across every year
+        bought, today's buyer lands within about a point of the worst, with no
+        refinance. One refinance about a point lower would put them well below it. The eighties prices are NAR's
         own figures; today's price is pinned to NAR's latest months; the years in
         between are an estimate. Read the two as close, not as a ranking.</p>
     </div>
     <details class="mp-assume">
-      <summary>Today's number is a projection. Change the assumptions</summary>
+      <summary>What if? Change the projection's assumptions</summary>
       <form data-tb-scenario="today" id="scenario-today" class="mp-scenario mp-scenario--now mp-projection">
-        <p class="mp-projection-note">It starts from the same assumption as the
+        <p class="mp-projection-note">A what-if on your own inputs: it changes
+          no figure above and is not part of the trace. It starts from the same assumption as the
           chart: rates stay put, and income and home values keep growing at
           income's pace over the last decade. Change them. The rate a refinance
           could reach matters most; leave it at today's rate for no refinance.</p>
-        <label>Year bought <select data-tb-preset="projection" data-tb-key="dim_cohort.purchase_year"
+        <label>Start from the buyer of <select data-tb-preset="projection" data-tb-key="dim_cohort.purchase_year"
                 data-tb-fill="rate=rate_at_purchase, price=price_at_purchase, income=income_at_purchase, future=assumed_rate, income_growth=growth_pct, home_growth=growth_pct"></select></label>
         <label>Rate refinanced to (%) <input data-tb-input="future" type="number" step="0.1" min="0"></label>
         <label>Refinance after (years) <input data-tb-input="refi_year" type="number" value="2" min="0" max="10" step="1"></label>
@@ -190,7 +230,7 @@
 
   <!-- ── Why ──────────────────────────────────────────────────────────── -->
   <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Why: the worst of the eighties vs today</h2>
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>Why: the highest-rate year against the latest</h2>
     <div class="tb-grid mp-kpis">
       <div class="tb-kpi mp-kpi mp-vs" data-mp-vs>
         <span class="mp-kpi-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg></span>
@@ -236,7 +276,7 @@
         <span class="tb-kpi-label">In year ten</span>
         <span class="mp-vs-hint">what the payment took of household income in the tenth year owned</span>
         <div class="mp-vs-row">
-          <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="peak" data-tb-cell="dim_year.year" id="pk-later-year"></span> buyer</span>
+          <span class="mp-vs-year"><span data-tb-figure="value" data-tb-binding="peak_later" data-tb-cell="dim_cohort.purchase_year" id="pk-later-year"></span> buyer</span>
           <strong data-tb-figure="value" data-tb-binding="peak_later" data-tb-cell="payment_share" id="pk-later"></strong>
         </div>
         <div class="mp-vs-row mp-vs-row--unknown">
@@ -245,7 +285,7 @@
         </div>
       </div>
     </div>
-    <p class="mp-note">The eighties buyer paid more each month; today's buyer
+    <p class="mp-note">Over the whole series: the eighties buyer paid more each month; today's buyer
       pays far more to get in. The eighties burden was mostly the rate, and rates
       fell: those buyers refinanced and their payments shrank. Today's burden is
       mostly the price. The rate could still fall and help; the projection
@@ -266,7 +306,7 @@
 
   <!-- ── The trends ───────────────────────────────────────────────────── -->
   <section class="mp-section">
-    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l4-5 4 3 6-8"/></svg>The trends, every year</h2>
+    <h2 class="mp-h2"><svg class="mp-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 16l4-5 4 3 6-8"/></svg>The trends, year by year</h2>
     <div class="mp-trends">
       <div class="tb-card mp-chart-card">
         <h3>Thirty-year mortgage rate (%)</h3>

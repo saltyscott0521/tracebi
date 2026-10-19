@@ -1,6 +1,7 @@
 // Sales Overview: orders joined to customers through the sales model's
 // declared relationship. Every number is a kit figure, so its trace names it.
-import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Range, SelectionBar,
+         Download } from "tracebi";
 
 export default function App() {
   return (
@@ -10,9 +11,15 @@ export default function App() {
           Revenue, units and cost by region and customer segment. Nothing here is typed in.
         </Masthead>
 
-        {/* A page filter (no binding): every figure below recomputes for the
-            segment picked, from the data this file carries. */}
-        <Filter column="dim_customer.segment" label="Segment" />
+        {/* Page controls (no binding): every figure below recomputes for what
+            is picked, from the data this file carries. The range is over each
+            order's own revenue, so the page keeps one row per order. */}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <Filter column="dim_customer.region" label="Region" />
+          <Filter column="dim_customer.segment" label="Segment" />
+          <Range column="revenue" label="Order revenue" />
+        </div>
+        <SelectionBar />
 
         <p className="tb-lede">
           <Value binding="top_region" cell="dim_customer.region" /> leads with{" "}
@@ -22,7 +29,7 @@ export default function App() {
 
         <div className="tb-grid">
           <Kpi lead binding="totals" cell="revenue" format="currency0" label="Revenue"
-               context="all orders, all regions" id="kpi-revenue" />
+               context="the orders in view" id="kpi-revenue" />
           <Kpi binding="totals" cell="qty" format="comma" label="Units" id="kpi-units" />
           <Kpi binding="totals" cell="cost" format="currency0" label="Cost" id="kpi-cost" />
         </div>
