@@ -1,7 +1,7 @@
 // SaaS MRR Dashboard: an app (the React lane). Every number is a kit figure
 // (<Kpi>, <Value>, <Chart>, <Spark>, <Table>) with a literal binding and cell,
-// so the build records it and its trace names it. The plan filter chooses
-// rows; it never computes a number.
+// so the build records it and its trace names it. The plan filter cuts the
+// whole page: every figure reruns its own query for the plans picked.
 import { Masthead, Footer, Kpi, Value, Spark, Chart, Table, Filter, Download } from "tracebi";
 
 export default function App() {
@@ -45,9 +45,9 @@ export default function App() {
           </section>
           <section className="tb-card tb-span-6">
             <h2>Ending MRR by plan</h2>
-            <p className="tb-note">The filter chooses rows; it never computes a number.</p>
+            <p className="tb-note">The plan filter recomputes every figure on the page.</p>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <Filter binding="by_plan" column="dim_plan.plan" label="Plan" />
+              <Filter column="dim_plan.plan" label="Plan" />
               <Download binding="by_plan" />
             </div>
             <Table binding="by_plan" id="tbl-plan" sort bars="ending_mrr"

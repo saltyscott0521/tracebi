@@ -19,10 +19,17 @@ export default function App() {
           Revenue, orders and units across every region.
         </Masthead>
 
+        {/* A page filter: no binding, so it cuts the whole page, and every
+            figure follows it. The page reruns each binding's own query over the
+            data the file carries, so a figure's number is only ever a query
+            result; the trace says which figures were recomputed here. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter column="dim_region.region" label="Region" />
+        </div>
+
         {/* Lead with the answer: one sentence, its numbers bound. Never type one in. */}
         <p className="tb-lede">
-          <Value binding="top_region" cell="dim_region.region" id="val-top-region" /> led every
-          region with{" "}
+          <Value binding="top_region" cell="dim_region.region" id="val-top-region" /> led with{" "}
           <Value binding="top_region" cell="revenue" format="currency0" id="val-top-revenue" /> of
           the <Value binding="kpis" cell="revenue" format="currency0" id="val-revenue-inline" /> in
           revenue.
@@ -31,7 +38,7 @@ export default function App() {
         {/* One KPI strip: the lead number larger, then what explains it. */}
         <div className="tb-grid">
           <Kpi lead binding="kpis" cell="revenue" format="currency0" label="Revenue"
-               context="all regions, all order dates" id="kpi-revenue" />
+               context="the regions picked, every order date" id="kpi-revenue" />
           <Kpi binding="kpis" cell="orders" format="comma" label="Orders"
                context="count of orders in the sink" id="kpi-orders" />
           <Kpi binding="kpis" cell="units" format="comma" label="Units"
@@ -57,11 +64,10 @@ export default function App() {
           </section>
           <section className="tb-card tb-span-4">
             <h2>Region detail</h2>
-            {/* Controls choose which stamped rows show; they never compute a number.
-                The CSV is the stamped rows, verbatim. */}
+            {/* Search narrows the rows shown and computes nothing. The CSV is
+                the stamped rows, verbatim. */}
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Search binding="region_detail" placeholder="Find a region…" />
-              <Filter binding="region_detail" column="dim_region.region" label="Region" />
               <Download binding="region_detail" />
             </div>
             <Table binding="region_detail" id="tbl-regions" sort bars="revenue"

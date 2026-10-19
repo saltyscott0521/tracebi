@@ -168,12 +168,13 @@
     <section data-tb-tab="Detail">
       <div class="tb-card">
         <h2>Holdings detail</h2>
-        <p class="tb-note">Filter and search subset which stamped rows
-          display — they never compute new numbers. The table scrolls past
+        <p class="tb-note">The sector filter recomputes every figure on the
+          page, each by its own query over the data this file carries; search
+          only narrows the rows shown. The table scrolls past
           the first page of rows; the CSV button exports the stamped bytes
           verbatim. The totals row is its own one-row query, so the model
-          computes it (the mark total is a ratio of totals); it steps aside
-          while a filter or search is on. Click a header to sort; sorting
+          computes it (the mark total is a ratio of totals), and the sector
+          filter recomputes it too; it steps aside while a search is on. Click a header to sort; sorting
           reorders the stamped rows and computes nothing.</p>
         <p>
           <!-- Search first: finding a row by name is the common task. -->
@@ -210,6 +211,49 @@
           <output data-tb-calc="fv * (1 - cut / 100)" data-tb-format="currency0"
                   id="calc-markdown"></output></p>
       </form>
+    </section>
+
+    <!-- A second fact on the same page. The cash flows share the funds and
+         issuers with the holdings, so a sector picked on the Detail tab
+         recomputes these figures too. Flow type is a dimension only the cash
+         flows reach: picking one recomputes this tab, and every holdings
+         figure keeps its number and says it is not filtered by it
+         (data-tb-unfiltered-by). data-tb-binding="*" makes it a page filter. -->
+    <section data-tb-tab="Cash flows">
+      <div class="tb-grid">
+        <div class="tb-kpi tb-kpi--lead" data-tb-figure="value" data-tb-binding="flows"
+             data-tb-cell="net_flow" data-tb-format="currency_compact" id="kpi-net-flow">
+          <span class="tb-kpi-label">Net cash flow</span>
+          <span class="tb-kpi-value"></span>
+          <span class="tb-kpi-context">received less lent out</span>
+        </div>
+        <div class="tb-kpi" data-tb-figure="value" data-tb-binding="flows"
+             data-tb-cell="flow_count" data-tb-format="comma" id="kpi-flow-count">
+          <span class="tb-kpi-label">Cash flows</span>
+          <span class="tb-kpi-value"></span>
+          <span class="tb-kpi-context">coupons, drawdowns and repayments</span>
+        </div>
+      </div>
+      <div class="tb-card">
+        <h2>Net cash flow by month</h2>
+        <p class="tb-note">Flow type reaches only the cash flows; a sector, picked
+          on the Detail tab, reaches both facts through the issuer.</p>
+        <p><label>Flow type
+          <select data-tb-filter data-tb-binding="*"
+                  data-tb-column="dim_flow_type.flow_type"></select></label></p>
+        <div data-tb-figure="chart" data-tb-binding="flows_by_month" data-tb-type="line"
+             data-tb-x="dim_date.month" data-tb-y="net_flow"
+             data-tb-value-format="currency_compact" data-tb-mark="last"
+             id="chart-flows-month"></div>
+      </div>
+      <div class="tb-card">
+        <h2>By fund and flow type</h2>
+        <table data-tb-figure="table" data-tb-binding="flows_by_fund"
+               data-tb-labels="dim_flow_type.flow_type=Flow type; flow_count=Flows"
+               data-tb-formats="net_flow=currency0; flow_count=comma"
+               data-tb-bars="flow_count"
+               id="tbl-flows"></table>
+      </div>
     </section>
 
   </div>

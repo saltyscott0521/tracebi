@@ -157,6 +157,41 @@ def run() -> dict:
     ]].reset_index(names="holding_id")
     fact["holding_id"] += 1
 
+    # ── a second fact: the book's cash flows ──────────────────────────────────
+    # Derived from the holdings themselves (no second raw pull), so the demo
+    # stays one input file: a quarterly coupon on alternate quarters (par ×
+    # (spread + a 4.3% base rate) / 4), a drawdown on every fourth position
+    # and a partial repayment on every fifth, all in 2025. Signed from the
+    # fund's side: money lent out is negative, money received positive. It
+    # shares dim_fund and dim_issuer with the holdings and adds two
+    # dimensions only it reaches (the flow's date and its type), which is
+    # what a page needs to show a filter that reaches one fact and not the
+    # other.
+    flow_types = ["Drawdown", "Interest", "Repayment"]
+    dim_flow_type = pd.DataFrame({"flow_type_id": [1, 2, 3], "flow_type": flow_types})
+    flows = []
+    for h in fact.dropna(subset=["par", "spread_bps"]).itertuples():
+        coupon = round(h.par * (h.spread_bps / 10_000 + 0.043) / 4, 2)
+        for q in range(4):
+            if (h.holding_id + q) % 2 == 0:
+                flows.append((h.fund_id, h.issuer_id,
+                              pd.Timestamp(2025, 3 * q + 3, 1) + pd.offsets.MonthEnd(0),
+                              2, coupon))
+        month = h.holding_id % 12 + 1
+        if h.holding_id % 4 == 1:
+            flows.append((h.fund_id, h.issuer_id, pd.Timestamp(2025, month, 1), 1,
+                          -round(h.par * 0.10, 2)))
+        if h.holding_id % 5 == 0:
+            flows.append((h.fund_id, h.issuer_id, pd.Timestamp(2025, month, 15), 3,
+                          round(h.par * 0.05, 2)))
+    fact_cashflows = pd.DataFrame(
+        flows, columns=["fund_id", "issuer_id", "flow_date", "flow_type_id", "amount"],
+    ).sort_values(["flow_date", "fund_id", "issuer_id"]).reset_index(drop=True)
+    fact_cashflows["flow_date"] = fact_cashflows["flow_date"].dt.date
+    fact_cashflows = fact_cashflows.reset_index(names="cashflow_id")
+    fact_cashflows["cashflow_id"] += 1
+    dim_date = pd.DataFrame({"flow_date": sorted(fact_cashflows["flow_date"].unique())})
+
     # ── SINK to the warehouse ─────────────────────────────────────────────────
     os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
     # No connect() here: write() manages its own short-lived read-write
@@ -167,6 +202,9 @@ def run() -> dict:
     wh.write(dim_fund, "dim_fund")
     wh.write(dim_issuer, "dim_issuer")
     wh.write(fact, "fact_holdings")
+    wh.write(dim_date, "dim_date")
+    wh.write(dim_flow_type, "dim_flow_type")
+    wh.write(fact_cashflows, "fact_cashflows")
 
     # ── the sink CONTRACT ─────────────────────────────────────────────────────
     # Declare what must be true of the tables that just landed — checked as
@@ -191,6 +229,14 @@ def run() -> dict:
                       refers_to=("dim_issuer", "issuer_id"))
         c.foreign_key("fact_holdings", "fund_id",
                       refers_to=("dim_fund", "fund_id"))
+        c.rows("fact_cashflows", at_least=10)
+        c.not_null("fact_cashflows",
+                   ["fund_id", "issuer_id", "flow_date", "flow_type_id", "amount"])
+        c.unique("dim_date", ["flow_date"])
+        c.values("dim_flow_type", "flow_type", within=flow_types)
+        for column, dim in (("fund_id", "dim_fund"), ("issuer_id", "dim_issuer"),
+                            ("flow_date", "dim_date"), ("flow_type_id", "dim_flow_type")):
+            c.foreign_key("fact_cashflows", column, refers_to=(dim, column))
 
     return {
         "rows_in": n_raw,
@@ -199,6 +245,7 @@ def run() -> dict:
         "funds": len(dim_fund),
         "issuers": len(dim_issuer),
         "holdings": len(fact),
+        "cash_flows": len(fact_cashflows),
         "total_fair_value": float(fact["fair_value"].sum()),
         "warehouse": WAREHOUSE,
     }

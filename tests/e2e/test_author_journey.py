@@ -359,6 +359,46 @@ def test_dashboards_by_job(scaffolded, tmp_path, monkeypatch):
     assert code == 0, out
 
 
+def test_a_fresh_projects_page_filter_recomputes_in_the_file(scaffolded):
+    """`tracebi init`, the transform, one build: the sample dashboard opened
+    from disk is live. Its page filter recomputes the KPIs to exactly what
+    the binding's plan gives over the embedded slice, and the chip says
+    Local."""
+    import re
+
+    from tracebi.reports.calc_plan import execute_plan
+    from tests.e2e.test_reference_project import _browser, _settle, _slices
+
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    code, out = run_cli("report", "build", "sample_model/sample_dashboard")
+    assert code == 0, out
+    name = "sample_model/sample_dashboard"
+    frames, plans = _slices(scaffolded, name)
+    (frame,) = frames.values()
+    region = sorted(frame["dim_region.region"].dropna().unique())[0]
+    orders = execute_plan(plans["kpis"], frame, {"dim_region.region": [region]})["orders"][0]
+    assert orders < execute_plan(plans["kpis"], frame, {})["orders"][0]
+
+    pw, browser = _browser()
+    try:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.goto((scaffolded / "output" / f"{name}.html").as_uri())
+        _settle(page)
+        page.locator('select[data-tb-filter][data-tb-binding="*"]'
+                     '[data-tb-column="dim_region.region"]').select_option(region)
+        _settle(page)
+        shown = page.locator("#kpi-orders .tb-kpi-value").text_content()
+        assert re.sub(r"\D", "", shown) == str(int(orders)), shown
+        assert page.locator(".tb-verdict[data-tb-verdict='local']").count() >= 1
+        assert errors == []
+    finally:
+        browser.close()
+        pw.stop()
+
+
 def test_themes_and_the_house_style(scaffolded):
     """A report names a shipped theme and the page carries it, over the
     project default that `theme use` writes; an unknown name fails the

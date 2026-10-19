@@ -135,7 +135,7 @@ def test_the_showcase_carries_every_affordance(built):
                    "tb-tabs", "tb-span-8", "tb-kpi--lead", 'id="tracebi-receipt"',
                    "tb-methodology", "data-tb-unverified",
                    "tb-semantic-contract-portfolio_model",
-                   'id="tracebi-selection"', 'id="tracebi-grain"',
+                   'id="tracebi-selection"',
                    'class="tb-total"',
                    "data-tb-sort", "data-tb-bars", "data-tb-direction",
                    "tb-table--freeze", "tb-footer-line", "tb-masthead",
@@ -541,8 +541,12 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
     frame = frames[("portfolio_model", "fact_holdings")]
     sector = sorted(frame["dim_issuer.sector"].dropna().unique())[0]
     selection = {"dim_issuer.sector": [sector]}
-    answers = {b: (execute_plan(p, frame, {}), execute_plan(p, frame, selection))
+    answers = {b: (execute_plan(p, frames[(p["model"], p["fact"])], {}),
+                   execute_plan(p, frames[(p["model"], p["fact"])], selection))
                for b, p in plans.items() if "fixed" not in p}
+    # Both facts are on the page, and the sector reaches both.
+    assert {p["fact"] for p in plans.values() if "fixed" not in p} == {
+        "fact_holdings", "fact_cashflows"}
 
     pw, browser = _browser()
     try:
@@ -558,6 +562,12 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
             sector, force=True)
         _settle(page)
         after = {f["key"]: f for f in page.evaluate(_READ)}
+        # A chart in a hidden tab redraws when its tab is shown.
+        page.locator(".tb-tab-bar button", has_text="Cash flows").click()
+        _settle(page)
+        after.update({f["key"]: f for f in page.evaluate(_READ)
+                      if f["binding"].startswith("flows")})
+        page.locator(".tb-tab-bar button", has_text="Overview").click()
 
         kinds = set()
         for key, now in after.items():
@@ -596,10 +606,44 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
         again.goto(page.evaluate("location.href"))
         _settle(again)
         reread = {f["key"]: f for f in again.evaluate(_READ)}
+        again.locator(".tb-tab-bar button", has_text="Cash flows").click()
+        _settle(again)
+        reread.update({f["key"]: f for f in again.evaluate(_READ)
+                       if f["binding"].startswith("flows")})
         for key, now in after.items():
             for part in ("value", "rows", "text", "marks", "fixed"):
                 assert reread[key][part] == now[part], (key, part)
         assert again.locator(".tb-masthead .tb-verdict").first.text_content() == "Local"
+
+        # A field only one fact reaches: the flow type cuts the cash flows,
+        # and every holdings figure keeps its built number and says why.
+        flows = frames[("portfolio_model", "fact_cashflows")]
+        flow_type = sorted(flows["dim_flow_type.flow_type"].dropna().unique())[0]
+        typed = {"dim_flow_type.flow_type": [flow_type]}
+        page.goto(url)
+        _settle(page)
+        built_view = {f["key"]: f for f in page.evaluate(_READ)}
+        page.locator('select[data-tb-filter][data-tb-column="dim_flow_type.flow_type"]'
+                     ).select_option(flow_type, force=True)
+        _settle(page)
+        reached = set()
+        for key, now in {f["key"]: f for f in page.evaluate(_READ)}.items():
+            plan = plans[now["binding"]]
+            if "fixed" in plan:
+                continue
+            if plan["fact"] == "fact_holdings":
+                assert now["value"] == built_view[key]["value"], key
+                assert now["rows"] == built_view[key]["rows"], key
+                assert page.locator(f'[data-tb-binding="{now["binding"]}"]'
+                                    '[data-tb-unfiltered-by="dim_flow_type.flow_type"]'
+                                    ).count() >= 1, key
+            else:
+                reached.add(now["binding"])
+                cut = execute_plan(plan, flows, typed)
+                if now["kind"] == "table":
+                    assert len(now["rows"]) == len(cut), key
+        assert reached == {"flows", "flows_by_month", "flows_by_fund"}
+        assert page.get_by_text("Not filtered by Flow type").count() >= 1
         assert errors == []
     finally:
         browser.close()
@@ -652,36 +696,60 @@ def test_the_desks_page_filters_recompute_every_view(built):
         pw.stop()
 
 
-def test_a_dashboard_whose_figures_are_all_fixed_keeps_todays_filter(built):
-    """mrr_dashboard's measures are period_end, which the page does not
-    recompute this round: its plan filter still subsets the table's stamped
-    rows as before, every figure says why it is fixed, and the page never
-    claims Local."""
+def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):
+    """The SaaS measures are period_end balances, and the page runs them: a
+    plan picked in mrr_dashboard's filter recomputes every KPI, spark, chart
+    and table exactly where execute_plan over the slice says (each month's
+    latest balance, under the plan), none is fixed, and the chip reads Local.
+    cohort_brief has no control; its slice still reproduces on the server."""
+    from tracebi.reports.calc_plan import execute_plan, rows_match
+
     name = "saas_model/mrr_dashboard"
-    _frames, plans = _slices(built, name)
-    assert all("period_end" in p.get("fixed", "") for p in plans.values())
+    frames, plans = _slices(built, name)
+    frame = frames[("saas_model", "fact_account_month")]
+    assert not [b for b, p in plans.items() if "fixed" in p]
+    plan_name = sorted(frame["dim_plan.plan"].dropna().unique())[0]
+    selection = {"dim_plan.plan": [plan_name]}
+    answers = {b: (execute_plan(p, frame, {}), execute_plan(p, frame, selection))
+               for b, p in plans.items()}
 
     pw, browser = _browser()
     try:
         page = browser.new_page(viewport={"width": 1440, "height": 900})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
         page.goto((built / "output" / f"{name}.html").as_uri())
         _settle(page)
         before = {f["key"]: f for f in page.evaluate(_READ)}
-        control = page.locator('select[data-tb-filter][data-tb-column="dim_plan.plan"]')
-        assert control.get_attribute("data-tb-fixed") == "column not in slice"
-        table = page.locator('table[data-tb-binding="by_plan"]')
-        assert table.locator("tbody tr").count() > 1
-        control.select_option("Growth")
-        page.wait_for_timeout(300)
-        assert table.locator("tbody tr").count() == 1
-        assert "Growth" in table.locator("tbody tr").first.text_content()
+        page.locator('select[data-tb-filter][data-tb-column="dim_plan.plan"]').select_option(
+            plan_name)
+        _settle(page)
         after = {f["key"]: f for f in page.evaluate(_READ)}
+        kinds = set()
         for key, now in after.items():
-            assert "period_end" in now["fixed"], key
+            was = before[key]
+            authored, cut = answers[now["binding"]]
+            kinds.add(now["kind"])
+            assert now["fixed"] is None, key
             if now["kind"] == "value":
-                assert now["value"] == before[key]["value"], key
-        assert page.locator(".tb-verdict[data-tb-verdict='local']").count() == 0
-        assert "sel=" not in page.evaluate("location.hash")
+                moves = not rows_match(authored[[now["cell"]]], cut[[now["cell"]]])
+                assert (now["value"] != was["value"]) == moves, (key, was["value"], now["value"])
+            elif now["kind"] == "table":
+                assert len(now["rows"]) == len(cut) and now["rows"] != was["rows"], key
+                assert all(plan_name in row for row in now["rows"]), key
+            else:
+                assert not rows_match(authored, cut)
+                assert now["svg"] != was["svg"], key
+        assert {"value", "table", "chart"} <= kinds
+        assert page.locator("[data-tb-fixed]").count() == 0
+        assert page.locator(".tb-verdict[data-tb-verdict='local']").count() >= 1
+        assert "sel=" in page.evaluate("location.hash")
+        assert errors == []
     finally:
         browser.close()
         pw.stop()
+
+    manifest = json.loads(_manifest(built, "saas_model/cohort_brief").read_text())
+    assert manifest["slice"] and not [p for p in manifest["plans"].values() if "fixed" in p]
+    code, out = run_cli("verify", str(_manifest(built, "saas_model/cohort_brief")), "--local")
+    assert code == 0 and "reproduce" in out, out

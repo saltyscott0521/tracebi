@@ -1,6 +1,6 @@
 // Sales Overview: orders joined to customers through the sales model's
 // declared relationship. Every number is a kit figure, so its trace names it.
-import { Masthead, Footer, Kpi, Value, Chart, Table, Download } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download } from "tracebi";
 
 export default function App() {
   return (
@@ -9,6 +9,10 @@ export default function App() {
         <Masthead title="Sales overview">
           Revenue, units and cost by region and customer segment. Nothing here is typed in.
         </Masthead>
+
+        {/* A page filter (no binding): every figure below recomputes for the
+            segment picked, from the data this file carries. */}
+        <Filter column="dim_customer.segment" label="Segment" />
 
         <p className="tb-lede">
           <Value binding="top_region" cell="dim_customer.region" /> leads with{" "}

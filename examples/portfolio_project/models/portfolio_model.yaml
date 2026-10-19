@@ -31,6 +31,15 @@ tables:
   - name: dim_issuer
     connector: warehouse
     source: dim_issuer
+  - name: fact_cashflows
+    connector: warehouse
+    source: fact_cashflows
+  - name: dim_date
+    connector: warehouse
+    source: dim_date
+  - name: dim_flow_type
+    connector: warehouse
+    source: dim_flow_type
 
 # dimensions: the descriptive tables (key column, attributes to slice by)
 dimensions:
@@ -42,6 +51,22 @@ dimensions:
     table: dim_issuer
     key: issuer_id
     attributes: [issuer, sector]
+  - name: dim_date
+    table: dim_date
+    key: flow_date
+    attributes: [flow_date]
+  - name: dim_flow_type
+    table: dim_flow_type
+    key: flow_type_id
+    attributes: [flow_type]
+
+# time_grains: a date attribute rolled up to a period, groupable like any
+# attribute (dim_date.month reads "2025-03")
+time_grains:
+  - dimension: dim_date
+    name: month
+    source: flow_date
+    grain: month
 
 # facts: the event tables (numeric columns, key to each dimension)
 facts:
@@ -51,6 +76,17 @@ facts:
     foreign_keys:
       dim_fund: fund_id
       dim_issuer: issuer_id
+  # A second fact over the same funds and issuers: one page can show both,
+  # and a filter on a dimension only one of them reaches (the flow's type or
+  # date) leaves the other's figures as they are, saying so.
+  - name: fact_cashflows
+    table: fact_cashflows
+    measures: [amount]
+    foreign_keys:
+      dim_fund: fund_id
+      dim_issuer: issuer_id
+      dim_date: flow_date
+      dim_flow_type: flow_type_id
 
 # measures: the named vocabulary reports ask for
 measures:
@@ -124,3 +160,12 @@ measures:
     column: spread_bps
     agg: p90
     description: 90th-percentile spread (bps) — the wide tail
+  - name: net_flow
+    column: amount
+    agg: sum
+    description: Net cash flow (received less lent out)
+    format: currency0
+  - name: flow_count
+    column: cashflow_id
+    agg: count
+    description: Number of cash flows

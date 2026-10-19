@@ -72,6 +72,25 @@
         "dimensions": ["dim_issuer.issuer"],
         "order_by": ["-fair_value"], "limit": 8
       }
+    },
+    "flows": {
+      "model": "portfolio_model",
+      "query": { "fact": "fact_cashflows", "measures": ["net_flow", "flow_count"] }
+    },
+    "flows_by_month": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_cashflows", "measures": ["net_flow"],
+        "dimensions": ["dim_date.month"], "order_by": ["dim_date.month"]
+      }
+    },
+    "flows_by_fund": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_cashflows", "measures": ["net_flow", "flow_count"],
+        "dimensions": ["dim_fund.fund", "dim_flow_type.flow_type"],
+        "order_by": ["dim_fund.fund", "dim_flow_type.flow_type"]
+      }
     }
   },
   "selection": {

@@ -2,7 +2,7 @@
 // style.css (fonts, the hero band, colours) on the system's frame; its
 // numbers are kit figures, so the trace names every one. Net new assets is
 // this report's own calculation (report.json "measures"), stamped like the rest.
-import { Masthead, Footer, Kpi, Value, Chart, Table, Download } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Download } from "tracebi";
 
 export default function App() {
   return (
@@ -19,6 +19,9 @@ export default function App() {
       </div>
 
       <main className="tb-page space-y-8 px-6 py-8">
+        {/* A page filter (no binding): every figure recomputes for the region
+            picked; one the region cannot reach says so. */}
+        <Filter column="dim_branch.region" label="Region" />
         <div className="tb-grid wm-kpis">
           <Kpi lead binding="at_a_glance" cell="market_value" format="currency_compact"
                label="Total AUM" context="market value, every branch" id="kpi-aum" />
