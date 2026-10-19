@@ -210,3 +210,69 @@ are closed and portable:
 
 The server half of [[duckdb-first]] (Q-2, Q-4, Q-5), `engine: duckdb`, a
 Rust port, Qlik-style excluded values.
+
+## Round 2 — the cascade (2026-10-19)
+
+Round 1 made the page able to recompute. Round 2 makes every shipped report
+use it, and gives the page the full interaction grammar a state-driven
+report needs. Branch `cascade`.
+
+### Decisions (closed)
+
+11. **Every interaction is the one selection state.** A control, a click on a
+    chart mark, a click on a table row, a range, a chip in the selection bar,
+    the URL hash and `tracebi.setSelection` all write the same object; every
+    figure re-runs from it. Nothing else moves a number.
+12. **A chart mark click selects without a control.** On a live page a click
+    on a bar, slice, point or legend entry writes `{column: [value]}` for the
+    mark's x (or series) column when that column is in any fact's slice; a
+    second click on the same value removes it; shift-click adds to the list.
+    No `data-tb-filter` is needed for the column. Pages with `embed: none`
+    keep today's control-only behaviour.
+13. **A selection bar is always present on a live page.** The runtime
+    inserts one under the masthead (`.tb-selection-bar`, or where the author
+    put `<div data-tb-selection>` / kit `<SelectionBar/>`): one chip per
+    selected field and value ("Sector: Software ×"), a "Clear" when more than
+    one, hidden when the state equals the authored one. Escape clears.
+14. **Ranges are a control.** `data-tb-range` (kit `<Range column min max step>`)
+    writes `{column: {gte, lte}}` for a number column or a grain-label
+    column (lexical, ISO-ordered); a two-handle slider for numbers, two
+    month/quarter pickers for grains. Domain from `tracebiCalc.domains`.
+15. **Cross-highlighting is presentation only.** Marks whose category is not
+    in the current selection of their column draw at reduced emphasis in
+    every chart on the page; numbers are untouched; off with
+    `data-tb-highlight="off"`.
+16. **Prose stays honest under a selection.** An inline `<Value>` in editorial
+    copy recomputes like any figure; copy that asserts scope ("across all
+    three funds") is either bound to a figure or rewritten so it is true
+    under any selection. The reference reports are the example of how.
+17. **The proof is mechanical.** One table-driven journey walks EVERY shipped
+    report with a slice (reference, scaffold templates, demo): for each
+    control picks its first present value, for each chart clicks its first
+    mark, and asserts every non-fixed figure equals `execute_plan` over the
+    slice under the resulting state, and that the trace rows record it. A
+    new report with a control is covered the day it is added.
+
+### Packages
+
+- **C-1 Interaction grammar** (runtime, kit, CSS, vocabulary, guides,
+  showcase, the table-driven journey of decision 17): 11–15 and 17.
+- **C-2 Cascade: the portfolio reports** (book, concentration, overview,
+  dashboard, desk): controls where each layout has a natural place (sector,
+  fund, a fair-value range, a spread range), chart clicks, honest prose,
+  bindings re-cut so no figure on these pages is `unfiltered-by` under the
+  page's own controls; captures before/after, light/dark, desk/phone.
+- **C-3 Cascade: housing, SaaS, templates, demo**: affordability (a year
+  range and a cohort filter beside its scenarios), cohort_brief (cohort,
+  month range), mrr_dashboard (plan + month range), the two scaffold
+  templates, the two demo reports; same bar as C-2.
+- **C-4 Audit pass** (orchestrator): fresh captures of every report, the
+  audit script's ratchet, a fix round if needed.
+
+## Round 3 — the server half
+
+After the cascade: [[duckdb-first]] Q-2 (the model as a DuckDB schema and
+locked read-only query connections), Q-4 (storage tiers, Parquet on object
+storage as the hosted default), Q-5 (SQL transforms with Python as the
+escape hatch), and the pandas medallion layers in `tracebi/etl/` moved to
+DuckDB. Packages S-1 to S-4, briefed when Round 2 merges.
