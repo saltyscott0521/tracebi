@@ -114,14 +114,22 @@ data from messy to reportable in three project-root folders, each with its own
 cadence, decoupled by **freeze points** (a materialized artifact handed from one
 phase to the next):
 
-1. **TRANSFORM** — `transforms/`. Ordinary, unconstrained pandas: pull the
-   queries, do the real analysis (window functions, prose parsing, cleaning,
-   dedupe), then **sink** clean star-schema tables into a file-backed DuckDB
-   warehouse. The framework does not constrain this phase. The contract is not
+1. **TRANSFORM** — `transforms/`. SQL by default, with pandas or polars as the
+   escape hatch: pull the queries, do the real analysis (window functions,
+   prose parsing, cleaning, dedupe), then **sink** clean star-schema tables
+   into the warehouse. A `transforms/<name>.sql` runs top to bottom in one
+   fresh warehouse connection (`tracebi/transforms.py`; placeholders
+   `{{ sink }}` and `{{ root }}` only; a created non-TEMP table is a sink
+   table on every tier); a `.py` / `.ipynb` ends with
+   `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`.
+   `tracebi run-transform` reports `form: sql | python | notebook`. The
+   framework does not constrain this phase. The contract is not
    *how* you clean, it is *what lands* — the named tables at the end of the
-   script. Reference: `examples/portfolio_project/transforms/holdings_transform.py` → `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`.
-   A transform may end with a **sink contract** (`tracebi/contracts.py`): a
-   `with contract(...)` block of closed, declarative checks (`rows`, `unique`,
+   script. Reference: `examples/portfolio_project/transforms/holdings_transform.sql`
+   (the same tables in pandas: `holdings_transform_pandas.py`).
+   A transform may carry a **sink contract** (`tracebi/contracts.py`):
+   `<name>.contract.yaml` beside it, or a
+   `with contract(...)` block, of closed, declarative checks (`rows`, `unique`,
    `not_null`, `foreign_key`, `values`, `reconcile`) run as read-only SQL
    against the tables just sunk. A failed check raises at sink time; success
    records `data/warehouse.contracts.json` with connector-load-path
@@ -210,6 +218,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   schedule.py          # report.json "schedule" block: build → verify → email → record
   code_requests.py     # Python pushed from a laptop: stored, reviewed (diff), approved by an admin, run once
   _push.py             # `tracebi push` — packages/models → drafts, code → a code request
+  transforms.py        # phase ① transforms: find one, its form (sql/python/notebook), run it + its .contract.yaml
   contracts.py         # sink contracts: closed checks + certificate + manifest join
   project_config.py    # tracebi.yaml reader (one reader, cached per path): engine limits + the warehouse block
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
@@ -234,7 +243,8 @@ examples/
   portfolio_project/   # THE reference working project — a complete three-phase project
                        #   with the same shape `tracebi init` scaffolds:
     inputs/            #   ⓪ raw pulls (holdings.csv + generate_raw.py, the demo source)
-    transforms/        #   ① unconstrained pandas → sink star tables (holdings_transform.py)
+    transforms/        #   ① SQL → sink star tables (holdings_transform.sql + .contract.yaml;
+                       #     holdings_transform_pandas.py is the pandas escape hatch)
     models/            #   ② the star-schema contract (portfolio_model.yaml)
     reports/           #   ③ organised BY MODEL — the folder is the model's name:
                        #     portfolio_model/ (portfolio_dashboard (app.jsx),
@@ -287,7 +297,8 @@ python examples/seeds/seed_db.py               # Create + seed data/tracebi.db
 
 # Model and pipeline scaffolding
 tracebi new-model "Sales Model"                # → models/sales_model.py
-tracebi run-transform holdings                 # run a .py or .ipynb transform, top-to-bottom fresh
+tracebi new-transform "Holdings"               # → transforms/holdings.sql + .contract.yaml (--python: .py)
+tracebi run-transform holdings                 # run a .sql, .py or .ipynb transform, top-to-bottom fresh; prints its form
 tracebi list-models
 tracebi new-pipeline "Sales ETL"               # → pipelines/sales_etl.yaml (--python: .py)
 tracebi list-pipelines
@@ -595,26 +606,31 @@ field test to find it (the round-2 lesson: a feature the guides don't teach
 effectively does not exist).
 
 ### New transform (phase ①)
-1. Add a `.py` under `transforms/`. Write whatever pandas the data needs — the
-   framework does not constrain this phase. Scaffolds are **notebook-shaped**:
-   `# %%` percent cells with `# %% [markdown]` prose, so every notebook editor
-   (VS Code, Cursor, PyCharm, Jupyter via jupytext) opens the file AS a
-   notebook — collapse cells, run cell-by-cell, markdown beside code — while
-   it stays plain, reviewable Python that runs top-to-bottom. Literal
-   `.ipynb` transforms also work: `tracebi run-transform <name>` executes
-   either form top-to-bottom in a fresh namespace (the sink never comes from
-   out-of-order kernel state). Models stay `.py` — a model is a ~40-line
-   declaration whose value is being reviewable as data in one screen.
-2. End by sinking clean star-schema tables into the warehouse:
-   `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`
-   (`tracebi.project_config.sink_target` follows the project's tier). The
-   contract is the named tables that land, not how you produced them.
-3. Declare the sink contract after the writes — `with contract(name,
-   warehouse=sink_target(ROOT)) as c:` with the checks the tables must satisfy
-   (`tracebi.contracts`; closed vocabulary, no callables). A failure raises;
-   success records the certificate the report manifests join against.
-4. Model this on `examples/portfolio_project/transforms/holdings_transform.py`. Keep it idempotent (a rerun
-   replaces the warehouse tables). Nothing downstream imports this file.
+1. `tracebi new-transform "Name"` writes `transforms/<name>.sql` and
+   `<name>.contract.yaml`, the sink in the idiom of the project's tier. The
+   SQL is DuckDB statements run top to bottom in ONE fresh warehouse
+   connection by `tracebi run-transform <name>` (`docs/reference/transform-sql.md`):
+   exactly two placeholders, `{{ sink }}` and `{{ root }}`; relative reads
+   resolve against the project root; `TEMP` tables and macros are scratch.
+   `-- %%` cells fold in editors and mean nothing to the run. When the work
+   outgrows SQL, `--python` scaffolds the escape hatch: notebook-shaped pandas
+   (`# %%` percent cells, opened AS a notebook by VS Code, Cursor, PyCharm,
+   Jupyter via jupytext); literal `.ipynb` works too, run top-to-bottom in a
+   fresh namespace. `x.sql` beside `x.py` is refused. Models stay declarative.
+2. End by sinking clean star-schema tables: `CREATE OR REPLACE TABLE x AS …`
+   lands in the warehouse on every tier (object tier: `<location>/x.parquet`,
+   or write `COPY (…) TO '{{ sink }}/x.parquet' (FORMAT PARQUET)` yourself);
+   in Python, `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`.
+   The contract is the named tables that land, not how you produced them.
+3. Declare the sink contract in `<name>.contract.yaml` (`name`, `note`,
+   `checks: - rows: fact_x …`), or in Python a `with contract(name,
+   warehouse=sink_target(ROOT)) as c:` block — one vocabulary, one parser
+   (`contracts.declare`), closed, no callables. It runs after the transform;
+   a failure raises; success records the certificate the report manifests
+   join against.
+4. Model this on `examples/portfolio_project/transforms/holdings_transform.sql`
+   (+ `.contract.yaml`). Keep it idempotent (a rerun replaces the warehouse
+   tables). Nothing downstream imports this file.
 
 ### New connector
 Most sources need no code. **Declarative first:** `tracebi connect <name> --kind
@@ -842,7 +858,7 @@ Don't add these unless asked.
 |---|---|
 | Understand the whole framework | `README.md` |
 | Understand the three-phase workflow | `docs/concepts/the-three-phase-workflow.md` + `examples/portfolio_project/` |
-| Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.py` |
+| Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.sql` + `docs/reference/transform-sql.md` |
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.yaml` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/` |
 | Build an app dashboard (React lane) | `tracebi new-dashboard` → `examples/portfolio_project/reports/portfolio_model/portfolio_desk/` + `docs/reference/app-jsx.md` |
