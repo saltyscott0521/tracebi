@@ -275,7 +275,11 @@ or more, and "Download what I see" (one CSV of each visible figure's current
 rows, the selection in its header line and file name). It is hidden while the
 page is as built; Escape clears the selection (not while typing). Printed, and
 in the PDF, it is one plain line, "Filtered to: Sector Software · Fund Fund I",
-and the footer's built line adds " · filtered on this page".
+and the footer's built line adds " · filtered on this page". A field has one
+name wherever the page says it (chips, the print line, the download header, the
+"Not filtered by" notes, the trace): its control's <code>data-tb-label</code> or the
+<code>&lt;label&gt;</code> around it, else the header a table or the x title a chart gives the
+column, else one derived from the column name.
 <code>tracebi.onSelection(fn)</code> is called with <code>{selection, authored, figures}</code> on
 every change; <code>tracebi.result(id)</code> reads a figure's current answer.</p>
 <p>Tables scroll past <code>data-tb-rows</code> (default 10); <code>data-tb-rows="all"</code> opts out.

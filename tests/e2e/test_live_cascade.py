@@ -145,10 +145,38 @@ def _state(page) -> dict:
     return {}
 
 
-def _label(column: str) -> str:
+# A field's display name, read off the page by the runtime's rule
+# (fieldLabel): a control's data-tb-label or the <label> around it, else a
+# table's header for the column, else a chart's x title, else humanise.
+_LABEL = """(column) => {
+  const controls = document.querySelectorAll('[data-tb-filter][data-tb-column], [data-tb-range][data-tb-column]');
+  for (const el of controls) {
+    if (el.getAttribute('data-tb-column') !== column) continue;
+    if (el.getAttribute('data-tb-label')) return el.getAttribute('data-tb-label');
+    const label = el.closest('label');
+    if (label) {
+      const text = Array.from(label.childNodes).filter(c => c !== el && !(c.nodeType === 1 &&
+        (c.contains(el) || /^(SELECT|INPUT)$/.test(c.tagName)))).map(c => c.textContent).join('').trim();
+      if (text) return text;
+    }
+  }
+  for (const t of document.querySelectorAll('table[data-tb-figure="table"]')) {
+    const own = t.getAttribute('data-tb-columns');
+    const rows = window.tracebi.data(t.getAttribute('data-tb-binding'));
+    const cols = own ? own.split(',').map(c => c.trim()) : (rows.length ? Object.keys(rows[0]) : []);
+    const th = cols.indexOf(column) === -1 ? null : t.querySelectorAll('thead th')[cols.indexOf(column)];
+    if (th && th.textContent.trim()) return th.textContent.trim();
+  }
+  const chart = Array.from(document.querySelectorAll('[data-tb-figure="chart"][data-tb-x-title]'))
+    .find(c => c.getAttribute('data-tb-x') === column);
+  return chart ? chart.getAttribute('data-tb-x-title') : null;
+}"""
+
+
+def _label(page, column: str) -> str:
     from tracebi.reports.derive import humanise
 
-    return humanise(column)
+    return page.evaluate(_LABEL, column) or humanise(column)
 
 
 def _js_str(v) -> str:
@@ -169,15 +197,15 @@ def _cell(v) -> str:
     return _js_str(v)
 
 
-def _describe(sel: dict) -> str:
+def _describe(page, sel: dict) -> str:
     """The trace's words for an applied selection (describeSelection)."""
     out = []
     for k, v in sel.items():
         if isinstance(v, list):
-            out.append(f"{_label(k)} = " + ", ".join(_js_str(x) for x in v))
+            out.append(f"{_label(page, k)} = " + ", ".join(_js_str(x) for x in v))
         else:
             ops = {"gt": ">", "gte": "≥", "lt": "<", "lte": "≤"}
-            out.append(_label(k) + " " + " and ".join(
+            out.append(_label(page, k) + " " + " and ".join(
                 f"{ops[op]} {_js_str(v[op])}" for op in ("gt", "gte", "lt", "lte") if op in v))
     return "; ".join(out)
 
@@ -213,7 +241,7 @@ def _check(page, name, step, plans, frames, built_view):
     assert len(chips) == want, (where, chips, state)
     for k, v in state.items():
         for one in (v if isinstance(v, list) else [None]):
-            text = f"{_label(k)}: " + ("" if one is None else _cell(one))
+            text = f"{_label(page, k)}: " + ("" if one is None else _cell(one))
             assert any(c.startswith(text) for c in chips), (where, text, chips)
     assert page.locator(".tb-verdict[data-tb-verdict='local']").count() >= 1, where
 
@@ -250,7 +278,7 @@ def _check(page, name, step, plans, frames, built_view):
         row = page.locator(f'.tb-receipt-row[data-tb-receipt-fig="{fig["id"]}"] .tb-receipt-local')
         if row.count():
             said = row.first.locator("dd").first.text_content()
-            assert said == (_describe(res["selection"]) or "none applies"), (what, said)
+            assert said == (_describe(page, res["selection"]) or "none applies"), (what, said)
             traced += 1
     assert checked, f"{where}: no figure recomputed"
     if page.locator(".tb-receipt-drawer").count():
@@ -369,6 +397,10 @@ def test_every_gesture_recomputes_every_figure(projects, browser, group, name):
                 assert _state(page) != authored, f"{name} · {step['label']}: changed nothing"
                 _check(page, name, (tab or "page") + " · " + step["label"],
                        plans, frames, built_view)
+                if name == "portfolio_model/portfolio_desk" and step["label"] == "range spread_bps":
+                    # The field is named as its control names it, not as the column.
+                    chip = page.locator(".tb-selection-chip").first.text_content()
+                    assert chip.startswith("Spread, bps: "), chip
         assert walked, f"{name}: the page offers no gesture"
 
         # Printed (under the last step's selection), the selection is one
@@ -378,7 +410,7 @@ def test_every_gesture_recomputes_every_figure(projects, browser, group, name):
         line = page.locator(".tb-selection-print")
         assert line.is_visible(), name
         text = line.text_content()
-        assert text.startswith("Filtered to: ") and all(_label(k) in text for k in state), text
+        assert text.startswith("Filtered to: ") and all(_label(page, k) in text for k in state), text
         assert page.locator(".tb-selection-chip").first.is_hidden(), name
         if page.locator(".tb-footer-line").count():
             assert page.locator(".tb-footer-filtered").first.is_visible(), name
@@ -389,7 +421,7 @@ def test_every_gesture_recomputes_every_figure(projects, browser, group, name):
             page.locator(".tb-selection-download").click()
         body = open(got.value.path(), encoding="utf-8").read()
         assert body.splitlines()[0].startswith("# selection: "), body[:200]
-        assert all(_label(k) in body.splitlines()[0] for k in state), body[:200]
+        assert all(_label(page, k) in body.splitlines()[0] for k in state), body[:200]
         assert "# figure: " in body
         slug_field = next(iter(state)).split(".")[-1]
         assert slug_field in got.value.suggested_filename, got.value.suggested_filename
