@@ -136,7 +136,11 @@ phase to the next):
 2. **MODEL** — `models/`. A declarative `DataModel` (star schema) over the
    warehouse: grain, keys, measures, in a few dozen lines a reviewer reads
    without opening the pandas above it. It reads the sink; it never sees the
-   transform. Reference: `examples/portfolio_project/models/portfolio_model.yaml`.
+   transform. A model query runs in the sink: one locked, read-only DuckDB
+   connection per query attaches the warehouse and reads the model's tables
+   as views (`tracebi/model/engine.py`; nothing loaded into pandas, no file,
+   URL, extension, ATTACH or COPY reachable, limits and the statement timeout
+   in `tracebi.yaml`). Reference: `examples/portfolio_project/models/portfolio_model.yaml`.
 
    *— freeze: the model (the semantic contract) —*
 
@@ -170,7 +174,8 @@ does not assert a number is correct. Never claim it verifies the phase-① analy
 ```
 tracebi/               # Core Python package (~24,000 LOC)
   connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory, DuckDB
-  model/               # DataSet, DataModel (with star-schema query)
+  model/               # DataSet, DataModel (with star-schema query), engine.py (the
+                       #   locked read-only query connection + statement timeout)
   etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer;
                        #   _sql.py compiles the steps to DuckDB SQL
   reports/             # Report, Section types, ExcelRenderer, HTMLRenderer; the artifact
@@ -206,6 +211,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   code_requests.py     # Python pushed from a laptop: stored, reviewed (diff), approved by an admin, run once
   _push.py             # `tracebi push` — packages/models → drafts, code → a code request
   contracts.py         # sink contracts: closed checks + certificate + manifest join
+  project_config.py    # tracebi.yaml reader (one reader, cached per path): engine limits
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
   mcp_server.py        # agent gateway over MCP — 22 tools + 3 prompts (author_report, answer_question, address_pins)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
@@ -287,6 +293,10 @@ tracebi list-pipelines
 tracebi run-pipeline sales_etl                 # run every layer, upstream first
 tracebi run-pipeline sales_etl --layer orders_silver [--refresh]
 tracebi run-pipeline sales_etl --status        # last run per layer, executes nothing
+
+# Project settings
+# tracebi.yaml at the project root (tracebi init writes a commented one):
+#   engine: {memory_limit: 1GB, threads: min(4,CPUs), temp_directory: data/.duckdb-tmp, query_timeout_s: 30}
 
 # Agent / tooling context
 tracebi context                                # framework vocabulary as JSON
@@ -547,7 +557,7 @@ their runs must filter the same way, and the e2e journey
 `tests/e2e/test_folder_permissions_journey.py` is where to prove it.
 
 **6. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. The one exception: a `${VAR}` in `connections/<name>.yaml` is looked up in the environment, then the project `.env`, when the connection is used — only that name, never copied into `os.environ`. Framework-read env vars: `TRACEBI_STATE_URL` (the shared run store; default `sqlite:///data/tracebi.db`), `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_CONNECTIONS_DIR` (declarative sources, default `connections`), `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_DRAFTS_DIR` (remote drafts, default `drafts`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`; ignored when `TRACEBI_LIBRARY_MOUNTS` is set), `TRACEBI_LIBRARY_MOUNTS` (`label:/abs/path,…` — several library roots; identity is `label/relative_path`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; Postgres takes one advisory lock per report, SQLite is one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_GROUPS_HEADER` (proxy mode: the person's groups, for `_folder.yaml`) / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`; set on the web app, it also serves the gateway at `/mcp`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_OIDC_ISSUER` (turns on per-person OAuth sign-in for `/mcp`) / `TRACEBI_OIDC_CLIENT_ID` / `TRACEBI_OIDC_CLIENT_SECRET` / `TRACEBI_OIDC_SCOPES` / `TRACEBI_OIDC_GROUPS_CLAIM` / `TRACEBI_OIDC_ROLE_MAP` (`group:role,…`) / `TRACEBI_OIDC_DEFAULT_ROLE` (default `viewer`) / `TRACEBI_DEMO_LOGIN` (a role: a one-click demo user on the gateway's own sign-in page; no identity provider, `/mcp` only) / `TRACEBI_LOCAL_USERS` (`name:role:password,…`, the same built-in sign-in) / `TRACEBI_OAUTH_SECRET` (signs it in flight; required with either) / `TRACEBI_PUBLIC_URL` / `TRACEBI_PUBLIC_MCP_URL` (the public MCP address, default `<TRACEBI_PUBLIC_URL origin>/mcp`) / `TRACEBI_OAUTH_REDIRECTS` (extra exact connector redirect URIs) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_LIBRARY_SYNC_SECRET` (turns on `POST /api/library/sync`, the git webhook that pulls library checkouts), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. A *project's* own settings (not secrets) live in `tracebi.yaml` at its root, read only through `tracebi/project_config.py` (`docs/reference/tracebi-yaml.md`): today `engine: {memory_limit, threads, temp_directory, query_timeout_s}`. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. The one exception: a `${VAR}` in `connections/<name>.yaml` is looked up in the environment, then the project `.env`, when the connection is used — only that name, never copied into `os.environ`. Framework-read env vars: `TRACEBI_STATE_URL` (the shared run store; default `sqlite:///data/tracebi.db`), `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_CONNECTIONS_DIR` (declarative sources, default `connections`), `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_DRAFTS_DIR` (remote drafts, default `drafts`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`; ignored when `TRACEBI_LIBRARY_MOUNTS` is set), `TRACEBI_LIBRARY_MOUNTS` (`label:/abs/path,…` — several library roots; identity is `label/relative_path`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; Postgres takes one advisory lock per report, SQLite is one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_GROUPS_HEADER` (proxy mode: the person's groups, for `_folder.yaml`) / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`; set on the web app, it also serves the gateway at `/mcp`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_OIDC_ISSUER` (turns on per-person OAuth sign-in for `/mcp`) / `TRACEBI_OIDC_CLIENT_ID` / `TRACEBI_OIDC_CLIENT_SECRET` / `TRACEBI_OIDC_SCOPES` / `TRACEBI_OIDC_GROUPS_CLAIM` / `TRACEBI_OIDC_ROLE_MAP` (`group:role,…`) / `TRACEBI_OIDC_DEFAULT_ROLE` (default `viewer`) / `TRACEBI_DEMO_LOGIN` (a role: a one-click demo user on the gateway's own sign-in page; no identity provider, `/mcp` only) / `TRACEBI_LOCAL_USERS` (`name:role:password,…`, the same built-in sign-in) / `TRACEBI_OAUTH_SECRET` (signs it in flight; required with either) / `TRACEBI_PUBLIC_URL` / `TRACEBI_PUBLIC_MCP_URL` (the public MCP address, default `<TRACEBI_PUBLIC_URL origin>/mcp`) / `TRACEBI_OAUTH_REDIRECTS` (extra exact connector redirect URIs) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_LIBRARY_SYNC_SECRET` (turns on `POST /api/library/sync`, the git webhook that pulls library checkouts), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
 
 ---
 
