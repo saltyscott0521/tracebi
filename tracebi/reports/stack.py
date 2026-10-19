@@ -28,9 +28,7 @@ import os
 import re
 from typing import Optional
 
-from tracebi.reports.embed import (
-    csp_meta, embed_json, engine_blocks_html, insert_before, read_lib,
-)
+from tracebi.reports.embed import csp_meta, embed_json, insert_before, read_lib
 
 _ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
@@ -269,33 +267,25 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
 
 def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
                report_js: str = "") -> str:
-    """The body-end injection: libs → runtime → engine → data → config → author."""
+    """The body-end injection: libs → engine → runtime → data → config → author."""
     tail = ""
     for lib in libs or ():
         if lib == "tailwind":
             tail += _TAILWIND_PRELUDE
         tail += (f"<!-- {_lib_credit(lib)} -->\n"
                  f"<script>\n{read_lib(lib)}\n</script>\n")
-    # The selection worker is a few kilobytes and ships only with a sealed
-    # grain. A report that did not opt in stays byte-for-byte as before.
-    if 'id="tracebi-grain"' in data_blocks_html:
-        tail += f"<script>\n{read_asset('selection_eval.js')}\n</script>\n"
-    # The page engine ships only with a slice to run it over: the runtime
-    # finds window.tracebiCalc at boot and recomputes the page under the
-    # reader's selection. A page built with "embed": "none" carries neither.
-    if 'id="tracebi-calc-plans"' in data_blocks_html:
+    # The page engine ships only with something to read: a slice to run the
+    # plans over (the runtime finds window.tracebiCalc at boot and recomputes
+    # the page under the reader's selection), or a binding embedded as
+    # Parquet, which it decodes before hydration. Test the DATA BLOCKS, never
+    # the assembled tail: the runtime source itself names both. A CSV page
+    # built with "embed": "none" carries no engine.
+    if ('id="tracebi-calc-plans"' in data_blocks_html
+            or _PARQUET_DATA_BLOCK.search(data_blocks_html)):
         tail += ("<!-- tracebi-calc.js: the page engine (CALC_NOTICE.md) -->\n"
                  f"<script>\n{read_asset('tracebi-calc.js')}\n</script>\n")
     tail += ("<!-- tracebi.js: the TraceBi runtime -->\n"
              f"<script>\n{read_asset('tracebi.js')}\n</script>\n")
-    # The worker engine ships ONLY when a binding is embedded as Parquet — a
-    # CSV artifact would otherwise pay megabytes for an engine it never starts.
-    # Test the DATA BLOCKS, never the assembled tail: the runtime source itself
-    # mentions parquet (in comments), so scanning `tail` ships the engine always.
-    # Only `tracebi-data-` blocks count: a report's slice blocks
-    # (`tracebi-slice-`) are Parquet too, but the worker never reads them.
-    if _PARQUET_DATA_BLOCK.search(data_blocks_html):
-        tail += engine_blocks_html()
     tail += data_blocks_html
     if figures_cfg is not None:
         tail += embed_json(figures_cfg, "tracebi-figures") + "\n"

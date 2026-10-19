@@ -344,7 +344,7 @@ console.log(JSON.stringify({columns: t.columns, rows: t.rows, out: tracebiCalc.r
                           capture_output=True, text=True, timeout=60)
     assert proc.returncode == 0, proc.stderr
     got = json.loads(proc.stdout)
-    assert got["columns"] == [{"name": "s", "type": "string"}, {"name": "i", "type": "number"},
+    assert got["columns"] == [{"name": "s", "type": "string"}, {"name": "i", "type": "number", "integer": True},
                               {"name": "f", "type": "number"}, {"name": "b", "type": "boolean"},
                               {"name": "ts", "type": "datetime"}]
     assert got["rows"] == 3

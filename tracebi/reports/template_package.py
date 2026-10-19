@@ -1104,7 +1104,7 @@ class TemplatePackage:
         )
         contract_blocks.append(embed_json(receipt, "tracebi-receipt") + "\n")
         contract_blocks.append(embed_json(declared_formats, "tracebi-formats") + "\n")
-        contract_blocks.append(self._selection_blocks(models))
+        contract_blocks.append(self._selection_blocks())
         contract_blocks.append(self._slice_blocks(
             models, manifest, [sd.name for sd in outputs]))
 
@@ -1651,7 +1651,7 @@ class TemplatePackage:
             page, data_blocks_html(inputs + outputs),
             stage="exploration", figures_cfg=cfg,
             extra_blocks_html=(embed_json(formats, "tracebi-formats") + "\n"
-                               + self._selection_blocks(models)))
+                               + self._selection_blocks()))
         return page, inputs, outputs
 
     def snapshot(self, models: dict, output_path: str) -> None:
@@ -1771,41 +1771,21 @@ class TemplatePackage:
 
     # ── Injection ───────────────────────────────────────────────────────────
 
-    def _selection_blocks(self, models: dict) -> str:
-        """The selection marker, and the sealed grain when a port exists.
-
-        The marker is what opts the runtime into posting ``data-tb-filter``
-        instead of subsetting. The grain is the offline port's input; a
-        package whose measures are all server-only still gets the marker
-        and recomputes only while the model is reachable. A grain that
-        cannot be built does not fail the render — the server path remains
-        the calculator.
+    def _selection_blocks(self) -> str:
+        """The selection marker: the report's authored selection, stated in
+        the file. The page engine reads the same selection from the calc
+        payload (``authored_selection``) and recomputes under it.
         """
         if not self.selection:
             return ""
         from tracebi.reports.embed import embed_json
-        from tracebi.reports.selection import filter_controls
-        from tracebi.reports.selection_eval import build_grain_payload
 
         payload = {
             "report": self.package_id,
             "model": self.selection["model"],
             "filters": self.selection["filters"],
         }
-        blocks = embed_json(payload, "tracebi-selection") + "\n"
-        model = (models or {}).get(self.selection["model"])
-        if model is None:
-            return blocks
-        try:
-            grain = build_grain_payload(
-                model, self.bindings, self.selection,
-                filter_controls(self.template_html),
-            )
-        except Exception:  # noqa: BLE001 — the server path still answers
-            grain = None
-        if grain:
-            blocks += embed_json(grain, "tracebi-grain") + "\n"
-        return blocks
+        return embed_json(payload, "tracebi-selection") + "\n"
 
     def _slice_blocks(self, models: dict, manifest: ReportManifest,
                       outputs: list[str]) -> str:

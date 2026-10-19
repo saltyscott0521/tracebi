@@ -3,7 +3,9 @@
 // the counts cannot disagree. The words are the artifact's chip (tracebi.js
 // _VERDICTS): Reproduces (green), Needs a look (amber: the source or the data
 // changed since the build, or its checks are stale), Does not reproduce (red),
-// Not checked (neutral); plus Draft and Never built where the app needs them.
+// Not checked (neutral); plus Draft and Never built where the app needs them,
+// and Local: the reader's selection, recomputed in the page itself (the
+// report's own chip says the same).
 // Only a re-check that came back `reproduces` is ever green.
 
 export const VERDICT_LABEL = {
@@ -13,7 +15,12 @@ export const VERDICT_LABEL = {
   'not-checked': 'Not checked',
   draft: 'Draft',
   'never-built': 'Never built',
+  local: 'Local',
 }
+
+/** What the page's own Local chip says (tracebi.js _VERDICTS.local). */
+export const LOCAL_DETAIL = 'Recomputed on this page from the embedded data'
+
 
 // What GET /api/desk's re-check (tracebi/verify.py) said of a build. A verdict
 // this page does not know needs a look: the bias is toward loud.

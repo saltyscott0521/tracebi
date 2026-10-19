@@ -516,3 +516,63 @@ def test_display_gate_routes_on_the_production_path(name, extra, want):
     frame = pd.DataFrame({"label": ["north-region", "south-region"] * (n // 2),
                           col: build()})
     assert plan_embed([stamp_frame(frame, name="d")]).fmt == want, (name, col)
+
+
+def test_the_page_draws_a_parquet_block_exactly_as_the_csv_triple(tmp_path):
+    """Two transports, one rendering: tracebi.js's stampedRows over
+    tracebiCalc.decode (the inlined page engine, as shipped) spells every
+    cell of a Parquet block as pandas' to_csv spells it in the CSV triple:
+    float64 by Python's repr across random bit patterns and the notation
+    edges, integers, nullable integers, booleans, strings that need quoting,
+    a date-only and a date-time column, and nulls of each. Every column here
+    passes the display gate, so this is the claim the gate rests on."""
+    import base64
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    import numpy as np
+
+    from tracebi.reports.embed import _display_safe, canonical_triple, stamp_frame
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node not available")
+    rng = np.random.default_rng(20261019)
+    floats = rng.integers(0, 2**64, 3000, dtype=np.uint64).view(np.float64)
+    floats = floats[np.isfinite(floats)]
+    edges = [float(m * 10.0**e) for e in range(-10, 20) for m in (1.0, 1.5, 9.999999)]
+    floats = np.concatenate([floats, edges, [0.1 + 0.2, 1 / 3, -0.0, 1e16, 1e-7, 1705495.22]])
+    n = len(floats)
+    frame = pd.DataFrame({
+        "x": floats,
+        "maybe": np.where(np.arange(n) % 7 == 0, np.nan, floats),
+        "i": np.arange(n, dtype="int64") * 7919 - 2**40,
+        "ni": pd.array([None if k % 5 == 0 else k for k in range(n)], dtype="Int64"),
+        "b": np.arange(n) % 3 == 0,
+        "s": [None if k % 11 == 0 else f'r{k}, "q"' for k in range(n)],
+        "d": pd.to_datetime((["2024-01-15", None, "2025-12-31"] * n)[:n]),
+        "dt": pd.to_datetime((["2024-01-15 10:30:05", "2024-01-16 00:00:00"] * n)[:n]),
+    })
+    assert _display_safe([stamp_frame(frame, name="d")])
+
+    assets = Path(__file__).resolve().parents[1] / "tracebi" / "reports" / "assets"
+    script = r"""
+const fs = require('fs');
+const [calc, runtime, b64] = process.argv.slice(1);
+eval(fs.readFileSync(calc, 'utf8'));
+const src = fs.readFileSync(runtime, 'utf8');
+eval(src.slice(src.indexOf('  function pyRepr('), src.indexOf('  /* Decode every Parquet block')));
+const bytes = Uint8Array.from(Buffer.from(fs.readFileSync(b64, 'utf8'), 'base64'));
+process.stdout.write(stampedRows(tracebiCalc.decode(bytes)).csv);
+"""
+    block = tmp_path / "block.b64"
+    block.write_text(base64.b64encode(to_parquet_bytes(frame)).decode())
+    out = subprocess.run([node, "-e", script, str(assets / "tracebi-calc.js"),
+                          str(assets / "tracebi.js"), str(block)],
+                         capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr
+    want = canonical_triple(frame)["csv"].replace("\r\n", "\n").split("\n")
+    got = out.stdout.split("\n")
+    bad = [(w, g) for w, g in zip(want, got) if w != g]
+    assert not bad and len(got) == len(want), (len(bad), bad[:5])

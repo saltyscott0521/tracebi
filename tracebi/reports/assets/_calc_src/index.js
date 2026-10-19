@@ -24,7 +24,7 @@ const tables = {};
  * @param {string} name the fact the block is the slice of (plan.fact)
  * @param {Uint8Array|ArrayBuffer} bytes the raw Parquet bytes: base64-decoded
  *   from the carrier's parquet_b64 and gunzipped when the build gzipped them
- * @returns {{columns: Array<{name: string, type: string}>, rows: number,
+ * @returns {{columns: Array<{name: string, type: string, integer?: boolean}>, rows: number,
  *   data: Object<string, Float64Array|Int32Array>, dict: Object<string, string[]>}}
  */
 function load(name, bytes) {
@@ -33,6 +33,18 @@ function load(name, bytes) {
   for (const c of table.columns) table.kinds[c.name] = c.type;
   tables[name] = table;
   return table;
+}
+
+/**
+ * Decode one Parquet block without keeping it: a binding's stamped block
+ * that the build embedded as Parquet (large-detail pages). The runtime reads
+ * its rows once and draws them as it draws a CSV block; no plan runs over it.
+ *
+ * @param {Uint8Array|ArrayBuffer} bytes the raw Parquet bytes
+ * @returns the same columnar table load() returns
+ */
+function decode(bytes) {
+  return decodeParquet(bytes);
 }
 
 /**
@@ -127,7 +139,7 @@ function canonical(result, totalOrder) {
   return { cols, rows };
 }
 
-const api = { version: "1.0.0", planVersion: PLAN_VERSION, load, run, domains, canonical };
+const api = { version: "1.1.0", planVersion: PLAN_VERSION, load, decode, run, domains, canonical };
 
 if (typeof window !== "undefined") window.tracebiCalc = api;
 if (typeof globalThis !== "undefined") globalThis.tracebiCalc = api;

@@ -191,7 +191,7 @@ function finish(s) {
  *
  * @param {Uint8Array|ArrayBuffer} bytes the block's raw Parquet bytes (already
  *   base64-decoded, and gunzipped if the carrier gzipped them)
- * @returns {{columns: Array<{name: string, type: string}>, rows: number,
+ * @returns {{columns: Array<{name: string, type: string, integer?: boolean}>, rows: number,
  *   data: Object<string, Float64Array|Int32Array>, dict: Object<string, string[]>}}
  */
 export function decodeParquet(bytes) {
@@ -211,7 +211,12 @@ export function decodeParquet(bytes) {
       throw new Error(`slice column '${name}' is nested; a slice is flat`);
     }
     const kind = kindOf(name, leaf.element);
-    columns.push({ name, type: kind });
+    const col = { name, type: kind };
+    /* Whole numbers stored as integers: the runtime spells a stamped block's
+     * cells as pandas' CSV does, where 1 and 1.0 differ. */
+    if (kind === "number" && leaf.element.converted_type !== "DECIMAL" &&
+        (leaf.element.type === "INT32" || leaf.element.type === "INT64")) col.integer = true;
+    columns.push(col);
     sinks[name] = sink(kind, rows);
     leaves[name] = leaf;
   }
