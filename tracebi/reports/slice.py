@@ -29,9 +29,12 @@ fact's own columns. A binding that filters on a raw fact column also keeps its
 fact at base grain, because a grain is made of dimension attributes and that
 column must survive for the filter to apply. Otherwise every measure is
 additive at the grain: ``sum``, ``count``, ``min`` and ``max`` are aggregated
-to it and re-aggregate with ``sum``, ``sum``, ``min`` and ``max``; a ``mean``
-is stored as its parts, ``<measure>__sum`` and ``<measure>__count``, so the
-page divides after it filters and an average is recomputed, never averaged.
+to it as the parts ``<measure>:sum``, ``<measure>:count``, ``<measure>:min``
+and ``<measure>:max``, which re-aggregate with ``sum``, ``sum``, ``min`` and
+``max``; a ``mean`` is stored as ``<measure>:sum`` and ``<measure>:count``, so
+the page divides after it filters and an average is recomputed, never
+averaged. Parts are keyed by the measure's output name, so two bindings that
+give one name two definitions keep the fact at base grain.
 Ratios, shares, ranks, runnings and calculated combinations are computed after
 aggregation, so they add nothing to the slice beyond the measures they read.
 
@@ -39,13 +42,17 @@ aggregation, so they add nothing to the slice beyond the measures they read.
 ``dim.attribute``, which is also how the selection state names a field: a
 selected field applies to a fact exactly when that fact's slice carries the
 column. Time grains are strings (``2026``, ``2026-Q1``, ``2026-03``,
-``2026-W09``, ``2026-03-14``), value bins their labels. On an aggregated slice
-each additive measure is a column named for the measure (its own filters
-already applied), means are their two parts. On a base-grain slice the fact's
-raw columns that the page's measures read (by their fact column names) sit
-beside the grain columns. A slice holds only numbers, booleans, strings and
-naive datetimes; any other type fails the build by column name, because the
-page engine would show it differently from the server.
+``2026-W09``, ``2026-03-14``), value bins their labels. A bare name is a fact
+column at base grain: on a base-grain slice the fact's raw columns that the
+page's measures and filters read sit beside the grain columns under their fact
+column names. On an aggregated slice every measure column is a
+``<measure>:<part>`` (its own filters already applied), never a bare name, so
+it cannot be mistaken for a fact column. This is the naming
+``tracebi/reports/calc_plan.py`` compiles plans against ("The slice a plan
+reads"). A slice holds only numbers, booleans, strings and naive datetimes;
+any other type fails the build by column name, because the page engine would
+show it differently from the server. Column types are recorded as
+``number``, ``boolean``, ``string`` or ``datetime``.
 
 **What contributes nothing.** A ``{"model", "sql"}`` binding and a
 ``report.py`` output have no query the engine can re-run, so they stay fixed at
@@ -314,10 +321,11 @@ def _slice_query(fact: str, grain: dict):
     renames from the query's output names to the slice's column names.
 
     Aggregated: each additive leaf becomes a measure this query declares for
-    itself (``calculated``), named ``slice__<column>`` because a report's own
-    measure may not shadow the model's; the rename strips the prefix.
-    ``allow_rate_agg`` is set because the slice re-expresses measures the
-    model already accepted (and a mean's ``__sum`` part is never shown).
+    itself (``calculated``), named ``slice__<measure>__<part>`` because a
+    report's own measure may not shadow the model's; the rename gives it its
+    slice name, ``<measure>:<part>``. ``allow_rate_agg`` is set because the
+    slice re-expresses measures the model already accepted (and a mean's
+    ``:sum`` part is never shown).
     Base grain: the raw fact columns, unaggregated."""
     from tracebi.model.data_model import QuerySpec
 
@@ -327,20 +335,19 @@ def _slice_query(fact: str, grain: dict):
                          dimensions=dims, aggregate=False,
                          allow_rate_agg=True), {}
     calculated: dict[str, dict] = {}
+    renames: dict[str, str] = {}
 
-    def part(column: str, source: str, agg: str, filters) -> None:
+    def part(out: str, source: str, agg: str, filters) -> None:
         definition = {"column": source, "agg": agg, "allow_rate_agg": True}
         if filters:
             definition["filters"] = dict(filters)
-        calculated[_SLICE_MEASURE + column] = definition
+        name = f"{_SLICE_MEASURE}{out}__{agg}"
+        calculated[name] = definition
+        renames[name] = f"{out}:{agg}"
 
     for out, leaf in grain["leaves"].items():
-        if leaf["func"] == "mean":
-            part(f"{out}__sum", leaf["source"], "sum", leaf["filters"])
-            part(f"{out}__count", leaf["source"], "count", leaf["filters"])
-        else:
-            part(out, leaf["source"], leaf["func"], leaf["filters"])
-    renames = {name: name[len(_SLICE_MEASURE):] for name in calculated}
+        for agg in (("sum", "count") if leaf["func"] == "mean" else (leaf["func"],)):
+            part(out, leaf["source"], agg, leaf["filters"])
     return QuerySpec(fact=fact, measures=list(calculated), dimensions=dims,
                      aggregate=True, allow_rate_agg=True,
                      calculated=calculated), renames
@@ -383,11 +390,9 @@ def _column_type(frame: pd.DataFrame, column: str, where: str) -> str:
     dtype = series.dtype
     kind = getattr(dtype, "kind", "")
     if kind == "b":
-        return "bool"
-    if kind in "iu":
-        return "int"
-    if kind == "f":
-        return "float"
+        return "boolean"
+    if kind in "iuf":
+        return "number"
     if kind == "M" and getattr(dtype, "tz", None) is None:
         return "datetime"
     if kind in ("O", "U", "T") or str(dtype) in ("string", "str"):
@@ -395,7 +400,7 @@ def _column_type(frame: pd.DataFrame, column: str, where: str) -> str:
         if all(isinstance(v, str) for v in values):
             return "string"
         if len(values) and all(isinstance(v, bool) for v in values):
-            return "bool"
+            return "boolean"
     raise SliceError(
         f"{where}: slice column '{column}' is {dtype}, which a slice cannot "
         f"carry (numbers, booleans, strings and naive datetimes only; the page "
@@ -470,13 +475,9 @@ def build_slice(package, models: dict) -> dict:
 
 def _plan_for(model, query, slice_columns) -> dict:
     """A binding's calc plan from ``tracebi.reports.calc_plan``, or
-    ``{"fixed": reason}``. The compiler lives in its own module; until it is
-    present every binding is fixed at build, which is what the page did
-    before slices existed."""
-    try:
-        from tracebi.reports.calc_plan import compile_plan
-    except ImportError:
-        return {"fixed": "calc_plan not available"}
+    ``{"fixed": reason}``: the compiler's own reason, or why it refused."""
+    from tracebi.reports.calc_plan import compile_plan
+
     try:
         return compile_plan(model, query, slice_columns)
     except Exception as exc:  # noqa: BLE001 — a refused plan is fixed, with why
@@ -487,10 +488,13 @@ def binding_plans(package, models: dict, blocks: dict,
                   outputs=()) -> dict:
     """Every binding's plan, by name: a SQL binding and a ``report.py``
     output are fixed by construction; the rest compile against the columns
-    of their fact's slice."""
+    (with their types) of their fact's slice. A fact with no slice is
+    passed as an empty one: the build only leaves a fact out when none of
+    its bindings can recompute (period_end, offset, to_date), and an empty
+    slice lets the compiler say which measure that is."""
     from tracebi.model.sql_calc import SqlQuery
 
-    columns = {(b.model, b.fact): [c["name"] for c in b.columns]
+    columns = {(b.model, b.fact): [dict(c) for c in b.columns]
                for b in blocks.values()}
     plans: dict[str, dict] = {}
     for name, ref in package.bindings.items():

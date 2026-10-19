@@ -316,123 +316,58 @@ def test_explore_speaks_the_models_language(built, monkeypatch):
         release_warehouses()
 
 
-def _over_slice(view, rec, frame):
-    """A model whose fact IS the slice, so DataModel.execute runs a binding's
-    query over the embedded rows instead of the warehouse. Each dimension in
-    the grain becomes a table of the distinct values the slice holds. On an
-    aggregated slice an additive measure re-aggregates its column (sum and
-    count sum, min and max keep theirs) and a mean divides its two parts;
-    every other measure is declared exactly as *view* declares it."""
-    import dataclasses
-
-    from tracebi import DataModel, MemoryConnector
-    from tracebi.model.data_model import MeasureDef
-
-    fact, tables, dims = frame.copy(), {}, {}
-    for column in rec["grain"]:
-        dims.setdefault(column.split(".", 1)[0], []).append(column)
-    for dim, columns in dims.items():
-        table = fact[columns].drop_duplicates().reset_index(drop=True)
-        table["__key"] = range(len(table))
-        fact = fact.merge(table, on=columns, how="left").rename(columns={"__key": f"__{dim}"})
-        tables[dim] = table.rename(columns={c: c.split(".", 1)[1] for c in columns})
-    tables["slice"] = fact = fact.drop(columns=rec["grain"])
-    m = DataModel("over_slice")
-    m.add_connector(MemoryConnector("mem", tables=tables))
-    for name in tables:
-        m.add_table(name, "mem", name)
-    for dim, columns in dims.items():
-        m.add_dimension(dim, dim, "__key", [c.split(".", 1)[1] for c in columns])
-    m.add_fact(rec["fact"], "slice", [c for c in fact.columns if not c.startswith("__")],
-               {dim: f"__{dim}" for dim in dims})
-    pending = dict(view.measures())
-    while pending:                      # a ratio is declared after its parts
-        progressed = False
-        for name, md in list(pending.items()):
-            kwargs = {f.name: getattr(md, f.name) for f in dataclasses.fields(MeasureDef)
-                      if f.name not in ("name", "kind") and getattr(md, f.name)}
-            if not rec["base_grain"] and md.kind in ("simple", "expression"):
-                if f"{name}__sum" in fact.columns:
-                    m.add_measure(f"{name}__sum", column=f"{name}__sum", agg="sum",
-                                  allow_rate_agg=True)
-                    m.add_measure(f"{name}__count", column=f"{name}__count", agg="sum",
-                                  allow_rate_agg=True)
-                    kwargs = {"ratio": (f"{name}__sum", f"{name}__count")}
-                elif name in fact.columns:
-                    kwargs = {"column": name, "agg": {"count": "sum"}.get(md.agg, md.agg),
-                              "allow_rate_agg": True, "allow_additive": True}
-                else:                   # not in this slice: no binding reads it
-                    pending.pop(name)
-                    continue
-            try:
-                m.add_measure(name, **kwargs)
-            except ValueError:
-                continue
-            pending.pop(name)
-            progressed = True
-        if not progressed:
-            break
-    return m
-
-
-def test_every_reports_slice_answers_its_bindings_queries(built):
-    """The slice is enough: in every reference report, each binding a slice
-    serves, run by DataModel.execute over that slice's embedded rows, returns
-    the binding's stamped rows. Rows are compared with a 1e-9 relative
-    tolerance: a total re-summed from grain rows may differ in the last ulp,
-    and the fingerprint's rounding rule belongs to the calc plan. The block in
-    the page is the block the manifest hashed."""
+def test_every_reports_slice_answers_its_bindings_plans(built):
+    """The slice is enough: in every reference report, each binding whose
+    plan compiled, run by execute_plan over the slice embedded in the page
+    (under the authored selection), fingerprints exactly like the binding's
+    stamped rows. Every other plan is fixed for a reason this round names,
+    never because the slice lacks a column."""
     import base64
-    import dataclasses
     import hashlib
-    import math
 
     from tracebi.model.data_model import QuerySpec
+    from tracebi.model.dataset import frame_fingerprint
     from tracebi.model_registry import ModelRegistry
+    from tracebi.reports.calc_plan import execute_plan
     from tracebi.reports.parquet_embed import from_parquet_bytes
     from tracebi.reports.slice import _grain_strings
 
+    legitimate = ("a SQL binding", "report.py", "period_end", "offset/growth",
+                  "to_date", "stddev", "raw-row", "having 'contains'")
     previous = os.getcwd()
     os.chdir(built)
     try:
         registry = ModelRegistry()
         registry.auto_discover(str(built / "models"))
-        served = 0
+        live = 0
         for name in REPORTS:
             manifest = json.loads(_manifest(built, name).read_text())
             html = (built / "output" / f"{name}.html").read_text()
-            payload = re.search(r'<script id="tracebi-calc-plans" type="application/json">'
-                                r'(.*?)</script>', html)
-            assert payload and json.loads(payload.group(1))["bindings"] == manifest["plans"]
-            stamped = {r["name"]: r["query_spec"] for r in manifest["embedded_data"]}
+            payload = json.loads(re.search(
+                r'<script id="tracebi-calc-plans" type="application/json">(.*?)</script>',
+                html).group(1))
+            assert payload["bindings"] == manifest["plans"]
+            frames = {}
             for rec in manifest["slice"].values():
                 block = re.search(r'<script id="%s" type="application/json">(.*?)</script>'
                                   % re.escape(rec["block"]), html)
                 raw = base64.b64decode(json.loads(block.group(1))["parquet_b64"])
                 assert hashlib.sha256(raw).hexdigest() == rec["payload_sha256"]
-                frame = from_parquet_bytes(raw)
-                assert [c["name"] for c in rec["columns"]] == list(frame.columns)
-                model = registry.get(rec["model"])
-                for binding in rec["bindings"]:
-                    spec = QuerySpec.from_dict(stamped[binding])
-                    view = model.with_measures(spec.calculated) if spec.calculated else model
-                    got = _over_slice(view, rec, frame).execute(
-                        dataclasses.replace(spec, calculated=None)).to_pandas()
-                    want = _grain_strings(model, model.execute(spec).to_pandas())
-                    # A mean over the slice divides its parts, which come
-                    # back as columns of their own; every stamped column must.
-                    assert set(want.columns) <= set(got.columns), (name, binding)
-                    assert len(got) == len(want), (name, binding)
-                    for column in want.columns:
-                        for a, b in zip(got[column].tolist(), want[column].tolist()):
-                            where = (name, binding, column, a, b)
-                            if isinstance(b, float):
-                                assert (math.isnan(a) and math.isnan(b)) or math.isclose(
-                                    a, b, rel_tol=1e-9), where
-                            else:
-                                assert a == b, where
-                    served += 1
-        assert served >= 30, f"the slices serve only {served} bindings"
+                frames[(rec["model"], rec["fact"])] = from_parquet_bytes(raw)
+            stamped = {r["name"]: r for r in manifest["embedded_data"]}
+            for binding, plan in manifest["plans"].items():
+                if "fixed" in plan:
+                    assert any(w in plan["fixed"] for w in legitimate), (name, binding, plan)
+                    continue
+                model = registry.get(stamped[binding]["model"])
+                got = execute_plan(plan, frames[(plan["model"], plan["fact"])],
+                                   payload["authored_selection"])
+                want = _grain_strings(model, model.execute(
+                    QuerySpec.from_dict(stamped[binding]["query_spec"])).to_pandas())
+                assert frame_fingerprint(got, algo=3) == frame_fingerprint(want, algo=3), (
+                    name, binding, got.head(3), want.head(3))
+                live += 1
+        assert live >= 45, f"only {live} bindings recompute from their slice"
     finally:
         os.chdir(previous)
 
