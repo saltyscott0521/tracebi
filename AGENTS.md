@@ -405,6 +405,22 @@ Three rules that keep pages honest:
   (`payload_sha256`), and `verify --file` checks both offline — the Parquet
   check needs no extra dependency at all. Only BUILDING the Parquet form
   needs PyArrow (`pip install 'tracebi[reports]'`).
+- **The slice: what a built page carries to recompute.** Besides each
+  binding's stamped rows, the build embeds, per fact the page reads, one
+  Parquet block (`tracebi-slice-<fact>`) at the coarsest grain that answers
+  every figure and every filter control (base grain when a measure is
+  `nunique`, a percentile or a row expression; a mean is stored as its sum
+  and count), and a `tracebi-calc-plans` block with each binding's calc
+  plan. `report.json` says how much: `"embed": "required"` (the default)
+  embeds that grain, `"embed": "model"` every fact at base grain with every
+  dimension attribute it reaches, `"embed": "none"` nothing new (the figures
+  stay as built). `"embed_budget_mb"` (default 25) caps the slice; past it
+  the build fails and names the fix (remove a control or a grouping, raise
+  the budget, or `"embed": "none"`). A slice holds numbers, booleans,
+  strings and naive datetimes only; another type in a column the page needs
+  fails the build by name. A SQL binding and a `report.py` output are never
+  in a slice: they stay fixed at build. The manifest records each block's
+  `payload_sha256` under `slice`.
 - **Scenarios are the one place a page computes.** A
   `data-tb-scenario` block lets the reader ask "what if": `data-tb-input`
   fields, a `data-tb-preset` picker (`data-tb-key`, `data-tb-fill`,

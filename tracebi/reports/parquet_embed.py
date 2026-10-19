@@ -45,8 +45,11 @@ def _require_pyarrow():
         ) from exc
 
 
-def to_parquet_bytes(df: "pd.DataFrame") -> bytes:
-    """Serialize *df* to Parquet (ZSTD) bytes for embedding.
+def to_parquet_bytes(df: "pd.DataFrame", compression: str = "zstd") -> bytes:
+    """Serialize *df* to Parquet (ZSTD by default) bytes for embedding.
+
+    A report's slice blocks pass ``compression="snappy"``: the page reads them
+    with a pure-JS reader that decodes Snappy natively and has no ZSTD.
 
     The caller (``plan_embed``) hashes the returned bytes into the manifest's
     ``payload_sha256`` and embeds the SAME bytes in the page — encode once,
@@ -57,7 +60,7 @@ def to_parquet_bytes(df: "pd.DataFrame") -> bytes:
     _require_pyarrow()
     buf = io.BytesIO()
     # index=False: the fingerprint covers columns/dtypes/values, never the index.
-    df.to_parquet(buf, engine="pyarrow", compression="zstd", index=False)
+    df.to_parquet(buf, engine="pyarrow", compression=compression, index=False)
     return buf.getvalue()
 
 

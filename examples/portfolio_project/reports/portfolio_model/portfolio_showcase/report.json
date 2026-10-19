@@ -4,6 +4,8 @@
   "description": "Fair value, mark and unrealized gain by sector, fund and issuer, with how concentrated the book is and every holding.",
   "notes": "The maintained kitchen-sink demo: every figure kind, control, layout and trust affordance the artifact offers, on the reference data.",
   "libs": ["d3"],
+  "embed": "required",
+  "embed_budget_mb": 25,
   "data": {
     "kpis": {
       "model": "portfolio_model",

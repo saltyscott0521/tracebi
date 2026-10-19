@@ -286,8 +286,9 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
     # CSV artifact would otherwise pay megabytes for an engine it never starts.
     # Test the DATA BLOCKS, never the assembled tail: the runtime source itself
     # mentions parquet (in comments), so scanning `tail` ships the engine always.
-    if '"format": "parquet"' in data_blocks_html or \
-            '"format":"parquet"' in data_blocks_html:
+    # Only `tracebi-data-` blocks count: a report's slice blocks
+    # (`tracebi-slice-`) are Parquet too, but the worker never reads them.
+    if _PARQUET_DATA_BLOCK.search(data_blocks_html):
         tail += engine_blocks_html()
     tail += data_blocks_html
     if figures_cfg is not None:
@@ -297,6 +298,12 @@ def stack_tail(libs, data_blocks_html: str, figures_cfg: Optional[dict] = None,
                  f"<script>\n{report_js}\n</script>\n")
     return tail
 
+
+#: A binding's data block embedded as Parquet. A block body holds no raw
+#: "<" (embed_json escapes it), so the match cannot run into the next block.
+_PARQUET_DATA_BLOCK = re.compile(
+    r'<script id="tracebi-data-[^"]*" type="application/json">[^<]*?'
+    r'"format": ?"parquet"')
 
 _HTML_OPEN = re.compile(r"<html\b[^>]*>", re.I)
 _VIEWPORT = re.compile(r"<meta\b[^>]*\bname=[\"']?viewport\b", re.I)

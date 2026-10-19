@@ -253,6 +253,31 @@ def _presentation() -> dict:
                            "\"notes\" (for authors; nothing renders it) or a "
                            "comment, never here.",
             "libs": REPORT_JSON_LIBS_NOTE,
+            "embed": {
+                "keys": "\"embed\": \"required\" | \"model\" | \"none\" "
+                        "(default \"required\"), \"embed_budget_mb\": <number> "
+                        "(default 25)",
+                "note": "What the built page carries besides each binding's "
+                        "stamped rows: the slice, the rows a live page "
+                        "recomputes from. Per fact the page reads, one Parquet "
+                        "block (tracebi-slice-<fact>) at the coarsest grain "
+                        "that answers every figure and every filter control "
+                        "(base grain when a measure is nunique, a percentile or "
+                        "a row expression; a mean is stored as its sum and "
+                        "count), plus one tracebi-calc-plans block with each "
+                        "binding's calc plan. required embeds that grain; model "
+                        "embeds every fact at base grain with every dimension "
+                        "attribute it reaches; none embeds nothing new and the "
+                        "figures stay as built. Past embed_budget_mb the build "
+                        "fails and names the fix (remove a control or a "
+                        "grouping, raise the budget, or embed none). A slice "
+                        "holds numbers, booleans, strings and naive datetimes "
+                        "only; any other type in a column the page needs fails "
+                        "the build by name. A SQL binding and a report.py "
+                        "output are never in a slice: they stay fixed at build. "
+                        "The manifest records each block's payload_sha256 "
+                        "under slice and every plan under plans.",
+            },
             "report_measures": {
                 "key": "measures",
                 "shape": "{\"<model>\": {\"<name>\": {<add_measure keywords>}}}",

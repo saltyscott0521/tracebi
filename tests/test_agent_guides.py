@@ -270,6 +270,13 @@ class TestLargeDetailArtifactIsTaught:
                 f"{name} does not name the dependency the Parquet form needs"
             )
 
+    def test_the_embed_keys_are_in_the_vocabulary_and_both_guides(self):
+        note = " ".join(describe(brief=True)["presentation"]["report_json"]["embed"].values())
+        for name, text in {"tracebi context": note, **_guides()}.items():
+            for phrase in ('"embed"', "embed_budget_mb", "tracebi-slice-",
+                           "tracebi-calc-plans"):
+                assert phrase in text, f"{name} does not teach {phrase}"
+
 
 def test_a_value_figure_is_taught_as_a_one_row_binding():
     """data-tb-cell reads one row. A multi-row binding is a build error,

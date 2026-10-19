@@ -314,3 +314,197 @@ def test_explore_speaks_the_models_language(built, monkeypatch):
         assert blown.json()["display"][0]["inv"] == ""
     finally:
         release_warehouses()
+
+
+def _over_slice(view, rec, frame):
+    """A model whose fact IS the slice, so DataModel.execute runs a binding's
+    query over the embedded rows instead of the warehouse. Each dimension in
+    the grain becomes a table of the distinct values the slice holds. On an
+    aggregated slice an additive measure re-aggregates its column (sum and
+    count sum, min and max keep theirs) and a mean divides its two parts;
+    every other measure is declared exactly as *view* declares it."""
+    import dataclasses
+
+    from tracebi import DataModel, MemoryConnector
+    from tracebi.model.data_model import MeasureDef
+
+    fact, tables, dims = frame.copy(), {}, {}
+    for column in rec["grain"]:
+        dims.setdefault(column.split(".", 1)[0], []).append(column)
+    for dim, columns in dims.items():
+        table = fact[columns].drop_duplicates().reset_index(drop=True)
+        table["__key"] = range(len(table))
+        fact = fact.merge(table, on=columns, how="left").rename(columns={"__key": f"__{dim}"})
+        tables[dim] = table.rename(columns={c: c.split(".", 1)[1] for c in columns})
+    tables["slice"] = fact = fact.drop(columns=rec["grain"])
+    m = DataModel("over_slice")
+    m.add_connector(MemoryConnector("mem", tables=tables))
+    for name in tables:
+        m.add_table(name, "mem", name)
+    for dim, columns in dims.items():
+        m.add_dimension(dim, dim, "__key", [c.split(".", 1)[1] for c in columns])
+    m.add_fact(rec["fact"], "slice", [c for c in fact.columns if not c.startswith("__")],
+               {dim: f"__{dim}" for dim in dims})
+    pending = dict(view.measures())
+    while pending:                      # a ratio is declared after its parts
+        progressed = False
+        for name, md in list(pending.items()):
+            kwargs = {f.name: getattr(md, f.name) for f in dataclasses.fields(MeasureDef)
+                      if f.name not in ("name", "kind") and getattr(md, f.name)}
+            if not rec["base_grain"] and md.kind in ("simple", "expression"):
+                if f"{name}__sum" in fact.columns:
+                    m.add_measure(f"{name}__sum", column=f"{name}__sum", agg="sum",
+                                  allow_rate_agg=True)
+                    m.add_measure(f"{name}__count", column=f"{name}__count", agg="sum",
+                                  allow_rate_agg=True)
+                    kwargs = {"ratio": (f"{name}__sum", f"{name}__count")}
+                elif name in fact.columns:
+                    kwargs = {"column": name, "agg": {"count": "sum"}.get(md.agg, md.agg),
+                              "allow_rate_agg": True, "allow_additive": True}
+                else:                   # not in this slice: no binding reads it
+                    pending.pop(name)
+                    continue
+            try:
+                m.add_measure(name, **kwargs)
+            except ValueError:
+                continue
+            pending.pop(name)
+            progressed = True
+        if not progressed:
+            break
+    return m
+
+
+def test_every_reports_slice_answers_its_bindings_queries(built):
+    """The slice is enough: in every reference report, each binding a slice
+    serves, run by DataModel.execute over that slice's embedded rows, returns
+    the binding's stamped rows. Rows are compared with a 1e-9 relative
+    tolerance: a total re-summed from grain rows may differ in the last ulp,
+    and the fingerprint's rounding rule belongs to the calc plan. The block in
+    the page is the block the manifest hashed."""
+    import base64
+    import dataclasses
+    import hashlib
+    import math
+
+    from tracebi.model.data_model import QuerySpec
+    from tracebi.model_registry import ModelRegistry
+    from tracebi.reports.parquet_embed import from_parquet_bytes
+    from tracebi.reports.slice import _grain_strings
+
+    previous = os.getcwd()
+    os.chdir(built)
+    try:
+        registry = ModelRegistry()
+        registry.auto_discover(str(built / "models"))
+        served = 0
+        for name in REPORTS:
+            manifest = json.loads(_manifest(built, name).read_text())
+            html = (built / "output" / f"{name}.html").read_text()
+            payload = re.search(r'<script id="tracebi-calc-plans" type="application/json">'
+                                r'(.*?)</script>', html)
+            assert payload and json.loads(payload.group(1))["bindings"] == manifest["plans"]
+            stamped = {r["name"]: r["query_spec"] for r in manifest["embedded_data"]}
+            for rec in manifest["slice"].values():
+                block = re.search(r'<script id="%s" type="application/json">(.*?)</script>'
+                                  % re.escape(rec["block"]), html)
+                raw = base64.b64decode(json.loads(block.group(1))["parquet_b64"])
+                assert hashlib.sha256(raw).hexdigest() == rec["payload_sha256"]
+                frame = from_parquet_bytes(raw)
+                assert [c["name"] for c in rec["columns"]] == list(frame.columns)
+                model = registry.get(rec["model"])
+                for binding in rec["bindings"]:
+                    spec = QuerySpec.from_dict(stamped[binding])
+                    view = model.with_measures(spec.calculated) if spec.calculated else model
+                    got = _over_slice(view, rec, frame).execute(
+                        dataclasses.replace(spec, calculated=None)).to_pandas()
+                    want = _grain_strings(model, model.execute(spec).to_pandas())
+                    # A mean over the slice divides its parts, which come
+                    # back as columns of their own; every stamped column must.
+                    assert set(want.columns) <= set(got.columns), (name, binding)
+                    assert len(got) == len(want), (name, binding)
+                    for column in want.columns:
+                        for a, b in zip(got[column].tolist(), want[column].tolist()):
+                            where = (name, binding, column, a, b)
+                            if isinstance(b, float):
+                                assert (math.isnan(a) and math.isnan(b)) or math.isclose(
+                                    a, b, rel_tol=1e-9), where
+                            else:
+                                assert a == b, where
+                    served += 1
+        assert served >= 30, f"the slices serve only {served} bindings"
+    finally:
+        os.chdir(previous)
+
+
+def test_a_reports_embed_setting_bounds_what_it_carries(built, tmp_path):
+    """embed: none ships the page as it was before slices; embed: model
+    ships every fact at base grain with every attribute it reaches; a slice
+    over embed_budget_mb fails the build naming the fix; a column of a type
+    the page engine cannot show the same way fails the build naming it."""
+    import pandas as pd
+
+    from tracebi import DataModel, MemoryConnector
+    from tracebi.model_registry import ModelRegistry
+    from tracebi.reports.slice import SliceError
+    from tracebi.reports.template_package import TemplatePackage
+
+    showcase = built / "reports" / "portfolio_model" / "portfolio_showcase"
+    declared = json.loads((showcase / "report.json").read_text())
+
+    def variant(name, **keys):
+        target = tmp_path / name
+        shutil.copytree(showcase, target)
+        (target / "report.json").write_text(json.dumps({**declared, **keys}))
+        return TemplatePackage(str(target))
+
+    previous = os.getcwd()
+    os.chdir(built)
+    try:
+        registry = ModelRegistry()
+        registry.auto_discover(str(built / "models"))
+        models = {"portfolio_model": registry.get("portfolio_model")}
+
+        out = tmp_path / "none.html"
+        manifest = variant("none", embed="none").render(models, str(out))
+        assert manifest.slice is None and manifest.plans is None
+        page = out.read_text()
+        assert "tracebi-slice-" not in page and "tracebi-calc-plans" not in page
+
+        manifest = variant("model", embed="model").render(
+            models, str(tmp_path / "model.html"))
+        rec = manifest.slice["fact_holdings"]
+        assert rec["base_grain"] and rec["embed"] == "model"
+        assert {"dim_fund.fund", "dim_issuer.issuer", "dim_issuer.sector"} <= set(rec["grain"])
+        assert rec["rows"] == len(models["portfolio_model"].load("fact_holdings").to_pandas())
+
+        with pytest.raises(SliceError, match='"embed": "none"') as refused:
+            variant("tight", embed_budget_mb=0.0001).render(
+                models, str(tmp_path / "tight.html"))
+        assert "embed_budget_mb" in str(refused.value)
+        assert not (tmp_path / "tight.html").exists()
+    finally:
+        os.chdir(previous)
+
+    # A dimension attribute holding zoned timestamps: the page engine would
+    # show them in the reader's zone, so a slice that needs it fails by name.
+    package = tmp_path / "zoned"
+    package.mkdir()
+    (package / "report.json").write_text(json.dumps({"data": {"total": {
+        "model": "zoned_model", "query": {"fact": "fact_t", "measures": ["amount"]}}}}))
+    (package / "template.html").write_text(
+        '<html><head></head><body><span data-tb-figure="value" data-tb-binding="total" '
+        'data-tb-cell="amount"></span><select data-tb-filter data-tb-binding="total" '
+        'data-tb-column="dim_t.at"></select></body></html>')
+    model = DataModel("zoned_model")
+    model.add_connector(MemoryConnector("mem", tables={
+        "fact": pd.DataFrame({"t_id": [1, 2], "amount": [1.5, 2.5]}),
+        "dim": pd.DataFrame({"t_id": [1, 2], "at": pd.to_datetime(
+            ["2026-01-01", "2026-02-01"]).tz_localize("America/New_York")})}))
+    model.add_table("fact", "mem", "fact").add_table("dim", "mem", "dim")
+    model.add_dimension("dim_t", "dim", "t_id", ["at"])
+    model.add_fact("fact_t", "fact", ["amount"], {"dim_t": "t_id"})
+    model.add_measure("amount", column="amount", agg="sum")
+    with pytest.raises(SliceError, match=r"slice column 'dim_t\.at'.*\"embed\": \"none\""):
+        TemplatePackage(str(package)).render({"zoned_model": model},
+                                             str(tmp_path / "zoned.html"))
