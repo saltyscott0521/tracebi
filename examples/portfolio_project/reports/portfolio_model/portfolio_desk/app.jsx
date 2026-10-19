@@ -50,8 +50,7 @@ function Overview() {
           in view, at <Value binding="weakest_fund" cell="mark" />.</span>
         <span hidden={funds !== 1}>
           <Value binding="weakest_fund" cell="dim_fund.fund" id="val-only-fund" /> is the
-          only fund in view, marked at{" "}
-          <Value binding="weakest_fund" cell="mark" id="val-only-fund-mark" />.</span>
+          only fund in view.</span>
       </p>
       <div className="tb-grid">
         <Kpi lead binding="totals" cell="fair_value" format="currency_compact"
