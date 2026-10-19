@@ -5,7 +5,8 @@
 // checked figure. Colours: bg-page bg-card bg-surface text-ink text-muted
 // border-rule bg-accent follow the page's theme and mode.
 // The kit and patterns: docs/reference/app-jsx.md.
-import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download,
+         SelectionBar } from "tracebi";
 
 export default function App() {
   return (
@@ -26,6 +27,9 @@ export default function App() {
         <div className="flex flex-wrap items-center gap-2">
           <Filter column="dim_region.region" label="Region" />
         </div>
+        {/* What the reader picked: one chip per value, each with a ×, Clear and
+            "Download what I see". A click on a bar selects too. Hidden as built. */}
+        <SelectionBar />
 
         {/* Lead with the answer: one sentence, its numbers bound. Never type one in. */}
         <p className="tb-lede">

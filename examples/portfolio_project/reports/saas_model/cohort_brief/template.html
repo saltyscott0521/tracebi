@@ -3,15 +3,33 @@
 <head><meta charset="utf-8"><title>SaaS Cohort Brief</title></head>
 <body>
 <!-- An editorial brief: read top to bottom. The headline is the finding;
-     every number in the prose is a value figure, so its trace names it. -->
+     every number in the prose is a value figure, so its trace names it. The
+     reader can pick cohorts and narrow the months; every figure recomputes,
+     so the copy says what it compares ("of the cohorts shown", "the latest
+     month in view") instead of asserting a scope a selection could break. -->
 <article class="tb-article">
   <header class="tb-masthead tb-article-head">
-    <h1>The earliest cohort still holds the most ending MRR</h1>
-    <p class="tb-standfirst">Customers who signed up first are still the largest
-      block of recurring revenue, about twice any cohort since.</p>
+    <h1>The <span data-tb-figure="value" data-tb-binding="top_cohort"
+          data-tb-cell="dim_cohort.cohort" id="head-top-cohort">—</span> cohort
+      holds the most ending MRR</h1>
+    <p class="tb-standfirst">Which signup cohort carries the recurring revenue,
+      where logo churn sits, and the book month by month.</p>
     <p class="tb-masthead-meta"><span data-tb-built></span>
       <span class="tb-verdict"></span></p>
   </header>
+
+  <!-- The brief's controls. A cohort and a span of months cut every figure;
+       a click on a cohort's bar does too. The months are labels (2026-03),
+       so the range is a from and a to. -->
+  <p>
+    <label>Cohort
+      <select data-tb-filter data-tb-binding="*" data-tb-column="dim_cohort.cohort"></select></label>
+    <span data-tb-range data-tb-column="dim_month.month" data-tb-label="Months"></span>
+  </p>
+  <p class="tb-note">Ending MRR and customers are balances at the latest month in
+    view: narrow the months and they read that month's book, not a sum of the
+    months.</p>
+  <div data-tb-selection></div>
 
   <p class="tb-lede">
     The
@@ -36,7 +54,7 @@
          data-tb-cell="ending_mrr" data-tb-format="currency0" id="kpi-mrr">
       <span class="tb-kpi-label">Ending MRR</span>
       <span class="tb-kpi-value"></span>
-      <span class="tb-kpi-context">latest month, all cohorts</span>
+      <span class="tb-kpi-context">latest month in view, cohorts shown</span>
     </div>
     <div class="tb-kpi" data-tb-figure="value" data-tb-binding="kpis"
          data-tb-cell="customers" data-tb-format="comma" id="kpi-customers">
@@ -52,18 +70,18 @@
     </div>
   </div>
 
-  <h2>Each later cohort is about half as large</h2>
-  <p>Read the cohorts in signup order: the first bar stands alone, and the three
-    after it sit level with each other.</p>
+  <h2>Ending MRR by signup cohort</h2>
+  <p>Read the cohorts in signup order. Click a bar to select its cohort;
+    shift-click adds one.</p>
   <figure class="tb-figure">
     <div data-tb-figure="chart" data-tb-binding="by_cohort"
          data-tb-type="bar" data-tb-x="dim_cohort.cohort"
          data-tb-y="ending_mrr" data-tb-value-format="currency0"
          id="chart-by-cohort"></div>
-    <figcaption>Ending MRR at the latest month, by signup cohort. US dollars.</figcaption>
+    <figcaption>Ending MRR at the latest month in view, by signup cohort. US dollars.</figcaption>
   </figure>
 
-  <h2>Churn sits in one cohort</h2>
+  <h2>Where churn sits</h2>
   <p>
     <span data-tb-figure="value" data-tb-binding="churniest"
           data-tb-cell="dim_cohort.cohort" id="val-churn-cohort">—</span>
@@ -71,8 +89,8 @@
     <span data-tb-figure="value" data-tb-binding="churniest"
           data-tb-cell="logo_churn" data-tb-format="percent"
           id="val-churn-rate">—</span>
-    of its logos in the latest month, the highest of any cohort. The table
-    has the rest.</p>
+    of its logos in the latest month in view, the highest of the cohorts
+    shown. The table has the rest.</p>
   <table data-tb-figure="table" data-tb-binding="by_cohort" data-tb-sort
          data-tb-columns="dim_cohort.cohort, ending_mrr, customers, logo_churn"
          data-tb-labels="dim_cohort.cohort=Cohort; ending_mrr=Ending MRR; customers=Customers; logo_churn=Logo churn"
@@ -93,10 +111,10 @@
              data-tb-label="Download the monthly series (CSV)"></button></p>
 
   <h2>What to do</h2>
-  <p>Find out why
+  <p>Start next quarter's retention work with the
     <span data-tb-figure="value" data-tb-binding="churniest"
           data-tb-cell="dim_cohort.cohort" id="val-churn-cohort-2">—</span>
-    customers left before planning next quarter's retention work.</p>
+    cohort, the one whose logo churn is highest above.</p>
 
   <footer class="tb-footer" data-tb-methodology>
     <p>Cohort is the signup month. Ending MRR and the customer count are

@@ -261,7 +261,7 @@ def test_explore_speaks_the_models_language(built, monkeypatch):
         # Likewise a dimension: a fact joins the ones in its foreign_keys, and
         # grouping by any other cannot run.
         joins = {f["name"]: set(f["foreign_keys"]) for f in info["facts"]}
-        assert joins["fact_ten_year"] == {"dim_cohort"}
+        assert joins["fact_ten_year"] == {"dim_cohort", "dim_year"}
         for fact in offered:
             measure = sorted(offered[fact])[0]
             for dim in info["dimensions"]:
@@ -712,7 +712,7 @@ def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):
     plan picked in mrr_dashboard's filter recomputes every KPI, spark, chart
     and table exactly where execute_plan over the slice says (each month's
     latest balance, under the plan), none is fixed, and the chip reads Local.
-    cohort_brief has no control; its slice still reproduces on the server."""
+    cohort_brief's slice reproduces on the server too."""
     from tracebi.reports.calc_plan import execute_plan, rows_match
 
     name = "saas_model/mrr_dashboard"
@@ -736,6 +736,9 @@ def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):
             plan_name)
         _settle(page)
         after = {f["key"]: f for f in page.evaluate(_READ)}
+        picked = page.evaluate("""() => Object.fromEntries(Array.from(
+          document.querySelectorAll('table[data-tb-select-rows][id]')).map(t => [t.id,
+            Array.from(t.querySelectorAll('tbody tr[aria-selected="true"]')).map(r => r.textContent)]))""")
         kinds = set()
         for key, now in after.items():
             was = before[key]
@@ -745,6 +748,12 @@ def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):
             if now["kind"] == "value":
                 moves = not rows_match(authored[[now["cell"]]], cut[[now["cell"]]])
                 assert (now["value"] != was["value"]) == moves, (key, was["value"], now["value"])
+            elif now["kind"] == "table" and key in picked:
+                # A row-select table keeps its own field's other rows
+                # (cross-highlighting); the plan's own rows are the picked ones.
+                assert len(now["rows"]) == len(authored), key
+                assert len(picked[key]) == len(cut), key
+                assert all(plan_name in row for row in picked[key]), key
             elif now["kind"] == "table":
                 assert len(now["rows"]) == len(cut) and now["rows"] != was["rows"], key
                 assert all(plan_name in row for row in now["rows"]), key

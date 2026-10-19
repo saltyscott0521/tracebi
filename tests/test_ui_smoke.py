@@ -507,8 +507,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("Advanced: the query builder").click()
             builder = page.locator(".explore-grid")
             expect(builder).to_contain_text("dim_year")
+            expect(builder).not_to_contain_text("dim_held")
+            page.get_by_role("button", name="fact_cohort_path").click()
+            expect(builder).to_contain_text("dim_held")
             page.get_by_role("button", name="fact_ten_year").click()
-            expect(builder).not_to_contain_text("dim_year")
+            expect(builder).not_to_contain_text("dim_held")
             expect(builder).to_contain_text("dim_cohort")
             fail_on_browser_errors()
 
