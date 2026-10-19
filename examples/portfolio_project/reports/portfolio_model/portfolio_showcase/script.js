@@ -10,13 +10,17 @@
 //
 // Colour carries nothing here. Sectors are labelled groups separated by
 // gaps, so no reader has to tell two hues apart. Click a sector's label to
-// filter the page to it; click again to clear.
+// select it on the page; click again to clear. tracebi.onSelection keeps
+// the figure in step with every other way the selection changes (a filter,
+// a bar, the selection bar), so a click adds to the reader's selection
+// rather than replacing it.
 // ─────────────────────────────────────────────────────────────────────────
 (function () {
   var tb = window.tracebi;
   var SECTOR = "dim_issuer.sector", ISSUER = "dim_issuer.issuer";
   var money = function (v) { return "$" + tb.fmt(v, "compact"); };
-  var current = null; // the sector this figure filtered to, if any
+  var state = {}; // the page's selection, as tracebi.onSelection last gave it
+  tb.onSelection(function (change) { state = change.selection; });
 
   // A label that does not fit its box is left out, never cut: the
   // tooltip and the table below carry every name and value.
@@ -54,10 +58,11 @@
       .text(function (d) { return d.data.name + " · " + money(d.value); })
       .call(function (t) { t.each(function (d) { fit(d3.select(this), d.x1 - d.x0 - 8); }); })
       .on("click", function (event, d) {
-        current = current === d.data.name ? null : d.data.name;
-        var filters = {};
-        if (current) filters[SECTOR] = current;
-        tb.setSelection(filters);
+        var next = JSON.parse(JSON.stringify(state));
+        var picked = next[SECTOR] || [];
+        if (picked.length === 1 && picked[0] === d.data.name) delete next[SECTOR];
+        else next[SECTOR] = [d.data.name];
+        tb.setSelection(next);
       });
 
     var cells = svg.selectAll("g.cell").data(root.leaves()).join("g")

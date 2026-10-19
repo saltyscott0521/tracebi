@@ -109,6 +109,26 @@ def filter_controls(html_text: str) -> list[tuple[str, str]]:
     return parser.controls
 
 
+class _RangeParser(HTMLParser):
+    """``data-tb-range`` elements: their ``data-tb-column`` in document order."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.columns: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        d = dict(attrs)
+        if "data-tb-range" in d and d.get("data-tb-column"):
+            self.columns.append(d["data-tb-column"])
+
+
+def range_controls(html_text: str) -> list[str]:
+    """The column of every range control (``data-tb-range``) in a template."""
+    parser = _RangeParser()
+    parser.feed(html_text)
+    return parser.columns
+
+
 def _json_cell(value):
     if value is None or isinstance(value, bool):
         return value

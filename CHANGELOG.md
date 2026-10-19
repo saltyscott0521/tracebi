@@ -6,6 +6,38 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — every gesture on a live page is the one selection
+
+- A click on a bar, a pie slice, a line's category or a legend entry selects
+  that value of the chart's x (or series) column whenever a slice carries it,
+  with no filter for the column on the page; the same value again removes it,
+  shift-click adds it. Pages built with `"embed": "none"` keep the old
+  behaviour (a click sets an existing filter).
+- `data-tb-select-rows` (kit `<Table selectRows>`): a row click selects the
+  row's dimension values. `data-tb-range` (kit `<Range column label min max
+  step>`): a range control, two handles over a number column or from/to
+  pickers over a time grain's labels, writing `{gte, lte}`. A range on a
+  fact's own column keeps that fact's slice at base grain.
+- Cross-highlighting: a chart (and a row-select table) keeps its own field's
+  other values and draws the ones not picked at reduced emphasis; its trace
+  row states what it highlights. `data-tb-highlight="off"` on a figure or the
+  page root makes it narrow like every other figure.
+- The selection bar (`.tb-selection-bar`, or where `data-tb-selection` / kit
+  `<SelectionBar />` puts it): one chip per value, Clear, and "Download what
+  I see" (each visible figure's current rows, the selection in the header and
+  file name). Escape clears. Printed, and in the PDF, it is one line
+  ("Filtered to: …") and the footer's built line says " · filtered on this
+  page". A `data-tb-download` taken under a selection starts with
+  `# selection: none (full binding)`.
+- `tracebi.onSelection(fn)` hears every change of the selection as
+  `{selection, authored, figures}`; `tracebi.result(id)` reads a figure's
+  current answer. The showcase's treemap uses `onSelection` to add to the
+  reader's selection instead of replacing it.
+- `tests/e2e/test_live_cascade.py` walks every shipped live report (the
+  reference project, the scaffold's sample, both templates, the demo app's
+  wealth reports) through every gesture it offers and checks each figure
+  against the server's answer for the slice it carries.
+
 ### Changed — a built report is live: a filter recomputes every figure
 
 - The rule is now **a figure's number is only ever a query result** (it was

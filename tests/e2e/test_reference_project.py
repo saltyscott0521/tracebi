@@ -523,6 +523,14 @@ _READ = """() => Array.from(document.querySelectorAll('[data-tb-figure][data-tb-
   })"""
 
 
+def _undimmed(svg):
+    """A chart's svg less what cross-highlighting adds (a class, a label)."""
+    if svg is None:
+        return None
+    svg = re.sub(r' aria-label="(select|clear) [^"]*"', '', svg)
+    return re.sub(r' (tb-dimmed|tb-picked)(?=[ "])', '', svg).replace(' class=""', '')
+
+
 def _settle(page):
     page.wait_for_selector("html[data-tb-ready]")
     page.wait_for_timeout(900)     # chart transitions finish
@@ -575,7 +583,10 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
             if binding not in answers:
                 assert "fixed" in plans[binding]
                 assert now["fixed"] == plans[binding]["fixed"] == "report.py"
-                assert now["svg"] == was["svg"] and now["value"] == was["value"]
+                # Its marks may recede for the sector picked (cross-highlighting,
+                # presentation only); what it draws is as built.
+                assert _undimmed(now["svg"]) == _undimmed(was["svg"])
+                assert now["value"] == was["value"]
                 assert now["note"] == "Fixed at build · report.py"
                 continue
             authored, cut = answers[binding]

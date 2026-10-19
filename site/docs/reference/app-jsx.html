@@ -205,7 +205,7 @@ filterable, exactly as in a template.</p>
 </tr>
 <tr>
 <td><code>&lt;Table&gt;</code></td>
-<td><code>binding</code>, <code>columns</code>, <code>labels</code>, <code>formats</code>, <code>sort</code>, <code>bars</code>, <code>totals</code>, <code>rows</code> (default 10; <code>"all"</code>), <code>id</code></td>
+<td><code>binding</code>, <code>columns</code>, <code>labels</code>, <code>formats</code>, <code>sort</code>, <code>bars</code>, <code>totals</code>, <code>rows</code> (default 10; <code>"all"</code>), <code>selectRows</code>, <code>id</code></td>
 </tr>
 </tbody>
 </table>
@@ -227,6 +227,14 @@ and KPIs stay the stamped totals.</p>
 <td><code>binding</code>, <code>column</code>, <code>label</code>, <code>multiple</code></td>
 </tr>
 <tr>
+<td><code>&lt;Range&gt;</code></td>
+<td><code>column</code>, <code>label</code>, <code>min</code>, <code>max</code>, <code>step</code> — <code>data-tb-range</code></td>
+</tr>
+<tr>
+<td><code>&lt;SelectionBar /&gt;</code></td>
+<td><code>className</code> — where the selection bar goes (<code>data-tb-selection</code>)</td>
+</tr>
+<tr>
 <td><code>&lt;Search&gt;</code></td>
 <td><code>binding</code>, <code>placeholder</code>, <code>label</code></td>
 </tr>
@@ -236,6 +244,18 @@ and KPIs stay the stamped totals.</p>
 </tr>
 </tbody>
 </table>
+<p>Every gesture on a live page writes the same selection state: a click on a
+bar, a pie slice, a line's category or a legend entry selects that value of the
+chart's <code>x</code> (or <code>color</code>) column, no <code>&lt;Filter&gt;</code> needed (again, it clears it;
+shift-click adds one; a <code>&lt;Spark&gt;</code> does not select); a click on a row of a
+<code>&lt;Table selectRows&gt;</code> selects the row's dimension values; a <code>&lt;Range&gt;</code> writes
+<code>{gte, lte}</code> (two handles for a number column, from/to pickers for a time
+grain's labels). A chart keeps its own field's other values and draws them back
+(cross-highlighting); <code>data-tb-highlight="off"</code> on it, or on an ancestor, makes
+it narrow like every other figure. <code>&lt;SelectionBar /&gt;</code> shows one chip per picked
+value, Clear and "Download what I see"; without it the runtime puts the bar
+above the app. Escape clears; printed, the bar is one line ("Filtered to: …").
+<code>window.tracebi.onSelection(fn)</code> hears every change.</p>
 <p><strong>App behaviour.</strong></p>
 <table>
 <thead>

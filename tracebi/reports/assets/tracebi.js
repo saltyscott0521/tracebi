@@ -16,7 +16,9 @@
  *
  * Controls (data-tb-filter / data-tb-search / data-tb-download, tabs) obey
  * the same law: a figure's number is only ever a query result. A page built
- * with a slice (#tracebi-calc-plans, the default) is live: its filters write
+ * with a slice (#tracebi-calc-plans, the default) is live: its filters, and
+ * every other gesture (a chart mark, a table row, a range, the selection
+ * bar; The interaction grammar, below), write
  * one selection state and tracebi-calc.js runs each binding's own query plan
  * over the embedded data under it, so every figure the selection reaches is
  * recomputed as a query result (The live page, below). A page built without
@@ -418,14 +420,14 @@
     var rows = filteredRows(binding), i, entry;
     for (i = 0; i < _tables.length; i++) {
       if (_tables[i].binding === binding) {
-        try { renderBody(_tables[i], rows); } catch (e) { /* defensive */ }
+        try { renderBody(_tables[i], entryRows(_tables[i], rows)); } catch (e) { /* defensive */ }
       }
     }
     for (i = 0; i < _charts.length; i++) {
       entry = _charts[i];
       if (entry.binding === binding) {
         try {
-          if (entry.d3) renderD3Chart(entry, rows, true);
+          if (entry.d3) renderD3Chart(entry, entryRows(entry, rows), true);
           else entry.chart.setOption(buildOption(entry.el, entry.plan, rows), true);
         } catch (e) { /* defensive */ }
       }
@@ -441,7 +443,7 @@
       try {
         if (!c.d3) c.chart.resize();
         else if (c.surface.clientWidth !== c.width) {
-          renderD3Chart(c, filteredRows(c.binding), false);
+          renderD3Chart(c, entryRows(c), false);
         }
       } catch (e) { /* defensive */ }
     }
@@ -781,7 +783,7 @@
           h.setAttribute("aria-sort", "none");
         });
         if (next) th.setAttribute("aria-sort", next === "asc" ? "ascending" : "descending");
-        renderBody(entry, filteredRows(entry.binding));
+        renderBody(entry, entryRows(entry));
       });
     });
   }
@@ -956,6 +958,7 @@
       if (n !== null && bars && bars[col]) paintBar(td, n, bars[col]);
       tr.appendChild(td);
     });
+    if (entry.selectCols && _calc) selectableRow(entry, tr, r);
     return tr;
   }
 
@@ -1111,7 +1114,7 @@
         if (!_charts[j].d3) continue;
         try {
           if (_charts[j].svg) _charts[j].svg.interrupt().style("opacity", 1);
-          renderD3Chart(_charts[j], filteredRows(_charts[j].binding), false);
+          renderD3Chart(_charts[j], entryRows(_charts[j]), false);
         } catch (e) {}
       }
     };
@@ -1233,9 +1236,16 @@
           if (entry.bars[col] && heads[i]) addClass(heads[i], "tb-bar-cell");
         });
         entry.tfoot = totalsRow(el, cols, numeric, formats, entry.bars);
+        /* data-tb-select-rows: a row click selects the row's values of the
+         * dimension columns the table shows, on a live page. */
+        if (el.getAttribute("data-tb-select-rows") !== null && _calc) {
+          entry.selectCols = el.__tbSelectCols = cols.filter(function (c) {
+            return c.indexOf(".") !== -1 && selectableField(c);
+          });
+        }
         hydrateSort(entry);
         _tables.push(entry);
-        renderBody(entry, filteredRows(binding));
+        renderBody(entry, entryRows(entry));
       } catch (e) { /* defensive */ }
     });
   }
@@ -1579,6 +1589,19 @@
     return true;
   }
 
+  /* What a click on a mark of *column* does: on a live page whose slice
+   * carries the column, it writes the selection state itself (no control
+   * needed; shift adds a value, the same value again removes it); on a page
+   * with no slice, it sets the page's filter control for the column, as it
+   * always has. null: the mark selects nothing. */
+  function markAction(column) {
+    if (selectableField(column)) {
+      return function (value, event) { toggleValue(column, String(value), !!(event && event.shiftKey)); };
+    }
+    if (filterControlsFor(column).length) return function (value) { filterTo(column, value); };
+    return null;
+  }
+
   function textWidth(svg, text, size) {
     var t = svg.append("text").attr("font-size", size).text(text);
     var w = 0;
@@ -1790,16 +1813,28 @@
       reset.addEventListener("click", function () {
         entry.zoom = null;
         entry.zoomX = null;
-        renderD3Chart(entry, filteredRows(entry.binding), true);
+        renderD3Chart(entry, entryRows(entry), true);
       });
       host.appendChild(reset);
     }
     if (!show || (kind !== "pie" && entry.keys.length < 2)) return;
+    /* On a live page a legend entry names a value of a column the slice
+     * carries (a pie's category, a chart's series): a click selects it, as a
+     * mark does. Otherwise it shows or hides its series. */
+    var keyColumn = kind === "pie" ? entry.plan.x : entry.plan.color;
+    var select = selectableField(keyColumn) ? markAction(keyColumn) : null;
     entry.keys.forEach(function (key) {
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "tb-legend-item";
-      btn.setAttribute("aria-pressed", entry.hidden[key] ? "false" : "true");
+      if (select) {
+        btn.className += " tb-legend-item--select";
+        btn.__tbKey = key;
+        btn.addEventListener("click", function (event) { select(key, event); });
+        btn.setAttribute("aria-pressed", "false");
+      } else {
+        btn.setAttribute("aria-pressed", entry.hidden[key] ? "false" : "true");
+      }
       var sw = document.createElement("span");
       sw.className = "tb-legend-swatch tb-legend-swatch--" +
         (kind === "line" ? "line" : kind === "scatter" ? "dot" : "box");
@@ -1808,11 +1843,11 @@
       label.textContent = kind === "pie" ? key : seriesName(entry.plan, key);
       btn.appendChild(sw);
       btn.appendChild(label);
-      btn.addEventListener("click", function () {
+      if (!select) btn.addEventListener("click", function () {
         var visible = entry.keys.filter(function (k) { return !entry.hidden[k]; });
         if (!entry.hidden[key] && visible.length === 1) return; /* keep one */
         entry.hidden[key] = !entry.hidden[key];
-        renderD3Chart(entry, filteredRows(entry.binding), true);
+        renderD3Chart(entry, entryRows(entry), true);
       });
       host.appendChild(btn);
     });
@@ -2305,7 +2340,9 @@
 
     /* One hit target per category, the full plot height: the reader aims at
      * a category, never at a 2px line. */
-    var filterable = !opt.noFilter && filterControlsFor(plan.x).length > 0;
+    /* A sparkline is a KPI's glyph: a click on it opens the KPI's trace. */
+    var act = (opt.noFilter || plan.spark) ? null : markAction(plan.x);
+    if (act) addClass(entry.el, "tb-selectable");
     var showAt = function (i, px, py) {
       var c = cats[i];
       if (c === undefined) return;
@@ -2337,7 +2374,7 @@
       var y = py === undefined ? o.y + m.top + (horizontal ? centre(c) : ih / 3) : py;
       tipShow(entry, x, y, (opt.title ? opt.title + " · " : "") + c, rowsOut, about);
     };
-    var choose = filterable ? function (i) { filterTo(plan.x, cats[i]); } : null;
+    var choose = act ? function (i, event) { act(cats[i], event); } : null;
     var catAt = function (px) {
       var best = 0, bd = Infinity;
       cats.forEach(function (c, i) {
@@ -2353,7 +2390,14 @@
       g.selectAll("rect.tb-hit").remove();
       var bg = g.selectAll("g.tb-brush").data([0]).join("g").attr("class", "tb-brush");
       var brush = d3.brushX().extent([[0, 0], [iw, ih]]).on("end", function (event) {
-        if (!event.selection) return;
+        if (!event.selection) {
+          /* A click without a drag: the category under the pointer, as a
+           * hit target would take it. */
+          if (choose && event.sourceEvent) {
+            choose(catAt(d3.pointer(event.sourceEvent, g.node())[0]), event.sourceEvent);
+          }
+          return;
+        }
         var a0 = catAt(event.selection[0]), a1 = catAt(event.selection[1]);
         bg.call(brush.move, null);
         if (a1 - a0 < 1) return;
@@ -2376,13 +2420,13 @@
       g.selectAll("g.tb-brush").remove();
       var hits = g.selectAll("rect.tb-hit").data(cats, function (c) { return c; }).join("rect")
         .attr("class", "tb-hit").attr("fill", "transparent")
-        .style("cursor", filterable ? "pointer" : null)
+        .style("cursor", choose ? "pointer" : null)
         .attr(horizontal ? "y" : "x", function (c) { return band(c) - band.step() * band.paddingInner() / 2; })
         .attr(horizontal ? "x" : "y", 0)
         .attr(horizontal ? "height" : "width", band.step())
         .attr(horizontal ? "width" : "height", horizontal ? iw : ih);
       hoverable(entry, hits, function (c, px, py) { showAt(cats.indexOf(c), px, py); });
-      hits.on("click", function (event, c) { if (choose) choose(cats.indexOf(c)); });
+      hits.on("click", function (event, c) { if (choose) choose(cats.indexOf(c), event); });
       hits.raise();
     }
     return { count: cats.length, show: showAt, choose: choose };
@@ -2522,35 +2566,50 @@
      * the Reset chip returns. */
     g.selectAll("rect.tb-hit").remove();
     var bg = g.selectAll("g.tb-brush").data([0]).join("g").attr("class", "tb-brush");
+    var nearest = function (q) {
+      var best = -1, bd = Infinity;
+      for (var i = 0; i < pts.length; i++) {
+        var dx = xs(pts[i].x) - q[0], dy = ys(pts[i].y) - q[1], dd = dx * dx + dy * dy;
+        if (dd < bd) { bd = dd; best = i; }
+      }
+      return bd < 40 * 40 ? best : -1;
+    };
+    /* A point's selectable category is its series (data-tb-color): both
+     * axes are measures, which no selection names. */
+    var act = plan.color ? markAction(plan.color) : null;
+    if (act) addClass(entry.el, "tb-selectable");
     var brush = d3.brushX().extent([[0, 0], [iw, ih]]).on("end", function (event) {
-      if (!event.selection) return;
+      if (!event.selection) {
+        if (act && event.sourceEvent) {
+          var hit = nearest(d3.pointer(event.sourceEvent, g.node()));
+          if (hit >= 0) act(pts[hit].key, event.sourceEvent);
+        }
+        return;
+      }
       var x0 = xs.invert(event.selection[0]), x1 = xs.invert(event.selection[1]);
       bg.call(brush.move, null);
       var inside = pts.filter(function (p) { return p.x >= x0 && p.x <= x1; });
       if (inside.length < 2) return;
       entry.zoomX = [x0, x1];
-      renderD3Chart(entry, filteredRows(entry.binding), true);
+      renderD3Chart(entry, entryRows(entry), true);
     });
     bg.call(brush);
     bg.selectAll(".selection").attr("fill", t.accent || t.ink).attr("fill-opacity", 0.12).attr("stroke", "none");
     var overlay = bg.selectAll(".overlay").style("cursor", "crosshair");
     overlay.on("dblclick.tb", function () {
       entry.zoomX = null;
-      renderD3Chart(entry, filteredRows(entry.binding), true);
+      renderD3Chart(entry, entryRows(entry), true);
     });
     overlay.on("pointermove.tb", function (event) {
-      var q = d3.pointer(event, this), best = -1, bd = Infinity;
-      for (var i = 0; i < pts.length; i++) {
-        var dx = xs(pts[i].x) - q[0], dy = ys(pts[i].y) - q[1], dd = dx * dx + dy * dy;
-        if (dd < bd) { bd = dd; best = i; }
-      }
+      var best = nearest(d3.pointer(event, this));
       entry.keyboard = false;
-      if (best >= 0 && bd < 40 * 40) {
+      if (best >= 0) {
         var p2 = d3.pointer(event, entry.surface);
         showAt(best, p2[0], p2[1]);
       } else tipHide(entry);
     }).on("pointerleave.tb", function () { tipLater(entry); });
-    keyboardWalk(entry, pts.length, function (i) { showAt(i); }, null);
+    keyboardWalk(entry, pts.length, function (i) { showAt(i); },
+      act ? function (i) { act(pts[i].key); } : null);
   }
 
   function renderPie(entry, rows, W, H, t) {
@@ -2588,7 +2647,8 @@
     }
     entry.prevArcs = {};
     arcs.forEach(function (a) { entry.prevArcs[a.data.key] = a; });
-    var filterable = filterControlsFor(plan.x).length > 0;
+    var act = markAction(plan.x);
+    if (act) addClass(entry.el, "tb-selectable");
     var showAt = function (i, px, py) {
       var a = arcs[i];
       if (!a) return;
@@ -2599,7 +2659,7 @@
         a.data.key, [{ colour: colourOf(entry, a.data.key), name: humanise(y0), value: fmtV(a.data.raw) }],
         [measureAbout(y0)].filter(Boolean));
     };
-    joined.style("cursor", filterable ? "pointer" : null)
+    joined.style("cursor", act ? "pointer" : null)
       .on("pointermove", function (event, a) {
         var p = d3.pointer(event, entry.surface);
         entry.keyboard = false;
@@ -2609,9 +2669,9 @@
         g.selectAll("path.tb-mark").attr("d", arc);
         tipLater(entry);
       })
-      .on("click", function (event, a) { filterTo(plan.x, a.data.key); });
+      .on("click", function (event, a) { if (act) act(a.data.key, event); });
     keyboardWalk(entry, arcs.length, function (i) { showAt(i); },
-      filterable ? function (i) { filterTo(plan.x, arcs[i].data.key); } : null);
+      act ? function (i) { act(arcs[i].data.key); } : null);
   }
 
   function renderD3Chart(entry, rows, animate) {
@@ -2645,8 +2705,8 @@
     if (entry.kindDrawn && entry.kindDrawn !== kind) entry.svg.selectAll("*").remove();
     entry.kindDrawn = kind;
     tipHide(entry);
-    if (kind === "pie") { renderPie(entry, rows, W, H, t); return; }
-    if (kind === "scatter") { renderScatter(entry, rows, W, H, t); return; }
+    if (kind === "pie") { renderPie(entry, rows, W, H, t); paintHighlight(entry); return; }
+    if (kind === "scatter") { renderScatter(entry, rows, W, H, t); paintHighlight(entry); return; }
     var readouts;
     if (entry.plan.facet) {
       entry.svg.selectAll("g.tb-plot").remove();
@@ -2657,7 +2717,7 @@
         zoom: entry.zoom,
         brush: function (range) {
           entry.zoom = range;
-          renderD3Chart(entry, filteredRows(entry.binding), true);
+          renderD3Chart(entry, entryRows(entry), true);
         }
       })];
     }
@@ -2667,6 +2727,7 @@
     keyboardWalk(entry, stops.length,
       function (n) { stops[n][0].show(stops[n][1]); },
       function (n) { if (stops[n][0].choose) stops[n][0].choose(stops[n][1]); });
+    paintHighlight(entry);
   }
 
   function hydrateD3Chart(el, plan, binding, block) {
@@ -2694,7 +2755,7 @@
                   uid: "tbc" + (_charts.length + 1),
                   keys: seriesKeys(plan, block.rows, chartKind(plan)) };
     _charts.push(entry);
-    renderD3Chart(entry, filteredRows(binding), false);
+    renderD3Chart(entry, entryRows(entry), false);
     /* A gentle first draw: bars rise and lines settle once, then the page
      * reports ready (a printer waits for that). */
     if (motionOk() && entry.svg) {
@@ -2965,8 +3026,13 @@
   }
 
   function selectionSlug(filters) {
-    var parts = [], k, s;
-    for (k in filters) if (filters.hasOwnProperty(k)) parts.push(k + "=" + filters[k]);
+    var parts = [], k, s, v;
+    for (k in filters) {
+      if (!filters.hasOwnProperty(k)) continue;
+      v = filters[k];
+      parts.push(String(k).split(".").pop() + "=" + (isArray(v) ? v.map(liveCell).join("+")
+        : (v && typeof v === "object") ? fieldText(k, v) : v));
+    }
     s = parts.join("_") || "authored";
     return s.replace(/[^A-Za-z0-9._=-]+/g, "_").slice(0, 80);
   }
@@ -3014,7 +3080,7 @@
           if (binding && block && !groups[binding]) groups[binding] = block.rows;
         });
     }
-    header = "# selection: " + (selectionSlug(filters).replace(/_/g, ", ") || "authored");
+    header = "# selection: " + (describeSelection(normalSelection(filters)) || "authored");
     for (name in groups) {
       if (!groups.hasOwnProperty(name)) continue;
       body = header + "\n" + selectionCsv(groups[name]);
@@ -3127,6 +3193,7 @@
   function hydrateControls() {
     if (_calc) {
       try { hydrateCalcControls(); } catch (e) { /* defensive */ }
+      try { hydrateRanges(); } catch (e) { /* defensive */ }
     } else fresh(controlEls("data-tb-filter"), "filter").forEach(plainFilter);
     fresh(controlEls("data-tb-search"), "search").forEach(function (el) {
       try {
@@ -3240,9 +3307,11 @@
     } catch (e) { /* a sandboxed frame may refuse; the view still applies */ }
   }
 
-  /* A link carries only a view the page offers: the fields its filters
-   * and its authored selection name. A page with no filter ignores sel=, so
-   * an edited address cannot recut a page its author never made cuttable. */
+  /* A link carries only a view the page offers: the fields its controls,
+   * its authored selection and its slices' grain name (what a control, a
+   * mark or a row can select). A field the page offers no way to pick is
+   * dropped, so an edited address cannot recut a page by a field its author
+   * never made cuttable. */
   function offered(calc, sel) {
     if (!sel) return null;
     var out = {}, k, asked = 0, kept = 0;
@@ -3262,15 +3331,20 @@
     try { payload = JSON.parse(el.textContent); } catch (e) { return; }
     if (!payload || typeof payload !== "object" || !payload.bindings) return;
     var calc = { plans: payload.bindings, facts: payload.facts || {}, columns: {},
-                 hashes: {}, error: null, results: {}, local: false,
+                 types: {}, grain: {}, hashes: {}, error: null, results: {},
+                 variants: {}, local: false,
                  authored: normalSelection(payload.authored_selection) };
     var key, fact, block, carrier;
     for (key in calc.facts) {
       if (!calc.facts.hasOwnProperty(key)) continue;
       fact = calc.facts[key];
       (fact.columns || []).forEach(function (c) {
-        if (!calc.columns.hasOwnProperty(c.name)) calc.columns[c.name] = fact.fact;
+        if (!calc.columns.hasOwnProperty(c.name)) {
+          calc.columns[c.name] = fact.fact;
+          calc.types[c.name] = c.type;
+        }
       });
+      (fact.grain || []).forEach(function (g) { calc.grain[g] = true; });
       if (calc.error) continue;
       /* One failure is said once, in the trace, and leaves every figure as
        * built: a page that half-loaded its data must not half-recompute. */
@@ -3286,11 +3360,20 @@
     }
     /* A control the reader can turn: one whose column a slice carries. */
     calc.fields = {};
+    calc.pickable = {};
     (payload.controls || []).forEach(function (c) {
-      if (calc.columns.hasOwnProperty(c.column)) calc.fields[c.column] = true;
+      if (!calc.columns.hasOwnProperty(c.column)) return;
+      calc.fields[c.column] = true;
+      if (c.kind !== "range") calc.pickable[c.column] = true;
     });
     calc.controls = Object.keys(calc.fields).length > 0;
     for (key in calc.authored) if (calc.authored.hasOwnProperty(key)) calc.fields[key] = true;
+    /* A mark or a table row selects by any column the slice is grouped by
+     * (decision 12), so a link may carry those too: the build put each one
+     * in the slice because a figure or a control on this page names it. */
+    for (key in calc.grain) {
+      if (calc.grain.hasOwnProperty(key)) calc.fields[key] = calc.pickable[key] = true;
+    }
     calc.state = offered(calc, hashSelection()) || normalSelection(payload.authored_selection);
     _calc = calc;
   }
@@ -3336,6 +3419,7 @@
     var calc = _calc, name, plan, res, t0, slowest = 0;
     calc.local = selectionKey(calc.state) !== selectionKey(calc.authored);
     calc.results = {};
+    calc.variants = {};
     for (name in calc.plans) {
       if (!calc.plans.hasOwnProperty(name)) continue;
       plan = calc.plans[name];
@@ -3401,7 +3485,7 @@
     for (i = 0; i < _tables.length; i++) {
       entry = _tables[i];
       try {
-        block = currentBlock(entry.binding);
+        block = ownBlock(entry) || currentBlock(entry.binding);
         if (!block) continue;
         entry.rowCount = block.rows.length;
         entry.bars = barScales(entry.el, block.rows, entry.cols, entry.numeric);
@@ -3484,7 +3568,7 @@
     var els = document.querySelectorAll("[data-tb-figure][data-tb-binding]");
     Array.prototype.forEach.call(els, function (el) {
       try {
-        var res = calc.results[attr(el, "data-tb-binding")];
+        var res = figureResult(el);
         if (!res) return;
         var notes = [], title = null;
         if (isFixed(res)) {
@@ -3525,7 +3609,7 @@
     Array.prototype.forEach.call(rows, function (row) {
       var page = document.getElementById(row.getAttribute("data-tb-receipt-fig"));
       var binding = page ? attr(page, "data-tb-binding") : null;
-      var res = binding ? calc.results[binding] : null;
+      var res = binding ? figureResult(page) : null;
       if (!res) return;
       var state = figureState(res);
       counts[state]++;
@@ -3551,6 +3635,12 @@
       var facts = receiptEl(box, "dl", "tb-receipt-facts");
       receiptEl(facts, "dt", null, "Selection");
       receiptEl(facts, "dd", null, describeSelection(res.selection) || "none applies");
+      if (res.highlights && res.highlights.length) {
+        /* A chart or row-select table keeps its own field's other values,
+         * drawn back: its rows answer the rest of the selection. */
+        receiptEl(facts, "dt", null, "Highlights");
+        receiptEl(facts, "dd", null, describeSelection(pickFields(calc.state, res.highlights)));
+      }
       if (res.unfiltered_by && res.unfiltered_by.length) {
         receiptEl(facts, "dt", null, "Not filtered by");
         receiptEl(facts, "dd", null, res.unfiltered_by.join(", "));
@@ -3591,20 +3681,654 @@
     }).join("; ");
   }
 
+  /* ── The interaction grammar — every gesture writes the one state ──────
+   * A mark (a bar, a slice, a point, a legend entry), a table row
+   * (data-tb-select-rows), a range (data-tb-range), a chip in the selection
+   * bar and Escape all write _calc.state, exactly as a filter control does;
+   * every figure then re-runs from it (decision 11). Nothing here computes
+   * a number: a gesture only says which values the reader picked. */
+
+  /* A field a click may pick values of: one a slice carries and groups by,
+   * or a filter control's column. A range's own column (a holding's fair
+   * value) is ranged, never picked value by value. */
+  function selectableField(column) {
+    return !!(_calc && column && _calc.columns.hasOwnProperty(column) && _calc.pickable[column]);
+  }
+
+  /* A mark's or a row's text back to the slice's own value: a chart reads
+   * "2026" or "True" where the slice holds 2026 or true. */
+  function typedValue(column, text) {
+    var dom, all, i;
+    try { dom = root.tracebiCalc.domains(_calc.columns[column], column, {}); }
+    catch (e) { return text; }
+    all = dom.present.concat(dom.rest);
+    for (i = 0; i < all.length; i++) if (liveCell(all[i]) === text) return all[i];
+    return text;
+  }
+
+  function pickedIndex(list, text) {
+    for (var i = 0; i < list.length; i++) if (liveCell(list[i]) === text) return i;
+    return -1;
+  }
+
+  /* A click picks the value; the same value again removes it; with shift
+   * the value joins (or leaves) the field's list. */
+  function toggleValue(column, text, additive) {
+    if (!_calc) return;
+    var cur = isArray(_calc.state[column]) ? _calc.state[column].slice() : [];
+    var i = pickedIndex(cur, text);
+    if (i !== -1) cur.splice(i, 1);
+    else if (additive) cur.push(typedValue(column, text));
+    else cur = [typedValue(column, text)];
+    if (cur.length) _calc.state[column] = cur;
+    else delete _calc.state[column];
+    selectionChanged();
+  }
+
+  function removeValue(column, value) {
+    var cur = isArray(_calc.state[column]) ? _calc.state[column] : [];
+    cur = cur.filter(function (v) { return liveCell(v) !== liveCell(value); });
+    if (cur.length) _calc.state[column] = cur;
+    else delete _calc.state[column];
+    selectionChanged();
+  }
+
+  /* Back to the view as built: what Clear and Escape do. */
+  function clearSelection() {
+    _calc.state = normalSelection(_calc.authored);
+    selectionChanged();
+  }
+
+  function pickFields(sel, fields) {
+    var out = {};
+    fields.forEach(function (f) { if (sel.hasOwnProperty(f)) out[f] = sel[f]; });
+    return out;
+  }
+
+  /* ── Table rows (data-tb-select-rows) ── */
+
+  function rowPicked(entry, r) {
+    return entry.selectCols.every(function (c) {
+      return isArray(_calc.state[c]) && pickedIndex(_calc.state[c], String(r[c])) !== -1;
+    });
+  }
+
+  /* A row writes every dimension column the table shows; again, it clears
+   * them; with shift its values join the lists. */
+  function selectRow(entry, r, event) {
+    var on = rowPicked(entry, r), additive = !!(event && event.shiftKey);
+    entry.selectCols.forEach(function (c) {
+      var text = String(r[c]);
+      var cur = isArray(_calc.state[c]) ? _calc.state[c].slice() : [];
+      var i = pickedIndex(cur, text);
+      if (on) { if (i !== -1) cur.splice(i, 1); }
+      else if (additive) { if (i === -1) cur.push(typedValue(c, text)); }
+      else cur = [typedValue(c, text)];
+      if (cur.length) _calc.state[c] = cur;
+      else delete _calc.state[c];
+    });
+    selectionChanged();
+  }
+
+  function selectableRow(entry, tr, r) {
+    if (!entry.selectCols || !entry.selectCols.length) return;
+    var picked = rowPicked(entry, r);
+    tr.setAttribute("aria-selected", picked ? "true" : "false");
+    tr.className = (tr.className ? tr.className + " " : "") + "tb-row-select";
+    tr.tabIndex = 0;
+    tr.addEventListener("click", function (e) { selectRow(entry, r, e); });
+    tr.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      selectRow(entry, r, e);
+    });
+  }
+
+  /* ── Highlighting (decision 15) ──
+   * A chart keeps the other values of its own category and series columns,
+   * and a row-select table those of its dimension columns: they draw the
+   * figure's query under the rest of the selection, and the picked values
+   * stand out (shift-click needs the others to stay). Off with
+   * data-tb-highlight="off" on the figure or any ancestor: the figure is
+   * then cut by its own field like every other. Presentation only; the
+   * rows are still a plan's result under a stated selection. */
+
+  function highlightOff(el) {
+    for (var n = el; n && n.getAttribute; n = n.parentNode) {
+      if (n.getAttribute("data-tb-highlight") === "off") return true;
+    }
+    return false;
+  }
+
+  function ownFields(el) {
+    if (!_calc || !_calc.local || !el || highlightOff(el)) return [];
+    var kind = attr(el, "data-tb-figure"), cols = [];
+    if (kind === "chart") cols = [attr(el, "data-tb-x"), attr(el, "data-tb-color")];
+    else if (kind === "table") cols = el.__tbSelectCols || [];
+    return cols.filter(function (c, i) {
+      return c && cols.indexOf(c) === i && isArray(_calc.state[c]) && selectableField(c);
+    });
+  }
+
+  /* The binding's plan under the state less *own*, run once per change. The
+   * authored state's answer is the stamped block itself. */
+  function variantResult(binding, own) {
+    var calc = _calc, key = binding + "\n" + own.slice().sort().join("\n");
+    if (calc.variants.hasOwnProperty(key)) return calc.variants[key];
+    var plan = calc.plans[binding], res = calc.results[binding], state = {}, k;
+    if (!plan || !res || isFixed(res)) return (calc.variants[key] = null);
+    for (k in calc.state) {
+      if (calc.state.hasOwnProperty(k) && own.indexOf(k) === -1) state[k] = calc.state[k];
+    }
+    try { res = root.tracebiCalc.run(plan, state); } catch (e) { res = null; }
+    if (res) {
+      res.highlights = own.slice();
+      res.block = selectionKey(state) === selectionKey(calc.authored)
+        ? readBlock(binding) : liveBlock(res);
+    }
+    return (calc.variants[key] = res);
+  }
+
+  function ownBlock(entry) {
+    var own = ownFields(entry.el);
+    var res = own.length ? variantResult(entry.binding, own) : null;
+    return res && res.block ? res.block : null;
+  }
+
+  /* The rows a chart or table entry draws: its own result when it
+   * highlights, else the binding's (search still narrows either). */
+  function entryRows(entry, rows) {
+    var block = ownBlock(entry);
+    if (!block) return rows || filteredRows(entry.binding);
+    var subset = _views[entry.binding], base = readBlock(entry.binding);
+    if (!subset || !base) return block.rows;
+    return block.rows.filter(function (r) { return rowMatches(r, base.cols, subset); });
+  }
+
+  function figureResult(el) {
+    var binding = attr(el, "data-tb-binding"), own = ownFields(el);
+    var res = own.length ? variantResult(binding, own) : null;
+    return res || (_calc ? _calc.results[binding] : null);
+  }
+
+  function pickedSet(column) {
+    if (!_calc || !_calc.local || !column || !isArray(_calc.state[column])) return null;
+    var out = {};
+    _calc.state[column].forEach(function (v) { out[liveCell(v)] = true; });
+    return out;
+  }
+
+  /* Marks of values not picked recede (.tb-dimmed); a picked point on a
+   * line shows its dot (.tb-picked). Each selectable mark and legend entry
+   * says what a click does. */
+  function paintHighlight(entry) {
+    if (!entry.svg) return;
+    var plan = entry.plan, kind = chartKind(plan), on = !highlightOff(entry.el);
+    var xs = on ? pickedSet(plan.x) : null;
+    var cs = on && plan.color ? pickedSet(plan.color) : null;
+    var svg = entry.svg;
+    var catOf = function (d) {
+      if (!d) return undefined;
+      return kind === "pie" ? (d.data ? d.data.key : undefined) : d.cat;
+    };
+    svg.selectAll("g.tb-series").classed("tb-dimmed", function (s) {
+      return !!(cs && s && s.key !== undefined && !cs[s.key]);
+    });
+    svg.selectAll("path.tb-mark, circle.tb-dot").classed("tb-dimmed", function (d) {
+      var cat = catOf(d);
+      if (kind === "pie") return !!(xs && cat !== undefined && !xs[cat]);
+      return !!(xs && kind !== "scatter" && cat !== undefined && !xs[cat]);
+    });
+    /* A bar's own value label recedes with its bar. */
+    svg.selectAll("g.tb-values text").classed("tb-dimmed", function (d) {
+      return !!(d && d.p && ((xs && !xs[d.p.cat]) || (cs && d.s && !cs[d.s.key])));
+    });
+    svg.selectAll("circle.tb-dot").classed("tb-picked", function (d) {
+      return !!(xs && d && xs[d.cat]);
+    });
+    svg.selectAll("circle.tb-mark").classed("tb-dimmed", function (d) {
+      return !!(cs && d && !cs[d.key]);
+    });
+    var hitCol = kind === "pie" ? plan.x : (kind === "scatter" ? null : plan.x);
+    if (hitCol && selectableField(hitCol)) {
+      var said = pickedSet(hitCol) || {};
+      svg.selectAll(kind === "pie" ? "path.tb-mark" : "rect.tb-hit").attr("aria-label", function (d) {
+        var c = catOf(d) === undefined ? d : catOf(d);
+        return (said[c] ? "clear " : "select ") + c;
+      });
+    }
+    var keyCol = kind === "pie" ? plan.x : plan.color;
+    var keys = keyCol ? pickedSet(keyCol) : null;
+    Array.prototype.forEach.call(entry.legend.querySelectorAll(".tb-legend-item"), function (btn) {
+      if (btn.__tbKey === undefined) return;
+      var picked = !!(keys && keys[btn.__tbKey]);
+      btn.setAttribute("aria-pressed", picked ? "true" : "false");
+      btn.setAttribute("aria-label", (picked ? "clear " : "select ") + btn.__tbKey);
+      if (keys && on && !picked) addClass(btn, "tb-dimmed"); else removeClass(btn, "tb-dimmed");
+    });
+  }
+
+  /* ── Ranges (data-tb-range, decision 14) ──
+   * A number column: two native range inputs over one track, the bounds as
+   * text beside them. A grain-label column (2026-03, 2026-Q1): two pickers,
+   * from and to, over the labels present. Either writes {gte, lte}, and
+   * removes the field when both ends are back at the domain's. The domain
+   * is the column's values under the rest of the selection. */
+
+  function rangeEls() {
+    if (typeof document === "undefined") return [];
+    return Array.prototype.slice.call(document.querySelectorAll("[data-tb-range][data-tb-column]"));
+  }
+
+  function rangeDomain(el) {
+    var column = el._tbRangeColumn, dom;
+    try { dom = root.tracebiCalc.domains(_calc.columns[column], column, _calc.state); }
+    catch (e) { dom = { present: [], rest: [] }; }
+    var values = dom.present.length ? dom.present : dom.present.concat(dom.rest);
+    if (el._tbRangeNumber) {
+      values = values.filter(function (v) { return typeof v === "number"; });
+      var lo = toNum(attr(el, "data-tb-min")), hi = toNum(attr(el, "data-tb-max"));
+      return { lo: lo !== null ? lo : (values.length ? values[0] : 0),
+               hi: hi !== null ? hi : (values.length ? values[values.length - 1] : 0),
+               values: values };
+    }
+    return { lo: values[0], hi: values[values.length - 1], values: values.map(String) };
+  }
+
+  /* A bound as the bar and the range write it: large numbers compact
+   * (11.7M), so a chip stays short; the trace and the address keep it whole. */
+  function rangeText(v) {
+    if (typeof v !== "number") return String(v);
+    return Math.abs(v) >= 1e4 ? fmt(v, "compact") : fmt(v);
+  }
+
+  function writeRange(el, lo, hi) {
+    var column = el._tbRangeColumn, d = el._tbDomain;
+    if (lo > hi) { var t = lo; lo = hi; hi = t; }
+    var out = {};
+    if (lo > d.lo) out.gte = lo;
+    if (hi < d.hi) out.lte = hi;
+    if (out.gte === undefined && out.lte === undefined) delete _calc.state[column];
+    else _calc.state[column] = out;
+    selectionChanged();
+  }
+
+  function stepOf(el, d) {
+    var own = toNum(attr(el, "data-tb-step"));
+    if (own) return own;
+    var whole = d.values.every(function (v) { return v % 1 === 0; });
+    var span = d.hi - d.lo;
+    if (whole && span <= 200) return 1;
+    var raw = span / 100, mag = Math.pow(10, Math.floor(Math.log(raw || 1) / Math.LN10));
+    return whole ? Math.max(1, Math.round(raw / mag) * mag) : Math.round(raw / mag) * mag;
+  }
+
+  function buildRange(el, column) {
+    var label = attr(el, "data-tb-label") || humanise(column);
+    el._tbRangeColumn = column;
+    el._tbRangeNumber = _calc.types[column] === "number";
+    addClass(el, "tb-range");
+    while (el.firstChild) el.removeChild(el.firstChild);
+    var name = document.createElement("span");
+    name.className = "tb-range-label";
+    name.textContent = label;
+    el.appendChild(name);
+    var make = function (tag, cls, aria) {
+      var x = document.createElement(tag);
+      x.className = cls;
+      x.setAttribute("aria-label", label + ", " + aria);
+      return x;
+    };
+    if (el._tbRangeNumber) {
+      var track = document.createElement("span");
+      track.className = "tb-range-track";
+      var a = make("input", "tb-range-lo", "from"), b = make("input", "tb-range-hi", "to");
+      a.type = b.type = "range";
+      track.appendChild(a);
+      track.appendChild(b);
+      var text = document.createElement("span");
+      text.className = "tb-range-values";
+      var oa = document.createElement("output"), ob = document.createElement("output");
+      text.appendChild(oa);
+      text.appendChild(document.createTextNode(" – "));
+      text.appendChild(ob);
+      el.appendChild(track);
+      el.appendChild(text);
+      el._tbInputs = [a, b];
+      el._tbOutputs = [oa, ob];
+      var show = function () {
+        var lo = Number(a.value), hi = Number(b.value);
+        oa.textContent = rangeText(Math.min(lo, hi));
+        ob.textContent = rangeText(Math.max(lo, hi));
+      };
+      var commit = function () {
+        var d = el._tbDomain, lo = Number(a.value), hi = Number(b.value);
+        /* The ends of the track stand for the domain's own ends: the track
+         * runs from a whole step at or below the lowest value to one at or
+         * above the highest. */
+        if (lo <= Number(a.min)) lo = d.lo;
+        if (hi >= Number(b.max)) hi = d.hi;
+        writeRange(el, lo, hi);
+      };
+      a.addEventListener("input", show);
+      b.addEventListener("input", show);
+      a.addEventListener("change", commit);
+      b.addEventListener("change", commit);
+    } else {
+      var from = make("select", "tb-range-from", "from"), to = make("select", "tb-range-to", "to");
+      el.appendChild(from);
+      var dash = document.createElement("span");
+      dash.className = "tb-range-dash";
+      dash.textContent = "to";
+      el.appendChild(dash);
+      el.appendChild(to);
+      el._tbInputs = [from, to];
+      var pick = function () { writeRange(el, from.value, to.value); };
+      from.addEventListener("change", pick);
+      to.addEventListener("change", pick);
+    }
+    paintRange(el);
+  }
+
+  /* The control from the state: its domain under the rest of the
+   * selection, its handles where the state (or the hash) put them. */
+  function paintRange(el) {
+    var d = el._tbDomain = rangeDomain(el);
+    var cur = _calc.state[el._tbRangeColumn];
+    cur = (cur && !isArray(cur)) ? cur : {};
+    var lo = cur.hasOwnProperty("gte") ? cur.gte : cur.hasOwnProperty("gt") ? cur.gt : d.lo;
+    var hi = cur.hasOwnProperty("lte") ? cur.lte : cur.hasOwnProperty("lt") ? cur.lt : d.hi;
+    var inputs = el._tbInputs;
+    if (el._tbRangeNumber) {
+      var step = stepOf(el, d);
+      var bottom = Math.floor(d.lo / step) * step, top = Math.ceil(d.hi / step) * step;
+      inputs.forEach(function (x) { x.min = bottom; x.max = top; x.step = step; });
+      inputs[0].value = lo <= d.lo ? bottom : lo;
+      inputs[1].value = hi >= d.hi ? top : hi;
+      el._tbOutputs[0].textContent = rangeText(lo);
+      el._tbOutputs[1].textContent = rangeText(hi);
+      el.setAttribute("data-tb-range-active", cur.gte !== undefined || cur.lte !== undefined
+        || cur.gt !== undefined || cur.lt !== undefined ? "true" : "false");
+      return;
+    }
+    inputs.forEach(function (sel, j) {
+      while (sel.firstChild) sel.removeChild(sel.firstChild);
+      d.values.forEach(function (v) {
+        var o = document.createElement("option");
+        o.value = v;
+        o.textContent = v;
+        sel.appendChild(o);
+      });
+      sel.value = String(j === 0 ? lo : hi);
+    });
+  }
+
+  function hydrateRanges() {
+    fresh(rangeEls(), "range").forEach(function (el) {
+      try {
+        var column = attr(el, "data-tb-column");
+        if (!column || !_calc.columns.hasOwnProperty(column)) {
+          el.setAttribute("data-tb-fixed", "column not in slice");
+          el.title = "No embedded data carries " + humanise(column || "") + ": this range does nothing";
+          return;
+        }
+        buildRange(el, column);
+      } catch (e) { /* defensive */ }
+    });
+  }
+
+  function paintRanges() {
+    rangeEls().forEach(function (el) {
+      if (el._tbRangeColumn) { try { paintRange(el); } catch (e) { /* defensive */ } }
+    });
+  }
+
+  /* ── The selection bar (decision 13) ──
+   * One chip per picked value (a range is one chip), each with a × that
+   * removes it; Clear when there are two or more; "Download what I see".
+   * Under the masthead, or in the author's <div data-tb-selection> (kit
+   * <SelectionBar/>). Hidden while the state is the authored one. Printed,
+   * it is one plain line, so a paper copy or a PDF says what it shows. */
+
+  var _bar = null;
+
+  function placeSelectionBar() {
+    if (!_calc || typeof document === "undefined" || !document.body) return null;
+    if (!_bar) {
+      _bar = document.createElement("div");
+      _bar.className = "tb-selection-bar";
+      _bar.setAttribute("data-tb-chrome", "");
+      _bar.setAttribute("role", "region");
+      _bar.setAttribute("aria-label", "Selection");
+      _bar.hidden = true;
+    }
+    var slot = document.querySelector("[data-tb-selection]");
+    if (slot) {
+      if (_bar.parentNode !== slot) slot.appendChild(_bar);
+      return _bar;
+    }
+    if (_bar.parentNode && document.documentElement.contains(_bar)) return _bar;
+    /* Never inside a React app's tree, which owns its own nodes. */
+    var app = document.getElementById("tb-app"), heads = document.querySelectorAll(".tb-masthead");
+    var head = null, i;
+    for (i = 0; i < heads.length && !head; i++) if (!app || !app.contains(heads[i])) head = heads[i];
+    if (head && head.parentNode && !within(head, "tb-tab-bar")) {
+      head.parentNode.insertBefore(_bar, head.nextSibling);
+    } else if (app && app.parentNode) {
+      app.parentNode.insertBefore(_bar, app);
+    } else {
+      var main = document.querySelector(".tb-page") || document.body;
+      main.insertBefore(_bar, main.firstChild);
+    }
+    return _bar;
+  }
+
+  function fieldText(column, v) {
+    if (isArray(v)) return v.map(liveCell).join(", ");
+    return RANGE_KEYS.filter(function (op) { return v.hasOwnProperty(op); }).length === 2
+      ? rangeText(v.hasOwnProperty("gte") ? v.gte : v.gt) + "–" + rangeText(v.hasOwnProperty("lte") ? v.lte : v.lt)
+      : RANGE_KEYS.filter(function (op) { return v.hasOwnProperty(op); })
+        .map(function (op) { return { gt: ">", gte: "≥", lt: "<", lte: "≤" }[op] + " " + rangeText(v[op]); })
+        .join(" ");
+  }
+
+  function paintSelectionBar() {
+    var bar = placeSelectionBar();
+    if (!bar) return;
+    while (bar.firstChild) bar.removeChild(bar.firstChild);
+    var calc = _calc, local = calc.local;
+    bar.hidden = !local;
+    paintFooterFiltered(local);
+    if (!local) return;
+    var lead = document.createElement("span");
+    lead.className = "tb-selection-label";
+    lead.textContent = "Filtered to";
+    bar.appendChild(lead);
+    var list = document.createElement("ul");
+    list.className = "tb-selection-chips";
+    var printed = [], count = 0;
+    var chip = function (text, onRemove) {
+      var li = document.createElement("li");
+      li.className = "tb-selection-chip";
+      var span = document.createElement("span");
+      span.textContent = text;
+      var x = document.createElement("button");
+      x.type = "button";
+      x.className = "tb-selection-remove";
+      x.setAttribute("aria-label", "Remove " + text);
+      x.textContent = "×";
+      x.addEventListener("click", onRemove);
+      li.appendChild(span);
+      li.appendChild(x);
+      list.appendChild(li);
+      count++;
+    };
+    Object.keys(calc.state).forEach(function (k) {
+      var v = calc.state[k], name = humanise(k);
+      if (isArray(v)) {
+        v.forEach(function (one) {
+          chip(name + ": " + liveCell(one), function () { removeValue(k, one); });
+        });
+      } else {
+        chip(name + ": " + fieldText(k, v), function () { delete calc.state[k]; selectionChanged(); });
+      }
+      printed.push(name + " " + fieldText(k, v));
+    });
+    bar.appendChild(list);
+    var actions = document.createElement("span");
+    actions.className = "tb-selection-actions";
+    if (count >= 2) {
+      var clear = document.createElement("button");
+      clear.type = "button";
+      clear.className = "tb-selection-clear";
+      clear.textContent = "Clear";
+      clear.addEventListener("click", clearSelection);
+      actions.appendChild(clear);
+    }
+    var dl = document.createElement("button");
+    dl.type = "button";
+    dl.className = "tb-selection-download";
+    dl.textContent = "Download what I see";
+    dl.addEventListener("click", downloadVisible);
+    actions.appendChild(dl);
+    bar.appendChild(actions);
+    var line = document.createElement("p");
+    line.className = "tb-selection-print";
+    line.textContent = "Filtered to: " + (printed.join(" · ") || "the authored view");
+    bar.appendChild(line);
+  }
+
+  /* The footer's built line says the page was filtered, so a printed or
+   * PDF copy never passes for the view as built. Shown in print. */
+  function paintFooterFiltered(on) {
+    Array.prototype.forEach.call(document.querySelectorAll(".tb-footer-line"), function (line) {
+      var note = line.querySelector(".tb-footer-filtered");
+      if (!note) {
+        note = document.createElement("span");
+        note.className = "tb-footer-filtered";
+        note.setAttribute("data-tb-chrome", "");
+        note.textContent = " · filtered on this page";
+        line.appendChild(note);
+      }
+      note.hidden = !on;
+    });
+  }
+
+  /* Escape clears the selection, unless the reader is typing, reading a
+   * chart with the keyboard, or has the trace open (Escape closes it). */
+  function onSelectionKey(e) {
+    if (e.key !== "Escape" || !_calc || !_calc.local) return;
+    var t = e.target, tag = t && t.tagName;
+    if (tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
+    if (tag === "INPUT" && !/^(range|checkbox|radio|button|submit)$/.test(t.type || "")) return;
+    if (t && t.closest && t.closest(".tb-chart-svg, .tb-receipt-drawer")) return;
+    var drawer = receiptDrawer();
+    if (drawer && (" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1) return;
+    clearSelection();
+  }
+
+  /* ── Download what I see ──
+   * One CSV holding each figure the reader can see: its current rows (a
+   * chart's or a table's, highlighting included; a value's binding), each
+   * under its figure id, the state in the header and the name. */
+  function figureVisible(el) {
+    return !!(el.getClientRects && el.getClientRects().length);
+  }
+
+  function downloadVisible() {
+    var parts = [], seen = {};
+    var head = "# selection: " + (describeSelection(_calc.state) || "authored");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tb-figure][data-tb-binding]"),
+      function (el) {
+        try {
+          if (!figureVisible(el) || attr(el, "data-tb-figure") === "custom") return;
+          var binding = attr(el, "data-tb-binding"), rows = null, i;
+          for (i = 0; i < _charts.length && !rows; i++) if (_charts[i].el === el) rows = entryRows(_charts[i]);
+          for (i = 0; i < _tables.length && !rows; i++) if (_tables[i].el === el) rows = entryRows(_tables[i]);
+          if (!rows) {
+            if (seen[binding]) return;
+            seen[binding] = true;
+            var block = currentBlock(binding);
+            rows = block ? block.rows : [];
+          }
+          parts.push("# figure: " + (el.id || binding) + " (" + binding + ")\n" + selectionCsv(rows));
+        } catch (e) { /* defensive */ }
+      });
+    var body = head + "\n" + parts.join("\n\n") + "\n";
+    var name = String(document.title || "report").replace(/[^A-Za-z0-9._-]+/g, "_").slice(0, 40);
+    saveText(name + "--" + selectionSlug(_calc.state) + ".csv", body);
+  }
+
+  function saveText(filename, text) {
+    var blob = new Blob([text], { type: "text/csv" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+  }
+
+  /* A figure's current answer on a live page, as the engine gave it: the
+   * plan's raw rows, the selection it applied, what it highlights and what
+   * cannot reach it; {fixed} for a build value; null on a page with no
+   * slice, or before anything was recomputed. What a test compares with the
+   * server's answer, and what a script can read; it computes nothing. */
+  function result(figureId) {
+    if (!_calc || typeof document === "undefined") return null;
+    var el = typeof figureId === "string" ? document.getElementById(figureId) : figureId;
+    if (!el || !_calc.local) return null;
+    var res = figureResult(el);
+    if (!res) return null;
+    if (isFixed(res)) return { fixed: res.fixed };
+    return JSON.parse(JSON.stringify({
+      cols: res.cols, rows: res.rows.map(function (r) { return res.cols.map(function (c) { return r[c]; }); }),
+      selection: res.selection, unfiltered_by: res.unfiltered_by,
+      highlights: res.highlights || [] }));
+  }
+
+  /* ── tracebi.onSelection ── */
+  var _selectionListeners = [];
+
+  function onSelection(fn) {
+    if (typeof fn !== "function") return function () {};
+    _selectionListeners.push(fn);
+    return function () {
+      var i = _selectionListeners.indexOf(fn);
+      if (i !== -1) _selectionListeners.splice(i, 1);
+    };
+  }
+
+  function notifySelection() {
+    if (!_calc || !_selectionListeners.length) return;
+    var payload;
+    try { payload = selectionPayload(); } catch (e) { return; }
+    _selectionListeners.slice().forEach(function (fn) {
+      try { fn(JSON.parse(JSON.stringify(payload))); } catch (e) { /* the author's code */ }
+    });
+  }
+
+  /* The page's selection as the host and tracebi.onSelection receive it:
+   * the state, whether it is the authored one, and each figure's state. */
+  function selectionPayload() {
+    var figures = [];
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tb-figure][data-tb-binding]"),
+      function (el) {
+        var binding = attr(el, "data-tb-binding"), res = figureResult(el);
+        if (!res) return;
+        figures.push({ id: el.id || null, binding: binding,
+                       kind: attr(el, "data-tb-figure"), state: figureState(res) });
+      });
+    return { selection: JSON.parse(JSON.stringify(_calc.state)), local: true,
+             authored: !_calc.local, figures: figures };
+  }
+
   function postLocal() {
     try {
       if (!_hostPost) return;
-      var figures = [];
-      Array.prototype.forEach.call(document.querySelectorAll("[data-tb-figure][data-tb-binding]"),
-        function (el) {
-          var binding = attr(el, "data-tb-binding"), res = _calc.results[binding];
-          if (!res) return;
-          figures.push({ id: el.id || null, binding: binding,
-                         kind: attr(el, "data-tb-figure"), state: figureState(res) });
-        });
-      _hostPost({ type: "tracebi-selection", payload: {
-        selection: JSON.parse(JSON.stringify(_calc.state)), local: true,
-        authored: !_calc.local, figures: figures } });
+      _hostPost({ type: "tracebi-selection", payload: selectionPayload() });
     } catch (e) { /* defensive */ }
   }
 
@@ -3682,12 +4406,20 @@
     if (initial && !_calc.local) {
       paintLiveMarks();
       paintLocalTrace();
+      try { paintSelectionBar(); } catch (e) { /* defensive */ }
       return;
     }
     paintLocal();
     controlEls("data-tb-filter").forEach(function (el) {
       if (el._tbCalcColumn) { try { fillCalcOptions(el); } catch (e) { /* defensive */ } }
     });
+    try { paintRanges(); } catch (e) { /* defensive */ }
+    /* A chart whose binding is fixed at build is not redrawn, but its marks
+     * still show what the reader picked. */
+    _charts.forEach(function (entry) {
+      if (entry.d3) { try { paintHighlight(entry); } catch (e) { /* defensive */ } }
+    });
+    try { paintSelectionBar(); } catch (e) { /* defensive */ }
     paintChips();
     paintLocalTrace();
     _lastSelection = _calc.local ? {
@@ -3698,6 +4430,7 @@
     } : null;
     paintSelectionReceipt({ filters: _calc.state, local: _calc.local });
     postLocal();
+    notifySelection();
   }
 
   /* ── Download — the binding's embedded canonical CSV, byte-verbatim ──── */
@@ -3722,7 +4455,12 @@
              * the page), so it is faithful to the embedded values but not
              * byte-identical to the hashed string — the file itself, checked
              * with `verify --file`, remains the receipt. */
-            var blob = new Blob([block.csv], { type: "text/csv" });
+            /* Under a selection the file says it is not what the page
+             * shows: the header line names it the full binding. As built,
+             * it is the block's bytes alone. */
+            var text = (_calc && _calc.local)
+              ? "# selection: none (full binding)\n" + block.csv : block.csv;
+            var blob = new Blob([text], { type: "text/csv" });
             var url = URL.createObjectURL(blob);
             var a = document.createElement("a");
             a.href = url;
@@ -4868,6 +5606,8 @@
     if (_calc) {
       try { if (_calc.local) paintLocal(); else paintLiveMarks(); } catch (e) {}
       try { paintChips(); } catch (e) {}
+      try { paintRanges(); } catch (e) {}
+      try { paintSelectionBar(); } catch (e) {}
     }
   }
 
@@ -4893,6 +5633,7 @@
     /* A selection from the address applies here, before the first paint;
      * as authored, this only marks the figures fixed at build. */
     if (_calc) { try { applyLocal(true); } catch (e) {} }
+    if (_calc) { try { document.addEventListener("keydown", onSelectionKey, true); } catch (e) {} }
     try { watchStampedFigures(); } catch (e) {}
     /* Set once figures are drawn, charts included, and their first fade has
      * finished. A printer waits for this; it changes no number. */
@@ -5329,6 +6070,10 @@
     draw: draw,
     theme: theme,
     setSelection: setSelection,
+    /* fn({selection, authored, figures}) on every change of the selection
+     * state, from any control, mark, row, range, chip or setSelection. */
+    onSelection: onSelection,
+    result: result,
     refresh: refresh,
     /* The receipt certificate into any element (the web app's side panel
      * mounts it too); see renderReceipt. Display only. */

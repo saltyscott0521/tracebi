@@ -157,15 +157,21 @@ def test_a_click_filters_through_the_pages_control_and_colour_follows_the_series
     colour_b = page.locator("#line path.tb-line").nth(1).get_attribute("stroke")
     page.locator("#bar .tb-hit").nth(1).click()          # West
     assert page.locator("#f-region").input_value() == "West"
-    page.wait_for_function("() => document.querySelectorAll('#bar path.tb-mark').length === 1")
-    page.locator("#bar .tb-hit").first.click()          # the same bar again clears it
+    # The clicked chart keeps every region and draws the others back
+    # (cross-highlighting), so another can be shift-clicked in.
+    page.wait_for_function(
+        "() => document.querySelectorAll('#bar path.tb-mark.tb-dimmed').length === 3")
+    assert page.locator("#bar path.tb-mark").count() == 4
+    page.locator("#bar .tb-hit").nth(1).click()          # the same bar again clears it
     assert page.locator("#f-region").input_value() == "All"
-    page.wait_for_function("() => document.querySelectorAll('#bar path.tb-mark').length === 4")
-    # Filtered to product B, the B line is the only one left, and it keeps
-    # B's colour instead of taking the first slot's.
+    page.wait_for_function("() => !document.querySelector('#bar path.tb-mark.tb-dimmed')")
+    # Product B picked, the B line stands out and keeps B's colour instead of
+    # taking the first slot's; the A line recedes.
     page.select_option("#f-product", "B")
-    page.wait_for_function("() => document.querySelectorAll('#line path.tb-line').length === 1")
-    assert page.locator("#line path.tb-line").get_attribute("stroke") == colour_b
+    page.wait_for_function(
+        "() => document.querySelectorAll('#line g.tb-series.tb-dimmed').length === 1")
+    assert page.locator("#line g.tb-series:not(.tb-dimmed) path.tb-line").get_attribute(
+        "stroke") == colour_b
     _reset(page)
 
 

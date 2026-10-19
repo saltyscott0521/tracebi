@@ -488,8 +488,8 @@ tr.tb-window-pad td {
 }
 .tb-legend-item:hover { border-color: var(--tb-muted); }
 .tb-legend-item:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
-.tb-legend-item[aria-pressed="false"] { opacity: .45; }
-.tb-legend-item[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; outline: 1.5px solid var(--tb-muted); outline-offset: -1.5px; }
+.tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] { opacity: .45; }
+.tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; outline: 1.5px solid var(--tb-muted); outline-offset: -1.5px; }
 .tb-legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .tb-legend-swatch--line { height: 3px; width: 14px; border-radius: 2px; }
 .tb-legend-swatch--dot { border-radius: 50%; }
@@ -517,7 +517,7 @@ tr.tb-window-pad td {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
 }
-@media print { .tb-chart-tip, .tb-legend-item[aria-pressed="false"] { display: none; } }
+@media print { .tb-chart-tip, .tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] { display: none; } }
 
 /* .tb-spark: a line or area chart as a sparkline — the shape of the trend
  * under a KPI, no axes or legend (the runtime draws it bare; hover still
@@ -690,6 +690,99 @@ span > .tb-badge.tb-verdict { display: inline-flex; }
   cursor: help;
 }
 
+/* The interaction grammar (tracebi.js): what the reader picked. A legend
+ * entry that selects reads as a chip, never as "hidden"; marks of values not
+ * picked recede, as a class, so the number is the stylesheet's alone. */
+.tb-legend-item--select[aria-pressed="true"] { border-color: var(--tb-ink); }
+.tb-legend-item--select.tb-dimmed { opacity: .5; }
+.tb-chart-svg .tb-dimmed { opacity: .28; transition: opacity .15s; }
+.tb-chart-svg g.tb-series.tb-dimmed .tb-dimmed { opacity: 1; }
+.tb-chart-svg circle.tb-dot.tb-picked { r: 4px; }
+
+/* A row-select table (data-tb-select-rows): the row is the target. */
+.tb-table tr.tb-row-select, table[data-tb-select-rows] tr.tb-row-select { cursor: pointer; }
+table[data-tb-select-rows] tr.tb-row-select:hover td { background: var(--tb-surface); }
+table[data-tb-select-rows] tr.tb-row-select:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
+table[data-tb-select-rows] tr[aria-selected="true"] td {
+  background: var(--tb-surface-accent);
+  box-shadow: inset 0 -1px 0 var(--tb-accent);
+}
+table[data-tb-select-rows] tr[aria-selected="true"] td:first-child { box-shadow: inset 3px -1px 0 var(--tb-accent); }
+
+/* The selection bar: one chip per picked value, under the masthead. It
+ * wraps on a phone; printed, it is one plain line. */
+.tb-selection-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--tb-space-1) var(--tb-space-2);
+  margin: var(--tb-space-2) 0 var(--tb-space-3);
+  padding: var(--tb-space-2) var(--tb-space-3);
+  border: 1px solid var(--tb-rule); border-radius: var(--tb-radius);
+  background: var(--tb-surface-accent); color: var(--tb-ink);
+  font-size: var(--tb-text-sm);
+}
+.tb-selection-bar[hidden] { display: none; }
+.tb-selection-label { color: var(--tb-muted); font-weight: 500; }
+.tb-selection-chips { display: contents; list-style: none; margin: 0; padding: 0; }
+.tb-selection-chip {
+  display: inline-flex; align-items: center; gap: 2px; max-width: 100%;
+  padding: 2px 2px 2px 10px; border: 1px solid var(--tb-rule); border-radius: 999px;
+  background: var(--tb-bg); line-height: 1.5;
+}
+.tb-selection-chip > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-selection-remove {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: var(--tb-muted);
+  font: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+}
+.tb-selection-remove:hover { background: var(--tb-surface); color: var(--tb-ink); }
+.tb-selection-actions { display: inline-flex; gap: var(--tb-space-2); margin-left: auto; }
+.tb-selection-clear, .tb-selection-download {
+  padding: 2px 4px; border: 0; background: none; color: var(--tb-accent-text);
+  font: inherit; font-weight: 500; cursor: pointer;
+}
+.tb-selection-clear:hover, .tb-selection-download:hover { text-decoration: underline; }
+.tb-selection-bar button:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+.tb-selection-print { display: none; margin: 0; }
+.tb-footer-filtered { display: none; }
+@media print {
+  .tb-selection-bar { display: block; padding: 0; border: 0; background: none; margin: var(--tb-space-1) 0 var(--tb-space-2); }
+  .tb-selection-bar > :not(.tb-selection-print) { display: none; }
+  .tb-selection-print { display: block; font-weight: 500; }
+  .tb-footer-filtered:not([hidden]) { display: inline; }
+}
+
+/* A range (data-tb-range): two native range inputs over one track, the
+ * bounds beside them; for a grain-label column, two pickers. */
+.tb-range {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  font-size: 0.85em; max-width: 100%; vertical-align: middle;
+}
+.tb-range-label { color: var(--tb-muted); }
+.tb-range-track { position: relative; display: inline-block; width: 200px; max-width: 100%; height: 22px; }
+.tb-range-track::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px;
+  border-radius: 2px; background: var(--tb-rule);
+}
+.tb-range-track input[type="range"] {
+  position: absolute; inset: 0; width: 100%; margin: 0; background: none;
+  pointer-events: none; -webkit-appearance: none; appearance: none; accent-color: var(--tb-accent);
+}
+.tb-range-track input[type="range"]::-webkit-slider-runnable-track { background: none; height: 22px; }
+.tb-range-track input[type="range"]::-moz-range-track { background: none; }
+.tb-range-track input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; pointer-events: auto; width: 16px; height: 16px; margin-top: 3px;
+  border-radius: 50%; border: 2px solid var(--tb-bg); background: var(--tb-accent); cursor: pointer;
+  box-shadow: 0 0 0 1px var(--tb-accent);
+}
+.tb-range-track input[type="range"]::-moz-range-thumb {
+  pointer-events: auto; width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--tb-bg); background: var(--tb-accent); cursor: pointer;
+}
+.tb-range-track input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
+.tb-range-values { font-variant-numeric: tabular-nums; color: var(--tb-ink); white-space: nowrap; }
+.tb-range-dash { color: var(--tb-muted); }
+/* Beside its label, as a filter is beside its own (section 10 sets the rest). */
+.tb-range > select:is(.tb-range-from, .tb-range-to) { margin: 0; font-size: 13.5px; }
+
 /* Scenarios — the reader's what-if, computed in the browser. Visibly apart
  * from the stamped figures: a dashed frame and the runtime's label, so a
  * computed number is never read as a receipted one. */
@@ -744,6 +837,7 @@ span > .tb-badge.tb-verdict { display: inline-flex; }
    narrows the rows shown. Presentation only here. */
 
 select[data-tb-filter],
+.tb-range select,
 input[data-tb-search] {
   font: inherit;
   color: var(--tb-ink);
@@ -756,12 +850,14 @@ input[data-tb-search] {
   box-sizing: border-box;
 }
 select[data-tb-filter]:hover,
+.tb-range select:hover,
 input[data-tb-search]:hover {
   border-color: color-mix(in srgb, var(--tb-ink) 30%, var(--tb-rule));
 }
 input[data-tb-search]::placeholder { color: var(--tb-muted); opacity: 0.8; }
 /* The dropdown arrow is drawn, so every browser's select looks the same. */
-select[data-tb-filter] {
+select[data-tb-filter],
+.tb-range select {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 28px;

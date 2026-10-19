@@ -154,12 +154,40 @@ react: summing the rows on screen would be a number no query produced.
 | Control | Markup |
 | --- | --- |
 | Dropdown filter | `<select data-tb-filter data-tb-binding="B" data-tb-column="C">` |
+| Range | `<span data-tb-range data-tb-column="C" data-tb-label="…">` (optional `data-tb-min`, `data-tb-max`, `data-tb-step`) |
+| Row selection | `data-tb-select-rows` on a table figure |
+| Selection bar | `<div data-tb-selection></div>` (optional: where the bar goes) |
 | Search | `<input data-tb-search data-tb-binding="B">` |
 | Download | `<button data-tb-download data-tb-binding="B" data-tb-label="…">` |
 
 Filters AND-combine, and search ANDs with them. Download exports
 the binding's **stamped CSV verbatim** — a trace-preserving export, always the
-full binding, never the filtered view.
+full binding, never the filtered view; taken under a selection, its first line
+says `# selection: none (full binding)`.
+
+**Every gesture is the one selection.** On a live page a click on a bar, a pie
+slice, a line's category or a legend entry selects that value of the chart's
+`data-tb-x` (or `data-tb-color`) column whenever a slice carries it, with no
+filter for it on the page; the same value again removes it, shift-click adds
+it. A click on a row of a `data-tb-select-rows` table selects the row's values
+of the dimension columns the table shows. A range writes `{gte, lte}`: two
+handles over a number column (a dimension attribute, or a fact's own column,
+which keeps that fact's slice at base grain), or from/to pickers over a time
+grain's labels; it lets go when both ends are back at the domain, the column's
+values under the rest of the selection. A chart keeps its own field's other
+values and draws the ones not picked at reduced emphasis (cross-highlighting;
+its trace row says what it highlights); `data-tb-highlight="off"` on the figure
+or the page root makes it narrow like every other figure.
+
+The **selection bar** (`.tb-selection-bar`) goes under the masthead, or where
+`data-tb-selection` says: one chip per value with a ×, Clear when there are two
+or more, and "Download what I see" (one CSV of each visible figure's current
+rows, the selection in its header line and file name). It is hidden while the
+page is as built; Escape clears the selection (not while typing). Printed, and
+in the PDF, it is one plain line, "Filtered to: Sector Software · Fund Fund I",
+and the footer's built line adds " · filtered on this page".
+`tracebi.onSelection(fn)` is called with `{selection, authored, figures}` on
+every change; `tracebi.result(id)` reads a figure's current answer.
 
 Tables scroll past `data-tb-rows` (default 10); `data-tb-rows="all"` opts out.
 Tables past 500 rows render only the visible rows; printing and download still

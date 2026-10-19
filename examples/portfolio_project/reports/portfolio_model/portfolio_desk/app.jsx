@@ -1,10 +1,12 @@
 // Portfolio Desk: the book as an app people work in. Every number is a kit
 // figure (<Kpi>, <Value>, <Chart>, <Table>) with literal binding and cell, so
 // the build records it as a claim and its trace names it. Search narrows the
-// rows shown; the filters recompute every view, each figure by its own query.
+// rows shown; the filters recompute every view, each figure by its own query,
+// and so does every other gesture: a click on a bar or a watch-list row, the
+// spread range. The selection bar says what is picked.
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
-import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download,
-         useUrlState, usePrinting } from "tracebi";
+import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download, Range,
+         SelectionBar, useUrlState, usePrinting } from "tracebi";
 
 const TITLE = "Portfolio Desk";
 const VIEWS = { Overview: LayoutDashboard, Holdings: Table2, Funds: Landmark };
@@ -22,6 +24,9 @@ function Overview() {
         <Value binding="weakest_fund" cell="dim_fund.fund" /> carries the lowest mark,
         at <Value binding="weakest_fund" cell="mark" />.
       </p>
+      {/* A range over each holding's own spread: two handles, and the page
+          recomputes from the holdings inside it. */}
+      <Range column="spread_bps" label="Spread, bps" />
       <div className="tb-grid">
         <Kpi lead binding="totals" cell="fair_value" format="currency_compact"
              label="Fair value" context="three funds, administrator marks" id="kpi-fv" />
@@ -34,14 +39,16 @@ function Overview() {
       <div className="tb-grid">
         <section className="tb-card tb-span-8">
           <h2>Fair value by sector</h2>
-          <p className="tb-note">Largest first. Hover a bar for its value.</p>
+          <p className="tb-note">Largest first. Click a bar to select its sector;
+            shift-click adds one.</p>
           <Chart binding="by_sector" type="barh" x="dim_issuer.sector" y="fair_value"
                  valueFormat="currency_compact" />
         </section>
         <section className="tb-card tb-span-4">
           <h2>Watch list</h2>
-          <p className="tb-note">The five lowest marks in the book.</p>
-          <Table binding="watch" columns={["dim_issuer.issuer", "mark"]}
+          <p className="tb-note">The five lowest marks in the book. Click an issuer
+            to select it.</p>
+          <Table binding="watch" selectRows columns={["dim_issuer.issuer", "mark"]}
                  labels={{ "dim_issuer.issuer": "Issuer" }} />
         </section>
       </div>
@@ -132,6 +139,8 @@ export default function App() {
       </aside>
       <main className="min-w-0 flex-1 space-y-8 px-6 py-7">
         <Header view={printing ? TITLE : view} />
+        {/* What the reader picked, one chip per value; hidden as built. */}
+        <SelectionBar />
         {printing ? <><Overview /><Holdings /><Funds /></> : <View />}
         {/* The footer ends this column, not the page under the sidebar. */}
         <Footer />

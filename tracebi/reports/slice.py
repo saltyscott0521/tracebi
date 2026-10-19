@@ -155,23 +155,31 @@ class SliceBlock:
 # ── Controls ─────────────────────────────────────────────────────────────────
 
 def page_controls(package) -> list[dict]:
-    """Every filter control on the page: ``[{"column", "binding"}]``.
+    """Every control on the page: ``[{"column", "binding"}]``, a range
+    also ``"kind": "range"``.
 
-    A template's ``data-tb-filter`` elements are read from its source; an
-    app.jsx's ``<Filter>`` tags from its source too (the kit renders them at
-    runtime, so the shell holds none). A ``<Search>`` names no column: it
-    narrows the rows shown, it does not cut a fact, so it is not a control
-    here.
+    A template's ``data-tb-filter`` and ``data-tb-range`` elements are read
+    from its source; an app.jsx's ``<Filter>`` and ``<Range>`` tags from its
+    source too (the kit renders them at runtime, so the shell holds none). A
+    range cuts the whole page, like a page filter. A ``<Search>`` names no
+    column: it narrows the rows shown, it does not cut a fact, so it is not a
+    control here.
     """
     if package.app_source is not None:
-        from tracebi.reports.app_lane import scan_controls
+        from tracebi.reports.app_lane import scan_controls, scan_ranges
         pairs = scan_controls(package.app_source)
+        ranges = scan_ranges(package.app_source)
     else:
-        from tracebi.reports.selection import filter_controls
+        from tracebi.reports.selection import filter_controls, range_controls
         pairs = filter_controls(package.template_html)
+        ranges = range_controls(package.template_html)
     out: list[dict] = []
     for binding, column in pairs:
         entry = {"column": column, "binding": binding}
+        if entry not in out:
+            out.append(entry)
+    for column in ranges:
+        entry = {"column": column, "binding": "*", "kind": "range"}
         if entry not in out:
             out.append(entry)
     return out
@@ -273,6 +281,14 @@ def _grain_for(package, model_key: str, model, controls: list[dict]) -> dict:
         for column in [c["column"] for c in controls] + selected:
             if _reaches(model, fact_def, column):
                 _add(entry["dimensions"], column)
+        for c in controls:
+            # A range over one of the fact's own columns (a holding's fair
+            # value) filters its rows, so the slice keeps them, unaggregated.
+            if c.get("kind") == "range" and c["column"] in fact_def.measures:
+                _add(entry["raw"], c["column"])
+                if not entry["base_grain"]:
+                    entry["base_grain"] = True
+                    entry["reason"] = f"a range control on fact column '{c['column']}'"
         if not entry["base_grain"]:
             entry["reason"] = "every measure is additive at the grain"
     return facts
