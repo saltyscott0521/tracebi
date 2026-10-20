@@ -94,6 +94,9 @@ file as a <code>${ENV_VAR}</code> reference.</strong></p>
 the folder) declares a place data lives. <code>tracebi connect &lt;name&gt; --kind ...</code>
 tests a warehouse, writes the file, and puts any secret in <code>.env</code>. A model
 points at it with <code>connection: &lt;name&gt;</code> in its <code>connectors:</code>.</p>
+<p>A SQL transform reads a table of a connection with a header line
+<code>-- source: &lt;name&gt;.&lt;table&gt;</code> (<a href="../reference/transform-sql.html">SQL transforms</a>), loaded through
+the connector before its first statement.</p>
 <p>The project's own warehouse (the one its transforms sink into) is not a
 connection file: it is the <code>warehouse:</code> block of
 <a href="tracebi-yaml.md"><code>tracebi.yaml</code></a>, and a model reads it with <code>type:

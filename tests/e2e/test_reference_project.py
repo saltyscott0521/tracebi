@@ -73,8 +73,8 @@ def test_every_report_reproduces_and_its_file_is_intact(built, name):
     assert "FILE INTACT" in out
 
 
-HOLDINGS_TABLES = ("dim_fund", "dim_issuer", "fact_holdings", "dim_date", "dim_flow_type",
-                   "fact_cashflows")
+HOLDINGS_TABLES = ("dim_fund", "dim_issuer", "dim_rating", "fact_holdings", "dim_date",
+                   "dim_flow_type", "fact_cashflows")
 
 
 def test_the_sql_transform_and_its_pandas_escape_hatch_sink_identical_tables(built, tmp_path, monkeypatch):
@@ -108,6 +108,106 @@ def test_the_sql_transform_and_its_pandas_escape_hatch_sink_identical_tables(bui
     assert sql_rec["tables"] == pandas_rec["tables"]
     assert [(c["check"], c["table"], c["params"]) for c in sql_rec["checks"]] == [
         (c["check"], c["table"], c["params"]) for c in pandas_rec["checks"]]
+    # Neither copy has TRACEBI_CRM_URL, so both read the CRM's committed
+    # snapshot, through the same loader, and their certificates say so.
+    sql_src, pandas_src = (rec["sources"]["crm.issuer_ratings"] for rec in (sql_rec, pandas_rec))
+    for src in (sql_src, pandas_src):
+        assert src["source_fallback"] == "csv" and src["fallback"] == "inputs/issuer_ratings.csv"
+        assert "TRACEBI_CRM_URL" in src["reason"] and src["rows"] == 12
+    assert sql_src["fingerprint"] == pandas_src["fingerprint"]
+
+
+def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(built, monkeypatch):
+    """The reference project reads one table from a Postgres CRM. With no
+    TRACEBI_CRM_URL (a fresh clone, CI's default) the demo still builds: the
+    committed snapshot stands in, the certificate and every report trace say
+    the CRM was not reached, and verify --contracts re-reads the snapshot.
+    The app lists the connection without resolving it, and the model's
+    Transform tab shows the -- source: line it ran."""
+    from tests.e2e.conftest import release_warehouses, serve_app
+    from tracebi.web import discovery
+
+    rec = json.loads((built / "data" / "warehouse.contracts.json").read_text())["transforms"]["holdings"]
+    assert rec["sources"]["crm.issuer_ratings"]["source_fallback"] == "csv"
+    manifest = json.loads(_manifest(built, "portfolio_model/portfolio_showcase").read_text())
+    rating = manifest["transform_contracts"]["dim_rating"]
+    assert rating["status"] == "satisfied"
+    assert rating["sources"]["crm.issuer_ratings"]["source_fallback"] == "csv"
+    assert "reason" not in rating["sources"]["crm.issuer_ratings"]
+
+    code, out = run_cli("verify", str(_manifest(built, "portfolio_model/portfolio_showcase")),
+                        "--contracts")
+    assert code == 0, out
+    assert re.search(r"✓ unchanged\s+holdings: crm\.issuer_ratings \(the CSV snapshot", out), out
+
+    c = serve_app(monkeypatch)
+    try:
+        # After serve_app: importing the app registers what it finds, so the
+        # Sources list is read from a scan of this project's own folder.
+        monkeypatch.setattr(discovery, "_live_connections", {})
+        discovery.register_connections("connections")
+        [crm] = [x for x in c.get("/api/connectors").json() if x["name"] == "crm"]
+        assert crm["url"] == "${TRACEBI_CRM_URL}" and crm["declared_in"] == "connections/crm.yaml"
+        shown = c.get("/api/pipelines/portfolio_model/source").text
+        assert "-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv" in shown
+    finally:
+        release_warehouses()
+
+
+def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
+        reference, postgres_url, monkeypatch):
+    """The maintainer's ask: one star table whose source is a real relational
+    database. The CRM is seeded in Postgres through its own connection, the
+    pipeline runs the SQL transform (its -- source: line loads the table
+    through the connector), and the certificate names the connection with
+    the load's fingerprint and no fallback. A query by rating reads the sunk
+    dim_rating with the fingerprint that certificate holds. verify
+    --contracts reads the source unchanged; a rating changed in Postgres
+    reads CHANGED, while every figure still reproduces (the warehouse did not
+    move); with the variable unset the source is not checked, never green."""
+    import runpy
+
+    import psycopg
+
+    from tracebi.model_registry import get_model
+
+    monkeypatch.setenv("TRACEBI_CRM_URL", postgres_url)
+    runpy.run_path(str(reference / "inputs" / "seed_crm.py"), run_name="__main__")
+    code, out = run_cli("run-pipeline", "portfolio_model")
+    assert code == 0, out
+
+    rec = json.loads((reference / "data" / "warehouse.contracts.json").read_text())["transforms"]["holdings"]
+    src = rec["sources"]["crm.issuer_ratings"]
+    assert src["connection"] == "crm" and src["rows"] == 12
+    assert re.fullmatch(r"[0-9a-f]{64}", src["fingerprint"]) and "source_fallback" not in src
+
+    ratings = get_model("portfolio_model").query(
+        "fact_holdings", ["fair_value"], dimensions=["dim_rating.rating"])
+    [load] = [n for n in ratings.lineage if n.operation == "load" and n.source == "dim_rating"]
+    assert load.metadata["input"]["fingerprint"] == rec["tables"]["dim_rating"]
+    assert set(ratings.to_pandas()["dim_rating.rating"]) == {
+        "B", "B+", "B-", "BB", "BB-", "CCC+", "Unrated"}
+
+    manifest = _manifest(reference, "portfolio_model/portfolio_showcase")
+    traced = json.loads(manifest.read_text())["transform_contracts"]["dim_rating"]
+    assert traced["sources"]["crm.issuer_ratings"]["connection"] == "crm"
+    code, out = run_cli("verify", str(manifest), "--contracts")
+    assert code == 0 and "REPRODUCES" in out, out
+    assert re.search(r"✓ unchanged\s+holdings: crm\.issuer_ratings\n", out), out
+
+    with psycopg.connect(postgres_url.replace("+psycopg", "")) as con:
+        con.execute("UPDATE issuer_ratings SET rating = 'B' "
+                    "WHERE issuer = 'Kappa Energy Holdings, LLC'")
+    code, out = run_cli("verify", str(manifest), "--contracts")
+    assert code == 1, out
+    assert re.search(r"✗ CHANGED\s+holdings: crm\.issuer_ratings", out), out
+    assert "1 source(s) changed since the sink was certified" in out
+    assert "✗ CHANGED      holdings: dim_rating" not in out     # the warehouse did not move
+
+    monkeypatch.delenv("TRACEBI_CRM_URL")
+    code, out = run_cli("verify", str(manifest), "--contracts")
+    assert code == 0, out
+    assert re.search(r"· not checked\s+holdings: crm\.issuer_ratings — .*TRACEBI_CRM_URL", out), out
 
 
 def test_the_working_preview_formats_numbers_like_the_build(built):

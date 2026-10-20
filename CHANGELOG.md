@@ -6,6 +6,35 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — a Postgres source in the reference project
+
+- A SQL transform reads a table of a declared connection with a header line
+  `-- source: <connection>.<table> [fallback: <path>.csv]` (one per table; a
+  bare connection, a repeated table or a line below the first statement is
+  refused, naming the line). The runner loads it through the connector before
+  the first statement, the whole table, rows sorted by every column, and the
+  SQL reads it as `<connection>.<table>` from an in-memory database attached
+  for the run, so nothing of it lands in the warehouse. `fallback:` is read
+  only when the connection's `${VAR}` is unset. Still exactly two
+  placeholders.
+- The certificate records each load under the transform's `sources`
+  (`connection`, `table`, `rows`, `fingerprint`, `loaded_at`, and
+  `source_fallback: csv` / `fallback` / `reason` when the snapshot stood in);
+  a report manifest's `transform_contracts` entry carries them.
+  `tracebi verify --contracts` re-reads each source: `unchanged`, `CHANGED`
+  (exit 1) or `not checked`. `tracebi.transforms.load_source()` and
+  `contract(..., sources=)` give a Python transform the same record.
+- The reference project's `dim_rating` comes from a Postgres CRM
+  (`connections/crm.yaml`, `TRACEBI_CRM_URL`; `inputs/seed_crm.py` fills any
+  Postgres), with `inputs/issuer_ratings.csv` as the snapshot; `fact_holdings`
+  gains `rating_id`, the contract checks it, the model joins it, and the
+  showcase filters and charts fair value by rating. docker-compose seeds the
+  CRM in its `db` service and sets the variable.
+- The end-to-end reference journey runs against a real Postgres
+  (`TRACEBI_TEST_POSTGRES_URL`, else a throwaway server from the local
+  binaries, else a skip); CI's pytest jobs run a `postgres:16-alpine`
+  service. `psycopg[binary]` joins the `dev` extra.
+
 ### Added — SQL transforms
 
 - A phase ① transform is SQL by default: `transforms/<name>.sql`, DuckDB

@@ -27,13 +27,28 @@ checks:
   - unique: dim_issuer
     columns: [issuer_id]
   - not_null: fact_holdings
-    columns: [fund_id, issuer_id, fair_value]
+    columns: [fund_id, issuer_id, rating_id, fair_value]
   - foreign_key: fact_holdings
     column: issuer_id
     refers_to: [dim_issuer, issuer_id]
   - foreign_key: fact_holdings
     column: fund_id
     refers_to: [dim_fund, fund_id]
+  - foreign_key: fact_holdings
+    column: rating_id
+    refers_to: [dim_rating, rating_id]
+  - unique: dim_rating
+    columns: [rating, watch]
+  - values: dim_rating
+    column: rating
+    within: [AAA, AA+, AA, AA-, A+, A, A-, BBB+, BBB, BBB-, BB+, BB, BB-, B+, B, B-,
+             CCC+, CCC, CCC-, CC, C, D, Unrated]
+    note: >-
+      the CRM's ratings on the agency scale; an issuer it does not cover is
+      Unrated, never dropped
+  - values: dim_rating
+    column: watch
+    within: ["yes", "no", unknown]
   - rows: fact_cashflows
     at_least: 10
   - not_null: fact_cashflows

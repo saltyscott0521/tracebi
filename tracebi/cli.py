@@ -471,6 +471,14 @@ def _transform_sql_template_text(title: str, tier: str) -> str:
 -- fold them; they mean nothing to the run. Keep it idempotent (CREATE OR
 -- REPLACE): a rerun replaces the tables.
 --
+-- A table of a declared connection (connections/<name>.yaml, e.g. a Postgres
+-- CRM) is read with a header line like the one below, less its first "-- ":
+-- the runner loads it through the connector before the first statement, and
+-- the SQL reads it as crm.accounts. `fallback:` names a committed CSV read
+-- only when the connection's ${{VAR}} is unset; the certificate says which fed it.
+--
+-- -- source: crm.accounts fallback: inputs/accounts.csv
+--
 -- When the cleaning outgrows SQL, the escape hatch is pandas or polars:
 -- `tracebi new-transform "{title}" --python`.
 
@@ -2040,6 +2048,32 @@ def cmd_verify(args: argparse.Namespace) -> int:
                 print(f"{drifted} table(s) changed since the sink certified "
                       f"them — the certificate no longer describes this "
                       f"warehouse.", file=sys.stderr)
+                exit_code = 1
+
+        # The inputs a SQL transform's `-- source:` lines read from outside
+        # the warehouse: the sink satisfied its contract against those, so a
+        # source that moved since means a re-run would land other tables. A
+        # source that cannot be read now is not checked, which is not green.
+        from tracebi.contracts import check_sources
+        src_rows = [r for wh in warehouses for r in check_sources(wh)]
+        if src_rows:
+            print("\nsink sources (vs the certificate):")
+            moved = 0
+            for r in src_rows:
+                via = " (the CSV snapshot; the connection was not reached)" \
+                    if r.get("source_fallback") else ""
+                if r.get("unreachable"):
+                    print(f"· {'not checked':<12} {r['transform']}: {r['source']}{via} "
+                          f"— {r['unreachable']}")
+                    continue
+                ok = r["matches"]
+                print(f"{'✓' if ok else '✗'} {'unchanged' if ok else 'CHANGED':<12} "
+                      f"{r['transform']}: {r['source']}{via}",
+                      file=sys.stdout if ok else sys.stderr)
+                moved += not ok
+            if moved:
+                print(f"{moved} source(s) changed since the sink was certified "
+                      f"against them — re-run the transform.", file=sys.stderr)
                 exit_code = 1
 
     # --local: what the page recomputes under a selection, replayed. The

@@ -532,7 +532,8 @@ def test_the_object_tier_sinks_parquet_the_model_reads_in_place(reference, monke
                               rewrite_same_bytes)
     assert sorted(p.name for p in (reference / "data" / "lake").iterdir()) == [
         "_contracts.json", "dim_date.parquet", "dim_flow_type.parquet", "dim_fund.parquet",
-        "dim_issuer.parquet", "fact_cashflows.parquet", "fact_holdings.parquet"]
+        "dim_issuer.parquet", "dim_rating.parquet", "fact_cashflows.parquet",
+        "fact_holdings.parquet"]   # the CRM source it read lands nowhere
     from tracebi.contracts import check_fingerprints
     [row] = [r for r in check_fingerprints(wh.sink) if r["table"] == "dim_fund"]
     assert row["rewritten"] and row["current"] == row["recorded"] and not row["matches"]

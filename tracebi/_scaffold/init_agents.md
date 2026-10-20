@@ -66,7 +66,19 @@ DuckDB statements run top to bottom in ONE fresh warehouse connection
 `CREATE OR REPLACE` — not `TEMP` — is a sink table; on the object tier
 write `COPY (…) TO '{{ sink }}/<table>.parquet' (FORMAT PARQUET)`, or let
 the created table land there). Exactly two placeholders: `{{ sink }}` (the
-warehouse tracebi.yaml names) and `{{ root }}` (the project root). The
+warehouse tracebi.yaml names) and `{{ root }}` (the project root). To read
+a table from a database outside the warehouse, declare the connection
+(`tracebi connect crm --kind postgres` writes `connections/crm.yaml`) and
+put `-- source: crm.issuer_ratings` in the transform's header, one line per
+table: the runner loads it through the connector before the first statement
+and the SQL reads `crm.issuer_ratings`. Ending the line with
+`fallback: inputs/issuer_ratings.csv` names a committed snapshot read only
+when the connection's `${VAR}` is unset; the certificate records each load
+under `sources` (and `source_fallback: csv` when the snapshot stood in), and
+`tracebi verify --contracts` re-reads it. In Python,
+`load_source("crm.issuer_ratings", ROOT, fallback=...)` from
+`tracebi.transforms` returns the same frame and record for
+`contract(..., sources=)`. The
 escape hatch is pandas or polars (`--python`, which is what
 `transforms/sample_transform.py` is). **Transforms are notebook-shaped**:
 the scaffolds use `-- %%` / `# %%` cells with markdown cells, so your

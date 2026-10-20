@@ -17,6 +17,12 @@ the warehouse. The contract is not *how* you clean, it is *what lands* — the
 named tables at the bottom of this file. Phase ② (models/) reads those tables
 and never sees this code.
 
+Reads the CRM's issuer ratings the way the SQL form's `-- source:` line
+does, through the declared connection (connections/crm.yaml) with
+tracebi.transforms.load_source, which falls back to the committed snapshot
+inputs/issuer_ratings.csv when TRACEBI_CRM_URL is unset and records which one
+fed it; the record goes into the certificate's `sources`.
+
 Reads a raw pull from inputs/ and sinks to the project's warehouse: the
 DuckDB file data/warehouse.duckdb unless tracebi.yaml's warehouse block puts
 it on object storage (Parquet per table) or a remote engine.
@@ -36,6 +42,7 @@ import pandas as pd
 from tracebi.connectors.duckdb_connector import DuckDBConnector
 from tracebi.contracts import contract
 from tracebi.project_config import sink_target
+from tracebi.transforms import load_source
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -156,12 +163,30 @@ def run() -> dict:
     )
     dim_issuer["issuer_id"] += 1
 
+    # Each held issuer's CRM rating, and whether the credit team has it on
+    # watch. An issuer the CRM does not cover is Unrated, its watch unknown:
+    # a row with no rating is a fact about the CRM, so it stays in the book.
+    ratings, crm = load_source("crm.issuer_ratings", ROOT,
+                               fallback="inputs/issuer_ratings.csv")
+    issuer_rating = pd.DataFrame({"issuer": keyed["issuer"].unique()}).merge(
+        ratings[["issuer", "rating", "watch"]], on="issuer", how="left")
+    issuer_rating["watch"] = issuer_rating["watch"].map(
+        {True: "yes", False: "no"}).fillna("unknown")
+    issuer_rating["rating"] = issuer_rating["rating"].fillna("Unrated")
+    dim_rating = (
+        issuer_rating[["rating", "watch"]].drop_duplicates()
+        .sort_values(["rating", "watch"]).reset_index(drop=True)
+        .reset_index(names="rating_id")
+    )
+    dim_rating["rating_id"] += 1
+
     # ── build the fact table, keyed to the dimensions ─────────────────────────
     fact = keyed.merge(dim_fund, on="fund").merge(
         dim_issuer[["issuer_id", "issuer"]], on="issuer"
-    )
+    ).merge(issuer_rating, on="issuer", how="left").merge(
+        dim_rating, on=["rating", "watch"], how="left")
     fact = fact[[
-        "fund_id", "issuer_id", "instrument_type",
+        "fund_id", "issuer_id", "rating_id", "instrument_type",
         "par", "cost", "fair_value", "spread_bps", "maturity",
     ]].reset_index(names="holding_id")
     fact["holding_id"] += 1
@@ -209,6 +234,7 @@ def run() -> dict:
     wh = DuckDBConnector("warehouse", database=WAREHOUSE)
     wh.write(dim_fund, "dim_fund")
     wh.write(dim_issuer, "dim_issuer")
+    wh.write(dim_rating, "dim_rating")
     wh.write(fact, "fact_holdings")
     wh.write(dim_date, "dim_date")
     wh.write(dim_flow_type, "dim_flow_type")
@@ -222,7 +248,7 @@ def run() -> dict:
     # note= is the STATED methodology: prose about what the cleaning did,
     # recorded verbatim and carried into report traces, never verified.
     with contract(
-        "holdings", warehouse=WAREHOUSE,
+        "holdings", warehouse=WAREHOUSE, sources={"crm.issuer_ratings": crm},
         note="issuer and instrument type parsed from the prose position "
              "blob; sectors normalised from each administrator's spelling; "
              "money coerced from strings; exact double-booked positions "
@@ -232,11 +258,21 @@ def run() -> dict:
                note="a Schedule of Investments under 10 positions means the "
                     "raw pull is truncated, not that the book shrank")
         c.unique("dim_issuer", ["issuer_id"])
-        c.not_null("fact_holdings", ["fund_id", "issuer_id", "fair_value"])
+        c.not_null("fact_holdings", ["fund_id", "issuer_id", "rating_id", "fair_value"])
         c.foreign_key("fact_holdings", "issuer_id",
                       refers_to=("dim_issuer", "issuer_id"))
         c.foreign_key("fact_holdings", "fund_id",
                       refers_to=("dim_fund", "fund_id"))
+        c.foreign_key("fact_holdings", "rating_id",
+                      refers_to=("dim_rating", "rating_id"))
+        c.unique("dim_rating", ["rating", "watch"])
+        c.values("dim_rating", "rating", within=[
+            "AAA", "AA+", "AA", "AA-", "A+", "A", "A-", "BBB+", "BBB", "BBB-",
+            "BB+", "BB", "BB-", "B+", "B", "B-", "CCC+", "CCC", "CCC-", "CC",
+            "C", "D", "Unrated"],
+            note="the CRM's ratings on the agency scale; an issuer it does "
+                 "not cover is Unrated, never dropped")
+        c.values("dim_rating", "watch", within=["yes", "no", "unknown"])
         c.rows("fact_cashflows", at_least=10)
         c.not_null("fact_cashflows",
                    ["fund_id", "issuer_id", "flow_date", "flow_type_id", "amount"])
@@ -252,6 +288,8 @@ def run() -> dict:
         "duplicates_dropped": int(n_deduped),
         "funds": len(dim_fund),
         "issuers": len(dim_issuer),
+        "ratings_from": "inputs/issuer_ratings.csv (TRACEBI_CRM_URL unset)"
+                        if crm.get("source_fallback") else "crm (Postgres)",
         "holdings": len(fact),
         "cash_flows": len(fact_cashflows),
         "total_fair_value": float(fact["fair_value"].sum()),

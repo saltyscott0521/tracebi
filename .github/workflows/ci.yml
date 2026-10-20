@@ -14,6 +14,25 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
+    # A real Postgres for the reference journey's CRM source
+    # (tests/e2e/conftest.py postgres_url). Without TRACEBI_TEST_POSTGRES_URL
+    # the fixture starts a throwaway server from local binaries, or skips.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: crm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d crm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TRACEBI_TEST_POSTGRES_URL: postgresql+psycopg://postgres:postgres@localhost:5432/crm
 
     steps:
       - uses: actions/checkout@v7

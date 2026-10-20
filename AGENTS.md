@@ -30,6 +30,22 @@ same work in pandas is `holdings_transform_pandas.py`, the escape hatch) →
 `reports/portfolio_model/portfolio_dashboard/` (an `app.jsx` dashboard), wired by `run_workflow.py`.
 `docs/concepts/the-three-phase-workflow.md` is the full tour; read it first.
 
+**A source outside the warehouse.** A SQL transform reads a table of a
+declared connection (`connections/<name>.yaml`; `tracebi connect crm --kind
+postgres` writes one) with a header line `-- source: crm.issuer_ratings`, one
+per table (`-- source: crm` alone is refused). The runner loads it through the
+connector before the first statement and the SQL reads `crm.issuer_ratings`;
+nothing of it lands in the warehouse. `fallback: inputs/issuer_ratings.csv` at
+the end of the line names a committed snapshot read only when the connection's
+`${VAR}` is unset. The certificate records each load under `sources`
+(`connection`, `rows`, `fingerprint`, `loaded_at`, and `source_fallback: csv`
+when the snapshot stood in), and `tracebi verify --contracts` re-reads it:
+`CHANGED` when the source moved since. In Python,
+`load_source("crm.issuer_ratings", ROOT, fallback=...)` from
+`tracebi.transforms` returns the same frame and record for
+`contract(..., sources=)`. The reference project's `dim_rating` comes from a
+Postgres CRM this way (`docs/reference/transform-sql.md`).
+
 A model is YAML by default: `models/<name>.yaml` (`tracebi new-model` writes a
 commented starter; `--python` writes the old `.py`). It loads through the same
 validator as a `.json` model, a repeated key is an error, and a model is one

@@ -4,8 +4,9 @@
 #
 #   db     the state plane — Postgres. Holds the medallion tables and the
 #          pipeline's run history, so both survive restarts.
-#   seed   the execution plane — runs the pipeline once and exits. This is the
-#          only service that writes.
+#   seed   the execution plane — runs the pipeline once, seeds the reference
+#          project's CRM table (issuer_ratings), and exits. This is the only
+#          service that writes.
 #   app    the serving plane — FastAPI + React on :8000. Reads. Because
 #          TRACEBI_DEMO_DB_URL is set, importing the app module defines layers
 #          without executing any, so starting a web process does no batch work.
@@ -78,10 +79,17 @@ services:
     environment:
       TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
       <<: *demo-db-url
+      # The reference project's CRM: a table in this stack's Postgres, read by
+      # examples/portfolio_project/connections/crm.yaml as ${TRACEBI_CRM_URL}.
+      TRACEBI_CRM_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi
+    # The image's WORKDIR is the reference project, so inputs/seed_crm.py is
+    # its own seed script (issuer_ratings, inputs/seed_crm.sql).
     command:
-      - python
+      - sh
       - -c
-      - "from tracebi.web.demo_app.pipeline import seed_and_run; seed_and_run()"
+      - >-
+        python -c "from tracebi.web.demo_app.pipeline import seed_and_run; seed_and_run()"
+        && python inputs/seed_crm.py
     restart: "no"
 
   output-perms:
@@ -114,6 +122,11 @@ services:
       # Bundled demo app by default; override to point at your config module.
       TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
       <<: *demo-db-url
+      # The reference project's CRM, seeded by `seed`. The warehouse baked
+      # into the image was built without it (its certificate says the CSV
+      # snapshot stood in); Refresh data on the portfolio model re-runs the
+      # transform against this database.
+      TRACEBI_CRM_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi
       # Optional HTTP basic auth — leave unset to keep the API open.
       TRACEBI_AUTH_USER: ${TRACEBI_AUTH_USER:-}
       TRACEBI_AUTH_PASS: ${TRACEBI_AUTH_PASS:-}

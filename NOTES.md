@@ -20,6 +20,55 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-20 — A Postgres source in the reference project (P-1)
+
+The ask: at least one star table whose source is a real relational database,
+end to end. The reference project's `dim_rating` now comes from a Postgres
+CRM (`connections/crm.yaml`, `issuer_ratings`), read by the SQL transform
+through one new directive, `-- source: crm.issuer_ratings`.
+
+**Through the connector, not DuckDB's postgres extension.** `ATTACH …
+(TYPE postgres)` needs an extension downloaded from extensions.duckdb.org,
+which a locked-down host (and this build machine) cannot reach. The connector
+path (SQLAlchemy and psycopg, the same `SQLConnector` a connection file
+builds) works wherever the driver installs. So the runner loads each named
+table whole, through `tracebi.transforms.load_source`, and registers it in
+an in-memory database attached under the connection's name: the SQL reads
+`crm.issuer_ratings`, and nothing of the source can land in the warehouse
+(the object tier lands only the current database's tables). The brief said
+`CREATE SCHEMA crm` in the warehouse connection; on the file tier that schema
+and its view would persist in the warehouse file, pointing at a frame that is
+gone, so the attach replaced it.
+
+**The certificate names its inputs.** The claim stays "the sink satisfied its
+contract"; it now says against what: `sources` holds each load's connection,
+rows and fingerprint, read through the same loader `verify --contracts` uses
+to re-read it. The loaded rows are sorted by every column first, because
+Postgres returns heap order and an `UPDATE` moves a row: an unsorted
+fingerprint would read CHANGED after a vacuum. A source that moved reads
+`CHANGED` and exits 1, while the figures can still reproduce: the warehouse
+did not move, but a re-run would land other tables. A source that cannot be
+read now is `not checked`, never green and never a failure.
+
+**The fallback is for an unset variable only.** The demo must build on a
+fresh clone and in CI's default jobs, which have no database, so
+`fallback: inputs/issuer_ratings.csv` names a committed snapshot read when the
+connection's `${VAR}` is unset (`ConnectionConfigError`), and the certificate
+says `source_fallback: csv` with the reason; every report trace carries it.
+A URL that is set but unreachable stops the run: a snapshot quietly covering
+for a broken CRM is the dishonest version. `verify --contracts` re-reads a
+snapshot-fed load from the snapshot, so a later-set URL does not turn a
+like-for-like check into a cross-source one.
+
+**Proof.** The reference journey seeds the CRM with `inputs/seed_crm.py` in a
+real Postgres (`TRACEBI_TEST_POSTGRES_URL`, a service container in CI; else a
+throwaway server from the local binaries, run as the `postgres` user when the
+suite runs as root; else a skip naming why), runs the pipeline, follows
+`dim_rating` from a model query's load fingerprint to the certificate to the
+connection, and changes a rating to see `CHANGED`. Every other reference step
+runs on the snapshot, and the SQL and pandas forms still sink seven
+identical tables.
+
 ## 2026-10-19 — SQL transforms, the contract beside them (S-3)
 
 Decision 21 of the live-reports plan. A transform is `transforms/<name>.sql`

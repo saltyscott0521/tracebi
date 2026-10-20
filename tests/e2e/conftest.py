@@ -102,6 +102,67 @@ def reference(tmp_path, monkeypatch, isolated):
     return proj
 
 
+@pytest.fixture(scope="session")
+def postgres_url():
+    """A Postgres database for a journey that reads a real relational source:
+    ``TRACEBI_TEST_POSTGRES_URL`` when set (CI runs a service container),
+    else a throwaway Postgres started from the server binaries on this
+    machine (initdb, pg_ctl, on a free loopback port, in a temporary
+    directory, stopped at the end of the session), else a skip that says
+    which. A SQLAlchemy URL (``postgresql+psycopg://…``), as a connection
+    file holds."""
+    pytest.importorskip("psycopg")
+    given = os.environ.get("TRACEBI_TEST_POSTGRES_URL")
+    if given:
+        yield given
+        return
+    import glob
+    import socket
+    import subprocess
+    import tempfile
+
+    bins = sorted(glob.glob("/usr/lib/postgresql/*/bin/pg_ctl"))
+    pg_ctl = shutil.which("pg_ctl") or (bins[-1] if bins else None)
+    if pg_ctl is None:
+        pytest.skip("no Postgres: set TRACEBI_TEST_POSTGRES_URL, or install the "
+                    "server (pg_ctl, initdb) for a throwaway one")
+    bindir = Path(pg_ctl).parent
+    # Postgres refuses to run as root; as root, run it as the postgres user.
+    as_user: list[str] = []
+    if os.geteuid() == 0:
+        import pwd
+        try:
+            pwd.getpwnam("postgres")
+        except KeyError:
+            pytest.skip("running as root with no postgres user to start Postgres as")
+        as_user = ["runuser", "-u", "postgres", "--"]
+    base = Path(tempfile.mkdtemp(prefix="tracebi-pg-"))
+    if as_user:
+        shutil.chown(base, "postgres")
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    data, log = base / "data", base / "server.log"
+
+    def run(*args: str) -> None:
+        done = subprocess.run([*as_user, *args], capture_output=True, text=True)
+        if done.returncode:
+            pytest.skip(f"could not start a throwaway Postgres: {' '.join(args[:1])}: "
+                        f"{done.stderr.strip() or done.stdout.strip()}")
+
+    run(str(bindir / "initdb"), "-D", str(data), "-U", "postgres", "--auth=trust",
+        "-E", "UTF8", "--no-instructions")
+    run(pg_ctl, "-D", str(data), "-l", str(log), "-w", "-o",
+        f"-p {port} -k {base} -c listen_addresses=127.0.0.1", "start")
+    try:
+        run(str(bindir / "createdb"), "-h", "127.0.0.1", "-p", str(port), "-U", "postgres", "crm")
+        yield f"postgresql+psycopg://postgres@127.0.0.1:{port}/crm"
+    finally:
+        subprocess.run([*as_user, pg_ctl, "-D", str(data), "-m", "fast", "-w", "stop"],
+                       capture_output=True)
+        shutil.rmtree(base, ignore_errors=True)
+
+
 def manifests(root: Path) -> list[Path]:
     return sorted((root / "output").rglob("*.manifest.json"))
 

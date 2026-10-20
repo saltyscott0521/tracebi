@@ -137,6 +137,8 @@ dev = [
     "apscheduler>=3.10",
     "sqlalchemy>=2.0",
     "alembic>=1.13",
+    # The reference journey reads its CRM from a real Postgres (CI runs one).
+    "psycopg[binary]>=3.1",
     "duckdb>=1.5.5",
     "python-dotenv>=1.2.3",
     # Web deps included so `pip install -e ".[dev]"` runs the full test suite

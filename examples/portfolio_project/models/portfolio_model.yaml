@@ -32,6 +32,11 @@ tables:
   - name: dim_issuer
     connector: warehouse
     source: dim_issuer
+  # Sunk from the CRM (a Postgres source the transform reads through its
+  # `-- source:` line); here it is a warehouse table like any other.
+  - name: dim_rating
+    connector: warehouse
+    source: dim_rating
   - name: fact_cashflows
     connector: warehouse
     source: fact_cashflows
@@ -52,6 +57,10 @@ dimensions:
     table: dim_issuer
     key: issuer_id
     attributes: [issuer, sector]
+  - name: dim_rating
+    table: dim_rating
+    key: rating_id
+    attributes: [rating, watch]
   - name: dim_date
     table: dim_date
     key: flow_date
@@ -77,6 +86,7 @@ facts:
     foreign_keys:
       dim_fund: fund_id
       dim_issuer: issuer_id
+      dim_rating: rating_id
   # A second fact over the same funds and issuers: one page can show both,
   # and a filter on a dimension only one of them reaches (the flow's type or
   # date) leaves the other's figures as they are, saying so.

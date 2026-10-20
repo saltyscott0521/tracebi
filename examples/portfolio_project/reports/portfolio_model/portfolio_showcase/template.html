@@ -171,6 +171,19 @@
                data-tb-y-title="Mark (fair value / cost)" id="chart-size-mark"></div>
         </div>
       </div>
+      <!-- A dimension from outside the warehouse's first input: the credit
+           team's CRM, a Postgres database the transform reads through its
+           `-- source:` line. Here it is one more attribute of the model; the
+           trace says which source fed it (or that the snapshot stood in). -->
+      <div class="tb-card">
+        <h2>Fair value by CRM rating</h2>
+        <p><label>Rating
+          <select data-tb-filter data-tb-binding="by_rating"
+                  data-tb-column="dim_rating.rating"></select></label></p>
+        <div data-tb-figure="chart" data-tb-binding="by_rating" data-tb-type="barh"
+             data-tb-x="dim_rating.rating" data-tb-y="fair_value"
+             data-tb-value-format="currency_compact" id="chart-rating"></div>
+      </div>
       <div class="tb-card">
         <h2>Cumulative share, issuers by rank</h2>
         <div data-tb-figure="chart" data-tb-binding="issuer_curve" data-tb-type="area"

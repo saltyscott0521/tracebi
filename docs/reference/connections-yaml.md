@@ -8,6 +8,10 @@ the folder) declares a place data lives. `tracebi connect <name> --kind ...`
 tests a warehouse, writes the file, and puts any secret in `.env`. A model
 points at it with `connection: <name>` in its `connectors:`.
 
+A SQL transform reads a table of a connection with a header line
+`-- source: <name>.<table>` ([[transform-sql|SQL transforms]]), loaded through
+the connector before its first statement.
+
 The project's own warehouse (the one its transforms sink into) is not a
 connection file: it is the `warehouse:` block of
 [`tracebi.yaml`](tracebi-yaml.md), and a model reads it with `type:

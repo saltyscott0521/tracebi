@@ -38,6 +38,18 @@ clean; it is **what lands**: the named tables at the end of the script. The
 [[sink-contracts|sink contract]] that checks them sits beside the transform, in
 `<name>.contract.yaml`.
 
+"Pull the queries" has a concrete form when the input is a database rather
+than a file. A [[connections-yaml|connection]] declares it
+(`connections/crm.yaml`, with the URL kept in an environment variable), and a
+header line `-- source: crm.issuer_ratings` in the SQL loads that table
+through the connection before the first statement, so the transform reads it
+as `crm.issuer_ratings` beside its CSVs. The certificate records each load's
+fingerprint under `sources`, so the sink satisfied its contract against named
+inputs, and `tracebi verify --contracts` says when one has moved since. The
+reference project's ratings come from a Postgres CRM this way, with a committed
+CSV snapshot standing in (and the certificate saying so) when no database is
+configured. → [[transform-sql]]
+
 → [[transform]]
 
 *Freeze: `data/warehouse.duckdb` — materialized tables.*

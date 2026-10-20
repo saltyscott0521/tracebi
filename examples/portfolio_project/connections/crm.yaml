@@ -1,0 +1,16 @@
+# Connection "crm": the credit team's CRM, a Postgres database outside the
+# warehouse. holdings_transform.sql reads one table of it through its
+# `-- source: crm.issuer_ratings` line; nothing else in the project does.
+#
+# The URL is a ${VAR}: it carries a password, so its value lives in the
+# environment or in .env, never here. A SQLAlchemy URL, with the driver:
+#
+#     TRACEBI_CRM_URL=postgresql+psycopg://user:password@host:5432/dbname
+#
+# Unset, the transform reads the committed snapshot
+# inputs/issuer_ratings.csv instead, and the certificate says so
+# (source_fallback: csv). `python inputs/seed_crm.py` creates and fills the
+# table in whichever Postgres the URL names.
+name: crm
+type: postgres
+url: ${TRACEBI_CRM_URL}

@@ -289,6 +289,18 @@ class TestLargeDetailArtifactIsTaught:
                 assert phrase in text, f"{name} does not teach {phrase}"
 
 
+    def test_the_source_directive_is_in_the_vocabulary_and_both_guides(self):
+        # A transform that reads a database without the directive reaches for
+        # pandas and a hand-rolled connection, and the certificate never
+        # learns which inputs the sink was checked against.
+        transforms = next(d for d in describe(brief=True)["conventions"]["directories"]
+                          if d["path"] == "transforms/")
+        for name, text in {"tracebi context": transforms["note"], **_guides()}.items():
+            for phrase in ("-- source:", "fallback:", "source_fallback", "load_source(",
+                           "sources"):
+                assert phrase in text, f"{name} does not teach {phrase}"
+
+
 def test_a_value_figure_is_taught_as_a_one_row_binding():
     """data-tb-cell reads one row. A multi-row binding is a build error,
     and a text cell (the top sector's name) is shown as text."""
