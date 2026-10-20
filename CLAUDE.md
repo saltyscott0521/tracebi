@@ -115,11 +115,15 @@ cadence, decoupled by **freeze points** (a materialized artifact handed from one
 phase to the next):
 
 1. **TRANSFORM** — `transforms/`. SQL by default, with pandas or polars as the
-   escape hatch: pull the queries, do the real analysis (window functions,
+   escape hatch: pull the queries (a table of a declared connection is a header
+   line `-- source: crm.issuer_ratings [fallback: inputs/x.csv]`, loaded through
+   the connector before the first statement and read as `crm.issuer_ratings`;
+   the certificate records each load under `sources`), do the real analysis (window functions,
    prose parsing, cleaning, dedupe), then **sink** clean star-schema tables
    into the warehouse. A `transforms/<name>.sql` runs top to bottom in one
    fresh warehouse connection (`tracebi/transforms.py`; placeholders
-   `{{ sink }}` and `{{ root }}` only; a created non-TEMP table is a sink
+   `{{ sink }}` and `{{ root }}` only; `-- source:` lines attach declared
+   connections' tables in memory, never sunk; a created non-TEMP table is a sink
    table on every tier); a `.py` / `.ipynb` ends with
    `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`.
    `tracebi run-transform` reports `form: sql | python | notebook`. The
@@ -243,6 +247,8 @@ examples/
   portfolio_project/   # THE reference working project — a complete three-phase project
                        #   with the same shape `tracebi init` scaffolds:
     inputs/            #   ⓪ raw pulls (holdings.csv + generate_raw.py, the demo source)
+    connections/       #   ⓪ crm.yaml: a Postgres CRM (TRACEBI_CRM_URL) the transform reads by
+                       #     `-- source:`; inputs/seed_crm.py seeds it, issuer_ratings.csv is the snapshot
     transforms/        #   ① SQL → sink star tables (holdings_transform.sql + .contract.yaml;
                        #     holdings_transform_pandas.py is the pandas escape hatch)
     models/            #   ② the star-schema contract (portfolio_model.yaml)
@@ -339,6 +345,8 @@ tracebi update [--check] [--yes]               # newer release? what's new + the
 pytest tests/                                  # Full suite (run it for the current count)
 pytest tests/test_phase1.py                    # Single phase
 pytest --cov                                   # With coverage
+TRACEBI_TEST_POSTGRES_URL=postgresql+psycopg://… pytest tests/e2e/test_reference_project.py
+                                               # the CRM step on a given Postgres (else a throwaway one, else skip)
 ```
 
 ---
