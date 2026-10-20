@@ -211,7 +211,7 @@ def _schedule_tick() -> None:
 
     from tracebi import schedule as sched
 
-    def resolve(name, _reports_dir):
+    def resolve(name, _reports_dir, **_k):
         return "package", Path(_reports_dir) / name
 
     def build(_kind, _path, output, **_k):
