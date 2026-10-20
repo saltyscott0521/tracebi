@@ -112,6 +112,8 @@ table's fingerprint equal, row order included).</p>
 <p>A SQL transform:</p>
 <ol>
 <li>has its two placeholders substituted (below);</li>
+<li>loads each table its <code>-- source:</code> lines name, through their connections
+   (below);</li>
 <li>runs statement by statement, in order, in <strong>one</strong> fresh read-write DuckDB
    connection to the warehouse <code>tracebi.yaml</code> names, with the project's
    <code>engine</code> limits. A failing statement stops the run with its number and
@@ -191,6 +193,70 @@ two, {{ sink }} and {{ root }}</code>. There are no loops, conditionals or
 against the project root: the connection's <code>file_search_path</code> is set to it, so
 the transform reads the same file whichever directory it was started from. A
 <strong>write</strong> names its destination with <code>{{ sink }}</code> or <code>{{ root }}</code>.</p>
+<h2 id="sources-outside-the-warehouse">Sources outside the warehouse</h2>
+<p>A table that lives in a database, not a file, is read through a declared
+<a href="../reference/connections-yaml.html">connection</a> with a <code>-- source:</code> line in the transform's
+header (the comment lines above its first statement):</p>
+<pre><code class="language-sql">-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv
+
+CREATE OR REPLACE TABLE dim_rating AS
+SELECT … FROM crm.issuer_ratings …;
+</code></pre>
+<p>The grammar, one table per line, as many lines as tables:</p>
+<pre><code>-- source: &lt;connection&gt;.&lt;table&gt; [fallback: &lt;path&gt;.csv]
+</code></pre>
+<ul>
+<li><code>&lt;connection&gt;</code> is <code>connections/&lt;connection&gt;.yaml</code> (<code>tracebi connect crm
+  --kind postgres</code> writes one; any connection type works). <code>&lt;table&gt;</code> is a
+  table that connection's connector loads. Both are names: letters, digits
+  and underscores.</li>
+<li>Before the first statement runs, the runner loads each table through the
+  connection's connector, the whole table with nothing pushed down, as a model
+  would. The SQL reads it as <code>&lt;connection&gt;.&lt;table&gt;</code>: an in-memory database
+  named after the connection, attached for this run only, so nothing of it
+  lands in the warehouse. A relational table has no row order, so the loaded
+  rows are sorted by every column.</li>
+<li><code>fallback:</code> names a committed CSV snapshot inside the project, read through
+  the CSV connector <strong>only</strong> when the connection's <code>${VAR}</code> is unset (a fresh
+  clone, CI). Any other failure (the server down, the table missing, a wrong
+  password) stops the run: a snapshot never covers for a source that is set
+  but unreachable. With no fallback, an unset variable stops the run naming
+  it.</li>
+<li>Refused, naming the line: <code>-- source: crm</code> with no table (name each one),
+  a table named twice, a <code>-- source:</code> line below the first statement (it
+  would read as a directive the runner skips), and anything after the table
+  but <code>fallback: &lt;path&gt;</code>.</li>
+</ul>
+<p>There are still exactly two placeholders: a source is a name the SQL reads,
+not a substitution.</p>
+<p><strong>What the certificate records.</strong> When a <code>&lt;name&gt;.contract.yaml</code> sits beside
+the transform, its certificate (<code>data/warehouse.contracts.json</code>) records each
+load under the transform's <code>sources</code>:</p>
+<pre><code class="language-json">&quot;sources&quot;: {
+  &quot;crm.issuer_ratings&quot;: {
+    &quot;connection&quot;: &quot;crm&quot;, &quot;table&quot;: &quot;issuer_ratings&quot;,
+    &quot;rows&quot;: 12, &quot;fingerprint&quot;: &quot;5840…&quot;, &quot;loaded_at&quot;: &quot;2026-10-20T…Z&quot;
+  }
+}
+</code></pre>
+<p>and, when the snapshot stood in, <code>"source_fallback": "csv"</code>, <code>"fallback":
+"inputs/issuer_ratings.csv"</code> and the <code>reason</code> (the unset variable). So the
+claim stays exact: <strong>the sink satisfied its contract</strong> against those inputs.
+Each report manifest's <code>transform_contracts</code> entry carries the same
+<code>sources</code> (less the reason), so a report's trace says where the sunk data came
+from, and that the CRM was not reached when it was not. Contract status is
+never colored by it.</p>
+<p><code>tracebi verify &lt;manifest&gt; --contracts</code> re-reads each recorded source (a load
+the snapshot served from the snapshot again, never from the connection) and
+compares fingerprints: <code>unchanged</code>, or <code>CHANGED</code> with exit 1 (a re-run of the
+transform would land other tables; the figures may still reproduce, because
+the warehouse did not move). A source it cannot read now (its variable unset,
+the server down) is <code>not checked</code>, which is neither green nor a failure.</p>
+<p><strong>In Python.</strong> <code>tracebi.transforms.load_source(ref, root, fallback=None)</code>
+returns <code>(frame, record)</code>, the same load and the same record; pass the records
+to <code>contract(name, warehouse=..., sources={ref: record})</code> and the certificate
+says the same thing. <code>examples/portfolio_project/transforms/holdings_transform_pandas.py</code>
+does this.</p>
 <h2 id="cells">Cells</h2>
 <p><code>-- %% [markdown]</code> and <code>-- %%</code> lines mark cells, as <code># %%</code> does in a Python
 transform, so an editor that understands percent cells folds them. They are

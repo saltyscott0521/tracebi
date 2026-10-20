@@ -217,10 +217,12 @@ class _Contract:
     """
 
     def __init__(self, name: str, warehouse: str,
-                 note: Optional[str] = None) -> None:
+                 note: Optional[str] = None,
+                 sources: Optional[dict] = None) -> None:
         self.name = name
         self.warehouse = warehouse
         self.note = note
+        self.sources = sources
         self._checks: list[dict] = []
         self._tables: set[str] = set()
         self._con = None
@@ -404,6 +406,12 @@ class _Contract:
         # The transform-level stated methodology, omitted when unset.
         if self.note is not None:
             record["note"] = self.note
+        # What the transform read from outside the warehouse, each load's
+        # fingerprint (tracebi.transforms.load_source): the sink satisfied
+        # its contract against THESE inputs, and a snapshot that stood in
+        # for an unset connection says so (source_fallback).
+        if self.sources:
+            record["sources"] = self.sources
         existing = read_contracts(self.warehouse) or {
             "schema_version": CONTRACTS_SCHEMA_VERSION, "transforms": {}}
         existing.setdefault("transforms", {})[self.name] = record
@@ -418,11 +426,17 @@ class contract:
     *note* is the transform-level stated methodology — prose the author
     states about what the transform did ("dropped the 9 unkeyed rows"),
     recorded verbatim in the certificate. Never a verified claim.
+
+    *sources* is ``{"<connection>.<table>": record}``, each record as
+    :func:`tracebi.transforms.load_source` returns it: the inputs the
+    transform read from outside the warehouse, recorded under ``sources``
+    so ``tracebi verify --contracts`` can say whether they moved since.
     """
 
     def __init__(self, name: str, warehouse: str,
-                 note: Optional[str] = None) -> None:
-        self._c = _Contract(name, warehouse, note=note)
+                 note: Optional[str] = None,
+                 sources: Optional[dict] = None) -> None:
+        self._c = _Contract(name, warehouse, note=note, sources=sources)
 
     def __enter__(self) -> _Contract:
         self._c._con = _reader(self._c.warehouse)
@@ -505,14 +519,16 @@ def read_contract_file(path: "str | os.PathLike[str]", default_name: str) -> dic
 
 
 def run_contract_file(path: "str | os.PathLike[str]", warehouse: str,
-                      default_name: str) -> dict:
+                      default_name: str, sources: Optional[dict] = None) -> dict:
     """Run a ``<transform>.contract.yaml`` against the sunk tables, exactly as
     the ``with contract(...)`` block it stands for: the same checks, the same
-    raise on failure, the same certificate on success. Returns the parsed file."""
+    raise on failure, the same certificate on success (with *sources*, the
+    SQL transform's ``-- source:`` loads). Returns the parsed file."""
     spec = read_contract_file(path, default_name)
     if not spec["checks"]:
         return spec     # declares nothing; writes nothing
-    with contract(spec["name"], warehouse=warehouse, note=spec["note"]) as c:
+    with contract(spec["name"], warehouse=warehouse, note=spec["note"],
+                  sources=sources) as c:
         for decl in spec["checks"]:
             c.check(decl)
     return spec
@@ -638,6 +654,48 @@ def check_fingerprints(warehouse: str,
     return results
 
 
+def check_sources(warehouse: str, root: Optional[str] = None,
+                  transform: Optional[str] = None) -> list[dict]:
+    """Re-load each source a certificate recorded and compare fingerprints.
+
+    The sink satisfied its contract against the inputs the certificate names;
+    this says whether those inputs are still what they were. A source read
+    from its connection is read from it again; one the snapshot stood in for
+    (``source_fallback``) is read from the snapshot again, so the comparison
+    is like with like. Returns one row per recorded source:
+    ``{transform, source, recorded, current, matches, source_fallback?,
+    unreachable?}``. A source that cannot be read now (its variable unset,
+    the server down) has ``current`` None and says why in ``unreachable``:
+    not checked, which is neither a match nor drift."""
+    from tracebi.transforms import load_source
+
+    data = read_contracts(warehouse)
+    if not data:
+        return []
+    results: list[dict] = []
+    for tname, rec in (data.get("transforms") or {}).items():
+        if transform and tname != transform:
+            continue
+        for ref, src in (rec.get("sources") or {}).items():
+            row = {"transform": tname, "source": ref,
+                   "recorded": src.get("fingerprint"), "current": None}
+            if src.get("source_fallback"):
+                row["source_fallback"] = src["source_fallback"]
+            try:
+                if src.get("source_fallback"):
+                    # The snapshot again, as it was read then: the connection
+                    # is never consulted for a load it did not serve.
+                    row["current"] = load_source(
+                        ref, root, fallback=src["fallback"], force_fallback=True)[1]["fingerprint"]
+                else:
+                    row["current"] = load_source(ref, root)[1]["fingerprint"]
+            except Exception as exc:  # noqa: BLE001 — unreachable is a result
+                row["unreachable"] = " ".join(str(exc).split())
+            row["matches"] = row["current"] == row["recorded"]
+            results.append(row)
+    return results
+
+
 def transform_contracts_block(models: dict,
                               lineages: list[list[dict]]) -> dict:
     """The manifest's ``transform_contracts`` join, computed at build time.
@@ -707,6 +765,13 @@ def _status_entry(rec: dict, table: str, current: str, moved: bool = False) -> d
     # transform states about itself, never part of the status.
     if rec.get("note"):
         entry["note"] = rec["note"]
+    # The inputs the transform read from outside the warehouse, so the trace
+    # can say where the sunk data came from (and that a snapshot stood in
+    # for a connection, when one did). Context, never part of the status.
+    if rec.get("sources"):
+        entry["sources"] = {
+            ref: {k: v for k, v in src.items() if k != "reason"}
+            for ref, src in rec["sources"].items()}
     return entry
 
 

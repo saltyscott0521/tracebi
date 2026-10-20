@@ -5,6 +5,9 @@ over.
     python run_workflow.py
 
     ⓪  INPUT        inputs/holdings.csv                (a raw pull; API export / CSV / SQL)
+                    connections/crm.yaml               (issuer ratings in Postgres,
+                                                        TRACEBI_CRM_URL; unset, the
+                                                        snapshot inputs/issuer_ratings.csv)
     ①  TRANSFORM    transforms/holdings_transform.sql  → data/warehouse.duckdb
                     transforms/saas_transform.py       → data/warehouse.duckdb
                     transforms/affordability_transform.py → data/housing.duckdb
@@ -51,6 +54,17 @@ def main() -> None:
     from tracebi.transforms import run_transform
     form = run_transform(os.path.join(ROOT, "transforms", "holdings_transform.sql"), root=ROOT)
     print(f"    form: {form}")
+    # Its `-- source: crm.issuer_ratings` line read the CRM (Postgres) when
+    # TRACEBI_CRM_URL is set, else the committed snapshot; the certificate
+    # records which, and so does this line.
+    from tracebi.contracts import read_contracts
+    from tracebi.project_config import sink_target
+    crm = read_contracts(sink_target(ROOT))["transforms"]["holdings"]["sources"]["crm.issuer_ratings"]
+    if crm.get("source_fallback"):
+        print("    ratings: inputs/issuer_ratings.csv (TRACEBI_CRM_URL is unset; set it to a "
+              "Postgres URL and run `python inputs/seed_crm.py` to read the CRM)")
+    else:
+        print(f"    ratings: the crm connection (Postgres), {crm['rows']} rows")
 
     # The SaaS metrics sample (reports/saas_model) sinks its own tables into the
     # same warehouse: a billing export cleaned to one row per account per month.

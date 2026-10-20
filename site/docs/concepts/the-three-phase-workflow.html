@@ -119,6 +119,17 @@ pandas or polars (a <code>.py</code> or <code>.ipynb</code>); both forms run wit
 clean; it is <strong>what lands</strong>: the named tables at the end of the script. The
 <a href="../concepts/sink-contracts.html">sink contract</a> that checks them sits beside the transform, in
 <code>&lt;name&gt;.contract.yaml</code>.</p>
+<p>"Pull the queries" has a concrete form when the input is a database rather
+than a file. A <a href="../reference/connections-yaml.html">connection</a> declares it
+(<code>connections/crm.yaml</code>, with the URL kept in an environment variable), and a
+header line <code>-- source: crm.issuer_ratings</code> in the SQL loads that table
+through the connection before the first statement, so the transform reads it
+as <code>crm.issuer_ratings</code> beside its CSVs. The certificate records each load's
+fingerprint under <code>sources</code>, so the sink satisfied its contract against named
+inputs, and <code>tracebi verify --contracts</code> says when one has moved since. The
+reference project's ratings come from a Postgres CRM this way, with a committed
+CSV snapshot standing in (and the certificate saying so) when no database is
+configured. → <a href="../reference/transform-sql.html">SQL transforms</a></p>
 <p>→ <a href="../concepts/transform.html">Transform — phase ①</a></p>
 <p><em>Freeze: <code>data/warehouse.duckdb</code> — materialized tables.</em></p>
 <h2 id="2-model-models">② Model — <code>models/</code></h2>

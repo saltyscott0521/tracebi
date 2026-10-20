@@ -1,0 +1,13 @@
+issuer,rating,rating_date,watch
+"Acme Industrial Holdings, LLC",B+,2025-03-31,false
+Beta Widgets Inc,B,2025-02-14,false
+Delta Systems Ltd,BB-,2025-05-09,false
+"Epsilon Health Partners, LLC",B-,2025-04-22,true
+"Gamma Software Group, LLC",B,2025-01-30,false
+Iota Foods Company,B+,2025-06-12,false
+"Kappa Energy Holdings, LLC",CCC+,2025-06-03,true
+"Mu Financial Services, LLC",BB,2025-03-18,false
+"Omega Media Group, LLC",B-,2025-05-27,false
+"Sigma Logistics Holdings, LLC",B,2025-04-08,true
+"Theta Retail Brands, LLC",B-,2025-02-26,true
+Zeta Diagnostics Corporation,BB-,2025-06-20,false

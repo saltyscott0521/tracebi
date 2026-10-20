@@ -9,9 +9,17 @@
 --
 -- DuckDB SQL, run top to bottom in one fresh connection by
 -- `tracebi run-transform holdings_transform`. The contract is not *how* you
--- clean, it is *what lands*: the six tables created below. Phase ② (models/)
+-- clean, it is *what lands*: the seven tables created below. Phase ② (models/)
 -- reads those tables and never sees this file. The checks they must pass sit
 -- beside it in holdings_transform.contract.yaml.
+--
+-- One input sits outside inputs/: the credit team's CRM, a Postgres database
+-- (connections/crm.yaml). The line below loads its issuer_ratings table
+-- through that connection before the first statement runs, and the SQL reads
+-- it as crm.issuer_ratings. With TRACEBI_CRM_URL unset, the committed
+-- snapshot stands in, and the certificate records that it did.
+--
+-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv
 --
 -- This is the file tier: each CREATE OR REPLACE TABLE lands in the warehouse
 -- tracebi.yaml names (data/warehouse.duckdb by default). On the object tier
@@ -126,13 +134,30 @@ SELECT row_number() OVER (ORDER BY issuer, sector) AS issuer_id, issuer, sector
 FROM (SELECT DISTINCT issuer, sector FROM keyed)
 ORDER BY issuer_id;
 
+-- Each held issuer's CRM rating, and whether the credit team has it on
+-- watch. An issuer the CRM does not cover is Unrated, its watch unknown: a
+-- row with no rating is a fact about the CRM, so it stays in the book.
+CREATE OR REPLACE TEMP TABLE issuer_rating AS
+SELECT i.issuer,
+       coalesce(r.rating, 'Unrated') AS rating,
+       CASE WHEN r.issuer IS NULL THEN 'unknown' WHEN r.watch THEN 'yes' ELSE 'no' END AS watch
+FROM (SELECT DISTINCT issuer FROM keyed) i
+LEFT JOIN crm.issuer_ratings r USING (issuer);
+
+CREATE OR REPLACE TABLE dim_rating AS
+SELECT row_number() OVER (ORDER BY rating, watch) AS rating_id, rating, watch
+FROM (SELECT DISTINCT rating, watch FROM issuer_rating)
+ORDER BY rating_id;
+
 CREATE OR REPLACE TABLE fact_holdings AS
 SELECT row_number() OVER (ORDER BY k.line) AS holding_id,
-       f.fund_id, i.issuer_id, k.instrument_type,
+       f.fund_id, i.issuer_id, d.rating_id, k.instrument_type,
        k.par, k.cost, k.fair_value, k.spread_bps, k.maturity
 FROM keyed k
 JOIN dim_fund f USING (fund)
 JOIN dim_issuer i USING (issuer)
+JOIN issuer_rating r USING (issuer)
+JOIN dim_rating d ON d.rating = r.rating AND d.watch = r.watch
 ORDER BY holding_id;
 
 -- %% [markdown]

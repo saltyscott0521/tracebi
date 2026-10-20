@@ -7,6 +7,8 @@ it is the worked version of that scaffold with real cleaning to do.
 
 ```
 ⓪  INPUT       inputs/holdings.csv               a messy raw pull (generated)
+               connections/crm.yaml              the credit team's CRM (Postgres):
+                                                 issuer ratings, read by `-- source:`
 ①  TRANSFORM   transforms/holdings_transform.sql parse prose blobs, dedupe,
                                                  normalise → SINK star tables
                                                  (+ .contract.yaml beside it)
@@ -35,7 +37,10 @@ tracebi run-pipeline portfolio_model   # or: a model's pipeline — rebuild its 
 `run_workflow.py` generates the messy source into `inputs/` on first run
 (`inputs/generate_raw.py`), so phase ① has real work: prose instrument blobs
 to parse into issuers, trailing position counters to strip, sectors spelled
-six ways, money stored as strings.
+six ways, money stored as strings. `inputs/seed_crm.sql` (applied by
+`inputs/seed_crm.py`) is the CRM's issuer ratings, and
+`inputs/issuer_ratings.csv` the same rows as a snapshot; see "A source outside
+the warehouse" below.
 
 Phase ① is SQL: `transforms/holdings_transform.sql`, DuckDB statements run top
 to bottom in one fresh connection by `tracebi run-transform holdings_transform`.
@@ -48,6 +53,59 @@ Phase ① ends with a declared sink contract, beside the SQL in
 recorded in `data/warehouse.contracts.json`. A failed check raises at sink
 time; a green one lets a report say *the sink satisfied its contract* — never
 that the transform was verified.
+
+## A source outside the warehouse
+
+One star table, `dim_rating`, comes from a relational database rather than a
+file: the credit team's CRM, a Postgres table `issuer_ratings` (each issuer's
+rating, its date and whether it is on watch). `connections/crm.yaml` declares
+it (`type: postgres`, `url: ${TRACEBI_CRM_URL}`), and the header of
+`holdings_transform.sql` reads it with
+
+```sql
+-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv
+```
+
+so the runner loads the table through the connection before the first
+statement and the SQL joins `crm.issuer_ratings` to the parsed issuers (an
+issuer the CRM does not cover lands as `Unrated`). The pandas form does the
+same with `tracebi.transforms.load_source`. The model declares `dim_rating`
+like any other warehouse table; the showcase filters and charts by it.
+
+Point it at any Postgres:
+
+```bash
+export TRACEBI_CRM_URL=postgresql+psycopg://user:password@host:5432/dbname   # or put it in .env
+python inputs/seed_crm.py            # creates and fills issuer_ratings (inputs/seed_crm.sql)
+tracebi run-pipeline portfolio_model # the transform now reads the CRM, then the reports build
+tracebi verify output/portfolio_model/portfolio_showcase.html.manifest.json --contracts
+```
+
+The URL needs a driver (`postgresql+psycopg://`; `pip install
+'tracebi[postgres]'`). With `docker compose up` the stack's `db` service is the
+CRM: the `seed` service runs `seed_crm.py` against it and the app has
+`TRACEBI_CRM_URL` set. The image bakes its warehouse at build time, with no
+database to read, so its first certificate says the snapshot stood in;
+**Refresh data** on the portfolio model (or `docker compose exec app tracebi
+run-pipeline portfolio_model`) re-runs the transform against the CRM.
+
+**Without a database** (a fresh clone, CI) the demo still builds: with
+`TRACEBI_CRM_URL` unset, `inputs/issuer_ratings.csv`, a committed snapshot of
+the same twelve rows, stands in. Only an unset variable does that; a URL that is
+set but unreachable stops the transform. The certificate
+(`data/warehouse.contracts.json`) records which fed the sink, under the
+transform's `sources`:
+
+- from the CRM: `{"connection": "crm", "table": "issuer_ratings", "rows": 12,
+  "fingerprint": …, "loaded_at": …}`;
+- from the snapshot: the same, plus `"source_fallback": "csv"`, `"fallback":
+  "inputs/issuer_ratings.csv"` and the reason (the unset variable).
+
+Every report's trace carries that record beside `dim_rating`'s contract status,
+so a reader can see the CRM was not reached. `tracebi verify --contracts`
+re-reads each source and reads `unchanged`, `CHANGED` (the CRM moved since the
+sink was certified: re-run the transform) or `not checked` (it cannot be read
+now).
 
 Reports are organised **by model**: the folder is the model's name, so a model,
 the reports that read it and its pipeline sit together. A report in a folder is
