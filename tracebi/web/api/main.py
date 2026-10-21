@@ -47,7 +47,7 @@ from tracebi.web.api.errors import error_detail
 
 from tracebi.web.api.routers import (
     connectors, models, reports, pipelines, docs, verify, desk, status, runs, drafts, folders,
-    code_requests, library,
+    code_requests, library, sources,
 )
 from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.sso import SessionAuthMiddleware as _SessionAuthMiddleware
@@ -127,6 +127,10 @@ app = FastAPI(
                  "framework where every number has a trace."),
     version=_tracebi_version(),
     lifespan=_lifespan,
+    # /docs is the app's own Docs place (the handbook), a page of the UI, so
+    # the interactive API reference sits beside it rather than on it.
+    docs_url="/api-docs",
+    redoc_url="/api-redoc",
 )
 
 app.add_middleware(
@@ -208,6 +212,7 @@ app.include_router(drafts.requests_router, prefix="/api")
 app.include_router(code_requests.router, prefix="/api")
 app.include_router(library.router, prefix="/api")
 app.include_router(folders.router,     prefix="/api")
+app.include_router(sources.router,     prefix="/api")   # /api/inputs, /api/warehouse
 
 # The agent gateway, served by this app at /mcp when TRACEBI_MCP_TOKEN is set,
 # or when TRACEBI_OIDC_ISSUER is set (a sign-in per person, TraceBi's own OAuth
@@ -633,5 +638,5 @@ else:
             f"<pre>{_UI_REMEDY}</pre>"
             "<p>Restart the server once that is in place. The API is unaffected — "
             "see <a href='/api/health'>/api/health</a> and "
-            "<a href='/docs'>/docs</a>.</p>"
+            "<a href='/api-docs'>/api-docs</a>.</p>"
         )

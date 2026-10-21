@@ -132,8 +132,8 @@ def seeds(base: str) -> list[str]:
     tabs = ["model", "transform", "sources", "runs"]
     # Review's tabs (/review, /review/drafts, /runs, /verify) each render in
     # Review's frame; the sidebar marks Review on all four.
-    paths = ["/", "/ask", "/data", "/data?view=map", "/data/sources", "/review", "/review/drafts",
-             "/runs", "/verify", "/getting-started", "/handbook", "/workflow"]
+    paths = ["/", "/ask", "/data", "/data/sources", "/data/warehouse", "/data/map", "/review",
+             "/review/drafts", "/runs", "/verify", "/docs", "/docs/get-started"]
     models = _safe(base, "/api/models")
     for m in models:
         name = urllib.parse.quote(m["name"])
@@ -143,8 +143,8 @@ def seeds(base: str) -> list[str]:
     for r in reports[:PER_PATTERN]:
         paths.append("/reports/" + "/".join(urllib.parse.quote(p, safe="") for p in r["name"].split("/")))
     # Old addresses must still land somewhere real.
-    paths += ["/models", "/explore", "/refresh", "/reports", "/sources", "/map", "/data/map",
-              "/connectors", "/pipelines", "/drafts"]
+    paths += ["/models", "/explore", "/refresh", "/reports", "/sources", "/map", "/data?view=map",
+              "/connectors", "/pipelines", "/drafts", "/getting-started", "/handbook", "/workflow"]
     if models:
         name = urllib.parse.quote(models[0]["name"])
         paths += [f"/m/{name}", f"/m/{name}/reports", f"/m/{name}/explore", f"/m/{name}/runs",
@@ -171,7 +171,8 @@ def _pattern(path: str) -> str:
     keys = sorted(f"{k}={q[k][0]}" if k == "tab" else k for k in q)
     p = re.sub(r"/models/[^/?]+", "/models/<m>", u.path)
     p = re.sub(r"/m/[^/?]+", "/m/<m>", p)
-    p = re.sub(r"^/data/(?!map$|sources$)[^/?]+", "/data/<m>", p)
+    p = re.sub(r"^/data/(?!map$|sources$|warehouse$)[^/?]+", "/data/<m>", p)
+    p = re.sub(r"^/docs/(?!get-started$).+", "/docs/<page>", p)
     p = re.sub(r"^/reports/.+", "/reports/<r>", p)
     return p + ("?" + "&".join(keys) if keys else "")
 
@@ -388,7 +389,7 @@ def _links(page, base: str) -> list[str]:
         u = urllib.parse.urlsplit(urllib.parse.urljoin(base + "/", h))
         if f"{u.scheme}://{u.netloc}" != base:
             continue
-        if u.path.startswith(("/api/", "/r/", "/assets/", "/docs/")):
+        if u.path.startswith(("/api/", "/r/", "/assets/", "/api-docs")):
             continue
         out.append(u.path + (f"?{u.query}" if u.query else ""))
     return out
@@ -728,6 +729,18 @@ def scope_findings(browser, base: str) -> list[dict]:
                         "viewport": "desktop", "theme": "light", "rule": "model-without-pipeline",
                         "severity": "serious", "target": m["name"],
                         "detail": f"nothing refreshes {m['name']}; its Transform tab is empty"})
+    connectors, inputs = _safe(base, "/api/connectors"), (_safe(base, "/api/inputs") or {})
+
+    def model_sources(name):
+        """A model's Sources: what it reads, what its transform reads, and
+        inputs/ when its transform names a file there."""
+        transform = next((p.get("transform") for p in pipelines if name in pipeline_models(p)), None)
+        found = {c["name"] for c in connectors if name in (c.get("used_by") or [])
+                 or any(t["name"] == transform for t in (c.get("read_by") or {}).get("transforms", []))}
+        if any(transform in f["read_by"] for f in inputs.get("files", [])):
+            found.add("inputs")
+        return found
+
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     for m in models:
         name = m["name"]
@@ -737,8 +750,7 @@ def scope_findings(browser, base: str) -> list[dict]:
         expect = {
             "reports": (f"/?model={q}", "/?model", "report",
                         {r["name"] for r in reports if name in (r.get("models") or [])}),
-            "sources": (f"/data/{q}/sources", "/data/<m>/sources", "source",
-                        {c["name"] for c in _safe(base, "/api/connectors") if name in (c.get("used_by") or [])}),
+            "sources": (f"/data/{q}/sources", "/data/<m>/sources", "source", model_sources(name)),
         }
         for key, (path, pattern, attr, want) in expect.items():
             page.goto(base + path)

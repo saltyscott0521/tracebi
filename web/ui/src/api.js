@@ -222,6 +222,23 @@ export const useConnectorWarehouse = (name) =>
     enabled: !!name,
   })
 
+// What a source holds, read when its detail opens: tables and columns, or
+// {connected: false, reason} when it cannot be reached from here.
+export const useConnectorTables = (name) =>
+  useQuery({
+    queryKey: ['connector-tables', name],
+    queryFn: () => get(`/connectors/${encodeURIComponent(name)}/tables`),
+    enabled: !!name,
+  })
+
+// The project's inputs/ folder: each file, and the transforms that name it.
+export const useInputs = () =>
+  useQuery({ queryKey: ['inputs'], queryFn: () => get('/inputs') })
+
+// Every warehouse and its tables: who wrote each, who reads it, its checks.
+export const useWarehouses = () =>
+  useQuery({ queryKey: ['warehouses'], queryFn: () => get('/warehouse') })
+
 export const useReportLineage =() =>
   useMutation({ mutationFn: (name) => get(`/reports/${reportPath(name)}/lineage`) })
 

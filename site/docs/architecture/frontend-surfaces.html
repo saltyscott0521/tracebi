@@ -187,6 +187,16 @@ server.</strong> Don't grow the app into drag-and-drop chart authoring — that 
 Tableau turf the self-contained artifact exists to displace. Authoring already
 has two better homes: the CLI / <code>tracebi dev</code> for humans, and the MCP gateway
 for agents.</p>
+<h2 id="the-apps-places">The app's places</h2>
+<p>The app is five places in its sidebar (<code>web/ui/src/nav.js</code>, <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>):
+<strong>Reports</strong> (the library, where it opens), <strong>Ask</strong>, <strong>Data</strong>, <strong>Review</strong> and
+<strong>Docs</strong>. Data is the chain, as four tabs left to right: Models (each model's
+chain of sources → transform → tables → measures → reports), Sources (every
+connection and the <code>inputs/</code> folder, what each holds and what reads it),
+Warehouse (every table, who wrote it, who reads it, its checks) and Map. Docs
+is the handbook served from the project's <code>docs/</code>, with Get started first; it
+is the app's own manual, not tracebi.com's docs, and every role sees it. The
+addresses are in <a href="../reference/api-routes.html">API routes</a>.</p>
   </main>
 </div>
 <script>

@@ -1161,11 +1161,13 @@ def _discovery_warehouse(project_root: str, loaded: list) -> dict:
     return wh
 
 
-def warehouse_view(path: str) -> dict:
+def warehouse_view(path: str, profile: bool = True) -> dict:
     """One file-backed warehouse for the app's Warehouse tab: every table with
     its row count, column profile and sink-contract status. The same
     introspection the classic discovery panel uses, on short-lived read-only
-    connections closed before this returns. Failures land in ``"error"``."""
+    connections closed before this returns. Failures land in ``"error"``.
+    ``profile=False`` leaves the per-column profiles out: the Warehouse page
+    lists every table at once and profiles one only when it is opened."""
     from tracebi.contracts import table_statuses
     from tracebi.warehouse import as_warehouse
 
@@ -1175,7 +1177,7 @@ def warehouse_view(path: str) -> dict:
     if not view["exists"]:
         return view
     try:
-        view["tables"] = _warehouse_tables(path)
+        view["tables"] = _warehouse_tables(path, profile)
         statuses = table_statuses(path, [t["name"] for t in view["tables"]])
         for t in view["tables"]:
             t["contract"] = statuses[t["name"]]
@@ -1195,7 +1197,7 @@ _NUMERIC_SQL = ("TINYINT", "SMALLINT", "INTEGER", "BIGINT", "HUGEINT",
                 "FLOAT", "DOUBLE", "REAL", "DECIMAL", "NUMERIC")
 
 
-def _warehouse_tables(path: str) -> list[dict]:
+def _warehouse_tables(path: str, profile: bool = True) -> list[dict]:
     """Tables, row counts, column dtypes, and per-column profiles (read-only
     SQL aggregates), on one short-lived read-only connection closed
     deterministically. A table's profile failure lands in that entry's
@@ -1217,11 +1219,11 @@ def _warehouse_tables(path: str) -> list[dict]:
             n = con.execute(
                 f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]
             entry: dict = {"name": t, "rows": int(n), "columns": columns}
-            if len(columns) > PROFILE_COLUMN_CAP:
+            if profile and len(columns) > PROFILE_COLUMN_CAP:
                 entry["profile"] = None
                 entry["note"] = (f"profile skipped — {len(columns)} columns "
                                  f"(cap {PROFILE_COLUMN_CAP})")
-            else:
+            elif profile:
                 try:
                     entry["profile"] = _table_profile(con, t, columns, int(n))
                 except Exception as exc:  # noqa: BLE001 — captured into the entry

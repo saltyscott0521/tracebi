@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useMe, useRole, signOut } from '../api'
 import { page, placesFor, placeOf, mayUse } from '../nav'
@@ -41,11 +41,6 @@ const ICONS = {
     </svg>
   ),
 }
-
-// Help is not a place you work in, so it sits in the footer. Get started and
-// the Docs it links to are one entry, marked current on either (a plain link
-// would only mark its own path).
-const HELP_PATHS = ['/getting-started', '/handbook']
 
 function SunIcon() {
   return (
@@ -156,10 +151,8 @@ export default function Layout({ children }) {
   }, [dark, chose])
 
   const close = () => setOpen(false)
-  const { pathname } = useLocation()
   const openerRef = useRef(null)
   const closeRef = useRef(null)
-  const inHelp = HELP_PATHS.some(p => pathname.startsWith(p))
   const scope = useScope()
   const places = placesFor(role)
   const place = places.find(p => p.key === placeOf(scope.page))
@@ -310,32 +303,19 @@ export default function Layout({ children }) {
         </div>
 
         {/* Reports (the library), Ask, then Data and Review for the roles
-            that use them. A model is a filter inside a place, not the frame
-            of the app. */}
+            that use them, and Docs (the handbook) for everyone, last. A model
+            is a filter inside a place, not the frame of the app. */}
         <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: '12px 0 4px' }}>
           {items.map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
         </ul>
 
+        {/* The foot: which TraceBi this is, whether a newer one is out, and
+            the theme. The handbook is a place now (Docs, above). */}
         <div style={{
           padding: '12px 16px 14px',
           borderTop: '1px solid var(--sidebar-border)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              display: 'inline-block', width: 6, height: 6,
-              borderRadius: '50%', background: 'var(--muted)', flexShrink: 0,
-            }} />
-            <Link to="/getting-started" onClick={close}
-              aria-current={inHelp ? 'page' : undefined}
-              className="nav-link"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontSize: 12, textDecoration: 'none', borderRadius: 5, padding: '3px 6px',
-                color: inHelp ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-                background: inHelp ? 'var(--sidebar-active)' : 'transparent',
-              }}>
-              {ICONS.docs}Help
-            </Link>
             {version ? (
               <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>v{version}</span>
             ) : null}

@@ -57,7 +57,11 @@ _PATH_FIELDS = {"database": ("duckdb",), "directory": ("duckdb", "csv")}
 
 
 class ConnectionConfigError(ValueError):
-    """A connection that cannot be built: bad file, or an unset variable."""
+    """A connection that cannot be built: bad file, or an unset variable.
+    ``variable`` names the unset variable when that is the reason, so a page
+    can say which one to set without parsing the message."""
+
+    variable: Optional[str] = None
 
 
 def connections_dir(root: "str | os.PathLike[str] | None" = None) -> Path:
@@ -231,10 +235,12 @@ class Declaration:
         if not value:
             value = _read_dotenv(self.root / ".env").get(var)
         if not value:
-            raise ConnectionConfigError(
+            err = ConnectionConfigError(
                 f"connection '{self.name}': environment variable {var} "
                 f"(field '{field}') is not set; set it in the environment or "
                 f"in {self.root / '.env'}")
+            err.variable = var
+            raise err
         return value
 
     def value(self, field: str) -> Any:

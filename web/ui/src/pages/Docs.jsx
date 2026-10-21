@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Link } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { useGuides, useGuide } from '../api'
+import { docPath } from '../nav'
 import { PageTitle, PageSub, Spinner, useNarrow } from '../components/Shared'
+import GettingStarted from './GettingStarted'
 
 // docs/ is a vault: pages live under concepts/, guides/, reference/ and
 // architecture/, and the API addresses a subdirectory page as "dir--stem".
@@ -21,8 +23,17 @@ const SECTIONS = [
 
 // Internal working documents that ship in a source checkout but are not
 // product documentation. The positioning doc is gitignored outright; the
-// roadmap is a control document, not a guide.
-const HIDDEN = new Set(['north-star', 'ROADMAP'])
+// roadmap is a control document, not a guide. A retired page stays in docs/
+// as a stub (old wiki links keep resolving in the vault) but is not listed.
+const HIDDEN = new Set(['north-star', 'ROADMAP', 'receipts'])
+
+// A retired page's stem → the page that replaced it: a wiki link to it, and
+// its old address, open the new one.
+const MOVED = { receipts: 'trace' }
+
+// Get started is the handbook's first page: the app's own walkthrough, not a
+// file in docs/, at /docs/get-started.
+const GET_STARTED = 'get-started'
 
 // A distinctive fragment prefix, so a genuine in-page #anchor in the markdown
 // is never mistaken for a cross-reference.
@@ -85,6 +96,8 @@ function Reader({ name, byStem, titles, onNavigate }) {
         components={{
           // The page's h1 is "Docs"; a document's own title is the next level.
           h1: ({ children }) => <h2 className="md-h1">{children}</h2>,
+          // A long code block scrolls sideways: a keyboard must reach it.
+          pre: ({ node, ...props }) => <pre tabIndex={0} {...props} />,
           a: ({ href, children }) => {
             if (href?.startsWith('#' + WIKI_PREFIX)) {
               const to = href.slice(1 + WIKI_PREFIX.length)
@@ -108,9 +121,18 @@ function Reader({ name, byStem, titles, onNavigate }) {
   )
 }
 
+/** The page an address under /docs names: home, Get started, or "section--stem". */
+function addressed(pathname) {
+  const rest = pathname.replace(/^\/docs\/?/, '').replace(/\/+$/, '')
+  if (!rest) return null
+  if (rest === GET_STARTED) return GET_STARTED
+  return rest.replace('/', '--')
+}
+
 export default function Docs() {
   const { data: guides, isLoading } = useGuides()
-  const [active, setActive] = useState(null)
+  const { pathname } = useLocation()
+  const navigate = useNavigate()
   const narrow = useNarrow('(max-width: 820px)')
   // On a phone the sidebar is 31 links between the reader and the first word,
   // so it collapses to a disclosure that closes again after a tap.
@@ -129,6 +151,9 @@ export default function Docs() {
       if (!section) { if (stem === 'index') home = g.name; continue }
       if (tree.has(section)) tree.get(section).push({ ...g, stem })
     }
+    for (const [old, now] of Object.entries(MOVED)) {
+      if (byStem.has(now)) byStem.set(old, byStem.get(now))
+    }
     for (const [key, items] of tree) {
       const lead = FIRST[key]
       items.sort((a, b) =>
@@ -138,22 +163,21 @@ export default function Docs() {
     return { tree, byStem, titles, home }
   }, [guides])
 
-  const current = active || home
+  const asked = addressed(pathname)
+  const current = asked || home
+  const open = name => navigate(docPath(name))
   if (isLoading) return <div style={{ padding: 24 }}><Spinner size={16} /></div>
-  if (!guides?.length) return (
-    <>
-      <PageTitle>Docs</PageTitle>
-      <PageSub>No <code>docs/</code> directory found next to this project.</PageSub>
-    </>
-  )
+  // A retired page's address opens the page that replaced it.
+  const stem = asked && asked !== GET_STARTED ? asked.split('--').pop() : null
+  if (stem && MOVED[stem] && byStem.has(stem)) return <Navigate to={docPath(byStem.get(stem))} replace />
+  const known = !asked || asked === GET_STARTED || titles.has(asked)
 
   return (
     <>
       <PageTitle>Docs</PageTitle>
       <PageSub>
-        The handbook — readable here, versioned in <code>docs/</code>, and an
+        The handbook: readable here, versioned in <code>docs/</code>, and an
         Obsidian vault if you open the folder.
-        New here? <Link to="/getting-started">Get started</Link>.
       </PageSub>
 
       <div style={{
@@ -183,10 +207,12 @@ export default function Docs() {
           flex: '0 0 232px', position: 'sticky', top: 20,
           maxHeight: 'calc(100vh - 40px)', overflowY: 'auto', paddingBottom: 20,
         }}
-          onClick={e => { if (narrow && e.target.tagName === 'BUTTON') setNavOpen(false) }}>
+          onClick={e => { if (narrow && e.target.closest('a')) setNavOpen(false) }}>
+          <Link to={docPath(GET_STARTED)} style={navItemStyle(current === GET_STARTED)}
+                aria-current={current === GET_STARTED ? 'page' : undefined}>Get started</Link>
           {home && (
-            <button onClick={() => setActive(home)}
-              style={navItemStyle(current === home)}>Overview</button>
+            <Link to={docPath()} style={navItemStyle(current === home)}
+                  aria-current={current === home ? 'page' : undefined}>Overview</Link>
           )}
           {SECTIONS.map(s => {
             const items = tree.get(s.key) || []
@@ -201,29 +227,37 @@ export default function Docs() {
                   {s.blurb}
                 </div>
                 {items.map(g => (
-                  <button key={g.name} onClick={() => setActive(g.name)}
-                    style={navItemStyle(current === g.name)} title={clean(g.title)}>
+                  <Link key={g.name} to={docPath(g.name)} style={navItemStyle(current === g.name)}
+                        aria-current={current === g.name ? 'page' : undefined} title={clean(g.title)}>
                     {clean(g.title)}
-                  </button>
+                  </Link>
                 ))}
               </div>
             )
           })}
         </nav>
 
-        <div style={{
-          // Prose reads badly at full width; cap the measure the way the
-          // rendered artifacts do, and keep the column left-aligned.
-          flex: 1, minWidth: 0, maxWidth: '76ch', background: 'var(--card)',
-          border: '1px solid var(--border)', borderRadius: 10,
-          padding: narrow ? '16px 15px 22px' : '22px 30px',
-          overflowWrap: 'anywhere',
-        }}>
-          {current
-            ? <Reader name={current} byStem={byStem} titles={titles}
-                      onNavigate={setActive} />
-            : <div style={{ color: 'var(--muted)', fontSize: 13 }}>Pick a page.</div>}
-        </div>
+        {current === GET_STARTED ? (
+          // Get started carries its own cards and code blocks: no card around it.
+          <div style={{ flex: 1, minWidth: 0, maxWidth: 880 }}><GettingStarted /></div>
+        ) : (
+          <div style={{
+            // Prose reads badly at full width; cap the measure the way the
+            // rendered artifacts do, and keep the column left-aligned.
+            flex: 1, minWidth: 0, maxWidth: '76ch', background: 'var(--card)',
+            border: '1px solid var(--border)', borderRadius: 10,
+            padding: narrow ? '16px 15px 22px' : '22px 30px',
+            overflowWrap: 'anywhere',
+          }}>
+            {!guides?.length
+              ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>No <code>docs/</code> directory found next to this project.</div>
+              : !known
+                ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>There is no page at this address. Pick one from the list.</div>
+                : current
+                  ? <Reader name={current} byStem={byStem} titles={titles} onNavigate={open} />
+                  : <div style={{ color: 'var(--muted)', fontSize: 13 }}>Pick a page.</div>}
+          </div>
+        )}
       </div>
     </>
   )
@@ -231,7 +265,7 @@ export default function Docs() {
 
 function navItemStyle(isActive) {
   return {
-    display: 'block', width: '100%', textAlign: 'left',
+    display: 'block', width: '100%', textAlign: 'left', textDecoration: 'none', boxSizing: 'border-box',
     padding: '5px 9px', marginBottom: 1, borderRadius: 6,
     border: '1px solid transparent', cursor: 'pointer',
     fontFamily: 'inherit', fontSize: 12.5, lineHeight: 1.35,

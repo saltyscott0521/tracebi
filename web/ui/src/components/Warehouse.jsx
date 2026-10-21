@@ -7,7 +7,7 @@ import { Chip, ErrorDetail, Spinner } from './Shared'
 // the sink said about itself (never "verified") and it does not colour
 // anything else.
 
-const CONTRACT = {
+export const CONTRACT = {
   satisfied: { tone: '', label: 'Checks passed', title: 'The sink satisfied its contract, and the table is unchanged since.' },
   stale: { tone: 'warn', label: 'Changed since checked', title: 'The table changed after its checks last passed: they no longer describe this data.' },
   no_contract: { tone: 'none', label: 'No checks', title: 'No checks cover this table.' },
@@ -16,7 +16,7 @@ const CONTRACT = {
 const when = iso => String(iso).slice(0, 16).replace('T', ' ') + ' UTC'
 const num = v => (v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }))
 
-function ContractLine({ contract }) {
+export function ContractLine({ contract }) {
   if (contract.status === 'satisfied') {
     return (
       <p className="wb-meta">
@@ -36,7 +36,7 @@ function ContractLine({ contract }) {
   return <p className="wb-meta">No checks cover this table: its transform declares none for it.</p>
 }
 
-function Profile({ table }) {
+export function Profile({ table }) {
   if (!table.profile) return <p className="wb-meta">{table.note || table.error || 'No profile.'}</p>
   return (
     <div style={{ overflowX: 'auto' }}>

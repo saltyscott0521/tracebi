@@ -238,7 +238,7 @@ needed. See [[trace]].
 `GET /api/pipelines` lists each pipeline with its `layers` and last run of each,
 the `model`(s) it feeds, and, from its `pipelines/<name>.yaml`, the `transform`
 it runs (the phase ① script; `null` for a hand-built runner) and its
-`description`; a model's Data page (its line and Transform tab) and the Map (`/data?view=map`) show them.
+`description`; a model's Data page (its line and Transform tab) and the Map (`/data/map`) show them.
 
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
@@ -262,9 +262,12 @@ reports its build step rebuilt, only those it actually built).
 
 | Method | Path | Role |
 | --- | --- | --- |
-| `GET` | `/api/connectors` · `/api/connectors/{name}` | viewer |
+| `GET` | `/api/connectors` · `/api/connectors/{name}` | viewer. Each carries `read_by`: `{transforms: [{name, tables}], layers: [{pipeline, layer}], models}`, read from the transform files (`-- source:` lines, `load_source(...)`), the pipelines' layers and the models |
 | `GET` | `/api/connectors/{name}/source` | viewer |
+| `GET` | `/api/connectors/{name}/tables` | viewer. What the source holds, read now: `{connected: true, tables: [{name, columns: [{name, type}], rows}]}` (`rows` for a DuckDB file, and a SQL database's first 20 tables; else null), or `{connected: false, reason, variable?}` with status 200 when its `${VAR}` is unset or it refuses. The connection is resolved on this request only and released before it returns |
 | `GET` | `/api/connectors/{name}/warehouse` | viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source; the file is opened read-only and closed within the request |
+| `GET` | `/api/inputs` | viewer. The project's `inputs/` folder: `{folder, exists, files: [{path, size, modified, read_by: [transform]}]}`; `read_by` is found by reading each transform for a literal path into `inputs/` |
+| `GET` | `/api/warehouse` | viewer. `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}]}]}`, one per warehouse-kind connector, read-only |
 | `GET` | `/api/docs` · `/api/docs/{name}` | viewer |
 | `POST` | `/api/_dev/reload` | **admin**, and only with `TRACEBI_DEV_MODE` |
 | `POST` · `GET` · `DELETE` | `/mcp` | the agent gateway, only when `TRACEBI_MCP_TOKEN` is set. Bearer token, outside the app's Basic/proxy auth |
@@ -275,25 +278,30 @@ reports its build step rebuilt, only those it actually built).
 `GET /` serves the built React bundle. When it has not been built, the page
 says so and names the build command rather than 404ing.
 
-The app's addresses, four places in the sidebar (`web/ui/src/nav.js`):
+The app's addresses, five places in the sidebar (`web/ui/src/nav.js`):
 
 | Place | Addresses |
 | --- | --- |
 | Reports | `/` the library (`?model=<m>` narrows it); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on) |
 | Ask | `/ask` (`?model=<m>` picks the model) |
-| Data | `/data` the models (`?view=map` the Map); `/data/<m>` one model, then `/transform`, `/sources`, `/runs`; `/data/sources` every source |
+| Data | four tabs, the chain left to right: `/data` Models (a chain row per model), `/data/sources` Sources (every connection and the `inputs/` folder), `/data/warehouse` Warehouse (every table: who wrote it, who reads it, its checks), `/data/map` Map; `?model=<m>` narrows the last three. `/data/<m>` one model, then `/transform`, `/sources`, `/runs` |
 | Review | four tabs: `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
+| Docs | `/docs` the handbook; `/docs/get-started` first, then `/docs/<section>/<page>` per file of `docs/` |
 
 The sidebar shows the places a role uses (`placesFor` in `web/ui/src/nav.js`):
-everyone Reports and Ask, an analyst also Review, an admin also Data. With no
-sign-in `/api/me` names everyone admin, so all four show. An address above the
+everyone Reports, Ask and Docs, an analyst also Review, an admin also Data. With no
+sign-in `/api/me` names everyone admin, so all five show. An address above the
 role renders a plain page saying who it is for; the API enforces the roles.
 
 Older addresses redirect, keeping their query (`movedTo`): `/m/<m>/…` to the
 same thing under Data, Ask, History or the library; `/models` to `/data`;
 `/explore` to `/ask`; `/sources` and `/connectors` to `/data/sources`; `/map`
-to `/data?view=map`; `/drafts` and `/review#drafts` to `/review/drafts`; `/reports?r=<name>` to
-`/reports/<name>`.
+and `/data?view=map` to `/data/map`; `/handbook` (and `/handbook/<page>`) to `/docs`;
+`/getting-started` and `/workflow` to `/docs/get-started`; `/drafts` and `/review#drafts`
+to `/review/drafts`; `/reports?r=<name>` to `/reports/<name>`.
+
+FastAPI's interactive API reference is at `/api-docs` (ReDoc at `/api-redoc`):
+`/docs` is the app's Docs place.
 
 ---
 

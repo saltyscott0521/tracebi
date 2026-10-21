@@ -215,7 +215,7 @@ backlinks and the graph view, or just read it on GitHub.
 | Point the web app at my own data / restyle the UI | [docs/guides/web-customization.md](docs/guides/web-customization.md) — app modules, registry, theming, auth, deploy |
 | Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open **Ask** |
 | Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
-| Browse the API interactively | Start the server, then open `http://localhost:8000/docs` (Swagger UI) or `/redoc` |
+| Browse the API interactively | Start the server, then open `http://localhost:8000/api-docs` (Swagger UI) or `/api-redoc` |
 | Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
 | Let an AI agent query models and author reports | `pip install 'tracebi[mcp]'`, then register `tracebi mcp` with your agent — see [Agent gateway](#agent-gateway-mcp) |
 | Reproduce a rendered report's numbers | `tracebi verify output/report.manifest.json` — re-runs every recorded query and classifies drift |
@@ -662,23 +662,29 @@ nothing.
 
 A browser interface over your TraceBi registry — connectors, models, reports, and pipelines all in one place. Highlights:
 
-The sidebar has four places: **Reports** (the library, where the app opens:
+The sidebar has five places: **Reports** (the library, where the app opens:
 every report by folder, each with its verdict, built time and schedule,
-narrowed to a model by a chip), **Ask**, **Data** and **Review**. Older
-addresses (`/m/<model>/…`, `/models`, `/explore`, `/sources`, `/map`, `/drafts`,
-`/reports?r=<name>`) redirect into them. Review is four tabs, each at its own
+narrowed to a model by a chip), **Ask**, **Data**, **Review** and **Docs** (the
+handbook, Get started first, for everyone). Older addresses (`/m/<model>/…`,
+`/models`, `/explore`, `/sources`, `/map`, `/drafts`, `/handbook`,
+`/getting-started`, `/reports?r=<name>`) redirect into them. Review is four tabs, each at its own
 address: Attention (`/review`), Drafts (`/review/drafts`), History (`/runs`)
 and Verify (`/verify`). The sidebar shows what the role uses: everyone
-Reports and Ask, an analyst also Review, an admin also Data (with no sign-in,
-all four); an address above the role says who it is for.
+Reports, Ask and Docs, an analyst also Review, an admin also Data (with no
+sign-in, all five); an address above the role says who it is for.
 
 - **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
   chart, CSV download, and the *lineage graph of the exact query that ran*.
-- **Data** (`/data`) — the models, one row each (its shape, its reports' verdicts as counts,
-  when its data was last refreshed); **Map** draws them as one picture (`/data?view=map`).
-  A model's page (`/data/<model>`) leads with its line (Transform → Model → Reports, the
-  warehouse file and the measures between them), then four tabs: Model, Transform, Sources, Runs.
+- **Data** (`/data`) — the chain, as four tabs left to right. **Models**: a row per model,
+  its chain (sources → transform → tables → measures → reports, each a link), its reports'
+  verdicts as counts and when its data was last refreshed. **Sources** (`/data/sources`):
+  every connection and the `inputs/` folder, what each holds (read on request; a connection
+  whose `${VAR}` is unset says "Not connected here") and what reads it. **Warehouse**
+  (`/data/warehouse`): every table, who wrote it, which models read it, its checks and what
+  fed it. **Map** (`/data/map`). A model's page (`/data/<model>`) leads with its line
+  (Sources → Transform → Model → Reports, the warehouse file and the measures between them),
+  then four tabs: Model, Transform, Sources, Runs.
 - **Model** — a model's Data page, Model tab: table previews with column dtypes
   and full-table CSV export,
   plus an interactive ERD of its facts and dimensions.
@@ -703,10 +709,10 @@ all four); an address above the role says who it is for.
   and a list of steps, its runs and code, and the tables it produces. **Refresh data**, the
   tab's one primary action, runs the whole pipeline; it and the per-step run buttons are
   shown only to an admin.
-- **Sources** — a model's Data page, Sources tab: where its data is kept (a DuckDB file, a
-  CSV folder, a database); every source is at `/data/sources`.
+- **Sources** — a model's Data page, Sources tab: what it is made from (its warehouse, and
+  the connections and input files its transform reads); every source is at `/data/sources`.
 - **Runs** — a model's Data page, Runs tab: History narrowed to the model.
-- **Map** (`/data?view=map`) — every model as one picture: transform → warehouse → model → reports,
+- **Map** (`/data/map`) — every model as one picture: transform → warehouse → model → reports,
   drawn with the line's nodes and verdict chips. Open a model to see its measures and the
   reports that use them.
 - **Review** (`/review`) — what waits on a person, in the order they act on it: **Needs
@@ -739,8 +745,8 @@ python -m tracebi.web.run
 ```
 
 The API is self-documenting: once the server is running, open
-[`http://localhost:8000/docs`](http://localhost:8000/docs) for the Swagger UI
-or [`http://localhost:8000/redoc`](http://localhost:8000/redoc) for ReDoc —
+[`http://localhost:8000/api-docs`](http://localhost:8000/api-docs) for the Swagger UI
+or [`http://localhost:8000/api-redoc`](http://localhost:8000/api-redoc) for ReDoc (`/docs` is the app's handbook) —
 every endpoint, parameter, and response schema is listed there.
 
 `tracebi/web/demo_app/` is the bundled demo app — opt-in via

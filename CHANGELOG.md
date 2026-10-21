@@ -6,6 +6,42 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — navigation v3: Docs as a place, Data as the chain
+
+- **Docs is the fifth place** (`/docs`, every role, last in the sidebar): the
+  handbook with **Get started** as its first page (`/docs/get-started`), then
+  Concepts, Guides and Reference, each page at `/docs/<section>/<page>`. The
+  sidebar foot drops its Help link. `/handbook`, `/handbook/<page>`,
+  `/getting-started` and `/workflow` redirect, keeping the page; ⌘K lists every
+  handbook page by title. The retired `receipts` page stays a stub in `docs/`,
+  hidden from the reader, and its address opens `trace`. FastAPI's own API
+  reference moves from `/docs` to `/api-docs` (ReDoc `/api-redoc`).
+- **Data is the chain**, four tabs left to right: **Models** (`/data`, a chain
+  row per model: N sources → transform → N tables → N measures → N reports,
+  each a link), **Sources** (`/data/sources`), **Warehouse**
+  (`/data/warehouse`) and **Map** (`/data/map`; `/data?view=map` redirects).
+  `?model=<m>` narrows Sources, Warehouse and Map. `/data` no longer jumps to
+  the only model of a one-model project: the tabs need a landing.
+- **Sources** lists every connection and the project's `inputs/` folder (its
+  files, size, when each changed, and the transforms that name it). A
+  connection's detail gains **Tables**, read on request
+  (`GET /api/connectors/{name}/tables`: a `${VAR}` that is unset reads "Not
+  connected here · set TRACEBI_CRM_URL", status 200), and **Read by** replaces
+  Used by: the transforms whose `-- source:` lines (or `load_source` calls)
+  name its tables, the pipeline layers whose source it is, and the models
+  that read it (`read_by` on `GET /api/connectors[/{name}]`).
+- **Warehouse** (`GET /api/warehouse`): each warehouse on its tier, then every
+  table with rows, columns, who wrote it (the transform its certificate names,
+  and when), which models read it, its checks, and what fed it (the
+  certificate's `sources`: a connection's fingerprint, or the snapshot that
+  stood in). Columns and checks open per table.
+- A model's line gains stage ⓪ **Sources**: the connections and input files
+  its transform reads, linking to Sources narrowed to the model; the page's
+  lead names the tier when the warehouse is not a file.
+- `GET /api/inputs` lists `inputs/`. `PipelineRunner.layers()` names each
+  layer's `source` connector; `SQLConnector.disconnect()` releases its engine;
+  `ConnectionConfigError.variable` names an unset variable.
+
 ### Added — a Postgres source in the reference project
 
 - A SQL transform reads a table of a declared connection with a header line

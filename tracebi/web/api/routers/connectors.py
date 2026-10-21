@@ -5,19 +5,46 @@ from tracebi.web.api.source_view import source_payload
 router = APIRouter(prefix="/connectors", tags=["connectors"])
 
 
+def _runners() -> list:
+    return [(p, registry.get_pipeline(p)) for p in registry.list_pipeline_names()]
+
+
 @router.get("")
 def list_connectors():
-    """List all registered connectors."""
-    return registry.list_connectors()
+    """List all registered connectors, each with who reads it (``read_by``)."""
+    from tracebi.sources import read_by, transform_reads
+
+    reads, runners = transform_reads(), _runners()
+    return [{**c, "read_by": read_by(c["name"], c.get("used_by", []), reads, runners)}
+            for c in registry.list_connectors()]
 
 
 @router.get("/{name}")
 def get_connector(name: str):
-    """Get detail for a single connector."""
+    """Get detail for a single connector, with who reads it: ``read_by``
+    ``{transforms: [{name, tables}], layers: [{pipeline, layer}], models}``."""
+    from tracebi.sources import read_by, transform_reads
+
     c = registry.get_connector(name)
     if not c:
         raise HTTPException(status_code=404, detail=f"Connector '{name}' not found")
-    return c.describe()
+    used_by = next((e.get("used_by", []) for e in registry.list_connectors() if e["name"] == name), [])
+    return {**c.describe(), "read_by": read_by(name, used_by, transform_reads(), _runners())}
+
+
+@router.get("/{name}/tables")
+def connector_tables(name: str):
+    """What the source holds, read now: its tables with their columns (and a
+    row count where one is cheap). The connection is resolved on this request
+    only and released before it returns; a source that cannot be reached here
+    (its ``${VAR}`` unset, the database refusing) answers 200 with
+    ``{connected: false, reason}``, never an error."""
+    from tracebi.sources import connection_tables
+
+    c = registry.get_connector(name)
+    if not c:
+        raise HTTPException(status_code=404, detail=f"Connector '{name}' not found")
+    return connection_tables(c)
 
 
 @router.get("/{name}/source")

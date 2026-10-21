@@ -126,13 +126,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 assert not errors, "\n".join(errors)
 
             # / is the library: every report by folder, under the report's own
-            # name, with its verdict and schedule. Four places in the sidebar.
+            # name, with its verdict and schedule. Five places in the sidebar,
+            # Docs last; its foot keeps no Help link.
             page.goto(base + "/")
             page.get_by_role("heading", name="Reports", exact=True).wait_for()
             assert page.url.rstrip("/") == base, page.url
             sidebar = page.get_by_role("navigation", name="Main")
-            for place in ("Reports", "Ask", "Data", "Review"):
+            for place in ("Reports", "Ask", "Data", "Review", "Docs"):
                 sidebar.get_by_role("link", name=place, exact=True).wait_for()
+            expect(sidebar.get_by_role("link", name="Help")).to_have_count(0)
             expect(sidebar.get_by_role("link", name="Reports", exact=True)).to_have_attribute("aria-current", "page")
             lib_row = page.locator(f'[data-report="{_REPORT}"]')
             expect(lib_row).to_contain_text(_TITLE)
@@ -145,10 +147,41 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(lib_row).to_be_visible()
             fail_on_browser_errors()
 
-            # Data lists the models; picking one opens its page: the line as its
-            # header, three stations that are links, and tabs with addresses of
-            # their own. Model is the one open to start with.
+            # Data is the chain, as four tabs with addresses of their own. Models
+            # lists each model as a chain row whose segments link where they say.
             sidebar.get_by_role("link", name="Data", exact=True).click()
+            page.wait_for_url("**/data")
+            data_tabs = page.get_by_role("navigation", name="Data: what to show")
+            data_tabs.get_by_role("link", name="Models").wait_for()
+            assert data_tabs.get_by_role("link").all_inner_texts() == ["Models", "Sources", "Warehouse", "Map"]
+            expect(data_tabs.get_by_role("link", name="Models")).to_have_attribute("aria-current", "page")
+            chain = page.get_by_role("list", name="How Direct Lending Portfolio is made")
+            for text, href in [("sources", "/data/sources?model=portfolio_model"),
+                               ("holdings_transform", "/data/portfolio_model/transform"),
+                               ("tables", "/data/warehouse?model=portfolio_model"),
+                               ("measures", "/data/portfolio_model"),
+                               ("reports", "/?model=portfolio_model")]:
+                expect(chain.get_by_role("link", name=re.compile(text))).to_have_attribute("href", href)
+            # Sources: the crm connection is not reachable here, says so quietly,
+            # and names the transform that reads it.
+            data_tabs.get_by_role("link", name="Sources").click()
+            page.wait_for_url("**/data/sources")
+            page.locator('[data-source="crm"]').click()
+            page.wait_for_url("**/data/sources?source=crm")
+            expect(page.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()
+            expect(page.locator(".src-readby")).to_contain_text("holdings_transform (issuer_ratings)")
+            # Warehouse: who wrote each table, and what fed it.
+            data_tabs.get_by_role("link", name="Warehouse").click()
+            page.wait_for_url("**/data/warehouse")
+            rating = page.locator('#wh-warehouse [data-table="dim_rating"]')
+            expect(rating).to_contain_text("Written by holdings_transform")
+            expect(rating).to_contain_text("Fed from crm.issuer_ratings · snapshot inputs/issuer_ratings.csv")
+            fail_on_browser_errors()
+
+            # Picking a model opens its page: the line as its header, stations
+            # that are links, and tabs with addresses of their own. Model is the
+            # one open to start with.
+            data_tabs.get_by_role("link", name="Models").click()
             page.wait_for_url("**/data")
             page.get_by_role("link", name=re.compile(r"^Direct Lending Portfolio")).click()
             page.wait_for_url("**/data/portfolio_model")
@@ -158,8 +191,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 return line.get_by_role("link", name=re.compile(rf"^{name}\b"))
 
             expect(station("Model")).to_have_attribute("aria-current", "page")
-            # Its facts are read from what exists: the transform the pipeline
-            # runs, the warehouse file it writes, the model's tables and joins.
+            # Its facts are read from what exists: the sources the transform
+            # names, the transform the pipeline runs, the warehouse file it
+            # writes, the model's tables and joins.
+            expect(station("Sources")).to_contain_text("crm")
+            expect(station("Sources")).to_have_attribute("href", "/data/sources?model=portfolio_model")
             expect(station("Transform")).to_contain_text("holdings_transform")
             expect(line).to_contain_text("warehouse.duckdb")
             expect(station("Model")).to_contain_text(re.compile(r"\d+ tables · \d+ joins"))
@@ -190,10 +226,10 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # picking a measure says in words which reports ask for it. Models and
             # reports go by their labels.
             page.goto(base + "/data")
-            page.get_by_role("button", name="Map", exact=True).click()
-            page.wait_for_url("**/data?view=map")
+            page.get_by_role("navigation", name="Data: what to show").get_by_role("link", name="Map").click()
+            page.wait_for_url("**/data/map")
             page.get_by_role("button", name="Open Direct Lending Portfolio").click()
-            page.wait_for_url("**/data?view=map&model=portfolio_model")
+            page.wait_for_url("**/data/map?model=portfolio_model")
             page.get_by_role("button", name=re.compile(r"^measure: fv_share")).click()
             expect(page.get_by_label("Selection")).to_contain_text("Portfolio Concentration")
             fail_on_browser_errors()
@@ -218,8 +254,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 ("/models/portfolio_model?tab=reports", "/?model=portfolio_model"),
                 ("/explore", "/ask"),
                 ("/models", "/data"),
-                ("/map", "/data?view=map"),
-                ("/data/map?model=portfolio_model", "/data?model=portfolio_model&view=map"),
+                ("/map", "/data/map"),
+                ("/data?view=map", "/data/map"),
+                ("/data?view=map&model=portfolio_model", "/data/map?model=portfolio_model"),
                 ("/data/portfolio_model/reports", "/?model=portfolio_model"),
                 ("/data/portfolio_model/reports?r=portfolio_model/portfolio_book",
                  "/reports/portfolio_model/portfolio_book"),
@@ -230,7 +267,12 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 ("/reports", "/"),
                 ("/reports?r=portfolio_model/portfolio_book", "/reports/portfolio_model/portfolio_book"),
                 ("/?r=portfolio_model/portfolio_book", "/reports/portfolio_model/portfolio_book"),
-                ("/workflow", "/getting-started#phases"),
+                ("/workflow", "/docs/get-started#phases"),
+                ("/getting-started", "/docs/get-started"),
+                ("/getting-started#phases", "/docs/get-started#phases"),
+                ("/handbook", "/docs"),
+                ("/handbook/concepts/trace", "/docs/concepts/trace"),
+                ("/docs/concepts/receipts", "/docs/concepts/trace"),
             ]:
                 page.goto(base + old)
                 page.wait_for_url(base + new)
@@ -728,6 +770,16 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             sidebar.get_by_role("link", name="Ask", exact=True).wait_for()
             for place in ("Data", "Review"):
                 expect(sidebar.get_by_role("link", name=place, exact=True)).to_have_count(0)
+            # Docs is for everyone: the handbook, Get started first.
+            sidebar.get_by_role("link", name="Docs", exact=True).click()
+            viewer.wait_for_url("**/docs")
+            viewer.get_by_role("heading", name="Docs", exact=True).wait_for()
+            viewer.get_by_role("link", name="Get started", exact=True).click()
+            viewer.wait_for_url("**/docs/get-started")
+            viewer.get_by_role("heading", name="Get started", exact=True).wait_for()
+            for tab in ("/data/sources", "/data/warehouse", "/data/map"):
+                viewer.goto(base + tab)
+                viewer.get_by_role("heading", name="This part of the app is for admins.").wait_for()
             # ⌘K lists the same places: nothing inside Review or Data.
             viewer.keyboard.press("Control+k")
             viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("History")

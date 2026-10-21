@@ -1,14 +1,18 @@
+import { Fragment } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
-import { useAppStatus, useDesk, useModels, usePipelines, useReports } from '../api'
+import { useAppStatus, useConnectors, useDesk, useInputs, useModels, usePipelines, useReports } from '../api'
 import { PageHeader } from '../components/Scope'
 import { Flag, VerdictSummary, reportStates } from '../components/TheLine'
 import { ProjectFeedFold } from '../components/Workbench'
 import { ago } from '../components/map/states'
 import { pipelineFor } from '../components/map/project'
-import { dataPath, reportBelongsToModel } from '../nav'
+import { upstreamOf } from '../chain'
+import {
+  DATA_TABS, DATA_TAB_LABEL, dataPath, dataTabPath, libraryPath, mapPath, reportBelongsToModel,
+  sourcesPath, warehousePath,
+} from '../nav'
 import { Empty, SkeletonList } from '../components/Shared'
-import MapView from './Map'
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
@@ -24,74 +28,120 @@ function refreshed(pipeline) {
   return { text: `Refreshed ${ago(step.last_run)}` }
 }
 
-// One model, one row: what people call it (its identifier beside it), its
-// shape, whether its built reports still reproduce, and when its data was
-// last refreshed. The row opens the model's page.
-function ModelRow({ model, reports, pipeline, desk }) {
+/**
+ * Data's frame: its heading, then its four tabs in the order the data flows
+ * (Models, Sources, Warehouse, Map), each at its own address, around the tab
+ * you are on.
+ */
+export function DataFrame({ tab, children }) {
+  const { data: appStatus } = useAppStatus()
+  const dev = !!appStatus?.build_mode
+  return (
+    <div className="fade-in">
+      <PageHeader pageKey="data" />
+      <nav aria-label="Data: what to show">
+        <ul className="dtabs review__tabs">
+          {DATA_TABS.map(key => (
+            <li key={key}>
+              <Link to={dataTabPath(key)} aria-current={tab === key ? 'page' : undefined}>{DATA_TAB_LABEL[key]}</Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div className="stage">{children}</div>
+      {/* In dev mode (`tracebi dev`) the agent's exhibits and your notes to it
+          are here, folded, before any report exists. */}
+      {dev && <ProjectFeedFold />}
+    </div>
+  )
+}
+
+// One link of a chain row: a count or a name, and where it leads.
+function Seg({ to, children }) {
+  return <li><Link to={to} className="chain__seg">{children}</Link></li>
+}
+
+// One model, one row: what people call it (its identifier beside it), then
+// its chain left to right, each segment a link to where that part lives:
+// the sources its transform reads, the transform, the warehouse tables, the
+// model's measures, and its reports. On the right, whether its built reports
+// still reproduce, and when its data was last refreshed.
+function ChainRow({ model, reports, pipeline, desk, up }) {
   const mine = reports.filter(r => reportBelongsToModel(r, model.name))
   const when = refreshed(pipeline)
   const label = model.label || model.name
+  const nSources = up.connections.length + up.files.length
+  const segs = [
+    <Seg key="s" to={sourcesPath(model.name)}>
+      {plural(nSources, 'source')}
+    </Seg>,
+    up.transform
+      ? <Seg key="t" to={dataPath(model.name, 'transform')}>
+          <code>{up.transform}</code>
+        </Seg>
+      : <li key="t"><span className="chain__seg chain__seg--none">No transform</span></li>,
+    <Seg key="w" to={warehousePath(model.name)}>
+      {plural(model.tables.length, 'table')}
+    </Seg>,
+    <Seg key="m" to={dataPath(model.name)}>
+      {plural(model.measures.length, 'measure')}
+    </Seg>,
+    <Seg key="r" to={libraryPath(model.name)}>
+      {plural(mine.length, 'report')}
+    </Seg>,
+  ]
   return (
-    <li>
-      <Link to={dataPath(model.name)} className="dlist__row">
-        <span className="dlist__main">
-          <span className="dlist__name">
-            {label}{label !== model.name && <span className="dlist__id">{model.name}</span>}
-          </span>
-          <span className="dlist__facts">
-            {[plural(model.tables.length, 'table'), plural(model.measures.length, 'measure'), plural(mine.length, 'report')].join(' · ')}
-          </span>
-        </span>
+    <li className="chain" data-model={model.name}>
+      <div className="chain__head">
+        <Link to={dataPath(model.name)} className="chain__name">
+          {label}{label !== model.name && <span className="dlist__id">{model.name}</span>}
+        </Link>
         <span className="dlist__side">
           {desk && mine.length > 0 && <span className="dlist__verdicts"><VerdictSummary states={reportStates(mine, desk)} /></span>}
           <span className="dlist__when">{when.flag ? <Flag flag={when.flag} /> : when.text}</span>
         </span>
-      </Link>
+      </div>
+      <ol className="chain__line" aria-label={`How ${label} is made`}>
+        {segs.map((s, i) => (
+          <Fragment key={i}>
+            {i > 0 && <li className="chain__arrow" aria-hidden="true">→</li>}
+            {s}
+          </Fragment>
+        ))}
+      </ol>
     </li>
   )
 }
 
-/**
- * Data: the models, one row each, or (?view=map) every model as one picture.
- * With one model there is nothing to pick, so the list opens it.
- */
+/** Data's Models tab (/data): every model as a chain row. */
 export default function Data() {
-  const [params, setParams] = useSearchParams()
-  const map = params.get('view') === 'map'
+  const [params] = useSearchParams()
   const { data, isLoading } = useModels()
   const { data: reports } = useReports()
   const { data: pipelines } = usePipelines()
+  const { data: connectors } = useConnectors()
+  const { data: inputs } = useInputs()
   const { data: desk } = useDesk()
-  const { data: appStatus } = useAppStatus()
-  const dev = !!appStatus?.build_mode
+
+  // Old links: /data?view=map is the Map tab; /models?m=<model>, /data?model=<model> a model's page.
+  if (params.get('view') === 'map') return <Navigate to={mapPath(params.get('model') || '')} replace />
+  const legacy = params.get('m') || params.get('model')
+  if (legacy) return <Navigate to={dataPath(legacy)} replace />
 
   const models = data || []
-  // Old links: /models?m=<model>, /data?model=<model>.
-  const legacy = !map && (params.get('m') || params.get('model'))
-  if (legacy) return <Navigate to={dataPath(legacy)} replace />
-  if (!map && models.length === 1) return <Navigate to={dataPath(models[0].name)} replace />
-
   return (
-    <>
-      <PageHeader pageKey="data">
-        <div className="seg" role="group" aria-label="Show the models as">
-          <button type="button" aria-pressed={!map} onClick={() => setParams({}, { replace: true })}>List</button>
-          <button type="button" aria-pressed={map} onClick={() => setParams({ view: 'map' }, { replace: true })}>Map</button>
-        </div>
-      </PageHeader>
-      {map ? <MapView /> : isLoading ? <SkeletonList /> : models.length === 0 ? (
+    <DataFrame tab="models">
+      {isLoading ? <SkeletonList /> : models.length === 0 ? (
         <Empty icon="⬡" message="No models yet. Create one with tracebi new-model, in models/." />
       ) : (
-        <ul className="dlist">
+        <ul className="dlist chains">
           {[...models].sort((a, b) => (a.label || a.name).localeCompare(b.label || b.name)).map(m => (
-            <ModelRow key={m.name} model={m} reports={reports || []} desk={desk}
-                      pipeline={pipelineFor(pipelines || [], m.name)} />
+            <ChainRow key={m.name} model={m} reports={reports || []} desk={desk}
+                      pipeline={pipelineFor(pipelines || [], m.name)}
+                      up={upstreamOf({ model: m.name, pipelines, connectors, inputs })} />
           ))}
         </ul>
       )}
-      {/* In dev mode (`tracebi dev`) the agent's exhibits and your notes to it
-          are here, folded, before any report exists. */}
-      {dev && <ProjectFeedFold />}
-    </>
+    </DataFrame>
   )
 }

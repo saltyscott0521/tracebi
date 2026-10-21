@@ -123,7 +123,9 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
     committed snapshot stands in, the certificate and every report trace say
     the CRM was not reached, and verify --contracts re-reads the snapshot.
     The app lists the connection without resolving it, and the model's
-    Transform tab shows the -- source: line it ran."""
+    Transform tab shows the -- source: line it ran. Data's Sources says the
+    CRM is not connected here (200, no traceback) and which transform reads
+    it; its Warehouse names who wrote dim_rating and what fed it."""
     from tests.e2e.conftest import release_warehouses, serve_app
     from tracebi.web import discovery
 
@@ -140,7 +142,7 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
     assert code == 0, out
     assert re.search(r"✓ unchanged\s+holdings: crm\.issuer_ratings \(the CSV snapshot", out), out
 
-    c = serve_app(monkeypatch)
+    c = serve_app(monkeypatch, models=True)
     try:
         # After serve_app: importing the app registers what it finds, so the
         # Sources list is read from a scan of this project's own folder.
@@ -150,6 +152,36 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         assert crm["url"] == "${TRACEBI_CRM_URL}" and crm["declared_in"] == "connections/crm.yaml"
         shown = c.get("/api/pipelines/portfolio_model/source").text
         assert "-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv" in shown
+
+        # Who reads the CRM, from the transform files: the SQL transform and
+        # its pandas twin, each naming the one table.
+        read_by = c.get("/api/connectors/crm").json()["read_by"]
+        assert {"name": "holdings_transform", "tables": ["issuer_ratings"]} in read_by["transforms"]
+        assert read_by["models"] == []
+        tables = c.get("/api/connectors/crm/tables")
+        assert tables.status_code == 200
+        assert tables.json() == {"connected": False, "variable": "TRACEBI_CRM_URL",
+                                 "reason": "TRACEBI_CRM_URL is not set"}
+        # The inputs/ folder: the snapshot is read by the same transform.
+        files = {f["path"]: f for f in c.get("/api/inputs").json()["files"]}
+        assert "holdings_transform" in files["inputs/issuer_ratings.csv"]["read_by"]
+        assert files["inputs/holdings.csv"]["size"] > 0
+
+        # The warehouse page: one section per warehouse, and dim_rating says
+        # who wrote it, who reads it, its checks and that the snapshot fed it.
+        whs = {w["name"]: w for w in c.get("/api/warehouse").json()["warehouses"]}
+        assert set(whs) == {"warehouse", "housing_warehouse"}
+        assert whs["warehouse"]["tier"] == "file" and whs["warehouse"]["engine_version"]
+        rating = next(t for t in whs["warehouse"]["tables"] if t["name"] == "dim_rating")
+        assert rating["written_by"]["transform"] == "holdings_transform"
+        assert rating["written_by"]["contract"] == "holdings"
+        assert rating["read_by"] == ["portfolio_model"]
+        assert rating["contract"]["status"] == "satisfied"
+        [fed] = rating["fed_from"]
+        assert fed["ref"] == "crm.issuer_ratings" and fed["snapshot"] == "inputs/issuer_ratings.csv"
+        # A Python transform's contract is matched to its file by the name it declares.
+        housing = whs["housing_warehouse"]["tables"]
+        assert {t["written_by"]["transform"] for t in housing} == {"affordability_transform"}
     finally:
         release_warehouses()
 
@@ -208,6 +240,24 @@ def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
     code, out = run_cli("verify", str(manifest), "--contracts")
     assert code == 0, out
     assert re.search(r"· not checked\s+holdings: crm\.issuer_ratings — .*TRACEBI_CRM_URL", out), out
+
+    # Data's Sources lists what the CRM holds, read on request through the
+    # connection: issuer_ratings with its columns and a row count.
+    from tests.e2e.conftest import release_warehouses, serve_app
+    from tracebi.web import discovery
+
+    monkeypatch.setenv("TRACEBI_CRM_URL", postgres_url)
+    c = serve_app(monkeypatch)
+    try:
+        monkeypatch.setattr(discovery, "_live_connections", {})
+        discovery.register_connections("connections")
+        listed = c.get("/api/connectors/crm/tables").json()
+        assert listed["connected"] is True, listed
+        [ratings] = [t for t in listed["tables"] if t["name"] == "issuer_ratings"]
+        assert {"issuer", "rating"} <= {col["name"] for col in ratings["columns"]}
+        assert ratings["rows"] == 12
+    finally:
+        release_warehouses()
 
 
 def test_the_working_preview_formats_numbers_like_the_build(built):

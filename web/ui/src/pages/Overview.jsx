@@ -15,7 +15,10 @@ import { dataPath } from '../nav'
 import { Card, useToast } from '../components/Shared'
 
 // What changed on the line when a run ends: every station may read differently.
-const AFTER_A_RUN = ['pipelines', 'history', 'warehouse', 'desk', 'reports', 'models', 'model']
+const AFTER_A_RUN = ['pipelines', 'history', 'warehouse', 'warehouses', 'desk', 'reports', 'models', 'model']
+
+// A warehouse that is not a file says which tier it is on (tracebi.yaml).
+const TIER_WORDS = { object: 'object storage', remote: 'a remote database' }
 
 // The failing check, open: what the checks said when the tables were written,
 // in their own words. A failure that was not a check shows what the run printed.
@@ -117,7 +120,8 @@ function ModelPage({ model, tab }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transform.running])
 
-  const reads = (detail?.connector_details || []).map(c => c.storage?.where).filter(Boolean)
+  const reads = (detail?.connector_details || []).filter(c => c.storage?.where)
+    .map(c => ({ where: c.storage.where, tier: TIER_WORDS[c.tier] }))
 
   return (
     <div className="overview">
@@ -128,7 +132,9 @@ function ModelPage({ model, tab }) {
           <p className="overview__sub">
             {detail.source_file && <>Defined in <code>{detail.source_file}</code></>}
             {detail.source_file && reads.length > 0 && ' · '}
-            {reads.length > 0 && <>reads {reads.map((w, i) => <span key={w}>{i > 0 && ', '}<code>{w}</code></span>)}</>}
+            {reads.length > 0 && <>reads {reads.map((r, i) => (
+              <span key={r.where}>{i > 0 && ', '}<code>{r.where}</code>{r.tier && ` (on ${r.tier})`}</span>
+            ))}</>}
           </p>
         )}
       </header>

@@ -530,7 +530,7 @@ needed. See <a href="../concepts/trace.html">The trace</a>.</p>
 <p><code>GET /api/pipelines</code> lists each pipeline with its <code>layers</code> and last run of each,
 the <code>model</code>(s) it feeds, and, from its <code>pipelines/&lt;name&gt;.yaml</code>, the <code>transform</code>
 it runs (the phase ① script; <code>null</code> for a hand-built runner) and its
-<code>description</code>; a model's Data page (its line and Transform tab) and the Map (<code>/data?view=map</code>) show them.</p>
+<code>description</code>; a model's Data page (its line and Transform tab) and the Map (<code>/data/map</code>) show them.</p>
 <p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
 in the role model is by side effect, not by resource.</p>
 <p><code>POST …/runs</code> is what <strong>Refresh data</strong> (the primary action on a model's Transform tab, shown only to an admin) and
@@ -559,7 +559,7 @@ reports its build step rebuilt, only those it actually built).</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/connectors</code> · <code>/api/connectors/{name}</code></td>
-<td>viewer</td>
+<td>viewer. Each carries <code>read_by</code>: <code>{transforms: [{name, tables}], layers: [{pipeline, layer}], models}</code>, read from the transform files (<code>-- source:</code> lines, <code>load_source(...)</code>), the pipelines' layers and the models</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -568,8 +568,23 @@ reports its build step rebuilt, only those it actually built).</p>
 </tr>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/connectors/{name}/tables</code></td>
+<td>viewer. What the source holds, read now: <code>{connected: true, tables: [{name, columns: [{name, type}], rows}]}</code> (<code>rows</code> for a DuckDB file, and a SQL database's first 20 tables; else null), or <code>{connected: false, reason, variable?}</code> with status 200 when its <code>${VAR}</code> is unset or it refuses. The connection is resolved on this request only and released before it returns</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/connectors/{name}/warehouse</code></td>
 <td>viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source; the file is opened read-only and closed within the request</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inputs</code></td>
+<td>viewer. The project's <code>inputs/</code> folder: <code>{folder, exists, files: [{path, size, modified, read_by: [transform]}]}</code>; <code>read_by</code> is found by reading each transform for a literal path into <code>inputs/</code></td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/warehouse</code></td>
+<td>viewer. <code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}]}]}</code>, one per warehouse-kind connector, read-only</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -596,7 +611,7 @@ reports its build step rebuilt, only those it actually built).</p>
 <h2 id="the-spa">The SPA</h2>
 <p><code>GET /</code> serves the built React bundle. When it has not been built, the page
 says so and names the build command rather than 404ing.</p>
-<p>The app's addresses, four places in the sidebar (<code>web/ui/src/nav.js</code>):</p>
+<p>The app's addresses, five places in the sidebar (<code>web/ui/src/nav.js</code>):</p>
 <table>
 <thead>
 <tr>
@@ -615,23 +630,30 @@ says so and names the build command rather than 404ing.</p>
 </tr>
 <tr>
 <td>Data</td>
-<td><code>/data</code> the models (<code>?view=map</code> the Map); <code>/data/&lt;m&gt;</code> one model, then <code>/transform</code>, <code>/sources</code>, <code>/runs</code>; <code>/data/sources</code> every source</td>
+<td>four tabs, the chain left to right: <code>/data</code> Models (a chain row per model), <code>/data/sources</code> Sources (every connection and the <code>inputs/</code> folder), <code>/data/warehouse</code> Warehouse (every table: who wrote it, who reads it, its checks), <code>/data/map</code> Map; <code>?model=&lt;m&gt;</code> narrows the last three. <code>/data/&lt;m&gt;</code> one model, then <code>/transform</code>, <code>/sources</code>, <code>/runs</code></td>
 </tr>
 <tr>
 <td>Review</td>
 <td>four tabs: <code>/review</code> Attention, <code>/review/drafts</code> Drafts, <code>/runs</code> History, <code>/verify</code> Verify; <code>/drafts/&lt;owner&gt;/&lt;kind&gt;/&lt;path&gt;</code> one draft</td>
 </tr>
+<tr>
+<td>Docs</td>
+<td><code>/docs</code> the handbook; <code>/docs/get-started</code> first, then <code>/docs/&lt;section&gt;/&lt;page&gt;</code> per file of <code>docs/</code></td>
+</tr>
 </tbody>
 </table>
 <p>The sidebar shows the places a role uses (<code>placesFor</code> in <code>web/ui/src/nav.js</code>):
-everyone Reports and Ask, an analyst also Review, an admin also Data. With no
-sign-in <code>/api/me</code> names everyone admin, so all four show. An address above the
+everyone Reports, Ask and Docs, an analyst also Review, an admin also Data. With no
+sign-in <code>/api/me</code> names everyone admin, so all five show. An address above the
 role renders a plain page saying who it is for; the API enforces the roles.</p>
 <p>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
 same thing under Data, Ask, History or the library; <code>/models</code> to <code>/data</code>;
 <code>/explore</code> to <code>/ask</code>; <code>/sources</code> and <code>/connectors</code> to <code>/data/sources</code>; <code>/map</code>
-to <code>/data?view=map</code>; <code>/drafts</code> and <code>/review#drafts</code> to <code>/review/drafts</code>; <code>/reports?r=&lt;name&gt;</code> to
-<code>/reports/&lt;name&gt;</code>.</p>
+and <code>/data?view=map</code> to <code>/data/map</code>; <code>/handbook</code> (and <code>/handbook/&lt;page&gt;</code>) to <code>/docs</code>;
+<code>/getting-started</code> and <code>/workflow</code> to <code>/docs/get-started</code>; <code>/drafts</code> and <code>/review#drafts</code>
+to <code>/review/drafts</code>; <code>/reports?r=&lt;name&gt;</code> to <code>/reports/&lt;name&gt;</code>.</p>
+<p>FastAPI's interactive API reference is at <code>/api-docs</code> (ReDoc at <code>/api-redoc</code>):
+<code>/docs</code> is the app's Docs place.</p>
 <hr>
 <h2 id="error-shape">Error shape</h2>
 <p>A failed run returns a structured <code>detail</code>:</p>

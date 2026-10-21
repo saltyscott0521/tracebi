@@ -1,0 +1,312 @@
+"""What feeds the warehouse, and what the warehouse holds: the app's Sources
+and Warehouse pages, read from the project's own files.
+
+Upstream of the sink nothing is traced (phase ① is unconstrained), so who
+reads what is read from the transform files as text, the same way a person
+skimming them would:
+
+- a SQL transform's ``-- source: <connection>.<table>`` header lines, through
+  the runner's own parser (:func:`tracebi.transforms.source_directives`);
+- ``load_source("<connection>.<table>")`` in a Python or notebook transform;
+- a literal path into ``inputs/``: ``'inputs/holdings.csv'`` (SQL's
+  ``read_csv``, a fallback, a docstring), or ``"inputs", "holdings.csv"`` as
+  ``os.path.join`` and ``pathlib`` spell it.
+
+The limits are those of reading text: a path built from a variable, a glob or
+a folder other than ``inputs/`` is not seen, and a file the transform names
+only in a comment is counted as read. The answer is a pointer for a person,
+never a claim the trust machinery leans on.
+
+Downstream, the warehouse's tables, who wrote each (the certificate the sink
+contract recorded) and which models read them, come from what exists: the
+warehouse itself, its certificate, and the registered models.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
+
+#: SQL row counts on a connection's Tables listing: one ``count(*)`` per table,
+#: for this many tables at most; past it, rows are left unknown.
+ROW_COUNT_CAP = 20
+
+_INPUT_PATH = re.compile(r"\binputs/([\w.\-/]*\w\.\w+)")
+_INPUT_JOIN = re.compile(r"""["']inputs["']\s*[,/]\s*["']([^"'\s]+)["']""")
+_LOAD_SOURCE = re.compile(r"""load_source\(\s*["']([A-Za-z_]\w*)\.([A-Za-z_]\w*)["']""")
+_CREDENTIAL = re.compile(r"://([^:/@\s]+):[^@\s]+@")
+_CONTRACT_NAME = re.compile(r"""\bcontract\(\s*["']([^"'\s]+)["']""")
+
+
+def inputs_dir() -> Path:
+    """The project's ``inputs/`` folder: beside ``transforms/``."""
+    from tracebi.transforms import transforms_dir
+
+    return transforms_dir().parent / "inputs"
+
+
+def _input_files() -> dict[str, Path]:
+    """Every file under ``inputs/``, by its project-relative path
+    (``inputs/holdings.csv``); hidden files and caches left out."""
+    root = inputs_dir()
+    found: dict[str, Path] = {}
+    if not root.is_dir():
+        return found
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith((".", "__")))
+        for name in sorted(filenames):
+            if name.startswith("."):
+                continue
+            path = Path(dirpath) / name
+            found["inputs/" + path.relative_to(root).as_posix()] = path
+    return found
+
+
+def transform_reads() -> dict[str, dict]:
+    """``{transform: {"connections": [{connection, table}], "inputs": [path]}}``
+    for every transform file, read as text (see the module's note on what
+    that can and cannot see). An input is listed only when the file exists."""
+    from tracebi.transforms import FORMS, TransformError, source_directives, transforms_dir
+
+    tdir = transforms_dir()
+    if not tdir.is_dir():
+        return {}
+    existing = _input_files()
+    out: dict[str, dict] = {}
+    for path in sorted(tdir.iterdir()):
+        if path.suffix not in FORMS or not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        connections: list[dict] = []
+        if path.suffix == ".sql":
+            try:
+                connections = [{"connection": d["connection"], "table": d["table"]}
+                               for d in source_directives(text, path.name)]
+            except TransformError:
+                connections = []   # a header the runner refuses reads nothing
+        for m in _LOAD_SOURCE.finditer(text):
+            ref = {"connection": m.group(1), "table": m.group(2)}
+            if ref not in connections:
+                connections.append(ref)
+        named = {"inputs/" + p for p in _INPUT_PATH.findall(text)}
+        named |= {"inputs/" + p for p in _INPUT_JOIN.findall(text)}
+        out[path.stem] = {"connections": connections,
+                          "inputs": sorted(p for p in named if p in existing)}
+    return out
+
+
+def read_by(name: str, used_by: list[str], reads: dict[str, dict], runners: list) -> dict:
+    """Who reads connector *name*: the transforms whose files name one of its
+    tables (with the tables), the medallion layers whose source it is, and the
+    models that read it directly (*used_by*). *runners* are ``(pipeline,
+    runner)`` pairs."""
+    transforms = []
+    for transform, r in reads.items():
+        tables = [c["table"] for c in r["connections"] if c["connection"] == name]
+        if tables:
+            transforms.append({"name": transform, "tables": tables})
+    layers = [{"pipeline": pipeline, "layer": layer["name"]}
+              for pipeline, runner in runners
+              for layer in (runner.layers() if hasattr(runner, "layers") else [])
+              if layer.get("source") == name]
+    return {"transforms": transforms, "layers": layers, "models": list(used_by)}
+
+
+def inputs_listing() -> dict:
+    """The ``inputs/`` folder as the Sources page lists it: each file with its
+    size, when it last changed, and the transforms that name it."""
+    reads = transform_reads()
+    files = []
+    for shown, path in _input_files().items():
+        stat = path.stat()
+        files.append({
+            "path": shown,
+            "size": stat.st_size,
+            "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+            "read_by": [t for t, r in reads.items() if shown in r["inputs"]],
+        })
+    return {"folder": "inputs", "exists": inputs_dir().is_dir(), "files": files}
+
+
+def _reason(exc: BaseException) -> str:
+    """One line a page can show for a source it could not reach: the first
+    line of the error, any credential in a URL masked."""
+    first = (str(exc).strip().splitlines() or [type(exc).__name__])[0]
+    return _CREDENTIAL.sub(r"://\1:***@", first)[:300]
+
+
+def connection_tables(connector) -> dict:
+    """What *connector* holds, read now: ``{connected: true, tables: [{name,
+    columns: [{name, type}], rows}]}``, or ``{connected: false, reason,
+    variable?}`` when it cannot be reached here (its ``${VAR}`` unset, the
+    database refusing). Read-only and from metadata; a DuckDB file is opened
+    read-only and closed, and a database connection is released before this
+    returns, so nothing is held for the next request. ``rows`` is a count
+    where one is cheap (a DuckDB file; the first :data:`ROW_COUNT_CAP` tables
+    of a SQL database), else None."""
+    from tracebi.connections import ConnectionConfigError
+    from tracebi.connectors.sql_connector import SQLConnector
+
+    d = connector.describe()
+    try:
+        if d.get("type") == "DuckDBConnector" and d.get("database") not in (None, ":memory:"):
+            from tracebi.warehouse import as_warehouse
+            from tracebi.workbench import _warehouse_tables
+
+            wh = getattr(connector, "warehouse", None)
+            target = wh.sink if wh is not None else str(d["database"])
+            if not as_warehouse(target).exists():
+                return {"connected": False, "reason": "Nothing is built here yet."}
+            return {"connected": True, "tables": [
+                {"name": t["name"], "rows": t["rows"],
+                 "columns": [{"name": c, "type": ty} for c, ty in t["columns"].items()]}
+                for t in _warehouse_tables(target, profile=False)]}
+        names = connector.list_tables()
+        if names is None:
+            return {"connected": True, "tables": None,
+                    "reason": "This kind of source cannot list its tables."}
+        tables = []
+        for i, table in enumerate(sorted(names)):
+            cols = connector.column_schema(table) or []
+            rows = None
+            if isinstance(connector, SQLConnector) and i < ROW_COUNT_CAP:
+                quoted = connector._quote_ident(table)
+                rows = int(connector.load(f"SELECT count(*) AS n FROM {quoted}").iloc[0, 0])
+            tables.append({"name": table, "rows": rows,
+                           "columns": [{"name": c["name"], "type": c["dtype"]} for c in cols]})
+        return {"connected": True, "tables": tables}
+    except ConnectionConfigError as exc:
+        if exc.variable:
+            return {"connected": False, "variable": exc.variable,
+                    "reason": f"{exc.variable} is not set"}
+        return {"connected": False, "reason": _reason(exc)}
+    except Exception as exc:  # noqa: BLE001 — an unreachable source is an answer
+        return {"connected": False, "reason": _reason(exc)}
+    finally:
+        if isinstance(connector, SQLConnector):
+            connector.disconnect()
+
+
+def _contract_owners() -> dict[str, str]:
+    """Certificate record name → the transform file that writes it: the
+    ``name`` in a ``<transform>.contract.yaml``, the first argument of a
+    ``with contract("...")`` block in a Python transform, and each
+    transform's own file name. A contract file wins over a Python block of
+    the same name (the pandas twin of a SQL transform declares the same
+    record; the SQL one is what its pipeline runs)."""
+    from tracebi.contracts import read_contract_file
+    from tracebi.transforms import FORMS, contract_file, transforms_dir
+
+    owners: dict[str, str] = {}
+    tdir = transforms_dir()
+    if not tdir.is_dir():
+        return owners
+    files = [p for p in sorted(tdir.iterdir()) if p.suffix in FORMS and p.is_file()]
+    for path in files:
+        owners.setdefault(path.stem, path.stem)
+    for path in files:
+        if path.suffix == ".sql":
+            continue
+        try:
+            for name in _CONTRACT_NAME.findall(path.read_text(encoding="utf-8")):
+                owners.setdefault(name, path.stem)
+        except (OSError, UnicodeDecodeError):
+            continue
+    for path in files:
+        beside = contract_file(path)
+        if beside is None:
+            continue
+        try:
+            owners[read_contract_file(beside, path.stem)["name"]] = path.stem
+        except Exception:  # noqa: BLE001 — a broken contract file names nothing
+            continue
+    return owners
+
+
+def is_warehouse(entry: dict) -> bool:
+    """A connector-list entry that is a warehouse: DuckDB on a file, or the
+    project's warehouse on any tier."""
+    return entry.get("type") == "DuckDBConnector" and entry.get("database") not in (None, ":memory:")
+
+
+def warehouses(registry) -> list[dict]:
+    """Every warehouse the project's connectors name, each with its tier,
+    where it is, its size, the DuckDB version its certificate records, the
+    models that read it, and every table in it: rows, column count, who wrote
+    it (the transform named by the certificate, and when), which models read
+    it, its sink-contract status and the external sources it was fed from.
+    Read-only; per-column profiles are left to the connector's own
+    ``/warehouse`` view, which the page asks for when a table is opened."""
+    from tracebi.contracts import read_contracts
+    from tracebi.workbench import warehouse_view
+
+    owners = _contract_owners()
+    tables_of: dict[str, dict[str, list[str]]] = {}   # connector → table → models
+    for info in registry.list_models():
+        model = registry.get_model(info["name"])
+        if model is None:
+            continue
+        for t in model.info().get("tables", []):
+            readers = tables_of.setdefault(t["connector"], {}).setdefault(t["source"], [])
+            if model.name not in readers:
+                readers.append(model.name)
+
+    out = []
+    for entry in registry.list_connectors():
+        if not is_warehouse(entry):
+            continue
+        connector = registry.get_connector(entry["name"])
+        wh = getattr(connector, "warehouse", None)
+        target = wh.sink if wh is not None else str(entry["database"])
+        view = warehouse_view(target, profile=False)
+        certs = ((read_contracts(target) or {}).get("transforms") or {}) if view["exists"] else {}
+        latest = max(certs.values(), key=lambda r: r.get("checked_at") or "", default={})
+        storage = entry.get("storage") or {}
+        readers = tables_of.get(entry["name"], {})
+        section: dict[str, Any] = {
+            "name": entry["name"],
+            "tier": getattr(connector, "tier", "file"),
+            "where": storage.get("where"),
+            "exists": view["exists"],
+            "size": storage.get("size"),
+            "engine_version": latest.get("engine_version"),
+            "read_by": entry.get("used_by", []),
+            "tables": [_table_entry(t, readers, owners) for t in view["tables"]],
+        }
+        if view.get("error"):
+            section["error"] = view["error"]
+        out.append(section)
+    return out
+
+
+def _table_entry(t: dict, readers: dict[str, list[str]], owners: dict[str, str]) -> dict:
+    contract = t.get("contract") or {"status": "no_contract"}
+    record = contract.get("transform")
+    written_by: Optional[dict] = None
+    if record:
+        written_by = {"transform": owners.get(record), "contract": record,
+                      "at": contract.get("checked_at")}
+    fed_from = []
+    for ref, src in (contract.get("sources") or {}).items():
+        fed_from.append({
+            "ref": ref, "connection": src.get("connection"), "table": src.get("table"),
+            "fingerprint": src.get("fingerprint"), "rows": src.get("rows"),
+            "loaded_at": src.get("loaded_at"),
+            # The committed snapshot stood in for the connection on that run.
+            "snapshot": src.get("fallback") if src.get("source_fallback") else None,
+        })
+    return {
+        "name": t["name"],
+        "rows": t["rows"],
+        "columns": len(t["columns"]),
+        "written_by": written_by,
+        "read_by": readers.get(t["name"], []),
+        "contract": {k: contract.get(k) for k in ("status", "checks", "checked_at") if k in contract},
+        "fed_from": fed_from,
+    }
