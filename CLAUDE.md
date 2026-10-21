@@ -225,6 +225,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   transforms.py        # phase ① transforms: find one, its form (sql/python/notebook), run it + its .contract.yaml
   contracts.py         # sink contracts: closed checks + certificate + manifest join
   project_config.py    # tracebi.yaml reader (one reader, cached per path): engine limits + the warehouse block
+  sources.py           # what feeds the warehouse (read from transform text) and what it holds: the app's Sources and Warehouse pages
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
   mcp_server.py        # agent gateway over MCP — 22 tools + 3 prompts (author_report, answer_question, address_pins)
@@ -788,6 +789,10 @@ POST /api/spec/validate                              → check a spec without ex
 POST /api/spec/render                                → build a spec and render HTML + manifest
 GET  /api/connectors
 GET  /api/connectors/{name}
+GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}
+GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows}]} or {connected: false, reason, variable?} (200)
+GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms)
+GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with rows, columns, written_by, read_by, contract, fed_from
 GET  /api/models
 GET  /api/models/{name}                              → tables, relationships, facts (each with its runnable_measures), dimensions
 GET  /api/models/{name}/tables/{t}/preview           → first N rows + dtypes + total_rows
@@ -836,11 +841,15 @@ GET  /api/code-requests[/{id}]                       → the caller's own (admin
 POST /api/code-requests/{id}/approve|reject          → copy the files in (history under .tracebi/history/code/) and run the pipelines they touch once / reject with a {note} (admin)
 POST /api/library/sync                               → git webhook: pull each library checkout, rescan; outside sign-in, needs TRACEBI_LIBRARY_SYNC_SECRET (X-Hub-Signature-256 or X-TraceBi-Sync-Token); 404 without it
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
-GET  /                                               → React SPA (tracebi/web/ui/dist): four places, Reports (/, the
-                                                       library) · Ask (/ask) · Data (/data) · Review (/review), plus
-                                                       History (/runs) and Verify (/verify); older addresses redirect
-                                                       (movedTo in web/ui/src/nav.js). When it has not been built, a
-                                                       page naming the build command
+GET  /                                               → React SPA (tracebi/web/ui/dist): five places, Reports (/, the
+                                                       library) · Ask (/ask) · Data (/data: four tabs, Models /data ·
+                                                       Sources /data/sources · Warehouse /data/warehouse · Map /data/map;
+                                                       ?model=<m> narrows the last three) · Review (/review) · Docs
+                                                       (/docs: the handbook, /docs/get-started first), plus History
+                                                       (/runs) and Verify (/verify); older addresses redirect (movedTo in
+                                                       web/ui/src/nav.js; /handbook, /getting-started, /data?view=map
+                                                       too). FastAPI's API reference is /api-docs. When it has not been
+                                                       built, a page naming the build command
 ```
 
 Failed report/query runs return a structured ``detail``:
@@ -879,7 +888,7 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Change the web app's pages | `web/ui/src/nav.js` (the four places; `movedTo` for old addresses) + `web/ui/src/App.jsx` |
+| Change the web app's pages | `web/ui/src/nav.js` (the five places; `DATA_TABS`; `movedTo` for old addresses) + `web/ui/src/App.jsx` |
 | Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
