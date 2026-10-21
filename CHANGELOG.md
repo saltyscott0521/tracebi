@@ -6,6 +6,13 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Fixed
+
+- **DuckDB is pinned below 2.0** (`duckdb>=1.5.5,<2` in every extra). DuckDB
+  2.0.0 refuses `register()` on a connection with an unfinished `execute()`
+  result, which the query engine's table registration relies on; the pin keeps
+  installs on 1.5 until the engine is ported.
+
 ### Changed — navigation v3: Docs as a place, Data as the chain
 
 - **Docs is the fifth place** (`/docs`, every role, last in the sidebar): the

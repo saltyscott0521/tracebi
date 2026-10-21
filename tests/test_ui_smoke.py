@@ -183,7 +183,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # one open to start with.
             data_tabs.get_by_role("link", name="Models").click()
             page.wait_for_url("**/data")
-            page.get_by_role("link", name=re.compile(r"^Direct Lending Portfolio")).click()
+            # Its row's own name link: the Warehouse tab's "Read by" links share the text.
+            page.locator('li.chain[data-model="portfolio_model"]').get_by_role(
+                "link", name=re.compile(r"^Direct Lending Portfolio")).click()
             page.wait_for_url("**/data/portfolio_model")
             line = page.get_by_role("navigation", name="How portfolio_model is made")
 
