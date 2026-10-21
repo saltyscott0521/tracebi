@@ -3,16 +3,18 @@ import { Link } from 'react-router-dom'
 
 import {
   usePipelines, usePipelineRuns, useLayerHistory, useModel, useConnectors,
-  useConnectorWarehouse, useReports, useDesk,
+  useConnectorWarehouse, useReports, useDesk, useInputs,
 } from '../api'
 import { buildModelGraph } from './modelGraph'
 import { Verdict } from './Shared'
 import { verdictOf } from '../verdict'
-import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import { upstreamOf } from '../chain'
+import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel, sourcesPath } from '../nav'
 
-// The line: how a model is made, as three stations and the two hand-offs
-// between them. ① transforms/ writes tables into the warehouse; ② the model
-// names the numbers over those tables; ③ reports show them. Each fact on it is
+// The line: how a model is made, as four stations and the hand-offs between
+// them. ⓪ the sources the transform reads (connections and input files);
+// ① transforms/ writes tables into the warehouse; ② the model names the
+// numbers over those tables; ③ reports show them. Each fact on it is
 // read from what exists (the pipeline's runs, the warehouse's checks, the
 // desk's re-checks); what is not known is left off rather than guessed.
 // Colour and a glyph mark only an exception: "✕" failed, "△" changed or does
@@ -86,6 +88,7 @@ export function useLineFacts(model) {
   const { data: connectors } = useConnectors()
   const { data: reports } = useReports()
   const { data: desk } = useDesk()
+  const { data: inputs } = useInputs()
 
   const mine = (pipelines || []).filter(p => pipelineBelongsToModel(p, model))
   const pipeline = mine.find(p => p.model === model) || mine[0]
@@ -134,7 +137,11 @@ export function useLineFacts(model) {
   const read = new Set((detail?.tables || []).filter(t => t.connector === source?.name).map(t => t.source))
   const tables = (warehouse?.tables || []).filter(t => !read.size || read.has(t.name))
 
+  // ⓪ Sources: what the transform reads, from the transform's own file
+  const upstream = upstreamOf({ model, pipelines, connectors, inputs })
+
   const line = {
+    sources: sourcesStation(pipelines && connectors && inputs, upstream),
     transform: transformStation(pipelines, transform),
     model: modelStation(detail, graph),
     reports: reportsStation(reports, listed, desk, built, states),
@@ -142,6 +149,7 @@ export function useLineFacts(model) {
   const pill1 = warehousePill(source, file, detail, warehouse, tables, transform)
   const pill2 = detail ? { name: plural(detail.measures?.length || 0, 'measure'), sans: true } : null
   line.hands = [
+    { pill: null, tone: '' },
     { pill: pill1, tone: pill1?.kind === 'bad' || pill1?.kind === 'warn' ? 'warn' : '' },
     { pill: pill2, tone: looks.length ? 'warn' : '' },
   ]
@@ -175,6 +183,23 @@ export function VerdictSummary({ states }) {
   return COUNTED.filter(([st]) => count[st]).map(([st, words]) => (
     <Verdict key={st} state={st} size="sm">{words(count[st])}</Verdict>
   ))
+}
+
+// Stage ⓪: the connections (by name) and the input files (by file name) the
+// transform reads, as one card. Nothing is guessed: no transform, or one
+// that names nothing, says so.
+function sourcesStation(known, up) {
+  const s = { name: null, sans: true, flags: [] }
+  if (!known) return s
+  const names = [...up.connections.map(c => c.name), ...up.files.map(f => f.path.split('/').pop())]
+  if (!up.transform) return { ...s, flags: [mark('none', 'No transform')] }
+  if (!names.length) return { ...s, flags: [mark('none', 'None named')] }
+  s.name = names.join(', ')
+  s.fact = [
+    up.connections.length && plural(up.connections.length, 'connection'),
+    up.files.length && plural(up.files.length, 'file'),
+  ].filter(Boolean).join(' · ')
+  return s
 }
 
 function transformStation(pipelines, t) {
@@ -230,6 +255,7 @@ function warehousePill(source, file, detail, warehouse, tables, transform) {
 // ── The line ─────────────────────────────────────────────────────────────────
 
 const STATIONS = [
+  { key: 'sources',   n: '0', title: 'Sources' },
   { key: 'transform', n: 1, title: 'Transform' },
   { key: 'model',     n: 2, title: 'Model' },
   { key: 'reports',   n: 3, title: 'Reports' },
@@ -284,8 +310,11 @@ export function LineNode({
 }
 
 function Station({ model, tab, s, info }) {
-  // Transform and Model are tabs of this page; Reports is the library, narrowed to the model.
-  const to = s.key === 'reports' ? libraryPath(model) : dataPath(model, s.key === 'model' ? '' : s.key)
+  // Transform and Model are tabs of this page; Sources is Data's Sources and
+  // Reports the library, each narrowed to the model.
+  const to = s.key === 'reports' ? libraryPath(model)
+    : s.key === 'sources' ? sourcesPath(model)
+    : dataPath(model, s.key === 'model' ? '' : s.key)
   const marks = [
     ...info.flags.map(f => <Flag key={f.text} flag={f} />),
     ...(info.states?.length ? [<VerdictSummary key="v" states={info.states} />] : []),
@@ -316,8 +345,9 @@ function Hand({ hand }) {
 }
 
 /**
- * The three stations as links (the tab you are on is the current page; Reports
- * opens the library, narrowed to the model), and the hand-offs between them.
+ * The four stations as links (the tab you are on is the current page; Sources
+ * and Reports open Data's Sources and the library, narrowed to the model), and
+ * the hand-offs between them.
  */
 export default function TheLine({ model, tab, line }) {
   return (
@@ -325,8 +355,9 @@ export default function TheLine({ model, tab, line }) {
       <ol className="line">
         {STATIONS.map((s, i) => (
           <Fragment key={s.key}>
-            <Station model={model} tab={tab} s={s} info={line[s.key]} />
-            {i < 2 && <Hand hand={line.hands[i]} />}
+            {/* Stage ⓪ opens Data's Sources, never this page's own tab. */}
+            <Station model={model} tab={s.key === 'sources' ? null : tab} s={s} info={line[s.key]} />
+            {i < STATIONS.length - 1 && <Hand hand={line.hands[i]} />}
           </Fragment>
         ))}
       </ol>

@@ -3,10 +3,11 @@ import Layout from './components/Layout'
 import { TABS } from './nav'
 import { ToastProvider } from './components/Shared'
 import { OneModel, Moved } from './components/Scope'
-import GettingStarted from './pages/GettingStarted'
 import Docs from './pages/Docs'
 import Connectors from './pages/Connectors'
-import Data from './pages/Data'
+import Data, { DataFrame } from './pages/Data'
+import Warehouses from './pages/Warehouses'
+import MapView from './pages/Map'
 import Overview from './pages/Overview'
 import Library, { ReportRoute } from './pages/Reports'
 import Ask from './pages/Ask'
@@ -15,8 +16,8 @@ import Runs from './pages/Runs'
 import { DraftPage } from './pages/Drafts'
 import Review, { ReviewDrafts, ReviewFrame } from './pages/Review'
 
-// Four places: Reports (/), Ask, Data and Review. Every older address lands in
-// one of them (Moved). See nav.js.
+// Five places: Reports (/), Ask, Data, Review and Docs. Every older address
+// lands in one of them (Moved). See nav.js.
 export default function App() {
   return (
     <ToastProvider>
@@ -27,12 +28,13 @@ export default function App() {
 
           <Route path="/ask" element={<Ask />} />
 
-          {/* Data: the models (as a list, or ?view=map as one picture), then one
-              model's page: its line, and its tabs. /data/map and a model's
-              /reports (the library, now) are Moved. */}
+          {/* Data: its four tabs (Models, Sources, Warehouse, Map), then one
+              model's page: its line, and its tabs. A model's /reports (the
+              library, now) is Moved. */}
           <Route path="/data" element={<Data />} />
-          <Route path="/data/sources" element={<Connectors />} />
-          <Route path="/data/map" element={<Moved />} />
+          <Route path="/data/sources" element={<DataFrame tab="sources"><Connectors /></DataFrame>} />
+          <Route path="/data/warehouse" element={<DataFrame tab="warehouse"><Warehouses /></DataFrame>} />
+          <Route path="/data/map" element={<DataFrame tab="map"><MapView /></DataFrame>} />
           <Route path="/data/:model" element={<OneModel>{m => <Overview key={m} model={m} tab="model" />}</OneModel>} />
           {TABS.map(tab => (
             <Route key={tab} path={`/data/:model/${tab}`}
@@ -48,9 +50,10 @@ export default function App() {
           <Route path="/runs" element={<ReviewFrame><Runs /></ReviewFrame>} />
           <Route path="/verify" element={<ReviewFrame><Verify /></ReviewFrame>} />
 
-          <Route path="/getting-started" element={<GettingStarted />} />
-          <Route path="/handbook" element={<Docs />} />
-          <Route path="/workflow" element={<Navigate to="/getting-started#phases" replace />} />
+          {/* Docs: the handbook, Get started first. /handbook and
+              /getting-started are Moved, page for page. */}
+          <Route path="/docs/*" element={<Docs />} />
+          <Route path="/workflow" element={<Navigate to="/docs/get-started#phases" replace />} />
 
           <Route path="/m/:model/*" element={<Moved />} />
           <Route path="*" element={<Moved />} />

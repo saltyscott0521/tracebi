@@ -64,7 +64,7 @@ _NEXT = re.compile(r"/(?![/\\])[^\x00-\x20\x7f\\]*")
 #: Paths a stranger's browser must be able to reach: the sign-in itself, the
 #: bundle that renders the app, and the endpoints other clients use.
 _OPEN_PREFIXES = ("/login", "/logout", "/assets/", "/.well-known/", "/mcp", "/authorize",
-                  "/token", "/register", "/revoke", "/oauth/", "/docs", "/redoc",
+                  "/token", "/register", "/revoke", "/oauth/", "/api-docs", "/api-redoc",
                   "/openapi.json")
 
 

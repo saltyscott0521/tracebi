@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useGuides } from '../api'
-import { PageTitle, PageSub, CodeBlock } from '../components/Shared'
+import { CodeBlock } from '../components/Shared'
 import { ThreePhases } from '../components/ThreePhases'
 
 const STEPS = [
@@ -50,27 +49,7 @@ const LINK_STYLE = {
   border: '1px solid var(--blue-br)', textDecoration: 'none',
 }
 
-// ── Guides (markdown from docs/, served by /api/docs) ─────────────────────────
-
-function Guides() {
-  // The docs live on their own page now — the vault outgrew a flat row of
-  // buttons the moment docs/ became a tree. This is the pointer to it.
-  const { data: guides, isLoading } = useGuides()
-  if (isLoading || !guides?.length) return null
-  return (
-    <div style={{ marginBottom: 40 }}>
-      <h2 className="section-title">Docs</h2>
-      <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>
-        The full handbook — concepts, guides and reference, versioned in <code>docs/</code>.
-      </p>
-      <Link to="/handbook" style={{ ...LINK_STYLE, fontSize: 12.5 }}>
-        ☰ Browse the docs ({guides.length} pages)
-      </Link>
-    </div>
-  )
-}
-
-// How the pieces fit: four places, each for one job, in the sidebar's order,
+// How the pieces fit: five places, each for one job, in the sidebar's order,
 // and who sees each (nav.js placesFor).
 const PLACES = [
   { to: '/', name: 'Reports', text: <>
@@ -82,13 +61,19 @@ const PLACES = [
     a live query, with each measure&rsquo;s definition and the query behind it. Keep this turns it
     into a draft report; Advanced is the query builder. Everyone sees it.</> },
   { to: '/data', name: 'Data', text: <>
-    How the numbers are made. The models, one row each, or all of them as one picture (Map).
-    A model's page leads with its line, transform → model → reports, then tabs: Model,
-    Transform (where Refresh data is), Sources and Runs. Only admins see it.</> },
+    How the numbers are made, as four tabs in the order the data flows. Models: each model as a
+    chain, sources → transform → tables → measures → reports. Sources: every connection and the
+    inputs/ folder, what each holds and what reads it. Warehouse: every table, who wrote it, who
+    reads it and whether its checks still hold. Map: the models as one picture. A model's page
+    leads with its line, sources → transform → model → reports, then tabs: Model, Transform
+    (where Refresh data is), Sources and Runs. Only admins see it.</> },
   { to: '/review', name: 'Review', text: <>
     What waits on a person, in four tabs: Attention (a refresh that failed, a build that needs a
     look, a request to publish), Drafts, History (what ran and when) and Verify (a file you were
     sent). Analysts and admins see it.</> },
+  { to: '/docs', name: 'Docs', text: <>
+    This handbook: Get started, then concepts, guides and reference, versioned in docs/ with the
+    project. Everyone sees it.</> },
 ]
 
 function HowItFits() {
@@ -104,7 +89,7 @@ function HowItFits() {
         ))}
       </dl>
       <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, margin: 0, maxWidth: '74ch' }}>
-        With no sign-in, everyone sees all four.
+        With no sign-in, everyone sees all five.
       </p>
     </div>
   )
@@ -116,10 +101,12 @@ export default function GettingStarted() {
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
   }, [hash])
+  // The handbook's first page (/docs/get-started): Docs is the page's heading,
+  // so this one starts a level below it.
   return (
     <div>
-      <PageTitle>Get started</PageTitle>
-      <PageSub>Every number, traced. How TraceBi fits together, then five steps from install to your first traced report.</PageSub>
+      <h2 className="gs-title">Get started</h2>
+      <p className="section-sub">Every number, traced. How TraceBi fits together, then five steps from install to your first traced report.</p>
 
       <HowItFits />
 
@@ -156,8 +143,6 @@ export default function GettingStarted() {
           </div>
         ))}
       </div>
-
-      <Guides />
 
       <div style={{
         background: 'var(--blue-lt)', border: '1px solid var(--blue-br)',

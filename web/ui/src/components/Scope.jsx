@@ -75,11 +75,11 @@ export function OneModel({ children }) {
   return children(model)
 }
 
-/** An address from before the four places: it lands where that page lives now. */
+/** An older address: it lands where that page lives now, its #section kept. */
 export function Moved() {
-  const { pathname, search } = useLocation()
+  const { pathname, search, hash } = useLocation()
   const to = movedTo(pathname, search)
-  return to ? <Navigate to={to} replace /> : <NotFound />
+  return to ? <Navigate to={to + hash} replace /> : <NotFound />
 }
 
 /**

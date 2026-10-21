@@ -1,10 +1,14 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useModels, useReports, usePipelines, useRole } from '../api'
-import { PAGES, placesFor, askPath, dataPath, mapPath, reportPagePath, pipelineModels } from '../nav'
+import { useModels, useReports, usePipelines, useRole, useGuides } from '../api'
+import {
+  PAGES, placesFor, askPath, dataPath, docPath, mapPath, reportPagePath, pipelineModels,
+  sourcesPath, warehousePath,
+} from '../nav'
 
 // Static page destinations — always available, even before data loads. The
-// places the role sees (the sidebar's), the pages inside them, then help.
+// places the role sees (the sidebar's), the pages inside them, then the
+// handbook's first page.
 function pagesFor(role) {
   const places = placesFor(role)
   const inside = key => PAGES.filter(p => p.parent === key)
@@ -12,15 +16,21 @@ function pagesFor(role) {
   return [
     ...places.map(p => ({ label: p.label, path: p.path, kind: 'page', sub: p.sub })),
     ...places.flatMap(p => inside(p.key)),
-    ...(places.some(p => p.key === 'data')
-      ? [{ label: 'Map', path: mapPath(), kind: 'page', sub: 'Every model as one picture: what feeds what.' }] : []),
-    { label: 'Get started', path: '/getting-started', kind: 'page' },
-    { label: 'Docs', path: '/handbook', kind: 'page' },
+    ...(places.some(p => p.key === 'data') ? [
+      { label: 'Sources', path: sourcesPath(), kind: 'page', sub: 'Every connection and input file, and what reads each.' },
+      { label: 'Warehouse', path: warehousePath(), kind: 'page', sub: 'Every table: who wrote it, who reads it, its checks.' },
+      { label: 'Map', path: mapPath(), kind: 'page', sub: 'Every model as one picture: what feeds what.' },
+    ] : []),
+    { label: 'Get started', path: docPath('get-started'), kind: 'doc', sub: 'How TraceBi fits together, in five steps.' },
   ]
 }
 
+// Handbook pages that are not listed in Docs (internal, or retired).
+const UNLISTED = /(^|--)(north-star|ROADMAP|receipts)$/
+
 const KIND_META = {
   page:      { tag: 'Page',      color: 'var(--role-table)' },
+  doc:       { tag: 'Doc',       color: 'var(--muted)' },
   model:     { tag: 'Model',     color: 'var(--phase-model)' },
   report:    { tag: 'Report',    color: 'var(--phase-report)' },
   pipeline:  { tag: 'Pipeline',  color: 'var(--phase-transform)' },
@@ -36,6 +46,7 @@ export default function CommandPalette() {
   const { data: models }     = useModels()
   const { data: reports }    = useReports()
   const { data: pipelines }  = usePipelines()
+  const { data: guides }     = useGuides()
   const role = useRole()
 
   // A model opens its Data page for those who see Data, else Ask of it; a
@@ -56,7 +67,11 @@ export default function CommandPalette() {
       kind: 'pipeline',
       sub: `${(p.layers || []).length} steps${pipelineModels(p).length ? ` · ${pipelineModels(p).join(', ')}` : ''}`,
     })),
-  ], [models, reports, pipelines, role, seesData])
+    // The handbook, page by page, by title (everyone sees Docs).
+    ...(guides || []).filter(g => !UNLISTED.test(g.name) && g.name !== 'index').map(g => ({
+      label: (g.title || g.name).replace(/`/g, ''), path: docPath(g.name), kind: 'doc',
+    })),
+  ], [models, reports, pipelines, guides, role, seesData])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()

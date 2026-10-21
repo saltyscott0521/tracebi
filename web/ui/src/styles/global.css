@@ -1274,7 +1274,7 @@ button.verdict:hover { border-color: currentColor; }
 
 .line {
   display: grid; align-items: stretch; margin: 0; padding: 0; list-style: none;
-  grid-template-columns: minmax(0, 1fr) minmax(130px, .7fr) minmax(0, 1fr) minmax(130px, .7fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, .85fr) 40px minmax(0, 1fr) minmax(130px, .7fr) minmax(0, 1fr) minmax(130px, .7fr) minmax(0, 1fr);
 }
 .line > li { display: flex; min-width: 0; }
 .line .node--card { flex: 1; justify-content: flex-start; }
@@ -1363,7 +1363,7 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .why__checks code { overflow-wrap: anywhere; }
 
 @media (max-width: 1200px) {
-  .line { grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr) 120px minmax(0, 1fr); }
+  .line { grid-template-columns: minmax(0, .85fr) 32px minmax(0, 1fr) 120px minmax(0, 1fr) 120px minmax(0, 1fr); }
 }
 
 /* A phone: the line stands on end, and a hand-off reads "↓ what passes". */
@@ -1664,6 +1664,70 @@ button.rp__item:disabled { opacity: .5; cursor: default; }
   .dlist__row { grid-template-columns: minmax(0, 1fr); background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
   .dlist__side { justify-content: flex-start; }
 }
+
+/* Data's Models tab: a model per row, its name, then its chain left to right
+   (sources → transform → tables → measures → reports), each segment a link.
+   On a phone the chain wraps under the name. */
+.chain { display: flex; flex-direction: column; gap: 8px; padding: 14px 18px; }
+.chain__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 20px; }
+.chain__name {
+  display: flex; flex-wrap: wrap; align-items: baseline; align-self: start; gap: 2px 10px; min-width: 0; padding: 4px 0;
+  font-size: var(--text-base); font-weight: 600; color: var(--text); text-decoration: none;
+}
+.chain__name:hover { color: var(--accent-text); }
+.chain__line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; padding: 0; list-style: none; }
+.chain__seg {
+  display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 999px;
+  font-size: var(--text-sm); color: var(--text-2); text-decoration: none;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
+.chain__seg code, .whrow__facts code, .src-readby code, .src-files__by code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
+.chain__seg--none { color: var(--muted); border-style: dashed; }
+.chain__arrow { color: var(--track); font-size: var(--text-sm); }
+
+@media (max-width: 640px) {
+  .chains .chain { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .chain__head { grid-template-columns: minmax(0, 1fr); }
+  .chain__head .dlist__side { justify-content: flex-start; }
+}
+
+/* A tab narrowed to one model says so, with the way back to all of it. */
+.scope-note { margin: 0 0 14px; font-size: var(--text-caption); color: var(--text-2); }
+
+/* Data's Sources: a source's sections (where, read by, tables) and the
+   inputs/ folder's files. */
+.src-section { margin-bottom: 16px; }
+.src-label { margin-bottom: 6px; font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
+.src-quiet { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; font-size: var(--text-sm); color: var(--muted); line-height: 1.5; }
+.src-note { margin-top: 10px; }
+.src-readby { margin: 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.7; color: var(--text-2); }
+.src-tables .wb-details { margin-bottom: 4px; }
+.src-columns { margin: 4px 0 8px; padding: 0 0 0 16px; list-style: none; font-size: var(--text-sm); line-height: 1.7; }
+.src-columns span { color: var(--muted); }
+.src-files { margin: 0; padding: 0; list-style: none; }
+.src-files li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.src-files li:first-child { border-top: 0; }
+.src-files__by { flex-basis: 100%; font-size: var(--text-sm); color: var(--text-2); }
+.src-open { padding: 4px 12px; }
+
+/* Data's Warehouse: one section per warehouse, a row per table. */
+.whs { margin-bottom: 28px; scroll-margin-top: 72px; }
+.whs__head { margin-bottom: 10px; }
+.whs__head h2 { margin: 0 0 4px; font-size: var(--text-lg); font-weight: 600; font-family: var(--font-mono); color: var(--text); }
+.whs__facts { margin: 0; font-size: var(--text-sm); color: var(--text-2); line-height: 1.6; overflow-wrap: anywhere; }
+.whs__tables { margin: 0; padding: 0; list-style: none; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
+.whrow { padding: 12px 18px; }
+.whrow + .whrow { border-top: 1px solid var(--border); }
+.whrow__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+.whrow__main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-width: 0; }
+.whrow__name { font-size: 13.5px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
+.whrow__facts { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 6px 0 2px; font-size: var(--text-sm); color: var(--text-2); line-height: 1.6; }
+.whrow__facts > span { overflow-wrap: anywhere; }
+.whrow__open { padding: 4px 0 6px; }
+
+/* Get started, the handbook's first page: Docs is the page's heading. */
+.gs-title { margin: 0 0 6px; font-size: 21px; font-weight: 700; color: var(--text); }
 
 /* The project feed on Data (dev mode), folded under one line. */
 .feedfold { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 14px; }

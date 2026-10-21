@@ -12,7 +12,7 @@ import { projectLayout } from '../components/map/project'
 import { modelReadout, projectReadout } from '../components/map/readout'
 import '../components/map/map.css'
 
-// The Map: Data's models as one picture (/data?view=map), from what is written
+// The Map: Data's models as one picture (/data/map), from what is written
 // (transform, model, report) to what is handed on (the warehouse, its tables,
 // the measures). Its nodes are the line's (LineNode in TheLine.jsx): a card
 // for what you write, a pill for what is handed on, and the same marks.
@@ -84,7 +84,7 @@ export default function MapPage() {
   if (zoomed && info.error) return <ErrorDetail error={info.error} />
   if (!layout) return <SkeletonCard />
 
-  const go = next => setParams({ view: 'map', ...next })
+  const go = next => setParams(next)
   const open = (model, pick) => go(pick ? { model, sel: pick } : { model })
   const activate = node => {
     const { zoom, select } = node.action

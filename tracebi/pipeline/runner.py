@@ -48,6 +48,19 @@ class _LayerReg:
     chain: bool = False
 
 
+def _source_connector(layer: Any) -> Optional[str]:
+    """The connector a layer reads, by name: a landing layer's ``connector``,
+    a manipulation layer's ``source``. A final layer reads a model and a step
+    reads nothing the runner can name, so both are None."""
+    if isinstance(layer, BronzeLayer):
+        source = layer._connector
+    elif isinstance(layer, SilverLayer):
+        source = layer._source
+    else:
+        return None
+    return getattr(source, "name", None)
+
+
 class _StepResult:
     """What a step hands the runner: rows out (``len``) and rows in (lineage)."""
 
@@ -446,13 +459,16 @@ class PipelineRunner:
     # ── Public inspection API (used by the web layer) ─────────
 
     def layers(self) -> list[dict]:
-        """Registered layers as plain dicts (name, type, schedule, depends_on)."""
+        """Registered layers as plain dicts (name, type, schedule, depends_on,
+        source: the connector a landing or manipulation layer reads, by name,
+        else None)."""
         return [
             {
                 "name":       reg.name,
                 "type":       reg.layer_type,
                 "schedule":   reg.schedule,
                 "depends_on": reg.depends_on,
+                "source":     _source_connector(reg.layer),
             }
             for reg in self._layers.values()
         ]

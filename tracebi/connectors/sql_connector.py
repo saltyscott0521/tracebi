@@ -84,6 +84,14 @@ class SQLConnector(BaseConnector):
             )
         self._engine = create_engine(self.url, **self._engine_kwargs)
 
+    def disconnect(self) -> None:
+        """Close the engine's pooled connections; the next load reconnects.
+        A page that lists a database's tables connects for that request only,
+        so it releases what it opened."""
+        if self._engine is not None:
+            self._engine.dispose()
+            self._engine = None
+
     def load(
         self,
         source: str,
