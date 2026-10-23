@@ -592,8 +592,14 @@ function OpenReport({ report, model }) {
   useEffect(() => {
     setSelection(null)
     const frame = frameRef.current
-    return frame ? followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
-      : undefined
+    if (!frame) return undefined
+    // The page keeps its selection in its own location hash, and a browser
+    // may hand a re-created frame the hash of the one it replaced. A new
+    // build starts as authored, so when the page says it is up it is told the
+    // authored state (a no-op on a page that has none), before any gesture.
+    const stopReady = listenToFrame(frame, m => { if (m.type === 'ready') setFrameSelection(frame, {}) })
+    const stopFollow = followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
+    return () => { stopReady(); stopFollow() }
   }, [frameHtml, buildKey])
   const clearField = field => {
     const rest = { ...selection }
@@ -791,7 +797,7 @@ function OpenReport({ report, model }) {
           )}
           {(runErr && shown) && <div className="rp__err"><ErrorDetail error={runErr} /></div>}
           {frameHtml ? (
-            <iframe key={buildKey || 'frame'} ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
+            <iframe key={buildKey || 'frame'} name={`report-${buildKey || 'frame'}`} ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
           ) : opening ? (
             <div className="rp__state fade-in">
               <ReportArt mode="build" size={96} /> Opening the last build…
