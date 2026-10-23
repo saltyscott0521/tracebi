@@ -149,6 +149,29 @@ def _timed_out(limit: Optional[float]) -> QueryTimeout:
 _WRITES = frozenset({"COPY", "COPY_DATABASE", "EXPORT", "ATTACH", "DETACH"})
 
 
+class _Result:
+    """What ``_Connection.execute`` returns: the DuckDB result, with one
+    difference. From DuckDB 2.0 a result fetched part-way (``fetchone()``)
+    stays pending on its connection, and the next ``register()`` there raises
+    ``ResourceInUseException``; the query engine registers loaded frames after
+    reading ``current_database()`` and a DESCRIBE row, so ``fetchone`` here
+    completes the result once the row is out. ``fetchall()`` and ``df()``
+    exhaust it themselves and pass straight through."""
+
+    def __init__(self, result) -> None:
+        self._result = result
+
+    def fetchone(self):
+        row = self._result.fetchone()
+        complete = getattr(self._result, "complete", None)   # DuckDB >= 2
+        if complete is not None:
+            complete()
+        return row
+
+    def __getattr__(self, name):
+        return getattr(self._result, name)
+
+
 class _Connection:
     """The DuckDB connection, plus which warehouses it attached (and why
     any it could not)."""
@@ -173,7 +196,7 @@ class _Connection:
 
     def execute(self, query, *args, **kwargs):
         self._check(query)
-        return self._con.execute(query, *args, **kwargs)
+        return _Result(self._con.execute(query, *args, **kwargs))
 
     def executemany(self, query, *args, **kwargs):
         self._check(query)

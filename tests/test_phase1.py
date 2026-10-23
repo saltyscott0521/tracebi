@@ -307,11 +307,12 @@ class TestDuckDBDecimalWrite:
 
     def test_append_decimals_into_all_none_created_table_raises(self):
         # An all-None object column carries no Decimal marker, so the first
-        # write lands via DuckDB inference (INTEGER). Appending real
-        # Decimals must raise, not silently round 19.99 -> 20.
+        # write lands via DuckDB inference (INTEGER on 1.x, "NULL" on 2.x),
+        # never as DECIMAL. Appending real Decimals must raise, not silently
+        # round 19.99 -> 20.
         conn = DuckDBConnector("dd")
         conn.write(pd.DataFrame({"amount": [None, None]}), "money")
-        assert self._column_type(conn, "money", "amount") == "INTEGER"
+        assert not self._column_type(conn, "money", "amount").startswith("DECIMAL")
         with pytest.raises(ValueError, match="'amount'"):
             conn.write(
                 pd.DataFrame({"amount": [decimal.Decimal("19.99")]}),
