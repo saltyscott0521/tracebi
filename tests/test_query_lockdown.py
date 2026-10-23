@@ -228,3 +228,26 @@ def test_the_object_tier_secret_is_built_from_the_environment_when_used(tmp_path
         "KEY_ID 'AKIDEXAMPLE', SECRET 'from-dotenv', URL_STYLE 'path', "
         "ENDPOINT '127.0.0.1:9000', USE_SSL false, SCOPE 's3://bucket/project/')")
     assert "TB_T_SECRET" not in os.environ
+
+
+@pytest.mark.parametrize("cond, says", [
+    ({"column": "fund_id", "op": "like", "value": 2}, "unknown op"),
+    ({"column": "nope", "op": "eq", "value": 2}, "unknown column"),
+    ({"column": 'fund_id" OR 1=1 --', "op": "eq", "value": 2}, "Invalid identifier"),
+    ({"column": "fund_id", "op": "eq", "value": "2 OR 1=1"}, "takes a number"),
+])
+def test_the_table_api_refuses_a_filter_its_closed_grammar_does_not_name(cond, says):
+    """The table API's ``where`` (``/api/tables/{source}/{table}/rows``) is a
+    closed list: an unknown op, a column the table does not have, a column
+    name carrying a quote (refused even were it in the catalog) and a value of
+    the wrong kind are refused by the parser, which runs no SQL, before any
+    statement is composed."""
+    import json
+
+    from tracebi.web.api.routers.tables import Refused, parse_where
+
+    columns = {"fund_id": "number", 'fund_id" OR 1=1 --': "number"}
+    with pytest.raises(Refused, match=says):
+        parse_where(json.dumps([cond]), columns)
+    assert parse_where(json.dumps([{"column": "fund_id", "op": "eq", "value": 2}]), columns) == [
+        {"column": "fund_id", "op": "eq", "value": 2}]

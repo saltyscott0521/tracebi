@@ -30,15 +30,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-#: SQL row counts on a connection's Tables listing: one ``count(*)`` per table,
-#: for this many tables at most; past it, rows are left unknown.
-ROW_COUNT_CAP = 20
-
 _INPUT_PATH = re.compile(r"\binputs/([\w.\-/]*\w\.\w+)")
 _INPUT_JOIN = re.compile(r"""["']inputs["']\s*[,/]\s*["']([^"'\s]+)["']""")
 _LOAD_SOURCE = re.compile(r"""load_source\(\s*["']([A-Za-z_]\w*)\.([A-Za-z_]\w*)["']""")
 _CREDENTIAL = re.compile(r"://([^:/@\s]+):[^@\s]+@")
 _CONTRACT_NAME = re.compile(r"""\bcontract\(\s*["']([^"'\s]+)["']""")
+
+
+def is_framework_table(name: str) -> bool:
+    """A table TraceBi keeps for itself (the run store's ``tracebi_*``
+    tables, Alembic's ``alembic_version``), never data a person explores."""
+    return name.startswith("tracebi_") or name == "alembic_version"
 
 
 def inputs_dir() -> Path:
@@ -141,16 +143,37 @@ def _reason(exc: BaseException) -> str:
     return _CREDENTIAL.sub(r"://\1:***@", first)[:300]
 
 
+def sql_row_estimates(conn) -> dict[str, int]:
+    """``{table: rows}`` from the catalog's own estimate for the tables of the
+    connection's current schema, where the database keeps one: Postgres
+    ``pg_class.reltuples``, which ANALYZE and autovacuum maintain (a table
+    never analysed reads -1 there and is left out). Any other dialect answers
+    ``{}``. A ``count(*)`` per table is the slow query on a large database,
+    so a listing never runs one. *conn* is a SQLAlchemy connection."""
+    if conn.dialect.name != "postgresql":
+        return {}
+    from sqlalchemy import text
+
+    rows = conn.execute(text(
+        "SELECT c.relname, c.reltuples FROM pg_class c "
+        "JOIN pg_namespace n ON n.oid = c.relnamespace "
+        "WHERE n.nspname = current_schema() AND c.relkind IN ('r', 'p')")).fetchall()
+    return {str(name): int(n) for name, n in rows if n is not None and n >= 0}
+
+
 def connection_tables(connector) -> dict:
     """What *connector* holds, read now: ``{connected: true, tables: [{name,
-    columns: [{name, type}], rows}]}``, or ``{connected: false, reason,
-    variable?}`` when it cannot be reached here (its ``${VAR}`` unset, the
-    database refusing). Read-only and from metadata; a DuckDB file is opened
-    read-only and closed, and a database connection is released before this
-    returns, so nothing is held for the next request. ``rows`` is a count
-    where one is cheap (a DuckDB file; the first :data:`ROW_COUNT_CAP` tables
-    of a SQL database), else None."""
+    columns: [{name, type}], rows, rows_exact}]}``, or ``{connected: false,
+    reason, variable?}`` when it cannot be reached here (its ``${VAR}`` unset,
+    the database refusing). Read-only and from metadata; a DuckDB file is
+    opened read-only and closed, and a database connection is released before
+    this returns, so nothing is held for the next request. ``rows`` is exact
+    where counting is cheap (a DuckDB file, frames held in memory), the
+    catalog's estimate with ``rows_exact: false`` for a SQL database that
+    keeps one (:func:`sql_row_estimates`), else None: no table is counted
+    row by row here."""
     from tracebi.connections import ConnectionConfigError
+    from tracebi.connectors.memory_connector import MemoryConnector
     from tracebi.connectors.sql_connector import SQLConnector
 
     d = connector.describe()
@@ -164,21 +187,25 @@ def connection_tables(connector) -> dict:
             if not as_warehouse(target).exists():
                 return {"connected": False, "reason": "Nothing is built here yet."}
             return {"connected": True, "tables": [
-                {"name": t["name"], "rows": t["rows"],
+                {"name": t["name"], "rows": t["rows"], "rows_exact": True,
                  "columns": [{"name": c, "type": ty} for c, ty in t["columns"].items()]}
                 for t in _warehouse_tables(target, profile=False)]}
         names = connector.list_tables()
         if names is None:
             return {"connected": True, "tables": None,
                     "reason": "This kind of source cannot list its tables."}
+        estimates: dict[str, int] = {}
+        if isinstance(connector, SQLConnector):
+            with connector._engine.connect() as conn:   # list_tables() connected it
+                estimates = sql_row_estimates(conn)
         tables = []
-        for i, table in enumerate(sorted(names)):
+        for table in sorted(names):
             cols = connector.column_schema(table) or []
-            rows = None
-            if isinstance(connector, SQLConnector) and i < ROW_COUNT_CAP:
-                quoted = connector._quote_ident(table)
-                rows = int(connector.load(f"SELECT count(*) AS n FROM {quoted}").iloc[0, 0])
-            tables.append({"name": table, "rows": rows,
+            if isinstance(connector, MemoryConnector):
+                rows, exact = len(connector.load(table)), True
+            else:
+                rows, exact = estimates.get(table), False
+            tables.append({"name": table, "rows": rows, "rows_exact": exact,
                            "columns": [{"name": c["name"], "type": c["dtype"]} for c in cols]})
         return {"connected": True, "tables": tables}
     except ConnectionConfigError as exc:

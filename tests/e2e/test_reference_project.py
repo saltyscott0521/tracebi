@@ -186,6 +186,87 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         release_warehouses()
 
 
+def test_one_table_api_reads_every_place_a_table_lives(built, monkeypatch):
+    """Data's table page, by its API: one table addressed as (source, table)
+    wherever it lives. A warehouse table pages, sorts, searches and filters
+    in the engine (the answers are DuckDB's own), exports the same cut as
+    CSV, profiles its dates, and says who wrote it, what that run read, the
+    contract, the model that reads it and the reports built on it. A file
+    under inputs/ answers rows, a path out of that folder does not exist, and
+    the CRM with no URL is not connected (200). The model preview reads
+    through the same engine, in its types."""
+    import duckdb
+
+    from tests.e2e.conftest import release_warehouses, serve_app
+    from tracebi.web import discovery
+
+    con = duckdb.connect(str(built / "data" / "warehouse.duckdb"), read_only=True)
+    try:
+        top5 = [r[0] for r in con.execute(
+            "SELECT fair_value FROM fact_holdings ORDER BY fair_value DESC LIMIT 5").fetchall()]
+        fund2 = con.execute("SELECT count(*) FROM fact_holdings WHERE fund_id = 2").fetchone()[0]
+        csv_rows = con.execute(
+            f"SELECT count(*) FROM read_csv_auto('{built / 'inputs' / 'holdings.csv'}')").fetchone()[0]
+    finally:
+        con.close()
+
+    monkeypatch.delenv("TRACEBI_CRM_URL", raising=False)
+    c = serve_app(monkeypatch, models=True)
+    try:
+        monkeypatch.setattr(discovery, "_live_connections", {})
+        discovery.register_connections("connections")
+        discovery.discover_library()
+        base = "/api/tables/warehouse/fact_holdings"
+
+        table = c.get(base).json()
+        types = {col["name"]: col["type"] for col in table["columns"]}
+        assert (table["kind"], table["rows"], table["rows_exact"]) == ("warehouse", 25, True)
+        assert (types["fair_value"], types["maturity"]) == ("DOUBLE", "DATE")
+        assert table["written_by"]["transform"] == "holdings_transform"
+        assert table["contract"]["status"] == "satisfied"
+        assert table["contract"]["file"] == "transforms/holdings_transform.contract.yaml"
+        assert [(r["ref"], r["snapshot"]) for r in table["transform_read"]] == [
+            ("crm.issuer_ratings", "inputs/issuer_ratings.csv")]
+        assert table["read_by"] == ["portfolio_model"]
+        used_by = {u["report"] for u in table["used_by"]}
+        assert "portfolio_model/portfolio_dashboard" in used_by
+        assert not any(r.startswith(("housing_model/", "saas_model/")) for r in used_by)
+
+        page = c.get(f"{base}/rows", params={"sort": "fair_value", "desc": 1, "limit": 5}).json()
+        names = [col["name"] for col in page["columns"]]
+        assert [row[names.index("fair_value")] for row in page["rows"]] == top5
+        assert (page["total"], page["total_exact"]) == (25, True)
+        assert isinstance(page["rows"][0][names.index("maturity")], str)   # ISO, not a timestamp
+
+        revolving = c.get(f"{base}/rows", params={"q": "Revolving"}).json()
+        kinds = {row[names.index("instrument_type")] for row in revolving["rows"]}
+        assert revolving["total"] == len(revolving["rows"]) > 0
+        assert all("Revolving" in k for k in kinds), kinds
+
+        where = json.dumps([{"column": "fund_id", "op": "eq", "value": 2}])
+        assert c.get(f"{base}/rows", params={"where": where}).json()["total"] == fund2
+        export = c.get(f"{base}/export.csv", params={"where": where})
+        assert export.status_code == 200 and export.headers["content-type"].startswith("text/csv")
+        assert len(export.text.strip().splitlines()) == fund2 + 1
+        refused = c.get(f"{base}/rows", params={"where": json.dumps([{"column": "fund_id", "op": "like", "value": 2}])})
+        assert refused.status_code == 422
+
+        maturity = c.get(f"{base}/profile").json()["columns"]["maturity"]
+        assert maturity["type"] == "DATE" and maturity["min"] < maturity["max"]
+
+        held = c.get("/api/tables/inputs/holdings.csv/rows", params={"limit": 2}).json()
+        assert held["total"] == csv_rows and len(held["rows"]) == 2
+        assert c.get("/api/tables/inputs/..%2Fmodels%2Fportfolio_model.yaml/rows").status_code == 404
+
+        assert c.get("/api/tables/crm/issuer_ratings/rows").json() == {
+            "connected": False, "variable": "TRACEBI_CRM_URL", "reason": "TRACEBI_CRM_URL is not set"}
+
+        preview = c.get("/api/models/portfolio_model/tables/fact_holdings/preview").json()
+        assert preview["total_rows"] == 25 and preview["dtypes"]["maturity"] == "DATE"
+    finally:
+        release_warehouses()
+
+
 def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
         reference, postgres_url, monkeypatch):
     """The maintainer's ask: one star table whose source is a real relational
@@ -242,10 +323,15 @@ def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
     assert re.search(r"· not checked\s+holdings: crm\.issuer_ratings — .*TRACEBI_CRM_URL", out), out
 
     # Data's Sources lists what the CRM holds, read on request through the
-    # connection: issuer_ratings with its columns and a row count.
+    # connection: issuer_ratings with its columns and the catalog's row
+    # estimate (Postgres keeps one once the table is analysed; nothing is
+    # counted row by row). The table API reads its rows through the same
+    # connection, with an exact total for a filtered read.
     from tests.e2e.conftest import release_warehouses, serve_app
     from tracebi.web import discovery
 
+    with psycopg.connect(postgres_url.replace("+psycopg", "")) as con:
+        con.execute("ANALYZE issuer_ratings")
     monkeypatch.setenv("TRACEBI_CRM_URL", postgres_url)
     c = serve_app(monkeypatch)
     try:
@@ -255,7 +341,16 @@ def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
         assert listed["connected"] is True, listed
         [ratings] = [t for t in listed["tables"] if t["name"] == "issuer_ratings"]
         assert {"issuer", "rating"} <= {col["name"] for col in ratings["columns"]}
-        assert ratings["rows"] == 12
+        assert (ratings["rows"], ratings["rows_exact"]) == (12, False)
+        table = c.get("/api/tables/crm/issuer_ratings").json()
+        assert (table["kind"], table["rows"], table["rows_exact"]) == ("connection", 12, False)
+        page = c.get("/api/tables/crm/issuer_ratings/rows", params={
+            "sort": "issuer", "where": json.dumps([{"column": "rating", "op": "eq", "value": "B"}])}).json()
+        names = [col["name"] for col in page["columns"]]
+        assert page["total_exact"] is True and page["total"] == len(page["rows"]) > 0
+        assert {row[names.index("rating")] for row in page["rows"]} == {"B"}
+        issuers = [row[names.index("issuer")] for row in page["rows"]]
+        assert issuers == sorted(issuers)
     finally:
         release_warehouses()
 
