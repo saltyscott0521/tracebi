@@ -30,6 +30,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+
+def is_framework_table(name: str) -> bool:
+    """A table TraceBi itself owns: the state store's ``tracebi_*`` tables
+    (runs, sessions, OAuth tokens, code requests) and Alembic's
+    ``alembic_version``. Every place that lists or reads a source's tables
+    leaves these out, whatever the connection points at: a connection aimed
+    at the state store (a plausible "show me my runs") must not become a
+    browser for sessions and tokens."""
+    return name.lower().startswith("tracebi_") or name.lower() == "alembic_version"
+
+
 #: SQL row counts on a connection's Tables listing: one ``count(*)`` per table,
 #: for this many tables at most; past it, rows are left unknown.
 ROW_COUNT_CAP = 20
@@ -149,7 +160,8 @@ def connection_tables(connector) -> dict:
     read-only and closed, and a database connection is released before this
     returns, so nothing is held for the next request. ``rows`` is a count
     where one is cheap (a DuckDB file; the first :data:`ROW_COUNT_CAP` tables
-    of a SQL database), else None."""
+    of a SQL database), else None. Framework tables are left out and counted
+    in ``hidden_framework_tables``."""
     from tracebi.connections import ConnectionConfigError
     from tracebi.connectors.sql_connector import SQLConnector
 
@@ -163,16 +175,19 @@ def connection_tables(connector) -> dict:
             target = wh.sink if wh is not None else str(d["database"])
             if not as_warehouse(target).exists():
                 return {"connected": False, "reason": "Nothing is built here yet."}
+            hidden: list[str] = []
             return {"connected": True, "tables": [
                 {"name": t["name"], "rows": t["rows"],
                  "columns": [{"name": c, "type": ty} for c, ty in t["columns"].items()]}
-                for t in _warehouse_tables(target, profile=False)]}
+                for t in _warehouse_tables(target, profile=False, hidden=hidden)],
+                "hidden_framework_tables": len(hidden)}
         names = connector.list_tables()
         if names is None:
             return {"connected": True, "tables": None,
                     "reason": "This kind of source cannot list its tables."}
+        shown = sorted(n for n in names if not is_framework_table(n))
         tables = []
-        for i, table in enumerate(sorted(names)):
+        for i, table in enumerate(shown):
             cols = connector.column_schema(table) or []
             rows = None
             if isinstance(connector, SQLConnector) and i < ROW_COUNT_CAP:
@@ -180,7 +195,8 @@ def connection_tables(connector) -> dict:
                 rows = int(connector.load(f"SELECT count(*) AS n FROM {quoted}").iloc[0, 0])
             tables.append({"name": table, "rows": rows,
                            "columns": [{"name": c["name"], "type": c["dtype"]} for c in cols]})
-        return {"connected": True, "tables": tables}
+        return {"connected": True, "tables": tables,
+                "hidden_framework_tables": len(names) - len(shown)}
     except ConnectionConfigError as exc:
         if exc.variable:
             return {"connected": False, "variable": exc.variable,
@@ -278,6 +294,7 @@ def warehouses(registry) -> list[dict]:
             "engine_version": latest.get("engine_version"),
             "read_by": entry.get("used_by", []),
             "tables": [_table_entry(t, readers, owners) for t in view["tables"]],
+            "hidden_framework_tables": view.get("hidden_framework_tables", 0),
         }
         if view.get("error"):
             section["error"] = view["error"]

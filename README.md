@@ -837,7 +837,7 @@ except ImportError:
 ## Local database setup (example)
 
 ```bash
-# Create data/tracebi.db, seed source tables, run initial Bronze load
+# Create data/seed.db, seed source tables, run initial Bronze load
 python examples/seeds/seed_db.py
 
 # Run Silver

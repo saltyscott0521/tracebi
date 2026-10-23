@@ -74,7 +74,10 @@ function Tables({ name }) {
     )
   }
   if (!data.tables) return <p className="src-quiet">{data.reason}</p>
-  if (!data.tables.length) return <p className="src-quiet">It holds no tables.</p>
+  // TraceBi's own tables (the state store's) are never listed as data.
+  const n = data.hidden_framework_tables || 0
+  const hidden = n > 0 && <p className="src-quiet" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">{n} framework {n === 1 ? 'table' : 'tables'} hidden</p>
+  if (!data.tables.length) return <><p className="src-quiet">It holds no tables.</p>{hidden}</>
   return (
     <div className="src-tables">
       {data.tables.map(t => (
@@ -91,6 +94,7 @@ function Tables({ name }) {
           </ul>
         </details>
       ))}
+      {hidden}
     </div>
   )
 }

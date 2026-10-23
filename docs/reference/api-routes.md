@@ -44,6 +44,11 @@ when either is true.
 `GET /api/models` and `GET /api/models/{name}` carry each model's `label` (what a list
 shows; see [[model-json]]) beside `name`, the identifier every other route takes.
 
+A model table that is one of TraceBi's own (`tracebi_*` or `alembic_version`, by its
+name or its source) is left out of `GET /api/models/{name}` (counted in
+`hidden_framework_tables`), and its `/preview` and `/export.csv` answer 404, as a
+missing table does: the state store holds sessions and tokens.
+
 `/source` returns the model's file, read-only (the **Code** tab). A model registered in
 Python code has no file and says so. `/query` takes a [[queries|QuerySpec]] and returns the result plus a lineage
 graph. It computes but persists nothing, which is why `viewer` may call it.
@@ -264,10 +269,10 @@ reports its build step rebuilt, only those it actually built).
 | --- | --- | --- |
 | `GET` | `/api/connectors` · `/api/connectors/{name}` | viewer. Each carries `read_by`: `{transforms: [{name, tables}], layers: [{pipeline, layer}], models}`, read from the transform files (`-- source:` lines, `load_source(...)`), the pipelines' layers and the models |
 | `GET` | `/api/connectors/{name}/source` | viewer |
-| `GET` | `/api/connectors/{name}/tables` | viewer. What the source holds, read now: `{connected: true, tables: [{name, columns: [{name, type}], rows}]}` (`rows` for a DuckDB file, and a SQL database's first 20 tables; else null), or `{connected: false, reason, variable?}` with status 200 when its `${VAR}` is unset or it refuses. The connection is resolved on this request only and released before it returns |
-| `GET` | `/api/connectors/{name}/warehouse` | viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source; the file is opened read-only and closed within the request |
+| `GET` | `/api/connectors/{name}/tables` | viewer. What the source holds, read now: `{connected: true, tables: [{name, columns: [{name, type}], rows}], hidden_framework_tables}` (`rows` for a DuckDB file, and a SQL database's first 20 tables; else null; TraceBi's own `tracebi_*` and `alembic_version` tables are never listed, only counted), or `{connected: false, reason, variable?}` with status 200 when its `${VAR}` is unset or it refuses. The connection is resolved on this request only and released before it returns |
+| `GET` | `/api/connectors/{name}/warehouse` | viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source, and `hidden_framework_tables` (the `tracebi_*` / `alembic_version` tables left out); the file is opened read-only and closed within the request |
 | `GET` | `/api/inputs` | viewer. The project's `inputs/` folder: `{folder, exists, files: [{path, size, modified, read_by: [transform]}]}`; `read_by` is found by reading each transform for a literal path into `inputs/` |
-| `GET` | `/api/warehouse` | viewer. `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}]}]}`, one per warehouse-kind connector, read-only |
+| `GET` | `/api/warehouse` | viewer. `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}`, one per warehouse-kind connector, read-only; framework tables are never listed |
 | `GET` | `/api/docs` · `/api/docs/{name}` | viewer |
 | `POST` | `/api/_dev/reload` | **admin**, and only with `TRACEBI_DEV_MODE` |
 | `POST` · `GET` · `DELETE` | `/mcp` | the agent gateway, only when `TRACEBI_MCP_TOKEN` is set. Bearer token, outside the app's Basic/proxy auth |

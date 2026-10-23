@@ -63,6 +63,15 @@ The container serves that folder. SQLite is the default. Add
 `--profile postgres` when you want Postgres, and set `POSTGRES_PASSWORD`
 in `deploy/.env`.
 
+`TRACEBI_STATE_URL` is TraceBi's own state store: run history, and the
+sign-in sessions and OAuth tokens. Give it a database (or a schema) of its
+own, and never point a connection, or the demo's `TRACEBI_DEMO_DB_URL`, at
+it: a connection is something people browse. The repository's
+`docker-compose.yml` does this with two databases on one Postgres server,
+`tracebi` for the demo's data and `tracebi_state` for the store. The app
+hides TraceBi's tables (`tracebi_*`, `alembic_version`) from every source
+listing whatever a connection points at, and says how many it hid.
+
 The image name is `ghcr.io/saltyscott0521/tracebi`. Set `TRACEBI_VERSION`
 in `deploy/.env` when you want a pinned tag. If that image is not on the
 machine, Compose builds it from the `Dockerfile` in this repository.

@@ -1173,11 +1173,14 @@ def warehouse_view(path: str, profile: bool = True) -> dict:
 
     # A warehouse address from tracebi.yaml knows its tier (Parquet under a
     # prefix, an attached database); a plain path is the file.
-    view: dict = {"path": str(path), "exists": as_warehouse(path).exists(), "tables": []}
+    view: dict = {"path": str(path), "exists": as_warehouse(path).exists(), "tables": [],
+                  "hidden_framework_tables": 0}
     if not view["exists"]:
         return view
     try:
-        view["tables"] = _warehouse_tables(path, profile)
+        hidden: list[str] = []
+        view["tables"] = _warehouse_tables(path, profile, hidden=hidden)
+        view["hidden_framework_tables"] = len(hidden)
         statuses = table_statuses(path, [t["name"] for t in view["tables"]])
         for t in view["tables"]:
             t["contract"] = statuses[t["name"]]
@@ -1197,12 +1200,16 @@ _NUMERIC_SQL = ("TINYINT", "SMALLINT", "INTEGER", "BIGINT", "HUGEINT",
                 "FLOAT", "DOUBLE", "REAL", "DECIMAL", "NUMERIC")
 
 
-def _warehouse_tables(path: str, profile: bool = True) -> list[dict]:
+def _warehouse_tables(path: str, profile: bool = True,
+                      hidden: Optional[list] = None) -> list[dict]:
     """Tables, row counts, column dtypes, and per-column profiles (read-only
     SQL aggregates), on one short-lived read-only connection closed
     deterministically. A table's profile failure lands in that entry's
-    ``"error"``, never raised."""
+    ``"error"``, never raised. Framework tables (``tracebi_*``,
+    ``alembic_version``) are never read: their names go into *hidden*, so a
+    caller can say how many it left out."""
     from tracebi.contracts import _reader
+    from tracebi.sources import is_framework_table
 
     tables: list[dict] = []
     con = _reader(path)
@@ -1211,6 +1218,10 @@ def _warehouse_tables(path: str, profile: bool = True) -> list[dict]:
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_schema = 'main' ORDER BY table_name").fetchall()]
         for t in names:
+            if is_framework_table(t):
+                if hidden is not None:
+                    hidden.append(t)
+                continue
             columns = {r[0]: r[1] for r in con.execute(
                 "SELECT column_name, data_type "
                 "FROM information_schema.columns "

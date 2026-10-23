@@ -2,8 +2,11 @@
 #
 # Three services, one per deployment plane (see NOTES.md, "Deployment planes"):
 #
-#   db     the state plane — Postgres. Holds the medallion tables and the
-#          pipeline's run history, so both survive restarts.
+#   db     the state plane — Postgres, two databases on one server, so both
+#          survive restarts: `tracebi` holds the demo's data (the medallion
+#          tables, the CRM table), and `tracebi_state` is TraceBi's own state
+#          store (run history, sessions, OAuth tokens, code requests).
+#          state-db creates the second one on first start.
 #   seed   the execution plane — runs the pipeline once, seeds the reference
 #          project's CRM table (issuer_ratings), and exits. This is the only
 #          service that writes.
@@ -69,6 +72,25 @@ services:
       retries: 10
       start_period: 10s
 
+  # The state store's own database (TRACEBI_STATE_URL below). It holds
+  # sessions and tokens, so it is never a connection: the demo's data, which
+  # visitors browse as the demo_db source, lives in `tracebi`. Created here
+  # rather than by an init script, which runs only on an empty volume.
+  state-db:
+    image: postgres:16-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-tracebi}
+    command:
+      - sh
+      - -c
+      - >-
+        psql -h db -U tracebi -d tracebi -tAc "SELECT 1 FROM pg_database WHERE datname = 'tracebi_state'" | grep -q 1
+        || psql -h db -U tracebi -d tracebi -c "CREATE DATABASE tracebi_state"
+    restart: "no"
+
   seed:
     build: .
     image: tracebi:local
@@ -76,9 +98,13 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      state-db:
+        condition: service_completed_successfully
     environment:
       TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
       <<: *demo-db-url
+      # The state store: a database of its own, never the demo's data one.
+      TRACEBI_STATE_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi_state
       # The reference project's CRM: a table in this stack's Postgres, read by
       # examples/portfolio_project/connections/crm.yaml as ${TRACEBI_CRM_URL}.
       TRACEBI_CRM_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi
@@ -122,6 +148,9 @@ services:
       # Bundled demo app by default; override to point at your config module.
       TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
       <<: *demo-db-url
+      # The state store (sessions, tokens, run history): its own database on
+      # the same server. Never point a connection or TRACEBI_DEMO_DB_URL here.
+      TRACEBI_STATE_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi_state
       # The reference project's CRM, seeded by `seed`. The warehouse baked
       # into the image was built without it (its certificate says the CSV
       # snapshot stood in); Refresh data on the portfolio model re-runs the
