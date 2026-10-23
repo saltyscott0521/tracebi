@@ -1423,7 +1423,7 @@
  "metrics": {
   "hardcoded_colors_in_jsx": 11,
   "inline_style_blocks": 424,
-  "bundle_js_kb": 1258,
+  "bundle_js_kb": 1290,
   "bundle_css_kb": 95,
   "engine_gz_kb": 14.7,
   "report_font_families": 5,

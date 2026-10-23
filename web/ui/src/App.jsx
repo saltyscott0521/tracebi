@@ -8,6 +8,7 @@ import Connectors from './pages/Connectors'
 import Data, { DataFrame } from './pages/Data'
 import Warehouses from './pages/Warehouses'
 import MapView from './pages/Map'
+import TablePage from './pages/Table'
 import Overview from './pages/Overview'
 import Library, { ReportRoute } from './pages/Reports'
 import Ask from './pages/Ask'
@@ -35,6 +36,9 @@ export default function App() {
           <Route path="/data/sources" element={<DataFrame tab="sources"><Connectors /></DataFrame>} />
           <Route path="/data/warehouse" element={<DataFrame tab="warehouse"><Warehouses /></DataFrame>} />
           <Route path="/data/map" element={<DataFrame tab="map"><MapView /></DataFrame>} />
+          {/* One table, wherever it lives: a connector's name or inputs, then
+              the table (a path under inputs/ keeps its slashes). */}
+          <Route path="/data/tables/:source/*" element={<TablePage />} />
           <Route path="/data/:model" element={<OneModel>{m => <Overview key={m} model={m} tab="model" />}</OneModel>} />
           {TABS.map(tab => (
             <Route key={tab} path={`/data/:model/${tab}`}
