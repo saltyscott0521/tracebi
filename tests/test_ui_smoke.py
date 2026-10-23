@@ -226,7 +226,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 "href", re.compile(r"^/data/sources\?.*source=crm"))
             page.goto(base + "/data")
             page.keyboard.press("Control+k")
-            page.keyboard.type("fact_hold")
+            # Type into the palette's box once it exists: keystrokes sent before
+            # it mounts are lost on a slow runner, and then nothing matches.
+            box = page.get_by_placeholder("Jump to a page, model, report, pipeline…")
+            box.wait_for()
+            box.fill("fact_hold")
             # The warehouse's tables are read once the palette opens.
             page.get_by_text("fact_holdings", exact=True).wait_for()
             page.keyboard.press("Enter")
