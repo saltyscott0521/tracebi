@@ -12,7 +12,7 @@ import Pipelines from './Pipelines'
 import Connectors from './Connectors'
 import Runs from './Runs'
 import { ProjectFeedFold } from '../components/Workbench'
-import { dataPath } from '../nav'
+import { dataPath, sourcesPath } from '../nav'
 import { Card, useToast } from '../components/Shared'
 
 // What changed on the line when a run ends: every station may read differently.
@@ -168,7 +168,17 @@ function ModelPage({ model, tab }) {
           <ModelDetail name={model} action={<EditAsDraft kind="models" path={model} bare />} />
         )}
         {tab === 'transform' && <TransformTab model={model} facts={facts} />}
-        {tab === 'sources' && <Connectors model={model} />}
+        {/* Stage ⓪ selects this tab, so the reader stays on the model; the
+            whole project's sources are one link away. */}
+        {tab === 'sources' && (
+          <>
+            <p className="scope-note">
+              What {label} is made from: its warehouse, and what its transform reads.{' '}
+              <Link to={sourcesPath()}>Show every source</Link>
+            </p>
+            <Connectors model={model} />
+          </>
+        )}
         {tab === 'runs' && <Runs model={model} />}
       </section>
       {/* In dev mode (`tracebi dev`) what the agent shows you while it works on

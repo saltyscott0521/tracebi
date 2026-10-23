@@ -11,7 +11,7 @@ import { verdictOf } from '../verdict'
 import { ago, stamp } from '../when'
 import { count } from '../format'
 import { upstreamOf } from '../chain'
-import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel, sourcesPath } from '../nav'
+import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 
 // The line: how a model is made, as four stations and the hand-offs between
 // them. ⓪ the sources the transform reads (connections and input files);
@@ -295,10 +295,9 @@ export function LineNode({
 }
 
 function Station({ model, tab, s, info }) {
-  // Transform and Model are tabs of this page; Sources is Data's Sources and
-  // Reports the library, each narrowed to the model.
+  // Sources, Transform and Model are tabs of this page; Reports is the
+  // library, narrowed to the model.
   const to = s.key === 'reports' ? libraryPath(model)
-    : s.key === 'sources' ? sourcesPath(model)
     : dataPath(model, s.key === 'model' ? '' : s.key)
   const marks = [
     ...info.flags.map(f => <Flag key={f.text} flag={f} />),
@@ -330,9 +329,8 @@ function Hand({ hand }) {
 }
 
 /**
- * The four stations as links (the tab you are on is the current page; Sources
- * and Reports open Data's Sources and the library, narrowed to the model), and
- * the hand-offs between them.
+ * The four stations as links (the tab you are on is the current page; Reports
+ * opens the library, narrowed to the model), and the hand-offs between them.
  */
 export default function TheLine({ model, tab, line }) {
   return (
@@ -340,8 +338,7 @@ export default function TheLine({ model, tab, line }) {
       <ol className="line">
         {STATIONS.map((s, i) => (
           <Fragment key={s.key}>
-            {/* Stage ⓪ opens Data's Sources, never this page's own tab. */}
-            <Station model={model} tab={s.key === 'sources' ? null : tab} s={s} info={line[s.key]} />
+            <Station model={model} tab={tab} s={s} info={line[s.key]} />
             {i < STATIONS.length - 1 && <Hand hand={line.hands[i]} />}
           </Fragment>
         ))}

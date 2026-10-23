@@ -1240,7 +1240,7 @@ button.verdict:hover { border-color: currentColor; }
 
 .line {
   display: grid; align-items: stretch; margin: 0; padding: 0; list-style: none;
-  grid-template-columns: minmax(0, .85fr) 40px minmax(0, 1fr) minmax(130px, .7fr) minmax(0, 1fr) minmax(130px, .7fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, .85fr) 40px minmax(0, 1.15fr) minmax(min-content, .7fr) minmax(0, 1fr) minmax(130px, .7fr) minmax(0, .7fr);
 }
 .line > li { display: flex; min-width: 0; }
 .line .node--card { flex: 1; justify-content: flex-start; }
@@ -1274,6 +1274,16 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .node[aria-current="page"] .node__n { background: var(--blue); color: #fff; }
 .node__name { font-family: var(--font-mono); font-size: 13px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
 .node__name--sans { font-family: var(--font-sans); font-size: var(--text-base); font-weight: 600; }
+/* On the line an identifier (a transform, a file) never breaks inside itself
+   ("warehouse. / duckdb"): it stays one word and, when the station is too
+   narrow, ends in "…" with the whole name in its title. A label breaks at its
+   spaces. (Chrome breaks at a <wbr> even under nowrap, so Breakable's go.) */
+.line .node__name:not(.node__name--sans) {
+  max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; overflow-wrap: normal;
+}
+.line .node__name wbr { display: none; }
+/* A transform or a file is as wide as its name, up to a cap; past it, "…". */
+.line .node__name:not(.node__name--sans) { max-width: min(100%, 24ch); }
 .node--pill .node__name--sans { font-size: var(--text-sm); }
 .node__fact { font-size: var(--text-sm); line-height: 1.35; color: var(--muted); }
 .node__marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
@@ -1291,7 +1301,7 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .hand--warn { --seg: var(--track-warn); }
 .hand__seg { flex: 1; height: 2px; min-width: 8px; background: var(--seg); }
 .hand__head { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid var(--seg); }
-.hand .node--pill { max-width: 100%; background: var(--bg); border-color: var(--border-strong); }
+.hand .node--pill { max-width: 100%; min-width: 0; background: var(--bg); border-color: var(--border-strong); }
 
 @media (prefers-reduced-motion: no-preference) {
   .stage { animation: rise .22s ease-out; }
@@ -1362,6 +1372,55 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 }
 /* In the phone's "…" menu a command keeps its words. */
 .mdetail__menu .cmd__lab { display: inline; }
+
+/* The Tables view: where they are stored, said once; one row per table, fixed
+   columns so a row's opened grid scrolls inside the card instead of widening it
+   (on a phone too). */
+.mtables__where { margin: 0 0 12px; font-size: var(--text-caption); color: var(--text-2); }
+.mtables { width: 100%; min-width: 0; table-layout: fixed; }
+.mtables__n { width: 76px; }
+.mtables__row td { vertical-align: top; }
+.mtables__num { text-align: right; line-height: 32px; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.mtables__name {
+  appearance: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; max-width: 100%;
+  padding: 0; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; text-align: left;
+}
+.mtables__name code { font-weight: 600; overflow-wrap: anywhere; }
+.mtables__chev { flex: none; display: inline-block; color: var(--muted); transition: transform .15s; }
+.mtables__name[aria-expanded="true"] .mtables__chev { transform: rotate(90deg); }
+.mtables__sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--text-sm); color: var(--muted); }
+.mtables__open > td { padding: 4px 12px 16px; border-top: 0; }
+.tb-list tr.mtables__open:hover { background: transparent; }
+.mtables__grid { min-width: 0; }
+.mtables__page { margin: 8px 0 0; font-size: var(--text-caption); }
+.mdetail__open { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.mdetail__open-name { margin: 0 0 10px; font-size: var(--text-caption); font-weight: 600; }
+@media (max-width: 720px) {
+  .mtables__n { width: 58px; }
+  .mtables th, .mtables td { padding-left: 8px; padding-right: 8px; }
+}
+/* A phone keeps the name whole: the column count is in the grid's header. */
+@media (max-width: 480px) {
+  .mtables col.mtables__cols { width: 0; }
+  .mtables th.mtables__cols, .mtables td.mtables__cols { padding: 0; font-size: 0; }
+}
+
+/* The Measures view: the label first, the identifier small under it; the
+   definition in words; the format as a sample. A row the address names is marked. */
+.mlist { width: 100%; min-width: 0; }
+.mlist td { vertical-align: top; }
+.mlist__label { display: block; font-weight: 500; color: var(--text); }
+.mlist__id { font-size: var(--text-xs); color: var(--muted); overflow-wrap: anywhere; }
+.mlist__def { color: var(--text-2); }
+.mlist__def-inline { display: none; }
+/* A phone has no room for four columns: the definition goes under the label. */
+@media (max-width: 720px) {
+  .mlist__def { display: none; }
+  .mlist__def-inline { display: block; margin-top: 4px; color: var(--text-2); }
+}
+.mlist__fmt { color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mlist__target td { background: var(--blue-lt); }
+.mlist__target td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 
 /* A filter chip (the library's models, History's) and the dashed card a
    report shows before it has a build. */
