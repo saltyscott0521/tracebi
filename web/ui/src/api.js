@@ -167,6 +167,9 @@ export const useReports = () =>
 export const useDesk = () =>
   useQuery({ queryKey: ['desk'], queryFn: () => get('/desk') })
 
+// A verdict is kept while its inputs are unchanged; Check again re-runs them all.
+export const fetchDeskFresh = () => get('/desk?fresh=1')
+
 export const fetchBuiltReport = (name) =>
   getOrNull(`/reports/${reportPath(name)}/built`)
 
@@ -269,8 +272,64 @@ export const useInputs = () =>
   useQuery({ queryKey: ['inputs'], queryFn: () => get('/inputs') })
 
 // Every warehouse and its tables: who wrote each, who reads it, its checks.
-export const useWarehouses = () =>
-  useQuery({ queryKey: ['warehouses'], queryFn: () => get('/warehouse') })
+// *enabled* false waits (the ⌘K palette asks only once it is open).
+export const useWarehouses = (enabled = true) =>
+  useQuery({ queryKey: ['warehouses'], queryFn: () => get('/warehouse'), enabled })
+
+// One table wherever it lives: *source* is a connector's name or `inputs`
+// (then *table* is a path under inputs/, its slashes kept).
+const tableUrl = (source, table) => `/tables/${encodeURIComponent(source)}/${reportPath(table)}`
+
+// A cut of a table's rows, as the API's query string: sort (desc), the search
+// q, and where, the closed list of {column, op, value}.
+function cutQuery({ sort, desc, q, where } = {}, extra = {}) {
+  const params = new URLSearchParams()
+  Object.entries(extra).forEach(([k, v]) => params.set(k, String(v)))
+  if (sort) params.set('sort', sort)
+  if (sort && desc) params.set('desc', '1')
+  if (q) params.set('q', q)
+  if (where?.length) params.set('where', JSON.stringify(where))
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
+// What a table is: its rows and columns in the engine's types, who wrote it,
+// its checks, the models that read it and the reports over them; or
+// {connected: false, reason, variable?} when its source is not reachable here.
+// A table that is not there (or is TraceBi's own) is a 404, said at once.
+export const useTable = (source, table) =>
+  useQuery({
+    queryKey: ['table', source, table],
+    queryFn: () => get(tableUrl(source, table)),
+    enabled: !!(source && table),
+    retry: false,
+  })
+
+// One page of a table's rows under a cut ({offset, limit, sort, desc, q,
+// where}). The page on screen stays while the next one is read.
+export const useTableRows = (source, table, cut) =>
+  useQuery({
+    queryKey: ['table-rows', source, table, cut],
+    queryFn: () => get(tableUrl(source, table) + '/rows' +
+      cutQuery(cut, { offset: cut?.offset || 0, limit: cut?.limit || 100 })),
+    enabled: !!(source && table),
+    retry: false,
+    placeholderData: (previous) => previous,
+  })
+
+// Each column's type, nulls, distinct values, range and commonest values: one
+// table, read when asked for (*enabled*).
+export const useTableProfile = (source, table, enabled = true) =>
+  useQuery({
+    queryKey: ['table-profile', source, table],
+    queryFn: () => get(tableUrl(source, table) + '/profile'),
+    enabled: !!(source && table) && enabled,
+    retry: false,
+  })
+
+// The rows of a cut as CSV, streamed by the server (every row, not the page).
+export const tableExportUrl = (source, table, cut) =>
+  BASE + tableUrl(source, table) + '/export.csv' + cutQuery(cut)
 
 export const useReportLineage =() =>
   useMutation({ mutationFn: (name) => get(`/reports/${reportPath(name)}/lineage`) })

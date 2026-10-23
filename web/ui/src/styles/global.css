@@ -1029,7 +1029,7 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .runs__show { margin: 0; align-self: flex-end; }
 .runs__only { display: flex; align-items: center; gap: 10px; align-self: flex-end; margin: 0; font-size: var(--text-caption); color: var(--text-2); }
 .runs-older {
-  appearance: none; display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 0 4px;
+  appearance: none; display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 0 4px; min-height: 24px;
   border: 0; border-radius: 4px; background: transparent; cursor: pointer;
   font: inherit; font-size: var(--text-sm); color: var(--muted); white-space: nowrap;
 }
@@ -1235,12 +1235,12 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .chip--warn { color: var(--amber-text); }
 .chip--bad { color: var(--red-text); }
 .chip--none::before { background: transparent; border: 1px solid currentColor; }
-button.verdict { cursor: pointer; }
+button.verdict { cursor: pointer; min-height: 24px; }
 button.verdict:hover { border-color: currentColor; }
 
 .line {
   display: grid; align-items: stretch; margin: 0; padding: 0; list-style: none;
-  grid-template-columns: minmax(0, .85fr) 40px minmax(0, 1fr) minmax(130px, .7fr) minmax(0, 1fr) minmax(130px, .7fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, .85fr) 40px minmax(0, 1.15fr) minmax(min-content, .7fr) minmax(0, 1fr) minmax(130px, .7fr) minmax(0, .7fr);
 }
 .line > li { display: flex; min-width: 0; }
 .line .node--card { flex: 1; justify-content: flex-start; }
@@ -1274,6 +1274,16 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .node[aria-current="page"] .node__n { background: var(--blue); color: #fff; }
 .node__name { font-family: var(--font-mono); font-size: 13px; font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
 .node__name--sans { font-family: var(--font-sans); font-size: var(--text-base); font-weight: 600; }
+/* On the line an identifier (a transform, a file) never breaks inside itself
+   ("warehouse. / duckdb"): it stays one word and, when the station is too
+   narrow, ends in "…" with the whole name in its title. A label breaks at its
+   spaces. (Chrome breaks at a <wbr> even under nowrap, so Breakable's go.) */
+.line .node__name:not(.node__name--sans) {
+  max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; overflow-wrap: normal;
+}
+.line .node__name wbr { display: none; }
+/* A transform or a file is as wide as its name, up to a cap; past it, "…". */
+.line .node__name:not(.node__name--sans) { max-width: min(100%, 24ch); }
 .node--pill .node__name--sans { font-size: var(--text-sm); }
 .node__fact { font-size: var(--text-sm); line-height: 1.35; color: var(--muted); }
 .node__marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
@@ -1291,7 +1301,7 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .hand--warn { --seg: var(--track-warn); }
 .hand__seg { flex: 1; height: 2px; min-width: 8px; background: var(--seg); }
 .hand__head { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid var(--seg); }
-.hand .node--pill { max-width: 100%; background: var(--bg); border-color: var(--border-strong); }
+.hand .node--pill { max-width: 100%; min-width: 0; background: var(--bg); border-color: var(--border-strong); }
 
 @media (prefers-reduced-motion: no-preference) {
   .stage { animation: rise .22s ease-out; }
@@ -1352,6 +1362,65 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .mdetail__views::-webkit-scrollbar { display: none; }
 .mdetail__views button { flex: none; white-space: nowrap; }
 .mdetail__action { flex: none; margin-left: auto; }
+/* More views past the right edge: a chevron held over that edge says the row
+   scrolls (a solid cue, not a gradient: the theme keeps none). */
+.mdetail__viewwrap { position: relative; min-width: 0; display: flex; }
+.mdetail__more {
+  position: absolute; top: 0; right: 0; bottom: 0; display: flex; align-items: center;
+  padding: 0 10px 0 8px; border-radius: 0 10px 10px 0; background: var(--surface-2); color: var(--muted);
+  font-size: 18px; line-height: 1; pointer-events: none;
+}
+/* In the phone's "…" menu a command keeps its words. */
+.mdetail__menu .cmd__lab { display: inline; }
+
+/* The Tables view: where they are stored, said once; one row per table, fixed
+   columns so a row's opened grid scrolls inside the card instead of widening it
+   (on a phone too). */
+.mtables__where { margin: 0 0 12px; font-size: var(--text-caption); color: var(--text-2); }
+.mtables { width: 100%; min-width: 0; table-layout: fixed; }
+.mtables__n { width: 76px; }
+.mtables__row td { vertical-align: top; }
+.mtables__num { text-align: right; line-height: 32px; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.mtables__name {
+  appearance: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; max-width: 100%;
+  padding: 0; border: 0; background: none; color: var(--text); font: inherit; cursor: pointer; text-align: left;
+}
+.mtables__name code { font-weight: 600; overflow-wrap: anywhere; }
+.mtables__chev { flex: none; display: inline-block; color: var(--muted); transition: transform .15s; }
+.mtables__name[aria-expanded="true"] .mtables__chev { transform: rotate(90deg); }
+.mtables__sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: var(--text-sm); color: var(--muted); }
+.mtables__open > td { padding: 4px 12px 16px; border-top: 0; }
+.tb-list tr.mtables__open:hover { background: transparent; }
+.mtables__grid { min-width: 0; }
+.mtables__page { margin: 8px 0 0; font-size: var(--text-caption); }
+.mdetail__open { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.mdetail__open-name { margin: 0 0 10px; font-size: var(--text-caption); font-weight: 600; }
+@media (max-width: 720px) {
+  .mtables__n { width: 58px; }
+  .mtables th, .mtables td { padding-left: 8px; padding-right: 8px; }
+}
+/* A phone keeps the name whole: the column count is in the grid's header. */
+@media (max-width: 480px) {
+  .mtables col.mtables__cols { width: 0; }
+  .mtables th.mtables__cols, .mtables td.mtables__cols { padding: 0; font-size: 0; }
+}
+
+/* The Measures view: the label first, the identifier small under it; the
+   definition in words; the format as a sample. A row the address names is marked. */
+.mlist { width: 100%; min-width: 0; }
+.mlist td { vertical-align: top; }
+.mlist__label { display: block; font-weight: 500; color: var(--text); }
+.mlist__id { font-size: var(--text-xs); color: var(--muted); overflow-wrap: anywhere; }
+.mlist__def { color: var(--text-2); }
+.mlist__def-inline { display: none; }
+/* A phone has no room for four columns: the definition goes under the label. */
+@media (max-width: 720px) {
+  .mlist__def { display: none; }
+  .mlist__def-inline { display: block; margin-top: 4px; color: var(--text-2); }
+}
+.mlist__fmt { color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mlist__target td { background: var(--blue-lt); }
+.mlist__target td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 
 /* A filter chip (the library's models, History's) and the dashed card a
    report shows before it has a build. */
@@ -1642,7 +1711,7 @@ button.rp__item:disabled { opacity: .5; cursor: default; }
   background: var(--surface-2); border: 1px solid var(--border);
 }
 a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
-.chain__seg code, .whrow__facts code, .src-readby code, .src-files__by code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
+.chain__seg code, .whgroup__head code, .src-readby code, .src-files__by code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
 .chain__seg--none { color: var(--muted); border-style: dashed; }
 .chain__arrow { color: var(--track); font-size: var(--text-sm); }
 
@@ -1662,31 +1731,41 @@ a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
 .src-quiet { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; font-size: var(--text-sm); color: var(--muted); line-height: 1.5; }
 .src-note { margin-top: 10px; }
 .src-readby { margin: 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.7; color: var(--text-2); }
-.src-tables .wb-details { margin-bottom: 4px; }
-.src-columns { margin: 4px 0 8px; padding: 0 0 0 16px; list-style: none; font-size: var(--text-sm); line-height: 1.7; }
-.src-columns span { color: var(--muted); }
+.src-reach { margin-bottom: 8px; }
+.src-other { margin-top: 6px; }
+.src-pointer { margin-top: 14px; }
+/* A source's name for people, with its identifier small beside it. */
+.src-id { font-size: var(--text-sm); font-weight: 400; color: var(--muted); background: none; border: 0; padding: 0; }
+.src-id--only { font-size: inherit; font-weight: inherit; color: inherit; }
+.src-li__by { font-size: 11px; color: var(--text-2); overflow-wrap: anywhere; }
 .src-files { margin: 0; padding: 0; list-style: none; }
 .src-files li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
 .src-files li:first-child { border-top: 0; }
+.src-files li > a { display: inline-flex; align-items: center; min-height: 24px; }
 .src-files__by { flex-basis: 100%; font-size: var(--text-sm); color: var(--text-2); }
 
-/* Data's Warehouse: one section per warehouse, a row per table. */
+/* Data's Warehouse: one section per warehouse, its tables grouped by the
+   transform that wrote them, a row per table. */
 .whs { margin-bottom: 28px; scroll-margin-top: 72px; }
 .whs__head { margin-bottom: 10px; }
 .whs__head h2 { margin: 0 0 4px; font-size: var(--text-lg); font-weight: 600; font-family: var(--font-mono); color: var(--text); }
 .whs__facts { margin: 0; font-size: var(--text-sm); color: var(--text-2); line-height: 1.6; overflow-wrap: anywhere; }
-.whs__tables { margin: 0; padding: 0; list-style: none; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
-.whrow { padding: 12px 18px; }
-.whrow + .whrow { border-top: 1px solid var(--border); }
-.whrow__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
-.whrow__main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-width: 0; }
-.whrow__name { font-size: 13.5px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
-.whrow__facts { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 6px 0 2px; font-size: var(--text-sm); color: var(--text-2); line-height: 1.6; }
-.whrow__facts > span { overflow-wrap: anywhere; }
-.whrow__open { padding: 4px 0 6px; }
+.whfilter { max-width: 360px; margin-bottom: 18px; }
+.whgroup { margin-bottom: 18px; }
+.whgroup__head { margin: 0 0 2px; font-size: 13px; color: var(--text-2); line-height: 1.6; overflow-wrap: anywhere; }
+.whgroup__head > a code, .whgroup__head > code:first-child { font-weight: 600; color: var(--text); }
+.whgroup .wb-meta { margin: 0 0 6px; }
+/* A dense list of tables: it scrolls sideways inside itself on a phone, never the page. */
+.whlist { overflow-x: auto; margin-top: 6px; }
+.whlist .tb-list { width: 100%; font-size: 13px; }
+.whlist th, .whlist td { padding: 7px 12px; text-align: left; vertical-align: middle; }
+.whlist th { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.whlist .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.whlist .tb-list { min-width: 520px; }
+.whlist td:first-child { white-space: nowrap; }
+.whlist td code { background: none; border: 0; padding: 0; }
 
 /* Get started, the handbook's first page: Docs is the page's heading. */
-.gs-title { margin: 0 0 6px; font-size: 21px; font-weight: 700; color: var(--text); }
 
 /* The project feed on Data (dev mode), folded under one line. */
 .feedfold { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 14px; }
@@ -1722,4 +1801,123 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 
 @media (max-width: 640px) {
   .review__act { padding: 12px 16px 14px; margin-top: -10px; background: var(--card); border: 1px solid var(--border); border-top: 0; border-radius: 0 0 12px 12px; }
+}
+
+/* ── One table's page and the data grid ─────────────────────────────────────
+   The table page (/data/tables/<source>/<table>) leads with the table's name,
+   its shape and one line of facts, each a link; then its views. The grid is
+   the one place rows of data are drawn: a <table role="grid">, its header
+   sticky inside its own scroll box, numbers right-aligned in tabular figures,
+   one line per row. On a phone the first column stays put and an inset shadow
+   at the right edge says there is more. */
+
+.tpage { max-width: 1280px; min-width: 0; }
+.tpage__crumb { flex-wrap: wrap; margin-bottom: 10px; }
+.tpage__crumb a { display: inline-flex; align-items: center; min-height: 24px; }
+.tpage__crumb-here { color: var(--text); font-family: var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
+.tpage__head { margin-bottom: 12px; }
+.tpage__name { margin: 0 0 6px; font-family: var(--font-mono); font-size: var(--text-2xl); font-weight: 600; line-height: 1.2; color: var(--text); overflow-wrap: anywhere; }
+.tpage__shape { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; font-size: var(--text-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.tpage__facts { margin: 0 0 6px; font-size: var(--text-caption); color: var(--text-2); line-height: 1.7; max-width: 110ch; }
+.tpage__facts > span + span::before { content: '·'; margin: 0 8px; color: var(--muted); }
+.tpage__facts code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
+.tpage__contract { max-width: 90ch; }
+.tpage__contract p { margin: 4px 0 0; }
+.tpage__note { font-size: var(--text-caption); color: var(--text-2); line-height: 1.6; }
+.tpage__off { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.tpage__scroll { overflow-x: auto; max-width: 100%; }
+.tpage__profile td, .tpage__measures td { padding: 8px 14px; }
+.tpage__type { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text-2); white-space: nowrap; }
+.tpage__range { white-space: normal; min-width: 16ch; color: var(--text-2); }
+.tpage__used { display: grid; gap: 24px; max-width: 980px; }
+.tpage__used h2 { margin: 0 0 10px; font-size: var(--text-lg); font-weight: 600; color: var(--text); }
+.tpage__uses, .tpage__reports { margin: 0; padding: 0; list-style: none; }
+.tpage__use + .tpage__use { margin-top: 18px; }
+.tpage__use-head { margin: 0 0 6px; font-size: var(--text-base); font-weight: 600; }
+.tpage__use .wb-meta { margin: 0 0 6px; font-weight: 400; }
+.tpage__measures { margin-top: 8px; }
+.tpage__measures code { font-size: var(--text-sm); }
+.tpage__reports li { padding: 6px 0; border-top: 1px solid var(--border); font-size: var(--text-caption); }
+.tpage__reports li:first-child { border-top: 0; }
+
+.grid-wrap { position: relative; min-width: 0; }
+.grid__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.grid__search { flex: 1 1 220px; max-width: 360px; }
+.grid__search .search-input { min-height: 32px; background: var(--card); border-color: var(--border-strong); }
+.grid__bar-end { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.grid__filter {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; margin-bottom: 10px; padding: 12px 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.grid__filter label { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-sm); color: var(--muted); }
+.grid__filter select, .grid__filter input {
+  min-height: 32px; min-width: 120px; max-width: 100%; padding: 0 8px; border-radius: var(--radius-sm);
+  font: inherit; font-size: var(--text-caption); color: var(--text); background: var(--surface); border: 1px solid var(--border-strong);
+}
+.grid__filter-act { display: inline-flex; gap: 8px; }
+.grid__chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+.grid__chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px; cursor: pointer;
+  font: inherit; font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text);
+  background: var(--blue-lt); border: 1px solid var(--blue-br); border-radius: 999px;
+}
+.grid__chip span { color: var(--muted); font-family: var(--font-sans); }
+.grid__empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; font-size: var(--text-caption); color: var(--muted); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.grid__empty p { margin: 0; }
+
+.grid__scroll {
+  max-width: 100%; max-height: min(70vh, 720px); overflow: auto; overscroll-behavior-x: contain;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  transition: box-shadow var(--t), opacity var(--t);
+}
+.grid__scroll--more { box-shadow: inset -14px 0 10px -10px color-mix(in srgb, var(--text) 22%, transparent); }
+.grid__scroll--busy { opacity: .6; }
+.grid { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.grid thead th {
+  position: sticky; top: 0; z-index: 2; padding: 0; text-transform: none; letter-spacing: 0;
+  font-size: var(--text-sm); color: var(--text); background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.grid__th { display: flex; align-items: stretch; }
+.grid__num .grid__th { flex-direction: row-reverse; }
+.grid__sort {
+  flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 40px; padding: 6px 4px 6px 12px;
+  font: inherit; text-align: left; color: inherit; background: none; border: 0; cursor: pointer;
+}
+.grid__num .grid__sort { align-items: flex-end; text-align: right; padding: 6px 12px 6px 4px; }
+.grid__sort:hover .grid__colname { text-decoration: underline; }
+.grid__sort:focus-visible, .grid__menu-btn:focus-visible { outline-offset: -2px; }
+.grid__colname { font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+.grid__type { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 400; color: var(--muted); white-space: nowrap; }
+.grid__menu-btn {
+  flex: none; width: 28px; min-height: 28px; padding: 0; font: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+  color: var(--muted); background: none; border: 0; border-radius: var(--radius-sm);
+}
+.grid__menu-btn:hover, .grid__menu-btn[aria-expanded="true"] { color: var(--text); background: var(--card-hl); }
+.grid tbody tr { border-bottom: 0; }
+.grid tbody td {
+  max-width: 32ch; padding: 6px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border-bottom: 1px solid var(--border); cursor: default;
+}
+.grid tbody tr:last-child td { border-bottom: 0; }
+.grid td.grid__num { text-align: right; }
+.grid .grid__null { color: var(--muted); font-style: italic; }
+.grid tbody td:focus-visible { outline-offset: -2px; }
+.grid .grid__cell--on { background: var(--blue-lt); box-shadow: inset 0 0 0 1px var(--blue-br); }
+.grid__menu {
+  position: absolute; z-index: 20; min-width: 180px; padding: 4px; display: flex; flex-direction: column;
+  background: var(--card-solid); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+}
+.grid__menu button {
+  min-height: 32px; padding: 0 10px; text-align: left; font: inherit; font-size: var(--text-caption); color: var(--text);
+  background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer;
+}
+.grid__menu button:hover, .grid__menu button:focus-visible { background: var(--card-hl); outline-offset: -2px; }
+.grid__pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; font-size: var(--text-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.grid__count { margin-right: 4px; }
+
+@media (max-width: 720px) {
+  .grid thead th:first-child, .grid tbody td:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: 1px 0 0 var(--border); }
+  .grid thead th:first-child { z-index: 3; background: var(--surface-2); }
+  .grid__search { max-width: none; }
+  .grid__bar-end { margin-left: 0; }
 }

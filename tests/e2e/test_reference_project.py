@@ -27,6 +27,8 @@ REPORTS = {
     "housing_model/affordability": "housing_model/affordability",
     "saas_model/mrr_dashboard": "saas_model/mrr_dashboard",
     "saas_model/cohort_brief": "saas_model/cohort_brief",
+    "wealth_model/aum_by_branch": "wealth_model/aum_by_branch",
+    "wealth_model/aum_by_region": "wealth_model/aum_by_region",
 }
 
 
@@ -45,7 +47,8 @@ def built(tmp_path_factory):
     pipeline_registry._auto_discovered = False
     os.chdir(proj)
     try:
-        for transform in ("holdings_transform", "saas_transform", "affordability_transform"):
+        for transform in ("holdings_transform", "saas_transform", "affordability_transform",
+                          "wealth_transform"):
             code, out = run_cli("run-transform", transform)
             assert code == 0, out
         for name in REPORTS:
@@ -125,7 +128,8 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
     The app lists the connection without resolving it, and the model's
     Transform tab shows the -- source: line it ran. Data's Sources says the
     CRM is not connected here (200, no traceback) and which transform reads
-    it; its Warehouse names who wrote dim_rating and what fed it."""
+    it, while the bank and billing databases that ship are, by their
+    defaults; its Warehouse names who wrote dim_rating and what fed it."""
     from tests.e2e.conftest import release_warehouses, serve_app
     from tracebi.web import discovery
 
@@ -148,8 +152,20 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         # Sources list is read from a scan of this project's own folder.
         monkeypatch.setattr(discovery, "_live_connections", {})
         discovery.register_connections("connections")
-        [crm] = [x for x in c.get("/api/connectors").json() if x["name"] == "crm"]
+        listed = c.get("/api/connectors").json()
+        [crm] = [x for x in listed if x["name"] == "crm"]
         assert crm["url"] == "${TRACEBI_CRM_URL}" and crm["declared_in"] == "connections/crm.yaml"
+        # Sources lists what feeds the warehouse, never the warehouse itself;
+        # each by its label and its database, and where it lives as a place:
+        # the variable that sets it (never read to say more), or the file the
+        # connection's default names.
+        assert sorted(x["name"] for x in listed if not x["warehouse"]) == ["bank", "billing", "crm"]
+        assert (crm["label"], crm["dialect"]) == ("CRM (Postgres)", "postgresql")
+        assert (crm["storage"]["where"], crm["storage"]["variable"]) == (
+            "set by TRACEBI_CRM_URL", "TRACEBI_CRM_URL")
+        [bank] = [x for x in listed if x["name"] == "bank"]
+        assert (bank["label"], bank["dialect"]) == ("Core banking (SQLite file)", "sqlite")
+        assert bank["storage"]["kind"] == "file" and bank["storage"]["where"].endswith("inputs/bank.sqlite")
         shown = c.get("/api/pipelines/portfolio_model/source").text
         assert "-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv" in shown
 
@@ -165,6 +181,9 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         # The inputs/ folder: the snapshot is read by the same transform.
         files = {f["path"]: f for f in c.get("/api/inputs").json()["files"]}
         assert "holdings_transform" in files["inputs/issuer_ratings.csv"]["read_by"]
+        # A data file opens as a table; a script beside it does not.
+        assert files["inputs/issuer_ratings.csv"]["table"] is True
+        assert files["inputs/seed_crm.py"]["table"] is False
         assert files["inputs/holdings.csv"]["size"] > 0
 
         # One warehouse, the one tracebi.yaml declares, and every model reads
@@ -174,13 +193,30 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
             "tier": "file", "location": "data/warehouse.duckdb"}
         listed = c.get("/api/models").json()
         assert sorted(m["name"] for m in listed) == [
-            "housing_model", "portfolio_model", "saas_model"]
+            "housing_model", "portfolio_model", "saas_model", "wealth_model"]
         assert all(m["connectors"] == ["warehouse"] for m in listed), listed
         names = {x["name"] for x in c.get("/api/connectors").json()}
-        assert "crm" in names and "housing_warehouse" not in names, names
+        assert {"crm", "bank", "billing"} <= names and "housing_warehouse" not in names, names
+
+        # The two databases that ship answer with no variable set: the
+        # connection's default names the committed SQLite file, and the
+        # wealth certificate records a live load of each of the bank's tables.
+        bank = c.get("/api/connectors/bank/tables").json()
+        assert bank["connected"] is True, bank
+        assert sorted(t["name"] for t in bank["tables"]) == [
+            "accounts", "activities", "branches", "clients", "holdings", "products"]
+        assert c.get("/api/connectors/billing/tables").json()["connected"] is True
+        loads = json.loads((built / "data" / "warehouse.contracts.json").read_text())[
+            "transforms"]["wealth_transform"]["sources"]
+        assert sorted(loads) == [f"bank.{t}" for t in (
+            "accounts", "activities", "branches", "clients", "holdings", "products")]
+        assert all(r["connection"] == "bank" and "source_fallback" not in r
+                   for r in loads.values()), loads
 
         # The warehouse page: one section per warehouse, and dim_rating says
-        # who wrote it, who reads it, its checks and that the snapshot fed it.
+        # who wrote it, who reads it and its checks. What the run read is said
+        # once, of the transform's group: the certificate records a run's
+        # inputs, not which table each fed.
         whs = {w["name"]: w for w in c.get("/api/warehouse").json()["warehouses"]}
         assert set(whs) == {"warehouse"}
         assert whs["warehouse"]["tier"] == "file" and whs["warehouse"]["engine_version"]
@@ -189,18 +225,30 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         assert rating["written_by"]["contract"] == "holdings"
         assert rating["read_by"] == ["portfolio_model"]
         assert rating["contract"]["status"] == "satisfied"
-        [fed] = rating["fed_from"]
+        assert "fed_from" not in rating
+        writers = {w["transform"]: w for w in whs["warehouse"]["writers"]}
+        holdings = writers["holdings_transform"]
+        assert "dim_rating" in holdings["tables"] and len(holdings["tables"]) == 7
+        [fed] = holdings["read"]
         assert fed["ref"] == "crm.issuer_ratings" and fed["snapshot"] == "inputs/issuer_ratings.csv"
+        assert holdings["file"] == "transforms/holdings_transform.contract.yaml" and holdings["note"]
+        assert [r["ref"] for w in writers.values() for r in w["read"]].count("crm.issuer_ratings") == 1
         # Every model's tables sit in it, each written by a transform whose
         # sink satisfied its contract. A Python transform's contract is
         # matched to its file by the name it declares.
         tables = whs["warehouse"]["tables"]
         assert {t["written_by"]["transform"] for t in tables} == {
-            "holdings_transform", "saas_transform", "affordability_transform"}
+            "holdings_transform", "saas_transform", "affordability_transform",
+            "wealth_transform"}
         assert {m for t in tables for m in t["read_by"]} == {
-            "portfolio_model", "saas_model", "housing_model"}
+            "portfolio_model", "saas_model", "housing_model", "wealth_model"}
         assert {t["name"]: t["contract"]["status"] for t in tables} == {
             t["name"]: "satisfied" for t in tables}
+        # A table's checks are named by the file that declares them (the
+        # record itself is "holdings"), beside the transform's own note.
+        view = {t["name"]: t for t in c.get("/api/connectors/warehouse/warehouse").json()["tables"]}
+        assert view["dim_rating"]["contract"]["file"] == "transforms/holdings_transform.contract.yaml"
+        assert view["dim_rating"]["contract"]["note"]
     finally:
         release_warehouses()
 
@@ -235,6 +283,11 @@ def test_one_table_api_reads_every_place_a_table_lives(built, monkeypatch):
         monkeypatch.setattr(discovery, "_live_connections", {})
         discovery.register_connections("connections")
         discovery.discover_library()
+        # About this build says how each report is made: an app.jsx dashboard
+        # or a template.html page.
+        made = {r["name"]: r["made_from"] for r in c.get("/api/reports").json()}
+        assert made["portfolio_model/portfolio_dashboard"] == "app.jsx"
+        assert made["portfolio_model/portfolio_book"] == "template.html"
         base = "/api/tables/warehouse/fact_holdings"
 
         table = c.get(base).json()
@@ -506,7 +559,7 @@ def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(buil
     from tracebi.pipeline.model_pipeline import reports_of
 
     models = sorted(p.stem for p in (built / "models").glob("*.yaml") if not p.stem.startswith("_"))
-    assert models == ["housing_model", "portfolio_model", "saas_model"]
+    assert models == ["housing_model", "portfolio_model", "saas_model", "wealth_model"]
     for model in models:
         names = reports_of(model)
         assert names, f"reports/{model}/ has no reports"
@@ -517,7 +570,8 @@ def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(buil
     assert model_pipeline  # exported at the top level for project pipelines
 
 
-@pytest.mark.parametrize("model", ["portfolio_model", "housing_model", "saas_model"])
+@pytest.mark.parametrize("model", ["portfolio_model", "housing_model", "saas_model",
+                                   "wealth_model"])
 def test_a_models_pipeline_rebuilds_its_data_then_its_reports(built, model):
     from tracebi.pipeline.model_pipeline import reports_of
 
@@ -527,6 +581,74 @@ def test_a_models_pipeline_rebuilds_its_data_then_its_reports(built, model):
     for name in reports_of(model):
         code, out = run_cli("verify", str(_manifest(built, name)), "--contracts")
         assert code == 0 and "REPRODUCES" in out, f"{name}: {out}"
+
+
+def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, monkeypatch):
+    """Catches a run_workflow.py that renders outside the app's build path: the
+    library then opens on "Never built" beside data written a minute ago.
+    After the workflow, the desk (what the library and Review read) has a
+    build of every report the app lists, and every one reproduces.
+
+    Then the desk's kept verdicts (tracebi/desk.py): catches a cache that makes
+    every page load wait for the re-runs again, and one that serves a verdict
+    older than its inputs, after the warehouse is rewritten or a receipt is
+    edited, with nothing told to forget it."""
+    import subprocess
+    import sys
+    import time
+
+    from tests.e2e.conftest import release_warehouses, run_cli, serve_app
+    from tracebi.web import discovery
+
+    env = {k: v for k, v in os.environ.items() if not k.startswith("TRACEBI_")}
+    done = subprocess.run([sys.executable, "run_workflow.py"], cwd=reference, env=env,
+                          capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stderr or done.stdout
+
+    monkeypatch.delenv("TRACEBI_CRM_URL", raising=False)
+    c = serve_app(monkeypatch, models=True)
+    try:
+        discovery.discover_library()
+        listed = {r["name"] for r in c.get("/api/reports").json()}
+        assert listed == set(REPORTS)
+        first = c.get("/api/desk").json()["builds"]
+        builds = {b["report"]: b["verdict"] for b in first}
+        assert builds == {name: "reproduces" for name in listed}
+        # The workflow built in another process, so this one re-ran each.
+        assert not any(b["cached"] for b in first)
+
+        started = time.monotonic()
+        second = c.get("/api/desk").json()["builds"]
+        took = time.monotonic() - started
+        assert {b["report"]: b["verdict"] for b in second} == builds
+        assert all(b["cached"] for b in second)
+        assert [b["computed_at"] for b in second] == [b["computed_at"] for b in first]
+        assert took < 1.0, f"a desk read of kept verdicts took {took:.2f}s"
+
+        # A transform rewrites the warehouse: every verdict is re-run, and
+        # still reproduces (the transform is idempotent).
+        release_warehouses()
+        code, out = run_cli("run-transform", "saas_transform")
+        assert code == 0, out
+        after = c.get("/api/desk").json()["builds"]
+        assert not any(b["cached"] for b in after)
+        assert {b["report"]: b["verdict"] for b in after} == builds
+
+        # Edit one receipt's recorded fingerprint (same length, so only its
+        # modification time says so): its verdict changes on the next read.
+        receipt = reference / "output" / "saas_model" / "mrr_dashboard.html.manifest.json"
+        text = receipt.read_text(encoding="utf-8")
+        recorded = re.search(r'"dataset_fingerprint": "[^"]*?([0-9a-f]{8})"', text)
+        forged = "0" * 8 if recorded.group(1) != "0" * 8 else "1" * 8
+        receipt.write_text(text.replace(
+            recorded.group(0), recorded.group(0).replace(recorded.group(1) + '"', forged + '"'), 1),
+            encoding="utf-8")
+        verdicts = {b["report"]: b for b in c.get("/api/desk").json()["builds"]}
+        assert verdicts["saas_model/mrr_dashboard"]["verdict"] == "not_reproduced"
+        assert verdicts["saas_model/mrr_dashboard"]["cached"] is False
+        assert verdicts["saas_model/cohort_brief"]["cached"] is True
+    finally:
+        release_warehouses()
 
 
 def test_the_showcase_carries_every_affordance(built):

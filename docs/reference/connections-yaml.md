@@ -28,6 +28,7 @@ and the schema is closed: an unknown key is refused with a suggestion.
 ```yaml
 # connections/wh.yaml
 name: wh                      # equals the file name
+label: Sales warehouse        # optional: the name the app shows
 type: postgres
 url: ${TRACEBI_WH_URL}        # the value lives in .env or the environment
 ```
@@ -55,6 +56,12 @@ Every file has `name` and `type`. `type` is one of:
 
 All values are strings.
 
+`label` (optional, any type) is a name for people: the Sources page shows it
+large, with `name` small beside it, and the kind of source in words from the
+type and the URL's database ("Postgres", "SQLite file"). A connector built
+in Python takes one as `connector.label = "..."`. It is never a credential
+and never resolved.
+
 ## `${ENV_VAR}`
 
 Any value may be a reference, written as the whole value and named
@@ -76,8 +83,10 @@ the project. The Sources page shows such a name as `Set · default`.
   `key=`... in the query); `sqlite:///data/x.db` is fine, a URL with a
   password is a validation error.
 - **Paths stay inside the project when literal.** `database` and `directory`
-  of a `duckdb`/`csv` connection: no absolute path, no `..`. Use a reference
-  to point elsewhere. Relative paths resolve against the project root.
+  of a `duckdb`/`csv` connection, and the file of a `sqlite:///` url: no
+  absolute path, no `..`. Use a reference to point elsewhere. Relative paths
+  (a SQLite url's too, whatever the working directory) resolve against the
+  project root.
 - **Resolved lazily.** Reading the file builds a connector and reads no
   environment. The variable is read when the connection is used; an unset one
   fails there with an error naming the variable (and not its value).

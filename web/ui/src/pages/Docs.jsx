@@ -12,11 +12,12 @@ import GettingStarted from './GettingStarted'
 // architecture/, and the API addresses a subdirectory page as "dir--stem".
 // The sidebar rebuilds that tree, in reading order — a visitor should meet
 // the ideas before the look-up tables.
+// docs/architecture/ (design notes for changing the framework) is not listed:
+// a reader meets it only through a link from a page that cites it.
 const SECTIONS = [
   { key: 'concepts',     label: 'Concepts',     blurb: 'The ideas. Read once.' },
   { key: 'guides',       label: 'Guides',       blurb: 'Task-shaped walkthroughs.' },
   { key: 'reference',    label: 'Reference',    blurb: 'Look things up.' },
-  { key: 'architecture', label: 'Architecture', blurb: 'For changing the framework.' },
   { key: 'agents',       label: 'Agent SOPs',   blurb: 'Standard operating procedures.' },
   { key: 'strategy',     label: 'Strategy',     blurb: 'Where TraceBi is going, and why.' },
 ]
@@ -43,6 +44,10 @@ const WIKI_PREFIX = 'tb-doc:'
 const FIRST = { concepts: 'the-three-phase-workflow', guides: 'plain-english', strategy: 'vision-and-positioning' }
 
 const clean = t => (t || '').replace(/`/g, '')
+
+// A page's own "# Title" is the page's h1, above the card, so the markdown
+// starts below it. Only a "# " line before any other text is taken.
+const withoutTitle = text => text.replace(/^\s*# .*\n?/, '')
 
 function split(name) {
   const i = name.indexOf('--')
@@ -77,7 +82,7 @@ function Reader({ name, byStem, titles, onNavigate }) {
   // The href is a fragment, not a custom scheme: react-markdown sanitizes
   // unknown protocols away (a "wiki:" href silently became no href at all,
   // which rendered every cross-reference as inert bold text).
-  const content = data.content.replace(/\[\[([^\]]+)\]\]/g, (whole, inner) => {
+  const content = withoutTitle(data.content).replace(/\[\[([^\]]+)\]\]/g, (whole, inner) => {
     const [target, alias] = inner.split('|')
     const to = resolveWiki(target, byStem)
     // Prefer the target page's own title over its slug, so prose reads
@@ -94,7 +99,7 @@ function Reader({ name, byStem, titles, onNavigate }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          // The page's h1 is "Docs"; a document's own title is the next level.
+          // The page's h1 is the document's title; a second "# " is the next level.
           h1: ({ children }) => <h2 className="md-h1">{children}</h2>,
           // A long code block scrolls sideways: a keyboard must reach it.
           pre: ({ node, ...props }) => <pre tabIndex={0} {...props} />,
@@ -109,6 +114,8 @@ function Reader({ name, byStem, titles, onNavigate }) {
             }
             return /^https?:\/\//.test(href || '')
               ? <a href={href} target="_blank" rel="noreferrer">{children}</a>
+              // A path from the server's root (/api-docs) is served beside the app.
+              : href?.startsWith('/') && !href.startsWith('//') ? <a href={href}>{children}</a>
               // A repo-relative path cannot resolve inside the SPA; showing it
               // as dead text beats a link that goes nowhere useful.
               : <span className="md-deadlink">{children}</span>
@@ -171,14 +178,23 @@ export default function Docs() {
   const stem = asked && asked !== GET_STARTED ? asked.split('--').pop() : null
   if (stem && MOVED[stem] && byStem.has(stem)) return <Navigate to={docPath(byStem.get(stem))} replace />
   const known = !asked || asked === GET_STARTED || titles.has(asked)
+  // The handbook's home is "Docs"; any other page is its own title, under a
+  // "Docs" crumb back to the home.
+  const atHome = !asked || asked === home
+  const title = atHome ? 'Docs'
+    : asked === GET_STARTED ? 'Get started'
+      : known ? clean(titles.get(asked)) : 'No page at this address'
 
   return (
     <>
-      <PageTitle>Docs</PageTitle>
-      <PageSub>
-        The handbook: readable here, versioned in <code>docs/</code>, and an
-        Obsidian vault if you open the folder.
-      </PageSub>
+      {!atHome && <div className="page-header__scope"><Link to={docPath()}>Docs</Link></div>}
+      <PageTitle>{title}</PageTitle>
+      {atHome && (
+        <PageSub>
+          The handbook: readable here, versioned in <code>docs/</code>, and an
+          Obsidian vault if you open the folder.
+        </PageSub>
+      )}
 
       <div style={{
         display: 'flex', gap: narrow ? 14 : 28, marginTop: 20,

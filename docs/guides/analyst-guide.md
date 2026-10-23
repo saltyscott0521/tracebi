@@ -65,7 +65,7 @@ never re-runs phase ①. Reference impls:
 
 ```bash
 cd examples/portfolio_project   # the reference project ships in the repo
-python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once
+python run_workflow.py       # ① builds data/warehouse.duckdb, ③ builds every report
 python -m tracebi.web.run    # serve it: portfolio_model → Reports → portfolio_dashboard
 ```
 

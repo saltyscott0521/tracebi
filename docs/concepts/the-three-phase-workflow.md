@@ -96,7 +96,7 @@ behind every rendered number.
 
 ```bash
 cd examples/portfolio_project
-python run_workflow.py          # ① build the warehouse, ③ render the report once
+python run_workflow.py          # ① build the warehouse, ③ build every report
 tracebi serve                   # browse it: portfolio_model → Reports → portfolio_dashboard
 ```
 
@@ -105,9 +105,11 @@ The first run generates a deliberately messy Schedule of Investments into
 into issuers, trailing position counters to strip, sectors spelled six ways,
 money stored as strings.
 
-Its three models follow the same conventions and share the one warehouse its
-`tracebi.yaml` names. `holdings_transform.sql` and `saas_transform.sql` are SQL
-with a `.contract.yaml` beside each; `affordability_transform.py`, which follows
+Its four models follow the same conventions and share the one warehouse its
+`tracebi.yaml` names. `holdings_transform.sql`, `saas_transform.sql` and
+`wealth_transform.sql` are SQL with a `.contract.yaml` beside each (the last two
+read SQLite databases that ship in `inputs/`, through `-- source:` lines);
+`affordability_transform.py`, which follows
 each home buyer year by year, is the pandas escape hatch and declares its
 contract in a `with contract(...)` block. Every table on the Warehouse tab reads
 "Checks passed", or an honest failure.

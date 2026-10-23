@@ -148,7 +148,7 @@ never re-runs phase ①. Reference impls:
 <a href="../examples/portfolio_project/reports/portfolio_model/portfolio_book/">reports/portfolio_model/portfolio_book/</a> (an editorial page) and
 <a href="../examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/">reports/portfolio_model/portfolio_dashboard/</a> (an app dashboard).</p>
 <pre><code class="language-bash">cd examples/portfolio_project   # the reference project ships in the repo
-python run_workflow.py       # ① builds data/warehouse.duckdb, ③ renders once
+python run_workflow.py       # ① builds data/warehouse.duckdb, ③ builds every report
 python -m tracebi.web.run    # serve it: portfolio_model → Reports → portfolio_dashboard
 </code></pre>
 <p><strong>Honest scope of the trust machinery.</strong> Lineage is <em>not</em> traced through the

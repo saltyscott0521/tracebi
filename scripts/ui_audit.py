@@ -139,6 +139,15 @@ def seeds(base: str) -> list[str]:
         name = urllib.parse.quote(m["name"])
         paths += [f"/?model={name}", f"/ask?model={name}", f"/data/{name}"]
         paths += [f"/data/{name}/{p}" for p in tabs]
+    # One table's page per kind of place a table lives: the first warehouse
+    # table and the first file under inputs/ (nothing links to them yet).
+    warehouses = _safe(base, "/api/warehouse")
+    tables = [(w["name"], t["name"]) for w in (warehouses or {}).get("warehouses", []) for t in w.get("tables", [])]
+    files = [f["path"].removeprefix("inputs/") for f in (_safe(base, "/api/inputs") or {}).get("files", [])
+             if f["path"].endswith((".csv", ".parquet"))]
+    for source, table in tables[:1] + [("inputs", f) for f in files[:1]]:
+        paths.append("/data/tables/" + urllib.parse.quote(source, safe="") + "/"
+                     + "/".join(urllib.parse.quote(p, safe="") for p in table.split("/")))
     reports = _safe(base, "/api/reports")
     for r in reports[:PER_PATTERN]:
         paths.append("/reports/" + "/".join(urllib.parse.quote(p, safe="") for p in r["name"].split("/")))
@@ -171,7 +180,8 @@ def _pattern(path: str) -> str:
     keys = sorted(f"{k}={q[k][0]}" if k == "tab" else k for k in q)
     p = re.sub(r"/models/[^/?]+", "/models/<m>", u.path)
     p = re.sub(r"/m/[^/?]+", "/m/<m>", p)
-    p = re.sub(r"^/data/(?!map$|sources$|warehouse$)[^/?]+", "/data/<m>", p)
+    p = re.sub(r"^/data/tables/.+", "/data/tables/<source>/<table>", p)
+    p = re.sub(r"^/data/(?!map$|sources$|warehouse$|tables/)[^/?]+", "/data/<m>", p)
     p = re.sub(r"^/docs/(?!get-started$).+", "/docs/<page>", p)
     p = re.sub(r"^/reports/.+", "/reports/<r>", p)
     return p + ("?" + "&".join(keys) if keys else "")
@@ -801,10 +811,12 @@ def scope_findings(browser, base: str) -> list[dict]:
 
     def model_sources(name):
         """A model's Sources: what it reads, what its transform reads, and
-        inputs/ when its transform names a file there."""
+        inputs/ when its transform names a file there. A warehouse is not a
+        source: it is under Warehouse."""
         transform = next((p.get("transform") for p in pipelines if name in pipeline_models(p)), None)
-        found = {c["name"] for c in connectors if name in (c.get("used_by") or [])
-                 or any(t["name"] == transform for t in (c.get("read_by") or {}).get("transforms", []))}
+        found = {c["name"] for c in connectors if not c.get("warehouse") and (
+                 name in (c.get("used_by") or [])
+                 or any(t["name"] == transform for t in (c.get("read_by") or {}).get("transforms", [])))}
         if any(transform in f["read_by"] for f in inputs.get("files", [])):
             found.add("inputs")
         return found

@@ -57,6 +57,8 @@ def _project(tmp_path: Path) -> Path:
     done = subprocess.run([sys.executable, "run_workflow.py"], cwd=project,
                           capture_output=True, text=True, check=False)
     assert done.returncode == 0, done.stderr or done.stdout
+    # The workflow built it before the probe below existed: the page builds it again.
+    (project / "output" / "saas_model" / "cohort_brief.html").unlink()
     package = project / "reports" / "saas_model" / "cohort_brief"
     (package / "script.js").write_text(_PROBE, encoding="utf-8")
     template = package / "template.html"

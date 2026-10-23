@@ -9,15 +9,19 @@ it is the worked version of that scaffold with real cleaning to do.
 ⓪  INPUT       inputs/holdings.csv               a messy raw pull (generated)
                connections/crm.yaml              the credit team's CRM (Postgres):
                                                  issuer ratings, read by `-- source:`
+               connections/billing.yaml, bank.yaml  billing and core banking, SQLite
+                                                 files that ship (inputs/*.sqlite)
 ①  TRANSFORM   transforms/holdings_transform.sql parse prose blobs, dedupe,
                                                  normalise → SINK star tables
                                                  (+ .contract.yaml beside it)
                transforms/saas_transform.sql     the SaaS model's (+ .contract.yaml)
+               transforms/wealth_transform.sql   Wealth Management's (+ .contract.yaml)
                transforms/affordability_transform.py  housing's, the pandas
                                                  escape hatch (`with contract`)
                           ── freeze: data/warehouse.duckdb (tracebi.yaml) ──
 ②  MODEL       models/portfolio_model.yaml         grain, keys, measures — the contract
-               models/saas_model.yaml, models/housing_model.yaml
+               models/saas_model.yaml, models/housing_model.yaml,
+               models/wealth_model.yaml
                           ── freeze: the model ──
 ③  REPORT      reports/portfolio_model/portfolio_dashboard/       one-screen app, every figure a live query
                reports/portfolio_model/portfolio_desk/            an app people work in (app.jsx)
@@ -26,14 +30,15 @@ it is the worked version of that scaffold with real cleaning to do.
                reports/portfolio_model/portfolio_concentration/   an app over governed window measures
                reports/portfolio_model/portfolio_showcase/        kitchen-sink demo, every figure kind
                reports/housing_model/affordability/               public data, a one-number answer
+               reports/wealth_model/aum_by_branch/, aum_by_region/  a bank's book, by branch and region
                pipelines/<model>.yaml                             one per model: transform → build
 ```
 
 ## Run it
 
 ```bash
-python run_workflow.py        # ① build the warehouse, ③ render the dashboard once
-tracebi verify data/portfolio_dashboard.html.manifest.json   # every section: REPRODUCES
+python run_workflow.py        # ① build the warehouse, ③ build every report into output/
+tracebi verify output/portfolio_model/portfolio_dashboard.html.manifest.json   # REPRODUCES
 tracebi serve                 # browse at http://127.0.0.1:8000 → Reports
 tracebi run-pipeline portfolio_model   # or: a model's pipeline — rebuild its warehouse, then its reports
 ```
@@ -114,6 +119,33 @@ re-reads each source and reads `unchanged`, `CHANGED` (the CRM moved since the
 sink was certified: re-run the transform) or `not checked` (it cannot be read
 now).
 
+## Databases that ship
+
+Two models read a database that is committed with the project, so they build
+anywhere with nothing to set up. `connections/bank.yaml` (the core-banking
+system behind Wealth Management) and `connections/billing.yaml` (the billing
+system behind SaaS Subscriptions) each give their URL a default:
+
+```yaml
+url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}
+```
+
+With the variable set nowhere, the connection is the SQLite file in
+`inputs/`, a relative path resolved against the project root. A deployment
+that keeps the bank in another database sets `TRACEBI_BANK_URL` and nothing
+else changes. The files are small and generated: `python inputs/seed_bank.py`
+writes the bank's six tables (branches, clients, products, accounts,
+holdings, activities) from a fixed seed, and `python inputs/seed_billing.py`
+loads `inputs/subscriptions.csv` into the billing system's `subscriptions`
+and `plans`. Each keeps the mess its transform cleans (a client segment
+spelled three ways, market values stored as text, an activity posted twice;
+plans and statuses spelled several ways, a duplicated account-month).
+
+`transforms/wealth_transform.sql` and `transforms/saas_transform.sql` read
+the tables with `-- source: bank.<table>` and `-- source: billing.<table>`
+lines, and each certificate records every load (`connection`, `rows`,
+`fingerprint`), as it does the CRM's.
+
 Reports are organised **by model**: the folder is the model's name, so a model,
 the reports that read it and its pipeline sit together. A report in a folder is
 named by its path: `tracebi report build portfolio_model/portfolio_book`.
@@ -155,6 +187,14 @@ Under `reports/housing_model/`:
   `python inputs/fetch_housing.py` refreshes the snapshot from the publishers
   (see `inputs/housing_sources.md`); it needs the network, so it is not part of
   the pipeline.
+
+Under `reports/wealth_model/`:
+
+- `aum_by_branch/` — assets under management by branch and asset class,
+  with net new assets by branch (purchases less sales, the report's own
+  measure); its own `style.css` and fonts.
+- `aum_by_region/` — the same book by region, with a lede naming the
+  region that manages the most.
 
 Back under `portfolio_model/`:
 

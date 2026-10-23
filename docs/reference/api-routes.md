@@ -6,6 +6,11 @@ registry; nothing is app-specific.
 Roles in the table are the minimum required when authorization is enabled — see
 [[environment-variables#Authentication and roles]].
 
+To try a route from the browser, open [`/api-docs`](/api-docs) on a running
+server (FastAPI's Swagger UI; ReDoc at `/api-redoc`). It moved there from
+`/docs`, which is the app's Docs place; `tracebi serve` prints the address
+when it starts.
+
 ---
 
 ## Health and discovery
@@ -356,7 +361,8 @@ The app's addresses, five places in the sidebar (`web/ui/src/nav.js`):
 | Docs | `/docs` the handbook; `/docs/get-started` first, then `/docs/<section>/<page>` per file of `docs/` |
 
 The sidebar shows the places a role uses (`placesFor` in `web/ui/src/nav.js`):
-everyone Reports, Ask and Docs, an analyst also Review, an admin also Data. With no
+everyone Reports, Ask and Docs, an analyst also Review and Data (read-only: its run
+buttons and credential forms show for an admin). With no
 sign-in `/api/me` names everyone admin, so all five show. An address above the
 role renders a plain page saying who it is for; the API enforces the roles.
 
@@ -366,9 +372,6 @@ same thing under Data, Ask, History or the library; `/models` to `/data`;
 and `/data?view=map` to `/data/map`; `/handbook` (and `/handbook/<page>`) to `/docs`;
 `/getting-started` and `/workflow` to `/docs/get-started`; `/drafts` and `/review#drafts`
 to `/review/drafts`; `/reports?r=<name>` to `/reports/<name>`.
-
-FastAPI's interactive API reference is at `/api-docs` (ReDoc at `/api-redoc`):
-`/docs` is the app's Docs place.
 
 ---
 

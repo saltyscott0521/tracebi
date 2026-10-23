@@ -3340,6 +3340,10 @@
   function writeHash() {
     try {
       if (!root.history || !root.history.replaceState) return;
+      /* A page an app shows in a srcdoc frame has no address anyone sees or
+       * shares, and a browser may hand a re-created frame the hash of the one
+       * it replaced, so a rebuilt report would come up still filtered. */
+      if (String(root.location.href || "").indexOf("about:srcdoc") === 0) return;
       var parts = hashParts().filter(function (p) { return p[0] !== "sel"; });
       if (_calc.local) parts.push(["sel", encodeURIComponent(JSON.stringify(_calc.state))]);
       var hash = parts.map(function (p) { return p[0] + "=" + p[1]; }).join("&");

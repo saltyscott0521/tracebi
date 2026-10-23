@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useMe, useRole, signOut } from '../api'
-import { page, placesFor, placeOf, mayUse } from '../nav'
+import { page, placesFor, placeOf, mayUse, DATA_TAB_LABEL } from '../nav'
 import { useScope, useOpenReport, NavMenuContext, NotForYou } from './Scope'
 import { SkeletonCard } from './Shared'
 import CommandPalette from './CommandPalette'
@@ -40,6 +40,46 @@ const ICONS = {
       <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
     </svg>
   ),
+}
+
+// The browser tab's title names the page, so tabs, history and bookmarks can
+// be told apart: "Portfolio Dashboard · TraceBi", "Warehouse · Data · TraceBi".
+// By default it is the page's own h1, after the tab inside a place when the
+// address names one. A page whose h1 is not what it is called (a table, a
+// model's view) names itself with useDocumentTitle instead.
+const TitleContext = createContext(null)
+
+/**
+ * Name the browser tab while this component is mounted: *parts* joined by
+ * " · ", most specific first, then "TraceBi". Empty parts are dropped;
+ * with none, the default (the page's h1) applies.
+ * `useDocumentTitle('fact_holdings', 'Warehouse')` → "fact_holdings · Warehouse · TraceBi".
+ */
+export function useDocumentTitle(...parts) {
+  const name = useContext(TitleContext)
+  const text = parts.filter(Boolean).join(' · ')
+  useEffect(() => {
+    if (!name || !text) return undefined
+    name(text)
+    return () => name(null)
+  }, [name, text])
+}
+
+// The tab a place's address names, in the words its tab row uses (Review's,
+// Data's own, or one model's), or nothing on the place's first tab.
+function tabWords(scope) {
+  if (page(scope.page)?.parent) return page(scope.page).label
+  if (scope.page !== 'data' || !scope.tab) return ''
+  if (!scope.model) return scope.tab === 'models' ? '' : DATA_TAB_LABEL[scope.tab]
+  return scope.tab === 'model' ? '' : scope.tab[0].toUpperCase() + scope.tab.slice(1)
+}
+
+// What an h1 says, without the small print some carry (a model's identifier
+// beside its label): its own text, else all of it.
+function headingWords(h1) {
+  if (!h1) return ''
+  const own = [...h1.childNodes].filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent).join('')
+  return (own.trim() || h1.textContent).replace(/\s+/g, ' ').trim()
 }
 
 function SunIcon() {
@@ -157,6 +197,26 @@ export default function Layout({ children }) {
   const places = placesFor(role)
   const place = places.find(p => p.key === placeOf(scope.page))
   const openReport = useOpenReport()
+  const { pathname } = useLocation()
+  const [named, setNamed] = useState(null)
+
+  // The page's h1 arrives after its data does, so the title follows the DOM
+  // rather than the route alone.
+  useEffect(() => {
+    const tab = tabWords(scope)
+    const write = () => {
+      const h1 = document.querySelector('.layout-main h1, .rail-shell__page h1')
+      const parts = named ? [named] : [tab, headingWords(h1)]
+      const next = [...new Set([...parts.filter(Boolean), 'TraceBi'])].join(' · ')
+      if (document.title !== next) document.title = next
+    }
+    write()
+    if (named) return undefined
+    const watch = new MutationObserver(write)
+    watch.observe(document.getElementById('root') || document.body, { childList: true, subtree: true, characterData: true })
+    return () => watch.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [named, pathname])
 
   // While the mobile menu is open, the page behind it stays put.
   useEffect(() => {
@@ -195,6 +255,7 @@ export default function Layout({ children }) {
     : children
 
   return (
+    <TitleContext.Provider value={setNamed}>
     <div style={openReport ? undefined : { display: 'flex', minHeight: '100vh' }}
          className={openReport ? 'rail-shell' : undefined}>
       <CommandPalette />
@@ -384,5 +445,6 @@ export default function Layout({ children }) {
         }
       `}</style>}
     </div>
+    </TitleContext.Provider>
   )
 }

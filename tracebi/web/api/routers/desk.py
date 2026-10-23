@@ -27,12 +27,14 @@ def _loaded_models() -> dict:
 
 
 @router.get("/desk")
-def desk():
+def desk(fresh: bool = False):
     """Pins, exploration drafts, receipts that do not reproduce, sink status.
 
-    Each entry naming a ``report`` also carries its ``display_name``.
+    Each entry naming a ``report`` also carries its ``display_name``. A
+    verdict is reused while nothing it was computed from has changed
+    (:func:`tracebi.desk.verdict`); ``?fresh=1`` re-runs every one.
     """
-    out = review(os.getcwd(), _loaded_models())
+    out = review(os.getcwd(), _loaded_models(), fresh=fresh)
     names = {r["name"]: r["display_name"] for r in registry.list_reports()}
     for group in ("pins", "drafts", "verdicts", "builds"):
         out[group] = [{**e, "display_name": _display_name(e["report"], names)}

@@ -1,78 +1,35 @@
-import { useState, useMemo } from 'react'
+import { cloneElement, Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { StorageLine, sourceKind } from '../components/Storage'
-import { buildModelGraph, measureDefinition, MEASURE_KINDS } from '../components/modelGraph'
-import { dimensionLabel, inSentence } from '../ask'
+import { buildModelGraph, measureDefinition } from '../components/modelGraph'
+import { dimensionLabel, encodeQuery, humanise, inSentence } from '../ask'
 import {
-  useModels, useModel, useTablePreview, useDesk, useReports, usePipelines, tableCsvUrl,
+  useModels, useModel, useTable, useDesk, useReports, usePipelines,
 } from '../api'
 import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
-import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import DataGrid from '../components/DataGrid'
+import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel, tablePath } from '../nav'
 import {
-  Card, Badge, Spinner, Empty, ExportCsv, SkeletonList, SkeletonCard, useNarrow,
+  Card, Badge, Chip, Empty, Segmented, SkeletonList, SkeletonCard, useNarrow,
 } from '../components/Shared'
 
-// ── Table Preview ─────────────────────────────────────────────────────────────
+// ── One table's rows, inline ──────────────────────────────────────────────────
 
-function TablePreview({ modelName, tableName }) {
-  const { data, isLoading, error } = useTablePreview(modelName, tableName)
-  if (isLoading) return (
-    <div style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }}>
-      <Spinner size={14} /> Loading preview…
-    </div>
-  )
-  if (error) return <div style={{ padding: 16, color: 'var(--red-text)', fontSize: 13 }}>{error.message}</div>
-  if (!data) return null
-  const showingAll = data.total_rows == null || data.rows >= data.total_rows
+// A model table's rows, opened in place under its row (or under the diagram):
+// the one grid, read through the table API by the table's SOURCE name (a model
+// may call a stored table something else), keeping its cut to itself so the
+// page's own address stays the model's view. Its page has the rest.
+function InlineTable({ t }) {
+  const columns = (t.columns || []).map(c => ({ name: c.name, type: c.dtype }))
   return (
-    <div className="fade-in">
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Badge variant="gray">
-          {showingAll
-            ? `${data.rows} rows`
-            : `first ${data.rows} of ${data.total_rows.toLocaleString()} rows`}
-        </Badge>
-        <Badge variant="gray">{data.columns.length} cols</Badge>
-        <span style={{ flex: 1 }} />
-        <ExportCsv href={tableCsvUrl(modelName, tableName)} title={showingAll ? undefined : 'Every row of the table, not only these'} />
-      </div>
-      <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--border)' }}>
-        <table>
-          <thead>
-            <tr>
-              {data.columns.map(c => (
-                <th key={c}>
-                  {c}
-                  {data.dtypes?.[c] && (
-                    <span style={{
-                      display: 'block', fontSize: 9.5, fontWeight: 400,
-                      color: 'var(--muted)', textTransform: 'none', letterSpacing: 0,
-                      fontFamily: 'var(--font-mono)',
-                    }}>{data.dtypes[c]}</span>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.data.map((row, i) => (
-              <tr key={i}>
-                {data.columns.map(c => (
-                  <td key={c}>
-                    {row[c] === null
-                      ? <span style={{ color: 'var(--muted)', fontStyle: 'italic' }}>null</span>
-                      : String(row[c])}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="mtables__grid fade-in">
+      <DataGrid source={t.connector} table={t.source} columns={columns.length ? columns : undefined}
+                label={`Rows of ${t.name}`} />
+      <p className="mtables__page"><Link to={tablePath(t.connector, t.source)}>Open table page →</Link></p>
     </div>
   )
 }
@@ -140,7 +97,7 @@ function ERDTableNode({ data }) {
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 color: c.flag ? 'var(--text)' : 'var(--text-2)', fontWeight: c.flag ? 600 : 400,
               }}>{c.name}</span>
-              <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: MONO }}>{(c.dtype || '').toLowerCase()}</span>
+              <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: MONO }}>{c.dtype || ''}</span>
             </div>
           )
         })}
@@ -262,29 +219,49 @@ function ERDLegend() {
 
 // ── Measures ──────────────────────────────────────────────────────────────────
 
+// A format as what it does to a number (the artifact's own named formats,
+// tracebi.js applyNamedFormat), its token in the title. Anything else is shown
+// as written.
+const FORMAT_SAMPLES = {
+  currency: '$1,234.00', currency0: '$1,234', currency_compact: '$1.2K', compact: '1.2K',
+  comma: '1,234', decimal: '1,234.00', percent: '12.3%',
+}
+
+const askMeasure = (model, name) =>
+  `${askPath(model)}&q=${encodeURIComponent(encodeQuery({ measures: [name], dimensions: [], filters: {} }))}`
+
 // The model's named measures are its semantic contract: every report and
-// query asks for them by name, so they are defined once, here.
-function MeasuresTable({ measures }) {
+// query asks for them by name, so they are defined once, here. A row the
+// address names (?measure=, as ⌘K links one) is scrolled to and marked.
+function MeasuresTable({ model, measures, target }) {
+  const targetRow = useRef(null)
+  useEffect(() => { targetRow.current?.scrollIntoView({ block: 'center' }) }, [target])
   if (!measures.length) return <Empty message="This model declares no named measures." />
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table className="tb-list">
-        <thead><tr><th>Measure</th><th>What it is</th><th>Defined as</th><th>Format</th></tr></thead>
-        <tbody>
-          {measures.map(m => (
-            <tr key={m.name}>
+    <table className="tb-list mlist">
+      <thead><tr><th>Measure</th><th>Defined as</th><th>Shown as</th><th><span className="sr-only">Ask</span></th></tr></thead>
+      <tbody>
+        {measures.map(m => {
+          const label = m.label || m.description || humanise(m.name)
+          const here = m.name === target
+          return (
+            <tr key={m.name} ref={here ? targetRow : undefined} className={here ? 'mlist__target' : undefined}
+                data-measure={m.name}>
               <td>
-                <code>{m.name}</code>
-                {m.description && <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{m.description}</div>}
+                <span className="mlist__label">{label}</span>
+                <code className="mlist__id">{m.name}</code>
+                <span className="mlist__def-inline">{measureDefinition(m)}</span>
               </td>
-              <td><Badge variant="gray">{MEASURE_KINDS[m.kind] || m.kind}</Badge></td>
-              <td style={{ fontFamily: MONO, fontSize: 11.5, color: 'var(--text-2)' }}>{measureDefinition(m)}</td>
-              <td style={{ color: 'var(--muted)', fontSize: 12 }}>{m.format || ''}</td>
+              <td className="mlist__def">{measureDefinition(m)}</td>
+              <td className="mlist__fmt" title={m.format || undefined}>
+                {m.format && (FORMAT_SAMPLES[m.format] || <code>{m.format}</code>)}
+              </td>
+              <td><Link to={askMeasure(model, m.name)} aria-label={`Ask about ${label}`}>Ask</Link></td>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }
 
@@ -344,17 +321,150 @@ function ModelStorage({ details, tables, hidden }) {
 // What the desk says of a warehouse table, in plain words.
 const SINK_WORDS = { stale: 'changed since its checks last passed', no_contract: 'no checks declared' }
 
-const VIEWS = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Storage', 'Code']
+// The views, in the address as ?view= (lower case), so a reload keeps the one
+// you are on and Back steps back through them.
+const VIEWS = [
+  ['diagram', 'Diagram'], ['tables', 'Tables'], ['measures', 'Measures'],
+  ['relationships', 'Relationships'], ['storage', 'Storage'], ['code', 'Code'],
+]
+
+// A table's role in the star, as the diagram's legend says it.
+const ROLE_WORDS = { fact: 'Fact', dimension: 'Dimension', bridge: 'Fact and dimension', table: 'No joins' }
+
+/**
+ * The Tables view: where the tables are stored, said once, then one row per
+ * table (its role, rows, columns, joins). A row opens its rows in place, below
+ * that row; the address keeps which (?table=).
+ */
+function TablesView({ data, graph, open, onOpen }) {
+  const storageOf = new Map((data.connector_details || []).map(c => [c.name, c.storage]))
+  const connectors = [...new Set(data.tables.map(t => t.connector))]
+  const roleOf = Object.fromEntries(graph.nodes.map(n => [n.name, n.role]))
+  const joins = name => graph.edges.filter(e => e.from === name || e.to === name).length
+  return (
+    <div>
+      {connectors.length > 0 && (
+        <p className="mtables__where">
+          Stored in {connectors.map((c, i) => (
+            <Fragment key={c}>
+              {i > 0 && ', '}<strong>{c}</strong>
+              {storageOf.get(c)?.where && <> · <code>{storageOf.get(c).where}</code></>}
+            </Fragment>
+          ))}
+        </p>
+      )}
+      <table className="tb-list mtables">
+        <colgroup><col /><col className="mtables__n" /><col className="mtables__n mtables__cols" /><col className="mtables__n" /></colgroup>
+        <thead><tr><th>Table</th><th>Rows</th><th className="mtables__cols">Columns</th><th>Joins</th></tr></thead>
+        <tbody>
+          {data.tables.map(t => (
+            <TableRow key={t.name} t={t} role={roleOf[t.name]} joins={joins(t.name)}
+                      many={connectors.length > 1} open={open === t.name}
+                      onOpen={() => onOpen(open === t.name ? null : t.name)} />
+          ))}
+        </tbody>
+      </table>
+      <FrameworkHidden n={data.hidden_framework_tables} />
+    </div>
+  )
+}
+
+// One table's row. Its row count is the table API's (exact for the warehouse;
+// "≈" marks a catalog estimate; "—" when the source cannot be reached).
+function TableRow({ t, role, joins, many, open, onOpen }) {
+  const { data: info } = useTable(t.connector, t.source)
+  const rows = info && info.connected !== false ? info.rows : null
+  const opened = useRef(null)
+  // Opened from the address (a link, a reload): bring it into view once.
+  useEffect(() => { if (open) opened.current?.scrollIntoView({ block: 'nearest' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <>
+      <tr ref={opened} className={`mtables__row${open ? ' mtables__row--open' : ''}`} data-table={t.name}>
+        <td>
+          <button type="button" className="mtables__name" aria-expanded={open} onClick={onOpen}>
+            <span className="mtables__chev" aria-hidden="true">›</span>
+            <code>{t.name}</code>
+          </button>
+          <span className="mtables__sub">
+            <Chip>{ROLE_WORDS[role] || ROLE_WORDS.table}</Chip>
+            {t.source !== t.name && <span>stored as <code>{t.source}</code></span>}
+            {many && <span>in {t.connector}</span>}
+          </span>
+        </td>
+        <td className="mtables__num">
+          {!info ? '' : rows == null ? '—' : `${info.rows_exact === false ? '≈' : ''}${Number(rows).toLocaleString('en-US')}`}
+        </td>
+        <td className="mtables__num mtables__cols">{(t.columns || []).length || '—'}</td>
+        <td className="mtables__num">{joins}</td>
+      </tr>
+      {open && (
+        <tr className="mtables__open"><td colSpan={4}><InlineTable t={t} /></td></tr>
+      )}
+    </>
+  )
+}
+
+// Whether a row that scrolls sideways has more past its right edge: the cue
+// (a chevron at that edge) that it scrolls at all. *ready* re-measures once the row exists.
+function useMoreToTheRight(ref, ready) {
+  const [more, setMore] = useState(false)
+  useEffect(() => {
+    const el = ref.current?.firstElementChild   // the views' row, inside its wrap
+    if (!el) return undefined
+    const check = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    const resized = new ResizeObserver(check)
+    resized.observe(el)
+    return () => { el.removeEventListener('scroll', check); resized.disconnect() }
+  }, [ref, ready])
+  return more
+}
+
+// On a phone the views take the row, and the page's action (Edit as a draft)
+// goes into a "…" menu, where it keeps its words.
+function MoreMenu({ children }) {
+  const [open, setOpen] = useState(false)
+  const root = useRef(null)
+  const onBlur = e => { if (!root.current?.contains(e.relatedTarget)) setOpen(false) }
+  return (
+    <div ref={root} className="mdetail__action rp__pop rp__pop--end" onBlur={onBlur}
+         onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}>
+      <button type="button" className="cmd" aria-label="More" aria-haspopup="menu" aria-expanded={open}
+              onClick={() => setOpen(o => !o)}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" />
+        </svg>
+      </button>
+      {open && (
+        <div className="rp__menu mdetail__menu" role="menu">
+          {cloneElement(children, { className: 'rp__item', role: 'menuitem' })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 /** *action*: what sits at the right of the views (the page's Edit as a draft). */
 export function ModelDetail({ name, action }) {
   const { data, isLoading } = useModel(name)
   const { data: desk } = useDesk()
-  const [tab, setTab] = useState(null)      // null: the model's own default tab
-  const [previewTable, setPreviewTable] = useState(null)
+  // The view, the opened table and the named measure are the address's
+  // (?view=, ?table=, ?measure=): each change is a step Back undoes.
+  const [params, setParams] = useSearchParams()
+  const asked = params.get('view')
+  const view = VIEWS.some(([v]) => v === asked) ? asked : null
+  const measure = params.get('measure')
+  const go = patch => setParams(p => {
+    const next = new URLSearchParams(p)
+    Object.entries(patch).forEach(([k, v]) => (v == null ? next.delete(k) : next.set(k, v)))
+    return next
+  })
   // A diagram fitted to a phone shrinks every table past reading; there the
   // Tables view (the diagram's list form) opens first.
   const phone = useNarrow('(max-width: 720px)')
+  const viewsRef = useRef(null)
+  const more = useMoreToTheRight(viewsRef, !!data)
 
   if (!name) return (
     <Card>
@@ -367,9 +477,10 @@ export function ModelDetail({ name, action }) {
   if (!data) return null
 
   const graph = buildModelGraph(data)
-  const storageOf = new Map((data.connector_details || []).map(c => [c.name, c.storage]))
   // A model with joins opens on its diagram; one with none has nothing to draw.
-  const active = tab || (graph.edges.length && !phone ? 'Diagram' : 'Tables')
+  const active = view || (graph.edges.length && !phone ? 'diagram' : 'tables')
+  const openTable = data.tables.find(t => t.name === params.get('table')) || null
+  const openOn = table => go({ view: active, table, measure: null })
   // The grain in the words a report uses for each attribute; the identifiers in the title.
   const grainRefs = (data.dimensions || []).flatMap(d =>
     (d.attributes || []).map(attr => `${d.name}.${attr}`))
@@ -379,13 +490,12 @@ export function ModelDetail({ name, action }) {
   return (
     <Card className="fade-in">
       <div className="mdetail__head">
-        <div className="seg mdetail__views" role="group" aria-label="What to show of the model">
-          {VIEWS.map(v => (
-            <button key={v} type="button" aria-pressed={active === v}
-                    onClick={() => { setTab(v); setPreviewTable(null) }}>{v}</button>
-          ))}
+        <div ref={viewsRef} className="mdetail__viewwrap">
+          <Segmented className="mdetail__views" options={VIEWS} value={active} label="What to show of the model"
+                     onChange={v => go({ view: v, table: null, measure: null })} />
+          {more && <span className="mdetail__more" aria-hidden="true">›</span>}
         </div>
-        {action && <div className="mdetail__action">{action}</div>}
+        {action && (phone ? <MoreMenu>{action}</MoreMenu> : <div className="mdetail__action">{action}</div>)}
       </div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
         {grain && <div title={grainRefs.join(', ')}>Grain: {grain}</div>}
@@ -400,54 +510,17 @@ export function ModelDetail({ name, action }) {
         )}
       </div>
 
-      {active === 'Tables' && (
-        <div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="tb-list">
-              <thead><tr><th>Table</th><th>Stored in</th><th>Source table</th><th></th></tr></thead>
-              <tbody>
-                {data.tables.map(t => (
-                  <tr key={t.name}>
-                    <td><code>{t.name}</code></td>
-                    <td style={{ color: 'var(--text-2)' }}>
-                      {t.connector}
-                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>{storageOf.get(t.connector)?.where}</div>
-                    </td>
-                    <td style={{ color: 'var(--muted)' }}><code>{t.source}</code></td>
-                    <td>
-                      <button onClick={() => setPreviewTable(previewTable === t.name ? null : t.name)} style={{
-                        padding: '3px 10px', fontSize: 11, fontWeight: 600, borderRadius: 4,
-                        background: 'var(--blue-lt)', color: 'var(--accent-text)',
-                        border: '1px solid var(--blue-br)', cursor: 'pointer',
-                        transition: 'background var(--t)',
-                      }}>
-                        {previewTable === t.name ? 'Hide' : 'Preview'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <FrameworkHidden n={data.hidden_framework_tables} />
-          {previewTable && (
-            <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
-                Preview: <strong style={{ color: 'var(--text)' }}>{previewTable}</strong>
-              </div>
-              <TablePreview modelName={name} tableName={previewTable} />
-            </div>
-          )}
-        </div>
+      {active === 'tables' && (
+        <TablesView data={data} graph={graph} open={openTable?.name} onOpen={openOn} />
       )}
 
-      {active === 'Relationships' && (
+      {active === 'relationships' && (
         graph.edges.length === 0
-          ? <Empty message="No joins declared. Give a fact its foreign_keys, or call add_relationship." />
+          ? <Empty message="No joins declared. Give a fact its foreign_keys:, or list one under relationships:." />
           : (
             <div style={{ overflowX: 'auto' }}>
               <table className="tb-list">
-                <thead><tr><th>From</th><th>To</th><th>Keys</th><th>Shape</th><th>Declared with</th></tr></thead>
+                <thead><tr><th>From</th><th>To</th><th>Keys</th><th>Shape</th><th>Declared under</th></tr></thead>
                 <tbody>
                   {graph.edges.map(e => (
                     <tr key={e.id}>
@@ -456,8 +529,10 @@ export function ModelDetail({ name, action }) {
                       <td style={{ color: 'var(--muted)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
                         {e.fromKey} = {e.toKey}
                       </td>
-                      <td><Badge variant="gray">{e.cardinality === 'many-to-one' ? 'many to one' : (e.how || 'join')}</Badge></td>
-                      <td style={{ color: 'var(--muted)', fontSize: 12 }}>{e.declared ? 'add_fact(foreign_keys=…)' : 'add_relationship'}</td>
+                      <td><Chip>{e.cardinality === 'many-to-one' ? 'Many to one' : e.how ? `${e.how[0].toUpperCase()}${e.how.slice(1)} join` : 'Join'}</Chip></td>
+                      <td style={{ color: 'var(--muted)', fontSize: 12 }}>
+                        {e.declared ? <><code>foreign_keys:</code> on the fact</> : <code>relationships:</code>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -466,24 +541,23 @@ export function ModelDetail({ name, action }) {
           )
       )}
 
-      {active === 'Measures' && <MeasuresTable measures={data.measures || []} />}
+      {active === 'measures' && <MeasuresTable model={name} measures={data.measures || []} target={measure} />}
 
-      {active === 'Storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} hidden={data.hidden_framework_tables} />}
-      {active === 'Code' && <CodeView kind="models" name={name} />}
+      {active === 'storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} hidden={data.hidden_framework_tables} />}
+      {active === 'code' && <CodeView kind="models" name={name} />}
 
-      {active === 'Diagram' && (
+      {active === 'diagram' && (
         <div className="fade-in">
           <ERDLegend />
-          <ERDDiagram data={data} selected={previewTable} onSelect={t => setPreviewTable(previewTable === t ? null : t)} />
+          <ERDDiagram data={data} selected={openTable?.name}
+                      onSelect={t => openOn(openTable?.name === t ? null : t)} />
           <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
-            Click a table to preview its rows · drag to rearrange · scroll to zoom · each join runs from a fact to the dimension it references
+            Click a table to see its rows · drag to rearrange · scroll to zoom · each join runs from a fact to the dimension it references
           </p>
-          {previewTable && (
-            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
-                Preview: <strong style={{ color: 'var(--text)' }}>{previewTable}</strong>
-              </div>
-              <TablePreview modelName={name} tableName={previewTable} />
+          {openTable && (
+            <div className="mdetail__open">
+              <h3 className="mdetail__open-name"><code>{openTable.name}</code></h3>
+              <InlineTable t={openTable} />
             </div>
           )}
         </div>

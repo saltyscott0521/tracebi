@@ -294,7 +294,7 @@ def _writable_output_html(name: str):
     return path
 
 
-def _artifact_payload(name: str):
+def _artifact_payload(name: str, *, fresh: bool = False):
     """The REAL artifact render for a package-backed report, or None.
 
     Web parity (architecture v2 §2.3): a report backed by a template
@@ -318,7 +318,10 @@ def _artifact_payload(name: str):
         )
     except (OSError, ValueError):
         mtime = 0.0
-    cached = _ARTIFACT_CACHE.get(name)
+    # A run someone asked for (Rebuild, Build it now) is a build, however
+    # recent the last one: only a read that builds in passing takes the
+    # cached page.
+    cached = None if fresh else _ARTIFACT_CACHE.get(name)
     now = time.monotonic()
     if cached and cached["mtime"] == mtime and now - cached["at"] < _ARTIFACT_TTL_S:
         return cached["payload"]
@@ -341,6 +344,10 @@ def _artifact_payload(name: str):
             models, retained_path, save_manifest=True)
         with open(retained_path, encoding="utf-8") as f:
             html = f.read()
+        # The desk reads output/: re-run this build's verdict now, on the
+        # thread that wrote it, so the next desk read does not wait for it.
+        from tracebi.desk import warm
+        warm(retained_path + ".manifest.json", models)
         receipt = {
             "retained": True,
             "html_path": retained_path,
@@ -393,9 +400,9 @@ _NO_PACKAGE = (
 )
 
 
-def _artifact_payload_or_refuse(name: str) -> dict:
+def _artifact_payload_or_refuse(name: str, *, fresh: bool = False) -> dict:
     """The one render path: the package artifact, or a clear refusal."""
-    payload = _artifact_payload(name)
+    payload = _artifact_payload(name, fresh=fresh)
     if payload is None:
         raise HTTPException(status_code=422,
                             detail=_NO_PACKAGE.format(name=name))
@@ -607,7 +614,7 @@ def run_report(name: str):
     # a generic 500.
     _opened_report(name, "view")
     try:
-        return _artifact_payload_or_refuse(name)
+        return _artifact_payload_or_refuse(name, fresh=True)
     except HTTPException:
         raise
     except Exception as exc:
@@ -616,7 +623,7 @@ def run_report(name: str):
 
 def _render_report_payload(name: str) -> dict:
     """Run + render a report; shared by the sync and background paths."""
-    return _artifact_payload_or_refuse(name)
+    return _artifact_payload_or_refuse(name, fresh=True)
 
 
 @router.post("/{name:path}/runs", status_code=202)

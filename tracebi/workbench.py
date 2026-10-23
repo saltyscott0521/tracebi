@@ -1169,6 +1169,7 @@ def warehouse_view(path: str, profile: bool = True) -> dict:
     ``profile=False`` leaves the per-column profiles out: the Warehouse page
     lists every table at once and profiles one only when it is opened."""
     from tracebi.contracts import table_statuses
+    from tracebi.sources import contract_files
     from tracebi.warehouse import as_warehouse
 
     # A warehouse address from tracebi.yaml knows its tier (Parquet under a
@@ -1182,8 +1183,13 @@ def warehouse_view(path: str, profile: bool = True) -> dict:
         view["tables"] = _warehouse_tables(path, profile, hidden=hidden)
         view["hidden_framework_tables"] = len(hidden)
         statuses = table_statuses(path, [t["name"] for t in view["tables"]])
+        files = contract_files() if any(s.get("transform") for s in statuses.values()) else {}
         for t in view["tables"]:
             t["contract"] = statuses[t["name"]]
+            # The file that declares the checks, so the page names it rather
+            # than the record's own name.
+            if t["contract"].get("transform") in files:
+                t["contract"]["file"] = files[t["contract"]["transform"]]
     except Exception as exc:  # noqa: BLE001 — a locked file is a result
         view["error"] = f"{type(exc).__name__}: {exc}"
     return view

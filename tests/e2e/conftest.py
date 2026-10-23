@@ -39,6 +39,10 @@ def isolated(monkeypatch):
     from tracebi.reports import base_renderer
     monkeypatch.setattr(base_renderer, "_GIT_SHA_WARNED", base_renderer._GIT_SHA_WARNED)
     yield
+    # A report run the journey started in the background finishes before the
+    # next journey gets the registries, or it would build against them.
+    from tracebi.web.api.run_store import run_store
+    run_store.settle()
     release_warehouses()
 
 

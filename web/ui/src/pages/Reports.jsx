@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, forwardRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, forwardRef } from 'react'
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -6,7 +6,7 @@ import {
   useReports, useStartReportRun, useReportRun, useRuns,
   useReportLineage, useBuiltReport,
   useReportSource, reportDownloadUrl, reportShareUrl, useDesk, useModels,
-  useAppStatus, useMe, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
+  useAppStatus, useMe, useRole, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview, fetchDeskFresh,
 } from '../api'
 import { FRAME_SANDBOX, followSelection, listenToFrame, setFrameSelection, tellFrame, tellVerdict } from '../frameBridge'
 import Workbench from '../components/Workbench'
@@ -103,7 +103,9 @@ function useReportBuild(name) {
 // that asks for a look, why, and when it was built) and one command bar: Open,
 // Share and Export for everyone; Rebuild and Edit as a draft for an analyst or
 // admin, Build in dev mode, and the "About this build" panel (Receipt, Lineage,
-// History, Files). A command the person's role cannot use is not shown. The
+// History, Files). A command the person's role cannot use is not shown, nor
+// one that needs a build (Open, Share, Export, About this build) before there
+// is one. The
 // report fills the rest of the screen and keeps its own receipt drawer
 // (tracebi.js); the app tells the frame its verdict, so the report's masthead
 // chip says what the app's check found rather than the file's "Not checked".
@@ -234,7 +236,7 @@ function MoreMenu({ name, shown, canBuild, rebuild, running, canPoint, pointOn, 
               <Icon name="build" />{pointOn ? 'Leave Build mode' : 'Build'}
             </button>
           )}
-          {!pointOn && (
+          {!pointOn && shown && (
             <button type="button" role="menuitem" className="rp__item" onClick={pick(onAbout)}>
               <Icon name="details" />About this build
             </button>
@@ -299,7 +301,7 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
   const last = report.last_run
   const labelOf = useModelLabel()
   const queries = (manifest?.embedded_data || []).length
-  const form = (FORMS[report.form] || FORMS.code).label
+  const form = (FORMS[report.form === 'package' ? report.made_from : report.form] || FORMS.code).label
   return (
     <>
       <section className="rpanel__sec">
@@ -512,12 +514,15 @@ function ReportPanel({ tab, setTab, onClose, ...props }) {
 }
 
 // A report with no build: nothing to show, and nothing is built by looking.
+// A viewer cannot build, so is told who does instead of how.
 function NeverBuilt({ build, canBuild }) {
   const busy = build.running || build.status === 'succeeded'
+  const viewer = useRole() === 'viewer'
   return (
     <div className="rprev__never">
       <Verdict state="never-built" />
-      <p>There is no page to show yet. Build it once and the preview, its trace and the check appear here.</p>
+      <p>{viewer ? 'Not built yet. An analyst or admin builds it.'
+        : 'There is no page to show yet. Build it once and the preview, its trace and the check appear here.'}</p>
       {canBuild && (
         <Btn onClick={build.build} disabled={busy}>
           {busy ? <><Spinner size={12} /> Building…</> : 'Build it now'}
@@ -580,12 +585,24 @@ function OpenReport({ report, model }) {
   // a filter, and says so: the header shows Local and the selection, each
   // field a chip that clears it. A new page starts as authored.
   const [selection, setSelection] = useState(null)
-  useEffect(() => {
+  // A build is deterministic, so a rebuild on unchanged data gives the same
+  // HTML string; the frame is keyed on the build's time as well, so a new
+  // build is a new page (and starts as authored) even when its bytes match.
+  const buildKey = shown?.manifest?.rendered_at || null
+  // A layout effect: the listeners are on before the browser can load the
+  // frame, so nothing the page says is missed.
+  useLayoutEffect(() => {
     setSelection(null)
     const frame = frameRef.current
-    return frame ? followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
-      : undefined
-  }, [frameHtml])
+    if (!frame) return undefined
+    // A new build starts as authored, so when the page says it is up it is
+    // told the authored state (a no-op on a page that has none), before any
+    // gesture. (A page in a srcdoc frame keeps no selection in its address
+    // either, tracebi.js writeHash, so a re-created frame has none to inherit.)
+    const stopReady = listenToFrame(frame, m => { if (m.type === 'ready') setFrameSelection(frame, {}) })
+    const stopFollow = followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
+    return () => { stopReady(); stopFollow() }
+  }, [frameHtml, buildKey])
   const clearField = field => {
     const rest = { ...selection }
     delete rest[field]
@@ -649,12 +666,15 @@ function OpenReport({ report, model }) {
     return () => document.removeEventListener('keydown', esc)
   }, [showPanel, closePanel])
 
-  // The desk re-runs every recorded query against the warehouse as it is now.
+  // The desk keeps a verdict while its inputs are unchanged, so a plain refetch
+  // would hand back the kept one; Check again asks it to re-run every recorded
+  // query against the warehouse as it is now, and that answer replaces the kept.
   const checkAgain = async () => {
     setChecking(true)
     try {
-      await qc.refetchQueries({ queryKey: ['desk'] })
-      const row = (qc.getQueryData(['desk'])?.builds || []).find(b => b.report === name)
+      const fresh = await fetchDeskFresh()
+      qc.setQueryData(['desk'], fresh)
+      const row = (fresh?.builds || []).find(b => b.report === name)
       const v = row && verdictOf({ report, build: row })
       toast(row ? `Checked again: ${VERDICT_LABEL[v.state]}.` : 'There is no build to check.',
         v?.state === 'does-not-reproduce' ? 'error' : 'info')
@@ -667,7 +687,7 @@ function OpenReport({ report, model }) {
 
   // A check still running would show the verdict from before it.
   const verdict = desk && !checkingDesk ? verdictOf({
-    report, build: lastBuild, contracts: shown?.manifest?.transform_contracts, checkedAt: dataUpdatedAt,
+    report, build: lastBuild, contracts: shown?.manifest?.transform_contracts, checkedAt: lastBuild?.computed_at ?? dataUpdatedAt,
   }) : null
   const message = needsAction(verdict) ? verdict : null
   // The report's own chip says what the app's check found. Only the build is
@@ -733,13 +753,16 @@ function OpenReport({ report, model }) {
             <Icon name="open" /><span className="cmd__lab">Open</span>
           </a>
         )}
-        <SharePopover name={name} />
+        {shown && <SharePopover name={name} />}
         {!narrow && shown && <ExportMenu name={name} />}
         <span className="rp__grow" />
         {narrow ? (
-          <MoreMenu name={name} shown={shown} canBuild={canBuild} rebuild={rebuild} running={running}
-                    canPoint={canPoint} pointOn={pointOn} togglePoint={togglePoint}
-                    onAbout={() => { setWantBuild(false); setPanel(p => ({ ...p, open: true })) }} />
+          // A viewer on a report nobody has built would open an empty menu.
+          (shown || canBuild || canPoint) && (
+            <MoreMenu name={name} shown={shown} canBuild={canBuild} rebuild={rebuild} running={running}
+                      canPoint={canPoint} pointOn={pointOn} togglePoint={togglePoint}
+                      onAbout={() => { setWantBuild(false); setPanel(p => ({ ...p, open: true })) }} />
+          )
         ) : (
           <>
             {canBuild && shown && (
@@ -755,7 +778,7 @@ function OpenReport({ report, model }) {
                 Build
               </Cmd>
             )}
-            {!pointOn && (
+            {!pointOn && shown && (
               <>
                 {(canBuild || canPoint) && <span className="rp__vr" aria-hidden="true" />}
                 <Cmd icon="details" on={showPanel} onClick={togglePanel}>About this build</Cmd>
@@ -776,7 +799,7 @@ function OpenReport({ report, model }) {
           )}
           {(runErr && shown) && <div className="rp__err"><ErrorDetail error={runErr} /></div>}
           {frameHtml ? (
-            <iframe ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
+            <iframe key={buildKey || 'frame'} name={`report-${buildKey || 'frame'}`} ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
           ) : opening ? (
             <div className="rp__state fade-in">
               <ReportArt mode="build" size={96} /> Opening the last build…
@@ -799,7 +822,7 @@ function OpenReport({ report, model }) {
             <div className="rp__scrim rp__scrim--panel" onClick={closePanel} aria-hidden="true" />
             <ReportPanel tab={panel.tab} setTab={tab => setPanel({ open: true, tab })} onClose={closePanel}
                          report={report} model={model} shown={shown} lastBuild={lastBuild}
-                         checkedAt={dataUpdatedAt} verdict={verdict} onCheck={checkAgain} checking={checking} />
+                         checkedAt={lastBuild?.computed_at ?? dataUpdatedAt} verdict={verdict} onCheck={checkAgain} checking={checking} />
           </>
         )}
       </div>
@@ -830,11 +853,12 @@ export function ReportPage({ name }) {
   return <OpenReport key={name} report={report} model={reportModels(report)[0] || ''} />
 }
 
-// How a report is authored, from the reports API's `form` field: a JSON spec
-// in the default style, or a custom package with its own template and style.
+// How a report is made, from the reports API's `form` field and, for a
+// package, `made_from`: the file it draws its page from.
 const FORMS = {
   spec: { label: 'JSON spec', title: 'A reports/<name>.json spec: sections in the default style' },
-  package: { label: 'Custom', title: 'A reports/<name>/ package: its own template, style and scripts' },
+  'app.jsx': { label: 'Dashboard (app.jsx)', title: 'A reports/<name>/ package drawn by its app.jsx' },
+  'template.html': { label: 'Page (template.html)', title: 'A reports/<name>/ package drawn by its template.html' },
   code: { label: 'Code', title: 'Registered from Python code' },
 }
 
@@ -1019,6 +1043,7 @@ export default function Library() {
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [closed, setClosed] = useState(() => new Set())
+  const role = useRole()
   if (moved) return <Navigate to={moved} replace />
 
   const models = modelList || []
@@ -1039,7 +1064,9 @@ export default function Library() {
   const tally = {}
   folders.forEach(f => { tally[f.level] = (tally[f.level] || 0) + 1 })
   const usual = Object.keys(tally).sort((x, y) => tally[y] - tally[x])[0]
-  const mine = needle || model ? null : folderData?.personal
+  // A viewer cannot publish, so has no My published to fill.
+  const canPublish = role === 'analyst' || role === 'admin'
+  const mine = needle || model || !canPublish ? null : folderData?.personal
   const pick = name => setParams(name ? new URLSearchParams({ model: name }) : new URLSearchParams())
   const toggle = folder => setClosed(prev => {
     const next = new Set(prev)
@@ -1055,7 +1082,7 @@ export default function Library() {
         <PageTitle>Reports</PageTitle>
         <PageSub>{PAGES[0].sub}</PageSub>
       </header>
-      {isLoading ? <SkeletonList /> : !all.length && !folderData?.personal ? (
+      {isLoading ? <SkeletonList /> : !all.length && !(canPublish && folderData?.personal) ? (
         <Empty message="No reports yet. Scaffold one with tracebi new-report, or see Get started." />
       ) : (
         <>

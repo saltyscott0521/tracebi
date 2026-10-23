@@ -113,6 +113,7 @@ and the schema is closed: an unknown key is refused with a suggestion.</p>
 <h2 id="example">Example</h2>
 <pre><code class="language-yaml"># connections/wh.yaml
 name: wh                      # equals the file name
+label: Sales warehouse        # optional: the name the app shows
 type: postgres
 url: ${TRACEBI_WH_URL}        # the value lives in .env or the environment
 </code></pre>
@@ -161,6 +162,11 @@ connectors:
 </tbody>
 </table>
 <p>All values are strings.</p>
+<p><code>label</code> (optional, any type) is a name for people: the Sources page shows it
+large, with <code>name</code> small beside it, and the kind of source in words from the
+type and the URL's database ("Postgres", "SQLite file"). A connector built
+in Python takes one as <code>connector.label = "..."</code>. It is never a credential
+and never resolved.</p>
 <h2 id="env_var"><code>${ENV_VAR}</code></h2>
 <p>Any value may be a reference, written as the whole value and named
 <code>[A-Z_][A-Z0-9_]*</code>. <code>"x-${A}"</code> is an error.</p>
@@ -177,8 +183,10 @@ the project. The Sources page shows such a name as <code>Set · default</code>.<
   <code>key=</code>... in the query); <code>sqlite:///data/x.db</code> is fine, a URL with a
   password is a validation error.</li>
 <li><strong>Paths stay inside the project when literal.</strong> <code>database</code> and <code>directory</code>
-  of a <code>duckdb</code>/<code>csv</code> connection: no absolute path, no <code>..</code>. Use a reference
-  to point elsewhere. Relative paths resolve against the project root.</li>
+  of a <code>duckdb</code>/<code>csv</code> connection, and the file of a <code>sqlite:///</code> url: no
+  absolute path, no <code>..</code>. Use a reference to point elsewhere. Relative paths
+  (a SQLite url's too, whatever the working directory) resolve against the
+  project root.</li>
 <li><strong>Resolved lazily.</strong> Reading the file builds a connector and reads no
   environment. The variable is read when the connection is used; an unset one
   fails there with an error naming the variable (and not its value).

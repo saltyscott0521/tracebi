@@ -33,8 +33,19 @@ Usage in your app module::
 
 from __future__ import annotations
 
+import os
 import threading
 from typing import Any, Callable, Optional
+
+
+def _page_file(factory: Callable) -> Optional[str]:
+    """``app.jsx`` or ``template.html``: the file a report package draws its
+    page from (an ``app.jsx`` wins, as the build reads it), or ``None`` for a
+    factory with no package."""
+    pkg = getattr(factory, "_tracebi_package_dir", None)
+    if not pkg:
+        return None
+    return "app.jsx" if os.path.isfile(os.path.join(pkg, "app.jsx")) else "template.html"
 
 
 class Registry:
@@ -237,6 +248,10 @@ class Registry:
                     # template and style), or "code" (a registered factory).
                     "form": (getattr(v["factory"], "_tracebi_source", None)
                              or {}).get("form", "code"),
+                    # What a package draws its page from: "app.jsx" (a
+                    # dashboard) or "template.html" (a page); null with no
+                    # package. A compiled spec's package is a template.html.
+                    "made_from": _page_file(v["factory"]),
                 }
                 for k, v in self._report_factories.items()
             ]

@@ -71,10 +71,6 @@ def test_real_app_smoke(tmp_path: Path) -> None:
         project,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "data", ".tracebi"),
     )
-    # What a fresh checkout has: no pages built on this machine earlier, so
-    # opening a report builds it (and records the run the Runs step reads).
-    for built in (project / "output").rglob("*.html"):
-        built.unlink()
     workflow = subprocess.run(
         [sys.executable, "run_workflow.py"],
         cwd=project,
@@ -83,6 +79,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
         check=False,
     )
     assert workflow.returncode == 0, workflow.stderr or workflow.stdout
+    # The workflow builds every report, so the library opens built. This
+    # journey starts from none built, so opening a report builds it (and
+    # records the run the Runs step reads).
+    for built in (project / "output").rglob("*.html"):
+        built.unlink()
 
     port = _free_port()
     env = os.environ.copy()
@@ -111,6 +112,17 @@ def test_real_app_smoke(tmp_path: Path) -> None:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             page = browser.new_page()
+            # What the report frame tells the app, kept for a failure's report.
+            page.add_init_script("""
+                window.__tbMsgs = [];
+                window.addEventListener('message', e => {
+                  const m = e.data;
+                  if (!m || m.tracebiFrame !== 1) return;
+                  window.__tbMsgs.push([Math.round(performance.now()), m.type,
+                    m.type === 'tracebi-selection' && m.payload
+                      ? JSON.stringify(m.payload.selection) + ' authored=' + m.payload.authored : '']);
+                }, true);
+            """)
             page.set_default_timeout(180_000)
             page.on("pageerror", lambda exc: errors.append(f"pageerror: {exc}"))
             page.on(
@@ -138,7 +150,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(sidebar.get_by_role("link", name="Reports", exact=True)).to_have_attribute("aria-current", "page")
             lib_row = page.locator(f'[data-report="{_REPORT}"]')
             expect(lib_row).to_contain_text(_TITLE)
-            expect(lib_row).to_contain_text("Never built")
+            # The verdict waits on the desk re-checking every receipt the
+            # workflow left.
+            expect(lib_row).to_contain_text("Never built", timeout=60_000)
             expect(lib_row).to_contain_text("Mondays 07:00")   # its schedule, in words
             # A model is a filter chip on the list, not the frame of the app.
             page.get_by_role("group", name="Model").get_by_role("button", name=re.compile(r"^Direct Lending Portfolio")).click()
@@ -166,17 +180,92 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # and names the transform that reads it.
             data_tabs.get_by_role("link", name="Sources").click()
             page.wait_for_url("**/data/sources")
-            page.locator('[data-source="crm"]').click()
+            # One of each kind and nothing else: the live Postgres, the two
+            # databases that ship, and inputs/. The warehouse is not a source.
+            page.locator('[data-source="inputs"]').wait_for()
+            assert sorted(page.locator("[data-source]").evaluate_all(
+                "els => els.map(e => e.dataset.source)")) == ["bank", "billing", "crm", "inputs"]
+            crm = page.locator('[data-source="crm"]')
+            expect(crm).to_contain_text("CRM (Postgres)")
+            expect(crm).to_contain_text("Read by transform holdings_transform")
+            crm.click()
             page.wait_for_url("**/data/sources?source=crm")
             expect(page.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()
+            expect(page.get_by_text("Set by TRACEBI_CRM_URL")).to_be_visible()
             expect(page.locator(".src-readby")).to_contain_text("holdings_transform (issuer_ratings)")
-            # Warehouse: who wrote each table, and what fed it.
+            # inputs/: a data file opens its table page; scripts are folded.
+            page.locator('[data-source="inputs"]').click()
+            expect(page.get_by_role("link", name="issuer_ratings.csv")).to_have_attribute(
+                "href", "/data/tables/inputs/issuer_ratings.csv")
+            expect(page.get_by_text(re.compile(r"^\d+ other files$"))).to_be_visible()
+            # Warehouse: the tables grouped by the transform that wrote them;
+            # what its run read is said once, on its group.
             data_tabs.get_by_role("link", name="Warehouse").click()
             page.wait_for_url("**/data/warehouse")
-            rating = page.locator('#wh-warehouse [data-table="dim_rating"]')
-            expect(rating).to_contain_text("Written by holdings_transform")
-            expect(rating).to_contain_text("Fed from crm.issuer_ratings · snapshot inputs/issuer_ratings.csv")
+            # The browser tab names the page, so tabs and bookmarks differ.
+            expect(page).to_have_title("Warehouse · Data · TraceBi")
+            group = page.locator('#wh-warehouse [data-writer="holdings_transform"]')
+            expect(group).to_contain_text(
+                "holdings_transform · wrote 7 tables · read crm.issuer_ratings (snapshot inputs/issuer_ratings.csv) on that run")
+            expect(page.get_by_text("read crm.issuer_ratings", exact=False)).to_have_count(1)
+            expect(group.locator('[data-table="dim_rating"]').get_by_role("link", name="dim_rating")).to_have_attribute(
+                "href", "/data/tables/warehouse/dim_rating")
+            page.get_by_role("searchbox", name="Filter tables").fill("rating")
+            expect(page.locator("#wh-warehouse [data-table]")).to_have_count(1)
             fail_on_browser_errors()
+
+            # One table's page: the grid sorts and searches in the engine, so
+            # what it shows is what the table API answers; the cut is in the
+            # address, so Back steps back through it; ⌘K finds the table by name.
+            def api(path: str):
+                with urllib.request.urlopen(base + "/api" + path) as resp:
+                    return json.load(resp)
+
+            page.goto(base + "/data/tables/warehouse/fact_holdings")
+            grid = page.get_by_role("grid", name="Rows of fact_holdings")
+            grid.wait_for()
+            expect(page.get_by_role("heading", level=1)).to_have_text("fact_holdings")
+            names = [c["name"] for c in api("/tables/warehouse/fact_holdings")["columns"]]
+            fair = grid.get_by_role("columnheader", name=re.compile(r"^fair_value"))
+            fair.get_by_role("button", name="fair_value DOUBLE").click()
+            expect(fair).to_have_attribute("aria-sort", "ascending")
+            fair.get_by_role("button", name="fair_value DOUBLE").click()
+            expect(fair).to_have_attribute("aria-sort", "descending")
+            largest = api("/tables/warehouse/fact_holdings/rows?sort=fair_value&desc=1&limit=1")["rows"][0]
+            first_cell = grid.locator("tbody tr").first.locator("td").nth(names.index("fair_value"))
+            # The cell's title is the raw value, as JavaScript writes the number.
+            expect(first_cell).to_have_attribute("title", repr(largest[names.index("fair_value")]).removesuffix(".0"))
+            page.get_by_role("searchbox", name="Search fact_holdings").fill("Revolving")
+            page.wait_for_url("**q=Revolving**")
+            matched = api("/tables/warehouse/fact_holdings/rows?q=Revolving&limit=1")["total"]
+            expect(page.locator(".grid__count")).to_contain_text(f"of {matched} row")
+            page.go_back()
+            page.wait_for_url(lambda url: "q=" not in url)
+            expect(fair).to_have_attribute("aria-sort", "descending")
+            page.go_back()
+            expect(fair).to_have_attribute("aria-sort", "ascending")
+            # A connection that is not reachable here says which variable, and
+            # links to its Connection section on Sources.
+            page.goto(base + "/data/tables/crm/issuer_ratings")
+            expect(page.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()
+            expect(page.get_by_role("link", name="Open its connection")).to_have_attribute(
+                "href", re.compile(r"^/data/sources\?.*source=crm"))
+            page.goto(base + "/data")
+            # The shortcut is heard once the app has mounted: wait for the page
+            # before pressing it, or on a slow runner the palette never opens.
+            page.get_by_role("heading", name="Data", exact=True).wait_for()
+            page.keyboard.press("Control+k")
+            # Type into the palette's box once it exists: keystrokes sent before
+            # it mounts are lost on a slow runner, and then nothing matches.
+            box = page.get_by_placeholder("Jump to a page, model, report, pipeline…")
+            box.wait_for()
+            box.fill("fact_hold")
+            # The warehouse's tables are read once the palette opens.
+            page.get_by_text("fact_holdings", exact=True).wait_for()
+            page.keyboard.press("Enter")
+            page.wait_for_url("**/data/tables/warehouse/fact_holdings")
+            fail_on_browser_errors()
+            page.goto(base + "/data/warehouse")
 
             # Picking a model opens its page: the line as its header, stations
             # that are links, and tabs with addresses of their own. Model is the
@@ -197,7 +286,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # names, the transform the pipeline runs, the warehouse file it
             # writes, the model's tables and joins.
             expect(station("Sources")).to_contain_text("crm")
-            expect(station("Sources")).to_have_attribute("href", "/data/sources?model=portfolio_model")
+            # Stage ⓪ is this page's Sources tab, like stations 1 and 2: the
+            # reader stays on the model; every source is one link away.
+            expect(station("Sources")).to_have_attribute("href", "/data/portfolio_model/sources")
+            station("Sources").click()
+            page.wait_for_url("**/data/portfolio_model/sources")
+            expect(station("Sources")).to_have_attribute("aria-current", "page")
+            expect(page.get_by_role("link", name="Show every source")).to_have_attribute("href", "/data/sources")
+            station("Model").click()
+            page.wait_for_url("**/data/portfolio_model")
             expect(station("Transform")).to_contain_text("holdings_transform")
             expect(line).to_contain_text("warehouse.duckdb")
             expect(station("Model")).to_contain_text(re.compile(r"\d+ tables · \d+ joins"))
@@ -218,9 +315,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # Ask keeps its own model pick.
             sidebar.get_by_role("link", name="Ask", exact=True).click()
             page.wait_for_url("**/ask")
-            page.get_by_role("link", name=re.compile(r"^Direct Lending Portfolio")).click()
-            page.wait_for_url("**/ask?model=portfolio_model")
             page.get_by_role("heading", name="Ask", exact=True).wait_for()
+            # Ask's own pick of the model: the page before may still hold its
+            # "Read by" links with the same text for a moment.
+            page.locator('a[href="/ask?model=portfolio_model"]', has_text="Direct Lending Portfolio").first.click()
+            page.wait_for_url("**/ask?model=portfolio_model")
             assert page.get_by_label("Model").input_value() == "portfolio_model"
             fail_on_browser_errors()
 
@@ -387,13 +486,36 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # Rebuild makes more build rows, and the library re-checks the new one:
             # the strip counts it as reproducing, and its row says when it was built.
             page.get_by_role("button", name="Rebuild").click()
-            page.get_by_text("Report ran successfully").wait_for()
+            # The page says it is rebuilding until the run settles; the first
+            # build's toast may still be up, so the note is what is waited on.
+            rebuilding = page.get_by_text("Rebuilding: re-running every query")
+            rebuilding.wait_for()
+            expect(rebuilding).to_be_hidden(timeout=60_000)
+            page.get_by_text("Report ran successfully").first.wait_for()
             # The report's own chip says what the app's check found: the file
             # alone says "Not checked", framed here it is told the verdict. The
             # app's header shows it, so the masthead keeps only its Trace link;
             # the frame's trace says the same as the header.
             frame = page.frame_locator("iframe.rp__frame")
-            expect(page.locator(".rp__titlerow")).to_contain_text("Reproduces", timeout=60_000)
+            try:
+                expect(page.locator(".rp__titlerow")).to_contain_text("Reproduces", timeout=60_000)
+            except AssertionError as exc:
+                runs = page.evaluate(
+                    "async (u) => { const r = await fetch(u); return await r.text() }",
+                    f"/api/reports/{_REPORT}/runs",
+                )
+                msgs = page.evaluate("window.__tbMsgs.slice(-40)")
+                frames = [
+                    (f.name, f.evaluate(
+                        "() => [location.href, location.hash, document.title,"
+                        " (document.querySelector(\"select[data-tb-column='dim_issuer.sector']\") || {}).value,"
+                        " (document.querySelector('#tracebi-receipt-data, #tracebi-slice-fact_holdings') || {}).id]"))
+                    for f in page.frames if f != page.main_frame
+                ]
+                raise AssertionError(
+                    f"{exc}\n--- frames ---\n{frames}\n--- messages ---\n{msgs}"
+                    f"\n--- runs ---\n{runs[:1500]}\n--- server log ---\n{_tail(log_path, 40)}"
+                ) from exc
             expect(frame.locator(".tb-receipt-drawer .tb-verdict").first).to_have_text(
                 "Reproduces", timeout=60_000)
             expect(frame.locator(".tb-masthead .tb-verdict").first).to_be_hidden()
@@ -429,7 +551,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # The model's line counts it the same way, in the chip's words.
             page.goto(f"{base}/data/portfolio_model")
             line = page.get_by_role("navigation", name="How portfolio_model is made")
-            expect(line.get_by_role("link", name=re.compile(r"^Reports\b"))).to_contain_text("1 needs a look")
+            expect(line.get_by_role("link", name=re.compile(r"^Reports\b"))).to_contain_text(
+                "1 needs a look", timeout=60_000)   # the desk re-checks again on this page
             expect(line).not_to_contain_text("reproduce")
             page.goto(f"{base}/reports/{_REPORT}")
             page.get_by_role("button", name="Needs a look", exact=True).wait_for()
@@ -446,6 +569,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.wait_for_url(f"**/reports/{_REPORT}")
             page.locator("iframe").wait_for()
             assert page.get_by_role("heading", name=_TITLE, exact=True).is_visible()
+            expect(page).to_have_title(f"{_TITLE} · TraceBi")
 
             # A build is not a check: History shows the list's verdict on the newest
             # build of the report, and a plain "Not checked" (never green) on
@@ -457,7 +581,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             rows = page.locator(f'tr[data-target="{_REPORT}"]')
             rows.first.wait_for()
             assert _TITLE in rows.first.inner_text()
-            page.get_by_text("Checking…").wait_for(state="detached")
+            # The workflow built every report, so every row waits on the desk.
+            expect(page.get_by_text("Checking…")).to_have_count(0, timeout=60_000)
             expect(rows).to_have_count(1)
             rows.first.get_by_role("button", name=re.compile(r"^\d+ older runs?")).click()
             verdicts = [r.locator(".runs__verdict").inner_text() for r in rows.all()]
@@ -471,7 +596,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # One Kind filter, in the words a reader sees: no two kinds a reader
             # cannot tell apart ("Pipeline" and "Pipeline run" were two).
             kinds = page.get_by_label("Kind").locator("option").all_inner_texts()
-            assert kinds == ["All kinds", "Report builds", "Data refreshes", "Schedules", "Publishes"], kinds
+            assert kinds == ["All kinds", "Report builds", "Data refreshes", "Schedules", "Publishes",
+                             "Credential changes"], kinds
             page.get_by_label("Kind").select_option(label="Report builds")
             page.wait_for_url("**/runs?all=1&kind=build")
             expect(rows).to_have_count(len(verdicts))
@@ -487,6 +613,35 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             tops = {round(card.bounding_box()["y"]) for card in cards.all()}
             assert cards.count() == 3 and len(tops) == 1, tops
 
+            # The model's view is in the address. Measures: every measure says
+            # what it is in words (rank and running total too), and a reload
+            # stays on it.
+            page.goto(base + "/data/portfolio_model?view=measures")
+            measure_rows = page.locator("tr[data-measure]")
+            measure_rows.first.wait_for()
+            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-pressed", "true")
+            defs = page.locator("tr[data-measure] td.mlist__def").all_inner_texts()
+            assert len(defs) == measure_rows.count() and all(d.strip() for d in defs), defs
+            expect(page.locator('tr[data-measure="fv_rank"] td.mlist__def')).to_have_text("rank by fair value, largest first")
+            page.reload()
+            measure_rows.first.wait_for()
+            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-pressed", "true")
+            # Tables: ?table= opens that table's rows in place, read through the
+            # table API, with its page one link away.
+            page.goto(base + "/data/portfolio_model?view=tables&table=fact_holdings")
+            grid = page.get_by_role("grid", name="Rows of fact_holdings")
+            expect(grid.locator("tbody tr")).to_have_count(25)
+            expect(grid).to_contain_text("DOUBLE")
+            expect(page.get_by_role("link", name="Open table page →")).to_have_attribute(
+                "href", "/data/tables/warehouse/fact_holdings")
+            page.get_by_role("button", name="dim_fund").click()
+            page.wait_for_url("**/data/portfolio_model?view=tables&table=dim_fund")
+            expect(page.get_by_role("grid", name="Rows of dim_fund")).to_be_visible()
+            expect(page.get_by_role("grid", name="Rows of fact_holdings")).to_have_count(0)
+            page.go_back()
+            page.wait_for_url("**/data/portfolio_model?view=tables&table=fact_holdings")
+            fail_on_browser_errors()
+
             # Each tab can show the code behind what it shows.
             page.goto(base + "/data/portfolio_model/model")
             page.get_by_role("button", name="Code", exact=True).click()
@@ -497,12 +652,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("transforms/holdings_transform.sql").first.wait_for()
             # The Transform tab says what the warehouse holds, and that its checks
             # passed when it was last written, before any report is opened.
-            table = page.locator("details", has_text="fact_holdings")
+            table = page.locator('[data-writer="holdings_transform"] [data-table="fact_holdings"]')
             table.wait_for()
-            assert re.search(r"[\d,]+ rows", table.locator("summary").inner_text())
-            assert table.locator("summary").get_by_text("Checks passed", exact=True).count() == 1
-            table.locator("summary").click()
-            table.get_by_text("The sink satisfied its contract").wait_for()
+            assert re.search(r"\b25\b", table.inner_text())
+            assert table.get_by_text("Checks passed", exact=True).count() == 1
+            page.locator('[data-writer="holdings_transform"]').get_by_text("The sink satisfied its contract").wait_for()
             fail_on_browser_errors()
             # Ask: a sentence of the model's tokens. A measure and a dimension
             # picked from their slots; the answer is the query's own rows: the
@@ -568,9 +722,29 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
             # Transform: Refresh data, its one primary action, unfolds the run's
             # output under the tab's views and follows it to its end…
+            # A read of the warehouse does not hold Refresh data back (a write
+            # waits for a read to let go): with the page's read still pending,
+            # the button is enabled.
+            held, released = [], []
+
+            def hold(route):
+                if released:
+                    route.continue_()
+                else:
+                    held.append(route)
+
+            page.route("**/api/connectors/warehouse/warehouse", hold)
             page.goto(base + "/data/portfolio_model/transform")
-            # The page reads the warehouse as it opens; a transform that starts
-            # writing it meanwhile fails, so let those reads finish first.
+            for _ in range(100):
+                if held:
+                    break
+                page.wait_for_timeout(100)
+            assert held, "the Transform tab never read the warehouse"
+            expect(page.get_by_role("button", name="Refresh data")).to_be_enabled()
+            released.append(True)
+            for route in held:
+                route.continue_()
+            page.unroute("**/api/connectors/warehouse/warehouse")
             page.wait_for_load_state("networkidle")
             assert page.get_by_role("button", name="Refresh data").count() == 1
             page.get_by_role("button", name="Refresh data").click()
@@ -712,6 +886,14 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("Published model portfolio_model").wait_for()
             assert (project / "models" / "portfolio_model.yaml").read_text(encoding="utf-8") == moved
             fail_on_browser_errors()
+
+            # Review lists the reports nobody has built yet as one item, and
+            # Build all builds them: the item goes once every build has landed.
+            page.goto(base + "/review")
+            unbuilt = page.get_by_role("list", name="Needs attention").locator("li", has_text="never been built")
+            unbuilt.get_by_role("button", name="Build all").click()
+            expect(unbuilt).to_have_count(0, timeout=180_000)
+            fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:
@@ -725,9 +907,12 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
 
 def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
-    """Behind a proxy that names roles, a viewer's sidebar is Reports and Ask,
-    an analyst's adds Review (its tabs Attention, Drafts, History, Verify), and
-    an address above the role is a plain page saying who it is for. The API
+    """Behind a proxy that names roles, a viewer's sidebar is Reports, Ask and
+    Docs, an analyst's adds Review (its tabs Attention, Drafts, History,
+    Verify) and Data, read-only (no Refresh data, which an admin has), and an
+    address above the role is a plain page saying who it is for and what this
+    person can do. A viewer meets nothing they cannot act on: no My published,
+    and a report nobody has built says who builds it, with no Share. The API
     enforces the roles; this is what the app shows."""
     from playwright.sync_api import expect, sync_playwright
 
@@ -737,6 +922,8 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
         project,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "data", ".tracebi"),
     )
+    for built in (project / "output").rglob("*.html"):   # nothing built here yet
+        built.unlink()
     port = _free_port()
     env = os.environ.copy()
     env["TRACEBI_APP"] = ""
@@ -773,7 +960,8 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             # once the role is known, so the sidebar below is the viewer's).
             viewer = as_role("viewer")
             viewer.goto(base + "/data")
-            viewer.get_by_role("heading", name="This part of the app is for admins.").wait_for()
+            viewer.get_by_role("heading", name="This part of the app is for analysts.").wait_for()
+            viewer.get_by_text("You can read reports, ask a model questions and read the docs.").wait_for()
             expect(viewer.get_by_role("link", name="Go to the reports")).to_have_attribute("href", "/")
             sidebar = viewer.get_by_role("navigation", name="Main")
             sidebar.get_by_role("link", name="Ask", exact=True).wait_for()
@@ -786,33 +974,57 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             viewer.get_by_role("link", name="Get started", exact=True).click()
             viewer.wait_for_url("**/docs/get-started")
             viewer.get_by_role("heading", name="Get started", exact=True).wait_for()
+            # A Docs page's one h1 is its own title; "Docs" is the crumb.
+            expect(viewer.locator("h1")).to_have_count(1)
+            expect(viewer.locator("h1")).to_have_text("Get started")
             for tab in ("/data/sources", "/data/warehouse", "/data/map"):
                 viewer.goto(base + tab)
-                viewer.get_by_role("heading", name="This part of the app is for admins.").wait_for()
+                viewer.get_by_role("heading", name="This part of the app is for analysts.").wait_for()
             # ⌘K lists the same places: nothing inside Review or Data.
             viewer.keyboard.press("Control+k")
             viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("History")
             viewer.get_by_text("No matches for").wait_for()
+            # Nor the design notes under docs/architecture/.
+            viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("Navigation v3")
+            viewer.get_by_text("No matches for").wait_for()
             viewer.keyboard.press("Escape")
             viewer.goto(base + "/review")
             viewer.get_by_role("heading", name="This part of the app is for analysts.").wait_for()
-            # An open report keeps the same places in its rail.
+            # An open report keeps the same places in its rail. Nobody has
+            # built it: the viewer is told who builds it, and offered no Share
+            # (a link to nothing) and no About this build (a panel of dashes).
             viewer.goto(f"{base}/reports/{_REPORT}")
             rail = viewer.get_by_role("navigation", name="Main")
             expect(rail.get_by_role("link", name="Reports")).to_have_attribute("aria-current", "page")
             expect(rail.get_by_role("link", name="Ask")).to_have_count(1)
             expect(rail.get_by_role("link", name="Review")).to_have_count(0)
+            viewer.get_by_text("Not built yet. An analyst or admin builds it.").wait_for()
+            for command in ("Share", "About this build", "Build it now"):
+                expect(viewer.get_by_role("button", name=command)).to_have_count(0)
+            # The library has no My published for a role that cannot publish
+            # into it; an analyst's has one.
+            viewer.goto(base + "/")
+            viewer.locator(f'[data-report="{_REPORT}"]').wait_for()
+            expect(viewer.get_by_role("region", name="My published")).to_have_count(0)
 
             analyst = as_role("analyst")
             analyst.goto(base + "/runs")
             sidebar = analyst.get_by_role("navigation", name="Main")
             expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")
-            expect(sidebar.get_by_role("link", name="Data", exact=True)).to_have_count(0)
             tabs = analyst.get_by_role("navigation", name="Review: what to show")
             assert tabs.get_by_role("link").all_inner_texts() == ["Attention", "Drafts", "History", "Verify"]
             expect(tabs.get_by_role("link", name="History")).to_have_attribute("aria-current", "page")
-            analyst.goto(base + "/data/portfolio_model")
-            analyst.get_by_role("heading", name="This part of the app is for admins.").wait_for()
+            analyst.goto(base + "/")
+            analyst.get_by_role("region", name="My published").wait_for()
+            # Data is the analyst's to read: a model's Transform tab, with no
+            # Refresh data (it writes the warehouse); the admin's has one.
+            expect(sidebar.get_by_role("link", name="Data", exact=True)).to_have_count(1)
+            analyst.goto(base + "/data/portfolio_model/transform")
+            analyst.get_by_role("group", name="What to show of the pipeline").wait_for()
+            expect(analyst.get_by_role("button", name="Refresh data")).to_have_count(0)
+            admin = as_role("admin")
+            admin.goto(base + "/data/portfolio_model/transform")
+            admin.get_by_role("button", name="Refresh data").wait_for()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:

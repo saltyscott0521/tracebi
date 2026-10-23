@@ -3,7 +3,7 @@ Demo app registry — the single wiring file for the demo app instance.
 
 Everything registered here is visible to the web UI. The demo app is fully
 self-contained: its DataModels live in this package's models/ subdirectory
-(wealth_model.py, MemoryConnector-backed), the sales model that reads its
+(wealth_model.py, over the demo database), the sales model that reads its
 pipeline's cleaned tables (pipeline.py), its reports in reports/, and its
 pipelines below. It runs identically from any working
 directory, which is also what makes it a faithful miniature of a real

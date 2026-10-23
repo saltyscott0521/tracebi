@@ -1,6 +1,6 @@
 {
- "base": "http://127.0.0.1:36377",
- "when": "2026-10-23 13:01:40",
+ "base": "http://127.0.0.1:8031",
+ "when": "2026-10-23 18:55:55",
  "pages": [
   {
    "path": "/",
@@ -12,10 +12,10 @@
     "phone-dark": "shots/root_42099b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 8244,
-    "desktop-dark": 8150,
-    "phone-light": 7886,
-    "phone-dark": 6285
+    "desktop-light": 3736,
+    "desktop-dark": 3022,
+    "phone-light": 1063,
+    "phone-dark": 1028
    }
   },
   {
@@ -28,10 +28,10 @@
     "phone-dark": "shots/ask_8ae0d7__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1072,
-    "desktop-dark": 1218,
-    "phone-light": 1030,
-    "phone-dark": 1131
+    "desktop-light": 970,
+    "desktop-dark": 958,
+    "phone-light": 957,
+    "phone-dark": 966
    }
   },
   {
@@ -44,10 +44,10 @@
     "phone-dark": "shots/data_9112fb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 8836,
-    "desktop-dark": 7668,
-    "phone-light": 750,
-    "phone-dark": 9120
+    "desktop-light": 1309,
+    "desktop-dark": 1246,
+    "phone-light": 1320,
+    "phone-dark": 1269
    }
   },
   {
@@ -60,10 +60,10 @@
     "phone-dark": "shots/data_sources_b315ee__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1318,
-    "desktop-dark": 1132,
-    "phone-light": 1237,
-    "phone-dark": 1310
+    "desktop-light": 980,
+    "desktop-dark": 1149,
+    "phone-light": 1009,
+    "phone-dark": 1038
    }
   },
   {
@@ -76,10 +76,10 @@
     "phone-dark": "shots/data_warehouse_2676de__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1315,
-    "desktop-dark": 1822,
-    "phone-light": 1460,
-    "phone-dark": 2154
+    "desktop-light": 1243,
+    "desktop-dark": 1243,
+    "phone-light": 1225,
+    "phone-dark": 1243
    }
   },
   {
@@ -92,10 +92,10 @@
     "phone-dark": "shots/data_map_d311c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 6890,
-    "desktop-dark": 6885,
-    "phone-light": 5786,
-    "phone-dark": 5323
+    "desktop-light": 1411,
+    "desktop-dark": 1473,
+    "phone-light": 1546,
+    "phone-dark": 1509
    }
   },
   {
@@ -108,10 +108,10 @@
     "phone-dark": "shots/review_2a50c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5906,
-    "desktop-dark": 5278,
-    "phone-light": 5695,
-    "phone-dark": 6278
+    "desktop-light": 1080,
+    "desktop-dark": 1073,
+    "phone-light": 1040,
+    "phone-dark": 1105
    }
   },
   {
@@ -124,10 +124,10 @@
     "phone-dark": "shots/review_drafts_2541b2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1101,
-    "desktop-dark": 953,
-    "phone-light": 1076,
-    "phone-dark": 972
+    "desktop-light": 952,
+    "desktop-dark": 965,
+    "phone-light": 977,
+    "phone-dark": 963
    }
   },
   {
@@ -140,10 +140,10 @@
     "phone-dark": "shots/runs_6e4bd5__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5436,
-    "desktop-dark": 5651,
-    "phone-light": 5105,
-    "phone-dark": 5494
+    "desktop-light": 1063,
+    "desktop-dark": 1050,
+    "phone-light": 1107,
+    "phone-dark": 1026
    }
   },
   {
@@ -156,10 +156,10 @@
     "phone-dark": "shots/verify_c77e84__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1097,
-    "desktop-dark": 1106,
-    "phone-light": 1076,
-    "phone-dark": 1024
+    "desktop-light": 976,
+    "desktop-dark": 982,
+    "phone-light": 951,
+    "phone-dark": 1142
    }
   },
   {
@@ -172,10 +172,10 @@
     "phone-dark": "shots/docs_1baff9__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1118,
-    "desktop-dark": 1070,
-    "phone-light": 1164,
-    "phone-dark": 1130
+    "desktop-light": 1035,
+    "desktop-dark": 1013,
+    "phone-light": 1045,
+    "phone-dark": 1067
    }
   },
   {
@@ -188,10 +188,10 @@
     "phone-dark": "shots/docs_get_started_703372__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1196,
-    "desktop-dark": 1061,
-    "phone-light": 1333,
-    "phone-dark": 996
+    "desktop-light": 1020,
+    "desktop-dark": 1033,
+    "phone-light": 1036,
+    "phone-dark": 1042
    }
   },
   {
@@ -204,10 +204,10 @@
     "phone-dark": "shots/model_housing_model_5f65a0__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5669,
-    "desktop-dark": 5517,
-    "phone-light": 7198,
-    "phone-dark": 4800
+    "desktop-light": 1090,
+    "desktop-dark": 1051,
+    "phone-light": 1047,
+    "phone-dark": 1115
    }
   },
   {
@@ -220,10 +220,10 @@
     "phone-dark": "shots/ask_model_housing_model_2ace0d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1215,
-    "desktop-dark": 1137,
-    "phone-light": 1160,
-    "phone-dark": 1147
+    "desktop-light": 1113,
+    "desktop-dark": 1128,
+    "phone-light": 1115,
+    "phone-dark": 1088
    }
   },
   {
@@ -236,10 +236,10 @@
     "phone-dark": "shots/data_housing_model_33bb86__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5511,
-    "desktop-dark": 5236,
-    "phone-light": 4797,
-    "phone-dark": 4745
+    "desktop-light": 1698,
+    "desktop-dark": 1461,
+    "phone-light": 2272,
+    "phone-dark": 1949
    }
   },
   {
@@ -252,10 +252,10 @@
     "phone-dark": "shots/data_housing_model_model_c731b6__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5336,
-    "desktop-dark": 5020,
-    "phone-light": 5178,
-    "phone-dark": 4970
+    "desktop-light": 1423,
+    "desktop-dark": 1470,
+    "phone-light": 1959,
+    "phone-dark": 1805
    }
   },
   {
@@ -268,10 +268,10 @@
     "phone-dark": "shots/data_housing_model_transform_59e0c3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5088,
-    "desktop-dark": 4858,
-    "phone-light": 5332,
-    "phone-dark": 5124
+    "desktop-light": 1667,
+    "desktop-dark": 1663,
+    "phone-light": 1500,
+    "phone-dark": 1610
    }
   },
   {
@@ -284,10 +284,10 @@
     "phone-dark": "shots/data_housing_model_sources_683952__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5104,
-    "desktop-dark": 5225,
-    "phone-light": 5197,
-    "phone-dark": 4918
+    "desktop-light": 1492,
+    "desktop-dark": 1612,
+    "phone-light": 1476,
+    "phone-dark": 1467
    }
   },
   {
@@ -300,10 +300,10 @@
     "phone-dark": "shots/data_housing_model_runs_a59cca__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4872,
-    "desktop-dark": 5225,
-    "phone-light": 5201,
-    "phone-dark": 4981
+    "desktop-light": 1510,
+    "desktop-dark": 1527,
+    "phone-light": 1503,
+    "phone-dark": 1554
    }
   },
   {
@@ -316,10 +316,10 @@
     "phone-dark": "shots/model_portfolio_model_755db1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4669,
-    "desktop-dark": 4995,
-    "phone-light": 4705,
-    "phone-dark": 4927
+    "desktop-light": 1098,
+    "desktop-dark": 1105,
+    "phone-light": 1093,
+    "phone-dark": 1050
    }
   },
   {
@@ -332,10 +332,10 @@
     "phone-dark": "shots/ask_model_portfolio_model_3d4b30__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1083,
-    "desktop-dark": 1058,
-    "phone-light": 1141,
-    "phone-dark": 1084
+    "desktop-light": 1107,
+    "desktop-dark": 1061,
+    "phone-light": 1137,
+    "phone-dark": 1159
    }
   },
   {
@@ -348,10 +348,10 @@
     "phone-dark": "shots/data_portfolio_model_2d3331__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4967,
-    "desktop-dark": 4844,
-    "phone-light": 4747,
-    "phone-dark": 4693
+    "desktop-light": 1457,
+    "desktop-dark": 1452,
+    "phone-light": 2262,
+    "phone-dark": 2038
    }
   },
   {
@@ -364,10 +364,10 @@
     "phone-dark": "shots/data_portfolio_model_model_0719d6__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5173,
-    "desktop-dark": 4916,
-    "phone-light": 5168,
-    "phone-dark": 5147
+    "desktop-light": 1466,
+    "desktop-dark": 1472,
+    "phone-light": 2016,
+    "phone-dark": 2043
    }
   },
   {
@@ -380,10 +380,10 @@
     "phone-dark": "shots/data_portfolio_model_transform_3a0dc2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5076,
-    "desktop-dark": 5491,
-    "phone-light": 5302,
-    "phone-dark": 5166
+    "desktop-light": 1639,
+    "desktop-dark": 1607,
+    "phone-light": 1691,
+    "phone-dark": 1631
    }
   },
   {
@@ -396,10 +396,10 @@
     "phone-dark": "shots/data_portfolio_model_sources_60a145__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5045,
-    "desktop-dark": 5200,
-    "phone-light": 5471,
-    "phone-dark": 4849
+    "desktop-light": 1649,
+    "desktop-dark": 1481,
+    "phone-light": 1454,
+    "phone-dark": 1510
    }
   },
   {
@@ -412,10 +412,10 @@
     "phone-dark": "shots/data_portfolio_model_runs_0288cf__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5254,
-    "desktop-dark": 5019,
-    "phone-light": 5227,
-    "phone-dark": 5695
+    "desktop-light": 1517,
+    "desktop-dark": 1501,
+    "phone-light": 1552,
+    "phone-dark": 1497
    }
   },
   {
@@ -428,10 +428,10 @@
     "phone-dark": "shots/model_saas_model_14e7a4__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5157,
-    "desktop-dark": 4917,
-    "phone-light": 5117,
-    "phone-dark": 4767
+    "desktop-light": 1052,
+    "desktop-dark": 1059,
+    "phone-light": 1045,
+    "phone-dark": 1101
    }
   },
   {
@@ -444,10 +444,10 @@
     "phone-dark": "shots/ask_model_saas_model_e1362c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1072,
-    "desktop-dark": 1040,
-    "phone-light": 1060,
-    "phone-dark": 1057
+    "desktop-light": 1075,
+    "desktop-dark": 1079,
+    "phone-light": 1053,
+    "phone-dark": 1030
    }
   },
   {
@@ -460,10 +460,10 @@
     "phone-dark": "shots/data_saas_model_553471__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4592,
-    "desktop-dark": 4884,
-    "phone-light": 4891,
-    "phone-dark": 4688
+    "desktop-light": 1544,
+    "desktop-dark": 1661,
+    "phone-light": 1837,
+    "phone-dark": 1867
    }
   },
   {
@@ -476,10 +476,10 @@
     "phone-dark": "shots/data_saas_model_model_06392c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4768,
-    "desktop-dark": 5024,
-    "phone-light": 4872,
-    "phone-dark": 4317
+    "desktop-light": 1669,
+    "desktop-dark": 1597,
+    "phone-light": 1693,
+    "phone-dark": 1706
    }
   },
   {
@@ -492,10 +492,10 @@
     "phone-dark": "shots/data_saas_model_transform_00b675__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4801,
-    "desktop-dark": 4897,
-    "phone-light": 4971,
-    "phone-dark": 5074
+    "desktop-light": 1668,
+    "desktop-dark": 1676,
+    "phone-light": 1593,
+    "phone-dark": 1632
    }
   },
   {
@@ -508,10 +508,10 @@
     "phone-dark": "shots/data_saas_model_sources_540a9c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4728,
-    "desktop-dark": 5115,
-    "phone-light": 4575,
-    "phone-dark": 5158
+    "desktop-light": 1565,
+    "desktop-dark": 1521,
+    "phone-light": 1594,
+    "phone-dark": 1639
    }
   },
   {
@@ -524,10 +524,122 @@
     "phone-dark": "shots/data_saas_model_runs_5e19dc__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5061,
-    "desktop-dark": 5303,
-    "phone-light": 4768,
-    "phone-dark": 4777
+    "desktop-light": 1596,
+    "desktop-dark": 1583,
+    "phone-light": 1559,
+    "phone-dark": 1675
+   }
+  },
+  {
+   "path": "/data/wealth_model",
+   "pattern": "/data/<m>",
+   "shots": {
+    "desktop-light": "shots/data_wealth_model_b85a8e__desktop-light.png",
+    "desktop-dark": "shots/data_wealth_model_b85a8e__desktop-dark.png",
+    "phone-light": "shots/data_wealth_model_b85a8e__phone-light.png",
+    "phone-dark": "shots/data_wealth_model_b85a8e__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1615,
+    "desktop-dark": 1608,
+    "phone-light": 2176,
+    "phone-dark": 2226
+   }
+  },
+  {
+   "path": "/data/wealth_model/model",
+   "pattern": "/data/<m>/model",
+   "shots": {
+    "desktop-light": "shots/data_wealth_model_model_60456b__desktop-light.png",
+    "desktop-dark": "shots/data_wealth_model_model_60456b__desktop-dark.png",
+    "phone-light": "shots/data_wealth_model_model_60456b__phone-light.png",
+    "phone-dark": "shots/data_wealth_model_model_60456b__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1717,
+    "desktop-dark": 1627,
+    "phone-light": 2107,
+    "phone-dark": 2184
+   }
+  },
+  {
+   "path": "/data/wealth_model/transform",
+   "pattern": "/data/<m>/transform",
+   "shots": {
+    "desktop-light": "shots/data_wealth_model_transform_7b2d6e__desktop-light.png",
+    "desktop-dark": "shots/data_wealth_model_transform_7b2d6e__desktop-dark.png",
+    "phone-light": "shots/data_wealth_model_transform_7b2d6e__phone-light.png",
+    "phone-dark": "shots/data_wealth_model_transform_7b2d6e__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1743,
+    "desktop-dark": 1929,
+    "phone-light": 1823,
+    "phone-dark": 1737
+   }
+  },
+  {
+   "path": "/data/wealth_model/sources",
+   "pattern": "/data/<m>/sources",
+   "shots": {
+    "desktop-light": "shots/data_wealth_model_sources_bdd819__desktop-light.png",
+    "desktop-dark": "shots/data_wealth_model_sources_bdd819__desktop-dark.png",
+    "phone-light": "shots/data_wealth_model_sources_bdd819__phone-light.png",
+    "phone-dark": "shots/data_wealth_model_sources_bdd819__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1644,
+    "desktop-dark": 1547,
+    "phone-light": 1649,
+    "phone-dark": 1631
+   }
+  },
+  {
+   "path": "/data/wealth_model/runs",
+   "pattern": "/data/<m>/runs",
+   "shots": {
+    "desktop-light": "shots/data_wealth_model_runs_6ec1ad__desktop-light.png",
+    "desktop-dark": "shots/data_wealth_model_runs_6ec1ad__desktop-dark.png",
+    "phone-light": "shots/data_wealth_model_runs_6ec1ad__phone-light.png",
+    "phone-dark": "shots/data_wealth_model_runs_6ec1ad__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1511,
+    "desktop-dark": 1511,
+    "phone-light": 1522,
+    "phone-dark": 1583
+   }
+  },
+  {
+   "path": "/data/tables/warehouse/dim_cohort",
+   "pattern": "/data/tables/<source>/<table>",
+   "shots": {
+    "desktop-light": "shots/data_tables_warehouse_dim_cohort_04c726__desktop-light.png",
+    "desktop-dark": "shots/data_tables_warehouse_dim_cohort_04c726__desktop-dark.png",
+    "phone-light": "shots/data_tables_warehouse_dim_cohort_04c726__phone-light.png",
+    "phone-dark": "shots/data_tables_warehouse_dim_cohort_04c726__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1144,
+    "desktop-dark": 1099,
+    "phone-light": 1081,
+    "phone-dark": 1116
+   }
+  },
+  {
+   "path": "/data/tables/inputs/holdings.csv",
+   "pattern": "/data/tables/<source>/<table>",
+   "shots": {
+    "desktop-light": "shots/data_tables_inputs_holdings_csv_5b295f__desktop-light.png",
+    "desktop-dark": "shots/data_tables_inputs_holdings_csv_5b295f__desktop-dark.png",
+    "phone-light": "shots/data_tables_inputs_holdings_csv_5b295f__phone-light.png",
+    "phone-dark": "shots/data_tables_inputs_holdings_csv_5b295f__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1062,
+    "desktop-dark": 1031,
+    "phone-light": 1028,
+    "phone-dark": 1065
    }
   },
   {
@@ -540,10 +652,10 @@
     "phone-dark": "shots/reports_housing_model_affordability_1e6f5a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5386,
-    "desktop-dark": 5445,
-    "phone-light": 5608,
-    "phone-dark": 6327
+    "desktop-light": 1862,
+    "desktop-dark": 1769,
+    "phone-light": 1616,
+    "phone-dark": 1741
    }
   },
   {
@@ -556,10 +668,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_book_290cd8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5839,
-    "desktop-dark": 5927,
-    "phone-light": 6183,
-    "phone-dark": 5315
+    "desktop-light": 1589,
+    "desktop-dark": 1596,
+    "phone-light": 1620,
+    "phone-dark": 1712
    }
   },
   {
@@ -572,10 +684,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_concentration_f5b920__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5695,
-    "desktop-dark": 5690,
-    "phone-light": 5475,
-    "phone-dark": 5603
+    "desktop-light": 1673,
+    "desktop-dark": 1635,
+    "phone-light": 1659,
+    "phone-dark": 1528
    }
   },
   {
@@ -742,10 +854,10 @@
     "phone-dark": "shots/no_such_page_01c67c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 976,
-    "desktop-dark": 1004,
-    "phone-light": 1104,
-    "phone-dark": 1096
+    "desktop-light": 965,
+    "desktop-dark": 972,
+    "phone-light": 989,
+    "phone-dark": 931
    }
   },
   {
@@ -758,10 +870,10 @@
     "phone-dark": "shots/data_sources_model_portfolio_model_c50093__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1036,
-    "desktop-dark": 1078,
-    "phone-light": 1071,
-    "phone-dark": 1166
+    "desktop-light": 1008,
+    "desktop-dark": 998,
+    "phone-light": 997,
+    "phone-dark": 1019
    }
   },
   {
@@ -774,10 +886,10 @@
     "phone-dark": "shots/data_warehouse_model_portfolio_model_ae8340__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1322,
-    "desktop-dark": 1234,
-    "phone-light": 1175,
-    "phone-dark": 1236
+    "desktop-light": 1193,
+    "desktop-dark": 1272,
+    "phone-light": 1290,
+    "phone-dark": 1330
    }
   },
   {
@@ -790,10 +902,10 @@
     "phone-dark": "shots/data_sources_model_housing_model_1d48b8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1040,
-    "desktop-dark": 1165,
-    "phone-light": 1201,
-    "phone-dark": 999
+    "desktop-light": 1004,
+    "desktop-dark": 977,
+    "phone-light": 1021,
+    "phone-dark": 1002
    }
   },
   {
@@ -806,10 +918,10 @@
     "phone-dark": "shots/data_warehouse_model_housing_model_e65dfb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1186,
-    "desktop-dark": 1223,
-    "phone-light": 1270,
-    "phone-dark": 1213
+    "desktop-light": 1320,
+    "desktop-dark": 1297,
+    "phone-light": 1268,
+    "phone-dark": 1802
    }
   },
   {
@@ -822,10 +934,10 @@
     "phone-dark": "shots/data_sources_model_saas_model_0b5a78__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1056,
-    "desktop-dark": 1125,
-    "phone-light": 1100,
-    "phone-dark": 1050
+    "desktop-light": 1061,
+    "desktop-dark": 1151,
+    "phone-light": 1030,
+    "phone-dark": 1001
    }
   },
   {
@@ -838,10 +950,26 @@
     "phone-dark": "shots/data_warehouse_model_saas_model_16a68f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1177,
-    "desktop-dark": 1354,
-    "phone-light": 1216,
-    "phone-dark": 1152
+    "desktop-light": 1295,
+    "desktop-dark": 1219,
+    "phone-light": 1243,
+    "phone-dark": 1267
+   }
+  },
+  {
+   "path": "/data/tables/bank/accounts",
+   "pattern": "/data/tables/<source>/<table>",
+   "shots": {
+    "desktop-light": "shots/data_tables_bank_accounts_70ce87__desktop-light.png",
+    "desktop-dark": "shots/data_tables_bank_accounts_70ce87__desktop-dark.png",
+    "phone-light": "shots/data_tables_bank_accounts_70ce87__phone-light.png",
+    "phone-dark": "shots/data_tables_bank_accounts_70ce87__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1113,
+    "desktop-dark": 1112,
+    "phone-light": 1126,
+    "phone-dark": 1129
    }
   },
   {
@@ -854,10 +982,10 @@
     "phone-dark": "shots/docs_concepts_the_three_phase_workflow_6b5461__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1070,
-    "desktop-dark": 1061,
-    "phone-light": 1103,
-    "phone-dark": 1105
+    "desktop-light": 1093,
+    "desktop-dark": 1060,
+    "phone-light": 1138,
+    "phone-dark": 1087
    }
   },
   {
@@ -870,10 +998,10 @@
     "phone-dark": "shots/docs_concepts_freeze_points_6af13f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1008,
-    "desktop-dark": 1061,
-    "phone-light": 1081,
-    "phone-dark": 1019
+    "desktop-light": 1048,
+    "desktop-dark": 1083,
+    "phone-light": 1054,
+    "phone-dark": 1038
    }
   },
   {
@@ -886,10 +1014,10 @@
     "phone-dark": "shots/docs_concepts_lineage_13370c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1114,
-    "desktop-dark": 1063,
-    "phone-light": 1102,
-    "phone-dark": 1085
+    "desktop-light": 1094,
+    "desktop-dark": 1101,
+    "phone-light": 1054,
+    "phone-dark": 1027
    }
   },
   {
@@ -902,10 +1030,10 @@
     "phone-dark": "shots/runs_model_housing_model_a4c247__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5108,
-    "desktop-dark": 4891,
-    "phone-light": 4616,
-    "phone-dark": 4574
+    "desktop-light": 1041,
+    "desktop-dark": 1047,
+    "phone-light": 1133,
+    "phone-dark": 1027
    }
   },
   {
@@ -918,10 +1046,10 @@
     "phone-dark": "shots/runs_model_portfolio_model_bb7ee3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4766,
-    "desktop-dark": 4639,
-    "phone-light": 4459,
-    "phone-dark": 4751
+    "desktop-light": 1041,
+    "desktop-dark": 1034,
+    "phone-light": 1103,
+    "phone-dark": 1074
    }
   },
   {
@@ -934,10 +1062,42 @@
     "phone-dark": "shots/runs_model_saas_model_214de2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5179,
-    "desktop-dark": 4462,
-    "phone-light": 4361,
-    "phone-dark": 4753
+    "desktop-light": 1067,
+    "desktop-dark": 1097,
+    "phone-light": 1087,
+    "phone-dark": 1010
+   }
+  },
+  {
+   "path": "/data/sources?source=inputs",
+   "pattern": "/data/sources?source",
+   "shots": {
+    "desktop-light": "shots/data_sources_source_inputs_11d8ef__desktop-light.png",
+    "desktop-dark": "shots/data_sources_source_inputs_11d8ef__desktop-dark.png",
+    "phone-light": "shots/data_sources_source_inputs_11d8ef__phone-light.png",
+    "phone-dark": "shots/data_sources_source_inputs_11d8ef__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1019,
+    "desktop-dark": 1045,
+    "phone-light": 1012,
+    "phone-dark": 1044
+   }
+  },
+  {
+   "path": "/data/sources?source=bank",
+   "pattern": "/data/sources?source",
+   "shots": {
+    "desktop-light": "shots/data_sources_source_bank_b171ff__desktop-light.png",
+    "desktop-dark": "shots/data_sources_source_bank_b171ff__desktop-dark.png",
+    "phone-light": "shots/data_sources_source_bank_b171ff__phone-light.png",
+    "phone-dark": "shots/data_sources_source_bank_b171ff__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1015,
+    "desktop-dark": 1016,
+    "phone-light": 1011,
+    "phone-dark": 1026
    }
   }
  ],
@@ -1059,288 +1219,10 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 8150ms",
+   "detail": "settles in a median 3022ms",
    "key": "slow-page|/|page",
    "seen_in": [
     "---"
-   ]
-  },
-  {
-   "page": "/data",
-   "pattern": "/data",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 8836ms",
-   "key": "slow-page|/data|page",
-   "seen_in": [
-    "---"
-   ]
-  },
-  {
-   "page": "/data/map",
-   "pattern": "/data/map",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 6885ms",
-   "key": "slow-page|/data/map|page",
-   "seen_in": [
-    "---"
-   ]
-  },
-  {
-   "page": "/review",
-   "pattern": "/review",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5906ms",
-   "key": "slow-page|/review|page",
-   "seen_in": [
-    "---"
-   ]
-  },
-  {
-   "page": "/runs",
-   "pattern": "/runs",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5494ms",
-   "key": "slow-page|/runs|page",
-   "seen_in": [
-    "---"
-   ]
-  },
-  {
-   "page": "/?model=housing_model",
-   "pattern": "/?model",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5669ms",
-   "key": "slow-page|/?model|page",
-   "seen_in": [
-    "---",
-    "---",
-    "---"
-   ]
-  },
-  {
-   "page": "/data/housing_model",
-   "pattern": "/data/<m>",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5236ms",
-   "key": "slow-page|/data/<m>|page",
-   "seen_in": [
-    "---",
-    "---",
-    "---"
-   ]
-  },
-  {
-   "page": "/data/housing_model/model",
-   "pattern": "/data/<m>/model",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5178ms",
-   "key": "slow-page|/data/<m>/model|page",
-   "seen_in": [
-    "---",
-    "---",
-    "---"
-   ]
-  },
-  {
-   "page": "/data/housing_model/transform",
-   "pattern": "/data/<m>/transform",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5124ms",
-   "key": "slow-page|/data/<m>/transform|page",
-   "seen_in": [
-    "---",
-    "---",
-    "---"
-   ]
-  },
-  {
-   "page": "/data/housing_model/sources",
-   "pattern": "/data/<m>/sources",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5197ms",
-   "key": "slow-page|/data/<m>/sources|page",
-   "seen_in": [
-    "---",
-    "---",
-    "---"
-   ]
-  },
-  {
-   "page": "/data/housing_model/runs",
-   "pattern": "/data/<m>/runs",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5201ms",
-   "key": "slow-page|/data/<m>/runs|page",
-   "seen_in": [
-    "---",
-    "---",
-    "---"
-   ]
-  },
-  {
-   "page": "/reports/housing_model/affordability",
-   "pattern": "/reports/<r>",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 5608ms",
-   "key": "slow-page|/reports/<r>|page",
-   "seen_in": [
-    "---",
-    "---",
-    "---"
-   ]
-  },
-  {
-   "page": "/runs?model=housing_model",
-   "pattern": "/runs?model",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 4891ms",
-   "key": "slow-page|/runs?model|page",
-   "seen_in": [
-    "---",
-    "---",
-    "---"
-   ]
-  },
-  {
-   "page": "/data/housing_model",
-   "pattern": "/data/<m>",
-   "viewport": "phone",
-   "theme": "light",
-   "rule": "small-target",
-   "severity": "moderate",
-   "target": "button \"Preview\"",
-   "detail": "64x20px tap target",
-   "key": "small-target|/data/<m>|button",
-   "seen_in": [
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark"
-   ]
-  },
-  {
-   "page": "/data/housing_model/model",
-   "pattern": "/data/<m>/model",
-   "viewport": "phone",
-   "theme": "light",
-   "rule": "small-target",
-   "severity": "moderate",
-   "target": "button \"Preview\"",
-   "detail": "64x20px tap target",
-   "key": "small-target|/data/<m>/model|button",
-   "seen_in": [
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-light",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark",
-    "phone-dark"
    ]
   },
   {
@@ -1367,70 +1249,19 @@
     "phone-dark",
     "phone-dark"
    ]
-  },
-  {
-   "page": "/reports/housing_model/affordability",
-   "pattern": "/reports/<r>",
-   "viewport": "phone",
-   "theme": "light",
-   "rule": "small-target",
-   "severity": "moderate",
-   "target": "button.verdict.verdict--reproduces \"Reproduces\"",
-   "detail": "96x23px tap target",
-   "key": "small-target|/reports/<r>|button.verdict.verdict--reproduces",
-   "seen_in": [
-    "phone-light",
-    "phone-dark",
-    "phone-light",
-    "phone-dark",
-    "phone-light",
-    "phone-dark"
-   ]
-  },
-  {
-   "page": "/data/housing_model",
-   "pattern": "/data/<m>",
-   "viewport": "phone",
-   "theme": "light",
-   "rule": "axe:empty-table-header",
-   "severity": "minor",
-   "target": "th:nth-child(4)",
-   "detail": "Table header text should not be empty \u2014 th:nth-child(4) ::   Element does not have text that is visible to screen readers",
-   "key": "axe:empty-table-header|/data/<m>|th:nth-child(#)",
-   "seen_in": [
-    "phone-light",
-    "phone-light",
-    "phone-light"
-   ]
-  },
-  {
-   "page": "/data/housing_model/model",
-   "pattern": "/data/<m>/model",
-   "viewport": "phone",
-   "theme": "light",
-   "rule": "axe:empty-table-header",
-   "severity": "minor",
-   "target": "th:nth-child(4)",
-   "detail": "Table header text should not be empty \u2014 th:nth-child(4) ::   Element does not have text that is visible to screen readers",
-   "key": "axe:empty-table-header|/data/<m>/model|th:nth-child(#)",
-   "seen_in": [
-    "phone-light",
-    "phone-light",
-    "phone-light"
-   ]
   }
  ],
  "metrics": {
   "hardcoded_colors_in_jsx": 11,
-  "inline_style_blocks": 424,
-  "bundle_js_kb": 1258,
-  "bundle_css_kb": 95,
+  "inline_style_blocks": 406,
+  "bundle_js_kb": 1299,
+  "bundle_css_kb": 105,
   "engine_gz_kb": 14.7,
   "report_font_families": 5,
-  "report_accents": 4,
+  "report_accents": 5,
   "report_box_shadows": 15,
   "report_gradients": 58,
-  "report_looks": 5,
+  "report_looks": 6,
   "report_html_kb": {
    "housing_model/affordability": 799,
    "portfolio_model/portfolio_book": 640,
@@ -1440,9 +1271,11 @@
    "portfolio_model/portfolio_overview": 1234,
    "portfolio_model/portfolio_showcase": 721,
    "saas_model/cohort_brief": 624,
-   "saas_model/mrr_dashboard": 1233
+   "saas_model/mrr_dashboard": 1233,
+   "wealth_model/aum_by_branch": 1341,
+   "wealth_model/aum_by_region": 1225
   },
-  "calc_ms_max": 6.5
+  "calc_ms_max": 1.9
  },
  "report_pass": {
   "sheet": "report-sheet.png",
@@ -1456,6 +1289,7 @@
   "accents": [
    "#0d6b73/#5cc4bd",
    "#1f4e79/#8bb4e0",
+   "#1f6f5c/#6cc3a8",
    "#1f7a4d/#1f7a4d",
    "#2f5bea/#7a9cff"
   ],
@@ -1471,13 +1305,17 @@
     "portfolio_model/portfolio_dashboard",
     "portfolio_model/portfolio_desk",
     "portfolio_model/portfolio_overview",
-    "saas_model/mrr_dashboard"
+    "saas_model/mrr_dashboard",
+    "wealth_model/aum_by_region"
    ],
    "Fraunces + #0d6b73/#5cc4bd": [
     "portfolio_model/portfolio_showcase"
    ],
    "Iowan Old Style + #2f5bea/#7a9cff": [
     "saas_model/cohort_brief"
+   ],
+   "Fraunces + #1f6f5c/#6cc3a8": [
+    "wealth_model/aum_by_branch"
    ]
   },
   "reports": {
@@ -1571,7 +1409,7 @@
     ],
     "accent": "#1f7a4d/#1f7a4d",
     "html_kb": 799,
-    "calc_ms": 6.5,
+    "calc_ms": 1.4,
     "display": "Inter"
    },
    "portfolio_model/portfolio_book": {
@@ -1606,7 +1444,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1238,
-    "calc_ms": 1.5,
+    "calc_ms": 1.7,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_dashboard": {
@@ -1640,7 +1478,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1261,
-    "calc_ms": 1.7,
+    "calc_ms": 1.9,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_overview": {
@@ -1657,7 +1495,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1234,
-    "calc_ms": 1.9,
+    "calc_ms": 1.2,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_showcase": {
@@ -1676,7 +1514,7 @@
     "gradients": [],
     "accent": "#0d6b73/#5cc4bd",
     "html_kb": 721,
-    "calc_ms": 1.5,
+    "calc_ms": 1.7,
     "display": "Fraunces"
    },
    "saas_model/cohort_brief": {
@@ -1694,7 +1532,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 624,
-    "calc_ms": 1.1,
+    "calc_ms": 1.0,
     "display": "Iowan Old Style"
    },
    "saas_model/mrr_dashboard": {
@@ -1711,10 +1549,45 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1233,
-    "calc_ms": 1.4,
+    "calc_ms": 1.0,
+    "display": "Hanken Grotesk"
+   },
+   "wealth_model/aum_by_branch": {
+    "shots": {
+     "desktop-light": "report-shots/wealth_model_aum_by_branch_044cc8__desktop-light.png",
+     "desktop-dark": "report-shots/wealth_model_aum_by_branch_044cc8__desktop-dark.png",
+     "phone-light": "report-shots/wealth_model_aum_by_branch_044cc8__phone-light.png",
+     "phone-dark": "report-shots/wealth_model_aum_by_branch_044cc8__phone-dark.png"
+    },
+    "families": {
+     "Inter": 479,
+     "Fraunces": 40
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#1f6f5c/#6cc3a8",
+    "html_kb": 1341,
+    "calc_ms": 1.8,
+    "display": "Fraunces"
+   },
+   "wealth_model/aum_by_region": {
+    "shots": {
+     "desktop-light": "report-shots/wealth_model_aum_by_region_e9c4ce__desktop-light.png",
+     "desktop-dark": "report-shots/wealth_model_aum_by_region_e9c4ce__desktop-dark.png",
+     "phone-light": "report-shots/wealth_model_aum_by_region_e9c4ce__phone-light.png",
+     "phone-dark": "report-shots/wealth_model_aum_by_region_e9c4ce__phone-dark.png"
+    },
+    "families": {
+     "Hanken Grotesk": 247
+    },
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "html_kb": 1225,
+    "calc_ms": 1.5,
     "display": "Hanken Grotesk"
    }
   }
  },
- "score": 58
+ "score": 70
 }

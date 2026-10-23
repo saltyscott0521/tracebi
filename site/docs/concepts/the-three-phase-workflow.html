@@ -195,16 +195,18 @@ processes. <code>output/</code> holds what
 behind every rendered number.</p>
 <h2 id="try-it-on-the-reference-project">Try it on the reference project</h2>
 <pre><code class="language-bash">cd examples/portfolio_project
-python run_workflow.py          # ① build the warehouse, ③ render the report once
+python run_workflow.py          # ① build the warehouse, ③ build every report
 tracebi serve                   # browse it: portfolio_model → Reports → portfolio_dashboard
 </code></pre>
 <p>The first run generates a deliberately messy Schedule of Investments into
 <code>inputs/</code>, so phase ① has real work to do: prose position descriptions to parse
 into issuers, trailing position counters to strip, sectors spelled six ways,
 money stored as strings.</p>
-<p>Its three models follow the same conventions and share the one warehouse its
-<code>tracebi.yaml</code> names. <code>holdings_transform.sql</code> and <code>saas_transform.sql</code> are SQL
-with a <code>.contract.yaml</code> beside each; <code>affordability_transform.py</code>, which follows
+<p>Its four models follow the same conventions and share the one warehouse its
+<code>tracebi.yaml</code> names. <code>holdings_transform.sql</code>, <code>saas_transform.sql</code> and
+<code>wealth_transform.sql</code> are SQL with a <code>.contract.yaml</code> beside each (the last two
+read SQLite databases that ship in <code>inputs/</code>, through <code>-- source:</code> lines);
+<code>affordability_transform.py</code>, which follows
 each home buyer year by year, is the pandas escape hatch and declares its
 contract in a <code>with contract(...)</code> block. Every table on the Warehouse tab reads
 "Checks passed", or an honest failure.</p>

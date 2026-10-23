@@ -14,10 +14,20 @@ const ENGINE = {
   BigQueryConnector: 'BigQuery', SnowflakeConnector: 'Snowflake',
 }
 
-/** What kind of source a connector is, in words: "DuckDB file", "CSV folder", "SQL database". */
+// A SQL connection's database, from its URL's dialect (the API's `dialect`):
+// "SQL database" alone does not tell Postgres from a SQLite file.
+const DIALECT = {
+  postgresql: 'Postgres', sqlite: 'SQLite file', mysql: 'MySQL', mariadb: 'MariaDB',
+  mssql: 'SQL Server', oracle: 'Oracle', snowflake: 'Snowflake', bigquery: 'BigQuery',
+  duckdb: 'DuckDB file',
+}
+
+/** What kind of source a connector is, in words: "Postgres", "SQLite file", "DuckDB file", "Built in Python". */
 export function sourceKind(c) {
   const kind = c?.storage?.kind
-  if (c?.type === 'MemoryConnector' || kind === 'memory') return 'In memory'
+  if (c?.type === 'MemoryConnector') return 'Built in Python'
+  if (kind === 'memory') return 'In memory'
+  if (c?.type === 'SQLConnector') return DIALECT[c.dialect] || 'SQL database'
   const engine = ENGINE[c?.type] || (c?.type || '').replace(/Connector$/, '')
   return ['file', 'directory', 'database'].includes(kind) ? `${engine} ${KIND_LABEL[kind].toLowerCase()}` : engine
 }
@@ -29,13 +39,18 @@ export function fmtBytes(n) {
   return `${(n / 1024 ** 2).toFixed(1)} MB`
 }
 
-/** One line: the location, and whether it is there right now. */
+/**
+ * One line: the location, and whether it is there right now. A place a
+ * variable sets is named by the variable (the API never reads it to say more).
+ */
 export function StorageLine({ storage }) {
   if (!storage || !storage.where) return <span style={{ color: 'var(--muted)' }}>location not reported</span>
   const missing = storage.exists === false
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <code style={{ fontSize: 12 }}>{storage.where}</code>
+      {storage.variable
+        ? <span style={{ fontSize: 13 }}>Set by <code style={{ fontSize: 12 }}>{storage.variable}</code></span>
+        : <code style={{ fontSize: 12 }}>{storage.where}</code>}
       {missing && (
         <Chip tone="warn" title="Nothing at this location yet. Run the transform or pipeline that writes it.">
           Not built yet

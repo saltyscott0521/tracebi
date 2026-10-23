@@ -1,7 +1,7 @@
 import { Fragment } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
-import { useAppStatus, useConnectors, useDesk, useInputs, useModels, usePipelines, useReports } from '../api'
+import { useAppStatus, useConnectors, useDesk, useInputs, useModels, usePipelines, useReports, useWarehouses } from '../api'
 import { PageHeader } from '../components/Scope'
 import { Flag, VerdictSummary, reportStates } from '../components/TheLine'
 import { ProjectFeedFold } from '../components/Workbench'
@@ -16,11 +16,14 @@ import {
 import { Empty, SkeletonList } from '../components/Shared'
 
 // When the model's data was last refreshed: its transform step's last run.
-function refreshed(pipeline) {
+// A transform run outside the app (run_workflow.py, `tracebi run-transform`)
+// leaves no run here, but its sink certificate records when it wrote the
+// tables (*written*), so that is said instead of "not refreshed".
+function refreshed(pipeline, written) {
   if (!pipeline) return { text: 'No refresh pipeline' }
   const layers = pipeline.layers || []
   const step = layers.find(l => l.name === 'transform') || layers[0]
-  if (!step?.last_run) return { text: 'Not refreshed yet' }
+  if (!step?.last_run) return { text: written ? `Written ${ago(written)} · outside the app` : 'Not refreshed yet' }
   if (step.last_status === 'failed') {
     return { flag: { kind: 'bad', glyph: '✕', text: `Refresh failed ${ago(step.last_run)}` } }
   }
@@ -65,9 +68,9 @@ function Seg({ to, children }) {
 // the sources its transform reads, the transform, the warehouse tables, the
 // model's measures, and its reports. On the right, whether its built reports
 // still reproduce, and when its data was last refreshed.
-function ChainRow({ model, reports, pipeline, desk, up }) {
+function ChainRow({ model, reports, pipeline, desk, up, written }) {
   const mine = reports.filter(r => reportBelongsToModel(r, model.name))
-  const when = refreshed(pipeline)
+  const when = refreshed(pipeline, written)
   const label = model.label || model.name
   const nSources = up.connections.length + up.files.length
   const segs = [
@@ -112,6 +115,13 @@ function ChainRow({ model, reports, pipeline, desk, up }) {
   )
 }
 
+// When the newest table *model* reads was written, by its certificate.
+function writtenFor(warehouses, model) {
+  return (warehouses?.warehouses || []).flatMap(w => w.tables)
+    .filter(t => t.read_by.includes(model) && t.written_by?.at)
+    .map(t => t.written_by.at).sort().pop()
+}
+
 /** Data's Models tab (/data): every model as a chain row. */
 export default function Data() {
   const [params] = useSearchParams()
@@ -121,6 +131,7 @@ export default function Data() {
   const { data: connectors } = useConnectors()
   const { data: inputs } = useInputs()
   const { data: desk } = useDesk()
+  const { data: warehouses } = useWarehouses()
 
   // Old links: /data?view=map is the Map tab; /models?m=<model>, /data?model=<model> a model's page.
   if (params.get('view') === 'map') return <Navigate to={mapPath(params.get('model') || '')} replace />
@@ -136,7 +147,7 @@ export default function Data() {
         <ul className="dlist chains">
           {[...models].sort((a, b) => (a.label || a.name).localeCompare(b.label || b.name)).map(m => (
             <ChainRow key={m.name} model={m} reports={reports || []} desk={desk}
-                      pipeline={pipelineFor(pipelines || [], m.name)}
+                      pipeline={pipelineFor(pipelines || [], m.name)} written={writtenFor(warehouses, m.name)}
                       up={upstreamOf({ model: m.name, pipelines, connectors, inputs })} />
           ))}
         </ul>

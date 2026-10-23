@@ -6,6 +6,34 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — titles, words and the last buttons
+
+- **Every browser tab names its page**: the page's heading, after the tab a
+  place's address names ("Warehouse · Data · TraceBi", "Portfolio Showcase ·
+  TraceBi"). A page can name itself (`useDocumentTitle` in
+  `web/ui/src/components/Layout.jsx`).
+- **A Docs page's heading is its own title**, under a "Docs" crumb; Get
+  started too. `docs/architecture/` (design notes) is no longer listed in the
+  Docs sidebar or ⌘K; a link from another page still opens it.
+- **A table's checks are named by their file**
+  (`transforms/holdings_transform.contract.yaml`, not the record's name
+  `holdings`), with the transform's own note folded beneath them.
+  `/api/connectors/{name}/warehouse` gives each table's contract its `file`.
+- **About this build says how the report is made**: "Dashboard (app.jsx)" or
+  "Page (template.html)", not "Custom". `/api/reports` carries `made_from`.
+- **Refresh data is never held back by a read of the warehouse** (a write
+  already waits for a read to let go); it is disabled only while a run starts
+  or runs, and says so.
+- **On a phone** the model's views show a chevron at the edge they scroll past, and Edit
+  as a draft is in a "…" menu with its words; a chip that opens something is
+  at least 24px tall.
+- **History names credential changes**: a "Credential changes" kind, its rows
+  "Credential set" or "Credential removed".
+- **Moved: FastAPI's API reference is at `/api-docs`** (ReDoc `/api-redoc`),
+  since `/docs` is the app's Docs place. A bookmark to the old `/docs` opens
+  the handbook; there is no redirect. `tracebi serve` prints the address, and
+  the API routes reference links it.
+
 ### Added — one read-only table API
 
 - **`/api/tables/{source}/{table}`** (+ `/rows`, `/profile`, `/export.csv`)
@@ -43,6 +71,12 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   existing `pgdata` volume never re-runs init: `docker compose down -v` once.
 
 ### Fixed
+
+- **Rebuild builds**: a run asked for within five seconds of the last build
+  (Rebuild, Build it now, `POST /api/reports/{name}/run`) was answered from
+  the short render cache meant for polling, so it finished at once with the
+  previous page and no new build row. An asked-for run now always renders;
+  a read that builds in passing (`/built`) still takes the cached page.
 
 - **DuckDB 2.0 runs the query engine.** From 2.0 a result fetched part-way
   (`fetchone()`) stays pending on its connection and the next `register()`

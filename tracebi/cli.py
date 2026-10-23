@@ -1102,6 +1102,8 @@ def cmd_serve(args: argparse.Namespace) -> int:
     summary = ", ".join(f"{n} {d}" for d, n in discovered.items() if n) or "no artifacts yet"
     print(f"TraceBi — serving {cwd.name} ({summary})")
     print(f"  http://{args.host}:{args.port}")
+    # /docs is the app's handbook; FastAPI's API reference moved beside it.
+    print(f"  API reference: http://{args.host}:{args.port}/api-docs")
 
     import uvicorn
     uvicorn.run(
@@ -3264,6 +3266,11 @@ def _build_report_target(kind: str, path: Path, output: Path,
     )
     if note:
         print(f"report build was not recorded: {note}", file=sys.stderr)
+    # Re-run its verdict now, on the thread that wrote the manifest: in the
+    # server (a pipeline's rebuild, a schedule) the next desk read is then
+    # instant. A standalone command pays one re-run for a cache that exits.
+    from tracebi.desk import warm
+    warm(str(output) + ".manifest.json", models)
     return output
 
 

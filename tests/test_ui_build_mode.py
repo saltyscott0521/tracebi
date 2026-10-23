@@ -48,6 +48,8 @@ def test_pointing_at_a_figure_reaches_the_agent(tmp_path: Path) -> None:
     done = subprocess.run([sys.executable, "run_workflow.py"], cwd=project,
                           capture_output=True, text=True, check=False)
     assert done.returncode == 0, done.stderr or done.stdout
+    # The workflow builds every report; this journey starts from one nobody has built.
+    (project / "output" / "saas_model" / "cohort_brief.html").unlink()
 
     base, server, log = _serve(project, tmp_path / "server.log", dev_mode=True)
     report = "saas_model/cohort_brief"

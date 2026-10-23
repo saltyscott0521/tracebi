@@ -9,10 +9,13 @@ from __future__ import annotations
 
 import json
 import os
+import threading
+from collections import OrderedDict
 from typing import Any, Mapping, Optional
 
 
-def review(project_root: str, models: Optional[Mapping[str, Any]] = None) -> dict:
+def review(project_root: str, models: Optional[Mapping[str, Any]] = None,
+           fresh: bool = False) -> dict:
     """The review list for *project_root*.
 
     ``open`` is the newest built artifact whose verdict is ``reproduces``,
@@ -20,10 +23,12 @@ def review(project_root: str, models: Optional[Mapping[str, Any]] = None) -> dic
     with its build time and verdict, newest first. The other lists are
     what still needs a person. ``models`` is what ``verify_manifest``
     re-runs against; a missing model becomes an ``error`` verdict rather
-    than an empty desk.
+    than an empty desk. Each verdict and build row carries ``computed_at``
+    (when its re-run happened) and ``cached`` (whether this read reused it;
+    see :func:`verdict`). ``fresh`` re-runs every one.
     """
     root = os.path.abspath(project_root)
-    opened, verdicts, builds = _verdicts(root, models or {})
+    opened, verdicts, builds = _verdicts(root, models or {}, fresh)
     warehouse = os.path.join(root, "data", "warehouse.duckdb")
     return {
         "pins": _pins(root),
@@ -115,10 +120,8 @@ def _built_at(path: str) -> Optional[str]:
 
 
 def _verdicts(
-    root: str, models: Mapping[str, Any],
+    root: str, models: Mapping[str, Any], fresh: bool = False,
 ) -> tuple[Optional[dict], list[dict], list[dict]]:
-    from tracebi.verify import verify_manifest
-
     output = os.path.join(root, "output")
     if not os.path.isdir(output):
         return None, [], []
@@ -135,30 +138,24 @@ def _verdicts(
         path = os.path.join(output, name)
         report = name[: -len(suffix)]
         html_path = os.path.join(output, report + ".html")
-        try:
-            with open(path, encoding="utf-8") as fh:
-                manifest = json.load(fh)
-            if not isinstance(manifest, dict):
-                raise ValueError("manifest is not an object")
-            result = verify_manifest(manifest, models)
-            verdict = result.get("verdict") or "error"
-            detail = result.get("verdict_detail")
-        except Exception as exc:  # noqa: BLE001 — one bad receipt stays on the list
-            verdict = "error"
-            detail = f"{type(exc).__name__}: {exc}"
+        checked = verdict(path, models, fresh=fresh)
+        verdict_ = checked["verdict"]
+        when = {"computed_at": checked["computed_at"], "cached": checked["cached"]}
         row = {
             "report": report,
-            "verdict": verdict,
-            "detail": detail,
+            "verdict": verdict_,
+            "detail": checked["detail"],
             "path": _rel(root, path),
+            **when,
         }
         if os.path.isfile(html_path):
             builds.append({
                 "report": report,
-                "verdict": verdict,
+                "verdict": verdict_,
                 "built_at": _built_at(html_path),
+                **when,
             })
-        if verdict == "reproduces":
+        if verdict_ == "reproduces":
             if os.path.isfile(html_path):
                 try:
                     mtime = os.path.getmtime(html_path)
@@ -176,6 +173,174 @@ def _verdicts(
         waiting.append(row)
     builds.sort(key=lambda b: b["built_at"] or "", reverse=True)
     return opened, waiting, builds
+
+
+# ── The verdict cache ────────────────────────────────────────────────────
+# A verdict is a re-run of a build's recorded queries (tracebi/verify.py,
+# the oracle), never a stored claim older than its inputs. Re-running every
+# build on every desk read cost seconds per page load, so a verdict is kept
+# exactly while nothing it was computed from has changed: the manifest file,
+# each model it names (its file, or the object when it has none), and every
+# connector those models read (the warehouse file's size and modification
+# time, or the object tier's Parquet listing) with the contracts certificate
+# beside it. Any change gives a new key, and the next read re-runs it. An
+# input that cannot say when it changed (the remote tier, a SQL, CSV or
+# in-memory connector) makes the verdict uncacheable: it is re-run on every
+# read, as before. A re-run that hit an error (a locked warehouse, a timeout)
+# is not kept either, since it says nothing about the inputs.
+#
+# The cache is process-local: a second worker keeps its own and computes its
+# own verdicts. That costs it its first read and never serves it a stale one.
+
+_VERDICT_CACHE_MAX = 256
+# manifest path -> (key, entry); least recently used first.
+_verdict_cache: "OrderedDict[str, tuple[tuple, dict]]" = OrderedDict()
+_verdict_lock = threading.Lock()
+
+
+def invalidate() -> None:
+    """Forget every cached verdict, so the next read re-runs each one."""
+    with _verdict_lock:
+        _verdict_cache.clear()
+
+
+def verdict(manifest_path: str, models: Mapping[str, Any],
+            fresh: bool = False) -> dict:
+    """The desk's verdict on the build whose receipt is *manifest_path*:
+    ``{verdict, detail, computed_at, cached}``.
+
+    Reused while :func:`verdict_key` is unchanged and ``fresh`` is false;
+    otherwise re-run by :func:`tracebi.verify.verify_manifest` and kept when
+    the key allows. Never raises: an unreadable receipt is an ``error``.
+    """
+    from datetime import datetime, timezone
+
+    from tracebi.verify import ERROR, verify_manifest
+
+    path = os.path.abspath(manifest_path)
+    # Stamp the manifest before reading it: a rewrite in between is then
+    # kept under the older key, which the next read no longer matches.
+    try:
+        before = os.stat(path)
+    except OSError:
+        before = None
+    key = None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        if not isinstance(manifest, dict):
+            raise ValueError("manifest is not an object")
+        key = verdict_key(path, before, manifest, models)
+        if key is not None and not fresh:
+            with _verdict_lock:
+                hit = _verdict_cache.get(path)
+                if hit is not None and hit[0] == key:
+                    _verdict_cache.move_to_end(path)
+                    return {**hit[1], "cached": True}
+        result = verify_manifest(manifest, models)
+        entry = {"verdict": result.get("verdict") or "error",
+                 "detail": result.get("verdict_detail")}
+        if (result.get("summary") or {}).get(ERROR):
+            key = None
+    except Exception as exc:  # noqa: BLE001 — one bad receipt stays on the list
+        entry = {"verdict": "error", "detail": f"{type(exc).__name__}: {exc}"}
+        key = None
+    entry["computed_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    with _verdict_lock:
+        if key is None:
+            _verdict_cache.pop(path, None)
+        else:
+            _verdict_cache[path] = (key, entry)
+            _verdict_cache.move_to_end(path)
+            while len(_verdict_cache) > _VERDICT_CACHE_MAX:
+                _verdict_cache.popitem(last=False)
+    return {**entry, "cached": False}
+
+
+def warm(manifest_path: str, models: Mapping[str, Any]) -> None:
+    """Re-run and keep the verdict of a build just written, so the next desk
+    read is instant. Never raises: a failure to warm never fails a build."""
+    try:
+        verdict(manifest_path, models, fresh=True)
+    except Exception:  # noqa: BLE001 — warming is an optimisation only
+        pass
+
+
+def _stat_stamp(path: str) -> Optional[tuple]:
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    return (st.st_mtime_ns, st.st_size)
+
+
+def _connector_stamp(connector: Any) -> Optional[tuple]:
+    """What changes when the data *connector* reads changes, or None when it
+    cannot say (then the verdict is not kept)."""
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.contracts import contracts_path
+    from tracebi.model.engine import _file_stamp
+
+    if not isinstance(connector, DuckDBConnector):
+        return None
+    wh = getattr(connector, "warehouse", None)
+    if wh is None or wh.tier == "file":
+        path = os.path.abspath(connector.database)
+        stamp = _file_stamp(path)
+        if stamp[0] is None:   # not a file (":memory:", or gone)
+            return None
+        return (path, stamp, _stat_stamp(contracts_path(path)))
+    stamp = wh.stamp()
+    if stamp is None:          # the remote tier cannot say when it changed
+        return None
+    return (str(connector.database), stamp, _stat_stamp(contracts_path(connector.database)))
+
+
+def _manifest_models(manifest: Mapping[str, Any]) -> list[str]:
+    """Every model a manifest's recorded queries name."""
+    from tracebi.verify import _walk_sections
+
+    names: set[str] = set()
+    for section in _walk_sections(manifest.get("sections") or []):
+        for node in section.get("dataset_lineage") or []:
+            md = node.get("metadata") if isinstance(node, dict) else None
+            if isinstance(md, dict) and isinstance(md.get("model"), str):
+                names.add(md["model"])
+    return sorted(names)
+
+
+def verdict_key(manifest_path: str, manifest_stat: Optional[os.stat_result],
+                manifest: Mapping[str, Any], models: Mapping[str, Any]) -> Optional[tuple]:
+    """The inputs a verdict on *manifest* is computed from, or None when one of
+    them cannot say whether it changed. Equal keys mean a re-run would read
+    exactly what the last one read."""
+    from tracebi.model_registry import model_path
+
+    if manifest_stat is None:
+        return None
+    parts: list = [(os.path.abspath(manifest_path),
+                    manifest_stat.st_mtime_ns, manifest_stat.st_size)]
+    try:
+        for name in _manifest_models(manifest):
+            model = models.get(name)
+            if model is None:
+                # Its error names the models there are.
+                parts.append((name, None, tuple(sorted(models))))
+                continue
+            file = model_path(name)
+            stamps = []
+            for connector in model.connectors():
+                stamp = _connector_stamp(connector)
+                if stamp is None:
+                    return None
+                stamps.append(stamp)
+            # A model registered in memory has no file to stamp; the object
+            # stands in for it.
+            parts.append((name, file, _stat_stamp(file) if file else id(model),
+                          tuple(stamps)))
+    except Exception:  # noqa: BLE001 — an input that cannot be stamped is not kept
+        return None
+    return tuple(parts)
 
 
 def _sinks(warehouse: str) -> list[dict]:

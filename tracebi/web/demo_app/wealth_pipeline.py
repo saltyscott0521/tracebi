@@ -4,30 +4,36 @@ Landing → Manipulation → Final over the same demo database as the sales
 pipeline: raw holdings and branches land, get cleaned, and the final layer
 aggregates assets under management by branch into ``gold_aum_by_branch``.
 
-The wealth model itself is generated in memory, so the raw tables are seeded
-from it, the way the sales pipeline seeds from ``sales_model``. Definition and
-execution are separate exactly as in ``pipeline.py``: with a durable
+Its seed step writes the bank (``sample_data.py``) into that database: the
+six tables ``wealth_model`` reads (clients, branches, products, accounts,
+holdings, activities) and the raw tables the Landing layers read. Definition
+and execution are separate exactly as in ``pipeline.py``: with a durable
 ``TRACEBI_DEMO_DB_URL`` importing this only defines layers; without one it
 seeds and runs itself, because nothing else can have.
 """
 from sqlalchemy import create_engine
 
 from tracebi import DataModel, FinalLayer, LandingLayer, ManipulationLayer, PipelineRunner
-from tracebi.model_registry import get_model
 from tracebi.state import state_url
+from tracebi.web.demo_app import sample_data
 from tracebi.web.demo_app.pipeline import _DB_URL, DURABLE_DB, db
 
-_wealth = get_model("wealth_model")
-_holdings_raw = _wealth.load("holdings").to_pandas()[
-    ["holding_id", "account_id", "client_id", "branch_id", "product_id", "units", "market_value", "cost_basis"]]
-_branches_raw = _wealth.load("branches").to_pandas()
+# The tables wealth_model reads, by name in the demo database.
+BANK_TABLES = {
+    "clients": sample_data.clients_df, "branches": sample_data.branches_df,
+    "products": sample_data.products_df, "accounts": sample_data.accounts_df,
+    "holdings": sample_data.holdings_df, "activities": sample_data.activities_df,
+}
 
 
 def seed_source_tables() -> None:
-    """Write the raw tables the Landing layers read. Execution, not definition."""
+    """Write the bank wealth_model reads, and the raw tables the Landing
+    layers read. Execution, not definition."""
     engine = create_engine(_DB_URL)
-    _holdings_raw.to_sql("holdings_raw", con=engine, if_exists="replace", index=False)
-    _branches_raw.to_sql("branches_raw", con=engine, if_exists="replace", index=False)
+    for name, frame in BANK_TABLES.items():
+        frame.to_sql(name, con=engine, if_exists="replace", index=False)
+    sample_data.holdings_df.to_sql("holdings_raw", con=engine, if_exists="replace", index=False)
+    sample_data.branches_df.to_sql("branches_raw", con=engine, if_exists="replace", index=False)
 
 
 _holdings_landing = LandingLayer(
@@ -67,8 +73,8 @@ runner.register(_holdings_manip, name="holdings_silver", schedule="15 * * * *", 
 runner.register(_branches_manip, name="branches_silver", schedule="15 * * * *", depends_on="branches_bronze")
 runner.register(_final, name="aum_by_branch", schedule="30 6 * * *", depends_on="holdings_silver")
 
-# The model this pipeline is about, so the app shows it on that model's Data page: it lands raw
-# tables seeded from wealth_model and aggregates them by branch.
+# The model this pipeline is about, so the app shows it on that model's Data page: it seeds
+# the tables wealth_model reads, lands raw copies of two and aggregates them by branch.
 runner.model = "wealth_model"
 
 LAYERS = ["holdings_bronze", "branches_bronze", "holdings_silver", "branches_silver", "aum_by_branch"]

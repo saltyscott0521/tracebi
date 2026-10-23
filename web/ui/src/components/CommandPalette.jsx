@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useModels, useReports, usePipelines, useRole, useGuides } from '../api'
+import { useModels, useReports, usePipelines, useRole, useGuides, useWarehouses } from '../api'
 import {
   PAGES, placesFor, askPath, dataPath, docPath, mapPath, reportPagePath, pipelineModels,
-  sourcesPath, warehousePath,
+  sourcesPath, tablePath, warehousePath,
 } from '../nav'
+import { count } from '../format'
+import { encodeQuery } from '../ask'
 
 // Static page destinations — always available, even before data loads. The
 // places the role sees (the sidebar's), the pages inside them, then the
@@ -25,8 +27,9 @@ function pagesFor(role) {
   ]
 }
 
-// Handbook pages that are not listed in Docs (internal, or retired).
-const UNLISTED = /(^|--)(north-star|ROADMAP|receipts)$/
+// Handbook pages that are not listed in Docs (internal, retired, or the
+// design notes under docs/architecture/).
+const UNLISTED = /^architecture--|(^|--)(north-star|ROADMAP|receipts)$/
 
 const KIND_META = {
   page:      { tag: 'Page',      color: 'var(--role-table)' },
@@ -34,6 +37,8 @@ const KIND_META = {
   model:     { tag: 'Model',     color: 'var(--phase-model)' },
   report:    { tag: 'Report',    color: 'var(--phase-report)' },
   pipeline:  { tag: 'Pipeline',  color: 'var(--phase-transform)' },
+  table:     { tag: 'Table',     color: 'var(--role-table)' },
+  measure:   { tag: 'Measure',   color: 'var(--phase-model)' },
 }
 
 export default function CommandPalette() {
@@ -52,6 +57,8 @@ export default function CommandPalette() {
   // A model opens its Data page for those who see Data, else Ask of it; a
   // pipeline lives only on Data.
   const seesData = placesFor(role).some(p => p.key === 'data')
+  // Tables live on Data: the warehouses' are asked for once the palette opens.
+  const { data: warehouses } = useWarehouses(open && seesData)
   const items = useMemo(() => [
     ...pagesFor(role),
     ...(models     || []).map(m => ({
@@ -67,11 +74,25 @@ export default function CommandPalette() {
       kind: 'pipeline',
       sub: `${(p.layers || []).length} steps${pipelineModels(p).length ? ` · ${pipelineModels(p).join(', ')}` : ''}`,
     })),
+    // Every warehouse table (its own page), and every measure: its model's
+    // Measures view on Data, else Ask with the measure asked.
+    ...(seesData ? warehouses?.warehouses || [] : []).flatMap(w => (w.tables || []).map(t => ({
+      label: t.name, path: tablePath(w.name, t.name), kind: 'table',
+      sub: [w.name, t.rows != null && count(t.rows, 'row')].filter(Boolean).join(' · '),
+    }))),
+    ...(models || []).flatMap(m => (m.measures || []).map(name => ({
+      label: name,
+      path: seesData
+        ? `${dataPath(m.name)}?view=measures&measure=${encodeURIComponent(name)}`
+        : `${askPath(m.name)}&q=${encodeURIComponent(encodeQuery({ measures: [name], dimensions: [], filters: {} }))}`,
+      kind: 'measure',
+      sub: m.label || m.name,
+    }))),
     // The handbook, page by page, by title (everyone sees Docs).
     ...(guides || []).filter(g => !UNLISTED.test(g.name) && g.name !== 'index').map(g => ({
       label: (g.title || g.name).replace(/`/g, ''), path: docPath(g.name), kind: 'doc',
     })),
-  ], [models, reports, pipelines, guides, role, seesData])
+  ], [models, reports, pipelines, guides, role, seesData, warehouses])
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
