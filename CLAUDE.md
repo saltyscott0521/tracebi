@@ -225,7 +225,8 @@ tracebi/               # Core Python package (~24,000 LOC)
   transforms.py        # phase ① transforms: find one, its form (sql/python/notebook), run it + its .contract.yaml
   contracts.py         # sink contracts: closed checks + certificate + manifest join
   project_config.py    # tracebi.yaml reader (one reader, cached per path): engine limits + the warehouse block
-  sources.py           # what feeds the warehouse (read from transform text) and what it holds: the app's Sources and Warehouse pages
+  sources.py           # what feeds the warehouse (read from transform text) and what it holds: the app's Sources and Warehouse pages;
+                       #   the row-count rule (sql_row_estimates) and is_framework_table
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
   mcp_server.py        # agent gateway over MCP — 22 tools + 3 prompts (author_report, answer_question, address_pins)
@@ -790,13 +791,17 @@ POST /api/spec/render                                → build a spec and render
 GET  /api/connectors
 GET  /api/connectors/{name}
 GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}
-GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows}]} or {connected: false, reason, variable?} (200)
+GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact}]} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with rows, columns, written_by, read_by, contract, fed_from
 GET  /api/models
 GET  /api/models/{name}                              → tables, relationships, facts (each with its runnable_measures), dimensions
-GET  /api/models/{name}/tables/{t}/preview           → first N rows + dtypes + total_rows
-GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV attachment
+GET  /api/models/{name}/tables/{t}/preview           → first N (≤500) rows + engine dtypes + total_rows, read through the table API
+GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV, streamed through the table API
+GET  /api/tables/{source}/{table}                    → one table wherever it lives (source: a connector, or `inputs` for a file under inputs/): kind, rows, rows_exact, columns [{name,type}] in the engine's spelling, written_by, contract, read_by, used_by, transform_read; 200 {connected: false…} when unreachable; framework tables 404
+GET  /api/tables/{source}/{table}/rows               → ?offset&limit(≤500)&sort&desc&q&where=[{column,op,value}] (closed ops; refused 422 before any SQL) → {columns, rows, offset, limit, total, total_exact, elapsed_ms}
+GET  /api/tables/{source}/{table}/profile            → {rows, columns: {name: {type, nulls, null_share, distinct, min, max, mean?, top:[{value,count}]}}}
+GET  /api/tables/{source}/{table}/export.csv         → the same cut as CSV, streamed from the engine
 GET  /api/models/{name}/source                       → the model's file (read-only; the Code tab)
 GET  /api/connectors/{name}/source                   → the model file(s) that declare it
 GET  /api/connectors/{name}/warehouse                → tables, row counts, column profiles, per-table sink-contract status (read-only, closed per request)
