@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, forwardRef } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, forwardRef } from 'react'
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -589,14 +589,16 @@ function OpenReport({ report, model }) {
   // HTML string; the frame is keyed on the build's time as well, so a new
   // build is a new page (and starts as authored) even when its bytes match.
   const buildKey = shown?.manifest?.rendered_at || null
-  useEffect(() => {
+  // A layout effect: the listeners are on before the browser can load the
+  // frame, so nothing the page says is missed.
+  useLayoutEffect(() => {
     setSelection(null)
     const frame = frameRef.current
     if (!frame) return undefined
-    // The page keeps its selection in its own location hash, and a browser
-    // may hand a re-created frame the hash of the one it replaced. A new
-    // build starts as authored, so when the page says it is up it is told the
-    // authored state (a no-op on a page that has none), before any gesture.
+    // A new build starts as authored, so when the page says it is up it is
+    // told the authored state (a no-op on a page that has none), before any
+    // gesture. (A page in a srcdoc frame keeps no selection in its address
+    // either, tracebi.js writeHash, so a re-created frame has none to inherit.)
     const stopReady = listenToFrame(frame, m => { if (m.type === 'ready') setFrameSelection(frame, {}) })
     const stopFollow = followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
     return () => { stopReady(); stopFollow() }
