@@ -676,7 +676,8 @@ postgres|snowflake|bigquery|duckdb` writes `connections/<name>.yaml`
 be. Variables resolve when the connection is used (lazily), from the environment
 then the project `.env`; an unset one is an error naming it. A model's connector
 says `connection: <name>`; discovery registers the file so the Sources list
-(`/sources`) shows it (credentials are never resolved to describe it).
+(`/data/sources`) shows it (credentials are never resolved to describe it);
+`label:` (optional) names a connection for people.
 `--python` / `tracebi migrate connection models/_connections/x.py` cover the
 legacy module. A new connector *type* is code:
 1. Subclass `tracebi.connectors.BaseConnector`
@@ -816,10 +817,10 @@ POST /api/spec/validate                              → check a spec without ex
 POST /api/spec/render                                → build a spec and render HTML + manifest
 GET  /api/connectors
 GET  /api/connectors/{name}
-GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}
+GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}, warehouse (bool; Sources lists the rest), label, dialect (SQL)
 GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact}], hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
-GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms)
-GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with rows, columns, written_by, read_by, contract, fed_from, hidden_framework_tables
+GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
+GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read, said once per transform
 GET  /api/models
 GET  /api/models/{name}                              → tables, relationships, facts (each with its runnable_measures), dimensions
 GET  /api/models/{name}/tables/{t}/preview           → first N (≤500) rows + engine dtypes + total_rows, read through the table API
