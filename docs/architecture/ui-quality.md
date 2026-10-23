@@ -90,6 +90,12 @@ Checked by the script (rule name in brackets):
   every surface a report puts text on.
 - **No colour tricks that break themes**: no `${colour}22` hex-alpha gluing
   `[hex-alpha-concat]`.
+- **One set of parts.** A state is a sentence-case chip: nothing styled as a
+  pill (filled or outlined, rounded, inline) is upper case `[uppercase-state]`.
+  The app writes a moment in at most two shapes across the whole crawl, the
+  stamp ("Oct 23 · 11:48") and the recency ("2 h ago"), both from
+  `web/ui/src/when.js` `[date-formats]`; values in a data table, code and the
+  Docs pages are not the app's words and are not counted.
 - **Every report renders as delivered** `[report-unrendered]`, with no browser
   error `[browser-error]`, laid out at the phone's own width
   `[report-phone-layout]` and without sideways scrolling `[h-overflow]`.
@@ -199,6 +205,14 @@ Each fix that taught something general adds a line here.
   it is Open, Share and a "…" menu of the rest.
 - Focus that sits inside a report's frame belongs to the element inside it, so
   the audit judges that element; the frame draws no ring of its own.
+- Parts drift one caller at a time: four tab styles, two chips and seven date
+  formats each began as one page's local helper. The parts live in
+  `components/Shared.jsx` (`Segmented` for views inside a card, page tabs
+  `.dtabs` for addresses; `Chip` for a state, `Badge` for a label that is not
+  one; `Btn variant="outline"` and `BtnLink` for every secondary action;
+  `ExportCsv`; `Empty`; `Time`), `when.js` (`stamp`, `ago`, `isoTitle`) and
+  `format.js` (`count`, `plural`), and a list of things is a `.tb-list`
+  table. Reach for them before writing a local one.
 - A phone is not a narrow desktop window. The Step 1 captures were taken at
   390px in a desktop browser, where a page with no viewport meta still lays out
   at 390; a phone lays it out at 980 and shrinks it, and only affordability

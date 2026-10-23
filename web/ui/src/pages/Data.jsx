@@ -5,7 +5,8 @@ import { useAppStatus, useConnectors, useDesk, useInputs, useModels, usePipeline
 import { PageHeader } from '../components/Scope'
 import { Flag, VerdictSummary, reportStates } from '../components/TheLine'
 import { ProjectFeedFold } from '../components/Workbench'
-import { ago } from '../components/map/states'
+import { ago } from '../when'
+import { count } from '../format'
 import { pipelineFor } from '../components/map/project'
 import { upstreamOf } from '../chain'
 import {
@@ -13,8 +14,6 @@ import {
   sourcesPath, warehousePath,
 } from '../nav'
 import { Empty, SkeletonList } from '../components/Shared'
-
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 // When the model's data was last refreshed: its transform step's last run.
 function refreshed(pipeline) {
@@ -73,7 +72,7 @@ function ChainRow({ model, reports, pipeline, desk, up }) {
   const nSources = up.connections.length + up.files.length
   const segs = [
     <Seg key="s" to={sourcesPath(model.name)}>
-      {plural(nSources, 'source')}
+      {count(nSources, 'source')}
     </Seg>,
     up.transform
       ? <Seg key="t" to={dataPath(model.name, 'transform')}>
@@ -81,13 +80,13 @@ function ChainRow({ model, reports, pipeline, desk, up }) {
         </Seg>
       : <li key="t"><span className="chain__seg chain__seg--none">No transform</span></li>,
     <Seg key="w" to={warehousePath(model.name)}>
-      {plural(model.tables.length, 'table')}
+      {count(model.tables.length, 'table')}
     </Seg>,
     <Seg key="m" to={dataPath(model.name)}>
-      {plural(model.measures.length, 'measure')}
+      {count(model.measures.length, 'measure')}
     </Seg>,
     <Seg key="r" to={libraryPath(model.name)}>
-      {plural(mine.length, 'report')}
+      {count(mine.length, 'report')}
     </Seg>,
   ]
   return (
@@ -132,7 +131,7 @@ export default function Data() {
   return (
     <DataFrame tab="models">
       {isLoading ? <SkeletonList /> : models.length === 0 ? (
-        <Empty icon="⬡" message="No models yet. Create one with tracebi new-model, in models/." />
+        <Empty message="No models yet. Create one with tracebi new-model, in models/." />
       ) : (
         <ul className="dlist chains">
           {[...models].sort((a, b) => (a.label || a.name).localeCompare(b.label || b.name)).map(m => (

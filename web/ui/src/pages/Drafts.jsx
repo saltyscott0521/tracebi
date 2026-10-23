@@ -9,11 +9,11 @@ import {
 } from '../api'
 import { reportPagePath } from '../nav'
 import {
-  PageTitle, PageSub, Card, Btn, Badge, Spinner, Alert, ErrorDetail,
-  ReportFrame, Tabs, SkeletonList, Verdict, useToast,
+  PageTitle, PageSub, Card, Btn, Chip, Spinner, Alert, ErrorDetail,
+  ReportFrame, Segmented, SkeletonList, Time, Verdict, useToast,
 } from '../components/Shared'
 import { CodeFiles } from '../components/CodeView'
-import { when } from '../components/Attention'
+import { stamp } from '../when'
 
 // Drafts: what an agent (or a person) is writing before it is published, as a
 // section of Review and a page per draft. A draft is private to its owner; Publish is the one step that changes what
@@ -62,10 +62,8 @@ export default function DraftList() {
   return (
     <>
       {me?.role === 'admin' && actor && others && (
-        <div className="seg" role="group" aria-label="Whose drafts">
-          <button type="button" aria-pressed={!showAll} onClick={() => setEveryone(false)}>Mine</button>
-          <button type="button" aria-pressed={showAll} onClick={() => setEveryone(true)}>Everyone&rsquo;s</button>
-        </div>
+        <Segmented label="Whose drafts" value={showAll ? 'all' : 'mine'} onChange={v => setEveryone(v === 'all')}
+                   options={[['mine', 'Mine'], ['all', 'Everyone’s']]} />
       )}
       {error && <ErrorDetail error={error} />}
       {isLoading && <SkeletonList rows={2} />}
@@ -102,7 +100,7 @@ export default function DraftList() {
                   </span>
                 </span>
                 <span className="dlist__side">
-                  <span className="dlist__when">changed {when(d.updated) || 'unknown'}</span>
+                  <span className="dlist__when">changed <Time iso={d.updated} fallback="unknown" /></span>
                   <span className="review__open">Open</span>
                 </span>
               </Link>
@@ -179,14 +177,14 @@ function SettledRequests() {
   if (!settled.length && !pushed.length) return null
   const decided = r => (
     <>
-      Asked by {r.requested_by || 'unknown'} {when(r.requested_at) || ''}
+      Asked by {r.requested_by || 'unknown'} <Time iso={r.requested_at} />
       {r.note && <> · “{r.note}”</>}
-      {r.decided_by && <> · {r.status === 'approved' ? 'approved' : 'declined'} by {r.decided_by} {when(r.decided_at) || ''}</>}
+      {r.decided_by && <> · {r.status === 'approved' ? 'approved' : 'declined'} by {r.decided_by} <Time iso={r.decided_at} /></>}
       {r.status === 'rejected' && r.decision_note && <> · reason: {r.decision_note}</>}
     </>
   )
   const status = r => (
-    <Badge variant={r.status === 'approved' ? 'green' : 'gray'}>{r.status === 'approved' ? 'Approved' : 'Declined'}</Badge>
+    <Chip tone={r.status === 'approved' ? '' : 'none'}>{r.status === 'approved' ? 'Approved' : 'Declined'}</Chip>
   )
   return (
     <details className="review__requests">
@@ -254,7 +252,7 @@ export function CodeReview({ id }) {
       {req.files.map(f => (
         <div key={f.path}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-            {f.path} {f.new && <Badge variant="blue">New file</Badge>}
+            {f.path} {f.new && <Chip>New file</Chip>}
           </div>
           <Diff text={f.diff || '(no change)'} />
         </div>
@@ -396,7 +394,7 @@ export function DraftPage() {
     <div className="fade-in">
       <DraftCrumb />
       <PageTitle>{path}</PageTitle>
-      <PageSub>Draft by {owner} · updated {when(files?.updated) || '…'}</PageSub>
+      <PageSub>Draft by {owner} · updated {stamp(files?.updated) || '…'}</PageSub>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'center' }}>
         <Btn onClick={() => setStep('publish')} disabled={busy || step === 'publish'}>Publish</Btn>
@@ -505,7 +503,7 @@ export function DraftPage() {
         </Alert>
       )}
 
-      <Tabs tabs={isReport ? ['Preview', 'Files'] : ['Files']} active={tab} onChange={setTab} />
+      {isReport && <Segmented options={['Preview', 'Files']} value={tab} onChange={setTab} label="What to show of the draft" />}
 
       {tab === 'Preview' && isReport && (
         <>
@@ -531,7 +529,7 @@ export function DraftPage() {
   )
 }
 
-const IMPACT_BADGE = { unchanged: 'green', moves: 'amber', breaks: 'red', not_built: 'gray', not_checkable: 'gray' }
+const IMPACT_TONE = { unchanged: '', moves: 'warn', breaks: 'bad', not_built: 'none', not_checkable: 'none' }
 const IMPACT_LABEL = {
   unchanged: 'Unchanged', moves: 'Numbers move', breaks: 'Breaks',
   not_built: 'Not built, cannot compare', not_checkable: 'Cannot compare',
@@ -553,7 +551,7 @@ function ModelImpact({ impact, error }) {
         {impact.reports.map(r => (
           <li key={r.report} style={{ fontSize: 13, lineHeight: 1.5 }}>
             <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{r.report}</span>{' '}
-            <Badge variant={IMPACT_BADGE[r.status]}>{IMPACT_LABEL[r.status]}</Badge>
+            <Chip tone={IMPACT_TONE[r.status]}>{IMPACT_LABEL[r.status]}</Chip>
             {(r.status === 'not_built' || r.status === 'not_checkable') && (
               <div style={{ color: 'var(--muted)' }}>{r.detail}</div>
             )}

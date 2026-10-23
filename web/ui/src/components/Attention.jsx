@@ -12,16 +12,6 @@ const SINK = {
   no_contract: 'No data checks declared',
 }
 
-export function when(iso) {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  const sameDay = d.toDateString() === new Date().toDateString()
-  return sameDay
-    ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-    : d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
-
 function reportHref(name) {
   return name && name !== '_discovery' ? reportPagePath(name) : null
 }

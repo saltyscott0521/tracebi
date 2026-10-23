@@ -1,4 +1,5 @@
 import { VERDICT_LABEL, needsAction, verdictOf } from '../../verdict'
+import { ago } from '../../when'
 
 // What a node says when it is not fine. A state is `{ tone, label }`: the label
 // leads with a glyph so the state never rests on colour alone. Green is not a
@@ -9,21 +10,6 @@ import { VERDICT_LABEL, needsAction, verdictOf } from '../../verdict'
 //   ○  ghost (dashed)  it has not been built
 
 export const NEVER = { tone: 'ghost', label: '○ Never built' }
-
-/** "2 min ago", "3 h ago", "2 d ago", else "on Oct 3"; null when unreadable. */
-export function ago(iso, now = Date.now()) {
-  const t = Date.parse(iso)
-  if (!iso || Number.isNaN(t)) return null
-  const seconds = Math.max(0, Math.floor((now - t) / 1000))
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes} min ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days} d ago`
-  return `on ${new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-}
 
 /**
  * A report: never built, or the verdict on its last build (verdict.js, so the

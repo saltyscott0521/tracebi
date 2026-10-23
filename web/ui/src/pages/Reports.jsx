@@ -14,10 +14,11 @@ import ReceiptFrame from '../components/ReceiptFrame'
 import { CodeFiles } from '../components/CodeView'
 import { useBuildTimeline } from '../buildTimeline'
 import { ReportLineage } from '../components/ReportLineage'
-import { when } from '../components/Attention'
 import { LOCAL_DETAIL, VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
 import { humanise } from '../ask'
-import { stamp, useLineFacts } from '../components/TheLine'
+import { useLineFacts } from '../components/TheLine'
+import { stamp } from '../when'
+import { count, plural } from '../format'
 import { Older } from './Runs'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
@@ -30,7 +31,7 @@ import {
 import { scheduleWords } from '../schedule'
 import {
   Spinner, Verdict, Empty, Btn, ErrorDetail, PageTitle, PageSub,
-  SearchInput, SkeletonList, SkeletonCard, useToast, useNarrow,
+  SearchInput, Segmented, SkeletonList, SkeletonCard, Time, useToast, useNarrow,
 } from '../components/Shared'
 
 function runDuration(rec) {
@@ -306,7 +307,7 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
         <Facts>
           {lastBuild && (
             <Fact k="Checked">
-              {!verdict ? 'Checking…' : checkedAt ? stamp(new Date(checkedAt).toISOString()) : 'Not yet'}
+              {!verdict ? 'Checking…' : checkedAt ? <Time iso={checkedAt} /> : 'Not yet'}
               {verdict && verdict.state !== 'reproduces' && <div className="rpanel__hint">{verdict.detail}</div>}
               <div><button type="button" className="rpanel__link" onClick={onCheck} disabled={checking}>Check again</button></div>
             </Fact>
@@ -317,7 +318,7 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
           {model && <Fact k="Model"><Link to={dataPath(model, 'model')}>{labelOf(model)}</Link></Fact>}
           {manifest && (
             <Fact k="Figures">
-              {p.total} {p.total === 1 ? 'figure' : 'figures'} from {queries} {queries === 1 ? 'query' : 'queries'}
+              {count(p.total, 'figure')} from {count(queries, 'query', 'queries')}
               {p.derived > 0 && <div><span aria-hidden="true">○</span> {p.derived} from python, which cannot be re-run</div>}
               {p.unverified > 0 && <div><span aria-hidden="true">△</span> {p.unverified} unverified</div>}
             </Fact>
@@ -328,7 +329,7 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
           </Fact>
           {last && (
             <Fact k="Last run">
-              {stamp(last.time) || ''}
+              <Time iso={last.time} />
               {SCHEDULE_ALERT[last.status] && (
                 <> · <span className={`flag flag--${SCHEDULE_ALERT[last.status][0]}`}>
                   <span aria-hidden="true">{SCHEDULE_ALERT[last.status][1]}</span> {last.status}
@@ -379,7 +380,7 @@ function HistoryTab({ name, verdict }) {
     const v = said(r)
     return (
       <li key={r.id}>
-        <span>{r.status === 'running' ? '… Running' : stamp(r.started)}</span>
+        <span>{r.status === 'running' ? '… Running' : <Time iso={r.started} />}</span>
         <span>{RUN_KIND[r.kind]}{dur ? ` · ${dur}` : ''}{r.actor ? ` · ${r.actor}` : ''}</span>
         {v && <Verdict state={v.state} detail={v.detail} size="sm" />}
         {FAILED.has(r.status) && (
@@ -498,16 +499,9 @@ function ReportPanel({ tab, setTab, onClose, ...props }) {
         <button type="button" className="cmd" onClick={onClose} aria-label="Close the panel"><Icon name="close" /></button>
       </div>
       <div className="rpanel__tabs">
-        <div role="tablist" aria-label="About this build" className="rpanel__tablist">
-          {TABS.map(([key, label]) => (
-            <button key={key} type="button" role="tab" id={`rp-tab-${key}`} aria-selected={tab === key}
-                    aria-controls="rp-tabpanel" className="rpanel__tab" onClick={() => setTab(key)}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <Segmented options={TABS} value={tab} onChange={setTab} label="About this build" panel="rp-tabpanel" />
       </div>
-      <div className="rpanel__body" role="tabpanel" id="rp-tabpanel" aria-labelledby={`rp-tab-${tab}`}>
+      <div className="rpanel__body" role="tabpanel" id="rp-tabpanel" aria-labelledby={`rp-tabpanel-${tab}`}>
         {tab === 'receipt' && <ReceiptTab {...props} />}
         {tab === 'lineage' && <LineageTab name={report.name} manifest={shown?.manifest} />}
         {tab === 'history' && <div className="rpanel__sec rpanel__sec--last"><HistoryTab name={report.name} verdict={verdict} /></div>}
@@ -722,7 +716,7 @@ function OpenReport({ report, model }) {
             {builtAt && (
               <span title="Opening a report shows its last build. Rebuild or a schedule refreshes the data.">Built {builtAt}</span>
             )}
-            {refreshed && <span className="rp__hide-sm">Data refreshed {stamp(refreshed)}</span>}
+            {refreshed && <span className="rp__hide-sm">Data refreshed <Time iso={refreshed} /></span>}
             {words && <span className="rp__hide-sm"><Icon name="calendar" size={13} /> {words.short}</span>}
           </div>
         </div>
@@ -940,7 +934,7 @@ function LibraryRow({ report, verdict, built }) {
         </span>
         <span className="lrow__side">
           {verdict && <Verdict state={verdict.state} detail={verdict.detail} size="sm" />}
-          {built && <span className="lrow__built">Built {when(built.built_at)}</span>}
+          {built && <span className="lrow__built">Built <Time iso={built.built_at} /></span>}
           {words && (
             <span className="lrow__sched" title={words.long}><Icon name="calendar" size={12} /> {words.short}</span>
           )}
@@ -1001,7 +995,7 @@ function Glance({ reports, verdictFor, known }) {
   ].filter(([state]) => count[state] || ['reproduces', 'needs-a-look', 'never-built'].includes(state))
   return (
     <div className="glance" role="group" aria-label="At a glance">
-      <span className="glance__item"><b>{reports.length}</b> report{reports.length === 1 ? '' : 's'}</span>
+      <span className="glance__item"><b>{reports.length}</b> {plural(reports.length, 'report')}</span>
       {/* A count of nothing is not a signal: it reads muted, not in its chip's colour. */}
       {known && parts.map(([state, say]) => (
         <span key={state} className={`glance__item glance__item--${count[state] ? state : 'none'}`}>{say(count[state] || 0)}</span>

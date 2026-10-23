@@ -4,11 +4,11 @@ import { useConnectors, useConnectorTables, useInputs, usePipelines } from '../a
 import { StorageLine, sourceKind, fmtBytes } from '../components/Storage'
 import { useModelLabel } from '../components/Scope'
 import CodeView from '../components/CodeView'
-import { stamp } from '../components/TheLine'
+import { stamp } from '../when'
 import { feedsModel, upstreamOf } from '../chain'
 import { dataPath, pipelineModels, sourcesPath, warehousePath } from '../nav'
 import {
-  Card, CardTitle, Badge, Btn, ErrorDetail, Spinner,
+  Card, CardTitle, Badge, Btn, BtnLink, ErrorDetail, Spinner,
   Empty, ListItem, SplitLayout, SearchInput, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
@@ -107,7 +107,7 @@ function ConnectorDetail({ c }) {
     <Card className="fade-in">
       <CardTitle action={(
         <span style={{ display: 'inline-flex', gap: 6 }}>
-          {isWarehouse && <Link className="btn src-open" to={`${warehousePath()}#wh-${c.name}`}>Open in Warehouse</Link>}
+          {isWarehouse && <BtnLink size="sm" to={`${warehousePath()}#wh-${c.name}`}>Open in Warehouse</BtnLink>}
           <Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>
         </span>
       )}>{c.name}</CardTitle>

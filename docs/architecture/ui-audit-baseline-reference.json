@@ -1,6 +1,6 @@
 {
- "base": "http://127.0.0.1:35037",
- "when": "2026-10-21 14:32:11",
+ "base": "http://127.0.0.1:36377",
+ "when": "2026-10-23 13:01:40",
  "pages": [
   {
    "path": "/",
@@ -12,10 +12,10 @@
     "phone-dark": "shots/root_42099b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5070,
-    "desktop-dark": 4630,
-    "phone-light": 4941,
-    "phone-dark": 4439
+    "desktop-light": 8244,
+    "desktop-dark": 8150,
+    "phone-light": 7886,
+    "phone-dark": 6285
    }
   },
   {
@@ -28,10 +28,10 @@
     "phone-dark": "shots/ask_8ae0d7__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1034,
-    "desktop-dark": 976,
-    "phone-light": 1026,
-    "phone-dark": 1013
+    "desktop-light": 1072,
+    "desktop-dark": 1218,
+    "phone-light": 1030,
+    "phone-dark": 1131
    }
   },
   {
@@ -44,10 +44,10 @@
     "phone-dark": "shots/data_9112fb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5070,
-    "desktop-dark": 5143,
-    "phone-light": 4764,
-    "phone-dark": 4818
+    "desktop-light": 8836,
+    "desktop-dark": 7668,
+    "phone-light": 750,
+    "phone-dark": 9120
    }
   },
   {
@@ -60,10 +60,10 @@
     "phone-dark": "shots/data_sources_b315ee__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1067,
-    "desktop-dark": 1040,
-    "phone-light": 1024,
-    "phone-dark": 1006
+    "desktop-light": 1318,
+    "desktop-dark": 1132,
+    "phone-light": 1237,
+    "phone-dark": 1310
    }
   },
   {
@@ -76,10 +76,10 @@
     "phone-dark": "shots/data_warehouse_2676de__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1483,
-    "desktop-dark": 1504,
-    "phone-light": 1365,
-    "phone-dark": 1329
+    "desktop-light": 1315,
+    "desktop-dark": 1822,
+    "phone-light": 1460,
+    "phone-dark": 2154
    }
   },
   {
@@ -92,10 +92,10 @@
     "phone-dark": "shots/data_map_d311c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5648,
-    "desktop-dark": 5693,
-    "phone-light": 5060,
-    "phone-dark": 5749
+    "desktop-light": 6890,
+    "desktop-dark": 6885,
+    "phone-light": 5786,
+    "phone-dark": 5323
    }
   },
   {
@@ -108,10 +108,10 @@
     "phone-dark": "shots/review_2a50c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5404,
-    "desktop-dark": 5292,
-    "phone-light": 5524,
-    "phone-dark": 5062
+    "desktop-light": 5906,
+    "desktop-dark": 5278,
+    "phone-light": 5695,
+    "phone-dark": 6278
    }
   },
   {
@@ -124,10 +124,10 @@
     "phone-dark": "shots/review_drafts_2541b2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1035,
-    "desktop-dark": 1004,
-    "phone-light": 1079,
-    "phone-dark": 1028
+    "desktop-light": 1101,
+    "desktop-dark": 953,
+    "phone-light": 1076,
+    "phone-dark": 972
    }
   },
   {
@@ -140,10 +140,10 @@
     "phone-dark": "shots/runs_6e4bd5__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4976,
-    "desktop-dark": 5267,
-    "phone-light": 5434,
-    "phone-dark": 5278
+    "desktop-light": 5436,
+    "desktop-dark": 5651,
+    "phone-light": 5105,
+    "phone-dark": 5494
    }
   },
   {
@@ -156,10 +156,10 @@
     "phone-dark": "shots/verify_c77e84__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1117,
-    "desktop-dark": 1013,
-    "phone-light": 1036,
-    "phone-dark": 1009
+    "desktop-light": 1097,
+    "desktop-dark": 1106,
+    "phone-light": 1076,
+    "phone-dark": 1024
    }
   },
   {
@@ -172,10 +172,10 @@
     "phone-dark": "shots/docs_1baff9__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1185,
-    "desktop-dark": 1180,
-    "phone-light": 1093,
-    "phone-dark": 1174
+    "desktop-light": 1118,
+    "desktop-dark": 1070,
+    "phone-light": 1164,
+    "phone-dark": 1130
    }
   },
   {
@@ -188,10 +188,10 @@
     "phone-dark": "shots/docs_get_started_703372__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1160,
-    "desktop-dark": 1139,
-    "phone-light": 1090,
-    "phone-dark": 1221
+    "desktop-light": 1196,
+    "desktop-dark": 1061,
+    "phone-light": 1333,
+    "phone-dark": 996
    }
   },
   {
@@ -204,10 +204,10 @@
     "phone-dark": "shots/model_housing_model_5f65a0__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5696,
-    "desktop-dark": 5713,
-    "phone-light": 5415,
-    "phone-dark": 5190
+    "desktop-light": 5669,
+    "desktop-dark": 5517,
+    "phone-light": 7198,
+    "phone-dark": 4800
    }
   },
   {
@@ -220,10 +220,10 @@
     "phone-dark": "shots/ask_model_housing_model_2ace0d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1186,
-    "desktop-dark": 1155,
-    "phone-light": 1118,
-    "phone-dark": 1139
+    "desktop-light": 1215,
+    "desktop-dark": 1137,
+    "phone-light": 1160,
+    "phone-dark": 1147
    }
   },
   {
@@ -236,10 +236,10 @@
     "phone-dark": "shots/data_housing_model_33bb86__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 6047,
-    "desktop-dark": 5726,
-    "phone-light": 5590,
-    "phone-dark": 5877
+    "desktop-light": 5511,
+    "desktop-dark": 5236,
+    "phone-light": 4797,
+    "phone-dark": 4745
    }
   },
   {
@@ -252,10 +252,10 @@
     "phone-dark": "shots/data_housing_model_model_c731b6__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5554,
-    "desktop-dark": 5175,
-    "phone-light": 5592,
-    "phone-dark": 6428
+    "desktop-light": 5336,
+    "desktop-dark": 5020,
+    "phone-light": 5178,
+    "phone-dark": 4970
    }
   },
   {
@@ -268,10 +268,10 @@
     "phone-dark": "shots/data_housing_model_transform_59e0c3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5997,
-    "desktop-dark": 5943,
-    "phone-light": 5348,
-    "phone-dark": 5818
+    "desktop-light": 5088,
+    "desktop-dark": 4858,
+    "phone-light": 5332,
+    "phone-dark": 5124
    }
   },
   {
@@ -284,10 +284,10 @@
     "phone-dark": "shots/data_housing_model_sources_683952__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5544,
-    "desktop-dark": 5595,
-    "phone-light": 5526,
-    "phone-dark": 5181
+    "desktop-light": 5104,
+    "desktop-dark": 5225,
+    "phone-light": 5197,
+    "phone-dark": 4918
    }
   },
   {
@@ -300,10 +300,10 @@
     "phone-dark": "shots/data_housing_model_runs_a59cca__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5371,
-    "desktop-dark": 5132,
-    "phone-light": 5229,
-    "phone-dark": 5111
+    "desktop-light": 4872,
+    "desktop-dark": 5225,
+    "phone-light": 5201,
+    "phone-dark": 4981
    }
   },
   {
@@ -316,10 +316,10 @@
     "phone-dark": "shots/model_portfolio_model_755db1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5014,
-    "desktop-dark": 4941,
-    "phone-light": 5437,
-    "phone-dark": 5189
+    "desktop-light": 4669,
+    "desktop-dark": 4995,
+    "phone-light": 4705,
+    "phone-dark": 4927
    }
   },
   {
@@ -332,10 +332,10 @@
     "phone-dark": "shots/ask_model_portfolio_model_3d4b30__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1215,
-    "desktop-dark": 1165,
-    "phone-light": 1163,
-    "phone-dark": 1186
+    "desktop-light": 1083,
+    "desktop-dark": 1058,
+    "phone-light": 1141,
+    "phone-dark": 1084
    }
   },
   {
@@ -348,10 +348,10 @@
     "phone-dark": "shots/data_portfolio_model_2d3331__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5677,
-    "desktop-dark": 5624,
-    "phone-light": 5529,
-    "phone-dark": 6072
+    "desktop-light": 4967,
+    "desktop-dark": 4844,
+    "phone-light": 4747,
+    "phone-dark": 4693
    }
   },
   {
@@ -364,10 +364,10 @@
     "phone-dark": "shots/data_portfolio_model_model_0719d6__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 6022,
-    "desktop-dark": 5464,
-    "phone-light": 5231,
-    "phone-dark": 5180
+    "desktop-light": 5173,
+    "desktop-dark": 4916,
+    "phone-light": 5168,
+    "phone-dark": 5147
    }
   },
   {
@@ -380,10 +380,10 @@
     "phone-dark": "shots/data_portfolio_model_transform_3a0dc2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5697,
-    "desktop-dark": 5471,
-    "phone-light": 5127,
-    "phone-dark": 5450
+    "desktop-light": 5076,
+    "desktop-dark": 5491,
+    "phone-light": 5302,
+    "phone-dark": 5166
    }
   },
   {
@@ -396,10 +396,10 @@
     "phone-dark": "shots/data_portfolio_model_sources_60a145__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5449,
-    "desktop-dark": 5670,
-    "phone-light": 5329,
-    "phone-dark": 4901
+    "desktop-light": 5045,
+    "desktop-dark": 5200,
+    "phone-light": 5471,
+    "phone-dark": 4849
    }
   },
   {
@@ -412,10 +412,10 @@
     "phone-dark": "shots/data_portfolio_model_runs_0288cf__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5091,
-    "desktop-dark": 5016,
-    "phone-light": 5498,
-    "phone-dark": 5549
+    "desktop-light": 5254,
+    "desktop-dark": 5019,
+    "phone-light": 5227,
+    "phone-dark": 5695
    }
   },
   {
@@ -428,10 +428,10 @@
     "phone-dark": "shots/model_saas_model_14e7a4__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5364,
-    "desktop-dark": 5673,
-    "phone-light": 4778,
-    "phone-dark": 5041
+    "desktop-light": 5157,
+    "desktop-dark": 4917,
+    "phone-light": 5117,
+    "phone-dark": 4767
    }
   },
   {
@@ -444,10 +444,10 @@
     "phone-dark": "shots/ask_model_saas_model_e1362c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1130,
-    "desktop-dark": 1091,
-    "phone-light": 1079,
-    "phone-dark": 1089
+    "desktop-light": 1072,
+    "desktop-dark": 1040,
+    "phone-light": 1060,
+    "phone-dark": 1057
    }
   },
   {
@@ -460,10 +460,10 @@
     "phone-dark": "shots/data_saas_model_553471__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5256,
-    "desktop-dark": 5015,
-    "phone-light": 5550,
-    "phone-dark": 5309
+    "desktop-light": 4592,
+    "desktop-dark": 4884,
+    "phone-light": 4891,
+    "phone-dark": 4688
    }
   },
   {
@@ -476,10 +476,10 @@
     "phone-dark": "shots/data_saas_model_model_06392c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5687,
-    "desktop-dark": 4927,
-    "phone-light": 5246,
-    "phone-dark": 5299
+    "desktop-light": 4768,
+    "desktop-dark": 5024,
+    "phone-light": 4872,
+    "phone-dark": 4317
    }
   },
   {
@@ -492,10 +492,10 @@
     "phone-dark": "shots/data_saas_model_transform_00b675__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5863,
-    "desktop-dark": 5436,
-    "phone-light": 5235,
-    "phone-dark": 5519
+    "desktop-light": 4801,
+    "desktop-dark": 4897,
+    "phone-light": 4971,
+    "phone-dark": 5074
    }
   },
   {
@@ -508,10 +508,10 @@
     "phone-dark": "shots/data_saas_model_sources_540a9c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5821,
-    "desktop-dark": 6057,
-    "phone-light": 6542,
-    "phone-dark": 5769
+    "desktop-light": 4728,
+    "desktop-dark": 5115,
+    "phone-light": 4575,
+    "phone-dark": 5158
    }
   },
   {
@@ -524,10 +524,10 @@
     "phone-dark": "shots/data_saas_model_runs_5e19dc__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5201,
-    "desktop-dark": 4991,
-    "phone-light": 5334,
-    "phone-dark": 5771
+    "desktop-light": 5061,
+    "desktop-dark": 5303,
+    "phone-light": 4768,
+    "phone-dark": 4777
    }
   },
   {
@@ -540,10 +540,10 @@
     "phone-dark": "shots/reports_housing_model_affordability_1e6f5a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 6075,
-    "desktop-dark": 6562,
-    "phone-light": 5950,
-    "phone-dark": 5435
+    "desktop-light": 5386,
+    "desktop-dark": 5445,
+    "phone-light": 5608,
+    "phone-dark": 6327
    }
   },
   {
@@ -556,10 +556,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_book_290cd8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5943,
-    "desktop-dark": 5710,
-    "phone-light": 5520,
-    "phone-dark": 5296
+    "desktop-light": 5839,
+    "desktop-dark": 5927,
+    "phone-light": 6183,
+    "phone-dark": 5315
    }
   },
   {
@@ -572,10 +572,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_concentration_f5b920__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5928,
-    "desktop-dark": 5795,
-    "phone-light": 5834,
-    "phone-dark": 5535
+    "desktop-light": 5695,
+    "desktop-dark": 5690,
+    "phone-light": 5475,
+    "phone-dark": 5603
    }
   },
   {
@@ -742,10 +742,10 @@
     "phone-dark": "shots/no_such_page_01c67c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1051,
-    "desktop-dark": 1023,
-    "phone-light": 1022,
-    "phone-dark": 1037
+    "desktop-light": 976,
+    "desktop-dark": 1004,
+    "phone-light": 1104,
+    "phone-dark": 1096
    }
   },
   {
@@ -758,10 +758,10 @@
     "phone-dark": "shots/data_sources_model_portfolio_model_c50093__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1077,
-    "desktop-dark": 1058,
-    "phone-light": 1067,
-    "phone-dark": 1041
+    "desktop-light": 1036,
+    "desktop-dark": 1078,
+    "phone-light": 1071,
+    "phone-dark": 1166
    }
   },
   {
@@ -774,10 +774,10 @@
     "phone-dark": "shots/data_warehouse_model_portfolio_model_ae8340__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1467,
-    "desktop-dark": 1365,
-    "phone-light": 1294,
-    "phone-dark": 1398
+    "desktop-light": 1322,
+    "desktop-dark": 1234,
+    "phone-light": 1175,
+    "phone-dark": 1236
    }
   },
   {
@@ -790,10 +790,10 @@
     "phone-dark": "shots/data_sources_model_housing_model_1d48b8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1192,
-    "desktop-dark": 1097,
-    "phone-light": 1242,
-    "phone-dark": 1198
+    "desktop-light": 1040,
+    "desktop-dark": 1165,
+    "phone-light": 1201,
+    "phone-dark": 999
    }
   },
   {
@@ -806,10 +806,10 @@
     "phone-dark": "shots/data_warehouse_model_housing_model_e65dfb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1471,
-    "desktop-dark": 1433,
-    "phone-light": 1469,
-    "phone-dark": 1421
+    "desktop-light": 1186,
+    "desktop-dark": 1223,
+    "phone-light": 1270,
+    "phone-dark": 1213
    }
   },
   {
@@ -822,10 +822,10 @@
     "phone-dark": "shots/data_sources_model_saas_model_0b5a78__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1213,
-    "desktop-dark": 1077,
-    "phone-light": 1136,
-    "phone-dark": 1145
+    "desktop-light": 1056,
+    "desktop-dark": 1125,
+    "phone-light": 1100,
+    "phone-dark": 1050
    }
   },
   {
@@ -838,10 +838,10 @@
     "phone-dark": "shots/data_warehouse_model_saas_model_16a68f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1317,
-    "desktop-dark": 1371,
-    "phone-light": 1355,
-    "phone-dark": 1321
+    "desktop-light": 1177,
+    "desktop-dark": 1354,
+    "phone-light": 1216,
+    "phone-dark": 1152
    }
   },
   {
@@ -854,10 +854,10 @@
     "phone-dark": "shots/docs_concepts_the_three_phase_workflow_6b5461__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1172,
-    "desktop-dark": 1182,
-    "phone-light": 1134,
-    "phone-dark": 1219
+    "desktop-light": 1070,
+    "desktop-dark": 1061,
+    "phone-light": 1103,
+    "phone-dark": 1105
    }
   },
   {
@@ -870,10 +870,10 @@
     "phone-dark": "shots/docs_concepts_freeze_points_6af13f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1093,
-    "desktop-dark": 1075,
-    "phone-light": 1141,
-    "phone-dark": 1144
+    "desktop-light": 1008,
+    "desktop-dark": 1061,
+    "phone-light": 1081,
+    "phone-dark": 1019
    }
   },
   {
@@ -886,10 +886,10 @@
     "phone-dark": "shots/docs_concepts_lineage_13370c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1109,
-    "desktop-dark": 1119,
-    "phone-light": 1135,
-    "phone-dark": 1216
+    "desktop-light": 1114,
+    "desktop-dark": 1063,
+    "phone-light": 1102,
+    "phone-dark": 1085
    }
   },
   {
@@ -902,10 +902,10 @@
     "phone-dark": "shots/runs_model_housing_model_a4c247__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5613,
-    "desktop-dark": 5422,
-    "phone-light": 5953,
-    "phone-dark": 5528
+    "desktop-light": 5108,
+    "desktop-dark": 4891,
+    "phone-light": 4616,
+    "phone-dark": 4574
    }
   },
   {
@@ -918,10 +918,10 @@
     "phone-dark": "shots/runs_model_portfolio_model_bb7ee3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5013,
-    "desktop-dark": 5382,
-    "phone-light": 5613,
-    "phone-dark": 5362
+    "desktop-light": 4766,
+    "desktop-dark": 4639,
+    "phone-light": 4459,
+    "phone-dark": 4751
    }
   },
   {
@@ -934,10 +934,10 @@
     "phone-dark": "shots/runs_model_saas_model_214de2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5997,
-    "desktop-dark": 5383,
-    "phone-light": 5323,
-    "phone-dark": 5317
+    "desktop-light": 5179,
+    "desktop-dark": 4462,
+    "phone-light": 4361,
+    "phone-dark": 4753
    }
   }
  ],
@@ -1059,7 +1059,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4941ms",
+   "detail": "settles in a median 8150ms",
    "key": "slow-page|/|page",
    "seen_in": [
     "---"
@@ -1073,7 +1073,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5070ms",
+   "detail": "settles in a median 8836ms",
    "key": "slow-page|/data|page",
    "seen_in": [
     "---"
@@ -1087,7 +1087,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5693ms",
+   "detail": "settles in a median 6885ms",
    "key": "slow-page|/data/map|page",
    "seen_in": [
     "---"
@@ -1101,7 +1101,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5404ms",
+   "detail": "settles in a median 5906ms",
    "key": "slow-page|/review|page",
    "seen_in": [
     "---"
@@ -1115,7 +1115,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5278ms",
+   "detail": "settles in a median 5494ms",
    "key": "slow-page|/runs|page",
    "seen_in": [
     "---"
@@ -1129,7 +1129,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5696ms",
+   "detail": "settles in a median 5669ms",
    "key": "slow-page|/?model|page",
    "seen_in": [
     "---",
@@ -1145,7 +1145,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5877ms",
+   "detail": "settles in a median 5236ms",
    "key": "slow-page|/data/<m>|page",
    "seen_in": [
     "---",
@@ -1161,7 +1161,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5592ms",
+   "detail": "settles in a median 5178ms",
    "key": "slow-page|/data/<m>/model|page",
    "seen_in": [
     "---",
@@ -1177,7 +1177,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5943ms",
+   "detail": "settles in a median 5124ms",
    "key": "slow-page|/data/<m>/transform|page",
    "seen_in": [
     "---",
@@ -1193,7 +1193,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5544ms",
+   "detail": "settles in a median 5197ms",
    "key": "slow-page|/data/<m>/sources|page",
    "seen_in": [
     "---",
@@ -1209,7 +1209,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5229ms",
+   "detail": "settles in a median 5201ms",
    "key": "slow-page|/data/<m>/runs|page",
    "seen_in": [
     "---",
@@ -1225,7 +1225,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 6075ms",
+   "detail": "settles in a median 5608ms",
    "key": "slow-page|/reports/<r>|page",
    "seen_in": [
     "---",
@@ -1241,7 +1241,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5613ms",
+   "detail": "settles in a median 4891ms",
    "key": "slow-page|/runs?model|page",
    "seen_in": [
     "---",
@@ -1422,9 +1422,9 @@
  ],
  "metrics": {
   "hardcoded_colors_in_jsx": 11,
-  "inline_style_blocks": 432,
-  "bundle_js_kb": 1260,
-  "bundle_css_kb": 97,
+  "inline_style_blocks": 424,
+  "bundle_js_kb": 1258,
+  "bundle_css_kb": 95,
   "engine_gz_kb": 14.7,
   "report_font_families": 5,
   "report_accents": 4,
@@ -1442,7 +1442,7 @@
    "saas_model/cohort_brief": 624,
    "saas_model/mrr_dashboard": 1233
   },
-  "calc_ms_max": 2.8
+  "calc_ms_max": 6.5
  },
  "report_pass": {
   "sheet": "report-sheet.png",
@@ -1571,7 +1571,7 @@
     ],
     "accent": "#1f7a4d/#1f7a4d",
     "html_kb": 799,
-    "calc_ms": 2.1,
+    "calc_ms": 6.5,
     "display": "Inter"
    },
    "portfolio_model/portfolio_book": {
@@ -1589,7 +1589,7 @@
     "gradients": [],
     "accent": "#1f4e79/#8bb4e0",
     "html_kb": 640,
-    "calc_ms": 1.8,
+    "calc_ms": 1.1,
     "display": "Iowan Old Style"
    },
    "portfolio_model/portfolio_concentration": {
@@ -1606,7 +1606,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1238,
-    "calc_ms": 2.1,
+    "calc_ms": 1.5,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_dashboard": {
@@ -1623,7 +1623,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1235,
-    "calc_ms": 1.3,
+    "calc_ms": 1.2,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_desk": {
@@ -1640,7 +1640,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1261,
-    "calc_ms": 2.5,
+    "calc_ms": 1.7,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_overview": {
@@ -1657,7 +1657,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1234,
-    "calc_ms": 1.4,
+    "calc_ms": 1.9,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_showcase": {
@@ -1676,7 +1676,7 @@
     "gradients": [],
     "accent": "#0d6b73/#5cc4bd",
     "html_kb": 721,
-    "calc_ms": 2.3,
+    "calc_ms": 1.5,
     "display": "Fraunces"
    },
    "saas_model/cohort_brief": {
@@ -1694,7 +1694,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 624,
-    "calc_ms": 1.8,
+    "calc_ms": 1.1,
     "display": "Iowan Old Style"
    },
    "saas_model/mrr_dashboard": {
@@ -1711,7 +1711,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1233,
-    "calc_ms": 2.8,
+    "calc_ms": 1.4,
     "display": "Hanken Grotesk"
    }
   }

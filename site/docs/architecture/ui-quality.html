@@ -67,12 +67,14 @@
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
 <a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -80,6 +82,7 @@
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
 <a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -172,6 +175,12 @@ python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
   every surface a report puts text on.</li>
 <li><strong>No colour tricks that break themes</strong>: no <code>${colour}22</code> hex-alpha gluing
   <code>[hex-alpha-concat]</code>.</li>
+<li><strong>One set of parts.</strong> A state is a sentence-case chip: nothing styled as a
+  pill (filled or outlined, rounded, inline) is upper case <code>[uppercase-state]</code>.
+  The app writes a moment in at most two shapes across the whole crawl, the
+  stamp ("Oct 23 · 11:48") and the recency ("2 h ago"), both from
+  <code>web/ui/src/when.js</code> <code>[date-formats]</code>; values in a data table, code and the
+  Docs pages are not the app's words and are not counted.</li>
 <li><strong>Every report renders as delivered</strong> <code>[report-unrendered]</code>, with no browser
   error <code>[browser-error]</code>, laid out at the phone's own width
   <code>[report-phone-layout]</code> and without sideways scrolling <code>[h-overflow]</code>.</li>
@@ -279,6 +288,14 @@ registered by an app module rather than found under <code>reports/</code>). Each
   it is Open, Share and a "…" menu of the rest.</li>
 <li>Focus that sits inside a report's frame belongs to the element inside it, so
   the audit judges that element; the frame draws no ring of its own.</li>
+<li>Parts drift one caller at a time: four tab styles, two chips and seven date
+  formats each began as one page's local helper. The parts live in
+  <code>components/Shared.jsx</code> (<code>Segmented</code> for views inside a card, page tabs
+  <code>.dtabs</code> for addresses; <code>Chip</code> for a state, <code>Badge</code> for a label that is not
+  one; <code>Btn variant="outline"</code> and <code>BtnLink</code> for every secondary action;
+  <code>ExportCsv</code>; <code>Empty</code>; <code>Time</code>), <code>when.js</code> (<code>stamp</code>, <code>ago</code>, <code>isoTitle</code>) and
+  <code>format.js</code> (<code>count</code>, <code>plural</code>), and a list of things is a <code>.tb-list</code>
+  table. Reach for them before writing a local one.</li>
 <li>A phone is not a narrow desktop window. The Step 1 captures were taken at
   390px in a desktop browser, where a page with no viewport meta still lays out
   at 390; a phone lays it out at 980 and shrinks it, and only affordability
