@@ -1,10 +1,17 @@
 // What a model is made from, upstream of its warehouse: the transform its
 // pipeline runs, and the connections and input files that transform reads
-// (the API's read_by, from the transform files themselves). The Models tab's
-// chain rows, stage ⓪ of a model's line and the Sources tab's ?model= filter
-// all read it here, so they never disagree.
+// (the API's read_by, from the transform files themselves). The board, the
+// Models tab's chain rows, stage ⓪ of a model's line and the Sources tab's
+// ?model= filter all read it here, so they never disagree.
 
-import { pipelineFor } from './components/map/project'
+import { pipelineBelongsToModel } from './nav'
+
+/** A transform's form (the API's sql | python | notebook) as its chip says it. */
+export const FORM_LABEL = { sql: 'SQL', python: 'Python', notebook: 'notebook' }
+
+/** The pipeline that refreshes a model: the one made for it, else any that touches it. */
+export const pipelineFor = (pipelines, model) =>
+  pipelines.find(p => p.model === model) || pipelines.find(p => pipelineBelongsToModel(p, model))
 
 /** The transform *model*'s pipeline runs, by name, or null. */
 export function transformOf(pipelines, model) {

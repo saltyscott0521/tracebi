@@ -161,11 +161,4 @@ export function measureDefinition(m) {
   return ''
 }
 
-export const MEASURE_KINDS = {
-  simple: 'Aggregate', expression: 'Expression', ratio: 'Ratio of totals',
-  share: 'Share of total', rank: 'Rank', running: 'Running total',
-  period_end: 'Period end', offset: 'Prior period', growth: 'Growth',
-  to_date: 'To date',
-}
-
 export { tableOf }

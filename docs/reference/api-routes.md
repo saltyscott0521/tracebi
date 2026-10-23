@@ -157,7 +157,7 @@ the spec, or the package's `report.json`, `template.html`, `style.css`,
 `script.js` and `report.py` — read-only, and only the files discovery
 registered for it. It also gives each report `models` (the models its data
 bindings read) and `measures` (the declared measure names they ask for, read
-from the file, never from a warehouse); Data's Map draws both. `display_name` is
+from the file, never from a warehouse). `display_name` is
 `report.json`'s `name` (what a list or title shows); `name` stays the path
 identifier the routes take. `GET /api/runs` rows and the `report` entries of
 `GET /api/desk` carry `display_name` beside `target` / `report` (a model
@@ -306,7 +306,7 @@ needed. See [[trace]].
 `GET /api/pipelines` lists each pipeline with its `layers` and last run of each,
 the `model`(s) it feeds, and, from its `pipelines/<name>.yaml`, the `transform`
 it runs (the phase ① script; `null` for a hand-built runner) and its
-`description`; a model's Data page (its line and Transform tab) and the Map (`/data/map`) show them.
+`description`; a model's Data page (its line and Transform tab) and Data's board (`/data`) show them.
 
 These **write to the warehouse**, which is why they require `admin` — the split
 in the role model is by side effect, not by resource.
@@ -339,6 +339,8 @@ reports its build step rebuilt, only those it actually built).
 | `DELETE` | `/api/credentials/{name}` | **admin, identified**. Removes the store's value (204, 404 when it holds none); an environment or `.env` value is untouched |
 | `GET` | `/api/connectors/{name}/warehouse` | viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source, and `hidden_framework_tables` (the `tracebi_*` / `alembic_version` tables left out); the file is opened read-only and closed within the request |
 | `GET` | `/api/inputs` | viewer. The project's `inputs/` folder: `{folder, exists, files: [{path, size, modified, read_by: [transform]}]}`; `read_by` is found by reading each transform for a literal path into `inputs/` |
+| `GET` | `/api/transforms` | viewer. Every file in `transforms/`: `[{name, form: sql\|python\|notebook, file, contract_file \| null, note \| null, pipelines: [name], models: [name], tables: [name], written_at \| null}]`. `contract_file` is the `.contract.yaml` beside it, or the file itself when it holds a `with contract(...)` block; `models` are those its pipelines refresh, then those that read what it wrote; `tables` and `written_at` are what a certificate says it wrote (empty and null for a transform no certificate names). Read-only |
+| `GET` | `/api/transforms/{name}/source` | viewer. The transform's file and the contract beside it (`{files, hint}`, as the other `/source` routes); `name` is a file's stem in `transforms/`, never a path (404 otherwise) |
 | `GET` | `/api/warehouse` | viewer. `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}`, one per warehouse-kind connector, read-only; framework tables are never listed |
 | `GET` | `/api/docs` · `/api/docs/{name}` | viewer |
 | `POST` | `/api/_dev/reload` | **admin**, and only with `TRACEBI_DEV_MODE` |
@@ -356,7 +358,7 @@ The app's addresses, five places in the sidebar (`web/ui/src/nav.js`):
 | --- | --- |
 | Reports | `/` the library (`?model=<m>` narrows it); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on) |
 | Ask | `/ask` (`?model=<m>` picks the model) |
-| Data | four tabs, the chain left to right: `/data` Models (a chain row per model), `/data/sources` Sources (every connection and the `inputs/` folder), `/data/warehouse` Warehouse (every table: who wrote it, who reads it, its checks), `/data/map` Map; `?model=<m>` narrows the last three. `/data/<m>` one model, then `/transform`, `/sources`, `/runs` |
+| Data | five tabs: `/data` Flow (the board: sources → transforms → warehouse → models → reports; `?model=<m>` opens with that model's path lit), `/data/sources` Sources (every connection and the `inputs/` folder), `/data/transforms` Transforms (every file in `transforms/`), `/data/warehouse` Warehouse (every table: who wrote it, who reads it, its checks), `/data/models` Models (a chain row per model); `?model=<m>` narrows Sources, Transforms and Warehouse. `/data/<m>` one model, then `/transform`, `/sources`, `/runs` |
 | Review | four tabs: `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
 | Docs | `/docs` the handbook; `/docs/get-started` first, then `/docs/<section>/<page>` per file of `docs/` |
 
@@ -367,9 +369,10 @@ sign-in `/api/me` names everyone admin, so all five show. An address above the
 role renders a plain page saying who it is for; the API enforces the roles.
 
 Older addresses redirect, keeping their query (`movedTo`): `/m/<m>/…` to the
-same thing under Data, Ask, History or the library; `/models` to `/data`;
-`/explore` to `/ask`; `/sources` and `/connectors` to `/data/sources`; `/map`
-and `/data?view=map` to `/data/map`; `/handbook` (and `/handbook/<page>`) to `/docs`;
+same thing under Data, Ask, History or the library; `/models` to `/data/models`
+(`/models?m=<m>` to `/data/<m>`); `/explore` to `/ask`; `/sources` and `/connectors` to
+`/data/sources`; `/map`, `/data/map` and `/data?view=map` to `/data` (with `model=<m>`, to
+`/data/<m>`: a model's page draws its line); `/handbook` (and `/handbook/<page>`) to `/docs`;
 `/getting-started` and `/workflow` to `/docs/get-started`; `/drafts` and `/review#drafts`
 to `/review/drafts`; `/reports?r=<name>` to `/reports/<name>`.
 

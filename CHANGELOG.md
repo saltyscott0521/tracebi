@@ -6,6 +6,22 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — Data is a board
+
+- **Data opens on one board**, read left to right in the order the data moves:
+  ⓪ Sources → ① Transforms → Warehouse → ② Models → ③ Reports, five lanes
+  with wires between the cards. A lane is a stage; how a thing is built is a
+  chip (SQL, Python, Postgres, SQLite file, CSV), so no model's first node
+  reads "pipeline". Hover or focus a model and its whole path lights;
+  `?model=<m>` opens it lit. A green dot on a table means the sink satisfied
+  its contract on the run that wrote it.
+- **The tabs follow the flow**: Flow (`/data`) · Sources · Transforms (new:
+  every file in `transforms/`, its form, model, tables, contract, last write,
+  and Run for an admin) · Warehouse · Models (`/data/models`, the chain rows).
+  The Map is retired into the board: `/data/map` lands on `/data`, and with
+  `model=<m>` on the model's page, whose line is the stacked picture.
+- `GET /api/transforms` and `GET /api/transforms/{name}/source` (read-only).
+
 ### Changed — titles, words and the last buttons
 
 - **Every browser tab names its page**: the page's heading, after the tab a

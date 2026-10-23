@@ -132,7 +132,7 @@ def seeds(base: str) -> list[str]:
     tabs = ["model", "transform", "sources", "runs"]
     # Review's tabs (/review, /review/drafts, /runs, /verify) each render in
     # Review's frame; the sidebar marks Review on all four.
-    paths = ["/", "/ask", "/data", "/data/sources", "/data/warehouse", "/data/map", "/review",
+    paths = ["/", "/ask", "/data", "/data/sources", "/data/transforms", "/data/warehouse", "/data/models", "/review",
              "/review/drafts", "/runs", "/verify", "/docs", "/docs/get-started"]
     models = _safe(base, "/api/models")
     for m in models:
@@ -152,7 +152,7 @@ def seeds(base: str) -> list[str]:
     for r in reports[:PER_PATTERN]:
         paths.append("/reports/" + "/".join(urllib.parse.quote(p, safe="") for p in r["name"].split("/")))
     # Old addresses must still land somewhere real.
-    paths += ["/models", "/explore", "/refresh", "/reports", "/sources", "/map", "/data?view=map",
+    paths += ["/models", "/explore", "/refresh", "/reports", "/sources", "/map", "/data/map", "/data?view=map",
               "/connectors", "/pipelines", "/drafts", "/getting-started", "/handbook", "/workflow"]
     if models:
         name = urllib.parse.quote(models[0]["name"])
@@ -181,7 +181,7 @@ def _pattern(path: str) -> str:
     p = re.sub(r"/models/[^/?]+", "/models/<m>", u.path)
     p = re.sub(r"/m/[^/?]+", "/m/<m>", p)
     p = re.sub(r"^/data/tables/.+", "/data/tables/<source>/<table>", p)
-    p = re.sub(r"^/data/(?!map$|sources$|warehouse$|tables/)[^/?]+", "/data/<m>", p)
+    p = re.sub(r"^/data/(?!map$|sources$|transforms$|warehouse$|models$|tables/)[^/?]+", "/data/<m>", p)
     p = re.sub(r"^/docs/(?!get-started$).+", "/docs/<page>", p)
     p = re.sub(r"^/reports/.+", "/reports/<r>", p)
     return p + ("?" + "&".join(keys) if keys else "")

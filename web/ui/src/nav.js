@@ -3,15 +3,19 @@
 //   Reports  /                  the library: every report, by folder; ?model=<m> filters it
 //            /reports/<name>    one report as a page of its own (<name> is folder/slug)
 //   Ask      /ask               a question of one model; ?model=<m> picks it
-//   Data     /data              the chain, as four tabs (DATA_TABS), left to right:
-//                               Models (/data: one row per model, its chain of sources →
-//                               transform → tables → measures → reports), Sources
+//   Data     /data              five tabs (DATA_TABS) in the order the data moves:
+//                               Flow (/data: the board, one lane per stage, sources →
+//                               transforms → warehouse → models → reports; ?model=<m>
+//                               opens it with that model's path lit), Sources
 //                               (/data/sources: every connection and the inputs/ folder),
+//                               Transforms (/data/transforms: every file in transforms/),
 //                               Warehouse (/data/warehouse: every table, who wrote it,
-//                               who reads it, its checks) and Map (/data/map: the models
-//                               as one picture). ?model=<m> narrows Sources, Warehouse and
-//                               Map to one model. /data/<m> one model: its line, then the
-//                               tabs /data/<m>/model|transform|sources|runs (Model at /data/<m>).
+//                               who reads it, its checks) and Models (/data/models: one
+//                               row per model, its chain of sources → transform → tables
+//                               → measures → reports). ?model=<m> narrows Sources,
+//                               Transforms and Warehouse to one model. /data/<m> one
+//                               model: its line, then the tabs
+//                               /data/<m>/model|transform|sources|runs (Model at /data/<m>).
 //                               /data/tables/<source>/<table> one table (tablePath): its
 //                               rows, columns and who uses it
 //   Review   /review            its tabs: Attention (/review), Drafts (/review/drafts),
@@ -28,7 +32,7 @@
 // sign-in the API names everyone admin, so every place shows. The API enforces
 // the roles; this is what the app shows.
 //
-// Every older address (/models, /m/<model>/…, /explore, /sources, /map,
+// Every older address (/models, /m/<model>/…, /explore, /sources, /map, /data/map,
 // /data?view=map, /handbook, /getting-started, /reports?r=<name>) redirects into
 // these (see Moved in components/Scope.jsx), keeping its query.
 //
@@ -45,7 +49,7 @@ export const PAGES = [
   { key: 'ask',     label: 'Ask',     path: '/ask', minRole: 'viewer',
     sub: 'Ask a model a question and see the query behind the answer.' },
   { key: 'data',    label: 'Data',    path: '/data', minRole: 'analyst',
-    sub: 'How the numbers are made, left to right: the sources, the warehouse the transforms write, and the models over it.' },
+    sub: 'How the numbers are made, left to right: the sources, the transforms that read them, the warehouse they write, the models over it and the reports.' },
   { key: 'review',  label: 'Review',  path: '/review', minRole: 'analyst',
     sub: 'What waits on a person: what needs attention, drafts, what ran, and checking a file you were sent.' },
   { key: 'drafts',  label: 'Drafts',  path: '/review/drafts', parent: 'review', minRole: 'analyst' },
@@ -56,9 +60,12 @@ export const PAGES = [
     sub: 'The handbook: concepts, guides and reference, versioned with the project.' },
 ]
 
-// Data's tabs, in the order the data flows (the first opens at /data).
-export const DATA_TABS = ['models', 'sources', 'warehouse', 'map']
-export const DATA_TAB_LABEL = { models: 'Models', sources: 'Sources', warehouse: 'Warehouse', map: 'Map' }
+// Data's tabs: the board first (it opens at /data), then the lists behind it
+// in the order the data flows.
+export const DATA_TABS = ['flow', 'sources', 'transforms', 'warehouse', 'models']
+export const DATA_TAB_LABEL = {
+  flow: 'Flow', sources: 'Sources', transforms: 'Transforms', warehouse: 'Warehouse', models: 'Models',
+}
 
 // Review's tabs, in order: Attention is /review itself.
 export const REVIEW_TABS = [
@@ -100,7 +107,7 @@ export const libraryPath = (model = '') => `/${qs({ model })}`
 /** Ask, with *model* picked when one is given. */
 export const askPath = (model = '') => `/ask${qs({ model })}`
 
-/** Data: the models; one model's page; or one tab of it. */
+/** Data: the board; one model's page; or one tab of it. */
 export function dataPath(model = '', tab = '') {
   if (!model) return '/data'
   const base = `/data/${encodeURIComponent(model)}`
@@ -109,7 +116,7 @@ export function dataPath(model = '', tab = '') {
 
 /** One of Data's tabs (DATA_TABS), narrowed to *model* when one is given. */
 export const dataTabPath = (tab, model = '') =>
-  `/data${tab && tab !== 'models' ? `/${tab}` : ''}${qs({ model })}`
+  `/data${tab && tab !== 'flow' ? `/${tab}` : ''}${qs({ model })}`
 
 /** Data's Sources tab: every connection and input file, or those *model* is made from. */
 export const sourcesPath = (model = '') => dataTabPath('sources', model)
@@ -117,8 +124,11 @@ export const sourcesPath = (model = '') => dataTabPath('sources', model)
 /** Data's Warehouse tab: every table, or *model*'s. */
 export const warehousePath = (model = '') => dataTabPath('warehouse', model)
 
-/** Data with the models drawn as one picture (the Map). */
-export const mapPath = (model = '') => dataTabPath('map', model)
+/** Data's Transforms tab: every transform file, or those that feed *model*. */
+export const transformsPath = (model = '') => dataTabPath('transforms', model)
+
+/** The board (Data's Flow tab), with *model*'s path lit when one is given. */
+export const flowPath = (model = '') => dataTabPath('flow', model)
 
 /**
  * One table's page: /data/tables/<source>/<table>, where *source* is a
@@ -158,7 +168,7 @@ export function whereAmI(pathname) {
   if (!hit) return null
   if (hit[1] !== 'data') return { page: hit[1], model: '', tab: null }
   const scoped = path.match(/^\/data\/([^/]+)(?:\/([^/]+))?$/)
-  if (!scoped) return { page: 'data', model: '', tab: 'models' }
+  if (!scoped) return { page: 'data', model: '', tab: 'flow' }
   if (DATA_TABS.includes(scoped[1])) return { page: 'data', model: '', tab: scoped[1] }
   const tab = TABS.includes(scoped[2]) ? scoped[2] : null
   return { page: 'data', model: decodeURIComponent(scoped[1]), tab }
@@ -249,7 +259,12 @@ export function movedTo(pathname, search = '') {
   // A model's Reports stage is the library, narrowed to it (Step 3 retired the stage).
   const stage = path.match(/^\/data\/([^/]+)\/reports$/)
   if (stage) return r ? to(reportPagePath(r), {}, ['model']) : to('/', { model: decodeURIComponent(stage[1]) })
-  if (path === '/map') return to(mapPath())
+  // The Map's picture is the board; a model's map is its own page's line.
+  if (path === '/map' || path === '/data/map') {
+    return q.get('model') ? to(dataPath(q.get('model')), {}, ['model']) : to(flowPath())
+  }
+  // The model list is Models, behind the board; /models?m=<model> was one model.
+  if (path === '/models') return q.get('m') ? to(dataPath(q.get('m')), {}, ['m']) : to(dataTabPath('models'))
   // The handbook and Get started are the Docs place, page for page.
   if (path === '/handbook') return to('/docs')
   if (path === '/getting-started') return to('/docs/get-started')
@@ -257,7 +272,7 @@ export function movedTo(pathname, search = '') {
   if (handbook) return to(`/docs/${handbook[1]}`)
   if (path === '/pipelines') return to(dataPath(q.get('model') || '', q.get('model') ? 'transform' : ''), {}, ['model'])
   const flat = {
-    '/reports': '/', '/models': '/data', '/explore': '/ask', '/refresh': '/data',
+    '/reports': '/', '/explore': '/ask', '/refresh': '/data',
     '/sources': '/data/sources', '/connectors': '/data/sources',
   }[path]
   return flat ? to(flat) : null

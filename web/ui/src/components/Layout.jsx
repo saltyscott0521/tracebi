@@ -70,7 +70,7 @@ export function useDocumentTitle(...parts) {
 function tabWords(scope) {
   if (page(scope.page)?.parent) return page(scope.page).label
   if (scope.page !== 'data' || !scope.tab) return ''
-  if (!scope.model) return scope.tab === 'models' ? '' : DATA_TAB_LABEL[scope.tab]
+  if (!scope.model) return scope.tab === 'flow' ? '' : DATA_TAB_LABEL[scope.tab]
   return scope.tab === 'model' ? '' : scope.tab[0].toUpperCase() + scope.tab.slice(1)
 }
 

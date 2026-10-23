@@ -69,6 +69,7 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/credentials.html">Credentials: a store people can manage</a>
+<a href="../architecture/data-flow-board.html">Data as a flow: the board</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a class="on" href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
@@ -194,10 +195,12 @@ for agents.</p>
 <h2 id="the-apps-places">The app's places</h2>
 <p>The app is five places in its sidebar (<code>web/ui/src/nav.js</code>, <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>):
 <strong>Reports</strong> (the library, where it opens), <strong>Ask</strong>, <strong>Data</strong>, <strong>Review</strong> and
-<strong>Docs</strong>. Data is the chain, as four tabs left to right: Models (each model's
-chain of sources → transform → tables → measures → reports), Sources (every
-connection and the <code>inputs/</code> folder, what each holds and what reads it),
-Warehouse (every table, who wrote it, who reads it, its checks) and Map. Docs
+<strong>Docs</strong>. Data opens on Flow, the board (<a href="../architecture/data-flow-board.html">Data as a flow: the board</a>): one lane per
+stage, sources → transforms → warehouse → models → reports. Then the lists
+behind it: Sources (every connection and the <code>inputs/</code> folder, what each holds
+and what reads it), Transforms (every file in <code>transforms/</code>), Warehouse (every
+table, who wrote it, who reads it, its checks) and Models (each model's chain
+of sources → transform → tables → measures → reports). Docs
 is the handbook served from the project's <code>docs/</code>, with Get started first; it
 is the app's own manual, not tracebi.com's docs, and every role sees it. The
 addresses are in <a href="../reference/api-routes.html">API routes</a>.</p>
