@@ -5,6 +5,22 @@ bottom with the change that closed them.
 
 ## Open
 
+**Audit pass 3 ([[ux-audit-2026-10-23]]) is the next round.** It found 2 P0,
+20 P1 and 32 P2 and plans eight packages, U-1 to U-8: framework tables
+(`tracebi_*`, `alembic_version`) hidden from every explorer and the demo's
+runner and seed data moved off the state store (the P0: the demo's
+connection explorer listed sessions and OAuth tokens); one read-only table
+API (rows with sort, search, filter and paging, one-table profile, CSV) and
+a table page with a `DataGrid`; Warehouse and Sources rebuilt around it
+(Sources lists sources only, connections get labels and kinds in words);
+the model page as an explorer; Data for analysts and the first run built;
+one set of parts (two tab styles, sentence-case chips, one date module);
+titles and words. It also records a default for the three open deviations
+(Swagger stays at `/api-docs`; stage ⓪ selects the model's Sources tab;
+"Fed from" said once per transform). Item 34 (the Steps table's upper-case
+badge) closes with U-7, and item 35 (links past the role) shrinks with U-6,
+which opens Data to analysts; the rest stay below.
+
 1. *Closed by D-1 (see Done).*
 2. **"Checks stale" items name no model**: a stale sink check shows only
     under All models. Attribute warehouse tables to the models that read them.
