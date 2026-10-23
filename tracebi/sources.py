@@ -30,17 +30,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+
+def is_framework_table(name: str) -> bool:
+    """A table TraceBi itself owns: the state store's ``tracebi_*`` tables
+    (runs, sessions, OAuth tokens, code requests) and Alembic's
+    ``alembic_version``. Every place that lists or reads a source's tables
+    leaves these out, whatever the connection points at: a connection aimed
+    at the state store (a plausible "show me my runs") must not become a
+    browser for sessions and tokens."""
+    return name.lower().startswith("tracebi_") or name.lower() == "alembic_version"
+
 _INPUT_PATH = re.compile(r"\binputs/([\w.\-/]*\w\.\w+)")
 _INPUT_JOIN = re.compile(r"""["']inputs["']\s*[,/]\s*["']([^"'\s]+)["']""")
 _LOAD_SOURCE = re.compile(r"""load_source\(\s*["']([A-Za-z_]\w*)\.([A-Za-z_]\w*)["']""")
 _CREDENTIAL = re.compile(r"://([^:/@\s]+):[^@\s]+@")
 _CONTRACT_NAME = re.compile(r"""\bcontract\(\s*["']([^"'\s]+)["']""")
-
-
-def is_framework_table(name: str) -> bool:
-    """A table TraceBi keeps for itself (the run store's ``tracebi_*``
-    tables, Alembic's ``alembic_version``), never data a person explores."""
-    return name.startswith("tracebi_") or name == "alembic_version"
 
 
 def inputs_dir() -> Path:
@@ -171,7 +175,8 @@ def connection_tables(connector) -> dict:
     where counting is cheap (a DuckDB file, frames held in memory), the
     catalog's estimate with ``rows_exact: false`` for a SQL database that
     keeps one (:func:`sql_row_estimates`), else None: no table is counted
-    row by row here."""
+    row by row here. Framework tables are left out and counted in
+    ``hidden_framework_tables``."""
     from tracebi.connections import ConnectionConfigError
     from tracebi.connectors.memory_connector import MemoryConnector
     from tracebi.connectors.sql_connector import SQLConnector
@@ -186,10 +191,12 @@ def connection_tables(connector) -> dict:
             target = wh.sink if wh is not None else str(d["database"])
             if not as_warehouse(target).exists():
                 return {"connected": False, "reason": "Nothing is built here yet."}
+            hidden: list[str] = []
             return {"connected": True, "tables": [
                 {"name": t["name"], "rows": t["rows"], "rows_exact": True,
                  "columns": [{"name": c, "type": ty} for c, ty in t["columns"].items()]}
-                for t in _warehouse_tables(target, profile=False)]}
+                for t in _warehouse_tables(target, profile=False, hidden=hidden)],
+                "hidden_framework_tables": len(hidden)}
         names = connector.list_tables()
         if names is None:
             return {"connected": True, "tables": None,
@@ -198,8 +205,9 @@ def connection_tables(connector) -> dict:
         if isinstance(connector, SQLConnector):
             with connector._engine.connect() as conn:   # list_tables() connected it
                 estimates = sql_row_estimates(conn)
+        shown = sorted(n for n in names if not is_framework_table(n))
         tables = []
-        for table in sorted(names):
+        for table in shown:
             cols = connector.column_schema(table) or []
             if isinstance(connector, MemoryConnector):
                 rows, exact = len(connector.load(table)), True
@@ -207,7 +215,8 @@ def connection_tables(connector) -> dict:
                 rows, exact = estimates.get(table), False
             tables.append({"name": table, "rows": rows, "rows_exact": exact,
                            "columns": [{"name": c["name"], "type": c["dtype"]} for c in cols]})
-        return {"connected": True, "tables": tables}
+        return {"connected": True, "tables": tables,
+                "hidden_framework_tables": len(names) - len(shown)}
     except ConnectionConfigError as exc:
         if exc.variable:
             return {"connected": False, "variable": exc.variable,
@@ -305,6 +314,7 @@ def warehouses(registry) -> list[dict]:
             "engine_version": latest.get("engine_version"),
             "read_by": entry.get("used_by", []),
             "tables": [_table_entry(t, readers, owners) for t in view["tables"]],
+            "hidden_framework_tables": view.get("hidden_framework_tables", 0),
         }
         if view.get("error"):
             section["error"] = view["error"]

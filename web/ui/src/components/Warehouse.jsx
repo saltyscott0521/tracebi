@@ -79,7 +79,10 @@ export default function Warehouse({ connector, only }) {
     )
   }
   if (data.error) return <div className="codeview__hint">Could not read the warehouse: {data.error}</div>
-  if (!data.tables.length) return <div className="codeview__hint">The warehouse has no tables yet.</div>
+  // TraceBi's own tables (the state store's) are never listed as data.
+  const n = data.hidden_framework_tables || 0
+  const hidden = n > 0 && <p className="wb-meta" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">{n} framework {n === 1 ? 'table' : 'tables'} hidden</p>
+  if (!data.tables.length) return <div className="codeview__hint">The warehouse has no tables yet.{hidden}</div>
   const shown = only ? data.tables.filter(t => only.has(t.name)) : data.tables
   const others = data.tables.length - shown.length
   return (
@@ -103,6 +106,7 @@ export default function Warehouse({ connector, only }) {
       {others > 0 && (
         <p className="wb-meta">The same file also holds {others} other {others === 1 ? 'table' : 'tables'}.</p>
       )}
+      {hidden}
     </div>
   )
 }

@@ -6,11 +6,13 @@ One command to get a fully working local database:
     python examples/seeds/seed_db.py
 
 What this does:
-  1. Creates data/tracebi.db (SQLite)
+  1. Creates data/seed.db (SQLite), the demo's data and nothing else
   2. Creates source tables (orders_raw, customers_raw) and seeds example data
   3. Registers Bronze / Silver / Gold layers with PipelineRunner
      (writes tracebi_layers, tracebi_relationships, tracebi_dimensions,
-     tracebi_facts to DB)
+     tracebi_facts to the state store: TRACEBI_STATE_URL, by default
+     data/tracebi.db, which also holds sessions and tokens and so is never
+     a connection)
   4. Runs Bronze immediately so orders_bronze and customers_bronze are
      populated and ready for Silver to consume
 
@@ -33,7 +35,7 @@ from sqlalchemy import create_engine
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 
-DB_PATH = os.path.join(ROOT, "data", "tracebi.db")
+DB_PATH = os.path.join(ROOT, "data", "seed.db")
 DB_URL  = f"sqlite:///{DB_PATH}"
 
 # ── Sample source data ────────────────────────────────────────────────────────
@@ -119,9 +121,10 @@ def build_pipeline(db_url: str):
     from tracebi.etl.silver import SilverLayer
     from tracebi.etl.gold import GoldLayer
     from tracebi.pipeline.runner import PipelineRunner
+    from tracebi.state import state_url
 
     # Single connector for both source reads and medallion writes
-    db = SQLConnector("tracebi_db", url=db_url)
+    db = SQLConnector("seed_db", url=db_url)
 
     # ── Bronze ───────────────────────────────────────────────────
     orders_bronze = BronzeLayer(
@@ -165,8 +168,8 @@ def build_pipeline(db_url: str):
     # ── DataModel with star-schema query surface (reads from silver tables) ─
     model = DataModel("SalesModel")
     model.add_connector(db)
-    model.add_table("orders_silver",    connector="tracebi_db", source="orders_silver")
-    model.add_table("customers_silver", connector="tracebi_db", source="customers_silver")
+    model.add_table("orders_silver",    connector="seed_db", source="orders_silver")
+    model.add_table("customers_silver", connector="seed_db", source="customers_silver")
 
     model.add_dimension(
         name="dim_customer",
@@ -201,7 +204,9 @@ def build_pipeline(db_url: str):
     )
 
     # ── PipelineRunner ───────────────────────────────────────────
-    runner = PipelineRunner(db_url=db_url)
+    # Run history goes to the state store, not to the data database: the
+    # runner migrates the whole state schema into its URL, sessions included.
+    runner = PipelineRunner(db_url=state_url())
 
     # Bronze: every hour
     runner.register(orders_bronze,   name="orders_bronze",   schedule="0 * * * *")

@@ -116,6 +116,11 @@ function Section({ w, home }) {
           {w.tables.map(t => <TableRow key={t.name} warehouse={w.name} t={t} home={home} />)}
         </ul>
       )}
+      {w.hidden_framework_tables > 0 && (
+        <p className="src-quiet" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">
+          {plural(w.hidden_framework_tables, 'framework table')} hidden
+        </p>
+      )}
     </section>
   )
 }

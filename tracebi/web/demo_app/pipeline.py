@@ -33,14 +33,16 @@ from tracebi import (
     LandingLayer, ManipulationLayer, FinalLayer,
     PipelineRunner,
 )
+from tracebi.state import state_url
 from tracebi.web.demo_app.sample_data import customers_df as _customers_raw
 from tracebi.web.demo_app.sample_data import orders_df as _orders_raw
 
-# Where the pipeline's tables and run history live.
+# Where the pipeline's tables live (its run history is in the state store,
+# TRACEBI_STATE_URL; see the runner below).
 #
 # TRACEBI_DEMO_DB_URL takes any SQLAlchemy URL and is the durable case — point
-# it at Supabase and both the medallion tables and the run history survive
-# between requests, which is what lets execution move out of the web process.
+# it at Supabase and the medallion tables survive between requests, which is
+# what lets execution move out of the web process.
 #
 # Without it we fall back to SQLite. That path used to be hardcoded to the
 # repo's data/ directory, so a deployment that mounts its code read-only (the
@@ -135,8 +137,11 @@ _final_by_segment = FinalLayer(
     sink=db, sink_table="gold_revenue_by_segment",
 )
 
-# PipelineRunner
-runner = PipelineRunner(db_url=_DB_URL)
+# PipelineRunner. Its run history goes to the state store, never to the data
+# database: the runner migrates the whole state schema (sessions and OAuth
+# tokens included) into whatever URL it is given, and demo_db is a connection
+# anyone can browse.
+runner = PipelineRunner(db_url=state_url())
 runner.register(_orders_landing,    name="orders_bronze",     schedule="0 * * * *")
 runner.register(_customers_landing, name="customers_bronze",  schedule="0 * * * *")
 runner.register(_orders_manip,      name="orders_silver",     schedule="15 * * * *",

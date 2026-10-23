@@ -83,6 +83,10 @@ services:
         condition: service_completed_successfully
     environment:
       <<: *crm-url
+      # The state store (sessions, tokens, run history): its own database on
+      # the same server, `tracebi_state`, created by docker/postgres-init.sql.
+      # Never point a connection here.
+      TRACEBI_STATE_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi_state
     # The image's WORKDIR is the reference project. Each model's pipeline
     # re-sinks its tables into the warehouse volume app reads (portfolio's
     # transform now from the CRM, not the snapshot the image was baked with)
@@ -127,6 +131,10 @@ services:
       - "8000:8000"
     environment:
       <<: *crm-url
+      # The state store (sessions, tokens, run history): its own database on
+      # the same server, `tracebi_state`, created by docker/postgres-init.sql.
+      # Never point a connection here.
+      TRACEBI_STATE_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi_state
       # Optional HTTP basic auth — leave unset to keep the API open.
       TRACEBI_AUTH_USER: ${TRACEBI_AUTH_USER:-}
       TRACEBI_AUTH_PASS: ${TRACEBI_AUTH_PASS:-}

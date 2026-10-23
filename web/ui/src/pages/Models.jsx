@@ -293,7 +293,18 @@ function MeasuresTable({ measures }) {
 // A model's tables point at connectors; a connector says where the data is.
 // The model file (Python) only declares meaning: which table is a fact, what
 // joins to what, what a measure is. Nothing is stored in it.
-function ModelStorage({ details, tables }) {
+// TraceBi's own tables (the state store's) are never listed as data, even
+// when a model names one; the server leaves them out and counts them.
+function FrameworkHidden({ n }) {
+  if (!(n > 0)) return null
+  return (
+    <p className="wb-meta" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">
+      {n} framework {n === 1 ? 'table' : 'tables'} hidden
+    </p>
+  )
+}
+
+function ModelStorage({ details, tables, hidden }) {
   if (!details.length) return <Empty message="This model declares no connector, so its tables have no data behind them." />
   return (
     <div>
@@ -325,6 +336,7 @@ function ModelStorage({ details, tables }) {
           )
         })}
       </div>
+      <FrameworkHidden n={hidden} />
     </div>
   )
 }
@@ -417,6 +429,7 @@ export function ModelDetail({ name, action }) {
               </tbody>
             </table>
           </div>
+          <FrameworkHidden n={data.hidden_framework_tables} />
           {previewTable && (
             <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
@@ -455,7 +468,7 @@ export function ModelDetail({ name, action }) {
 
       {active === 'Measures' && <MeasuresTable measures={data.measures || []} />}
 
-      {active === 'Storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} />}
+      {active === 'Storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} hidden={data.hidden_framework_tables} />}
       {active === 'Code' && <CodeView kind="models" name={name} />}
 
       {active === 'Diagram' && (

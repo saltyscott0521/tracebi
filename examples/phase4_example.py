@@ -8,7 +8,9 @@ Demonstrates the medallion pipeline with a live SQLite database:
   - PipelineRunner registers all layers, tracks runs, supports on-demand
                   and scheduled execution
 
-The SQLite database at data/tracebi.db is used for everything.
+The demo's data lives in data/seed.db; the runner's history lives in the
+state store (TRACEBI_STATE_URL, by default data/tracebi.db), which also
+holds sessions and tokens and so is never a connection.
 Run examples/seeds/seed_db.py first to set up the DB and load initial data.
 
 Run with:
@@ -24,7 +26,7 @@ import pandas as pd
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-DB_URL = f"sqlite:///{os.path.join(ROOT, 'data', 'tracebi.db')}"
+DB_URL = f"sqlite:///{os.path.join(ROOT, 'data', 'seed.db')}"
 
 
 def run():
@@ -34,9 +36,10 @@ def run():
     from tracebi.etl.silver import SilverLayer
     from tracebi.etl.gold import GoldLayer
     from tracebi.pipeline.runner import PipelineRunner
+    from tracebi.state import state_url
     from tracebi.lineage.diagram import LineageDiagram
 
-    db = SQLConnector("tracebi_db", url=DB_URL)
+    db = SQLConnector("seed_db", url=DB_URL)
 
     # ── Bronze ───────────────────────────────────────────────────
     orders_bronze = BronzeLayer(
@@ -72,8 +75,8 @@ def run():
     # ── DataModel (with star-schema query surface) ───────────────
     model = DataModel("SalesModel")
     model.add_connector(db)
-    model.add_table("orders_silver",    connector="tracebi_db", source="orders_silver")
-    model.add_table("customers_silver", connector="tracebi_db", source="customers_silver")
+    model.add_table("orders_silver",    connector="seed_db", source="orders_silver")
+    model.add_table("customers_silver", connector="seed_db", source="customers_silver")
 
     model.add_dimension("dim_customer", table_name="customers_silver",
                         key_col="customer_id", attributes=["region", "segment"])
@@ -99,7 +102,7 @@ def run():
     )
 
     # ── Register with PipelineRunner ─────────────────────────────
-    runner = PipelineRunner(db_url=DB_URL)
+    runner = PipelineRunner(db_url=state_url())
     runner.register(orders_bronze,    name="orders_bronze",    schedule="0 * * * *")
     runner.register(customers_bronze, name="customers_bronze", schedule="0 * * * *")
     runner.register(orders_silver,    name="orders_silver",    schedule="15 * * * *",
@@ -156,7 +159,7 @@ def run():
 
 if __name__ == "__main__":
     # Verify the DB exists
-    db_path = os.path.join(ROOT, "data", "tracebi.db")
+    db_path = os.path.join(ROOT, "data", "seed.db")
     if not os.path.exists(db_path):
         print(f"Database not found at {db_path}")
         print("Run this first:  python examples/seeds/seed_db.py")

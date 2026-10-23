@@ -169,6 +169,56 @@ def test_the_connectors_api_never_shows_a_resolved_secret(scaffolded, monkeypatc
     assert listed["lit"]["url"] == "postgresql://reader@db.internal/sales"   # a literal, no credential
 
 
+def test_a_connection_at_the_state_store_shows_only_its_data(scaffolded, monkeypatch):
+    # The plausible first try, "show me my runs": a connection pointed at a
+    # database that holds the app's own tables. Sessions and tokens live
+    # there, so no explorer lists them as data, whatever points at it.
+    import sqlite3
+
+    import duckdb
+
+    framework = ("tracebi_runs", "tracebi_sessions", "alembic_version")
+    lite = sqlite3.connect(scaffolded / "data" / "held.db")
+    duck = duckdb.connect(str(scaffolded / "data" / "held.duckdb"))
+    for con in (lite, duck):
+        for table in (*framework, "orders"):
+            con.execute(f"create table {table} (id integer)")
+        con.execute("insert into tracebi_sessions values (1)")
+        con.commit()
+        con.close()
+    (scaffolded / "connections" / "held.yaml").write_text(
+        "name: held\ntype: sql\nurl: sqlite:///data/held.db\n")
+    (scaffolded / "connections" / "held_duck.yaml").write_text(
+        "name: held_duck\ntype: duckdb\ndatabase: data/held.duckdb\n")
+    (scaffolded / "models" / "held_model.yaml").write_text(
+        "name: held_model\nconnectors:\n  - {name: held_duck, connection: held_duck}\n"
+        "tables:\n  - {name: orders, connector: held_duck, source: orders}\n"
+        "  - {name: runs, connector: held_duck, source: tracebi_runs}\n"
+        "  - {name: tracebi_sessions, connector: held_duck, source: tracebi_sessions}\n")
+    c = serve(monkeypatch)
+
+    for name in ("held", "held_duck"):
+        listed = c.get(f"/api/connectors/{name}/tables").json()
+        assert [t["name"] for t in listed["tables"]] == ["orders"], name
+        assert listed["hidden_framework_tables"] == 3, name
+    view = c.get("/api/connectors/held_duck/warehouse").json()
+    assert [t["name"] for t in view["tables"]] == ["orders"]
+    assert view["hidden_framework_tables"] == 3
+    [wh] = [w for w in c.get("/api/warehouse").json()["warehouses"] if w["name"] == "held_duck"]
+    assert [t["name"] for t in wh["tables"]] == ["orders"]
+    assert wh["hidden_framework_tables"] == 3
+
+    # A model that names one is refused by name, as a missing table is, and
+    # its page does not list it.
+    model = c.get("/api/models/held_model").json()
+    assert [t["name"] for t in model["tables"]] == ["orders"]
+    assert model["hidden_framework_tables"] == 2
+    for table in ("runs", "tracebi_sessions"):
+        assert c.get(f"/api/models/held_model/tables/{table}/preview").status_code == 404
+        assert c.get(f"/api/models/held_model/tables/{table}/export.csv").status_code == 404
+    assert c.get("/api/models/held_model/tables/orders/preview").status_code == 200
+
+
 def test_a_python_pipeline_beats_a_yaml_one_of_the_same_name(scaffolded, monkeypatch):
     from tracebi import pipeline_registry
 

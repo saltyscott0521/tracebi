@@ -44,6 +44,11 @@ when either is true.
 `GET /api/models` and `GET /api/models/{name}` carry each model's `label` (what a list
 shows; see [[model-json]]) beside `name`, the identifier every other route takes.
 
+A model table that is one of TraceBi's own (`tracebi_*` or `alembic_version`, by its
+name or its source) is left out of `GET /api/models/{name}` (counted in
+`hidden_framework_tables`), and its `/preview` and `/export.csv` answer 404, as a
+missing table does: the state store holds sessions and tokens.
+
 `/source` returns the model's file, read-only (the **Code** tab). A model registered in
 Python code has no file and says so. `/query` takes a [[queries|QuerySpec]] and returns the result plus a lineage
 graph. It computes but persists nothing, which is why `viewer` may call it.
@@ -322,14 +327,14 @@ reports its build step rebuilt, only those it actually built).
 | --- | --- | --- |
 | `GET` | `/api/connectors` · `/api/connectors/{name}` | viewer. Each carries `read_by`: `{transforms: [{name, tables}], layers: [{pipeline, layer}], models}`, read from the transform files (`-- source:` lines, `load_source(...)`), the pipelines' layers and the models |
 | `GET` | `/api/connectors/{name}/source` | viewer |
-| `GET` | `/api/connectors/{name}/tables` | viewer. What the source holds, read now: `{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}]}` (`rows` exact for a DuckDB file or frames in memory; the catalog's estimate with `rows_exact: false` for a SQL database that keeps one, Postgres `pg_class.reltuples`; else null: no table is counted row by row), or `{connected: false, reason, variable?}` with status 200 when its `${VAR}` is unset or it refuses. The connection is resolved on this request only and released before it returns |
+| `GET` | `/api/connectors/{name}/tables` | viewer. What the source holds, read now: `{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}], hidden_framework_tables}` (`rows` exact for a DuckDB file or frames in memory; the catalog's estimate with `rows_exact: false` for a SQL database that keeps one, Postgres `pg_class.reltuples`; else null: no table is counted row by row), or `{connected: false, reason, variable?}` with status 200 when its `${VAR}` is unset or it refuses. The connection is resolved on this request only and released before it returns |
 | `POST` | `/api/connectors/{name}/test` | **admin**. Opens the connection, lists its tables, closes it: `{ok: true, tables: n}` or `{ok: false, reason}`, the reason scrubbed of every resolved credential value ([[credentials]]) |
 | `GET` | `/api/credentials` | viewer. Every `${NAME}` the project references and where it is set, never a value: `{credentials: [{name, used_by: [{kind, name, field, default}], set, source: environment\|dotenv\|store\|default\|null, stored, updated_at?, updated_by?, problem?}], key_source: env\|file, can_change}` |
 | `PUT` | `/api/credentials/{name}` | **admin, identified** (a sign-in role; with no sign-in it is 403 naming `tracebi secret set NAME`). Body `{value}`; answers the status row, 201 new or 200 replaced, 422 for a name nothing references. Records a `credential` run row |
 | `DELETE` | `/api/credentials/{name}` | **admin, identified**. Removes the store's value (204, 404 when it holds none); an environment or `.env` value is untouched |
-| `GET` | `/api/connectors/{name}/warehouse` | viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source; the file is opened read-only and closed within the request |
+| `GET` | `/api/connectors/{name}/warehouse` | viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source, and `hidden_framework_tables` (the `tracebi_*` / `alembic_version` tables left out); the file is opened read-only and closed within the request |
 | `GET` | `/api/inputs` | viewer. The project's `inputs/` folder: `{folder, exists, files: [{path, size, modified, read_by: [transform]}]}`; `read_by` is found by reading each transform for a literal path into `inputs/` |
-| `GET` | `/api/warehouse` | viewer. `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}]}]}`, one per warehouse-kind connector, read-only |
+| `GET` | `/api/warehouse` | viewer. `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}`, one per warehouse-kind connector, read-only; framework tables are never listed |
 | `GET` | `/api/docs` · `/api/docs/{name}` | viewer |
 | `POST` | `/api/_dev/reload` | **admin**, and only with `TRACEBI_DEV_MODE` |
 | `POST` · `GET` · `DELETE` | `/mcp` | the agent gateway, only when `TRACEBI_MCP_TOKEN` is set. Bearer token, outside the app's Basic/proxy auth |

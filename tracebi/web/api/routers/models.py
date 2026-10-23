@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from tracebi.sources import is_framework_table
 from tracebi.web.api.errors import error_detail
 from tracebi.web.api.lineage_graph import lineage_to_graph
 from tracebi.web.api.registry import registry
@@ -30,6 +31,11 @@ def get_model(name: str):
     detail = dict(detail)
     from tracebi.model_registry import model_path
 
+    # A model that names one of TraceBi's own tables (as its name or its
+    # source) does not list it, and its routes refuse it: see _load_table.
+    tables = detail.get("tables") or []
+    detail["tables"] = [t for t in tables if not _is_framework(t)]
+    detail["hidden_framework_tables"] = len(tables) - len(detail["tables"])
     path = model_path(name) or model_path(detail.get("name") or name)
     if path:
         try:
@@ -60,10 +66,20 @@ def _safe_filename(name: str) -> str:
     return "".join(c for c in name if c.isalnum() or c in "._- ") or "export"
 
 
+def _is_framework(table: dict) -> bool:
+    """A model table that is one of TraceBi's own, by its name or its source."""
+    return is_framework_table(table.get("name", "")) or is_framework_table(table.get("source") or "")
+
+
 def _load_table(name: str, table_name: str):
     model = registry.get_model(name)
     if not model:
         raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    # A framework table answers as a missing one does: the state store's
+    # sessions and tokens are never rows a page can read.
+    declared = next((t for t in model.info().get("tables", []) if t.get("name") == table_name), None)
+    if is_framework_table(table_name) or (declared and _is_framework(declared)):
+        raise HTTPException(status_code=404, detail=f"Table '{table_name}' not found in model '{name}'")
     try:
         return model.load(table_name)
     except ValueError as exc:
