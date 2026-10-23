@@ -296,9 +296,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # Ask keeps its own model pick.
             sidebar.get_by_role("link", name="Ask", exact=True).click()
             page.wait_for_url("**/ask")
-            page.get_by_role("link", name=re.compile(r"^Direct Lending Portfolio")).click()
-            page.wait_for_url("**/ask?model=portfolio_model")
             page.get_by_role("heading", name="Ask", exact=True).wait_for()
+            # Ask's own pick of the model: the page before may still hold its
+            # "Read by" links with the same text for a moment.
+            page.locator('a[href="/ask?model=portfolio_model"]', has_text="Direct Lending Portfolio").first.click()
+            page.wait_for_url("**/ask?model=portfolio_model")
             assert page.get_by_label("Model").input_value() == "portfolio_model"
             fail_on_browser_errors()
 
