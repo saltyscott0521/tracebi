@@ -177,8 +177,10 @@ the project. The Sources page shows such a name as <code>Set · default</code>.<
   <code>key=</code>... in the query); <code>sqlite:///data/x.db</code> is fine, a URL with a
   password is a validation error.</li>
 <li><strong>Paths stay inside the project when literal.</strong> <code>database</code> and <code>directory</code>
-  of a <code>duckdb</code>/<code>csv</code> connection: no absolute path, no <code>..</code>. Use a reference
-  to point elsewhere. Relative paths resolve against the project root.</li>
+  of a <code>duckdb</code>/<code>csv</code> connection, and the file of a <code>sqlite:///</code> url: no
+  absolute path, no <code>..</code>. Use a reference to point elsewhere. Relative paths
+  (a SQLite url's too, whatever the working directory) resolve against the
+  project root.</li>
 <li><strong>Resolved lazily.</strong> Reading the file builds a connector and reads no
   environment. The variable is read when the connection is used; an unset one
   fails there with an error naming the variable (and not its value).

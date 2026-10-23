@@ -1,0 +1,69 @@
+{
+  "name": "AUM by Branch & Asset Class",
+  "author": "TraceBi Demo",
+  "description": "Assets under management and unrealized gain by branch and asset class, with net new assets by branch.",
+  "notes": "The custom-styled demo report (its own style.css).",
+  "measures": {
+    "wealth_model": {
+      "purchases": {
+        "column": "amount", "agg": "sum",
+        "filters": {"activity_type": "purchase"}, "format": "currency0",
+        "description": "Purchase amounts in the period (this report's calculation)."
+      },
+      "sales": {
+        "column": "amount", "agg": "sum",
+        "filters": {"activity_type": "sale"}, "format": "currency0",
+        "description": "Sale amounts in the period (this report's calculation)."
+      },
+      "net_new_assets": {
+        "measure_expr": "purchases - sales", "format": "currency0",
+        "description": "Purchases less sales. Fees are left out: they are not assets moving in or out."
+      }
+    }
+  },
+  "data": {
+    "net_new_by_branch": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_activities",
+        "measures": ["net_new_assets", "purchases", "sales"],
+        "dimensions": ["dim_branch.branch"],
+        "order_by": ["-net_new_assets"]
+      }
+    },
+    "at_a_glance": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["market_value", "unrealized_gain", "gain_pct"]
+      }
+    },
+    "by_branch": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["market_value"],
+        "dimensions": ["dim_branch.branch"],
+        "order_by": ["-market_value"]
+      }
+    },
+    "branch_summary": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["market_value", "unrealized_gain", "gain_pct"],
+        "dimensions": ["dim_branch.branch", "dim_branch.region"],
+        "order_by": ["-market_value"]
+      }
+    },
+    "by_asset_class": {
+      "model": "wealth_model",
+      "query": {
+        "fact": "fact_holdings",
+        "measures": ["market_value", "unrealized_gain"],
+        "dimensions": ["dim_product.asset_class"],
+        "order_by": ["-market_value"]
+      }
+    }
+  }
+}

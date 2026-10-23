@@ -1,0 +1,15 @@
+# Pipeline for wealth_model: rebuild the warehouse, then its reports.
+#
+#     transform  runs transforms/wealth_transform.sql: cleans the core-banking
+#                system's six tables (connections/bank.yaml, inputs/bank.sqlite),
+#                sinks the star schema into data/warehouse.duckdb, then checks
+#                wealth_transform.contract.yaml
+#     build      builds every report in reports/wealth_model/, each with its trace
+#
+#     tracebi run-pipeline wealth_model
+name: wealth_model
+description: Rebuild the Wealth Management warehouse, then its reports.
+transform: wealth_transform
+models: [wealth_model]
+reports: all
+schedule: null

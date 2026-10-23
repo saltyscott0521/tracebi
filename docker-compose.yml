@@ -98,6 +98,7 @@ services:
         tracebi run-pipeline portfolio_model
         && tracebi run-pipeline saas_model
         && tracebi run-pipeline housing_model
+        && tracebi run-pipeline wealth_model
     volumes:
       - warehouse:/app/examples/portfolio_project/data
       - ./examples/portfolio_project/output:/app/examples/portfolio_project/output

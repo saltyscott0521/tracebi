@@ -166,6 +166,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # and names the transform that reads it.
             data_tabs.get_by_role("link", name="Sources").click()
             page.wait_for_url("**/data/sources")
+            # One of each kind: the live Postgres, the two databases that
+            # ship, and inputs/.
+            page.locator('[data-source="inputs"]').wait_for()
+            assert {"bank", "billing", "crm", "inputs"} <= set(page.locator("[data-source]").evaluate_all(
+                "els => els.map(e => e.dataset.source)"))
             page.locator('[data-source="crm"]').click()
             page.wait_for_url("**/data/sources?source=crm")
             expect(page.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()

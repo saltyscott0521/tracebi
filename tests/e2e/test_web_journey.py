@@ -275,6 +275,8 @@ def test_the_demo_keeps_its_runs_in_the_state_store_not_its_data(served, scaffol
         demo = sqlalchemy.inspect(sqlalchemy.create_engine(
             f"sqlite:///{scaffolded / 'data' / 'demo.db'}")).get_table_names()
         assert "orders_raw" in demo and "gold_revenue_by_region" in demo
+        # The bank wealth_model reads is in the same database, not in memory.
+        assert {"clients", "holdings", "activities"} <= set(demo), demo
         assert not [t for t in demo if t.startswith("tracebi_") or t == "alembic_version"], demo
         listed = served.get("/api/connectors/demo_db/tables").json()
         assert listed["hidden_framework_tables"] == 0

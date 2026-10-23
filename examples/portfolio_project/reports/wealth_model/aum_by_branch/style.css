@@ -1,0 +1,97 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * AUM by Branch: the custom theme for the demo's wealth report.
+ *
+ * The demo's one bespoke look: its own faces (Inter, Fraunces), its own
+ * palette (pine and brass) and a hero band, on the system's frame (the
+ * masthead's meta and verdict, the KPI strip, the grid, the footer and the
+ * trace drawer are tracebi.css). Stacks after tracebi.css, so the rules here win.
+ * Fonts and the hero artwork come from assets/ and are inlined at build, so
+ * the file still works offline. No gradient, no shadow.
+ *
+ * Presentation only: nothing here can change a number.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-display: swap;
+  src: url(assets/fonts/inter-latin-400-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-display: swap;
+  src: url(assets/fonts/inter-latin-600-normal.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Fraunces";
+  font-weight: 600;
+  font-display: swap;
+  src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
+}
+
+:root {
+  --tb-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --tb-ink: #10201c;
+  --tb-muted: #56655f;
+  --tb-page: #f3f5f2;
+  --tb-rule: #dfe5e0;
+  /* The accent pair for each ground: pine, and a lighter pine on dark. */
+  --tb-accent: #1f6f5c;
+  --tb-accent-text: #1a5e4e;
+  --tb-surface-accent: #e9f2ee;
+  --tb-dark-accent: #6cc3a8;
+  --tb-dark-accent-text: #9ad9c4;
+  /* Chart series after the accent: brass, slate blue, clay (checked for
+     colour-blind separation against pine). */
+  --tb-chart-2: #c08a2b;
+  --tb-chart-3: #4c6ea8;
+  --tb-chart-4: #b5563c;
+  --brass: #d9b36a;
+  --hero: #0d2b24;
+}
+
+body { padding-top: 0; }
+
+/* ── Hero ────────────────────────────────────────────────────────────── */
+/* One flat band of deep pine with the rings artwork over it (an image from
+   assets/, inlined at build): the report's one decorative moment. */
+
+.wm-hero {
+  padding: 56px 24px 48px;
+  color: #fff;
+  background: url(assets/rings.svg) center / cover no-repeat, var(--hero);
+}
+/* The masthead, in the hero's register: no rule, the hero's own ink. */
+.wm-hero-inner { max-width: 1200px; margin: 0 auto; padding: 0; border: 0; }
+.wm-hero .tb-kicker {
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+.wm-hero h1 {
+  font-family: var(--display);
+  font-size: var(--tb-text-3xl);
+  letter-spacing: -.015em;
+  line-height: 1.06;
+  margin: 16px 0 14px;
+  color: #fff;
+}
+.wm-hero h1 em { font-style: normal; color: var(--brass); }
+.wm-hero .tb-standfirst { max-width: 60ch; color: rgba(255, 255, 255, .8); }
+.wm-hero .tb-standfirst strong,
+.wm-hero [data-tb-figure="value"] { color: #fff; font-weight: 600; }
+.wm-hero .tb-masthead-meta { color: rgba(255, 255, 255, .72); }
+.wm-hero .tb-masthead-period { color: #fff; }
+.wm-hero .tb-receipt-link { color: #fff; }
+
+/* ── The display face on the figures and the panel titles ─────────────── */
+
+.wm-kpis .tb-kpi { border-bottom: 3px solid var(--brass); }
+.wm-kpis .tb-kpi-value, .tb-card > h2:first-child {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: 0;
+}

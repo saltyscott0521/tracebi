@@ -99,7 +99,25 @@ def read_connection_doc(path: "str | os.PathLike[str]") -> Any:
         raise ModelSpecError(path.name, [f"not valid YAML ({' '.join(str(exc).split())})"]) from exc
 
 
+# A SQLite URL names a file: ``sqlite:///inputs/bank.sqlite`` (relative) or
+# ``sqlite:////abs/bank.sqlite``. SQLAlchemy reads a relative one against the
+# process's working directory, so it is resolved against the project root.
+_SQLITE = re.compile(r"^(sqlite(?:\+\w+)?:///)([^?]*)(\?.*)?$")
+
+
+def _sqlite_file(url: str) -> Optional[str]:
+    """The file a SQLite URL names, or None (another dialect, or memory)."""
+    match = _SQLITE.match(url)
+    if match is None or match.group(2) in ("", ":memory:"):
+        return None
+    return match.group(2)
+
+
 def _url_problem(url: str) -> Optional[str]:
+    path = _sqlite_file(url)
+    if path is not None and _escapes(path):
+        return (f"a literal SQLite file must stay inside the project (no absolute "
+                f"path, no '..'), got {path!r}; use ${{ENV_VAR}} to point elsewhere")
     try:
         parts = urlsplit(url)
         query = parse_qsl(parts.query)
@@ -269,6 +287,10 @@ class Declaration:
         if field in _PATH_FIELDS and self.ctype in _PATH_FIELDS[field] \
                 and value != ":memory:" and not os.path.isabs(value):
             return str((self.root / value).resolve())
+        if field in _URL_FIELDS and (path := _sqlite_file(value)) \
+                and not os.path.isabs(path):
+            match = _SQLITE.match(value)
+            return f"{match.group(1)}{(self.root / path).resolve()}{match.group(3) or ''}"
         if field == "credentials" and self.ctype == "bigquery":
             from tracebi.connect import _bq_credentials
             return _bq_credentials(value)

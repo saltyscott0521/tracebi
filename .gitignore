@@ -35,6 +35,10 @@ data/
 *.db
 *.sqlite
 *.sqlite3
+# The reference project's two source databases ship with it: small, generated
+# by inputs/seed_bank.py and inputs/seed_billing.py, mock data only.
+!examples/portfolio_project/inputs/bank.sqlite
+!examples/portfolio_project/inputs/billing.sqlite
 
 web/ui/node_modules/
 tracebi/reports/assets/_react_src/node_modules/

@@ -80,6 +80,9 @@ def test_a_literal_secret_in_a_connection_is_refused(scaffolded, monkeypatch):
         "warehouse: w\ndatabase: d\n")
     (conns / "okd.yaml").write_text(
         "name: okd\ntype: sql\nurl: ${TRACEBI_OKD_URL:-sqlite:///data/ok.db}\n")
+    # A SQLite url names a file: a literal one stays inside the project, as a
+    # duckdb database path does.
+    (conns / "far.yaml").write_text("name: far\ntype: sql\nurl: sqlite:///../far.db\n")
 
     code, out = run_cli("validate")
     assert code == 1
@@ -89,6 +92,7 @@ def test_a_literal_secret_in_a_connection_is_refused(scaffolded, monkeypatch):
     assert "dflt.yaml: url: carries a credential" in out
     assert "snowd.yaml: password: a credential has no default" in out
     assert "okd.yaml is well formed" in out
+    assert "far.yaml: url: a literal SQLite file must stay inside the project" in out
     assert SECRET not in out                       # even the refusal does not echo it
 
     c = serve(monkeypatch)
