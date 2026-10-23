@@ -67,13 +67,50 @@ for more than one model.
    explorer hides `tracebi_*` and `alembic_version` regardless
    (U-0 of the audit).
 
+## Mock sources: in the box's Postgres, or a database file that ships
+
+A demo source that is "a database" is a database, never an in-memory
+connector and never only a CSV standing in for one. Two homes, by where the
+project runs:
+
+- **On the box** (compose, tracebi.com): a database in the stack's
+  Postgres, seeded by the `seed` service. The CRM already works this way
+  (`inputs/seed_crm.sql`, `TRACEBI_CRM_URL` → `db:5432/tracebi`); it
+  becomes its own database on that server, `crm`, beside `tracebi_state`,
+  so the Sources tab's `crm` is a Postgres database with exactly the CRM's
+  tables in it.
+- **Off the box** (a laptop, CI without the Postgres service, a reader
+  of the repo): a database file that ships with the project,
+  `inputs/crm.sqlite`, written by `inputs/seed_crm.py --sqlite` and
+  committed (it is small; `issuer_ratings.csv` stays as the generator's
+  input, not as the fallback). The connection reaches it with no variable
+  set.
+
+That last line needs one small mechanism. A connection value may carry a
+**default**, shell-style: `url: ${TRACEBI_CRM_URL:-sqlite:///inputs/crm.sqlite}`.
+The default is used when the name resolves nowhere (environment, `.env`,
+store); it must pass the same no-credential check as a literal (a SQLite
+path does, a Postgres URL with a password does not), so a secret can never
+hide in a default. `validate_connection_doc` enforces it; the Sources panel
+shows "Set · default" as the source. The `-- source: … fallback: …`
+directive stays for what it is for (a connection that is declared but
+unreachable right now), but the demo no longer leans on it: the certificate
+records the live load from Postgres or from the shipped file, and either is
+a real database load.
+
+The demo app follows the same rule where it keeps mock data: `banking`
+stops being a `MemoryConnector` and becomes tables in `data/demo.db`
+(SQLite, written by `sample_data.py`) or in `TRACEBI_DEMO_DB_URL`'s
+Postgres, like `sales_model`'s already are.
+
 ## What the visitor sees afterwards
 
 - **Models**: three chains, each `inputs/… → <transform>.sql → N tables →
   N measures → N reports`, the portfolio one also showing `crm`.
-- **Sources**: `crm` (Postgres, read by `holdings_transform`, tables
-  listed when connected), `inputs/` (its files, each read by one
-  transform). Nothing else.
+- **Sources**: `crm` (a Postgres database on the box, the shipped
+  `inputs/crm.sqlite` elsewhere; read by `holdings_transform`; its tables
+  listed, because it always connects), `inputs/` (its files, each read by
+  one transform). Nothing else.
 - **Warehouse**: `warehouse` · `data/warehouse.duckdb` · one list of tables
   grouped by the transform that wrote them, every row "Checks passed".
 - **Reports**: nine reports in three folders named for their models.
