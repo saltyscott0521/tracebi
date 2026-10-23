@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 
 import { useCodeRequests, useDesk, usePipelines, usePublishRequests, useReports, useRuns } from '../api'
-import { attentionItems } from '../components/Attention'
+import { BuildAll, attentionItems } from '../components/Attention'
 import { PageHeader, useReportModels } from '../components/Scope'
 import { Chip, Spinner, Time, Verdict } from '../components/Shared'
 import { REVIEW_TABS, whereAmI } from '../nav'
@@ -102,6 +102,7 @@ function Attention({ items }) {
               <span className="dlist__side">
                 {it.at && <span className="dlist__when"><Time iso={it.at} /></span>}
                 {it.href && <Link to={it.href} className="review__open">{it.action || 'Open'}</Link>}
+                {it.buildAll && <BuildAll names={it.buildAll} />}
                 {(it.decide || it.review) && (
                   <button type="button" className="review__open review__btn" aria-expanded={acting}
                           onClick={() => setOpen(acting ? null : it.key)}>

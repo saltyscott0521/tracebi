@@ -37,8 +37,8 @@ it is the worked version of that scaffold with real cleaning to do.
 ## Run it
 
 ```bash
-python run_workflow.py        # ① build the warehouse, ③ render the dashboard once
-tracebi verify data/portfolio_dashboard.html.manifest.json   # every section: REPRODUCES
+python run_workflow.py        # ① build the warehouse, ③ build every report into output/
+tracebi verify output/portfolio_model/portfolio_dashboard.html.manifest.json   # REPRODUCES
 tracebi serve                 # browse at http://127.0.0.1:8000 → Reports
 tracebi run-pipeline portfolio_model   # or: a model's pipeline — rebuild its warehouse, then its reports
 ```

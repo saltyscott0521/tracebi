@@ -121,9 +121,10 @@ export function useLineFacts(model) {
   // ⓪ Sources: what the transform reads, from the transform's own file
   const upstream = upstreamOf({ model, pipelines, connectors, inputs })
 
+  const lastCheck = tables.map(t => t.contract?.checked_at).filter(Boolean).sort().pop()
   const line = {
     sources: sourcesStation(pipelines && connectors && inputs, upstream),
-    transform: transformStation(pipelines, transform),
+    transform: transformStation(pipelines, transform, lastCheck),
     model: modelStation(detail, graph),
     reports: reportsStation(reports, listed, desk, built, states),
   }
@@ -135,7 +136,6 @@ export function useLineFacts(model) {
     { pill: pill2, tone: looks.length ? 'warn' : '' },
   ]
 
-  const lastCheck = tables.map(t => t.contract?.checked_at).filter(Boolean).sort().pop()
   return {
     line, transform, source: file, read, tables, lastCheck, builtCount: built.length,
     description: pipeline?.description,
@@ -183,7 +183,10 @@ function sourcesStation(known, up) {
   return s
 }
 
-function transformStation(pipelines, t) {
+// *written*: when the sink certificate says the tables were written. A run
+// outside the app (run_workflow.py, `tracebi run-transform`) leaves no run in
+// the run store, so with none recorded that is what the station says.
+function transformStation(pipelines, t, written) {
   const s = { name: t.name, flags: [] }
   if (!t.pipeline) {
     if (pipelines) s.flags.push(mark('none', 'No pipeline'))
@@ -194,6 +197,7 @@ function transformStation(pipelines, t) {
     if (t.goodAt) s.fact = `Last good run ${stamp(t.goodAt)}`
     s.flags.push(mark('bad', `Failed ${ago(t.lastAt)}`))
   } else if (t.lastAt) s.fact = `Ran ${stamp(t.lastAt)}`
+  else if (t.known && written) s.fact = `Written ${stamp(written)} · outside the app`
   else if (t.known) s.flags.push(mark('none', 'Not run yet'))
   return s
 }

@@ -16,15 +16,18 @@ over.
                     transforms/wealth_transform.sql    → data/warehouse.duckdb
                     (the one warehouse tracebi.yaml declares; each transform's
                     sink contract is checked as it lands)
-    ②  MODEL        models/portfolio_model.yaml          (a star schema over the sink)
-    ③  REPORT       reports/portfolio_model/portfolio_dashboard/        → data/portfolio_dashboard.html
+    ②  MODEL        models/<model>.yaml                  (a star schema over the sink)
+    ③  REPORT       reports/<model>/<name>/              → output/<model>/<name>.html
+                    (every model's reports, each through `tracebi report build`)
 
-This script does phase ① (build the warehouse) and renders phase ③ once, offline,
-so you can open the HTML directly. To serve the dashboard on the front end:
+This script does phase ① (build the warehouse) and builds every report in
+phase ③ the way the app does, so the library opens built and each page opens
+directly as a file. To serve them on the front end:
 
     python -m tracebi.web.run          # then open http://127.0.0.1:8000 → Reports
 
-The server auto-discovers models/ and reports/; it reads the same warehouse.
+The server auto-discovers models/ and reports/; it reads the same warehouse
+and shows these builds.
 """
 
 from __future__ import annotations
@@ -93,20 +96,27 @@ def main() -> None:
     print("① wealth transform → sink")
     print(f"    form: {run_transform(os.path.join(ROOT, 'transforms', 'wealth_transform.sql'), root=ROOT)}")
 
-    # Phase ② + ③ — build the model, render the dashboard offline.
+    # Phase ② + ③ — load the models, then build every model's reports.
     os.environ.setdefault("TRACEBI_MODELS_DIR", os.path.join(ROOT, "models"))
     from tracebi.model_registry import get_model, list_models
-    from tracebi.reports.template_package import TemplatePackage
 
     print("② model")
     models = {name: get_model(name) for name in list_models()}
     print(f"    loaded {sorted(models)}")
 
-    print("③ dashboard → html")
-    package = os.path.join(ROOT, "reports", "portfolio_model", "portfolio_dashboard")
-    out = os.path.join(ROOT, "data", "portfolio_dashboard.html")
-    TemplatePackage(package).render(models, out)
-    print(f"    wrote {out}")
+    # Each report is built by `tracebi report build`, the path the app and a
+    # model's pipeline use: output/<model>/<name>.html, its manifest, and a
+    # build row in the run store. Rendering anywhere else would leave the
+    # library saying "Never built" beside data built minutes ago.
+    from tracebi import cli
+    from tracebi.pipeline.model_pipeline import reports_of
+
+    print("③ reports → output/")
+    os.chdir(ROOT)
+    for model in sorted(models):
+        for name in reports_of(model):
+            if cli.main(["report", "build", name]) != 0:
+                raise SystemExit(f"failed to build {name}")
 
     print("\nServe it on the front end:")
     print("    python -m tracebi.web.run   →   http://127.0.0.1:8000  (Reports)")

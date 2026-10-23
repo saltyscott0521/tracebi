@@ -131,8 +131,12 @@ Checked by eye, from the contact sheet:
 - **The model is a filter, not the frame.** Four places (Reports, Ask, Data,
   Review); with more than one model, the library groups reports under their
   model's name and a chip narrows it to one.
-- **The sidebar shows what the role uses.** Everyone sees Reports and Ask, an
-  analyst also Review, an admin also Data (with no sign-in, all four). A place
+- **The sidebar shows what the role uses.** Everyone sees Reports, Ask and
+  Docs; an analyst also Review and Data (with no sign-in, all five). Data is
+  read-only below admin: Refresh data, a step's Run and the credential forms
+  show for an admin only, because they write the warehouse or point the
+  server's connections. A viewer meets no instruction they cannot follow (no
+  My published, a never-built report says who builds it). A place
   the role cannot use is hidden, not disabled, in the sidebar, the rail, the
   phone's drawer and ⌘K alike; its address shows a plain page saying who it
   is for. Review's tabs (Attention, Drafts, History, Verify) each keep an

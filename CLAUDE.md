@@ -299,7 +299,7 @@ pip install -e ".[dev]"                        # Everything the test suite needs
 # Three-phase workflow
 cd examples/portfolio_project && python run_workflow.py
                                                 # phase ① builds data/warehouse.duckdb,
-                                                #   phase ③ renders the report HTML once, offline
+                                                #   phase ③ builds every model's reports (tracebi report build → output/)
 python -m tracebi.web.run                       # serves it; auto-discovers models/ + reports/
                                                 #   → the library at / (TRACEBI_REPORTS_DIR, default reports)
 

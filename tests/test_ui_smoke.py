@@ -71,10 +71,6 @@ def test_real_app_smoke(tmp_path: Path) -> None:
         project,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "data", ".tracebi"),
     )
-    # What a fresh checkout has: no pages built on this machine earlier, so
-    # opening a report builds it (and records the run the Runs step reads).
-    for built in (project / "output").rglob("*.html"):
-        built.unlink()
     workflow = subprocess.run(
         [sys.executable, "run_workflow.py"],
         cwd=project,
@@ -83,6 +79,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
         check=False,
     )
     assert workflow.returncode == 0, workflow.stderr or workflow.stdout
+    # The workflow builds every report, so the library opens built. This
+    # journey starts from none built, so opening a report builds it (and
+    # records the run the Runs step reads).
+    for built in (project / "output").rglob("*.html"):
+        built.unlink()
 
     port = _free_port()
     env = os.environ.copy()
@@ -138,7 +139,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(sidebar.get_by_role("link", name="Reports", exact=True)).to_have_attribute("aria-current", "page")
             lib_row = page.locator(f'[data-report="{_REPORT}"]')
             expect(lib_row).to_contain_text(_TITLE)
-            expect(lib_row).to_contain_text("Never built")
+            # The verdict waits on the desk re-checking every receipt the
+            # workflow left.
+            expect(lib_row).to_contain_text("Never built", timeout=60_000)
             expect(lib_row).to_contain_text("Mondays 07:00")   # its schedule, in words
             # A model is a filter chip on the list, not the frame of the app.
             page.get_by_role("group", name="Model").get_by_role("button", name=re.compile(r"^Direct Lending Portfolio")).click()
@@ -482,7 +485,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # The model's line counts it the same way, in the chip's words.
             page.goto(f"{base}/data/portfolio_model")
             line = page.get_by_role("navigation", name="How portfolio_model is made")
-            expect(line.get_by_role("link", name=re.compile(r"^Reports\b"))).to_contain_text("1 needs a look")
+            expect(line.get_by_role("link", name=re.compile(r"^Reports\b"))).to_contain_text(
+                "1 needs a look", timeout=60_000)   # the desk re-checks again on this page
             expect(line).not_to_contain_text("reproduce")
             page.goto(f"{base}/reports/{_REPORT}")
             page.get_by_role("button", name="Needs a look", exact=True).wait_for()
@@ -511,7 +515,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             rows = page.locator(f'tr[data-target="{_REPORT}"]')
             rows.first.wait_for()
             assert _TITLE in rows.first.inner_text()
-            page.get_by_text("Checking…").wait_for(state="detached")
+            # The workflow built every report, so every row waits on the desk.
+            expect(page.get_by_text("Checking…")).to_have_count(0, timeout=60_000)
             expect(rows).to_have_count(1)
             rows.first.get_by_role("button", name=re.compile(r"^\d+ older runs?")).click()
             verdicts = [r.locator(".runs__verdict").inner_text() for r in rows.all()]
@@ -787,6 +792,14 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("Published model portfolio_model").wait_for()
             assert (project / "models" / "portfolio_model.yaml").read_text(encoding="utf-8") == moved
             fail_on_browser_errors()
+
+            # Review lists the reports nobody has built yet as one item, and
+            # Build all builds them: the item goes once every build has landed.
+            page.goto(base + "/review")
+            unbuilt = page.get_by_role("list", name="Needs attention").locator("li", has_text="never been built")
+            unbuilt.get_by_role("button", name="Build all").click()
+            expect(unbuilt).to_have_count(0, timeout=180_000)
+            fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:
@@ -800,9 +813,12 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
 
 def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
-    """Behind a proxy that names roles, a viewer's sidebar is Reports and Ask,
-    an analyst's adds Review (its tabs Attention, Drafts, History, Verify), and
-    an address above the role is a plain page saying who it is for. The API
+    """Behind a proxy that names roles, a viewer's sidebar is Reports, Ask and
+    Docs, an analyst's adds Review (its tabs Attention, Drafts, History,
+    Verify) and Data, read-only (no Refresh data, which an admin has), and an
+    address above the role is a plain page saying who it is for and what this
+    person can do. A viewer meets nothing they cannot act on: no My published,
+    and a report nobody has built says who builds it, with no Share. The API
     enforces the roles; this is what the app shows."""
     from playwright.sync_api import expect, sync_playwright
 
@@ -812,6 +828,8 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
         project,
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "data", ".tracebi"),
     )
+    for built in (project / "output").rglob("*.html"):   # nothing built here yet
+        built.unlink()
     port = _free_port()
     env = os.environ.copy()
     env["TRACEBI_APP"] = ""
@@ -848,7 +866,8 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             # once the role is known, so the sidebar below is the viewer's).
             viewer = as_role("viewer")
             viewer.goto(base + "/data")
-            viewer.get_by_role("heading", name="This part of the app is for admins.").wait_for()
+            viewer.get_by_role("heading", name="This part of the app is for analysts.").wait_for()
+            viewer.get_by_text("You can read reports, ask a model questions and read the docs.").wait_for()
             expect(viewer.get_by_role("link", name="Go to the reports")).to_have_attribute("href", "/")
             sidebar = viewer.get_by_role("navigation", name="Main")
             sidebar.get_by_role("link", name="Ask", exact=True).wait_for()
@@ -866,7 +885,7 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             expect(viewer.locator("h1")).to_have_text("Get started")
             for tab in ("/data/sources", "/data/warehouse", "/data/map"):
                 viewer.goto(base + tab)
-                viewer.get_by_role("heading", name="This part of the app is for admins.").wait_for()
+                viewer.get_by_role("heading", name="This part of the app is for analysts.").wait_for()
             # ⌘K lists the same places: nothing inside Review or Data.
             viewer.keyboard.press("Control+k")
             viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("History")
@@ -877,23 +896,41 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             viewer.keyboard.press("Escape")
             viewer.goto(base + "/review")
             viewer.get_by_role("heading", name="This part of the app is for analysts.").wait_for()
-            # An open report keeps the same places in its rail.
+            # An open report keeps the same places in its rail. Nobody has
+            # built it: the viewer is told who builds it, and offered no Share
+            # (a link to nothing) and no About this build (a panel of dashes).
             viewer.goto(f"{base}/reports/{_REPORT}")
             rail = viewer.get_by_role("navigation", name="Main")
             expect(rail.get_by_role("link", name="Reports")).to_have_attribute("aria-current", "page")
             expect(rail.get_by_role("link", name="Ask")).to_have_count(1)
             expect(rail.get_by_role("link", name="Review")).to_have_count(0)
+            viewer.get_by_text("Not built yet. An analyst or admin builds it.").wait_for()
+            for command in ("Share", "About this build", "Build it now"):
+                expect(viewer.get_by_role("button", name=command)).to_have_count(0)
+            # The library has no My published for a role that cannot publish
+            # into it; an analyst's has one.
+            viewer.goto(base + "/")
+            viewer.locator(f'[data-report="{_REPORT}"]').wait_for()
+            expect(viewer.get_by_role("region", name="My published")).to_have_count(0)
 
             analyst = as_role("analyst")
             analyst.goto(base + "/runs")
             sidebar = analyst.get_by_role("navigation", name="Main")
             expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")
-            expect(sidebar.get_by_role("link", name="Data", exact=True)).to_have_count(0)
             tabs = analyst.get_by_role("navigation", name="Review: what to show")
             assert tabs.get_by_role("link").all_inner_texts() == ["Attention", "Drafts", "History", "Verify"]
             expect(tabs.get_by_role("link", name="History")).to_have_attribute("aria-current", "page")
-            analyst.goto(base + "/data/portfolio_model")
-            analyst.get_by_role("heading", name="This part of the app is for admins.").wait_for()
+            analyst.goto(base + "/")
+            analyst.get_by_role("region", name="My published").wait_for()
+            # Data is the analyst's to read: a model's Transform tab, with no
+            # Refresh data (it writes the warehouse); the admin's has one.
+            expect(sidebar.get_by_role("link", name="Data", exact=True)).to_have_count(1)
+            analyst.goto(base + "/data/portfolio_model/transform")
+            analyst.get_by_role("group", name="What to show of the pipeline").wait_for()
+            expect(analyst.get_by_role("button", name="Refresh data")).to_have_count(0)
+            admin = as_role("admin")
+            admin.goto(base + "/data/portfolio_model/transform")
+            admin.get_by_role("button", name="Refresh data").wait_for()
             browser.close()
         assert not errors, "\n".join(errors)
     finally:

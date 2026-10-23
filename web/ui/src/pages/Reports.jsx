@@ -6,7 +6,7 @@ import {
   useReports, useStartReportRun, useReportRun, useRuns,
   useReportLineage, useBuiltReport,
   useReportSource, reportDownloadUrl, reportShareUrl, useDesk, useModels,
-  useAppStatus, useMe, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
+  useAppStatus, useMe, useRole, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
 } from '../api'
 import { FRAME_SANDBOX, followSelection, listenToFrame, setFrameSelection, tellFrame, tellVerdict } from '../frameBridge'
 import Workbench from '../components/Workbench'
@@ -103,7 +103,9 @@ function useReportBuild(name) {
 // that asks for a look, why, and when it was built) and one command bar: Open,
 // Share and Export for everyone; Rebuild and Edit as a draft for an analyst or
 // admin, Build in dev mode, and the "About this build" panel (Receipt, Lineage,
-// History, Files). A command the person's role cannot use is not shown. The
+// History, Files). A command the person's role cannot use is not shown, nor
+// one that needs a build (Open, Share, Export, About this build) before there
+// is one. The
 // report fills the rest of the screen and keeps its own receipt drawer
 // (tracebi.js); the app tells the frame its verdict, so the report's masthead
 // chip says what the app's check found rather than the file's "Not checked".
@@ -234,7 +236,7 @@ function MoreMenu({ name, shown, canBuild, rebuild, running, canPoint, pointOn, 
               <Icon name="build" />{pointOn ? 'Leave Build mode' : 'Build'}
             </button>
           )}
-          {!pointOn && (
+          {!pointOn && shown && (
             <button type="button" role="menuitem" className="rp__item" onClick={pick(onAbout)}>
               <Icon name="details" />About this build
             </button>
@@ -512,12 +514,15 @@ function ReportPanel({ tab, setTab, onClose, ...props }) {
 }
 
 // A report with no build: nothing to show, and nothing is built by looking.
+// A viewer cannot build, so is told who does instead of how.
 function NeverBuilt({ build, canBuild }) {
   const busy = build.running || build.status === 'succeeded'
+  const viewer = useRole() === 'viewer'
   return (
     <div className="rprev__never">
       <Verdict state="never-built" />
-      <p>There is no page to show yet. Build it once and the preview, its trace and the check appear here.</p>
+      <p>{viewer ? 'Not built yet. An analyst or admin builds it.'
+        : 'There is no page to show yet. Build it once and the preview, its trace and the check appear here.'}</p>
       {canBuild && (
         <Btn onClick={build.build} disabled={busy}>
           {busy ? <><Spinner size={12} /> Building…</> : 'Build it now'}
@@ -733,13 +738,16 @@ function OpenReport({ report, model }) {
             <Icon name="open" /><span className="cmd__lab">Open</span>
           </a>
         )}
-        <SharePopover name={name} />
+        {shown && <SharePopover name={name} />}
         {!narrow && shown && <ExportMenu name={name} />}
         <span className="rp__grow" />
         {narrow ? (
-          <MoreMenu name={name} shown={shown} canBuild={canBuild} rebuild={rebuild} running={running}
-                    canPoint={canPoint} pointOn={pointOn} togglePoint={togglePoint}
-                    onAbout={() => { setWantBuild(false); setPanel(p => ({ ...p, open: true })) }} />
+          // A viewer on a report nobody has built would open an empty menu.
+          (shown || canBuild || canPoint) && (
+            <MoreMenu name={name} shown={shown} canBuild={canBuild} rebuild={rebuild} running={running}
+                      canPoint={canPoint} pointOn={pointOn} togglePoint={togglePoint}
+                      onAbout={() => { setWantBuild(false); setPanel(p => ({ ...p, open: true })) }} />
+          )
         ) : (
           <>
             {canBuild && shown && (
@@ -755,7 +763,7 @@ function OpenReport({ report, model }) {
                 Build
               </Cmd>
             )}
-            {!pointOn && (
+            {!pointOn && shown && (
               <>
                 {(canBuild || canPoint) && <span className="rp__vr" aria-hidden="true" />}
                 <Cmd icon="details" on={showPanel} onClick={togglePanel}>About this build</Cmd>
@@ -1020,6 +1028,7 @@ export default function Library() {
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [closed, setClosed] = useState(() => new Set())
+  const role = useRole()
   if (moved) return <Navigate to={moved} replace />
 
   const models = modelList || []
@@ -1040,7 +1049,9 @@ export default function Library() {
   const tally = {}
   folders.forEach(f => { tally[f.level] = (tally[f.level] || 0) + 1 })
   const usual = Object.keys(tally).sort((x, y) => tally[y] - tally[x])[0]
-  const mine = needle || model ? null : folderData?.personal
+  // A viewer cannot publish, so has no My published to fill.
+  const canPublish = role === 'analyst' || role === 'admin'
+  const mine = needle || model || !canPublish ? null : folderData?.personal
   const pick = name => setParams(name ? new URLSearchParams({ model: name }) : new URLSearchParams())
   const toggle = folder => setClosed(prev => {
     const next = new Set(prev)
@@ -1056,7 +1067,7 @@ export default function Library() {
         <PageTitle>Reports</PageTitle>
         <PageSub>{PAGES[0].sub}</PageSub>
       </header>
-      {isLoading ? <SkeletonList /> : !all.length && !folderData?.personal ? (
+      {isLoading ? <SkeletonList /> : !all.length && !(canPublish && folderData?.personal) ? (
         <Empty message="No reports yet. Scaffold one with tracebi new-report, or see Get started." />
       ) : (
         <>

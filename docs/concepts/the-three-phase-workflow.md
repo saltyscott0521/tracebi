@@ -96,7 +96,7 @@ behind every rendered number.
 
 ```bash
 cd examples/portfolio_project
-python run_workflow.py          # ① build the warehouse, ③ render the report once
+python run_workflow.py          # ① build the warehouse, ③ build every report
 tracebi serve                   # browse it: portfolio_model → Reports → portfolio_dashboard
 ```
 

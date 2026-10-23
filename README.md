@@ -81,7 +81,7 @@ report, not a different thing.)
 
 ```bash
 cd examples/portfolio_project   # the reference project ships in the repo
-python run_workflow.py          # ① build the warehouse, ③ render the report once
+python run_workflow.py          # ① build the warehouse, ③ build every report
 python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → portfolio_model's Reports → portfolio_dashboard
 ```
 
@@ -671,8 +671,8 @@ handbook, Get started first, for everyone). Older addresses (`/m/<model>/…`,
 `/getting-started`, `/reports?r=<name>`) redirect into them. Review is four tabs, each at its own
 address: Attention (`/review`), Drafts (`/review/drafts`), History (`/runs`)
 and Verify (`/verify`). The sidebar shows what the role uses: everyone
-Reports, Ask and Docs, an analyst also Review, an admin also Data (with no
-sign-in, all five); an address above the role says who it is for.
+Reports, Ask and Docs, an analyst also Review and Data, read-only below admin
+(with no sign-in, all five); an address above the role says who it is for.
 
 - **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a

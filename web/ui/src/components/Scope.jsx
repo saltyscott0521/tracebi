@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
-import { useModels, useReports } from '../api'
+import { useModels, useReports, useRole } from '../api'
 import { page, whereAmI, rememberModel, reportModels, openedReport, movedTo } from '../nav'
 import { PageTitle, PageSub, SkeletonCard, Empty, BtnLink } from './Shared'
 
@@ -82,15 +82,23 @@ export function Moved() {
   return to ? <Navigate to={to + hash} replace /> : <NotFound />
 }
 
+// What each role can do, in the words of the places it sees (nav.js placesFor).
+const CAN = {
+  viewer: 'You can read reports, ask a model questions and read the docs.',
+  analyst: 'You can read and build reports, ask questions, look at the data, and work in Review: drafts, history and checks.',
+}
+
 /**
  * An address above the person's role (a viewer at /data): a plain page in the
- * app's frame. The API refuses the work anyway; this says so in words.
+ * app's frame. The API refuses the work anyway; this says so in words, and
+ * says what this person can do instead.
  */
 export function NotForYou({ role }) {
+  const mine = useRole()
   return (
     <>
       <PageTitle>This part of the app is for {role === 'admin' ? 'admins' : 'analysts'}.</PageTitle>
-      <PageSub>You can read reports and ask questions.</PageSub>
+      <PageSub>{CAN[mine] || CAN.viewer}</PageSub>
       <BtnLink to="/" variant="primary">Go to the reports</BtnLink>
     </>
   )
