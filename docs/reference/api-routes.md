@@ -66,6 +66,64 @@ so a UI offers only what will run. When the connector cannot describe the table 
 warehouse is not built yet), every declared measure is listed and a run reports the
 real error.
 
+`/preview` (`?rows=`, default 50, at most 500) and `/export.csv` resolve the model
+table to its connector and source table and read through the table API below: the
+first rows and an exact total from the engine, the types in the engine's spelling
+(`DOUBLE`, `DATE`), and the CSV streamed, never the whole table loaded into pandas.
+A source the table API does not read (a `SELECT` source, a CSV folder, Snowflake or
+BigQuery) keeps the connector's own load.
+
+## Tables
+
+One read-only API for every place a table lives, addressed as `(source, table)`:
+`source` is a connector's name (a warehouse on any tier, a SQL connection, a
+Python `MemoryConnector`) or `inputs`, where `table` is a file's path inside the
+project's `inputs/` folder (CSV, TSV, Parquet or JSON, read by DuckDB; the path is
+confined to that folder).
+
+| Method | Path | Role |
+| --- | --- | --- |
+| `GET` | `/api/tables/{source}/{table}` | viewer |
+| `GET` | `/api/tables/{source}/{table}/rows` | viewer |
+| `GET` | `/api/tables/{source}/{table}/profile` | viewer |
+| `GET` | `/api/tables/{source}/{table}/export.csv` | viewer |
+
+- `/{source}/{table}` → `{source, table, kind: "warehouse" | "connection" | "file",
+  rows, rows_exact, columns: [{name, type}], written_by: {transform, contract, at} | null,
+  contract: {status, file, checks, note, checked_at} | null, read_by: [model],
+  used_by: [{report, display_name}], transform_read: [{ref, snapshot, fingerprint}]}`.
+  `type` is the engine's spelling (`BIGINT`, `DOUBLE`, `DATE`, `VARCHAR`; a SQL
+  connection's own). `rows` follows the row-count rule of `/connectors/{name}/tables`.
+  `written_by`, `contract` and `transform_read` (what the run that wrote the table read
+  from outside the warehouse; `snapshot` when a committed file stood in for a
+  connection) come from the warehouse's certificate, for a warehouse table only.
+  `used_by` lists the reports, of those the caller may view, whose bindings read a
+  model in `read_by`.
+- `/rows?offset=0&limit=100&sort=<col>&desc=1&q=<text>&where=<json>` →
+  `{columns: [{name, type}], rows: [[…]], offset, limit, total, total_exact, elapsed_ms}`.
+  `limit` is at most 500 (more is 422). `q` matches the text columns,
+  case-insensitively. `where` is a JSON list of `{column, op, value}`, `op` one of
+  `eq ne lt le gt ge contains is_null not_null`; a comparison's value must be of the
+  column's kind (a number, an ISO date, a string, a boolean). Dates and timestamps
+  come back as ISO strings, numbers as numbers. `total` is exact, except an
+  unfiltered SQL connection that keeps a catalog estimate (`total_exact: false`).
+- `/profile` → `{rows, columns: {name: {type, nulls, null_share, distinct, min, max,
+  mean?, top: [{value, count}]}}}` for this one table: `min`/`max` for numbers and
+  dates (null otherwise), `mean` for numbers, `top` (five commonest, with counts) for
+  text and booleans. Past 50 columns nothing is profiled and `note` says so.
+- `/export.csv` takes the same `sort`, `q`, `where` and streams the cut from the
+  engine's cursor.
+
+Nothing free-form reaches SQL: the table must be in the source's catalog; every
+column a request names must be the table's; an identifier carrying a quote, an
+unknown op or column, or a value of the wrong kind is 422 before a statement is
+composed; values are bound. DuckDB reads go through the locked, read-only query
+connection; a SQL connection gets a short-lived engine for the request, stopped at
+the project's statement timeout (`engine.query_timeout_s`; 504 past it). A source
+that cannot be reached here answers `200 {connected: false, reason, variable?}` on
+every route. A framework table (`tracebi_*`, `alembic_version`) is 404, as a
+missing one is. Folder permissions do not apply: a table is not a report.
+
 ## Reports
 
 | Method | Path | Role |
@@ -264,7 +322,7 @@ reports its build step rebuilt, only those it actually built).
 | --- | --- | --- |
 | `GET` | `/api/connectors` · `/api/connectors/{name}` | viewer. Each carries `read_by`: `{transforms: [{name, tables}], layers: [{pipeline, layer}], models}`, read from the transform files (`-- source:` lines, `load_source(...)`), the pipelines' layers and the models |
 | `GET` | `/api/connectors/{name}/source` | viewer |
-| `GET` | `/api/connectors/{name}/tables` | viewer. What the source holds, read now: `{connected: true, tables: [{name, columns: [{name, type}], rows}]}` (`rows` for a DuckDB file, and a SQL database's first 20 tables; else null), or `{connected: false, reason, variable?}` with status 200 when its `${VAR}` is unset or it refuses. The connection is resolved on this request only and released before it returns |
+| `GET` | `/api/connectors/{name}/tables` | viewer. What the source holds, read now: `{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}]}` (`rows` exact for a DuckDB file or frames in memory; the catalog's estimate with `rows_exact: false` for a SQL database that keeps one, Postgres `pg_class.reltuples`; else null: no table is counted row by row), or `{connected: false, reason, variable?}` with status 200 when its `${VAR}` is unset or it refuses. The connection is resolved on this request only and released before it returns |
 | `GET` | `/api/connectors/{name}/warehouse` | viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source; the file is opened read-only and closed within the request |
 | `GET` | `/api/inputs` | viewer. The project's `inputs/` folder: `{folder, exists, files: [{path, size, modified, read_by: [transform]}]}`; `read_by` is found by reading each transform for a literal path into `inputs/` |
 | `GET` | `/api/warehouse` | viewer. `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}]}]}`, one per warehouse-kind connector, read-only |

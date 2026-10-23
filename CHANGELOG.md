@@ -6,6 +6,25 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — one read-only table API
+
+- **`/api/tables/{source}/{table}`** (+ `/rows`, `/profile`, `/export.csv`)
+  reads a table wherever it lives: a warehouse on any tier, a SQL connection,
+  a Python `MemoryConnector`, or a file under `inputs/` (`source` = `inputs`).
+  Rows page, sort, search (`q`) and filter (`where`, a closed list of ops) in
+  the engine, at most 500 a page; the profile covers one table, dates
+  included, with null shares and top values with counts; the export streams
+  the same cut. Types are the engine's spelling everywhere. Nothing free-form
+  reaches SQL: names checked against the catalog, values bound, DuckDB reads
+  on the locked query connection, a SQL connection under the statement
+  timeout. The model preview and its CSV read through it instead of loading
+  the whole table into pandas (the preview drops its `lineage` key).
+- **Row counts follow one rule**: exact for DuckDB, files and frames in
+  memory; Postgres's catalog estimate (`rows_exact: false`) for a SQL
+  connection; else none. `/connectors/{name}/tables` no longer runs a
+  `count(*)` for the first 20 tables of a database (`ROW_COUNT_CAP` is gone).
+- **A `MemoryConnector` lists its tables.**
+
 ### Fixed
 
 - **DuckDB 2.0 runs the query engine.** From 2.0 a result fetched part-way
