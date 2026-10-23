@@ -20,6 +20,32 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-23 — The reference project follows its own conventions (U-D1)
+
+`docs/architecture/one-demo.md`, rules 1–4, for the three models that exist.
+`examples/portfolio_project/tracebi.yaml` declares the one warehouse
+(`data/warehouse.duckdb`) and the engine limits; housing's model says
+`type: warehouse` and its transform sinks through `sink_target()`, so
+`data/housing.duckdb` and the `housing_warehouse` connector are gone.
+`saas_transform.py` became `saas_transform.sql` + `.contract.yaml`: the four
+tables fingerprint exactly as the pandas ones did (checked side by side), so
+no SaaS figure moved. The 2026-10-19 entry below says both stayed Python;
+housing still does, because following each buyer year by year through
+refinances is a loop, not a query.
+
+**One name had to move.** Housing and SaaS both sank a `dim_cohort`. Housing's
+now lands as `dim_purchase_cohort` and `housing_model.yaml` maps it back with
+`source:`, so the model, its dimension and every report binding still say
+`dim_cohort`; only the warehouse table and the contract's checks are renamed.
+
+**The served stack is that project alone.** `docker-compose.yml` no longer
+sets `TRACEBI_APP` (the demo app stays opt-in). The CRM is a standing mock
+database, `crm`, created and loaded from `inputs/seed_crm.sql` by
+`docker/postgres-init.sql` the first time Postgres starts on an empty volume,
+and written by nothing after. `seed` runs the three pipelines into a shared
+`warehouse` volume, so the app's certificate records the CRM rather than the
+snapshot the image was baked with.
+
 ## 2026-10-20 — A Postgres source in the reference project (P-1)
 
 The ask: at least one star table whose source is a real relational database,

@@ -462,9 +462,10 @@ def test_a_model_and_its_connector_show_the_file_that_declares_them(reference, m
     code = c.get("/api/models/portfolio_model/source").json()
     assert [f["path"] for f in code["files"]] == ["models/portfolio_model.yaml"]
     assert "measures:" in code["files"][0]["content"] and not code["files"][0]["truncated"]
-    # A connector is declared in the model files that read it: both models here read this warehouse.
+    # A connector is declared in the model files that read it: every model here reads this warehouse.
     shared = c.get("/api/connectors/warehouse/source").json()
-    assert sorted(f["path"] for f in shared["files"]) == ["models/portfolio_model.yaml", "models/saas_model.yaml"]
+    assert sorted(f["path"] for f in shared["files"]) == [
+        "models/housing_model.yaml", "models/portfolio_model.yaml", "models/saas_model.yaml"]
     # A model registered in code has no file, and says so rather than showing nothing.
     registry.add_model(DataModel("in_code"))
     nothing = c.get("/api/models/in_code/source").json()

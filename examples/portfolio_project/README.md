@@ -12,8 +12,12 @@ it is the worked version of that scaffold with real cleaning to do.
 ①  TRANSFORM   transforms/holdings_transform.sql parse prose blobs, dedupe,
                                                  normalise → SINK star tables
                                                  (+ .contract.yaml beside it)
-                          ── freeze: data/warehouse.duckdb ──
+               transforms/saas_transform.sql     the SaaS model's (+ .contract.yaml)
+               transforms/affordability_transform.py  housing's, the pandas
+                                                 escape hatch (`with contract`)
+                          ── freeze: data/warehouse.duckdb (tracebi.yaml) ──
 ②  MODEL       models/portfolio_model.yaml         grain, keys, measures — the contract
+               models/saas_model.yaml, models/housing_model.yaml
                           ── freeze: the model ──
 ③  REPORT      reports/portfolio_model/portfolio_dashboard/       one-screen app, every figure a live query
                reports/portfolio_model/portfolio_desk/            an app people work in (app.jsx)
@@ -22,7 +26,7 @@ it is the worked version of that scaffold with real cleaning to do.
                reports/portfolio_model/portfolio_concentration/   an app over governed window measures
                reports/portfolio_model/portfolio_showcase/        kitchen-sink demo, every figure kind
                reports/housing_model/affordability/               public data, a one-number answer
-               pipelines/<model>.py                               one per model: transform → build
+               pipelines/<model>.yaml                             one per model: transform → build
 ```
 
 ## Run it
@@ -50,7 +54,8 @@ escape hatch for cleaning that outgrows SQL; both sink identical tables.
 Phase ① ends with a declared sink contract, beside the SQL in
 `transforms/holdings_transform.contract.yaml` — `rows`, `unique`, `not_null`,
 `foreign_key` checked as read-only SQL against the tables that just landed and
-recorded in `data/warehouse.contracts.json`. A failed check raises at sink
+recorded in `data/warehouse.contracts.json`. Every transform here declares
+one, so every warehouse table carries a status. A failed check raises at sink
 time; a green one lets a report say *the sink satisfied its contract* — never
 that the transform was verified.
 
@@ -82,12 +87,14 @@ tracebi verify output/portfolio_model/portfolio_showcase.html.manifest.json --co
 ```
 
 The URL needs a driver (`postgresql+psycopg://`; `pip install
-'tracebi[postgres]'`). With `docker compose up` the stack's `db` service is the
-CRM: the `seed` service runs `seed_crm.py` against it and the app has
-`TRACEBI_CRM_URL` set. The image bakes its warehouse at build time, with no
-database to read, so its first certificate says the snapshot stood in;
-**Refresh data** on the portfolio model (or `docker compose exec app tracebi
-run-pipeline portfolio_model`) re-runs the transform against the CRM.
+'tracebi[postgres]'`). With `docker compose up` the CRM is a standing mock
+database, `crm` on the stack's Postgres, loaded once at first start from
+`inputs/seed_crm.sql` (`docker/postgres-init.sql`) and never written again;
+`TRACEBI_CRM_URL` points at it. The image bakes its warehouse at build time,
+with no database to read, so that certificate says the snapshot stood in; the
+`seed` service then re-runs each model's pipeline, and the portfolio transform
+reads the CRM. **Refresh data** on the portfolio model (or `docker compose exec
+app tracebi run-pipeline portfolio_model`) does the same later.
 
 **Without a database** (a fresh clone, CI) the demo still builds: with
 `TRACEBI_CRM_URL` unset, `inputs/issuer_ratings.csv`, a committed snapshot of
@@ -141,8 +148,8 @@ Under `reports/housing_model/`:
   home took of ten years of income, for every buyer since 1979 (mortgage rate
   from Freddie Mac, existing-home price from NAR through HUD and FHFA, income
   from the Census, one earner's pay from BLS). `inputs/housing_history.csv` is
-  sunk by `transforms/affordability_transform.py` to its own
-  `data/housing.duckdb` and modelled by `models/housing_model.yaml`. Today's buyer
+  sunk by `transforms/affordability_transform.py` into the project's one
+  warehouse and modelled by `models/housing_model.yaml`. Today's buyer
   is a labelled **scenario** (`data-tb-scenario`) whose assumptions the reader
   sets; it is computed in the browser and never part of the trace.
   `python inputs/fetch_housing.py` refreshes the snapshot from the publishers

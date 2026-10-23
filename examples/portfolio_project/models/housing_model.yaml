@@ -22,31 +22,31 @@
 name: housing_model
 label: Housing Affordability
 
-# connectors: where the tables live (a DuckDB file inside the project)
+# connectors: where the tables live: the project's warehouse (tracebi.yaml)
 connectors:
-  - name: housing_warehouse
-    type: duckdb
-    database: data/housing.duckdb
+  - name: warehouse
+    type: warehouse
 
 # tables: each table the phase-1 transform sank, by its warehouse name
 tables:
   - name: fact_housing
-    connector: housing_warehouse
+    connector: warehouse
     source: fact_housing
   - name: fact_cohort_path
-    connector: housing_warehouse
+    connector: warehouse
     source: fact_cohort_path
   - name: fact_ten_year
-    connector: housing_warehouse
+    connector: warehouse
     source: fact_ten_year
   - name: dim_year
-    connector: housing_warehouse
+    connector: warehouse
     source: dim_year
+  # The SaaS model's signup cohorts are dim_cohort in the same warehouse.
   - name: dim_cohort
-    connector: housing_warehouse
-    source: dim_cohort
+    connector: warehouse
+    source: dim_purchase_cohort
   - name: dim_held
-    connector: housing_warehouse
+    connector: warehouse
     source: dim_held
 
 # dimensions: the descriptive tables (key column, attributes to slice by)

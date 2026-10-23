@@ -84,8 +84,10 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.
 | ② Model | `models/` | a `DataModel` in a variable named `model` | its page on **Data** (`/data/<model>`), Model tab |
 | ③ Report | `reports/` | a package (`report.json` + an `app.jsx` dashboard or a `template.html` page), or a JSON spec that compiles into one | listed in **Reports** (the library), under its model |
 
-The warehouse is one file, `data/warehouse.duckdb`: phase ① writes it and phase
-② reads it, so the two can run in separate processes. `output/` holds what
+The warehouse is one per project, declared in `tracebi.yaml` (by default one
+file, `data/warehouse.duckdb`): every transform sinks into it and every model
+reads it (`type: warehouse`), so phase ① and phase ② can run in separate
+processes. `output/` holds what
 `tracebi report build` renders. Both folders are gitignored except the
 `*.manifest.json` traces inside them, which stay tracked as the audit trail
 behind every rendered number.
@@ -102,6 +104,13 @@ The first run generates a deliberately messy Schedule of Investments into
 `inputs/`, so phase ① has real work to do: prose position descriptions to parse
 into issuers, trailing position counters to strip, sectors spelled six ways,
 money stored as strings.
+
+Its three models follow the same conventions and share the one warehouse its
+`tracebi.yaml` names. `holdings_transform.sql` and `saas_transform.sql` are SQL
+with a `.contract.yaml` beside each; `affordability_transform.py`, which follows
+each home buyer year by year, is the pandas escape hatch and declares its
+contract in a `with contract(...)` block. Every table on the Warehouse tab reads
+"Checks passed", or an honest failure.
 
 ## Exploring before a report exists
 

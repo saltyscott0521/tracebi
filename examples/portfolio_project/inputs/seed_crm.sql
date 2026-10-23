@@ -1,7 +1,9 @@
 -- The reference project's CRM: one table, the credit team's rating of each
 -- issuer it covers. Postgres SQL, deterministic and idempotent (it replaces
 -- the table). `python inputs/seed_crm.py` applies it to the database
--- TRACEBI_CRM_URL names; inputs/issuer_ratings.csv is the same twelve rows,
+-- TRACEBI_CRM_URL names, and `docker compose up` loads it once into the
+-- stack's `crm` database at Postgres's first start (docker/postgres-init.sql,
+-- which reads this file with psql); inputs/issuer_ratings.csv is the same twelve rows,
 -- the snapshot the transform reads when that variable is unset.
 --
 -- The issuer name is the key the transform joins on (the name its cleaning

@@ -41,13 +41,15 @@ import pandas as pd
 
 from tracebi.connectors.duckdb_connector import DuckDBConnector
 from tracebi.contracts import contract
+from tracebi.project_config import sink_target
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 RAW = os.path.join(ROOT, "inputs", "housing_history.csv")
-# Its own warehouse file: the housing tables stay out of the portfolio
-# warehouse and its contract.
-WAREHOUSE = os.path.join(ROOT, "data", "housing.duckdb")
+# The project's one warehouse, where tracebi.yaml says it is, on whichever
+# tier. The housing tables sit beside the portfolio's and the SaaS model's,
+# under their own contract.
+WAREHOUSE = sink_target(ROOT)
 
 DOWN_PAYMENT = 0.20
 CLOSING_COSTS = 0.03
@@ -185,11 +187,13 @@ def run() -> dict:
     dim_held = pd.DataFrame({"held_id": range(PATH_YEARS + 1),
                              "years_owned": range(PATH_YEARS + 1)})
 
-    os.makedirs(os.path.dirname(WAREHOUSE), exist_ok=True)
-    wh = DuckDBConnector("housing_warehouse", database=WAREHOUSE)
+    wh = DuckDBConnector("warehouse", database=WAREHOUSE)
     wh.write(dim_year, "dim_year")
     wh.write(fact, "fact_housing")
-    wh.write(dim_cohort, "dim_cohort")
+    # The SaaS model's signup cohorts are dim_cohort in the same warehouse;
+    # a buyer's cohort is its purchase year, so it lands under its own name
+    # and the model maps it back (housing_model.yaml, `source:`).
+    wh.write(dim_cohort, "dim_purchase_cohort")
     wh.write(dim_held, "dim_held")
     wh.write(path, "fact_cohort_path")
     wh.write(tens, "fact_ten_year")
@@ -212,7 +216,7 @@ def run() -> dict:
         c.rows("fact_housing", at_least=40,
                note="the series starts in 1979; fewer rows means a truncated pull")
         c.unique("dim_year", ["year_id"])
-        c.unique("dim_cohort", ["cohort_id"])
+        c.unique("dim_purchase_cohort", ["cohort_id"])
         c.not_null("fact_housing", ["year_id", "mortgage_rate", "existing_price",
                                     "median_income", "earner_income", "payment",
                                     "entry_cost"])
@@ -221,13 +225,13 @@ def run() -> dict:
         c.foreign_key("fact_housing", "year_id", refers_to=("dim_year", "year_id"))
         c.foreign_key("fact_cohort_path", "year_id", refers_to=("dim_year", "year_id"))
         c.foreign_key("fact_cohort_path", "cohort_id",
-                      refers_to=("dim_cohort", "cohort_id"))
+                      refers_to=("dim_purchase_cohort", "cohort_id"))
         c.foreign_key("fact_cohort_path", "held_id",
                       refers_to=("dim_held", "held_id"))
         c.not_null("fact_ten_year", ["cohort_id", "outlay", "median_income"])
         c.foreign_key("fact_ten_year", "cohort_id",
-                      refers_to=("dim_cohort", "cohort_id"))
-        c.values("dim_cohort", "basis", within=["measured", "projected"])
+                      refers_to=("dim_purchase_cohort", "cohort_id"))
+        c.values("dim_purchase_cohort", "basis", within=["measured", "projected"])
 
     return {"years": len(fact), "first": int(df["year"].min()),
             "last": last_year, "path_rows": len(path), "growth_pct": growth_pct}

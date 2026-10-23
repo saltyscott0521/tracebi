@@ -167,10 +167,22 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         assert "holdings_transform" in files["inputs/issuer_ratings.csv"]["read_by"]
         assert files["inputs/holdings.csv"]["size"] > 0
 
+        # One warehouse, the one tracebi.yaml declares, and every model reads
+        # it: no model keeps a DuckDB file of its own.
+        from tracebi.project_config import read_config
+        assert read_config(str(built))["warehouse"] == {
+            "tier": "file", "location": "data/warehouse.duckdb"}
+        listed = c.get("/api/models").json()
+        assert sorted(m["name"] for m in listed) == [
+            "housing_model", "portfolio_model", "saas_model"]
+        assert all(m["connectors"] == ["warehouse"] for m in listed), listed
+        names = {x["name"] for x in c.get("/api/connectors").json()}
+        assert "crm" in names and "housing_warehouse" not in names, names
+
         # The warehouse page: one section per warehouse, and dim_rating says
         # who wrote it, who reads it, its checks and that the snapshot fed it.
         whs = {w["name"]: w for w in c.get("/api/warehouse").json()["warehouses"]}
-        assert set(whs) == {"warehouse", "housing_warehouse"}
+        assert set(whs) == {"warehouse"}
         assert whs["warehouse"]["tier"] == "file" and whs["warehouse"]["engine_version"]
         rating = next(t for t in whs["warehouse"]["tables"] if t["name"] == "dim_rating")
         assert rating["written_by"]["transform"] == "holdings_transform"
@@ -179,9 +191,16 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         assert rating["contract"]["status"] == "satisfied"
         [fed] = rating["fed_from"]
         assert fed["ref"] == "crm.issuer_ratings" and fed["snapshot"] == "inputs/issuer_ratings.csv"
-        # A Python transform's contract is matched to its file by the name it declares.
-        housing = whs["housing_warehouse"]["tables"]
-        assert {t["written_by"]["transform"] for t in housing} == {"affordability_transform"}
+        # Every model's tables sit in it, each written by a transform whose
+        # sink satisfied its contract. A Python transform's contract is
+        # matched to its file by the name it declares.
+        tables = whs["warehouse"]["tables"]
+        assert {t["written_by"]["transform"] for t in tables} == {
+            "holdings_transform", "saas_transform", "affordability_transform"}
+        assert {m for t in tables for m in t["read_by"]} == {
+            "portfolio_model", "saas_model", "housing_model"}
+        assert {t["name"]: t["contract"]["status"] for t in tables} == {
+            t["name"]: "satisfied" for t in tables}
     finally:
         release_warehouses()
 
