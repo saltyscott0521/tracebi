@@ -295,9 +295,12 @@ def warehouses(registry) -> list[dict]:
     where it is, its size, the DuckDB version its certificate records, the
     models that read it, and every table in it: rows, column count, who wrote
     it (the transform named by the certificate, and when), which models read
-    it, its sink-contract status and the external sources it was fed from.
-    Read-only; per-column profiles are left to the connector's own
-    ``/warehouse`` view, which the page asks for when a table is opened."""
+    it and its sink-contract status. ``writers`` is each transform whose
+    certificate covers tables here, once: its contract file and note, its
+    tables, and what its run read from outside the warehouse (``read``). The
+    certificate records what a run read, not what each table came from, so
+    that is said of the run, never of a table. Read-only; per-column
+    profiles are left to the table page."""
     from tracebi.contracts import read_contracts
     from tracebi.workbench import warehouse_view
 
@@ -324,6 +327,7 @@ def warehouses(registry) -> list[dict]:
         latest = max(certs.values(), key=lambda r: r.get("checked_at") or "", default={})
         storage = entry.get("storage") or {}
         readers = tables_of.get(entry["name"], {})
+        tables = [_table_entry(t, readers, owners) for t in view["tables"]]
         section: dict[str, Any] = {
             "name": entry["name"],
             "tier": getattr(connector, "tier", "file"),
@@ -332,7 +336,8 @@ def warehouses(registry) -> list[dict]:
             "size": storage.get("size"),
             "engine_version": latest.get("engine_version"),
             "read_by": entry.get("used_by", []),
-            "tables": [_table_entry(t, readers, owners) for t in view["tables"]],
+            "tables": tables,
+            "writers": _writers(tables, certs, owners),
             "hidden_framework_tables": view.get("hidden_framework_tables", 0),
         }
         if view.get("error"):
@@ -348,15 +353,6 @@ def _table_entry(t: dict, readers: dict[str, list[str]], owners: dict[str, str])
     if record:
         written_by = {"transform": owners.get(record), "contract": record,
                       "at": contract.get("checked_at")}
-    fed_from = []
-    for ref, src in (contract.get("sources") or {}).items():
-        fed_from.append({
-            "ref": ref, "connection": src.get("connection"), "table": src.get("table"),
-            "fingerprint": src.get("fingerprint"), "rows": src.get("rows"),
-            "loaded_at": src.get("loaded_at"),
-            # The committed snapshot stood in for the connection on that run.
-            "snapshot": src.get("fallback") if src.get("source_fallback") else None,
-        })
     return {
         "name": t["name"],
         "rows": t["rows"],
@@ -364,5 +360,37 @@ def _table_entry(t: dict, readers: dict[str, list[str]], owners: dict[str, str])
         "written_by": written_by,
         "read_by": readers.get(t["name"], []),
         "contract": {k: contract.get(k) for k in ("status", "checks", "checked_at") if k in contract},
-        "fed_from": fed_from,
     }
+
+
+def _writers(tables: list[dict], certs: dict, owners: dict[str, str]) -> list[dict]:
+    """Each certificate record that wrote tables here, in the order its first
+    table is listed: the transform, when, the file declaring its checks, its
+    note, its tables, and the outside inputs its run read (a connection with
+    its fingerprint, or the committed snapshot that stood in)."""
+    files = contract_files() if tables and any(t["written_by"] for t in tables) else {}
+    out: dict[str, dict] = {}
+    for t in tables:
+        record = (t["written_by"] or {}).get("contract")
+        if not record:
+            continue
+        if record not in out:
+            rec = certs.get(record) or {}
+            out[record] = {
+                "contract": record,
+                "transform": owners.get(record),
+                "at": rec.get("checked_at"),
+                "file": files.get(record),
+                "note": rec.get("note"),
+                "checks": len(rec.get("checks") or []),
+                "tables": [],
+                "read": [{
+                    "ref": ref, "connection": src.get("connection"), "table": src.get("table"),
+                    "fingerprint": src.get("fingerprint"), "rows": src.get("rows"),
+                    "loaded_at": src.get("loaded_at"),
+                    # The committed snapshot stood in for the connection on that run.
+                    "snapshot": src.get("fallback") if src.get("source_fallback") else None,
+                } for ref, src in (rec.get("sources") or {}).items()],
+            }
+        out[record]["tables"].append(t["name"])
+    return list(out.values())

@@ -811,10 +811,12 @@ def scope_findings(browser, base: str) -> list[dict]:
 
     def model_sources(name):
         """A model's Sources: what it reads, what its transform reads, and
-        inputs/ when its transform names a file there."""
+        inputs/ when its transform names a file there. A warehouse is not a
+        source: it is under Warehouse."""
         transform = next((p.get("transform") for p in pipelines if name in pipeline_models(p)), None)
-        found = {c["name"] for c in connectors if name in (c.get("used_by") or [])
-                 or any(t["name"] == transform for t in (c.get("read_by") or {}).get("transforms", []))}
+        found = {c["name"] for c in connectors if not c.get("warehouse") and (
+                 name in (c.get("used_by") or [])
+                 or any(t["name"] == transform for t in (c.get("read_by") or {}).get("transforms", [])))}
         if any(transform in f["read_by"] for f in inputs.get("files", [])):
             found.add("inputs")
         return found

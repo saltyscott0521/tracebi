@@ -11,11 +11,14 @@ def _runners() -> list:
 
 @router.get("")
 def list_connectors():
-    """List all registered connectors, each with who reads it (``read_by``)."""
-    from tracebi.sources import read_by, transform_reads
+    """List all registered connectors, each with who reads it (``read_by``)
+    and ``warehouse``: whether it is a warehouse (the Warehouse tab lists
+    those; Sources lists the rest)."""
+    from tracebi.sources import is_warehouse, read_by, transform_reads
 
     reads, runners = transform_reads(), _runners()
-    return [{**c, "read_by": read_by(c["name"], c.get("used_by", []), reads, runners)}
+    return [{**c, "read_by": read_by(c["name"], c.get("used_by", []), reads, runners),
+             "warehouse": is_warehouse(c)}
             for c in registry.list_connectors()]
 
 

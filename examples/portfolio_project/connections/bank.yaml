@@ -10,5 +10,6 @@
 # nothing else changes. The default ships in this file, so it holds no
 # credential.
 name: bank
+label: Core banking (SQLite file)
 type: sql
 url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}
