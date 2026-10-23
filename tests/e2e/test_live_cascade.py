@@ -43,6 +43,8 @@ REPORTS = [
     ("reference", "housing_model/affordability"),
     ("reference", "saas_model/mrr_dashboard"),
     ("reference", "saas_model/cohort_brief"),
+    ("reference", "wealth_model/aum_by_branch"),
+    ("reference", "wealth_model/aum_by_region"),
     ("init", "sample_model/sample_dashboard"),
     ("saas-metrics", "saas_model/mrr_dashboard"),
     ("saas-metrics", "saas_model/cohort_brief"),
@@ -53,7 +55,8 @@ REPORTS = [
 ]
 
 _TRANSFORMS = {
-    "reference": ("holdings_transform", "saas_transform", "affordability_transform"),
+    "reference": ("holdings_transform", "saas_transform", "affordability_transform",
+                  "wealth_transform"),
     "init": ("sample_transform",),
     "saas-metrics": ("saas_transform",),
     "sales-pipeline": ("sales_pipeline_transform",),
@@ -70,7 +73,8 @@ def projects(tmp_path_factory):
     roots: dict[str, object] = {}
     saved = (os.getcwd(), model_registry._registry, model_registry._auto_discovered,
              pipeline_registry._registry, pipeline_registry._auto_discovered,
-             {k: os.environ.get(k) for k in ("TRACEBI_MODELS_DIR", "TRACEBI_REPORTS_DIR")})
+             {k: os.environ.get(k) for k in ("TRACEBI_MODELS_DIR", "TRACEBI_REPORTS_DIR",
+                                             "TRACEBI_DEMO_DB_DIR")})
 
     def make(group):
         if group in roots:
@@ -87,11 +91,14 @@ def projects(tmp_path_factory):
             shutil.copytree(REFERENCE_PROJECT, proj, ignore=shutil.ignore_patterns(
                 "data", "output", ".tracebi", "explorations", "__pycache__", "*.duckdb"))
         elif group == "demo":
-            # The demo app's models build in memory; its reports are read
-            # where they ship.
+            # The demo app's models read the demo database, which the app
+            # seeds when it is first imported (here, into this group's own
+            # folder, unless an earlier journey imported it already); its
+            # reports are read where they ship.
             proj = base
             os.environ["TRACEBI_MODELS_DIR"] = str(DEMO_APP / "models")
             os.environ["TRACEBI_REPORTS_DIR"] = str(DEMO_APP / "reports")
+            os.environ["TRACEBI_DEMO_DB_DIR"] = str(base)
         else:
             proj = base / "proj"
             args = ("init", str(proj)) if group == "init" else (

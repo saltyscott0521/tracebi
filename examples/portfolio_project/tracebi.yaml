@@ -3,7 +3,7 @@
 #
 # warehouse: where transforms sink and models read. Every model here says
 # `type: warehouse` and every transform sinks through sink_target() (a .sql
-# transform's CREATE TABLE lands there too), so all three models' tables live
+# transform's CREATE TABLE lands there too), so every model's tables live
 # in this one file and a tier change is made here alone. tier: file (one
 # DuckDB file), object (a Parquet file per table under s3://, gs:// or a
 # directory; key_id and secret MUST be ${VAR}), or remote (a DuckDB database

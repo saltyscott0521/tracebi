@@ -1,0 +1,13 @@
+# Connection "billing": the billing system the SaaS model is built from, a
+# database outside the warehouse. saas_transform.sql reads its two tables
+# through `-- source: billing.subscriptions` and `-- source: billing.plans`.
+#
+# The URL has a default, so the connection always works: with
+# TRACEBI_BILLING_URL set nowhere it is the SQLite file that ships,
+# inputs/billing.sqlite (written by `python inputs/seed_billing.py` from
+# inputs/subscriptions.csv, committed). Set the variable to read the same
+# tables from another database. The default ships in this file, so it holds
+# no credential.
+name: billing
+type: sql
+url: ${TRACEBI_BILLING_URL:-sqlite:///inputs/billing.sqlite}

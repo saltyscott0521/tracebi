@@ -8,9 +8,12 @@ over.
                     connections/crm.yaml               (issuer ratings in Postgres,
                                                         TRACEBI_CRM_URL; unset, the
                                                         snapshot inputs/issuer_ratings.csv)
+                    connections/billing.yaml, bank.yaml (SQLite files that ship
+                                                        in inputs/)
     ①  TRANSFORM    transforms/holdings_transform.sql  → data/warehouse.duckdb
                     transforms/saas_transform.sql      → data/warehouse.duckdb
                     transforms/affordability_transform.py → data/warehouse.duckdb
+                    transforms/wealth_transform.sql    → data/warehouse.duckdb
                     (the one warehouse tracebi.yaml declares; each transform's
                     sink contract is checked as it lands)
     ②  MODEL        models/portfolio_model.yaml          (a star schema over the sink)
@@ -69,8 +72,9 @@ def main() -> None:
         print(f"    ratings: the crm connection (Postgres), {crm['rows']} rows")
 
     # The SaaS metrics sample (reports/saas_model) sinks its own tables into the
-    # same warehouse: a billing export cleaned to one row per account per month,
-    # in SQL, with saas_transform.contract.yaml beside it.
+    # same warehouse: the billing database that ships (inputs/billing.sqlite,
+    # read by `-- source:` lines) cleaned to one row per account per month, in
+    # SQL, with saas_transform.contract.yaml beside it.
     print("① saas transform → sink")
     print(f"    form: {run_transform(os.path.join(ROOT, 'transforms', 'saas_transform.sql'), root=ROOT)}")
 
@@ -81,6 +85,13 @@ def main() -> None:
     print("① housing transform → sink")
     housing = _load(os.path.join(ROOT, "transforms", "affordability_transform.py"))
     print(f"    {housing.run()}")
+
+    # Wealth Management (reports/wealth_model) reads the core-banking database
+    # that ships (inputs/bank.sqlite, by `-- source: bank.<table>` lines) and
+    # sinks its own tables into the same warehouse, in SQL, with
+    # wealth_transform.contract.yaml beside it.
+    print("① wealth transform → sink")
+    print(f"    form: {run_transform(os.path.join(ROOT, 'transforms', 'wealth_transform.sql'), root=ROOT)}")
 
     # Phase ② + ③ — build the model, render the dashboard offline.
     os.environ.setdefault("TRACEBI_MODELS_DIR", os.path.join(ROOT, "models"))

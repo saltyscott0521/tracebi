@@ -27,6 +27,8 @@ REPORTS = {
     "housing_model/affordability": "housing_model/affordability",
     "saas_model/mrr_dashboard": "saas_model/mrr_dashboard",
     "saas_model/cohort_brief": "saas_model/cohort_brief",
+    "wealth_model/aum_by_branch": "wealth_model/aum_by_branch",
+    "wealth_model/aum_by_region": "wealth_model/aum_by_region",
 }
 
 
@@ -45,7 +47,8 @@ def built(tmp_path_factory):
     pipeline_registry._auto_discovered = False
     os.chdir(proj)
     try:
-        for transform in ("holdings_transform", "saas_transform", "affordability_transform"):
+        for transform in ("holdings_transform", "saas_transform", "affordability_transform",
+                          "wealth_transform"):
             code, out = run_cli("run-transform", transform)
             assert code == 0, out
         for name in REPORTS:
@@ -125,7 +128,8 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
     The app lists the connection without resolving it, and the model's
     Transform tab shows the -- source: line it ran. Data's Sources says the
     CRM is not connected here (200, no traceback) and which transform reads
-    it; its Warehouse names who wrote dim_rating and what fed it."""
+    it, while the bank and billing databases that ship are, by their
+    defaults; its Warehouse names who wrote dim_rating and what fed it."""
     from tests.e2e.conftest import release_warehouses, serve_app
     from tracebi.web import discovery
 
@@ -174,10 +178,25 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
             "tier": "file", "location": "data/warehouse.duckdb"}
         listed = c.get("/api/models").json()
         assert sorted(m["name"] for m in listed) == [
-            "housing_model", "portfolio_model", "saas_model"]
+            "housing_model", "portfolio_model", "saas_model", "wealth_model"]
         assert all(m["connectors"] == ["warehouse"] for m in listed), listed
         names = {x["name"] for x in c.get("/api/connectors").json()}
-        assert "crm" in names and "housing_warehouse" not in names, names
+        assert {"crm", "bank", "billing"} <= names and "housing_warehouse" not in names, names
+
+        # The two databases that ship answer with no variable set: the
+        # connection's default names the committed SQLite file, and the
+        # wealth certificate records a live load of each of the bank's tables.
+        bank = c.get("/api/connectors/bank/tables").json()
+        assert bank["connected"] is True, bank
+        assert sorted(t["name"] for t in bank["tables"]) == [
+            "accounts", "activities", "branches", "clients", "holdings", "products"]
+        assert c.get("/api/connectors/billing/tables").json()["connected"] is True
+        loads = json.loads((built / "data" / "warehouse.contracts.json").read_text())[
+            "transforms"]["wealth_transform"]["sources"]
+        assert sorted(loads) == [f"bank.{t}" for t in (
+            "accounts", "activities", "branches", "clients", "holdings", "products")]
+        assert all(r["connection"] == "bank" and "source_fallback" not in r
+                   for r in loads.values()), loads
 
         # The warehouse page: one section per warehouse, and dim_rating says
         # who wrote it, who reads it, its checks and that the snapshot fed it.
@@ -196,9 +215,10 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         # matched to its file by the name it declares.
         tables = whs["warehouse"]["tables"]
         assert {t["written_by"]["transform"] for t in tables} == {
-            "holdings_transform", "saas_transform", "affordability_transform"}
+            "holdings_transform", "saas_transform", "affordability_transform",
+            "wealth_transform"}
         assert {m for t in tables for m in t["read_by"]} == {
-            "portfolio_model", "saas_model", "housing_model"}
+            "portfolio_model", "saas_model", "housing_model", "wealth_model"}
         assert {t["name"]: t["contract"]["status"] for t in tables} == {
             t["name"]: "satisfied" for t in tables}
     finally:
@@ -506,7 +526,7 @@ def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(buil
     from tracebi.pipeline.model_pipeline import reports_of
 
     models = sorted(p.stem for p in (built / "models").glob("*.yaml") if not p.stem.startswith("_"))
-    assert models == ["housing_model", "portfolio_model", "saas_model"]
+    assert models == ["housing_model", "portfolio_model", "saas_model", "wealth_model"]
     for model in models:
         names = reports_of(model)
         assert names, f"reports/{model}/ has no reports"
@@ -517,7 +537,8 @@ def test_every_model_keeps_its_reports_in_its_own_folder_and_has_a_pipeline(buil
     assert model_pipeline  # exported at the top level for project pipelines
 
 
-@pytest.mark.parametrize("model", ["portfolio_model", "housing_model", "saas_model"])
+@pytest.mark.parametrize("model", ["portfolio_model", "housing_model", "saas_model",
+                                   "wealth_model"])
 def test_a_models_pipeline_rebuilds_its_data_then_its_reports(built, model):
     from tracebi.pipeline.model_pipeline import reports_of
 

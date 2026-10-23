@@ -1,0 +1,14 @@
+# Connection "bank": the core-banking system the Wealth Management model is
+# built from, a database outside the warehouse. wealth_transform.sql reads its
+# six tables through `-- source: bank.<table>` lines; nothing else does.
+#
+# The URL has a default, so the connection always works: with
+# TRACEBI_BANK_URL set nowhere it is the SQLite file that ships,
+# inputs/bank.sqlite (written by `python inputs/seed_bank.py`, committed). A
+# deployment that keeps the bank in another database sets TRACEBI_BANK_URL to
+# its SQLAlchemy URL (the environment, .env or the credential store) and
+# nothing else changes. The default ships in this file, so it holds no
+# credential.
+name: bank
+type: sql
+url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}

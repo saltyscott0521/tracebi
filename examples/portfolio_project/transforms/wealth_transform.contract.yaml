@@ -1,0 +1,66 @@
+# The sink CONTRACT of wealth_transform.sql: what must be true of the six
+# tables that just landed. `tracebi run-transform wealth_transform` runs these
+# as read-only SQL against the warehouse after the transform, and records
+# them beside it. A failed check raises. This says "the sink satisfied its
+# contract" — it does NOT verify the SQL above. The note is the STATED
+# methodology, recorded verbatim and carried into report traces, never
+# verified.
+
+name: wealth_transform
+note: >-
+  client segment folded to lower case (retail, affluent, private); market
+  values read from text with thousands separators; an activity posted twice
+  kept once; holdings and activities carry their account's client and that
+  client's branch
+
+checks:
+  - rows: wealth_fact_holdings
+    at_least: 1
+  - rows: wealth_fact_activities
+    at_least: 1
+  - unique: wealth_dim_branch
+    columns: [branch_id]
+  - unique: wealth_dim_client
+    columns: [client_id]
+  - unique: wealth_dim_product
+    columns: [product_id]
+  - unique: wealth_dim_account
+    columns: [account_id]
+  - unique: wealth_fact_holdings
+    columns: [holding_id]
+  - unique: wealth_fact_activities
+    columns: [activity_id]
+  - not_null: wealth_fact_holdings
+    columns: [account_id, client_id, branch_id, product_id, market_value, cost_basis]
+  - not_null: wealth_fact_activities
+    columns: [account_id, client_id, branch_id, product_id, activity_type, amount]
+  - foreign_key: wealth_fact_holdings
+    column: account_id
+    refers_to: [wealth_dim_account, account_id]
+  - foreign_key: wealth_fact_holdings
+    column: client_id
+    refers_to: [wealth_dim_client, client_id]
+  - foreign_key: wealth_fact_holdings
+    column: branch_id
+    refers_to: [wealth_dim_branch, branch_id]
+  - foreign_key: wealth_fact_holdings
+    column: product_id
+    refers_to: [wealth_dim_product, product_id]
+  - foreign_key: wealth_fact_activities
+    column: account_id
+    refers_to: [wealth_dim_account, account_id]
+  - foreign_key: wealth_fact_activities
+    column: client_id
+    refers_to: [wealth_dim_client, client_id]
+  - foreign_key: wealth_fact_activities
+    column: branch_id
+    refers_to: [wealth_dim_branch, branch_id]
+  - foreign_key: wealth_fact_activities
+    column: product_id
+    refers_to: [wealth_dim_product, product_id]
+  - values: wealth_dim_client
+    column: segment
+    within: [affluent, private, retail]
+  - values: wealth_fact_activities
+    column: activity_type
+    within: [fee, purchase, sale]
