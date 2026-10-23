@@ -844,6 +844,7 @@ GET  /api/reports/{name}/runs                        → recent background runs 
 GET  /api/reports/{name}/runs/{run_id}               → poll status; result/error when settled
 GET  /api/reports/{name}/built                       → the last build (disk, else the path in the run store; built once if never)
 GET  /api/runs                                       → run rows (kind, target, limit); viewer may read
+GET  /api/desk[?fresh=1]                             → pins, drafts, verdicts, builds, sinks; each verdict/build row carries computed_at and cached: a verdict is kept while its manifest, the models it names and their warehouse (+ certificate) are unchanged (tracebi/desk.py; process-local; fresh re-runs all)
 POST /mcp                                            → the agent gateway, when TRACEBI_MCP_TOKEN, TRACEBI_OIDC_ISSUER or the built-in sign-in is set (bearer; outside app auth)
 GET  /.well-known/oauth-*  /authorize /token /register /revoke /oauth/callback → per-person OAuth for /mcp (TRACEBI_OIDC_ISSUER, or the built-in TRACEBI_DEMO_LOGIN / TRACEBI_LOCAL_USERS; tracebi/mcp_oauth.py)
 GET  /api/reports/{name}/download?format=xlsx|html|pdf   → html/pdf: the last build; xlsx: rendered

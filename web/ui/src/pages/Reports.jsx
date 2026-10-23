@@ -6,7 +6,7 @@ import {
   useReports, useStartReportRun, useReportRun, useRuns,
   useReportLineage, useBuiltReport,
   useReportSource, reportDownloadUrl, reportShareUrl, useDesk, useModels,
-  useAppStatus, useMe, useRole, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview,
+  useAppStatus, useMe, useRole, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview, fetchDeskFresh,
 } from '../api'
 import { FRAME_SANDBOX, followSelection, listenToFrame, setFrameSelection, tellFrame, tellVerdict } from '../frameBridge'
 import Workbench from '../components/Workbench'
@@ -654,12 +654,15 @@ function OpenReport({ report, model }) {
     return () => document.removeEventListener('keydown', esc)
   }, [showPanel, closePanel])
 
-  // The desk re-runs every recorded query against the warehouse as it is now.
+  // The desk keeps a verdict while its inputs are unchanged, so a plain refetch
+  // would hand back the kept one; Check again asks it to re-run every recorded
+  // query against the warehouse as it is now, and that answer replaces the kept.
   const checkAgain = async () => {
     setChecking(true)
     try {
-      await qc.refetchQueries({ queryKey: ['desk'] })
-      const row = (qc.getQueryData(['desk'])?.builds || []).find(b => b.report === name)
+      const fresh = await fetchDeskFresh()
+      qc.setQueryData(['desk'], fresh)
+      const row = (fresh?.builds || []).find(b => b.report === name)
       const v = row && verdictOf({ report, build: row })
       toast(row ? `Checked again: ${VERDICT_LABEL[v.state]}.` : 'There is no build to check.',
         v?.state === 'does-not-reproduce' ? 'error' : 'info')
@@ -672,7 +675,7 @@ function OpenReport({ report, model }) {
 
   // A check still running would show the verdict from before it.
   const verdict = desk && !checkingDesk ? verdictOf({
-    report, build: lastBuild, contracts: shown?.manifest?.transform_contracts, checkedAt: dataUpdatedAt,
+    report, build: lastBuild, contracts: shown?.manifest?.transform_contracts, checkedAt: lastBuild?.computed_at ?? dataUpdatedAt,
   }) : null
   const message = needsAction(verdict) ? verdict : null
   // The report's own chip says what the app's check found. Only the build is
@@ -807,7 +810,7 @@ function OpenReport({ report, model }) {
             <div className="rp__scrim rp__scrim--panel" onClick={closePanel} aria-hidden="true" />
             <ReportPanel tab={panel.tab} setTab={tab => setPanel({ open: true, tab })} onClose={closePanel}
                          report={report} model={model} shown={shown} lastBuild={lastBuild}
-                         checkedAt={dataUpdatedAt} verdict={verdict} onCheck={checkAgain} checking={checking} />
+                         checkedAt={lastBuild?.computed_at ?? dataUpdatedAt} verdict={verdict} onCheck={checkAgain} checking={checking} />
           </>
         )}
       </div>

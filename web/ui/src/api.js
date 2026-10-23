@@ -167,6 +167,9 @@ export const useReports = () =>
 export const useDesk = () =>
   useQuery({ queryKey: ['desk'], queryFn: () => get('/desk') })
 
+// A verdict is kept while its inputs are unchanged; Check again re-runs them all.
+export const fetchDeskFresh = () => get('/desk?fresh=1')
+
 export const fetchBuiltReport = (name) =>
   getOrNull(`/reports/${reportPath(name)}/built`)
 
