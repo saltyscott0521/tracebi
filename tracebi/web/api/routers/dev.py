@@ -19,8 +19,12 @@ router = APIRouter(prefix="/_dev", tags=["dev"])
 
 @router.post("/reload")
 def reload_discovered():
-    """Re-import every request module discovered at startup."""
+    """Re-import every request module discovered at startup, and forget the
+    desk's kept verdicts (a re-imported module can change what one reads)."""
+    from tracebi.desk import invalidate
+
     reloaded = reload_modules()
+    invalidate()
     return {
         "reloaded": reloaded,
         "count":    len(reloaded),

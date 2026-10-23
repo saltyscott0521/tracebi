@@ -3266,6 +3266,11 @@ def _build_report_target(kind: str, path: Path, output: Path,
     )
     if note:
         print(f"report build was not recorded: {note}", file=sys.stderr)
+    # Re-run its verdict now, on the thread that wrote the manifest: in the
+    # server (a pipeline's rebuild, a schedule) the next desk read is then
+    # instant. A standalone command pays one re-run for a cache that exits.
+    from tracebi.desk import warm
+    warm(str(output) + ".manifest.json", models)
     return output
 
 
