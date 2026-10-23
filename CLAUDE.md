@@ -821,6 +821,8 @@ GET  /api/connectors[/{name}]                        → each carries read_by {t
 GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact}], hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read, said once per transform
+GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
+GET  /api/transforms/{name}/source                   → the transform's file and its .contract.yaml (read-only; name is a stem in transforms/)
 GET  /api/models
 GET  /api/models/{name}                              → tables, relationships, facts (each with its runnable_measures), dimensions
 GET  /api/models/{name}/tables/{t}/preview           → first N (≤500) rows + engine dtypes + total_rows, read through the table API
@@ -879,16 +881,19 @@ POST /api/code-requests/{id}/approve|reject          → copy the files in (hist
 POST /api/library/sync                               → git webhook: pull each library checkout, rescan; outside sign-in, needs TRACEBI_LIBRARY_SYNC_SECRET (X-Hub-Signature-256 or X-TraceBi-Sync-Token); 404 without it
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
 GET  /                                               → React SPA (tracebi/web/ui/dist): five places, Reports (/, the
-                                                       library) · Ask (/ask) · Data (/data: four tabs, Models /data ·
-                                                       Sources /data/sources · Warehouse /data/warehouse · Map /data/map;
-                                                       ?model=<m> narrows the last three; one table at /data/tables/<source>/<table>:
+                                                       library) · Ask (/ask) · Data (/data: five tabs, Flow /data (the
+                                                       board: sources → transforms → warehouse → models → reports;
+                                                       ?model=<m> lights that model's path) · Sources /data/sources ·
+                                                       Transforms /data/transforms · Warehouse /data/warehouse · Models
+                                                       /data/models; ?model=<m> narrows Sources, Transforms and
+                                                       Warehouse; one table at /data/tables/<source>/<table>:
                                                        Data · Columns · Used by, the grid's sort, search, filters and page in the
                                                        address; a model's page keeps its view in the address: /data/<m>?view=diagram|
                                                        tables|measures|relationships|storage|code[&table=<t>|&measure=<name>]) · Review (/review) · Docs
                                                        (/docs: the handbook, /docs/get-started first), plus History
                                                        (/runs) and Verify (/verify); older addresses redirect (movedTo in
-                                                       web/ui/src/nav.js; /handbook, /getting-started, /data?view=map
-                                                       too). FastAPI's API reference is /api-docs. When it has not been
+                                                       web/ui/src/nav.js; /handbook, /getting-started, /data?view=map,
+                                                       /data/map too). FastAPI's API reference is /api-docs. When it has not been
                                                        built, a page naming the build command
 ```
 
