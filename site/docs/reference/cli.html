@@ -54,6 +54,7 @@
 <a href="../reference/app-jsx.html">app.jsx — the React lane</a>
 <a class="on" href="../reference/cli.html">CLI reference</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/measures.html">Measures</a>
@@ -124,7 +125,7 @@ output/</code>, plus a sample transform, model, pipeline and report package
   still succeeds.</li>
 </ul>
 <h3 id="tracebi-connect"><code>tracebi connect</code></h3>
-<pre><code class="language-bash">tracebi connect &lt;name&gt; --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force]
+<pre><code class="language-bash">tracebi connect &lt;name&gt; --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force] [--store dotenv|secret]
 tracebi connect wh --kind postgres --url postgresql://user:pass@host/db
 tracebi connect wh --kind snowflake --account ACCT --user USER --password SECRET \
     --warehouse WH --database DB --schema PUBLIC [--role ROLE]
@@ -142,8 +143,24 @@ file, is refused without <code>--force</code>. Nothing is written when the test 
 <p>Missing required flags are prompted when stdin is a terminal (a password via
 <code>getpass</code>); otherwise the command exits 2 and names the flags. <code>--dataset</code>
 is required for BigQuery because the connector takes it with no default.</p>
+<p><code>--store secret</code> puts the secret in the project's encrypted credential store
+(<code>.tracebi/secrets.json</code>, <a href="../reference/credentials.html">Credentials</a>) instead of <code>.env</code>; the legacy
+<code>--python</code> module always reads <code>.env</code>.</p>
 <p>Discovery does not load <code>models/_connections/</code>: model discovery reads only
 top-level <code>models/*.py</code>, and a file there must define <code>model</code>.</p>
+<h3 id="tracebi-secret"><code>tracebi secret</code></h3>
+<pre><code class="language-bash">tracebi secret list
+tracebi secret set NAME [--from-stdin]
+tracebi secret unset NAME
+</code></pre>
+<p>The project's credential store (<a href="../reference/credentials.html">Credentials</a>). <code>list</code> prints every
+<code>${NAME}</code> the connection files and <code>tracebi.yaml</code> reference, where each is
+set (<code>set from environment</code>, <code>set from .env</code>, <code>set in store</code>, <code>default</code>,
+<code>MISSING</code>) and what uses it. <code>set</code> prompts with no echo (or reads stdin with
+<code>--from-stdin</code>) and encrypts the value into <code>.tracebi/secrets.json</code>; it never
+prints it. <code>unset</code> removes the store's value only. The environment and <code>.env</code>
+still win over the store. Each change records a <code>credential</code> row in the run
+store.</p>
 <h3 id="tracebi-import-dbt"><code>tracebi import dbt</code></h3>
 <pre><code class="language-bash">tracebi import dbt &lt;path&gt; [--name NAME] [--connection NAME] [--schema SCHEMA] [--force]
 tracebi import dbt ./jaffle_shop --connection wh --name jaffle
@@ -322,7 +339,8 @@ a check that looks like it ran.</p>
 <p>Cheap pre-flight: checks the project layout, reports any discovery import that
 failed, and runs <code>DataModel.validate()</code> on every model — chiefly that dimension
 keys are unique, since a non-unique key silently inflates every additive
-measure. Exits 1 on any problem.</p>
+measure. Prints one line for each credential a connection references that
+is set nowhere (<a href="../reference/credentials.html">Credentials</a>). Exits 1 on any problem.</p>
 <hr>
 <h2 id="working-live">Working live</h2>
 <h3 id="tracebi-dev"><code>tracebi dev</code></h3>

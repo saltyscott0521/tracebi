@@ -286,6 +286,93 @@ def test_one_table_api_reads_every_place_a_table_lives(built, monkeypatch):
         release_warehouses()
 
 
+def test_the_crm_credential_is_kept_on_the_server_and_never_shown(
+        reference, monkeypatch, caplog):
+    """Catches a credential store that leaks: a value in any response, a log
+    line or the CLI's output; an open server (no sign-in, everyone admin by
+    default) letting a stranger point the CRM at a host of their choosing;
+    a status that says "missing" when the store holds the name, or "not set"
+    when the store was written under another key."""
+    import io
+    import logging
+
+    from tests.e2e.conftest import release_warehouses, serve_app
+    from tracebi.web import discovery
+
+    secret = "postgresql+psycopg://reader:throwaway-Pw-7Q2@127.0.0.1:9/crm"
+    monkeypatch.delenv("TRACEBI_CRM_URL", raising=False)
+    monkeypatch.delenv("TRACEBI_SECRET_KEY", raising=False)
+    caplog.set_level(logging.DEBUG)
+    c = serve_app(monkeypatch)
+    bodies = []
+    try:
+        monkeypatch.setattr(discovery, "_live_connections", {})
+        discovery.register_connections("connections")
+
+        def row(name="TRACEBI_CRM_URL"):
+            got = c.get("/api/credentials")
+            bodies.append(got.text)
+            return next(r for r in got.json()["credentials"] if r["name"] == name)
+
+        before = row()
+        assert before["set"] is False and before["source"] is None
+        assert before["used_by"] == [{"kind": "connection", "name": "crm", "field": "url",
+                                      "default": False}]
+        assert c.get("/api/credentials").json()["can_change"] is False
+
+        # No sign-in here: the write is refused and names the server command.
+        refused = c.put("/api/credentials/TRACEBI_CRM_URL", json={"value": secret})
+        bodies.append(refused.text)
+        assert refused.status_code == 403
+        assert refused.json()["detail"]["reason"] == \
+            "credentials are set on the server: tracebi secret set TRACEBI_CRM_URL"
+        assert not (reference / ".tracebi" / "secrets.json").exists()
+
+        # On the server: the CLI, from stdin, never echoing it.
+        monkeypatch.setattr("sys.stdin", io.StringIO(secret + "\n"))
+        code, out = run_cli("secret", "set", "TRACEBI_CRM_URL", "--from-stdin")
+        assert code == 0, out
+        bodies.append(out)
+        stored = (reference / ".tracebi" / "secrets.json").read_text()
+        assert "throwaway" not in stored
+        after = row()
+        assert after["set"] is True and after["source"] == "store" and after["stored"] is True
+        code, out = run_cli("secret", "list")
+        bodies.append(out)
+        assert "TRACEBI_CRM_URL · set in store · used by crm.url" in out, out
+        audit = [r for r in c.get("/api/runs", params={"kind": "credential"}).json()]
+        assert [(r["target"], r["status"]) for r in audit] == [("TRACEBI_CRM_URL", "set")]
+
+        # The connection now resolves from the store; the test reaches for the
+        # host and reports why it could not, with the password scrubbed.
+        tested = c.post("/api/connectors/crm/test")
+        bodies.append(tested.text)
+        assert tested.status_code == 200 and tested.json()["ok"] is False
+        bodies.append(c.get("/api/connectors/crm/tables").text)
+        bodies.append(c.get("/api/connectors/crm").text)
+
+        # The environment still wins over the store.
+        monkeypatch.setenv("TRACEBI_CRM_URL", "postgresql+psycopg://127.0.0.1:9/env")
+        assert row()["source"] == "environment"
+        monkeypatch.delenv("TRACEBI_CRM_URL")
+        (reference / ".env").write_text('TRACEBI_CRM_URL="postgresql+psycopg://127.0.0.1:9/dotenv"\n')
+        assert row()["source"] == "dotenv"
+        (reference / ".env").unlink()
+
+        # Read under another key: said by name, never "not set".
+        from cryptography.fernet import Fernet
+        monkeypatch.setenv("TRACEBI_SECRET_KEY", Fernet.generate_key().decode())
+        wrong = row()
+        assert wrong["set"] is False and "different key" in wrong["problem"]
+        tables = c.get("/api/connectors/crm/tables").json()
+        assert "different key" in tables["reason"] and "variable" not in tables
+    finally:
+        release_warehouses()
+    logged = "\n".join(r.getMessage() for r in caplog.records)
+    for text in [*bodies, logged]:
+        assert "throwaway" not in text
+
+
 def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
         reference, postgres_url, monkeypatch):
     """The maintainer's ask: one star table whose source is a real relational
@@ -340,6 +427,20 @@ def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
     code, out = run_cli("verify", str(manifest), "--contracts")
     assert code == 0, out
     assert re.search(r"· not checked\s+holdings: crm\.issuer_ratings — .*TRACEBI_CRM_URL", out), out
+
+    # The same URL kept in the project's credential store instead of the
+    # environment: the transform's -- source: line reaches Postgres through
+    # it, and the certificate records a live load, not the snapshot.
+    import io
+    monkeypatch.setattr("sys.stdin", io.StringIO(postgres_url))
+    code, out = run_cli("secret", "set", "TRACEBI_CRM_URL", "--from-stdin")
+    assert code == 0 and postgres_url not in out, out
+    code, out = run_cli("run-pipeline", "portfolio_model")
+    assert code == 0, out
+    rec = json.loads((reference / "data" / "warehouse.contracts.json").read_text())["transforms"]["holdings"]
+    assert rec["sources"]["crm.issuer_ratings"]["connection"] == "crm"
+    assert "source_fallback" not in rec["sources"]["crm.issuer_ratings"]
+    assert run_cli("secret", "unset", "TRACEBI_CRM_URL")[0] == 0
 
     # Data's Sources lists what the CRM holds, read on request through the
     # connection: issuer_ratings with its columns and the catalog's row

@@ -49,7 +49,7 @@ output/`, plus a sample transform, model, pipeline and report package
 ### `tracebi connect`
 
 ```bash
-tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force]
+tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force] [--store dotenv|secret]
 tracebi connect wh --kind postgres --url postgresql://user:pass@host/db
 tracebi connect wh --kind snowflake --account ACCT --user USER --password SECRET \
     --warehouse WH --database DB --schema PUBLIC [--role ROLE]
@@ -71,8 +71,29 @@ Missing required flags are prompted when stdin is a terminal (a password via
 `getpass`); otherwise the command exits 2 and names the flags. `--dataset`
 is required for BigQuery because the connector takes it with no default.
 
+`--store secret` puts the secret in the project's encrypted credential store
+(`.tracebi/secrets.json`, [[credentials]]) instead of `.env`; the legacy
+`--python` module always reads `.env`.
+
 Discovery does not load `models/_connections/`: model discovery reads only
 top-level `models/*.py`, and a file there must define `model`.
+
+### `tracebi secret`
+
+```bash
+tracebi secret list
+tracebi secret set NAME [--from-stdin]
+tracebi secret unset NAME
+```
+
+The project's credential store ([[credentials]]). `list` prints every
+`${NAME}` the connection files and `tracebi.yaml` reference, where each is
+set (`set from environment`, `set from .env`, `set in store`, `default`,
+`MISSING`) and what uses it. `set` prompts with no echo (or reads stdin with
+`--from-stdin`) and encrypts the value into `.tracebi/secrets.json`; it never
+prints it. `unset` removes the store's value only. The environment and `.env`
+still win over the store. Each change records a `credential` row in the run
+store.
 
 ### `tracebi import dbt`
 
@@ -285,7 +306,8 @@ tracebi validate
 Cheap pre-flight: checks the project layout, reports any discovery import that
 failed, and runs `DataModel.validate()` on every model — chiefly that dimension
 keys are unique, since a non-unique key silently inflates every additive
-measure. Exits 1 on any problem.
+measure. Prints one line for each credential a connection references that
+is set nowhere ([[credentials]]). Exits 1 on any problem.
 
 ---
 

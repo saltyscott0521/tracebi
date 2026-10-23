@@ -6,6 +6,7 @@ import '@xyflow/react/dist/style.css'
 import { useMe, usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
 import RunLog, { RunList } from '../components/RunLog'
 import CodeView from '../components/CodeView'
+import { SourceCredentials } from '../components/Credentials'
 import { useModelLabel } from '../components/Scope'
 import { since } from '../components/TheLine'
 import { humanise } from '../ask'
@@ -399,6 +400,7 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
         </div>
       )}
 
+      {tab === 'Code' && <SourceCredentials pipeline={pipeline} />}
       {tab === 'Code' && <CodeView kind="pipelines" name={pipeline} />}
     </Card>
   )

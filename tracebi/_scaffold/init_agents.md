@@ -696,8 +696,12 @@ Already have tables? `tracebi connect <name> --kind postgres|snowflake|bigquery|
 tests the warehouse, writes the secret to `.env`, and writes
 `connections/<name>.yaml`: a type and its fields, where any value may be
 `${ENV_VAR}` (the whole value) and a password, or a URL that carries one,
-MUST be (a literal secret is a validation error). The variable is read when the
-connection is used, never at discovery; a model points at it with
+MUST be (a literal secret is a validation error). `${ENV_VAR:-default}` adds a
+default for when the name is set nowhere; it is checked like a literal, so a
+password has none. The variable is read when the connection is used, never at
+discovery, from the environment, then `.env`, then the project's encrypted
+store (`tracebi secret set NAME`; `tracebi secret list` shows what is missing);
+a model points at it with
 `connection: <name>` in its `connectors:`. (`--python` writes the older
 `models/_connections/<name>.py`; a model reads `connections/<name>.yaml`
 first, then that.) `tracebi migrate connection models/_connections/<name>.py

@@ -116,9 +116,11 @@ def warehouse(project_root: Optional[str] = None) -> "Warehouse":
 
     No block means the file tier at ``data/warehouse.duckdb``. Every value is
     a string; any but ``tier`` and ``location`` may be ``${VAR}`` (the whole
-    value), resolved from the environment, then the project's ``.env``, when
-    a connection is made, as ``connections/*.yaml`` does it. ``key_id`` and
-    ``secret`` MUST be: a literal credential is refused, naming the key. The
+    value, or ``${VAR:-default}``), resolved from the environment, then the
+    project's ``.env``, then its credential store, when a connection is made,
+    as ``connections/*.yaml`` does it (:mod:`tracebi.project_credentials`).
+    ``key_id`` and ``secret`` MUST be, with no default: a literal credential
+    is refused, naming the key. The
     tier and location stay literal so loading a model never reads the
     environment. See :mod:`tracebi.warehouse`.
     """
@@ -169,8 +171,17 @@ def warehouse(project_root: Optional[str] = None) -> "Warehouse":
         raise ValueError(f"{where}: warehouse.{sorted(options)[0]} applies to the object "
                          f"tier only (this one is {tier})")
     for key, value in options.items():
-        if _REF.fullmatch(value):
+        ref = _REF.fullmatch(value)
+        if ref and ref.group(2) is None:
             continue
+        if ref:
+            # ${VAR:-default}: the default is a literal in this file, checked as one.
+            if key in SECRET_KEYS:
+                raise ValueError(f"{where}: warehouse.{key} is a credential and has no "
+                                 f"default; write ${{ENV_VAR}} alone")
+            value = ref.group(2)
+            if not value:
+                raise ValueError(f"{where}: warehouse.{key}: the default after ':-' is empty")
         if "${" in value:
             raise ValueError(f"{where}: warehouse.{key}: ${{VAR}} must be the whole "
                              f"value ([A-Z_][A-Z0-9_]*), got {value!r}")

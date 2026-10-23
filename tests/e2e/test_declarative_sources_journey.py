@@ -71,12 +71,24 @@ def test_a_literal_secret_in_a_connection_is_refused(scaffolded, monkeypatch):
         f"name: snow\ntype: snowflake\naccount: a\nuser: u\npassword: {SECRET}\nwarehouse: w\ndatabase: d\n")
     (conns / "pg.yaml").write_text(f"name: pg\ntype: postgres\nurl: postgresql://u:{SECRET}@h/db\n")
     (conns / "ok.yaml").write_text("name: ok\ntype: sql\nurl: sqlite:///data/ok.db\n")   # no credential: fine
+    # A default ships in the file, so it is checked as a literal: a secret
+    # cannot hide behind ${NAME:-...}, and a password has no default at all.
+    (conns / "dflt.yaml").write_text(
+        f"name: dflt\ntype: postgres\nurl: ${{TRACEBI_DFLT_URL:-postgresql://u:{SECRET}@h/db}}\n")
+    (conns / "snowd.yaml").write_text(
+        "name: snowd\ntype: snowflake\naccount: a\nuser: u\npassword: ${TRACEBI_SNOWD_PW:-x}\n"
+        "warehouse: w\ndatabase: d\n")
+    (conns / "okd.yaml").write_text(
+        "name: okd\ntype: sql\nurl: ${TRACEBI_OKD_URL:-sqlite:///data/ok.db}\n")
 
     code, out = run_cli("validate")
     assert code == 1
     assert "snow.yaml" in out and "password: a credential" in out
     assert "pg.yaml" in out and "url: carries a credential" in out
     assert "ok.yaml is well formed" in out
+    assert "dflt.yaml: url: carries a credential" in out
+    assert "snowd.yaml: password: a credential has no default" in out
+    assert "okd.yaml is well formed" in out
     assert SECRET not in out                       # even the refusal does not echo it
 
     c = serve(monkeypatch)
@@ -118,6 +130,18 @@ def test_an_unset_variable_fails_when_the_connection_is_used_not_when_it_is_foun
     assert len(model_registry.get_model("remote").load("t").to_pandas()) == 1
     import os
     assert "TRACEBI_ELSEWHERE_DB" not in os.environ
+
+    # A default stands in only where the name is set nowhere; set, it wins.
+    (scaffolded / "connections" / "fallback.yaml").write_text(
+        "name: fallback\ntype: duckdb\ndatabase: ${TRACEBI_FALLBACK_DB:-other.duckdb}\n")
+    from tracebi.connections import load_connection
+    conn = load_connection(scaffolded / "connections" / "fallback.yaml", scaffolded)
+    assert conn.database == str(other.resolve())
+    rows = {r["name"]: r for r in c.get("/api/credentials").json()["credentials"]}
+    assert (rows["TRACEBI_FALLBACK_DB"]["set"], rows["TRACEBI_FALLBACK_DB"]["source"]) == (True, "default")
+    assert rows["TRACEBI_ELSEWHERE_DB"]["source"] == "dotenv"
+    monkeypatch.setenv("TRACEBI_FALLBACK_DB", str(scaffolded / "named.duckdb"))
+    assert conn.database == str(scaffolded / "named.duckdb")
 
 
 def test_the_connectors_api_never_shows_a_resolved_secret(scaffolded, monkeypatch):
