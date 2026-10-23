@@ -11,7 +11,9 @@
 //                               who reads it, its checks) and Map (/data/map: the models
 //                               as one picture). ?model=<m> narrows Sources, Warehouse and
 //                               Map to one model. /data/<m> one model: its line, then the
-//                               tabs /data/<m>/model|transform|sources|runs (Model at /data/<m>)
+//                               tabs /data/<m>/model|transform|sources|runs (Model at /data/<m>).
+//                               /data/tables/<source>/<table> one table (tablePath): its
+//                               rows, columns and who uses it
 //   Review   /review            its tabs: Attention (/review), Drafts (/review/drafts),
 //                               History (/runs) and Verify (/verify), each at its own
 //                               address in Review's frame; /drafts/<owner>/<kind>/<path>
@@ -115,6 +117,14 @@ export const warehousePath = (model = '') => dataTabPath('warehouse', model)
 
 /** Data with the models drawn as one picture (the Map). */
 export const mapPath = (model = '') => dataTabPath('map', model)
+
+/**
+ * One table's page: /data/tables/<source>/<table>, where *source* is a
+ * connector's name or `inputs` (then *table* is a path under inputs/ and keeps
+ * its slashes).
+ */
+export const tablePath = (source, table) =>
+  `/data/tables/${encodeURIComponent(source)}/${String(table).split('/').map(encodeURIComponent).join('/')}`
 
 /** A handbook page: /docs/<section>/<page> for the API's "section--page". */
 export const docPath = (name = '') => (name ? `/docs/${name.replace('--', '/')}` : '/docs')

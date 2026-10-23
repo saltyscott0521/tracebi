@@ -1732,3 +1732,122 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 @media (max-width: 640px) {
   .review__act { padding: 12px 16px 14px; margin-top: -10px; background: var(--card); border: 1px solid var(--border); border-top: 0; border-radius: 0 0 12px 12px; }
 }
+
+/* ── One table's page and the data grid ─────────────────────────────────────
+   The table page (/data/tables/<source>/<table>) leads with the table's name,
+   its shape and one line of facts, each a link; then its views. The grid is
+   the one place rows of data are drawn: a <table role="grid">, its header
+   sticky inside its own scroll box, numbers right-aligned in tabular figures,
+   one line per row. On a phone the first column stays put and an inset shadow
+   at the right edge says there is more. */
+
+.tpage { max-width: 1280px; min-width: 0; }
+.tpage__crumb { flex-wrap: wrap; margin-bottom: 10px; }
+.tpage__crumb a { display: inline-flex; align-items: center; min-height: 24px; }
+.tpage__crumb-here { color: var(--text); font-family: var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
+.tpage__head { margin-bottom: 12px; }
+.tpage__name { margin: 0 0 6px; font-family: var(--font-mono); font-size: var(--text-2xl); font-weight: 600; line-height: 1.2; color: var(--text); overflow-wrap: anywhere; }
+.tpage__shape { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; font-size: var(--text-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.tpage__facts { margin: 0 0 6px; font-size: var(--text-caption); color: var(--text-2); line-height: 1.7; max-width: 110ch; }
+.tpage__facts > span + span::before { content: '·'; margin: 0 8px; color: var(--muted); }
+.tpage__facts code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
+.tpage__contract { max-width: 90ch; }
+.tpage__contract p { margin: 4px 0 0; }
+.tpage__note { font-size: var(--text-caption); color: var(--text-2); line-height: 1.6; }
+.tpage__off { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.tpage__scroll { overflow-x: auto; max-width: 100%; }
+.tpage__profile td, .tpage__measures td { padding: 8px 14px; }
+.tpage__type { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text-2); white-space: nowrap; }
+.tpage__range { white-space: normal; min-width: 16ch; color: var(--text-2); }
+.tpage__used { display: grid; gap: 24px; max-width: 980px; }
+.tpage__used h2 { margin: 0 0 10px; font-size: var(--text-lg); font-weight: 600; color: var(--text); }
+.tpage__uses, .tpage__reports { margin: 0; padding: 0; list-style: none; }
+.tpage__use + .tpage__use { margin-top: 18px; }
+.tpage__use-head { margin: 0 0 6px; font-size: var(--text-base); font-weight: 600; }
+.tpage__use .wb-meta { margin: 0 0 6px; font-weight: 400; }
+.tpage__measures { margin-top: 8px; }
+.tpage__measures code { font-size: var(--text-sm); }
+.tpage__reports li { padding: 6px 0; border-top: 1px solid var(--border); font-size: var(--text-caption); }
+.tpage__reports li:first-child { border-top: 0; }
+
+.grid-wrap { position: relative; min-width: 0; }
+.grid__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.grid__search { flex: 1 1 220px; max-width: 360px; }
+.grid__search .search-input { min-height: 32px; background: var(--card); border-color: var(--border-strong); }
+.grid__bar-end { display: inline-flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.grid__filter {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; margin-bottom: 10px; padding: 12px 14px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.grid__filter label { display: flex; flex-direction: column; gap: 4px; font-size: var(--text-sm); color: var(--muted); }
+.grid__filter select, .grid__filter input {
+  min-height: 32px; min-width: 120px; max-width: 100%; padding: 0 8px; border-radius: var(--radius-sm);
+  font: inherit; font-size: var(--text-caption); color: var(--text); background: var(--surface); border: 1px solid var(--border-strong);
+}
+.grid__filter-act { display: inline-flex; gap: 8px; }
+.grid__chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+.grid__chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 10px; cursor: pointer;
+  font: inherit; font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text);
+  background: var(--blue-lt); border: 1px solid var(--blue-br); border-radius: 999px;
+}
+.grid__chip span { color: var(--muted); font-family: var(--font-sans); }
+.grid__empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; font-size: var(--text-caption); color: var(--muted); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.grid__empty p { margin: 0; }
+
+.grid__scroll {
+  max-width: 100%; max-height: min(70vh, 720px); overflow: auto; overscroll-behavior-x: contain;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  transition: box-shadow var(--t), opacity var(--t);
+}
+.grid__scroll--more { box-shadow: inset -14px 0 10px -10px color-mix(in srgb, var(--text) 22%, transparent); }
+.grid__scroll--busy { opacity: .6; }
+.grid { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.grid thead th {
+  position: sticky; top: 0; z-index: 2; padding: 0; text-transform: none; letter-spacing: 0;
+  font-size: var(--text-sm); color: var(--text); background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.grid__th { display: flex; align-items: stretch; }
+.grid__num .grid__th { flex-direction: row-reverse; }
+.grid__sort {
+  flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 40px; padding: 6px 4px 6px 12px;
+  font: inherit; text-align: left; color: inherit; background: none; border: 0; cursor: pointer;
+}
+.grid__num .grid__sort { align-items: flex-end; text-align: right; padding: 6px 12px 6px 4px; }
+.grid__sort:hover .grid__colname { text-decoration: underline; }
+.grid__sort:focus-visible, .grid__menu-btn:focus-visible { outline-offset: -2px; }
+.grid__colname { font-family: var(--font-mono); font-weight: 600; white-space: nowrap; }
+.grid__type { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 400; color: var(--muted); white-space: nowrap; }
+.grid__menu-btn {
+  flex: none; width: 28px; min-height: 28px; padding: 0; font: inherit; font-size: 15px; line-height: 1; cursor: pointer;
+  color: var(--muted); background: none; border: 0; border-radius: var(--radius-sm);
+}
+.grid__menu-btn:hover, .grid__menu-btn[aria-expanded="true"] { color: var(--text); background: var(--card-hl); }
+.grid tbody tr { border-bottom: 0; }
+.grid tbody td {
+  max-width: 32ch; padding: 6px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  border-bottom: 1px solid var(--border); cursor: default;
+}
+.grid tbody tr:last-child td { border-bottom: 0; }
+.grid td.grid__num { text-align: right; }
+.grid .grid__null { color: var(--muted); font-style: italic; }
+.grid tbody td:focus-visible { outline-offset: -2px; }
+.grid .grid__cell--on { background: var(--blue-lt); box-shadow: inset 0 0 0 1px var(--blue-br); }
+.grid__menu {
+  position: absolute; z-index: 20; min-width: 180px; padding: 4px; display: flex; flex-direction: column;
+  background: var(--card-solid); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+}
+.grid__menu button {
+  min-height: 32px; padding: 0 10px; text-align: left; font: inherit; font-size: var(--text-caption); color: var(--text);
+  background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer;
+}
+.grid__menu button:hover, .grid__menu button:focus-visible { background: var(--card-hl); outline-offset: -2px; }
+.grid__pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; font-size: var(--text-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.grid__count { margin-right: 4px; }
+
+@media (max-width: 720px) {
+  .grid thead th:first-child, .grid tbody td:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); box-shadow: 1px 0 0 var(--border); }
+  .grid thead th:first-child { z-index: 3; background: var(--surface-2); }
+  .grid__search { max-width: none; }
+  .grid__bar-end { margin-left: 0; }
+}

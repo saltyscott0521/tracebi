@@ -879,7 +879,9 @@ DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the
 GET  /                                               → React SPA (tracebi/web/ui/dist): five places, Reports (/, the
                                                        library) · Ask (/ask) · Data (/data: four tabs, Models /data ·
                                                        Sources /data/sources · Warehouse /data/warehouse · Map /data/map;
-                                                       ?model=<m> narrows the last three) · Review (/review) · Docs
+                                                       ?model=<m> narrows the last three; one table at /data/tables/<source>/<table>:
+                                                       Data · Columns · Used by, the grid's sort, search, filters and page in the
+                                                       address) · Review (/review) · Docs
                                                        (/docs: the handbook, /docs/get-started first), plus History
                                                        (/runs) and Verify (/verify); older addresses redirect (movedTo in
                                                        web/ui/src/nav.js; /handbook, /getting-started, /data?view=map

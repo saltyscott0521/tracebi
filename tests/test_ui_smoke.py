@@ -185,6 +185,52 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(rating).to_contain_text("Fed from crm.issuer_ratings · snapshot inputs/issuer_ratings.csv")
             fail_on_browser_errors()
 
+            # One table's page: the grid sorts and searches in the engine, so
+            # what it shows is what the table API answers; the cut is in the
+            # address, so Back steps back through it; ⌘K finds the table by name.
+            def api(path: str):
+                with urllib.request.urlopen(base + "/api" + path) as resp:
+                    return json.load(resp)
+
+            page.goto(base + "/data/tables/warehouse/fact_holdings")
+            grid = page.get_by_role("grid", name="Rows of fact_holdings")
+            grid.wait_for()
+            expect(page.get_by_role("heading", level=1)).to_have_text("fact_holdings")
+            names = [c["name"] for c in api("/tables/warehouse/fact_holdings")["columns"]]
+            fair = grid.get_by_role("columnheader", name=re.compile(r"^fair_value"))
+            fair.get_by_role("button", name="fair_value DOUBLE").click()
+            expect(fair).to_have_attribute("aria-sort", "ascending")
+            fair.get_by_role("button", name="fair_value DOUBLE").click()
+            expect(fair).to_have_attribute("aria-sort", "descending")
+            largest = api("/tables/warehouse/fact_holdings/rows?sort=fair_value&desc=1&limit=1")["rows"][0]
+            first_cell = grid.locator("tbody tr").first.locator("td").nth(names.index("fair_value"))
+            # The cell's title is the raw value, as JavaScript writes the number.
+            expect(first_cell).to_have_attribute("title", repr(largest[names.index("fair_value")]).removesuffix(".0"))
+            page.get_by_role("searchbox", name="Search fact_holdings").fill("Revolving")
+            page.wait_for_url("**q=Revolving**")
+            matched = api("/tables/warehouse/fact_holdings/rows?q=Revolving&limit=1")["total"]
+            expect(page.locator(".grid__count")).to_contain_text(f"of {matched} row")
+            page.go_back()
+            page.wait_for_url(lambda url: "q=" not in url)
+            expect(fair).to_have_attribute("aria-sort", "descending")
+            page.go_back()
+            expect(fair).to_have_attribute("aria-sort", "ascending")
+            # A connection that is not reachable here says which variable, and
+            # links to its Connection section on Sources.
+            page.goto(base + "/data/tables/crm/issuer_ratings")
+            expect(page.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()
+            expect(page.get_by_role("link", name="Open its connection")).to_have_attribute(
+                "href", re.compile(r"^/data/sources\?.*source=crm"))
+            page.goto(base + "/data")
+            page.keyboard.press("Control+k")
+            page.keyboard.type("fact_hold")
+            # The warehouse's tables are read once the palette opens.
+            page.get_by_text("fact_holdings", exact=True).wait_for()
+            page.keyboard.press("Enter")
+            page.wait_for_url("**/data/tables/warehouse/fact_holdings")
+            fail_on_browser_errors()
+            page.goto(base + "/data/warehouse")
+
             # Picking a model opens its page: the line as its header, stations
             # that are links, and tabs with addresses of their own. Model is the
             # one open to start with.
