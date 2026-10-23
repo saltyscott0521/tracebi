@@ -225,6 +225,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(page.get_by_role("link", name="Open its connection")).to_have_attribute(
                 "href", re.compile(r"^/data/sources\?.*source=crm"))
             page.goto(base + "/data")
+            # The shortcut is heard once the app has mounted: wait for the page
+            # before pressing it, or on a slow runner the palette never opens.
+            page.get_by_role("heading", name="Data", exact=True).wait_for()
             page.keyboard.press("Control+k")
             # Type into the palette's box once it exists: keystrokes sent before
             # it mounts are lost on a slow runner, and then nothing matches.
