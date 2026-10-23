@@ -186,8 +186,10 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.</p
 </tr>
 </tbody>
 </table>
-<p>The warehouse is one file, <code>data/warehouse.duckdb</code>: phase ① writes it and phase
-② reads it, so the two can run in separate processes. <code>output/</code> holds what
+<p>The warehouse is one per project, declared in <code>tracebi.yaml</code> (by default one
+file, <code>data/warehouse.duckdb</code>): every transform sinks into it and every model
+reads it (<code>type: warehouse</code>), so phase ① and phase ② can run in separate
+processes. <code>output/</code> holds what
 <code>tracebi report build</code> renders. Both folders are gitignored except the
 <code>*.manifest.json</code> traces inside them, which stay tracked as the audit trail
 behind every rendered number.</p>
@@ -200,6 +202,12 @@ tracebi serve                   # browse it: portfolio_model → Reports → por
 <code>inputs/</code>, so phase ① has real work to do: prose position descriptions to parse
 into issuers, trailing position counters to strip, sectors spelled six ways,
 money stored as strings.</p>
+<p>Its three models follow the same conventions and share the one warehouse its
+<code>tracebi.yaml</code> names. <code>holdings_transform.sql</code> and <code>saas_transform.sql</code> are SQL
+with a <code>.contract.yaml</code> beside each; <code>affordability_transform.py</code>, which follows
+each home buyer year by year, is the pandas escape hatch and declares its
+contract in a <code>with contract(...)</code> block. Every table on the Warehouse tab reads
+"Checks passed", or an honest failure.</p>
 <h2 id="exploring-before-a-report-exists">Exploring before a report exists</h2>
 <p><code>tracebi dev</code> with no report name opens the app's Data page with the
 <strong>project feed</strong>. Any script run while it's open can call

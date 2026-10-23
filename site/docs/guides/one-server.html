@@ -203,6 +203,16 @@ image per commit on the box).</p>
 </tr>
 </tbody>
 </table>
+<p>The demo image, like the repository's <code>docker-compose.yml</code>, serves one
+project: the reference project <code>examples/portfolio_project</code>, its warehouse
+baked at build. <code>TRACEBI_APP</code> is unset there; the bundled demo app is opt-in
+(<code>TRACEBI_APP=tracebi.web.demo_app</code>) and never served beside a project. The
+reference project's CRM is a standing mock CRM database, loaded once at first
+start: <code>docker-compose.yml</code>'s Postgres creates <code>crm</code> from
+<code>examples/portfolio_project/inputs/seed_crm.sql</code> when its volume is empty
+(<code>docker/postgres-init.sql</code>), and <code>TRACEBI_CRM_URL</code> points at it. Nothing in
+the app writes it afterwards. Without <code>TRACEBI_CRM_URL</code> the transform reads the
+committed snapshot instead, and the certificate says so.</p>
 <p>Keep git <strong>auto-deploy</strong> off on the Docker Image resource; the webhook is
 what redeploys. Set the same variables from <code>deploy/.env</code> in Coolify's
 environment screen. Bind-mount a folder on the host at <code>/project</code> when
