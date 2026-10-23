@@ -341,6 +341,10 @@ def _artifact_payload(name: str):
             models, retained_path, save_manifest=True)
         with open(retained_path, encoding="utf-8") as f:
             html = f.read()
+        # The desk reads output/: re-run this build's verdict now, on the
+        # thread that wrote it, so the next desk read does not wait for it.
+        from tracebi.desk import warm
+        warm(retained_path + ".manifest.json", models)
         receipt = {
             "retained": True,
             "html_path": retained_path,

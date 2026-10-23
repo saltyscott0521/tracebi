@@ -88,3 +88,80 @@ def test_desk_endpoint_reads_the_project(tmp_path, monkeypatch):
     body = res.json()
     assert body["verdicts"][0]["verdict"] == "nothing_to_verify"
     assert body["pins"] == []
+
+
+def test_a_kept_verdicts_key_moves_with_its_inputs_and_only_them(tmp_path, monkeypatch):
+    """Catches a kept verdict served after one of its inputs changed (the
+    receipt, the warehouse, its contracts certificate, the model's file), one
+    thrown away when nothing it reads changed, and one kept for a source that
+    cannot say when it changed."""
+    import os
+    import time
+
+    from tracebi import model_registry
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.connectors.memory_connector import MemoryConnector
+    from tracebi.desk import verdict_key
+    from tracebi.model.data_model import DataModel
+
+    warehouse = tmp_path / "data" / "warehouse.duckdb"
+    warehouse.parent.mkdir()
+    con = duckdb.connect(str(warehouse))
+    con.execute("CREATE TABLE fact_x AS SELECT 1 AS v")
+    con.close()
+    model_file = tmp_path / "models" / "m.yaml"
+    model_file.parent.mkdir()
+    model_file.write_text("name: m\n", encoding="utf-8")
+    other_file = tmp_path / "models" / "other.yaml"
+    other_file.write_text("name: other\n", encoding="utf-8")
+    files = {"m": str(model_file), "other": str(other_file)}
+    monkeypatch.setattr(model_registry, "model_path", files.get)
+
+    m = DataModel("m").add_connector(DuckDBConnector("wh", database=str(warehouse)))
+    other = DataModel("other").add_connector(DuckDBConnector("wh", database=str(warehouse)))
+    models = {"m": m, "other": other}
+    receipt = tmp_path / "output" / "r.html.manifest.json"
+    receipt.parent.mkdir()
+    receipt.write_text(json.dumps({"sections": [{
+        "dataset_fingerprint": "f",
+        "dataset_lineage": [{"metadata": {"model": "m", "query_spec": {}}}],
+    }]}), encoding="utf-8")
+
+    def key(models=models):
+        return verdict_key(str(receipt), os.stat(receipt),
+                           json.loads(receipt.read_text(encoding="utf-8")), models)
+
+    def later(path, text):
+        # Step past the clock's resolution, so a rewrite always moves mtime.
+        time.sleep(0.01)
+        path.write_text(text, encoding="utf-8")
+
+    base = key()
+    assert base is not None and key() == base
+
+    # Not inputs: a model the receipt does not name, a file beside the warehouse.
+    later(other_file, "name: other\n# edited\n")
+    later(tmp_path / "data" / "notes.txt", "x")
+    assert key() == base
+
+    later(receipt, receipt.read_text(encoding="utf-8").replace('"f"', '"g"'))
+    assert key() != base
+    base = key()
+
+    time.sleep(0.01)
+    con = duckdb.connect(str(warehouse))
+    con.execute("CREATE OR REPLACE TABLE fact_x AS SELECT 2 AS v")
+    con.close()
+    assert key() != base
+    base = key()
+
+    later(tmp_path / "data" / "warehouse.contracts.json", "{}")
+    assert key() != base
+    base = key()
+
+    later(model_file, "name: m\n# edited\n")
+    assert key() != base
+
+    # A source that cannot say when it changed is never kept.
+    memory = DataModel("m").add_connector(MemoryConnector("mem", {}))
+    assert key({"m": memory, "other": other}) is None

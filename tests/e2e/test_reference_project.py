@@ -564,11 +564,17 @@ def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, m
     """Catches a run_workflow.py that renders outside the app's build path: the
     library then opens on "Never built" beside data written a minute ago.
     After the workflow, the desk (what the library and Review read) has a
-    build of every report the app lists, and every one reproduces."""
+    build of every report the app lists, and every one reproduces.
+
+    Then the desk's kept verdicts (tracebi/desk.py): catches a cache that makes
+    every page load wait for the re-runs again, and one that serves a verdict
+    older than its inputs, after the warehouse is rewritten or a receipt is
+    edited, with nothing told to forget it."""
     import subprocess
     import sys
+    import time
 
-    from tests.e2e.conftest import release_warehouses, serve_app
+    from tests.e2e.conftest import release_warehouses, run_cli, serve_app
     from tracebi.web import discovery
 
     env = {k: v for k, v in os.environ.items() if not k.startswith("TRACEBI_")}
@@ -582,8 +588,42 @@ def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, m
         discovery.discover_library()
         listed = {r["name"] for r in c.get("/api/reports").json()}
         assert listed == set(REPORTS)
-        builds = {b["report"]: b["verdict"] for b in c.get("/api/desk").json()["builds"]}
+        first = c.get("/api/desk").json()["builds"]
+        builds = {b["report"]: b["verdict"] for b in first}
         assert builds == {name: "reproduces" for name in listed}
+        # The workflow built in another process, so this one re-ran each.
+        assert not any(b["cached"] for b in first)
+
+        started = time.monotonic()
+        second = c.get("/api/desk").json()["builds"]
+        took = time.monotonic() - started
+        assert {b["report"]: b["verdict"] for b in second} == builds
+        assert all(b["cached"] for b in second)
+        assert [b["computed_at"] for b in second] == [b["computed_at"] for b in first]
+        assert took < 1.0, f"a desk read of kept verdicts took {took:.2f}s"
+
+        # A transform rewrites the warehouse: every verdict is re-run, and
+        # still reproduces (the transform is idempotent).
+        release_warehouses()
+        code, out = run_cli("run-transform", "saas_transform")
+        assert code == 0, out
+        after = c.get("/api/desk").json()["builds"]
+        assert not any(b["cached"] for b in after)
+        assert {b["report"]: b["verdict"] for b in after} == builds
+
+        # Edit one receipt's recorded fingerprint (same length, so only its
+        # modification time says so): its verdict changes on the next read.
+        receipt = reference / "output" / "saas_model" / "mrr_dashboard.html.manifest.json"
+        text = receipt.read_text(encoding="utf-8")
+        recorded = re.search(r'"dataset_fingerprint": "[^"]*?([0-9a-f]{8})"', text)
+        forged = "0" * 8 if recorded.group(1) != "0" * 8 else "1" * 8
+        receipt.write_text(text.replace(
+            recorded.group(0), recorded.group(0).replace(recorded.group(1) + '"', forged + '"'), 1),
+            encoding="utf-8")
+        verdicts = {b["report"]: b for b in c.get("/api/desk").json()["builds"]}
+        assert verdicts["saas_model/mrr_dashboard"]["verdict"] == "not_reproduced"
+        assert verdicts["saas_model/mrr_dashboard"]["cached"] is False
+        assert verdicts["saas_model/cohort_brief"]["cached"] is True
     finally:
         release_warehouses()
 
