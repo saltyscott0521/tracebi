@@ -54,6 +54,7 @@
 <a href="../reference/app-jsx.html">app.jsx — the React lane</a>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/measures.html">Measures</a>
@@ -67,12 +68,14 @@
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
 <a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -80,6 +83,7 @@
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
 <a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -570,6 +574,26 @@ reports its build step rebuilt, only those it actually built).</p>
 <td><code>GET</code></td>
 <td><code>/api/connectors/{name}/tables</code></td>
 <td>viewer. What the source holds, read now: <code>{connected: true, tables: [{name, columns: [{name, type}], rows}]}</code> (<code>rows</code> for a DuckDB file, and a SQL database's first 20 tables; else null), or <code>{connected: false, reason, variable?}</code> with status 200 when its <code>${VAR}</code> is unset or it refuses. The connection is resolved on this request only and released before it returns</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/connectors/{name}/test</code></td>
+<td><strong>admin</strong>. Opens the connection, lists its tables, closes it: <code>{ok: true, tables: n}</code> or <code>{ok: false, reason}</code>, the reason scrubbed of every resolved credential value (<a href="../reference/credentials.html">Credentials</a>)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/credentials</code></td>
+<td>viewer. Every <code>${NAME}</code> the project references and where it is set, never a value: <code>{credentials: [{name, used_by: [{kind, name, field, default}], set, source: environment\|dotenv\|store\|default\|null, stored, updated_at?, updated_by?, problem?}], key_source: env\|file, can_change}</code></td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/credentials/{name}</code></td>
+<td><strong>admin, identified</strong> (a sign-in role; with no sign-in it is 403 naming <code>tracebi secret set NAME</code>). Body <code>{value}</code>; answers the status row, 201 new or 200 replaced, 422 for a name nothing references. Records a <code>credential</code> run row</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/credentials/{name}</code></td>
+<td><strong>admin, identified</strong>. Removes the store's value (204, 404 when it holds none); an environment or <code>.env</code> value is untouched</td>
 </tr>
 <tr>
 <td><code>GET</code></td>

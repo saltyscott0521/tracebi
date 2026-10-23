@@ -231,6 +231,39 @@ export const useConnectorTables = (name) =>
     enabled: !!name,
   })
 
+// The credentials the project's connections reference: where each is set,
+// never a value, and whether this caller may change them here.
+export const useCredentials = () =>
+  useQuery({ queryKey: ['credentials'], queryFn: () => get('/credentials') })
+
+// Save (value) or remove (value null) a credential in the project's store. The
+// answer is a status row; the value typed is never sent back or kept.
+export const useSaveCredential = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, value }) => value == null
+      ? fetch(`${BASE}/credentials/${encodeURIComponent(name)}`, { method: 'DELETE' })
+        .then(async r => { if (!r.ok) throw await toError(r); return null })
+      : putJson(`/credentials/${encodeURIComponent(name)}`, { value }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['credentials'] })
+      qc.invalidateQueries({ queryKey: ['connector-tables'] })
+    },
+  })
+}
+
+// Open a connection, count its tables, close it. On success the source's
+// Tables list is read again.
+export const useTestConnection = (name) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => post(`/connectors/${encodeURIComponent(name)}/test`),
+    onSuccess: (res) => {
+      if (res.ok) qc.invalidateQueries({ queryKey: ['connector-tables', name] })
+    },
+  })
+}
+
 // The project's inputs/ folder: each file, and the transforms that name it.
 export const useInputs = () =>
   useQuery({ queryKey: ['inputs'], queryFn: () => get('/inputs') })

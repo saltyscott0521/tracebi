@@ -4,6 +4,7 @@ import { useConnectors, useConnectorTables, useInputs, usePipelines } from '../a
 import { StorageLine, sourceKind, fmtBytes } from '../components/Storage'
 import { useModelLabel } from '../components/Scope'
 import CodeView from '../components/CodeView'
+import Credentials from '../components/Credentials'
 import { stamp } from '../components/TheLine'
 import { feedsModel, upstreamOf } from '../chain'
 import { dataPath, pipelineModels, sourcesPath, warehousePath } from '../nav'
@@ -115,6 +116,7 @@ function ConnectorDetail({ c }) {
         <Badge variant="gray" style={{ textTransform: 'none' }} title={c.type}>{sourceKind(c)}</Badge>
       </div>
       <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
+      <Section label="Connection"><Credentials connection={c} /></Section>
       <Section label="Read by"><ReadBy c={c} /></Section>
       <Section label="Tables"><Tables name={c.name} /></Section>
       {code && <div style={{ marginBottom: 18 }}><CodeView kind="connectors" name={c.name} /></div>}

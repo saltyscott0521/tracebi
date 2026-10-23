@@ -54,6 +54,7 @@
 <a href="../reference/app-jsx.html">app.jsx — the React lane</a>
 <a href="../reference/cli.html">CLI reference</a>
 <a class="on" href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/measures.html">Measures</a>
@@ -67,12 +68,14 @@
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
 <a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -80,6 +83,7 @@
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
 <a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -160,6 +164,13 @@ connectors:
 <h2 id="env_var"><code>${ENV_VAR}</code></h2>
 <p>Any value may be a reference, written as the whole value and named
 <code>[A-Z_][A-Z0-9_]*</code>. <code>"x-${A}"</code> is an error.</p>
+<p><code>${NAME:-default}</code> adds a default, used only when the name resolves nowhere:</p>
+<pre><code class="language-yaml">url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}
+</code></pre>
+<p>The default is written in the file, so it is checked exactly as a literal of
+its field (the rules below): a SQLite path passes, a URL with a password is
+refused, a <code>password</code> has no default at all, and a path default stays inside
+the project. The Sources page shows such a name as <code>Set · default</code>.</p>
 <ul>
 <li><strong>Secrets must be references.</strong> <code>password</code> always. <code>url</code> may be a literal
   only when it carries no credential (no password, no <code>password=</code>, <code>token=</code>,
@@ -171,9 +182,11 @@ connectors:
 <li><strong>Resolved lazily.</strong> Reading the file builds a connector and reads no
   environment. The variable is read when the connection is used; an unset one
   fails there with an error naming the variable (and not its value).
-  Lookup is the process environment, then the project's <code>.env</code>. <code>.env</code> is
-  never copied into <code>os.environ</code>, and only the names a connection references
-  are read.</li>
+  Lookup is the process environment, then the project's <code>.env</code>, then the
+  project's encrypted credential store (<code>tracebi secret set NAME</code>, or Set… on
+  the Sources page; <a href="../reference/credentials.html">Credentials</a>), then the default. Nothing is copied into
+  <code>os.environ</code>, and only the names a connection references are read.
+  <code>tracebi secret list</code> shows which names are missing.</li>
 <li><strong>Never shown.</strong> <code>/api/connectors</code> and the Sources list (<code>/data/sources</code>) show a referenced
   value as <code>${NAME}</code> and a literal URL with its password redacted; a
   credential is never resolved to describe a connection.</li>

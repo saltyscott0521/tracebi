@@ -60,6 +60,17 @@ All values are strings.
 Any value may be a reference, written as the whole value and named
 `[A-Z_][A-Z0-9_]*`. `"x-${A}"` is an error.
 
+`${NAME:-default}` adds a default, used only when the name resolves nowhere:
+
+```yaml
+url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}
+```
+
+The default is written in the file, so it is checked exactly as a literal of
+its field (the rules below): a SQLite path passes, a URL with a password is
+refused, a `password` has no default at all, and a path default stays inside
+the project. The Sources page shows such a name as `Set · default`.
+
 - **Secrets must be references.** `password` always. `url` may be a literal
   only when it carries no credential (no password, no `password=`, `token=`,
   `key=`... in the query); `sqlite:///data/x.db` is fine, a URL with a
@@ -70,9 +81,11 @@ Any value may be a reference, written as the whole value and named
 - **Resolved lazily.** Reading the file builds a connector and reads no
   environment. The variable is read when the connection is used; an unset one
   fails there with an error naming the variable (and not its value).
-  Lookup is the process environment, then the project's `.env`. `.env` is
-  never copied into `os.environ`, and only the names a connection references
-  are read.
+  Lookup is the process environment, then the project's `.env`, then the
+  project's encrypted credential store (`tracebi secret set NAME`, or Set… on
+  the Sources page; [[credentials]]), then the default. Nothing is copied into
+  `os.environ`, and only the names a connection references are read.
+  `tracebi secret list` shows which names are missing.
 - **Never shown.** `/api/connectors` and the Sources list (`/data/sources`) show a referenced
   value as `${NAME}` and a literal URL with its password redacted; a
   credential is never resolved to describe a connection.

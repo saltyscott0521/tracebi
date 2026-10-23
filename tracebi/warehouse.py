@@ -39,7 +39,6 @@ import hmac
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 from urllib.parse import quote, urlsplit
 
@@ -157,22 +156,21 @@ class Warehouse:
     # ── ${VAR} resolution, as connections/*.yaml does it ──────────────────
 
     def _option(self, key: str) -> Optional[str]:
-        from tracebi.connections import _REF, _read_dotenv
+        from tracebi.project_credentials import CredentialError, Missing, expand
 
         raw = dict(self.options).get(key)
         if raw is None:
             return None
-        ref = _REF.fullmatch(raw)
-        if not ref:
-            return raw
-        var = ref.group(1)
-        value = os.environ.get(var) or _read_dotenv(Path(self.root) / ".env").get(var)
-        if not value:
+        try:
+            return expand(raw, self.root)[0]
+        except Missing as exc:
             raise WarehouseConfigError(
                 f"{self.source or 'tracebi.yaml'}: warehouse.{key}: environment "
-                f"variable {var} is not set; set it in the environment or in "
-                f"{os.path.join(self.root, '.env')}")
-        return value
+                f"variable {exc.name} is not set; set it in the environment or in "
+                f"{os.path.join(self.root, '.env')}") from None
+        except CredentialError as exc:
+            raise WarehouseConfigError(
+                f"{self.source or 'tracebi.yaml'}: warehouse.{key}: {exc}") from None
 
     # ── Connections ───────────────────────────────────────────────────────
 
