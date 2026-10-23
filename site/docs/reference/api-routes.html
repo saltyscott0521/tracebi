@@ -750,7 +750,8 @@ says so and names the build command rather than 404ing.</p>
 </tbody>
 </table>
 <p>The sidebar shows the places a role uses (<code>placesFor</code> in <code>web/ui/src/nav.js</code>):
-everyone Reports, Ask and Docs, an analyst also Review, an admin also Data. With no
+everyone Reports, Ask and Docs, an analyst also Review and Data (read-only: its run
+buttons and credential forms show for an admin). With no
 sign-in <code>/api/me</code> names everyone admin, so all five show. An address above the
 role renders a plain page saying who it is for; the API enforces the roles.</p>
 <p>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
