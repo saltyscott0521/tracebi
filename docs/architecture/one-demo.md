@@ -37,7 +37,9 @@ for more than one model.
    `examples/portfolio_project` only. `TRACEBI_APP` is unset there. The
    bundled demo app stays in the package as *the* example of wiring an app
    module in Python (medallion layers, `register`), opt-in as it is
-   documented to be, and is never served beside a project.
+   documented to be, and is never served beside a project. **Wealth
+   Management is served**, so it moves into the reference project as its
+   fourth model, rebuilt to the conventions below (next section).
 2. **One warehouse per project**, declared. `examples/portfolio_project/tracebi.yaml`
    names `data/warehouse.duckdb` (file tier) and the engine limits.
    Housing moves into it: `housing_model.yaml` says `type: warehouse`, its
@@ -66,6 +68,40 @@ for more than one model.
    uses `tracebi.state.state_url()` rather than its data URL; every
    explorer hides `tracebi_*` and `alembic_version` regardless
    (U-0 of the audit).
+
+## Wealth Management moves into the reference project
+
+The demo app's `wealth_model` is the one visitors recognise (a bank's
+clients, branches, products, accounts, holdings, activities; AUM by branch
+and region), so it stays on the site, as a model of the reference project
+built the way the other three are:
+
+- **Source**: a core-banking database, `connections/bank.yaml`
+  (`url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}`), with the six
+  raw tables the demo app generates today (`sample_data.py` / the frames in
+  `wealth_model.py`, seeded by `inputs/seed_bank.py`, Postgres on the box as
+  a `bank` database, the shipped `inputs/bank.sqlite` elsewhere). The raw
+  tables keep a little mess worth cleaning (segment spelled three ways,
+  market values as strings, a duplicated activity), so the transform has
+  work to do.
+- **Transform**: `transforms/wealth_transform.sql` + `.contract.yaml`,
+  `-- source: bank.clients`, `bank.branches`, `bank.products`,
+  `bank.accounts`, `bank.holdings`, `bank.activities`; sinks `dim_client`,
+  `dim_branch`, `dim_product`, `dim_account`, `fact_holdings_wealth` (or a
+  `wealth_` prefix throughout, since `fact_holdings` is the portfolio's)
+  and `fact_activities` into the one warehouse.
+- **Model**: `models/wealth_model.yaml`, label `Wealth Management`, the
+  demo app's measures (AUM, cost basis, unrealised gain, client count,
+  activity volume) and dimensions (branch, region, segment, risk profile,
+  product class) declared.
+- **Pipeline**: `pipelines/wealth_model.yaml`, transform → build.
+- **Reports**: `reports/wealth_model/aum_by_branch` and `aum_by_region`
+  moved over as they are (`app.jsx` dashboards), bindings re-pointed at the
+  YAML model's names, plus whatever the showcase lacks that these had.
+
+The demo app keeps its own `wealth_model.py` and medallion
+`wealth_pipeline.py` as the Python example; the two are no longer the same
+thing served twice. `sales_model` stays in the demo app only.
 
 ## Mock sources: in the box's Postgres, or a database file that ships
 
@@ -105,22 +141,23 @@ Postgres, like `sales_model`'s already are.
 
 ## What the visitor sees afterwards
 
-- **Models**: three chains, each `inputs/… → <transform>.sql → N tables →
-  N measures → N reports`, the portfolio one also showing `crm`.
-- **Sources**: `crm` (a Postgres database on the box, the shipped
-  `inputs/crm.sqlite` elsewhere; read by `holdings_transform`; its tables
-  listed, because it always connects), `inputs/` (its files, each read by
-  one transform). Nothing else.
+- **Models**: four chains, each `inputs/… → <transform>.sql → N tables →
+  N measures → N reports`, the portfolio one also showing `crm`, the
+  wealth one `bank`.
+- **Sources**: `crm` and `bank` (Postgres databases on the box, the
+  shipped `inputs/crm.sqlite` and `inputs/bank.sqlite` elsewhere; read by
+  their transforms; tables listed, because they always connect), `inputs/`
+  (its files, each read by one transform). Nothing else.
 - **Warehouse**: `warehouse` · `data/warehouse.duckdb` · one list of tables
   grouped by the transform that wrote them, every row "Checks passed".
-- **Reports**: nine reports in three folders named for their models.
+- **Reports**: eleven reports in four folders named for their models.
 
 ## What goes
 
 - `data/housing.duckdb` and the `housing_warehouse` connector.
-- The demo app from the served stack (not from the package). Its two
-  reports per model, `sample_data.py`, and `wealth_model.py` are untouched
-  in this round; whether to retire `wealth_model` is a separate call.
+- The demo app from the served stack (not from the package). Its files
+  are untouched in this round except that `banking` becomes a real
+  database (above).
 - `examples/seeds/seed_db.py`'s habit of seeding `data/tracebi.db`: it
   seeds `data/demo.db`, the demo app's own file.
 
@@ -130,7 +167,8 @@ Postgres, like `sales_model`'s already are.
 /api/warehouse` lists exactly one warehouse holding housing's, saas's and
 portfolio's tables, each with `contract.status == "satisfied"`; `GET
 /api/connectors` lists `crm` and no `housing_warehouse`; `GET /api/models`
-lists three models, every one `type: warehouse`. The UI smoke journey's
-Sources step sees `crm` and `inputs/` only. `docker compose config` shows
+lists four models, every one `type: warehouse`, `wealth_model` among them
+with its two reports built. The UI smoke journey's
+Sources step sees `crm`, `bank` and `inputs/` only. `docker compose config` shows
 `TRACEBI_APP` unset for `app` and `seed`, and `TRACEBI_STATE_URL` pointing
 at a database other than `TRACEBI_CRM_URL`'s.
