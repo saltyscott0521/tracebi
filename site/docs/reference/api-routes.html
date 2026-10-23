@@ -97,6 +97,10 @@
 registry; nothing is app-specific.</p>
 <p>Roles in the table are the minimum required when authorization is enabled — see
 <a href="../reference/environment-variables.html">Environment variables</a>.</p>
+<p>To try a route from the browser, open <a href="/api-docs"><code>/api-docs</code></a> on a running
+server (FastAPI's Swagger UI; ReDoc at <code>/api-redoc</code>). It moved there from
+<code>/docs</code>, which is the app's Docs place; <code>tracebi serve</code> prints the address
+when it starts.</p>
 <hr>
 <h2 id="health-and-discovery">Health and discovery</h2>
 <table>
@@ -759,8 +763,6 @@ same thing under Data, Ask, History or the library; <code>/models</code> to <cod
 and <code>/data?view=map</code> to <code>/data/map</code>; <code>/handbook</code> (and <code>/handbook/&lt;page&gt;</code>) to <code>/docs</code>;
 <code>/getting-started</code> and <code>/workflow</code> to <code>/docs/get-started</code>; <code>/drafts</code> and <code>/review#drafts</code>
 to <code>/review/drafts</code>; <code>/reports?r=&lt;name&gt;</code> to <code>/reports/&lt;name&gt;</code>.</p>
-<p>FastAPI's interactive API reference is at <code>/api-docs</code> (ReDoc at <code>/api-redoc</code>):
-<code>/docs</code> is the app's Docs place.</p>
 <hr>
 <h2 id="error-shape">Error shape</h2>
 <p>A failed run returns a structured <code>detail</code>:</p>

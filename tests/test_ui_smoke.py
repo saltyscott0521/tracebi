@@ -178,6 +178,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # Warehouse: who wrote each table, and what fed it.
             data_tabs.get_by_role("link", name="Warehouse").click()
             page.wait_for_url("**/data/warehouse")
+            # The browser tab names the page, so tabs and bookmarks differ.
+            expect(page).to_have_title("Warehouse · Data · TraceBi")
             rating = page.locator('#wh-warehouse [data-table="dim_rating"]')
             expect(rating).to_contain_text("Written by holdings_transform")
             expect(rating).to_contain_text("Fed from crm.issuer_ratings · snapshot inputs/issuer_ratings.csv")
@@ -451,6 +453,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.wait_for_url(f"**/reports/{_REPORT}")
             page.locator("iframe").wait_for()
             assert page.get_by_role("heading", name=_TITLE, exact=True).is_visible()
+            expect(page).to_have_title(f"{_TITLE} · TraceBi")
 
             # A build is not a check: History shows the list's verdict on the newest
             # build of the report, and a plain "Not checked" (never green) on
@@ -476,7 +479,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # One Kind filter, in the words a reader sees: no two kinds a reader
             # cannot tell apart ("Pipeline" and "Pipeline run" were two).
             kinds = page.get_by_label("Kind").locator("option").all_inner_texts()
-            assert kinds == ["All kinds", "Report builds", "Data refreshes", "Schedules", "Publishes"], kinds
+            assert kinds == ["All kinds", "Report builds", "Data refreshes", "Schedules", "Publishes",
+                             "Credential changes"], kinds
             page.get_by_label("Kind").select_option(label="Report builds")
             page.wait_for_url("**/runs?all=1&kind=build")
             expect(rows).to_have_count(len(verdicts))
@@ -573,9 +577,29 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
             # Transform: Refresh data, its one primary action, unfolds the run's
             # output under the tab's views and follows it to its end…
+            # A read of the warehouse does not hold Refresh data back (a write
+            # waits for a read to let go): with the page's read still pending,
+            # the button is enabled.
+            held, released = [], []
+
+            def hold(route):
+                if released:
+                    route.continue_()
+                else:
+                    held.append(route)
+
+            page.route("**/api/connectors/warehouse/warehouse", hold)
             page.goto(base + "/data/portfolio_model/transform")
-            # The page reads the warehouse as it opens; a transform that starts
-            # writing it meanwhile fails, so let those reads finish first.
+            for _ in range(100):
+                if held:
+                    break
+                page.wait_for_timeout(100)
+            assert held, "the Transform tab never read the warehouse"
+            expect(page.get_by_role("button", name="Refresh data")).to_be_enabled()
+            released.append(True)
+            for route in held:
+                route.continue_()
+            page.unroute("**/api/connectors/warehouse/warehouse")
             page.wait_for_load_state("networkidle")
             assert page.get_by_role("button", name="Refresh data").count() == 1
             page.get_by_role("button", name="Refresh data").click()
@@ -791,12 +815,18 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             viewer.get_by_role("link", name="Get started", exact=True).click()
             viewer.wait_for_url("**/docs/get-started")
             viewer.get_by_role("heading", name="Get started", exact=True).wait_for()
+            # A Docs page's one h1 is its own title; "Docs" is the crumb.
+            expect(viewer.locator("h1")).to_have_count(1)
+            expect(viewer.locator("h1")).to_have_text("Get started")
             for tab in ("/data/sources", "/data/warehouse", "/data/map"):
                 viewer.goto(base + tab)
                 viewer.get_by_role("heading", name="This part of the app is for admins.").wait_for()
             # ⌘K lists the same places: nothing inside Review or Data.
             viewer.keyboard.press("Control+k")
             viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("History")
+            viewer.get_by_text("No matches for").wait_for()
+            # Nor the design notes under docs/architecture/.
+            viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("Navigation v3")
             viewer.get_by_text("No matches for").wait_for()
             viewer.keyboard.press("Escape")
             viewer.goto(base + "/review")

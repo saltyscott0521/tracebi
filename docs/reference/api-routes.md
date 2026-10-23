@@ -6,6 +6,11 @@ registry; nothing is app-specific.
 Roles in the table are the minimum required when authorization is enabled — see
 [[environment-variables#Authentication and roles]].
 
+To try a route from the browser, open [`/api-docs`](/api-docs) on a running
+server (FastAPI's Swagger UI; ReDoc at `/api-redoc`). It moved there from
+`/docs`, which is the app's Docs place; `tracebi serve` prints the address
+when it starts.
+
 ---
 
 ## Health and discovery
@@ -366,9 +371,6 @@ same thing under Data, Ask, History or the library; `/models` to `/data`;
 and `/data?view=map` to `/data/map`; `/handbook` (and `/handbook/<page>`) to `/docs`;
 `/getting-started` and `/workflow` to `/docs/get-started`; `/drafts` and `/review#drafts`
 to `/review/drafts`; `/reports?r=<name>` to `/reports/<name>`.
-
-FastAPI's interactive API reference is at `/api-docs` (ReDoc at `/api-redoc`):
-`/docs` is the app's Docs place.
 
 ---
 

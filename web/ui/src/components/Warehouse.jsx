@@ -16,21 +16,40 @@ export const CONTRACT = {
 
 const num = v => (v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }))
 
+// The contract's note is what the transform says it did, in its author's
+// words: shown as stated, never as a check. (Not a fold of its own: it sits
+// inside the table's.)
+function ContractNote({ note }) {
+  if (!note) return null
+  return <p className="wb-meta" style={{ whiteSpace: 'pre-line' }}>The transform's note, as it states it: {note}</p>
+}
+
+/**
+ * A table's sink contract in words: its checks named by the file that
+ * declares them (`contract.file`, else the record's name), and its note.
+ */
 export function ContractLine({ contract }) {
+  const where = <code>{contract.file || contract.transform}</code>
   if (contract.status === 'satisfied') {
     return (
-      <p className="wb-meta">
-        The sink satisfied its contract: {count(contract.checks, 'check')} in{' '}
-        <code>{contract.transform}</code>{contract.checked_at && <>, checked <Time iso={contract.checked_at} /></>}.
-      </p>
+      <>
+        <p className="wb-meta">
+          The sink satisfied its contract: {count(contract.checks, 'check')} in{' '}
+          {where}{contract.checked_at && <>, checked <Time iso={contract.checked_at} /></>}.
+        </p>
+        <ContractNote note={contract.note} />
+      </>
     )
   }
   if (contract.status === 'stale') {
     return (
-      <p className="wb-meta">
-        This table changed after the checks in <code>{contract.transform}</code> last passed
-        {contract.checked_at && <> (<Time iso={contract.checked_at} />)</>}. Re-run the transform to check it again.
-      </p>
+      <>
+        <p className="wb-meta">
+          This table changed after the checks in {where} last passed
+          {contract.checked_at && <> (<Time iso={contract.checked_at} />)</>}. Re-run the transform to check it again.
+        </p>
+        <ContractNote note={contract.note} />
+      </>
     )
   }
   return <p className="wb-meta">No checks cover this table: its transform declares none for it.</p>

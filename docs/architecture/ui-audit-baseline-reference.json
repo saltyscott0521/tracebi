@@ -1,6 +1,6 @@
 {
- "base": "http://127.0.0.1:36377",
- "when": "2026-10-23 13:01:40",
+ "base": "http://127.0.0.1:8047",
+ "when": "2026-10-23 14:37:08",
  "pages": [
   {
    "path": "/",
@@ -12,10 +12,10 @@
     "phone-dark": "shots/root_42099b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 8244,
-    "desktop-dark": 8150,
-    "phone-light": 7886,
-    "phone-dark": 6285
+    "desktop-light": 3119,
+    "desktop-dark": 2950,
+    "phone-light": 3120,
+    "phone-dark": 3054
    }
   },
   {
@@ -28,10 +28,10 @@
     "phone-dark": "shots/ask_8ae0d7__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1072,
-    "desktop-dark": 1218,
-    "phone-light": 1030,
-    "phone-dark": 1131
+    "desktop-light": 1295,
+    "desktop-dark": 1029,
+    "phone-light": 1344,
+    "phone-dark": 1290
    }
   },
   {
@@ -44,10 +44,10 @@
     "phone-dark": "shots/data_9112fb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 8836,
-    "desktop-dark": 7668,
-    "phone-light": 750,
-    "phone-dark": 9120
+    "desktop-light": 3143,
+    "desktop-dark": 3248,
+    "phone-light": 3280,
+    "phone-dark": 3284
    }
   },
   {
@@ -60,10 +60,10 @@
     "phone-dark": "shots/data_sources_b315ee__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1318,
-    "desktop-dark": 1132,
-    "phone-light": 1237,
-    "phone-dark": 1310
+    "desktop-light": 1178,
+    "desktop-dark": 1248,
+    "phone-light": 1322,
+    "phone-dark": 1440
    }
   },
   {
@@ -76,10 +76,10 @@
     "phone-dark": "shots/data_warehouse_2676de__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1315,
-    "desktop-dark": 1822,
-    "phone-light": 1460,
-    "phone-dark": 2154
+    "desktop-light": 1570,
+    "desktop-dark": 1937,
+    "phone-light": 1585,
+    "phone-dark": 1505
    }
   },
   {
@@ -92,10 +92,10 @@
     "phone-dark": "shots/data_map_d311c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 6890,
-    "desktop-dark": 6885,
-    "phone-light": 5786,
-    "phone-dark": 5323
+    "desktop-light": 3850,
+    "desktop-dark": 4202,
+    "phone-light": 3788,
+    "phone-dark": 3686
    }
   },
   {
@@ -108,10 +108,10 @@
     "phone-dark": "shots/review_2a50c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5906,
-    "desktop-dark": 5278,
-    "phone-light": 5695,
-    "phone-dark": 6278
+    "desktop-light": 3356,
+    "desktop-dark": 3488,
+    "phone-light": 2965,
+    "phone-dark": 3057
    }
   },
   {
@@ -124,10 +124,10 @@
     "phone-dark": "shots/review_drafts_2541b2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1101,
-    "desktop-dark": 953,
-    "phone-light": 1076,
-    "phone-dark": 972
+    "desktop-light": 1170,
+    "desktop-dark": 1186,
+    "phone-light": 1193,
+    "phone-dark": 1004
    }
   },
   {
@@ -140,10 +140,10 @@
     "phone-dark": "shots/runs_6e4bd5__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5436,
-    "desktop-dark": 5651,
-    "phone-light": 5105,
-    "phone-dark": 5494
+    "desktop-light": 2990,
+    "desktop-dark": 2758,
+    "phone-light": 2740,
+    "phone-dark": 2747
    }
   },
   {
@@ -156,10 +156,10 @@
     "phone-dark": "shots/verify_c77e84__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1097,
-    "desktop-dark": 1106,
-    "phone-light": 1076,
-    "phone-dark": 1024
+    "desktop-light": 1206,
+    "desktop-dark": 1022,
+    "phone-light": 1037,
+    "phone-dark": 1159
    }
   },
   {
@@ -172,10 +172,10 @@
     "phone-dark": "shots/docs_1baff9__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1118,
-    "desktop-dark": 1070,
-    "phone-light": 1164,
-    "phone-dark": 1130
+    "desktop-light": 1124,
+    "desktop-dark": 1110,
+    "phone-light": 1334,
+    "phone-dark": 1221
    }
   },
   {
@@ -188,10 +188,10 @@
     "phone-dark": "shots/docs_get_started_703372__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1196,
-    "desktop-dark": 1061,
-    "phone-light": 1333,
-    "phone-dark": 996
+    "desktop-light": 1071,
+    "desktop-dark": 1276,
+    "phone-light": 1113,
+    "phone-dark": 1046
    }
   },
   {
@@ -204,10 +204,10 @@
     "phone-dark": "shots/model_housing_model_5f65a0__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5669,
-    "desktop-dark": 5517,
-    "phone-light": 7198,
-    "phone-dark": 4800
+    "desktop-light": 2660,
+    "desktop-dark": 2684,
+    "phone-light": 2649,
+    "phone-dark": 2709
    }
   },
   {
@@ -220,10 +220,10 @@
     "phone-dark": "shots/ask_model_housing_model_2ace0d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1215,
-    "desktop-dark": 1137,
-    "phone-light": 1160,
-    "phone-dark": 1147
+    "desktop-light": 1262,
+    "desktop-dark": 1360,
+    "phone-light": 1321,
+    "phone-dark": 1379
    }
   },
   {
@@ -236,10 +236,10 @@
     "phone-dark": "shots/data_housing_model_33bb86__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5511,
-    "desktop-dark": 5236,
-    "phone-light": 4797,
-    "phone-dark": 4745
+    "desktop-light": 3319,
+    "desktop-dark": 3347,
+    "phone-light": 3321,
+    "phone-dark": 3201
    }
   },
   {
@@ -252,10 +252,10 @@
     "phone-dark": "shots/data_housing_model_model_c731b6__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5336,
-    "desktop-dark": 5020,
-    "phone-light": 5178,
-    "phone-dark": 4970
+    "desktop-light": 3279,
+    "desktop-dark": 3431,
+    "phone-light": 3403,
+    "phone-dark": 3277
    }
   },
   {
@@ -268,10 +268,10 @@
     "phone-dark": "shots/data_housing_model_transform_59e0c3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5088,
-    "desktop-dark": 4858,
-    "phone-light": 5332,
-    "phone-dark": 5124
+    "desktop-light": 3456,
+    "desktop-dark": 3354,
+    "phone-light": 3212,
+    "phone-dark": 3226
    }
   },
   {
@@ -284,10 +284,10 @@
     "phone-dark": "shots/data_housing_model_sources_683952__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5104,
-    "desktop-dark": 5225,
-    "phone-light": 5197,
-    "phone-dark": 4918
+    "desktop-light": 3086,
+    "desktop-dark": 3174,
+    "phone-light": 3293,
+    "phone-dark": 3340
    }
   },
   {
@@ -300,10 +300,10 @@
     "phone-dark": "shots/data_housing_model_runs_a59cca__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4872,
-    "desktop-dark": 5225,
-    "phone-light": 5201,
-    "phone-dark": 4981
+    "desktop-light": 3175,
+    "desktop-dark": 3212,
+    "phone-light": 3354,
+    "phone-dark": 3245
    }
   },
   {
@@ -316,10 +316,10 @@
     "phone-dark": "shots/model_portfolio_model_755db1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4669,
-    "desktop-dark": 4995,
-    "phone-light": 4705,
-    "phone-dark": 4927
+    "desktop-light": 2711,
+    "desktop-dark": 2798,
+    "phone-light": 2910,
+    "phone-dark": 2700
    }
   },
   {
@@ -332,10 +332,10 @@
     "phone-dark": "shots/ask_model_portfolio_model_3d4b30__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1083,
-    "desktop-dark": 1058,
-    "phone-light": 1141,
-    "phone-dark": 1084
+    "desktop-light": 1367,
+    "desktop-dark": 1441,
+    "phone-light": 1415,
+    "phone-dark": 1369
    }
   },
   {
@@ -348,10 +348,10 @@
     "phone-dark": "shots/data_portfolio_model_2d3331__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4967,
-    "desktop-dark": 4844,
-    "phone-light": 4747,
-    "phone-dark": 4693
+    "desktop-light": 3087,
+    "desktop-dark": 3130,
+    "phone-light": 3101,
+    "phone-dark": 3181
    }
   },
   {
@@ -364,10 +364,10 @@
     "phone-dark": "shots/data_portfolio_model_model_0719d6__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5173,
-    "desktop-dark": 4916,
-    "phone-light": 5168,
-    "phone-dark": 5147
+    "desktop-light": 3206,
+    "desktop-dark": 3192,
+    "phone-light": 3129,
+    "phone-dark": 3284
    }
   },
   {
@@ -380,10 +380,10 @@
     "phone-dark": "shots/data_portfolio_model_transform_3a0dc2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5076,
-    "desktop-dark": 5491,
-    "phone-light": 5302,
-    "phone-dark": 5166
+    "desktop-light": 3232,
+    "desktop-dark": 3148,
+    "phone-light": 3087,
+    "phone-dark": 3136
    }
   },
   {
@@ -396,10 +396,10 @@
     "phone-dark": "shots/data_portfolio_model_sources_60a145__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5045,
-    "desktop-dark": 5200,
-    "phone-light": 5471,
-    "phone-dark": 4849
+    "desktop-light": 3044,
+    "desktop-dark": 3059,
+    "phone-light": 3198,
+    "phone-dark": 3052
    }
   },
   {
@@ -412,10 +412,10 @@
     "phone-dark": "shots/data_portfolio_model_runs_0288cf__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5254,
-    "desktop-dark": 5019,
-    "phone-light": 5227,
-    "phone-dark": 5695
+    "desktop-light": 3052,
+    "desktop-dark": 3086,
+    "phone-light": 3110,
+    "phone-dark": 3132
    }
   },
   {
@@ -428,10 +428,10 @@
     "phone-dark": "shots/model_saas_model_14e7a4__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5157,
-    "desktop-dark": 4917,
-    "phone-light": 5117,
-    "phone-dark": 4767
+    "desktop-light": 2579,
+    "desktop-dark": 2562,
+    "phone-light": 2694,
+    "phone-dark": 2589
    }
   },
   {
@@ -444,10 +444,10 @@
     "phone-dark": "shots/ask_model_saas_model_e1362c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1072,
-    "desktop-dark": 1040,
-    "phone-light": 1060,
-    "phone-dark": 1057
+    "desktop-light": 1227,
+    "desktop-dark": 1277,
+    "phone-light": 1257,
+    "phone-dark": 1241
    }
   },
   {
@@ -460,10 +460,10 @@
     "phone-dark": "shots/data_saas_model_553471__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4592,
-    "desktop-dark": 4884,
-    "phone-light": 4891,
-    "phone-dark": 4688
+    "desktop-light": 3139,
+    "desktop-dark": 3231,
+    "phone-light": 3197,
+    "phone-dark": 3392
    }
   },
   {
@@ -476,10 +476,10 @@
     "phone-dark": "shots/data_saas_model_model_06392c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4768,
-    "desktop-dark": 5024,
-    "phone-light": 4872,
-    "phone-dark": 4317
+    "desktop-light": 3619,
+    "desktop-dark": 3393,
+    "phone-light": 3630,
+    "phone-dark": 3274
    }
   },
   {
@@ -492,10 +492,10 @@
     "phone-dark": "shots/data_saas_model_transform_00b675__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4801,
-    "desktop-dark": 4897,
-    "phone-light": 4971,
-    "phone-dark": 5074
+    "desktop-light": 3258,
+    "desktop-dark": 3440,
+    "phone-light": 3169,
+    "phone-dark": 3441
    }
   },
   {
@@ -508,10 +508,10 @@
     "phone-dark": "shots/data_saas_model_sources_540a9c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4728,
-    "desktop-dark": 5115,
-    "phone-light": 4575,
-    "phone-dark": 5158
+    "desktop-light": 3674,
+    "desktop-dark": 3659,
+    "phone-light": 3599,
+    "phone-dark": 3508
    }
   },
   {
@@ -524,10 +524,10 @@
     "phone-dark": "shots/data_saas_model_runs_5e19dc__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5061,
-    "desktop-dark": 5303,
-    "phone-light": 4768,
-    "phone-dark": 4777
+    "desktop-light": 3444,
+    "desktop-dark": 3556,
+    "phone-light": 3210,
+    "phone-dark": 3233
    }
   },
   {
@@ -540,10 +540,10 @@
     "phone-dark": "shots/reports_housing_model_affordability_1e6f5a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5386,
-    "desktop-dark": 5445,
-    "phone-light": 5608,
-    "phone-dark": 6327
+    "desktop-light": 3398,
+    "desktop-dark": 3241,
+    "phone-light": 3419,
+    "phone-dark": 3601
    }
   },
   {
@@ -556,10 +556,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_book_290cd8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5839,
-    "desktop-dark": 5927,
-    "phone-light": 6183,
-    "phone-dark": 5315
+    "desktop-light": 3211,
+    "desktop-dark": 3509,
+    "phone-light": 3667,
+    "phone-dark": 4043
    }
   },
   {
@@ -572,10 +572,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_concentration_f5b920__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5695,
-    "desktop-dark": 5690,
-    "phone-light": 5475,
-    "phone-dark": 5603
+    "desktop-light": 3514,
+    "desktop-dark": 3810,
+    "phone-light": 3417,
+    "phone-dark": 3901
    }
   },
   {
@@ -742,10 +742,10 @@
     "phone-dark": "shots/no_such_page_01c67c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 976,
-    "desktop-dark": 1004,
-    "phone-light": 1104,
-    "phone-dark": 1096
+    "desktop-light": 1066,
+    "desktop-dark": 1041,
+    "phone-light": 1018,
+    "phone-dark": 1116
    }
   },
   {
@@ -758,10 +758,10 @@
     "phone-dark": "shots/data_sources_model_portfolio_model_c50093__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1036,
-    "desktop-dark": 1078,
-    "phone-light": 1071,
-    "phone-dark": 1166
+    "desktop-light": 1460,
+    "desktop-dark": 1208,
+    "phone-light": 1174,
+    "phone-dark": 1054
    }
   },
   {
@@ -774,10 +774,10 @@
     "phone-dark": "shots/data_warehouse_model_portfolio_model_ae8340__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1322,
-    "desktop-dark": 1234,
-    "phone-light": 1175,
-    "phone-dark": 1236
+    "desktop-light": 1440,
+    "desktop-dark": 1448,
+    "phone-light": 1411,
+    "phone-dark": 1301
    }
   },
   {
@@ -790,10 +790,10 @@
     "phone-dark": "shots/data_sources_model_housing_model_1d48b8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1040,
-    "desktop-dark": 1165,
-    "phone-light": 1201,
-    "phone-dark": 999
+    "desktop-light": 1240,
+    "desktop-dark": 1305,
+    "phone-light": 1281,
+    "phone-dark": 1237
    }
   },
   {
@@ -806,10 +806,10 @@
     "phone-dark": "shots/data_warehouse_model_housing_model_e65dfb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1186,
-    "desktop-dark": 1223,
-    "phone-light": 1270,
-    "phone-dark": 1213
+    "desktop-light": 1463,
+    "desktop-dark": 1501,
+    "phone-light": 1381,
+    "phone-dark": 1516
    }
   },
   {
@@ -822,10 +822,10 @@
     "phone-dark": "shots/data_sources_model_saas_model_0b5a78__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1056,
-    "desktop-dark": 1125,
-    "phone-light": 1100,
-    "phone-dark": 1050
+    "desktop-light": 1326,
+    "desktop-dark": 1269,
+    "phone-light": 1398,
+    "phone-dark": 1287
    }
   },
   {
@@ -838,10 +838,10 @@
     "phone-dark": "shots/data_warehouse_model_saas_model_16a68f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1177,
-    "desktop-dark": 1354,
-    "phone-light": 1216,
-    "phone-dark": 1152
+    "desktop-light": 1601,
+    "desktop-dark": 1462,
+    "phone-light": 1556,
+    "phone-dark": 1393
    }
   },
   {
@@ -854,10 +854,10 @@
     "phone-dark": "shots/docs_concepts_the_three_phase_workflow_6b5461__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1070,
-    "desktop-dark": 1061,
-    "phone-light": 1103,
-    "phone-dark": 1105
+    "desktop-light": 1453,
+    "desktop-dark": 1165,
+    "phone-light": 1199,
+    "phone-dark": 1229
    }
   },
   {
@@ -870,10 +870,10 @@
     "phone-dark": "shots/docs_concepts_freeze_points_6af13f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1008,
-    "desktop-dark": 1061,
+    "desktop-light": 1102,
+    "desktop-dark": 1202,
     "phone-light": 1081,
-    "phone-dark": 1019
+    "phone-dark": 1142
    }
   },
   {
@@ -886,10 +886,10 @@
     "phone-dark": "shots/docs_concepts_lineage_13370c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1114,
-    "desktop-dark": 1063,
-    "phone-light": 1102,
-    "phone-dark": 1085
+    "desktop-light": 1035,
+    "desktop-dark": 1048,
+    "phone-light": 1068,
+    "phone-dark": 1149
    }
   },
   {
@@ -902,10 +902,10 @@
     "phone-dark": "shots/runs_model_housing_model_a4c247__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5108,
-    "desktop-dark": 4891,
-    "phone-light": 4616,
-    "phone-dark": 4574
+    "desktop-light": 2648,
+    "desktop-dark": 2530,
+    "phone-light": 2954,
+    "phone-dark": 2876
    }
   },
   {
@@ -918,10 +918,10 @@
     "phone-dark": "shots/runs_model_portfolio_model_bb7ee3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 4766,
-    "desktop-dark": 4639,
-    "phone-light": 4459,
-    "phone-dark": 4751
+    "desktop-light": 2573,
+    "desktop-dark": 2765,
+    "phone-light": 2839,
+    "phone-dark": 2953
    }
   },
   {
@@ -934,10 +934,10 @@
     "phone-dark": "shots/runs_model_saas_model_214de2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 5179,
-    "desktop-dark": 4462,
-    "phone-light": 4361,
-    "phone-dark": 4753
+    "desktop-light": 2720,
+    "desktop-dark": 2901,
+    "phone-light": 3117,
+    "phone-dark": 2809
    }
   }
  ],
@@ -1059,7 +1059,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 8150ms",
+   "detail": "settles in a median 3119ms",
    "key": "slow-page|/|page",
    "seen_in": [
     "---"
@@ -1073,7 +1073,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 8836ms",
+   "detail": "settles in a median 3280ms",
    "key": "slow-page|/data|page",
    "seen_in": [
     "---"
@@ -1087,7 +1087,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 6885ms",
+   "detail": "settles in a median 3850ms",
    "key": "slow-page|/data/map|page",
    "seen_in": [
     "---"
@@ -1101,7 +1101,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5906ms",
+   "detail": "settles in a median 3356ms",
    "key": "slow-page|/review|page",
    "seen_in": [
     "---"
@@ -1115,7 +1115,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5494ms",
+   "detail": "settles in a median 2758ms",
    "key": "slow-page|/runs|page",
    "seen_in": [
     "---"
@@ -1129,7 +1129,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5669ms",
+   "detail": "settles in a median 2684ms",
    "key": "slow-page|/?model|page",
    "seen_in": [
     "---",
@@ -1145,7 +1145,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5236ms",
+   "detail": "settles in a median 3321ms",
    "key": "slow-page|/data/<m>|page",
    "seen_in": [
     "---",
@@ -1161,7 +1161,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5178ms",
+   "detail": "settles in a median 3403ms",
    "key": "slow-page|/data/<m>/model|page",
    "seen_in": [
     "---",
@@ -1177,7 +1177,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5124ms",
+   "detail": "settles in a median 3354ms",
    "key": "slow-page|/data/<m>/transform|page",
    "seen_in": [
     "---",
@@ -1193,7 +1193,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5197ms",
+   "detail": "settles in a median 3293ms",
    "key": "slow-page|/data/<m>/sources|page",
    "seen_in": [
     "---",
@@ -1209,7 +1209,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5201ms",
+   "detail": "settles in a median 3245ms",
    "key": "slow-page|/data/<m>/runs|page",
    "seen_in": [
     "---",
@@ -1225,7 +1225,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 5608ms",
+   "detail": "settles in a median 3419ms",
    "key": "slow-page|/reports/<r>|page",
    "seen_in": [
     "---",
@@ -1241,7 +1241,7 @@
    "rule": "slow-page",
    "severity": "moderate",
    "target": "page",
-   "detail": "settles in a median 4891ms",
+   "detail": "settles in a median 2876ms",
    "key": "slow-page|/runs?model|page",
    "seen_in": [
     "---",
@@ -1369,25 +1369,6 @@
    ]
   },
   {
-   "page": "/reports/housing_model/affordability",
-   "pattern": "/reports/<r>",
-   "viewport": "phone",
-   "theme": "light",
-   "rule": "small-target",
-   "severity": "moderate",
-   "target": "button.verdict.verdict--reproduces \"Reproduces\"",
-   "detail": "96x23px tap target",
-   "key": "small-target|/reports/<r>|button.verdict.verdict--reproduces",
-   "seen_in": [
-    "phone-light",
-    "phone-dark",
-    "phone-light",
-    "phone-dark",
-    "phone-light",
-    "phone-dark"
-   ]
-  },
-  {
    "page": "/data/housing_model",
    "pattern": "/data/<m>",
    "viewport": "phone",
@@ -1422,9 +1403,9 @@
  ],
  "metrics": {
   "hardcoded_colors_in_jsx": 11,
-  "inline_style_blocks": 424,
-  "bundle_js_kb": 1258,
-  "bundle_css_kb": 95,
+  "inline_style_blocks": 433,
+  "bundle_js_kb": 1267,
+  "bundle_css_kb": 96,
   "engine_gz_kb": 14.7,
   "report_font_families": 5,
   "report_accents": 4,
@@ -1442,7 +1423,7 @@
    "saas_model/cohort_brief": 624,
    "saas_model/mrr_dashboard": 1233
   },
-  "calc_ms_max": 6.5
+  "calc_ms_max": 3.5
  },
  "report_pass": {
   "sheet": "report-sheet.png",
@@ -1571,7 +1552,7 @@
     ],
     "accent": "#1f7a4d/#1f7a4d",
     "html_kb": 799,
-    "calc_ms": 6.5,
+    "calc_ms": 1.2,
     "display": "Inter"
    },
    "portfolio_model/portfolio_book": {
@@ -1589,7 +1570,7 @@
     "gradients": [],
     "accent": "#1f4e79/#8bb4e0",
     "html_kb": 640,
-    "calc_ms": 1.1,
+    "calc_ms": 1.0,
     "display": "Iowan Old Style"
    },
    "portfolio_model/portfolio_concentration": {
@@ -1623,7 +1604,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1235,
-    "calc_ms": 1.2,
+    "calc_ms": 1.3,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_desk": {
@@ -1640,7 +1621,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1261,
-    "calc_ms": 1.7,
+    "calc_ms": 2.2,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_overview": {
@@ -1657,7 +1638,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1234,
-    "calc_ms": 1.9,
+    "calc_ms": 1.1,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_showcase": {
@@ -1676,7 +1657,7 @@
     "gradients": [],
     "accent": "#0d6b73/#5cc4bd",
     "html_kb": 721,
-    "calc_ms": 1.5,
+    "calc_ms": 1.6,
     "display": "Fraunces"
    },
    "saas_model/cohort_brief": {
@@ -1694,7 +1675,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 624,
-    "calc_ms": 1.1,
+    "calc_ms": 3.5,
     "display": "Iowan Old Style"
    },
    "saas_model/mrr_dashboard": {
@@ -1711,10 +1692,10 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1233,
-    "calc_ms": 1.4,
+    "calc_ms": 1.0,
     "display": "Hanken Grotesk"
    }
   }
  },
- "score": 58
+ "score": 59
 }

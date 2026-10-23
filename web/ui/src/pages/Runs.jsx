@@ -18,12 +18,19 @@ const KIND_GROUPS = [
   ['refresh', 'Data refreshes', ['pipeline_run', 'pipeline_layer']],
   ['schedule', 'Schedules', ['schedule']],
   ['publish', 'Publishes', ['publish']],
+  ['credential', 'Credential changes', ['credential']],
 ]
 // Each row's kind, in the same words.
 const KIND_LABEL = {
   report_build: 'Report build', background_run: 'Report build', schedule: 'Schedule',
   pipeline_run: 'Data refresh', pipeline_layer: 'Data refresh step', publish: 'Publish',
 }
+// A credential row's status is what happened to it (set or unset), so its kind
+// says that and the row shows no outcome besides. Never the value: the store
+// records none.
+const kindOf = run => (run.kind === 'credential'
+  ? (run.status === 'unset' ? 'Credential removed' : 'Credential set')
+  : KIND_LABEL[run.kind] || run.kind)
 const REPORT_KINDS = new Set(['report_build', 'background_run', 'schedule'])
 // Kinds that write a report's page. Those rows record a build, not a check.
 const BUILD_KINDS = new Set(['report_build', 'background_run'])
@@ -157,7 +164,7 @@ const STATUS_TONE = { red: 'bad', amber: 'warn' }
 const failedRun = run => STATUS[run.status] === 'red'
 
 function Outcome({ run, verdict }) {
-  const word = STATUS_WORD[run.status] || run.status
+  const word = run.kind === 'credential' ? null : STATUS_WORD[run.status] || run.status
   const loud = LOUD.has(run.status)
   const showVerdict = REPORT_KINDS.has(run.kind) && !['failed', 'error', 'running'].includes(run.status)
   return (
@@ -276,7 +283,7 @@ export default function Runs({ model: only }) {
       <tr key={run.id} data-target={run.target || undefined}
           className={[failedRun(run) && 'runs__row--failed', older && 'runs__row--older'].filter(Boolean).join(' ') || undefined}>
         <td>
-          <span className="runs__kind">{KIND_LABEL[run.kind] || run.kind}</span>
+          <span className="runs__kind">{kindOf(run)}</span>
           {' · '}
           {r.link
             ? <Link to={r.link} title={run.target}>{nameOf(run)}</Link>
@@ -301,7 +308,7 @@ export default function Runs({ model: only }) {
           <Outcome run={run} verdict={r.verdict} />
         </span>
         <span className="runs-card__meta">
-          {[KIND_LABEL[run.kind] || run.kind, ago(run.started), r.took, r.who].filter(Boolean).join(' · ')}
+          {[kindOf(run), ago(run.started), r.took, r.who].filter(Boolean).join(' · ')}
         </span>
       </>
     )

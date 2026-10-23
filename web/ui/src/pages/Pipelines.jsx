@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useIsFetching, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -40,11 +40,6 @@ function StepStatus({ status }) {
   const [tone, words] = STATUS_CHIP[status.startsWith('error:') ? 'error' : status] || ['', status]
   return <Chip tone={tone} title={status.startsWith('error:') ? status : undefined}>{words}</Chip>
 }
-
-// The queries that read the warehouse's data. One answered while a transform is
-// writing it can fail the run ("another process holds the warehouse open"), so
-// a run starts only when the page is not in the middle of them.
-const READS = ['warehouse', 'desk', 'models', 'model']
 
 // ── Medallion DAG view ───────────────────────────────────────────────────────
 
@@ -254,7 +249,6 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
   const { data: runs } = usePipelineRuns(pipeline)
   const { data: me } = useMe()
   const admin = !!me && (!me.role || me.role === 'admin')
-  const reading = useIsFetching({ predicate: q => READS.includes(q.queryKey[0]) }) > 0
   const [picked, setPicked] = useState(null)
   const [logOpen, setLogOpen] = useState(false)
   const [openStep, setOpenStep] = useState(null)
@@ -277,6 +271,9 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
   // starting one (or joining the one already going) unfolds it.
   const latest = runs?.[0]
   const busy = isStarting || latest?.status === 'running'
+  // A read of the warehouse does not hold a run back (a write waits for a
+  // read to let go), so the buttons wait only for a run, and say so.
+  const why = isStarting ? 'Starting the run…' : busy ? 'A run is going: its output is below.' : undefined
   const shownRun = picked || latest?.run_id || null
   const shown = (runs || []).find(r => r.run_id === shownRun)
 
@@ -306,7 +303,8 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
         <Btn
           size="sm"
           variant={primary ? 'primary' : 'outline'}
-          disabled={busy || reading}
+          disabled={busy}
+          title={why}
           onClick={handleRunAll}
         >
           {busy ? <><Spinner size={12} /> Running…</> : primary ? 'Refresh data' : '▶ Run all'}
@@ -364,7 +362,8 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
                         <Btn
                           size="sm"
                           variant="outline"
-                          disabled={busy || reading}
+                          disabled={busy}
+                          title={why}
                           onClick={() => handleRunLayer(l.name)}
                           aria-label={`Run ${l.name}`}
                         >

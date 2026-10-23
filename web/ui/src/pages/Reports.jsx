@@ -299,7 +299,7 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
   const last = report.last_run
   const labelOf = useModelLabel()
   const queries = (manifest?.embedded_data || []).length
-  const form = (FORMS[report.form] || FORMS.code).label
+  const form = (FORMS[report.form === 'package' ? report.made_from : report.form] || FORMS.code).label
   return (
     <>
       <section className="rpanel__sec">
@@ -830,11 +830,12 @@ export function ReportPage({ name }) {
   return <OpenReport key={name} report={report} model={reportModels(report)[0] || ''} />
 }
 
-// How a report is authored, from the reports API's `form` field: a JSON spec
-// in the default style, or a custom package with its own template and style.
+// How a report is made, from the reports API's `form` field and, for a
+// package, `made_from`: the file it draws its page from.
 const FORMS = {
   spec: { label: 'JSON spec', title: 'A reports/<name>.json spec: sections in the default style' },
-  package: { label: 'Custom', title: 'A reports/<name>/ package: its own template, style and scripts' },
+  'app.jsx': { label: 'Dashboard (app.jsx)', title: 'A reports/<name>/ package drawn by its app.jsx' },
+  'template.html': { label: 'Page (template.html)', title: 'A reports/<name>/ package drawn by its template.html' },
   code: { label: 'Code', title: 'Registered from Python code' },
 }
 
