@@ -69,6 +69,7 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/credentials.html">Credentials: a store people can manage</a>
+<a href="../architecture/data-flow-board.html">Data as a flow: the board</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
@@ -374,7 +375,7 @@ the spec, or the package's <code>report.json</code>, <code>template.html</code>,
 <code>script.js</code> and <code>report.py</code> — read-only, and only the files discovery
 registered for it. It also gives each report <code>models</code> (the models its data
 bindings read) and <code>measures</code> (the declared measure names they ask for, read
-from the file, never from a warehouse); Data's Map draws both. <code>display_name</code> is
+from the file, never from a warehouse). <code>display_name</code> is
 <code>report.json</code>'s <code>name</code> (what a list or title shows); <code>name</code> stays the path
 identifier the routes take. <code>GET /api/runs</code> rows and the <code>report</code> entries of
 <code>GET /api/desk</code> carry <code>display_name</code> beside <code>target</code> / <code>report</code> (a model
@@ -621,7 +622,7 @@ needed. See <a href="../concepts/trace.html">The trace</a>.</p>
 <p><code>GET /api/pipelines</code> lists each pipeline with its <code>layers</code> and last run of each,
 the <code>model</code>(s) it feeds, and, from its <code>pipelines/&lt;name&gt;.yaml</code>, the <code>transform</code>
 it runs (the phase ① script; <code>null</code> for a hand-built runner) and its
-<code>description</code>; a model's Data page (its line and Transform tab) and the Map (<code>/data/map</code>) show them.</p>
+<code>description</code>; a model's Data page (its line and Transform tab) and Data's board (<code>/data</code>) show them.</p>
 <p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
 in the role model is by side effect, not by resource.</p>
 <p><code>POST …/runs</code> is what <strong>Refresh data</strong> (the primary action on a model's Transform tab, shown only to an admin) and
@@ -694,6 +695,16 @@ reports its build step rebuilt, only those it actually built).</p>
 </tr>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/transforms</code></td>
+<td>viewer. Every file in <code>transforms/</code>: <code>[{name, form: sql\|python\|notebook, file, contract_file \| null, note \| null, pipelines: [name], models: [name], tables: [name], written_at \| null}]</code>. <code>contract_file</code> is the <code>.contract.yaml</code> beside it, or the file itself when it holds a <code>with contract(...)</code> block; <code>models</code> are those its pipelines refresh, then those that read what it wrote; <code>tables</code> and <code>written_at</code> are what a certificate says it wrote (empty and null for a transform no certificate names). Read-only</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/transforms/{name}/source</code></td>
+<td>viewer. The transform's file and the contract beside it (<code>{files, hint}</code>, as the other <code>/source</code> routes); <code>name</code> is a file's stem in <code>transforms/</code>, never a path (404 otherwise)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/warehouse</code></td>
 <td>viewer. <code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}</code>, one per warehouse-kind connector, read-only; framework tables are never listed</td>
 </tr>
@@ -741,7 +752,7 @@ says so and names the build command rather than 404ing.</p>
 </tr>
 <tr>
 <td>Data</td>
-<td>four tabs, the chain left to right: <code>/data</code> Models (a chain row per model), <code>/data/sources</code> Sources (every connection and the <code>inputs/</code> folder), <code>/data/warehouse</code> Warehouse (every table: who wrote it, who reads it, its checks), <code>/data/map</code> Map; <code>?model=&lt;m&gt;</code> narrows the last three. <code>/data/&lt;m&gt;</code> one model, then <code>/transform</code>, <code>/sources</code>, <code>/runs</code></td>
+<td>five tabs: <code>/data</code> Flow (the board: sources → transforms → warehouse → models → reports; <code>?model=&lt;m&gt;</code> opens with that model's path lit), <code>/data/sources</code> Sources (every connection and the <code>inputs/</code> folder), <code>/data/transforms</code> Transforms (every file in <code>transforms/</code>), <code>/data/warehouse</code> Warehouse (every table: who wrote it, who reads it, its checks), <code>/data/models</code> Models (a chain row per model); <code>?model=&lt;m&gt;</code> narrows Sources, Transforms and Warehouse. <code>/data/&lt;m&gt;</code> one model, then <code>/transform</code>, <code>/sources</code>, <code>/runs</code></td>
 </tr>
 <tr>
 <td>Review</td>
@@ -759,9 +770,10 @@ buttons and credential forms show for an admin). With no
 sign-in <code>/api/me</code> names everyone admin, so all five show. An address above the
 role renders a plain page saying who it is for; the API enforces the roles.</p>
 <p>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
-same thing under Data, Ask, History or the library; <code>/models</code> to <code>/data</code>;
-<code>/explore</code> to <code>/ask</code>; <code>/sources</code> and <code>/connectors</code> to <code>/data/sources</code>; <code>/map</code>
-and <code>/data?view=map</code> to <code>/data/map</code>; <code>/handbook</code> (and <code>/handbook/&lt;page&gt;</code>) to <code>/docs</code>;
+same thing under Data, Ask, History or the library; <code>/models</code> to <code>/data/models</code>
+(<code>/models?m=&lt;m&gt;</code> to <code>/data/&lt;m&gt;</code>); <code>/explore</code> to <code>/ask</code>; <code>/sources</code> and <code>/connectors</code> to
+<code>/data/sources</code>; <code>/map</code>, <code>/data/map</code> and <code>/data?view=map</code> to <code>/data</code> (with <code>model=&lt;m&gt;</code>, to
+<code>/data/&lt;m&gt;</code>: a model's page draws its line); <code>/handbook</code> (and <code>/handbook/&lt;page&gt;</code>) to <code>/docs</code>;
 <code>/getting-started</code> and <code>/workflow</code> to <code>/docs/get-started</code>; <code>/drafts</code> and <code>/review#drafts</code>
 to <code>/review/drafts</code>; <code>/reports?r=&lt;name&gt;</code> to <code>/reports/&lt;name&gt;</code>.</p>
 <hr>

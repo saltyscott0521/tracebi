@@ -86,3 +86,15 @@ role tiers; `scripts/ui_audit.py` crawls the new pages; captures of every
 new page at 1440/390, light/dark; vocabulary + guides mention `/data/sources`
 and `/data/warehouse` where they describe the app; CLAUDE.md's API Routes
 and the `GET /` line (five places) via the orchestrator.
+
+## v3.1: the board (2026-10-23)
+
+The owner, after using Data: some models' first node read "pipeline" and
+others a transform's name, sources sat after models, and the four tabs did not
+say how the data moves. Data now opens on **Flow**, a board of five lanes
+(⓪ Sources, ① Transforms, Warehouse, ② Models, ③ Reports) with wires between
+the cards; the tabs follow the flow: Flow (`/data`), Sources, Transforms (new,
+`/data/transforms`), Warehouse, Models (the chain rows, now `/data/models`).
+The Map is gone: its picture is the board, and a model's map is the model
+page's line (`/data/map` and `/data?view=map` redirect). The decision, the
+lane and edge rules: [[data-flow-board]].

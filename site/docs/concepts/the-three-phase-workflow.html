@@ -69,6 +69,7 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/credentials.html">Credentials: a store people can manage</a>
+<a href="../architecture/data-flow-board.html">Data as a flow: the board</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
@@ -104,11 +105,12 @@ one never blocks the fast one.</p>
 <blockquote>
 <p><strong>In the app</strong> there are four places. <strong>Reports</strong> is where it opens: the library, every
 report in its folder with whether its numbers still reproduce, narrowed to a model by a
-chip. <strong>Ask</strong> puts a question to one model. <strong>Data</strong> draws each model as these three
-stages in a line: <strong>Transform</strong> (the pipeline that rebuilds its warehouse, and what the
-sink contract says about it), <strong>Model</strong> (its tables, joins and measures) and <strong>Reports</strong>
-(what reads it); <strong>Refresh data</strong>, on the Transform tab, runs the pipeline, and the
-<strong>Map</strong> draws every model as one picture. <strong>Review</strong> holds what needs attention (a failed
+chip. <strong>Ask</strong> puts a question to one model. <strong>Data</strong> opens on the board: these three
+stages as lanes, sources first and reports last, with the warehouse between Transform and
+Model, the freeze point it is. A model's page draws it as a line: <strong>Transform</strong> (the
+pipeline that rebuilds its warehouse, and what the sink contract says about it),
+<strong>Model</strong> (its tables, joins and measures) and <strong>Reports</strong> (what reads it); <strong>Refresh
+data</strong>, on the Transform tab, runs the pipeline. <strong>Review</strong> holds what needs attention (a failed
 refresh, a build that needs a look, a request to publish), then drafts, then <strong>Verify a
 file</strong> (check a report file from anywhere); <strong>History</strong> (what ran) is one link away. Reports and Ask only ever ask the
 model; see <a href="../concepts/models-and-connectors.html">Models and connectors</a>.</p>

@@ -52,7 +52,7 @@ def test_a_reader_opens_runs_shares_and_downloads_a_report(served):
     assert "sample_model/sample_dashboard" in listed
     # A list shows report.json's name; the path stays the identifier.
     assert listed["sample_model/sample_dashboard"]["display_name"] == "Sample Dashboard"
-    # The Map draws which measures a report asks for, from its bindings alone.
+    # A report lists the measures it asks for, from its bindings alone.
     # The report's own calculations (big/small/split) are listed beside the model's.
     assert listed["sample_model/sample_dashboard"]["measures"] == [
         "big_minus_small", "big_orders", "orders", "revenue", "small_orders", "units"]

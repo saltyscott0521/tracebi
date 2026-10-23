@@ -61,10 +61,12 @@ const PLACES = [
     a live query, with each measure&rsquo;s definition and the query behind it. Keep this turns it
     into a draft report; Advanced is the query builder. Everyone sees it.</> },
   { to: '/data', name: 'Data', text: <>
-    How the numbers are made, as four tabs in the order the data flows. Models: each model as a
-    chain, sources → transform → tables → measures → reports. Sources: every connection and the
-    inputs/ folder, what each holds and what reads it. Warehouse: every table, who wrote it, who
-    reads it and whether its checks still hold. Map: the models as one picture. A model's page
+    How the numbers are made. Flow, where it opens, is the board: one lane per stage, sources →
+    transforms → warehouse → models → reports, with wires between them; hover a model to light its
+    whole path. Then the lists behind it, in the order the data flows. Sources: every connection
+    and the inputs/ folder, what each holds and what reads it. Transforms: every file in
+    transforms/, its form and its checks. Warehouse: every table, who wrote it, who reads it and
+    whether its checks still hold. Models: each model as a chain. A model's page
     leads with its line, sources → transform → model → reports, then tabs: Model, Transform
     (where Refresh data is), Sources and Runs. Only admins see it.</> },
   { to: '/review', name: 'Review', text: <>

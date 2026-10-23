@@ -69,6 +69,7 @@
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
 <a href="../architecture/credentials.html">Credentials: a store people can manage</a>
+<a href="../architecture/data-flow-board.html">Data as a flow: the board</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
@@ -177,6 +178,16 @@ role tiers; <code>scripts/ui_audit.py</code> crawls the new pages; captures of e
 new page at 1440/390, light/dark; vocabulary + guides mention <code>/data/sources</code>
 and <code>/data/warehouse</code> where they describe the app; CLAUDE.md's API Routes
 and the <code>GET /</code> line (five places) via the orchestrator.</p>
+<h2 id="v31-the-board-2026-10-23">v3.1: the board (2026-10-23)</h2>
+<p>The owner, after using Data: some models' first node read "pipeline" and
+others a transform's name, sources sat after models, and the four tabs did not
+say how the data moves. Data now opens on <strong>Flow</strong>, a board of five lanes
+(⓪ Sources, ① Transforms, Warehouse, ② Models, ③ Reports) with wires between
+the cards; the tabs follow the flow: Flow (<code>/data</code>), Sources, Transforms (new,
+<code>/data/transforms</code>), Warehouse, Models (the chain rows, now <code>/data/models</code>).
+The Map is gone: its picture is the board, and a model's map is the model
+page's line (<code>/data/map</code> and <code>/data?view=map</code> redirect). The decision, the
+lane and edge rules: <a href="../architecture/data-flow-board.html">Data as a flow: the board</a>.</p>
   </main>
 </div>
 <script>

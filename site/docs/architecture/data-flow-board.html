@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Data as a flow: the board — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Data as a flow: the board">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
+<a class="on" href="../architecture/data-flow-board.html">Data as a flow: the board</a>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
+<a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="data-as-a-flow-the-board">Data as a flow: the board</h1>
+<p><strong>Status: built, 2026-10-23</strong> (package U-10). Follows <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>.</p>
+<h2 id="the-decision">The decision</h2>
+<p>The owner looked at Data (Models · Sources · Warehouse · Map) and asked why
+some models' first node read "pipeline" and others not, and said sources
+came after models when they come first. A mockup of one board, read left to
+right in the order the data moves, was approved as drawn ("I like the board,
+build it"). Data now opens on that board, and the lists sit behind it in the
+same order:</p>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Address</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flow</td>
+<td><code>/data</code></td>
+<td>the board; <code>?model=&lt;m&gt;</code> opens it with that model's path lit until the pointer moves</td>
+</tr>
+<tr>
+<td>Sources</td>
+<td><code>/data/sources</code></td>
+<td>every connection and the <code>inputs/</code> folder (unchanged)</td>
+</tr>
+<tr>
+<td>Transforms</td>
+<td><code>/data/transforms</code></td>
+<td>new: every file in <code>transforms/</code>, its form, the models it feeds, its contract file, when it last wrote, and Run (admin, when a pipeline runs it)</td>
+</tr>
+<tr>
+<td>Warehouse</td>
+<td><code>/data/warehouse</code></td>
+<td>every table, grouped by its writer (unchanged)</td>
+</tr>
+<tr>
+<td>Models</td>
+<td><code>/data/models</code></td>
+<td>the chain rows that were <code>/data</code></td>
+</tr>
+</tbody>
+</table>
+<p>The Map is gone: the board is the picture, and a model's own page draws its
+line. <code>/map</code>, <code>/data/map</code> and <code>/data?view=map</code> land on <code>/data</code>; with
+<code>model=&lt;m&gt;</code> they land on <code>/data/&lt;m&gt;</code>.</p>
+<h2 id="three-notes-from-the-mockup">Three notes from the mockup</h2>
+<p><strong>Why the first node read "pipeline".</strong> The chain named the implementation: a
+SQL transform by its file, a Python medallion runner (a pipeline with no
+transform file) as "pipeline". The stage is always the transform; the
+mechanism is a chip. A transform is named by its file with its form beside it
+(SQL, Python, notebook); a medallion runner reads "pipeline" with a Python
+chip, in the same slot.</p>
+<p><strong>Why sources come first.</strong> The tabs follow the flow. Transforms get a list of
+their own (before, they were reachable only through a model), and the landing
+page is the picture.</p>
+<p><strong>What stays.</strong> A model's own page, its line and tabs, the table page, the
+Sources panel with credentials, the Warehouse list grouped by writer. The
+board is the way in; each card opens the page that already exists.</p>
+<h2 id="the-lanes">The lanes</h2>
+<ul>
+<li><strong>⓪ Sources</strong>: one card per connection that is not a warehouse, then one
+  per input file a transform reads (<code>/api/inputs</code> <code>read_by</code>), leaving out a
+  file a connection already stands for (a SQLite file under <code>inputs/</code>). A
+  mark and a chip for its kind (from the connector's dialect, or the file's
+  extension), whether it connects here (the Sources tab's own answer,
+  <code>/api/connectors/{name}/tables</code>; a file has no such state), and where it is.</li>
+<li><strong>① Transforms</strong>: one card per transform in the flow, that is, one a
+  pipeline runs or a certificate says wrote tables (<code>/api/transforms</code>). Any
+  other file (the pandas twin of a SQL transform) is counted under the lane
+  and listed on the Transforms tab.</li>
+<li><strong>Warehouse</strong>: one card per warehouse (<code>/api/warehouse</code>), a group per
+  writer, its tables as tags. A green dot means the sink satisfied its
+  contract on the run that wrote the table (<code>contract.status ===
+  "satisfied"</code>); stale or no contract has no dot. Stale never reads green.</li>
+<li><strong>② Models</strong>: label, identifier, tables, measures.</li>
+<li><strong>③ Reports</strong>: in model order; "dashboard" (<code>app.jsx</code>) or "page"
+  (<code>template.html</code>), and the models it reads.</li>
+</ul>
+<h2 id="the-edges">The edges</h2>
+<p>Drawn only from facts the API already gives: source → transform (<code>read_by</code>),
+transform → its writer group (the certificate's <code>writers</code>), group → model (the
+models that read the group's tables), model → report (<code>reportModels</code>). A wire
+ends at the writer group, not the middle of the warehouse card, so which
+transform fed which model reads off the board. Hovering or focusing a model
+lights its reports, the groups holding its tables, the transforms that wrote
+them (and the one its pipeline runs), the sources those read, and the wires
+whose two ends are lit. The lighting is presentation only: every card is a
+link either way. When the board is narrower than 980px (its own width, a
+container query, since the sidebar takes part of the window) the lanes stack,
+no wire is drawn and nothing fades; with reduced motion nothing animates.</p>
+<p>Nothing on the board claims a number is right.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

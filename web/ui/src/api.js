@@ -276,6 +276,11 @@ export const useInputs = () =>
 export const useWarehouses = (enabled = true) =>
   useQuery({ queryKey: ['warehouses'], queryFn: () => get('/warehouse'), enabled })
 
+// Every transform file: its form, contract file, the pipelines that run it,
+// the models it feeds, and what its certificate says it wrote, and when.
+export const useTransforms = () =>
+  useQuery({ queryKey: ['transforms'], queryFn: () => get('/transforms') })
+
 // One table wherever it lives: *source* is a connector's name or `inputs`
 // (then *table* is a path under inputs/, its slashes kept).
 const tableUrl = (source, table) => `/tables/${encodeURIComponent(source)}/${reportPath(table)}`

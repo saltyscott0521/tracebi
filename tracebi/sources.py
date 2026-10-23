@@ -394,3 +394,77 @@ def _writers(tables: list[dict], certs: dict, owners: dict[str, str]) -> list[di
             }
         out[record]["tables"].append(t["name"])
     return list(out.values())
+
+
+def transforms_listing(registry) -> list[dict]:
+    """Every transform file in ``transforms/``, as Data's Transforms tab lists
+    it: its form, the file declaring its checks (the ``.contract.yaml`` beside
+    it, or the file itself when it holds a ``with contract(...)`` block) and
+    the note they carry, the pipelines that run it and the models they
+    refresh, and what a certificate says it wrote: the tables, the models
+    that read them, and when. A transform no certificate names (one that has
+    not run here, or the pandas twin of a SQL transform) wrote nothing as far
+    as anything recorded knows: ``tables`` is empty, ``written_at`` null."""
+    from tracebi.contracts import read_contract_file
+    from tracebi.transforms import FORMS, contract_file, transform_form, transforms_dir
+
+    tdir = transforms_dir()
+    if not tdir.is_dir():
+        return []
+    files = [p for p in sorted(tdir.iterdir()) if p.suffix in FORMS and p.is_file()]
+
+    runs: dict[str, list[tuple[str, list[str]]]] = {}   # transform → [(pipeline, models)]
+    for name in registry.list_pipeline_names():
+        runner = registry.get_pipeline(name)
+        transform = getattr(runner, "transform", None)
+        if not isinstance(transform, str) or not transform:
+            continue
+        model = getattr(runner, "model", None)
+        named = [m for m in (getattr(runner, "models", None) or []) if isinstance(m, str) and m]
+        runs.setdefault(transform, []).append(
+            (name, named or ([model] if isinstance(model, str) and model else [])))
+
+    wrote: dict[str, dict] = {}   # transform → {tables, models, at, note}
+    for w in warehouses(registry):
+        for writer in w["writers"]:
+            if not writer["transform"]:
+                continue
+            entry = wrote.setdefault(writer["transform"], {"tables": [], "models": [], "at": None, "note": None})
+            entry["tables"] += writer["tables"]
+            entry["note"] = entry["note"] or writer["note"]
+            if writer["at"] and (entry["at"] is None or writer["at"] > entry["at"]):
+                entry["at"] = writer["at"]
+            for t in w["tables"]:
+                if t["name"] in writer["tables"]:
+                    entry["models"] += [m for m in t["read_by"] if m not in entry["models"]]
+
+    out = []
+    for path in files:
+        name = path.stem
+        written = wrote.get(name, {"tables": [], "models": [], "at": None, "note": None})
+        note = written["note"]
+        declared = contract_file(path)
+        if declared is not None and note is None:
+            try:
+                note = read_contract_file(declared, name).get("note")
+            except Exception:  # noqa: BLE001 — a broken contract file still names its file
+                note = None
+        elif declared is None and path.suffix != ".sql":
+            try:
+                declared = path if _CONTRACT_NAME.search(path.read_text(encoding="utf-8")) else None
+            except (OSError, UnicodeDecodeError):
+                declared = None
+        pipelines = runs.get(name, [])
+        models = [m for _, ms in pipelines for m in ms] + written["models"]
+        out.append({
+            "name": name,
+            "form": transform_form(path),
+            "file": f"{tdir.name}/{path.name}",
+            "contract_file": f"{tdir.name}/{declared.name}" if declared is not None else None,
+            "note": note,
+            "pipelines": [p for p, _ in pipelines],
+            "models": list(dict.fromkeys(models)),
+            "tables": sorted(set(written["tables"])),
+            "written_at": written["at"],
+        })
+    return out

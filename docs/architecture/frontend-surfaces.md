@@ -84,10 +84,12 @@ for agents.
 
 The app is five places in its sidebar (`web/ui/src/nav.js`, [[nav-v3]]):
 **Reports** (the library, where it opens), **Ask**, **Data**, **Review** and
-**Docs**. Data is the chain, as four tabs left to right: Models (each model's
-chain of sources → transform → tables → measures → reports), Sources (every
-connection and the `inputs/` folder, what each holds and what reads it),
-Warehouse (every table, who wrote it, who reads it, its checks) and Map. Docs
+**Docs**. Data opens on Flow, the board ([[data-flow-board]]): one lane per
+stage, sources → transforms → warehouse → models → reports. Then the lists
+behind it: Sources (every connection and the `inputs/` folder, what each holds
+and what reads it), Transforms (every file in `transforms/`), Warehouse (every
+table, who wrote it, who reads it, its checks) and Models (each model's chain
+of sources → transform → tables → measures → reports). Docs
 is the handbook served from the project's `docs/`, with Get started first; it
 is the app's own manual, not tracebi.com's docs, and every role sees it. The
 addresses are in [[api-routes]].

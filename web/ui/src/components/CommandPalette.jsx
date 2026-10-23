@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines, useRole, useGuides, useWarehouses } from '../api'
 import {
-  PAGES, placesFor, askPath, dataPath, docPath, mapPath, reportPagePath, pipelineModels,
-  sourcesPath, tablePath, warehousePath,
+  PAGES, placesFor, askPath, dataPath, dataTabPath, docPath, flowPath, reportPagePath, pipelineModels,
+  sourcesPath, tablePath, transformsPath, warehousePath,
 } from '../nav'
 import { count } from '../format'
 import { encodeQuery } from '../ask'
@@ -19,9 +19,11 @@ function pagesFor(role) {
     ...places.map(p => ({ label: p.label, path: p.path, kind: 'page', sub: p.sub })),
     ...places.flatMap(p => inside(p.key)),
     ...(places.some(p => p.key === 'data') ? [
+      { label: 'Flow', path: flowPath(), kind: 'page', sub: 'The board: sources, transforms, warehouse, models and reports, as the data moves.' },
       { label: 'Sources', path: sourcesPath(), kind: 'page', sub: 'Every connection and input file, and what reads each.' },
+      { label: 'Transforms', path: transformsPath(), kind: 'page', sub: 'Every file in transforms/: its form, what it feeds, its checks.' },
       { label: 'Warehouse', path: warehousePath(), kind: 'page', sub: 'Every table: who wrote it, who reads it, its checks.' },
-      { label: 'Map', path: mapPath(), kind: 'page', sub: 'Every model as one picture: what feeds what.' },
+      { label: 'Models', path: dataTabPath('models'), kind: 'page', sub: 'Every model as a chain: sources, transform, tables, measures, reports.' },
     ] : []),
     { label: 'Get started', path: docPath('get-started'), kind: 'doc', sub: 'How TraceBi fits together, in five steps.' },
   ]

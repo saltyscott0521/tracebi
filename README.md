@@ -677,13 +677,18 @@ Reports, Ask and Docs, an analyst also Review and Data, read-only below admin
 - **Ask** — a visual star-schema query builder: pick a fact, toggle
   measures and dimension attributes, add filters, and get results with a
   chart, CSV download, and the *lineage graph of the exact query that ran*.
-- **Data** (`/data`) — the chain, as four tabs left to right. **Models**: a row per model,
-  its chain (sources → transform → tables → measures → reports, each a link), its reports'
-  verdicts as counts and when its data was last refreshed. **Sources** (`/data/sources`):
-  every connection and the `inputs/` folder, what each holds (read on request; a connection
-  whose `${VAR}` is unset says "Not connected here") and what reads it. **Warehouse**
-  (`/data/warehouse`): every table, who wrote it, which models read it, its checks and what
-  fed it. **Map** (`/data/map`). A model's page (`/data/<model>`) leads with its line
+- **Data** (`/data`) — opens on **Flow**, the board: five lanes read left to right in the
+  order the data moves (⓪ Sources, ① Transforms, the Warehouse grouped by the transform that
+  wrote each table, ② Models, ③ Reports), wires between the cards, and every card a link to
+  its page. Hovering or focusing a model lights its whole path; `/data?model=<m>` opens with
+  it lit. Then the lists behind the board. **Sources** (`/data/sources`): every connection and
+  the `inputs/` folder, what each holds (read on request; a connection whose `${VAR}` is unset
+  says "Not connected here") and what reads it. **Transforms** (`/data/transforms`): every
+  file in `transforms/`, its form, the models it feeds, its contract file and when it last
+  wrote. **Warehouse** (`/data/warehouse`): every table, who wrote it, which models read it,
+  its checks and what fed it. **Models** (`/data/models`): a row per model, its chain
+  (sources → transform → tables → measures → reports, each a link), its reports' verdicts as
+  counts and when its data was last refreshed. A model's page (`/data/<model>`) leads with its line
   (Sources → Transform → Model → Reports, the warehouse file and the measures between them),
   then four tabs: Model, Transform, Sources, Runs.
 - **Model** — a model's Data page, Model tab: table previews with column dtypes
@@ -713,9 +718,6 @@ Reports, Ask and Docs, an analyst also Review and Data, read-only below admin
 - **Sources** — a model's Data page, Sources tab: what it is made from (its warehouse, and
   the connections and input files its transform reads); every source is at `/data/sources`.
 - **Runs** — a model's Data page, Runs tab: History narrowed to the model.
-- **Map** (`/data/map`) — every model as one picture: transform → warehouse → model → reports,
-  drawn with the line's nodes and verdict chips. Open a model to see its measures and the
-  reports that use them.
 - **Review** (`/review`) — what waits on a person, in the order they act on it: **Needs
   attention** (a refresh whose steps failed, a build that needs a look or does not reproduce,
   a publish request to decide in place, their own requests waiting on approvers), then

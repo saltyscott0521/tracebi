@@ -23,9 +23,8 @@ import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel } f
 // not match, "○" never built or not declared. A fine thing is a plain fact.
 // Reports say what they say everywhere else: the verdict chip, as counts.
 //
-// A station and a hand-off are drawn by LineNode, which the Map draws its
-// nodes with too: one look for "something you write" (a card) and "what gets
-// handed on" (a pill), wherever the project is drawn.
+// A station and a hand-off are drawn by LineNode: one look for "something you
+// write" (a card) and "what gets handed on" (a pill).
 
 /**
  * A name that may break after its underscores (and dots) when the screen is
@@ -255,7 +254,7 @@ export function Flag({ flag }) {
 }
 
 /**
- * One node, on the line and on the Map. A card (`shape="card"`) is something
+ * One node on the line. A card (`shape="card"`) is something
  * you write: a transform, a model, a report. A pill is what gets handed on: a
  * file, its tables, a measure. It says what kind it is (*kind*, with the
  * phase's number *n*), its *name*, one plain *fact*, and *marks*: a verdict
