@@ -585,12 +585,16 @@ function OpenReport({ report, model }) {
   // a filter, and says so: the header shows Local and the selection, each
   // field a chip that clears it. A new page starts as authored.
   const [selection, setSelection] = useState(null)
+  // A build is deterministic, so a rebuild on unchanged data gives the same
+  // HTML string; the frame is keyed on the build's time as well, so a new
+  // build is a new page (and starts as authored) even when its bytes match.
+  const buildKey = shown?.manifest?.rendered_at || null
   useEffect(() => {
     setSelection(null)
     const frame = frameRef.current
     return frame ? followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
       : undefined
-  }, [frameHtml])
+  }, [frameHtml, buildKey])
   const clearField = field => {
     const rest = { ...selection }
     delete rest[field]
@@ -787,7 +791,7 @@ function OpenReport({ report, model }) {
           )}
           {(runErr && shown) && <div className="rp__err"><ErrorDetail error={runErr} /></div>}
           {frameHtml ? (
-            <iframe ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
+            <iframe key={buildKey || 'frame'} ref={frameRef} srcDoc={frameHtml} sandbox={FRAME_SANDBOX} title={name} className="rp__frame" />
           ) : opening ? (
             <div className="rp__state fade-in">
               <ReportArt mode="build" size={96} /> Opening the last build…
