@@ -254,7 +254,7 @@ sees the range without reading a doc:</p>
 <tr>
 <td>Direct Lending Portfolio</td>
 <td><strong>CSV + a live Postgres</strong>, combined</td>
-<td><code>inputs/holdings.csv</code> plus the CRM: <code>connections/crm.yaml</code> → <code>${TRACEBI_CRM_URL}</code>, a database in the box's Postgres seeded by the <code>seed</code> service. Off the box the <code>-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv</code> snapshot stands in and the certificate says so. This is the only model that needs a credential, which is what makes it the credentials demo too.</td>
+<td><code>inputs/holdings.csv</code> plus the CRM: <code>connections/crm.yaml</code> → <code>${TRACEBI_CRM_URL}</code>, a <strong>standing</strong> mock database in the box's Postgres: created and loaded once, at the volume's first start (<code>docker-entrypoint-initdb.d</code>), persisted, never reseeded by the app or a seed step. Off the box the <code>-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv</code> snapshot stands in and the certificate says so. This is the only model that needs a credential, which is what makes it the credentials demo too.</td>
 </tr>
 <tr>
 <td>Wealth Management</td>
