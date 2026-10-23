@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useConnectors, useCredentials, usePipelines, useSaveCredential, useTestConnection } from '../api'
-import { stamp } from './TheLine'
+import { stamp } from '../when'
 import { Btn, Chip, ErrorDetail, Spinner } from './Shared'
 
 // Where a credential is set, in the words the Sources page uses. The app
