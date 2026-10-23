@@ -14,6 +14,15 @@ import pandas as pd
 from tracebi.connectors.base import BaseConnector
 
 
+def _settle(conn) -> None:
+    """Complete a result left part-fetched on *conn* (``fetchone()`` by a
+    caller, say) before registering a frame: from DuckDB 2.0 a pending result
+    makes ``register()`` raise ``ResourceInUseException``."""
+    complete = getattr(conn, "complete", None)
+    if complete is not None:
+        complete()
+
+
 class DuckDBConnector(BaseConnector):
     """
     Connector backed by an embedded DuckDB instance.
@@ -430,6 +439,7 @@ class DuckDBConnector(BaseConnector):
 
     def _write_into(self, conn, df: pd.DataFrame, table: str, if_exists: str) -> None:
         select = self._decimal_select(df)
+        _settle(conn)
         conn.register("__tracebi_tmp__", df)
         try:
             if if_exists == "replace":
@@ -486,6 +496,7 @@ class DuckDBConnector(BaseConnector):
                 f"Table '{table}' already exists in DuckDBConnector '{self.name}'."
             )
         select = self._decimal_select(df)
+        _settle(conn)
         conn.register("__tracebi_tmp__", df)
         try:
             source = f"(SELECT {select} FROM __tracebi_tmp__)"

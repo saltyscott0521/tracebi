@@ -8,10 +8,11 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ### Fixed
 
-- **DuckDB is pinned below 2.0** (`duckdb>=1.5.5,<2` in every extra). DuckDB
-  2.0.0 refuses `register()` on a connection with an unfinished `execute()`
-  result, which the query engine's table registration relies on; the pin keeps
-  installs on 1.5 until the engine is ported.
+- **DuckDB 2.0 runs the query engine.** From 2.0 a result fetched part-way
+  (`fetchone()`) stays pending on its connection and the next `register()`
+  there raises; the engine's connection now completes such a result once the
+  row is out (`tracebi/model/engine.py`, `_Result`). The `<2` pin of the day
+  before is lifted: `duckdb>=1.5.5` again, 1.5 and 2.0 both pass the suite.
 
 ### Changed — navigation v3: Docs as a place, Data as the chain
 
