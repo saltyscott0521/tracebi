@@ -184,7 +184,7 @@ export default function CommandPalette() {
                 }}
               >
                 <span style={{
-                  fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5,
+                  fontSize: 10, fontWeight: 600,
                   color: meta.color, background: `color-mix(in srgb, ${meta.color} 8%, transparent)`,
                   border: `1px solid color-mix(in srgb, ${meta.color} 19%, transparent)`, borderRadius: 4,
                   padding: '1px 7px', width: 76, textAlign: 'center', flexShrink: 0,

@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 
 import { useCodeRequests, useDesk, usePipelines, usePublishRequests, useReports, useRuns } from '../api'
-import { attentionItems, when } from '../components/Attention'
+import { attentionItems } from '../components/Attention'
 import { PageHeader, useReportModels } from '../components/Scope'
-import { Badge, Spinner, Verdict } from '../components/Shared'
+import { Chip, Spinner, Time, Verdict } from '../components/Shared'
 import { REVIEW_TABS, whereAmI } from '../nav'
 import DraftList, { CodeReview, RequestDecision } from './Drafts'
 
@@ -75,6 +75,9 @@ export function ReviewDrafts() {
   )
 }
 
+// An item's state is a chip: its colour from what Attention says of it.
+const TONE = { red: 'bad', amber: 'warn', gray: 'none' }
+
 // One row per thing: its chip, what, why, when, and what to do about it. A
 // request the person may decide is decided here; a code request opens its
 // files here.
@@ -91,13 +94,13 @@ function Attention({ items }) {
                 <span className="dlist__name">
                   {it.verdict
                     ? <Verdict state={it.verdict} size="sm" />
-                    : <Badge variant={it.variant} style={{ textTransform: 'none' }}>{it.kind}</Badge>}
+                    : <Chip tone={TONE[it.variant]}>{it.kind}</Chip>}
                   <span style={{ overflowWrap: 'anywhere' }}>{it.title}</span>
                 </span>
                 <span className="dlist__facts">{it.detail}</span>
               </span>
               <span className="dlist__side">
-                {when(it.at) && <span className="dlist__when">{when(it.at)}</span>}
+                {it.at && <span className="dlist__when"><Time iso={it.at} /></span>}
                 {it.href && <Link to={it.href} className="review__open">{it.action || 'Open'}</Link>}
                 {(it.decide || it.review) && (
                   <button type="button" className="review__open review__btn" aria-expanded={acting}

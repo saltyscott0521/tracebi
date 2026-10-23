@@ -468,6 +468,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("button", name="Every run", exact=True).click()
             page.wait_for_url("**/runs?all=1")
             expect(rows).to_have_count(len(verdicts))
+            # One Kind filter, in the words a reader sees: no two kinds a reader
+            # cannot tell apart ("Pipeline" and "Pipeline run" were two).
+            kinds = page.get_by_label("Kind").locator("option").all_inner_texts()
+            assert kinds == ["All kinds", "Report builds", "Data refreshes", "Schedules", "Publishes"], kinds
+            page.get_by_label("Kind").select_option(label="Report builds")
+            page.wait_for_url("**/runs?all=1&kind=build")
+            expect(rows).to_have_count(len(verdicts))
             fail_on_browser_errors()
 
             # Given room, a report's three KPI cards sit on one row. (The old
@@ -559,8 +566,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(builder).to_contain_text("dim_cohort")
             fail_on_browser_errors()
 
-            # Transform: Refresh data, its one primary action, opens the Runs
-            # tab, which follows the run to its end…
+            # Transform: Refresh data, its one primary action, unfolds the run's
+            # output under the tab's views and follows it to its end…
             page.goto(base + "/data/portfolio_model/transform")
             # The page reads the warehouse as it opens; a transform that starts
             # writing it meanwhile fails, so let those reads finish first.
@@ -571,7 +578,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             output.get_by_text("Run succeeded").wait_for()
             text = output.inner_text()
             assert "[transform] ✓" in text and "[build] ✓" in text, text
-            assert page.get_by_role("list", name="Runs").get_by_role("button").count() == 1
+            assert len(page.request.get(base + "/api/pipelines/portfolio_model/runs").json()) == 1
             # …the Transform tab now says when it was refreshed…
             page.get_by_text("Last refreshed").wait_for()
             # …and the run links the reports it rebuilt, each to its page in the app.
@@ -584,13 +591,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.goto(base + "/data/portfolio_model/transform")
             page.get_by_role("link", name="Runs", exact=True).click()
             page.wait_for_url("**/data/portfolio_model/runs")
-            page.locator("tr", has_text="Pipeline run").first.wait_for()
+            page.locator("tr", has_text="Data refresh").first.wait_for()
             page.get_by_role("link", name="Open in History").click()
             page.wait_for_url("**/runs?model=portfolio_model")
             page.get_by_role("heading", name="History", exact=True).wait_for()
-            page.locator("tr", has_text="Pipeline run").first.wait_for()
+            page.locator("tr", has_text="Data refresh").first.wait_for()
             page.goto(base + "/runs")
-            pipeline_row = page.locator("tr", has_text="Pipeline run").first
+            pipeline_row = page.locator("tr", has_text="Data refresh").first
             pipeline_row.wait_for()
             expect(pipeline_row).to_contain_text("Direct Lending Portfolio")   # the model, by its label
             expect(sidebar.get_by_role("link", name="Review", exact=True)).to_have_attribute("aria-current", "page")

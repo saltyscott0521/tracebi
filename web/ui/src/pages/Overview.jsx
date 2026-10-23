@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
 import { useAppStatus, useModel } from '../api'
-import TheLine, { stamp, since, useLineFacts } from '../components/TheLine'
+import TheLine, { useLineFacts } from '../components/TheLine'
+import { ago, stamp } from '../when'
 import Warehouse from '../components/Warehouse'
 import EditAsDraft from '../components/EditAsDraft'
 import { ModelDetail } from './Models'
@@ -143,7 +144,7 @@ function ModelPage({ model, tab }) {
         <p role="status" className="overview__alert">
           <strong>
             <span aria-hidden="true">✕</span> <span className="overview__name">{transform.name}</span> failed
-            {transform.failure ? ' its checks' : ''} {since(transform.lastAt)}.
+            {transform.failure ? ' its checks' : ''} {ago(transform.lastAt)}.
           </strong>
           {transform.failure && facts.builtCount > 0 && <span>The built reports were made from the tables it replaced.</span>}
           {tab !== 'transform' && <Link to={dataPath(model, 'transform')}>See why</Link>}

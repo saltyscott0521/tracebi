@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import { stamp } from '../when'
 
 // Operations with a dedicated tint in global.css (--op-{name}-bg/br/tx).
 const KNOWN_OPS = new Set([
@@ -105,7 +106,7 @@ function NodeInspector({ data, onClose }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
+          fontSize: 10, fontWeight: 600,
           padding: '2px 8px', borderRadius: 20,
           background: op.bg, color: op.tx, border: `1px solid ${op.br}`,
         }}>{data.operation}</span>
@@ -122,7 +123,7 @@ function NodeInspector({ data, onClose }) {
       {Object.entries(meta)
         .filter(([k]) => !HIDDEN_META_KEYS.has(k))
         .map(([k, v]) => <MetaRow key={k} k={k} v={v} />)}
-      {data.timestamp && <MetaRow k="recorded" v={new Date(data.timestamp).toLocaleString()} />}
+      {data.timestamp && <MetaRow k="recorded" v={stamp(data.timestamp)} />}
     </div>
   )
 }

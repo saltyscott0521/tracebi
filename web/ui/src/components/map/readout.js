@@ -1,13 +1,12 @@
 import { reportPagePath } from '../../nav'
 import { MEASURE_KINDS, measureDefinition } from '../modelGraph'
 import { reportState } from './states'
+import { count } from '../../format'
 
 // The text under the map: what is selected, said in words. A person who cannot
 // see the blue path reads the same thing here. Reports and the model by their labels.
 
 const titleOf = (a, report) => a.placed.find(r => r.name === report)?.display_name || report
-
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 /** a, b and c */
 const list = items => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
@@ -23,12 +22,12 @@ export function projectReadout(summary, tinted) {
       : `${s.file} is shared by ${list(s.models)}.`)
   }
   if (summary.unplaced) {
-    text.push(`${plural(summary.unplaced, 'report')} ${summary.unplaced === 1 ? 'names' : 'name'} no model and ${summary.unplaced === 1 ? 'is' : 'are'} not drawn.`)
+    text.push(`${count(summary.unplaced, 'report')} ${summary.unplaced === 1 ? 'names' : 'name'} no model and ${summary.unplaced === 1 ? 'is' : 'are'} not drawn.`)
   }
   text.push('Open a model to see its measures.')
   return {
     kind: 'Project',
-    name: `${plural(summary.models, 'model')} · ${plural(summary.transforms, 'transform')} · ${plural(summary.reports, 'report')}`,
+    name: `${count(summary.models, 'model')} · ${count(summary.transforms, 'transform')} · ${count(summary.reports, 'report')}`,
     text: text.join(' '),
   }
 }
@@ -68,8 +67,8 @@ export function modelReadout({ name, info, a, sel, builds }) {
   return {
     kind: 'Model', name: label,
     text: [
-      `${plural(info.tables.length, 'table')}, ${plural(a.declared.length, 'measure')} and ${plural(a.placed.length, 'report')}.`,
-      unused ? `${plural(unused, 'measure')} ${unused === 1 ? 'is' : 'are'} asked for by no report.` : '',
+      `${count(info.tables.length, 'table')}, ${count(a.declared.length, 'measure')} and ${count(a.placed.length, 'report')}.`,
+      unused ? `${count(unused, 'measure')} ${unused === 1 ? 'is' : 'are'} asked for by no report.` : '',
       'Pick a measure or a report to light its path.',
     ].filter(Boolean).join(' '),
   }

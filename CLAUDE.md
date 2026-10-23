@@ -245,6 +245,9 @@ web/
                        # directory named `web` in the wheel collided with the unrelated
                        # `web.py` distribution, which owns that same path in site-packages.
                        # `npm run build` writes its output into tracebi/web/ui/dist.
+    src/when.js        # stamp / ago / day / isoTitle: every date in the app; format.js: count / plural
+    src/components/Shared.jsx  # the parts: Segmented, Chip (states) vs Badge (labels), Btn/BtnLink,
+                       #   ExportCsv, Empty, Time; .tb-list (global.css) for lists of things
 tests/                 # pytest suite (run `pytest tests/` for the current count), one file per area;
                        #   tests/e2e/ holds the end-to-end journeys (preferred for new coverage)
 examples/

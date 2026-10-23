@@ -5,7 +5,8 @@ import { useConnectorWarehouse, useWarehouses } from '../api'
 import { useModelLabel } from '../components/Scope'
 import { CONTRACT, ContractLine, Profile } from '../components/Warehouse'
 import { fmtBytes } from '../components/Storage'
-import { stamp } from '../components/TheLine'
+import { stamp } from '../when'
+import { count } from '../format'
 import { TransformName, useTransformHome } from './Connectors'
 import { dataPath, warehousePath } from '../nav'
 import { Chip, Empty, ErrorDetail, SkeletonCard, Spinner } from '../components/Shared'
@@ -18,8 +19,6 @@ import { Chip, Empty, ErrorDetail, SkeletonCard, Spinner } from '../components/S
 // itself; it colours nothing else. ?model=<m> keeps only that model's tables.
 
 const TIER = { file: 'File', object: 'Object storage', remote: 'Remote database' }
-
-const plural = (n, one, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`
 
 const short = fp => (fp ? `${fp.slice(0, 8)}…` : '')
 
@@ -62,7 +61,7 @@ function TableRow({ warehouse, t, home }) {
       <div className="whrow__top">
         <span className="whrow__main">
           <code className="whrow__name">{t.name}</code>
-          <span className="wb-meta">{plural(t.rows, 'row')} · {plural(t.columns, 'column')}</span>
+          <span className="wb-meta">{count(t.rows, 'row')} · {count(t.columns, 'column')}</span>
         </span>
         <Chip tone={c.tone} title={c.title}>{c.label}</Chip>
       </div>

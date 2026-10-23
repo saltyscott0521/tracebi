@@ -7,9 +7,10 @@ import {
 
 import { useModel, useTablePreview } from '../api'
 import { LineageGraph } from '../components/Lineage'
+import { count } from '../format'
 import {
   Card, CardTitle, Badge, Spinner,
-  Empty, Btn, ErrorDetail, SkeletonCard,
+  Empty, Btn, ErrorDetail, ExportCsv, SkeletonCard,
 } from '../components/Shared'
 
 const AGG_FUNCS = ['sum', 'count', 'mean', 'min', 'max', 'nunique']
@@ -316,7 +317,6 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
       <>
       {facts.length === 0 && !loadingModel ? (
         <Empty
-          icon="◬"
           message="No facts defined on this model. Tag tables with model.add_fact() / model.add_dimension() to enable Explore."
         />
       ) : (
@@ -431,7 +431,6 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
             {!result && !error && (
               <Card>
                 <Empty
-                  icon="◭"
                   message="Results appear here. Every query you build is executed with full lineage tracking — you'll see exactly how the numbers were produced."
                 />
               </Card>
@@ -441,13 +440,12 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
               <div className="fade-in">
                 <Card>
                   <CardTitle action={
-                    <button onClick={() => downloadCsv(result)} className="dl-link"
-                      style={{ background: 'var(--blue-lt)' }}>↓ CSV</button>
+                    <ExportCsv onClick={() => downloadCsv(result)} />
                   }>
                     Result
                   </CardTitle>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
-                    <Badge variant="gray">{result.rows} row{result.rows !== 1 ? 's' : ''}</Badge>
+                    <Badge variant="gray">{count(result.rows, 'row')}</Badge>
                     {result.engine && <Badge variant={result.engine === 'duckdb' ? 'green' : 'blue'}>engine: {result.engine}</Badge>}
                     <Badge variant="gray">{result.elapsed_ms} ms</Badge>
                   </div>

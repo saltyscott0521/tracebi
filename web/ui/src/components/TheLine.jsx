@@ -8,6 +8,8 @@ import {
 import { buildModelGraph } from './modelGraph'
 import { Verdict } from './Shared'
 import { verdictOf } from '../verdict'
+import { ago, stamp } from '../when'
+import { count } from '../format'
 import { upstreamOf } from '../chain'
 import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel, sourcesPath } from '../nav'
 
@@ -24,27 +26,6 @@ import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel, so
 // A station and a hand-off are drawn by LineNode, which the Map draws its
 // nodes with too: one look for "something you write" (a card) and "what gets
 // handed on" (a pill), wherever the project is drawn.
-
-const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
-const pad = n => String(n).padStart(2, '0')
-
-/** "Oct 8 · 23:19" */
-export function stamp(iso) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  return `${d.toLocaleString('en-US', { month: 'short', day: 'numeric' })} · ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-/** "2 min ago", "3 h ago", else the stamp. */
-export function since(iso) {
-  const ms = Date.now() - Date.parse(iso)
-  if (!(ms >= 0)) return stamp(iso)
-  const min = Math.round(ms / 60000)
-  if (min < 1) return 'just now'
-  if (min < 60) return `${min} min ago`
-  if (min < 24 * 60) return `${Math.round(min / 60)} h ago`
-  return stamp(iso)
-}
 
 /**
  * A name that may break after its underscores (and dots) when the screen is
@@ -147,7 +128,7 @@ export function useLineFacts(model) {
     reports: reportsStation(reports, listed, desk, built, states),
   }
   const pill1 = warehousePill(source, file, detail, warehouse, tables, transform)
-  const pill2 = detail ? { name: plural(detail.measures?.length || 0, 'measure'), sans: true } : null
+  const pill2 = detail ? { name: count(detail.measures?.length || 0, 'measure'), sans: true } : null
   line.hands = [
     { pill: null, tone: '' },
     { pill: pill1, tone: pill1?.kind === 'bad' || pill1?.kind === 'warn' ? 'warn' : '' },
@@ -196,8 +177,8 @@ function sourcesStation(known, up) {
   if (!names.length) return { ...s, flags: [mark('none', 'None named')] }
   s.name = names.join(', ')
   s.fact = [
-    up.connections.length && plural(up.connections.length, 'connection'),
-    up.files.length && plural(up.files.length, 'file'),
+    up.connections.length && count(up.connections.length, 'connection'),
+    up.files.length && count(up.files.length, 'file'),
   ].filter(Boolean).join(' · ')
   return s
 }
@@ -211,7 +192,7 @@ function transformStation(pipelines, t) {
   if (t.running) s.fact = 'Running now'
   else if (t.failed) {
     if (t.goodAt) s.fact = `Last good run ${stamp(t.goodAt)}`
-    s.flags.push(mark('bad', `Failed ${since(t.lastAt)}`))
+    s.flags.push(mark('bad', `Failed ${ago(t.lastAt)}`))
   } else if (t.lastAt) s.fact = `Ran ${stamp(t.lastAt)}`
   else if (t.known) s.flags.push(mark('none', 'Not run yet'))
   return s
@@ -219,12 +200,12 @@ function transformStation(pipelines, t) {
 
 function modelStation(detail, graph) {
   const s = { name: detail?.label || detail?.name, sans: true, flags: [] }
-  if (detail) s.fact = `${plural(detail.tables.length, 'table')} · ${plural(graph.edges.length, 'join')}`
+  if (detail) s.fact = `${count(detail.tables.length, 'table')} · ${count(graph.edges.length, 'join')}`
   return s
 }
 
 function reportsStation(reports, listed, desk, built, states) {
-  const s = { name: reports ? plural(listed.length, 'report') : null, sans: true, flags: [], states }
+  const s = { name: reports ? count(listed.length, 'report') : null, sans: true, flags: [], states }
   if (!desk || !listed.length) return s
   const scheduled = listed.filter(r => r.schedule).length
   s.fact = [built.length && `${built.length} built`, scheduled && `${scheduled} scheduled`].filter(Boolean).join(' · ')
@@ -240,16 +221,16 @@ function warehousePill(source, file, detail, warehouse, tables, transform) {
   const where = file?.storage?.where
   const pill = { name: where ? where.split('/').pop() : source.name, mono: true }
   if (warehouse && warehouse.exists === false) return { ...pill, ...mark('none', 'not built yet') }
-  if (transform.failure) return { ...pill, ...mark('bad', `${plural(transform.failure.failed, 'check')} failed`) }
+  if (transform.failure) return { ...pill, ...mark('bad', `${count(transform.failure.failed, 'check')} failed`) }
   if (tables.some(t => t.contract?.status === 'stale')) {
     return { ...pill, ...mark('warn', "doesn't match its last check") }
   }
   const unchecked = tables.filter(t => (t.contract?.status || 'no_contract') === 'no_contract').length
   if (tables.length && unchecked) {
-    return { ...pill, ...mark('none', unchecked === tables.length ? 'no checks declared' : `${plural(unchecked, 'table')} without checks`) }
+    return { ...pill, ...mark('none', unchecked === tables.length ? 'no checks declared' : `${count(unchecked, 'table')} without checks`) }
   }
   const n = detail ? detail.tables.filter(t => t.connector === source.name).length : 0
-  return n ? { ...pill, sub: plural(n, 'table') } : pill
+  return n ? { ...pill, sub: count(n, 'table') } : pill
 }
 
 // ── The line ─────────────────────────────────────────────────────────────────

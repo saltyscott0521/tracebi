@@ -4,7 +4,8 @@ import { dataPath } from '../nav'
 import { ReactFlow, Background, Controls, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { Badge } from './Shared'
+import { Badge, Chip } from './Shared'
+import { count } from '../format'
 import { StorageLine } from './Storage'
 import { layoutFlow, tracePath, NODE_W } from './lineageFlow'
 
@@ -143,9 +144,9 @@ function Detail({ node }) {
           {d.contract && (
             <Row label="Written by">
               <code>{d.contract.transform}</code>{' '}
-              <Badge variant={d.contract.status === 'satisfied' ? 'gray' : 'amber'}>
-                {d.contract.status === 'satisfied' ? 'sink satisfied its contract' : 'sink changed since'}
-              </Badge>
+              <Chip tone={d.contract.status === 'satisfied' ? '' : 'warn'}>
+                {d.contract.status === 'satisfied' ? 'Sink satisfied its contract' : 'Sink changed since'}
+              </Chip>
             </Row>
           )}
         </>
@@ -154,7 +155,7 @@ function Detail({ node }) {
       {node.kind === 'transform' && (
         <>
           <Row label="Wrote">{(d.tables || []).map(t => <Badge key={t} variant="gray" style={{ marginRight: 4 }}>{t}</Badge>)}</Row>
-          <Row label="Sink">{d.sink} ({d.checks} check{d.checks !== 1 ? 's' : ''})</Row>
+          <Row label="Sink">{d.sink} ({count(d.checks, 'check')})</Row>
           {d.note && (
             <>
               <div style={H}>What the transform states</div>
@@ -188,10 +189,10 @@ function Detail({ node }) {
         <>
           <Row label="Replayable">
             {d.verifiable
-              ? <Badge variant="gray">query-backed</Badge>
-              : <Badge variant="purple">python-derived: cannot be replayed</Badge>}
+              ? <Chip>Query-backed</Chip>
+              : <Chip tone="none">Python-derived: cannot be replayed</Chip>}
           </Row>
-          {d.rows != null && <Row label="Result">{d.rows} row{d.rows !== 1 ? 's' : ''} × {d.columns} column{d.columns !== 1 ? 's' : ''}</Row>}
+          {d.rows != null && <Row label="Result">{count(d.rows, 'row')} × {count(d.columns, 'column')}</Row>}
           {d.query?.fact && <Row label="Fact"><code>{d.query.fact}</code></Row>}
           {d.query?.measures && <Row label="Measures"><code>{d.query.measures.join(', ')}</code></Row>}
           {d.query?.dimensions && <Row label="By"><code>{d.query.dimensions.join(', ')}</code></Row>}
@@ -238,7 +239,7 @@ export function ReportLineage({ flow }) {
       {node
         ? <Detail node={node} />
         : <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 10 }}>
-            {flow.summary.tables} stored table{flow.summary.tables !== 1 ? 's' : ''} · {flow.summary.queries} quer{flow.summary.queries !== 1 ? 'ies' : 'y'} · {flow.summary.figures} figure{flow.summary.figures !== 1 ? 's' : ''}
+            {count(flow.summary.tables, 'stored table')} · {count(flow.summary.queries, 'query', 'queries')} · {count(flow.summary.figures, 'figure')}
           </p>}
       {flow.notes.map(t => (
         <p key={t} style={{ fontSize: 11.5, color: 'var(--muted)', margin: '8px 0 0', maxWidth: '78ch' }}>{t}</p>

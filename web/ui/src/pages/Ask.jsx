@@ -14,6 +14,7 @@ import { CodeFiles } from '../components/CodeView'
 import { PageHeader } from '../components/Scope'
 import { Btn, ErrorDetail, SkeletonCard, Spinner, Verdict, useNarrow, useToast } from '../components/Shared'
 import { askPath, rememberModel } from '../nav'
+import { count } from '../format'
 import { bindingOf, pythonOf, queryLineOf } from '../queryCode'
 import Explore from './Explore'
 import Models from './Models'
@@ -437,7 +438,7 @@ function Answer({ name, label, detail, q, body, result, canKeep }) {
     <section className="ask-answer fade-in" aria-label="The answer">
       <div className="ask-answer__head">
         <h2 className="ask-answer__sentence">
-          {sentence}<span className="ask-answer__rows"> — {result.rows} {result.rows === 1 ? 'row' : 'rows'}</span>
+          {sentence}<span className="ask-answer__rows"> — {count(result.rows, 'row')}</span>
         </h2>
         <Verdict state="not-checked" detail={verdictDetail} />
       </div>

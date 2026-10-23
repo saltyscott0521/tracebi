@@ -1,3 +1,5 @@
+import { stamp } from './when'
+
 // One trust vocabulary. Every page that says whether a report's numbers still
 // hold derives it here, so the library row, the report header, History and
 // the counts cannot disagree. The words are the artifact's chip (tracebi.js
@@ -34,12 +36,6 @@ const CHECKED = {
   error: ['needs-a-look', 'The re-check could not run.'],
 }
 
-const pad = n => String(n).padStart(2, '0')
-function at(iso) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  return `${d.toLocaleString('en-US', { month: 'short', day: 'numeric' })} · ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 
 /**
  * A re-check's verdict string (a desk build, a scheduled run) as `{ state,
@@ -82,14 +78,14 @@ export function verdictOf({ report, build, contracts, checkedAt }) {
   const v = checkedVerdict(build.verdict, build.detail)
   if (v.state === 'does-not-reproduce') return v
   if (sourceChangedSince(report, build)) {
-    return { state: 'needs-a-look', detail: `Source changed since this build: its files were saved ${at(report.last_change)}, the build is from ${at(build.built_at)}.` }
+    return { state: 'needs-a-look', detail: `Source changed since this build: its files were saved ${stamp(report.last_change)}, the build is from ${stamp(build.built_at)}.` }
   }
   if (v.state !== 'reproduces') return v
   const stale = Object.entries(contracts || {}).filter(([, c]) => c?.status === 'stale').map(([t]) => t)
   if (stale.length) {
     return { state: 'needs-a-look', detail: `Checks stale: ${stale.join(', ')} changed since the sink last satisfied its contract.` }
   }
-  return checkedAt ? { ...v, detail: `${v.detail} Checked ${at(checkedAt)}.` } : v
+  return checkedAt ? { ...v, detail: `${v.detail} Checked ${stamp(checkedAt)}.` } : v
 }
 
 /** The verdicts that ask a person to act. */

@@ -3,28 +3,20 @@ import { Link } from 'react-router-dom'
 
 import { useRunLog } from '../api'
 import { reportPagePath } from '../nav'
-import { when } from './Attention'
-import { Badge, Btn, Spinner } from './Shared'
+import { stamp } from '../when'
+import { Btn, Chip, Spinner } from './Shared'
 
-// A pipeline's runs, and the output of the one you pick, as it is printed:
-// every line the steps print, each stamped with the time since the run began.
-// A run still going is followed; a finished one is read from the file it left.
+// A pipeline run's output, as it is printed: every line the steps print, each
+// stamped with the time since the run began. A run still going is followed; a
+// finished one is read from the file it left.
 
 const SHOWN = 3000            // lines drawn; Copy takes all of them
 const LINE = /^(\d\d:\d\d\.\d)  (.*)$/
 
 const STATUS = {
-  running:   { variant: 'amber', label: 'Running' },
-  succeeded: { variant: 'green', label: 'Succeeded' },
-  failed:    { variant: 'red',   label: 'Failed' },
-}
-
-// "12.4s", "1m 04s"; a run still going has no end yet.
-function took(run) {
-  const ms = Date.parse(run.finished_at) - Date.parse(run.started_at)
-  if (!(ms >= 0)) return run.status === 'running' ? '…' : '—'
-  const s = ms / 1000
-  return s < 60 ? `${s.toFixed(1)}s` : `${Math.floor(s / 60)}m ${String(Math.floor(s % 60)).padStart(2, '0')}s`
+  running:   { tone: 'warn', label: 'Running' },
+  succeeded: { tone: '',     label: 'Succeeded' },
+  failed:    { tone: 'bad',  label: 'Failed' },
 }
 
 // Who ran it, and from where: a run from the command line says so.
@@ -60,35 +52,11 @@ function Lines({ text }) {
 
 function RunStatus({ status }) {
   const shown = STATUS[status]
-  if (!shown) return <Badge variant="gray">…</Badge>
+  if (!shown) return <Chip tone="none">…</Chip>
   return (
-    <Badge variant={shown.variant}>
-      {shown.variant === 'amber' && <><Spinner size={10} />{' '}</>}{shown.label}
-    </Badge>
-  )
-}
-
-/** The pipeline's runs, newest first, from the app and the command line alike. */
-export function RunList({ runs, runId, onPick }) {
-  return (
-    <ul className="runlist" aria-label="Runs">
-      {runs.map(r => {
-        const selected = r.run_id === runId
-        return (
-          <li key={r.run_id}>
-            <button type="button" onClick={() => onPick(r.run_id)}
-              aria-current={selected ? 'true' : undefined}
-              className={selected ? 'runlist__row' : 'runlist__row list-item-hover'}>
-              <span><RunStatus status={r.status} /></span>
-              <span>{when(r.started_at) || '—'}</span>
-              <span className="runlist__took">{took(r)}</span>
-              <span className="runlist__by">{byWhom(r)}</span>
-              <span className="runlist__steps">{r.layers.join(' → ')}</span>
-            </button>
-          </li>
-        )
-      })}
-    </ul>
+    <Chip tone={shown.tone}>
+      {shown.tone === 'warn' && <><Spinner size={10} />{' '}</>}{shown.label}
+    </Chip>
   )
 }
 
@@ -134,7 +102,7 @@ export default function RunLog({ pipeline, runs, runId, onDone }) {
         <div className="runlog__bar">
           <RunStatus status={log.status || run?.status} />
           <span className="runlog__meta">
-            {run ? `started ${when(run.started_at) || '—'} · ${byWhom(run)}` : ''}
+            {run ? `started ${stamp(run.started_at) || '—'} · ${byWhom(run)}` : ''}
           </span>
           <span style={{ marginLeft: 'auto' }}>
             <Btn size="sm" variant="outline" onClick={copy} disabled={!log.text}>{copied ? 'Copied' : 'Copy'}</Btn>

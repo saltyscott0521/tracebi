@@ -439,17 +439,26 @@ export const useDimensionValues = (model, refs, enabled) =>
   })
 
 // Shared run store. kind and target are the API's own filters (exact match).
-export const useRuns = (kind, target) =>
-  useQuery({
-    queryKey: ['runs', kind || '', target || ''],
-    queryFn: () => {
-      const params = new URLSearchParams()
-      if (kind) params.set('kind', kind)
-      if (target) params.set('target', target)
-      const q = params.toString()
-      return get('/runs' + (q ? `?${q}` : ''))
+// *kind* is one store kind or several (History's "Data refreshes" is two): each
+// is asked for on its own, so each keeps the store's newest 50, then merged.
+export const useRuns = (kind, target) => {
+  const kinds = [kind || ''].flat().filter(Boolean)
+  return useQuery({
+    queryKey: ['runs', kinds.join(','), target || ''],
+    queryFn: async () => {
+      const one = k => {
+        const params = new URLSearchParams()
+        if (k) params.set('kind', k)
+        if (target) params.set('target', target)
+        const q = params.toString()
+        return get('/runs' + (q ? `?${q}` : ''))
+      }
+      if (kinds.length < 2) return one(kinds[0])
+      const lists = await Promise.all(kinds.map(one))
+      return lists.flat().sort((a, b) => b.id - a.id)
     },
   })
+}
 
 // Drafts: what an agent (or a person) is writing before it is published. A
 // draft's path may hold slashes, so each part is encoded like a report's.

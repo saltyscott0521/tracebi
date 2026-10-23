@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { label as pointLabel } from '../pointMode'
 import { summarize } from '../buildTimeline'
 import { useLeaveNote, useProjectFeed } from '../api'
-import { Btn, pressable } from './Shared'
+import { Btn, Time, pressable } from './Shared'
 
 // The builder's side of the loop, next to the report: what you are pointing at,
 // the data the report reads and the checks on it, the pins and notes you have
@@ -41,8 +41,6 @@ function Pointing({ pointed, onClear }) {
   )
 }
 
-const clock = at => new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })
-
 // What each edit did, newest first. Pick a version to see the report as it was
 // then; the latest is live.
 function Timeline({ timeline }) {
@@ -54,7 +52,7 @@ function Timeline({ timeline }) {
                <p className="wb-empty">When your agent changes the report, what changed appears here.</p>)}>
       {viewed && (
         <div className="wb-viewing" role="status">
-          Showing the version from {clock(viewed.at)}.{' '}
+          Showing the version from <Time iso={viewed.at} />.{' '}
           <button type="button" className="wb-link" onClick={() => view(null)}>Back to latest</button>
         </div>
       )}
@@ -68,7 +66,7 @@ function Timeline({ timeline }) {
                aria-current={on ? 'true' : undefined}>
             <div className="wb-item__head">
               <span>{text}</span>
-              <span className="wb-meta">{clock(v.at)}{v.id === latest ? ' · latest' : ''}</span>
+              <span className="wb-meta"><Time iso={v.at} />{v.id === latest ? ' · latest' : ''}</span>
             </div>
           </div>
         )
