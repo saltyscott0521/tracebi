@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Callable, Optional
@@ -77,6 +78,17 @@ class RunStore:
         self._pool = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="tracebi-run"
         )
+        self._pending: set = set()
+        self._pending_lock = threading.Lock()
+
+    def settle(self) -> None:
+        """Wait for every run started so far to finish. A test's teardown
+        calls it: a run still rendering would read the registries the next
+        test owns, and hold its warehouse open."""
+        with self._pending_lock:
+            waiting = list(self._pending)
+        for future in waiting:
+            future.result()
 
     def start(self, kind: str, name: str, fn: Callable[[], dict]) -> dict:
         """Submit ``fn`` and return the new run record. The row exists before return."""
@@ -85,8 +97,15 @@ class RunStore:
         started = _now()
         with install_extra("web"):
             run_id = record_run(kind=kind, target=name, status="running", started=started)
-            self._pool.submit(self._execute, run_id, fn)
+            future = self._pool.submit(self._execute, run_id, fn)
+            with self._pending_lock:
+                self._pending.add(future)
+            future.add_done_callback(self._settled)
             return _api(get_run(run_id), with_result=True)
+
+    def _settled(self, future) -> None:
+        with self._pending_lock:
+            self._pending.discard(future)
 
     def _execute(self, run_id: int, fn: Callable[[], dict]) -> None:
         from tracebi.state import install_extra, update_run
