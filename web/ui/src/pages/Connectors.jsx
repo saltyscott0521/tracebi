@@ -4,11 +4,12 @@ import { useConnectors, useConnectorTables, useInputs, usePipelines } from '../a
 import { StorageLine, sourceKind, fmtBytes } from '../components/Storage'
 import { useModelLabel } from '../components/Scope'
 import CodeView from '../components/CodeView'
-import { stamp } from '../components/TheLine'
+import Credentials from '../components/Credentials'
+import { stamp } from '../when'
 import { feedsModel, upstreamOf } from '../chain'
 import { dataPath, pipelineModels, sourcesPath, warehousePath } from '../nav'
 import {
-  Card, CardTitle, Badge, Btn, ErrorDetail, Spinner,
+  Card, CardTitle, Badge, Btn, BtnLink, ErrorDetail, Spinner,
   Empty, ListItem, SplitLayout, SearchInput, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
@@ -74,7 +75,10 @@ function Tables({ name }) {
     )
   }
   if (!data.tables) return <p className="src-quiet">{data.reason}</p>
-  if (!data.tables.length) return <p className="src-quiet">It holds no tables.</p>
+  // TraceBi's own tables (the state store's) are never listed as data.
+  const n = data.hidden_framework_tables || 0
+  const hidden = n > 0 && <p className="src-quiet" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">{n} framework {n === 1 ? 'table' : 'tables'} hidden</p>
+  if (!data.tables.length) return <><p className="src-quiet">It holds no tables.</p>{hidden}</>
   return (
     <div className="src-tables">
       {data.tables.map(t => (
@@ -91,6 +95,7 @@ function Tables({ name }) {
           </ul>
         </details>
       ))}
+      {hidden}
     </div>
   )
 }
@@ -107,7 +112,7 @@ function ConnectorDetail({ c }) {
     <Card className="fade-in">
       <CardTitle action={(
         <span style={{ display: 'inline-flex', gap: 6 }}>
-          {isWarehouse && <Link className="btn src-open" to={`${warehousePath()}#wh-${c.name}`}>Open in Warehouse</Link>}
+          {isWarehouse && <BtnLink size="sm" to={`${warehousePath()}#wh-${c.name}`}>Open in Warehouse</BtnLink>}
           <Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>
         </span>
       )}>{c.name}</CardTitle>
@@ -115,6 +120,7 @@ function ConnectorDetail({ c }) {
         <Badge variant="gray" style={{ textTransform: 'none' }} title={c.type}>{sourceKind(c)}</Badge>
       </div>
       <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
+      <Section label="Connection"><Credentials connection={c} /></Section>
       <Section label="Read by"><ReadBy c={c} /></Section>
       <Section label="Tables"><Tables name={c.name} /></Section>
       {code && <div style={{ marginBottom: 18 }}><CodeView kind="connectors" name={c.name} /></div>}

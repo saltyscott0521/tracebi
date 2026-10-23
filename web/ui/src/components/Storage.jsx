@@ -1,4 +1,4 @@
-import { Badge } from './Shared'
+import { Badge, Chip } from './Shared'
 
 // Where a connector's data physically lives: a file, a folder, a database,
 // a cloud warehouse, or memory. The model file is code; this is the data.
@@ -37,9 +37,9 @@ export function StorageLine({ storage }) {
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <code style={{ fontSize: 12 }}>{storage.where}</code>
       {missing && (
-        <Badge variant="amber" title="Nothing at this location yet. Run the transform or pipeline that writes it.">
-          not built yet
-        </Badge>
+        <Chip tone="warn" title="Nothing at this location yet. Run the transform or pipeline that writes it.">
+          Not built yet
+        </Chip>
       )}
       {storage.exists === true && storage.size != null && <Badge variant="gray">{fmtBytes(storage.size)}</Badge>}
     </span>

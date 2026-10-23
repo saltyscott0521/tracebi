@@ -54,6 +54,7 @@
 <a href="../reference/app-jsx.html">app.jsx — the React lane</a>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/measures.html">Measures</a>
@@ -67,12 +68,14 @@
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
 <a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -80,6 +83,7 @@
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
 <a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -182,8 +186,10 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.</p
 </tr>
 </tbody>
 </table>
-<p>The warehouse is one file, <code>data/warehouse.duckdb</code>: phase ① writes it and phase
-② reads it, so the two can run in separate processes. <code>output/</code> holds what
+<p>The warehouse is one per project, declared in <code>tracebi.yaml</code> (by default one
+file, <code>data/warehouse.duckdb</code>): every transform sinks into it and every model
+reads it (<code>type: warehouse</code>), so phase ① and phase ② can run in separate
+processes. <code>output/</code> holds what
 <code>tracebi report build</code> renders. Both folders are gitignored except the
 <code>*.manifest.json</code> traces inside them, which stay tracked as the audit trail
 behind every rendered number.</p>
@@ -196,6 +202,12 @@ tracebi serve                   # browse it: portfolio_model → Reports → por
 <code>inputs/</code>, so phase ① has real work to do: prose position descriptions to parse
 into issuers, trailing position counters to strip, sectors spelled six ways,
 money stored as strings.</p>
+<p>Its three models follow the same conventions and share the one warehouse its
+<code>tracebi.yaml</code> names. <code>holdings_transform.sql</code> and <code>saas_transform.sql</code> are SQL
+with a <code>.contract.yaml</code> beside each; <code>affordability_transform.py</code>, which follows
+each home buyer year by year, is the pandas escape hatch and declares its
+contract in a <code>with contract(...)</code> block. Every table on the Warehouse tab reads
+"Checks passed", or an honest failure.</p>
 <h2 id="exploring-before-a-report-exists">Exploring before a report exists</h2>
 <p><code>tracebi dev</code> with no report name opens the app's Data page with the
 <strong>project feed</strong>. Any script run while it's open can call

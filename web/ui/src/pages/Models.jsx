@@ -13,7 +13,7 @@ import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
 import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 import {
-  Card, Badge, Spinner, Empty, SkeletonList, SkeletonCard, useNarrow,
+  Card, Badge, Spinner, Empty, ExportCsv, SkeletonList, SkeletonCard, useNarrow,
 } from '../components/Shared'
 
 // ── Table Preview ─────────────────────────────────────────────────────────────
@@ -38,9 +38,7 @@ function TablePreview({ modelName, tableName }) {
         </Badge>
         <Badge variant="gray">{data.columns.length} cols</Badge>
         <span style={{ flex: 1 }} />
-        <a href={tableCsvUrl(modelName, tableName)} download className="dl-link">
-          ↓ CSV {showingAll ? '' : '(all rows)'}
-        </a>
+        <ExportCsv href={tableCsvUrl(modelName, tableName)} title={showingAll ? undefined : 'Every row of the table, not only these'} />
       </div>
       <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--border)' }}>
         <table>
@@ -116,7 +114,7 @@ function ERDTableNode({ data }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{
-            fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
+            fontSize: 10, fontWeight: 600,
             padding: '1px 7px', borderRadius: 20,
             background: 'var(--surface)', color: rs.accent, border: `1px solid color-mix(in srgb, ${rs.accent} 23%, transparent)`,
           }}>{rs.label}</span>
@@ -270,7 +268,7 @@ function MeasuresTable({ measures }) {
   if (!measures.length) return <Empty message="This model declares no named measures." />
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table>
+      <table className="tb-list">
         <thead><tr><th>Measure</th><th>What it is</th><th>Defined as</th><th>Format</th></tr></thead>
         <tbody>
           {measures.map(m => (
@@ -295,7 +293,18 @@ function MeasuresTable({ measures }) {
 // A model's tables point at connectors; a connector says where the data is.
 // The model file (Python) only declares meaning: which table is a fact, what
 // joins to what, what a measure is. Nothing is stored in it.
-function ModelStorage({ details, tables }) {
+// TraceBi's own tables (the state store's) are never listed as data, even
+// when a model names one; the server leaves them out and counts them.
+function FrameworkHidden({ n }) {
+  if (!(n > 0)) return null
+  return (
+    <p className="wb-meta" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">
+      {n} framework {n === 1 ? 'table' : 'tables'} hidden
+    </p>
+  )
+}
+
+function ModelStorage({ details, tables, hidden }) {
   if (!details.length) return <Empty message="This model declares no connector, so its tables have no data behind them." />
   return (
     <div>
@@ -327,6 +336,7 @@ function ModelStorage({ details, tables }) {
           )
         })}
       </div>
+      <FrameworkHidden n={hidden} />
     </div>
   )
 }
@@ -349,7 +359,6 @@ export function ModelDetail({ name, action }) {
   if (!name) return (
     <Card>
       <Empty
-        icon="⬡"
         message="Select a model to read its file, grain, measures, tables, and connectors."
       />
     </Card>
@@ -394,7 +403,7 @@ export function ModelDetail({ name, action }) {
       {active === 'Tables' && (
         <div>
           <div style={{ overflowX: 'auto' }}>
-            <table>
+            <table className="tb-list">
               <thead><tr><th>Table</th><th>Stored in</th><th>Source table</th><th></th></tr></thead>
               <tbody>
                 {data.tables.map(t => (
@@ -420,6 +429,7 @@ export function ModelDetail({ name, action }) {
               </tbody>
             </table>
           </div>
+          <FrameworkHidden n={data.hidden_framework_tables} />
           {previewTable && (
             <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
@@ -436,7 +446,7 @@ export function ModelDetail({ name, action }) {
           ? <Empty message="No joins declared. Give a fact its foreign_keys, or call add_relationship." />
           : (
             <div style={{ overflowX: 'auto' }}>
-              <table>
+              <table className="tb-list">
                 <thead><tr><th>From</th><th>To</th><th>Keys</th><th>Shape</th><th>Declared with</th></tr></thead>
                 <tbody>
                   {graph.edges.map(e => (
@@ -458,7 +468,7 @@ export function ModelDetail({ name, action }) {
 
       {active === 'Measures' && <MeasuresTable measures={data.measures || []} />}
 
-      {active === 'Storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} />}
+      {active === 'Storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} hidden={data.hidden_framework_tables} />}
       {active === 'Code' && <CodeView kind="models" name={name} />}
 
       {active === 'Diagram' && (
@@ -507,7 +517,7 @@ export default function Models({ pageKey = 'data' }) {
       <PageHeader pageKey={pageKey} model=""
         sub={pageKey === 'ask' ? 'Ask asks one model at a time. Pick one.' : undefined} />
       {isLoading ? <SkeletonList /> : models.length === 0 ? (
-        <Empty icon="⬡" message="No models yet. Create one with tracebi new-model, in models/." />
+        <Empty message="No models yet. Create one with tracebi new-model, in models/." />
       ) : (
         <div className="model-cards">
           {models.map((m, i) => {

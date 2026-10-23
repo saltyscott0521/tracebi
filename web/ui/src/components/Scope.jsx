@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
 import { useModels, useReports } from '../api'
 import { page, whereAmI, rememberModel, reportModels, openedReport, movedTo } from '../nav'
-import { PageTitle, PageSub, SkeletonCard, Empty } from './Shared'
+import { PageTitle, PageSub, SkeletonCard, Empty, BtnLink } from './Shared'
 
 /** The place, and on Data the model and tab, the URL names. */
 export function useScope() {
@@ -91,7 +91,7 @@ export function NotForYou({ role }) {
     <>
       <PageTitle>This part of the app is for {role === 'admin' ? 'admins' : 'analysts'}.</PageTitle>
       <PageSub>You can read reports and ask questions.</PageSub>
-      <Link to="/" className="btn">Go to the reports</Link>
+      <BtnLink to="/" variant="primary">Go to the reports</BtnLink>
     </>
   )
 }
@@ -102,7 +102,7 @@ export function NotFound() {
       <PageTitle>Page not found</PageTitle>
       <PageSub>There is nothing at this address. It may be an old link.</PageSub>
       <Empty message="Start from the reports, or search with ⌘K."
-             action={<Link to="/" className="btn">Go to the reports</Link>} />
+             action={<BtnLink to="/" variant="primary">Go to the reports</BtnLink>} />
     </>
   )
 }

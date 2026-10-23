@@ -4,6 +4,7 @@ import { useConnectorWarehouse } from '../../api'
 import { Flag, LineNode } from '../TheLine'
 import { Verdict } from '../Shared'
 import { NEVER, splitGlyph, tableLive, warehouseState } from './states'
+import { count } from '../../format'
 import './map.css'
 
 // Draws a layout: edges in one SVG layer, nodes as absolutely positioned HTML
@@ -68,7 +69,7 @@ function WarehouseNode({ node, onActivate }) {
 function TableNode({ node, onActivate }) {
   const { data } = useConnectorWarehouse(node.connector)
   const { rows, state } = tableLive(data, node.source)
-  const counted = rows == null ? '' : `${rows.toLocaleString()} ${rows === 1 ? 'row' : 'rows'}`
+  const counted = rows == null ? '' : count(rows, 'row')
   return <MapNode node={node} label={state ? state.label : counted} tone={state?.tone || (node.lit ? 'hot' : 'quiet')} onActivate={onActivate} />
 }
 

@@ -262,11 +262,14 @@ pip install -e ".[all]"               # everything
 ### Docker / deployment
 
 The repo ships a multi-stage `Dockerfile` (builds the React UI, then the
-Python app) and a `docker-compose.yml` that mounts the project's `output/` and
-`scheduled/` folders from the host, so report builds and their traces are
+Python app) and a `docker-compose.yml` that serves one project, the reference
+project `examples/portfolio_project`, and nothing beside it: `TRACEBI_APP` is
+unset, so the bundled demo app (opt-in with `TRACEBI_APP=tracebi.web.demo_app`)
+is never served next to a project. The project's `output/` and `scheduled/`
+folders are mounted from the host, so report builds and their traces are
 ordinary files you can browse and back up, and survive container restarts. The
 app runs as uid 10001; a one-shot `output-perms` service makes the output
-folder writable by it. The pipeline DB lives in the Postgres `pgdata` volume.
+folder writable by it. The warehouse lives in the `warehouse` volume.
 
 ```bash
 # Local: web UI on http://localhost:8000
@@ -277,29 +280,27 @@ The stack is three services, one per deployment plane:
 
 | Service | Plane | Does |
 |---|---|---|
-| `db` | state | Postgres. Medallion tables **and** pipeline run history, surviving restarts. |
-| `seed` | execution | Runs the pipeline once, then exits. The only service that writes. |
-| `app` | serving | FastAPI + React on `:8000`. Reads. |
+| `db` | state | Postgres. On its first start it creates `crm`, a standing mock CRM database loaded once from `inputs/seed_crm.sql`, and `tracebi_state` for the run store (`docker/postgres-init.sql`). Both persist on the `pgdata` volume. |
+| `seed` | execution | Runs the reference project's three pipelines once (each transform, then its reports), so the portfolio transform reads the CRM; then exits. It never writes the CRM. |
+| `app` | serving | FastAPI + React on `:8000`, over the warehouse `seed` wrote. Starting a web process does no batch work. |
 
-Because `TRACEBI_DEMO_DB_URL` points at Postgres, importing the app module in
-`app` *defines* layers without executing any — starting a web process does no
-batch work. Re-run the pipeline without restarting the API:
+`TRACEBI_CRM_URL` points `connections/crm.yaml` at the `crm` database. Re-run a
+model's pipeline without restarting the API with **Refresh data** on the model,
+or:
 
 ```bash
-docker compose run --rm seed
+docker compose exec app tracebi run-pipeline portfolio_model
 ```
 
-Postgres is published on `:5432`, so the execution plane can equally be driven
-from the host by cron, CI, or `tracebi run-pipeline`. That is the shape a real
-deployment takes, and it is why the compose file is worth reading even if you
-deploy elsewhere. See NOTES.md, "Deployment planes".
+Postgres is published on `:5432`, so the CRM can be inspected, and the
+execution plane driven, from the host by cron, CI, or `tracebi run-pipeline`.
+That is the shape a real deployment takes, and it is why the compose file is
+worth reading even if you deploy elsewhere. See NOTES.md, "Deployment planes".
 
 Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
 
 | Variable | Purpose |
 |---|---|
-| `TRACEBI_APP` | Python module to import on startup (default `tracebi.web.demo_app`) |
-| `TRACEBI_DEMO_DB_URL` | Any SQLAlchemy URL. Set → definitions only, no execution at import. Unset → ephemeral SQLite that seeds itself. |
 | `POSTGRES_PASSWORD` | Local compose Postgres password (default `tracebi`) |
 | `POSTGRES_PORT` | Host port for the compose Postgres (default `5432`). Set it if you already run Postgres locally: `POSTGRES_PORT=55432 docker compose up`. |
 | `TRACEBI_MODELS_DIR` | Folder scanned for model definitions (default `models`) |
@@ -837,7 +838,7 @@ except ImportError:
 ## Local database setup (example)
 
 ```bash
-# Create data/tracebi.db, seed source tables, run initial Bronze load
+# Create data/seed.db, seed source tables, run initial Bronze load
 python examples/seeds/seed_db.py
 
 # Run Silver

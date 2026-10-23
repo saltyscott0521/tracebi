@@ -331,23 +331,6 @@ code {
   white-space: pre;
 }
 
-/* Download links (report Excel/HTML, table CSV) */
-.dl-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 5px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--blue-br);
-  background: var(--blue-lt);
-  color: var(--accent-text);
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background var(--t), color var(--t);
-}
-.dl-link:hover { background: rgba(9,26,85,.16); color: var(--blue-md); }
-
 /* Tables */
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead tr { background: var(--surface-2); }
@@ -624,25 +607,9 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .runlog-wrap { position: relative; }
 .runlog__bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .runlog__meta { font-size: var(--text-sm); color: var(--muted); }
-.runlist {
-  list-style: none; margin: 0 0 12px; padding: 0; max-height: 220px; overflow-y: auto;
-  border: 1px solid var(--border); border-radius: 8px;
-}
-.runlist li + li { border-top: 1px solid var(--border); }
-.runlist__row {
-  display: grid; grid-template-columns: 96px 110px 64px 150px minmax(0, 1fr); align-items: center; gap: 12px;
-  width: 100%; padding: 8px 14px; border: 0; border-left: 2px solid transparent; background: transparent;
-  font: inherit; font-size: var(--text-sm); text-align: left; color: var(--text-2); cursor: pointer;
-}
-.runlist__row[aria-current="true"] { background: var(--blue-lt); border-left-color: var(--blue); color: var(--text); }
-.runlist__took { font-variant-numeric: tabular-nums; }
-.runlist__by { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.runlist__steps { font-family: var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 768px) {
-  .runlist__row { grid-template-columns: auto 1fr auto; gap: 4px 12px; padding: 10px 14px; }
-  .runlist__took { text-align: right; }
-  .runlist__by, .runlist__steps { grid-column: 1 / -1; }
-}
+/* The Transform tab's latest run, folded under its views (the page's Runs tab lists every run). */
+.pipe-run { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.pipe-run > summary { cursor: pointer; margin-bottom: 10px; font-size: var(--text-caption); font-weight: 600; color: var(--text); }
 .runlog__reports {
   display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-top: 12px;
   font-size: var(--text-sm); color: var(--muted);
@@ -935,14 +902,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   font-size: var(--text-xs); color: var(--muted);
 }
 
-.btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 8px 14px; border-radius: var(--radius);
-  font-size: var(--text-caption); font-weight: 600; text-decoration: none;
-  color: var(--accent-text); background: var(--blue-lt); border: 1px solid var(--blue-br);
-}
-.btn:hover { background: var(--card-hl); }
-
 /* ── Keyboard focus: always visible, on every surface ───────────────────────
    One ring for the whole app; a component overrides it only to move it. */
 
@@ -1031,9 +990,14 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   font: inherit; font-size: var(--text-caption); color: var(--text);
   background: var(--card); border: 1px solid var(--border-strong);
 }
-.runs-table { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); border-collapse: separate; border-spacing: 0; }
-.runs-table td { border-top: 1px solid var(--border); }
-.runs-table tbody tr { border-bottom: 0; }
+/* A list of things (runs, steps, measures, joins, a table's columns): one look
+   wherever it sits, a card of rows on the page's ground and plain rows inside a
+   surface that is already one. Rows of data are another thing (the data grid)
+   and keep the bare table. */
+.tb-list { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); border-collapse: separate; border-spacing: 0; }
+.tb-list td { border-top: 1px solid var(--border); }
+.tb-list tbody tr { border-bottom: 0; }
+.surface .tb-list { background: none; border: 0; border-radius: 0; }
 .runs__day {
   position: sticky; top: 0; z-index: 1; margin: 0; padding: 7px 14px; text-align: left;
   background: var(--surface); color: var(--text-2); border-top: 1px solid var(--border);
@@ -1063,6 +1027,7 @@ a.runs-card__body:hover { background: var(--card-hl); }
    An unfolded older run is indented under its newest; an empty cell's dash is
    quieter than any text. */
 .runs__show { margin: 0; align-self: flex-end; }
+.runs__only { display: flex; align-items: center; gap: 10px; align-self: flex-end; margin: 0; font-size: var(--text-caption); color: var(--text-2); }
 .runs-older {
   appearance: none; display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 0 4px;
   border: 0; border-radius: 4px; background: transparent; cursor: pointer;
@@ -1268,6 +1233,7 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .verdict--local { color: var(--blue); }
 .verdict--sm { padding: 0 7px; font-size: var(--text-xs); gap: 5px; }
 .chip--warn { color: var(--amber-text); }
+.chip--bad { color: var(--red-text); }
 .chip--none::before { background: transparent; border: 1px solid currentColor; }
 button.verdict { cursor: pointer; }
 button.verdict:hover { border-color: currentColor; }
@@ -1553,13 +1519,7 @@ button.rp__item:disabled { opacity: .5; cursor: default; }
 .rpanel__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 0 18px; }
 .rpanel__title { margin: 0; font-size: var(--text-base); font-weight: 600; }
 .rpanel__tabs { display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border); }
-.rpanel__tablist { display: flex; gap: 2px; flex: 1; }
-.rpanel__tab {
-  appearance: none; height: 40px; padding: 0 10px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: transparent;
-  color: var(--muted); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer;
-}
-.rpanel__tab:hover { color: var(--text); }
-.rpanel__tab[aria-selected="true"] { color: var(--text); font-weight: 600; border-bottom-color: var(--blue); }
+.rpanel__tabs .seg { margin: 8px 0 10px; }
 .rpanel__body { flex: 1; overflow-y: auto; }
 .rpanel__sec { padding: 16px 18px; border-bottom: 1px solid var(--border); }
 .rpanel__sec:last-child, .rpanel__sec--last { border-bottom: 0; }
@@ -1640,7 +1600,7 @@ button.rp__item:disabled { opacity: .5; cursor: default; }
   appearance: none; min-height: 32px; padding: 0 14px; border: 1px solid transparent; border-radius: 8px; cursor: pointer;
   background: transparent; color: var(--text-2); font: inherit; font-size: var(--text-caption); font-weight: 600;
 }
-.seg button[aria-pressed="true"] { background: var(--card); color: var(--text); border-color: var(--border); }
+.seg button[aria-pressed="true"], .seg button[aria-selected="true"] { background: var(--card); color: var(--text); border-color: var(--border); }
 
 .dlist { margin: 0; padding: 0; list-style: none; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 .dlist > li + li { border-top: 1px solid var(--border); }
@@ -1709,7 +1669,6 @@ a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
 .src-files li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
 .src-files li:first-child { border-top: 0; }
 .src-files__by { flex-basis: 100%; font-size: var(--text-sm); color: var(--text-2); }
-.src-open { padding: 4px 12px; }
 
 /* Data's Warehouse: one section per warehouse, a row per table. */
 .whs { margin-bottom: 28px; scroll-margin-top: 72px; }

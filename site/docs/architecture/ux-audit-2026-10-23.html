@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX and UI audit, pass 3 — 2026-10-23 — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Counts: 2 P0, 20 P1, 32 P2.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
+<a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a class="on" href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="ux-and-ui-audit-pass-3-2026-10-23">UX and UI audit, pass 3 — 2026-10-23</h1>
+<p><strong>Status: findings and a plan of eight packages, for execution.</strong> Taken from
+<code>7034845</code> (Navigation v3 merged): a fresh UI build, the reference project
+rebuilt with <code>run_workflow.py</code> (CRM unset, so the committed snapshot stood in),
+and the demo app (<code>TRACEBI_APP=tracebi.web.demo_app</code>) served beside it. Every
+place, tab and panel captured at 1440 and 390, light and dark, as admin; the
+viewer and analyst tiers through proxy-header auth; <code>scripts/ui_audit.py</code>
+against the committed baseline (score 58 → 72, 6 fixed, 1 new: the
+<code>Never built</code> chip's tap target on an open report). Zero console errors in
+any context. Earlier passes: <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>, <a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>;
+open items in <a href="../architecture/ui-backlog.html">UI backlog</a>; the bar in <a href="../architecture/ui-quality.html">The UI quality bar</a>; the frame in
+<a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>.</p>
+<p>The owner asked for consistency, readability, navigation, buttons, every
+workflow, and above all <strong>the explorer</strong>: looking at the tables in a
+connection, the warehouse and a model.</p>
+<h2 id="verdict">Verdict</h2>
+<p><strong>The frame is right; the explorer is a catalogue, not an explorer.</strong> Nav v3
+holds: five places, the chain left to right, role tiers, a report page that
+is the report. But at the point where a person wants to <em>look at data</em>, the
+app shows names and counts and stops. Of the three places a table appears,
+only a model's Tables tab shows any rows (the first 50, read by loading the
+whole table into pandas), with no sort, search, filter, paging or address.
+The warehouse shows a column profile and no rows. A connection shows column
+names and no rows. A table has no page, so it cannot be linked, found in ⌘K,
+or followed from the warehouse to the reports that use it. And on the demo
+app the connection explorer lists the app's own state store (sessions, OAuth
+tokens, run history) as if it were data: that is the one P0.</p>
+<p>Around the explorer, the parts have drifted: four tab styles, two status
+chips, seven date formats, three type vocabularies for one column. None is
+large; together they are what makes the Data place read as several tools.</p>
+<p><strong>Counts: 2 P0, 20 P1, 32 P2.</strong></p>
+<h2 id="findings">Findings</h2>
+<p>Severity: <strong>P0</strong> blocks a workflow or exposes what must not be shown,
+<strong>P1</strong> hurts every day, <strong>P2</strong> polish. File references are to <code>web/ui/src/</code>
+unless they start with <code>tracebi/</code> or <code>examples/</code>.</p>
+<h3 id="1-workflows-end-to-end">1. Workflows end to end</h3>
+<ol>
+<li><strong>P0 — The demo's connection explorer lists the app's state store as
+   data.</strong> <code>/data/sources?source=demo_db</code> (phone and desktop) lists
+   <code>tracebi_sessions</code>, <code>tracebi_oauth_tokens</code>, <code>tracebi_oauth_codes</code>,
+   <code>tracebi_code_requests</code>, <code>tracebi_runs</code>, <code>tracebi_layers</code>, <code>tracebi_facts</code>,
+   <code>alembic_version</code> beside <code>orders_raw</code> and <code>gold_revenue_by_region</code>.
+   Reproduced locally with no <code>TRACEBI_STATE_URL</code>: <code>PipelineRunner(db_url=_DB_URL)</code>
+   (<code>tracebi/web/demo_app/pipeline.py:139</code>, <code>wealth_pipeline.py:61</code>) gives the
+   runner the <em>data</em> database, and the runner migrates the whole state schema
+   into it (sessions and OAuth tables included). On tracebi.com
+   <code>TRACEBI_STATE_URL</code> evidently points at the same Postgres, so live session
+   rows sit in a browsable connection. The older medallion seed does the same
+   by design: <code>examples/seeds/seed_db.py:36</code> writes demo data to
+   <code>data/tracebi.db</code>, the state store's default path (<code>tracebi/state.py:56</code>),
+   and registers it as the <code>tracebi_db</code> connector. Should be: the runner keeps
+   its tables in the state store; demo data lives in its own database; and
+   no explorer ever shows a framework-owned table (<code>tracebi_*</code>,
+   <code>alembic_version</code>) as data, whatever a connector points at
+   ("3 framework tables hidden").</li>
+<li><strong>P0 — The same listing is the explorer's only defence</strong>: nothing in
+   <code>tracebi/sources.py:166-183</code> (<code>connection_tables</code>),
+   <code>tracebi/workbench.py:1210</code> (<code>_warehouse_tables</code>) or the model routes
+   filters by owner. A user who points <code>connections/x.yaml</code> at the state
+   store (a plausible first try: "show me my runs") gets the same exposure on
+   any project. Closed by the same package.</li>
+<li><strong>P1 — The reference project's first run opens on nine "Never built"
+   reports.</strong> <code>run_workflow.py</code> ends "Serve it on the front end", but it
+   renders <code>data/portfolio_dashboard.html</code> outside the app's build path, so
+   the library, the stations ("6 never built") and every report page say
+   never built. Should be: the workflow builds through <code>tracebi report build</code>
+   (the app's path) so the library opens built and green.</li>
+<li><strong>P1 — Stations say "Not run yet" next to tables written minutes ago.</strong>
+   Data's Models tab reads "Not refreshed yet" (<code>pages/Data.jsx:20-28</code>) and
+   the Transform station "○ Not run yet" (<code>components/TheLine.jsx</code>), while the
+   Warehouse tab says "Written by holdings_transform · Oct 23 · 11:35". The
+   run store has no row for a transform run outside the app (<code>run_workflow</code>,
+   <code>tracebi run-transform</code>); the certificate does. Should be: fall back to
+   the certificate's time, "Written 11:35 · outside the app".</li>
+<li><strong>P1 — Review › Attention says "Nothing needs attention"</strong> on a project
+   whose nine reports have never been built (<code>components/Attention.jsx</code>).
+   The first thing to do on a fresh project is nowhere. Should list
+   "9 reports have never been built" with one Build all.</li>
+<li><strong>P1 — A viewer meets instructions they cannot follow.</strong> The library's
+   My published folder: "Publish a draft to My published from Review"
+   (<code>pages/Reports.jsx:975</code>) — a viewer has no Review and cannot publish. A
+   never-built report shows the viewer an empty card with nothing to do
+   (<code>pages/Reports.jsx:520-531</code>; Build is analyst+). Should be: no My
+   published for a role that cannot publish; "Not built yet. An analyst or
+   admin builds it." for a viewer.</li>
+<li><strong>P2 — The forbidden page tells an analyst "You can read reports and ask
+   questions"</strong> (<code>components/Scope.jsx:93</code>), omitting Review. Say what this
+   role can do.</li>
+<li><strong>P2 — Share and About this build show on a never-built report</strong>
+   (<code>pages/Reports.jsx</code> bar): a link to nothing and a panel of dashes.</li>
+<li><strong>P2 — Ask, Verify, drafts, the report reader, the 404 and the
+   <code>movedTo</code> redirects all held up</strong> (the redirect table is pinned by
+   <code>tests/test_ui_smoke.py</code>); the report page's bar (Open, Share, Export ·
+   Rebuild, Edit as a draft, About this build) is right and stays.</li>
+</ol>
+<h3 id="2-the-explorer-the-owners-emphasis">2. The explorer (the owner's emphasis)</h3>
+<p>What a database browser gives — DBeaver's data tab, the Snowflake worksheet's
+results grid, Metabase's data browser — against what each of our three
+places gives today:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Model › Tables</th>
+<th>Warehouse</th>
+<th>Sources (a connection)</th>
+<th><code>inputs/</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Columns and types</td>
+<td>in the preview header (pandas dtypes)</td>
+<td>in the profile (DuckDB types)</td>
+<td>names and types</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Sample rows</td>
+<td>first 50</td>
+<td><strong>no</strong></td>
+<td><strong>no</strong></td>
+<td><strong>no</strong></td>
+</tr>
+<tr>
+<td>Row count</td>
+<td>of the preview</td>
+<td>yes</td>
+<td>first 20 tables only</td>
+<td>no (size only)</td>
+</tr>
+<tr>
+<td>Nulls / distinct / range</td>
+<td>no</td>
+<td>yes (all tables profiled at once)</td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Sort, search, filter</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Page through rows</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Export CSV</td>
+<td>yes (whole table, through pandas)</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td>Copy a value / column name</td>
+<td>text selection only</td>
+<td>text selection only</td>
+<td>text selection only</td>
+<td>no</td>
+</tr>
+<tr>
+<td>An address for the table</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+<td>no</td>
+</tr>
+<tr>
+<td>→ model, transform, reports</td>
+<td>no</td>
+<td>model, transform (no reports)</td>
+<td>transform</td>
+<td>transform</td>
+</tr>
+</tbody>
+</table>
+<ol start="10">
+<li><strong>P1 — Only one of four places shows rows.</strong> The Warehouse tab opens to a
+    profile with no data (<code>pages/Warehouses.jsx:149-161</code>); a connection's
+    Tables shows column names only (<code>pages/Connectors.jsx:65-95</code>); <code>inputs/</code>
+    is a file list, so a CSV the transform reads cannot be looked into
+    (<code>pages/Connectors.jsx:127-159</code>).</li>
+<li><strong>P1 — The model preview cannot be explored and does not scale.</strong> First
+    50 rows, no sort, search, filter or paging (<code>pages/Models.jsx:21-80</code>), and
+    the route loads the entire table into pandas to take <code>head(50)</code>
+    (<code>tracebi/web/api/routers/models.py:84-86</code>); the CSV export does the same
+    (<code>models.py:220-223</code>). At ten million rows the preview is a timeout.</li>
+<li><strong>P1 — The preview grid is hard to read.</strong> Numbers left-aligned with no
+    separators or tabular figures (<code>19926401.76</code>), dates as
+    <code>2031-10-20T00:00:00</code> wrapping to two lines, so every row is double
+    height; no sticky header; upper-case identifiers as headers
+    (<code>pages/Models.jsx:45-77</code>). On a phone it shows 4 of 10 columns with no
+    hint that it scrolls.</li>
+<li><strong>P1 — One column, three type vocabularies.</strong> <code>fair_value</code> is <code>float64</code>
+    in the preview (<code>pages/Models.jsx:52</code>, pandas), <code>DOUBLE</code> in the warehouse
+    profile (<code>components/Warehouse.jsx:51</code>), <code>double</code> in the diagram
+    (<code>pages/Models.jsx:145</code>); <code>maturity</code> is <code>datetime64[us]</code> / <code>DATE</code> /
+    <code>date</code>. Should be the engine's type, spelled one way, everywhere.</li>
+<li><strong>P1 — A table has no page and no address.</strong> It cannot be linked,
+    bookmarked or found: ⌘K "fact_hold" → "No matches"
+    (<code>components/CommandPalette.jsx:49-74</code> indexes models, reports, pipelines
+    and docs, never tables or measures). The model page's view and the
+    previewed table are component state (<code>pages/Models.jsx:343-344</code>): reload
+    loses them and Back does not step back.</li>
+<li><strong>P1 — The facets of a table do not link to each other.</strong> On the
+    Warehouse a table's name is not a link; the model's Tables tab does not
+    link to the warehouse row, its checks or its writer; nothing anywhere
+    says which reports use a table; and Sources › <code>warehouse</code> repeats the
+    Warehouse tab's table list with less on it
+    (<code>pages/Connectors.jsx:79-93</code>).</li>
+<li><strong>P1 — Row counts appear on some rows and not others.</strong> A SQL
+    connection counts rows for the first <code>ROW_COUNT_CAP</code> = 20 tables
+    alphabetically and none after (<code>tracebi/sources.py:35,178</code>): on the demo
+    the rows from <code>tracebi_oauth_clients</code> on read "7 columns" with no count
+    and no reason. Each count is a <code>count(*)</code>, which on a large Postgres is
+    the slow query. Should be: the catalog's estimate where the engine keeps
+    one (Postgres <code>reltuples</code>, Snowflake and BigQuery table metadata) shown
+    as <code>~1.2M rows</code>, an exact count for DuckDB, and an explicit "not
+    counted" (same place, same words) where neither is cheap.</li>
+<li><strong>P2 — Opening one warehouse row profiles every table in the file.</strong>
+    <code>Opened</code> (<code>pages/Warehouses.jsx:150</code>) calls the connector's warehouse view,
+    which profiles all tables (<code>tracebi/workbench.py:1164</code>, <code>profile=True</code>);
+    the Transform tab's Produces list does the same
+    (<code>components/Warehouse.jsx:69</code>). Profile one table, on request.</li>
+<li><strong>P2 — The profile has gaps</strong>: a <code>DATE</code> column shows no range
+    (<code>components/Warehouse.jsx:55-57</code> only formats numeric min/max); top
+    values carry no counts; nulls are a count, not a share.</li>
+<li><strong>P2 — No copy.</strong> No copy-a-cell, copy column name, or copy as
+    <code>SELECT … FROM fact_holdings LIMIT 100</code> for the person who will take it
+    to a notebook.</li>
+<li><strong>P2 — The Preview button is hand-rolled</strong>: inline style
+    (<code>pages/Models.jsx:409-416</code>), 20px tall (audit <code>small-target</code>) in an
+    unlabelled column (axe <code>empty-table-header</code>), and the preview opens
+    below the list, off-screen on a phone, where the list has also scrolled
+    sideways and hidden its first column.</li>
+<li><strong>P2 — Badges say "25 ROWS · 10 COLS"</strong> (<code>pages/Models.jsx:34-39</code>)
+    where every other place says "25 rows · 10 columns".</li>
+<li><strong>P2 — The model Tables tab repeats itself</strong>: "Stored in warehouse /
+    data/warehouse.duckdb" on all seven rows, and "Source table" equal to the
+    table's name on all seven.</li>
+<li><strong>P2 — A Python (memory) connection says it is connected and "cannot
+    list its tables"</strong> (<code>tracebi/sources.py:170-173</code>; the demo's <code>banking</code>),
+    though a <code>MemoryConnector</code> holds its tables by name.</li>
+</ol>
+<h3 id="3-do-the-database-connections-make-sense">3. Do the database connections make sense?</h3>
+<p>What Sources lists today. Reference project: <code>crm</code> (SQL database),
+<code>housing_warehouse</code> (DuckDB file), <code>warehouse</code> (DuckDB file), <code>inputs/</code>
+(11 files). Demo app: <code>demo_db</code> (SQL database), <code>banking</code> (In memory),
+<code>warehouse</code> (DuckDB file), <code>inputs/</code>. The older seed adds <code>tracebi_db</code>.</p>
+<ol start="24">
+<li><strong>P1 — The warehouse is listed as a source.</strong> Both warehouses appear on
+    Sources beside <code>crm</code>, with a second copy of their table list; nav-v3
+    decided "Sources" means connections and input files, "Warehouse" the
+    sink. A newcomer reads three databases of the same kind. Should be:
+    Sources lists what feeds the warehouse (connections a transform or layer
+    reads, connections a model reads directly, <code>inputs/</code>); a warehouse-kind
+    connector appears only on Warehouse, and Sources carries one line,
+    "The warehouse a transform writes is under Warehouse →".</li>
+<li><strong>P1 — Names are identifiers and kinds are generic.</strong> <code>crm</code>, <code>demo_db</code>,
+    <code>banking</code>, <code>housing_warehouse</code> with "SQL database" (for both Postgres and
+    SQLite), "In memory", "DuckDB file" (<code>components/Storage.jsx</code>
+    <code>sourceKind</code>). Should be: an optional <code>label</code> in
+    <code>connections/&lt;name&gt;.yaml</code> (and on a connector in Python), shown large
+    with the name small in mono, as models already do; the kind from the
+    dialect, in words: "Postgres", "SQLite file", "Snowflake", "BigQuery",
+    "DuckDB file", "Built in Python". Proposed names for what ships:
+    <code>crm</code> → label "CRM (Postgres)"; <code>demo_db</code> → <code>demo_source</code>, "Demo
+    source database (SQLite)"; <code>banking</code> → "Banking sample (built in
+    Python)"; <code>housing_warehouse</code> → label "Housing warehouse";
+    <code>tracebi_db</code> → <code>seed_db</code> on <code>data/seed.db</code>.</li>
+<li><strong>P1 — The state store can be a source</strong> (finding 1): through the demo
+    runner's database and through <code>tracebi_db</code> on the state store's default
+    path. After the fix the state store never appears on Sources, and a
+    connector that points at it shows only non-framework tables, with the
+    hidden count.</li>
+<li><strong>P2 — "Where the data lives" says the variable, not the place.</strong> <code>crm</code>
+    shows <code>${TRACEBI_CRM_URL}</code>; <code>demo_db</code> shows a 90-character
+    <code>sqlite:////tmp/…/demo.db</code>. Should be: "Postgres · from
+    TRACEBI_CRM_URL (not set here)"; a file path relative to the project,
+    full path in the title.</li>
+<li><strong>P2 — Read by is a list of steps.</strong> The demo's <code>demo_db</code> shows eight
+    lines "the step orders_bronze of the pipeline sales…"
+    (<code>pages/Connectors.jsx:51-53</code>). Group: "Pipeline sales: 4 steps
+    (orders_bronze, customers_bronze, …)".</li>
+<li><strong>P2 — <code>inputs/</code> lists scripts and notes as inputs</strong>: <code>fetch_housing.py</code>,
+    <code>generate_raw.py</code>, <code>housing_sources.md</code>, <code>housing_anchor.txt</code>, each "No
+    transform names it" (<code>pages/Connectors.jsx:136-150</code>). Data files first;
+    the rest folded as "4 other files".</li>
+<li><strong>P2 — The list rows' reader chips do not say what they are</strong>
+    (<code>pages/Connectors.jsx:190-193</code>): a transform name and a model label in
+    the same grey chip.</li>
+<li><strong>Where a credential affordance lives (for the credentials package, not
+    designed here):</strong> in a connection's detail, a <strong>Connection</strong> section
+    directly under the header and above Tables (<code>pages/Connectors.jsx:117-119</code>),
+    holding today's "Not connected here · set TRACEBI_CRM_URL" line. That line
+    is where a "Set credential" action belongs, for an admin only, and the
+    table page's not-connected state (U-3) links back to it.</li>
+</ol>
+<h3 id="4-consistency">4. Consistency</h3>
+<ol start="32">
+<li><strong>P1 — Four tab styles.</strong> Page tabs (<code>dtabs review__tabs</code>,
+    <code>pages/Data.jsx:43</code>, <code>pages/Overview.jsx:157</code>); a segmented control
+    (<code>seg</code>, <code>pages/Models.jsx:373</code>; Ask's Chart/Table; History's Latest/Every);
+    the underline <code>Tabs</code> (<code>components/Shared.jsx:401</code>; the Transform tab's
+    Flow · Steps · Runs · Code, <code>pages/Pipelines.jsx:305</code>); the panel tabs
+    (<code>pages/Reports.jsx</code> rpanel). The Transform tab nests a "Runs" tab inside
+    a page whose own tabs include "Runs". Two styles: page tabs for
+    addresses, segmented for views within a card.</li>
+<li><strong>P1 — Two status chips.</strong> <code>Badge</code> is upper-case
+    (<code>components/Shared.jsx:216</code>) and still draws states: MANY TO ONE,
+    AGGREGATE, 25 ROWS, <code>engine: duckdb</code>, the layer types; <code>Chip</code>/<code>Verdict</code>
+    are sentence case (<code>Shared.jsx:234-250</code>). A2-3's rule (states are
+    sentence-case chips) stopped at the table checks.</li>
+<li><strong>P1 — Seven date formats.</strong> <code>stamp</code> "Oct 23 · 11:48"
+    (<code>components/TheLine.jsx:32</code>, duplicated in <code>verdict.js:41</code>); "2026-10-23
+    11:35 UTC" (<code>components/Warehouse.jsx:16</code>); "Oct 23, 2026, 11:48 AM"
+    (<code>pages/Runs.jsx:81</code>, and the panel's "Built Oct 23, 2026, 11:48 AM" under
+    a header saying "Built Oct 23 · 11:48"); the browser's locale
+    (<code>pages/Pipelines.jsx:223,353</code>, <code>components/Lineage.jsx:125</code>); "11:48 AM"
+    (<code>components/Attention.jsx:21-22</code>); <code>ago</code> "2 h ago"; a seconds clock
+    (<code>components/Workbench.jsx:44</code>). One module: <code>stamp</code> for a moment, <code>ago</code>
+    for recency, the full ISO time in the title.</li>
+<li><strong>P2 — Four <code>plural</code> helpers</strong> (<code>components/TheLine.jsx:28</code>,
+    <code>components/map/readout.js:10</code>, <code>pages/Warehouses.jsx:22</code>,
+    <code>pages/Data.jsx:17</code>) and inline ones elsewhere; one of the inline ones is
+    wrong: "12 rows · 1 columns" (<code>components/Warehouse.jsx:93</code>, the
+    Transform tab's Produces).</li>
+<li><strong>P2 — Eleven bare <code>&lt;table&gt;</code>s in three classes</strong> (<code>wb-table</code>,
+    <code>runs-table</code>, none): <code>pages/Models.jsx:46,273,397,439</code>,
+    <code>pages/Pipelines.jsx:206,319</code>, <code>pages/Ask.jsx:386</code>, <code>pages/Explore.jsx:470</code>,
+    <code>components/Workbench.jsx:139</code>, <code>components/Warehouse.jsx:43</code>,
+    <code>pages/Runs.jsx:411</code>. Data rows go in one <code>DataGrid</code>; lists of things
+    (measures, relationships, steps) in one list table.</li>
+<li><strong>P2 — CSV export three ways</strong>: a link <code>↓ CSV</code>
+    (<code>pages/Models.jsx:41</code>), a button styled as that link with an inline
+    background (<code>pages/Explore.jsx:444</code>), the report's Export menu.</li>
+<li><strong>P2 — Secondary buttons in two looks side by side</strong>: "Open in
+    Warehouse" is an accent-tinted link (<code>btn src-open</code>) beside an outline
+    <code>Btn</code> "&lt;/&gt; View code" (<code>pages/Connectors.jsx:110-111</code>).</li>
+<li><strong>P2 — <code>Card</code> drops <code>className</code></strong> (<code>components/Shared.jsx:137</code>); three
+    callers pass <code>className="fade-in"</code> to no effect
+    (<code>pages/Connectors.jsx:107,130</code>, <code>pages/Models.jsx:371</code>).</li>
+<li><strong>P2 — History's filter bar mixes three control types</strong> (model chips,
+    two selects, a segmented control) and offers "Pipeline" and "Pipeline
+    run" as two kinds (<code>pages/Runs.jsx:19-20</code>) a reader cannot tell apart.</li>
+<li><strong>P2 — Empty states differ in shape</strong>: some carry the "⬡" glyph
+    (<code>pages/Models.jsx:352</code>, <code>pages/Data.jsx:135</code>), some a sentence, some
+    "No matches." Pick one <code>Empty</code> with an optional action.</li>
+<li><strong>P2 — The model page speaks Python about a YAML model</strong>:
+    Relationships' "Declared with add_fact(foreign_keys=…) / add_relationship"
+    (<code>pages/Models.jsx:450</code>) and its empty state "call add_relationship"
+    (<code>pages/Models.jsx:436</code>). Every reference model is YAML now: say
+    <code>foreign_keys:</code> / <code>relationships:</code>.</li>
+</ol>
+<h3 id="5-readability">5. Readability</h3>
+<ol start="43">
+<li><strong>P1 — Every browser tab is titled "TraceBi — reports as code"</strong>
+    (<code>web/ui/index.html:9</code>; nothing sets <code>document.title</code>). Tabs, history and
+    bookmarks are indistinguishable. Should be "Portfolio Dashboard ·
+    TraceBi", "fact_holdings · Warehouse · TraceBi".</li>
+<li><strong>P2 — Every Docs page's h1 is "Docs"</strong> (<code>pages/Docs.jsx:177</code>); the
+    page's own title sits below it.</li>
+<li><strong>P2 — ⌘K offers internal design notes to every role</strong>: "Navigation v3 —
+    Docs as a place…", "Large-detail artifacts…"
+    (<code>components/CommandPalette.jsx:29,71</code> hides only three names). Keep
+    <code>docs/architecture/</code> out of the palette and the reader's index.</li>
+<li><strong>P2 — Measures read as code.</strong> Identifiers lead, the description is
+    the small line; "Format" shows raw tokens <code>currency0</code>, <code>percent</code>
+    (<code>pages/Models.jsx:284</code>); rank, share-of-total and running-total
+    measures show nothing under "Defined as" (<code>components/modelGraph.js</code>
+    <code>measureDefinition</code>). Should be: label first, then the definition in
+    words ("rank of fair value, largest first", "fair value ÷ the total"),
+    format as "$1,234" / "12.3%".</li>
+<li><strong>P2 — The contract and its writer go by two names on one row</strong>:
+    "Written by holdings_transform" then "5 checks in holdings"
+    (<code>components/Warehouse.jsx:23-24</code> prints <code>contract.transform</code>, which holds
+    the contract's <code>name</code>). The contract's <code>note</code> (a paragraph saying what
+    the transform cleaned) is never shown. Name the file
+    (<code>holdings_transform.contract.yaml</code>) and show the note on the table page.</li>
+<li><strong>P2 — Station names break mid-identifier</strong>: "warehouse. / duckdb",
+    "affordability_ / transform" (<code>components/TheLine.jsx</code>). Break at a word
+    or truncate with a title.</li>
+<li><strong>P2 — "Kind: Custom"</strong> in About this build (<code>pages/Reports.jsx:339,843</code>)
+    means "a report package"; say how it was made ("Dashboard (app.jsx)",
+    "Page (template.html)").</li>
+</ol>
+<h3 id="6-navigation">6. Navigation</h3>
+<ol start="50">
+<li><strong>P1 — Analysts cannot open Data</strong> (<code>nav.js:43</code>, <code>minRole: 'admin'</code>),
+    though they write drafts against models and the API serves every Data
+    GET to them (checked as a viewer: <code>/api/warehouse</code>, a table preview,
+    <code>/api/connectors/crm/tables</code> all 200). An analyst authoring a report
+    cannot see the model's tables or measures except through Ask's pickers.
+    Should be: Data read-only for analysts; Refresh data and every run
+    button stay admin (they already render for admins only,
+    <code>pages/Pipelines.jsx:245</code>).</li>
+<li><strong>P2 — The view inside a page is not in the address</strong>: the model's
+    Diagram/Tables/… view (<code>pages/Models.jsx:343</code>), the Transform tab's
+    inner tab (<code>pages/Pipelines.jsx</code>), the report panel's tab
+    (<code>pages/Reports.jsx</code>); Back leaves the page instead of the view.</li>
+<li><strong>P2 — Stage ⓪ leaves the model's page</strong> for <code>/data/sources?model=</code>
+    (<code>components/TheLine.jsx:313,358</code>) while stations 1 and 2 select this
+    page's tabs, and the page has its own Sources tab showing the same thing.
+    See "Decided by default", item 2.</li>
+</ol>
+<h3 id="7-buttons">7. Buttons</h3>
+<ol start="53">
+<li><strong>P1 — Refresh data goes pale with no reason.</strong> It is disabled while any
+    <code>warehouse</code>/<code>desk</code>/<code>model</code> query is in flight (<code>pages/Pipelines.jsx:246,296</code>),
+    which on the Transform tab includes the full warehouse profile (finding
+    17): a seconds-long pale primary with no title, every 10-second poll.
+    Should be: enabled, or disabled with "Reading the warehouse…" beside it.</li>
+<li><strong>P2 — On a phone the model's view switch clips "Re…"</strong> with no scroll
+    cue, and Edit as a draft shrinks to a pencil (it keeps its accessible
+    name; give it a visible label in the "…" menu instead).</li>
+<li><strong>P2 — The <code>Never built</code> chip on an open report is a 20px button</strong>
+    (audit <code>small-target</code>, new against the baseline).</li>
+</ol>
+<h3 id="what-is-right-and-should-not-move">What is right and should not move</h3>
+<p>The five places and their role tiers; the chain row per model; the report
+page's one bar and one panel; Ask's sentence, answer card and honesty line;
+History folded by target; the not-connected line's tone ("Not connected here
+· set TRACEBI_CRM_URL", no error); the contract chip's words; the 404 and the
+unknown-model page each offering a way on; dark mode as its own palette
+(axe clean in both).</p>
+<h2 id="decided-by-default">Decided by default</h2>
+<p>The three deviations awaiting a decision, with the recommendation each
+package below assumes unless the owner says otherwise.</p>
+<ol>
+<li><strong>FastAPI's Swagger at <code>/api-docs</code>, not <code>/docs</code>.</strong> <em>Keep.</em> <code>/docs</code> is the
+   product's manual for every role; Swagger is for integrators. Make it
+   findable: link it from the API routes reference page and the startup
+   banner, and list it in CHANGELOG under "moved" so an old bookmark has an
+   answer. No redirect: <code>/docs</code> is taken by the place.</li>
+<li><strong>Stage ⓪ "Sources" and the model's Sources tab.</strong> <em>Keep the tab; make the
+   station select it.</em> Stations 1 and 2 select this page's tabs; ⓪ should
+   too, so the line reads the same left to right and the reader stays on the
+   model. The tab already narrows to the model; it gains one link "Show every
+   source" (as the Warehouse scope note has). The station stops navigating to
+   <code>/data/sources?model=</code>.</li>
+<li><strong>"Fed from" on every table a transform wrote.</strong> <em>Say it once per
+   transform.</em> The certificate records what the transform's run read, not
+   what each table came from, so the per-table line overclaims. The
+   Warehouse list groups tables by their writer, and the group header carries
+   it: "holdings_transform · wrote 7 tables · read crm.issuer_ratings
+   (snapshot inputs/issuer_ratings.csv) on that run". The table page says
+   "The run that wrote this table read …", never "fed from".</li>
+</ol>
+<h2 id="the-plan">The plan</h2>
+<p>Eight packages, ordered by value. Each is one engineer in a worktree for a
+few hours, with the usual gate: <code>pytest tests/</code>, <code>npm run build</code>, the audit
+against the committed baseline (<code>--baseline docs/architecture/ui-audit-baseline-reference.json</code>,
+and the demo baseline for U-1), captures at 1440/390 light/dark of what
+changed, and the baseline recommitted when a count moves on purpose. U-2
+lands before U-3, U-4 and U-5 (they read its API); the rest are independent.</p>
+<h3 id="u-1-framework-tables-out-of-every-explorer-demo-data-off-the-state-store-p0">U-1 — Framework tables out of every explorer; demo data off the state store (P0)</h3>
+<p><strong>Scope.</strong>
+- <code>tracebi/sources.py</code>: one predicate, <code>is_framework_table(name)</code>: <code>tracebi_*</code>
+  and <code>alembic_version</code>. <code>connection_tables</code>, <code>tracebi/workbench.py</code>
+  <code>_warehouse_tables</code> / <code>warehouse_view</code>, and <code>GET /api/warehouse</code>
+  (<code>tracebi/web/api/routers/sources.py</code>) drop them and return
+  <code>hidden_framework_tables: &lt;n&gt;</code> beside <code>tables</code>. The model routes refuse a
+  framework table by name (404, as for a missing one). U-2's table routes
+  call the same predicate.
+- The UI (<code>pages/Connectors.jsx</code>, <code>pages/Warehouses.jsx</code>,
+  <code>components/Warehouse.jsx</code>, the model's Tables and Storage views) shows
+  "N framework tables hidden" as one quiet line when <code>n &gt; 0</code>.
+- The demo: <code>PipelineRunner(db_url=…)</code> in <code>tracebi/web/demo_app/pipeline.py</code>
+  and <code>wealth_pipeline.py</code> takes <code>tracebi.state.state_url()</code>; the demo's
+  data stays on <code>TRACEBI_DEMO_DB_URL</code> / <code>data/demo.db</code>.
+  <code>examples/seeds/seed_db.py</code> writes <code>data/seed.db</code> and names its connector
+  <code>seed_db</code>; <code>examples/phase*.py</code> and the seeds' Supabase companions follow.
+  <code>docker-compose.yml</code>, <code>.env.example</code> and <code>docs/guides/one-server.md</code> say
+  <code>TRACEBI_STATE_URL</code> and <code>TRACEBI_DEMO_DB_URL</code> are two databases (or two
+  schemas) and why: the state store holds sessions and tokens and must never
+  be a connection.</p>
+<p><strong>Files.</strong> <code>tracebi/sources.py</code>, <code>tracebi/workbench.py</code>,
+<code>tracebi/web/api/routers/{sources,connectors,models}.py</code>,
+<code>tracebi/web/demo_app/{pipeline,wealth_pipeline}.py</code>, <code>examples/seeds/*</code>,
+<code>docker-compose.yml</code>, <code>.env.example</code>, <code>docs/guides/one-server.md</code>; <code>pages/Connectors.jsx</code>,
+<code>pages/Warehouses.jsx</code>, <code>components/Warehouse.jsx</code>, <code>pages/Models.jsx</code>.</p>
+<p><strong>Acceptance.</strong> <code>tests/e2e/test_declarative_sources_journey.py</code> gains a step:
+a connection pointed at a SQLite file that holds <code>tracebi_runs</code>,
+<code>tracebi_sessions</code>, <code>alembic_version</code> and one data table lists exactly the
+data table with <code>hidden_framework_tables: 3</code>, on <code>/connectors/{n}/tables</code>,
+<code>/connectors/{n}/warehouse</code> and <code>/warehouse</code>. <code>tests/e2e/test_web_journey.py</code>
+(demo app): after the demo seeds and runs, <code>demo_db</code>'s tables contain no
+<code>tracebi_*</code> name and the run history still reads back through
+<code>/api/pipelines/sales/runs</code>. Revert the filter and watch both fail.</p>
+<p><strong>Closes</strong> 1, 2, 26.</p>
+<h3 id="u-2-one-read-only-table-api-for-every-place-a-table-lives">U-2 — One read-only table API for every place a table lives</h3>
+<p><strong>Scope.</strong> A table is addressed as <code>(source, table)</code>, where <code>source</code> is a
+connector name or <code>inputs</code> (a file under <code>inputs/</code>, read with DuckDB's
+<code>read_csv_auto</code> / <code>read_parquet</code>, the path confined to that folder). One
+router, <code>tracebi/web/api/routers/tables.py</code>, reads through the locked,
+read-only engine (<code>tracebi/model/engine.py</code> for DuckDB and files; for a SQL
+connection, a statement built only from quoted identifiers and bound values,
+with the project's statement timeout). Identifiers are checked against the
+source's own catalog before use; nothing free-form reaches SQL.</p>
+<ul>
+<li><code>GET /api/tables/{source}/{table}</code> →
+  <code>{source, table, kind: "warehouse"|"connection"|"file", rows, rows_exact: bool,
+  columns: [{name, type}], written_by, contract: {status, file, checks, note,
+  checked_at}, read_by: [models], used_by: [{report, display_name}],
+  transform_read: [{ref, snapshot?, fingerprint?}]}</code> — <code>type</code> is the
+  engine's spelling (<code>BIGINT</code>, <code>DOUBLE</code>, <code>DATE</code>, <code>VARCHAR</code>), the one
+  vocabulary (finding 13); <code>used_by</code> from each report's bindings over a model
+  that reads the table.</li>
+<li><code>GET /api/tables/{source}/{table}/rows?offset=0&amp;limit=100&amp;sort=&lt;col&gt;&amp;desc=1&amp;q=&lt;text&gt;&amp;where=&lt;json&gt;</code>
+  → <code>{columns: [{name, type}], rows: **…**, offset, limit, total, total_exact,
+  elapsed_ms}</code>. <code>limit</code> ≤ 500. <code>q</code> matches text columns (<code>ILIKE</code>); <code>where</code> is
+  a closed list <code>[{column, op: "eq"|"ne"|"lt"|"le"|"gt"|"ge"|"contains"|"is_null"|"not_null", value}]</code>.
+  Dates and timestamps go out as ISO strings, numbers as numbers.</li>
+<li><code>GET /api/tables/{source}/{table}/profile</code> → <code>{columns: {name: {type, nulls,
+  null_share, distinct, min, max, mean?, top: [{value, count}]}}}</code> for this
+  one table, dates included (finding 18); the 50-column cap stays and says so.</li>
+<li><code>GET /api/tables/{source}/{table}/export.csv</code> with the same <code>sort</code>, <code>q</code>,
+  <code>where</code>: streamed by the engine (<code>COPY … TO STDOUT</code> equivalent), never
+  through pandas.</li>
+<li>Not reachable: <code>200 {connected: false, reason, variable?}</code> on every route,
+  the shape <code>/connectors/{n}/tables</code> already uses.</li>
+<li>Row counts (finding 16): exact for DuckDB and files; for a SQL connection
+  the catalog estimate (<code>pg_class.reltuples</code>, Snowflake / BigQuery table
+  metadata) with <code>rows_exact: false</code>, else <code>rows: null</code>; never a
+  <code>count(*)</code> per listed table. <code>connection_tables</code> adopts the same rule, and
+  <code>ROW_COUNT_CAP</code> goes.</li>
+<li><code>GET /api/models/{name}/tables/{t}/preview</code> and <code>/export.csv</code> keep their
+  shapes but resolve the model table to its <code>(connector, source table)</code> and
+  read through these functions (finding 11).</li>
+<li><code>MemoryConnector</code> lists its tables (finding 23).</li>
+<li>Role: viewer may read, as every other GET; folder permissions do not
+  apply (tables are not reports). Framework tables refused (U-1).</li>
+</ul>
+<p><strong>Files.</strong> new <code>tracebi/web/api/routers/tables.py</code> (included in <code>main.py</code>),
+<code>tracebi/sources.py</code>, <code>tracebi/workbench.py</code>,
+<code>tracebi/web/api/routers/models.py</code>, <code>tracebi/connectors/memory_connector.py</code>;
+CLAUDE.md's API Routes via the orchestrator.</p>
+<p><strong>Acceptance.</strong> A new step in <code>tests/e2e/test_reference_project.py</code>: for
+<code>warehouse/fact_holdings</code>, <code>rows?sort=fair_value&amp;desc=1&amp;limit=5</code> returns the
+five largest by fair value with <code>total: 25</code>; <code>q=Revolving</code> returns only
+revolving-facility rows; <code>where=[{"column":"fund_id","op":"eq","value":2}]</code>
+matches the count DuckDB gives; <code>export.csv</code> with the same filter has that
+many lines + 1; <code>profile</code> gives <code>maturity</code> a min and max;
+<code>inputs/holdings.csv</code> answers rows; <code>crm/issuer_ratings</code> answers
+<code>connected: false, variable: "TRACEBI_CRM_URL"</code> with CRM unset (and real rows
+on the Postgres the journey already provisions when one is available). A unit
+test pins the closed <code>where</code> grammar: an unknown op, an unknown column and a
+column name carrying a quote are each refused before any SQL runs.</p>
+<p><strong>Closes</strong> 11, 13 (API side), 16, 17, 18, 23.</p>
+<h3 id="u-3-the-table-page-and-the-datagrid">U-3 — The table page and the DataGrid</h3>
+<p><strong>Scope.</strong> One page per table at <code>/data/tables/&lt;source&gt;/&lt;table&gt;</code> (<code>nav.js</code>:
+<code>tablePath(source, table)</code>; <code>whereAmI</code> keeps Data current), in Data's frame
+with the crumb "Data › Warehouse › fact_holdings" (or › Sources › crm ›
+issuer_ratings).</p>
+<ul>
+<li><strong>Header</strong>: the table name (mono), "25 rows · 10 columns", the contract
+  <code>Chip</code>; one line of facts, each a link: written by <code>holdings_transform</code>
+  (→ its model's Transform tab) · read by Direct Lending Portfolio (→ the
+  model) · used by 6 reports (→ the library filtered) · "The run that wrote
+  it read crm.issuer_ratings (snapshot)". The contract's note in a fold.</li>
+<li><strong>Views</strong> (segmented, in the address <code>?view=</code>): <strong>Data</strong> (default),
+  <strong>Columns</strong> (the profile as a table: name, type, nulls %, distinct,
+  range or top values with counts), <strong>Used by</strong> (models, measures that name
+  a column, reports).</li>
+<li><strong><code>components/DataGrid.jsx</code></strong>, the one grid for rows (also used by U-5 and
+  Ask's table later): sticky header with the column name and its type below
+  in the one vocabulary; numbers right-aligned in tabular figures with
+  separators, the raw value in the title and on copy; dates <code>2031-10-20</code>,
+  timestamps <code>2031-10-20 14:03</code>; <code>null</code> muted italic; one line per row,
+  long text truncated with a title. Click a header to sort (<code>aria-sort</code>,
+  third click clears); a search box (<code>q</code>); a filter row per column built
+  from the closed ops (chips above the grid: "fund_id = 2 ×"); a pager
+  "1–100 of 25,000 · ‹ ›" (exact or "~"); Export CSV of the current cut;
+  select a cell and ⌘C / a copy button copies its value; a column header
+  menu: copy name, sort, filter. Keyboard: arrows move the cell focus. On a
+  phone the first column is sticky and a right-edge fade says it scrolls.
+  Sort, search, filters and page are in the address.</li>
+<li><strong>States</strong>: loading (skeleton rows at the grid's height), empty ("This
+  table has no rows."), no match ("No rows match. Clear filters"), error
+  (<code>ErrorDetail</code>), not connected ("Not connected here · set
+  TRACEBI_CRM_URL", linking to the connection's Connection section, finding
+  31), framework table (404 page with "Not a data table").</li>
+<li>⌘K indexes tables ("fact_holdings · warehouse · 25 rows") and measures
+  (→ the model's Measures view) (finding 14).</li>
+</ul>
+<p><strong>Files.</strong> <code>nav.js</code>, <code>App.jsx</code>, new <code>pages/Table.jsx</code>,
+<code>components/DataGrid.jsx</code>, <code>api.js</code> (<code>useTable</code>, <code>useTableRows</code>,
+<code>useTableProfile</code>), <code>components/CommandPalette.jsx</code>, <code>styles/global.css</code>.</p>
+<p><strong>Acceptance.</strong> <code>tests/test_ui_smoke.py</code> (the real-app smoke): open
+<code>/data/tables/warehouse/fact_holdings</code>, click the <code>fair_value</code> header twice →
+the first cell is the largest fair value from the API; type "Revolving" →
+the pager total equals the API's; Back restores the previous sort; ⌘K
+"fact_hold" opens the page. The audit crawls the page (no <code>h-overflow</code> at
+390, no <code>small-target</code>, axe clean in both themes).</p>
+<p><strong>Closes</strong> 12, 14, 15 (with U-4/U-5), 19, 21, 31 (slot).</p>
+<h3 id="u-4-warehouse-and-sources-rebuilt-around-the-table-page">U-4 — Warehouse and Sources, rebuilt around the table page</h3>
+<p><strong>Scope.</strong>
+- <strong>Warehouse</strong> (<code>pages/Warehouses.jsx</code>): each warehouse as today's header,
+  then a filterable dense list (one row per table: name → table page, rows,
+  columns, read by, checks chip), <strong>grouped by the transform that wrote
+  it</strong> with the run's inputs said once on the group (decision 3). A "Filter
+  tables…" box over all warehouses. The inline "Columns and checks" fold
+  goes (the table page's Columns view holds it).
+- <strong>Sources</strong> (<code>pages/Connectors.jsx</code>): lists connections and <code>inputs/</code>
+  only (finding 24); a one-line pointer to Warehouse. Each connection shows
+  its <code>label</code> (new optional key in <code>connections/&lt;name&gt;.yaml</code> and on
+  <code>BaseConnector.describe()</code>; <code>docs/reference/connections-yaml.md</code>) and a
+  kind in words from the dialect (<code>components/Storage.jsx</code> <code>sourceKind</code>):
+  Postgres, SQLite file, Snowflake, BigQuery, DuckDB file, Built in Python.
+  "Where the data lives" says the place, not the variable. A <strong>Connection</strong>
+  section under the header holds the not-connected line (the credentials
+  package's slot). <strong>Tables</strong> is the same dense list as Warehouse, each name
+  → the table page, counts per U-2's rule. <strong>Read by</strong> grouped by pipeline.
+- <strong><code>inputs/</code></strong>: data files (csv, parquet, json, xlsx) first, each → its
+  table page; other files folded ("4 other files").
+- The reference project and demo adopt labels (finding 25's names): <code>crm</code>
+  "CRM (Postgres)", <code>housing_warehouse</code> "Housing warehouse", the demo's
+  <code>demo_db</code> → <code>demo_source</code> "Demo source database", <code>banking</code> "Banking sample".</p>
+<p><strong>Files.</strong> <code>pages/Warehouses.jsx</code>, <code>pages/Connectors.jsx</code>,
+<code>components/Storage.jsx</code>, <code>components/Warehouse.jsx</code> (Produces list becomes
+the dense list), <code>tracebi/connections.py</code>, <code>tracebi/connectors/base.py</code>,
+<code>tracebi/sources.py</code>, <code>examples/portfolio_project/connections/crm.yaml</code>,
+<code>tracebi/web/demo_app/*</code>, <code>docs/reference/connections-yaml.md</code>,
+<code>tracebi/capabilities.py</code> and both agent guides if the <code>label</code> key is
+authored by agents (<code>tests/test_agent_guides.py</code>).</p>
+<p><strong>Acceptance.</strong> <code>tests/e2e/test_declarative_sources_journey.py</code>: Sources'
+API-backed list for the reference project names <code>crm</code> and <code>inputs</code> and not
+<code>warehouse</code>; <code>crm</code> reports its label and kind "Postgres"; a table row on
+Warehouse links to <code>/data/tables/warehouse/&lt;t&gt;</code>. Smoke: <code>/data/warehouse</code>
+shows "read crm.issuer_ratings" once (on the holdings_transform group), not
+seven times.</p>
+<p><strong>Closes</strong> 10, 15, 24, 25, 27, 28, 29, 30; decision 3.</p>
+<h3 id="u-5-the-model-page-as-an-explorer">U-5 — The model page as an explorer</h3>
+<p><strong>Scope.</strong> (<code>pages/Models.jsx</code>, <code>pages/Overview.jsx</code>, <code>components/TheLine.jsx</code>)
+- The model's view is in the address: <code>/data/&lt;m&gt;?view=tables&amp;table=fact_holdings</code>
+  (finding 51).
+- <strong>Tables</strong> view: one list row per model table (name, role chip
+  fact/dimension, rows, columns, joins), "stored in" said once above the
+  list; a row opens its DataGrid inline below <em>that row</em> (not under the
+  list), with "Open table page →"; the hand-rolled Preview button goes
+  (findings 20, 22). The ERD's node click does the same.
+- <strong>Measures</strong> view: label first, the identifier small; the definition in
+  words for every kind (<code>components/modelGraph.js</code> <code>measureDefinition</code>
+  covers rank, share, running total); formats as samples ("$1,234",
+  "12.3%"); each measure links to Ask with it picked (finding 46).
+- <strong>Relationships</strong> in YAML words; their <code>Badge</code>s become sentence-case chips
+  (finding 42).
+- The ERD shows the engine's types (finding 13).
+- Stage ⓪ selects the Sources tab; that tab gains "Show every source"
+  (decision 2). Station names break at word boundaries (finding 48).</p>
+<p><strong>Acceptance.</strong> Smoke: <code>/data/portfolio_model?view=measures</code> opens on
+Measures and every measure row has a non-empty definition; reload keeps it;
+<code>?view=tables&amp;table=fact_holdings</code> opens that table's grid; clicking stage ⓪
+stays on <code>/data/portfolio_model/sources</code>.</p>
+<p><strong>Closes</strong> 13 (UI), 20, 22, 42, 46, 48, 51 (model page), 52; decision 2.</p>
+<h3 id="u-6-roles-and-the-first-run">U-6 — Roles and the first run</h3>
+<p><strong>Scope.</strong>
+- Data for analysts, read-only: <code>nav.js</code> <code>data.minRole = 'analyst'</code>;
+  run buttons and Refresh data stay admin-only (already gated); the
+  role-tier smoke test and <code>ui-quality.md</code>'s sidebar rule updated (finding 50).
+- Viewer dead ends: no My published folder for a role that cannot publish
+  (<code>pages/Reports.jsx:975</code>); a never-built report tells a viewer who builds
+  it; Share and About this build hidden until a build exists; the
+  forbidden page names what this role can do (findings 6, 7, 8).
+- Attention lists never-built reports with one Build all (finding 5).
+- <code>examples/portfolio_project/run_workflow.py</code> builds the reports through
+  <code>tracebi report build</code> so the library opens built (finding 3).
+- The Data list and the Transform station fall back to the certificate's
+  time when the run store has no run: "Written 11:35 · outside the app"
+  (finding 4).</p>
+<p><strong>Files.</strong> <code>nav.js</code>, <code>pages/Reports.jsx</code>, <code>components/Scope.jsx</code>,
+<code>components/Attention.jsx</code>, <code>pages/Data.jsx</code>, <code>components/TheLine.jsx</code>,
+<code>examples/portfolio_project/run_workflow.py</code>, <code>docs/architecture/ui-quality.md</code>.</p>
+<p><strong>Acceptance.</strong> <code>tests/test_ui_smoke.py::test_the_sidebar_shows_what_the_role_uses</code>:
+an analyst sees Data and no Refresh data button; a viewer sees no My
+published and, on a never-built report, the "builds it" line and no Share.
+<code>tests/e2e/test_reference_project.py</code>: after <code>run_workflow.py</code>, <code>/api/desk</code>
+has a verdict for every report.</p>
+<p><strong>Closes</strong> 3, 4, 5, 6, 7, 8, 50.</p>
+<h3 id="u-7-one-set-of-parts">U-7 — One set of parts</h3>
+<p><strong>Scope.</strong> (<code>components/Shared.jsx</code>, <code>styles/global.css</code>, every caller)
+- Tabs: page tabs for addresses, segmented for views; the <code>Tabs</code> underline
+  component goes; the Transform tab's inner row becomes segmented and its
+  "Runs" view is dropped in favour of the page's Runs tab (finding 32).
+- States are <code>Chip</code>s in sentence case; <code>Badge</code> stays only for labels that
+  are not states, and loses <code>text-transform: uppercase</code> (finding 33).
+- <code>when.js</code>: <code>stamp</code>, <code>ago</code>, <code>isoTitle</code>; every date in the app through it;
+  <code>verdict.js</code>'s copy of <code>stamp</code> removed (finding 34).
+- One <code>plural</code>/<code>count(n, 'row')</code> in <code>format.js</code>; "1 columns" gone (finding 35).
+- Lists of things in one <code>.tb-list</code> table style; data rows only in
+  <code>DataGrid</code> (finding 36). One CSV control (finding 37); one secondary
+  button look (<code>Btn variant="outline"</code>, a <code>Link</code> styled the same,
+  finding 38). <code>Card</code> passes <code>className</code> (finding 39). One <code>Empty</code>
+  (finding 41). History's filters: model chips plus one "Kind" select
+  whose options name what a reader sees ("Report builds", "Data
+  refreshes", "Schedules", "Publishes") (finding 40).</p>
+<p><strong>Acceptance.</strong> <code>scripts/ui_audit.py</code> gains two checks that fail on today's
+build and pass after: <code>[uppercase-state]</code> (an element styled as a chip whose
+computed <code>text-transform</code> is uppercase) and <code>[date-formats]</code> (more than two
+distinct date shapes across the crawl, read from text matching a date).
+Baseline recommitted. Smoke: <code>/runs</code> "Kind" offers no two labels starting
+with "Pipeline".</p>
+<p><strong>Closes</strong> 32, 33, 34, 35, 36, 37, 38, 39, 40, 41.</p>
+<h3 id="u-8-titles-words-and-the-last-buttons">U-8 — Titles, words and the last buttons</h3>
+<p><strong>Scope.</strong>
+- <code>document.title</code> per page from the page's h1 ("Portfolio Dashboard ·
+  TraceBi") in <code>components/Layout.jsx</code> (finding 43).
+- Docs: the page's own title is the h1, "Docs" the crumb
+  (<code>pages/Docs.jsx</code>); <code>docs/architecture/</code> out of the palette and the docs
+  index (findings 44, 45).
+- The contract named by its file, its note shown (finding 47); "Kind: Custom"
+  becomes how the report is made (finding 49).
+- Refresh data: never disabled by a background read; disabled only while a
+  run starts, with its reason (finding 53). On a phone the model's view
+  switch scrolls with a fade and Edit as a draft moves into the "…" menu
+  (finding 54); the open report's <code>Never built</code> chip gets a 24px target
+  (finding 55).
+- Swagger: a link from <code>docs/reference/api-routes.md</code> and the startup line;
+  CHANGELOG "moved" entry (decision 1).</p>
+<p><strong>Acceptance.</strong> Smoke: after navigating to <code>/data/warehouse</code>, the page title
+contains "Warehouse"; <code>/docs/get-started</code> has one h1 and it is the page's
+title; ⌘K "Navigation v3" finds nothing; Refresh data is enabled while
+<code>/api/connectors/warehouse/warehouse</code> is pending (route delayed in the test).
+Audit: <code>small-target</code> for the chip gone; baseline recommitted.</p>
+<p><strong>Closes</strong> 43, 44, 45, 47, 49, 53, 54, 55; decision 1.</p>
+<h2 id="not-in-this-round">Not in this round</h2>
+<p>The credentials design (the coordinator's <code>docs/architecture/credentials.md</code>;
+U-4 leaves its slot). Route-splitting the 1.26 MB bundle (backlog 3). The
+receipt → trace identifier rename (backlog 36). Ask's fingerprints
+(backlog 28).</p>
+<p>Captures for this pass are in the session's scratch folder (not committed):
+<code>shots/</code> (pages, interactions, roles, the demo's Sources) and <code>audit/</code>
+(<code>index.html</code> contact sheet, <code>findings.json</code>, <code>report-sheet.png</code>).</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

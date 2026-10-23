@@ -63,6 +63,15 @@ The container serves that folder. SQLite is the default. Add
 `--profile postgres` when you want Postgres, and set `POSTGRES_PASSWORD`
 in `deploy/.env`.
 
+`TRACEBI_STATE_URL` is TraceBi's own state store: run history, and the
+sign-in sessions and OAuth tokens. Give it a database (or a schema) of its
+own, and never point a connection, or the demo's `TRACEBI_DEMO_DB_URL`, at
+it: a connection is something people browse. The repository's
+`docker-compose.yml` does this with two databases on one Postgres server,
+`tracebi` for the demo's data and `tracebi_state` for the store. The app
+hides TraceBi's tables (`tracebi_*`, `alembic_version`) from every source
+listing whatever a connection points at, and says how many it hid.
+
 The image name is `ghcr.io/saltyscott0521/tracebi`. Set `TRACEBI_VERSION`
 in `deploy/.env` when you want a pinned tag. If that image is not on the
 machine, Compose builds it from the `Dockerfile` in this repository.
@@ -136,6 +145,17 @@ Two tags, two jobs:
 | --- | --- | --- |
 | `ghcr.io/saltyscott0521/tracebi:<version>` | A client install that should match a release | You bump the tag when you cut a release |
 | `ghcr.io/saltyscott0521/tracebi:main` | The hosted demo (built with `UI_BASE=/app/`) | After CI is green on `main`, `publish-demo.yml` pushes the image and hits Coolify's deploy webhook |
+
+The demo image, like the repository's `docker-compose.yml`, serves one
+project: the reference project `examples/portfolio_project`, its warehouse
+baked at build. `TRACEBI_APP` is unset there; the bundled demo app is opt-in
+(`TRACEBI_APP=tracebi.web.demo_app`) and never served beside a project. The
+reference project's CRM is a standing mock CRM database, loaded once at first
+start: `docker-compose.yml`'s Postgres creates `crm` from
+`examples/portfolio_project/inputs/seed_crm.sql` when its volume is empty
+(`docker/postgres-init.sql`), and `TRACEBI_CRM_URL` points at it. Nothing in
+the app writes it afterwards. Without `TRACEBI_CRM_URL` the transform reads the
+committed snapshot instead, and the certificate says so.
 
 Keep git **auto-deploy** off on the Docker Image resource; the webhook is
 what redeploys. Set the same variables from `deploy/.env` in Coolify's

@@ -1,0 +1,46 @@
+# The sink CONTRACT of saas_transform.sql: what must be true of the four
+# tables that just landed. `tracebi run-transform saas_transform` runs these
+# as read-only SQL against the warehouse after the transform, and records
+# them beside it. A failed check raises. This says "the sink satisfied its
+# contract" — it does NOT verify the SQL above. The note is the STATED
+# methodology, recorded verbatim and carried into report traces, never
+# verified.
+
+name: saas_transform
+note: >-
+  dropped rows without an account_id; deduped account-month; plan and status
+  spellings normalized; ending MRR is zero in a churned or inactive month;
+  starting is 1 when the prior month was active or the month is the
+  account's cohort
+
+checks:
+  - rows: fact_account_month
+    at_least: 1
+  - unique: fact_account_month
+    columns: [account_id, month_id]
+  - unique: dim_month
+    columns: [month_id]
+  - unique: dim_plan
+    columns: [plan_id]
+  - unique: dim_cohort
+    columns: [cohort_id]
+  - not_null: fact_account_month
+    columns: [account_id, month_id, plan_id, cohort_id, mrr]
+  - foreign_key: fact_account_month
+    column: month_id
+    refers_to: [dim_month, month_id]
+  - foreign_key: fact_account_month
+    column: plan_id
+    refers_to: [dim_plan, plan_id]
+  - foreign_key: fact_account_month
+    column: cohort_id
+    refers_to: [dim_cohort, cohort_id]
+  - values: fact_account_month
+    column: active
+    within: [0, 1]
+  - values: fact_account_month
+    column: churned
+    within: [0, 1]
+  - values: dim_plan
+    column: plan
+    within: [Growth, Scale, Starter]

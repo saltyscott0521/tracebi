@@ -1,18 +1,21 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useIsFetching, useQueryClient } from '@tanstack/react-query'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { useMe, usePipelines, useStartPipelineRun, usePipelineRuns, useLayerHistory } from '../api'
-import RunLog, { RunList } from '../components/RunLog'
+import RunLog from '../components/RunLog'
 import CodeView from '../components/CodeView'
+import { SourceCredentials } from '../components/Credentials'
 import { useModelLabel } from '../components/Scope'
-import { since } from '../components/TheLine'
+import { ago } from '../when'
+import { count } from '../format'
 import { humanise } from '../ask'
-import { pipelineBelongsToModel } from '../nav'
+import { dataPath, pipelineBelongsToModel } from '../nav'
 import {
-  Card, CardTitle, Badge, Spinner,
-  Empty, Btn, Tabs, SkeletonCard, useNarrow, useToast,
+  Card, CardTitle, Badge, Chip, Spinner,
+  Empty, Btn, Segmented, SkeletonCard, Time, useNarrow, useToast,
 } from '../components/Shared'
 
 const TYPE_BADGE = {
@@ -24,7 +27,19 @@ const TYPE_LABEL = {
   bronze: 'Landing', silver: 'Manipulation', gold: 'Final',
   landing: 'Landing', manipulation: 'Manipulation', final: 'Final',
 }
-const STATUS_BADGE = { success: 'green', error: 'red', running: 'amber' }
+// A step's last status as a chip: the tone and the words. A step that raised
+// records "error: <message>", which is its title.
+const STATUS_CHIP = {
+  success: ['', 'Succeeded'], succeeded: ['', 'Succeeded'],
+  failed: ['bad', 'Failed'], error: ['bad', 'Failed'],
+  running: ['warn', 'Running'],
+}
+
+function StepStatus({ status }) {
+  if (!status) return <Chip tone="none">Not run yet</Chip>
+  const [tone, words] = STATUS_CHIP[status.startsWith('error:') ? 'error' : status] || ['', status]
+  return <Chip tone={tone} title={status.startsWith('error:') ? status : undefined}>{words}</Chip>
+}
 
 // The queries that read the warehouse's data. One answered while a transform is
 // writing it can fail the run ("another process holds the warehouse open"), so
@@ -43,8 +58,8 @@ const STATUS_DOT = { success: 'var(--muted)', failed: 'var(--red)', running: 'va
 // A model pipeline's two steps, in words: what the step is and what its last
 // run left ("wrote 3 tables", "6 reports"), where a medallion layer counts rows.
 const STEP_WORDS = {
-  transform: { what: 'Transform', out: n => `wrote ${n} ${n === 1 ? 'table' : 'tables'}` },
-  build: { what: 'Build', out: n => `${n} ${n === 1 ? 'report' : 'reports'}` },
+  transform: { what: 'Transform', out: n => `wrote ${count(n, 'table')}` },
+  build: { what: 'Build', out: n => count(n, 'report') },
 }
 
 // Which form of transform the last run ran (the run records it).
@@ -54,7 +69,7 @@ function stepLine(layer) {
   const words = STEP_WORDS[layer.name]
   const when = layer.last_status === 'running' ? 'running'
     : !layer.last_run ? 'not run yet'
-      : `${layer.last_status === 'failed' ? 'failed' : 'ran'} ${since(layer.last_run)}`
+      : `${layer.last_status === 'failed' ? 'failed' : 'ran'} ${ago(layer.last_run)}`
   const out = layer.last_rows_out != null && layer.last_status !== 'failed' ? words.out(layer.last_rows_out) : null
   return [words.what, FORM_LABEL[layer.last_detail?.form], when, out].filter(Boolean).join(' · ')
 }
@@ -97,7 +112,7 @@ function LayerNode({ data }) {
       <div style={{ padding: '7px 13px 9px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
           {TYPE_LABEL[data.layer.type] && <span style={{
-            fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6,
+            fontSize: 10, fontWeight: 600,
             padding: '1px 7px', borderRadius: 20,
             background: `color-mix(in srgb, ${accent} 8%, transparent)`, color: accent, border: `1px solid color-mix(in srgb, ${accent} 23%, transparent)`,
           }}>{TYPE_LABEL[data.layer.type]}</span>}
@@ -203,24 +218,19 @@ function LayerHistory({ pipeline, layer }) {
   if (runs.length === 0) return <p style={{ fontSize: 13, color: 'var(--muted)', padding: '12px 0' }}>No runs yet for this layer.</p>
   return (
     <div style={{ overflowX: 'auto' }} className="fade-in">
-      <table>
+      <table className="tb-list">
         <thead>
-          <tr><th>Run ID</th><th>Status</th><th>Rows In</th><th>Rows Out</th><th>Completed</th></tr>
+          <tr><th>Run</th><th>Status</th><th>Rows in</th><th>Rows out</th><th>Completed</th></tr>
         </thead>
         <tbody>
           {runs.map(r => (
             <tr key={r.id}>
               <td style={{ color: 'var(--muted)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{r.id}</td>
-              <td>
-                {r.last_status?.startsWith?.('error:')
-                  ? <Badge variant="red" style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', textTransform: 'none', fontWeight: 400 }} title={r.last_status}>{r.last_status}</Badge>
-                  : <Badge variant={STATUS_BADGE[r.status] || 'gray'}>{r.status || '—'}</Badge>
-                }
-              </td>
+              <td><StepStatus status={r.last_status?.startsWith?.('error:') ? r.last_status : r.status} /></td>
               <td style={{ color: 'var(--text-2)' }}>{r.rows_in ?? '—'}</td>
               <td style={{ color: 'var(--text-2)' }}>{r.rows_out ?? '—'}</td>
               <td style={{ color: 'var(--muted)', fontSize: 12 }}>
-                {r.completed_at ? new Date(r.completed_at).toLocaleString() : '—'}
+                <Time iso={r.completed_at} fallback="—" />
               </td>
             </tr>
           ))}
@@ -231,12 +241,13 @@ function LayerHistory({ pipeline, layer }) {
 }
 
 /**
- * One pipeline: its steps as a flow and as a list, its runs and its code.
- * Only an admin may run it (it writes the warehouse), so only an admin sees a
- * run button; with no sign-in everyone is admin. *primary*: this is the
- * pipeline that refreshes the model, and its run is the page's Refresh data.
+ * One pipeline: its steps as a flow and as a list, its code, and its latest
+ * run's output. Only an admin may run it (it writes the warehouse), so only an
+ * admin sees a run button; with no sign-in everyone is admin. *primary*: this
+ * is the pipeline that refreshes the model, and its run is the page's Refresh
+ * data. Every run is on the page's own Runs tab (*model*'s), not a second one here.
  */
-export function PipelineDetail({ pipeline, layers, primary, label }) {
+export function PipelineDetail({ pipeline, layers, primary, label, model }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
@@ -245,6 +256,7 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
   const admin = !!me && (!me.role || me.role === 'admin')
   const reading = useIsFetching({ predicate: q => READS.includes(q.queryKey[0]) }) > 0
   const [picked, setPicked] = useState(null)
+  const [logOpen, setLogOpen] = useState(false)
   const [openStep, setOpenStep] = useState(null)
   // A phone fits the flow into 350px and its run buttons shrink past tapping;
   // the list of steps keeps them full size.
@@ -261,17 +273,18 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
     )
   }
 
-  // A run goes on in the background and its output is on the Runs tab: starting
-  // one (or joining the one already going) opens it there.
+  // A run goes on in the background and its output is under the views, folded:
+  // starting one (or joining the one already going) unfolds it.
   const latest = runs?.[0]
   const busy = isStarting || latest?.status === 'running'
   const shownRun = picked || latest?.run_id || null
+  const shown = (runs || []).find(r => r.run_id === shownRun)
 
   function begin(layer) {
     start({ pipeline, layer }, {
       onSuccess: res => {
         setPicked(res.run_id)
-        setTab('Runs')
+        setLogOpen(true)
         if (res.already_running) toast('Already running. Showing its log.', 'info')
       },
       onError: err => toast(`Could not start: ${err.message}`, 'error'),
@@ -302,7 +315,7 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
         <span title={pipeline}>{label || pipeline}</span>
       </CardTitle>
 
-      <Tabs tabs={['Flow', 'Steps', 'Runs', 'Code']} active={tab} onChange={t => setTab(t)} />
+      <Segmented options={['Flow', 'Steps', 'Code']} value={tab} onChange={setTab} label="What to show of the pipeline" />
 
       {tab === 'Flow' && (
         <div className="fade-in">
@@ -316,7 +329,7 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
       {tab === 'Steps' && (
         // relative: the sr-only "Actions" header is clipped by this scroller, not left to widen the page
         <div style={{ overflowX: 'auto', position: 'relative' }}>
-          <table>
+          <table className="tb-list">
             <thead>
               <tr><th>Step</th>{typed && <th>Type</th>}{!phone && <><th>Schedule</th><th>Runs after</th></>}<th>Last status</th><th>Rows out</th><th>Last run</th><th><span className="sr-only">Actions</span></th></tr>
             </thead>
@@ -338,19 +351,12 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
                   )}
                   {!phone && <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.schedule || '—'}</td>}
                   {!phone && <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.depends_on || '—'}</td>}
-                  <td>
-                    {l.last_status
-                      ? l.last_status.startsWith('error:')
-                        ? <Badge variant="red" title={l.last_status}>error</Badge>
-                        : <Badge variant={STATUS_BADGE[l.last_status] || 'gray'}>{l.last_status}</Badge>
-                      : <Badge variant="gray">—</Badge>
-                    }
-                  </td>
+                  <td><StepStatus status={l.last_status} /></td>
                   <td style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
                     {l.last_rows_out ?? '—'}
                   </td>
                   <td style={{ color: 'var(--muted)', fontSize: 12 }}>
-                    {l.last_run ? new Date(l.last_run).toLocaleString() : '—'}
+                    <Time iso={l.last_run} fallback="—" />
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
                     {admin && (
@@ -392,14 +398,19 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
         </div>
       )}
 
-      {tab === 'Runs' && (
-        <div className="fade-in">
-          {runs?.length > 0 && <RunList runs={runs} runId={shownRun} onPick={setPicked} />}
-          <RunLog pipeline={pipeline} runs={runs} runId={shownRun} onDone={finished} />
-        </div>
-      )}
-
+      {tab === 'Code' && <SourceCredentials pipeline={pipeline} />}
       {tab === 'Code' && <CodeView kind="pipelines" name={pipeline} />}
+
+      {shownRun && (
+        <details className="pipe-run" open={logOpen} onToggle={e => setLogOpen(e.currentTarget.open)}>
+          <summary>
+            {picked ? 'This run' : 'Latest run'}
+            {shown && <span className="wb-meta"> · started <Time iso={shown.started_at} /></span>}
+          </summary>
+          <RunLog pipeline={pipeline} runs={runs} runId={shownRun} onDone={finished} />
+          {model && <p className="wb-meta">Every run of this model is on its <Link to={dataPath(model, 'runs')}>Runs</Link> tab.</p>}
+        </details>
+      )}
     </Card>
   )
 }
@@ -427,7 +438,7 @@ export default function Pipelines({ model }) {
   return pipelines.map(p => (
     <div key={p.pipeline} style={{ marginBottom: 16 }}>
       {/* A pipeline has no label of its own: the model's is its name when it is the model's. */}
-      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary={p === own}
+      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary={p === own} model={model}
                       label={p.model ? labelOf(p.model) : humanise(p.pipeline)} />
     </div>
   ))

@@ -1,7 +1,8 @@
 # Pipeline for housing_model: rebuild the warehouse, then its report.
 #
 #     transform  runs transforms/affordability_transform.py: reads
-#                inputs/housing_history.csv and sinks data/housing.duckdb
+#                inputs/housing_history.csv, sinks the star schema into
+#                data/warehouse.duckdb and checks its `with contract(...)` block
 #     build      builds every report in reports/housing_model/, each with its trace
 #
 #     tracebi run-pipeline housing_model
@@ -10,7 +11,7 @@
 # Census, BLS). Refreshing it needs the network, so it is a separate, deliberate
 # step and not part of this pipeline: python inputs/fetch_housing.py
 name: housing_model
-description: Rebuild the housing warehouse, then its report.
+description: Rebuild the housing tables in the warehouse, then its report.
 transform: affordability_transform
 models: [housing_model]
 reports: all

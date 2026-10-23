@@ -2,9 +2,11 @@
 Sources as data: ``connections/<name>.yaml``.
 
 A connection is a type and its fields. Any value may be a ``${ENV_VAR}``
-reference (the whole value, ``[A-Z_][A-Z0-9_]*``); a credential-bearing field
-(a password, a URL that carries one) *must* be, so a secret is never in the
-file. The schema is closed, and the file loads with ``yaml.safe_load``
+reference (the whole value, ``[A-Z_][A-Z0-9_]*``), optionally with a default,
+``${ENV_VAR:-default}``, used when the name is set nowhere; a
+credential-bearing field (a password, a URL that carries one) *must* be a
+reference, and a default must pass the same check as a literal, so a secret
+is never in the file. The schema is closed, and the file loads with ``yaml.safe_load``
 semantics and a repeated key is an error (``tracebi.model.model_spec``'s
 loader).
 
@@ -16,8 +18,10 @@ page shows) never resolve a credential: a referenced secret appears as
 ``${NAME}``.
 
 ``${NAME}`` is looked up in the process environment, then in the project's
-``.env`` (where ``tracebi connect`` put the secret). Only referenced names are
-read, and ``.env`` is never copied into ``os.environ``.
+``.env`` (where ``tracebi connect`` put the secret), then in the project's
+credential store (``tracebi secret set``; :mod:`tracebi.project_credentials`,
+the one resolver). Only referenced names are read, and nothing is copied into
+``os.environ``.
 """
 
 from __future__ import annotations
@@ -32,9 +36,9 @@ from urllib.parse import parse_qsl, urlsplit
 from tracebi.model.model_spec import (
     ModelSpecError, _escapes, _NAME, _unknown, _unique_key_loader,
 )
+from tracebi.project_credentials import REF as _REF
 
 SUFFIXES = (".yaml", ".yml")
-_REF = re.compile(r"\$\{([A-Z_][A-Z0-9_]*)\}")
 _SECRET_QUERY = re.compile(r"pass|pwd|secret|token|key", re.I)
 
 # type -> (connector class name, required fields, optional fields)
@@ -128,8 +132,21 @@ def validate_connection_doc(doc: Any) -> list[str]:
         if not isinstance(value, str) or not value:
             errors.append(f"{field}: must be a non-empty string")
             continue
-        if _REF.fullmatch(value):
+        ref = _REF.fullmatch(value)
+        if ref and ref.group(2) is None:
             continue
+        if ref:
+            # A default is a literal that ships in the file: it is checked as
+            # one below, so a secret cannot hide behind ${NAME:-...}.
+            value = ref.group(2)
+            if not value:
+                errors.append(f"{field}: the default after ':-' is empty; drop it "
+                              f"or write a value")
+                continue
+            if field in _MUST_REFERENCE:
+                errors.append(f"{field}: a credential has no default; write "
+                              f"${{ENV_VAR}} alone and set the value on the server")
+                continue
         if "${" in value:
             errors.append(f"{field}: ${{ENV_VAR}} must be the whole value "
                           f"([A-Z_][A-Z0-9_]*), got {value!r}")
@@ -230,23 +247,25 @@ class Declaration:
         """The field as the file wrote it; a reference stays ``${NAME}``."""
         return self.fields[field]
 
-    def _env(self, var: str, field: str) -> str:
-        value = os.environ.get(var)
-        if not value:
-            value = _read_dotenv(self.root / ".env").get(var)
-        if not value:
+    def _env(self, raw: str, field: str) -> str:
+        from tracebi.project_credentials import CredentialError, Missing, expand
+
+        try:
+            return expand(raw, self.root)[0]
+        except Missing as exc:
+            var = exc.name
             err = ConnectionConfigError(
                 f"connection '{self.name}': environment variable {var} "
                 f"(field '{field}') is not set; set it in the environment or "
                 f"in {self.root / '.env'}")
             err.variable = var
-            raise err
-        return value
+            raise err from None
+        except CredentialError as exc:
+            raise ConnectionConfigError(f"connection '{self.name}': {exc}") from None
 
     def value(self, field: str) -> Any:
         raw = self.fields[field]
-        ref = _REF.fullmatch(raw)
-        value = self._env(ref.group(1), field) if ref else raw
+        value = self._env(raw, field) if _REF.fullmatch(raw) else raw
         if field in _PATH_FIELDS and self.ctype in _PATH_FIELDS[field] \
                 and value != ":memory:" and not os.path.isabs(value):
             return str((self.root / value).resolve())

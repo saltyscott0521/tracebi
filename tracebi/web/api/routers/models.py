@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from tracebi.sources import is_framework_table
 from tracebi.web.api.errors import error_detail
 from tracebi.web.api.lineage_graph import lineage_to_graph
 from tracebi.web.api.registry import registry
@@ -30,6 +31,11 @@ def get_model(name: str):
     detail = dict(detail)
     from tracebi.model_registry import model_path
 
+    # A model that names one of TraceBi's own tables (as its name or its
+    # source) does not list it, and its routes refuse it: see _load_table.
+    tables = detail.get("tables") or []
+    detail["tables"] = [t for t in tables if not _is_framework(t)]
+    detail["hidden_framework_tables"] = len(tables) - len(detail["tables"])
     path = model_path(name) or model_path(detail.get("name") or name)
     if path:
         try:
@@ -60,10 +66,20 @@ def _safe_filename(name: str) -> str:
     return "".join(c for c in name if c.isalnum() or c in "._- ") or "export"
 
 
+def _is_framework(table: dict) -> bool:
+    """A model table that is one of TraceBi's own, by its name or its source."""
+    return is_framework_table(table.get("name", "")) or is_framework_table(table.get("source") or "")
+
+
 def _load_table(name: str, table_name: str):
     model = registry.get_model(name)
     if not model:
         raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    # A framework table answers as a missing one does: the state store's
+    # sessions and tokens are never rows a page can read.
+    declared = next((t for t in model.info().get("tables", []) if t.get("name") == table_name), None)
+    if is_framework_table(table_name) or (declared and _is_framework(declared)):
+        raise HTTPException(status_code=404, detail=f"Table '{table_name}' not found in model '{name}'")
     try:
         return model.load(table_name)
     except ValueError as exc:
@@ -78,9 +94,61 @@ def _records(df) -> list[dict]:
     return df.astype(object).where(df.notna(), None).to_dict(orient="records")
 
 
+def _open_model_table(name: str, table_name: str):
+    """The model table's ``(connector, source table)`` opened through the one
+    table API (:mod:`tracebi.web.api.routers.tables`), or None when that
+    source is not one it reads (a ``SELECT`` source, a CSV folder, a cloud
+    warehouse), which keeps the connector's own load."""
+    from tracebi.web.api.routers import tables
+
+    model = registry.get_model(name)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    entry = next((t for t in model.info().get("tables", []) if t["name"] == table_name), None)
+    if entry is None:
+        return None             # _load_table answers the 404, naming the tables
+    connector = next(c for c in model.connectors() if c.name == entry["connector"])
+    return lambda: tables.open_table(connector, entry["source"])
+
+
+def _read_model_table(name: str, table_name: str, read):
+    """*read* on the opened model table; None when it is not read that way."""
+    from tracebi.model.engine import QueryTimeout
+    from tracebi.web.api.routers import tables
+
+    opener = _open_model_table(name, table_name)
+    if opener is None:
+        return None
+    try:
+        with opener() as reader:
+            return read(reader)
+    except (tables.Unsupported, tables.NotInCatalog):
+        return None
+    except tables.NotConnected as exc:
+        raise HTTPException(status_code=404, detail=exc.answer["reason"])
+    except QueryTimeout as exc:
+        raise HTTPException(status_code=504, detail=error_detail("Read stopped", exc))
+
+
 @router.get("/{name}/tables/{table_name}/preview")
 def preview_table(name: str, table_name: str, rows: int = 50):
-    """Load a table from a model and return the first N rows."""
+    """The first N rows of a model's table (at most 500), read in the engine
+    where its source is, never by loading the whole table."""
+    from tracebi.web.api.routers.tables import MAX_LIMIT, read_rows
+
+    rows = max(1, min(rows, MAX_LIMIT))
+    page = _read_model_table(name, table_name, lambda r: read_rows(r, limit=rows))
+    if page is not None:
+        names = [c["name"] for c in page["columns"]]
+        return {
+            "model": name,
+            "table": table_name,
+            "rows": len(page["rows"]),
+            "total_rows": page["total"],
+            "columns": names,
+            "dtypes": {c["name"]: c["type"] for c in page["columns"]},
+            "data": [dict(zip(names, row)) for row in page["rows"]],
+        }
     ds = _load_table(name, table_name)
     full_df = ds.to_pandas()
     df = full_df.head(rows)
@@ -92,7 +160,6 @@ def preview_table(name: str, table_name: str, rows: int = 50):
         "columns": list(df.columns),
         "dtypes": {c: str(t) for c, t in full_df.dtypes.items()},
         "data": _records(df),
-        "lineage": ds.lineage_to_dict(),
     }
 
 
@@ -216,7 +283,13 @@ def run_query(name: str, body: QueryRequest):
 
 @router.get("/{name}/tables/{table_name}/export.csv")
 def export_table_csv(name: str, table_name: str):
-    """Download the full table as CSV."""
+    """Download the full table as CSV, streamed from the engine where its
+    source is read by the table API."""
+    from tracebi.web.api.routers.tables import stream_csv
+
+    opener = _open_model_table(name, table_name)
+    if opener is not None and _read_model_table(name, table_name, lambda r: True):
+        return stream_csv(opener, table_name)
     ds = _load_table(name, table_name)
     buf = io.StringIO()
     ds.to_pandas().to_csv(buf, index=False)

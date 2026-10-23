@@ -71,12 +71,24 @@ def test_a_literal_secret_in_a_connection_is_refused(scaffolded, monkeypatch):
         f"name: snow\ntype: snowflake\naccount: a\nuser: u\npassword: {SECRET}\nwarehouse: w\ndatabase: d\n")
     (conns / "pg.yaml").write_text(f"name: pg\ntype: postgres\nurl: postgresql://u:{SECRET}@h/db\n")
     (conns / "ok.yaml").write_text("name: ok\ntype: sql\nurl: sqlite:///data/ok.db\n")   # no credential: fine
+    # A default ships in the file, so it is checked as a literal: a secret
+    # cannot hide behind ${NAME:-...}, and a password has no default at all.
+    (conns / "dflt.yaml").write_text(
+        f"name: dflt\ntype: postgres\nurl: ${{TRACEBI_DFLT_URL:-postgresql://u:{SECRET}@h/db}}\n")
+    (conns / "snowd.yaml").write_text(
+        "name: snowd\ntype: snowflake\naccount: a\nuser: u\npassword: ${TRACEBI_SNOWD_PW:-x}\n"
+        "warehouse: w\ndatabase: d\n")
+    (conns / "okd.yaml").write_text(
+        "name: okd\ntype: sql\nurl: ${TRACEBI_OKD_URL:-sqlite:///data/ok.db}\n")
 
     code, out = run_cli("validate")
     assert code == 1
     assert "snow.yaml" in out and "password: a credential" in out
     assert "pg.yaml" in out and "url: carries a credential" in out
     assert "ok.yaml is well formed" in out
+    assert "dflt.yaml: url: carries a credential" in out
+    assert "snowd.yaml: password: a credential has no default" in out
+    assert "okd.yaml is well formed" in out
     assert SECRET not in out                       # even the refusal does not echo it
 
     c = serve(monkeypatch)
@@ -119,6 +131,18 @@ def test_an_unset_variable_fails_when_the_connection_is_used_not_when_it_is_foun
     import os
     assert "TRACEBI_ELSEWHERE_DB" not in os.environ
 
+    # A default stands in only where the name is set nowhere; set, it wins.
+    (scaffolded / "connections" / "fallback.yaml").write_text(
+        "name: fallback\ntype: duckdb\ndatabase: ${TRACEBI_FALLBACK_DB:-other.duckdb}\n")
+    from tracebi.connections import load_connection
+    conn = load_connection(scaffolded / "connections" / "fallback.yaml", scaffolded)
+    assert conn.database == str(other.resolve())
+    rows = {r["name"]: r for r in c.get("/api/credentials").json()["credentials"]}
+    assert (rows["TRACEBI_FALLBACK_DB"]["set"], rows["TRACEBI_FALLBACK_DB"]["source"]) == (True, "default")
+    assert rows["TRACEBI_ELSEWHERE_DB"]["source"] == "dotenv"
+    monkeypatch.setenv("TRACEBI_FALLBACK_DB", str(scaffolded / "named.duckdb"))
+    assert conn.database == str(scaffolded / "named.duckdb")
+
 
 def test_the_connectors_api_never_shows_a_resolved_secret(scaffolded, monkeypatch):
     monkeypatch.setenv("TRACEBI_PG_URL", f"postgresql://analyst:{SECRET}@db.internal:5432/sales")
@@ -143,6 +167,56 @@ def test_the_connectors_api_never_shows_a_resolved_secret(scaffolded, monkeypatc
     assert listed["snow"]["storage"]["where"].startswith("Snowflake acme")
     assert "db.internal" not in c.get("/api/connectors/pg").text  # the host came from the secret too
     assert listed["lit"]["url"] == "postgresql://reader@db.internal/sales"   # a literal, no credential
+
+
+def test_a_connection_at_the_state_store_shows_only_its_data(scaffolded, monkeypatch):
+    # The plausible first try, "show me my runs": a connection pointed at a
+    # database that holds the app's own tables. Sessions and tokens live
+    # there, so no explorer lists them as data, whatever points at it.
+    import sqlite3
+
+    import duckdb
+
+    framework = ("tracebi_runs", "tracebi_sessions", "alembic_version")
+    lite = sqlite3.connect(scaffolded / "data" / "held.db")
+    duck = duckdb.connect(str(scaffolded / "data" / "held.duckdb"))
+    for con in (lite, duck):
+        for table in (*framework, "orders"):
+            con.execute(f"create table {table} (id integer)")
+        con.execute("insert into tracebi_sessions values (1)")
+        con.commit()
+        con.close()
+    (scaffolded / "connections" / "held.yaml").write_text(
+        "name: held\ntype: sql\nurl: sqlite:///data/held.db\n")
+    (scaffolded / "connections" / "held_duck.yaml").write_text(
+        "name: held_duck\ntype: duckdb\ndatabase: data/held.duckdb\n")
+    (scaffolded / "models" / "held_model.yaml").write_text(
+        "name: held_model\nconnectors:\n  - {name: held_duck, connection: held_duck}\n"
+        "tables:\n  - {name: orders, connector: held_duck, source: orders}\n"
+        "  - {name: runs, connector: held_duck, source: tracebi_runs}\n"
+        "  - {name: tracebi_sessions, connector: held_duck, source: tracebi_sessions}\n")
+    c = serve(monkeypatch)
+
+    for name in ("held", "held_duck"):
+        listed = c.get(f"/api/connectors/{name}/tables").json()
+        assert [t["name"] for t in listed["tables"]] == ["orders"], name
+        assert listed["hidden_framework_tables"] == 3, name
+    view = c.get("/api/connectors/held_duck/warehouse").json()
+    assert [t["name"] for t in view["tables"]] == ["orders"]
+    assert view["hidden_framework_tables"] == 3
+    [wh] = [w for w in c.get("/api/warehouse").json()["warehouses"] if w["name"] == "held_duck"]
+    assert [t["name"] for t in wh["tables"]] == ["orders"]
+    assert wh["hidden_framework_tables"] == 3
+
+    # A model that names one is refused by name, as a missing table is, and
+    # its page does not list it.
+    model = c.get("/api/models/held_model").json()
+    assert [t["name"] for t in model["tables"]] == ["orders"]
+    assert model["hidden_framework_tables"] == 2
+    for table in ("runs", "tracebi_sessions"):
+        assert c.get(f"/api/models/held_model/tables/{table}/preview").status_code == 404
+        assert c.get(f"/api/models/held_model/tables/{table}/export.csv").status_code == 404
+    assert c.get("/api/models/held_model/tables/orders/preview").status_code == 200
 
 
 def test_a_python_pipeline_beats_a_yaml_one_of_the_same_name(scaffolded, monkeypatch):

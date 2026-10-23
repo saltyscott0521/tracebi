@@ -6,6 +6,42 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added — one read-only table API
+
+- **`/api/tables/{source}/{table}`** (+ `/rows`, `/profile`, `/export.csv`)
+  reads a table wherever it lives: a warehouse on any tier, a SQL connection,
+  a Python `MemoryConnector`, or a file under `inputs/` (`source` = `inputs`).
+  Rows page, sort, search (`q`) and filter (`where`, a closed list of ops) in
+  the engine, at most 500 a page; the profile covers one table, dates
+  included, with null shares and top values with counts; the export streams
+  the same cut. Types are the engine's spelling everywhere. Nothing free-form
+  reaches SQL: names checked against the catalog, values bound, DuckDB reads
+  on the locked query connection, a SQL connection under the statement
+  timeout. The model preview and its CSV read through it instead of loading
+  the whole table into pandas (the preview drops its `lineage` key).
+- **Row counts follow one rule**: exact for DuckDB, files and frames in
+  memory; Postgres's catalog estimate (`rows_exact: false`) for a SQL
+  connection; else none. `/connectors/{name}/tables` no longer runs a
+  `count(*)` for the first 20 tables of a database (`ROW_COUNT_CAP` is gone).
+- **A `MemoryConnector` lists its tables.**
+
+### Changed — one demo: the reference project follows its own conventions
+
+- **One warehouse, declared.** `examples/portfolio_project/tracebi.yaml`
+  names `data/warehouse.duckdb` and the engine limits. The housing model reads
+  it (`type: warehouse`) and its transform sinks there through `sink_target()`;
+  `data/housing.duckdb` and the `housing_warehouse` connector are gone.
+  Housing's `dim_cohort` lands as `dim_purchase_cohort` (SaaS has a
+  `dim_cohort` too); the model maps it back, so no binding changed.
+- **SaaS's transform is SQL**: `saas_transform.sql` + `saas_transform.contract.yaml`,
+  replacing `saas_transform.py`; its four tables fingerprint as before.
+- **`docker compose up` serves the reference project only.** `TRACEBI_APP`
+  is no longer set (the demo app stays opt-in). The CRM is a standing mock
+  database, `crm` on the stack's Postgres, loaded once at first start
+  (`docker/postgres-init.sql`, which also creates `tracebi_state`); `seed`
+  runs the project's three pipelines into a shared `warehouse` volume. An
+  existing `pgdata` volume never re-runs init: `docker compose down -v` once.
+
 ### Fixed
 
 - **DuckDB 2.0 runs the query engine.** From 2.0 a result fetched part-way

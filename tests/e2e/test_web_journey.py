@@ -250,6 +250,49 @@ def test_a_pipeline_names_the_models_it_touches(served):
     assert listed["plain"]["transform"] is None     # a hand-built runner runs no named transform
 
 
+def test_the_demo_keeps_its_runs_in_the_state_store_not_its_data(served, scaffolded, monkeypatch):
+    """The demo app seeds and runs at import with no TRACEBI_DEMO_DB_URL. Its
+    runner keeps run history (and, beside it, sessions and tokens) in the
+    state store; demo_db holds only the demo's data."""
+    import sys
+
+    import sqlalchemy
+
+    from tests.e2e.conftest import follow_run
+    import tracebi.web as web_pkg
+
+    monkeypatch.delenv("TRACEBI_DEMO_DB_URL", raising=False)
+    monkeypatch.setenv("TRACEBI_DEMO_DB_DIR", str(scaffolded / "data"))
+    # A fresh import, so the demo seeds here; whatever was imported before is
+    # put back after, so no later test sees this journey's paths.
+    saved = {k: m for k, m in sys.modules.items() if k.startswith("tracebi.web.demo_app")}
+    had = getattr(web_pkg, "demo_app", None)
+    for k in saved:
+        del sys.modules[k]
+    try:
+        import tracebi.web.demo_app  # noqa: F401
+
+        demo = sqlalchemy.inspect(sqlalchemy.create_engine(
+            f"sqlite:///{scaffolded / 'data' / 'demo.db'}")).get_table_names()
+        assert "orders_raw" in demo and "gold_revenue_by_region" in demo
+        assert not [t for t in demo if t.startswith("tracebi_") or t == "alembic_version"], demo
+        listed = served.get("/api/connectors/demo_db/tables").json()
+        assert listed["hidden_framework_tables"] == 0
+
+        run = served.post("/api/pipelines/sales/runs").json()
+        text, done = follow_run(served, "sales", run["run_id"])
+        assert done["status"] == "succeeded", text
+        assert run["run_id"] in [r["run_id"] for r in served.get("/api/pipelines/sales/runs").json()]
+    finally:
+        for k in [k for k in sys.modules if k.startswith("tracebi.web.demo_app")]:
+            del sys.modules[k]
+        sys.modules.update(saved)
+        if had is None:
+            web_pkg.__dict__.pop("demo_app", None)
+        else:
+            web_pkg.demo_app = had
+
+
 def test_what_the_builder_points_at_reaches_the_agent(served, monkeypatch):
     """Build mode: a click in the app is a pointing file the agent's MCP tool
     reads, so "make this a line chart" means a specific figure."""

@@ -3582,6 +3582,7 @@ dependencies = [
 all = [
     { name = "alembic" },
     { name = "apscheduler" },
+    { name = "cryptography" },
     { name = "db-dtypes" },
     { name = "duckdb" },
     { name = "fastapi" },
@@ -3626,6 +3627,7 @@ csv = [
 dev = [
     { name = "alembic" },
     { name = "apscheduler" },
+    { name = "cryptography" },
     { name = "duckdb" },
     { name = "fastapi" },
     { name = "httpx2" },
@@ -3698,6 +3700,7 @@ sql = [
 ]
 web = [
     { name = "alembic" },
+    { name = "cryptography" },
     { name = "fastapi" },
     { name = "jinja2" },
     { name = "python-multipart" },
@@ -3717,6 +3720,9 @@ requires-dist = [
     { name = "apscheduler", marker = "extra == 'all'", specifier = ">=3.10" },
     { name = "apscheduler", marker = "extra == 'dev'", specifier = ">=3.10" },
     { name = "apscheduler", marker = "extra == 'pipeline'", specifier = ">=3.10" },
+    { name = "cryptography", marker = "extra == 'all'", specifier = ">=42" },
+    { name = "cryptography", marker = "extra == 'dev'", specifier = ">=42" },
+    { name = "cryptography", marker = "extra == 'web'", specifier = ">=42" },
     { name = "db-dtypes", marker = "extra == 'all'" },
     { name = "db-dtypes", marker = "extra == 'bigquery'" },
     { name = "duckdb", marker = "extra == 'all'", specifier = ">=1.5.5" },

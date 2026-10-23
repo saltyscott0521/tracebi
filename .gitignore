@@ -29,6 +29,9 @@ data/
 .env
 .env.local
 .env.*.local
+# The project credential store (`tracebi secret`) and its key.
+.tracebi/secrets.json
+.tracebi/secret.key
 *.db
 *.sqlite
 *.sqlite3

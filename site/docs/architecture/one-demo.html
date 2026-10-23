@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>One demo: what tracebi.com serves, and the conventions every model follows — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="One demo: what tracebi.com serves, and the conventions every model follows">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Concepts</span><em>The ideas. Read these once.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/receipts.html">Receipts</a>
+<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/transform.html">Transform — phase ①</a>
+<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs.</em></div>
+<a href="../guides/plain-english.html">TraceBi in plain English</a>
+<a href="../guides/demo-script.html">A ten-minute demo for a non-technical audience</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
+<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/quickstart.html">Quickstart</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
+<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
+<a href="../guides/updating.html">Updating TraceBi</a>
+<a href="../guides/your-first-report.html">Your first report</a>
+<div class="sec"><span>Reference</span><em>Look things up.</em></div>
+<a href="../reference/api-routes.html">API routes</a>
+<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
+<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
+<a href="../architecture/design-direction.html">Design direction</a>
+<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
+<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
+<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
+<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
+<a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a class="on" href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
+<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
+<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
+<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
+<a href="../architecture/ui-quality.html">The UI quality bar</a>
+<a href="../architecture/ui-backlog.html">UI backlog</a>
+<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
+<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
+<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
+<div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
+<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
+<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
+<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
+<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+  </details>
+  <main class="doc">
+<h1 id="one-demo-what-tracebicom-serves-and-the-conventions-every-model-follows">One demo: what tracebi.com serves, and the conventions every model follows</h1>
+<p><em>Plan, 2026-10-23. Package <code>U-D</code> of the 2026-10-23 UI round.</em></p>
+<h2 id="what-is-served-today-and-why-it-reads-as-several-products">What is served today, and why it reads as several products</h2>
+<p>The public demo (<code>docker-compose.yml</code>, and tracebi.com) serves <strong>two
+projects at once</strong>: the reference project
+(<code>examples/portfolio_project</code>) and the bundled demo app
+(<code>TRACEBI_APP=tracebi.web.demo_app</code>). A visitor opening Data sees five
+models that follow four different sets of rules:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Where</th>
+<th>Model form</th>
+<th>Warehouse</th>
+<th>Transform</th>
+<th>Pipeline</th>
+<th>Reports</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Direct Lending Portfolio</td>
+<td>reference project</td>
+<td>YAML</td>
+<td><code>type: warehouse</code> (<code>data/warehouse.duckdb</code>) + CRM Postgres by <code>-- source:</code></td>
+<td>SQL + <code>.contract.yaml</code></td>
+<td>YAML</td>
+<td><code>reports/portfolio_model/</code> (6)</td>
+</tr>
+<tr>
+<td>SaaS Subscriptions</td>
+<td>reference project</td>
+<td>YAML</td>
+<td><code>type: warehouse</code> (same file)</td>
+<td>Python, no contract</td>
+<td>YAML</td>
+<td><code>reports/saas_model/</code> (2)</td>
+</tr>
+<tr>
+<td>Housing Affordability</td>
+<td>reference project</td>
+<td>YAML</td>
+<td>its own <code>data/housing.duckdb</code> (<code>type: duckdb</code>)</td>
+<td>Python, no contract</td>
+<td>YAML</td>
+<td><code>reports/housing_model/</code> (1)</td>
+</tr>
+<tr>
+<td>Sales Orders</td>
+<td>demo app</td>
+<td>Python</td>
+<td><code>demo_db</code> (SQLite locally, Postgres on tracebi.com) holding <code>orders_raw/bronze/silver</code> <strong>and the runner's own tables</strong></td>
+<td>medallion layers in code</td>
+<td>Python runner</td>
+<td><code>demo_app/reports/sales_model/</code> (2)</td>
+</tr>
+<tr>
+<td>Wealth Management</td>
+<td>demo app</td>
+<td>Python</td>
+<td>an in-memory <code>banking</code> connector; <code>holdings_raw/_silver</code> land in <code>demo_db</code></td>
+<td>medallion layers in code</td>
+<td>Python runner</td>
+<td><code>demo_app/reports/wealth_model/</code> (2)</td>
+</tr>
+</tbody>
+</table>
+<p>So the Sources tab lists <code>crm</code>, <code>warehouse</code>, <code>housing_warehouse</code>, <code>demo_db</code>
+and <code>banking</code>: three kinds of thing under one heading. The Warehouse tab
+shows two DuckDB files plus a Postgres that also holds <code>tracebi_runs</code> and
+<code>tracebi_sessions</code>. The reference project has <strong>no <code>tracebi.yaml</code></strong>, so its
+"warehouse" is the default path by accident rather than declaration. Two
+of three reference transforms are Python with no sink contract, so their
+tables read "No checks" beside the holdings tables' "Checks passed".</p>
+<h2 id="the-rule">The rule</h2>
+<p><strong>tracebi.com serves one project, and every model in it follows the same
+conventions.</strong> The conventions are the ones <code>tracebi init</code> scaffolds and
+<code>CLAUDE.md</code> documents; the reference project is the proof that they hold
+for more than one model.</p>
+<ol>
+<li><strong>One project.</strong> <code>docker-compose.yml</code> and the Dockerfile serve
+   <code>examples/portfolio_project</code> only. <code>TRACEBI_APP</code> is unset there. The
+   bundled demo app stays in the package as <em>the</em> example of wiring an app
+   module in Python (medallion layers, <code>register</code>), opt-in as it is
+   documented to be, and is never served beside a project. <strong>Wealth
+   Management is served</strong>, so it moves into the reference project as its
+   fourth model, rebuilt to the conventions below (next section).</li>
+<li><strong>One warehouse per project</strong>, declared. <code>examples/portfolio_project/tracebi.yaml</code>
+   names <code>data/warehouse.duckdb</code> (file tier) and the engine limits.
+   Housing moves into it: <code>housing_model.yaml</code> says <code>type: warehouse</code>, its
+   transform sinks there, <code>data/housing.duckdb</code> goes away. The Warehouse tab
+   then shows one warehouse with every model's tables, each with who wrote
+   it.</li>
+<li><strong>Every transform is SQL with a sink contract</strong>, or is a Python escape
+   hatch that still declares one. <code>saas_transform.py</code> and
+   <code>affordability_transform.py</code> each gain a <code>.contract.yaml</code> (rows,
+   unique, not_null, foreign_key) so every table on the Warehouse tab reads
+   "Checks passed" or an honest failure, never "No checks". Where the Python
+   is plain cleaning, rewrite it as SQL (<code>saas_transform.sql</code>); housing's
+   prose parsing stays Python.</li>
+<li><strong>Every model is YAML with a label, a grain and declared measures</strong>, one
+   file per model, reports in <code>reports/&lt;model&gt;/</code>, one pipeline YAML per
+   model. Already true for the three; the rule is written so the next model
+   follows it.</li>
+<li><strong>Sources are real sources.</strong> The Sources tab lists connections
+   (<code>connections/*.yaml</code>) and <code>inputs/</code>. <code>crm</code> (Postgres) and <code>inputs/</code>
+   (CSV, public data) are the two kinds of source the demo should show;
+   the warehouse is not a source and the in-memory <code>banking</code> connector is
+   not shown anywhere a visitor looks.</li>
+<li><strong>The state store is never a data database.</strong> <code>TRACEBI_STATE_URL</code> is
+   its own database (compose: a second Postgres database, <code>tracebi_state</code>,
+   on the same server); the demo app's runner, when someone does run it,
+   uses <code>tracebi.state.state_url()</code> rather than its data URL; every
+   explorer hides <code>tracebi_*</code> and <code>alembic_version</code> regardless
+   (U-0 of the audit).</li>
+</ol>
+<h2 id="wealth-management-moves-into-the-reference-project">Wealth Management moves into the reference project</h2>
+<p>The demo app's <code>wealth_model</code> is the one visitors recognise (a bank's
+clients, branches, products, accounts, holdings, activities; AUM by branch
+and region), so it stays on the site, as a model of the reference project
+built the way the other three are:</p>
+<ul>
+<li><strong>Source</strong>: a core-banking database that ships, <code>connections/bank.yaml</code>
+  (<code>url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}</code>), with the six
+  raw tables the demo app generates today (the frames in <code>wealth_model.py</code>,
+  written by <code>inputs/seed_bank.py</code>, committed). The raw
+  tables keep a little mess worth cleaning (segment spelled three ways,
+  market values as strings, a duplicated activity), so the transform has
+  work to do.</li>
+<li><strong>Transform</strong>: <code>transforms/wealth_transform.sql</code> + <code>.contract.yaml</code>,
+  <code>-- source: bank.clients</code>, <code>bank.branches</code>, <code>bank.products</code>,
+  <code>bank.accounts</code>, <code>bank.holdings</code>, <code>bank.activities</code>; sinks <code>dim_client</code>,
+  <code>dim_branch</code>, <code>dim_product</code>, <code>dim_account</code>, <code>fact_holdings_wealth</code> (or a
+  <code>wealth_</code> prefix throughout, since <code>fact_holdings</code> is the portfolio's)
+  and <code>fact_activities</code> into the one warehouse.</li>
+<li><strong>Model</strong>: <code>models/wealth_model.yaml</code>, label <code>Wealth Management</code>, the
+  demo app's measures (AUM, cost basis, unrealised gain, client count,
+  activity volume) and dimensions (branch, region, segment, risk profile,
+  product class) declared.</li>
+<li><strong>Pipeline</strong>: <code>pipelines/wealth_model.yaml</code>, transform → build.</li>
+<li><strong>Reports</strong>: <code>reports/wealth_model/aum_by_branch</code> and <code>aum_by_region</code>
+  moved over as they are (<code>app.jsx</code> dashboards), bindings re-pointed at the
+  YAML model's names, plus whatever the showcase lacks that these had.</li>
+</ul>
+<p>The demo app keeps its own <code>wealth_model.py</code> and medallion
+<code>wealth_pipeline.py</code> as the Python example; the two are no longer the same
+thing served twice. <code>sales_model</code> stays in the demo app only.</p>
+<h2 id="sources-one-of-each-kind-on-purpose">Sources: one of each kind, on purpose</h2>
+<p>The four models show the four ways a project gets its data, so a visitor
+sees the range without reading a doc:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Source kind</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Direct Lending Portfolio</td>
+<td><strong>CSV + a live Postgres</strong>, combined</td>
+<td><code>inputs/holdings.csv</code> plus the CRM: <code>connections/crm.yaml</code> → <code>${TRACEBI_CRM_URL}</code>, a <strong>standing</strong> mock database in the box's Postgres: created and loaded once, at the volume's first start (<code>docker-entrypoint-initdb.d</code>), persisted, never reseeded by the app or a seed step. Off the box the <code>-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv</code> snapshot stands in and the certificate says so. This is the only model that needs a credential, which is what makes it the credentials demo too.</td>
+</tr>
+<tr>
+<td>Wealth Management</td>
+<td><strong>A database file that ships</strong></td>
+<td><code>connections/bank.yaml</code> → <code>${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}</code>: a core-banking SQLite with the six raw tables, written by <code>inputs/seed_bank.py</code>, committed, read by <code>-- source: bank.&lt;table&gt;</code> lines. Always connects, on the box too.</td>
+</tr>
+<tr>
+<td>SaaS Subscriptions</td>
+<td><strong>A database file that ships</strong></td>
+<td><code>connections/billing.yaml</code> → <code>${TRACEBI_BILLING_URL:-sqlite:///inputs/billing.sqlite}</code>: the billing system's <code>subscriptions</code> and <code>plans</code> tables (today's <code>subscriptions.csv</code>, loaded into SQLite by <code>inputs/seed_billing.py</code>).</td>
+</tr>
+<tr>
+<td>Housing Affordability</td>
+<td><strong>CSV only</strong>, public data</td>
+<td><code>inputs/housing_history.csv</code>, the NAR series, fetched by <code>inputs/fetch_housing.py</code>; no connection file, read by <code>read_csv</code> in the transform.</td>
+</tr>
+</tbody>
+</table>
+<p>Rules the table rests on:</p>
+<ul>
+<li>A source that is "a database" is a database: a Postgres on the box or a
+  SQLite that ships, never an in-memory connector. In-memory stays a unit
+  test tool.</li>
+<li>The shipped files are small, generated by a committed script in
+  <code>inputs/</code>, and regenerated by it; the CSV a script started from stays as
+  the script's input, not as a second source.</li>
+<li>A connection value may carry a <strong>default</strong>, shell-style:
+  <code>url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}</code>. The default is
+  used when the name resolves nowhere (environment, <code>.env</code>, store); it must
+  pass the same no-credential check as a literal (a SQLite path does, a
+  Postgres URL with a password does not), so a secret can never hide in a
+  default. <code>validate_connection_doc</code> enforces it; the Sources panel shows
+  "Set · default" as the source; a deployment that wants <code>bank</code> on a real
+  Postgres sets the variable and nothing else changes.</li>
+<li>The <code>-- source: … fallback:</code> directive stays for what it is for: a
+  declared connection that is unreachable right now. Only the live-Postgres
+  model uses it.</li>
+</ul>
+<p>The demo app follows the same rule where it keeps mock data: <code>banking</code>
+stops being a <code>MemoryConnector</code> and becomes tables in <code>data/demo.db</code>
+(SQLite, written by <code>sample_data.py</code>) or in <code>TRACEBI_DEMO_DB_URL</code>'s
+Postgres, like <code>sales_model</code>'s already are.</p>
+<h2 id="what-the-visitor-sees-afterwards">What the visitor sees afterwards</h2>
+<ul>
+<li><strong>Models</strong>: four chains, each <code>inputs/… → &lt;transform&gt;.sql → N tables →
+  N measures → N reports</code>, the portfolio one showing <code>crm</code> + CSV, the
+  wealth one <code>bank</code>, the SaaS one <code>billing</code>, the housing one CSV.</li>
+<li><strong>Sources</strong>: <code>crm</code> (Postgres on the box, "not connected · snapshot"
+  elsewhere), <code>bank</code> and <code>billing</code> (SQLite files that ship, always
+  connected, tables listed), and <code>inputs/</code> (CSV and the shipped files, each
+  read by one transform). Nothing else.</li>
+<li><strong>Warehouse</strong>: <code>warehouse</code> · <code>data/warehouse.duckdb</code> · one list of tables
+  grouped by the transform that wrote them, every row "Checks passed".</li>
+<li><strong>Reports</strong>: eleven reports in four folders named for their models.</li>
+</ul>
+<h2 id="what-goes">What goes</h2>
+<ul>
+<li><code>data/housing.duckdb</code> and the <code>housing_warehouse</code> connector.</li>
+<li>The demo app from the served stack (not from the package). Its files
+  are untouched in this round except that <code>banking</code> becomes a real
+  database (above).</li>
+<li><code>examples/seeds/seed_db.py</code>'s habit of seeding <code>data/tracebi.db</code>: it
+  seeds <code>data/demo.db</code>, the demo app's own file.</li>
+</ul>
+<h2 id="acceptance">Acceptance</h2>
+<p><code>tests/e2e/test_reference_project.py</code>: <code>tracebi.yaml</code> is read; <code>GET
+/api/warehouse</code> lists exactly one warehouse holding housing's, saas's and
+portfolio's tables, each with <code>contract.status == "satisfied"</code>; <code>GET
+/api/connectors</code> lists <code>crm</code>, <code>bank</code>, <code>billing</code> and no <code>housing_warehouse</code>; <code>GET /api/models</code>
+lists four models, every one <code>type: warehouse</code>, <code>wealth_model</code> among them
+with its two reports built. The UI smoke journey's
+Sources step sees <code>crm</code>, <code>bank</code>, <code>billing</code> and <code>inputs/</code> only. <code>docker compose config</code> shows
+<code>TRACEBI_APP</code> unset for <code>app</code> and <code>seed</code>, and <code>TRACEBI_STATE_URL</code> pointing
+at a database other than <code>TRACEBI_CRM_URL</code>'s.</p>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

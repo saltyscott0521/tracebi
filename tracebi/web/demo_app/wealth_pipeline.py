@@ -14,6 +14,7 @@ from sqlalchemy import create_engine
 
 from tracebi import DataModel, FinalLayer, LandingLayer, ManipulationLayer, PipelineRunner
 from tracebi.model_registry import get_model
+from tracebi.state import state_url
 from tracebi.web.demo_app.pipeline import _DB_URL, DURABLE_DB, db
 
 _wealth = get_model("wealth_model")
@@ -58,7 +59,8 @@ _final = FinalLayer(
     measures={"market_value": "sum", "cost_basis": "sum"}, dimensions=["dim_branch.branch"],
     sink=db, sink_table="gold_aum_by_branch")
 
-runner = PipelineRunner(db_url=_DB_URL)
+# Run history in the state store, as the sales pipeline's (pipeline.py).
+runner = PipelineRunner(db_url=state_url())
 runner.register(_holdings_landing, name="holdings_bronze", schedule="0 * * * *")
 runner.register(_branches_landing, name="branches_bronze", schedule="0 * * * *")
 runner.register(_holdings_manip, name="holdings_silver", schedule="15 * * * *", depends_on="holdings_bronze")

@@ -9,8 +9,10 @@ over.
                                                         TRACEBI_CRM_URL; unset, the
                                                         snapshot inputs/issuer_ratings.csv)
     ①  TRANSFORM    transforms/holdings_transform.sql  → data/warehouse.duckdb
-                    transforms/saas_transform.py       → data/warehouse.duckdb
-                    transforms/affordability_transform.py → data/housing.duckdb
+                    transforms/saas_transform.sql      → data/warehouse.duckdb
+                    transforms/affordability_transform.py → data/warehouse.duckdb
+                    (the one warehouse tracebi.yaml declares; each transform's
+                    sink contract is checked as it lands)
     ②  MODEL        models/portfolio_model.yaml          (a star schema over the sink)
     ③  REPORT       reports/portfolio_model/portfolio_dashboard/        → data/portfolio_dashboard.html
 
@@ -67,13 +69,15 @@ def main() -> None:
         print(f"    ratings: the crm connection (Postgres), {crm['rows']} rows")
 
     # The SaaS metrics sample (reports/saas_model) sinks its own tables into the
-    # same warehouse: a billing export cleaned to one row per account per month.
-    # The transform is a plain script; loading it runs it top to bottom.
+    # same warehouse: a billing export cleaned to one row per account per month,
+    # in SQL, with saas_transform.contract.yaml beside it.
     print("① saas transform → sink")
-    _load(os.path.join(ROOT, "transforms", "saas_transform.py"))
+    print(f"    form: {run_transform(os.path.join(ROOT, 'transforms', 'saas_transform.sql'), root=ROOT)}")
 
-    # The housing sample (reports/housing_model/affordability) has its own input
-    # and warehouse: public annual series, sunk to data/housing.duckdb.
+    # The housing sample (reports/housing_model/affordability) has its own
+    # input, public annual series, and sinks into the same warehouse. Following
+    # each buyer year by year, refinancing as rates fall, stays Python, the
+    # escape hatch; it declares its contract in a `with contract(...)` block.
     print("① housing transform → sink")
     housing = _load(os.path.join(ROOT, "transforms", "affordability_transform.py"))
     print(f"    {housing.run()}")

@@ -48,6 +48,10 @@ class MemoryConnector(BaseConnector):
     def describe(self) -> dict:
         return {**super().describe(), "tables": list(self._tables.keys())}
 
+    def list_tables(self) -> list[str]:
+        """The names of the frames it holds: the dict is its catalog."""
+        return list(self._tables)
+
     def column_schema(self, source: str) -> list[dict[str, str]]:
         """Names and dtypes of the frame already held in memory."""
         if source not in self._tables:

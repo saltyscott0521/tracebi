@@ -2,25 +2,28 @@ import { Fragment, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { useDesk, useModels, usePipelines, useReports, useRuns } from '../api'
-import { ago } from '../components/map/states'
+import { ago, day, isoTitle } from '../when'
 import { checkedVerdict, verdictOf } from '../verdict'
 import { useModelLabel, useReportModels } from '../components/Scope'
 import { dataPath, historyPath, pipelineModels, reportPagePath } from '../nav'
 import {
-  Badge, Spinner, Empty, ErrorDetail, Verdict, useNarrow,
+  Btn, Chip, Spinner, Empty, ErrorDetail, Segmented, Verdict, useNarrow,
 } from '../components/Shared'
 
-// Kinds the store records. The values are the API's filters; the labels
-// are what the table shows.
-const KINDS = [
-  ['report_build', 'Report build'],
-  ['background_run', 'Background run'],
-  ['schedule', 'Schedule'],
-  ['pipeline_layer', 'Pipeline'],
-  ['pipeline_run', 'Pipeline run'],
-  ['publish', 'Publish'],
+// What a reader can tell apart: four kinds, each the store's kinds it covers
+// (a build from the app's background queue is a report build like any other).
+// ?kind= names one of these, or a store kind (an older link), which picks its group.
+const KIND_GROUPS = [
+  ['build', 'Report builds', ['report_build', 'background_run']],
+  ['refresh', 'Data refreshes', ['pipeline_run', 'pipeline_layer']],
+  ['schedule', 'Schedules', ['schedule']],
+  ['publish', 'Publishes', ['publish']],
 ]
-const KIND_LABEL = Object.fromEntries(KINDS)
+// Each row's kind, in the same words.
+const KIND_LABEL = {
+  report_build: 'Report build', background_run: 'Report build', schedule: 'Schedule',
+  pipeline_run: 'Data refresh', pipeline_layer: 'Data refresh step', publish: 'Publish',
+}
 const REPORT_KINDS = new Set(['report_build', 'background_run', 'schedule'])
 // Kinds that write a report's page. Those rows record a build, not a check.
 const BUILD_KINDS = new Set(['report_build', 'background_run'])
@@ -76,11 +79,6 @@ function rowLink(run, pipelineModelsOf) {
   return null
 }
 
-function absolute(iso) {
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
-}
-
 // The day a run started, as the sticky header above it says it.
 function dayOf(iso) {
   const d = new Date(iso)
@@ -90,10 +88,7 @@ function dayOf(iso) {
   yesterday.setDate(today.getDate() - 1)
   if (d.toDateString() === today.toDateString()) return 'Today'
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
-  return d.toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric',
-    ...(d.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' }),
-  })
+  return d.getFullYear() === today.getFullYear() ? day(d) : `${day(d)} ${d.getFullYear()}`
 }
 
 // Entries (newest first) in runs of the same day: an entry's day is its newest run's.
@@ -158,6 +153,7 @@ const STATUS_WORD = {
   failed: 'Failed', error: 'Error', refused: 'Refused', running: 'Running', empty: 'Empty',
 }
 const LOUD = new Set(['failed', 'error', 'refused', 'running', 'empty'])
+const STATUS_TONE = { red: 'bad', amber: 'warn' }
 const failedRun = run => STATUS[run.status] === 'red'
 
 function Outcome({ run, verdict }) {
@@ -166,9 +162,7 @@ function Outcome({ run, verdict }) {
   const showVerdict = REPORT_KINDS.has(run.kind) && !['failed', 'error', 'running'].includes(run.status)
   return (
     <span className="runs__outcome">
-      {loud && (
-        <Badge variant={STATUS[run.status] || 'gray'} style={{ textTransform: 'none' }}>{word}</Badge>
-      )}
+      {loud && <Chip tone={STATUS_TONE[STATUS[run.status]]}>{word}</Chip>}
       {showVerdict && (verdict
         ? <Verdict state={verdict.state} detail={verdict.detail} size="sm" />
         : <span className="runs__quiet">Checking…</span>)}
@@ -195,7 +189,9 @@ export default function Runs({ model: only }) {
   // the link arrives already selected and a change stays in the URL.
   const [searchParams, setSearchParams] = useSearchParams()
   const model = only || searchParams.get('model') || ''
-  const kind = searchParams.get('kind') || ''
+  const asked = searchParams.get('kind') || ''
+  const group = KIND_GROUPS.find(([key, , kinds]) => key === asked || kinds.includes(asked))
+  const kind = group ? group[0] : ''
   const target = searchParams.get('target') || ''
   // By default one row per report or pipeline (its newest run, older ones
   // folded); ?all=1 lists every run. A single target's runs are listed whole.
@@ -216,7 +212,7 @@ export default function Runs({ model: only }) {
       return next
     }, { replace: true })
   }
-  const { data, isLoading, error } = useRuns(kind, target.trim())
+  const { data, isLoading, error } = useRuns(group ? group[2] : '', target.trim())
   const { data: everything } = useRuns('', '')   // the same request when nothing is filtered
   const modelsOf = useReportModels()
   const labelOf = useModelLabel()
@@ -251,12 +247,8 @@ export default function Runs({ model: only }) {
   const runs = (Array.isArray(data) ? data : [])
     .filter(r => !model || runModels(r, modelsOf, pipelineModelsOf).includes(model))
   const nameOf = run => run.display_name || run.target || '—'
-  // Targets to pick from: what the store has recorded, and the one asked for.
-  const targets = new Map()
-  for (const r of Array.isArray(everything) ? everything : []) {
-    if (r.target && !targets.has(r.target)) targets.set(r.target, nameOf(r))
-  }
-  if (target && !targets.has(target)) targets.set(target, target)
+  // A link may narrow the list to one report or pipeline (?target=): say which, by its name.
+  const targetName = (Array.isArray(everything) ? everything : []).find(r => r.target === target.trim())
   const filtered = !!(kind || target.trim())
   const recorded = Array.isArray(everything) && everything.length > 0
   // A column every row leaves empty is not drawn.
@@ -293,7 +285,7 @@ export default function Runs({ model: only }) {
         </td>
         {show.model && <td className="runs__muted">{r.models.map(labelOf).join(', ') || <Dash />}</td>}
         <td className="runs__verdict"><Outcome run={run} verdict={r.verdict} /></td>
-        <td className="runs__muted runs__nowrap" title={absolute(run.started)}>{ago(run.started) || <Dash />}</td>
+        <td className="runs__muted runs__nowrap" title={isoTitle(run.started)}>{ago(run.started) || <Dash />}</td>
         {show.took && <td className="runs__muted runs__nowrap">{r.took || <Dash />}</td>}
         {show.who && <td className="runs__muted">{r.who || <Dash />}</td>}
       </tr>
@@ -360,23 +352,18 @@ export default function Runs({ model: only }) {
             Kind
             <select value={kind} onChange={e => setFilter('kind', e.target.value)}>
               <option value="">All kinds</option>
-              {KINDS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              {KIND_GROUPS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
           </label>
-          <label className="runs__select">
-            Report or pipeline
-            <select value={target} onChange={e => setFilter('target', e.target.value)}>
-              <option value="">All</option>
-              {[...targets].sort((a, b) => a[1].localeCompare(b[1])).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-          </label>
-          {!target.trim() && (
-            <div className="seg runs__show" role="group" aria-label="Show">
-              <button type="button" aria-pressed={!every} onClick={() => setFilter('all', '')}>Latest of each</button>
-              <button type="button" aria-pressed={every} onClick={() => setFilter('all', '1')}>Every run</button>
-            </div>
+          {target.trim() ? (
+            <p className="runs__only">
+              Only <strong>{targetName ? nameOf(targetName) : target}</strong>{' '}
+              <Btn size="sm" variant="outline" onClick={() => setFilter('target', '')}>Show everything</Btn>
+            </p>
+          ) : (
+            <Segmented className="runs__show" label="Show" value={every ? '1' : ''}
+                       onChange={v => setFilter('all', v)}
+                       options={[['', 'Latest of each'], ['1', 'Every run']]} />
           )}
         </div>
       </div>}
@@ -408,7 +395,7 @@ export default function Runs({ model: only }) {
           ))}
         </div>
       ) : (
-        <table className="runs-table fade-in">
+        <table className="tb-list runs-table fade-in">
           <thead>
             <tr>
               <th>What</th>

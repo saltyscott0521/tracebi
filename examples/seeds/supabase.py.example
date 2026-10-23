@@ -12,6 +12,11 @@ no Supabase project.
 
 Expects the schema in ``seeds/supabase_schema.sql``. Run that in the Supabase
 SQL Editor first.
+
+``TRACEBI_SUPABASE_URL`` is data. If the same Supabase project also hosts
+TraceBi's state store (``TRACEBI_STATE_URL``: run history, sessions, OAuth
+tokens), give the store its own database or schema: a connection is something
+people browse, and the state store must never be one.
 """
 
 import os

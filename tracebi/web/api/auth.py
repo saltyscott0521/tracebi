@@ -94,6 +94,11 @@ def _required_role(method: str, path: str) -> str:
     # report names contain slashes, so match the suffix, not one segment.
     if path.startswith("/api/reports/") and path.endswith("/selection/keep"):
         return "admin"
+    # Setting a credential points the server's connections somewhere; testing
+    # one opens a connection with the server's secrets.
+    if path.startswith("/api/credentials/") or (
+            path.startswith("/api/connectors/") and path.endswith("/test")):
+        return "admin"
     # Explore and spec validation compute but persist nothing, so they sit
     # with the reads rather than behind an execute permission.
     if path.startswith("/api/models/") and path.endswith("/query"):
@@ -101,6 +106,26 @@ def _required_role(method: str, path: str) -> str:
     if path.startswith("/api/spec/validate"):
         return "viewer"
     return "analyst"
+
+
+def _credential_write(method: str, path: str) -> bool:
+    return method in ("PUT", "DELETE") and path.startswith("/api/credentials/")
+
+
+def credential_write_refusal(request: Request) -> Response:
+    """The 403 for a credential write by a caller nobody identified.
+
+    With no role source every caller is admin (the no-lockout rule), which is
+    right for a team's own pipelines and wrong here: on an open server, the
+    public demo, anyone could point the connections at a host of their
+    choosing. So this one write needs a sign-in role of admin, and without
+    sign-in the answer names the command that does it on the server."""
+    name = request.url.path.rsplit("/", 1)[-1] or "NAME"
+    reason = f"credentials are set on the server: tracebi secret set {name}"
+    return JSONResponse(status_code=403, content={"detail": {
+        "message": (f"Credentials can be changed here only by a signed-in admin, and "
+                    f"this server has no sign-in. On the server: tracebi secret set {name}"),
+        "reason": reason, "required_role": "admin"}})
 
 
 def _rank(role: Optional[str]) -> int:
@@ -247,13 +272,19 @@ class _Authorizer:
         *role* is one the identity provider already decided (app sign-in, see
         ``sso.py``): it is enforced as given, whatever the env-configured
         sources say, and a name outside ROLES gets nothing."""
+        # Identified: a role the provider decided, or one a configured source
+        # gave. Without either every caller is admin by default, not by name.
+        identified = role is not None or self.enabled
         if role is None:
             role = self.role_for(request, user)
         elif role not in _ROLE_RANK:
             role = "viewer"
         request.state.role = role
+        request.state.identified = identified
         needed = _required_role(request.method, request.url.path)
         if _rank(role) >= _rank(needed):
+            if not identified and _credential_write(request.method, request.url.path):
+                return credential_write_refusal(request)
             return None
         return JSONResponse(
             status_code=403,
@@ -378,6 +409,20 @@ class ProxyHeaderAuthMiddleware(BaseHTTPMiddleware):
         except ValueError:
             return False
         return any(addr in net for net in self._trusted_networks)
+
+
+class CredentialWriteGuard(BaseHTTPMiddleware):
+    """Installed when no authentication is: nobody is identified, so a
+    credential write is refused (``credential_write_refusal``). App sign-in
+    (OIDC) can be turned on later in the process; its middleware runs first
+    and decides, so this one steps aside while it is on."""
+
+    async def dispatch(self, request: Request, call_next):
+        from tracebi.web.api import sso
+
+        if sso.active() is None and _credential_write(request.method, request.url.path):
+            return credential_write_refusal(request)
+        return await call_next(request)
 
 
 def _header_groups(request: Request) -> list[str]:
@@ -522,4 +567,5 @@ def install_if_configured(app) -> Optional[str]:
         )
 
     _log_posture("off", _Authorizer(trust_role_header=False))
+    app.add_middleware(CredentialWriteGuard)
     return None

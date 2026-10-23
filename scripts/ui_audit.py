@@ -269,7 +269,7 @@ PAGE_CHECKS_JS = r"""
       if (!visible(row)) continue;
       const s = getComputedStyle(row);
       if (s.display !== 'flex' || s.flexWrap !== 'wrap') continue;
-      const acts = [...row.children].filter(k => visible(k) && k.matches('button[class^="btn-"],a.dl-link'));
+      const acts = [...row.children].filter(k => visible(k) && k.matches('button[class^="btn-"],a[class^="btn-"]'));
       const lines = new Set(acts.map(k => Math.round(k.getBoundingClientRect().top)));
       if (acts.length >= 3 && lines.size > 1)
         out.push({rule: 'action-row-wraps', severity: 'moderate', target: label(row),
@@ -292,6 +292,26 @@ PAGE_CHECKS_JS = r"""
                 detail: `the page opens on a blank pane: "${t.replace(/\s+/g, ' ').slice(0, 60)}"`});
   }
 
+  // A state drawn as a chip (a small filled or outlined pill) reads in sentence
+  // case, as the verdict chip does: an upper-case chip shouts, and two chip
+  // styles side by side read as two systems. Headings and table headers may be
+  // eyebrows; they are not pills. Only the outermost pill counts (its children
+  // inherit the transform).
+  const pill = el => {
+    const s = getComputedStyle(el);
+    if (s.textTransform !== 'uppercase' || !/inline/.test(s.display)) return false;
+    const filled = !/^(transparent|rgba\(0, 0, 0, 0\))$/.test(s.backgroundColor);
+    const outlined = parseFloat(s.borderTopWidth) > 0 && parseFloat(s.borderLeftWidth) > 0;
+    return (filled || outlined) && parseFloat(s.borderTopLeftRadius) > 0;
+  };
+  for (const el of document.querySelectorAll('main *')) {
+    if (!visible(el) || !pill(el)) continue;
+    const t = (el.innerText || '').trim();
+    if (!t || t.length > 40 || (el.parentElement && pill(el.parentElement))) continue;
+    out.push({rule: 'uppercase-state', severity: 'moderate', target: label(el),
+              detail: `"${t}" is a chip in upper case; states are sentence-case chips`});
+  }
+
   // Dead ends and errors a reader would see.
   const body = (document.querySelector('main') || document.body).innerText || '';
   if (/Page not found|No (model|report) named/.test(body))
@@ -303,6 +323,43 @@ PAGE_CHECKS_JS = r"""
   if (!body.trim())
     out.push({rule: 'blank-page', severity: 'critical', target: 'main', detail: 'nothing rendered'});
   return out;
+}
+"""
+
+# The shapes a moment is written in, most specific first: a match is blanked
+# before the next shape looks, so "Oct 23, 2026" is one shape, not two. The
+# app has two: `stamp` ("Oct 23 · 11:48", or its day alone) and `ago`
+# ("2 h ago"), from web/ui/src/when.js. Data values are not the app's words:
+# text in a data table (any table that is not a `.tb-list` list of things, a
+# grid, or `[data-tb-data]`), in code, or on a Docs page (the manual's own
+# words, page titles included) is skipped.
+DATE_SHAPES_JS = r"""
+() => {
+  if (location.pathname.startsWith('/docs')) return {};
+  const MON = '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)';
+  const SHAPES = [
+    ['2026-10-23 11:48', /\b\d{4}-\d\d-\d\d[ T]\d\d:\d\d(?::\d\d)?(?: ?UTC|Z)?/g],
+    ['10/23/2026', /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g],
+    ['Oct 23, 2026', new RegExp(`\\b${MON} \\d{1,2}, \\d{4}`, 'g')],
+    ['Oct 23 · 11:48', new RegExp(`\\b${MON} \\d{1,2}(?: · \\d\\d:\\d\\d)?\\b`, 'g')],
+    ['11:48 AM', /\b\d{1,2}:\d\d(?::\d\d)? ?[AP]M\b/g],
+    ['2026-10-23', /\b\d{4}-\d\d-\d\d\b/g],
+    ['2 h ago', /\b\d+ (?:s|sec|min|h|d|days?|hours?|minutes?) ago\b|\bjust now\b/g],
+  ];
+  const skip = 'pre, code, textarea, table:not(.tb-list), [role=grid], [data-tb-data]';
+  const seen = {};
+  const walk = document.createTreeWalker(document.querySelector('main') || document.body, NodeFilter.SHOW_TEXT);
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    const el = n.parentElement;
+    if (!el || el.closest(skip)) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    let text = n.textContent;
+    for (const [shape, re] of SHAPES) {
+      text = text.replace(re, m => { seen[shape] = seen[shape] || m; return ' '; });
+    }
+  }
+  return seen;
 }
 """
 
@@ -424,6 +481,7 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
     at_start = {r["name"] for r in _safe(base, "/api/reports")}
     seen: set[str] = set()
     per_pattern: dict[str, int] = {}
+    date_shapes: dict[str, tuple[str, str]] = {}     # shape -> (first text seen, page)
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
@@ -494,6 +552,8 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
                                              "detail": v["help"] + " — " + " | ".join(v["nodes"])[:400]})
 
                     if vp == "desktop" and theme == "light":
+                        for shape, example in page.evaluate(DATE_SHAPES_JS).items():
+                            date_shapes.setdefault(shape, (example, path))
                         # Keyboard: the first stops in the page must show where focus is.
                         page.mouse.click(w - 5, h - 5)
                         for _ in range(12):
@@ -522,6 +582,14 @@ def audit(base: str, out: Path, deep: bool = True) -> dict:
         report_pass, report_findings = report_sheet(browser, base, out, deep)
         findings += report_findings
         browser.close()
+
+    # One app writes a moment one way: more than two shapes across the crawl
+    # (a moment and a recency) is the app speaking several date dialects.
+    if len(date_shapes) > 2:
+        findings.append({"page": "(crawl)", "pattern": "(crawl)", "viewport": "desktop", "theme": "light",
+                         "rule": "date-formats", "severity": "moderate",
+                         "target": " | ".join(sorted(date_shapes)),
+                         "detail": "; ".join(f'"{ex}" on {pg}' for ex, pg in date_shapes.values())})
 
     # Nothing on disk changed during the crawl, so nothing should come or go.
     # (Live discovery once forgot an app module's own reports 5s after start.)

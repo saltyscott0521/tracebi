@@ -179,11 +179,21 @@ def connect_command(args) -> int:
         conn_path = connection_yaml_path(name, getattr(args, "connections_dir", None))
         text, updates = _declared_document(name, kind, values)
     env_path = Path.cwd() / ".env"
-    conflicts = _env_conflicts(env_path, list(updates))
+    # --store secret puts the secret in the project's encrypted store instead
+    # of .env. The legacy module reads os.environ, so it keeps .env.
+    to_store = getattr(args, "store", "dotenv") == "secret" and not python_form
+    if to_store:
+        from tracebi.project_credentials import _read_store
+
+        conflicts = sorted(set(updates) & set(_read_store(Path.cwd())))
+        where = "the credential store"
+    else:
+        conflicts = _env_conflicts(env_path, list(updates))
+        where = ".env"
     problems: list[str] = []
     if conflicts and not args.force:
         problems.append(
-            "refusing to overwrite .env keys without --force: " + ", ".join(conflicts)
+            f"refusing to overwrite {where} keys without --force: " + ", ".join(conflicts)
         )
     if conn_path.exists() and not args.force:
         problems.append(
@@ -208,7 +218,17 @@ def connect_command(args) -> int:
     else:
         conn_path.write_text(text, encoding="utf-8")
     print(f"wrote {conn_path}")
-    if updates:
+    if updates and to_store:
+        from tracebi.project_credentials import STORE_FILE, record_change, set_secret
+
+        for key, value in updates.items():
+            set_secret(key, value, Path.cwd())
+            try:
+                record_change(key, "set")
+            except Exception:  # noqa: BLE001 — saved is saved; the run store is optional here
+                pass
+        print(f"wrote {STORE_FILE} (" + ", ".join(updates) + ")")
+    elif updates:
         _apply_env(env_path, updates)
         added = _ensure_dotenv_ignored(Path.cwd() / ".gitignore")
         print("wrote .env (" + ", ".join(updates) + ")")

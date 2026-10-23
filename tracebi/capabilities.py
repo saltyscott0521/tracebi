@@ -1209,9 +1209,13 @@ def _conventions() -> dict:
                         "postgres, snowflake or bigquery. Any value may be "
                         "${ENV_VAR} (the whole value); password, and a url "
                         "that carries credentials, MUST be, or the file is "
-                        "refused. The variable is read when the connection "
-                        "is used (an unset one is an error naming it), never "
-                        "at discovery. A model's connector says "
+                        "refused. ${ENV_VAR:-default} gives a default for "
+                        "when the name is set nowhere, checked like a literal "
+                        "(a password has none). The variable is read when the "
+                        "connection is used (environment, then .env, then the "
+                        "project's store: `tracebi secret set NAME`; an unset "
+                        "one is an error naming it), never at discovery. A "
+                        "model's connector says "
                         "`connection: <name>`. Written by `tracebi connect`.",
             },
             {

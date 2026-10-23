@@ -54,6 +54,7 @@
 <a href="../reference/app-jsx.html">app.jsx — the React lane</a>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/measures.html">Measures</a>
@@ -67,12 +68,14 @@
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
 <a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -80,6 +83,7 @@
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
 <a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -190,6 +194,10 @@ when either is true.</p>
 </table>
 <p><code>GET /api/models</code> and <code>GET /api/models/{name}</code> carry each model's <code>label</code> (what a list
 shows; see <a href="../reference/model-json.html">Model files (YAML or JSON)</a>) beside <code>name</code>, the identifier every other route takes.</p>
+<p>A model table that is one of TraceBi's own (<code>tracebi_*</code> or <code>alembic_version</code>, by its
+name or its source) is left out of <code>GET /api/models/{name}</code> (counted in
+<code>hidden_framework_tables</code>), and its <code>/preview</code> and <code>/export.csv</code> answer 404, as a
+missing table does: the state store holds sessions and tokens.</p>
 <p><code>/source</code> returns the model's file, read-only (the <strong>Code</strong> tab). A model registered in
 Python code has no file and says so. <code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
 graph. It computes but persists nothing, which is why <code>viewer</code> may call it.</p>
@@ -209,6 +217,85 @@ an error. <code>GET /api/models/{name}</code> lists, on each fact,
 so a UI offers only what will run. When the connector cannot describe the table (the
 warehouse is not built yet), every declared measure is listed and a run reports the
 real error.</p>
+<p><code>/preview</code> (<code>?rows=</code>, default 50, at most 500) and <code>/export.csv</code> resolve the model
+table to its connector and source table and read through the table API below: the
+first rows and an exact total from the engine, the types in the engine's spelling
+(<code>DOUBLE</code>, <code>DATE</code>), and the CSV streamed, never the whole table loaded into pandas.
+A source the table API does not read (a <code>SELECT</code> source, a CSV folder, Snowflake or
+BigQuery) keeps the connector's own load.</p>
+<h2 id="tables">Tables</h2>
+<p>One read-only API for every place a table lives, addressed as <code>(source, table)</code>:
+<code>source</code> is a connector's name (a warehouse on any tier, a SQL connection, a
+Python <code>MemoryConnector</code>) or <code>inputs</code>, where <code>table</code> is a file's path inside the
+project's <code>inputs/</code> folder (CSV, TSV, Parquet or JSON, read by DuckDB; the path is
+confined to that folder).</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/tables/{source}/{table}</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/tables/{source}/{table}/rows</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/tables/{source}/{table}/profile</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/tables/{source}/{table}/export.csv</code></td>
+<td>viewer</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><code>/{source}/{table}</code> → <code>{source, table, kind: "warehouse" | "connection" | "file",
+  rows, rows_exact, columns: [{name, type}], written_by: {transform, contract, at} | null,
+  contract: {status, file, checks, note, checked_at} | null, read_by: [model],
+  used_by: [{report, display_name}], transform_read: [{ref, snapshot, fingerprint}]}</code>.
+  <code>type</code> is the engine's spelling (<code>BIGINT</code>, <code>DOUBLE</code>, <code>DATE</code>, <code>VARCHAR</code>; a SQL
+  connection's own). <code>rows</code> follows the row-count rule of <code>/connectors/{name}/tables</code>.
+  <code>written_by</code>, <code>contract</code> and <code>transform_read</code> (what the run that wrote the table read
+  from outside the warehouse; <code>snapshot</code> when a committed file stood in for a
+  connection) come from the warehouse's certificate, for a warehouse table only.
+  <code>used_by</code> lists the reports, of those the caller may view, whose bindings read a
+  model in <code>read_by</code>.</li>
+<li><code>/rows?offset=0&amp;limit=100&amp;sort=&lt;col&gt;&amp;desc=1&amp;q=&lt;text&gt;&amp;where=&lt;json&gt;</code> →
+  <code>{columns: [{name, type}], rows: **…**, offset, limit, total, total_exact, elapsed_ms}</code>.
+  <code>limit</code> is at most 500 (more is 422). <code>q</code> matches the text columns,
+  case-insensitively. <code>where</code> is a JSON list of <code>{column, op, value}</code>, <code>op</code> one of
+  <code>eq ne lt le gt ge contains is_null not_null</code>; a comparison's value must be of the
+  column's kind (a number, an ISO date, a string, a boolean). Dates and timestamps
+  come back as ISO strings, numbers as numbers. <code>total</code> is exact, except an
+  unfiltered SQL connection that keeps a catalog estimate (<code>total_exact: false</code>).</li>
+<li><code>/profile</code> → <code>{rows, columns: {name: {type, nulls, null_share, distinct, min, max,
+  mean?, top: [{value, count}]}}}</code> for this one table: <code>min</code>/<code>max</code> for numbers and
+  dates (null otherwise), <code>mean</code> for numbers, <code>top</code> (five commonest, with counts) for
+  text and booleans. Past 50 columns nothing is profiled and <code>note</code> says so.</li>
+<li><code>/export.csv</code> takes the same <code>sort</code>, <code>q</code>, <code>where</code> and streams the cut from the
+  engine's cursor.</li>
+</ul>
+<p>Nothing free-form reaches SQL: the table must be in the source's catalog; every
+column a request names must be the table's; an identifier carrying a quote, an
+unknown op or column, or a value of the wrong kind is 422 before a statement is
+composed; values are bound. DuckDB reads go through the locked, read-only query
+connection; a SQL connection gets a short-lived engine for the request, stopped at
+the project's statement timeout (<code>engine.query_timeout_s</code>; 504 past it). A source
+that cannot be reached here answers <code>200 {connected: false, reason, variable?}</code> on
+every route. A framework table (<code>tracebi_*</code>, <code>alembic_version</code>) is 404, as a
+missing one is. Folder permissions do not apply: a table is not a report.</p>
 <h2 id="reports">Reports</h2>
 <table>
 <thead>
@@ -569,12 +656,32 @@ reports its build step rebuilt, only those it actually built).</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/connectors/{name}/tables</code></td>
-<td>viewer. What the source holds, read now: <code>{connected: true, tables: [{name, columns: [{name, type}], rows}]}</code> (<code>rows</code> for a DuckDB file, and a SQL database's first 20 tables; else null), or <code>{connected: false, reason, variable?}</code> with status 200 when its <code>${VAR}</code> is unset or it refuses. The connection is resolved on this request only and released before it returns</td>
+<td>viewer. What the source holds, read now: <code>{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}], hidden_framework_tables}</code> (<code>rows</code> exact for a DuckDB file or frames in memory; the catalog's estimate with <code>rows_exact: false</code> for a SQL database that keeps one, Postgres <code>pg_class.reltuples</code>; else null: no table is counted row by row), or <code>{connected: false, reason, variable?}</code> with status 200 when its <code>${VAR}</code> is unset or it refuses. The connection is resolved on this request only and released before it returns</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/connectors/{name}/test</code></td>
+<td><strong>admin</strong>. Opens the connection, lists its tables, closes it: <code>{ok: true, tables: n}</code> or <code>{ok: false, reason}</code>, the reason scrubbed of every resolved credential value (<a href="../reference/credentials.html">Credentials</a>)</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/credentials</code></td>
+<td>viewer. Every <code>${NAME}</code> the project references and where it is set, never a value: <code>{credentials: [{name, used_by: [{kind, name, field, default}], set, source: environment\|dotenv\|store\|default\|null, stored, updated_at?, updated_by?, problem?}], key_source: env\|file, can_change}</code></td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/credentials/{name}</code></td>
+<td><strong>admin, identified</strong> (a sign-in role; with no sign-in it is 403 naming <code>tracebi secret set NAME</code>). Body <code>{value}</code>; answers the status row, 201 new or 200 replaced, 422 for a name nothing references. Records a <code>credential</code> run row</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/credentials/{name}</code></td>
+<td><strong>admin, identified</strong>. Removes the store's value (204, 404 when it holds none); an environment or <code>.env</code> value is untouched</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/connectors/{name}/warehouse</code></td>
-<td>viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source; the file is opened read-only and closed within the request</td>
+<td>viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source, and <code>hidden_framework_tables</code> (the <code>tracebi_*</code> / <code>alembic_version</code> tables left out); the file is opened read-only and closed within the request</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -584,7 +691,7 @@ reports its build step rebuilt, only those it actually built).</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/warehouse</code></td>
-<td>viewer. <code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}]}]}</code>, one per warehouse-kind connector, read-only</td>
+<td>viewer. <code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}</code>, one per warehouse-kind connector, read-only; framework tables are never listed</td>
 </tr>
 <tr>
 <td><code>GET</code></td>

@@ -1286,6 +1286,21 @@ def cmd_validate(args: argparse.Namespace) -> int:
             problems.append(f"✗ {conn_dir.name}/{path.name}: " + "; ".join(errors))
         else:
             ok.append(f"✓ {conn_dir.name}/{path.name} is well formed")
+    # A credential set nowhere is not a problem with the files (the variable
+    # may live only on the server), but it is why a connection will not open
+    # here: one line per name, and where to set it.
+    from tracebi.project_credentials import CredentialError, status as _credentials
+
+    try:
+        for row in _credentials(cwd):
+            if row.get("problem"):
+                warnings.append(f"! credential {row['name']}: {row['problem']}")
+            elif not row["set"] and row["used_by"]:
+                warnings.append(
+                    f"! credential {row['name']} is not set (used by {_secret_uses(row)}); "
+                    f"set it in the environment, in .env, or with `tracebi secret set {row['name']}`")
+    except CredentialError as exc:
+        warnings.append(f"! credentials: {exc}")
     from tracebi.pipeline.pipeline_spec import validate_pipeline_file
 
     pipe_dir = args.pipelines_dir
@@ -1375,6 +1390,78 @@ def cmd_run_transform(args: argparse.Namespace) -> int:
 def cmd_connect(args: argparse.Namespace) -> int:
     from tracebi.connect import connect_command
     return connect_command(args)
+
+
+# Where a credential is set, as `secret list` and `validate` say it.
+_SECRET_SOURCE = {"environment": "set from environment", "dotenv": "set from .env",
+                  "store": "set in store", "default": "default"}
+
+
+def _secret_uses(row: dict) -> str:
+    return ", ".join(f"{u['name']}.{u['field']}" for u in row["used_by"]) or "nothing"
+
+
+def _record_secret(name: str, status: str) -> None:
+    from tracebi.project_credentials import record_change
+
+    try:
+        record_change(name, status)
+    except Exception as exc:  # noqa: BLE001 — the change is made; say the audit row is missing
+        print(f"note: the change was not recorded in the run store ({exc})", file=sys.stderr)
+
+
+def cmd_secret(args: argparse.Namespace) -> int:
+    """``tracebi secret set|list|unset``: the project's credential store
+    (``.tracebi/secrets.json``, :mod:`tracebi.project_credentials`). A value is
+    read from a prompt with no echo, or from stdin, and never printed."""
+    import getpass
+
+    from tracebi import project_credentials as pc
+    from tracebi.audit import set_actor
+
+    root = Path.cwd()
+    try:
+        set_actor(getpass.getuser(), role="cli")
+    except Exception:  # noqa: BLE001 — no controlling user (some containers)
+        set_actor(None, role="cli")
+    try:
+        if args.action == "list":
+            rows = pc.status(root)
+            if not rows:
+                print("No connection in this project references a ${NAME}.")
+            for r in rows:
+                where = _SECRET_SOURCE.get(r["source"], "MISSING")
+                print(f"{r['name']} · {where} · used by {_secret_uses(r)}")
+                if r.get("problem"):
+                    print(f"    {r['problem']}")
+            return 0
+        if not args.name:
+            print(f"tracebi secret {args.action} needs a NAME", file=sys.stderr)
+            return 2
+        if args.action == "unset":
+            if not pc.unset_secret(args.name, root):
+                print(f"the store holds no value for {args.name}", file=sys.stderr)
+                return 1
+            _record_secret(args.name, "unset")
+            print(f"removed {args.name} from {pc.STORE_FILE}")
+            return 0
+        if args.from_stdin:
+            value = sys.stdin.read().rstrip("\r\n")
+        elif sys.stdin.isatty():
+            value = getpass.getpass(f"{args.name}: ")
+        else:
+            print("no terminal to prompt on; pass --from-stdin and pipe the value",
+                  file=sys.stderr)
+            return 2
+        pc.set_secret(args.name, value, root)
+        _record_secret(args.name, "set")
+    except pc.CredentialError as exc:
+        print(exc, file=sys.stderr)
+        return 1
+    print(f"saved {args.name} in {pc.STORE_FILE}")
+    if args.name not in {r["name"] for r in pc.required(root)}:
+        print(f"note: nothing in this project references ${{{args.name}}} yet")
+    return 0
 
 
 def cmd_import_dbt(args: argparse.Namespace) -> int:
@@ -3840,7 +3927,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write the legacy models/_connections/<name>.py module instead "
              "of connections/<name>.yaml.",
     )
+    p_connect.add_argument(
+        "--store", choices=["dotenv", "secret"], default="dotenv",
+        help="Where the secret goes: .env (default), or `secret`, the project's "
+             "encrypted credential store (.tracebi/secrets.json, `tracebi secret`).",
+    )
     p_connect.set_defaults(func=cmd_connect)
+
+    p_secret = sub.add_parser(
+        "secret",
+        help="The project's credential store (.tracebi/secrets.json, encrypted): "
+             "`secret list` shows every ${NAME} the connections reference and "
+             "where each is set; `secret set NAME` saves one (prompted, no echo); "
+             "`secret unset NAME` removes it. The environment and .env still win.",
+    )
+    p_secret.add_argument("action", choices=["set", "list", "unset"])
+    p_secret.add_argument("name", nargs="?", help="The name a connection references, e.g. TRACEBI_CRM_URL.")
+    p_secret.add_argument(
+        "--from-stdin", action="store_true",
+        help="Read the value from stdin (for scripts) instead of prompting.")
+    p_secret.set_defaults(func=cmd_secret)
 
     p_new_model = sub.add_parser(
         "new-model",

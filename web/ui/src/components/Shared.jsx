@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { FRAME_SANDBOX, listenToFrame } from '../frameBridge'
 import { VERDICT_LABEL } from '../verdict'
+import { ago, isoTitle, stamp } from '../when'
 
 /** Track a media query, so an inline-styled layout can still be responsive. */
 export function useNarrow(query = '(max-width: 768px)') {
@@ -134,10 +136,10 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', label,
 
 // ── Layout components ─────────────────────────────────────────────────────────
 
-export function Card({ children, style, hover, accent }) {
+export function Card({ children, style, hover, accent, className }) {
   return (
     <div
-      className={['surface', hover ? 'card-hover' : '', accent ? 'card-accent' : ''].filter(Boolean).join(' ')}
+      className={['surface', hover ? 'card-hover' : '', accent ? 'card-accent' : '', className].filter(Boolean).join(' ')}
       style={{
         background: 'var(--card)',
         border: '1px solid var(--border)',
@@ -213,11 +215,16 @@ const BADGE_STYLES = {
   purple:       { background: 'var(--blue-lt)',          color: 'var(--accent-text)', border: '1px solid var(--blue-br)' },
 }
 
+/**
+ * A label that is not a state: a layer's type, a file's size, a kind of
+ * source. A state (succeeded, failed, checks passed) is a `Chip`. Sentence
+ * case, as written: an upper-case pill reads as a second chip style.
+ */
 export function Badge({ variant = 'gray', children, style, title }) {
   return (
     <span title={title} style={{
       display: 'inline-block', padding: '2px 8px', borderRadius: 4,
-      fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: .4,
+      fontSize: 11, fontWeight: 600,
       ...BADGE_STYLES[variant],
       ...style,
     }}>{children}</span>
@@ -241,9 +248,10 @@ export function Verdict({ state, detail, size, onClick, children }) {
 }
 
 /**
- * A state that is not a verdict (a table's checks, say) in the verdict chip's
- * shape, so the app keeps one chip: *tone* `warn` is amber, `none` a hollow
- * dot, anything else neutral. Words in sentence case; *title* says why.
+ * A state that is not a verdict (a table's checks, a run's outcome) in the
+ * verdict chip's shape, so the app keeps one chip: *tone* `bad` is red, `warn`
+ * amber, `none` a hollow dot, anything else neutral. Words in sentence case;
+ * *title* says why.
  */
 export function Chip({ tone, title, children }) {
   return <span className={`verdict verdict--sm${tone ? ` chip--${tone}` : ''}`} title={title}>{children}</span>
@@ -260,10 +268,14 @@ export function Spinner({ size = 18 }) {
   )
 }
 
-export function Empty({ icon, message, action }) {
+/**
+ * The one empty state: a sentence saying what would fill this and how (the
+ * command, the folder), and an optional *action* under it. No glyph: the
+ * sentence is the state. Inside a surface it is plain text (global.css).
+ */
+export function Empty({ message, action }) {
   return (
     <div className="empty" style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--muted)' }}>
-      {icon && <div style={{ fontSize: 30, marginBottom: 14, opacity: .3 }}>{icon}</div>}
       <p style={{ fontSize: 13, lineHeight: 1.65, maxWidth: 300, margin: '0 auto' }}>{message}</p>
       {action && <div style={{ marginTop: 16 }}>{action}</div>}
     </div>
@@ -357,7 +369,7 @@ export function ErrorDetail({ error }) {
   )
 }
 
-export function Btn({ children, onClick, disabled, variant = 'primary', size, style, type = 'button', ...rest }) {
+function btnStyle(variant, size, disabled, style) {
   const base = {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     // 6px keeps a small button at 24px tall: the smallest a thumb can hit.
@@ -388,31 +400,75 @@ export function Btn({ children, onClick, disabled, variant = 'primary', size, st
       border: '1px solid var(--red-br)',
     },
   }
+  return { ...base, ...variants[variant] }
+}
+
+/** A button. `variant="outline"` is the one secondary look; `BtnLink` draws a link the same way. */
+export function Btn({ children, onClick, disabled, variant = 'primary', size, style, type = 'button', ...rest }) {
   return (
     <button type={type} onClick={onClick} disabled={disabled} {...rest}
       className={`btn-${variant}`}
-      style={{ ...base, ...variants[variant] }}
+      style={btnStyle(variant, size, disabled, style)}
     >
       {children}
     </button>
   )
 }
 
-export function Tabs({ tabs, active, onChange }) {
+/**
+ * A link that looks like `Btn` (outline by default): an in-app route with
+ * *to*, a file or another page with *href* (and `download`, say). Use it where
+ * an action navigates, so a secondary action has one look beside a button.
+ */
+export function BtnLink({ to, href, variant = 'outline', size, style, children, ...rest }) {
+  const props = { ...rest, className: `btn-${variant}`, style: btnStyle(variant, size, false, style) }
+  return to ? <Link to={to} {...props}>{children}</Link> : <a href={href} {...props}>{children}</a>
+}
+
+/**
+ * The one CSV control: "Export CSV", the secondary button. *href* downloads a
+ * file the server writes; *onClick* writes one in the page. *title* says which
+ * rows it holds when that is not what is shown (all of them, say).
+ */
+export function ExportCsv({ href, onClick, title }) {
+  return href
+    ? <BtnLink href={href} download size="sm" title={title}>Export CSV</BtnLink>
+    : <Btn size="sm" variant="outline" onClick={onClick} title={title}>Export CSV</Btn>
+}
+
+/**
+ * Views of one thing, inside a card or a panel: the one switch for them.
+ * (Page tabs, `.dtabs`, are for addresses.) *options* are values or `[value,
+ * label]` pairs; *label* names the group. With *panel* (the id of the element
+ * it switches) it is an ARIA tablist and each option's id is
+ * `${panel}-${value}`, for the panel's aria-labelledby; otherwise a group of
+ * pressed buttons.
+ */
+export function Segmented({ options, value, onChange, label, panel, className }) {
+  const pairs = options.map(o => (Array.isArray(o) ? o : [o, o]))
   return (
-    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 18, flexWrap: 'wrap' }}>
-      {tabs.map(t => (
-        <button key={t} onClick={() => onChange(t)} style={{
-          padding: '9px 18px', border: 'none', background: 'none',
-          fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          color: active === t ? 'var(--accent-text)' : 'var(--muted)',
-          borderBottom: `2px solid ${active === t ? 'var(--blue)' : 'transparent'}`,
-          marginBottom: -1,
-          transition: 'color var(--t), border-color var(--t)',
-        }}>{t}</button>
+    <div className={['seg', className].filter(Boolean).join(' ')} role={panel ? 'tablist' : 'group'} aria-label={label}>
+      {pairs.map(([v, text]) => (
+        <button key={v} type="button" onClick={() => onChange(v)}
+          {...(panel
+            ? { role: 'tab', id: `${panel}-${v}`, 'aria-selected': value === v, 'aria-controls': panel }
+            : { 'aria-pressed': value === v })}>
+          {text}
+        </button>
       ))}
     </div>
   )
+}
+
+/**
+ * A moment as the app writes it (when.js): its stamp, or with *relative* how
+ * long ago, and the full ISO time in the title. Renders *fallback* (default
+ * nothing) when *iso* is missing or unreadable.
+ */
+export function Time({ iso, relative, fallback = null }) {
+  const text = relative ? ago(iso) : stamp(iso)
+  if (!text) return fallback
+  return <time dateTime={isoTitle(iso)} title={isoTitle(iso)}>{text}</time>
 }
 
 // Pass `detail` (true/false) to make the panes two screens on a phone: the

@@ -136,6 +136,38 @@ def test_the_role_decides_what_a_person_may_do(sso, idp):
     assert admin.post(ADMIN_ROUTE).status_code != 403
 
 
+def test_only_a_signed_in_admin_sets_a_credential_and_it_is_recorded(sso, idp, scaffolded):
+    """Catches a credential write open to a viewer or analyst, one refused to
+    a signed-in admin (the no-sign-in refusal applied to everyone), and a
+    change with no audit row naming who made it."""
+    (scaffolded / "connections").mkdir(exist_ok=True)
+    (scaffolded / "connections" / "crm.yaml").write_text(
+        "name: crm\ntype: postgres\nurl: ${TRACEBI_TEST_CRM_URL}\n", encoding="utf-8")
+    viewer, analyst, admin = sso(), sso(), sso()
+    sign_in_browser(viewer, idp, sub="u-v", email="v@example.com")
+    sign_in_browser(analyst, idp, sub="u-a", email="a@example.com", groups=["bi-analysts"])
+    sign_in_browser(admin, idp, sub="u-ad", email="ad@example.com", groups=["bi-admins"])
+    url = "/api/credentials/TRACEBI_TEST_CRM_URL"
+    body = {"value": "postgresql+psycopg://u:throwaway@127.0.0.1:9/x"}
+
+    assert viewer.get("/api/credentials").json()["can_change"] is False
+    for person in (viewer, analyst):
+        refused = person.put(url, json=body)
+        assert refused.status_code == 403 and refused.json()["detail"]["required_role"] == "admin"
+        assert person.delete(url).status_code == 403
+        assert person.post("/api/connectors/crm/test").status_code == 403
+    assert admin.get("/api/credentials").json()["can_change"] is True
+    made = admin.put(url, json=body)
+    assert made.status_code == 201, made.text
+    assert made.json()["source"] == "store" and "throwaway" not in made.text
+    assert admin.put(url, json=body).status_code == 200
+    assert admin.put("/api/credentials/NOT_REFERENCED", json=body).status_code == 422
+    assert admin.delete(url).status_code == 204
+    rows = admin.get("/api/runs", params={"kind": "credential"}).json()
+    assert {(r["status"], r["actor"], r["actor_role"]) for r in rows} == {
+        ("set", "ad@example.com", "admin"), ("unset", "ad@example.com", "admin")}
+
+
 def test_what_a_person_does_is_recorded_under_their_name(sso, idp):
     """The actor ContextVar is set around the request, as in the other modes."""
     b = sso()

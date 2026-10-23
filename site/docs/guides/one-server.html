@@ -54,6 +54,7 @@
 <a href="../reference/app-jsx.html">app.jsx — the React lane</a>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/measures.html">Measures</a>
@@ -67,12 +68,14 @@
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
+<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
 <a href="../architecture/design-direction.html">Design direction</a>
 <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
 <a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
 <a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
 <a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
 <a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
+<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
 <a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
 <a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
@@ -80,6 +83,7 @@
 <a href="../architecture/ui-backlog.html">UI backlog</a>
 <a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
 <a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
+<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
 <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
 <a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
@@ -131,6 +135,14 @@ demo uses <code>https://tracebi.com/mcp</code>.</p>
 <p>The container serves that folder. SQLite is the default. Add
 <code>--profile postgres</code> when you want Postgres, and set <code>POSTGRES_PASSWORD</code>
 in <code>deploy/.env</code>.</p>
+<p><code>TRACEBI_STATE_URL</code> is TraceBi's own state store: run history, and the
+sign-in sessions and OAuth tokens. Give it a database (or a schema) of its
+own, and never point a connection, or the demo's <code>TRACEBI_DEMO_DB_URL</code>, at
+it: a connection is something people browse. The repository's
+<code>docker-compose.yml</code> does this with two databases on one Postgres server,
+<code>tracebi</code> for the demo's data and <code>tracebi_state</code> for the store. The app
+hides TraceBi's tables (<code>tracebi_*</code>, <code>alembic_version</code>) from every source
+listing whatever a connection points at, and says how many it hid.</p>
 <p>The image name is <code>ghcr.io/saltyscott0521/tracebi</code>. Set <code>TRACEBI_VERSION</code>
 in <code>deploy/.env</code> when you want a pinned tag. If that image is not on the
 machine, Compose builds it from the <code>Dockerfile</code> in this repository.</p>
@@ -199,6 +211,16 @@ image per commit on the box).</p>
 </tr>
 </tbody>
 </table>
+<p>The demo image, like the repository's <code>docker-compose.yml</code>, serves one
+project: the reference project <code>examples/portfolio_project</code>, its warehouse
+baked at build. <code>TRACEBI_APP</code> is unset there; the bundled demo app is opt-in
+(<code>TRACEBI_APP=tracebi.web.demo_app</code>) and never served beside a project. The
+reference project's CRM is a standing mock CRM database, loaded once at first
+start: <code>docker-compose.yml</code>'s Postgres creates <code>crm</code> from
+<code>examples/portfolio_project/inputs/seed_crm.sql</code> when its volume is empty
+(<code>docker/postgres-init.sql</code>), and <code>TRACEBI_CRM_URL</code> points at it. Nothing in
+the app writes it afterwards. Without <code>TRACEBI_CRM_URL</code> the transform reads the
+committed snapshot instead, and the certificate says so.</p>
 <p>Keep git <strong>auto-deploy</strong> off on the Docker Image resource; the webhook is
 what redeploys. Set the same variables from <code>deploy/.env</code> in Coolify's
 environment screen. Bind-mount a folder on the host at <code>/project</code> when

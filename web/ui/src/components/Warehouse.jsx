@@ -1,5 +1,6 @@
 import { useConnectorWarehouse } from '../api'
-import { Chip, ErrorDetail, Spinner } from './Shared'
+import { Chip, ErrorDetail, Spinner, Time } from './Shared'
+import { count } from '../format'
 
 // What a file-backed warehouse holds and whether each table was certified:
 // rows, columns with a profile, and the sink contract's status per table, in
@@ -13,15 +14,14 @@ export const CONTRACT = {
   no_contract: { tone: 'none', label: 'No checks', title: 'No checks cover this table.' },
 }
 
-const when = iso => String(iso).slice(0, 16).replace('T', ' ') + ' UTC'
 const num = v => (v == null ? '—' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 }))
 
 export function ContractLine({ contract }) {
   if (contract.status === 'satisfied') {
     return (
       <p className="wb-meta">
-        The sink satisfied its contract: {contract.checks} check{contract.checks === 1 ? '' : 's'} in{' '}
-        <code>{contract.transform}</code>{contract.checked_at ? `, checked ${when(contract.checked_at)}` : ''}.
+        The sink satisfied its contract: {count(contract.checks, 'check')} in{' '}
+        <code>{contract.transform}</code>{contract.checked_at && <>, checked <Time iso={contract.checked_at} /></>}.
       </p>
     )
   }
@@ -29,7 +29,7 @@ export function ContractLine({ contract }) {
     return (
       <p className="wb-meta">
         This table changed after the checks in <code>{contract.transform}</code> last passed
-        {contract.checked_at ? ` (${when(contract.checked_at)})` : ''}. Re-run the transform to check it again.
+        {contract.checked_at && <> (<Time iso={contract.checked_at} />)</>}. Re-run the transform to check it again.
       </p>
     )
   }
@@ -40,7 +40,7 @@ export function Profile({ table }) {
   if (!table.profile) return <p className="wb-meta">{table.note || table.error || 'No profile.'}</p>
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table className="wb-table">
+      <table className="tb-list">
         <thead>
           <tr><th>Column</th><th>Type</th><th>Nulls</th><th>Distinct</th><th>Range / top values</th></tr>
         </thead>
@@ -79,7 +79,10 @@ export default function Warehouse({ connector, only }) {
     )
   }
   if (data.error) return <div className="codeview__hint">Could not read the warehouse: {data.error}</div>
-  if (!data.tables.length) return <div className="codeview__hint">The warehouse has no tables yet.</div>
+  // TraceBi's own tables (the state store's) are never listed as data.
+  const n = data.hidden_framework_tables || 0
+  const hidden = n > 0 && <p className="wb-meta" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">{n} framework {n === 1 ? 'table' : 'tables'} hidden</p>
+  if (!data.tables.length) return <div className="codeview__hint">The warehouse has no tables yet.{hidden}</div>
   const shown = only ? data.tables.filter(t => only.has(t.name)) : data.tables
   const others = data.tables.length - shown.length
   return (
@@ -90,7 +93,7 @@ export default function Warehouse({ connector, only }) {
           <details key={t.name} className="wb-details" style={{ marginBottom: 6 }}>
             <summary>
               <code>{t.name}</code>{' '}
-              <span className="wb-meta">{t.rows.toLocaleString()} rows · {Object.keys(t.columns).length} columns</span>{' '}
+              <span className="wb-meta">{count(t.rows, 'row')} · {count(Object.keys(t.columns).length, 'column')}</span>{' '}
               <Chip tone={c.tone} title={c.title}>{c.label}</Chip>
             </summary>
             <div style={{ paddingLeft: 16 }}>
@@ -103,6 +106,7 @@ export default function Warehouse({ connector, only }) {
       {others > 0 && (
         <p className="wb-meta">The same file also holds {others} other {others === 1 ? 'table' : 'tables'}.</p>
       )}
+      {hidden}
     </div>
   )
 }
