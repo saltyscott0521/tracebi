@@ -1404,8 +1404,8 @@
  "metrics": {
   "hardcoded_colors_in_jsx": 11,
   "inline_style_blocks": 433,
-  "bundle_js_kb": 1290,
-  "bundle_css_kb": 96,
+  "bundle_js_kb": 1292,
+  "bundle_css_kb": 102,
   "engine_gz_kb": 14.7,
   "report_font_families": 5,
   "report_accents": 4,
