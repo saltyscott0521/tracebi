@@ -253,7 +253,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # names, the transform the pipeline runs, the warehouse file it
             # writes, the model's tables and joins.
             expect(station("Sources")).to_contain_text("crm")
-            expect(station("Sources")).to_have_attribute("href", "/data/sources?model=portfolio_model")
+            # Stage ⓪ is this page's Sources tab, like stations 1 and 2: the
+            # reader stays on the model; every source is one link away.
+            expect(station("Sources")).to_have_attribute("href", "/data/portfolio_model/sources")
+            station("Sources").click()
+            page.wait_for_url("**/data/portfolio_model/sources")
+            expect(station("Sources")).to_have_attribute("aria-current", "page")
+            expect(page.get_by_role("link", name="Show every source")).to_have_attribute("href", "/data/sources")
+            station("Model").click()
+            page.wait_for_url("**/data/portfolio_model")
             expect(station("Transform")).to_contain_text("holdings_transform")
             expect(line).to_contain_text("warehouse.duckdb")
             expect(station("Model")).to_contain_text(re.compile(r"\d+ tables · \d+ joins"))
@@ -546,6 +554,35 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             cards.nth(2).wait_for()
             tops = {round(card.bounding_box()["y"]) for card in cards.all()}
             assert cards.count() == 3 and len(tops) == 1, tops
+
+            # The model's view is in the address. Measures: every measure says
+            # what it is in words (rank and running total too), and a reload
+            # stays on it.
+            page.goto(base + "/data/portfolio_model?view=measures")
+            measure_rows = page.locator("tr[data-measure]")
+            measure_rows.first.wait_for()
+            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-pressed", "true")
+            defs = page.locator("tr[data-measure] td.mlist__def").all_inner_texts()
+            assert len(defs) == measure_rows.count() and all(d.strip() for d in defs), defs
+            expect(page.locator('tr[data-measure="fv_rank"] td.mlist__def')).to_have_text("rank by fair value, largest first")
+            page.reload()
+            measure_rows.first.wait_for()
+            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-pressed", "true")
+            # Tables: ?table= opens that table's rows in place, read through the
+            # table API, with its page one link away.
+            page.goto(base + "/data/portfolio_model?view=tables&table=fact_holdings")
+            grid = page.get_by_role("grid", name="Rows of fact_holdings")
+            expect(grid.locator("tbody tr")).to_have_count(25)
+            expect(grid).to_contain_text("DOUBLE")
+            expect(page.get_by_role("link", name="Open table page →")).to_have_attribute(
+                "href", "/data/tables/warehouse/fact_holdings")
+            page.get_by_role("button", name="dim_fund").click()
+            page.wait_for_url("**/data/portfolio_model?view=tables&table=dim_fund")
+            expect(page.get_by_role("grid", name="Rows of dim_fund")).to_be_visible()
+            expect(page.get_by_role("grid", name="Rows of fact_holdings")).to_have_count(0)
+            page.go_back()
+            page.wait_for_url("**/data/portfolio_model?view=tables&table=fact_holdings")
+            fail_on_browser_errors()
 
             # Each tab can show the code behind what it shows.
             page.goto(base + "/data/portfolio_model/model")

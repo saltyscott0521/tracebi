@@ -9,6 +9,8 @@
 // Pure functions of the /api/models/{name} payload, so the layout can be read
 // and checked without a browser.
 
+import { humanise, inSentence } from '../ask'
+
 export const MAX_COLUMNS = 10          // a wide table shows its keys and measures first
 export const ROW_H = 22
 export const HEAD_H = 62
@@ -111,11 +113,51 @@ function layout(nodes) {
   return { nodes, height: tallest }
 }
 
-// One line saying what a measure is, from what the API states about it.
+// One line saying what a measure is, in words, from what the API states about
+// it: "sum of fair value", "rank by fair value, largest first", "fair value ÷
+// the total". Every kind the model declares says something; an identifier reads
+// as its words (`fair_value` → "fair value"), the way a report labels it.
+const AGG_WORDS = {
+  sum: 'sum of', count: 'count of', mean: 'average of', avg: 'average of', min: 'minimum of',
+  max: 'maximum of', nunique: 'distinct count of', median: 'median of', stddev: 'standard deviation of',
+}
+const words = id => inSentence(humanise(id))
+const exprWords = expr => String(expr)
+  .replace(/[A-Za-z_][A-Za-z0-9_]*/g, w => words(w))
+  .replace(/\*/g, '×').replace(/\//g, '÷').replace(/ - /g, ' − ')
+const aggOf = (agg, what) => (AGG_WORDS[agg] ? `${AGG_WORDS[agg]} ${what}`
+  : /^p\d+$/.test(agg || '') ? `${agg.slice(1)}th percentile of ${what}` : `${agg || 'aggregate'} of ${what}`)
+const listOf = items => (items.length < 2 ? items.join('')
+  : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
+const units = (n, unit) => `${n} ${unit}${Number(n) === 1 ? '' : 's'}`
+
+// A measure's own filters ({column: value | [values] | {op: value}}), as a clause.
+const OP_WORDS = { eq: '=', ne: '≠', lt: '<', lte: '≤', le: '≤', gt: '>', gte: '≥', ge: '≥', in: 'is one of', not_in: 'is not one of' }
+function filterWords(filters) {
+  const one = (col, v) => {
+    if (Array.isArray(v)) return `${words(col)} is one of ${v.join(', ')}`
+    if (v && typeof v === 'object') {
+      return Object.entries(v).map(([op, x]) => `${words(col)} ${OP_WORDS[op] || op} ${Array.isArray(x) ? x.join(', ') : x}`).join(' and ')
+    }
+    return `${words(col)} = ${v}`
+  }
+  const parts = Object.entries(filters || {}).map(([col, v]) => one(col, v))
+  return parts.length ? `, only where ${parts.join(' and ')}` : ''
+}
+
 export function measureDefinition(m) {
-  if (m.ratio) return `${m.ratio[0]} ÷ ${m.ratio[1]}`
-  if (m.expr) return `${m.agg}(${m.expr})`
-  if (m.column) return `${m.agg}(${m.column})`
+  const within = (m.partition_by || []).length ? `, within each ${listOf(m.partition_by.map(words))}` : ''
+  if (m.ratio) return `${words(m.ratio[0])} ÷ ${words(m.ratio[1])}`
+  if (m.share) return `${words(m.share)} ÷ the total`
+  if (m.kind === 'rank') return `rank by ${m.rank ? words(m.rank) : 'its measure'}, largest first${within}`
+  if (m.kind === 'running') return `running total of ${m.running ? words(m.running) : 'its measure'}, largest first${within}`
+  if (m.measure_expr) return exprWords(m.measure_expr)
+  if (m.period_end) return `${words(m.period_end[0])} on the last ${words(m.period_end[1])} of each period`
+  if (m.offset) return `${words(m.offset[0])} ${units(m.offset[2], m.offset[1])} earlier`
+  if (m.growth) return `change in ${words(m.growth[0])} since ${units(m.growth[2], m.growth[1])} earlier, as a share of it`
+  if (m.to_date) return `${words(m.to_date[0])}, ${m.to_date[1]} to date`
+  if (m.expr) return `${aggOf(m.agg, `(${exprWords(m.expr)})`)}${filterWords(m.filters)}`
+  if (m.column) return `${aggOf(m.agg, words(m.column))}${filterWords(m.filters)}`
   return ''
 }
 
