@@ -1,48 +1,47 @@
 # TraceBi — getting-started Docker Compose stack.
 #
+# It serves ONE project, examples/portfolio_project (the three-phase reference
+# project, warehouse baked at image build), and nothing beside it. The bundled
+# demo app is not served here: it is opt-in, with TRACEBI_APP=tracebi.web.demo_app
+# on a plain `python -m tracebi.web.run`, and never runs beside a project.
+#
 # Three services, one per deployment plane (see NOTES.md, "Deployment planes"):
 #
-#   db     the state plane — Postgres. Holds the medallion tables and the
-#          pipeline's run history, so both survive restarts.
-#   seed   the execution plane — runs the pipeline once, seeds the reference
-#          project's CRM table (issuer_ratings), and exits. This is the only
-#          service that writes.
-#   app    the serving plane — FastAPI + React on :8000. Reads. Because
-#          TRACEBI_DEMO_DB_URL is set, importing the app module defines layers
-#          without executing any, so starting a web process does no batch work.
-#          It serves examples/portfolio_project (the three-phase reference
-#          project, warehouse baked at image build) plus the bundled demo app.
-#
-# That separation is the point. Without a database there is nowhere for an
-# execution plane to have written, so the demo falls back to seeding itself
-# inside the web process at import — which is what this stack exists to
-# demonstrate the alternative to.
+#   db     the state plane — Postgres. On its first start it creates a
+#          standing mock CRM database, `crm`, loaded once from the reference
+#          project's inputs/seed_crm.sql (docker/postgres-init.sql), and the
+#          `tracebi_state` database for the run store. Both persist on the
+#          `pgdata` volume.
+#   seed   the execution plane — runs the reference project's pipelines once
+#          (each model's transform, then its reports) into the shared
+#          warehouse volume, so the portfolio transform reads the CRM, and
+#          exits. It reads the CRM; it never writes it.
+#   app    the serving plane — FastAPI + React on :8000, over the warehouse
+#          `seed` just wrote. Starting a web process does no batch work.
 #
 # Quick start:
 #
 #     docker compose up --build
 #     open http://localhost:8000
 #
-# Re-run the pipeline later without restarting the API:
+# Re-run a model's pipeline later without restarting the API: Refresh data on
+# the model in the app, or
 #
-#     docker compose run --rm seed
+#     docker compose exec app tracebi run-pipeline portfolio_model
 #
-# Postgres is published on :5432 so the execution plane can also be driven
-# from the host — `tracebi run-pipeline`, a cron entry, a CI job — which is
-# the shape a container deployment actually takes.
+# Postgres is published on :5432 so the CRM can be inspected, and the
+# execution plane driven, from the host.
 #
 # To require login, set TRACEBI_AUTH_USER and TRACEBI_AUTH_PASS in a
 # local .env file or directly in the environment.
-#
-# To point the server at your own app module (instead of the bundled
-# demo), set TRACEBI_APP to a fully-qualified Python module path that
-# imports cleanly inside the container.
 
-x-demo-db-url: &demo-db-url
-  # Local development credentials, deliberately weak and not a secret: this
-  # database is reachable only from this compose network and your own machine.
-  # Override POSTGRES_PASSWORD for anything that outlives a laptop.
-  TRACEBI_DEMO_DB_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi
+x-crm-url: &crm-url
+  # The reference project's CRM (connections/crm.yaml reads it as
+  # ${TRACEBI_CRM_URL}): its own database on this stack's Postgres. Local
+  # development credentials, deliberately weak and not a secret: this database
+  # is reachable only from this compose network and your own machine. Override
+  # POSTGRES_PASSWORD for anything that outlives a laptop.
+  TRACEBI_CRM_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/crm
 
 services:
   db:
@@ -60,9 +59,13 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # Run once, on the first start of an empty pgdata volume: creates the
+      # crm and tracebi_state databases and loads the CRM's one table.
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-databases.sql:ro
+      - ./examples/portfolio_project/inputs/seed_crm.sql:/seed/seed_crm.sql:ro
     healthcheck:
       # The seed service must not start against a Postgres that is still
-      # initialising, or the first layer fails on connection refused.
+      # initialising, or the transform's CRM read fails on connection refused.
       test: ["CMD-SHELL", "pg_isready -U tracebi -d tracebi"]
       interval: 5s
       timeout: 5s
@@ -76,20 +79,24 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      output-perms:
+        condition: service_completed_successfully
     environment:
-      TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
-      <<: *demo-db-url
-      # The reference project's CRM: a table in this stack's Postgres, read by
-      # examples/portfolio_project/connections/crm.yaml as ${TRACEBI_CRM_URL}.
-      TRACEBI_CRM_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi
-    # The image's WORKDIR is the reference project, so inputs/seed_crm.py is
-    # its own seed script (issuer_ratings, inputs/seed_crm.sql).
+      <<: *crm-url
+    # The image's WORKDIR is the reference project. Each model's pipeline
+    # re-sinks its tables into the warehouse volume app reads (portfolio's
+    # transform now from the CRM, not the snapshot the image was baked with)
+    # and rebuilds its reports into output/.
     command:
       - sh
       - -c
       - >-
-        python -c "from tracebi.web.demo_app.pipeline import seed_and_run; seed_and_run()"
-        && python inputs/seed_crm.py
+        tracebi run-pipeline portfolio_model
+        && tracebi run-pipeline saas_model
+        && tracebi run-pipeline housing_model
+    volumes:
+      - warehouse:/app/examples/portfolio_project/data
+      - ./examples/portfolio_project/output:/app/examples/portfolio_project/output
     restart: "no"
 
   output-perms:
@@ -113,20 +120,13 @@ services:
       output-perms:
         condition: service_completed_successfully
       # Wait for the data to exist rather than racing it — otherwise the first
-      # page load can land on empty tables.
+      # page load can land on tables the seed is still rewriting.
       seed:
         condition: service_completed_successfully
     ports:
       - "8000:8000"
     environment:
-      # Bundled demo app by default; override to point at your config module.
-      TRACEBI_APP: ${TRACEBI_APP:-tracebi.web.demo_app}
-      <<: *demo-db-url
-      # The reference project's CRM, seeded by `seed`. The warehouse baked
-      # into the image was built without it (its certificate says the CSV
-      # snapshot stood in); Refresh data on the portfolio model re-runs the
-      # transform against this database.
-      TRACEBI_CRM_URL: postgresql+psycopg://tracebi:${POSTGRES_PASSWORD:-tracebi}@db:5432/tracebi
+      <<: *crm-url
       # Optional HTTP basic auth — leave unset to keep the API open.
       TRACEBI_AUTH_USER: ${TRACEBI_AUTH_USER:-}
       TRACEBI_AUTH_PASS: ${TRACEBI_AUTH_PASS:-}
@@ -138,6 +138,9 @@ services:
       TRACEBI_DEV_MODE: ${TRACEBI_DEV_MODE:-0}
       PORT: "8000"
     volumes:
+      # The warehouse seed wrote (first created from the one baked into the
+      # image); Refresh data in the app rewrites it in place.
+      - warehouse:/app/examples/portfolio_project/data
       # Report builds and their traces land in a folder on the host, where
       # they can be browsed, backed up or shared. The app runs as uid 10001,
       # so output-perms (below) makes the folder writable by it first.
@@ -153,3 +156,6 @@ services:
 
 volumes:
   pgdata:
+  # The reference project's data/: the warehouse and its certificate. Docker
+  # fills it from the image on first use; seed rewrites it on every up.
+  warehouse:

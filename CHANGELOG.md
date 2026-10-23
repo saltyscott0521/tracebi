@@ -25,6 +25,23 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   `count(*)` for the first 20 tables of a database (`ROW_COUNT_CAP` is gone).
 - **A `MemoryConnector` lists its tables.**
 
+### Changed — one demo: the reference project follows its own conventions
+
+- **One warehouse, declared.** `examples/portfolio_project/tracebi.yaml`
+  names `data/warehouse.duckdb` and the engine limits. The housing model reads
+  it (`type: warehouse`) and its transform sinks there through `sink_target()`;
+  `data/housing.duckdb` and the `housing_warehouse` connector are gone.
+  Housing's `dim_cohort` lands as `dim_purchase_cohort` (SaaS has a
+  `dim_cohort` too); the model maps it back, so no binding changed.
+- **SaaS's transform is SQL**: `saas_transform.sql` + `saas_transform.contract.yaml`,
+  replacing `saas_transform.py`; its four tables fingerprint as before.
+- **`docker compose up` serves the reference project only.** `TRACEBI_APP`
+  is no longer set (the demo app stays opt-in). The CRM is a standing mock
+  database, `crm` on the stack's Postgres, loaded once at first start
+  (`docker/postgres-init.sql`, which also creates `tracebi_state`); `seed`
+  runs the project's three pipelines into a shared `warehouse` volume. An
+  existing `pgdata` volume never re-runs init: `docker compose down -v` once.
+
 ### Fixed
 
 - **DuckDB 2.0 runs the query engine.** From 2.0 a result fetched part-way

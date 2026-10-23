@@ -47,8 +47,9 @@ RUN cd examples/portfolio_project && python run_workflow.py
 # project at runtime), then drop root before serving.
 RUN chown -R appuser:appuser /app
 USER appuser
-# Serve the example project — its models/ and reports/ are what discovery
-# finds. docker-compose additionally sets TRACEBI_APP for the bundled demo.
+# Serve the example project, and only it — its models/ and reports/ are what
+# discovery finds. TRACEBI_APP is unset: the bundled demo app is opt-in
+# (TRACEBI_APP=tracebi.web.demo_app) and never served beside a project.
 WORKDIR /app/examples/portfolio_project
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://127.0.0.1:8000/api/health || exit 1

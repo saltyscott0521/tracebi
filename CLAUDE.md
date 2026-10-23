@@ -247,18 +247,23 @@ tests/                 # pytest suite (run `pytest tests/` for the current count
                        #   tests/e2e/ holds the end-to-end journeys (preferred for new coverage)
 examples/
   portfolio_project/   # THE reference working project — a complete three-phase project
-                       #   with the same shape `tracebi init` scaffolds:
+                       #   with the same shape `tracebi init` scaffolds; every model follows it:
+    tracebi.yaml       #   the ONE warehouse (data/warehouse.duckdb, file tier) + engine limits
     inputs/            #   ⓪ raw pulls (holdings.csv + generate_raw.py, the demo source)
     connections/       #   ⓪ crm.yaml: a Postgres CRM (TRACEBI_CRM_URL) the transform reads by
-                       #     `-- source:`; inputs/seed_crm.py seeds it, issuer_ratings.csv is the snapshot
-    transforms/        #   ① SQL → sink star tables (holdings_transform.sql + .contract.yaml;
-                       #     holdings_transform_pandas.py is the pandas escape hatch)
-    models/            #   ② the star-schema contract (portfolio_model.yaml)
+                       #     `-- source:`; inputs/seed_crm.sql (compose loads it once into its `crm`
+                       #     database; seed_crm.py elsewhere), issuer_ratings.csv is the snapshot
+    transforms/        #   ① SQL → sink star tables, each with a .contract.yaml (holdings_transform.sql,
+                       #     saas_transform.sql; holdings_transform_pandas.py is the pandas escape hatch;
+                       #     affordability_transform.py, housing's, declares `with contract`)
+    models/            #   ② the star-schema contracts (portfolio_model, saas_model, housing_model
+                       #     .yaml), every one `type: warehouse`
     reports/           #   ③ organised BY MODEL — the folder is the model's name:
                        #     portfolio_model/ (portfolio_dashboard (app.jsx),
                        #     portfolio_desk (app.jsx), portfolio_book (editorial),
                        #     portfolio_overview, portfolio_concentration,
-                       #     portfolio_showcase), housing_model/ (affordability)
+                       #     portfolio_showcase), saas_model/ (mrr_dashboard, cohort_brief),
+                       #     housing_model/ (affordability)
     pipelines/         #   one per model (YAML): transform → build that model's reports
     run_workflow.py    #   drives ①→③; data/ inside the project is gitignored
   seeds/               # Medallion demo DB seeding + Supabase deploy companions
@@ -267,7 +272,8 @@ MANIFESTO.md           # What TraceBi is, the vocabulary canon, and what it refu
 .env.example           # Documented env vars (auth, connector URLs, dev mode)
 .github/workflows/     # CI — pytest matrix + ruff lint
 Dockerfile             # Multi-stage build (React UI + Python app)
-docker-compose.yml     # Single-container getting-started story
+docker-compose.yml     # Serves examples/portfolio_project only (TRACEBI_APP unset); Postgres holds
+                       #   the standing mock CRM (`crm`) and `tracebi_state` (docker/postgres-init.sql)
 pyproject.toml         # Single source of truth for deps, build, and pytest config
 CHANGELOG.md           # Keep-a-changelog format
 LICENSE                # MIT
