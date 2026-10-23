@@ -28,6 +28,7 @@ and the schema is closed: an unknown key is refused with a suggestion.
 ```yaml
 # connections/wh.yaml
 name: wh                      # equals the file name
+label: Sales warehouse        # optional: the name the app shows
 type: postgres
 url: ${TRACEBI_WH_URL}        # the value lives in .env or the environment
 ```
@@ -54,6 +55,12 @@ Every file has `name` and `type`. `type` is one of:
 | `bigquery` | `project`, `dataset` | `credentials` (path to a service-account file) |
 
 All values are strings.
+
+`label` (optional, any type) is a name for people: the Sources page shows it
+large, with `name` small beside it, and the kind of source in words from the
+type and the URL's database ("Postgres", "SQLite file"). A connector built
+in Python takes one as `connector.label = "..."`. It is never a credential
+and never resolved.
 
 ## `${ENV_VAR}`
 

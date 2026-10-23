@@ -169,23 +169,38 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # and names the transform that reads it.
             data_tabs.get_by_role("link", name="Sources").click()
             page.wait_for_url("**/data/sources")
-            # One of each kind: the live Postgres, the two databases that
-            # ship, and inputs/.
+            # One of each kind and nothing else: the live Postgres, the two
+            # databases that ship, and inputs/. The warehouse is not a source.
             page.locator('[data-source="inputs"]').wait_for()
-            assert {"bank", "billing", "crm", "inputs"} <= set(page.locator("[data-source]").evaluate_all(
-                "els => els.map(e => e.dataset.source)"))
-            page.locator('[data-source="crm"]').click()
+            assert sorted(page.locator("[data-source]").evaluate_all(
+                "els => els.map(e => e.dataset.source)")) == ["bank", "billing", "crm", "inputs"]
+            crm = page.locator('[data-source="crm"]')
+            expect(crm).to_contain_text("CRM (Postgres)")
+            expect(crm).to_contain_text("Read by transform holdings_transform")
+            crm.click()
             page.wait_for_url("**/data/sources?source=crm")
             expect(page.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()
+            expect(page.get_by_text("Set by TRACEBI_CRM_URL")).to_be_visible()
             expect(page.locator(".src-readby")).to_contain_text("holdings_transform (issuer_ratings)")
-            # Warehouse: who wrote each table, and what fed it.
+            # inputs/: a data file opens its table page; scripts are folded.
+            page.locator('[data-source="inputs"]').click()
+            expect(page.get_by_role("link", name="issuer_ratings.csv")).to_have_attribute(
+                "href", "/data/tables/inputs/issuer_ratings.csv")
+            expect(page.get_by_text(re.compile(r"^\d+ other files$"))).to_be_visible()
+            # Warehouse: the tables grouped by the transform that wrote them;
+            # what its run read is said once, on its group.
             data_tabs.get_by_role("link", name="Warehouse").click()
             page.wait_for_url("**/data/warehouse")
             # The browser tab names the page, so tabs and bookmarks differ.
             expect(page).to_have_title("Warehouse · Data · TraceBi")
-            rating = page.locator('#wh-warehouse [data-table="dim_rating"]')
-            expect(rating).to_contain_text("Written by holdings_transform")
-            expect(rating).to_contain_text("Fed from crm.issuer_ratings · snapshot inputs/issuer_ratings.csv")
+            group = page.locator('#wh-warehouse [data-writer="holdings_transform"]')
+            expect(group).to_contain_text(
+                "holdings_transform · wrote 7 tables · read crm.issuer_ratings (snapshot inputs/issuer_ratings.csv) on that run")
+            expect(page.get_by_text("read crm.issuer_ratings", exact=False)).to_have_count(1)
+            expect(group.locator('[data-table="dim_rating"]').get_by_role("link", name="dim_rating")).to_have_attribute(
+                "href", "/data/tables/warehouse/dim_rating")
+            page.get_by_role("searchbox", name="Filter tables").fill("rating")
+            expect(page.locator("#wh-warehouse [data-table]")).to_have_count(1)
             fail_on_browser_errors()
 
             # One table's page: the grid sorts and searches in the engine, so
@@ -564,12 +579,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("transforms/holdings_transform.sql").first.wait_for()
             # The Transform tab says what the warehouse holds, and that its checks
             # passed when it was last written, before any report is opened.
-            table = page.locator("details", has_text="fact_holdings")
+            table = page.locator('[data-writer="holdings_transform"] [data-table="fact_holdings"]')
             table.wait_for()
-            assert re.search(r"[\d,]+ rows", table.locator("summary").inner_text())
-            assert table.locator("summary").get_by_text("Checks passed", exact=True).count() == 1
-            table.locator("summary").click()
-            table.get_by_text("The sink satisfied its contract").wait_for()
+            assert re.search(r"\b25\b", table.inner_text())
+            assert table.get_by_text("Checks passed", exact=True).count() == 1
+            page.locator('[data-writer="holdings_transform"]').get_by_text("The sink satisfied its contract").wait_for()
             fail_on_browser_errors()
             # Ask: a sentence of the model's tokens. A measure and a dimension
             # picked from their slots; the answer is the query's own rows: the

@@ -22,6 +22,11 @@ class BaseConnector(ABC):
     applies them in pandas after loading.
     """
 
+    #: A name for people ("CRM (Postgres)"), shown large beside the
+    #: identifier on the Sources page. Optional: set it on the instance in
+    #: Python, or as ``label:`` in ``connections/<name>.yaml``.
+    label: Optional[str] = None
+
     def __init__(self, name: str) -> None:
         self.name = name
 
@@ -57,7 +62,10 @@ class BaseConnector(ABC):
         Metadata shown in registries/UIs. Subclasses may add fields
         (tables, directory, url, …) but must never include credentials.
         """
-        return {"name": self.name, "type": type(self).__name__}
+        out = {"name": self.name, "type": type(self).__name__}
+        if self.label:
+            out["label"] = self.label
+        return out
 
     def storage(self) -> dict:
         """

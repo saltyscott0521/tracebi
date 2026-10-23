@@ -42,7 +42,14 @@ class SQLConnector(BaseConnector):
         return True
 
     def describe(self) -> dict:
-        return {**super().describe(), "url": self._redacted_url()}
+        out = {**super().describe(), "url": self._redacted_url()}
+        dialect = url_dialect(self.url)
+        if dialect:
+            out["dialect"] = dialect
+        return out
+
+    def storage(self) -> dict:
+        return url_storage(self.url)
 
     def list_tables(self) -> list[str]:
         """Table names from the dialect inspector. Not a scan."""
@@ -138,3 +145,34 @@ class SQLConnector(BaseConnector):
         if self._engine is None:
             self.connect()
         df.to_sql(table, con=self._engine, if_exists=if_exists, index=False)
+
+
+def url_dialect(url: str) -> Optional[str]:
+    """The database a SQLAlchemy URL names (``postgresql``, ``sqlite``, …),
+    or None when it does not parse. Says what kind of source it is."""
+    try:
+        from sqlalchemy.engine import make_url
+        return make_url(url).get_backend_name()
+    except Exception:
+        return None
+
+
+def url_storage(url: str) -> dict:
+    """Where a SQLAlchemy URL's data lives, for people: a SQLite file as its
+    path (relative to the working directory when inside it), any other
+    database as its host and database name. Never the user or the password,
+    and never the URL itself."""
+    from tracebi.connectors.base import _on_disk
+
+    try:
+        from sqlalchemy.engine import make_url
+        parsed = make_url(url)
+    except Exception:
+        return {"kind": "database", "where": None, "exists": None, "size": None}
+    if parsed.get_backend_name() == "sqlite":
+        if parsed.database and parsed.database != ":memory:":
+            return _on_disk("file", parsed.database)
+        return {"kind": "memory", "where": "in memory, rebuilt every run", "exists": None, "size": None}
+    host = f"{parsed.host}:{parsed.port}" if parsed.host and parsed.port else parsed.host
+    where = "/".join(p for p in (host, parsed.database) if p) or parsed.get_backend_name()
+    return {"kind": "database", "where": where, "exists": None, "size": None}

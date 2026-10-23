@@ -81,6 +81,7 @@ def seed_source_tables() -> None:
     _customers_raw.to_sql("customers_raw", con=engine, if_exists="replace", index=False)
 
 db = SQLConnector("demo_db", url=_DB_URL)
+db.label = "Demo source database"
 
 # Landing — raw ingest
 _orders_landing = LandingLayer(

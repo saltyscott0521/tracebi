@@ -152,8 +152,20 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         # Sources list is read from a scan of this project's own folder.
         monkeypatch.setattr(discovery, "_live_connections", {})
         discovery.register_connections("connections")
-        [crm] = [x for x in c.get("/api/connectors").json() if x["name"] == "crm"]
+        listed = c.get("/api/connectors").json()
+        [crm] = [x for x in listed if x["name"] == "crm"]
         assert crm["url"] == "${TRACEBI_CRM_URL}" and crm["declared_in"] == "connections/crm.yaml"
+        # Sources lists what feeds the warehouse, never the warehouse itself;
+        # each by its label and its database, and where it lives as a place:
+        # the variable that sets it (never read to say more), or the file the
+        # connection's default names.
+        assert sorted(x["name"] for x in listed if not x["warehouse"]) == ["bank", "billing", "crm"]
+        assert (crm["label"], crm["dialect"]) == ("CRM (Postgres)", "postgresql")
+        assert (crm["storage"]["where"], crm["storage"]["variable"]) == (
+            "set by TRACEBI_CRM_URL", "TRACEBI_CRM_URL")
+        [bank] = [x for x in listed if x["name"] == "bank"]
+        assert (bank["label"], bank["dialect"]) == ("Core banking (SQLite file)", "sqlite")
+        assert bank["storage"]["kind"] == "file" and bank["storage"]["where"].endswith("inputs/bank.sqlite")
         shown = c.get("/api/pipelines/portfolio_model/source").text
         assert "-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv" in shown
 
@@ -169,6 +181,9 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         # The inputs/ folder: the snapshot is read by the same transform.
         files = {f["path"]: f for f in c.get("/api/inputs").json()["files"]}
         assert "holdings_transform" in files["inputs/issuer_ratings.csv"]["read_by"]
+        # A data file opens as a table; a script beside it does not.
+        assert files["inputs/issuer_ratings.csv"]["table"] is True
+        assert files["inputs/seed_crm.py"]["table"] is False
         assert files["inputs/holdings.csv"]["size"] > 0
 
         # One warehouse, the one tracebi.yaml declares, and every model reads
@@ -199,7 +214,9 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
                    for r in loads.values()), loads
 
         # The warehouse page: one section per warehouse, and dim_rating says
-        # who wrote it, who reads it, its checks and that the snapshot fed it.
+        # who wrote it, who reads it and its checks. What the run read is said
+        # once, of the transform's group: the certificate records a run's
+        # inputs, not which table each fed.
         whs = {w["name"]: w for w in c.get("/api/warehouse").json()["warehouses"]}
         assert set(whs) == {"warehouse"}
         assert whs["warehouse"]["tier"] == "file" and whs["warehouse"]["engine_version"]
@@ -208,8 +225,14 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         assert rating["written_by"]["contract"] == "holdings"
         assert rating["read_by"] == ["portfolio_model"]
         assert rating["contract"]["status"] == "satisfied"
-        [fed] = rating["fed_from"]
+        assert "fed_from" not in rating
+        writers = {w["transform"]: w for w in whs["warehouse"]["writers"]}
+        holdings = writers["holdings_transform"]
+        assert "dim_rating" in holdings["tables"] and len(holdings["tables"]) == 7
+        [fed] = holdings["read"]
         assert fed["ref"] == "crm.issuer_ratings" and fed["snapshot"] == "inputs/issuer_ratings.csv"
+        assert holdings["file"] == "transforms/holdings_transform.contract.yaml" and holdings["note"]
+        assert [r["ref"] for w in writers.values() for r in w["read"]].count("crm.issuer_ratings") == 1
         # Every model's tables sit in it, each written by a transform whose
         # sink satisfied its contract. A Python transform's contract is
         # matched to its file by the name it declares.

@@ -138,9 +138,11 @@ def validate_connection_doc(doc: Any) -> list[str]:
     if ctype not in _TYPES:
         return [f"type: required, one of {', '.join(_TYPES)}; got {ctype!r}"]
     _cls, required, optional = _TYPES[ctype]
-    errors = _unknown(doc, {"name", "type", *required, *optional}, "connection")
+    errors = _unknown(doc, {"name", "type", "label", *required, *optional}, "connection")
     if not isinstance(doc.get("name"), str) or not _NAME.fullmatch(doc.get("name") or ""):
         errors.append("name: required, letters, digits and underscores")
+    if "label" in doc and (not isinstance(doc["label"], str) or not doc["label"].strip()):
+        errors.append("label: a name for people, a non-empty string")
     for field in required + optional:
         if field not in doc:
             if field in required:
@@ -233,6 +235,8 @@ class _Declared:
         return self._decl.describe(self)
 
     def storage(self) -> dict:
+        if "url" in self._decl.fields:
+            return self._decl.url_storage()
         try:
             return super().storage()
         except ConnectionConfigError as exc:
@@ -287,17 +291,70 @@ class Declaration:
         if field in _PATH_FIELDS and self.ctype in _PATH_FIELDS[field] \
                 and value != ":memory:" and not os.path.isabs(value):
             return str((self.root / value).resolve())
-        if field in _URL_FIELDS and (path := _sqlite_file(value)) \
-                and not os.path.isabs(path):
-            match = _SQLITE.match(value)
-            return f"{match.group(1)}{(self.root / path).resolve()}{match.group(3) or ''}"
+        if field in _URL_FIELDS:
+            return self._rooted(value)
         if field == "credentials" and self.ctype == "bigquery":
             from tracebi.connect import _bq_credentials
             return _bq_credentials(value)
         return value
 
+    def _rooted(self, url: str) -> str:
+        """A relative SQLite URL resolved against the project root."""
+        path = _sqlite_file(url)
+        if path is None or os.path.isabs(path):
+            return url
+        match = _SQLITE.match(url)
+        return f"{match.group(1)}{(self.root / path).resolve()}{match.group(3) or ''}"
+
+    def _literal_url(self) -> Optional[str]:
+        """The URL as the file states it, with no credential read: a literal,
+        or a ``${NAME:-default}``'s default while *NAME* is set nowhere. None
+        when a variable supplies it, since saying where would mean reading
+        the secret."""
+        from tracebi.project_credentials import CredentialError, Missing, parse, resolve
+
+        raw = self.fields["url"]
+        ref = parse(raw)
+        if ref is None:
+            return raw
+        name, default = ref
+        if not default:
+            return None
+        try:
+            resolve(name, self.root)    # only whether it is set; the value is dropped
+        except Missing:
+            return default
+        except CredentialError:
+            pass                        # the store holds it, unreadably: still set
+        return None
+
+    def url_storage(self) -> dict:
+        """Where a ``url`` connection's data lives, without reading a
+        credential: the file or host its literal URL names, else which
+        variable sets it."""
+        from tracebi.connectors.sql_connector import url_storage
+
+        literal = self._literal_url()
+        if literal is not None:
+            return url_storage(self._rooted(literal))
+        name = _REF.fullmatch(self.fields["url"]).group(1)
+        return {"kind": "database", "where": f"set by {name}", "variable": name,
+                "exists": None, "size": None}
+
+    def dialect(self) -> Optional[str]:
+        """What kind of database a ``url`` connection is: from the URL the
+        file states, else from its type (``postgres``)."""
+        from tracebi.connectors.sql_connector import url_dialect
+
+        literal = self._literal_url()
+        if literal is not None:
+            return url_dialect(literal)
+        return "postgresql" if self.ctype == "postgres" else None
+
     def describe(self, connector) -> dict:
         out = {"name": self.name, "type": type(connector).__name__}
+        if connector.label:
+            out["label"] = connector.label
         if self.source:
             out["declared_in"] = self.source
         for field in ("database", "directory"):
@@ -311,6 +368,8 @@ class Declaration:
                 out["url"] = self.shown("url")
             else:
                 out["url"] = connector._redacted_url()
+            if dialect := self.dialect():
+                out["dialect"] = dialect
         return out
 
 
@@ -344,6 +403,7 @@ def build_connection(doc: dict, root: "str | os.PathLike[str]",
         "duckdb": {"database": ":memory:"},
     }[ctype]
     connector = cls(doc["name"], **args)
+    connector.label = doc.get("label")
     # Installed after construction, so the constructor above does not resolve.
     connector.__dict__["_decl"] = decl
     return connector

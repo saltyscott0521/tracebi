@@ -12,5 +12,6 @@
 # (source_fallback: csv). `python inputs/seed_crm.py` creates and fills the
 # table in whichever Postgres the URL names.
 name: crm
+label: CRM (Postgres)
 type: postgres
 url: ${TRACEBI_CRM_URL}

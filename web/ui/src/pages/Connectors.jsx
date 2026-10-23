@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useConnectors, useConnectorTables, useInputs, usePipelines } from '../api'
 import { StorageLine, sourceKind, fmtBytes } from '../components/Storage'
@@ -7,9 +7,10 @@ import CodeView from '../components/CodeView'
 import Credentials from '../components/Credentials'
 import { stamp } from '../when'
 import { feedsModel, upstreamOf } from '../chain'
-import { dataPath, pipelineModels, sourcesPath, warehousePath } from '../nav'
+import { count } from '../format'
+import { dataPath, pipelineModels, sourcesPath, tablePath, warehousePath } from '../nav'
 import {
-  Card, CardTitle, Badge, Btn, BtnLink, ErrorDetail, Spinner,
+  Card, CardTitle, Badge, Btn, ErrorDetail, Spinner,
   Empty, ListItem, SplitLayout, SearchInput, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
@@ -36,24 +37,28 @@ export function TransformName({ name, home }) {
 }
 
 // Who reads a source: the transforms that name its tables (in a `-- source:`
-// line or a load_source call), the pipeline layers whose source it is, and
-// the models that read it directly. Read from the files, so a source nothing
-// names says so.
+// line or a load_source call), the pipelines whose steps take it as their
+// source (one line per pipeline, its steps named), and the models that read
+// it directly. Read from the files, so a source nothing names says so.
 function ReadBy({ c }) {
   const labelOf = useModelLabel()
   const home = useTransformHome()
   const rb = c.read_by || { transforms: [], layers: [], models: c.used_by || [] }
+  const pipelines = {}
+  rb.layers.forEach(l => { (pipelines[l.pipeline] ||= []).push(l.layer) })
   const lines = [
     ...rb.transforms.map(t => (
       <li key={`t-${t.name}`}>
-        <TransformName name={t.name} home={home} /> ({t.tables.join(', ')})
+        The transform <TransformName name={t.name} home={home} /> ({t.tables.join(', ')})
       </li>
     )),
-    ...rb.layers.map(l => (
-      <li key={`l-${l.pipeline}-${l.layer}`}>the step <code>{l.layer}</code> of the pipeline <code>{l.pipeline}</code></li>
+    ...Object.entries(pipelines).map(([p, steps]) => (
+      <li key={`p-${p}`}>
+        The pipeline <code>{p}</code>: {count(steps.length, 'step')} ({steps.map((s, i) => <Fragment key={s}>{i > 0 && ', '}<code>{s}</code></Fragment>)})
+      </li>
     )),
     ...rb.models.map(m => (
-      <li key={`m-${m}`}><Link to={dataPath(m)}>{labelOf(m)}</Link>, which reads its tables</li>
+      <li key={`m-${m}`}>The model <Link to={dataPath(m)}>{labelOf(m)}</Link>, which reads its tables</li>
     )),
   ]
   return lines.length
@@ -61,43 +66,71 @@ function ReadBy({ c }) {
     : <p className="src-quiet">Nothing in this project reads it.</p>
 }
 
-// What the source holds, read when its detail opens. A connection whose
-// variable is unset here, or that refuses, says so quietly: not an error.
+// A table's row count as the table API counts it: exact, the catalog's
+// estimate (~), or not counted where neither is cheap.
+function rowsText(t) {
+  if (t.rows == null) return 'not counted'
+  return `${t.rows_exact === false ? '~' : ''}${Number(t.rows).toLocaleString('en-US')}`
+}
+
+// The connection's state here: reachable, or which variable it is waiting
+// for (the credentials under it are where that is set).
+function Reach({ name }) {
+  const { data, isLoading } = useConnectorTables(name)
+  if (isLoading) return <p className="src-quiet"><Spinner size={12} /> Connecting…</p>
+  if (!data || data.connected) return null
+  return (
+    <p className="src-quiet src-reach" data-connected="false">
+      Not connected here · {data.variable ? <>set <code>{data.variable}</code></> : data.reason}
+    </p>
+  )
+}
+
+// What the source holds, read when its detail opens: one row per table, its
+// name the link to the table page. A connection that is not reachable says so
+// once, in its Connection section above.
 function Tables({ name }) {
   const { data, isLoading, error } = useConnectorTables(name)
   if (isLoading) return <p className="src-quiet"><Spinner size={12} /> Reading what it holds…</p>
   if (error) return <ErrorDetail error={error} />
-  if (!data.connected) {
-    return (
-      <p className="src-quiet" data-connected="false">
-        Not connected here · {data.variable ? <>set <code>{data.variable}</code></> : data.reason}
-      </p>
-    )
-  }
+  if (!data.connected) return <p className="src-quiet">Its tables are listed once it connects.</p>
   if (!data.tables) return <p className="src-quiet">{data.reason}</p>
   // TraceBi's own tables (the state store's) are never listed as data.
   const n = data.hidden_framework_tables || 0
-  const hidden = n > 0 && <p className="src-quiet" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">{n} framework {n === 1 ? 'table' : 'tables'} hidden</p>
+  const hidden = n > 0 && <p className="src-quiet" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">{count(n, 'framework table')} hidden</p>
   if (!data.tables.length) return <><p className="src-quiet">It holds no tables.</p>{hidden}</>
   return (
-    <div className="src-tables">
-      {data.tables.map(t => (
-        <details key={t.name} className="wb-details">
-          <summary>
-            <code>{t.name}</code>{' '}
-            <span className="wb-meta">
-              {[t.rows != null && `${t.rows.toLocaleString()} ${t.rows === 1 ? 'row' : 'rows'}`,
-                `${t.columns.length} ${t.columns.length === 1 ? 'column' : 'columns'}`].filter(Boolean).join(' · ')}
-            </span>
-          </summary>
-          <ul className="src-columns">
-            {t.columns.map(col => <li key={col.name}><code>{col.name}</code> <span>{col.type}</span></li>)}
-          </ul>
-        </details>
-      ))}
+    <>
+      <div className="whlist">
+        <table className="tb-list">
+          <thead>
+            <tr>
+              <th scope="col">Table</th>
+              <th scope="col" className="num">Rows</th>
+              <th scope="col" className="num">Columns</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.tables.map(t => (
+              <tr key={t.name} data-table={t.name}>
+                <td><Link to={tablePath(name, t.name)}><code>{t.name}</code></Link></td>
+                <td className="num" title={t.rows != null && t.rows_exact === false ? "The catalog's estimate" : undefined}>{rowsText(t)}</td>
+                <td className="num">{t.columns.length}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {hidden}
-    </div>
+    </>
   )
+}
+
+// A source's name for people, large, with its identifier small beside it.
+function SourceName({ c }) {
+  return c.label
+    ? <>{c.label} <code className="src-id">{c.name}</code></>
+    : <code className="src-id src-id--only">{c.name}</code>
 }
 
 function ConnectorDetail({ c }) {
@@ -107,20 +140,16 @@ function ConnectorDetail({ c }) {
       <Empty message="Select a source to see where its data is kept." />
     </Card>
   )
-  const isWarehouse = c.type === 'DuckDBConnector' && c.storage?.kind === 'file'
   return (
     <Card className="fade-in">
       <CardTitle action={(
-        <span style={{ display: 'inline-flex', gap: 6 }}>
-          {isWarehouse && <BtnLink size="sm" to={`${warehousePath()}#wh-${c.name}`}>Open in Warehouse</BtnLink>}
-          <Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>
-        </span>
-      )}>{c.name}</CardTitle>
+        <Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>
+      )}><SourceName c={c} /></CardTitle>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-        <Badge variant="gray" style={{ textTransform: 'none' }} title={c.type}>{sourceKind(c)}</Badge>
+        <Badge variant="gray" title={c.type}>{sourceKind(c)}</Badge>
       </div>
       <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
-      <Section label="Connection"><Credentials connection={c} /></Section>
+      <Section label="Connection"><Reach name={c.name} /><Credentials connection={c} /></Section>
       <Section label="Read by"><ReadBy c={c} /></Section>
       <Section label="Tables"><Tables name={c.name} /></Section>
       {code && <div style={{ marginBottom: 18 }}><CodeView kind="connectors" name={c.name} /></div>}
@@ -128,32 +157,50 @@ function ConnectorDetail({ c }) {
   )
 }
 
-// The project's inputs/ folder: the files the transforms read, each with
-// when it last changed and which transforms name it.
+// One file under inputs/: its name (a data file's opens its table page), size,
+// when it changed and which transforms name it.
+function InputFile({ f, home }) {
+  const name = f.path.replace(/^inputs\//, '')
+  return (
+    <li data-file={name}>
+      {f.table ? <Link to={tablePath(INPUTS, name)}><code>{name}</code></Link> : <code>{name}</code>}
+      <span className="wb-meta">{fmtBytes(f.size)} · changed {stamp(f.modified)}</span>
+      <span className="src-files__by">
+        {f.read_by.length
+          ? <>Read by {f.read_by.map((t, i) => <span key={t}>{i > 0 && ', '}<TransformName name={t} home={home} /></span>)}</>
+          : 'No transform names it'}
+      </span>
+    </li>
+  )
+}
+
+// The project's inputs/ folder: its data files first (the ones a transform
+// reads as a table), each with when it last changed and which transforms name
+// it; scripts, notes and database files folded under them.
 function InputsDetail({ files }) {
   const home = useTransformHome()
+  const data = files.filter(f => f.table)
+  const other = files.filter(f => !f.table)
   return (
     <Card className="fade-in">
-      <CardTitle>inputs/</CardTitle>
+      <CardTitle><code className="src-id src-id--only">inputs/</code></CardTitle>
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-        <Badge variant="gray" style={{ textTransform: 'none' }}>Files</Badge>
+        <Badge variant="gray">Files</Badge>
       </div>
       <Section label="Where the data lives"><code style={{ fontSize: 12 }}>inputs/</code></Section>
-      <Section label="Files">
+      <Section label="Data files">
         {files.length === 0 ? <p className="src-quiet">The folder is empty.</p> : (
-          <ul className="src-files">
-            {files.map(f => (
-              <li key={f.path}>
-                <code>{f.path.replace(/^inputs\//, '')}</code>
-                <span className="wb-meta">{fmtBytes(f.size)} · changed {stamp(f.modified)}</span>
-                <span className="src-files__by">
-                  {f.read_by.length
-                    ? <>Read by {f.read_by.map((t, i) => <span key={t}>{i > 0 && ', '}<TransformName name={t} home={home} /></span>)}</>
-                    : 'No transform names it'}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            {data.length > 0
+              ? <ul className="src-files">{data.map(f => <InputFile key={f.path} f={f} home={home} />)}</ul>
+              : <p className="src-quiet">No file here reads as a table (CSV, Parquet or JSON).</p>}
+            {other.length > 0 && (
+              <details className="wb-details src-other">
+                <summary>{count(other.length, 'other file')}</summary>
+                <ul className="src-files">{other.map(f => <InputFile key={f.path} f={f} home={home} />)}</ul>
+              </details>
+            )}
+          </>
         )}
         <p className="src-quiet src-note">
           Read by is found by reading each transform for a path into inputs/. A path
@@ -166,9 +213,10 @@ function InputsDetail({ files }) {
 
 /**
  * Where the data comes from: every connection and the inputs/ folder
- * (/data/sources), or with a model only what it is made from, its warehouse
- * and what its transform reads (?model=<m>, or *model* on its own Sources
- * tab). The open source is in the address (?source=<name>).
+ * (/data/sources), or with a model only what its transform reads (?model=<m>,
+ * or *model* on its own Sources tab). A warehouse is not a source: it is
+ * under Warehouse, and one line here says so. The open source is in the
+ * address (?source=<name>).
  */
 export default function Connectors({ model: scoped }) {
   const [params, setParams] = useSearchParams()
@@ -180,12 +228,12 @@ export default function Connectors({ model: scoped }) {
   const [query, setQuery] = useState('')
 
   const up = upstreamOf({ model, pipelines, connectors: data, inputs })
-  const connectors = (data || []).filter(c => !model || feedsModel(c, model, up))
+  const connectors = (data || []).filter(c => !c.warehouse && (!model || feedsModel(c, model, up)))
   const files = model ? up.files : (inputs?.files || [])
   const showInputs = !!inputs?.exists && (!model || files.length > 0)
   const q = query.toLowerCase()
   const filtered = connectors.filter(c =>
-    c.name.toLowerCase().includes(q) || sourceKind(c).toLowerCase().includes(q))
+    [c.name, c.label || '', sourceKind(c)].some(x => x.toLowerCase().includes(q)))
   const inputsShown = showInputs && ('inputs files'.includes(q) || files.some(f => f.path.toLowerCase().includes(q)))
   // Open on the first source rather than a blank "select one" pane.
   const asked = params.get('source')
@@ -193,23 +241,29 @@ export default function Connectors({ model: scoped }) {
     : (connectors.find(c => c.name === asked) || filtered[0])?.name || (inputsShown ? INPUTS : null)
   const select = name => setParams(p => { p.set('source', name); return p }, { replace: true })
 
-  const readers = c => [
-    ...(c.read_by?.transforms || []).map(t => <Badge key={`t-${t.name}`} variant="gray" style={{ textTransform: 'none' }}>{t.name}</Badge>),
-    ...(c.used_by || []).map(m => <Badge key={`m-${m}`} variant="gray" style={{ textTransform: 'none' }}>{labelOf(m)}</Badge>),
-  ]
+  // Who reads it, each reader said as what it is: a transform, a pipeline, a model.
+  const readers = c => {
+    const rb = c.read_by || { transforms: [], layers: [], models: c.used_by || [] }
+    const parts = [
+      ...rb.transforms.map(t => `transform ${t.name}`),
+      ...[...new Set(rb.layers.map(l => l.pipeline))].map(p => `pipeline ${p}`),
+      ...rb.models.map(m => `model ${labelOf(m)}`),
+    ]
+    return parts.length ? <span className="src-li__by">Read by {parts.join(', ')}</span> : null
+  }
 
   return (
     <>
       {model && !scoped && (
         <p className="scope-note">
-          What {labelOf(model)} is made from: its warehouse, and what its transform reads.{' '}
+          What {labelOf(model)} is made from: what its transform reads.{' '}
           <Link to={sourcesPath()}>Show every source</Link>
         </p>
       )}
       {!isLoading && connectors.length === 0 && !showInputs ? (
         <Empty message={model
-          ? 'This model reads no source, so its tables have no data behind them. Its file names one under connectors.'
-          : 'No sources yet. Declare a connection with tracebi connect, or a model names its own.'} />
+          ? 'Its transform reads no connection or input file. The tables it is built on are under Warehouse.'
+          : 'No sources yet. Declare a connection with tracebi connect, or put files under inputs/.'} />
       ) : (
         <SplitLayout
           left={
@@ -217,7 +271,7 @@ export default function Connectors({ model: scoped }) {
               <>
                 <SearchInput value={query} onChange={setQuery} placeholder="Search sources…" />
                 {filtered.length === 0 && !inputsShown
-                  ? <Empty message="No matches." />
+                  ? <Empty message="No source matches." />
                   : (
                     <>
                       {filtered.map(c => (
@@ -225,9 +279,9 @@ export default function Connectors({ model: scoped }) {
                           <ListItem
                             selected={current === c.name}
                             onClick={() => select(c.name)}
-                            name={c.name}
+                            name={<SourceName c={c} />}
                             sub={sourceKind(c)}
-                            meta={readers(c).length ? readers(c) : null}
+                            meta={readers(c)}
                           />
                         </div>
                       ))}
@@ -236,8 +290,8 @@ export default function Connectors({ model: scoped }) {
                           <ListItem
                             selected={current === INPUTS}
                             onClick={() => select(INPUTS)}
-                            name="inputs/"
-                            sub={`Files · ${files.length} ${files.length === 1 ? 'file' : 'files'}`}
+                            name={<code className="src-id src-id--only">inputs/</code>}
+                            sub={`Files · ${count(files.length, 'file')}`}
                           />
                         </div>
                       )}
@@ -252,6 +306,9 @@ export default function Connectors({ model: scoped }) {
             : <ConnectorDetail key={current} c={connectors.find(c => c.name === current)} />}
         />
       )}
+      <p className="wb-meta src-pointer">
+        The warehouse a transform writes is under <Link to={warehousePath(model)}>Warehouse</Link>.
+      </p>
     </>
   )
 }

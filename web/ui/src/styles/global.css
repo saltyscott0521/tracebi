@@ -1652,7 +1652,7 @@ button.rp__item:disabled { opacity: .5; cursor: default; }
   background: var(--surface-2); border: 1px solid var(--border);
 }
 a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
-.chain__seg code, .whrow__facts code, .src-readby code, .src-files__by code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
+.chain__seg code, .whgroup__head code, .src-readby code, .src-files__by code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
 .chain__seg--none { color: var(--muted); border-style: dashed; }
 .chain__arrow { color: var(--track); font-size: var(--text-sm); }
 
@@ -1672,28 +1672,39 @@ a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
 .src-quiet { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; font-size: var(--text-sm); color: var(--muted); line-height: 1.5; }
 .src-note { margin-top: 10px; }
 .src-readby { margin: 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.7; color: var(--text-2); }
-.src-tables .wb-details { margin-bottom: 4px; }
-.src-columns { margin: 4px 0 8px; padding: 0 0 0 16px; list-style: none; font-size: var(--text-sm); line-height: 1.7; }
-.src-columns span { color: var(--muted); }
+.src-reach { margin-bottom: 8px; }
+.src-other { margin-top: 6px; }
+.src-pointer { margin-top: 14px; }
+/* A source's name for people, with its identifier small beside it. */
+.src-id { font-size: var(--text-sm); font-weight: 400; color: var(--muted); background: none; border: 0; padding: 0; }
+.src-id--only { font-size: inherit; font-weight: inherit; color: inherit; }
+.src-li__by { font-size: 11px; color: var(--text-2); overflow-wrap: anywhere; }
 .src-files { margin: 0; padding: 0; list-style: none; }
 .src-files li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
 .src-files li:first-child { border-top: 0; }
+.src-files li > a { display: inline-flex; align-items: center; min-height: 24px; }
 .src-files__by { flex-basis: 100%; font-size: var(--text-sm); color: var(--text-2); }
 
-/* Data's Warehouse: one section per warehouse, a row per table. */
+/* Data's Warehouse: one section per warehouse, its tables grouped by the
+   transform that wrote them, a row per table. */
 .whs { margin-bottom: 28px; scroll-margin-top: 72px; }
 .whs__head { margin-bottom: 10px; }
 .whs__head h2 { margin: 0 0 4px; font-size: var(--text-lg); font-weight: 600; font-family: var(--font-mono); color: var(--text); }
 .whs__facts { margin: 0; font-size: var(--text-sm); color: var(--text-2); line-height: 1.6; overflow-wrap: anywhere; }
-.whs__tables { margin: 0; padding: 0; list-style: none; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
-.whrow { padding: 12px 18px; }
-.whrow + .whrow { border-top: 1px solid var(--border); }
-.whrow__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
-.whrow__main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; min-width: 0; }
-.whrow__name { font-size: 13.5px; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
-.whrow__facts { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 6px 0 2px; font-size: var(--text-sm); color: var(--text-2); line-height: 1.6; }
-.whrow__facts > span { overflow-wrap: anywhere; }
-.whrow__open { padding: 4px 0 6px; }
+.whfilter { max-width: 360px; margin-bottom: 18px; }
+.whgroup { margin-bottom: 18px; }
+.whgroup__head { margin: 0 0 2px; font-size: 13px; color: var(--text-2); line-height: 1.6; overflow-wrap: anywhere; }
+.whgroup__head > a code, .whgroup__head > code:first-child { font-weight: 600; color: var(--text); }
+.whgroup .wb-meta { margin: 0 0 6px; }
+/* A dense list of tables: it scrolls sideways inside itself on a phone, never the page. */
+.whlist { overflow-x: auto; margin-top: 6px; }
+.whlist .tb-list { width: 100%; font-size: 13px; }
+.whlist th, .whlist td { padding: 7px 12px; text-align: left; vertical-align: middle; }
+.whlist th { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.whlist .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.whlist .tb-list { min-width: 520px; }
+.whlist td:first-child { white-space: nowrap; }
+.whlist td code { background: none; border: 0; padding: 0; }
 
 /* Get started, the handbook's first page: Docs is the page's heading. */
 

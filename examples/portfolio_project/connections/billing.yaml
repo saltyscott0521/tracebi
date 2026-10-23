@@ -9,5 +9,6 @@
 # tables from another database. The default ships in this file, so it holds
 # no credential.
 name: billing
+label: Billing (SQLite file)
 type: sql
 url: ${TRACEBI_BILLING_URL:-sqlite:///inputs/billing.sqlite}
