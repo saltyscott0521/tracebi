@@ -194,6 +194,10 @@ when either is true.</p>
 </table>
 <p><code>GET /api/models</code> and <code>GET /api/models/{name}</code> carry each model's <code>label</code> (what a list
 shows; see <a href="../reference/model-json.html">Model files (YAML or JSON)</a>) beside <code>name</code>, the identifier every other route takes.</p>
+<p>A model table that is one of TraceBi's own (<code>tracebi_*</code> or <code>alembic_version</code>, by its
+name or its source) is left out of <code>GET /api/models/{name}</code> (counted in
+<code>hidden_framework_tables</code>), and its <code>/preview</code> and <code>/export.csv</code> answer 404, as a
+missing table does: the state store holds sessions and tokens.</p>
 <p><code>/source</code> returns the model's file, read-only (the <strong>Code</strong> tab). A model registered in
 Python code has no file and says so. <code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
 graph. It computes but persists nothing, which is why <code>viewer</code> may call it.</p>
@@ -652,7 +656,7 @@ reports its build step rebuilt, only those it actually built).</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/connectors/{name}/tables</code></td>
-<td>viewer. What the source holds, read now: <code>{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}]}</code> (<code>rows</code> exact for a DuckDB file or frames in memory; the catalog's estimate with <code>rows_exact: false</code> for a SQL database that keeps one, Postgres <code>pg_class.reltuples</code>; else null: no table is counted row by row), or <code>{connected: false, reason, variable?}</code> with status 200 when its <code>${VAR}</code> is unset or it refuses. The connection is resolved on this request only and released before it returns</td>
+<td>viewer. What the source holds, read now: <code>{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}], hidden_framework_tables}</code> (<code>rows</code> exact for a DuckDB file or frames in memory; the catalog's estimate with <code>rows_exact: false</code> for a SQL database that keeps one, Postgres <code>pg_class.reltuples</code>; else null: no table is counted row by row), or <code>{connected: false, reason, variable?}</code> with status 200 when its <code>${VAR}</code> is unset or it refuses. The connection is resolved on this request only and released before it returns</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -677,7 +681,7 @@ reports its build step rebuilt, only those it actually built).</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/connectors/{name}/warehouse</code></td>
-<td>viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source; the file is opened read-only and closed within the request</td>
+<td>viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source, and <code>hidden_framework_tables</code> (the <code>tracebi_*</code> / <code>alembic_version</code> tables left out); the file is opened read-only and closed within the request</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -687,7 +691,7 @@ reports its build step rebuilt, only those it actually built).</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/warehouse</code></td>
-<td>viewer. <code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}]}]}</code>, one per warehouse-kind connector, read-only</td>
+<td>viewer. <code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}</code>, one per warehouse-kind connector, read-only; framework tables are never listed</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
