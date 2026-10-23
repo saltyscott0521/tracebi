@@ -1235,7 +1235,7 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .chip--warn { color: var(--amber-text); }
 .chip--bad { color: var(--red-text); }
 .chip--none::before { background: transparent; border: 1px solid currentColor; }
-button.verdict { cursor: pointer; }
+button.verdict { cursor: pointer; min-height: 24px; }
 button.verdict:hover { border-color: currentColor; }
 
 .line {
@@ -1352,6 +1352,16 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 .mdetail__views::-webkit-scrollbar { display: none; }
 .mdetail__views button { flex: none; white-space: nowrap; }
 .mdetail__action { flex: none; margin-left: auto; }
+/* More views past the right edge: a chevron held over that edge says the row
+   scrolls (a solid cue, not a gradient: the theme keeps none). */
+.mdetail__viewwrap { position: relative; min-width: 0; display: flex; }
+.mdetail__more {
+  position: absolute; top: 0; right: 0; bottom: 0; display: flex; align-items: center;
+  padding: 0 10px 0 8px; border-radius: 0 10px 10px 0; background: var(--surface-2); color: var(--muted);
+  font-size: 18px; line-height: 1; pointer-events: none;
+}
+/* In the phone's "…" menu a command keeps its words. */
+.mdetail__menu .cmd__lab { display: inline; }
 
 /* A filter chip (the library's models, History's) and the dashed card a
    report shows before it has a build. */
@@ -1686,7 +1696,6 @@ a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
 .whrow__open { padding: 4px 0 6px; }
 
 /* Get started, the handbook's first page: Docs is the page's heading. */
-.gs-title { margin: 0 0 6px; font-size: 21px; font-weight: 700; color: var(--text); }
 
 /* The project feed on Data (dev mode), folded under one line. */
 .feedfold { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 14px; }

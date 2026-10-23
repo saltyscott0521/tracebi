@@ -265,6 +265,25 @@ def _contract_owners() -> dict[str, str]:
     return owners
 
 
+def contract_files() -> dict[str, str]:
+    """Certificate record name → the file its checks are declared in, as the
+    project names it: the ``<transform>.contract.yaml`` beside the transform
+    that writes it, else the transform itself (a ``with contract(...)``
+    block). The record's own name can differ from both ("holdings" in
+    ``holdings_transform.contract.yaml``), so a reader is shown the file."""
+    from tracebi.transforms import contract_file, find_transform
+
+    files: dict[str, str] = {}
+    for record, transform in _contract_owners().items():
+        try:
+            path = find_transform(transform)
+        except Exception:  # noqa: BLE001 — two forms of one name: no single file
+            continue
+        if path is not None:
+            files[record] = (contract_file(path) or path).as_posix()
+    return files
+
+
 def is_warehouse(entry: dict) -> bool:
     """A connector-list entry that is a warehouse: DuckDB on a file, or the
     project's warehouse on any tier."""

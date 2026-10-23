@@ -1102,6 +1102,8 @@ def cmd_serve(args: argparse.Namespace) -> int:
     summary = ", ".join(f"{n} {d}" for d, n in discovered.items() if n) or "no artifacts yet"
     print(f"TraceBi — serving {cwd.name} ({summary})")
     print(f"  http://{args.host}:{args.port}")
+    # /docs is the app's handbook; FastAPI's API reference moved beside it.
+    print(f"  API reference: http://{args.host}:{args.port}/api-docs")
 
     import uvicorn
     uvicorn.run(

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { cloneElement, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
@@ -346,6 +346,47 @@ const SINK_WORDS = { stale: 'changed since its checks last passed', no_contract:
 
 const VIEWS = ['Diagram', 'Tables', 'Measures', 'Relationships', 'Storage', 'Code']
 
+// Whether a row that scrolls sideways has more past its right edge: the cue
+// (a chevron at that edge) that it scrolls at all. *ready* re-measures once the row exists.
+function useMoreToTheRight(ref, ready) {
+  const [more, setMore] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    const check = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    const resized = new ResizeObserver(check)
+    resized.observe(el)
+    return () => { el.removeEventListener('scroll', check); resized.disconnect() }
+  }, [ref, ready])
+  return more
+}
+
+// On a phone the views take the row, and the page's action (Edit as a draft)
+// goes into a "…" menu, where it keeps its words.
+function MoreMenu({ children }) {
+  const [open, setOpen] = useState(false)
+  const root = useRef(null)
+  const onBlur = e => { if (!root.current?.contains(e.relatedTarget)) setOpen(false) }
+  return (
+    <div ref={root} className="mdetail__action rp__pop rp__pop--end" onBlur={onBlur}
+         onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}>
+      <button type="button" className="cmd" aria-label="More" aria-haspopup="menu" aria-expanded={open}
+              onClick={() => setOpen(o => !o)}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" />
+        </svg>
+      </button>
+      {open && (
+        <div className="rp__menu mdetail__menu" role="menu">
+          {cloneElement(children, { className: 'rp__item', role: 'menuitem' })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** *action*: what sits at the right of the views (the page's Edit as a draft). */
 export function ModelDetail({ name, action }) {
   const { data, isLoading } = useModel(name)
@@ -355,6 +396,8 @@ export function ModelDetail({ name, action }) {
   // A diagram fitted to a phone shrinks every table past reading; there the
   // Tables view (the diagram's list form) opens first.
   const phone = useNarrow('(max-width: 720px)')
+  const viewsRef = useRef(null)
+  const more = useMoreToTheRight(viewsRef, !!data)
 
   if (!name) return (
     <Card>
@@ -379,13 +422,16 @@ export function ModelDetail({ name, action }) {
   return (
     <Card className="fade-in">
       <div className="mdetail__head">
-        <div className="seg mdetail__views" role="group" aria-label="What to show of the model">
-          {VIEWS.map(v => (
-            <button key={v} type="button" aria-pressed={active === v}
-                    onClick={() => { setTab(v); setPreviewTable(null) }}>{v}</button>
-          ))}
+        <div className="mdetail__viewwrap">
+          <div ref={viewsRef} className="seg mdetail__views" role="group" aria-label="What to show of the model">
+            {VIEWS.map(v => (
+              <button key={v} type="button" aria-pressed={active === v}
+                      onClick={() => { setTab(v); setPreviewTable(null) }}>{v}</button>
+            ))}
+          </div>
+          {more && <span className="mdetail__more" aria-hidden="true">›</span>}
         </div>
-        {action && <div className="mdetail__action">{action}</div>}
+        {action && (phone ? <MoreMenu>{action}</MoreMenu> : <div className="mdetail__action">{action}</div>)}
       </div>
       <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
         {grain && <div title={grainRefs.join(', ')}>Grain: {grain}</div>}

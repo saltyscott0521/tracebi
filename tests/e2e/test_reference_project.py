@@ -201,6 +201,11 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
             "portfolio_model", "saas_model", "housing_model"}
         assert {t["name"]: t["contract"]["status"] for t in tables} == {
             t["name"]: "satisfied" for t in tables}
+        # A table's checks are named by the file that declares them (the
+        # record itself is "holdings"), beside the transform's own note.
+        view = {t["name"]: t for t in c.get("/api/connectors/warehouse/warehouse").json()["tables"]}
+        assert view["dim_rating"]["contract"]["file"] == "transforms/holdings_transform.contract.yaml"
+        assert view["dim_rating"]["contract"]["note"]
     finally:
         release_warehouses()
 
@@ -235,6 +240,11 @@ def test_one_table_api_reads_every_place_a_table_lives(built, monkeypatch):
         monkeypatch.setattr(discovery, "_live_connections", {})
         discovery.register_connections("connections")
         discovery.discover_library()
+        # About this build says how each report is made: an app.jsx dashboard
+        # or a template.html page.
+        made = {r["name"]: r["made_from"] for r in c.get("/api/reports").json()}
+        assert made["portfolio_model/portfolio_dashboard"] == "app.jsx"
+        assert made["portfolio_model/portfolio_book"] == "template.html"
         base = "/api/tables/warehouse/fact_holdings"
 
         table = c.get(base).json()

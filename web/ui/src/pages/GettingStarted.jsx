@@ -101,11 +101,10 @@ export default function GettingStarted() {
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView()
   }, [hash])
-  // The handbook's first page (/docs/get-started): Docs is the page's heading,
-  // so this one starts a level below it.
+  // The handbook's first page (/docs/get-started): Docs titles it "Get
+  // started", so this starts with what the page is for.
   return (
     <div>
-      <h2 className="gs-title">Get started</h2>
       <p className="section-sub">Every number, traced. How TraceBi fits together, then five steps from install to your first traced report.</p>
 
       <HowItFits />
