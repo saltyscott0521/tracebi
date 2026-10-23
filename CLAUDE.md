@@ -883,7 +883,8 @@ GET  /                                               → React SPA (tracebi/web/
                                                        Sources /data/sources · Warehouse /data/warehouse · Map /data/map;
                                                        ?model=<m> narrows the last three; one table at /data/tables/<source>/<table>:
                                                        Data · Columns · Used by, the grid's sort, search, filters and page in the
-                                                       address) · Review (/review) · Docs
+                                                       address; a model's page keeps its view in the address: /data/<m>?view=diagram|
+                                                       tables|measures|relationships|storage|code[&table=<t>|&measure=<name>]) · Review (/review) · Docs
                                                        (/docs: the handbook, /docs/get-started first), plus History
                                                        (/runs) and Verify (/verify); older addresses redirect (movedTo in
                                                        web/ui/src/nav.js; /handbook, /getting-started, /data?view=map
