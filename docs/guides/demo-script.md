@@ -18,19 +18,20 @@ Someone comfortable with a terminal does this part.
 ```bash
 pip install -e ".[dev]"                 # from the repo root
 cd examples/portfolio_project
-python run_workflow.py                  # builds the demo data (≈1 second)
+python run_workflow.py                  # builds the demo data and every report (≈10 seconds)
 tracebi serve                           # → http://127.0.0.1:8000
 ```
 
 Then, in the browser:
 
-1. **Build the two reports you will show**, so they open instantly on the day.
-   The app opens on **Reports**, the library. Under Direct Lending Portfolio,
-   open **Portfolio Dashboard** and **Portfolio Showcase** in turn. A report
-   that has never been built says so; press **Build it now**, and it is kept.
+1. **Check the two reports you will show** open instantly. The app opens on
+   **Reports**, the library. Under Direct Lending Portfolio, open **Portfolio
+   Dashboard** and **Portfolio Showcase** in turn: `run_workflow.py` built
+   both. (A report that has never been built says so; **Build it now** builds
+   it, and it is kept.)
 2. **Make the "edited" copy for beat 3.** Open Portfolio Dashboard and choose
    **Export → HTML** in the bar above it. The build also saved the matching pair in
-   `examples/portfolio_project/output/`:
+   `examples/portfolio_project/output/portfolio_model/`:
    `portfolio_dashboard.html` and `portfolio_dashboard.html.manifest.json`.
    Copy both into a folder on your desktop called `demo/`. Then make a second
    copy of the pair named `edited.html` and `edited.html.manifest.json`.

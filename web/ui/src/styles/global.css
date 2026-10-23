@@ -1029,7 +1029,7 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .runs__show { margin: 0; align-self: flex-end; }
 .runs__only { display: flex; align-items: center; gap: 10px; align-self: flex-end; margin: 0; font-size: var(--text-caption); color: var(--text-2); }
 .runs-older {
-  appearance: none; display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 0 4px;
+  appearance: none; display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; padding: 0 4px; min-height: 24px;
   border: 0; border-radius: 4px; background: transparent; cursor: pointer;
   font: inherit; font-size: var(--text-sm); color: var(--muted); white-space: nowrap;
 }

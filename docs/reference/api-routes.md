@@ -356,7 +356,8 @@ The app's addresses, five places in the sidebar (`web/ui/src/nav.js`):
 | Docs | `/docs` the handbook; `/docs/get-started` first, then `/docs/<section>/<page>` per file of `docs/` |
 
 The sidebar shows the places a role uses (`placesFor` in `web/ui/src/nav.js`):
-everyone Reports, Ask and Docs, an analyst also Review, an admin also Data. With no
+everyone Reports, Ask and Docs, an analyst also Review and Data (read-only: its run
+buttons and credential forms show for an admin). With no
 sign-in `/api/me` names everyone admin, so all five show. An address above the
 role renders a plain page saying who it is for; the API enforces the roles.
 

@@ -1,4 +1,10 @@
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+
+import { useReportRun, useStartReportRun } from '../api'
+import { useToast } from './Shared'
 import { VERDICT_LABEL, needsAction, verdictOf } from '../verdict'
+import { count } from '../format'
 import { pipelineModels, dataPath, folderOf, historyPath, reportPagePath } from '../nav'
 
 // What needs a person, from GET /api/desk, the pipelines list, the run store
@@ -24,8 +30,9 @@ const NOTE = 'Review note'
 // *more* holds the run store's rows (`runs`), the publish requests
 // (`requests`) and the code requests (`codeRequests`), each optional. Every
 // item says what (`title`), why (`detail`), when (`at`, ISO) and what to do:
-// `href` with its `action` words, or `decide` (a publish request) or `review`
-// (a code request) for the page to act on in place.
+// `href` with its `action` words, or `decide` (a publish request), `review`
+// (a code request) or `buildAll` (the reports never built) for the page to
+// act on in place.
 export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [], more = {}) {
   const items = []
   const nameOf = name => reports.find(r => r.name === name)?.display_name || name
@@ -51,6 +58,20 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
       models: modelsOf(name),
       title: build.display_name || nameOf(name), detail: v.detail, at: changed || build.built_at,
       href: reportHref(name), action: 'Open report',
+    })
+  }
+  // Reports with no build at all: on a fresh project, the first thing to do.
+  // One item for all of them, not one each, so it does not bury the rest.
+  // Before the desk has answered nothing is known to be unbuilt.
+  const unbuilt = desk ? reports.filter(r => !builds.has(r.name)) : []
+  if (unbuilt.length) {
+    const names = unbuilt.map(r => r.display_name || r.name)
+    const n = unbuilt.length
+    items.push({
+      key: 'never-built', kind: VERDICT_LABEL['never-built'], verdict: 'never-built', models: [],
+      title: `${count(n, 'report')} ${n === 1 ? 'has' : 'have'} never been built`,
+      detail: n > 3 ? `${names.slice(0, 3).join(', ')} and ${n - 3} more.` : `${names.join(', ')}.`,
+      buildAll: unbuilt.map(r => r.name),
     })
   }
   // The newest run of each target in the run store (it lists newest first).
@@ -166,4 +187,64 @@ function errorOf(run) {
   const e = run.detail?.error ?? run.detail?.note
   const text = typeof e === 'string' ? e : e?.message
   return typeof text === 'string' ? text.replace(/^Run failed: /, '') : ''
+}
+
+// Follows one background build until it settles, then says how it ended.
+function Follow({ name, runId, onSettled }) {
+  const { data } = useReportRun(name, runId)
+  const status = data?.status
+  useEffect(() => {
+    if (status && status !== 'running') onSettled(name, status)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status])
+  return null
+}
+
+/**
+ * Build every report in *names*: each a background run on the server (POST
+ * /api/reports/{name}/runs, what a report page's "Build it now" starts),
+ * followed until it settles. When all have, the builds are read again, so the
+ * item goes and the library shows them.
+ */
+export function BuildAll({ names }) {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const { mutateAsync: start } = useStartReportRun()
+  const [runs, setRuns] = useState(null)      // [{name, runId}] once started
+  const [ended, setEnded] = useState({})      // name -> how its run settled
+  const done = Object.keys(ended).length
+
+  useEffect(() => {
+    if (!runs?.length || done < runs.length) return
+    const failed = Object.values(ended).filter(s => s !== 'succeeded').length
+    toast(failed ? `${count(runs.length - failed, 'report')} built, ${failed} failed. History says why.`
+      : `${count(runs.length, 'report')} built.`, failed ? 'error' : 'info')
+    qc.invalidateQueries({ queryKey: ['desk'] })
+    qc.invalidateQueries({ queryKey: ['runs'] })
+    setRuns(null)
+    setEnded({})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [done, runs])
+
+  // A run that could not start has settled already: it failed.
+  const begin = async () => {
+    setRuns([])
+    const started = await Promise.all(names.map(name => start(name)
+      .then(res => ({ name, runId: res.run_id }))
+      .catch(() => { setEnded(e => ({ ...e, [name]: 'failed' })); return { name, runId: null } })))
+    setRuns(started)
+  }
+
+  const busy = runs !== null
+  return (
+    <>
+      <button type="button" className="review__open review__btn" onClick={begin} disabled={busy}>
+        {busy ? `Building ${count(names.length - done, 'report')}…` : 'Build all'}
+      </button>
+      {(runs || []).filter(r => r.runId).map(r => (
+        <Follow key={r.runId} name={r.name} runId={r.runId}
+                onSettled={(name, status) => setEnded(e => ({ ...e, [name]: status }))} />
+      ))}
+    </>
+  )
 }

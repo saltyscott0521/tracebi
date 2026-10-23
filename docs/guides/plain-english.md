@@ -101,7 +101,7 @@ This matters, and TraceBi is deliberately strict about it.
 | **Sink** / **warehouse** | The clean tables produced by step 1, stored in one file. |
 | **Contract satisfied / no contract** | Whether the cleaned tables passed their declared checks, or have no checks declared. |
 | **Ask** | Put a question to a model by picking its own measures and categories ("fair value by sector"). The answer is a fresh query, so it says Not checked; **Keep this** turns it into a draft report. The app does not guess at free text: plain-English questions go to your agent, which uses the same definitions. |
-| **Reports, Ask, Review, Data** | The app's places. Everyone sees Reports and Ask; an analyst also sees Review (what needs attention, drafts, history, checking a file); an admin also sees Data (how the numbers are made). |
+| **Reports, Ask, Review, Data** | The app's places. Everyone sees Reports and Ask; an analyst also sees Review (what needs attention, drafts, history, checking a file) and Data (how the numbers are made), where only an admin refreshes the data. |
 | **Needs attention** | The first tab of Review: anything a person should look at right now, such as a report that no longer reproduces, a refresh that failed or a request to publish. When there is nothing it says so. |
 | **Draft / exploration** | A report still being worked on. It contains scratch work that is removed before publishing. |
 | **Agent** | An AI assistant that builds reports using the same rules as a person. |

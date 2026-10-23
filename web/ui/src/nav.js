@@ -21,8 +21,10 @@
 //                               file of docs/ at /docs/<section>/<page>
 //
 // Who sees which place (placesFor): everyone Reports, Ask and Docs, an analyst
-// also Review, an admin also Data. With no sign-in the API names everyone admin,
-// so every place shows. The API enforces the roles; this is what the app shows.
+// also Review and Data. Data is read-only below admin: its run buttons (Refresh
+// data, a step's Run) and credential forms show for an admin only. With no
+// sign-in the API names everyone admin, so every place shows. The API enforces
+// the roles; this is what the app shows.
 //
 // Every older address (/models, /m/<model>/…, /explore, /sources, /map,
 // /data?view=map, /handbook, /getting-started, /reports?r=<name>) redirects into
@@ -40,7 +42,7 @@ export const PAGES = [
     sub: 'What people read. Every report, and whether its numbers still hold.' },
   { key: 'ask',     label: 'Ask',     path: '/ask', minRole: 'viewer',
     sub: 'Ask a model a question and see the query behind the answer.' },
-  { key: 'data',    label: 'Data',    path: '/data', minRole: 'admin',
+  { key: 'data',    label: 'Data',    path: '/data', minRole: 'analyst',
     sub: 'How the numbers are made, left to right: the sources, the warehouse the transforms write, and the models over it.' },
   { key: 'review',  label: 'Review',  path: '/review', minRole: 'analyst',
     sub: 'What waits on a person: what needs attention, drafts, what ran, and checking a file you were sent.' },

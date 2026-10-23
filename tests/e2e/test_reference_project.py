@@ -529,6 +529,34 @@ def test_a_models_pipeline_rebuilds_its_data_then_its_reports(built, model):
         assert code == 0 and "REPRODUCES" in out, f"{name}: {out}"
 
 
+def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, monkeypatch):
+    """Catches a run_workflow.py that renders outside the app's build path: the
+    library then opens on "Never built" beside data written a minute ago.
+    After the workflow, the desk (what the library and Review read) has a
+    build of every report the app lists, and every one reproduces."""
+    import subprocess
+    import sys
+
+    from tests.e2e.conftest import release_warehouses, serve_app
+    from tracebi.web import discovery
+
+    env = {k: v for k, v in os.environ.items() if not k.startswith("TRACEBI_")}
+    done = subprocess.run([sys.executable, "run_workflow.py"], cwd=reference, env=env,
+                          capture_output=True, text=True, check=False)
+    assert done.returncode == 0, done.stderr or done.stdout
+
+    monkeypatch.delenv("TRACEBI_CRM_URL", raising=False)
+    c = serve_app(monkeypatch, models=True)
+    try:
+        discovery.discover_library()
+        listed = {r["name"] for r in c.get("/api/reports").json()}
+        assert listed == set(REPORTS)
+        builds = {b["report"]: b["verdict"] for b in c.get("/api/desk").json()["builds"]}
+        assert builds == {name: "reproduces" for name in listed}
+    finally:
+        release_warehouses()
+
+
 def test_the_showcase_carries_every_affordance(built):
     html = (built / "output" / "portfolio_model" / "portfolio_showcase.html").read_text()
     from tests.test_presentation_js import assert_built_receipt_rows
