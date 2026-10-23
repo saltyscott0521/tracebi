@@ -16,12 +16,17 @@ This module is the one place such a reference is parsed and resolved:
 * :func:`required` lists every name the project's files reference, and
   :func:`status` says where each one is set, never what it is.
 
-The store is ``.tracebi/secrets.json``: ``{NAME: {"value": <Fernet token>,
-"updated_at", "updated_by"}}``, mode 0600. The key is ``TRACEBI_SECRET_KEY``
-(several workers must share it) or ``.tracebi/secret.key``, generated 0600 on
-the first write. A store read under another key fails naming the file
-(:class:`CredentialKeyMismatch`), never as "not set". Nothing is copied into
-``os.environ``.
+The store is ``.tracebi/secrets.yml.enc``, the shape Rails credentials and
+Ansible Vault use: one encrypted file (a Fernet token) whose plaintext is a
+plain YAML mapping, ``NAME: value``, mode 0600; ``tracebi secret edit`` opens
+that YAML in the person's editor and encrypts it back. The key is
+``TRACEBI_SECRET_KEY`` (several workers must share it) or
+``.tracebi/secret.key``, generated 0600 on the first write. A store read under
+another key fails naming the file (:class:`CredentialKeyMismatch`), never as
+"not set". Nothing is copied into ``os.environ``. Who set a value and when is
+the audit row :func:`record_change` writes, not the file. A store from before
+0.9, ``.tracebi/secrets.json`` (a token per value), is still read and is
+rewritten in the new form on the next change.
 
 This is the project's credentials; :mod:`tracebi.credentials` is a person's
 sign-in to a server, kept on their own machine.
@@ -46,8 +51,16 @@ from typing import Optional
 REF = re.compile(r"\$\{([A-Z_][A-Z0-9_]*)(?::-([^}]*))?\}")
 NAME = re.compile(r"[A-Z_][A-Z0-9_]*")
 
-STORE_FILE = os.path.join(".tracebi", "secrets.json")
+STORE_FILE = os.path.join(".tracebi", "secrets.yml.enc")
+#: The store before 0.9: a JSON object of per-value tokens. Read, never written.
+LEGACY_STORE_FILE = os.path.join(".tracebi", "secrets.json")
 KEY_FILE = os.path.join(".tracebi", "secret.key")
+
+#: The first lines of the decrypted document, so an editor shows what it is.
+_HEADER = (
+    "# TraceBi credential store: NAME: value, one per line, quoted when it holds\n"
+    "# YAML punctuation. Encrypted on save; `tracebi secret edit` opens it again.\n"
+)
 
 _lock = threading.Lock()
 
@@ -85,7 +98,7 @@ def _fernet_class():
         from cryptography.fernet import Fernet, InvalidToken
     except ImportError as exc:
         raise ImportError(
-            "The credential store (.tracebi/secrets.json) needs the cryptography "
+            "The credential store (.tracebi/secrets.yml.enc) needs the cryptography "
             "package: pip install 'tracebi[web]'") from exc
     return Fernet, InvalidToken
 
@@ -137,8 +150,17 @@ def _fernet(root, create: bool = False):
             f"print(Fernet.generate_key().decode())\"") from exc
 
 
-def _read_store(root) -> dict:
-    path = store_path(root)
+def _mismatch(root, path: Path, name: Optional[str] = None) -> CredentialKeyMismatch:
+    where = "TRACEBI_SECRET_KEY" if key_source(root) == "env" else str(Path(root) / KEY_FILE)
+    what = f"{name} cannot be read" if name else "it cannot be read"
+    return CredentialKeyMismatch(
+        f"{path} was written under a different key than {where}: {what}. Restore "
+        f"the key the store was written with, or set each credential again.")
+
+
+def _read_legacy(root) -> dict:
+    """The pre-0.9 store, ``{NAME: {"value": <token>, ...}}``, decrypted."""
+    path = Path(root) / LEGACY_STORE_FILE
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -147,17 +169,80 @@ def _read_store(root) -> dict:
         raise CredentialError(f"{path} cannot be read ({exc}); fix or delete it") from exc
     if not isinstance(data, dict):
         raise CredentialError(f"{path} is not a TraceBi credential store; fix or delete it")
-    return data
+    _, InvalidToken = _fernet_class()
+    out = {}
+    for name, entry in data.items():
+        if not isinstance(entry, dict) or not entry.get("value"):
+            continue
+        try:
+            out[name] = _fernet(root).decrypt(entry["value"].encode()).decode("utf-8")
+        except InvalidToken:
+            raise _mismatch(root, path, name) from None
+    return out
+
+
+def _parse_document(text: str, where: str) -> dict:
+    """The decrypted YAML as ``{NAME: value}``; anything else is refused by
+    line so an edit can be fixed, never silently dropped."""
+    import yaml
+
+    try:
+        doc = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise CredentialError(f"{where} is not valid YAML: {exc}") from exc
+    if doc is None:
+        return {}
+    if not isinstance(doc, dict):
+        raise CredentialError(f"{where} must be a mapping of NAME: value")
+    out = {}
+    for name, value in doc.items():
+        if not isinstance(name, str) or not NAME.fullmatch(name):
+            raise CredentialError(f"{where}: {name!r} is not a credential name ([A-Z_][A-Z0-9_]*)")
+        if isinstance(value, bool) or not isinstance(value, (str, int, float)) or value == "":
+            raise CredentialError(
+                f"{where}: {name} must be one non-empty string (quote it if YAML reads it "
+                f"as something else)")
+        out[name] = str(value)
+    return out
+
+
+def _read_store(root) -> dict:
+    """Every value the store holds, decrypted: ``{NAME: value}``."""
+    path = store_path(root)
+    try:
+        token = path.read_bytes().strip()
+    except FileNotFoundError:
+        return _read_legacy(root)
+    except OSError as exc:
+        raise CredentialError(f"{path} cannot be read ({exc}); fix or delete it") from exc
+    if not token:
+        return {}
+    _, InvalidToken = _fernet_class()
+    try:
+        text = _fernet(root).decrypt(token).decode("utf-8")
+    except InvalidToken:
+        raise _mismatch(root, path) from None
+    return _parse_document(text, str(path))
+
+
+def _document(data: dict) -> str:
+    """*data* as the YAML a person edits: the header, then ``NAME: value`` sorted."""
+    import yaml
+
+    body = yaml.safe_dump({k: data[k] for k in sorted(data)}, default_flow_style=False,
+                          allow_unicode=True, sort_keys=True) if data else ""
+    return _HEADER + body
 
 
 def _write_store(root, data: dict) -> None:
     path = store_path(root)
     path.parent.mkdir(parents=True, exist_ok=True)
+    token = _fernet(root, create=True).encrypt(_document(data).encode("utf-8"))
     # mkstemp creates the file 0600, so there is no moment it is readable.
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".secrets-")
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(data, fh, indent=2, sort_keys=True)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(token + b"\n")
             fh.flush()
             os.fsync(fh.fileno())
         os.replace(tmp, path)
@@ -165,22 +250,14 @@ def _write_store(root, data: dict) -> None:
         with contextlib.suppress(OSError):
             os.unlink(tmp)
         raise
+    # The pre-0.9 file is superseded by what was just written.
+    with contextlib.suppress(FileNotFoundError, OSError):
+        (Path(root) / LEGACY_STORE_FILE).unlink()
 
 
 def stored(name: str, root) -> Optional[str]:
     """The store's value for *name*, decrypted, or None when it holds none."""
-    entry = _read_store(root).get(name)
-    if not isinstance(entry, dict) or not entry.get("value"):
-        return None
-    _, InvalidToken = _fernet_class()
-    try:
-        return _fernet(root).decrypt(entry["value"].encode()).decode("utf-8")
-    except InvalidToken:
-        where = "TRACEBI_SECRET_KEY" if key_source(root) == "env" else str(Path(root) / KEY_FILE)
-        raise CredentialKeyMismatch(
-            f"{store_path(root)} was written under a different key than {where}: "
-            f"{name} cannot be read. Restore the key the store was written with, "
-            f"or set {name} again.") from None
+    return _read_store(root).get(name)
 
 
 def set_secret(name: str, value: str, root, actor: Optional[str] = None) -> bool:
@@ -191,11 +268,8 @@ def set_secret(name: str, value: str, root, actor: Optional[str] = None) -> bool
         raise CredentialError(f"{name}: the value is empty")
     with _lock:
         data = _read_store(root)
-        fernet = _fernet(root, create=True)
         new = name not in data
-        data[name] = {"value": fernet.encrypt(value.encode("utf-8")).decode("ascii"),
-                      "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                      "updated_by": actor}
+        data[name] = value
         _write_store(root, data)
     return new
 
@@ -210,6 +284,25 @@ def unset_secret(name: str, root) -> bool:
         del data[name]
         _write_store(root, data)
     return True
+
+
+def document(root) -> str:
+    """The store as the YAML a person edits (plaintext: for an editor, never a log)."""
+    return _document(_read_store(root))
+
+
+def replace_document(text: str, root) -> dict:
+    """Encrypt *text*, an edited document, as the whole store. Returns what
+    changed, ``{NAME: "set" | "unset"}``, so each can be recorded; a value
+    that did not change is not a change."""
+    with _lock:
+        before = _read_store(root)
+        after = _parse_document(text, "the edited store")
+        changes = {n: "set" for n, v in after.items() if before.get(n) != v}
+        changes.update({n: "unset" for n in before if n not in after})
+        if changes:
+            _write_store(root, after)
+    return changes
 
 
 # ── Resolution ────────────────────────────────────────────────────────────
@@ -294,7 +387,7 @@ def required(root) -> list[dict]:
 def status(root) -> list[dict]:
     """:func:`required` joined with where each name resolves, never with its
     value: ``{name, used_by, set, source, stored, updated_at?, updated_by?,
-    problem?}``. *source* is ``environment``, ``dotenv``, ``store``,
+    problem?}`` (who and when: the newest audit row that set it). *source* is ``environment``, ``dotenv``, ``store``,
     ``default`` or None. A name only the store holds is listed too (with no
     ``used_by``), so it can be removed."""
     rows = required(root)
@@ -309,8 +402,8 @@ def status(root) -> list[dict]:
     out = []
     for row in rows:
         name = row["name"]
-        entry = store.get(name) if isinstance(store.get(name), dict) else None
-        item = {**row, "set": False, "source": None, "stored": entry is not None}
+        held = name in store
+        item = {**row, "set": False, "source": None, "stored": held}
         try:
             _, item["source"] = resolve(name, root)
             item["set"] = True
@@ -321,11 +414,25 @@ def status(root) -> list[dict]:
             item["source"], item["problem"] = "store", str(exc)
         if broken:
             item["problem"] = broken
-        if entry is not None:
-            item["updated_at"] = entry.get("updated_at")
-            item["updated_by"] = entry.get("updated_by")
+        if held:
+            item.update(_last_set(name))
         out.append(item)
     return out
+
+
+def _last_set(name: str) -> dict:
+    """``{updated_at, updated_by}`` from the newest audit row that set *name*
+    (:func:`record_change`), or nothing when the run store has none."""
+    try:
+        from tracebi.state import list_runs
+        rows = list_runs(kind="credential", target=name, limit=20)
+    except Exception:  # noqa: BLE001 — no run store here (a bare checkout); the value still resolves
+        return {}
+    for run in rows:
+        if run.get("status") == "set":
+            return {"updated_at": run.get("started") or run.get("started_at"),
+                    "updated_by": run.get("actor")}
+    return {}
 
 
 def redact(text: str, root) -> str:

@@ -72,7 +72,7 @@ Missing required flags are prompted when stdin is a terminal (a password via
 is required for BigQuery because the connector takes it with no default.
 
 `--store secret` puts the secret in the project's encrypted credential store
-(`.tracebi/secrets.json`, [[credentials]]) instead of `.env`; the legacy
+(`.tracebi/secrets.yml.enc`, [[credentials]]) instead of `.env`; the legacy
 `--python` module always reads `.env`.
 
 Discovery does not load `models/_connections/`: model discovery reads only
@@ -84,16 +84,19 @@ top-level `models/*.py`, and a file there must define `model`.
 tracebi secret list
 tracebi secret set NAME [--from-stdin]
 tracebi secret unset NAME
+tracebi secret edit
 ```
 
 The project's credential store ([[credentials]]). `list` prints every
 `${NAME}` the connection files and `tracebi.yaml` reference, where each is
 set (`set from environment`, `set from .env`, `set in store`, `default`,
 `MISSING`) and what uses it. `set` prompts with no echo (or reads stdin with
-`--from-stdin`) and encrypts the value into `.tracebi/secrets.json`; it never
-prints it. `unset` removes the store's value only. The environment and `.env`
-still win over the store. Each change records a `credential` row in the run
-store.
+`--from-stdin`) and encrypts the value into `.tracebi/secrets.yml.enc`; it never
+prints it. `unset` removes the store's value only. `edit` decrypts the store
+to a temporary file, opens `$VISUAL` / `$EDITOR` on the plain `NAME: value`
+YAML, and encrypts what you saved (a line that is not a name and a non-empty
+string is refused, and nothing changes). The environment and `.env` still win
+over the store. Each change records a `credential` row in the run store.
 
 ### `tracebi import dbt`
 

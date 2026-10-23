@@ -190,7 +190,7 @@ equivalent where it matters.</p>
 </tr>
 <tr>
 <td><code>TRACEBI_SECRET_KEY</code></td>
-<td>The Fernet key that encrypts the project's credential store (<code>.tracebi/secrets.json</code>, <a href="../reference/credentials.html">Credentials</a>). Unset, the server generates <code>.tracebi/secret.key</code> on the first write. Several workers or replicas must share one, as they share <code>TRACEBI_STATE_URL</code>.</td>
+<td>The Fernet key that encrypts the project's credential store (<code>.tracebi/secrets.yml.enc</code>, <a href="../reference/credentials.html">Credentials</a>). Unset, the server generates <code>.tracebi/secret.key</code> on the first write. Several workers or replicas must share one, as they share <code>TRACEBI_STATE_URL</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_STATE_URL</code></td>
