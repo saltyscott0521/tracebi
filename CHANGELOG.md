@@ -72,6 +72,12 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ### Fixed
 
+- **Rebuild builds**: a run asked for within five seconds of the last build
+  (Rebuild, Build it now, `POST /api/reports/{name}/run`) was answered from
+  the short render cache meant for polling, so it finished at once with the
+  previous page and no new build row. An asked-for run now always renders;
+  a read that builds in passing (`/built`) still takes the cached page.
+
 - **DuckDB 2.0 runs the query engine.** From 2.0 a result fetched part-way
   (`fetchone()`) stays pending on its connection and the next `register()`
   there raises; the engine's connection now completes such a result once the
