@@ -629,7 +629,14 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert kinds == ["All kinds", "Report builds", "Data refreshes", "Schedules", "Publishes",
                              "Credential changes"], kinds
             page.get_by_label("Kind").select_option(label="Report builds")
-            page.wait_for_url("**/runs?all=1&kind=build")
+            try:
+                expect(page).to_have_url(re.compile(r"/runs\?all=1&kind=build$"), timeout=30_000)
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"{exc}\n--- url --- {page.url}\n--- kind value --- "
+                    f"{page.get_by_label('Kind').input_value()}\n--- errors ---\n"
+                    + "\n".join(errors) + "\n--- main ---\n" + page.inner_text("main")[:1500]
+                ) from exc
             expect(rows).to_have_count(len(verdicts))
             fail_on_browser_errors()
 
