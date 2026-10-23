@@ -112,6 +112,17 @@ def test_real_app_smoke(tmp_path: Path) -> None:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             page = browser.new_page()
+            # What the report frame tells the app, kept for a failure's report.
+            page.add_init_script("""
+                window.__tbMsgs = [];
+                window.addEventListener('message', e => {
+                  const m = e.data;
+                  if (!m || m.tracebiFrame !== 1) return;
+                  window.__tbMsgs.push([Math.round(performance.now()), m.type,
+                    m.type === 'tracebi-selection' && m.payload
+                      ? JSON.stringify(m.payload.selection) + ' authored=' + m.payload.authored : '']);
+                }, true);
+            """)
             page.set_default_timeout(180_000)
             page.on("pageerror", lambda exc: errors.append(f"pageerror: {exc}"))
             page.on(
@@ -480,7 +491,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             rebuilding = page.get_by_text("Rebuilding: re-running every query")
             rebuilding.wait_for()
             expect(rebuilding).to_be_hidden(timeout=60_000)
-            page.get_by_text("Report ran successfully").wait_for()
+            page.get_by_text("Report ran successfully").first.wait_for()
             # The report's own chip says what the app's check found: the file
             # alone says "Not checked", framed here it is told the verdict. The
             # app's header shows it, so the masthead keeps only its Trace link;
@@ -493,8 +504,17 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                     "async (u) => { const r = await fetch(u); return await r.text() }",
                     f"/api/reports/{_REPORT}/runs",
                 )
+                msgs = page.evaluate("window.__tbMsgs.slice(-40)")
+                frames = [
+                    (f.name, f.evaluate(
+                        "() => [location.href, location.hash, document.title,"
+                        " (document.querySelector(\"select[data-tb-column='dim_issuer.sector']\") || {}).value,"
+                        " (document.querySelector('#tracebi-receipt-data, #tracebi-slice-fact_holdings') || {}).id]"))
+                    for f in page.frames if f != page.main_frame
+                ]
                 raise AssertionError(
-                    f"{exc}\n--- runs ---\n{runs[:3000]}\n--- server log ---\n{_tail(log_path, 80)}"
+                    f"{exc}\n--- frames ---\n{frames}\n--- messages ---\n{msgs}"
+                    f"\n--- runs ---\n{runs[:1500]}\n--- server log ---\n{_tail(log_path, 40)}"
                 ) from exc
             expect(frame.locator(".tb-receipt-drawer .tb-verdict").first).to_have_text(
                 "Reproduces", timeout=60_000)
