@@ -834,7 +834,7 @@ DELETE /api/credentials/{name}                       → 204, the store's value 
 POST /api/connectors/{name}/test                     → open, list, close: {ok: true, tables: n} | {ok: false, reason} with any secret scrubbed (admin)
 GET  /api/models/{name}/source                       → the model's file (read-only; the Code tab)
 GET  /api/connectors/{name}/source                   → the model file(s) that declare it
-GET  /api/connectors/{name}/warehouse                → tables, row counts, column profiles, per-table sink-contract status (read-only, closed per request)
+GET  /api/connectors/{name}/warehouse                → tables, row counts, column profiles, per-table sink-contract status (read-only, closed per request); each contract names the `file` that declares its checks and carries the transform's `note`
 GET  /api/pipelines/{name}/source                    → the pipeline file + the transform it runs
 POST /api/models/{name}/query                        → star-schema query + lineage graph; rows raw (data) and as report-formatted text (display)
 GET  /api/reports                                     → omits reports in folders the caller cannot view (_folder.yaml); every /api/reports/{name}/… route and /r/{name} answers 404 for those, as for a missing name; 403 {required_permission} when visible but the folder lacks build/publish
@@ -869,7 +869,7 @@ POST /api/drafts/{owner}/{kind}/{path}/publish       → publish a draft; body {
 GET  /api/publish-requests?status=                   → the caller's own requests and those into folders where they hold Publish
 GET  /api/folders                                    → the folders the caller may see, their own `My published` (`my-published/<sign-in name>`; `personal` is null with no sign-in identity) first; each with level, mode (publish directly / request), accepts, and read-only permissions for Manage and a personal folder's owner
 GET  /api/drafts/{owner}/{kind}/{path}/destinations  → where a report draft may go for the caller, each `mode: publish|request` (owner or admin)
-GET  /api/reports now also carries `folder` and `owner` (last publisher, or the owner of a My published folder); /api/publish-requests rows carry `can_decide`
+GET  /api/reports now also carries `folder` and `owner` (last publisher, or the owner of a My published folder) and `made_from` (`app.jsx` | `template.html` | null: what a package draws its page from); /api/publish-requests rows carry `can_decide`
 POST /api/publish-requests/{id}/approve|reject       → publish the request's snapshot (records approver and time) / reject with a {note}; needs Publish on the destination at decision time (analyst)
 POST /api/code-requests                              → Python from `tracebi push`: {files: {path: text}, note}; stored under .tracebi/requests/<id>/ + tracebi_code_requests (analyst)
 GET  /api/code-requests[/{id}]                       → the caller's own (admin: all); one with each file's diff against what is published, and its runs
@@ -923,7 +923,7 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Change the web app's pages | `web/ui/src/nav.js` (the five places; `DATA_TABS`; `movedTo` for old addresses) + `web/ui/src/App.jsx` |
+| Change the web app's pages | `web/ui/src/nav.js` (the five places; `DATA_TABS`; `movedTo` for old addresses) + `web/ui/src/App.jsx`; the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name) |
 | Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
