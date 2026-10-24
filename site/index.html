@@ -146,7 +146,7 @@
   .freeze span{max-width:8ch;text-align:center;line-height:1.3}
   @media(max-width:759px){.freeze{flex-direction:row}.freeze .ar{transform:rotate(90deg)}}
 
-  /* ---------- receipt / tamper demo ---------- */
+  /* ---------- trace / tamper demo ---------- */
   .receipt{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
   .receipt-top{padding:22px 24px;border-bottom:1px dashed var(--rule)}
   .kpi-label{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:.4em}
@@ -328,12 +328,13 @@
   <header class="hero">
     <div class="kicker"><span class="dot"></span> TraceBi &nbsp;·&nbsp; the report framework for AI agents</div>
     <h1>Every report your team needs.<br><em>Ask it, build it, or schedule it.</em></h1>
-    <p class="lede">Ask a question and get an answer in seconds. Build a one-off analysis your way, with an agent doing the heavy lifting. Schedule the reports worth repeating, and they refresh and arrive on their own. All from <strong>one set of approved definitions</strong>, and every number can be re-run to prove it.</p>
+    <p class="lede">Ask a question and get an answer in seconds. Build a one-off analysis your way, with an agent doing the heavy lifting. Schedule the reports worth repeating, and they refresh and arrive on their own. All from <strong>one set of approved definitions</strong>, and every number can be re-run to check it.</p>
     <div class="cta-row">
       <a class="btn solid" href="/app">See a live report →</a>
       <a class="btn ghost" href="/sample/portfolio_showcase.html" download>Download a sample report</a>
       <a class="btn ghost" href="https://github.com/saltyscott0521/tracebi">View on GitHub</a>
     </div>
+    <p class="shot-cap" style="max-width:44rem">The demo serves the reference project: four models, from a direct lending portfolio (a CSV plus a live Postgres CRM) to wealth management and SaaS billing (SQLite databases that ship with it) and housing affordability (public data). Read the reports, ask a model a question, and follow every number on the Data board from source to report.</p>
     <div class="hero-meta">
       <span class="chip">Open source (MIT)</span>
       <span class="chip">Works with Claude, Cursor &amp; any MCP agent</span>
@@ -341,9 +342,9 @@
       <span class="chip">No data leaves your environment</span>
     </div>
     <a class="shot" href="/sample/portfolio_showcase.html" aria-label="Open the sample report">
-      <img src="/assets/showcase.jpg" width="1280" height="800" alt="The sample portfolio report: a gradient header, four KPI cards and two charts, each figure backed by a live query">
+      <img src="/assets/showcase.jpg" width="1440" height="900" alt="The sample portfolio report: a headline, four KPI cards, fair value by sector as bars and by fund as a donut, each bound figure a live query">
     </a>
-    <p class="shot-cap">A real report built with TraceBi, on the sample data that ships with it. One HTML file, about 0.8 MB, with every figure fingerprinted. Its receipt is <a href="/sample/portfolio_showcase.html.manifest.json" download>here</a>: save both and run <span class="mono">tracebi verify --file portfolio_showcase.html</span>.</p>
+    <p class="shot-cap">A real report built with TraceBi, on the sample data that ships with it. One HTML file, about 0.7 MB, with 23 figures: 21 re-run from their queries, one computed in Python and marked so, and one typed-in number marked as unverified. Its manifest is <a href="/sample/portfolio_showcase.html.manifest.json" download>here</a>: save both and run <span class="mono">tracebi verify --file portfolio_showcase.html</span>.</p>
   </header>
 
   <!-- ASK / BUILD / SCHEDULE -->
@@ -352,8 +353,8 @@
     <h2>Ask it, build it,<br>schedule it.</h2>
     <p>Revenue means the same thing in a quick answer as it does in the board pack, because a measure is declared once on the model and every report calls it by name. A question can grow into an analysis, and an analysis can become a weekly report, without a rebuild in another tool.</p>
     <div class="grid g3 path3" style="margin-top:1.6em">
-      <div class="card val"><div class="ic">ASK</div><h3>An answer in seconds</h3><p>“What was fair value in Software last quarter, by fund?” An agent queries the model and answers, with the definition it used and a fingerprint behind every number. Nothing to review: it only uses definitions a person already approved.</p><span class="today">today: on an open report, and from any MCP agent</span></div>
-      <div class="card val"><div class="ic">BUILD</div><h3>A one-off analysis, your way</h3><p>An analyst and their agent explore live, keep the charts that tell the story, write the prose, and lay out the page with the team’s style. The result is one file where every number can be traced back to its query and re-checked. Most analysis is done once, and that’s fine.</p><span class="today">today: tracebi new-report · dev · report build</span></div>
+      <div class="card val"><div class="ic">ASK</div><h3>An answer in seconds</h3><p>“What was fair value in Software last quarter, by fund?” An agent queries the model and answers, with the definition it used and a fingerprint behind every number. Nothing to review: it only uses definitions a person already approved.</p><span class="today">today: Ask in the app, and from any MCP agent</span></div>
+      <div class="card val"><div class="ic">BUILD</div><h3>A one-off analysis, your way</h3><p>An analyst and their agent explore live, keep the charts that tell the story, write the prose, and lay out the page with the team’s style. The result is one file where every number can be traced back to its query and re-checked. Most analysis is done once, and that’s fine.</p><span class="today">today: tracebi new-dashboard · dev · report build</span></div>
       <div class="card val"><div class="ic">SCHEDULE</div><h3>Approve it once</h3><p>Give a report a <span class="mono">schedule</span> block and it runs on its own: refresh the data, build, check the numbers still reproduce, then email it. Approved once, in a pull request, like any other code.</p><span class="today">today: tracebi schedule run · serve</span></div>
     </div>
     <p class="statement" style="margin-top:1.6em">Everything that makes a number is <b>in the repo, reviewable, and governed.</b></p>
@@ -363,7 +364,7 @@
   <section id="agents">
     <p class="eyebrow">Built for agents · controlled by humans</p>
     <h2>Two authors, one contract.</h2>
-    <p>TraceBi is built for the analyst that is now an agent — <em>and</em> for the human who stays in control of what it ships. Both author the same code against the same contracts; neither gets a shortcut around review or the receipt. This is a first-class design goal, not a plugin.</p>
+    <p>TraceBi is built for the analyst that is now an agent — <em>and</em> for the human who stays in control of what it ships. Both author the same code against the same contracts; neither gets a shortcut around review or the trace. This is a first-class design goal, not a plugin.</p>
 
     <p class="rowlabel">the agent builds</p>
     <p style="max-width:44rem">It works from a <strong>clean structure</strong>, never a blank canvas. <span class="mono">tracebi init</span> scaffolds the three-folder project; <span class="mono">tracebi context</span> hands the agent the exact vocabulary that exists — the facts, dimensions, measure kinds, and operators — so it never guesses; and a report is structured slots to fill against a closed, declarative grammar. There is a right shape for the work, and the framework shows the agent where it is.</p>
@@ -375,9 +376,9 @@
 
     <p class="rowlabel" style="margin-top:2em">the human controls</p>
     <div class="grid g3">
-      <div class="card val"><div class="ic">REVIEW</div><h3>Read it in a pull request</h3><p>The agent’s output is a diff — a measure on the model, a figure binding — a person reads in one screen and approves, edits, or rejects. You hold the merge button.</p></div>
-      <div class="card val"><div class="ic">EDIT</div><h3>Change it by hand, anytime</h3><p>It’s plain Python and JSON. Rename a measure, retune a band, rewrite a section — no black box, no round-trip through the agent to fix a typo.</p></div>
-      <div class="card val"><div class="ic">CONTAIN</div><h3>It writes only its own report</h3><p>The gateway has no write access to your warehouse — the only thing the agent produces is its rendered artifact and receipt. It can check everything and rewrite nothing you depend on.</p></div>
+      <div class="card val"><div class="ic">REVIEW</div><h3>Read it before it ships</h3><p>The agent’s output is a diff — a measure on the model, a figure binding — a person reads in one screen and approves, edits, or rejects: in a pull request, or as a draft in the app’s Review. You decide what is published.</p></div>
+      <div class="card val"><div class="ic">EDIT</div><h3>Change it by hand, anytime</h3><p>It’s plain files: a transform is SQL, a model is YAML, a report is a <span class="mono">report.json</span> with an <span class="mono">app.jsx</span> dashboard or a <span class="mono">template.html</span> page. Rename a measure, rewrite a section — no black box, no round-trip through the agent to fix a typo.</p></div>
+      <div class="card val"><div class="ic">CONTAIN</div><h3>It writes only its own work</h3><p>The gateway has no write access to your warehouse — what the agent writes is its own report builds and drafts a person publishes. It can check everything and rewrite nothing you depend on.</p></div>
     </div>
   </section>
 
@@ -406,7 +407,7 @@
       <div class="step-note">
         <span class="tag">refresh → build → check → send</span>
         <h3>Every run is recorded</h3>
-        <p>Each run is a row in the run store: what ran, who ran it, whether the numbers reproduced, and who it went to. An existing <span class="mono">output/schedule_runs.jsonl</span> is imported once.</p>
+        <p>Each run is a row in the run store: what ran, who ran it, whether the numbers reproduced, and who it went to. The app’s History lists them.</p>
         <p>The schedule is code, so adding or changing one goes through the same review as any other change.</p>
       </div>
     </div>
@@ -416,27 +417,27 @@
   <section id="workflow">
     <p class="eyebrow">The spine · three phases, two freeze points</p>
     <h2>Messy data to a live report, decoupled.</h2>
-    <p style="margin-bottom:2em">The slow, unconstrained analysis and the fast, iterated reporting never block each other — because the model between them is a frozen contract. Editing a report never re-runs the pandas; the page re-renders in milliseconds.</p>
+    <p style="margin-bottom:2em">The slow, unconstrained analysis and the fast, iterated reporting never block each other — because the model between them is a frozen contract. Editing a report never re-runs the transform; the page re-renders in milliseconds.</p>
 
     <div class="flow">
       <div class="phase">
         <span class="n">① TRANSFORM</span>
         <h3>Do the real work</h3>
-        <p>Ordinary, unconstrained pandas — pull the queries, clean, dedupe, parse. Then <em>sink</em> clean star-schema tables into a file-backed warehouse.</p>
+        <p>SQL by default, pandas when the work outgrows it — read the raw files and your databases, clean, dedupe, parse. Then <em>sink</em> clean star-schema tables into the warehouse, with checks the tables must pass.</p>
         <span class="path">transforms/ → warehouse.duckdb</span>
       </div>
       <div class="freeze"><span class="ar">→</span><span>freeze: the tables</span></div>
       <div class="phase">
         <span class="n">② MODEL</span>
         <h3>Name the contract</h3>
-        <p>A declarative star schema over the warehouse — grain, keys, measures — in a few dozen lines a reviewer reads in one screen.</p>
+        <p>A declarative star schema over the warehouse — grain, keys, measures — in a few dozen lines of YAML a reviewer reads in one screen.</p>
         <span class="path">models/ → the semantic contract</span>
       </div>
       <div class="freeze"><span class="ar">→</span><span>freeze: the model</span></div>
       <div class="phase">
         <span class="n">③ REPORT</span>
         <h3>Bind the figures</h3>
-        <p>A page where every KPI, chart and table cell is a live query against the model — no pandas in the loop.</p>
+        <p>A page where every KPI, chart and table cell is a live query against the model — and a filter re-runs those queries in the page.</p>
         <span class="path">reports/ → a self-contained artifact</span>
       </div>
     </div>
@@ -447,7 +448,7 @@
   <section>
     <p class="eyebrow">See it as a user · the whole loop in five commands</p>
     <h2>What you actually type.</h2>
-    <p>From an empty folder to a shareable, self-verifying report — the real commands, and what each one gives you back. Step through it.</p>
+    <p>From an empty folder to a shareable report anyone can re-check — the real commands, and what each one gives you back. Step through it.</p>
 
     <div class="walk">
       <div class="steps" role="tablist" aria-label="Walkthrough steps">
@@ -463,66 +464,72 @@
           <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
           <div class="term-body">
 <div class="cmd"><span class="p">$ </span>tracebi init altsvault</div>
-<div class="ok">✓ created <b>altsvault/</b></div>
-<div class="out">  ├─ transforms/   <span class="cmt"># ① your pandas</span></div>
-<div class="out">  ├─ models/       <span class="cmt"># ② the star schema</span></div>
-<div class="out">  ├─ reports/      <span class="cmt"># ③ the dashboards</span></div>
-<div class="out">  ├─ inputs/       <span class="cmt"># raw pulls</span></div>
-<div class="out">  └─ AGENTS.md · sample_model/sample_dashboard <span class="cmt"># a working example</span></div>
+<div class="ok">Initialised TraceBi project at <b>altsvault/</b></div>
+<div class="out">  ├─ inputs/        <span class="cmt"># raw files (a sample orders.csv)</span></div>
+<div class="out">  ├─ connections/   <span class="cmt"># databases, as YAML</span></div>
+<div class="out">  ├─ transforms/    <span class="cmt"># ① SQL, or pandas</span></div>
+<div class="out">  ├─ models/        <span class="cmt"># ② the star schema, as YAML</span></div>
+<div class="out">  ├─ reports/       <span class="cmt"># ③ sample_model/sample_dashboard</span></div>
+<div class="out">  ├─ pipelines/     <span class="cmt"># transform, then rebuild the reports</span></div>
+<div class="out">  └─ tracebi.yaml · AGENTS.md · .mcp.json</div>
 <span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>cd altsvault</div>
+<div class="cmd"><span class="p">$ </span>cd altsvault &amp;&amp; tracebi run-pipeline sample_model</div>
+<div class="ok">[tracebi] 2 layer(s) completed.</div>
           </div>
         </div>
         <div class="step-note">
           <span class="tag">one command</span>
           <h3>Scaffold the project</h3>
-          <p>A three-folder project — one per phase — plus a working sample dashboard and an <span class="mono">AGENTS.md</span> that teaches an agent the whole grammar. It’s a repo from minute one: <span class="mono">git init</span> and commit.</p>
+          <p>One folder per phase, a working sample from raw file to dashboard, the warehouse declared in <span class="mono">tracebi.yaml</span>, and an <span class="mono">AGENTS.md</span> that teaches an agent the whole grammar. It’s a repo from minute one: <span class="mono">git init</span> and commit.</p>
         </div>
       </div>
 
       <div class="step-panel" data-panel="1" hidden>
         <div class="term">
-          <div class="term-bar"><i></i><i></i><i></i><span>transforms/holdings.py — then run it</span></div>
+          <div class="term-bar"><i></i><i></i><i></i><span>transforms/holdings_transform.sql — then run it</span></div>
           <div class="term-body">
-<div class="cmt"># ordinary pandas — clean, dedupe, parse …</div>
-<div class="out">df = clean(pd.read_csv("inputs/holdings.csv"))</div>
-<div class="out">DuckDBConnector("warehouse").write(fact,  "fact_holdings")</div>
-<div class="out">DuckDBConnector("warehouse").write(funds, "dim_fund")</div>
+<div class="cmd"><span class="p">$ </span>tracebi new-transform "Holdings"</div>
+<div class="out">Created transforms/holdings.sql (file tier) and transforms/holdings.contract.yaml</div>
 <span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi run-transform holdings</div>
-<div class="out">▸ rows_in <span class="hl">32</span> · unkeyed_dropped 3 · duplicates_dropped 5</div>
-<div class="out">▸ funds 3 · issuers 13 · holdings 25</div>
-<div class="ok">✓ sank fact_holdings, dim_fund, dim_issuer</div>
-<div class="ok">  → <span class="file">data/warehouse.duckdb</span></div>
+<div class="cmt">-- the reference project's, abridged: parse, clean, dedupe …</div>
+<div class="out">-- source: <span class="hl">crm.issuer_ratings</span> fallback: inputs/issuer_ratings.csv</div>
+<div class="out">CREATE OR REPLACE TABLE <b>dim_issuer</b> AS</div>
+<div class="out">SELECT row_number() OVER (ORDER BY issuer, sector) AS issuer_id, issuer, sector</div>
+<div class="out">FROM (SELECT DISTINCT issuer, sector FROM keyed);</div>
+<span class="blank"></span>
+<div class="cmd"><span class="p">$ </span>tracebi run-transform holdings_transform</div>
+<div class="out">Running transforms/holdings_transform.sql (form: sql; top-to-bottom, fresh connection)…</div>
+<div class="ok">form: sql</div>
           </div>
         </div>
         <div class="step-note">
           <span class="tag">phase ① · unconstrained</span>
           <h3>Do the real analysis</h3>
-          <p>This phase is just Python — the framework doesn’t constrain it. Do whatever the data needs, then <em>sink</em> clean star-schema tables into a file-backed warehouse. That sink is the contract; nothing downstream ever opens this script.</p>
+          <p>DuckDB SQL by default, pandas or polars as the escape hatch; the framework doesn’t constrain how you clean. A <span class="mono">-- source:</span> line reads a table from a database you declared. End by <em>sinking</em> clean star-schema tables into the warehouse; the checks beside it in <span class="mono">.contract.yaml</span> must pass, or the run fails. Nothing downstream ever opens this file.</p>
         </div>
       </div>
 
       <div class="step-panel" data-panel="2" hidden>
         <div class="term">
-          <div class="term-bar"><i></i><i></i><i></i><span>models/portfolio_model.py</span></div>
+          <div class="term-bar"><i></i><i></i><i></i><span>models/portfolio_model.yaml</span></div>
           <div class="term-body">
-<div class="out">model = (DataModel(<span class="hl">"portfolio_model"</span>)</div>
-<div class="out">  .add_table("fact_holdings", source="fact_holdings")</div>
-<div class="out">  .add_dimension("dim_issuer", attributes=["issuer","sector"])</div>
+<div class="cmd"><span class="p">$ </span>tracebi new-model "Holdings"</div>
+<div class="out">Created models/holdings.yaml</div>
 <span class="blank"></span>
-<div class="out">  <span class="cmt"># measures — declared once, used everywhere</span></div>
-<div class="out">  .add_measure("fair_value", column="fair_value", agg="sum")</div>
-<div class="out">  .add_measure("<b>wtd_spread</b>", ratio=("spread_x_par","par"))</div>
-<div class="out">  .add_measure("<b>fv_rank_in_sector</b>", rank="fair_value",</div>
-<div class="out">               partition_by="dim_issuer.sector")</div>
-<div class="out">  .add_measure("<b>rev_yoy</b>", growth=("fair_value","year",1)))</div>
+<div class="out">name: <span class="hl">portfolio_model</span></div>
+<div class="out">dimensions:</div>
+<div class="out">  - {name: dim_issuer, table: dim_issuer, key: issuer_id, attributes: [issuer, sector]}</div>
+<div class="out">measures:  <span class="cmt"># declared once, used everywhere</span></div>
+<div class="out">  - {name: fair_value, column: fair_value, agg: sum, format: currency0}</div>
+<div class="out">  - {name: <b>wtd_spread_bps</b>, ratio: [spread_x_par, par_amount]}</div>
+<div class="out">  - {name: <b>fv_rank_in_sector</b>, rank: fair_value, partition_by: [dim_issuer.sector]}</div>
+<div class="out">  - {name: <b>spread_p90</b>, column: spread_bps, agg: p90}</div>
           </div>
         </div>
         <div class="step-note">
           <span class="tag">phase ② · the contract</span>
           <h3>Declare the model</h3>
-          <p>A few dozen declarative lines a reviewer reads in one screen — grain, keys, and named measures. This is the semantic layer: define <span class="mono">wtd_spread</span> or a per-sector rank <em>once</em>, and every report calls it by name.</p>
+          <p>A few dozen declarative lines a reviewer reads in one screen — grain, keys, and named measures. This is the semantic layer: define a par-weighted spread or a per-sector rank <em>once</em>, and every report calls it by name.</p>
         </div>
       </div>
 
@@ -530,20 +537,22 @@
         <div class="term">
           <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
           <div class="term-body">
-<div class="cmt"># reports/portfolio_dashboard.json binds figures to measures</div>
-<div class="cmd"><span class="p">$ </span>tracebi report build portfolio_dashboard</div>
-<div class="ok">Rendered portfolio_dashboard → <span class="file">output/portfolio_dashboard.html</span></div>
-<div class="out">  manifest → output/portfolio_dashboard.html.manifest.json</div>
-<div class="cmt"># ≈ 0.7 MB, self-contained: charts, data and styles inlined</div>
+<div class="cmd"><span class="p">$ </span>tracebi new-dashboard "Holdings Board"</div>
+<div class="out">Created reports/holdings_board/ (report.json, app.jsx) …</div>
 <span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi dev portfolio_dashboard  <span class="cmt"># or iterate live</span></div>
-<div class="out">▸ serving on http://127.0.0.1:8000 · hot-reload</div>
+<div class="cmd"><span class="p">$ </span>tracebi report build portfolio_model/portfolio_dashboard</div>
+<div class="ok">Rendered portfolio_model/portfolio_dashboard (package) → <span class="file">output/portfolio_model/portfolio_dashboard.html</span></div>
+<div class="out">  manifest → output/portfolio_model/portfolio_dashboard.html.manifest.json</div>
+<div class="cmt"># ≈ 1.3 MB, self-contained: charts, data and styles inlined</div>
+<span class="blank"></span>
+<div class="cmd"><span class="p">$ </span>tracebi dev portfolio_model/portfolio_dashboard  <span class="cmt"># or iterate live</span></div>
+<div class="out">  TraceBi dev — portfolio_model/portfolio_dashboard in the app, Build mode</div>
           </div>
         </div>
         <div class="step-note">
           <span class="tag">phase ③ · milliseconds</span>
           <h3>Build the report</h3>
-          <p>Every figure is a live query against the frozen model, so the page renders in milliseconds — no pandas in the loop. The output is <em>one</em> HTML file with charts, data and styling all inlined. Edit the layout all day; it never re-runs the analysis.</p>
+          <p>A <span class="mono">report.json</span> names the queries; an <span class="mono">app.jsx</span> dashboard or a <span class="mono">template.html</span> page lays them out. Every figure is a live query against the frozen model, so the page renders in milliseconds. The output is <em>one</em> HTML file with charts, data and styling inlined. Edit the layout all day; it never re-runs the analysis.</p>
         </div>
       </div>
 
@@ -551,22 +560,24 @@
         <div class="term">
           <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
           <div class="term-body">
-<div class="cmd"><span class="p">$ </span>tracebi verify output/portfolio_dashboard.html.manifest.json</div>
+<div class="cmd"><span class="p">$ </span>tracebi verify output/portfolio_model/portfolio_dashboard.html.manifest.json</div>
+<div class="ok">✓ satisfied    fact_holdings — 5 check(s), transform 'holdings'</div>
 <div class="ok">figures: 7 — 7 reproduce. <b>REPRODUCES</b></div>
 <span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi verify --file output/portfolio_dashboard.html</div>
-<div class="ok">4 binding(s) checked: 4 matches · <b>FILE INTACT</b></div>
+<div class="cmd"><span class="p">$ </span>tracebi verify --file output/portfolio_model/portfolio_dashboard.html</div>
+<div class="ok">5 binding(s) checked: 5 matches · <b>FILE INTACT</b></div>
 <span class="blank"></span>
-<div class="cmt"># send the report and its receipt (the .manifest.json).</div>
+<div class="cmt"># send the report and its manifest (the .manifest.json).</div>
 <div class="cmt"># months later, anyone can re-check them offline,</div>
 <div class="cmt"># with no database and no account.</div>
 <div class="cmd"><span class="p">$ </span>tracebi serve  <span class="cmt"># or browse the whole project</span></div>
+<div class="out">TraceBi — serving portfolio_project (4 models, 4 pipelines)</div>
           </div>
         </div>
         <div class="step-note">
           <span class="tag">ship it</span>
           <h3>Verify &amp; share</h3>
-          <p>The report you send carries its own working. <span class="mono">verify</span> re-runs the recorded queries against the model; <span class="mono">verify --file</span> checks, offline, that the numbers in the file weren’t edited after the fact.</p>
+          <p>The report you send carries its own trace. <span class="mono">verify</span> re-runs the recorded queries against the model, beside the sink contracts recorded at build; <span class="mono">verify --file</span> checks, offline, that the numbers in the file weren’t edited after the fact.</p>
         </div>
       </div>
 
@@ -582,7 +593,7 @@
     <p class="eyebrow">The semantic layer · where the depth is</p>
     <h2>Measures declared once.<br>Referenced by name, everywhere.</h2>
     <p>The heart of the framework is a real semantic layer: a metric is defined in <em>one</em> place on the model — reviewed in a pull request, versioned in git — and every report calls it by name. No more re-deriving “revenue” five different ways in five different scripts.</p>
-    <p>And the hard patterns that used to force a hand-written script are first-class measures. A whole concentration table is three lines:</p>
+    <p>And the hard patterns that used to force a hand-written script are first-class measures. A whole concentration table is three declarations:</p>
 
     <div class="cmp" style="margin:1.8em 0">
       <div class="cmp-col bad">
@@ -601,9 +612,10 @@ df["share"] = df.fv / df.fv.sum()
       <div class="cmp-col good">
         <div class="cmp-h"><span>declared on the model</span></div>
         <div class="cmp-b">
-<pre>model.add_measure("fv_rank",  rank="fair_value")
-model.add_measure("fv_share", share="fair_value")
-model.add_measure("fv_cum",   running="fv_share")
+<pre># models/portfolio_model.yaml
+- {name: fv_rank,      rank: fair_value}
+- {name: fv_share,     share: fair_value}
+- {name: fv_cum_share, running: fv_share}
 <span class="tok-c"># one definition, referenced by name
 # from every report and every query</span></pre>
           <p class="note">Reviewed once, versioned in git, called by name — the same number everywhere it appears.</p>
@@ -634,9 +646,9 @@ model.add_measure("fv_cum",   running="fv_share")
 
     <div class="grid g3" style="margin-top:1.6em">
       <div class="guard">
-        <div class="wrong">mean(mark) → 8.49 ✕</div>
+        <div class="wrong">mean(spread_bps) ✕</div>
         <h3>Mean of a ratio</h3>
-        <p>A per-row ratio averaged overweights small rows. Refused — even when the column name hides it — with a pointer to a ratio of totals. Truth was 1.05.</p>
+        <p>A per-row rate averaged overweights small rows. Refused — by its name, or by values that look like ratios when the name hides it — with a pointer to a ratio of totals.</p>
       </div>
       <div class="guard">
         <div class="wrong">sum(aum) over time ✕</div>
@@ -654,21 +666,22 @@ model.add_measure("fv_cum",   running="fv_share")
   <!-- MAKE IT YOURS -->
   <section id="style">
     <p class="eyebrow">Make it yours · themes, fonts, images</p>
-    <h2>Same data, same receipts.<br>Your brand.</h2>
-    <p>A report is plain HTML and CSS, so it can look like anything your team wants: your fonts, your colours, a gradient header, a background image. It still builds to one file that opens anywhere, and every number keeps its fingerprint.</p>
+    <h2>Same data, same trace.<br>Your brand.</h2>
+    <p>A report is plain HTML and CSS, so it can look like anything your team wants: your fonts, your colours, a gradient header, a background image. It still builds to one file that opens anywhere, and every bound figure keeps its fingerprint.</p>
     <div class="grid g3" style="margin-top:1.4em">
       <div class="card val"><div class="ic">STYLE.CSS</div><h3>Your layout</h3><p>A good default look out of the box. Override any of it in the package’s own <span class="mono">style.css</span>.</p></div>
       <div class="card val"><div class="ic">ASSETS/</div><h3>Your fonts and images</h3><p>Drop fonts and images in <span class="mono">assets/</span>. They are inlined at build time, so nothing loads from the internet.</p></div>
-      <div class="card val"><div class="ic">CONFIGURECHART</div><h3>Your charts</h3><p>Charts render with ECharts, bundled in the file. Restyle them with <span class="mono">tracebi.configureChart</span> without touching the numbers.</p></div>
+      <div class="card val"><div class="ic">PALETTE</div><h3>Your charts</h3><p>Charts are drawn with D3, bundled in the file: hover, legends, and a click on a bar filters the page. Your palette is a few CSS variables, and nothing in it can touch a number.</p></div>
     </div>
-    <p class="muted" style="font-size:.9rem;margin-top:1.4em;max-width:44rem">The sample report above is the reference project’s showcase: two open-licence fonts, an SVG background and a custom stylesheet, built from the same model as the plain dashboard.</p>
+    <p class="muted" style="font-size:.9rem;margin-top:1.4em;max-width:44rem">The sample report above is the reference project’s showcase: an open-licence display face, its own accent colour and a custom D3 treemap, built from the same model as the plain dashboard.</p>
   </section>
 
   <!-- THE OUTPUT (artifact + reproducible, with demo) -->
   <section>
     <p class="eyebrow">The output</p>
-    <h2>A report is one file.<br>And every number in it checks out.</h2>
-    <p>The framework renders a report to a single self-contained HTML artifact — charts, data, and styling all inlined, no server, no CDN. It opens anywhere and emails cleanly. And because every figure was a live query, each one ships stamped with the query and a fingerprint of its bytes, so <span class="mono">tracebi verify --file</span> can confirm, offline, that nothing was edited after the fact. Send the report and its receipt; anyone can re-check them later.</p>
+    <h2>A report is one file.<br>And every number in it can be checked.</h2>
+    <p>The framework renders a report to a single self-contained HTML artifact — charts, data, and styling all inlined, no server, no CDN. It opens anywhere and emails cleanly. And because every figure was a live query, each one ships stamped with the query and a fingerprint of its bytes, so <span class="mono">tracebi verify --file</span> can confirm, offline, that nothing was edited after the fact. Send the report and its manifest; anyone can re-check them later.</p>
+    <p>And the page stays live. It carries the slice of the model its figures read, so a filter, or a click on a bar or a row, re-runs each figure’s own query inside the file — never a sum of whatever is on screen.</p>
 
     <div class="receipt" id="demo" style="margin-top:1.8em">
       <div class="receipt-top">
@@ -680,8 +693,8 @@ model.add_measure("fv_cum",   running="fv_share")
       </div>
       <div class="receipt-body">
         <div><span class="k">query&nbsp;&nbsp;&nbsp;</span> fact_holdings · measures=[fair_value] · agg=sum</div>
-        <div><span class="k">engine&nbsp;&nbsp;</span> duckdb 1.5.5 · rows=25</div>
-        <div class="hash"><span class="k">sha-256&nbsp;</span> <span id="hash">a3f1…9b7c · e8d2…4f10</span></div>
+        <div><span class="k">engine&nbsp;&nbsp;</span> duckdb 1.5.6 · rows=25</div>
+        <div class="hash"><span class="k">sha-256&nbsp;</span> <span id="hash">107b…2594 · 9862…0faf</span></div>
         <div class="receipt-actions">
           <button class="primary" id="btnVerify">▶ tracebi verify --file report.html</button>
           <button id="btnTamper">✎ edit the number in the file</button>
@@ -699,11 +712,11 @@ model.add_measure("fv_cum",   running="fv_share")
     <h2>A framework, not a library<br>of loose parts.</h2>
     <p>Everything the workflow needs ships in the box — and it all runs from your machine, offline, no account.</p>
     <div class="grid g3" style="margin-top:1.4em">
-      <div class="card val"><div class="ic">CONNECTORS</div><h3>Read from anywhere</h3><p>Postgres and other SQL databases, Snowflake, BigQuery, DuckDB, CSV — one <span class="mono">BaseConnector</span> interface, and lineage on every load.</p></div>
+      <div class="card val"><div class="ic">CONNECTIONS</div><h3>Read from anywhere</h3><p>Postgres and other SQL databases, Snowflake, BigQuery, DuckDB, CSV — each a short YAML file. A secret is a <span class="mono">${NAME}</span>, resolved from the environment or the project’s encrypted credential store, which an admin can set in the app without the value ever coming back.</p></div>
       <div class="card val"><div class="ic">SCHEDULING &amp; DELIVERY</div><h3>Runs on its own</h3><p>Refresh, build, check, email, on cron, with a run log. Pipelines run medallion layers upstream-first — or hand the sink to the pipeline you already have.</p></div>
-      <div class="card val"><div class="ic">RENDERERS</div><h3>Ship the report</h3><p>Self-contained HTML with live charts, or an Excel workbook — from the same model, same measures.</p></div>
-      <div class="card val"><div class="ic">AGENT GATEWAY (MCP)</div><h3>Plug in any agent</h3><p><span class="mono">tracebi mcp</span> gives Claude, Cursor or your own agent the model, the report grammar and <span class="mono">verify</span> — and no write access to your warehouse.</p></div>
-      <div class="card val"><div class="ic">CLI + WEB</div><h3>Scaffold, dev, serve</h3><p><span class="mono">tracebi init · dev · report · verify · serve</span> — plus a FastAPI + React app over the same registry.</p></div>
+      <div class="card val"><div class="ic">RENDERERS</div><h3>Ship the report</h3><p>Self-contained HTML with live charts, a PDF print of it, or an Excel workbook — from the same model, same measures.</p></div>
+      <div class="card val"><div class="ic">AGENT GATEWAY (MCP)</div><h3>Plug in any agent</h3><p><span class="mono">tracebi mcp</span> gives Claude, Cursor or your own agent the model, the report grammar, drafts and <span class="mono">verify</span> — 22 tools, and no write access to your warehouse.</p></div>
+      <div class="card val"><div class="ic">CLI + WEB</div><h3>Scaffold, dev, serve</h3><p><span class="mono">tracebi init · dev · report · verify · serve</span> — and the web app: Reports, Ask, Data (the board from sources to reports), Review and Docs.</p></div>
       <div class="card val"><div class="ic">MIT</div><h3>Yours to run</h3><p>Code-first and open. No BI server to license, no data leaving your environment.</p></div>
     </div>
   </section>
@@ -715,10 +728,10 @@ model.add_measure("fv_cum",   running="fv_share")
     <p>The framework is MIT-licensed and runs on your own machine or servers. A hosted Cloud is planned for teams that would rather not run it themselves. It will never be the only way to get a correct report.</p>
     <div class="grid g2" style="margin-top:1.4em">
       <div class="card plan"><div class="ic">OPEN SOURCE · AVAILABLE NOW</div><h3>Self-hosted</h3><ul>
-        <li>Models, reports, receipts and <span class="mono">verify</span></li>
+        <li>Models, reports, their traces and <span class="mono">verify</span></li>
         <li>Scheduling and email delivery</li>
         <li>The MCP agent gateway</li>
-        <li>The web app, with roles and sign-in</li>
+        <li>The web app, with roles, sign-in and folder permissions</li>
       </ul></div>
       <div class="card plan"><div class="ic">CLOUD · PLANNED</div><h3>Hosted for you</h3><ul>
         <li>Nothing to install or keep running</li>
@@ -741,7 +754,7 @@ model.add_measure("fv_cum",   running="fv_share")
       <a href="#workflow">How it works</a>
       <a href="#layer">Semantic layer</a>
     </div>
-    <p class="mono muted" style="margin-top:1.8em;max-width:52rem">A note on scope: TraceBi draws its trust line at the sink, where messy analysis becomes named tables — the reproducible-receipt guarantee applies from the model boundary onward, and is a reproduction-and-integrity check, not a proof that a number is “correct.” Every claim on this page is one the framework can stand behind.</p>
+    <p class="mono muted" style="margin-top:1.8em;max-width:52rem">A note on scope: TraceBi draws its trust line at the sink, where messy analysis becomes named tables — the trace’s guarantee applies from the model boundary onward, and is a reproduction-and-integrity check, not a proof that a number is “correct.” Every claim on this page is one the framework can stand behind.</p>
   </footer>
 
 </div>
@@ -758,7 +771,7 @@ model.add_measure("fv_cum",   running="fv_share")
   bT.addEventListener('click',function(){
     tampered=true;
     kpi.textContent=TAMP_VAL; kpi.classList.add('tampered');
-    hash.textContent='a3f1…9b7c · e8d2…4f10  (bytes changed)';
+    hash.textContent='107b…2594 · 9862…0faf  (bytes changed)';
     setBadge('b-stale','unverified');
     hide(verdict); show(bR);
     bT.disabled=true; bT.style.opacity=.5;
@@ -778,7 +791,7 @@ model.add_measure("fv_cum",   running="fv_share")
   bR.addEventListener('click',function(){
     tampered=false;
     kpi.textContent=TRUE_VAL; kpi.classList.remove('tampered');
-    hash.textContent='a3f1…9b7c · e8d2…4f10';
+    hash.textContent='107b…2594 · 9862…0faf';
     setBadge('b-repro','reproduces');
     hide(verdict); hide(bR);
     bT.disabled=false; bT.style.opacity=1;
@@ -788,7 +801,7 @@ model.add_measure("fv_cum",   running="fv_share")
 /* ---- walkthrough stepper ---- */
 (function(){
   var btns=[].slice.call(document.querySelectorAll('.step-btn'));
-  var panels=[].slice.call(document.querySelectorAll('.step-panel'));
+  var panels=[].slice.call(document.querySelectorAll('.walk .step-panel'));
   var prev=document.getElementById('walkPrev'), next=document.getElementById('walkNext');
   if(!btns.length) return;
   var i=0, n=panels.length;

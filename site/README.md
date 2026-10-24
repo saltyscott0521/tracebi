@@ -18,7 +18,7 @@ cd site && python3 -m http.server 8899   # → http://localhost:8899
 ```
 
 The landing page is a single self-contained `index.html` (styles inline, fonts
-from Google Fonts, one small script for the live receipt + theme toggle). It
+from Google Fonts, one small script for the tamper demo, the walkthrough and the theme toggle). It
 works in both light and dark, following the visitor's system theme.
 
 ## The docs site (`site/docs/`)
@@ -54,13 +54,18 @@ internal hostname is not a public URL). nginx also proxies
 
 ## Status
 
-The **ask / build / schedule page** (2026-09-23, following
-`docs/strategy/vision-and-positioning.md`). It leads with the three ways to use
-TraceBi — ask a question, build a one-off analysis, schedule a recurring
-report — all from one set of approved definitions, then covers the agent and
-human roles, scheduling, the three-phase workflow, the semantic layer,
-guardrails, styling, the output and its receipt, and open source vs the planned
-Cloud.
+The **ask / build / schedule page**, corrected to the product of 2026-10-24
+(first written 2026-09-23, following `docs/strategy/vision-and-positioning.md`).
+It leads with the three ways to use TraceBi — ask a question, build a one-off
+analysis, schedule a recurring report — all from one set of approved
+definitions, and says what the demo at `/app` serves (the reference project's
+four models; Reports, Ask, Data, Review, Docs). Then the agent and human roles,
+scheduling, the three-phase workflow (SQL transforms with sink contracts, YAML
+models, `report.json` + `app.jsx` / `template.html` reports), the walkthrough
+(commands and output copied from real runs), the semantic layer, guardrails,
+styling (D3 charts), the output, its trace and the live page, and open source
+vs the planned Cloud. The word "receipt" is retired for **trace** and
+**manifest**; only the demo block's CSS class names keep it.
 
 `assets/` holds the hero screenshot and the Open Graph image; `sample/` holds a
 built copy of the reference project's `portfolio_showcase` report and its
@@ -68,7 +73,11 @@ manifest, linked as "Download a sample report". Both are copied into the
 Vercel output by `vercel-build.sh`. Rebuild the sample when the showcase
 changes (`tracebi report build portfolio_model/portfolio_showcase` in
 `examples/portfolio_project/`, then copy `output/portfolio_model/portfolio_showcase.html`
-and its `.html.manifest.json`, with `output_path` set to the bare file name).
+and its `.html.manifest.json`, with `output_path` set to the bare file name;
+`tracebi verify --file site/sample/portfolio_showcase.html` must read FILE
+INTACT). `assets/showcase.jpg` is that sample's first screen at 1440 × 900,
+light, captured at 2× and saved as JPEG quality 85; `assets/og.jpg` is the same
+page at 1200 × 630.
 
 Numbers on the page (row counts, figure counts, file sizes, verify output) are
 copied from real runs of the reference project. Re-check them when the
