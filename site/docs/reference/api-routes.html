@@ -322,6 +322,11 @@ missing one is. Folder permissions do not apply: a table is not a report.</p>
 </tr>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/reports/{name}/cover</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/runs</code></td>
 <td>viewer</td>
 </tr>
@@ -380,7 +385,9 @@ start a draft in its folder, <code>publish</code> to publish into it) is <code>4
 <code>output/&lt;name&gt;.html</code> or, when that file is not there, the path recorded in
 the run store. A report never built on this server is built once on first
 open and kept. Opening never re-queries after that; fresh data comes from
-<code>/run</code>, <code>/runs</code> (Rebuild) or a schedule.</p>
+<code>/run</code>, <code>/runs</code> (Rebuild) or a schedule. <code>/cover</code> is the PNG of that last
+build's first screen (an <code>ETag</code> of its write time), or <code>404</code> when the build
+took none and the app draws one; it never builds.</p>
 <p><code>GET /api/runs</code> lists rows from that store, newest first. Query params:
 <code>kind</code>, <code>target</code>, <code>limit</code>. A viewer may read it. The HTML of a report stays
 on disk; the row holds the output path. The <strong>History</strong> list (<code>/runs</code>) is this list.

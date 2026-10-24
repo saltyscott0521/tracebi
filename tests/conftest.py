@@ -16,6 +16,10 @@ import pytest
 # import so subprocesses inherit it; tests/test_updates.py turns it back on
 # against a fake release feed.
 os.environ["TRACEBI_UPDATE_CHECK"] = "0"
+# No build takes a cover (tracebi/reports/cover.py): each is a Chromium
+# launch, and the suite builds hundreds of reports. The reference journey
+# turns it back on where covers are what it checks.
+os.environ["TRACEBI_COVERS"] = "0"
 
 
 @pytest.fixture(autouse=True)

@@ -180,6 +180,10 @@ equivalent where it matters.</p>
 <td><code>1</code> runs each report package's <code>schedule</code> block inside the web server (the same job as <code>tracebi schedule serve</code>). Off by default. On Postgres a tick takes one advisory lock per report. On SQLite the lock is a no-op, so several workers would each send the email.</td>
 </tr>
 <tr>
+<td><code>TRACEBI_COVERS</code></td>
+<td><code>0</code> takes no cover at build (<a href="../concepts/report.html">Report — phase ③</a>): no Chromium launch per build, and the library draws every cover. On by default where Playwright and Chromium are installed.</td>
+</tr>
+<tr>
 <td><code>TRACEBI_DEBUG</code></td>
 <td><code>run-transform</code> re-raises a <code>ContractViolation</code> with the full traceback instead of the clean message</td>
 </tr>

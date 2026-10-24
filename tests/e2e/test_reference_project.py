@@ -672,8 +672,73 @@ def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, m
         assert verdicts["saas_model/mrr_dashboard"]["verdict"] == "not_reproduced"
         assert verdicts["saas_model/mrr_dashboard"]["cached"] is False
         assert verdicts["saas_model/cohort_brief"]["cached"] is True
+
+        # Covers (tracebi/reports/cover.py). Catches a workflow that ships the
+        # library with no pictures, a cover served stale or uncached, and one
+        # that outlives the build that could not take it.
+        _covers_ship_with_the_workflow(c, reference, first, monkeypatch)
     finally:
         release_warehouses()
+
+
+def _png_size(data: bytes) -> tuple[int, int]:
+    assert data[:8] == b"\x89PNG\r\n\x1a\n"
+    return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+
+
+def _covers_ship_with_the_workflow(c, reference, builds, monkeypatch):
+    from tracebi import cli
+    from tracebi.reports import cover
+
+    name = "saas_model/cohort_brief"
+    # Whether this machine can take one: Playwright and Chromium both there.
+    probe = reference / "output" / "_probe.html"
+    probe.write_text('<html data-tb-ready="1"><body>probe</body></html>', encoding="utf-8")
+    monkeypatch.delenv("TRACEBI_COVERS", raising=False)
+    monkeypatch.setattr(cover, "_unavailable", None)
+    took, why = cover.capture_cover(str(probe))
+    for leftover in (probe, reference / "output" / "_probe.cover.png"):
+        leftover.unlink(missing_ok=True)
+    if took is None:
+        # No browser: every tile is drawn by the app, from what the desk says.
+        assert not any(b["cover"] for b in builds), why
+        assert c.get(f"/api/reports/{name}/cover").status_code == 404
+        return
+    assert all(b["cover"] for b in builds)
+    assert all(b["figure_kinds"] for b in builds)
+    manifest = json.loads((reference / "output" / f"{name}.html.manifest.json").read_text())
+    assert manifest["cover"].endswith("cohort_brief.cover.png")
+
+    got = c.get(f"/api/reports/{name}/cover")
+    assert got.status_code == 200 and got.headers["content-type"] == "image/png"
+    assert _png_size(got.content) == (cover.WIDTH, cover.HEIGHT)
+    tag = got.headers["etag"]
+    assert c.get(f"/api/reports/{name}/cover", headers={"If-None-Match": tag}).status_code == 304
+
+    # A build here, as Rebuild and a schedule do: a new picture, a new tag,
+    # and the run row names it beside the page.
+    code, out = run_cli("report", "build", name)
+    assert code == 0 and "no cover" not in out, out
+    again = c.get(f"/api/reports/{name}/cover", headers={"If-None-Match": tag})
+    assert again.status_code == 200 and again.headers["etag"] != tag
+    row = next(r for r in c.get("/api/runs", params={"target": name}).json()
+               if r["kind"] == "report_build")
+    assert row["detail"]["cover"].endswith("cohort_brief.cover.png")
+
+    # A build that cannot take one removes the old picture and says why,
+    # once: the library then draws the cover from the desk's figure kinds.
+    monkeypatch.setenv("TRACEBI_COVERS", "0")
+    monkeypatch.setattr(cli, "_cover_note_said", False)
+    code, out = run_cli("report", "build", name)
+    assert code == 0 and out.count("no cover: covers are off") == 1, out
+    code, out = run_cli("report", "build", name)
+    assert "no cover" not in out, out
+    assert c.get(f"/api/reports/{name}/cover").status_code == 404
+    desk = {b["report"]: b for b in c.get("/api/desk").json()["builds"]}
+    assert desk[name]["cover"] is False
+    assert set(desk[name]["figure_kinds"]) <= {"value", "chart", "table"}
+    assert "cover" not in json.loads(
+        (reference / "output" / f"{name}.html.manifest.json").read_text())
 
 
 def test_the_showcase_carries_every_affordance(built):

@@ -419,7 +419,8 @@ def spec_render(body: dict):
             for fname, content in compiled.files.items():
                 (Path(d) / fname).write_text(content, encoding="utf-8")
             out = os.path.join(d, "__render.html")
-            manifest = TemplatePackage(d).render(models, out, save_manifest=False)
+            manifest = TemplatePackage(d).render(models, out, save_manifest=False,
+                                                    cover=False)
             html = Path(out).read_text(encoding="utf-8")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

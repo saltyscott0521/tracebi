@@ -1415,6 +1415,7 @@ def _build_report(
     note = try_record_report_build(
         report, str(output),
         manifest_path=str(output) + ".manifest.json",
+        cover=manifest.cover,
     )
     if note:
         result["note"] = f"report build was not recorded: {note}"

@@ -242,6 +242,11 @@ Renders to one self-contained, offline `.html` plus a sibling
 and manifest stay the checkable artifact. Needs `pip install 'tracebi[pdf]'`
 and `python -m playwright install chromium`.
 
+The same extra gives every build a cover, `output/<name>.cover.png` (the first
+screen at 1200×750, recorded as `cover` in the manifest, never fingerprinted);
+without it the build prints one line saying why no cover was taken and is
+otherwise unchanged.
+
 - `--badges` — draw per-figure provenance badges on the page. Off by default;
   the trace drawer already carries provenance in one place. **The manifest is
   identical either way.**

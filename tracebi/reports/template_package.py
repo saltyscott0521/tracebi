@@ -926,6 +926,7 @@ class TemplatePackage:
         manifest_path: Optional[str] = None,
         badges: bool = False,
         filters: Optional[dict] = None,
+        cover: bool = True,
     ) -> ReportManifest:
         """Render the package to one self-contained ``.html`` (+ manifest).
 
@@ -934,7 +935,9 @@ class TemplatePackage:
         that half-fails cannot leave a page without a receipt.
 
         *filters* is passed to :meth:`build` and applied the same way a
-        selection filter is.
+        selection filter is. *cover* takes the library's picture of the page
+        (``tracebi/reports/cover.py``); a render that only checks a package
+        and throws the page away passes False.
         """
         report, inputs = self.build(models, filters=filters)
 
@@ -1133,6 +1136,11 @@ class TemplatePackage:
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(page)
+        # The library's cover: a picture of the page just written, taken
+        # after every receipt field is settled so it can never feed one.
+        if cover:
+            from tracebi.reports.cover import capture_cover
+            manifest.cover, manifest.cover_skipped = capture_cover(output_path)
         if save_manifest:
             manifest.save(manifest_path or output_path + ".manifest.json")
         return manifest
