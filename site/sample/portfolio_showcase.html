@@ -60,6 +60,10 @@ Built with TraceBi 0.7.0.dev0. Everything below is inlined: no script, style, fo
              "Helvetica Neue", Arial, sans-serif;
   /* The editorial body face: a system serif, so nothing is fetched or inlined. */
   --tb-font-serif: "Iowan Old Style", Charter, "Sitka Text", Cambria, Georgia, serif;
+  /* --tb-font-display is left unset: it is the one display face a theme may
+   * give the headline and the lead number (an @font-face from the package's
+   * assets/). Unset, the masthead keeps the sans and an editorial headline
+   * the serif, so every report in a project reads as one family. */
   --tb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   /* Neutral grounds and one cobalt: colour is for meaning, the accent for the
    * few places you act or are. --tb-accent is the fill (focus ring, bars, the
@@ -334,7 +338,10 @@ img, svg { max-width: 100%; }
 .tb-grid > .tb-kpi { border: 0; border-radius: 0; }
 /* The lead KPI: the one number the page is about. It is larger, not wider:
  * one step up the scale, so the row has an anchor and no empty half-cell. */
-.tb-kpi--lead .tb-kpi-value { font-size: var(--tb-text-3xl); }
+.tb-kpi--lead .tb-kpi-value {
+  font-size: var(--tb-text-3xl);
+  font-family: var(--tb-font-display, inherit);
+}
 
 /* The comparison under the number — "+4.1% vs last month", "of total".
  * A KPI without one is a number, not a signal. */
@@ -477,6 +484,15 @@ span.tb-bar--neg { background: var(--tb-bad); }
   background: var(--tb-bg);
   z-index: 1;
 }
+/* A frozen cell is opaque, so the rows scroll under it; it takes its row's
+ * tint itself (the stripe, the hover), or a striped row would show a cell
+ * of the page's ground beside it. */
+:is(.tb-table, [data-tb-figure="table"]) tbody tr:not([aria-selected="true"]):hover > td:first-child {
+  background: var(--tb-surface);
+}
+.tb-table--striped tbody tr:nth-child(even):not([aria-selected="true"]) > td:first-child {
+  background: var(--tb-stripe);
+}
 
 /* Windowed tables (>500 rows): spacers are not data. A fixed row height
  * keeps the scrollbar honest; text stays in the cell, it just doesn't wrap. */
@@ -495,11 +511,18 @@ tr.tb-window-pad td {
 .tb-table--freeze tr.tb-window-pad td { position: static; background: transparent; }
 .tb-window.tb-table--striped tbody tr:nth-child(even) { background: none; }
 .tb-window.tb-table--striped tbody tr.tb-stripe { background: var(--tb-surface); }
-
-/* Variant: striped — even body rows tinted (field-notes finding #13). */
-.tb-table--striped tbody tr:nth-child(even) {
-  background: color-mix(in srgb, var(--tb-surface) 60%, transparent);
+.tb-window.tb-table--striped tbody tr:not(.tb-stripe):not([aria-selected="true"]) > td:first-child {
+  background: var(--tb-bg);
 }
+.tb-window.tb-table--striped tbody tr.tb-stripe:not([aria-selected="true"]) > td:first-child {
+  background: var(--tb-surface);
+}
+
+/* Variant: striped — even body rows tinted (field-notes finding #13). The
+ * tint is opaque (the surface over the card's own ground), so a frozen first
+ * cell can carry the same one. */
+.tb-table--striped { --tb-stripe: color-mix(in srgb, var(--tb-surface) 60%, var(--tb-bg)); }
+.tb-table--striped tbody tr:nth-child(even) { background: var(--tb-stripe); }
 
 /* Variant: compact — tighter padding (density is --tb-cell-pad only). */
 .tb-table--compact { --tb-cell-pad: var(--tb-space-1) var(--tb-space-2); }
@@ -786,6 +809,26 @@ table[data-tb-select-rows] tr[aria-selected="true"] td:first-child { box-shadow:
 .tb-selection-clear:hover, .tb-selection-download:hover { text-decoration: underline; }
 .tb-selection-bar button:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
 .tb-selection-print { display: none; margin: 0; }
+/* On a phone the bar stays in reach: once something is picked it rides the
+ * bottom of the screen, so the reader can see and clear the cut from any
+ * figure, and the page leaves room under its last line for it. Not in an
+ * app's frame (the frame is as tall as the page, and the app's header shows
+ * the selection). Opaque, with no shadow: it is the page's own strip. */
+@media screen and (max-width: 720px) {
+  :root:not([data-tb-framed]) .tb-selection-bar {
+    position: fixed;
+    left: var(--tb-space-2);
+    right: var(--tb-space-2);
+    bottom: calc(var(--tb-space-2) + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    margin: 0;
+    max-height: 40vh;
+    overflow-y: auto;
+    background: color-mix(in oklab, var(--tb-accent) 8%, var(--tb-bg));
+    border-color: color-mix(in oklab, var(--tb-accent) 35%, var(--tb-rule));
+  }
+  :root:not([data-tb-framed]) body:has(.tb-selection-bar:not([hidden])) { padding-bottom: 120px; }
+}
 .tb-footer-filtered { display: none; }
 @media print {
   .tb-selection-bar { display: block; padding: 0; border: 0; background: none; margin: var(--tb-space-1) 0 var(--tb-space-2); }
@@ -948,6 +991,34 @@ p:has(> label > :is([data-tb-search], [data-tb-filter])) > button[data-tb-downlo
   margin: 0; font-size: 13.5px;
 }
 label > input[data-tb-search] { width: 11em; }
+/* On a phone the page's controls are one row, not a stack that pushes the
+ * first figure off the screen: the row scrolls sideways and its far edge
+ * fades while more lies there (data-tb-more, as a table's). Any box whose
+ * own children are labelled filters, searches or ranges is such a row, the
+ * kit's or a template's; the runtime marks its edge. */
+@media (max-width: 720px) {
+  /* !important only because an app page layers this sheet under its
+     utilities, and a row's own flex-wrap class would otherwise stack it. */
+  :is(div, p):has(> label > :is([data-tb-filter], [data-tb-search]), > [data-tb-range]) {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: var(--tb-space-2) var(--tb-space-3);
+    overflow-x: auto !important;
+    scrollbar-width: none;
+    max-width: 100%;
+    padding-bottom: 2px;
+  }
+  :is(div, p):has(> label > :is([data-tb-filter], [data-tb-search]), > [data-tb-range]) > * {
+    flex: none;
+    margin-bottom: 0;
+  }
+  :is(div, p):has(> label > :is([data-tb-filter], [data-tb-search]), > [data-tb-range])::-webkit-scrollbar {
+    display: none;
+  }
+  .tb-range { flex-wrap: nowrap; }
+  .tb-range-track { width: 140px; }
+}
 
 /* ── 11. Scrollable tables — presentation only ─────────────────────────── */
 /* The runtime wraps an over-long hydrated table; max-height is set inline
@@ -1014,6 +1085,44 @@ label > input[data-tb-search] { width: 11em; }
      table) it keeps table layout, so a narrow table still spans its card. */
   :is(.tb-scroll, .tb-card:has(> :is(.tb-table, [data-tb-figure="table"]):last-child))
     > :is(.tb-table, [data-tb-figure="table"]) { display: table; }
+  /* A table on a phone reads across, not down: a cell keeps to one line and
+     the table scrolls sideways in its frame (its far edge fades while more
+     lies there), with the first column frozen, as .tb-table--freeze, so
+     every row keeps its name. A long name wraps inside a narrow column
+     rather than taking the width the numbers need. */
+  :is(.tb-table, [data-tb-figure="table"]) :is(th, td) { white-space: nowrap; }
+  /* In a box that scrolls it, a table takes the width its columns ask for
+     (at least the box's), rather than being squeezed into the phone. */
+  :is(.tb-scroll, .tb-card > .tb-scroll:last-child) > :is(.tb-table, [data-tb-figure="table"]) {
+    width: max-content;
+    min-width: 100%;
+  }
+  .tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child {
+    width: max-content;
+    min-width: calc(100% + 2 * var(--tb-card-pad-x));
+  }
+  :is(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--tb-bg);
+  }
+  /* The frozen cell's ground stops inside its border, so a collapsed row
+     rule is never painted over and every row stays ruled to the edge. */
+  :where(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child { background-clip: padding-box; }
+  /* A name column, not a number (a rank stays as narrow as its digits). */
+  :is(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child:not(.tb-num) {
+    white-space: normal;
+    width: 9em;                  /* a table cell takes a width as its least */
+    max-width: 11em;
+  }
+  :is(.tb-table, [data-tb-figure="table"]) thead th:first-child { z-index: 3; }
+  /* Where the header row has its own ground, its frozen cell keeps it. */
+  :is(.tb-scroll, .tb-article) thead th:first-child,
+  .tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child thead th:first-child {
+    background: var(--tb-surface);
+  }
+  :is(.tb-table, [data-tb-figure="table"]) tr.tb-window-pad td { position: static; background: transparent; }
 }
 
 .tb-tabs { margin: var(--tb-space-3) 0; }
@@ -1233,6 +1342,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   margin: 0 0 var(--tb-space-1);
 }
 .tb-masthead h1 {
+  font-family: var(--tb-font-display, var(--tb-font));
   font-size: var(--tb-text-2xl);
   font-weight: 600;
   line-height: 1.15;
@@ -1253,6 +1363,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   align-items: center;
   gap: var(--tb-space-1) var(--tb-space-3);
   margin: var(--tb-space-3) 0 0;
+  max-width: none;               /* a <p> meta keeps one line, not the prose measure */
   font-size: var(--tb-text-sm);
   color: var(--tb-muted);
 }
@@ -1381,7 +1492,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 }
 .tb-article-head .tb-kicker { color: var(--tb-hero-soft); }
 .tb-article h1 {
-  font-family: var(--tb-font-serif);
+  font-family: var(--tb-font-display, var(--tb-font-serif));
   font-size: clamp(var(--tb-text-2xl), 4.2vw, var(--tb-text-3xl));
   font-weight: 600;
   line-height: 1.1;
@@ -1524,7 +1635,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   margin-right: 0;
 }
 /* Controls in the prose (a download button, a filter) are the page's sans. */
-.tb-article :is(button, select, input) { font-family: var(--tb-font); }
+.tb-article :is(button, select, input, label, .tb-range) { font-family: var(--tb-font); }
 @media (max-width: 720px) {
   .tb-article { margin: 0; border-radius: 0; border-width: 0; }
   .tb-pullstat { grid-template-columns: 1fr; row-gap: var(--tb-space-1); }
@@ -1602,16 +1713,9 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
-.tb-footer-line .tb-receipt-link {
-  display: block;
-  width: fit-content;
-  margin-top: var(--tb-space-1);
-  color: var(--tb-ink);
-  font-weight: 500;
-  text-decoration: none;
-}
-.tb-footer-line .tb-receipt-link::before { content: "\25B8\00A0"; }
-.tb-footer-line .tb-receipt-link:hover { text-decoration: underline; }
+/* The footer's line ends in its way in, as the last words of one calm
+ * sentence: the same quiet link as the masthead's Trace. */
+.tb-footer-line .tb-receipt-link { display: inline; }
 /* On a filled ground (the hero, a banner, a report's own) a masthead's
  * links take its ink; the runtime marks the ground. An author's own link
  * colour still wins (:where). */
@@ -1708,6 +1812,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-receipt { color: var(--tb-ink); font-size: var(--tb-text-sm); }
 .tb-receipt-head {
   margin: 0;
+  font-family: var(--tb-font-display, inherit);   /* the page's headline face */
   font-size: var(--tb-text-xl);
   font-weight: 600;
   line-height: 1.25;
@@ -1965,16 +2070,19 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 <!-- style.css: this report's own styles -->
 <style>
 /* ─────────────────────────────────────────────────────────────────────────
- * Portfolio Showcase: a theme preset, and nothing structural.
+ * Portfolio Showcase: a theme, and nothing structural.
  *
  * This file stacks AFTER tracebi.css (the design system), so it wins. It
- * does what a theme does and no more:
+ * sets tokens and no rule of its own:
  *
- *   • The accent pair for each ground. Every accent in the system follows:
- *     the first chart series, links, the active tab, the data bars.
- *   • One display face for the headline and the lead number: Fraunces
- *     (SIL Open Font License 1.1, assets/fonts/). The build inlines it as a
- *     data: URI, so the file still works offline and fetches nothing.
+ *   • One display face for the headline and the lead number, through
+ *     --tb-font-display: Fraunces (SIL Open Font License 1.1,
+ *     assets/fonts/). The build inlines it as a data: URI, so the file still
+ *     works offline and fetches nothing.
+ *   • The accent stays the project's, so this page reads as one family with
+ *     every other report beside it. A package that needs its own sets the
+ *     pair for each ground here (--tb-accent / --tb-accent-text,
+ *     --tb-dark-accent / --tb-dark-accent-text).
  *
  * The masthead, the KPI strip, the grid, the charts, the tables, the footer
  * and dark mode are the system's own. Presentation only: nothing here can
@@ -1989,16 +2097,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 }
 
 :root {
-  --tb-accent: #0d6b73;
-  --tb-accent-text: #0b5c63;
-  --tb-surface-accent: #e8f3f3;
-  --tb-dark-accent: #5cc4bd;
-  --tb-dark-accent-text: #8fdcd6;
-}
-
-.tb-masthead h1, .tb-kpi--lead .tb-kpi-value {
-  font-family: "Fraunces", var(--tb-font-serif);
-  letter-spacing: -0.01em;
+  --tb-font-display: "Fraunces", var(--tb-font-serif);
 }
 
 </style>
@@ -2282,7 +2381,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
       runtime (MIT); D3 for the charts and the treemap (ISC License); the
       Fraunces typeface (SIL Open Font License). Check it with
       <code>tracebi verify --file</code>.</p>
-  <p class="tb-footer-line">Built 24 Oct 2026 · Direct Lending Portfolio. This page does not claim the numbers are right.</p><details class="tb-footer-details"><summary>How these numbers were made</summary><p class="tb-footer-note">This file carries its trace: each figure names the query that produced it and a fingerprint of the result. <code>tracebi verify</code> re-runs those queries and checks whether the numbers still match the model.</p><div class="tb-methodology"><p class="tb-note">the transform 'holdings' states: issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator&#x27;s spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted</p><p class="tb-note">&middot; rows(fact_holdings): a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank</p><p class="tb-note">&middot; values(dim_rating): the CRM&#x27;s ratings on the agency scale; an issuer it does not cover is Unrated, never dropped</p><p class="tb-note">measure 'fair_value': Total fair value</p><p class="tb-note">measure 'positions': Position count</p><p class="tb-note">measure 'mark': Fair value / cost</p><p class="tb-note">measure 'fv_share': Fair value as % of total</p><p class="tb-note">measure 'unrealized': Unrealized gain / loss</p><p class="tb-note">measure 'cost_basis': Total cost basis</p><p class="tb-note">measure 'fv_rank': Rank by fair value (1 = largest)</p><p class="tb-note">measure 'fv_cum_share': Cumulative % of total (largest first)</p><p class="tb-note">measure 'net_flow': Net cash flow (received less lent out)</p><p class="tb-note">measure 'flow_count': Number of cash flows</p></div></details></footer>
+  <p class="tb-footer-line">Built <time datetime="2026-10-24T20:01:04.628043+00:00">Oct 24, 2026</time> · Direct Lending Portfolio. This page does not claim the numbers are right.</p><details class="tb-footer-details"><summary>How these numbers were made</summary><p class="tb-footer-note">This file carries its trace: each figure names the query that produced it and a fingerprint of the result. <code>tracebi verify</code> re-runs those queries and checks whether the numbers still match the model.</p><div class="tb-methodology"><p class="tb-note">the transform 'holdings' states: issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator&#x27;s spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted</p><p class="tb-note">&middot; rows(fact_holdings): a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank</p><p class="tb-note">&middot; values(dim_rating): the CRM&#x27;s ratings on the agency scale; an issuer it does not cover is Unrated, never dropped</p><p class="tb-note">measure 'fair_value': Total fair value</p><p class="tb-note">measure 'positions': Position count</p><p class="tb-note">measure 'mark': Fair value / cost</p><p class="tb-note">measure 'fv_share': Fair value as % of total</p><p class="tb-note">measure 'unrealized': Unrealized gain / loss</p><p class="tb-note">measure 'cost_basis': Total cost basis</p><p class="tb-note">measure 'fv_rank': Rank by fair value (1 = largest)</p><p class="tb-note">measure 'fv_cum_share': Cumulative % of total (largest first)</p><p class="tb-note">measure 'net_flow': Net cash flow (received less lent out)</p><p class="tb-note">measure 'flow_count': Number of cash flows</p></div></details></footer>
 
   
 </main>
@@ -4319,18 +4418,24 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
       m.left = Math.ceil(tv.w) + 10;
       var room = (W - m.left - m.right) / Math.max(1, cats.length);
       /* Names that collide wrap to two lines while a band is 48px or wider;
-       * narrower, up to 16 categories turn 30°; more than that (a run of
-       * years, months) label every k-th one, flat. */
+       * narrower, up to 16 categories turn 30°; more than that, or a run of
+       * numbers (years, months, ranks: the reader fills in the ones between),
+       * label every k-th one, flat. */
+      var run = cats.length > 1 && cats.every(function (c) { return /^[\d\s.,:\/-]+$/.test(String(c)); });
       if (cats.length && room < catLabelW + 6) {
-        if (cats.length > 16) every = Math.ceil((catLabelW + 14) / room);
+        if (cats.length > 16 || run) every = Math.ceil((catLabelW + 14) / room);
         else if (room >= 48) wrapAll();
         else rotate = true;
       }
       m.bottom = rotate ? Math.min(Math.ceil(catLabelW * 0.5) + 22, Math.round(H * 0.4))
         : wrapW ? 42 : 28;
     }
+    /* A small-multiples panel with another panel under it leaves the shared
+     * category names (and the x title) to the bottom one (renderFacets). */
+    var bare = !!opt.bareCats && !horizontal;
     if (plan.yTitle) m.left += 18;
-    if (plan.xTitle) m.bottom += 18;
+    if (plan.xTitle && !bare) m.bottom += 18;
+    if (bare) m.bottom = 18;
     var marks = marksWanted(plan);
     if (marks.length && !horizontal) m.top += 14;
     if (marks.length && horizontal) m.right += 56;
@@ -4338,6 +4443,7 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
      * the KPI beside it carries the number. Still zero-based. */
     if (plan.spark) m = { top: 3, right: 3, bottom: 3, left: 3 };
     var iw = Math.max(10, W - m.left - m.right), ih = Math.max(10, H - m.top - m.bottom);
+    if (opt.out) opt.out.bottom = m.bottom;
     if (horizontal) tv = tickVals(Math.max(2, Math.floor(iw / 80)), iw);
     /* Bars take 55% of their band. */
     var isBar = kind === "bar" || kind === "barh";
@@ -4411,8 +4517,9 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
       ca.selectAll("text").attr("text-anchor", "end").attr("dx", "-0.4em")
         .attr("dy", "0.5em").attr("transform", "rotate(-30)");
     }
+    ca.selectAll("text").attr("display", bare ? "none" : null);
     var titles = [];
-    if (plan.xTitle) titles.push({ text: plan.xTitle, x: iw / 2, y: ih + m.bottom - 6, rot: 0 });
+    if (plan.xTitle && !bare) titles.push({ text: plan.xTitle, x: iw / 2, y: ih + m.bottom - 6, rot: 0 });
     if (plan.yTitle) titles.push({ text: plan.yTitle, x: -ih / 2, y: -m.left + 12, rot: -90 });
     g.selectAll("text.tb-axis-title").data(titles).join("text").attr("class", "tb-axis-title")
       .attr("text-anchor", "middle").attr("fill", t.muted).attr("font-size", 11)
@@ -4588,7 +4695,7 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
         var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
         if (!pts.length) return;
         var p = pts[pts.length - 1];
-        ends.push({ key: s.key, p: p, y: val(to(p)) - 9,
+        ends.push({ key: s.key, p: p, y: Math.max(val(to(p)) - 9, 11 - m.top),
                     text: chartFormatter(plan, rows, s.col)(p.y), colour: colour(s.key) });
       });
       /* Labels that would overlap step apart, top to bottom. */
@@ -4812,16 +4919,37 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
     var cols = Math.max(1, Math.min(facets.length, Math.floor(W / 260)));
     var rowsN = Math.ceil(facets.length / cols);
     var pw = Math.floor(W / cols), ph = Math.max(160, Math.floor((H + (rowsN - 1) * 40) / rowsN));
-    entry.svg.attr("height", ph * rowsN).attr("viewBox", "0 0 " + W + " " + (ph * rowsN));
     var panels = entry.svg.selectAll("svg.tb-panel").data(facets, function (f) { return f; }).join("svg")
-      .attr("class", "tb-panel").attr("overflow", "visible")
-      .attr("x", function (f, i) { return (i % cols) * pw; })
-      .attr("y", function (f, i) { return Math.floor(i / cols) * ph; })
-      .attr("width", pw).attr("height", ph);
+      .attr("class", "tb-panel").attr("overflow", "visible").attr("width", pw);
+    /* The category names are shared, so only a panel with none under it
+     * carries them (on a phone the panels stack, and the names would repeat
+     * under every one). A bare panel is shorter by exactly what the names
+     * take, so every panel's plot keeps one height on the one scale: the
+     * last panel is drawn first to measure it. */
+    var bareOf = function (i) { return kind !== "barh" && i + cols < facets.length; };
+    var cut = 0, last = facets.length - 1;
+    if (facets.some(function (f, i) { return bareOf(i); })) {
+      var out = {};
+      renderCategorical(entry, d3.select(panels.nodes()[last]), byFacet[facets[last]], kind, pw, ph, t,
+        { domain: domain, title: facets[last], panel: last + 1, cats: shared, out: out });
+      cut = Math.max(0, (out.bottom || 0) - 18);
+    }
+    var tops = [], y = 0;
+    for (var r = 0; r < rowsN; r++) {
+      tops.push(y);
+      var rowBare = true;
+      for (var c = r * cols; c < Math.min(facets.length, (r + 1) * cols); c++) rowBare = rowBare && bareOf(c);
+      y += rowBare ? ph - cut : ph;
+    }
+    entry.svg.attr("height", y).attr("viewBox", "0 0 " + W + " " + y);
+    panels.attr("x", function (f, i) { return (i % cols) * pw; })
+      .attr("y", function (f, i) { return tops[Math.floor(i / cols)]; })
+      .attr("height", function (f, i) { return bareOf(i) ? ph - cut : ph; });
     var readouts = [];
     panels.each(function (f, i) {
-      readouts.push(renderCategorical(entry, d3.select(this), byFacet[f], kind, pw, ph, t,
-        { domain: domain, title: f, panel: i + 1, cats: shared }));
+      readouts.push(renderCategorical(entry, d3.select(this), byFacet[f], kind, pw,
+        bareOf(i) ? ph - cut : ph, t,
+        { domain: domain, title: f, panel: i + 1, cats: shared, bareCats: bareOf(i) }));
     });
     return readouts;
   }
@@ -6980,6 +7108,12 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
    * fades that edge. Kept current on scroll, on resize, and when the table
    * inside changes size (a filter, a tab shown). Presentation only. */
   var _moreSeen = typeof WeakSet !== "undefined" ? new WeakSet() : null, _moreObserver = null;
+  /* A row of the page's controls, which scrolls sideways on a phone (tracebi.css). */
+  var CONTROL_ROW = ":is(div, p):has(> label > :is([data-tb-filter], [data-tb-search]), > [data-tb-range])";
+  var MORE_BOXES = ".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card";
+  function controlRows() {
+    try { return document.querySelectorAll(CONTROL_ROW); } catch (e) { return []; }
+  }
   function markMore(box) {
     var cs = getComputedStyle(box);
     var sx = /auto|scroll/.test(cs.overflowX), sy = /auto|scroll/.test(cs.overflowY);
@@ -6989,7 +7123,9 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
     else box.removeAttribute("data-tb-more");
   }
   function moreBox(el) {
-    return el && el.matches && el.matches(".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card");
+    if (!el || !el.matches) return false;
+    if (el.matches(MORE_BOXES)) return true;
+    try { return el.matches(CONTROL_ROW); } catch (e) { return false; }
   }
   function hydrateMore() {
     if (typeof getComputedStyle === "undefined" || !_moreSeen) return;
@@ -7009,7 +7145,8 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
         _moreObserver = { observe: function () {} };
       }
     }
-    var boxes = document.querySelectorAll(".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card"), i;
+    var boxes = Array.prototype.slice.call(document.querySelectorAll(MORE_BOXES))
+      .concat(Array.prototype.slice.call(controlRows())), i;
     for (i = 0; i < boxes.length; i++) {
       markMore(boxes[i]);
       if (!_moreSeen.has(boxes[i])) {
@@ -7788,6 +7925,15 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
    * page with no masthead keeps the floating Trace button. Safe to call
    * again: a masthead an app mounts later gets its link then. */
   function placeReceiptTriggers() {
+    /* The footer's build day in the reader's own words, as the masthead
+     * writes its build time (builtText), so one page never shows a date in
+     * two shapes. The build writes the stamp; this only rewords it. */
+    Array.prototype.forEach.call(document.querySelectorAll(".tb-footer-line time[datetime]"), function (tm) {
+      var when = new Date(tm.getAttribute("datetime"));
+      if (!isNaN(when.getTime())) {
+        tm.textContent = when.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      }
+    });
     var drawer = receiptDrawer();
     if (!drawer) return;
     var metas = document.querySelectorAll(".tb-masthead .tb-masthead-meta"), i, chip;
@@ -7805,6 +7951,7 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
     var lines = document.querySelectorAll(".tb-footer-line");
     for (i = 0; i < lines.length; i++) {
       if (!lines[i].querySelector(".tb-receipt-link")) {
+        lines[i].appendChild(document.createTextNode(" "));
         lines[i].appendChild(receiptLinkButton("How these numbers were made"));
       }
       var disclosure = lines[i].nextElementSibling;
@@ -8473,6 +8620,9 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
   function hostBridge() {
     if (typeof document === "undefined" || !root.parent || root.parent === root) return;
     var host = root.parent;
+    /* The frame grows to the page's height, so nothing in it can ride the
+     * bottom of the screen; tracebi.css keeps the selection bar in flow. */
+    if (document.documentElement) document.documentElement.setAttribute("data-tb-framed", "");
     function post(msg) {
       msg.tracebiFrame = 1;
       try { host.postMessage(msg, "*"); } catch (e) { /* defensive */ }
@@ -8592,7 +8742,7 @@ var d3=(()=>{var uu=Object.defineProperty;var Um=Object.getOwnPropertyDescriptor
 <script id="tracebi-data-flows_by_fund" type="application/json">{"name": "flows_by_fund", "columns": "['dim_fund.fund', 'dim_flow_type.flow_type', 'net_flow', 'flow_count']", "dtypes": "['object', 'object', 'float64', 'int64']", "csv": "dim_fund.fund,dim_flow_type.flow_type,net_flow,flow_count\nCedar Credit Partners,Drawdown,-2871200.0,2\nCedar Credit Partners,Interest,6310711.139999999,18\nCedar Credit Partners,Repayment,1018250.0,1\nHarbor Point BDC,Drawdown,-1846700.0,2\nHarbor Point BDC,Interest,3846909.7600000002,16\nHarbor Point BDC,Repayment,315700.0,2\nMeridian Direct Lending,Drawdown,-3262700.0,3\nMeridian Direct Lending,Interest,4760189.9799999995,16\nMeridian Direct Lending,Repayment,1393300.0,2\n"}</script>
 <script id="tracebi-data-concentration" type="application/json">{"name": "concentration", "columns": "['dim_issuer.sector', 'cum_share']", "dtypes": "['object', 'float64']", "csv": "dim_issuer.sector,cum_share\nConsumer,0.2631\nIndustrials,0.5011\nSoftware,0.711\nHealthcare,0.8594\nFinancials,0.9405\nEnergy,1.0\n"}</script>
 <script id="tb-semantic-contract-portfolio_model" type="application/json">{"model": "portfolio_model", "facts": [{"name": "fact_cashflows", "table": "fact_cashflows", "measures": ["amount"], "foreign_keys": {"dim_date": "flow_date", "dim_flow_type": "flow_type_id", "dim_fund": "fund_id", "dim_issuer": "issuer_id"}}, {"name": "fact_holdings", "table": "fact_holdings", "measures": ["cost", "fair_value", "par", "spread_bps"], "foreign_keys": {"dim_fund": "fund_id", "dim_issuer": "issuer_id", "dim_rating": "rating_id"}}], "dimensions": [{"name": "dim_date", "table": "dim_date", "key": "flow_date", "attributes": ["flow_date"]}, {"name": "dim_flow_type", "table": "dim_flow_type", "key": "flow_type_id", "attributes": ["flow_type"]}, {"name": "dim_fund", "table": "dim_fund", "key": "fund_id", "attributes": ["fund"]}, {"name": "dim_issuer", "table": "dim_issuer", "key": "issuer_id", "attributes": ["issuer", "sector"]}, {"name": "dim_rating", "table": "dim_rating", "key": "rating_id", "attributes": ["rating", "watch"]}], "measures": [{"agg": "sum", "column": "cost", "description": "Total cost basis", "format": "currency0", "kind": "simple", "name": "cost_basis"}, {"agg": "sum", "column": "fair_value", "description": "Total fair value", "format": "currency0", "kind": "simple", "name": "fair_value"}, {"agg": "count", "column": "cashflow_id", "description": "Number of cash flows", "kind": "simple", "name": "flow_count"}, {"description": "Cumulative % of total (largest first)", "format": "percent", "kind": "running", "name": "fv_cum_share", "running": "fv_share"}, {"description": "Rank by fair value (1 = largest)", "kind": "rank", "name": "fv_rank", "rank": "fair_value"}, {"description": "Fair value as % of total", "format": "percent", "kind": "share", "name": "fv_share", "share": "fair_value"}, {"description": "Fair value / cost", "format": "percent", "kind": "ratio", "name": "mark", "ratio": ["fair_value", "cost_basis"]}, {"agg": "sum", "column": "amount", "description": "Net cash flow (received less lent out)", "format": "currency0", "kind": "simple", "name": "net_flow"}, {"agg": "count", "column": "holding_id", "description": "Position count", "kind": "simple", "name": "positions"}, {"agg": "sum", "description": "Unrealized gain / loss", "expr": "fair_value - cost", "format": "currency0", "kind": "expression", "name": "unrealized"}], "tables": [{"name": "dim_date", "connector": "warehouse", "source": "dim_date"}, {"name": "dim_flow_type", "connector": "warehouse", "source": "dim_flow_type"}, {"name": "dim_fund", "connector": "warehouse", "source": "dim_fund"}, {"name": "dim_issuer", "connector": "warehouse", "source": "dim_issuer"}, {"name": "dim_rating", "connector": "warehouse", "source": "dim_rating"}, {"name": "fact_cashflows", "connector": "warehouse", "source": "fact_cashflows"}, {"name": "fact_holdings", "connector": "warehouse", "source": "fact_holdings"}]}</script>
-<script id="tracebi-receipt" type="application/json">{"report": "Portfolio Showcase", "rendered_at": "2026-10-24T02:22:43.285216+00:00", "git_sha": "74a11c4379cf2688268c92a51cb84b4c22cfa182", "figures": [{"id": "val-top-sector", "kind": "value", "binding": "top_sector", "cell": "dim_issuer.sector", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-top-share", "kind": "value", "binding": "top_sector", "cell": "fv_share", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-fv-inline", "kind": "value", "binding": "kpis", "cell": "fair_value", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-fv", "kind": "value", "binding": "kpis", "cell": "fair_value", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-gain", "kind": "value", "binding": "gain", "cell": "unrealized", "fingerprint": "80f1f2b286509fca72fe4494389fe3f8b1852251563c7e3f1e6a5d79c367cbbb", "model": "portfolio_model"}, {"id": "kpi-pos", "kind": "value", "binding": "kpis", "cell": "positions", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-mark", "kind": "value", "binding": "kpis", "cell": "mark", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-est", "kind": "value", "unverified": true}, {"id": "chart-sector", "kind": "chart", "binding": "by_sector", "fingerprint": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928", "model": "portfolio_model"}, {"id": "fig-chart_fund", "kind": "chart", "binding": "by_fund", "fingerprint": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4", "model": "portfolio_model"}, {"id": "tbl-top", "kind": "table", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-conc", "kind": "chart", "binding": "concentration", "fingerprint": "af9296404e9ca276e4beb71a93bc4deb12e6271d82c0456d3db3f89558326e2d"}, {"id": "chart-fund-sector", "kind": "chart", "binding": "fund_sector", "fingerprint": "2ff713e86f44f998293a49d4c927cd4643a5caf6781d4b76f9bd6de20688d67d", "model": "portfolio_model"}, {"id": "chart-top-issuers", "kind": "chart", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-size-mark", "kind": "chart", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-rating", "kind": "chart", "binding": "by_rating", "fingerprint": "f634a7f791d78b76ee457af04780285de730c40bd69dbda37feaf295089a0226", "model": "portfolio_model"}, {"id": "chart-issuer-curve", "kind": "chart", "binding": "issuer_curve", "fingerprint": "a56a371c0816f902b280c834db21ff35f29f1b421742e78592793ba0b9eb1662", "model": "portfolio_model"}, {"id": "fig-treemap", "kind": "custom", "binding": "holdings_detail", "fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401", "model": "portfolio_model"}, {"id": "tbl-detail", "kind": "table", "binding": "holdings_detail", "fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401", "model": "portfolio_model"}, {"id": "kpi-net-flow", "kind": "value", "binding": "flows", "cell": "net_flow", "fingerprint": "4299b22e3c8cb88edc9c6094703a0c03710945972bb9047441cecb788bd6f1e8", "model": "portfolio_model"}, {"id": "kpi-flow-count", "kind": "value", "binding": "flows", "cell": "flow_count", "fingerprint": "4299b22e3c8cb88edc9c6094703a0c03710945972bb9047441cecb788bd6f1e8", "model": "portfolio_model"}, {"id": "chart-flows-month", "kind": "chart", "binding": "flows_by_month", "fingerprint": "a28c35b043f467823a93898fffa3f1b2ae51d3f9a6f26ffb068912215ebceed6", "model": "portfolio_model"}, {"id": "tbl-flows", "kind": "table", "binding": "flows_by_fund", "fingerprint": "6304af265fb848353ab55e5b114aacd8f6ce4181f399361eb86b322bdcd79173", "model": "portfolio_model"}], "bindings": {"kpis": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "positions", "mark"], "dimensions": [], "filters": {}, "aggregate": true, "allow_fanout": false}, "rows": 1}, "by_sector": {"query": {"fact": "fact_holdings", "measures": ["fair_value"], "dimensions": ["dim_issuer.sector"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_issuer.sector", "desc": false}]}, "order_stated": 1, "rows": 6}, "top_sector": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "fv_share"], "dimensions": ["dim_issuer.sector"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_issuer.sector", "desc": false}, {"column": "fv_share", "desc": false}], "limit": 1}, "order_stated": 1, "rows": 1}, "gain": {"query": {"fact": "fact_holdings", "measures": ["unrealized"], "dimensions": [], "filters": {}, "aggregate": true, "allow_fanout": false}, "rows": 1}, "by_fund": {"query": {"fact": "fact_holdings", "measures": ["fair_value"], "dimensions": ["dim_fund.fund"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_fund.fund", "desc": false}]}, "order_stated": 1, "rows": 3}, "by_rating": {"query": {"fact": "fact_holdings", "measures": ["fair_value"], "dimensions": ["dim_rating.rating"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_rating.rating", "desc": false}]}, "order_stated": 1, "rows": 7}, "fund_sector": {"query": {"fact": "fact_holdings", "measures": ["fair_value"], "dimensions": ["dim_fund.fund", "dim_issuer.sector"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "dim_issuer.sector", "desc": false}, {"column": "dim_fund.fund", "desc": false}, {"column": "fair_value", "desc": false}]}, "order_stated": 1, "rows": 16}, "holdings_detail": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"], "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_issuer.issuer", "desc": false}, {"column": "dim_issuer.sector", "desc": false}, {"column": "cost_basis", "desc": false}, {"column": "mark", "desc": false}]}, "order_stated": 1, "rows": 13}, "holdings_total": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"], "dimensions": [], "filters": {}, "aggregate": true, "allow_fanout": false}, "rows": 1}, "issuer_curve": {"query": {"fact": "fact_holdings", "measures": ["fv_rank", "fv_cum_share"], "dimensions": ["dim_issuer.issuer"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fv_rank", "desc": false}, {"column": "dim_issuer.issuer", "desc": false}, {"column": "fair_value", "desc": false}, {"column": "fv_share", "desc": false}, {"column": "fv_cum_share", "desc": false}]}, "order_stated": 1, "rows": 13}, "top_issuers": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "mark"], "dimensions": ["dim_issuer.issuer"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_issuer.issuer", "desc": false}, {"column": "cost_basis", "desc": false}, {"column": "mark", "desc": false}], "limit": 8}, "order_stated": 1, "rows": 8}, "flows": {"query": {"fact": "fact_cashflows", "measures": ["net_flow", "flow_count"], "dimensions": [], "filters": {}, "aggregate": true, "allow_fanout": false}, "rows": 1}, "flows_by_month": {"query": {"fact": "fact_cashflows", "measures": ["net_flow"], "dimensions": ["dim_date.month"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "dim_date.month", "desc": false}, {"column": "net_flow", "desc": false}]}, "order_stated": 1, "rows": 8}, "flows_by_fund": {"query": {"fact": "fact_cashflows", "measures": ["net_flow", "flow_count"], "dimensions": ["dim_fund.fund", "dim_flow_type.flow_type"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "dim_fund.fund", "desc": false}, {"column": "dim_flow_type.flow_type", "desc": false}, {"column": "net_flow", "desc": false}, {"column": "flow_count", "desc": false}]}, "order_stated": 2, "rows": 9}, "concentration": {"rows": 6}}, "transform_contracts": {"dim_date": "satisfied", "dim_flow_type": "satisfied", "dim_fund": "satisfied", "dim_issuer": "satisfied", "dim_rating": "satisfied", "fact_cashflows": "satisfied", "fact_holdings": "satisfied"}, "semantic_contract_models": ["portfolio_model"], "methodology": true, "rendered_by": "tracebi reference", "stated_methodology": {"transform_notes": {"dim_date": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "dim_flow_type": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "dim_fund": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "dim_issuer": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "dim_rating": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "fact_cashflows": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "fact_holdings": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"}, "check_notes": [{"transform": "holdings", "check": "rows", "table": "fact_holdings", "note": "a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank"}, {"transform": "holdings", "check": "values", "table": "dim_rating", "note": "the CRM's ratings on the agency scale; an issuer it does not cover is Unrated, never dropped"}], "measure_notes": {"fair_value": "Total fair value", "positions": "Position count", "mark": "Fair value / cost", "fv_share": "Fair value as % of total", "unrealized": "Unrealized gain / loss", "cost_basis": "Total cost basis", "fv_rank": "Rank by fair value (1 = largest)", "fv_cum_share": "Cumulative % of total (largest first)", "net_flow": "Net cash flow (received less lent out)", "flow_count": "Number of cash flows"}}}</script>
+<script id="tracebi-receipt" type="application/json">{"report": "Portfolio Showcase", "rendered_at": "2026-10-24T20:01:04.628043+00:00", "git_sha": "39dcbe0d45d6cd1cded7bf7d13ee9068b12c6fb9", "figures": [{"id": "val-top-sector", "kind": "value", "binding": "top_sector", "cell": "dim_issuer.sector", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-top-share", "kind": "value", "binding": "top_sector", "cell": "fv_share", "fingerprint": "1e78decf66b83137551fabbfab06020f86e99d02895f333671d4d964eea852f3", "model": "portfolio_model"}, {"id": "val-fv-inline", "kind": "value", "binding": "kpis", "cell": "fair_value", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-fv", "kind": "value", "binding": "kpis", "cell": "fair_value", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-gain", "kind": "value", "binding": "gain", "cell": "unrealized", "fingerprint": "80f1f2b286509fca72fe4494389fe3f8b1852251563c7e3f1e6a5d79c367cbbb", "model": "portfolio_model"}, {"id": "kpi-pos", "kind": "value", "binding": "kpis", "cell": "positions", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-mark", "kind": "value", "binding": "kpis", "cell": "mark", "fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a", "model": "portfolio_model"}, {"id": "kpi-est", "kind": "value", "unverified": true}, {"id": "chart-sector", "kind": "chart", "binding": "by_sector", "fingerprint": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928", "model": "portfolio_model"}, {"id": "fig-chart_fund", "kind": "chart", "binding": "by_fund", "fingerprint": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4", "model": "portfolio_model"}, {"id": "tbl-top", "kind": "table", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-conc", "kind": "chart", "binding": "concentration", "fingerprint": "af9296404e9ca276e4beb71a93bc4deb12e6271d82c0456d3db3f89558326e2d"}, {"id": "chart-fund-sector", "kind": "chart", "binding": "fund_sector", "fingerprint": "2ff713e86f44f998293a49d4c927cd4643a5caf6781d4b76f9bd6de20688d67d", "model": "portfolio_model"}, {"id": "chart-top-issuers", "kind": "chart", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-size-mark", "kind": "chart", "binding": "top_issuers", "fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060", "model": "portfolio_model"}, {"id": "chart-rating", "kind": "chart", "binding": "by_rating", "fingerprint": "f634a7f791d78b76ee457af04780285de730c40bd69dbda37feaf295089a0226", "model": "portfolio_model"}, {"id": "chart-issuer-curve", "kind": "chart", "binding": "issuer_curve", "fingerprint": "a56a371c0816f902b280c834db21ff35f29f1b421742e78592793ba0b9eb1662", "model": "portfolio_model"}, {"id": "fig-treemap", "kind": "custom", "binding": "holdings_detail", "fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401", "model": "portfolio_model"}, {"id": "tbl-detail", "kind": "table", "binding": "holdings_detail", "fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401", "model": "portfolio_model"}, {"id": "kpi-net-flow", "kind": "value", "binding": "flows", "cell": "net_flow", "fingerprint": "4299b22e3c8cb88edc9c6094703a0c03710945972bb9047441cecb788bd6f1e8", "model": "portfolio_model"}, {"id": "kpi-flow-count", "kind": "value", "binding": "flows", "cell": "flow_count", "fingerprint": "4299b22e3c8cb88edc9c6094703a0c03710945972bb9047441cecb788bd6f1e8", "model": "portfolio_model"}, {"id": "chart-flows-month", "kind": "chart", "binding": "flows_by_month", "fingerprint": "a28c35b043f467823a93898fffa3f1b2ae51d3f9a6f26ffb068912215ebceed6", "model": "portfolio_model"}, {"id": "tbl-flows", "kind": "table", "binding": "flows_by_fund", "fingerprint": "6304af265fb848353ab55e5b114aacd8f6ce4181f399361eb86b322bdcd79173", "model": "portfolio_model"}], "bindings": {"kpis": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "positions", "mark"], "dimensions": [], "filters": {}, "aggregate": true, "allow_fanout": false}, "rows": 1}, "by_sector": {"query": {"fact": "fact_holdings", "measures": ["fair_value"], "dimensions": ["dim_issuer.sector"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_issuer.sector", "desc": false}]}, "order_stated": 1, "rows": 6}, "top_sector": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "fv_share"], "dimensions": ["dim_issuer.sector"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_issuer.sector", "desc": false}, {"column": "fv_share", "desc": false}], "limit": 1}, "order_stated": 1, "rows": 1}, "gain": {"query": {"fact": "fact_holdings", "measures": ["unrealized"], "dimensions": [], "filters": {}, "aggregate": true, "allow_fanout": false}, "rows": 1}, "by_fund": {"query": {"fact": "fact_holdings", "measures": ["fair_value"], "dimensions": ["dim_fund.fund"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_fund.fund", "desc": false}]}, "order_stated": 1, "rows": 3}, "by_rating": {"query": {"fact": "fact_holdings", "measures": ["fair_value"], "dimensions": ["dim_rating.rating"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_rating.rating", "desc": false}]}, "order_stated": 1, "rows": 7}, "fund_sector": {"query": {"fact": "fact_holdings", "measures": ["fair_value"], "dimensions": ["dim_fund.fund", "dim_issuer.sector"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "dim_issuer.sector", "desc": false}, {"column": "dim_fund.fund", "desc": false}, {"column": "fair_value", "desc": false}]}, "order_stated": 1, "rows": 16}, "holdings_detail": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"], "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_issuer.issuer", "desc": false}, {"column": "dim_issuer.sector", "desc": false}, {"column": "cost_basis", "desc": false}, {"column": "mark", "desc": false}]}, "order_stated": 1, "rows": 13}, "holdings_total": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"], "dimensions": [], "filters": {}, "aggregate": true, "allow_fanout": false}, "rows": 1}, "issuer_curve": {"query": {"fact": "fact_holdings", "measures": ["fv_rank", "fv_cum_share"], "dimensions": ["dim_issuer.issuer"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fv_rank", "desc": false}, {"column": "dim_issuer.issuer", "desc": false}, {"column": "fair_value", "desc": false}, {"column": "fv_share", "desc": false}, {"column": "fv_cum_share", "desc": false}]}, "order_stated": 1, "rows": 13}, "top_issuers": {"query": {"fact": "fact_holdings", "measures": ["fair_value", "mark"], "dimensions": ["dim_issuer.issuer"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "fair_value", "desc": true}, {"column": "dim_issuer.issuer", "desc": false}, {"column": "cost_basis", "desc": false}, {"column": "mark", "desc": false}], "limit": 8}, "order_stated": 1, "rows": 8}, "flows": {"query": {"fact": "fact_cashflows", "measures": ["net_flow", "flow_count"], "dimensions": [], "filters": {}, "aggregate": true, "allow_fanout": false}, "rows": 1}, "flows_by_month": {"query": {"fact": "fact_cashflows", "measures": ["net_flow"], "dimensions": ["dim_date.month"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "dim_date.month", "desc": false}, {"column": "net_flow", "desc": false}]}, "order_stated": 1, "rows": 8}, "flows_by_fund": {"query": {"fact": "fact_cashflows", "measures": ["net_flow", "flow_count"], "dimensions": ["dim_fund.fund", "dim_flow_type.flow_type"], "filters": {}, "aggregate": true, "allow_fanout": false, "order_by": [{"column": "dim_fund.fund", "desc": false}, {"column": "dim_flow_type.flow_type", "desc": false}, {"column": "net_flow", "desc": false}, {"column": "flow_count", "desc": false}]}, "order_stated": 2, "rows": 9}, "concentration": {"rows": 6}}, "transform_contracts": {"dim_date": "satisfied", "dim_flow_type": "satisfied", "dim_fund": "satisfied", "dim_issuer": "satisfied", "dim_rating": "satisfied", "fact_cashflows": "satisfied", "fact_holdings": "satisfied"}, "semantic_contract_models": ["portfolio_model"], "methodology": true, "rendered_by": "tracebi reference", "stated_methodology": {"transform_notes": {"dim_date": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "dim_flow_type": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "dim_fund": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "dim_issuer": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "dim_rating": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "fact_cashflows": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted", "fact_holdings": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"}, "check_notes": [{"transform": "holdings", "check": "rows", "table": "fact_holdings", "note": "a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank"}, {"transform": "holdings", "check": "values", "table": "dim_rating", "note": "the CRM's ratings on the agency scale; an issuer it does not cover is Unrated, never dropped"}], "measure_notes": {"fair_value": "Total fair value", "positions": "Position count", "mark": "Fair value / cost", "fv_share": "Fair value as % of total", "unrealized": "Unrealized gain / loss", "cost_basis": "Total cost basis", "fv_rank": "Rank by fair value (1 = largest)", "fv_cum_share": "Cumulative % of total (largest first)", "net_flow": "Net cash flow (received less lent out)", "flow_count": "Number of cash flows"}}}</script>
 <script id="tracebi-formats" type="application/json">{"kpis": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "by_sector": {"fair_value": "currency0"}, "top_sector": {"fair_value": "currency0", "fv_share": "percent"}, "gain": {"unrealized": "currency0"}, "by_fund": {"fair_value": "currency0"}, "by_rating": {"fair_value": "currency0"}, "fund_sector": {"fair_value": "currency0"}, "holdings_detail": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "holdings_total": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "issuer_curve": {"fair_value": "currency0", "fv_cum_share": "percent", "fv_share": "percent"}, "top_issuers": {"cost_basis": "currency0", "fair_value": "currency0", "mark": "percent"}, "flows": {"net_flow": "currency0"}, "flows_by_month": {"net_flow": "currency0", "dim_date.month": "label"}, "flows_by_fund": {"net_flow": "currency0"}}</script>
 <script id="tracebi-selection" type="application/json">{"report": "portfolio_model/portfolio_showcase", "model": "portfolio_model", "filters": {}}</script>
 <script id="tracebi-slice-fact_holdings" type="application/json">{"name": "fact_holdings", "format": "parquet", "parquet_b64": "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JgAyAAAAFvgcFjImCBaIGwAZLBgGcGFuZGFzGPgHeyJpbmRleF9jb2x1bW5zIjogW10sICJjb2x1bW5faW5kZXhlcyI6IFtdLCAiY29sdW1ucyI6IFt7Im5hbWUiOiAiZGltX2lzc3Vlci5zZWN0b3IiLCAiZmllbGRfbmFtZSI6ICJkaW1faXNzdWVyLnNlY3RvciIsICJwYW5kYXNfdHlwZSI6ICJvYmplY3QiLCAibnVtcHlfdHlwZSI6ICJzdHIiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogImRpbV9mdW5kLmZ1bmQiLCAiZmllbGRfbmFtZSI6ICJkaW1fZnVuZC5mdW5kIiwgInBhbmRhc190eXBlIjogIm9iamVjdCIsICJudW1weV90eXBlIjogInN0ciIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiZGltX3JhdGluZy5yYXRpbmciLCAiZmllbGRfbmFtZSI6ICJkaW1fcmF0aW5nLnJhdGluZyIsICJwYW5kYXNfdHlwZSI6ICJvYmplY3QiLCAibnVtcHlfdHlwZSI6ICJzdHIiLCAibWV0YWRhdGEiOiBudWxsfSwgeyJuYW1lIjogImRpbV9pc3N1ZXIuaXNzdWVyIiwgImZpZWxkX25hbWUiOiAiZGltX2lzc3Vlci5pc3N1ZXIiLCAicGFuZGFzX3R5cGUiOiAib2JqZWN0IiwgIm51bXB5X3R5cGUiOiAic3RyIiwgIm1ldGFkYXRhIjogbnVsbH0sIHsibmFtZSI6ICJmYWlyX3ZhbHVlIiwgImZpZWxkX25hbWUiOiAiZmFpcl92YWx1ZSIsICJwYW5kYXNfdHlwZSI6ICJmbG9hdDY0IiwgIm51bXB5X3R5cGUiOiAiZmxvYXQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiaG9sZGluZ19pZCIsICJmaWVsZF9uYW1lIjogImhvbGRpbmdfaWQiLCAicGFuZGFzX3R5cGUiOiAiaW50NjQiLCAibnVtcHlfdHlwZSI6ICJpbnQ2NCIsICJtZXRhZGF0YSI6IG51bGx9LCB7Im5hbWUiOiAiY29zdCIsICJmaWVsZF9uYW1lIjogImNvc3QiLCAicGFuZGFzX3R5cGUiOiAiZmxvYXQ2NCIsICJudW1weV90eXBlIjogImZsb2F0NjQiLCAibWV0YWRhdGEiOiBudWxsfV0sICJhdHRyaWJ1dGVzIjoge30sICJjcmVhdG9yIjogeyJsaWJyYXJ5IjogInB5YXJyb3ciLCAidmVyc2lvbiI6ICIyNS4wLjEifSwgInBhbmRhc192ZXJzaW9uIjogIjMuMC41In0AGAxBUlJPVzpzY2hlbWEYjBAvLy8vL3dBR0FBQVFBQUFBQUFBS0FBNEFCZ0FGQUFnQUNnQUFBQUFCQkFBUUFBQUFBQUFLQUF3QUFBQUVBQWdBQ2dBQUFEQUVBQUFFQUFBQUFRQUFBQXdBQUFBSUFBd0FCQUFJQUFnQUFBQUlCQUFBQkFBQUFQZ0RBQUI3SW1sdVpHVjRYMk52YkhWdGJuTWlPaUJiWFN3Z0ltTnZiSFZ0Ymw5cGJtUmxlR1Z6SWpvZ1cxMHNJQ0pqYjJ4MWJXNXpJam9nVzNzaWJtRnRaU0k2SUNKa2FXMWZhWE56ZFdWeUxuTmxZM1J2Y2lJc0lDSm1hV1ZzWkY5dVlXMWxJam9nSW1ScGJWOXBjM04xWlhJdWMyVmpkRzl5SWl3Z0luQmhibVJoYzE5MGVYQmxJam9nSW05aWFtVmpkQ0lzSUNKdWRXMXdlVjkwZVhCbElqb2dJbk4wY2lJc0lDSnRaWFJoWkdGMFlTSTZJRzUxYkd4OUxDQjdJbTVoYldVaU9pQWlaR2x0WDJaMWJtUXVablZ1WkNJc0lDSm1hV1ZzWkY5dVlXMWxJam9nSW1ScGJWOW1kVzVrTG1aMWJtUWlMQ0FpY0dGdVpHRnpYM1I1Y0dVaU9pQWliMkpxWldOMElpd2dJbTUxYlhCNVgzUjVjR1VpT2lBaWMzUnlJaXdnSW0xbGRHRmtZWFJoSWpvZ2JuVnNiSDBzSUhzaWJtRnRaU0k2SUNKa2FXMWZjbUYwYVc1bkxuSmhkR2x1WnlJc0lDSm1hV1ZzWkY5dVlXMWxJam9nSW1ScGJWOXlZWFJwYm1jdWNtRjBhVzVuSWl3Z0luQmhibVJoYzE5MGVYQmxJam9nSW05aWFtVmpkQ0lzSUNKdWRXMXdlVjkwZVhCbElqb2dJbk4wY2lJc0lDSnRaWFJoWkdGMFlTSTZJRzUxYkd4OUxDQjdJbTVoYldVaU9pQWlaR2x0WDJsemMzVmxjaTVwYzNOMVpYSWlMQ0FpWm1sbGJHUmZibUZ0WlNJNklDSmthVzFmYVhOemRXVnlMbWx6YzNWbGNpSXNJQ0p3WVc1a1lYTmZkSGx3WlNJNklDSnZZbXBsWTNRaUxDQWliblZ0Y0hsZmRIbHdaU0k2SUNKemRISWlMQ0FpYldWMFlXUmhkR0VpT2lCdWRXeHNmU3dnZXlKdVlXMWxJam9nSW1aaGFYSmZkbUZzZFdVaUxDQWlabWxsYkdSZmJtRnRaU0k2SUNKbVlXbHlYM1poYkhWbElpd2dJbkJoYm1SaGMxOTBlWEJsSWpvZ0ltWnNiMkYwTmpRaUxDQWliblZ0Y0hsZmRIbHdaU0k2SUNKbWJHOWhkRFkwSWl3Z0ltMWxkR0ZrWVhSaElqb2diblZzYkgwc0lIc2libUZ0WlNJNklDSm9iMnhrYVc1blgybGtJaXdnSW1acFpXeGtYMjVoYldVaU9pQWlhRzlzWkdsdVoxOXBaQ0lzSUNKd1lXNWtZWE5mZEhsd1pTSTZJQ0pwYm5RMk5DSXNJQ0p1ZFcxd2VWOTBlWEJsSWpvZ0ltbHVkRFkwSWl3Z0ltMWxkR0ZrWVhSaElqb2diblZzYkgwc0lIc2libUZ0WlNJNklDSmpiM04wSWl3Z0ltWnBaV3hrWDI1aGJXVWlPaUFpWTI5emRDSXNJQ0p3WVc1a1lYTmZkSGx3WlNJNklDSm1iRzloZERZMElpd2dJbTUxYlhCNVgzUjVjR1VpT2lBaVpteHZZWFEyTkNJc0lDSnRaWFJoWkdGMFlTSTZJRzUxYkd4OVhTd2dJbUYwZEhKcFluVjBaWE1pT2lCN2ZTd2dJbU55WldGMGIzSWlPaUI3SW14cFluSmhjbmtpT2lBaWNIbGhjbkp2ZHlJc0lDSjJaWEp6YVc5dUlqb2dJakkxTGpBdU1TSjlMQ0FpY0dGdVpHRnpYM1psY25OcGIyNGlPaUFpTXk0d0xqVWlmUUFBQUFBR0FBQUFjR0Z1WkdGekFBQUhBQUFBWkFFQUFDQUJBQURvQUFBQXNBQUFBSFFBQUFBMEFBQUFCQUFBQU1qKy8vOEFBQUVERUFBQUFCZ0FBQUFFQUFBQUFBQUFBQVFBQUFCamIzTjBBQUFBQUpMLy8vOEFBQUlBOVA3Ly93QUFBUUlRQUFBQUpBQUFBQVFBQUFBQUFBQUFDZ0FBQUdodmJHUnBibWRmYVdRQUFBZ0FEQUFJQUFjQUNBQUFBQUFBQUFGQUFBQUFNUC8vL3dBQUFRTVFBQUFBSkFBQUFBUUFBQUFBQUFBQUNnQUFBR1poYVhKZmRtRnNkV1VBQUFBQUJnQUlBQVlBQmdBQUFBQUFBZ0JvLy8vL0FBQUJGQkFBQUFBa0FBQUFCQUFBQUFBQUFBQVJBQUFBWkdsdFgybHpjM1ZsY2k1cGMzTjFaWElBQUFCWS8vLy9uUC8vL3dBQUFSUVFBQUFBSkFBQUFBUUFBQUFBQUFBQUVRQUFBR1JwYlY5eVlYUnBibWN1Y21GMGFXNW5BQUFBalAvLy85RC8vLzhBQUFFVUVBQUFBQ0FBQUFBRUFBQUFBQUFBQUEwQUFBQmthVzFmWm5WdVpDNW1kVzVrQUFBQXZQLy8veEFBRkFBSUFBWUFCd0FNQUFBQUVBQVFBQUFBQUFBQkZCQUFBQUFvQUFBQUJBQUFBQUFBQUFBUkFBQUFaR2x0WDJsemMzVmxjaTV6WldOMGIzSUFBQUFFQUFRQUJBQUFBQUFBQUFBPQAYIHBhcnF1ZXQtY3BwLWFycm93IHZlcnNpb24gMjUuMC4xGXwcAAAcAAAcAAAcAAAcAAAcAAAcAAAAMxAAAFBBUjE=", "payload_sha256": "af9b8aa6b80e063fe6ed21a3b1e964f5687a1710b434036528d607f1d5ff1db1"}</script>
