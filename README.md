@@ -8,230 +8,89 @@
 
 AI writes the analysis now, and a confident wrong number reads exactly like a
 right one. TraceBi makes every report *code*: an **agent** authors it, a
-**human** reviews and approves it in a pull request, guardrails refuse the bad
-numbers, and a trace proves the rest reproduce. It is built for both authors
-at once — the metric logic lives in your repo, not inside a GUI — a real **semantic layer** where a measure is
-declared once and referenced by name, a **three-phase workflow** that keeps the
-slow analysis and the fast reporting from blocking each other, and batteries
-included — connectors, pipelines, and a report engine. The agent gets a
-knowledge base, guardrails it can't skip, and an MCP gateway; the human holds
-review, the merge button, and a warehouse the agent can't write to.
+**human** reviews and approves it, guardrails refuse the bad numbers, and a
+trace proves the rest reproduce. The metric logic lives in your repo, not
+inside a GUI: a real **semantic layer** where a measure is declared once and
+referenced by name, a **three-phase workflow** that keeps the slow analysis
+and the fast reporting from blocking each other, and a web app where people
+read the reports, ask questions, and see how every number is made. The agent
+gets a vocabulary, guardrails it can't skip, and an MCP gateway; the human
+holds review, publishing, and a warehouse the agent can't write to.
 
-And because every figure is a live query, the report it renders is
-self-contained and **reproducible**: `tracebi verify` re-runs the recorded
-queries, and `tracebi verify --file` checks an emailed report offline, with no
-database and no account. The full identity, vocabulary, and refusals live in
-**[MANIFESTO.md](MANIFESTO.md)**.
+Because every figure is a live query, a built report is one self-contained,
+**reproducible** file: `tracebi verify` re-runs the recorded queries, and
+`tracebi verify --file` checks an emailed report offline, with no database and
+no account. The identity, vocabulary and refusals are in
+**[MANIFESTO.md](MANIFESTO.md)**; the handbook is **[docs/](docs/index.md)**
+(served in the app as **Docs**).
 
 ---
 
 ## How it works — the three-phase workflow
 
-TraceBi splits the work of turning raw data into a report into three phases,
-each a project-root folder with its own cadence. The phases are decoupled by
-**freeze points**: a materialized artifact handed from one to the next, so the
-slow analysis and the fast reporting never block each other.
+TraceBi takes data from messy to reportable in three project-root folders,
+each with its own cadence, decoupled by **freeze points**: a materialized
+artifact handed from one phase to the next.
 
 ```
-①  TRANSFORM    transforms/          slow, runs rarely — SQL (pandas the escape hatch)
-      read messy sources → parse, clean, key, dedupe → WRITE star-schema tables
+⓪  SOURCES      inputs/, connections/   raw files, and databases declared as YAML
                                                         │
-                                       freeze ▼  data/warehouse.duckdb
-②  MODEL        models/              the contract, changes deliberately
-      a declarative DataModel (star schema) over the warehouse — grain, keys,
-      measures, in a few dozen lines a reviewer reads without opening the pandas
+①  TRANSFORM    transforms/             slow, runs rarely — SQL (pandas the escape hatch)
+      read the sources → parse, clean, key, dedupe → SINK star-schema tables
+                                                        │
+                                       freeze ▼  the warehouse (tracebi.yaml)
+②  MODEL        models/                 the contract, changes deliberately
+      a declarative star schema over the warehouse — grain, keys, measures,
+      a few dozen YAML lines a reviewer reads without opening the transform
                                                         │
                                        freeze ▼  the model (the semantic contract)
-③  REPORT       reports/             fast, iterate constantly
-      an artifact package (or a ReportSpec) pointed at the model — KPI cards,
-      charts, tables, every figure a live query with an embedded trace.
-      Re-renders in milliseconds; nothing re-runs ①.
+③  REPORT       reports/                fast, iterate constantly
+      a package pointed at the model — KPI cards, charts, tables, every figure
+      a live query with an embedded trace. Nothing re-runs ①.
 ```
 
-**Phase 1 (TRANSFORM)** is SQL by default (`transforms/<name>.sql`, DuckDB
-statements run top to bottom in one fresh connection), with ordinary pandas or
-polars as the escape hatch — pull the queries you need, do the real analysis
-(window functions, prose parsing, cleaning), then *sink* clean star-schema
-tables into the warehouse. The framework does not constrain how you clean; the
-contract is *what lands* — the named tables at the end of the script. A
-transform may carry a **sink contract** (`<name>.contract.yaml` beside it, or a
-`with contract(...) as c:` block in Python — declared checks like row counts,
-unique keys, foreign keys) that runs at sink time, raises on failure, and
-records a certificate report manifests join against; it certifies the sink,
-never the SQL or pandas above it.
+**① Transform** is SQL by default: `transforms/<name>.sql`, DuckDB statements
+run top to bottom in one fresh warehouse connection. A header line
+`-- source: crm.issuer_ratings` loads a table of a declared connection before
+the first statement. The framework does not constrain how you clean; the
+contract is *what lands*, the named tables at the end. A
+`<name>.contract.yaml` beside it declares closed checks (rows, unique keys,
+not-null, foreign keys, value domains, reconciliations) that run at sink time,
+raise on failure, and record a certificate report manifests join against: *the
+sink satisfied its contract*, never "the transform was verified". When the work
+outgrows SQL, a `.py` or `.ipynb` transform (pandas or polars) is the escape
+hatch.
 
-**Phase 2 (MODEL)** is a thin declarative star schema over the warehouse. It
-reads the sink; it never sees the transform.
+**② Model** is a declarative star schema over the warehouse
+(`models/<name>.yaml`): tables, facts, dimensions, relationships and named
+measures (ratios, windows, period-ends, time intelligence). It reads the sink;
+it never sees the transform. A model query runs inside the warehouse, in a
+locked read-only DuckDB connection.
 
-**Phase 3 (REPORT)** is an **artifact package** pointed at the model:
-`tracebi new-report` scaffolds `reports/<name>/` (a `report.json` of data
-bindings + `template.html` / `style.css` / `script.js`); `tracebi dev` explores
-it live; `tracebi report build` renders one self-contained HTML with its trace
-inlined; `tracebi verify` re-runs it. A JSON `ReportSpec` is the lightweight
-alternative — auto-discovered and served the same way. Because the model is
-materialized, the page re-renders in milliseconds with no pandas in the loop —
-editing the report never re-runs the analysis. (A dashboard is a style of
-report, not a different thing.)
+**③ Report** is a package pointed at the model: `report.json` (named queries,
+the *bindings*) plus an `app.jsx` dashboard or a `template.html` page. `tracebi
+report build` renders one self-contained HTML with its trace inlined. The built
+page is live: it carries the slice of the model its figures need, and a filter,
+a click on a bar or a row re-runs every figure's own query in the page, offline.
 
-| Phase | Folder | Artifact | Discovered by the server as |
-|---|---|---|---|
-| ① Transform | `transforms/` | pandas → DuckDB tables | — (run explicitly) |
-| ② Model | `models/` | `DataModel` (a `model` variable) | a model: its page on **Data**, Model tab |
-| ③ Report | `reports/` | `ReportSpec` JSON (or a template package / factory) | a report, in **Reports** (the library), under its model |
+**Where trust starts.** Lineage is not traced through the phase-① analysis;
+the line is drawn at the **sink**. The trust machinery (stamped queries, a
+SHA-256 fingerprint per figure, `tracebi verify`) applies from the model
+boundary onward. `verify` proves a number *reproduces* and the file was not
+*altered*; it does not prove the number is correct.
 
-```bash
-cd examples/portfolio_project   # the reference project ships in the repo
-python run_workflow.py          # ① build the warehouse, ③ build every report
-python -m tracebi.web.run       # serve it: http://127.0.0.1:8000 → portfolio_model's Reports → portfolio_dashboard
-```
-
-The reference implementation ships in the repo at `examples/portfolio_project/`
-— a complete project with the same shape `tracebi init` scaffolds (plus its own
-`run_workflow.py` driver):
-`transforms/holdings_transform.sql`, `models/portfolio_model.yaml`,
-`reports/portfolio_model/portfolio_dashboard/`, driven by `run_workflow.py`. Full
-walkthrough: **[the three-phase workflow](docs/concepts/the-three-phase-workflow.md)**.
-
-Everything below hangs off this spine: the framework gives you the connectors
-and lineage-tracked `DataSet` for phase 1, the `DataModel` for phase 2, the
-report engine for phase 3, and — **from the model boundary onward (phases 2 and
-3)** — the trust machinery that makes a published figure reproducible.
+Full walkthrough: **[the three-phase workflow](docs/concepts/the-three-phase-workflow.md)**.
 
 ---
 
-## Why TraceBi?
+## Install
 
-| Capability | Dash / Streamlit | dbt | Qlik / Tableau | **TraceBi** |
-|---|---|---|---|---|
-| Code-first Python framework — metric logic in the repo, reviewed in a PR | ✓ (app code, no model) | ✗ (SQL + YAML) | ✗ | ✓ |
-| Declarative semantic layer agents query (facts, dims, named measures) | ✗ | ✓ (Semantic Layer, cloud) | partial (governed models, not agent-first) | ✓ |
-| Governed expressiveness (ratios, windows, semi-additive, time intelligence) as declared measures | ✗ | partial (metrics, SQL underneath) | partial | ✓ |
-| Self-contained HTML artifact (charts + data + styling inlined) | ✗ (live app, no artifact) | ✗ (docs site, not reports) | partial (exports, no lineage) | ✓ |
-| Report specs validated *before* execution | ✗ | ✗ (compiles SQL, no report layer) | ✗ | ✓ |
-| Every figure reproducible — `tracebi verify` re-runs the recorded queries | ✗ | ✗ | ✗ | ✓ |
-
----
-
-## What's built
-
-These are the framework's build milestones (a different axis from the three
-workflow phases above — a "Phase" here is a development stage, not a folder):
-
-- [x] **Phase 1** — Connectors (CSV, SQL, BigQuery, Snowflake, Memory, DuckDB) with push-down filter/columns, DataModel, DataSet with immutable lineage chain
-- [x] **Phase 2** — Report engine (Excel + HTML renderers, lineage manifest per render)
-- [x] **Phase 2.5** — Landing/Manipulation/Final layers (medallion-compatible), DuckDB-backed star-schema query on DataModel, LineageDiagram
-- [x] **Phase 4** — Pipeline runner with APScheduler, DB persistence, cross-layer lineage
-- [x] **Phase 5** — Web UI (FastAPI + React), folder-based auto-discovery, optional HTTP Basic / proxy-header auth with roles, `tracebi` CLI, docker-compose deployment
-- [x] **Agent gateway** — the kernel over MCP (`tracebi mcp`): an agent queries the semantic model, validates and renders report specs, builds artifact packages (`build_report`), and fetches the built bytes (`fetch_artifact`); every response is stamped with the resolved query, lineage, and a fingerprint of the full result
-- [x] **Verify loop** — every render records input fingerprints in the manifest; `tracebi verify` (and the gateway's `verify_manifest` tool) re-runs the recorded queries and classifies each as reproduces / source drift / model changed / unexplained / unverifiable, then gives the report one verdict — a manifest where nothing could be checked is never reported as a pass. This operates on phase-2/3 queries against the model; it re-runs recorded queries and compares fingerprints — it does **not** read a phase-1 transform or assert a number is correct.
-
----
-
-## 30-second quick start
-
-No database, no config — just pandas in memory:
-
-```python
-import pandas as pd
-from tracebi import DataModel, MemoryConnector
-from tracebi.reports import Report, TableSection, HTMLRenderer
-
-orders = pd.DataFrame({
-    "order_id": [1, 2, 3, 4],
-    "region":   ["NE", "SE", "NE", "MW"],
-    "revenue":  [100.0, 200.0, 150.0, 300.0],
-})
-
-model = DataModel("Demo").add_connector(MemoryConnector("mem", {"orders": orders}))
-model.add_table("orders", connector="mem", source="orders")
-
-ds = model.load("orders")
-report = Report("Demo").add(TableSection(title="Orders", dataset=ds))
-HTMLRenderer().serve(report, port=8080)   # opens in your browser
-```
-
-The same `DataSet` carries its lineage all the way through to the rendered
-manifest — no separate audit step.
-
----
-
-## Coming from pandas?
-
-You already know 95% of this. A `DataSet` is a thin, **immutable** wrapper
-around a `pandas.DataFrame` that records what happened to it:
-
-```python
-ds = model.load("orders")        # DataSet, not DataFrame
-
-# The verbs you already use have first-class equivalents that record
-# structured lineage (keys, measures, row counts in/out):
-enriched = (
-    ds
-    .assign(margin=lambda df: df.revenue - df.cost)        # like df.assign
-    .join(customers, on="customer_id", how="left")         # like df.merge
-    .aggregate(by="region",                                # like groupby/agg
-               revenue="sum", orders=("order_id", "nunique"))
-)
-
-# Anything else fits in .transform() — any DataFrame -> DataFrame function
-# (pivot, resample, custom logic) works unchanged:
-pivoted = ds.transform(lambda df: df.pivot_table(...), description="…")
-
-df = ds.to_pandas()              # escape hatch: plain DataFrame copy, any time
-ds.help()                        # cheat sheet of the fluent API
-```
-
-The differences that matter:
-
-- **Nothing mutates.** Every method (`.filter()`, `.transform()`, `.sort()`, …)
-  returns a *new* DataSet; the original is untouched. Branch freely.
-- **Every step is recorded.** The description you pass becomes part of the
-  audit trail — `ds.print_lineage()` shows the full chain with row counts.
-- **`.filter()` takes a pandas query string** (`"status == 'shipped'"`), the
-  same syntax as `DataFrame.query()`.
-- **In Jupyter**, a `DataSet` at the end of a cell renders a rich preview —
-  shape, lineage chain, and the first rows with dtypes.
-
----
-
-## Choose your path
-
-**📚 [Full documentation → `docs/`](docs/index.md)** — concepts, guides and a
-complete reference, organised as a linked vault. Open the folder in Obsidian for
-backlinks and the graph view, or just read it on GitHub.
-
-| I want to… | Start here |
-|---|---|
-| Get running in five minutes | [docs/guides/quickstart.md](docs/guides/quickstart.md) |
-| Author a report end to end | [docs/guides/your-first-report.md](docs/guides/your-first-report.md) |
-| Look up a command, key, or measure kind | [docs/index.md](docs/index.md#reference) |
-| Understand the three-phase workflow (transform → model → report) | [the three-phase workflow](docs/concepts/the-three-phase-workflow.md) — the spine, with the reference implementation |
-| Follow the full analyst flow start-to-finish | [docs/guides/analyst-guide.md](docs/guides/analyst-guide.md) — scaffold → transform → report → publish |
-| Work in a notebook with rich previews | [docs/guides/notebook-guide.md](docs/guides/notebook-guide.md) + `examples/analyst_quickstart.py` |
-| Write a one-off report or query | `tracebi new-report "My Report"` then `tracebi dev my_report` — explore inside the artifact (exploration blocks die at build) |
-| Migrate a JSON spec to the artifact form | `tracebi migrate spec reports/<name>.json` — compiles every section to a default-component figure; the package shadows the spec until you delete it |
-| Define a reusable model for notebooks and scripts | `tracebi new-model "My Model"` → edit `models/<name>.py` → `from tracebi.model_registry import get_model` |
-| Define a scheduled ETL pipeline | `tracebi new-pipeline "My ETL"` → edit `pipelines/<name>.py` → `from tracebi.pipeline_registry import get_runner` |
-| Point the web app at my own data / restyle the UI | [docs/guides/web-customization.md](docs/guides/web-customization.md) — app modules, registry, theming, auth, deploy |
-| Query facts/dimensions visually | Tag tables with `add_fact()` / `add_dimension()`, then open **Ask** |
-| Understand data flow end-to-end | `examples/phase1_example.py` through `phase4_example.py` in order |
-| Browse the API interactively | Start the server, then open `http://localhost:8000/api-docs` (Swagger UI) or `/api-redoc` |
-| Add a chart or table to a report | [Build a report](#3-build-a-report) — `ChartSection`, `TableSection`, `TextSection` |
-| Let an AI agent query models and author reports | `pip install 'tracebi[mcp]'`, then register `tracebi mcp` with your agent — see [Agent gateway](#agent-gateway-mcp) |
-| Reproduce a rendered report's numbers | `tracebi verify output/report.manifest.json` — re-runs every recorded query and classifies drift |
-| Point an agent at the rules of the road | [AGENTS.md](AGENTS.md) — the agent knowledge base; SOPs in [docs/agents/](docs/agents) |
-
----
-
-## Installation
-
-TraceBi is not on PyPI yet — install from a clone (or straight from GitHub).
-The fastest path for an analyst:
+TraceBi is not on PyPI yet. Install from a clone:
 
 ```bash
 git clone https://github.com/saltyscott0521/tracebi
 cd tracebi
-pip install -e ".[analyst]"           # reports + sql + csv + lineage + duckdb + dotenv
+pip install -e ".[all]"            # the engine, the CLI, the web app, the agent gateway
 ```
 
 Or without cloning:
@@ -240,695 +99,328 @@ Or without cloning:
 pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"
 ```
 
-That install builds from the repo tree, where the React bundle
-(`tracebi/web/ui/dist`) is gitignored — so it carries the library and the API but
-**no web UI**. `tracebi serve` will start and `/` will tell you so. For the
-browser interface, clone and build it (see [Web UI](#web-ui)), or install a
-wheel built by `.github/workflows/release.yml`, which runs the UI build first.
+An install straight from git carries the library, the CLI and the API but **no
+web UI**: the React bundle (`tracebi/web/ui/dist`) is built, not committed, so
+`/` says so. Build it from a clone (`cd web/ui && npm ci && npm run build`), or
+use the Docker image or a release wheel, which ship it.
 
-Pick the pieces you need (extras work the same with either install style):
+Extras, if you want only some pieces: `duckdb` (required for any model
+query), `reports`, `pipeline`, `web`, `mcp`, `postgres`, `bigquery`,
+`snowflake`, `lineage`, `pdf`, `analyst` (the data stack for a laptop), `all`,
+and `dev` (everything the test suite needs). `tracebi update` says whether a
+newer release exists and prints the command for your install
+([updating](docs/guides/updating.md)).
 
-```bash
-pip install -e "."                    # core: connectors, DataSet, lineage (no query engine)
-pip install -e ".[reports]"           # Excel + HTML renderers
-pip install -e ".[pipeline]"          # scheduling + DB write-back
-pip install -e ".[lineage]"           # lineage diagrams
-pip install -e ".[duckdb]"            # DuckDB — required to run any model query (Ask + report figures)
-pip install -e ".[web]"               # FastAPI + uvicorn web UI
-pip install -e ".[e2e]"               # Playwright, for the browser smoke test
-pip install -e ".[all]"               # everything
-```
+---
 
-### Docker / deployment
+## The reference project, in one command
 
-The repo ships a multi-stage `Dockerfile` (builds the React UI, then the
-Python app) and a `docker-compose.yml` that serves one project, the reference
-project `examples/portfolio_project`, and nothing beside it: `TRACEBI_APP` is
-unset, so the bundled demo app (opt-in with `TRACEBI_APP=tracebi.web.demo_app`)
-is never served next to a project. The project's `output/` and `scheduled/`
-folders are mounted from the host, so report builds and their traces are
-ordinary files you can browse and back up, and survive container restarts. The
-app runs as uid 10001; a one-shot `output-perms` service makes the output
-folder writable by it. The warehouse lives in the `warehouse` volume.
+`examples/portfolio_project/` is the working project every convention follows:
+four models over one warehouse, each with its transform, contract, pipeline and
+reports, and one of each kind of source.
 
 ```bash
-# Local: web UI on http://localhost:8000
-docker compose up --build
+cd examples/portfolio_project
+python run_workflow.py      # ① every transform into data/warehouse.duckdb, ③ every report into output/
+tracebi serve               # http://127.0.0.1:8000
 ```
 
-The stack is three services, one per deployment plane:
+| Model | Source | Transform | Reports |
+|---|---|---|---|
+| Direct Lending Portfolio | `inputs/holdings.csv` + a Postgres CRM (`connections/crm.yaml`, `TRACEBI_CRM_URL`; without it the committed snapshot stands in, and the certificate says so) | `holdings_transform.sql` (+ `holdings_transform_pandas.py`, the same tables in pandas) | `portfolio_model/`: dashboard, desk, book, overview, concentration, showcase |
+| Wealth Management | a core-banking SQLite that ships (`connections/bank.yaml`) | `wealth_transform.sql` | `wealth_model/`: AUM by branch, AUM by region |
+| SaaS Subscriptions | a billing SQLite that ships (`connections/billing.yaml`) | `saas_transform.sql` | `saas_model/`: MRR dashboard, cohort brief |
+| Housing Affordability | public data, `inputs/housing_history.csv` | `affordability_transform.py` (the pandas escape hatch, `with contract`) | `housing_model/`: affordability, with a reader's what-if |
 
-| Service | Plane | Does |
-|---|---|---|
-| `db` | state | Postgres. On its first start it creates `crm`, a standing mock CRM database loaded once from `inputs/seed_crm.sql`, and `tracebi_state` for the run store (`docker/postgres-init.sql`). Both persist on the `pgdata` volume. |
-| `seed` | execution | Runs the reference project's three pipelines once (each transform, then its reports), so the portfolio transform reads the CRM; then exits. It never writes the CRM. |
-| `app` | serving | FastAPI + React on `:8000`, over the warehouse `seed` wrote. Starting a web process does no batch work. |
+`docker compose up --build` serves the same project, with the CRM as a
+standing Postgres database (below). The public demo at tracebi.com is that
+stack.
 
-`TRACEBI_CRM_URL` points `connections/crm.yaml` at the `crm` database. Re-run a
-model's pipeline without restarting the API with **Refresh data** on the model,
-or:
+---
+
+## The app
+
+`tracebi serve` (or the Docker image) serves the web app over your project.
+Five places in the sidebar:
+
+- **Reports** (`/`) — the library: every report by folder, its verdict, when
+  it was built, its schedule, narrowed to a model by a chip. A report opens at
+  `/reports/<name>` as delivered, under one command bar: **Open**, **Share**,
+  **Export** (PDF, Excel, or the HTML with its trace), **Rebuild** and **Edit as
+  a draft** for an analyst, and **About this build** (the trace, lineage,
+  history and files).
+- **Ask** (`/ask`) — a question of one model as a sentence of its own tokens
+  ("Show fair value by sector, largest first, top 8"), answered with a chart,
+  table or number, each measure's definition and the query behind it. **Keep
+  this** starts a draft report.
+- **Data** (`/data`, analysts and admins) — opens on **Flow**, the board: five
+  lanes in the order the data moves (⓪ Sources, ① Transforms, the Warehouse
+  grouped by the transform that wrote each table, ② Models, ③ Reports), wires
+  between the cards, a model's whole path lit on hover. The tabs behind it list
+  the same things: **Sources** (every connection and the `inputs/` folder, what
+  each holds and what reads it, and its credentials), **Transforms**,
+  **Warehouse** (every table, who wrote it, who reads it, its checks) and
+  **Models**. Any table opens on a page of its own (rows with sort, search and
+  filters, a column profile, who uses it); a model's page draws its line and
+  its tabs (Model, Transform with **Refresh data**, Sources, Runs).
+- **Review** (`/review`, analysts and admins) — what needs attention (a failed
+  refresh, a build that needs a look, a request to publish), then **Drafts**,
+  **History** (what ran, when, for whom, whether it reproduced) and **Verify**
+  (drop in a report file and its manifest).
+- **Docs** (`/docs`) — this repository's handbook, **Get started** first.
+
+Roles decide what shows: everyone Reports, Ask and Docs; an analyst also Data
+(read-only) and Review; only an admin runs a refresh or sets a credential.
+With no sign-in configured every caller is admin. FastAPI's API reference is
+at `/api-docs`; every route is in [API routes](docs/reference/api-routes.md).
+
+---
+
+## Authoring a report
+
+A report is a package, `reports/<name>/`; by convention it sits in its
+model's folder (`tracebi new-report "Portfolio Model/Book"` creates
+`reports/portfolio_model/book/`, named by that path). Two forms, one renderer:
 
 ```bash
-docker compose exec app tracebi run-pipeline portfolio_model
+tracebi new-dashboard "Ops Board"     # report.json + app.jsx: a dashboard from the TraceBi kit
+tracebi new-report "Portfolio Book"   # report.json + template.html: a page that reads with JavaScript off
+tracebi dev portfolio_book            # the app in dev mode, Build mode on: re-renders as you (or your agent) save
+tracebi report build portfolio_book   # → output/portfolio_book.html + .manifest.json (the trace)
+tracebi verify output/portfolio_book.html.manifest.json
+tracebi verify --file output/portfolio_book.html
 ```
 
-Postgres is published on `:5432`, so the CRM can be inspected, and the
-execution plane driven, from the host by cron, CI, or `tracebi run-pipeline`.
-That is the shape a real deployment takes, and it is why the compose file is
-worth reading even if you deploy elsewhere. See NOTES.md, "Deployment planes".
+Every figure names a binding: a query declared in `report.json`, resolved,
+fingerprinted and embedded. A number with no binding must carry
+`data-tb-unverified`; there is no third state. Explore inside
+`data-tb-stage="exploration"` blocks, which die at build. `report.py` beside
+`report.json` is the escape hatch for pandas the model can't express; its
+outputs are stamped `verifiable: false` and never read green.
 
-Optional environment overrides (set in a `.env` beside `docker-compose.yml`):
+A `"schedule"` block in `report.json` makes it recurring: `tracebi schedule
+run <name>` (or `serve`, or `TRACEBI_SCHEDULES_IN_SERVER=1`) refreshes, builds,
+verifies, and emails it only when it verifies.
 
-| Variable | Purpose |
+The handbook: [your first report](docs/guides/your-first-report.md),
+[`report.json`](docs/reference/report-json.md),
+[`app.jsx`](docs/reference/app-jsx.md),
+[`template.html`](docs/reference/template-html.md),
+[styling](docs/guides/styling-a-report.md).
+
+---
+
+## Models, transforms and sources
+
+```bash
+tracebi init my_project                      # a complete three-phase project whose sample loop reads REPRODUCES
+cd my_project
+tracebi run-pipeline sample_model            # the sample's transform, then its reports: what Refresh data runs
+tracebi connect crm --kind postgres          # → connections/crm.yaml, the secret as ${NAME} (--store secret: the encrypted store)
+tracebi new-transform "Holdings"             # → transforms/holdings.sql + holdings.contract.yaml (--python: pandas)
+tracebi run-transform holdings               # runs it top to bottom, fresh; prints form: sql
+tracebi new-model "Holdings"                 # → models/holdings.yaml (--from crm --tables a,b: drafted from metadata)
+tracebi validate                             # every model loads; dimension keys are unique
+tracebi new-pipeline "Holdings"              # → pipelines/holdings.yaml: the transform, then every report in reports/holdings/
+```
+
+`tracebi.yaml` at the project root names the warehouse (a DuckDB file by
+default; Parquet on object storage, or a remote engine) and the query engine's
+limits. The handbook: [transform](docs/concepts/transform.md),
+[SQL transforms](docs/reference/transform-sql.md),
+[sink contracts](docs/concepts/sink-contracts.md),
+[model files](docs/reference/model-json.md),
+[measures](docs/reference/measures.md),
+[`tracebi.yaml`](docs/reference/tracebi-yaml.md),
+[pipeline files](docs/reference/pipeline-yaml.md).
+
+### Credentials
+
+A connection never holds a secret: a password, or a URL that carries one, is a
+`${NAME}`, resolved when the connection is used from the environment, then the
+project's `.env`, then the project's encrypted store
+(`.tracebi/secrets.yml.enc`), then a `${NAME:-default}` that must itself hold
+no credential.
+
+```bash
+tracebi secret list                 # every ${NAME} the project references, and where each is set
+tracebi secret set TRACEBI_CRM_URL  # prompted, no echo; encrypted into the store
+tracebi secret edit                 # the decrypted YAML in $EDITOR, encrypted back
+tracebi secret unset TRACEBI_CRM_URL
+```
+
+A signed-in admin can do the same from Data → Sources, and test the
+connection there; a value never comes back to the browser. The key is
+`TRACEBI_SECRET_KEY`, or `.tracebi/secret.key` generated on first use. See
+[credentials](docs/reference/credentials.md).
+
+---
+
+## Deploy
+
+**One server.** One VM, one container, one project folder: the app, the
+schedules and the email run in it. `deploy/compose.yml` mounts your project
+(`TRACEBI_PROJECT_DIR`); SQLite is the default, `--profile postgres` adds
+Postgres. Step by step: [run TraceBi on one server](docs/guides/one-server.md).
+
+**Docker, the reference project.** The repository's `docker-compose.yml`
+serves `examples/portfolio_project` and nothing beside it:
+
+```bash
+docker compose up --build           # http://localhost:8000
+```
+
+| Service | Does |
 |---|---|
-| `POSTGRES_PASSWORD` | Local compose Postgres password (default `tracebi`) |
-| `POSTGRES_PORT` | Host port for the compose Postgres (default `5432`). Set it if you already run Postgres locally: `POSTGRES_PORT=55432 docker compose up`. |
-| `TRACEBI_MODELS_DIR` | Folder scanned for model definitions (default `models`) |
-| `TRACEBI_PIPELINES_DIR` | Folder scanned for pipeline definitions (default `pipelines`) |
-| `TRACEBI_REPORTS_DIR` | Folder scanned for report packages, specs, and named factories (default `reports`) |
-| `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | Turn on HTTP Basic auth |
-| `TRACEBI_AUTH_PROXY_HEADER` | Trust an upstream identity header (Authelia / oauth2-proxy / Cloudflare Access) |
-| `TRACEBI_DEV_MODE=1` | Mount `/api/_dev/reload` for hot iteration |
+| `db` | Postgres. On its first start it creates `crm`, a standing mock CRM loaded once from `inputs/seed_crm.sql`, and `tracebi_state`, the run store (`docker/postgres-init.sql`). Both persist on the `pgdata` volume; `docker compose down -v` starts over. |
+| `seed` | Runs the project's four pipelines once (each transform, then its reports) into the `warehouse` volume, then exits. It never writes the CRM. |
+| `app` | The web app on `:8000`, over the warehouse `seed` wrote. |
 
-**Single-VM deployment** is the supported v1 story — one container behind
-nginx or a reverse-proxy, SQLite volume mounted at `/app/data`. Cloud Run /
-ECS / Fly.io all work the same way (the scheduler runs in-process; if the
-container restarts, schedules resume from the persisted DB).
+Re-run a model's pipeline with **Refresh data**, or
+`docker compose exec app tracebi run-pipeline portfolio_model`.
 
-**Honest caveats:** the scheduler is single-process. It will not scale
-horizontally across replicas, and a hard kill loses in-flight runs (the
-`tracebi_runs` table still records that they started). For larger workloads
-swap APScheduler for an external orchestrator (Airflow, Prefect, Dagster) and
-keep the rest of TraceBi as the data layer.
+**Several workers** (`uvicorn tracebi.web.api.main:app --workers 4`, or
+several replicas) need Postgres: point `TRACEBI_STATE_URL` at it so runs,
+schedules and sessions share one store and its advisory locks keep two
+processes from running the same layer or sending the same email (SQLite is one
+process only), and give every process the same `TRACEBI_SECRET_KEY`.
 
-### CLI
-
-```bash
-tracebi init my_project                              # scaffold a full three-phase project (inputs → transform → model → report)
-tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (artifact package)
-tracebi dev portfolio_book                           # live loop in the app: Build mode on that report (:8001)
-tracebi dev                                          # no name: the app's Data page, where your agent's exhibits land (phases ①/②)
-tracebi dev portfolio_book --classic                 # the old stdlib preview + /__workbench page (fallback)
-tracebi session export --format md                   # save the session → explorations/ (lab-notebook record)
-tracebi context --brief                              # token-lean vocabulary for agents (~44% of full)
-tracebi migrate spec reports/sales.json              # compile a JSON spec into reports/sales/ (shadows the spec)
-tracebi run-transform holdings                       # run a phase-① transform (.sql, .py or .ipynb) top-to-bottom
-tracebi validate                                     # load every model; check dimension keys are unique
-tracebi serve                                        # browse the project at http://127.0.0.1:8000
-tracebi new-model "Sales Model"                      # → models/sales_model.py
-tracebi list-models
-tracebi new-pipeline "Sales ETL"                     # → pipelines/sales_etl.yaml
-tracebi list-pipelines
-tracebi run-pipeline sales_etl                       # run every layer, upstream first
-tracebi run-pipeline sales_etl --status              # last run per layer, executes nothing
-tracebi context [--model NAME]                       # framework vocabulary as JSON (for agents and tooling)
-tracebi spec schema                                  # JSON Schema for a report spec
-tracebi spec validate report.json                    # check a spec without executing it
-tracebi spec render report.json                      # build a spec and render HTML + manifest
-tracebi new-report "Portfolio Book"                  # → reports/portfolio_book/ (template package scaffold)
-tracebi report build portfolio_model/portfolio_dashboard          # render a report (spec or package) → self-contained HTML + manifest
-tracebi report preview portfolio_model/portfolio_dashboard          # build and open it in a browser
-tracebi mcp                                          # agent gateway over MCP (stdio)
-tracebi verify output/report.manifest.json           # re-run recorded queries; classify drift
-tracebi verify --file output/report.html             # offline: does the shipped file's data still match its manifest?
-```
-
-`run-pipeline` executes layers without a web server, which is what lets the
-batch work run somewhere other than the API process — a cron entry, a
-Kubernetes CronJob, an Airflow task, a CI job. It exits non-zero if any layer
-fails, so whatever invoked it can act on that. TraceBi does not need to own
-the schedule.
-
-`tracebi dev <name>` opens the web app on that report with Build mode on, at
-http://127.0.0.1:8001 (loopback only). The report re-renders every time you
-save the package; the panel beside it lists what changed, the data each
-binding reads, and checks (figures with no data behind them, bindings nothing
-reads, numbers typed outside figures). Click a figure to point at it, or leave
-your agent a note. With no name it opens the app's Data page, where what your
-agent shows you appears before any report exists. Keep it next to your editor
-for a tight authoring loop. `--classic` serves the older stdlib preview and
-its `/__workbench` page instead, and is what runs when the `web` extra is not
-installed.
+**Sign-in** is off until you configure it: HTTP Basic, a trusted proxy header,
+named local users (`TRACEBI_LOCAL_USERS`), or your identity provider over OIDC
+(`TRACEBI_OIDC_ISSUER`), with roles (viewer, analyst, admin) and folder
+permissions (`_folder.yaml`) that narrow them. See
+[sign-in](docs/guides/sign-in.md), [folder permissions](docs/reference/folder-yaml.md)
+and [environment variables](docs/reference/environment-variables.md).
 
 ---
 
-## Quick Start
+## Agents (MCP)
 
-### 1. Connect to data
-
-```python
-from tracebi import DataModel, SQLConnector, MemoryConnector
-
-# SQLite / Postgres / MySQL / BigQuery / Snowflake
-db = SQLConnector("sales_db", url="sqlite:///data/sales.db")
-
-model = DataModel("SalesModel")
-model.add_connector(db)
-model.add_table("orders",    connector="sales_db", source="orders")
-model.add_table("customers", connector="sales_db", source="customers")
-model.add_relationship("orders_customers", "orders", "customers",
-                        left_key="customer_id", how="left")
-```
-
-### 2. Load and transform (full lineage at every step)
-
-```python
-orders = (
-    model.load("orders")
-    .filter("status == 'shipped'", description="Shipped orders only")
-    .deduplicate(subset="order_id")
-    .dropna(subset="region")
-    .assign(margin=lambda df: df["revenue"] - df["cost"])
-    .sort("margin", ascending=False)
-)
-
-orders.print_lineage()
-# Step 1: [LOAD]         Loaded 'orders' from connector 'sales_db'
-# Step 2: [FILTER]       Shipped orders only  (250 → 198 rows)
-# Step 3: [DEDUPLICATE]  Removed 3 duplicate rows by ['order_id']
-# Step 4: [DROPNA]       Dropped 2 rows with nulls in ['region']
-# Step 5: [ASSIGN]       Assigned columns: margin
-# Step 6: [SORT]         Sorted by margin (desc)
-```
-
-Cleaning verbs (`dropna`, `fillna`, `deduplicate`, `cast`, `limit`) record
-structured lineage — row counts, fill counts, type maps — automatically.
-`.transform(lambda df: ...)` remains the escape hatch for anything else.
-Run `ds.help()` for the full cheat sheet.
-
-### 3. Build a report
-
-```python
-from tracebi.reports import (
-    Report, TextSection, TableSection, ChartSection,
-    ExcelRenderer, HTMLRenderer,
-)
-
-report = (
-    Report("Q2 Sales Report")
-    .author("Data Team")
-    .parameter("period", "Q2 2024")
-    .add(TextSection(title="Summary", content="Summary", style="heading1"))
-    .add(TextSection(content="Revenue up 12% vs Q1.", style="normal"))
-    .add(ChartSection(title="Revenue Trend", dataset=trend_ds,
-                      chart_type="line", x="month", y="revenue"))
-    .add(TableSection(title="Top Orders", dataset=orders,
-                      columns=["region", "product", "revenue"],
-                      totals=["revenue"]))
-)
-
-ExcelRenderer().render(report, "output/q2_sales.xlsx")  # + saves manifest.json
-HTMLRenderer().render(report, "output/q2_sales.html")
-HTMLRenderer().serve(report, port=8080)   # open in browser
-HTMLRenderer().preview(report)            # inline in Jupyter
-```
-
-Layout and styling extras:
-
-```python
-from tracebi.reports import Metric, MetricSection, RowSection
-
-report = (
-    Report("Q2 Sales Report")
-    # Row of KPI cards with green/red deltas
-    .metrics([
-        Metric("Total Revenue", 1_250_000, format="currency0", delta=0.12),
-        Metric("Refund Rate", 0.034, format="percent", delta=-0.01, good_when_up=False),
-    ])
-    # Chart and table side by side (HTML; stacks vertically in Excel)
-    .row(
-        ChartSection(title="By Region", dataset=by_region, chart_type="bar",
-                     x="region", y="revenue", show_values=True),
-        TableSection(title="Detail", dataset=by_region,
-                     number_formats={"revenue": "currency"},   # named shortcuts
-                     highlight_negatives=["margin"],           # red negatives
-                     color_scale={"revenue": "#2E74B5"}),      # heat map
-    )
-)
-```
-
-Named number formats (`currency`, `currency0`, `percent`, `comma`, `decimal`)
-work in tables and metrics, in both HTML and Excel output.
-
-**In notebooks**, `DataSet`, `DataModel`, and `Report` all render rich inline
-previews — a `Report` at the end of a cell shows the fully rendered report.
-Call `.help()` on any of them for an API cheat sheet.
-
-### 4. Landing → Manipulation → Final (Medallion architecture)
-
-The three-step layer model — TraceBi's positioning name and the legacy
-medallion name resolve to the same classes:
-
-| TraceBi name        | Medallion alias  | Role                                                |
-|---------------------|------------------|-----------------------------------------------------|
-| `LandingLayer`      | `BronzeLayer`    | Connect to upstream table, ingest as-is.            |
-| `ManipulationLayer` | `SilverLayer`    | Optional light cleaning before serving.             |
-| `FinalLayer`        | `GoldLayer`      | Serve via DataModel star-schema query — facts + dims. |
-
-```python
-from tracebi import LandingLayer, ManipulationLayer, FinalLayer  # or BronzeLayer / SilverLayer / GoldLayer
-
-# Landing — raw ingest, zero transforms
-landing = LandingLayer(connector=db, source="orders_raw",
-                       sink=db, sink_table="orders_bronze")
-ds_landing = landing.execute()   # loads + writes to DB
-
-# Manipulation — declarative cleaning pipeline
-manip = (
-    ManipulationLayer(source=db, source_table="orders_bronze",
-                      sink=db, sink_table="orders_silver")
-    .cast({"qty": "int64", "order_date": "datetime64[ns]"})
-    .drop_nulls(subset=["order_id"])
-    .deduplicate(subset=["order_id"])
-)
-ds_manip = manip.execute()   # loads landing → cleans → writes manipulation
-
-# Tag tables on the DataModel with star-schema roles
-model.add_dimension("dim_customer", table_name="customers",
-                    key_col="customer_id", attributes=["region", "segment"])
-model.add_fact("fact_orders", table_name="orders_silver",
-               measures=["revenue", "qty"],
-               foreign_keys={"dim_customer": "customer_id"})
-
-# Final — aggregated via the model's star-schema query (DuckDB-backed)
-final = FinalLayer(model=model, fact="fact_orders",
-                   measures={"revenue": "sum", "qty": "sum"},
-                   dimensions=["dim_customer.region"],
-                   sink=db, sink_table="revenue_by_region_gold")
-ds_final = final.execute()   # queries → aggregates → writes serving table
-```
-
-The Manipulation steps (`cast`, `drop_nulls`, `deduplicate`, `rename`,
-`filter(where=...)`) compile to SQL and run in DuckDB. When the source and the
-sink are the same `DuckDBConnector` database, Landing and Manipulation run
-inside it as `CREATE OR REPLACE TABLE … AS SELECT …` and no rows are loaded
-into pandas; any other source's `load()` frame is handed to the same SQL as an
-Arrow table. Each step's lineage node records `engine: duckdb` and its SELECT.
-`deduplicate` keeps the first row in the source's order, as pandas did. A
-`cast` takes pandas dtype names (`int64`, `float64`, `str`,
-`datetime64[ns]` …) and refuses any other by name. `.transform(func)` is the
-escape hatch: a pandas callable, marked `escape_hatch: python` in its lineage
-node and in the layer's run record (`tracebi run-pipeline <name> --status`
-says which layers left SQL). Needs `pip install 'tracebi[pipeline]'`.
-
-### 5. Schedule pipelines
-
-```python
-from tracebi.pipeline.runner import PipelineRunner
-
-runner = PipelineRunner(db_url="sqlite:///data/tracebi.db")
-
-# Each layer has its own independent schedule
-# (landing / manip / final are the layers built in section 4 above)
-runner.register(landing, name="orders_bronze",   schedule="0 * * * *")
-runner.register(manip,   name="orders_silver",   schedule="15 * * * *",
-                depends_on="orders_bronze")
-runner.register(final,   name="revenue_by_region", schedule="30 6 * * *",
-                depends_on="orders_silver")
-
-# On-demand: run one layer
-runner.run("orders_silver")
-
-# On-demand: full refresh (bronze → silver → gold)
-runner.run("revenue_by_region", refresh=True)
-
-# View run history with cross-layer lineage
-runner.lineage("revenue_by_region")
-
-# Start the scheduler (blocking)
-runner.start()
-```
-
-Every run is recorded in `tracebi_runs` with `rows_in`, `rows_out`, `status`,
-and an `upstream_run_id` linking back to the previous layer's run.
-
-### 6. Lineage diagrams
-
-```python
-from tracebi.lineage.diagram import LineageDiagram
-
-diag = LineageDiagram(ds_gold)   # or LineageDiagram(report)
-diag.show()                       # matplotlib / Jupyter inline
-diag.to_html("lineage.html")      # standalone HTML with embedded SVG
-print(diag.to_mermaid())          # paste into GitHub markdown
-```
-
----
-
-## Agent gateway (MCP)
-
-An AI agent should work against your **semantic contract**, not your
-warehouse. `tracebi mcp` serves the kernel over the
-[Model Context Protocol](https://modelcontextprotocol.io): the agent reads
-the vocabulary with `get_context` (models, facts, dimensions, named
-measures, report sections — nothing outside it will validate), queries with
-`query_model`, and authors reports as specs it can check *before* executing
-with `validate_report_spec`.
-
-Every query response is **stamped** — the resolved query, the full lineage
-chain, and a SHA-256 fingerprint of the complete result travel with the
-rows. Rows are a capped preview; the fingerprint always covers the full
-result, so any number the agent quotes is verifiable afterwards by
-re-running the recorded query and comparing hashes. `render_report_spec`
-produces the governed HTML artifact from a spec, and `build_report` renders
-a full **artifact package** (`reports/<name>/`) — both refuse anything that
-fails validation; `fetch_artifact` returns the built bytes so a remote agent
-can actually deliver what it made. `verify_manifest` closes the loop: it
-re-runs every query recorded in a manifest and classifies the outcome
-(reproduces, source drift, model changed, unexplained), so an agent can check
-its own trace before a human sees the number.
-
-The full playbook — the two planes, the L0–L3 assurance ladder, all **13
-tools**, the `author_report` / `answer_question` / `address_pins` prompts, and the canonical
-discover → explore → author → validate → render → verify → cite loop — is in
-[AGENTS.md](AGENTS.md).
+An agent works against your semantic contract, not your warehouse.
+`tracebi mcp` serves the kernel over the
+[Model Context Protocol](https://modelcontextprotocol.io): 22 tools and three
+prompts. The agent reads the vocabulary (`get_context`), queries the model
+(`query_model`: every answer is stamped with the resolved query, its lineage
+and a SHA-256 fingerprint of the full result), builds and verifies reports
+(`build_report`, `verify_manifest`), and writes drafts a person publishes
+(`start_draft`, `write_draft_file`, `preview_draft`, `publish_draft`). It is
+read-and-compute only: nothing it can call writes to the warehouse.
 
 ```bash
-pip install 'tracebi[mcp]'
+pip install -e ".[mcp]"
+claude mcp add tracebi -- tracebi mcp          # a local agent, from the project folder (tracebi init writes .mcp.json)
 
-# Local agent (e.g. Claude Code), from your project directory:
-claude mcp add tracebi -- tracebi mcp
-
-# Remote agent: the HTTP transport requires a token —
-# every client must send "Authorization: Bearer $TRACEBI_MCP_TOKEN".
 export TRACEBI_MCP_TOKEN=$(openssl rand -hex 32)
-tracebi mcp --transport http --host 0.0.0.0 --port 8765
-
-# Without a token the server refuses to start; serving an
-# unauthenticated gateway is an explicit opt-out, and only on loopback
-# unless --allow-insecure-bind is also passed:
-tracebi mcp --transport http --port 8765 --insecure
+tracebi mcp --transport http --host 0.0.0.0 --port 8765   # a remote agent; the token is required
 ```
 
-The HTTP transport binds `127.0.0.1` unless `--host` says otherwise, and
-enables DNS-rebinding protection on loopback. A container that should be
-reachable uses `--host 0.0.0.0` with `TRACEBI_MCP_TOKEN`. `--insecure` on a
-non-loopback host refuses to start unless `--allow-insecure-bind` is passed.
+With `TRACEBI_MCP_TOKEN` or `TRACEBI_OIDC_ISSUER` set, the web app also serves
+the gateway at `/mcp`, so ChatGPT and Claude connectors sign each person in
+with their company login ([connect ChatGPT and Claude](docs/guides/connect-chatgpt-and-claude.md)).
+From a laptop, `tracebi login` and `tracebi push` send report packages and
+models as drafts, and Python as a code request an admin approves
+([push from a laptop](docs/guides/push-from-a-laptop.md)).
 
-Read-and-compute only: queries, validation, rendering, and verification.
-Pipeline execution (which writes to the warehouse) is deliberately not exposed.
-Attribution is recorded as `mcp:<TRACEBI_MCP_ACTOR>` (default `mcp:agent`)
-in the same audit trail as web and CLI actors.
-
-### Retaining traces
-
-Every render writes a `<output>.manifest.json` next to the artifact —
-`render_report_spec` lands both in `output/` by default. The
-manifest is the audit trail: the recorded queries, lineage, input
-fingerprints, and git SHA that let a reviewer check a number months later.
-`tracebi verify <manifest>` is that check — it re-runs every recorded query
-and reports whether each still reproduces, whether the inputs drifted, or
-whether the model itself changed. It exits 0 only when something was
-actually checked and nothing failed: 2 for diagnosed source drift, 1 for an
-undiagnosed mismatch *or* for a manifest with no data-bearing section, which
-verifies nothing and so cannot pass. A manifest whose every section is
-hand-transformed still exits 0, but says `NOTHING VERIFIED` rather than
-`REPRODUCES`.
-
-`tracebi verify <manifest>` re-runs the recorded queries against the model and
-compares fingerprints; it does not read the file you actually shipped. `tracebi verify --file <report.html>`
-is the offline complement: it re-hashes the data blocks embedded in a
-self-contained report and checks each against the manifest, so an edited total
-in a file mailed around a company is caught (`FILE ALTERED`) even with no
-database in reach. One asks *do these numbers still reproduce*; the other asks
-*is this the file we rendered*.
-
-Rendered HTML is disposable; manifests are not. Retain them — commit them, or
-archive whatever lands in `output/` — because a trace you discarded proves
-nothing.
+The playbook an agent reads first (the two planes, the assurance ladder, every
+tool, the authoring loop) is **[AGENTS.md](AGENTS.md)**; `tracebi context`
+prints the generated vocabulary.
 
 ---
 
-## Web UI
+## The trace
 
-A browser interface over your TraceBi registry — connectors, models, reports, and pipelines all in one place. Highlights:
+Every build writes `<report>.html.manifest.json` beside the file: per figure,
+the model, the exact query and a fingerprint of the data it returned. Keep the
+manifests; a trace you discarded proves nothing.
 
-The sidebar has five places: **Reports** (the library, where the app opens:
-every report by folder, each with its verdict, built time and schedule,
-narrowed to a model by a chip), **Ask**, **Data**, **Review** and **Docs** (the
-handbook, Get started first, for everyone). Older addresses (`/m/<model>/…`,
-`/models`, `/explore`, `/sources`, `/map`, `/drafts`, `/handbook`,
-`/getting-started`, `/reports?r=<name>`) redirect into them. Review is four tabs, each at its own
-address: Attention (`/review`), Drafts (`/review/drafts`), History (`/runs`)
-and Verify (`/verify`). The sidebar shows what the role uses: everyone
-Reports, Ask and Docs, an analyst also Review and Data, read-only below admin
-(with no sign-in, all five); an address above the role says who it is for.
+| Command | Asks |
+|---|---|
+| `tracebi verify <manifest>` | Do these numbers still reproduce? Re-runs every recorded query: `REPRODUCES`, source drift, model changed, or unexplained. Exit 0 only when something was checked and nothing failed. |
+| `tracebi verify <manifest> --contracts` | Does the sink still satisfy its contract, and did its sources move? |
+| `tracebi verify <manifest> --local` | Does the page engine's recomputation match the server's, plan by plan? |
+| `tracebi verify --file <report.html>` | Is this the file we rendered? Offline, no database: an edited number reads `FILE ALTERED`. |
 
-- **Ask** — a visual star-schema query builder: pick a fact, toggle
-  measures and dimension attributes, add filters, and get results with a
-  chart, CSV download, and the *lineage graph of the exact query that ran*.
-- **Data** (`/data`) — opens on **Flow**, the board: five lanes read left to right in the
-  order the data moves (⓪ Sources, ① Transforms, the Warehouse grouped by the transform that
-  wrote each table, ② Models, ③ Reports), wires between the cards, and every card a link to
-  its page. Hovering or focusing a model lights its whole path; `/data?model=<m>` opens with
-  it lit. Then the lists behind the board. **Sources** (`/data/sources`): every connection and
-  the `inputs/` folder, what each holds (read on request; a connection whose `${VAR}` is unset
-  says "Not connected here") and what reads it. **Transforms** (`/data/transforms`): every
-  file in `transforms/`, its form, the models it feeds, its contract file and when it last
-  wrote. **Warehouse** (`/data/warehouse`): every table, who wrote it, which models read it,
-  its checks and what fed it. **Models** (`/data/models`): a row per model, its chain
-  (sources → transform → tables → measures → reports, each a link), its reports' verdicts as
-  counts and when its data was last refreshed. A model's page (`/data/<model>`) leads with its line
-  (Sources → Transform → Model → Reports, the warehouse file and the measures between them),
-  then four tabs: Model, Transform, Sources, Runs.
-- **Model** — a model's Data page, Model tab: table previews with column dtypes
-  and full-table CSV export,
-  plus an interactive ERD of its facts and dimensions.
-- **Reports** — the library opens a report at `/reports/<name>` (a model's line links to
-  the library narrowed to it); a report with no build says so and offers **Build it now**. A report's own page is the
-  report, full width, as delivered: the app's nav is a slim icon rail on the left, and
-  above the report a slim header (a breadcrumb back to the model, its name, the
-  verdict chip and, when it asks for a look, why, and when it was built) and one
-  command bar. **Open** opens the build in a new tab (`/r/<name>`), **Share** copies
-  its link, and **Export** saves a PDF, an Excel file, or the self-contained HTML with
-  its embedded trace (only the HTML carries it, and `tracebi verify --file`
-  checks it). An analyst or admin also gets **Rebuild** (in the background, a toast
-  when done) and **Edit as a draft**, and dev mode **Build**; a command the role
-  cannot use is not shown. The report's own masthead chip says the app's verdict.
-  **About this build** opens one panel (a sheet on a phone) with four tabs:
-  **Trace** (whether the check still holds, with **Check again**, the model,
-  figures, schedule and kind, then the build's own certificate of how each number was made),
-  **Lineage** (where each number came from), **History** (its newest build with
-  its verdict, the older builds folded under it) and **Files** (the report's files, read-only). Failures show the
-  full Python traceback.
-- **Transform** — a model's Data page, Transform tab: the medallion chain as a live DAG
-  and a list of steps, its runs and code, and the tables it produces. **Refresh data**, the
-  tab's one primary action, runs the whole pipeline; it and the per-step run buttons are
-  shown only to an admin.
-- **Sources** — a model's Data page, Sources tab: what it is made from (its warehouse, and
-  the connections and input files its transform reads); every source is at `/data/sources`.
-- **Runs** — a model's Data page, Runs tab: History narrowed to the model.
-- **Review** (`/review`) — what waits on a person, in the order they act on it: **Needs
-  attention** (a refresh whose steps failed, a build that needs a look or does not reproduce,
-  a publish request to decide in place, their own requests waiting on approvers), then
-  **Drafts** (their own first), then **Verify a file**, a small drop zone for a report file
-  someone was sent (`/verify` is its full page).
-- **History** (under **Review**) — what ran, when, how long it took, by whom, and whether it
-  reproduced, grouped by day (a card per run on a phone): each report or pipeline once, its
-  newest run, with its older runs folded under it (**Every run**, `/runs?all=1`, lists them
-  all). A report run links to the report by
-  its name, a refresh to its model's Transform tab; a failed run reads red, and a column no
-  row fills (how long, who) is not shown. A report's newest
-  build shows the same verdict as the report's own page; every older build reads
-  "Not checked". Only a `reproduces` verdict reads green.
+See [the trace](docs/concepts/trace.md) for what it proves and what it does not.
 
-```bash
-# Install web dependencies
-pip install -e ".[web]"
+---
 
-# Build the React UI — tracebi/web/ui/dist is gitignored, so a fresh clone has none,
-# and neither does a `pip install ... @ git+https://...` (wheels built by the
-# release workflow DO ship it prebuilt). Without it the API still runs; /
-# serves a page saying so. This step needs a clone.
-cd web/ui && npm ci && npm run build && cd ../..
+## The Python library
 
-# Start the server (hot-reload on by default)
-python -m tracebi.web.run
-# Open http://localhost:8000
-```
-
-The API is self-documenting: once the server is running, open
-[`http://localhost:8000/api-docs`](http://localhost:8000/api-docs) for the Swagger UI
-or [`http://localhost:8000/api-redoc`](http://localhost:8000/api-redoc) for ReDoc (`/docs` is the app's handbook) —
-every endpoint, parameter, and response schema is listed there.
-
-`tracebi/web/demo_app/` is the bundled demo app — opt-in via
-`TRACEBI_APP=tracebi.web.demo_app` (the default is no app module, so a serve
-shows *your* project). It is fully self-contained: its models ship inside the
-package (`wealth_model` at `tracebi/web/demo_app/models/wealth_model.py`;
-`sales_model`, a star schema over the cleaned tables of the demo's sales
-pipeline, in `pipeline.py`), and it stands up a self-contained SQLite medallion
-pipeline (Landing → Manipulation → Final) at startup so the model's Transform
-tab has live run history. Reports read from those resources.
-
-The second model — `wealth_model` (`tracebi/web/demo_app/models/wealth_model.py`) — is a wealth-management star schema with four dimensions (clients, branches, products, accounts) and two facts (holdings, activities), showing that a TraceBi app can serve multiple data models side by side. The `aum_by_branch` and `client_activity` reports are built on it, and it's fully queryable from **Ask** (e.g. AUM by region × asset class, or net flows by client segment).
-
-To point the UI at your own app module (connectors that cannot be expressed as a file convention):
-
-```bash
-TRACEBI_APP=mypackage.tracebi_config python -m tracebi.web.run
-```
-
-Your module just needs to import `registry` and call `registry.add_connector()`, `registry.add_model()`, `@registry.report(...)`, and optionally `registry.add_pipeline()`.
-
-**Project-root directories are auto-discovered** — you don't have to put everything in the app module. The server scans these folders at startup and registers whatever it finds:
-
-| Directory | Convention | Env var override |
-|---|---|---|
-| `models/` | each `.py` exposes a `model` variable (a `DataModel`) | `TRACEBI_MODELS_DIR` |
-| `pipelines/` | each `.py` exposes a `runner` variable (a `PipelineRunner`) | `TRACEBI_PIPELINES_DIR` |
-| `reports/` | a `.py` factory (`@register.report(...)`), a `.json` `ReportSpec` (workflow phase ③), or a `<name>/` artifact package — all served as reports. A package directory shadows a same-named `.json` spec (the migration cutover) | `TRACEBI_REPORTS_DIR` |
-
-Use `tracebi new-model` / `tracebi new-pipeline` to scaffold the files. See [docs/guides/web-customization.md](docs/guides/web-customization.md) for the full wiring guide.
-
-### Shared models and pipelines (no web server required)
-
-Define a model once in `models/` and import it anywhere — notebooks, scripts, or the web server:
-
-```bash
-tracebi new-model "Sales Model"          # scaffold models/sales_model.py
-# edit models/sales_model.py — wire connectors, tables, relationships
-```
+The engine underneath is a Python library you can use from a notebook or a
+script: an immutable, lineage-tracked `DataSet`, `DataModel` with its
+star-schema query, the medallion layers (`LandingLayer`, `ManipulationLayer`,
+`FinalLayer`, compiled to DuckDB SQL), `PipelineRunner` with APScheduler, and
+the connectors (CSV, SQL, BigQuery, Snowflake, DuckDB, memory). Check
+`tracebi/__init__.py` for what it exports.
 
 ```python
-from tracebi.model_registry import get_model, list_models
-
-print(list_models())                     # ["sales_model"]
-model = get_model("sales_model")
-ds = model.load("orders")
-```
-
-Same pattern for pipelines:
-
-```bash
-tracebi new-pipeline "Sales ETL"         # scaffold pipelines/sales_etl.yaml
-```
-
-```python
-from tracebi.pipeline_registry import get_runner
-
-runner = get_runner("sales_etl")
-runner.run("orders_silver")
-runner.status()
-```
-
-The web server auto-discovers both directories at startup and registers them into the registry automatically.
-
-### Adding reports to the web UI
-
-Drop a file in `reports/` and decorate a factory function — the server picks it up on startup with no extra wiring:
-
-```python
-# reports/weekly_summary.py
 from tracebi.model_registry import get_model
-from tracebi.reports import Report, TableSection
 
-try:
-    from tracebi.web import register
-
-    @register.report("weekly_summary", description="Weekly order summary")
-    def _factory():
-        model = get_model("sales_model")
-        ds = model.load("orders")
-        return Report("Weekly Summary").add(TableSection(title="Orders", dataset=ds))
-except ImportError:
-    pass
+model = get_model("portfolio_model")          # no web server needed
+orders = model.load("fact_holdings")           # a DataSet: rich preview in Jupyter
+orders.print_lineage()
 ```
 
----
-
-## Local database setup (example)
-
-```bash
-# Create data/seed.db, seed source tables, run initial Bronze load
-python examples/seeds/seed_db.py
-
-# Run Silver
-python -c "from examples.seeds.seed_db import runner; runner.run('orders_silver')"
-
-# Full Gold refresh
-python -c "from examples.seeds.seed_db import runner; runner.run('revenue_by_region', refresh=True)"
-
-# Start scheduler
-python -c "from examples.seeds.seed_db import runner; runner.start()"
-```
-
----
-
-## Running the examples
+The [analyst guide](docs/guides/analyst-guide.md) and the
+[notebook guide](docs/guides/notebook-guide.md) cover it; the examples run
+it end to end:
 
 ```bash
 python examples/analyst_quickstart.py  # notebook-first tour: rich previews, report styling
 python examples/phase1_example.py      # connectors + DataModel + lineage
-python examples/phase2_example.py      # report engine (opens browser)
-python examples/phase25_example.py     # medallion + star schema + lineage diagram
-python examples/phase4_example.py      # full pipeline (run examples/seeds/seed_db.py first)
+python examples/phase2_example.py      # report engine (opens a browser)
+python examples/phase25_example.py     # medallion layers + star schema + lineage diagram
+python examples/seeds/seed_db.py       # seed data/seed.db for the next one
+python examples/phase4_example.py      # the full pipeline runner
 ```
+
+`tracebi/web/demo_app/` is the bundled example of wiring an app module in
+Python (medallion layers built in code, `registry.add_*`). It is opt-in
+(`TRACEBI_APP=tracebi.web.demo_app`) and never served beside a project; see
+[customizing the web app](docs/guides/web-customization.md).
+
+---
 
 ## Running tests
 
 ```bash
-pytest tests/
-# the full suite runs green on pandas 2.2 and 3.x
+pip install -e ".[dev]"
+pytest tests/                       # the full suite (it prints the count)
 ```
+
+End-to-end journeys live in `tests/e2e/` and drive the real CLI, web app and
+MCP tools in-process. The browser tests need `TRACEBI_E2E=1`, a built UI and
+Playwright's Chromium.
 
 ---
 
 ## Project structure
 
-The repo root is the framework; the working project lives in `examples/`.
-Your own project (from `tracebi init`) has the same shape as
-`examples/portfolio_project/`.
-
 ```
 tracebi/                        ← the framework repo
-├── tracebi/                    The Python package — everything the wheel ships
+├── tracebi/                    the Python package (what the wheel ships)
 │   ├── connectors/             CSV, SQL, BigQuery, Snowflake, Memory, DuckDB
-│   ├── model/                  DataSet, DataModel (with star-schema query)
-│   ├── etl/                    LandingLayer, ManipulationLayer, FinalLayer (Bronze/Silver/Gold aliases)
-│   ├── reports/                Report, ExcelRenderer, HTMLRenderer (+ render_pdf via weasyprint)
-│   ├── pipeline/               PipelineRunner (APScheduler + DB)
-│   ├── lineage/                LineageDiagram
-│   ├── mcp_server.py           Agent gateway — 13 MCP tools (typed output, read-only
-│                               annotations) + resources + 3 prompts
-│   └── web/
-│       ├── api/                FastAPI app, routers, registry
-│       ├── demo_app/           Bundled demo app — self-contained (its own models/ + reports/)
-│       ├── run.py              Dev server — python -m tracebi.web.run
-│       └── ui/dist/            Built React bundle (gitignored; npm run build writes here)
-├── web/ui/                     React UI source (Vite) — a Node workspace, not a Python
-│                               package; `npm run build` writes into tracebi/web/ui/dist
-├── tests/                      the pytest suite (run `pytest tests/` for the count)
-├── examples/
-│   ├── portfolio_project/      THE reference project — the three-phase workflow
-│   │   ├── inputs/             ⓪ raw pulls (holdings.csv + its generator)
-│   │   ├── transforms/         ① pandas → sink star tables to DuckDB
-│   │   ├── models/             ② the star-schema contract (portfolio_model.yaml)
-│   │   ├── reports/            ③ spec + artifact packages + escape hatch
-│   │   └── run_workflow.py     drives ①→③ (see docs/concepts/)
-│   ├── seeds/                  Medallion demo DB seeding + Supabase companions
-│   └── phase*.py               Small runnable feature demos
-├── docs/                       Concepts, guides, reference, architecture, strategy (an Obsidian vault)
-├── MANIFESTO.md                What TraceBi is, and what it refuses to build
-└── NOTES.md                    Design decisions and architecture reference
+│   ├── model/                  DataSet, DataModel, engine.py (the locked query connection)
+│   ├── etl/                    Landing / Manipulation / Final layers, compiled to DuckDB SQL
+│   ├── reports/                the artifact build, calc plans, the page runtime (assets/)
+│   ├── pipeline/               PipelineRunner (APScheduler + the run store)
+│   ├── web/                    FastAPI app (api/), the demo app, the built UI (ui/dist)
+│   ├── mcp_server.py           the agent gateway
+│   └── cli.py                  `tracebi …`
+├── web/ui/                     the React UI source (Vite); `npm run build` writes tracebi/web/ui/dist
+├── examples/portfolio_project/ THE reference project: tracebi.yaml, inputs/, connections/,
+│                               transforms/, models/, reports/, pipelines/, run_workflow.py
+├── tests/                      the pytest suite; tests/e2e/ the journeys
+├── docs/                       the handbook (an Obsidian vault): concepts, guides, reference,
+│                               architecture, agents, strategy
+├── AGENTS.md                   the agent's brief
+├── MANIFESTO.md                what TraceBi is, and what it refuses to build
+├── NOTES.md                    the decision journal
+└── CHANGELOG.md
 ```
 
----
-
-## Ad hoc reports
-
-The ad-hoc lane IS the artifact now: `tracebi new-report "My Report"`
-scaffolds `reports/my_report/` and `tracebi dev my_report` opens the live
-loop in the app — edit the template, watch the page, explore inside
-`data-tb-stage="exploration"` blocks that die at the final build, and leave
-notes in the Build panel for the next editing pass. What matters gets built
-(`tracebi report build`) and ships with its trace.
-
-The old `requests/` script lane (`tracebi run`, `request_params()`, the
-Requests web page) **was removed in 0.8** — it rendered a `Report` with no
-trace and no way to earn one. Migration is mechanical: queries → bindings in
-`report.json`, pandas → `report.py`, sections → component figures. A JSON spec
-migrates with one command: `tracebi migrate spec reports/<name>.json`.
+`tracebi init` gives your own project the same shape as
+`examples/portfolio_project/`.
 
 ---
 

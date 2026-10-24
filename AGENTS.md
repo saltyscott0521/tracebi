@@ -422,8 +422,9 @@ The showcase's holdings treemap is the worked example.
 
 **Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
 (`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`) uses it for its
-one display face (Fraunces, with its licence beside it); the demo app's
-`aum_by_branch` for its faces and its hero artwork.
+one display face (Fraunces, with its licence beside it); the reference
+project's `reports/wealth_model/aum_by_branch` for its faces and its hero
+artwork.
 
 Three rules that keep pages honest:
 
@@ -646,8 +647,9 @@ line, refusals included — so the human watches you work
 (MCP: `workbench_state` with no `report` returns the feed and pins, plus
 the warehouse's tables with row counts and contract status as sinks land,
 and the models' star schemas taking shape as you edit `models/`). The human
-browses the warehouse and the model in the app's Transform and Model tabs (on
-the model's Data page); `tracebi dev --classic` lays the Warehouse, Models and
+browses the warehouse on Data's Warehouse tab (each table on its own page) and
+the model on its Model tab (the model's Data page); `tracebi dev --classic`
+lays the Warehouse, Models and
 Packages
 panels out beside the feed on one page. Interrogate in the
 open — excerpts and visuals in the app, not buried in chat — then
@@ -718,11 +720,12 @@ freely, never re-source.
 
 **Change the contract in git. Use the contract over MCP.**
 
-- **Definition plane** (git): `transforms/*.sql` (and `*.py`), `models/*.py`,
-  `reports/*` (specs, packages, and factories; plus `pipelines/*.py`). Every phase is
-  authored and code-reviewed here. Missing a measure? The fix is a code-reviewed
-  edit to the model file (e.g. `model.add_measure(...)` in
-  `models/portfolio_model.yaml`) — never a workaround in the report layer.
+- **Definition plane** (git): `transforms/*.sql` (and `*.py`), `models/*.yaml`
+  (and `*.py`), `reports/*` (specs, packages, and factories; plus
+  `pipelines/*.yaml`). Every phase is authored and code-reviewed here. Missing a
+  measure? The fix is a code-reviewed edit to the model file (e.g. a
+  `measures:` entry in `models/portfolio_model.yaml`) — never a workaround in
+  the report layer.
   A measure can carry its own filter (`add_measure('purchases', column='amount',
   agg='sum', filters={'activity_type': 'purchase'})`, or `filters:` in the YAML):
   it restricts that measure only, and the trace stamps the filter.
@@ -953,7 +956,7 @@ seven and a half million.
 - **Never quote a number without its fingerprint.** An uncited figure is
   exactly the untraceable output this system exists to prevent.
 - **Never mutate models, measures, or pipelines at runtime.** Contract
-  changes belong in `models/*.py` (and friends) through git — the definition
+  changes belong in `models/*.yaml` (and friends) through git — the definition
   plane. The gateway has no write surface, on purpose.
 - **Never page raw rows to dodge the cap.** More than 500 rows means you are
   building a table; do it through a report spec.

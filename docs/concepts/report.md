@@ -12,14 +12,17 @@ Lives in `reports/`.
 ```
 reports/my_report/
   report.json      what data this report binds        → [[report-json]]
-  template.html    the page you draw                  → [[template-html]]
+  app.jsx          a dashboard from the TraceBi kit   → [[app-jsx]]
+  template.html    or a page you draw in HTML         → [[template-html]]
   style.css        optional — your CSS
   script.js        optional — your JS
   report.py        optional escape hatch
 ```
 
 **You own the page.** The framework does not impose a layout, a component set,
-or a stylesheet you must work around. `template.html` is ordinary HTML; a
+or a stylesheet you must work around. A dashboard (`tracebi new-dashboard`) is
+an `app.jsx` of kit components (`<Kpi>`, `<Chart>`, `<Table>`, `<Filter>`); a
+page (`tracebi new-report`) is a `template.html` of ordinary HTML, where a
 handful of `data-tb-*` attributes turn elements into figures.
 
 There is exactly one renderer: a report is always built from its package. (A

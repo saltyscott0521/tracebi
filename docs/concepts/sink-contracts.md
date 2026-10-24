@@ -8,7 +8,7 @@ data counts. The narrowest honest claim about phase ①.**
 ## Why they exist
 
 [[lineage]] deliberately stops at the sink. Everything above it is arbitrary
-pandas, which nothing machine-checks — see
+SQL or pandas, which nothing machine-checks — see
 [[the-three-phase-workflow#Where trust starts]].
 
 A sink contract does not close that gap. It narrows it: it lets you state, in a
@@ -16,7 +16,21 @@ form a machine can re-run, what the tables you just wrote must be true of.
 
 ## Declaring one
 
-After the writes, in the same transform:
+Beside the transform, in `transforms/<name>.contract.yaml`:
+
+```yaml
+name: holdings
+checks:
+  - rows: fact_holdings
+    at_least: 10
+  - unique: dim_issuer
+    columns: [issuer_id]
+  - foreign_key: fact_holdings
+    column: issuer_id
+    refers_to: [dim_issuer, issuer_id]
+```
+
+Or, in a Python transform, after the writes:
 
 ```python
 from tracebi.contracts import contract
@@ -32,8 +46,9 @@ with contract("holdings", warehouse=WAREHOUSE) as c:
                 against=("raw_holdings", "fair_value"), by="position_id")
 ```
 
-The vocabulary is **closed**. Every check also takes an optional `note=`, which
-the report's methodology appendix shows beside it:
+The vocabulary is **closed**, one vocabulary in either form. Every check also
+takes an optional `note`, which the report's methodology appendix shows beside
+it:
 
 | Check | Signature |
 |---|---|
@@ -88,8 +103,8 @@ would still pass the declared checks.
 
 > **"the sink satisfied its contract"** — never *"the transform was verified"*.
 
-A contract checks what you thought to check. It says nothing about the pandas
-that produced the numbers, and nothing about whether the numbers are right.
+A contract checks what you thought to check. It says nothing about the SQL or
+pandas that produced the numbers, and nothing about whether the numbers are right.
 Contract status **never colours a figure status**; it is reported in its own
 block.
 

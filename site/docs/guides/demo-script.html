@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -125,7 +119,7 @@ tracebi serve                           # → http://127.0.0.1:8000
    Also download <code>portfolio_showcase</code> with <strong>Export → HTML</strong> into
    <code>demo/</code>. You will use it for beat 2.</li>
 <li>Open <code>edited.html</code> in a plain text editor (TextEdit in plain-text mode, or
-   Notepad). Find <code>285904445.21</code> (it appears once) and change it to
+   Notepad). Find <code>285904445.21</code> (two data blocks carry it) and change each to
    <code>295904445.21</code>. Save. Open <code>edited.html</code> in the browser and check the
    headline now reads <strong>$295,904,445</strong>, $10 million more than the real
    report.</li>
@@ -154,8 +148,9 @@ value' means, and the chip says the app re-ran every one of those lookups
 and got the same numbers. Nobody can quietly use a different formula on one
 page."</p>
 </blockquote>
-<p>Optional: click <strong>Data</strong> in the sidebar, then Direct Lending Portfolio. Its
-<strong>Model</strong> tab shows the definitions in one screen. Go back to <strong>Reports</strong>.</p>
+<p>Optional: click <strong>Data</strong> in the sidebar. The board shows where the numbers come
+from, left to right; click the Direct Lending Portfolio card, and its <strong>Model</strong>
+tab shows the definitions in one screen. Go back to <strong>Reports</strong>.</p>
 <h3 id="beat-2-every-number-has-a-trace-2-minutes">Beat 2: every number has a trace (2 minutes)</h3>
 <p>Open <code>demo/portfolio_showcase.html</code> straight from the desktop. It's an ordinary
 file in an ordinary browser tab, with no server involved. Click <strong>Trace</strong>
@@ -187,8 +182,8 @@ touched. This check needs no database access and no login."</p>
 <p>Then drag in the untouched pair (<code>portfolio_dashboard.html</code> and its
 <code>.manifest.json</code>) and verify again. It reads <strong>FILE INTACT</strong>.</p>
 <h3 id="beat-4-ask-a-question-1-minute-optional">Beat 4: ask a question (1 minute, optional)</h3>
-<p>Click <strong>Ask</strong> in the sidebar. With Direct Lending Portfolio picked, tick
-<code>fair_value</code> and <code>sector</code>, then <strong>Run query</strong>.</p>
+<p>Click <strong>Ask</strong> in the sidebar. With Direct Lending Portfolio picked, build the
+sentence "Show fair value by sector" (type, or pick each word), then <strong>Ask</strong>.</p>
 <blockquote>
 <p>"You can ask your own question of the same definitions, and the answer
 comes with the exact query behind it, so it can be checked the same way."</p>

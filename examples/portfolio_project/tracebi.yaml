@@ -19,11 +19,11 @@ warehouse:
   # secret: ${AWS_SECRET_ACCESS_KEY}
   # url_style: path
 #
-# engine: the DuckDB connection that answers model queries (Explore, Ask,
+# engine: the DuckDB connection that answers model queries (Ask,
 # agents, builds, verify). It reads the warehouse read-only and nothing else:
 # no file, URL, extension or other database. These are its limits.
 engine:
   memory_limit: 1GB                  # past it, a query spills to temp_directory
   # threads: 4                       # default: min(4, CPUs)
   temp_directory: data/.duckdb-tmp   # relative to this file
-  query_timeout_s: 30                # Explore, Ask and agent queries stop here
+  query_timeout_s: 30                # Ask, build and agent queries stop here

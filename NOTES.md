@@ -13,10 +13,81 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 | Phase 2.5 | ✅ Done | Medallion architecture, Star schema, Lineage diagram |
 | Phase 3 | ❌ Removed | Dashboard server (Dash) — cut 2026-07-27, see entry below |
 | Phase 4 | ✅ Done | Pipeline runner (APScheduler, DB write-back, cross-layer lineage) |
-| Phase 5 | ✅ Done | Web UI (FastAPI + React, medallion-aware demo) |
+| Phase 5 | ✅ Done | Web UI (FastAPI + React) |
 | Phase 6 | ✅ Done | DuckDB engine, push-down filters, layer rename, CLI, auto-discovery, auth, docker-compose |
-| Docs | ✅ Current | Reconciled 2026-08-19, then inventoried and tidied 2026-09-24 (see the entry below). The gateway is 13 tools + 3 prompts. Volatile counts say "run `pytest tests/`" rather than a frozen number. |
 | Phase 7 | ✅ Done | Correctness sweep, open-core seam, capability surface, ReportSpec, SVG charts, theme layer |
+| Artifact | ✅ Done | One report lane, the package: per-figure traces, `app.jsx` dashboards and `template.html` pages, live pages that recompute offline (2026-08 to 10-21) |
+| DuckDB-first | ✅ Done | SQL transforms with sink contracts, the model query in a locked DuckDB connection, storage tiers, the medallion layers in DuckDB (2026-10-19 to 10-21) |
+| Library | ✅ Done | Folders, sign-in (OIDC, local users), folder permissions, drafts, publish requests, code requests, `tracebi push` (2026-10-08 to 10-18) |
+| The app | ✅ Done | Five places (Reports, Ask, Data, Review, Docs); Data as the board; the table page; the credential store (2026-10-23) |
+| Docs | ✅ Current | Full update 2026-10-24: executed plans deleted, the handbook checked against the CLI, the routes and the app's addresses. The gateway is 22 tools + 3 prompts. Volatile counts say "run `pytest tests/`" rather than a frozen number. |
+
+---
+
+## 2026-10-23 — UI round 3, one demo, the board, the credential store (#273–#275)
+
+Three pull requests closed the third UI round and the work it opened.
+
+**UI round 3, waves 2 and 3 (#273).** Every table now has one page,
+`/data/tables/<source>/<table>`, read through one read-only table API (rows
+paged, sorted, searched and filtered in the engine; a profile; the same cut as
+CSV), so a warehouse table, a SQL connection's table and a file under
+`inputs/` look and behave alike. Warehouse and Sources were rebuilt around it;
+the model page became an explorer whose view lives in the address. Data opened
+to analysts, read-only (the run buttons and credential forms stay admin's),
+because the people who read a model need to see how it is made. The desk keeps
+a verdict while its manifest, the models it names and their warehouse are
+unchanged, so Reports no longer waits on a re-run it already did; Check again
+forces one. Titles and words: every browser tab names its page, a table's
+checks are named by their file, and About this build says Dashboard or Page.
+
+**One demo (#273).** tracebi.com served two projects at once and the visitor
+saw four sets of rules. Now `docker compose up` serves the reference project
+alone, and it follows its own conventions: one warehouse declared in
+`tracebi.yaml`, every transform SQL with a contract (housing's pandas declares
+one in code), every model YAML. Wealth Management moved in from the demo app as
+the fourth model, read from a core-banking SQLite that ships; SaaS reads a
+billing SQLite. The CRM is a standing Postgres database loaded once. The demo
+app stays in the package as the example of Python wiring, opt-in.
+
+**The credential store (#273, #275).** A connection's `${NAME}` resolves from
+the environment, then `.env`, then the project's encrypted store, so an admin
+can set a secret from Data → Sources or `tracebi secret set` without reaching
+the box's environment. The environment stays first, so nothing a deployment
+configures is overridden by the app. The store began as JSON with per-value
+tokens and became one encrypted YAML document, `.tracebi/secrets.yml.enc`, the
+shape Rails credentials and Ansible Vault use, with `tracebi secret edit`
+opening it decrypted in `$EDITOR`; who set what moved to History's credential
+rows, where the audit already was. Credential writes need an identified admin:
+the one place the no-lockout rule is narrowed, because an open demo would
+otherwise let anyone repoint the server's connections.
+
+**The board and the Transforms tab (#274).** Data's tabs had named the
+implementation (some models' first node read "pipeline") and put sources after
+models. Data now opens on Flow, one board read left to right in the order the
+data moves, sources to reports, with wires drawn only from facts the API
+already gives; a mechanism is a chip, never a stage. Transforms got a tab of
+their own (`/api/transforms`). The Map retired into the board.
+
+**DuckDB 2.0.** From 2.0 a result fetched part-way stays pending on its
+connection and the next `register()` there raises. The engine's connection
+completes such a result once the row is out, and the pin below 2 is lifted;
+1.5 and 2.0 both pass.
+
+**Three bugs only CI found**, each a race a fast runner wins and a laptop
+loses:
+
+1. The five-second render cache, meant for polling, answered an explicit
+   Rebuild, so the run finished at once with the previous page and no new
+   build row. A run someone asked for now always renders.
+2. With that fixed, a journey that started a background report run could end
+   while the run was still building; the run then read the next journey's
+   registries and held its warehouse open as that journey's transform tried to
+   write. The run store keeps the futures it started, and the journeys'
+   isolation fixture waits for them at teardown.
+3. History's filter built its next address from the search params of the
+   page's last render, so two quick changes (Every run, then a kind) lost the
+   first. It reads the live address.
 
 ---
 
@@ -306,7 +377,7 @@ AGENTS.md or `tracebi context` says "receipt" outside those identifiers.
 ## 2026-10-18 — Step 4 of the UX plan: Ask
 
 Step 4 made Ask the reader's path to a stamped number without code: one
-commit on `step4-ask` ([[ux-plan-2026-10-17]]).
+commit on `step4-ask` (the 2026-10-17 UX plan).
 
 **Decision: no language model in the app.** The app does not call a model;
 the connected agent does (`answer_question`, `query_model`). So Ask in the app
@@ -358,7 +429,7 @@ measure labels are humanised names ("Fv share"); Keep this starts at
 ## 2026-10-18 — Step 3 of the UX plan: Data and Review
 
 Step 3 gave the app its last two places and retired the old frame: three
-packages, one commit each on `step3-data-review` ([[ux-plan-2026-10-17]]).
+packages, one commit each on `step3-data-review` (the 2026-10-17 UX plan).
 
 | Package | What shipped |
 |---|---|
@@ -411,7 +482,7 @@ pass did not move it: the bundler already dropped what nothing imported).
 ## 2026-10-17 — Step 2 of the UX plan: the reports home
 
 Step 2 turned the app around the reports: five packages, one commit each on
-`step2-reports-home` ([[ux-plan-2026-10-17]]).
+`step2-reports-home` (the 2026-10-17 UX plan).
 
 | Package | What shipped |
 |---|---|
@@ -464,8 +535,8 @@ how long it took.
 
 ## 2026-10-17 — Step 1 of the UX plan: the report design system v2
 
-The audit ([[ux-audit-2026-10-17]]) found four visual languages in the
-reports; the plan ([[ux-plan-2026-10-17]]) cut the fix into nine packages, one
+The audit (the 2026-10-17 UX audit) found four visual languages in the
+reports; the plan (the 2026-10-17 UX plan) cut the fix into nine packages, one
 commit each on `design-system-v2`.
 
 | Package | What shipped |
@@ -1454,119 +1525,9 @@ That combination remains a genuine differentiator.
 
 ## Architecture Reference
 
-### Package Structure
-
-> **Superseded (2026-08-19):** the package layout that once sat here listed
-> `dashboard/` (Dash — removed 2026-07-27) and `requests/` (the ad-hoc lane —
-> removed in 0.8). The current, maintained layout lives in **CLAUDE.md →
-> Repository Layout**; do not duplicate it here.
-
-### Core Design Patterns
-
-**Immutable DataSet** — every operation (filter/transform/sort/join) returns a new
-DataSet with the original's lineage plus a new LineageNode appended. The underlying
-DataFrame is never mutated in place.
-
-**Why:** Lineage is append-only. You can always reconstruct exactly which operations
-produced a result. No in-place mutation means no hidden state bugs.
-
-**DataModel** — Qlik-style relational graph. Name your connectors, tables, and
-relationships once; reports, dashboards, and pipelines all read from the same
-definitions. `load()` always re-reads from source (no caching).
-
-**Medallion layers as separate classes** — Bronze/Silver/Gold are distinct
-_contracts_, not just naming conventions. BronzeLayer enforces "no transforms".
-SilverLayer enforces "declarative pipeline". GoldLayer enforces "aggregated via
-the DataModel star-schema query". The type boundary makes it impossible to
-accidentally skip a layer.
-
-**MemoryConnector** — tests and demos should not require external files or databases.
-Drop-in connector backed by a Python dict, so tests run in pure memory with full lineage.
-
-### Medallion Architecture
-
-```python
-# Bronze — raw ingest
-orders_bronze = BronzeLayer(connector=connector, source="orders.csv").load()
-
-# Silver — clean
-orders_silver = (
-    SilverLayer()
-    .cast({"order_date": "datetime64[ns]", "qty": "int64"})
-    .drop_nulls(subset=["order_id"])
-    .deduplicate(subset=["order_id"])
-).apply(orders_bronze, name="orders_silver")
-
-# Gold — aggregated via the DataModel's star-schema query
-gold = GoldLayer(model=model)
-revenue_by_region = gold.query(
-    fact="fact_orders",
-    measures={"revenue": "sum", "order_id": "count"},
-    dimensions=["dim_customer.region"],
-    filters={"status": "shipped"},
-)
-```
-
-### Star Schema (on DataModel)
-
-Tag tables on the DataModel with star-schema roles. Dimension references
-use dot notation: `"dim_name.attribute"`. Measures are a dict:
-`{"column": "agg_func"}`. Supported agg funcs: `sum`, `count`, `mean`,
-`min`, `max`, `nunique`.
-
-```python
-model.add_dimension("dim_customer", table_name="customers",
-                    key_col="customer_id", attributes=["region", "segment"])
-model.add_fact("fact_orders", table_name="orders",
-               measures=["revenue", "qty"],
-               foreign_keys={"dim_customer": "customer_id"})
-
-ds = model.query(
-    fact="fact_orders",
-    measures={"revenue": "sum"},
-    dimensions=["dim_customer.region"],
-)
-```
-
-### Lineage Diagram
-
-```python
-diag = LineageDiagram(ds)       # or LineageDiagram(report)
-diag.show()                     # matplotlib / Jupyter inline
-diag.to_html("lineage.html")    # standalone HTML with embedded SVG
-print(diag.to_mermaid())        # paste into GitHub markdown
-```
-
-Node colors by operation type:
-
-| operation  | color   |
-|-----------|---------|
-| load      | navy    |
-| bronze    | bronze  |
-| silver    | silver  |
-| gold      | gold    |
-| filter    | green   |
-| transform | amber   |
-| join      | orange  |
-| sort      | purple  |
-
-### Install
-
-```bash
-pip install -e ".[reports,dashboard]"
-pip install networkx matplotlib        # for LineageDiagram
-```
-
-### Running Examples
-
-```bash
-python examples/phase1_example.py    # connectors + DataModel
-python examples/phase2_example.py    # reports (opens browser)
-python examples/phase3_example.py    # live Dash dashboard
-python examples/phase25_example.py   # medallion + star schema + lineage diagram
-```
-
----
+Removed 2026-10-24: `CLAUDE.md` (Repository Layout, Core Invariants) and
+`README.md` carry the architecture as it is now, and the entries in this file
+carry why.
 
 ---
 
@@ -1836,19 +1797,26 @@ runner.run("orders_silver")
 
 ## Open Questions
 
-All four questions in this section have been resolved:
+Open as of 2026-10-24 (the four questions that sat here, about the `requests/`
+lane, were resolved and the lane removed in 0.8):
 
-- **Shared vs standalone request files** — resolved: shared. `requests/_template.py`
-  and the CLI scaffold both call `register.get_default_model()` and fall back to
-  building a local model only when no project default has been registered.
-- **`.py` and `.ipynb` request formats** — resolved: both. `tracebi new-request
-  --notebook` scaffolds an `.ipynb`; `tracebi run` and `auto_discover` execute
-  either format.
-- **`tracebi new-request` worth building** — resolved: yes, shipped. Plus
-  `tracebi init`, `list-requests`, `run`, and `validate`.
-- **Notebook → web UI registration workflow** — resolved: folder-based
-  auto-discovery on startup, plus the optional dev-mode reload endpoint for
-  iterative editing without restarting the server.
+- **Who issued a trace.** A trace is made by whoever built the report, so
+  between two parties it is documentation, not evidence. Signed traces are
+  planned, not designed.
+- **Per-recipient versions and row-level security.** A report parameter in the
+  filter grammar, fanned out per value at delivery and keyed on the viewer for
+  row-level security. Not started.
+- **Running pushed Python in a sandbox.** Remote drafts carry no Python today;
+  a locked-down worker with dev credentials is the proposed answer
+  (`docs/strategy/analyst-freedom.md`, `remote-authoring.md`).
+- **DuckDB-first, what is not built:** per-measure `MACRO`s, the object tier's
+  manifest swap, `tracebi migrate warehouse`, and the questions in
+  `docs/architecture/duckdb-first.md` §14 (the parity definitions, the default
+  `embed`, Local in the library chip).
+- **The word "receipt" in identifiers** (`tracebi-receipt`, `.tb-receipt*`,
+  `renderReceipt`): renamed together or never (`ui-backlog.md` item 36).
+- **The PyPI name.** Installs come from git until the `tracebi` name there is
+  settled.
 
 ---
 

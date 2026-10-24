@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -109,7 +103,7 @@ It is what lets the three phases run at different speeds.</strong></p>
 <tbody>
 <tr>
 <td><strong>The sink</strong></td>
-<td><code>data/warehouse.duckdb</code> — real tables on disk</td>
+<td>the warehouse <code>tracebi.yaml</code> names (by default <code>data/warehouse.duckdb</code>) — real tables</td>
 <td><a href="../concepts/transform.html">Transform — phase ①</a> (①)</td>
 <td><a href="../concepts/model.html">Model — phase ②</a> (②)</td>
 </tr>
@@ -152,9 +146,11 @@ as you like.</p>
 Transforms are written to be <strong>idempotent</strong> — a rerun replaces the warehouse
 tables rather than appending to them.</p>
 <blockquote>
-<p><strong>One operational catch:</strong> DuckDB allows many readers but a single writer. A
-warehouse refresh is blocked while a <code>tracebi dev</code> or <code>tracebi serve</code> process
-holds the file open. Stop the server to refresh.</p>
+<p><strong>One operational catch:</strong> a DuckDB file has one writer at a time. A model
+query opens the warehouse read-only for that query alone, so a running
+<code>tracebi dev</code> or <code>tracebi serve</code> does not block a refresh: the write waits a
+few seconds for a read in progress to let go, and a read that comes during the
+write is refused, naming the transform to let finish.</p>
 </blockquote>
 <h2 id="related">Related</h2>
 <ul>

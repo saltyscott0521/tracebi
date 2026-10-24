@@ -1,6 +1,6 @@
 # Remote authoring
 
-> Written before the 2026-10 IA (four places: Reports, Ask, Data, Review); page names updated.
+> Written before the 2026-10 IA; page names updated to the five places (Reports, Ask, Data, Review, Docs).
 
 **People build and change reports from wherever their agent runs: a hosted
 chat (ChatGPT or Claude, through the TraceBi connector), or Claude Code on
@@ -9,8 +9,10 @@ is seen rendered in the app while it is being made, and goes live only by
 publishing. Code that runs on the server, pipelines and transforms, is
 published only after someone approves it.**
 
-Status: decided 2026-10-08. Builds steps 4 and 6 of [[report-library]].
-Order of work at the end.
+Status: built (decided 2026-10-08; steps 1 to 4 shipped by 2026-10-17).
+Builds steps 4 and 6 of [[report-library]]. How to use it:
+[[connect-chatgpt-and-claude]], [[push-from-a-laptop]], [[folder-yaml]]. The
+sandbox for remote Python is still ahead.
 
 ---
 
@@ -39,9 +41,9 @@ A UAT stage can sit between them later. Nothing here assumes two.
 local warehouse to preview. What reaches the server is files. The server runs
 pipelines with its own secrets and builds its own warehouse; sink contracts
 check what landed there. Connections are named (`tracebi connect` writes
-`models/_connections/<name>.py`, which reads `TRACEBI_<NAME>_URL`), so the
+`connections/<name>.yaml`, whose secrets are `${NAME}` references), so the
 same code runs on the laptop with a dev secret and on the server with the
-production one.
+production one ([[connections-yaml]], [[credentials]]).
 
 ## What may come in which way
 
@@ -49,7 +51,7 @@ A report package is a closed vocabulary that can only ask the model questions,
 so it is safe to accept from anyone allowed to build. Python runs on the server
 with production secrets, so it is not.
 
-| | Report package | Declarative model (`models/<name>.json`) | Python: `report.py`, `models/*.py`, transforms, pipelines |
+| | Report package | Declarative model (`models/<name>.yaml`) | Code: `report.py`, `models/*.py`, transforms (`.sql` or `.py`), pipelines, connections |
 |---|---|---|---|
 | Hosted chat over `/mcp` | draft → publish | draft → publish | refused |
 | Laptop: `tracebi push` | draft → publish | draft → publish | publish **request** → approval |
@@ -68,7 +70,7 @@ The existing roles, unchanged in meaning (Authorization in `CLAUDE.md`):
 | analyst | their own | reports and declarative models | no |
 | admin | everyone's | yes | yes |
 
-Folder permissions ([[report-library]] step 3) refine this later; the check
+Folder permissions ([[folder-yaml]]) narrow this per folder; the check
 stays in one place.
 
 ---
@@ -119,7 +121,7 @@ The draft preview is the dev-mode workbench preview pointed at the draft's
 directory: `workbench.package_version(dir)` for change detection and
 `TemplatePackage(dir).render_exploration(models)` for the page. Models are the
 published ones, with the owner's draft models shadowing published ones of the
-same name (preview only). Not a build: no file written, no receipt.
+same name (preview only). Not a build: no file written, no trace.
 
 ### MCP tools (analyst and up; viewers get none of them)
 
@@ -151,8 +153,8 @@ once.
 
 ### UI
 
-- **Drafts** in the sidebar below the model pages, beside Verify a file: the
-  person's drafts, newest first.
+- **Drafts** under Review (`/review/drafts`): the person's drafts, newest
+  first.
 - **The Draft page** (`/drafts/<owner>/<kind>/<path>`): the report rendered
   live (polls `version`, re-fetches `preview` when it changes), its files in a
   Files tab, and **Publish** with an optional note. For an analyst or admin
@@ -264,7 +266,7 @@ runs are the ones in the request plus each `pipelines/*.yaml` whose
 
 ## Declarative by default (decided 2026-10-08)
 
-Everything after the sink is data, not code; only transforms stay Python
+Everything after the sink is data, not code; only transforms stay code
 (phase ① is unconstrained by design). That also simplifies trust: only
 transforms ever need code review and approval.
 
@@ -274,7 +276,7 @@ transforms ever need code review and approval.
 | Sources | `connections/<name>.yaml`: a type and fields; secrets only as `${ENV_VAR}` references, never inline |
 | Pipelines | `pipelines/<name>.yaml`: the transform, the models, the reports to rebuild, the schedule |
 | Report packages | unchanged: `report.json` + HTML/CSS (`report.py` stays a laptop-only escape hatch) |
-| Transforms | Python |
+| Transforms | SQL by default (`transforms/<name>.sql` + `.contract.yaml`); Python is the escape hatch |
 
 YAML because these files are written and reviewed by people, and a semantic
 contract needs comments (why a measure is weighted, which trap it avoids).

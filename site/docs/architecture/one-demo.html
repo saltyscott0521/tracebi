@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,19 +81,15 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
 <h1 id="one-demo-what-tracebicom-serves-and-the-conventions-every-model-follows">One demo: what tracebi.com serves, and the conventions every model follows</h1>
-<p><em>Plan, 2026-10-23. Package <code>U-D</code> of the 2026-10-23 UI round.</em></p>
+<p><em>Built, 2026-10-23 (packages U-D1 and U-D2). The first section records what
+was served before it.</em></p>
 <h2 id="what-is-served-today-and-why-it-reads-as-several-products">What is served today, and why it reads as several products</h2>
 <p>The public demo (<code>docker-compose.yml</code>, and tracebi.com) serves <strong>two
 projects at once</strong>: the reference project
@@ -319,7 +314,8 @@ Postgres, like <code>sales_model</code>'s already are.</p>
   are untouched in this round except that <code>banking</code> becomes a real
   database (above).</li>
 <li><code>examples/seeds/seed_db.py</code>'s habit of seeding <code>data/tracebi.db</code>: it
-  seeds <code>data/demo.db</code>, the demo app's own file.</li>
+  seeds <code>data/seed.db</code> (connector <code>seed_db</code>), and its runs go to the state
+  store.</li>
 </ul>
 <h2 id="acceptance">Acceptance</h2>
 <p><code>tests/e2e/test_reference_project.py</code>: <code>tracebi.yaml</code> is read; <code>GET

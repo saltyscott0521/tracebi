@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -143,7 +137,7 @@ to different things. The app is a pure API client of the customer's own
 FastAPI — it needs <strong>zero</strong> knowledge that tracebi.com exists.</p>
 <h2 id="the-adopted-flow-marketing-demo">The adopted flow: marketing → demo</h2>
 <p><code>tracebi.com</code> is the marketing and explanation page for the product. It carries
-the pitch (the receipt, the offline verifier, the self-contained artifact),
+the pitch (the trace, the offline verifier, the self-contained artifact),
 the docs, and pricing — and its primary call to action <strong>branches into a live
 demo app</strong>: a hosted instance of the distributed app UI, seeded with the
 reference project, so a visitor can click through real models, run a report,
@@ -181,8 +175,8 @@ server (see <a href="../guides/one-server.html">Run TraceBi on one server</a>): 
 <p>Making the distributed UI a full <strong>app</strong> is the direction — but as an
 <strong>operational + trust console</strong>, not a viz builder. On-thesis growth:</p>
 <ul>
-<li>browse and run published reports; download the HTML-with-receipt</li>
-<li><strong>verify status at a glance</strong>, click-to-verify a file, the receipt drawer
+<li>browse and run published reports; download the HTML-with-trace</li>
+<li><strong>verify status at a glance</strong>, click-to-verify a file, the trace drawer
   front-and-centre — making the trust <em>visible</em> is the UI's highest-leverage
   work</li>
 <li>manage models and pipelines; schedule and deliver reports</li>

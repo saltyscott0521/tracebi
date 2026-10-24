@@ -3,36 +3,46 @@
 **A declarative star schema over the warehouse: the grain, the keys, and the
 [[measures]] — in a few dozen lines a reviewer reads in one screen.**
 
-Lives in `models/`. Each file exposes a variable named `model`.
+Lives in `models/`, one file per model: `models/<name>.yaml`.
 
 ---
 
 ## What it is
 
-```python
-from tracebi import DataModel, DuckDBConnector
+```yaml
+# models/portfolio_model.yaml
+name: portfolio_model
+label: Direct Lending Portfolio
 
-model = DataModel("portfolio_model")
-model.add_connector(DuckDBConnector("warehouse", database="data/warehouse.duckdb"))
+connectors:
+  - name: warehouse
+    type: warehouse          # the project's warehouse, wherever tracebi.yaml puts it
 
-model.add_table("fact_holdings", connector="warehouse", source="fact_holdings")
-model.add_table("dim_issuer",    connector="warehouse", source="dim_issuer")
+tables:
+  - {name: fact_holdings, connector: warehouse, source: fact_holdings}
+  - {name: dim_issuer,    connector: warehouse, source: dim_issuer}
 
-model.add_dimension("dim_issuer", table_name="dim_issuer",
-                    key_col="issuer_id", attributes=["issuer", "sector"])
+dimensions:
+  - name: dim_issuer
+    table: dim_issuer
+    key: issuer_id
+    attributes: [issuer, sector]
 
-model.add_fact("fact_holdings", table_name="fact_holdings",
-               measures=["fair_value", "cost_basis"],
-               foreign_keys={"dim_issuer": "issuer_id"})
+facts:
+  - name: fact_holdings
+    table: fact_holdings
+    measures: [fair_value, cost]
+    foreign_keys: {dim_issuer: issuer_id}
 
-model.add_measure("fair_value", column="fair_value", agg="sum")
+measures:
+  - {name: fair_value, column: fair_value, agg: sum, format: currency0}
 ```
 
 That is the whole shape: connectors, tables, dimensions, facts, measures.
 The file declares meaning; the connector says where the data is kept — see
 [[models-and-connectors]].
 
-A model is a declarative `models/<name>.yaml` by default (`.json` is the same schema), with a `.py` file for anything exotic: the same connectors, tables, dimensions, facts and measures, written as one document with comments (see [[model-json]]). The reason is the remote case. An agent without access to the server can draft a YAML model and publish it through the gateway, because a YAML file runs no code. A Python model runs on the server with its connections, so it stays a file someone reviews and commits.
+A model is a declarative `models/<name>.yaml` by default (`.json` is the same schema, see [[model-json]]), with a `.py` file for anything exotic: the same connectors, tables, dimensions, facts and measures as builder calls on a `DataModel` held in a variable named `model` (`tracebi new-model --python`; `tracebi migrate model` converts one back to YAML). The reason is the remote case. An agent without access to the server can draft a YAML model and publish it through the gateway, because a YAML file runs no code. A Python model runs on the server with its connections, so it stays a file someone reviews and commits.
 
 ## Why it is only a declaration
 

@@ -11,19 +11,20 @@ development flow; this guide covers what's different in a notebook.
 ## Where the notebook fits the workflow
 
 TraceBi's spine is the three-phase workflow in [[the-three-phase-workflow]]:
-phase ① `transforms/` writes clean star-schema tables into a DuckDB warehouse,
+phase ① `transforms/` writes clean star-schema tables into the warehouse,
 phase ② `models/` declares a thin `DataModel` over it, and phase ③ `reports/`
-is an artifact package (or a JSON `ReportSpec`) served in the app, in the library under its model.
+is a report package served in the app, in the library under its model.
 
-A notebook is the natural home for **phase ①** — the slow, unconstrained pandas
-analysis — because the rich previews below let you *see* the data as you clean
+A notebook is the natural home for **phase ①** when the work outgrows SQL —
+the slow, unconstrained pandas analysis — because the rich previews below let you *see* the data as you clean
 it, before you commit anything. When the analysis settles, sink the named
 tables:
 
 ```python
 from tracebi.connectors import DuckDBConnector
+from tracebi.project_config import sink_target
 
-wh = DuckDBConnector("warehouse", database="data/warehouse.duckdb")
+wh = DuckDBConnector("warehouse", database=sink_target(ROOT))   # the warehouse tracebi.yaml names
 wh.write(fact_holdings_df, "fact_holdings")   # freeze: the sink is now the contract
 ```
 
@@ -54,15 +55,16 @@ about TraceBi requires the scaffold:
 
 ```bash
 tracebi list-models                      # see what shared models are available
-tracebi new-transform "Holdings clean"   # → transforms/holdings_clean.py (# %% cells)
+tracebi new-transform "Holdings clean" --python   # → transforms/holdings_clean.py (# %% cells)
 ```
 
-`tracebi new-transform` writes a **notebook-shaped `.py`**: the `# %%` markers
+`tracebi new-transform --python` writes a **notebook-shaped `.py`** (without
+`--python` it writes the SQL form, the default): the `# %%` markers
 are cell boundaries and `# %% [markdown]` cells are prose, so VS Code, Cursor,
 PyCharm, and Jupyter (via jupytext) open it *as* a notebook — run it
 cell-by-cell — while it stays plain, reviewable Python that runs top-to-bottom.
-Models stay `.py` (`tracebi new-model`); reports scaffold with
-`tracebi new-report`.
+Models are YAML (`tracebi new-model`); reports scaffold with
+`tracebi new-dashboard` or `tracebi new-report`.
 
 ## Rich object previews
 
@@ -74,7 +76,7 @@ chain — no `print` calls needed:
 from tracebi.model_registry import get_model, list_models
 
 print(list_models())             # see what's in models/
-model = get_model("sales_model") # loads models/sales_model.py — no web server needed
+model = get_model("sales_model") # loads models/sales_model.yaml — no web server needed
 model                            # tables, relationships, facts/dimensions, as HTML
 
 orders = model.load("orders")
@@ -135,15 +137,16 @@ declaring a **sink contract**:
 # %%  Sink — the contract is the named tables, not how you produced them
 from tracebi.connectors import DuckDBConnector
 from tracebi.contracts import contract
+from tracebi.project_config import sink_target
 
-WAREHOUSE = "data/warehouse.duckdb"
+WAREHOUSE = sink_target(ROOT)
 DuckDBConnector("warehouse", database=WAREHOUSE).write(fact_holdings_df, "fact_holdings")
 
 # %%  Declare the sink CONTRACT (optional, recommended)
 with contract("holdings", warehouse=WAREHOUSE) as c:
-    c.rows("fact_holdings", min=1)
+    c.rows("fact_holdings", at_least=1)
     c.not_null("fact_holdings", ["holding_id", "market_value"])
-    c.foreign_key("fact_holdings", "sector_key", "dim_sector", "sector_key")
+    c.foreign_key("fact_holdings", "sector_key", refers_to=("dim_sector", "sector_key"))
 ```
 
 Run it top-to-bottom in a fresh namespace:
@@ -186,25 +189,14 @@ narrative that a governed report deliberately does not carry.
 
 ## Publishing a report from a notebook
 
-The same registration decorator works in a notebook cell:
-
-```python
-from tracebi import register
-
-@register.report("weekly_sales", description="Weekly sales summary")
-def _factory():
-    return report
-```
-
-Place the notebook (with its `@register.report` cell) in **`reports/`** — the
-server auto-discovers `*.py` and `*.ipynb` there, and the report is listed in the
-library under its model. In an interactive kernel the decorator is harmless if the web
-extras aren't installed — it raises a clear `ImportError` telling you to
-`pip install "tracebi[web]"`.
-
-For a governed, traced report, prefer the artifact package
-(`tracebi new-report` → `tracebi dev` → `tracebi report build`), covered in the
-[Analyst Guide](analyst-guide.md).
+A report the app serves is a **package** (`reports/<name>/`), and there is one
+renderer: `tracebi new-dashboard` or `tracebi new-report` → `tracebi dev` →
+`tracebi report build`, covered in the [Analyst Guide](analyst-guide.md).
+A notebook in `reports/` that registers a factory with `@register.report(...)`
+is still imported at startup, but a report with no package is refused (HTTP
+422 naming the fix), and `tracebi validate` flags it. The pandas a model cannot
+express goes in the package's `report.py`, whose outputs are stamped
+`verifiable: false`.
 
 Reference files: `examples/portfolio_project/transforms/holdings_transform_pandas.py`,
 `examples/portfolio_project/models/portfolio_model.yaml`, and

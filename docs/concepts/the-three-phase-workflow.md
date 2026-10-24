@@ -13,17 +13,20 @@ one never blocks the fast one.
 
 ---
 
-> **In the app** there are four places. **Reports** is where it opens: the library, every
+> **In the app** there are five places. **Reports** is where it opens: the library, every
 > report in its folder with whether its numbers still reproduce, narrowed to a model by a
-> chip. **Ask** puts a question to one model. **Data** opens on the board: these three
-> stages as lanes, sources first and reports last, with the warehouse between Transform and
-> Model, the freeze point it is. A model's page draws it as a line: **Transform** (the
-> pipeline that rebuilds its warehouse, and what the sink contract says about it),
-> **Model** (its tables, joins and measures) and **Reports** (what reads it); **Refresh
-> data**, on the Transform tab, runs the pipeline. **Review** holds what needs attention (a failed
-> refresh, a build that needs a look, a request to publish), then drafts, then **Verify a
-> file** (check a report file from anywhere); **History** (what ran) is one link away. Reports and Ask only ever ask the
-> model; see [[models-and-connectors]].
+> chip. **Ask** puts a question to one model. **Data** (analysts and admins) opens on the
+> board, **Flow**: these stages as lanes, sources first and reports last, with the warehouse
+> between Transform and Model, the freeze point it is; its other tabs list the same things
+> in the same order (**Sources**, **Transforms**, **Warehouse**, **Models**), and any table
+> opens on a page of its own (its rows, columns and who uses it). A model's page draws its
+> line: **Transform** (the pipeline that rebuilds its warehouse, and what the sink contract
+> says about it), **Model** (its tables, joins and measures) and **Reports** (what reads
+> it); **Refresh data**, on the Transform tab, runs the pipeline. **Review** holds what
+> needs attention (a failed refresh, a build that needs a look, a request to publish), then
+> drafts, **History** (what ran) and **Verify** (check a report file from anywhere).
+> **Docs** is this handbook. Reports and Ask only ever ask the model; see
+> [[models-and-connectors]].
 
 ## ① Transform — `transforms/`
 
@@ -82,7 +85,7 @@ materialized, the page re-renders in milliseconds with no pandas in the loop.
 |---|---|---|---|
 | ⓪ Input | `inputs/` | a raw pull: a CSV, an API export, a SQL dump | it doesn't; you put it there |
 | ① Transform | `transforms/` | DuckDB SQL (a `.sql`, with its `.contract.yaml` beside it), or pandas as the escape hatch (a `.py` or `.ipynb`), that lands warehouse tables | it doesn't; you run it with `tracebi run-transform` |
-| ② Model | `models/` | a `DataModel` in a variable named `model` | its page on **Data** (`/data/<model>`), Model tab |
+| ② Model | `models/` | a `DataModel` as YAML (`models/<name>.yaml`; a `.py` with a variable named `model` for anything exotic) | its page on **Data** (`/data/<model>`), Model tab |
 | ③ Report | `reports/` | a package (`report.json` + an `app.jsx` dashboard or a `template.html` page), or a JSON spec that compiles into one | listed in **Reports** (the library), under its model |
 
 The warehouse is one per project, declared in `tracebi.yaml` (by default one
@@ -120,8 +123,8 @@ contract in a `with contract(...)` block. Every table on the Warehouse tab reads
 `tracebi dev` with no report name opens the app's Data page with the
 **project feed**. Any script run while it's open can call
 `tracebi.workbench.show(df, note=...)` to post an excerpt, and you can leave
-your agent notes there (folded under one line, below the models). The
-warehouse tables are on the model's Transform tab, and the Model tab shows the star
+your agent notes there (folded under one line, below the board). The
+warehouse tables are on the Warehouse tab, and a model's Model tab shows the star
 schema taking shape. Sink-contract status and
 column profiles of the warehouse tables are in the agent's `workbench_state`,
 and on the classic page (`tracebi dev --classic`), which lays the warehouse,

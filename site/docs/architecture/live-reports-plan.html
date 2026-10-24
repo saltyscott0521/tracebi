@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,26 +81,30 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
 <h1 id="live-reports-the-plan">Live reports — the plan</h1>
-<p><strong>Status: in execution, 2026-10-19.</strong> The package plan for the page half of
-<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> (D5–D9), re-ordered around the maintainer's goal:</p>
+<p><strong>Status: built</strong> (rounds 1 to 3, 2026-10-19 to 10-21). A built page carries a
+slice per fact and every binding's calc plan, and <code>tracebi-calc.js</code>
+recomputes every figure under one selection state: <code>tracebi/reports/calc_plan.py</code>
+(the plan, and <code>execute_plan</code>, the oracle), <code>tracebi/reports/slice.py</code>,
+<code>tracebi/reports/assets/_calc_src/</code> (the page engine), the interaction grammar
+in <code>tracebi/reports/assets/tracebi.js</code>, parity held by
+<code>tests/test_calc_parity.py</code> and every shipped report walked by
+<code>tests/e2e/test_live_cascade.py</code>. Round 3 (the server half: the model query in
+a locked DuckDB connection, storage tiers, SQL transforms, the medallion layers
+in DuckDB) is built too; <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> holds its design. How to author a
+live page is in <a href="../reference/report-json.html">report.json</a>, <a href="../reference/template-html.html">template.html — the figure grammar</a> and <a href="../reference/app-jsx.html">app.jsx — the React lane</a>. What
+follows is the design as decided, kept for its reasons.</p>
+<p>It started from the maintainer's goal:</p>
 <blockquote>
 <p>The built report is one file, works offline, covers every chart and table
 type, and is state-driven: a filter changes every figure on the page.</p>
 </blockquote>
-<p>The server half of <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> (SQL transforms, storage tiers, the model
-as a DuckDB schema) is a later round; nothing here depends on it.</p>
 <h2 id="decisions-closed">Decisions (closed)</h2>
 <ol>
 <li><strong>The page engine is ours.</strong> <code>tracebi-calc.js</code>: plain JavaScript, inlined
@@ -158,9 +161,7 @@ as a DuckDB schema) is a later round; nothing here depends on it.</p>
     <code>performance.now()</code> around the engine call); each built report's size
     against its baseline.</li>
 </ol>
-<h2 id="packages">Packages</h2>
-<p>Branch <code>live-reports</code>. L-1 and L-2 are Python and disjoint, so they run in
-parallel worktrees; L-3 needs both; L-4 needs L-3; L-5 closes.</p>
+<h2 id="the-parts-round-1">The parts (round 1)</h2>
 <h3 id="l-1-the-calc-plan-and-the-parity-oracle-python">L-1 — The calc plan and the parity oracle (Python)</h3>
 <ul>
 <li><code>tracebi/reports/calc_plan.py</code>: <code>compile_plan(model, query, slice_columns)
@@ -291,13 +292,10 @@ are closed and portable:</p>
 <li><code>stddev</code> too if it is one function; raw-row tables (<code>aggregate=False</code>) as
   a plain filtered projection.</li>
 </ul>
-<h2 id="out-of-this-round">Out of this round</h2>
-<p>The server half of <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> (Q-2, Q-4, Q-5), <code>engine: duckdb</code>, a
-Rust port, Qlik-style excluded values.</p>
 <h2 id="round-2-the-cascade-2026-10-19">Round 2 — the cascade (2026-10-19)</h2>
 <p>Round 1 made the page able to recompute. Round 2 makes every shipped report
 use it, and gives the page the full interaction grammar a state-driven
-report needs. Branch <code>cascade</code>.</p>
+report needs.</p>
 <h3 id="decisions-closed_1">Decisions (closed)</h3>
 <ol start="11">
 <li><strong>Every interaction is the one selection state.</strong> A control, a click on a
@@ -334,30 +332,8 @@ report needs. Branch <code>cascade</code>.</p>
     slice under the resulting state, and that the trace rows record it. A
     new report with a control is covered the day it is added.</li>
 </ol>
-<h3 id="packages_1">Packages</h3>
-<ul>
-<li><strong>C-1 Interaction grammar</strong> (runtime, kit, CSS, vocabulary, guides,
-  showcase, the table-driven journey of decision 17): 11–15 and 17.</li>
-<li><strong>C-2 Cascade: the portfolio reports</strong> (book, concentration, overview,
-  dashboard, desk): controls where each layout has a natural place (sector,
-  fund, a fair-value range, a spread range), chart clicks, honest prose,
-  bindings re-cut so no figure on these pages is <code>unfiltered-by</code> under the
-  page's own controls; captures before/after, light/dark, desk/phone.</li>
-<li><strong>C-3 Cascade: housing, SaaS, templates, demo</strong>: affordability (a year
-  range and a cohort filter beside its scenarios), cohort_brief (cohort,
-  month range), mrr_dashboard (plan + month range), the two scaffold
-  templates, the two demo reports; same bar as C-2.</li>
-<li><strong>C-4 Audit pass</strong> (orchestrator): fresh captures of every report, the
-  audit script's ratchet, a fix round if needed.</li>
-</ul>
-<h2 id="round-3-the-server-half">Round 3 — the server half</h2>
-<p>After the cascade: <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> Q-2 (the model as a DuckDB schema and
-locked read-only query connections), Q-4 (storage tiers, Parquet on object
-storage as the hosted default), Q-5 (SQL transforms with Python as the
-escape hatch), and the pandas medallion layers in <code>tracebi/etl/</code> moved to
-DuckDB. Packages S-1 to S-4, briefed when Round 2 merges.</p>
-<h3 id="round-3-decisions-and-packages-2026-10-19">Round 3 — decisions and packages (2026-10-19)</h3>
-<p>Branch <code>server-half</code>. The report file is done; this round makes the server
+<h2 id="round-3-the-server-half-2026-10-19">Round 3 — the server half (2026-10-19)</h2>
+<p>The report file is done; this round makes the server
 side DuckDB-first per <a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> D1–D3 and D10, and removes the last
 pandas from the query path.</p>
 <ol start="18">
@@ -398,22 +374,6 @@ pandas from the query path.</p>
     cast, filter, aggregate) to SQL over the source connector's tables;
     a custom Python step remains the escape hatch, marked.</li>
 </ol>
-<p>Packages:
-- <strong>S-1 Model as schema + locked connections</strong> (18, 19): the compiler,
-  views + macros, the per-request connection, the MemoryConnector/CSV
-  fallback as Arrow views, the Ask timeout; every existing query
-  semantics test, the parity fixtures (regenerated byte-identically) and
-  the reference journeys hold; <code>read_csv('http://…')</code> from Ask is refused
-  by name; the reference project's slowest report build is measured
-  before and after.
-- <strong>S-2 Storage tiers</strong> (20): <code>tracebi.yaml</code>, the object tier in the
-  reference project behind an env var, a MinIO-style endpoint in the
-  pipeline journey, stale-on-rewrite via ETag.
-- <strong>S-3 SQL transforms</strong> (21): the <code>.sql</code> form, scaffolds, <code>run-transform</code>,
-  the reference transform in SQL beside the pandas one, contracts beside.
-- <strong>S-4 Medallion in DuckDB</strong> (22): <code>etl/</code> layers compiled to SQL, the
-  demo seeds and phase examples still run, pandas no longer a required
-  dependency of the query path (<code>pyproject</code> extras adjusted).</p>
   </main>
 </div>
 <script>

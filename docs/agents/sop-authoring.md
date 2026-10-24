@@ -8,20 +8,24 @@ human carries its trace.**
 
 **Where this sits in the three-phase workflow (see [[the-three-phase-workflow]]).** This is
 **phase ③ — REPORT**, authoring over the model boundary. You are handed two
-freeze points: a warehouse phase ① already sank (`data/warehouse.duckdb`)
-and a model phase ② already declared over it (`models/*.py`, e.g.
-`models/portfolio_model.yaml`). You do not re-run the phase-① pandas and you do not
-see it — the model is the contract you author against, and everything below is
+freeze points: a warehouse phase ① already sank (`data/warehouse.duckdb` by
+default) and a model phase ② already declared over it (`models/<name>.yaml`,
+e.g. `models/portfolio_model.yaml`). You do not re-run the phase-① transform and
+you do not see it — the model is the contract you author against, and everything below is
 exactly how the reference project's reports (`reports/portfolio_model/`) were written. **The trust
 machinery in this SOP — stamped queries, validate-before-execute, `verify` —
 governs from that model boundary onward. It says nothing about phase ①, which is
-unconstrained pandas trusted as reviewed code, not by fingerprint.** If a number
+unconstrained SQL or pandas trusted as reviewed code, not by fingerprint.** If a number
 you need is wrong or absent below the model, this SOP cannot fix it; escalate to
 the engineer SOP (a model change) or, if the raw data was never sunk, to a
 phase-① transform change.
 
-The gateway exposes thirteen tools (`tracebi mcp`; the MCP `tools/list` call is
-the source of truth if this table drifts):
+The gateway exposes twenty-two tools and three prompts (`author_report`,
+`answer_question`, `address_pins`); the MCP `tools/list` call is the source of
+truth if this table drifts. This SOP walks the spec path; a report package is
+the same loop with `build_report`, and over a hosted connection the draft tools
+below are how a package reaches the server ([[push-from-a-laptop]],
+[[connect-chatgpt-and-claude]]):
 
 | Tool | Purpose |
 |---|---|
@@ -38,6 +42,11 @@ the source of truth if this table drifts):
 | `workbench_state` | What the live `tracebi dev` workbench shows, including a reviewer's pins |
 | `resolve_pin` | Mark a reviewer's pin as addressed, with a note |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest and classify each figure (`reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`) — the built-in replay for step 6 at L2/L3 |
+| `list_drafts` · `start_draft` · `read_draft` · `write_draft_file` | Your drafts on the server: start one (empty, or a copy of the published report or model), read it, write one allowed file |
+| `preview_draft` | Validate and render a draft in memory; errors, warnings and the draft's address in the app |
+| `model_impact` | For a model draft: each published report that reads the model, unchanged / moves / breaks |
+| `publish_draft` | Publish a draft, or open a publish request where the folder asks for one |
+| `list_publish_requests` · `decide_publish_request` | Requests into folders where you hold Publish; approve or reject one |
 
 It also offers three prompts that run this procedure for you: `author_report`,
 `answer_question` and `address_pins`.
@@ -175,9 +184,9 @@ Authoring rules:
   express arbitrary computation — by design. If the analysis needs a measure,
   dimension attribute, or fact the contract does not declare, **stop and
   escalate to the engineer SOP** (this directory): the fix is a code-reviewed
-  change in the definition plane (`models/*.py`, e.g.
-  `model.add_measure("unrealized_gain", expr="market_value - cost_basis",
-  agg="sum", format="currency0")`), after which a fresh gateway process's next call
+  change in the definition plane (a `measures:` entry in
+  `models/<name>.yaml`, e.g. `{name: unrealized_gain, expr: market_value -
+  cost_basis, agg: sum, format: currency0}`), after which a fresh gateway process's next call
   sees the new vocabulary. Do **not** compute the number yourself in a text
   section, do not approximate it with a different aggregation, do not
   transcribe hand-arithmetic into the page. Change the contract in git; use

@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a class="on" href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -109,28 +103,30 @@ model file holds no data.</strong></p>
 <tbody>
 <tr>
 <td><strong>Connector</strong></td>
-<td>A handle to a place that stores data: a DuckDB file, a folder of CSVs, a database URL, a cloud warehouse</td>
-<td>Built in the model file (or registered in an app module)</td>
+<td>A handle to a place that stores data: the project's warehouse, a DuckDB file, a database URL, a cloud warehouse</td>
+<td>Named in the model file (<code>type: warehouse</code> for the project's warehouse), or declared once in <code>connections/&lt;name&gt;.yaml</code></td>
 </tr>
 <tr>
 <td><strong>Table</strong></td>
 <td>A name the model uses, pointing at <em>one source inside one connector</em></td>
-<td><code>add_table("fact_holdings", connector="warehouse", source="fact_holdings")</code></td>
+<td><code>{name: fact_holdings, connector: warehouse, source: fact_holdings}</code></td>
 </tr>
 <tr>
 <td><strong>Model</strong></td>
 <td>The tables, which are facts and which are dimensions, how they join, and what every measure means</td>
-<td><code>models/&lt;name&gt;.py</code>: code, a few dozen lines</td>
+<td><code>models/&lt;name&gt;.yaml</code>: a few dozen declarative lines</td>
 </tr>
 </tbody>
 </table>
 <p>Reading a model file, then, tells you the <em>shape</em> of the data and the <em>name</em> of
 the place it is kept, never the data itself.</p>
-<pre><code class="language-python">model = DataModel(&quot;portfolio_model&quot;)
-model.add_connector(DuckDBConnector(&quot;warehouse&quot;, database=&quot;data/warehouse.duckdb&quot;))   # where
-model.add_table(&quot;fact_holdings&quot;, connector=&quot;warehouse&quot;, source=&quot;fact_holdings&quot;)       # which table, from where
-model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;,                           # what it means
-               foreign_keys={&quot;dim_fund&quot;: &quot;fund_id&quot;}, measures=[&quot;fair_value&quot;])
+<pre><code class="language-yaml">connectors:
+  - {name: warehouse, type: warehouse}                                  # where
+tables:
+  - {name: fact_holdings, connector: warehouse, source: fact_holdings}  # which table, from where
+facts:                                                                  # what it means
+  - {name: fact_holdings, table: fact_holdings, measures: [fair_value],
+     foreign_keys: {dim_fund: fund_id}}
 </code></pre>
 <h2 id="finding-where-the-data-is">Finding where the data is</h2>
 <ul>
@@ -138,10 +134,10 @@ model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;, 
   <em>Defined in</em> <code>models/portfolio_model.yaml</code> · <em>reads</em>
   <code>data/warehouse.duckdb</code>. The Model tab's <strong>Storage</strong> view says whether the
   file is there yet and how big it is, and lists each connector, what kind of
-  place it is, and exactly which tables it serves. The <strong>Sources</strong> list
-  (<code>/data/sources</code>; a source is
-  a connector) is the same list
-  across all models, with the models that use each one.</li>
+  place it is, and exactly which tables it serves. Data's <strong>Warehouse</strong> tab
+  (<code>/data/warehouse</code>) lists every table with the transform that wrote it and
+  the models that read it, and <strong>Sources</strong> (<code>/data/sources</code>) every connection
+  and input file the transforms read, with what reads each.</li>
 <li><strong>In code</strong>, <code>model.info()["connector_details"]</code> gives the same answer, and
   <code>connector.storage()</code> says where any connector's data lives (never a
   credential).</li>
@@ -162,11 +158,12 @@ model.add_fact(&quot;fact_holdings&quot;, table_name=&quot;fact_holdings&quot;, 
 reports/portfolio_model/…            every report that reads it
 pipelines/portfolio_model.yaml         rebuild its data, then those reports
 </code></pre>
-<p>One line makes the pipeline: <code>model_pipeline("portfolio_model",
-transform="holdings_transform")</code> registers a <strong>transform</strong> step (the phase ①
-script that fills the warehouse) and a <strong>build</strong> step (every report in
-<code>reports/portfolio_model/</code>, each with its trace). It shows on the Pipelines
-page and runs with <code>tracebi run-pipeline portfolio_model</code>. The build step
+<p>A few lines make the pipeline (<code>pipelines/portfolio_model.yaml</code>:
+<code>transform: holdings_transform</code>, <code>models: [portfolio_model]</code>, <code>reports: all</code>):
+a <strong>transform</strong> step (the phase ① script that fills the warehouse) and a
+<strong>build</strong> step (every report in <code>reports/portfolio_model/</code>, each with its
+trace). It shows on the model's Transform tab, where <strong>Refresh data</strong> runs it,
+and runs with <code>tracebi run-pipeline portfolio_model</code>. The build step
 refuses to run after a transform that failed, so a report is never rebuilt on
 data the transform did not refresh.</p>
 <h2 id="when-the-data-is-not-built-yet">When the data is "not built yet"</h2>

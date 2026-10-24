@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a class="on" href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -95,12 +89,13 @@
   <main class="doc">
 <h1 id="sop-changing-the-semantic-contract">SOP: Changing the Semantic Contract</h1>
 <p><strong>Audience:</strong> an engineer-agent (or a human doing the same job) editing the
-<strong>definition plane</strong> — the <code>models/*.py</code> files that declare what numbers mean
-in this project.</p>
+<strong>definition plane</strong> — the <code>models/&lt;name&gt;.yaml</code> files (a <code>models/&lt;name&gt;.py</code>
+for anything exotic) that declare what numbers mean in this project.</p>
 <p><strong>Where this sits in the three-phase workflow (see <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>).</strong> This is
 <strong>phase ② — MODEL</strong>, the freeze point between the unconstrained phase-① transform
-(<code>transforms/*.py</code>, ordinary pandas that sinks the warehouse) and the fast
-phase-③ report (<code>reports/*.json</code>) that queries the model by name. The
+(<code>transforms/&lt;name&gt;.sql</code>, or pandas as the escape hatch, that sinks the
+warehouse) and the fast phase-③ report (a package in <code>reports/&lt;model&gt;/</code>) that
+queries the model by name. The
 model <strong>reads the sink; it never sees the transform</strong> — it is the semantic
 contract, a few dozen declarative lines a reviewer reads without opening the
 pandas above it (<code>models/portfolio_model.yaml</code> is the reference). It is also where
@@ -118,11 +113,11 @@ long-running ones after restart).</p>
 <p>First, a phase question: <strong>is the data even in the warehouse?</strong> A model can only
 name measures over columns and tables phase ① actually sank. If the number needs
 a column the transform never wrote — a field it dropped, a table it never built —
-no <code>add_measure</code> will conjure it; the fix is <strong>upstream in phase ①</strong>, sinking the
-missing column or table in <code>transforms/*.py</code> (unconstrained pandas), after which
-the model can reference it. Only once the underlying data is in the sink is a
-model change the right tool. Check the warehouse's tables (<code>describe_model</code>, or
-the model's Data page, its Transform tab) before assuming this is a phase-② edit.</p>
+no measure will conjure it; the fix is <strong>upstream in phase ①</strong>, sinking the
+missing column or table in the transform, after which the model can reference
+it. Only once the underlying data is in the sink is a model change the right
+tool. Check the warehouse's tables (<code>describe_model</code>, <code>describe_table</code>, or the
+app's Data → Warehouse) before assuming this is a phase-② edit.</p>
 <p>Then the plane question: <strong>is this shared meaning, or presentation?</strong></p>
 <table>
 <thead>
@@ -136,40 +131,43 @@ the model's Data page, its Transform tab) before assuming this is a phase-② ed
 <tr>
 <td>A business definition several reports should agree on ("unrealized gain", "margin %")</td>
 <td>Definition</td>
-<td><code>add_measure</code> in <code>models/&lt;name&gt;.py</code></td>
+<td>a <code>measures:</code> entry in <code>models/&lt;name&gt;.yaml</code> (<code>add_measure</code> in a <code>.py</code>)</td>
 </tr>
 <tr>
 <td>The canonical display format for a measure, everywhere it appears</td>
 <td>Definition</td>
-<td><code>format=</code> on the measure</td>
+<td><code>format</code> on the measure</td>
 </tr>
 <tr>
 <td>A new slicing attribute, table, or join everyone needs</td>
 <td>Definition</td>
-<td><code>add_dimension</code> / <code>add_table</code> / <code>add_relationship</code> in the model file</td>
+<td><code>dimensions</code> / <code>tables</code> / <code>relationships</code> in the model file</td>
 </tr>
 <tr>
-<td>One report wants a different label, column order, section layout, or a one-off format</td>
+<td>One report wants a different label, column order, layout, or a one-off format</td>
 <td>Presentation</td>
-<td>The report spec (<code>column_labels</code>, <code>number_formats</code>, sections)</td>
+<td>The report package (<code>report.json</code>, the page)</td>
 </tr>
 <tr>
 <td>One report needs a derived column nothing else will ever use</td>
 <td>Presentation first</td>
-<td>Keep it in the report/request; promote to a measure only when a second consumer wants it</td>
+<td>A report calculation in <code>report.json</code> (<code>measures</code>, <code>sql_calculations</code>); promote to the model only when a second consumer wants it</td>
 </tr>
 </tbody>
 </table>
 <p>The canonical example (see <code>examples/agent_gateway/README.md</code>): an agent
 wanted an <em>unrealized gain</em> column. A spec cannot express arbitrary
-computation — by design — so the correct fix was a small, code-reviewed
-change in <code>models/wealth_model.py</code> (the actual commit also declared
-<code>market_value</code> and <code>cost_basis</code> as named measures with formats; the two
-gain measures were the point):</p>
-<pre><code class="language-python">model.add_measure(&quot;unrealized_gain&quot;, expr=&quot;market_value - cost_basis&quot;,
-                  agg=&quot;sum&quot;, format=&quot;currency0&quot;)
-model.add_measure(&quot;gain_pct&quot;, ratio=(&quot;unrealized_gain&quot;, &quot;cost_basis&quot;),
-                  format=&quot;percent&quot;)
+computation — by design — so the correct fix was a small, reviewed change to
+the wealth model (the actual commit also declared <code>market_value</code> and
+<code>cost_basis</code> as named measures with formats; the two gain measures were the
+point). In the reference project's <code>models/wealth_model.yaml</code> it reads:</p>
+<pre><code class="language-yaml">  - name: unrealized_gain
+    expr: market_value - cost_basis
+    agg: sum
+    format: currency0
+  - name: gain_pct
+    ratio: [unrealized_gain, cost_basis]
+    format: percent
 </code></pre>
 <p>Defining it once in the model means every report, query, and agent gets the
 <em>same</em> "unrealized gain" — instead of each consumer re-deriving it, perhaps
@@ -181,21 +179,30 @@ CLAUDE.md §1.</p>
 <h2 id="2-mechanics">2. Mechanics</h2>
 <h3 id="21-where-model-changes-live">2.1 Where model changes live</h3>
 <ul>
-<li>Edit <code>models/&lt;name&gt;.py</code>. The file <strong>must</strong> expose a module-level variable
-  named <code>model</code> (a <code>DataModel</code>) — that is the convention the registry looks
-  for.</li>
-<li>Files starting with <code>_</code> are skipped; model discovery loads only <code>.py</code>;
-  subdirectories are not scanned. A file that raises on import is skipped
-  with a warning, not an error — run <code>tracebi validate</code> if something silently
-  disappears.</li>
+<li>Edit <code>models/&lt;name&gt;.yaml</code> (<code>.yml</code> and <code>.json</code> are the same schema,
+  <a href="../reference/model-json.html">Model files (YAML or JSON)</a>). A <code>models/&lt;name&gt;.py</code> <strong>must</strong> expose a module-level
+  variable named <code>model</code> (a <code>DataModel</code>) — that is the convention the registry
+  looks for.</li>
+<li>Files starting with <code>_</code> are skipped; subdirectories are not scanned. Two
+  declarative forms of one name are both refused, and a <code>.py</code> beside a
+  declarative file wins. A file that fails to load is a failed entry in
+  <code>/api/discovery</code>, not an error at startup — run <code>tracebi validate</code> if
+  something silently disappears.</li>
+<li>Through the server, a model change is a draft: Edit as a draft in the app,
+  or <code>start_draft</code> / <code>write_draft_file</code> over MCP, then publish. Publishing
+  re-runs every published report that reads the model against the draft
+  (the impact check) and asks for <code>accept_impact</code> when numbers move.</li>
 <li>A one-shot gateway process (stdio, spawned per call) picks up a committed
   change on its next spawn; a long-running gateway keeps already-imported
   model modules cached and must be restarted. Either way a change is
   visible to agents on their <strong>next</strong> gateway call — no server restart, no
   cache to invalidate.</li>
 </ul>
-<h3 id="22-add_measure-the-exact-signature">2.2 <code>add_measure</code> — the exact signature</h3>
-<p>From <code>tracebi/model/data_model.py</code>:</p>
+<h3 id="22-a-measure-the-exact-keys">2.2 A measure — the exact keys</h3>
+<p>A YAML measure entry takes the same keys as <code>add_measure</code>'s keyword
+arguments (<code>name</code>, <code>column</code>, <code>agg</code>, <code>expr</code>, <code>ratio</code>, <code>description</code>,
+<code>format</code>, and the other kinds in <a href="../reference/measures.html">Measures</a>). From
+<code>tracebi/model/data_model.py</code>:</p>
 <pre><code class="language-python">model.add_measure(
     name,                 # positional; everything else is keyword-only
     *,
@@ -271,12 +278,12 @@ its raw output.</p>
 <p>Per CLAUDE.md §4: run <code>pytest tests/</code> <strong>before</strong> your change (confirm a green
 baseline) and <strong>after</strong>. A passing suite is the minimum bar.</p>
 <ul>
-<li>Measure-definition behavior is tested in <code>tests/test_phase25.py</code> (see the
-  existing <code>add_measure</code> tests around the callable-rejection and expr-
-  validation cases) and gateway-visible behavior in
-  <code>tests/test_mcp_gateway.py</code>. Add your tests to the phase file they belong
-  to — test files are phase-scoped; do not reorganize across files or add
-  shared cross-phase fixtures.</li>
+<li>Prefer a step in an end-to-end journey (<code>tests/e2e/</code>) that uses the
+  measure; add a unit test only for query semantics a journey cannot pin
+  (<code>tests/test_phase25.py</code> holds the <code>add_measure</code> callable-rejection and
+  expr-validation cases). Test files are scoped; do not reorganize across
+  files or add shared cross-phase fixtures. Before adding any test, answer
+  <em>what bug would this catch?</em> (<code>docs/architecture/test-suite-review.md</code>).</li>
 <li>Test the <em>meaning</em>, not just the plumbing: assert the computed value on a
   small known dataset. Bias toward asserting the <strong>absence of a wrong
   answer</strong> (e.g. a ratio measure is a ratio of totals, not a mean of per-row
@@ -287,9 +294,9 @@ baseline) and <strong>after</strong>. A passing suite is the minimum bar.</p>
   sections' fingerprints must stay byte-identical. Drift where something
   moved, stability where nothing did — that is your review signal.</li>
 <li><strong>Renaming or removing</strong> a measure is a breaking contract change: grep
-  <code>reports/</code> and <code>examples/</code> for references, run <code>tracebi spec validate</code> on
-  any spec that names it, and <code>tracebi report build</code> each package that binds
-  it (a binding to a missing measure fails the build).</li>
+  <code>reports/</code> and <code>examples/</code> for references and <code>tracebi report build</code> each
+  package that binds it (a binding to a missing measure fails the build); a
+  published model's impact check lists the reports that break.</li>
 </ul>
 <p>Useful while working:</p>
 <pre><code class="language-bash">tracebi context --model &lt;name&gt;     # see the vocabulary as an agent sees it
@@ -329,12 +336,12 @@ pytest tests/                      # full suite (run it for the current count)
 <li><strong>No lambdas or callables, ever</strong> — see §2.3. Do not wrap one, do not
   precompute a column in an ad-hoc transform and pretend it is governed.</li>
 <li><strong>Do not edit <code>tracebi/</code> internals for a project need.</strong> Adding a measure,
-  a dimension, or a format belongs in <code>models/*.py</code>. New measure kinds,
+  a dimension, or a format belongs in the model file. New measure kinds,
   relaxed expression rules, new aggregation functions, or reaching into
   <code>_measures</code> and other <code>_private</code> attributes are framework changes with their
   own review bar — propose them, don't sneak them in with a model change.</li>
 <li><strong>Do not solve presentation problems in the definition plane</strong> (a
-  one-report label tweak is <code>column_labels</code> in the spec) <strong>or shared-meaning
+  one-report label tweak belongs in the report package) <strong>or shared-meaning
   problems in the presentation plane</strong> (recomputing "gain" inside a report is
   how two reports disagree about the same number).</li>
 <li><strong>Do not duplicate a definition.</strong> Before adding a measure, check
@@ -348,21 +355,21 @@ pytest tests/                      # full suite (run it for the current count)
 <ul>
 <li>[ ] The change is <strong>shared meaning</strong>, not one report's presentation (§1);
       ambiguity was surfaced, not silently resolved.</li>
-<li>[ ] Edited <code>models/&lt;name&gt;.py</code> only; module-level <code>model</code> variable intact;
-      no <code>tracebi/</code> internals touched.</li>
-<li>[ ] Each new measure uses exactly one of <code>column=</code> / <code>expr=</code> / <code>ratio=</code>;
+<li>[ ] Edited the model file only (a <code>.py</code> keeps its module-level <code>model</code>
+      variable); no <code>tracebi/</code> internals touched.</li>
+<li>[ ] Each new measure uses exactly one of <code>column</code> / <code>expr</code> / <code>ratio</code>;
       <code>agg</code> present for the first two, absent for <code>ratio</code>.</li>
 <li>[ ] Any <code>expr</code> is bare-column arithmetic only — no functions, quotes, or
       SQL; no callables anywhere.</li>
-<li>[ ] <code>description=</code> written; <code>format=</code> declared where a canonical display
+<li>[ ] <code>description</code> written; <code>format</code> declared where a canonical display
       format exists.</li>
 <li>[ ] No duplicate/near-duplicate of an existing measure
       (<code>tracebi context --model &lt;name&gt;</code> checked).</li>
-<li>[ ] Tests added in the correct phase-scoped file, asserting computed
-      values (including the absence-of-wrong-answer case).</li>
+<li>[ ] A journey step (or, for query semantics, a unit test) asserting
+      computed values (including the absence-of-wrong-answer case).</li>
 <li>[ ] <code>pytest tests/</code> green <strong>before and after</strong> the change.</li>
-<li>[ ] Renames/removals: downstream specs and reports grepped and
-      re-validated (<code>tracebi spec validate</code>).</li>
+<li>[ ] Renames/removals: downstream reports grepped and rebuilt
+      (<code>tracebi report build</code>).</li>
 <li>[ ] Fingerprint drift confined to sections the change actually touches;
       untouched sections byte-identical.</li>
 <li>[ ] CHANGELOG.md updated; diff is surgical; commit message is one

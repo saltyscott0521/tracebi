@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -370,7 +364,10 @@ missing one is. Folder permissions do not apply: a table is not a report.</p>
 </table>
 <p><code>GET /api/reports</code> gives each report a <code>form</code>: <code>spec</code> (a <code>reports/&lt;name&gt;.json</code>
 in the default style), <code>package</code> (a <code>reports/&lt;name&gt;/</code> with its own template
-and style) or <code>code</code>. <code>/source</code> returns the files that define the report —
+and style) or <code>code</code>, and <code>made_from</code>: <code>app.jsx</code> (a dashboard), <code>template.html</code>
+(a page) or <code>null</code>, what a package draws its page from. It also carries
+<code>folder</code> and <code>owner</code> (the last publisher, or the owner of a My published
+folder). <code>/source</code> returns the files that define the report —
 the spec, or the package's <code>report.json</code>, <code>template.html</code>, <code>style.css</code>,
 <code>script.js</code> and <code>report.py</code> — read-only, and only the files discovery
 registered for it. It also gives each report <code>models</code> (the models its data
@@ -721,7 +718,7 @@ reports its build step rebuilt, only those it actually built).</p>
 <tr>
 <td><code>POST</code> · <code>GET</code> · <code>DELETE</code></td>
 <td><code>/mcp</code></td>
-<td>the agent gateway, only when <code>TRACEBI_MCP_TOKEN</code> is set. Bearer token, outside the app's Basic/proxy auth</td>
+<td>the agent gateway, only when <code>TRACEBI_MCP_TOKEN</code>, <code>TRACEBI_OIDC_ISSUER</code> or the built-in sign-in (<code>TRACEBI_DEMO_LOGIN</code>, <code>TRACEBI_LOCAL_USERS</code>) is set. Bearer token, outside the app's Basic/proxy auth (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>)</td>
 </tr>
 <tr>
 <td><code>GET</code></td>

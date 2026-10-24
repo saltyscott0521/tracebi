@@ -38,7 +38,7 @@ Then, in the browser:
    Also download `portfolio_showcase` with **Export → HTML** into
    `demo/`. You will use it for beat 2.
 3. Open `edited.html` in a plain text editor (TextEdit in plain-text mode, or
-   Notepad). Find `285904445.21` (it appears once) and change it to
+   Notepad). Find `285904445.21` (two data blocks carry it) and change each to
    `295904445.21`. Save. Open `edited.html` in the browser and check the
    headline now reads **$295,904,445**, $10 million more than the real
    report.
@@ -69,8 +69,9 @@ Point at the green **Reproduces** chip beside the report's title.
 > and got the same numbers. Nobody can quietly use a different formula on one
 > page."
 
-Optional: click **Data** in the sidebar, then Direct Lending Portfolio. Its
-**Model** tab shows the definitions in one screen. Go back to **Reports**.
+Optional: click **Data** in the sidebar. The board shows where the numbers come
+from, left to right; click the Direct Lending Portfolio card, and its **Model**
+tab shows the definitions in one screen. Go back to **Reports**.
 
 ### Beat 2: every number has a trace (2 minutes)
 
@@ -108,8 +109,8 @@ Then drag in the untouched pair (`portfolio_dashboard.html` and its
 
 ### Beat 4: ask a question (1 minute, optional)
 
-Click **Ask** in the sidebar. With Direct Lending Portfolio picked, tick
-`fair_value` and `sector`, then **Run query**.
+Click **Ask** in the sidebar. With Direct Lending Portfolio picked, build the
+sentence "Show fair value by sector" (type, or pick each word), then **Ask**.
 
 > "You can ask your own question of the same definitions, and the answer
 > comes with the exact query behind it, so it can be checked the same way."

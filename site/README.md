@@ -37,8 +37,9 @@ result differs from what is checked in. The failure names the fix.
 
 The generator takes the palette and the favicon out of `index.html` rather than
 keeping a second copy, so the docs site cannot drift into a different blue than
-the landing page. Internal documents (`north-star.md`, `ROADMAP.md`) are never
-published, and a test asserts the positioning doc never appears.
+the landing page. The internal positioning doc (`north-star.md`) and the
+strategy notes (`docs/strategy/`) are never published, and a test asserts the
+positioning doc never appears.
 
 ## Deploy
 

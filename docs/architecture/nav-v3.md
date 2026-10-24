@@ -1,7 +1,7 @@
 # Navigation v3 — Docs as a place, Data as the chain
 
-**Status: in execution, 2026-10-21.** Follows [[ux-plan-2026-10-17]] (the four
-places) and the three rounds of [[live-reports-plan]]. Two things the
+**Status: built, 2026-10-21; Data reshaped as a board on 2026-10-23 (v3.1,
+below).** Follows the 2026-10-17 plan (the four places) and the three rounds of [[live-reports-plan]]. Two things the
 maintainer named after using the app: the docs are hidden behind a small
 "Help" link at the foot of the sidebar, and from the Data place it is hard to
 see what is available, database by database, table by table, on the way to a
@@ -61,7 +61,8 @@ model. This round fixes both without reopening the four-place structure.
 3. **A model's stage line gains stage ⓪, Sources**: the connections and
    input files its transform reads, before Transform. Clicking it opens
    `/data/sources` filtered to them.
-4. **Roles unchanged**: Data stays admin-only; Docs is for everyone. Older
+4. **Roles unchanged**: Data stays admin-only; Docs is for everyone. (Since
+   2026-10-23 Data is for analysts and admins: `minRole` in `web/ui/src/nav.js`.) Older
    addresses redirect (`movedTo`).
 5. **Words**: "Sources" for connections and input files, "Warehouse" for the
    sink, "Models" for the contracts. No new nouns.

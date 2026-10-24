@@ -1,12 +1,13 @@
 # DuckDB-first — one engine from the sink to the page
 
-**Status: design, decisions closed 2026-10-19.** Written from a maintainer
-discussion; the packages at the end are the plan. **D3 and D10 shipped in S-1
+**Status: built (S-1 to S-4, 2026-10-19 to 10-21), decisions closed
+2026-10-19.** Written from a maintainer discussion; the packages at the end
+were the plan, and the page half is [[live-reports-plan]]. **D3 and D10 shipped in S-1
 (2026-10-19)**: a model query runs in one locked, read-only DuckDB connection
 over views of the attached warehouse (`tracebi/model/engine.py`), limits in
-[[../reference/tracebi-yaml]]. Not yet: the per-measure `MACRO`s (`{{ measure() }}`
+[[tracebi-yaml]]. Not yet: the per-measure `MACRO`s (`{{ measure() }}`
 still expands to inline SQL). **D2 shipped in S-2 (2026-10-19)**: the
-`warehouse:` block of [[../reference/tracebi-yaml]] (file, object, remote),
+`warehouse:` block of [[tracebi-yaml]] (file, object, remote),
 `type: warehouse` in a model, `sink_target()` in a transform, object-tier
 credentials through `CREATE TEMPORARY SECRET`, and ETags plus the engine
 version in the certificate. Not yet: the object tier's manifest swap (§10;
@@ -15,7 +16,7 @@ Supersedes the
 engine choice in [[large-detail-artifacts]] (parquet-wasm + Arquero) and the
 "controls never compute new numbers" rule in `tracebi/capabilities.py`.
 Everything in the three-phase workflow and the honesty rules
-([[../../MANIFESTO]]) stands; this changes *how* each phase computes, and
+([[MANIFESTO]]) stands; this changes *how* each phase computes, and
 how much the report file may do on its own.
 
 **One line:** DuckDB is the only engine on the server. Transforms are SQL by

@@ -43,8 +43,8 @@ first-class, not as a report waiting for a schedule.
 | **Explore** | The analyst (or their agent) queries the model and tries ideas; scratch work stays out of the final file | ✅ `tracebi dev`, the workbench, exploration blocks, `tracebi.workbench.show()`, `tracebi session export` | Share a live exploration link with a colleague | Q2 |
 | **Shape** | Pick what the story needs: figures, prose, tables | ✅ Package grammar, `{{ figure() }}`, `report.py` for the analysis the model can't express | Templates for common analyses (variance, cohort, concentration) | Q2 |
 | **Lay out** | The page looks the way the analyst wants | ✅ `style.css`, `assets/` fonts and images, `configureChart` | A small gallery of layouts to start from | Q2 |
-| **Build and share** | One self-contained file, every number traceable | ✅ `tracebi report build`, `tracebi report send`, `verify --file` | Download as PDF; a shareable link from the app | Q2–Q3 |
-| **Review** | Peer review, the way the team already reviews analysis | Git pull request, pins in the workbench | Review in the app for people who don't use git | Q3 |
+| **Build and share** | One self-contained file, every number traceable | ✅ `tracebi report build` (`--format pdf` too), `tracebi report send`, `verify --file`, the share link `/r/<name>` | | |
+| **Review** | Peer review, the way the team already reviews analysis | ✅ Drafts and publish requests under Review in the app; a pull request where the team uses git | | |
 
 The analyst stays in charge: plain files, their own layout and prose, and an
 agent that does the querying, charting and first draft when asked.
@@ -53,11 +53,11 @@ agent that does the querying, charting and first draft when asked.
 
 | Step | What happens | Today | Target | Quarter |
 | --- | --- | --- | --- | --- |
-| **Request** | A person asks for a recurring report, or keeps an answer or analysis | Ask on one report | Request inbox. Each request becomes an agent task tied to a branch. | Q3 |
+| **Request** | A person asks for a recurring report, or keeps an answer or analysis | Keep this in `/ask` starts a draft | Request inbox. Each request becomes an agent task tied to a branch. | Q3 |
 | **Author** | An agent writes the model and report | MCP gateway, package grammar, validation, `tracebi dev` | Templates, model scaffold from warehouse metadata | Q1–Q2 |
-| **Review** | A person approves | A pull request where a team uses git, Desk pins | Plain-language review in the app: rendered preview, what changed, which definitions it uses | Q3 |
-| **Publish** | Merge makes it live | Server discovers at startup | Publish on merge, no restart | Q3 |
-| **Run** | It refreshes and builds on schedule | ✅ `schedule` block, `tracebi schedule run / serve`, refresh before build | Retries, run history in the app | Q1 |
+| **Review** | A person approves | ✅ Publish requests under Review: the rendered draft, its files, and for a model the reports it moves | Plain-language review: what changed, in words | Q3 |
+| **Publish** | Approval or merge makes it live | ✅ Publishing a draft, or a git push through `POST /api/library/sync`; live discovery, no restart | | |
+| **Run** | It refreshes and builds on schedule | ✅ `schedule` block, `tracebi schedule run / serve`, refresh before build, run history in the app (History) | Retries | Q1 |
 | **Deliver** | It reaches readers | ✅ Email with the report attached | Slack/Teams, links, in-body summary, per-recipient versions | Q1–Q2 |
 | **Monitor** | Failures and surprises get handled | Run log, `tracebi verify` | Alerts on failure, empty data and thresholds. Agent opens a fix PR. | Q3 |
 
@@ -71,22 +71,22 @@ What a team expects from a BI tool, and our answer.
 | Capability | Needed? | TraceBi answer | Status |
 | --- | --- | --- | --- |
 | Dashboards and reports | Yes | Report packages (HTML), specs | ✅ |
-| Charts, tables, KPIs | Yes | ECharts figures, tables, value cards | ✅ |
-| Filters and drill-down | Yes | Controls; selection that recomputes through the model | ✅ partial |
+| Charts, tables, KPIs | Yes | D3 charts (ECharts on request), tables, value cards | ✅ |
+| Filters and drill-down | Yes | One selection state: controls, mark and row clicks, ranges; every figure recomputes in the page | ✅ |
 | Semantic layer and metrics | Yes | `DataModel`: facts, dimensions, measures (ratios, windows, time intelligence) | ✅ |
 | Scheduled delivery | Yes | `tracebi schedule`, email | ✅ v1 |
 | Per-recipient versions (bursting) | Yes | Parameters in the filter grammar | ❌ Q2 |
-| Connectors | Yes | CSV, SQL/Postgres, Snowflake, BigQuery, DuckDB | ✅ partial. Queries not yet pushed down (Q2). |
-| Performance at warehouse scale | Yes | Query compiler + per-run cache | ❌ Q2 |
-| Exports | Yes | HTML, Excel. PDF untested. | ✅ partial |
-| Access control | Yes | Roles (viewer, analyst, admin) | ✅ partial. SSO, row-level security Q4. |
+| Connectors | Yes | CSV, SQL/Postgres, Snowflake, BigQuery, DuckDB, declared in `connections/*.yaml` | ✅ |
+| Performance at warehouse scale | Yes | The model query runs in DuckDB over the warehouse (file, object storage or remote) | ✅ |
+| Exports | Yes | HTML, Excel, PDF (a print of the built page) | ✅ |
+| Access control | Yes | Roles (viewer, analyst, admin), OIDC sign-in, folder permissions | ✅ partial. Row-level security Q4. |
 | Alerts | Yes | Thresholds and failures | ❌ Q3 |
 | Catalog and search | Yes | Reports list | ✅ basic. Owners and usage Q4. |
 | Version history | Yes | Git | ✅ (better than BI) |
 | Embedding | Sometimes | Signed-URL embed | ❌ Q4 |
-| Natural-language questions | Yes: the ad hoc path | Ask, through the agent, from the approved definitions | ✅ partial (on a report and via MCP) |
+| Natural-language questions | Yes: the ad hoc path | Ask, through the agent, from the approved definitions | ✅ (`/ask` and MCP) |
 | Drag-and-drop authoring | No | Agents author | Won't build |
-| Pixel-perfect paginated layout | Rarely | HTML + CSS; PDF later | Later |
+| Pixel-perfect paginated layout | Rarely | HTML + CSS; the PDF prints the page | Later |
 | Real-time streaming dashboards | No | Out of scope | Won't build |
 
 ## Where to be better, not just equal
@@ -105,7 +105,7 @@ What a team expects from a BI tool, and our answer.
 4. **Review.** A plain-language diff of what a report change does, so an
    approver who doesn't code can approve it.
 5. **Repeatability and proof.** Schedules in the repo, run history, and
-   receipts that re-run.
+   traces that re-run.
 6. **Ownership.** Plain files the customer owns, in their folders or source
    control. Leaving TraceBi means
    keeping everything.
@@ -126,16 +126,16 @@ tables.
 | 6 | **Support operations** (SLA, backlog) | Common, easy data |
 
 Each template ships with sample data, a `tracebi init --template <name>`
-path, and a landing page.
+path, and a landing page. Built: `saas-metrics` and `sales-pipeline`.
 
 ## What we won't build
 
 | Won't build | Because |
 | --- | --- |
 | A drag-and-drop chart editor | Agents author. A GUI editor puts logic back into the tool. |
-| A second calculator (browser SQL, server-side re-aggregation) | One definition, one calculator |
+| A second calculator (free SQL in the browser, re-aggregation outside the model) | One definition, one calculator: a built page runs only the plan the server compiled, held to the server's result |
 | Warehouse writes by agents or Cloud | Read-only on customer data |
-| Our own ETL platform | Sits on dbt and the warehouse. `transforms/` stays for teams without one. |
+| Our own ETL platform | Sits on dbt and the warehouse. `transforms/` (SQL, with a sink contract) stays for teams without one. |
 | Cloud-only features that change what a report can compute | Open by default |
 | Real-time streaming dashboards | Not the reporting job, ad hoc or recurring |
 

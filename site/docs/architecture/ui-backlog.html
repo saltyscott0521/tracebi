@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,122 +81,47 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a class="on" href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
 <h1 id="ui-backlog">UI backlog</h1>
-<p>The loop in <code>ui-quality.md</code> takes the top open item. Done items move to the
-bottom with the change that closed them.</p>
+<p>The loop in <code>ui-quality.md</code> takes the top open item. An item keeps its number
+for good (<code>NOTES.md</code> cites them); a closed one is deleted, and the change that
+closed it says so in <code>CHANGELOG.md</code>. Checked against the app on 2026-10-24:
+what the board, the table page, the Transforms tab, the role tiers, the
+theme's OS default and the Steps table's chips closed is gone from this list.</p>
 <h2 id="open">Open</h2>
-<p><strong>Audit pass 3 (<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>) is the next round.</strong> It found 2 P0,
-20 P1 and 32 P2 and plans eight packages, U-1 to U-8: framework tables
-(<code>tracebi_*</code>, <code>alembic_version</code>) hidden from every explorer and the demo's
-runner and seed data moved off the state store (the P0: the demo's
-connection explorer listed sessions and OAuth tokens); one read-only table
-API (rows with sort, search, filter and paging, one-table profile, CSV) and
-a table page with a <code>DataGrid</code>; Warehouse and Sources rebuilt around it
-(Sources lists sources only, connections get labels and kinds in words);
-the model page as an explorer; Data for analysts and the first run built;
-one set of parts (two tab styles, sentence-case chips, one date module);
-titles and words. It also records a default for the three open deviations
-(Swagger stays at <code>/api-docs</code>; stage ⓪ selects the model's Sources tab;
-"Fed from" said once per transform). Item 34 (the Steps table's upper-case
-badge) closes with U-7, and item 35 (links past the role) shrinks with U-6,
-which opens Data to analysts; the rest stay below.</p>
-<ol>
-<li><em>Closed by D-1 (see Done).</em></li>
-<li><strong>"Checks stale" items name no model</strong>: a stale sink check shows only
-    under All models. Attribute warehouse tables to the models that read them.</li>
-<li><strong>Bundle is 1.2 MB of JS</strong> (1,243,903 bytes, 364 KB gzipped, after D-3).
-    D-3's dead-code pass did not move it: the bundler already dropped what
-    nothing imported. Split routes (React Flow, Markdown, Recharts load only
-    on the pages that use them). The Step 1 baselines' <code>bundle_js_kb</code> 2,345
-    counted a stale second bundle left in <code>dist/assets/</code>; build into an empty
-    <code>dist</code> before an audit.</li>
-<li><strong>90 hard-coded colours in JSX</strong> — each is a dark-mode bug waiting.
-    Move them to tokens.</li>
-<li><strong>The theme ignores the OS setting</strong>: a first visit is always light. Follow
-   <code>prefers-color-scheme</code> until the viewer picks one.</li>
+<p>The app:</p>
+<ol start="3">
+<li><strong>Bundle is 1.2 MB of JS</strong> (364 KB gzipped). The bundler already drops
+   what nothing imports; split routes instead (React Flow, Markdown,
+   Recharts load only on the pages that use them). Build into an empty
+   <code>dist</code> before an audit, or a stale second bundle is counted.</li>
+<li><strong>Hard-coded colours in JSX</strong> (ten left, mostly React Flow's <code>nodeColor</code>,
+   handle borders and arrow markers in <code>Models.jsx</code>, <code>Pipelines.jsx</code>,
+   <code>Lineage.jsx</code>, <code>ReportLineage.jsx</code>): each is a dark-mode bug waiting.
+   Move them to tokens.</li>
 <li><strong><code>Btn</code> drops a caller's colours</strong>: its variant styles are applied after
-    <code>style</code>, so <code>style={{ background }}</code> is silently overridden.</li>
-</ol>
-<p>Left by Step 1 of the UX plan (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>), report side:</p>
-<ol start="7">
-<li><strong>Affordability is a second bespoke look</strong>: Inter, a green accent, its own
-   paper ground, resting shadows and gradients (all of the reference
-   project's <code>report_box_shadows</code> and <code>report_gradients</code>), pinned light. Move
-   it onto the system, or name it beside <code>aum_by_branch</code> as a bespoke example.</li>
-<li><strong>The reference project has more than one look</strong>: <code>portfolio_book</code> (navy)
-   and <code>portfolio_showcase</code> (teal, Fraunces) carry their own accent presets
-   (<code>report_accents</code>, <code>report_looks</code> in the baseline). Decide whether a project
-   is one accent, and ratchet the count down.</li>
-<li><strong>Small multiples are dense on a phone</strong> (DS-4).</li>
-<li><strong>The showcase's striped frozen column keeps a light shade in dark</strong> (DS-5).</li>
-<li><em>Closed by L-5 (see Done): there is no handshake left.</em></li>
-<li><strong>A line's end label is cut at the plot's top edge on a phone</strong>
-    (<code>portfolio_concentration</code>'s cumulative share at 390px).</li>
-</ol>
-<p>Recorded in the committed audit baselines, not caused by Step 1 (which touched
-no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
-<ol start="13">
-<li><strong>App crawl findings since the 2026-10-13 Reports page</strong>: <code>scope-mismatch</code>
-    and <code>nav-you-are-here</code> were the audit's selectors (R-1: it now reads the
-    library's <code>[data-report]</code> rows at <code>/?model=&lt;m&gt;</code> and counts the rail's
-    current entry on an open report; the committed baselines still name the
-    old addresses until the next run), <code>blank-page</code> / <code>one-h1</code> / <code>small-target</code> on an open report,
-    <code>no-focus-ring</code> into the report frame, eleven <code>slow-page</code>, and the
-    segmented bar's <code>repeating-linear-gradient</code> (<code>global.css:1188</code>,
-    <code>theme-decoration</code>). Some are the audit's selectors, some the app.
-    <em>Retriaged after D-3's re-run:</em> <code>scope-mismatch</code>, <code>nav-you-are-here</code> and
-    <code>theme-decoration</code> are gone. Left, on an open report only: <code>blank-page</code>,
-    <code>no-focus-ring</code> into the frame and <code>one-h1</code> (affordability; the demo's
-    medallion_revenue), and <code>small-target</code> on the rail's "Reports" crumb and
-    the header's verdict chip; plus <code>small-target</code> on Review's "All history →"
-    and thirteen <code>slow-page</code>.</li>
-</ol>
-<p>Left by Step 2 of the UX plan (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>), app side:</p>
-<ol start="14">
-<li><em>Closed by D-3 (see Done).</em></li>
-<li><em>Closed by D-1 (see Done).</em></li>
-<li><strong><code>CLAUDE.md</code> still says "on the model's Overview"</strong> (four lines: the
-    phase ③ paragraph, the run-command comment, How to Add Things twice) and
-    does not say where <code>tracebi dev</code> opens. D-3 fixed every other file; the
-    project instructions are the owner's to edit (the proposed wording is in
-    D-3's report).</li>
-<li><em>Closed by D-3 (see Done).</em></li>
-<li><strong><code>site/sample/portfolio_showcase.html</code> predates Step 1</strong>: rebuild it with
-    the current runtime.</li>
-<li><strong>A report build records no finish time</strong> (<code>record_report_build</code>), so
-    History shows how long only for background runs, schedules and pipeline
-    runs. Record the build's start and finish.</li>
-<li><strong>Bug, not UI: <code>tracebi migrate model</code> drops <code>owners</code>.</strong>
-    <code>model_yaml._document</code> puts <code>owners</code> in the document, but <code>model_to_yaml</code>
-    writes only <code>label</code> and the <code>_SECTIONS</code> keys, so a migrated model loses
-    who may publish it.</li>
+   <code>style</code>, so <code>style={{ background }}</code> is silently overridden.</li>
 <li><strong>The phone header is translucent</strong>: a scrolled list shows through it
     (History's sticky day header sits under it).</li>
-</ol>
-<p>Left by Step 3 of the UX plan (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>):</p>
-<ol start="22">
-<li><em>Closed by A2-3 (see Done).</em></li>
-<li><em>Closed by A2-3 (see Done).</em></li>
 <li><strong>The Transform flow zooms in two steps</strong> only (D-1).</li>
-<li><em>Closed by Step 4 (see Done): <code>AskCut</code> deleted.</em></li>
-<li><strong><code>notebook-guide.md</code>'s <code>@register.report</code> section predates the one
-    renderer</strong>: a factory with no package is listed but refused (422). Point
-    it at a package.</li>
 <li><strong><code>scripts/ui_audit.py</code>'s <code>scope-mismatch</code> detail still says "the model
     switcher"</strong>; it means the model chip.</li>
+<li><strong>A pipeline run in History goes by its identifier</strong> (<code>portfolio_model</code>):
+    <code>/api/runs</code> gives a report run a <code>display_name</code> and a pipeline run none.
+    Give it its model's label.</li>
+<li><strong>History's "N older runs" counts what <code>/api/runs</code> returned</strong> (the last
+    50 runs, default <code>limit</code>), not every run the store holds.</li>
+<li><strong>Links inside a page still point past the role</strong>: a viewer's report
+    panel and Ask can link to History or a model's Data page, which then shows
+    the plain "for analysts / admins" page. Hide those links by the same
+    <code>mayUse</code> rule the sidebar uses.</li>
 </ol>
-<p>Left by Step 4 (Ask):</p>
+<p>Ask:</p>
 <ol start="28">
 <li><strong>An Ask answer carries no fingerprint.</strong> <code>POST /api/models/{name}/query</code>
     returns lineage, not the stamp <code>query_model</code> gives an agent, so the
@@ -210,26 +134,39 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
     description.</li>
 <li><strong>Keep this cannot pick a folder</strong>: the draft starts at
     <code>&lt;model&gt;/&lt;slug&gt;</code>; the folder is chosen when it is published.</li>
+<li><strong>Ask's "Keep this" does not carry a selection into the page.</strong> A kept
+    answer opens a one-figure draft; it could instead open the report it came
+    from with the selection in the frame's hash (<code>#sel=</code>), so the reader lands
+    on the same cut, Local, without a draft.</li>
 </ol>
-<p>Left by A2-3 (the app, audit pass 2):</p>
-<ol start="32">
-<li><strong>A pipeline run in History goes by its identifier</strong> (<code>portfolio_model</code>):
-    <code>/api/runs</code> gives a report run a <code>display_name</code> and a pipeline run none.
-    Give it its model's label, as the Transform card now reads.</li>
-<li><strong>History's "N older runs" counts what <code>/api/runs</code> returned</strong> (the last
-    50 runs, default <code>limit</code>), not every run the store holds.</li>
-<li><strong>The Steps table's status is an upper-case badge</strong> ("SUCCESS"), not the
-    verdict-shaped <code>Chip</code> the table checks now use.</li>
+<p>Reports:</p>
+<ol start="7">
+<li><strong>Affordability is a second bespoke look</strong>: Inter, a green accent, its own
+   paper ground, resting shadows and gradients, pinned light. Move it onto
+   the system, or name it beside <code>aum_by_branch</code> as a bespoke example.</li>
+<li><strong>The reference project has more than one look</strong>: <code>portfolio_book</code> (navy)
+   and <code>portfolio_showcase</code> (teal, Fraunces) carry their own accent presets
+   (<code>report_accents</code>, <code>report_looks</code> in the baseline). Decide whether a project
+   is one accent, and ratchet the count down.</li>
+<li><strong>Small multiples are dense on a phone</strong> (DS-4).</li>
+<li><strong>The showcase's striped frozen column keeps a light shade in dark</strong> (DS-5).</li>
+<li><strong>A line's end label is cut at the plot's top edge on a phone</strong>
+    (<code>portfolio_concentration</code>'s cumulative share at 390px).</li>
+<li><strong><code>site/sample/portfolio_showcase.html</code> predates the report design
+    system</strong> (built 2026-10-03): rebuild it with the current runtime.</li>
+<li><strong>The page engine keys slices by fact name.</strong> <code>tracebiCalc.load(fact, …)</code>
+    holds one slice per fact name, so a page reading two models that each
+    have a fact of the same name would load one over the other. Key by
+    <code>model.fact</code> (the calc payload already records both).</li>
 </ol>
-<p>Left by A2-6 (role-aware navigation):</p>
-<ol start="35">
-<li><strong>Links inside a page still point past the role</strong>: a viewer's report
-    panel and Ask can link to History or a model's Data page, which then shows
-    the plain "for analysts / admins" page. Hide those links by the same
-    <code>mayUse</code> rule the sidebar uses.</li>
-</ol>
-<p>Left by A2-4 (receipt → trace):</p>
-<ol start="36">
+<p>Not UI, found on the way:</p>
+<ol start="19">
+<li><strong>A report build records no finish time</strong> (<code>record_report_build</code>), so
+    History shows how long only for background runs, schedules and pipeline
+    runs. Record the build's start and finish.</li>
+<li><strong><code>tracebi migrate model</code> drops <code>owners</code>.</strong> <code>model_yaml._document</code> puts
+    <code>owners</code> in the document, but <code>model_to_yaml</code> writes only <code>label</code> and the
+    <code>_SECTIONS</code> keys, so a migrated model loses who may publish it.</li>
 <li><strong>The code still says "receipt".</strong> Readers see <em>trace</em> everywhere; the
     identifiers kept the old word so the artifact contract did not move: the
     <code>tracebi-receipt</code> block id, <code>.tb-receipt*</code> classes, <code>data-tb-receipt-*</code>
@@ -239,172 +176,10 @@ no app code), to retriage with Step 2's library and report page (R-1, R-4):</p>
     a reader for the old block id so files built before the rename still open
     their drawer (and <code>verify --file</code> still reads them).</li>
 </ol>
-<p>Left by the live-reports round (<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>, L-5):</p>
-<ol start="37">
-<li><strong>Ask's "Keep this" does not carry a selection into the page.</strong> A kept
-    answer opens a one-figure draft; it could instead open the report it came
-    from with the selection in the frame's hash (<code>#sel=</code>), so the reader lands
-    on the same cut, Local, without a draft.</li>
-<li><strong>The page engine keys slices by fact name.</strong> <code>tracebiCalc.load(fact, …)</code>
-    holds one slice per fact name, so a page reading two models that each
-    have a fact of the same name would load one over the other. Key by
-    <code>model.fact</code> (the calc payload already records both).</li>
-<li><em>Closed by L-5b (see Done).</em></li>
-</ol>
-<h2 id="done">Done</h2>
-<ul>
-<li>
-<p><strong>A time grain reads one way</strong> (L-5b, item 39): <code>DataModel</code> returns a
-  declared time grain as its period label (<code>2026</code>, <code>2026-Q1</code>, <code>2026-03</code>,
-  <code>2026-W09</code>, <code>2026-03-14</code>), the spelling the slice and the page engine use,
-  so a built axis and a recomputed one agree. The query's lineage records
-  <code>time_labels</code>; <code>verify</code> reads an older receipt that stamped the
-  <code>date_trunc</code> timestamp as Reproduces when only the spelling differs. The
-  runtime writes a grain column as text (<code>tracebi-formats</code> marks it
-  <code>label</code>), never <code>2,026</code>.</p>
-</li>
-<li>
-<p><strong>The live page in the app</strong> (L-5): a report's frame tells the app its
-  selection (<code>tracebi-selection</code>, tagged like every bridge message); while it
-  is not the authored one the header's chip reads <strong>Local</strong> with the page's
-  own detail, and each selected field is a chip ("Sector: Technology ×")
-  that clears it through the frame (<code>tracebi-set-selection</code>). The
-  <code>selection-request</code> round trip is gone on both sides (item 11).</p>
-</li>
-<li>
-<p><strong>The sidebar is tiered by role</strong> (A2-6): <code>nav.js</code> gives each place a
-  <code>minRole</code> and <code>placesFor(role)</code> is the one list the sidebar, the phone's
-  drawer, the report page's rail and ⌘K draw: everyone Reports and Ask, an
-  analyst also Review, an admin also Data; with no sign-in (<code>/api/me</code> names
-  admin) all four, and while the role loads only Reports and Ask. An address
-  above the role shows a plain page in the frame ("This part of the app is
-  for admins. You can read reports and ask questions."). Review is four tabs
-  at their own addresses: Attention (<code>/review</code>), Drafts (<code>/review/drafts</code>;
-  <code>/drafts</code> and <code>/review#drafts</code> land there), History (<code>/runs</code>) and Verify
-  (<code>/verify</code>); its "All history →" link and the small Verify entry are gone.</p>
-</li>
-<li>
-<p><strong>The app, audit pass 2</strong> (A2-3): the Model tab's views are one segmented
-  row in its card's header with Edit as a draft at its right (no badge
-  repeating the line; the grain in labels, identifiers in its title), sideways
-  on a phone where Tables opens first; the Transform card goes by its model's
-  label, its steps read "Transform · ran 2 h ago · wrote 3 tables" and
-  "Build · 6 reports" in the sans at the app's size, table checks are
-  sentence-case chips in the verdict's shape (<code>Chip</code>), and the phone's Steps
-  table drops Schedule and Runs after; History is one row per report or
-  pipeline with "N older runs" folded (Every run, <code>?all=1</code>, lists them flat;
-  a fold says how many failed), the report panel's History folds older builds
-  the same way, and an empty cell's dash is muted; the Map's models and
-  reports go by their labels, measured in the sans; library descriptions
-  wrap to two lines; the sidebar's tagline is gone. Closed items 22 and 23.</p>
-</li>
-<li>
-<p><strong>Ask</strong> (Step 4): <code>/ask</code> is one sentence of the model's tokens ("Show
-  [measure] by [dimension] for [filter], [order], top [n]"), typed or picked;
-  the answer is the model's query drawn as a chart, table or number with each
-  measure's definition in words, the query line and a Not checked chip; a
-  Recent strip and <code>?q=</code> links; Keep this (analyst+) opens a one-figure draft
-  holding the query; Advanced is the query builder on the same question.
-  Closed item 25 (<code>AskCut</code> deleted, not reused: it cut a report's selection,
-  where Ask asks a model).</p>
-</li>
-<li>
-<p><strong>The old frame retired</strong> (D-3): dead components, helpers and CSS out
-  (<code>StatTile</code>, <code>reviewNotes</code>, <code>modelOfPipeline</code>, <code>reportOpenPath</code>, the
-  stylesheet's orb, gradient-text, grid and workflow-run rules, …); every old
-  address checked to land (34 in a browser, the whole <code>movedTo</code> table in the
-  smoke test); the words follow the four places in the README, guides,
-  concepts, reference, agent guides, CLI and Get started ("How the app fits
-  together" one entry per place). Closed items 14 (baselines re-run), 16 for
-  every file but <code>CLAUDE.md</code>, and 17 (the demo script points at the masthead
-  chip and its Receipt link).</p>
-</li>
-<li>
-<p><strong>Review is one page</strong> (D-2): Needs attention first (failed runs and
-  refreshes with what went wrong, builds that need a look, publish requests to
-  decide in place, the person's own requests waiting on approvers), then
-  Drafts (own first, an admin's Mine | Everyone's; an empty state written for
-  a person, the MCP tool names under "For your agent"; decided requests
-  folded under Requests), then Verify a file as a small drop zone that opens
-  into the full one. <code>/drafts</code> lands on <code>/review#drafts</code>; a draft's page says
-  Review › Drafts.</p>
-</li>
-<li>
-<p><strong>Data is one page per model</strong> (D-1): the line as its header (three
-  stations, the warehouse file and the measures between them, the reports'
-  verdicts as chip counts), then tabs Model · Transform · Sources · Runs;
-  <code>/data</code> lists the models one row each, and the Map is its picture view
-  (<code>/data?view=map</code>) drawn with the line's nodes. Refresh data is the
-  Transform tab's one primary action, and it and every run button render for
-  an admin only. Closed item 1 ("DuckDBConnector" is "DuckDB file", "STEP /
-  never run" is gone, sink checks read "checks passed when last written") and
-  the Reports-stage preview with its Preview/Config switch (retired: the
-  Reports station opens the library).</p>
-</li>
-<li>
-<p><strong>Model switcher as the frame of the app</strong> — one control at the top of the
-  sidebar narrows every page (Data model, Explore, Refresh, Reports, Sources,
-  Runs) to a model; <code>/m/&lt;model&gt;/&lt;page&gt;</code> and an all-models <code>/&lt;page&gt;</code>; the last
-  pick is remembered; old addresses redirect. "Contract" is "Data model"
-  again. Removed the dead nav code from earlier designs.</p>
-</li>
-<li><strong>"You are here" on every page</strong> <code>[nav-you-are-here]</code> — every frame page
-  marks its sidebar entry.</li>
-<li><strong>Unknown URLs render a real "Page not found"</strong> <code>[blank-page]</code>.</li>
-<li><strong>Sources opens on its first source</strong>, not a blank pane; the model page no
-  longer repeats the model's name or stacks two rows of tabs.</li>
-<li><strong>Everything clickable works from a keyboard</strong> <code>[click-not-keyboard]</code> —
-  list rows and the Verify drop zone take Tab, Enter and Space
-  (<code>pressable()</code> in <code>Shared.jsx</code>); one focus ring for the whole app
-  (<code>--focus-ring</code>); diagram edges no longer take focus.</li>
-<li><strong>Phone header</strong>: the menu button has a name, the header is a landmark, and
-  it says which model you are in (tap it to switch).</li>
-<li><strong>Tap targets</strong>: small buttons are 24px tall; the Refresh page opens on its
-  list of steps on a phone, where the run buttons are full size.</li>
-<li><strong>Contrast in both themes</strong> <code>[axe:color-contrast]</code> <code>[token-contrast]</code> — dark
-  mode's status text (green / amber / red: whether a report reproduces) was at
-  2:1, and its grey text at 3:1; both now pass on every surface. Unstyled
-  links take the accent colour. The Docs page has one h1.</li>
-<li><strong>Reports opens on "At a glance"</strong>, not a blank pane — how many reports,
-  how many reproduce, what needs a look, the latest builds (each opens).</li>
-<li><strong>An open report names itself</strong> on a phone (it is the page's h1 there).</li>
-<li><strong>Workflow folded into Get started</strong> as "The three phases"; <code>/workflow</code>
-  lands there. Its phase colours are theme tokens (<code>--phase-*</code>), readable in
-  dark mode. Scrolling code blocks take keyboard focus.</li>
-<li><strong>The audit sees the populated app</strong>: it builds every report before
-  crawling, so verdicts, receipts and latest builds are checked, not only the
-  never-built empty states.</li>
-<li><strong>A report belongs to the models it reads</strong>, not the folder it sits in. The
-  reports API returns <code>models</code> from each report's data bindings (by the name
-  the switcher lists), so a model's Reports, Runs and attention items are
-  right even when folder and model names differ (the demo app's are).</li>
-<li><strong>Live discovery no longer forgets an app module's own reports</strong> five
-  seconds after start; it forgets only what its own scan covers.</li>
-<li><strong>Diagram, Refresh and search colours are theme tokens</strong> (<code>--role-*</code>,
-  <code>--phase-*</code>): readable in dark mode, and no <code>${colour}22</code> alpha-gluing.</li>
-<li><strong>Every demo model has a pipeline.</strong> <code>sales</code> and <code>wealth</code> now name the models
-  they touch (<code>runner.models</code>), so SalesModel, SalesPipelineModel and
-  WealthModel each show one on Refresh; a pipeline may belong to several.
-  The audit flags any model with none.</li>
-<li><strong>Report design system v2 (Step 1)</strong>: one type scale, accent and dark
-  palette, <code>auto</code> mode, themes as accent presets (DS-1); masthead, footer,
-  12-column grid (DS-2); KPI with a stamped delta (DS-3); one chart style
-  (DS-4); tables (DS-5); the receipt as a certificate (DS-6); the editorial on
-  the system (DS-7); showcase, scaffolds and demo app on it (DS-8).</li>
-<li><strong>The audit renders every report</strong> (DS-9): both modes and widths into
-  <code>report-sheet.png</code>, font families, accents, shadows, gradients and looks
-  ratcheted per project against committed baselines
-  <code>[metric:report_*]</code>; a page laid out wider than the phone
-  <code>[report-phone-layout]</code> (every built report but one named no viewport; the
-  build now adds it).</li>
-<li><strong>Reports home (Step 2)</strong>: names, not identifiers, with a model <code>label</code>
-  (R-2); one verdict chip and one rule for it (R-3); <code>/</code> is the library and
-  the sidebar is four places, old addresses redirect (R-1); the report page is
-  the artifact under one command bar with "About this build" (R-4); History
-  rows as sentences, grouped by day, empty columns not drawn, cards on a
-  phone; the library's two-line descriptions and the masthead receipt checked
-  at 390 (R-5). Closes the audit's findings 12 and 15.</li>
-</ul>
+<p>The committed audit baselines (<code>ui-audit-baseline-*.json</code>) hold the
+mechanical findings still counted (on an open report: <code>blank-page</code>,
+<code>no-focus-ring</code> into the frame, <code>one-h1</code>, <code>small-target</code>; and <code>slow-page</code>);
+<code>scripts/ui_audit.py</code> fails on a new one.</p>
   </main>
 </div>
 <script>

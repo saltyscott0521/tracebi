@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a class="on" href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -99,12 +93,23 @@ data counts. The narrowest honest claim about phase ①.</strong></p>
 <hr>
 <h2 id="why-they-exist">Why they exist</h2>
 <p><a href="../concepts/lineage.html">Lineage</a> deliberately stops at the sink. Everything above it is arbitrary
-pandas, which nothing machine-checks — see
+SQL or pandas, which nothing machine-checks — see
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</p>
 <p>A sink contract does not close that gap. It narrows it: it lets you state, in a
 form a machine can re-run, what the tables you just wrote must be true of.</p>
 <h2 id="declaring-one">Declaring one</h2>
-<p>After the writes, in the same transform:</p>
+<p>Beside the transform, in <code>transforms/&lt;name&gt;.contract.yaml</code>:</p>
+<pre><code class="language-yaml">name: holdings
+checks:
+  - rows: fact_holdings
+    at_least: 10
+  - unique: dim_issuer
+    columns: [issuer_id]
+  - foreign_key: fact_holdings
+    column: issuer_id
+    refers_to: [dim_issuer, issuer_id]
+</code></pre>
+<p>Or, in a Python transform, after the writes:</p>
 <pre><code class="language-python">from tracebi.contracts import contract
 
 with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
@@ -117,8 +122,9 @@ with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
     c.reconcile(&quot;fact_holdings&quot;, &quot;fair_value&quot;,
                 against=(&quot;raw_holdings&quot;, &quot;fair_value&quot;), by=&quot;position_id&quot;)
 </code></pre>
-<p>The vocabulary is <strong>closed</strong>. Every check also takes an optional <code>note=</code>, which
-the report's methodology appendix shows beside it:</p>
+<p>The vocabulary is <strong>closed</strong>, one vocabulary in either form. Every check also
+takes an optional <code>note</code>, which the report's methodology appendix shows beside
+it:</p>
 <table>
 <thead>
 <tr>
@@ -204,8 +210,8 @@ would still pass the declared checks.</p>
 <blockquote>
 <p><strong>"the sink satisfied its contract"</strong> — never <em>"the transform was verified"</em>.</p>
 </blockquote>
-<p>A contract checks what you thought to check. It says nothing about the pandas
-that produced the numbers, and nothing about whether the numbers are right.
+<p>A contract checks what you thought to check. It says nothing about the SQL or
+pandas that produced the numbers, and nothing about whether the numbers are right.
 Contract status <strong>never colours a figure status</strong>; it is reported in its own
 block.</p>
 <p>That wording is fixed for the same reason as the rest of the vocabulary in

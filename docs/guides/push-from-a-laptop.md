@@ -18,7 +18,7 @@ What a file can do on the server decides where it lands:
 | --- | --- | --- |
 | A report package (`reports/<model>/<name>/`) | Your draft of that report | You publish it in the app, as any draft |
 | `models/<name>.yaml` or `.json` | Your draft of that model | You publish it; the impact check runs as usual |
-| `transforms/*.py` or `.ipynb`, `pipelines/*`, `models/<name>.py`, `connections/*.yaml`, a package's `report.py` | One **code request** | An admin approves or declines it |
+| `transforms/*.sql` (with its `.contract.yaml`), `.py` or `.ipynb`, `pipelines/*`, `models/<name>.py`, `connections/*.yaml`, a package's `report.py` | One **code request** | An admin approves or declines it |
 
 Data never goes. The server runs the transform with its own secrets and builds
 its own warehouse; the sink contract checks what landed there. A path outside

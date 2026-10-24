@@ -1,7 +1,7 @@
 # Test suite review, 2026-09-22
 
 **Test what the product does, not what it looks like.** A test earns its
-place when it would catch a real bug: a wrong number, a broken receipt, a
+place when it would catch a real bug: a wrong number, a broken trace, a
 security hole, two implementations drifting apart. A test that pins a colour, a
 CSS rule, a file size or a sentence in the README catches nothing. It just
 makes every design or wording change also a test change.
@@ -55,7 +55,7 @@ These touch presentation but guard behaviour:
   formatters must produce the same text, or a number flickers on load. Same for
   the worker engine's float spelling.
 - **Honesty rules:** provenance badges, unverified marks, exploration stripped
-  at build, receipts and fingerprints.
+  at build, traces and fingerprints.
 - **Agent guides** (`test_agent_guides.py`): documentation *is* the agent
   interface here. A feature the guides don't name doesn't get used.
 
@@ -90,7 +90,7 @@ in-process (so coverage sees them) against a project on disk:
 | Journey | What it walks |
 | --- | --- |
 | analyst | `init` → `run-transform` → `validate` → `report build` → `verify --strict --contracts` → `verify --file`; then a number edited in the file, and the warehouse changing under the report |
-| reference project | both transforms, then every report in `examples/portfolio_project` builds, reproduces and is intact; the showcase's affordances; a control recomputing on the model; the housing scenario never receipted |
+| reference project | both transforms, then every report in `examples/portfolio_project` builds, reproduces and is intact; the showcase's affordances; a control recomputing on the model; the housing scenario never traced |
 | web | the app over a live-discovered project: status, report list, run, background run, built page, share link, HTML/XLSX download, source, lineage, model browser, an Explore query and its error |
 | agent | the MCP tools: context → models → a stamped query → validate (wrong, then right) → render → verify → build → fetch; the path guards |
 | schedule | a `schedule` block → `schedule run` builds, verifies, emails (only smtplib faked) and records; no mail server says what to set |
@@ -185,10 +185,10 @@ product behaviour.
 | `test_phase5.py` | 187 → 73 | Trimmed to Basic/proxy auth, authorization and role-header trust (5), identifier quoting and SQL push-down (5, 1), star-schema query results (1), `verify --file` over the API and web/CLI parity (3), traceback hidden by default, docs path traversal, the one-renderer refusal, the enum/vocabulary match and the cheat-sheet kwargs, and the `TestPipelineRunEndpoint` isolation test that CLAUDE.md names. Restored by coverage: notebook source extraction, dev reload, docs guide, lineage join edges, concurrent registration, structured render error. `TestHomepageNeverSilently404s` went, and with it the ~120 MB `mkdtemp` copy of `tracebi/` it leaked per run; the slim-install and wheel tests went because CI's `base-install` and `wheel` jobs check the same things for real. |
 | `test_report_generator.py` | 78 → 27 | Trimmed to the embed injection guard, fingerprints, `verify --file` verdicts, the typed-number gate, CSP, escape-hatch honesty (`verifiable: false`, never green), loopback preview and srcdoc escaping; restored by coverage: fragment wrapping and the missing-`</head>` refusal. |
 | `test_artifact.py` | 36 → 17 | Trimmed to the figure parser `verify --file` shares (unverified marks, hostile markup fails loudly), the exploration strip, the methodology "states" language and escaping, and the footer's locked sentence; restored by coverage: id assignment, an unknown stage and an unclosed methodology container refused. |
-| `test_presentation.py` | 28 → 10 | Trimmed to CSP and self-containment, provenance in the manifest without badges, the receipt's fingerprints, SSR never altering embedded data, and declared formats. Layer order went (not one of the six). |
+| `test_presentation.py` | 28 → 10 | Trimmed to CSP and self-containment, provenance in the manifest without badges, the trace's fingerprints, SSR never altering embedded data, and declared formats. Layer order went (not one of the six). |
 | `test_selection.py` | 32 → 12 | Trimmed to the conjoined fingerprint, `connect-src` CSP, and the offline port matching the model; restored by coverage: keeping a cut, the selection endpoint's fingerprint, a longer value beating its prefix, a new grain that reproduces. |
 | `test_mcp_gateway.py` | 45 → 9 | Trimmed to stamp re-verification, fingerprints unchanged by preview caps and tie-breaks, the path and output guards; restored by coverage: the schema-checking client and the XLSX build. The agent journey covers the rest. |
-| `test_schedule.py` | 72 → 5 | Trimmed to the verdict gate: a schedule cannot force a bad receipt, a refused receipt is not uploaded; restored by coverage: an owner alert, per-value burst recipients, firing in the declared time zone. The schedule journey covers the rest. |
+| `test_schedule.py` | 72 → 5 | Trimmed to the verdict gate: a schedule cannot force a bad trace, a refused trace is not uploaded; restored by coverage: an owner alert, per-value burst recipients, firing in the declared time zone. The schedule journey covers the rest. |
 | `test_workbench.py` | 49 → 7 | Trimmed to markdown/frame escaping, CSPs, DNS-rebinding refusal, a session export that verify refuses; restored: the markdown export. The author and web journeys cover the workbench. |
 | `test_compile_spec.py` | 36 → 7 | Trimmed to markdown/link escaping, the honestly unverified literal metric, the compiled package as a verify superset; restored: every section type compiles, the totals row. |
 | `test_manifest_lineage.py` | 27 → 4 | Trimmed to: every rendered figure is fingerprinted, every dataset reaches the manifest, no unauditable artifact on failure, verify classifies from the last query node. |
@@ -201,7 +201,7 @@ product behaviour.
 | `test_api_status.py` | 8 → 4 | Trimmed to the three "never echoes a secret" tests; restored: the route's checks. |
 | `test_gateway_log.py` | 7 → 5 | Trimmed to argument names never values, masking, off by default; restored: the `agent log` summary. |
 | `test_connect.py` | 13 → 3 | Trimmed to the secret never reaching stdout or the module; restored: a failing test writes nothing, an existing `.env` key is not overwritten. |
-| `test_d3_charts.py` | 13 → 10 | Trimmed to tooltip, click → filter, legend toggle, arrow keys, brush, value labels, currency ticks, tooltip → receipt. Every-type, small-multiples and sparkline geometry went. The stacked-bars test stays because the brush test silently depends on it (see below). |
+| `test_d3_charts.py` | 13 → 10 | Trimmed to tooltip, click → filter, legend toggle, arrow keys, brush, value labels, currency ticks, tooltip → trace. Every-type, small-multiples and sparkline geometry went. The stacked-bars test stays because the brush test silently depends on it (see below). |
 | `test_validate_gaps.py` | 22 → 3 | Restored by coverage: three pathed filter errors in `check_query_spec`. The agent journey covers validate wrong-then-right. |
 | `test_live_discovery.py` | 8 → 2 | Restored by coverage: a deleted package is forgotten, a broken one retried only when it changes. |
 | `test_desk.py` | 3 → 2 | Restored by coverage: the review desk lists and its endpoint. |

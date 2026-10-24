@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -112,7 +106,7 @@ engine:
   memory_limit: 1GB                  # past it, a query spills to temp_directory
   threads: 4                         # default: min(4, CPUs)
   temp_directory: data/.duckdb-tmp   # relative to the project root
-  query_timeout_s: 30                # Explore, Ask and agent queries stop here
+  query_timeout_s: 30                # Ask and agent queries stop here
 </code></pre>
 <hr>
 <h2 id="warehouse"><code>warehouse</code></h2>
@@ -233,7 +227,7 @@ any fingerprint is compared, in report manifests, the Warehouse tab and
 <code>tracebi verify --contracts</code> (<code>REWRITTEN</code>).</p>
 <hr>
 <h2 id="engine"><code>engine</code></h2>
-<p>Every model query (a report build, Explore and Ask in the app, the agent
+<p>Every model query (a report build, Ask in the app, the agent
 gateway's <code>query_model</code>, a selection recompute, <code>tracebi verify</code>) and every
 SQL calculation runs in its own DuckDB connection. It attaches the warehouse
 file read-only and holds the model's tables as views over it; a table from a
@@ -267,7 +261,7 @@ runs, the connection is locked.</p>
 <tr>
 <td><code>query_timeout_s</code></td>
 <td><code>30</code></td>
-<td>Seconds a reader's query may run: <code>POST /api/models/{name}/query</code> (Explore, Ask), <code>POST /api/reports/{name}/selection</code> and the gateway's <code>query_model</code>. Past it the query is interrupted and the caller gets an error naming the limit (HTTP 504 with the usual <code>{message, exception_type, traceback}</code> detail; the gateway's <code>{ok: false, errors}</code>). Builds and <code>verify</code> run without a timeout.</td>
+<td>Seconds a reader's query may run: <code>POST /api/models/{name}/query</code> (Ask), <code>POST /api/reports/{name}/selection</code> and the gateway's <code>query_model</code>. Past it the query is interrupted and the caller gets an error naming the limit (HTTP 504 with the usual <code>{message, exception_type, traceback}</code> detail; the gateway's <code>{ok: false, errors}</code>). Builds and <code>verify</code> run without a timeout.</td>
 </tr>
 </tbody>
 </table>

@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a class="on" href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -136,7 +130,7 @@ python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
   <code>undefined</code> / <code>NaN</code> / traceback shown to a reader <code>[raw-garbage]</code>, no
   "not found" except on a page that does not exist <code>[not-found]</code>.</li>
 <li><strong>You always know where you are.</strong> Exactly one sidebar entry (one of the
-  four places, or Help; on an open report, the rail's) is marked as the
+  five places; on an open report, the rail's) is marked as the
   current page <code>[nav-you-are-here]</code>. Exactly one <code>h1</code>, naming the
   page <code>[one-h1]</code>.</li>
 <li><strong>Everything works from a keyboard.</strong> Anything that looks clickable is a
@@ -192,7 +186,7 @@ python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
   visible text node), <code>report_accents</code> (the computed <code>--tb-accent</code> light/dark
   pair per report), <code>report_box_shadows</code> and <code>report_gradients</code> (elements with
   a resting shadow that has blur or spread, or a gradient background or SVG
-  gradient; the chart tooltip, a menu or popover and the receipt drawer may
+  gradient; the chart tooltip, a menu or popover and the trace drawer may
   keep theirs), and <code>report_looks</code> (display face + accent; a look not in the
   baseline fails the run even if the count does not grow). The target is one
   look per project, plus a named bespoke example.</li>
@@ -286,7 +280,7 @@ registered by an app module rather than found under <code>reports/</code>). Each
   An empty cell's dash is quieter than any text in the row.</li>
 <li>A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
-  HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the
+  HTML, Excel and PDF, and one line saying which carries the trace). An open item gets the
   page's full width; its list is one click away. The report page's bar is
   what everyone may do on the left (Open, Share, Export) and what the role
   allows on the right (Rebuild, Edit as a draft, Build, then the one panel);

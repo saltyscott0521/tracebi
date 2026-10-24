@@ -30,7 +30,6 @@
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/model.html">Model — phase ②</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/receipts.html">Receipts</a>
 <a href="../concepts/report.html">Report — phase ③</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
 <a href="../concepts/trace.html">The trace</a>
@@ -82,12 +81,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -112,8 +106,8 @@ repository, because <code>deploy/compose.yml</code> builds from its <code>Docker
 <pre><code class="language-bash">tracebi init my-project
 </code></pre>
 <p>Copy that folder onto the server, or clone it. Git is optional for this
-folder. The folder is the application: <code>models/</code>, <code>reports/</code>, and
-<code>data/</code>.</p>
+folder. The folder is the application: <code>tracebi.yaml</code>, <code>connections/</code>,
+<code>transforms/</code>, <code>models/</code>, <code>reports/</code>, <code>pipelines/</code> and <code>data/</code>.</p>
 <h2 id="start-it">Start it</h2>
 <p>The server needs a copy of this repository. <code>deploy/compose.yml</code> builds
 from <code>..</code>, the repository's <code>Dockerfile</code>. Clone it:</p>
@@ -138,10 +132,10 @@ demo uses <code>https://tracebi.com/mcp</code>.</p>
 in <code>deploy/.env</code>.</p>
 <p><code>TRACEBI_STATE_URL</code> is TraceBi's own state store: run history, and the
 sign-in sessions and OAuth tokens. Give it a database (or a schema) of its
-own, and never point a connection, or the demo's <code>TRACEBI_DEMO_DB_URL</code>, at
-it: a connection is something people browse. The repository's
+own, and never point a connection, or the demo app's <code>TRACEBI_DEMO_DB_URL</code>,
+at it: a connection is something people browse. The repository's
 <code>docker-compose.yml</code> does this with two databases on one Postgres server,
-<code>tracebi</code> for the demo's data and <code>tracebi_state</code> for the store. The app
+<code>crm</code> for the reference project's CRM and <code>tracebi_state</code> for the store. The app
 hides TraceBi's tables (<code>tracebi_*</code>, <code>alembic_version</code>) from every source
 listing whatever a connection points at, and says how many it hid.</p>
 <p>The image name is <code>ghcr.io/saltyscott0521/tracebi</code>. Set <code>TRACEBI_VERSION</code>
@@ -179,11 +173,21 @@ and the run still rebuilds the report and records it, and sends nothing.</p>
 container: each copy would send the email. A separate worker is
 <code>tracebi schedule serve</code>, for when the web server should not be the
 thing that sends.</p>
+<h2 id="connection-secrets">Connection secrets</h2>
+<p>A connection keeps its secret out of the file as <code>${NAME}</code>
+(<code>connections/crm.yaml</code>: <code>url: ${TRACEBI_CRM_URL}</code>). On the server, set it in
+<code>deploy/.env</code> (the environment wins), or save it in the project's encrypted
+store: <code>tracebi secret set TRACEBI_CRM_URL</code> inside the container, or <strong>Set…</strong>
+on the connection under Data → Sources for a signed-in admin. The store is
+<code>.tracebi/secrets.yml.enc</code> in the project folder, encrypted with
+<code>TRACEBI_SECRET_KEY</code> (or a <code>.tracebi/secret.key</code> generated on first use);
+several containers must share the key. See <a href="../reference/credentials.html">Credentials</a>.</p>
 <h2 id="sign-in">Sign-in</h2>
 <p>For one team, set <code>TRACEBI_AUTH_USER</code> and <code>TRACEBI_AUTH_PASS</code> in
-<code>deploy/.env</code>. To put the app behind an SSO proxy instead, follow
-<a href="../guides/web-customization.html">Sign-in</a> (<code>TRACEBI_AUTH_PROXY_HEADER</code> and
-<code>TRACEBI_AUTH_PROXY_TRUSTED_IPS</code>).</p>
+<code>deploy/.env</code>, or name each person with <code>TRACEBI_LOCAL_USERS</code>. For your
+company's login, set <code>TRACEBI_OIDC_ISSUER</code> (<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>). To put the app
+behind an SSO proxy instead, follow <a href="../guides/web-customization.html">Sign-in</a>
+(<code>TRACEBI_AUTH_PROXY_HEADER</code> and <code>TRACEBI_AUTH_PROXY_TRUSTED_IPS</code>).</p>
 <p>With neither set, anyone who can reach the port can use the app. That
 is fine on a machine that is not reachable from anywhere else.</p>
 <h2 id="with-coolify">With Coolify</h2>
@@ -236,7 +240,8 @@ The image ships <code>curl</code> so Coolify's HTTP healthcheck against <code>/a
 works on a pulled GHCR tag (python:slim alone does not).</p>
 <h2 id="backups">Backups</h2>
 <p>Copy the project folder (<code>TRACEBI_PROJECT_DIR</code>). That folder is the
-reports, the warehouse file, and the run log. If you started the
+reports, the warehouse file, the run log and the credential store
+(<code>.tracebi/</code>; keep <code>TRACEBI_SECRET_KEY</code> with it, or the store cannot be read). If you started the
 Postgres profile, also copy <code>TRACEBI_PGDATA_DIR</code>.</p>
 <h2 id="check-it">Check it</h2>
 <p>On the server:</p>

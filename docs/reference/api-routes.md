@@ -152,7 +152,10 @@ missing one is. Folder permissions do not apply: a table is not a report.
 
 `GET /api/reports` gives each report a `form`: `spec` (a `reports/<name>.json`
 in the default style), `package` (a `reports/<name>/` with its own template
-and style) or `code`. `/source` returns the files that define the report —
+and style) or `code`, and `made_from`: `app.jsx` (a dashboard), `template.html`
+(a page) or `null`, what a package draws its page from. It also carries
+`folder` and `owner` (the last publisher, or the owner of a My published
+folder). `/source` returns the files that define the report —
 the spec, or the package's `report.json`, `template.html`, `style.css`,
 `script.js` and `report.py` — read-only, and only the files discovery
 registered for it. It also gives each report `models` (the models its data
@@ -344,7 +347,7 @@ reports its build step rebuilt, only those it actually built).
 | `GET` | `/api/warehouse` | viewer. `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}`, one per warehouse-kind connector, read-only; framework tables are never listed |
 | `GET` | `/api/docs` · `/api/docs/{name}` | viewer |
 | `POST` | `/api/_dev/reload` | **admin**, and only with `TRACEBI_DEV_MODE` |
-| `POST` · `GET` · `DELETE` | `/mcp` | the agent gateway, only when `TRACEBI_MCP_TOKEN` is set. Bearer token, outside the app's Basic/proxy auth |
+| `POST` · `GET` · `DELETE` | `/mcp` | the agent gateway, only when `TRACEBI_MCP_TOKEN`, `TRACEBI_OIDC_ISSUER` or the built-in sign-in (`TRACEBI_DEMO_LOGIN`, `TRACEBI_LOCAL_USERS`) is set. Bearer token, outside the app's Basic/proxy auth ([[connect-chatgpt-and-claude]]) |
 | `GET` | `/api/_dev/discovered` | admin |
 
 ## The SPA

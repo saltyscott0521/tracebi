@@ -19,7 +19,7 @@ web UI and Excel export.
 ```bash
 tracebi init my_project
 cd my_project
-git init && git commit --allow-empty -m "init"
+git init && git add . && git commit -m init
 ```
 
 Commit early: every manifest stamps the current commit as `git_sha`, so a
@@ -28,14 +28,19 @@ report built in a repo with no commits records `unknown` and warns.
 You get the three-phase layout from [[the-three-phase-workflow]]:
 
 ```
+tracebi.yaml  the project's settings: the warehouse and the engine's limits
 inputs/       ⓪ raw pulls
-transforms/   ① pandas that lands clean tables
+connections/  the sources a transform reads, one YAML file each
+transforms/   ① the transform that lands clean tables
 models/       ② the star-schema contract
 reports/      ③ the report packages, one folder per model
 pipelines/    one per model: run its transform, then build its reports
 data/         the warehouse lives here
 output/       built artifacts + traces
 ```
+
+The sample transform is the pandas form (`transforms/sample_transform.py`);
+`tracebi new-transform` scaffolds the SQL form, the default for a new one.
 
 ## 3. Run the transform — phase ①
 
@@ -50,7 +55,7 @@ Reads `inputs/orders.csv`, cleans it, and sinks star-schema tables into
 
 ## 4. Look at the model — phase ②
 
-Open `models/sample_model.py`. A few dozen lines: tables, keys, and
+Open `models/sample_model.yaml`. A few dozen lines: tables, keys, and
 [[measures]]. Nothing to run — it is a declaration.
 
 ```bash
@@ -78,7 +83,7 @@ output/sample_model/sample_dashboard.html.manifest.json     the trace
 
 The HTML is fully self-contained — no CDN, no network. Open it directly.
 
-**Steps 3 and 5 in one command.** `pipelines/sample_model.py` ties the model's
+**Steps 3 and 5 in one command.** `pipelines/sample_model.yaml` ties the model's
 transform to its reports, so this runs the transform and then builds every
 report in `reports/sample_model/`:
 

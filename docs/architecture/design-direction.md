@@ -1,6 +1,6 @@
 # Design direction
 
-**Status: proposed (2026-10-04), agreed in conversation.** What the builder
+**Status: agreed (2026-10-04); the theme pass below is done.** What the builder
 experience is, and what the app looks like. The quality bar and the audit that
 checks it are in [[ui-quality]]; the work queue is [[ui-backlog]].
 
@@ -33,7 +33,7 @@ app on the other. In the app, open a report in **Build mode** (local only).
 3. **See.** The report rebuilds in the pane, the change marked against the
    previous version. A change to a number is shown as old value, new value.
 4. **Keep.** You accept or revert. Nothing is kept until you say so, and the
-   receipt only reads green for what was built and checked, never for a draft.
+   trace only reads green for what was built and checked, never for a draft.
 
 You can also leave a note (a **pin**) for the agent to pick up later, from
 the panel's note box: `address_pins` already does that.
@@ -53,7 +53,7 @@ that both read and write them, so:
 
 Hard rules, kept from the workbench's design ([[report-architecture-v2]] §2.5):
 everything here is dev-state; none of it enters a build or a manifest; no
-receipt is minted. Build mode exists only on loopback with dev mode on. The
+trace is minted. Build mode exists only on loopback with dev mode on. The
 point-mode script is injected by the server at serve time, never into a built
 file.
 
@@ -104,7 +104,7 @@ grounds was picked from six side-by-side options.)
   row, status as a small dot or chip, secondary text quiet. Progressive
   disclosure (Linear): the detail opens when you ask for it.
 - **The reader's report** follows Mercury and Plausible: one big number, then
-  its context, then the receipt on demand. It is one system, below; a report's
+  its context, then the trace on demand. It is one system, below; a report's
   own `style.css` is a theme preset on it, not a second look.
 
 ### The mark
@@ -129,7 +129,7 @@ cobalt line ending on a filled point.
 
 ## The report's system
 
-The bar ([[ux-plan-2026-10-17]], decision 2): type and restraint as Stripe's
+The bar (the 2026-10-17 plan, decision 2): type and restraint as Stripe's
 dashboard, density and chrome as Linear, the editorial register as a fund's
 quarterly letter. A report with no `style.css` is the page we would show.
 Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
@@ -150,9 +150,9 @@ Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
   showcase sets its headline and lead number in Fraunces).
 - **The frame.** Every page opens with a masthead (kicker, the `<h1>` that
   states the finding, the standfirst, and a meta line: the period, the build
-  time, the verdict chip and the Receipt button) and ends with a footer (the
+  time, the verdict chip and the Trace button) and ends with a footer (the
   author's sources, one line on who built it from which model with "The
-  receipt does not claim the numbers are right.", and "How these numbers were
+  trace does not claim the numbers are right.", and "How these numbers were
   made" behind a disclosure). The page measure is 1,200px with a 12-column
   grid (`.tb-span-4/6/8/12`). No methodology in the body.
 - **The verdict chip.** Reproduces (green), Needs a look (amber), Does not
@@ -165,19 +165,19 @@ Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
   own values; category names wrap, never "…"; ticks thin to what fits;
   gridlines at 6% ink, a baseline, no axis lines; lines 1.5px ending in their
   last value; an area at 10%; a tooltip with the measure's definition and
-  "Receipt →".
+  "Trace →".
 - **Tables.** Numbers right-aligned in tabular numerals, a sticky header in a
   scroll box, a thin data bar in its own lane after the number, one totals
   style (a 2px rule, weight 600), density from `--tb-cell-pad`.
-- **The receipt is a certificate.** The verdict and the honesty line first,
+- **The trace is a certificate.** The verdict and the honesty line first,
   then one row per figure: the value as shown, the definition in words, the
   query in one line and an 8-character fingerprint, the raw detail behind a
   disclosure.
 - **Nothing decorates.** No gradient, hatch, glow or resting shadow; a menu,
-  popover, tooltip and the receipt drawer may lift. The one bespoke example is
+  popover, tooltip and the trace drawer may lift. The one bespoke example is
   the demo app's `aum_by_branch`: its own faces (Inter, Fraunces), a pine and
   brass palette and a flat hero band with inlined artwork, on the system's
-  masthead, KPI strip, grid, footer and receipt.
+  masthead, KPI strip, grid, footer and trace.
 
 ## Order of work
 
@@ -198,18 +198,20 @@ Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
 4. **The theme pass,** one surface at a time through the audit loop.
    - Foundation (done): Hanken Grotesk and IBM Plex Mono; cobalt as the one brand colour on
      neutral grounds that follow the OS; a near-black sidebar slab; hairline
-     borders; no gradients, blur or resting shadows. The nav is four places,
-     Reports, Ask, Data, Review (it was Build, then Use, before the 2026-10 IA).
+     borders; no gradients, blur or resting shadows. The nav is five places,
+     Reports, Ask, Data, Review, Docs (it was Build, then Use, before the 2026-10 IA;
+     Docs joined on 2026-10-21).
      The audit enforces it: `theme-font`, `theme-brand-colour`,
      `theme-dark-ink`, `theme-shadow`, `theme-decoration`.
    - Report defaults (done): `tracebi.css` takes the same type, grounds and
      cobalt, so a report matches the app. Hanken Grotesk is inlined into the file
      (`stack.font_face_css`); controls and inline code are finished.
-   - Report design system v2 (done, [[ux-plan-2026-10-17]] Step 1): the
+   - Report design system v2 (done, the 2026-10-17 plan's Step 1): the
      report's system above, the scaffolds, the reference reports and the demo
      app on it.
-   - The app on the four places (done, [[ux-plan-2026-10-17]] Steps 2 and 3):
+   - The app on the four places (done, the same plan's Steps 2 and 3):
      Reports as home, the report page, Data and Review, the verdict chip
      everywhere; the report contact sheet in the audit (DS-9).
-   - Still to do: Ask (Step 4); lists as console rows throughout, and
-     illustrations beyond the mark.
+   - Ask (done, Step 4); since then Docs is a fifth place and Data opens on
+     the board ([[nav-v3]], [[data-flow-board]]). Still to do: lists as
+     console rows throughout, and illustrations beyond the mark.

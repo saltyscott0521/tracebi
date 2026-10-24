@@ -1,6 +1,7 @@
 # One demo: what tracebi.com serves, and the conventions every model follows
 
-*Plan, 2026-10-23. Package `U-D` of the 2026-10-23 UI round.*
+*Built, 2026-10-23 (packages U-D1 and U-D2). The first section records what
+was served before it.*
 
 ## What is served today, and why it reads as several products
 
@@ -159,7 +160,8 @@ Postgres, like `sales_model`'s already are.
   are untouched in this round except that `banking` becomes a real
   database (above).
 - `examples/seeds/seed_db.py`'s habit of seeding `data/tracebi.db`: it
-  seeds `data/demo.db`, the demo app's own file.
+  seeds `data/seed.db` (connector `seed_db`), and its runs go to the state
+  store.
 
 ## Acceptance
 

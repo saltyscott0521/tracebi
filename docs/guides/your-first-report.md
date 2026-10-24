@@ -29,7 +29,6 @@ trust, resolved once, fingerprinted, and recorded in the trace.
 ```json
 {
   "name": "Portfolio Book",
-  "libs": ["echarts"],
   "data": {
     "totals": {
       "model": "portfolio_model",
@@ -51,7 +50,7 @@ trust, resolved once, fingerprinted, and recorded in the trace.
 Note `totals` has **no dimensions** — it returns one row. A KPI needs a one-row
 binding; a value figure over a multi-row binding is refused.
 
-`"libs"` is optional. The build inlines D3 automatically when the page contains a chart figure.
+The build inlines D3 when the page contains a chart figure. (`"libs": ["echarts"]` keeps the older ECharts engine for a report that needs it.)
 
 → [[report-json]] · [[queries]]
 
@@ -177,7 +176,7 @@ bindings. Exits 1 on any binding error, so CI can gate on it.
 | *names binding 'x', which is not declared in 'data'* | typo, or you forgot the binding |
 | *declares 'x' … but template.html never places it* | add `{{ figure("x") }}`, or drop the declaration |
 | *figure('x') is placed more than once* | declare a second figure; one id addresses one number |
-| chart panel stays blank | the build inlines ECharts when the page has a chart figure; check `data-tb-x` and `data-tb-y` |
+| chart panel stays blank | the build inlines D3 when the page has a chart figure; check `data-tb-x` and `data-tb-y` |
 | *limit without order_by is refused* | state the ranking → [[queries]] |
 
 ## Next
