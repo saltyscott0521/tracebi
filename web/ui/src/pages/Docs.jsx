@@ -12,21 +12,22 @@ import GettingStarted from './GettingStarted'
 // architecture/, and the API addresses a subdirectory page as "dir--stem".
 // The sidebar rebuilds that tree, in reading order — a visitor should meet
 // the ideas before the look-up tables.
-// docs/architecture/ (design notes for changing the framework) is not listed:
-// a reader meets it only through a link from a page that cites it.
+// docs/architecture/ (design notes for changing the framework) and
+// docs/strategy/ (intent, with dated targets, not what ships) are not listed:
+// a reader meets them only through a link from a page that cites them, the
+// same rule the docs site follows.
 const SECTIONS = [
   { key: 'concepts',     label: 'Concepts',     blurb: 'The ideas. Read once.' },
   { key: 'guides',       label: 'Guides',       blurb: 'Task-shaped walkthroughs.' },
   { key: 'reference',    label: 'Reference',    blurb: 'Look things up.' },
   { key: 'agents',       label: 'Agent SOPs',   blurb: 'Standard operating procedures.' },
-  { key: 'strategy',     label: 'Strategy',     blurb: 'Where TraceBi is going, and why.' },
 ]
 
 // Internal working documents that ship in a source checkout but are not
-// product documentation. The positioning doc is gitignored outright; the
-// roadmap is a control document, not a guide. A retired page stays in docs/
-// as a stub (old wiki links keep resolving in the vault) but is not listed.
-const HIDDEN = new Set(['north-star', 'ROADMAP', 'receipts'])
+// product documentation: the positioning doc is gitignored outright. A
+// retired page stays in docs/ as a stub (old wiki links keep resolving in the
+// vault) but is not listed.
+const HIDDEN = new Set(['north-star', 'receipts'])
 
 // A retired page's stem → the page that replaced it: a wiki link to it, and
 // its old address, open the new one.
@@ -41,7 +42,7 @@ const GET_STARTED = 'get-started'
 const WIKI_PREFIX = 'tb-doc:'
 
 // Within a section, lead with the page that orients you.
-const FIRST = { concepts: 'the-three-phase-workflow', guides: 'plain-english', strategy: 'vision-and-positioning' }
+const FIRST = { concepts: 'the-three-phase-workflow', guides: 'plain-english' }
 
 const clean = t => (t || '').replace(/`/g, '')
 

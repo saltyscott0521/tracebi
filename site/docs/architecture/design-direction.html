@@ -82,19 +82,14 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
   <main class="doc">
 <h1 id="design-direction">Design direction</h1>
-<p><strong>Status: proposed (2026-10-04), agreed in conversation.</strong> What the builder
+<p><strong>Status: agreed (2026-10-04); the theme pass below is done.</strong> What the builder
 experience is, and what the app looks like. The quality bar and the audit that
 checks it are in <a href="../architecture/ui-quality.html">The UI quality bar</a>; the work queue is <a href="../architecture/ui-backlog.html">UI backlog</a>.</p>
 <h2 id="who-it-is-for">Who it is for</h2>
@@ -142,7 +137,7 @@ app on the other. In the app, open a report in <strong>Build mode</strong> (loca
 <li><strong>See.</strong> The report rebuilds in the pane, the change marked against the
    previous version. A change to a number is shown as old value, new value.</li>
 <li><strong>Keep.</strong> You accept or revert. Nothing is kept until you say so, and the
-   receipt only reads green for what was built and checked, never for a draft.</li>
+   trace only reads green for what was built and checked, never for a draft.</li>
 </ol>
 <p>You can also leave a note (a <strong>pin</strong>) for the agent to pick up later, from
 the panel's note box: <code>address_pins</code> already does that.</p>
@@ -160,7 +155,7 @@ that both read and write them, so:</p>
 </ul>
 <p>Hard rules, kept from the workbench's design (<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a> §2.5):
 everything here is dev-state; none of it enters a build or a manifest; no
-receipt is minted. Build mode exists only on loopback with dev mode on. The
+trace is minted. Build mode exists only on loopback with dev mode on. The
 point-mode script is injected by the server at serve time, never into a built
 file.</p>
 <h3 id="where-it-is-today-and-the-gap">Where it is today, and the gap</h3>
@@ -206,7 +201,7 @@ grounds was picked from six side-by-side options.)</p>
   row, status as a small dot or chip, secondary text quiet. Progressive
   disclosure (Linear): the detail opens when you ask for it.</li>
 <li><strong>The reader's report</strong> follows Mercury and Plausible: one big number, then
-  its context, then the receipt on demand. It is one system, below; a report's
+  its context, then the trace on demand. It is one system, below; a report's
   own <code>style.css</code> is a theme preset on it, not a second look.</li>
 </ul>
 <h3 id="the-mark">The mark</h3>
@@ -227,7 +222,7 @@ favicon). It is never put on a report: <code>.tb-masthead-mark</code> is the cus
 slot. The illustrations speak the same language: <code>ReportArt</code>'s trend is a
 cobalt line ending on a filled point.</p>
 <h2 id="the-reports-system">The report's system</h2>
-<p>The bar (<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>, decision 2): type and restraint as Stripe's
+<p>The bar (the 2026-10-17 plan, decision 2): type and restraint as Stripe's
 dashboard, density and chrome as Linear, the editorial register as a fund's
 quarterly letter. A report with no <code>style.css</code> is the page we would show.
 Everything here is <code>tracebi.css</code>, <code>tracebi.js</code> and the kit; the reference is
@@ -248,9 +243,9 @@ Everything here is <code>tracebi.css</code>, <code>tracebi.js</code> and the kit
   showcase sets its headline and lead number in Fraunces).</li>
 <li><strong>The frame.</strong> Every page opens with a masthead (kicker, the <code>&lt;h1&gt;</code> that
   states the finding, the standfirst, and a meta line: the period, the build
-  time, the verdict chip and the Receipt button) and ends with a footer (the
+  time, the verdict chip and the Trace button) and ends with a footer (the
   author's sources, one line on who built it from which model with "The
-  receipt does not claim the numbers are right.", and "How these numbers were
+  trace does not claim the numbers are right.", and "How these numbers were
   made" behind a disclosure). The page measure is 1,200px with a 12-column
   grid (<code>.tb-span-4/6/8/12</code>). No methodology in the body.</li>
 <li><strong>The verdict chip.</strong> Reproduces (green), Needs a look (amber), Does not
@@ -263,19 +258,19 @@ Everything here is <code>tracebi.css</code>, <code>tracebi.js</code> and the kit
   own values; category names wrap, never "…"; ticks thin to what fits;
   gridlines at 6% ink, a baseline, no axis lines; lines 1.5px ending in their
   last value; an area at 10%; a tooltip with the measure's definition and
-  "Receipt →".</li>
+  "Trace →".</li>
 <li><strong>Tables.</strong> Numbers right-aligned in tabular numerals, a sticky header in a
   scroll box, a thin data bar in its own lane after the number, one totals
   style (a 2px rule, weight 600), density from <code>--tb-cell-pad</code>.</li>
-<li><strong>The receipt is a certificate.</strong> The verdict and the honesty line first,
+<li><strong>The trace is a certificate.</strong> The verdict and the honesty line first,
   then one row per figure: the value as shown, the definition in words, the
   query in one line and an 8-character fingerprint, the raw detail behind a
   disclosure.</li>
 <li><strong>Nothing decorates.</strong> No gradient, hatch, glow or resting shadow; a menu,
-  popover, tooltip and the receipt drawer may lift. The one bespoke example is
+  popover, tooltip and the trace drawer may lift. The one bespoke example is
   the demo app's <code>aum_by_branch</code>: its own faces (Inter, Fraunces), a pine and
   brass palette and a flat hero band with inlined artwork, on the system's
-  masthead, KPI strip, grid, footer and receipt.</li>
+  masthead, KPI strip, grid, footer and trace.</li>
 </ul>
 <h2 id="order-of-work">Order of work</h2>
 <ol>
@@ -296,21 +291,23 @@ Everything here is <code>tracebi.css</code>, <code>tracebi.js</code> and the kit
 <li><strong>The theme pass,</strong> one surface at a time through the audit loop.
    - Foundation (done): Hanken Grotesk and IBM Plex Mono; cobalt as the one brand colour on
      neutral grounds that follow the OS; a near-black sidebar slab; hairline
-     borders; no gradients, blur or resting shadows. The nav is four places,
-     Reports, Ask, Data, Review (it was Build, then Use, before the 2026-10 IA).
+     borders; no gradients, blur or resting shadows. The nav is five places,
+     Reports, Ask, Data, Review, Docs (it was Build, then Use, before the 2026-10 IA;
+     Docs joined on 2026-10-21).
      The audit enforces it: <code>theme-font</code>, <code>theme-brand-colour</code>,
      <code>theme-dark-ink</code>, <code>theme-shadow</code>, <code>theme-decoration</code>.
    - Report defaults (done): <code>tracebi.css</code> takes the same type, grounds and
      cobalt, so a report matches the app. Hanken Grotesk is inlined into the file
      (<code>stack.font_face_css</code>); controls and inline code are finished.
-   - Report design system v2 (done, <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a> Step 1): the
+   - Report design system v2 (done, the 2026-10-17 plan's Step 1): the
      report's system above, the scaffolds, the reference reports and the demo
      app on it.
-   - The app on the four places (done, <a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a> Steps 2 and 3):
+   - The app on the four places (done, the same plan's Steps 2 and 3):
      Reports as home, the report page, Data and Review, the verdict chip
      everywhere; the report contact sheet in the audit (DS-9).
-   - Still to do: Ask (Step 4); lists as console rows throughout, and
-     illustrations beyond the mark.</li>
+   - Ask (done, Step 4); since then Docs is a fifth place and Data opens on
+     the board (<a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>, <a href="../architecture/data-flow-board.html">Data as a flow: the board</a>). Still to do: lists as
+     console rows throughout, and illustrations beyond the mark.</li>
 </ol>
   </main>
 </div>

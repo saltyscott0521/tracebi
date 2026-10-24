@@ -1,6 +1,6 @@
 # Report library
 
-> Written before the 2026-10 IA (four places: Reports, Ask, Data, Review); page names updated.
+> Written before the 2026-10 IA; page names updated to the five places (Reports, Ask, Data, Review, Docs).
 
 **Reports live in folders people can browse in the app, the way QlikView showed
 the documents on its server. The folders can sit on the server, on a network
@@ -8,9 +8,12 @@ share, or in any source control system. Drafts are free to edit; published
 reports are approved first. Every folder carries permissions, and every door
 into TraceBi (the app, agents, schedules) checks them the same way.**
 
-Status: design for permissions and publishing (E7). Folders, the Library
-list, path identity, `open_report`, and mounts (`TRACEBI_LIBRARY_MOUNTS`)
-are built (E6).
+Status: built, except the source-control adapter beyond a git pull
+(`POST /api/library/sync`) and per-report version history in the app.
+Folders, the library (Reports), path identity, `open_report`, mounts
+(`TRACEBI_LIBRARY_MOUNTS`), folder permissions (`_folder.yaml`,
+[[folder-yaml]]), drafts, publish requests and "My published" are in the
+product; how to use them is in [[folder-yaml]] and [[push-from-a-laptop]].
 
 ---
 
@@ -20,21 +23,21 @@ are built (E6).
 Library
 ├── Finance/                  ← \\fileserver\bi\finance   (network share)
 │   ├── Month end/
-│   │   ├── close_pack/            Custom     scheduled Mon 07:00   ✓ last run
-│   │   └── variance.json          JSON spec
+│   │   ├── close_pack/            Page       scheduled Mon 07:00   ✓ last run
+│   │   └── variance/              Dashboard
 │   └── Board/
-│       └── q3_board_pack/         Custom     published 12 Sep by maria
+│       └── q3_board_pack/         Page       published 12 Sep by maria
 ├── Sales/                    ← git checkout, branch main
-│   └── pipeline_weekly.json       JSON spec  scheduled
+│   └── pipeline_weekly/           Dashboard  scheduled
 └── My work/                  ← this person's drafts, on the server
-    └── margin_deep_dive/          Custom     draft
+    └── margin_deep_dive/          Page       draft
 ```
 
 - **A folder is a space.** Any folder that is not itself a report is just a
   way to organise, as deep as a team wants.
-- **Each report shows** its type (JSON spec or Custom ✅), owner, last change,
+- **Each report shows** how it is made (Dashboard or Page ✅), owner, last change,
   schedule, last run, its source files ✅, and its past builds: last month's
-  board pack is one click away, with its receipt.
+  board pack is one click away, with its trace.
 - **Models and transforms** can be browsed the same way, so an analyst can see
   which model a report reads and who owns it.
 
@@ -112,8 +115,8 @@ Rules:
    person do this to this path? The existing roles (viewer, analyst, admin)
    become the defaults a folder can override.
 3. **An agent acts as the person using it.** An analyst's Claude sees exactly
-   what the analyst sees. That needs a sign-in per person on the gateway,
-   not today's single shared token.
+   what the analyst sees, through a sign-in per person on the gateway ✅
+   ([[connect-chatgpt-and-claude]]); the shared token stays for local use.
 4. **Built outputs inherit the folder's permissions.** A board pack's past
    builds are no more visible than the pack.
 5. **Delivery is a deliberate exception.** A scheduled email goes to whoever
@@ -179,14 +182,14 @@ These cost little today and are expensive to retrofit:
 | 1 | Scan folders recursively; a library (now Reports, the app's home) that browses them read-only | Useful on day one; no new security surface |
 | 2 | Mounts in configuration (local folder, network share) | Matches how BI teams already store files |
 | 3 | Folder permissions, enforced in the one check ✅ | Needed before anyone shares a server widely |
-| 4 | My work, publish with approval, TraceBi's own version history | The Build → Schedule path, without git |
-| 5 | Source-control adapter: git first | For teams that want their own history and review |
-| 6 | Sign-in per person on the agent gateway; draft-writing tools | The personal-device path, done properly |
+| 4 | My work, publish with approval, TraceBi's own version history ✅ | The Build → Schedule path, without git |
+| 5 | Source-control adapter: git first (a pull on push ✅) | For teams that want their own history and review |
+| 6 | Sign-in per person on the agent gateway; draft-writing tools ✅ | The personal-device path, done properly |
 
 ## Decided later
 
-- **Editing in the app.** Browse only for now. Cloud will likely want in-app
-  editing; it fits once drafts and publishing exist, because an edit can only
-  ever land in a draft.
+- **Editing in the app.** Built as drafts: Edit as a draft copies a
+  published report or model into the person's drafts, where its files are
+  editable and its preview follows; an edit can only ever land in a draft.
 - **Locking.** Two people editing the same draft on a share. Last save wins
   until someone needs more.

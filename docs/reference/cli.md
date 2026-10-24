@@ -4,7 +4,7 @@
 commands, and most days you use only those.
 
 ```bash
-tracebi [--models-dir DIR] [--pipelines-dir DIR] <command> [...]
+tracebi [--models-dir DIR] [--pipelines-dir DIR] [--connections-dir DIR] <command> [...]
 ```
 
 Global flags come **before** the subcommand. Directory defaults come from the
@@ -31,16 +31,22 @@ Everything else is scaffolding, serving, or one-time migration.
 ### `tracebi init`
 
 ```bash
-tracebi init <project> [--force]
+tracebi init <project> [--force] [--template NAME]
 ```
 
 Scaffolds a complete three-phase project whose sample loop ends in
 `tracebi verify` printing REPRODUCES.
 
-Creates `inputs/ transforms/ models/ pipelines/ reports/ scheduled/ data/
-output/`, plus a sample transform, model, pipeline and report package
-(`reports/sample_model/sample_dashboard/`), `.gitignore`, `.env.example`,
-`README.md` and `AGENTS.md`.
+Creates `tracebi.yaml` (the warehouse and the engine's limits, commented),
+`inputs/`, `connections/`, `transforms/`, `models/`, `pipelines/` and
+`reports/`, with a sample input, transform (the pandas form), model, pipeline
+and report package (`reports/sample_model/sample_dashboard/`), plus
+`.gitignore`, `.env.example`, `README.md`, `AGENTS.md` and the agent config
+(`.mcp.json`, `.cursor/mcp.json`). `data/` and `output/` appear on the first run.
+
+- `--template NAME` — scaffold a named starter instead of the sample
+  dashboard: `saas-metrics` or `sales-pipeline` (an unknown name is refused
+  with the list).
 
 - `--force` — overwrite existing files, and required to init into a non-empty
   directory. Without it, an existing file is skipped with a note and the run
@@ -59,9 +65,11 @@ tracebi connect wh --kind duckdb --database data/warehouse.duckdb
 ```
 
 Tests the warehouse (unless `--no-test`), then writes the secret to `.env`
-and a connector module at `models/_connections/<name>.py`. The module calls
-`load_dotenv()` and builds the connector from `os.environ`. TraceBi itself
-never loads `.env`.
+and the connection to `connections/<name>.yaml` ([[connections-yaml]]), the
+secret named there as `${NAME}`, resolved when the connection is used.
+`--python` writes the legacy connector module `models/_connections/<name>.py`
+instead (it calls `load_dotenv()` and builds the connector from
+`os.environ`).
 
 The secret is written only to `.env` and is never printed. Other lines in
 `.env` are left as they are. An existing key, or an existing connection
@@ -75,8 +83,8 @@ is required for BigQuery because the connector takes it with no default.
 (`.tracebi/secrets.yml.enc`, [[credentials]]) instead of `.env`; the legacy
 `--python` module always reads `.env`.
 
-Discovery does not load `models/_connections/`: model discovery reads only
-top-level `models/*.py`, and a file there must define `model`.
+Discovery does not load `models/_connections/` as models; a model reads
+`connections/<name>.yaml` first, then a legacy module of that name.
 
 ### `tracebi secret`
 
@@ -120,8 +128,8 @@ An existing model file is kept unless `--force`.
 ### `tracebi new-transform "Title"` · `new-model` · `new-report` · `new-dashboard` · `new-pipeline`
 
 ```bash
-tracebi new-transform "Orders Clean"  [--force] [--transforms-dir DIR]
-tracebi new-model     "Sales Model"   [--force]
+tracebi new-transform "Orders Clean"  [--force] [--python] [--transforms-dir DIR]
+tracebi new-model     "Sales Model"   [--force] [--python]
 tracebi new-model     "Sales" --from wh --tables fact_sales,dim_customer,dim_product
 tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR]
                       [--layout editorial|brief|tabbed|dashboard]
@@ -130,11 +138,14 @@ tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR]
 tracebi new-dashboard "Ops Board"     [--force] [--reports-dir DIR] [--html]
                       [--job overview|trend|leaderboard|scorecard|monitor|funnel]
                       [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
-tracebi new-pipeline  "Sales ETL"     [--force]
+tracebi new-pipeline  "Sales ETL"     [--force] [--python]
 ```
 
-Each scaffolds one file (or, for `new-report` and `new-dashboard`, a package directory) with the
-title slugified: `"Portfolio Book"` → `portfolio_book`.
+Each scaffolds one file (`new-transform` two: `transforms/<name>.sql` and its
+`<name>.contract.yaml`; `new-report` and `new-dashboard` a package directory)
+with the title slugified: `"Portfolio Book"` → `portfolio_book`. `--python`
+writes the Python form instead of the default: the notebook-shaped pandas
+transform, a `models/<name>.py`, a `pipelines/<name>.py`.
 
 `new-report` can put the report in a folder: `"Finance/Month end/Close pack"`
 creates `reports/finance/month_end/close_pack/`. A report in a folder is named
@@ -399,6 +410,18 @@ watcher would post straight over the reset.
 
 ## Sharing
 
+### `tracebi login` · `tracebi logout`
+
+```bash
+tracebi login  --server <url> [--timeout 300]
+tracebi logout --server <url>
+```
+
+`login` signs this machine in to a TraceBi server through the browser (the
+company's login, OAuth with PKCE) and keeps the token in
+`~/.config/tracebi/credentials.json`; `push` uses it. `logout` revokes the
+token on the server and forgets it. See [[push-from-a-laptop]].
+
 ### `tracebi push`
 
 ```bash
@@ -558,6 +581,19 @@ takes a number and `d`, `h` or `m`.
 
 ## Pipelines
 
+### `tracebi run-transform`
+
+```bash
+tracebi run-transform <name>
+```
+
+Runs `transforms/<name>.sql`, `.py` or `.ipynb` (the suffix is optional) top
+to bottom, fresh: a SQL file in one new warehouse connection, a Python file or
+notebook in a new namespace, so the sink never comes from out-of-order state.
+Then the `<name>.contract.yaml` beside it, if any. Prints `form: sql | python
+| notebook`. Two forms of one name are refused, naming both. See
+[[transform-sql]].
+
 ### `tracebi run-pipeline`
 
 ```bash
@@ -612,6 +648,20 @@ tracebi migrate spec reports/<name>.json [--force]
 Compiles a spec into `reports/<name>/` **alongside** the original — it emits,
 never replaces. At discovery the directory shadows the same-named spec, so the
 cutover is the directory existing and the rollback is deleting it.
+
+### `tracebi migrate model` · `connection` · `pipeline`
+
+```bash
+tracebi migrate model      models/<name>.py [--write] [--force]
+tracebi migrate connection models/_connections/<name>.py [--write]
+tracebi migrate pipeline   pipelines/<name>.py [--write]
+```
+
+Converts the Python form to the YAML one: prints it, or with `--write` writes
+the `.yaml` beside the project's other files. The Python file is never
+deleted: for a model or a pipeline the `.py` wins while both exist, so the
+cutover is deleting it; a connection's YAML is read first. See
+[[model-json]], [[connections-yaml]] and [[pipeline-yaml]].
 
 ---
 

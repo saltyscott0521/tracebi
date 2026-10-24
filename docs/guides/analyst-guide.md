@@ -14,10 +14,10 @@ runnable.
 **Who this is for:** analysts writing against an existing TraceBi project (a
 warehouse and `DataModel` someone has already wired up, or one you build with
 the workflow below). If you're setting up connectors from scratch, the
-[README](../README.md) Quick Start and [[the-three-phase-workflow]] are the
+[README](../../README.md) Quick Start and [[the-three-phase-workflow]] are the
 starting points. If your "analyst" is an AI agent, the playbook is
-[AGENTS.md](../AGENTS.md) — the two planes, the assurance ladder, and the
-MCP gateway tools — with step-by-step SOPs in [docs/agents/](agents/);
+[AGENTS.md](../../AGENTS.md) — the two planes, the assurance ladder, and the
+MCP gateway tools — with step-by-step SOPs in [docs/agents/](../agents/);
 agents work through the gateway against the same models this guide uses.
 
 ---
@@ -44,24 +44,24 @@ shape:
 
 **Phase ①** is the real analysis: pull the queries you need and do whatever the
 data demands — window functions, prose parsing, cleaning — then *sink* clean,
-named star-schema tables into a file-backed DuckDB warehouse with
-`DuckDBConnector(...).write(df, "table")`. The framework does not constrain how
+named star-schema tables into the warehouse: `CREATE OR REPLACE TABLE … AS …`
+in SQL, or `DuckDBConnector(...).write(df, "table")` in Python. The framework does not constrain how
 you clean; the contract is *what lands*. Reference impl:
-[transforms/holdings_transform.sql](../examples/portfolio_project/transforms/holdings_transform.sql)
+[transforms/holdings_transform.sql](../../examples/portfolio_project/transforms/holdings_transform.sql)
 (the same work in pandas:
-[holdings_transform_pandas.py](../examples/portfolio_project/transforms/holdings_transform_pandas.py)).
+[holdings_transform_pandas.py](../../examples/portfolio_project/transforms/holdings_transform_pandas.py)).
 
 **Phase ②** declares a star schema over the warehouse — it reads the sink and
 never sees the transform above it. Reference impl:
-[models/portfolio_model.yaml](../examples/portfolio_project/models/portfolio_model.yaml).
+[models/portfolio_model.yaml](../../examples/portfolio_project/models/portfolio_model.yaml).
 
 **Phase ③** is an **artifact package** (`reports/<name>/`) — or a JSON
 `ReportSpec`, a serialization of the same thing — whose every figure is a
 live query against the model. Because the model is materialized, the page
 re-renders in milliseconds with no pandas in the loop — editing the report
 never re-runs phase ①. Reference impls:
-[reports/portfolio_model/portfolio_book/](../examples/portfolio_project/reports/portfolio_model/portfolio_book/) (an editorial page) and
-[reports/portfolio_model/portfolio_dashboard/](../examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/) (an app dashboard).
+[reports/portfolio_model/portfolio_book/](../../examples/portfolio_project/reports/portfolio_model/portfolio_book/) (an editorial page) and
+[reports/portfolio_model/portfolio_dashboard/](../../examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/) (an app dashboard).
 
 ```bash
 cd examples/portfolio_project   # the reference project ships in the repo
@@ -139,9 +139,9 @@ any
 script in the project), and the notes you leave it. It is the live surface for
 phases ① and ② before any report package exists. `tracebi dev <name>` anchors
 the workbench to one package; `tracebi dev` alone is where you look while you
-are still building the model underneath. The warehouse tables and the model's
-schema are on the model's Transform and Model tabs on Data (`tracebi dev --classic`
-lays them out beside the feed on one page).
+are still building the model underneath. The warehouse tables are on Data's
+Warehouse tab (each opens on its own page), and the model's schema on its Model
+tab (`tracebi dev --classic` lays them out beside the feed on one page).
 
 ### Interactive controls recompute by query
 
@@ -219,7 +219,7 @@ orders.help()           # cheat sheet of every DataSet verb
 If no shared model exists yet, create one:
 
 ```bash
-tracebi new-model "Sales Model"   # scaffolds models/sales_model.py
+tracebi new-model "Sales Model"   # scaffolds models/sales_model.yaml
 # edit it, then import with get_model("sales_model")
 ```
 
@@ -304,7 +304,7 @@ model once in `models/` so nobody has to repeat the connector and table
 setup:
 
 ```bash
-tracebi new-model "Sales Model"       # creates models/sales_model.py — edit and commit it
+tracebi new-model "Sales Model"       # creates models/sales_model.yaml — edit and commit it
 tracebi new-pipeline "Sales ETL"      # creates pipelines/sales_etl.yaml — edit and commit it
 ```
 
@@ -314,9 +314,9 @@ Anyone on the team then gets:
 from tracebi.model_registry import get_model
 from tracebi.pipeline_registry import get_runner
 
-model = get_model("sales_model")      # loads models/sales_model.py on first access
-runner = get_runner("sales_etl")      # loads pipelines/sales_etl.py on first access
-runner.run("orders_silver")           # run a layer on demand
+model = get_model("sales_model")      # loads models/sales_model.yaml on first access
+runner = get_runner("sales_etl")      # loads pipelines/sales_etl.yaml on first access
+runner.run("transform")               # run a step on demand (a YAML pipeline: transform, build)
 ```
 
 The web server auto-discovers both directories at startup — no extra
@@ -325,6 +325,6 @@ registration needed.
 ---
 
 **Stuck?** `ds.help()` and `model.help()` print these cheat sheets in any
-session. The [examples/](../examples/) directory has complete runnable
-walkthroughs, and `tracebi/web/demo_app/reports/` shows production-shaped report
-factories.
+session. The [examples/](../../examples/) directory has complete runnable
+walkthroughs; `examples/portfolio_project/` is the reference project every
+convention here follows.

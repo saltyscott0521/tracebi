@@ -47,7 +47,7 @@ TraceBi is built around those three. BI tools are built around the editor.
 | What happens | An agent queries the model and answers in seconds | The analyst explores live (`tracebi dev`), shapes the story, lays out the page their way, and builds one self-contained file | The report gets a `schedule` block and runs on its own: refresh, build, check, deliver |
 | Review | None per question: it only uses definitions already approved | The analyst's call. Peer review for anything that leaves the team, as with any analysis. | Approved once, before it is published |
 | Result | An answer with the query and a fingerprint behind every number | A one-off artifact: charts, tables and prose, every number traceable, shareable as one file | A report that arrives on time, every time |
-| Today | Ask on a report; any MCP agent (`query_model`) | ✅ `tracebi new-report`, `tracebi dev` with the workbench, `report build`, custom styling and assets | ✅ `schedule` block, `tracebi schedule` |
+| Today | ✅ Ask (`/ask`) in the app; any MCP agent (`query_model`) | ✅ `tracebi new-report`, `tracebi dev` with the workbench, `report build`, custom styling and assets | ✅ `schedule` block, `tracebi schedule` |
 
 **They connect.** A question can grow into a one-off analysis, and a one-off
 analysis can become a scheduled report, with no rebuild in another tool.
@@ -117,22 +117,24 @@ These decide trade-offs when the documents don't.
    control (never required, and git on any host when used). A published file
    changes only through an approved publish, and every version is kept.
 4. **One definition, one calculator.** A measure is declared once, and the
-   engine is the only thing that computes it, for a quick answer and a
-   published report alike. No second query path in the browser or the server.
+   engine is the only thing that defines it, for a quick answer and a
+   published report alike. A built page recomputes under a filter, but only
+   the closed plan the server compiled from the model, held to the server's
+   result cell by cell; there is no free query path in the browser.
 5. **Read-only on customer data.** TraceBi and its agents read the warehouse.
    They never write to it.
 6. **Open by default.** Everything that produces a report is MIT and
    self-hostable. Paid features make it easier to run at scale. They are
    never the only way to get a correct report.
-7. **Honest about limits.** A receipt proves a number reproduces, not that
+7. **Honest about limits.** A trace proves a number reproduces, not that
    it's right. We say so, in the product and in sales.
 
-## Where receipts fit
+## Where traces fit
 
-Receipts (per-figure fingerprints, `tracebi verify`, the tamper check) stay in
+Traces (per-figure fingerprints, `tracebi verify`, the tamper check) stay in
 the product. They let a quick answer be re-checked later, and let a recurring
 report prove it ran the same way twice. But they are a **supporting feature,
 not the headline**. The headline is reporting of every kind (questions, one-off
 analyses, recurring reports) built by analysts and agents from definitions
-people approved. Receipts are why a finance or
+people approved. Traces are why a finance or
 compliance buyer can trust it.

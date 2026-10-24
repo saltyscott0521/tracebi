@@ -82,12 +82,7 @@
 <a class="on" href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -95,7 +90,7 @@
   <main class="doc">
 <h1 id="test-suite-review-2026-09-22">Test suite review, 2026-09-22</h1>
 <p><strong>Test what the product does, not what it looks like.</strong> A test earns its
-place when it would catch a real bug: a wrong number, a broken receipt, a
+place when it would catch a real bug: a wrong number, a broken trace, a
 security hole, two implementations drifting apart. A test that pins a colour, a
 CSS rule, a file size or a sentence in the README catches nothing. It just
 makes every design or wording change also a test change.</p>
@@ -200,7 +195,7 @@ added for the new features.</p>
   formatters must produce the same text, or a number flickers on load. Same for
   the worker engine's float spelling.</li>
 <li><strong>Honesty rules:</strong> provenance badges, unverified marks, exploration stripped
-  at build, receipts and fingerprints.</li>
+  at build, traces and fingerprints.</li>
 <li><strong>Agent guides</strong> (<code>test_agent_guides.py</code>): documentation <em>is</em> the agent
   interface here. A feature the guides don't name doesn't get used.</li>
 </ul>
@@ -239,7 +234,7 @@ in-process (so coverage sees them) against a project on disk:</p>
 </tr>
 <tr>
 <td>reference project</td>
-<td>both transforms, then every report in <code>examples/portfolio_project</code> builds, reproduces and is intact; the showcase's affordances; a control recomputing on the model; the housing scenario never receipted</td>
+<td>both transforms, then every report in <code>examples/portfolio_project</code> builds, reproduces and is intact; the showcase's affordances; a control recomputing on the model; the housing scenario never traced</td>
 </tr>
 <tr>
 <td>web</td>
@@ -410,7 +405,7 @@ product behaviour.</p>
 <tr>
 <td><code>test_presentation.py</code></td>
 <td>28 → 10</td>
-<td>Trimmed to CSP and self-containment, provenance in the manifest without badges, the receipt's fingerprints, SSR never altering embedded data, and declared formats. Layer order went (not one of the six).</td>
+<td>Trimmed to CSP and self-containment, provenance in the manifest without badges, the trace's fingerprints, SSR never altering embedded data, and declared formats. Layer order went (not one of the six).</td>
 </tr>
 <tr>
 <td><code>test_selection.py</code></td>
@@ -425,7 +420,7 @@ product behaviour.</p>
 <tr>
 <td><code>test_schedule.py</code></td>
 <td>72 → 5</td>
-<td>Trimmed to the verdict gate: a schedule cannot force a bad receipt, a refused receipt is not uploaded; restored by coverage: an owner alert, per-value burst recipients, firing in the declared time zone. The schedule journey covers the rest.</td>
+<td>Trimmed to the verdict gate: a schedule cannot force a bad trace, a refused trace is not uploaded; restored by coverage: an owner alert, per-value burst recipients, firing in the declared time zone. The schedule journey covers the rest.</td>
 </tr>
 <tr>
 <td><code>test_workbench.py</code></td>
@@ -490,7 +485,7 @@ product behaviour.</p>
 <tr>
 <td><code>test_d3_charts.py</code></td>
 <td>13 → 10</td>
-<td>Trimmed to tooltip, click → filter, legend toggle, arrow keys, brush, value labels, currency ticks, tooltip → receipt. Every-type, small-multiples and sparkline geometry went. The stacked-bars test stays because the brush test silently depends on it (see below).</td>
+<td>Trimmed to tooltip, click → filter, legend toggle, arrow keys, brush, value labels, currency ticks, tooltip → trace. Every-type, small-multiples and sparkline geometry went. The stacked-bars test stays because the brush test silently depends on it (see below).</td>
 </tr>
 <tr>
 <td><code>test_validate_gaps.py</code></td>

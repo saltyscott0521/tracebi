@@ -5,9 +5,14 @@ changing the shared model first. Every number says honestly how it was made.
 The model keeps the definitions that must mean one thing; everything else
 happens around it, and what proves itself is promoted into it.**
 
-Status: decided 2026-10-13. Builds on [[report-library]] (folders, publishing)
-and [[remote-authoring]] (drafts, what may come in which way). Prompted by the
-field test `docs/agents/field-test-2026-10-12-mcp-user.md`.
+Status: decided 2026-10-13; built except personal calculations, promotion
+and the Python sandbox (steps 5 and 6 of the order of work). Report
+calculations and the filtered measure ([[measures]]), SQL calculations
+(`sql_calculations` in [[report-json]]), sandboxed report frames, the impact
+check, model owners, folders and "My published" are in the product. Builds on
+[[report-library]] (folders, publishing) and [[remote-authoring]] (drafts,
+what may come in which way). Prompted by a 2026-10-12 field test of an MCP
+user (the notes are in the history).
 
 ---
 
@@ -27,13 +32,13 @@ questions, it drifts and nobody can say which number is official.
 
 ## The principle
 
-Freedom, labelled. The receipt does not stop anyone; it says how each number
+Freedom, labelled. The trace does not stop anyone; it says how each number
 was made. Restriction lives in **folders** (what may be published where), not
 in what an analyst may calculate.
 
 ## Three layers of calculation
 
-| Layer | Where it is defined | Who adds it | Label on the page and in the receipt |
+| Layer | Where it is defined | Who adds it | Label on the page and in the trace |
 |---|---|---|---|
 | **Model measures** | the model file | publish through review (below) | the shared definition |
 | **Report and personal calculations** | the report's `report.json`, or the analyst's workspace | anyone who can edit that report / the owner | "calculated in this report" / "personal" |
@@ -75,7 +80,7 @@ Why SQL is the escape hatch:
 
 - Analysts and agents already know it; it covers rollforwards, conditional
   sums, as-of joins and window functions in one language.
-- It stays checkable: SQL on a fixed warehouse is deterministic, so the receipt
+- It stays checkable: SQL on a fixed warehouse is deterministic, so the trace
   records the query and the result's fingerprint and `verify` re-runs it.
 - It is safe over the connector: read-only DuckDB reaches no secrets and
   writes nothing, unlike Python.
@@ -99,7 +104,7 @@ labels) is something a report binds to, like a SQL calculation.
 - **A fixed set of packages** baked into the worker image; no `pip install`
   from a draft. Adding a library is a deliberate change.
 - **Limits** on time, memory and CPU per run.
-- **Honest receipt:** records the code, the input data's fingerprints, the
+- **Honest trace:** records the code, the input data's fingerprints, the
   package versions and the seed; the page says "computed by custom code
   (Python)" and never reads as verified. A seeded run in a pinned environment
   may let `verify` report whether it reproduced; aim for it, do not promise it.
@@ -123,7 +128,7 @@ rests on the browser rather than on reviewing code:
    `postMessage`.
 2. **The report CSP stays:** no network, no external scripts.
 3. **Stamped numbers are watched.** Custom JS may draw anything, but if it
-   changes a stamped figure's text the runtime notices and the receipt says
+   changes a stamped figure's text the runtime notices and the trace says
    "changed on the page by a custom script"; what a script draws is labelled
    "drawn by custom script".
 4. **Only then** does `write_draft_file` accept `script.js`. Static checks
@@ -132,11 +137,11 @@ rests on the browser rather than on reviewing code:
 ## Why not make everything SQL (considered, rejected)
 
 The case for it is real: one language with no ceiling, what agents write best,
-receipts still work, less to build, dbt shows teams cope. It was rejected
+traces still work, less to build, dbt shows teams cope. It was rejected
 because:
 
 1. **One number, many definitions.** Ten analysts write "revenue" ten ways;
-   each has a valid receipt. A receipt proves where a number came from, not
+   each has a valid trace. A trace proves where a number came from, not
    what it means. A named measure is what makes "revenue" mean one thing.
 2. **Joins are where numbers go wrong.** The model knows grain and keys and
    refuses a fan-out; free SQL multiplies rows silently.
@@ -171,7 +176,7 @@ So: the model is the foundation, SQL is the escape hatch, each labelled.
 - Personal drafts (`drafts/<owner>/`, "My work") and publishing as TraceBi's
   own step, with history kept beside each report, are decided; drafts are built.
 - Folders with View / Build / Publish / Manage per sign-in group, and
-  publish-with-approval, are decided, not built.
+  publish-with-approval, are built ([[folder-yaml]]).
 - **Addition:** a personal folder a person can **publish into** ("My
   published"), for something shareable and scheduled without the public folder.
 - A folder decides what it accepts: anything honestly labelled, or only
@@ -179,7 +184,7 @@ So: the model is the foundation, SQL is the escape hatch, each labelled.
 
 ## Not changing
 
-The three phases, the receipts, the closed vocabulary over the connector for
+The three phases, the traces, the closed vocabulary over the connector for
 anything executable (Python still comes through a laptop and review, or the
 sandbox), and the roles (viewer, analyst, admin) as folder defaults.
 

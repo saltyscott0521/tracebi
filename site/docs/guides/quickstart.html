@@ -82,12 +82,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -105,19 +100,23 @@ web UI and Excel export.</p>
 <h2 id="2-scaffold">2. Scaffold</h2>
 <pre><code class="language-bash">tracebi init my_project
 cd my_project
-git init &amp;&amp; git commit --allow-empty -m &quot;init&quot;
+git init &amp;&amp; git add . &amp;&amp; git commit -m init
 </code></pre>
 <p>Commit early: every manifest stamps the current commit as <code>git_sha</code>, so a
 report built in a repo with no commits records <code>unknown</code> and warns.</p>
 <p>You get the three-phase layout from <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>:</p>
-<pre><code>inputs/       ⓪ raw pulls
-transforms/   ① pandas that lands clean tables
+<pre><code>tracebi.yaml  the project's settings: the warehouse and the engine's limits
+inputs/       ⓪ raw pulls
+connections/  the sources a transform reads, one YAML file each
+transforms/   ① the transform that lands clean tables
 models/       ② the star-schema contract
 reports/      ③ the report packages, one folder per model
 pipelines/    one per model: run its transform, then build its reports
 data/         the warehouse lives here
 output/       built artifacts + traces
 </code></pre>
+<p>The sample transform is the pandas form (<code>transforms/sample_transform.py</code>);
+<code>tracebi new-transform</code> scaffolds the SQL form, the default for a new one.</p>
 <h2 id="3-run-the-transform-phase-1">3. Run the transform — phase ①</h2>
 <pre><code class="language-bash">tracebi run-transform sample_transform
 </code></pre>
@@ -125,7 +124,7 @@ output/       built artifacts + traces
 <code>data/warehouse.duckdb</code>. That file is the first <a href="../concepts/freeze-points.html">freeze point</a>.</p>
 <p>→ <a href="../concepts/transform.html">Transform — phase ①</a></p>
 <h2 id="4-look-at-the-model-phase-2">4. Look at the model — phase ②</h2>
-<p>Open <code>models/sample_model.py</code>. A few dozen lines: tables, keys, and
+<p>Open <code>models/sample_model.yaml</code>. A few dozen lines: tables, keys, and
 <a href="../reference/measures.html">Measures</a>. Nothing to run — it is a declaration.</p>
 <pre><code class="language-bash">tracebi validate
 </code></pre>
@@ -141,7 +140,7 @@ and is named by that path. It writes two files:</p>
 output/sample_model/sample_dashboard.html.manifest.json     the trace
 </code></pre>
 <p>The HTML is fully self-contained — no CDN, no network. Open it directly.</p>
-<p><strong>Steps 3 and 5 in one command.</strong> <code>pipelines/sample_model.py</code> ties the model's
+<p><strong>Steps 3 and 5 in one command.</strong> <code>pipelines/sample_model.yaml</code> ties the model's
 transform to its reports, so this runs the transform and then builds every
 report in <code>reports/sample_model/</code>:</p>
 <pre><code class="language-bash">tracebi run-pipeline sample_model

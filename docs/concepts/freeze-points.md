@@ -7,7 +7,7 @@ There are two, one between each pair of phases in [[the-three-phase-workflow]]:
 
 | Freeze | What it is | Written by | Read by |
 | --- | --- | --- | --- |
-| **The sink** | `data/warehouse.duckdb` — real tables on disk | [[transform]] (①) | [[model]] (②) |
+| **The sink** | the warehouse `tracebi.yaml` names (by default `data/warehouse.duckdb`) — real tables | [[transform]] (①) | [[model]] (②) |
 | **The model** | the semantic contract: grain, keys, [[measures]] | you, in `models/` | [[report]] (③) |
 
 ---
@@ -46,9 +46,11 @@ Re-run the transform (`tracebi run-transform <name>`) and the sink is replaced.
 Transforms are written to be **idempotent** — a rerun replaces the warehouse
 tables rather than appending to them.
 
-> **One operational catch:** DuckDB allows many readers but a single writer. A
-> warehouse refresh is blocked while a `tracebi dev` or `tracebi serve` process
-> holds the file open. Stop the server to refresh.
+> **One operational catch:** a DuckDB file has one writer at a time. A model
+> query opens the warehouse read-only for that query alone, so a running
+> `tracebi dev` or `tracebi serve` does not block a refresh: the write waits a
+> few seconds for a read in progress to let go, and a read that comes during the
+> write is refused, naming the transform to let finish.
 
 ## Related
 

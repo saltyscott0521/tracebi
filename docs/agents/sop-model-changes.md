@@ -1,13 +1,14 @@
 # SOP: Changing the Semantic Contract
 
 **Audience:** an engineer-agent (or a human doing the same job) editing the
-**definition plane** — the `models/*.py` files that declare what numbers mean
-in this project.
+**definition plane** — the `models/<name>.yaml` files (a `models/<name>.py`
+for anything exotic) that declare what numbers mean in this project.
 
 **Where this sits in the three-phase workflow (see [[the-three-phase-workflow]]).** This is
 **phase ② — MODEL**, the freeze point between the unconstrained phase-① transform
-(`transforms/*.py`, ordinary pandas that sinks the warehouse) and the fast
-phase-③ report (`reports/*.json`) that queries the model by name. The
+(`transforms/<name>.sql`, or pandas as the escape hatch, that sinks the
+warehouse) and the fast phase-③ report (a package in `reports/<model>/`) that
+queries the model by name. The
 model **reads the sink; it never sees the transform** — it is the semantic
 contract, a few dozen declarative lines a reviewer reads without opening the
 pandas above it (`models/portfolio_model.yaml` is the reference). It is also where
@@ -29,34 +30,37 @@ long-running ones after restart).
 First, a phase question: **is the data even in the warehouse?** A model can only
 name measures over columns and tables phase ① actually sank. If the number needs
 a column the transform never wrote — a field it dropped, a table it never built —
-no `add_measure` will conjure it; the fix is **upstream in phase ①**, sinking the
-missing column or table in `transforms/*.py` (unconstrained pandas), after which
-the model can reference it. Only once the underlying data is in the sink is a
-model change the right tool. Check the warehouse's tables (`describe_model`, or
-the model's Data page, its Transform tab) before assuming this is a phase-② edit.
+no measure will conjure it; the fix is **upstream in phase ①**, sinking the
+missing column or table in the transform, after which the model can reference
+it. Only once the underlying data is in the sink is a model change the right
+tool. Check the warehouse's tables (`describe_model`, `describe_table`, or the
+app's Data → Warehouse) before assuming this is a phase-② edit.
 
 Then the plane question: **is this shared meaning, or presentation?**
 
 | Situation | Plane | Fix |
 |---|---|---|
-| A business definition several reports should agree on ("unrealized gain", "margin %") | Definition | `add_measure` in `models/<name>.py` |
-| The canonical display format for a measure, everywhere it appears | Definition | `format=` on the measure |
-| A new slicing attribute, table, or join everyone needs | Definition | `add_dimension` / `add_table` / `add_relationship` in the model file |
-| One report wants a different label, column order, section layout, or a one-off format | Presentation | The report spec (`column_labels`, `number_formats`, sections) |
-| One report needs a derived column nothing else will ever use | Presentation first | Keep it in the report/request; promote to a measure only when a second consumer wants it |
+| A business definition several reports should agree on ("unrealized gain", "margin %") | Definition | a `measures:` entry in `models/<name>.yaml` (`add_measure` in a `.py`) |
+| The canonical display format for a measure, everywhere it appears | Definition | `format` on the measure |
+| A new slicing attribute, table, or join everyone needs | Definition | `dimensions` / `tables` / `relationships` in the model file |
+| One report wants a different label, column order, layout, or a one-off format | Presentation | The report package (`report.json`, the page) |
+| One report needs a derived column nothing else will ever use | Presentation first | A report calculation in `report.json` (`measures`, `sql_calculations`); promote to the model only when a second consumer wants it |
 
 The canonical example (see `examples/agent_gateway/README.md`): an agent
 wanted an *unrealized gain* column. A spec cannot express arbitrary
-computation — by design — so the correct fix was a small, code-reviewed
-change in `models/wealth_model.py` (the actual commit also declared
-`market_value` and `cost_basis` as named measures with formats; the two
-gain measures were the point):
+computation — by design — so the correct fix was a small, reviewed change to
+the wealth model (the actual commit also declared `market_value` and
+`cost_basis` as named measures with formats; the two gain measures were the
+point). In the reference project's `models/wealth_model.yaml` it reads:
 
-```python
-model.add_measure("unrealized_gain", expr="market_value - cost_basis",
-                  agg="sum", format="currency0")
-model.add_measure("gain_pct", ratio=("unrealized_gain", "cost_basis"),
-                  format="percent")
+```yaml
+  - name: unrealized_gain
+    expr: market_value - cost_basis
+    agg: sum
+    format: currency0
+  - name: gain_pct
+    ratio: [unrealized_gain, cost_basis]
+    format: percent
 ```
 
 Defining it once in the model means every report, query, and agent gets the
@@ -73,22 +77,31 @@ CLAUDE.md §1.
 
 ### 2.1 Where model changes live
 
-- Edit `models/<name>.py`. The file **must** expose a module-level variable
-  named `model` (a `DataModel`) — that is the convention the registry looks
-  for.
-- Files starting with `_` are skipped; model discovery loads only `.py`;
-  subdirectories are not scanned. A file that raises on import is skipped
-  with a warning, not an error — run `tracebi validate` if something silently
-  disappears.
+- Edit `models/<name>.yaml` (`.yml` and `.json` are the same schema,
+  [[model-json]]). A `models/<name>.py` **must** expose a module-level
+  variable named `model` (a `DataModel`) — that is the convention the registry
+  looks for.
+- Files starting with `_` are skipped; subdirectories are not scanned. Two
+  declarative forms of one name are both refused, and a `.py` beside a
+  declarative file wins. A file that fails to load is a failed entry in
+  `/api/discovery`, not an error at startup — run `tracebi validate` if
+  something silently disappears.
+- Through the server, a model change is a draft: Edit as a draft in the app,
+  or `start_draft` / `write_draft_file` over MCP, then publish. Publishing
+  re-runs every published report that reads the model against the draft
+  (the impact check) and asks for `accept_impact` when numbers move.
 - A one-shot gateway process (stdio, spawned per call) picks up a committed
   change on its next spawn; a long-running gateway keeps already-imported
   model modules cached and must be restarted. Either way a change is
   visible to agents on their **next** gateway call — no server restart, no
   cache to invalidate.
 
-### 2.2 `add_measure` — the exact signature
+### 2.2 A measure — the exact keys
 
-From `tracebi/model/data_model.py`:
+A YAML measure entry takes the same keys as `add_measure`'s keyword
+arguments (`name`, `column`, `agg`, `expr`, `ratio`, `description`,
+`format`, and the other kinds in [[measures]]). From
+`tracebi/model/data_model.py`:
 
 ```python
 model.add_measure(
@@ -155,12 +168,12 @@ its raw output.
 Per CLAUDE.md §4: run `pytest tests/` **before** your change (confirm a green
 baseline) and **after**. A passing suite is the minimum bar.
 
-- Measure-definition behavior is tested in `tests/test_phase25.py` (see the
-  existing `add_measure` tests around the callable-rejection and expr-
-  validation cases) and gateway-visible behavior in
-  `tests/test_mcp_gateway.py`. Add your tests to the phase file they belong
-  to — test files are phase-scoped; do not reorganize across files or add
-  shared cross-phase fixtures.
+- Prefer a step in an end-to-end journey (`tests/e2e/`) that uses the
+  measure; add a unit test only for query semantics a journey cannot pin
+  (`tests/test_phase25.py` holds the `add_measure` callable-rejection and
+  expr-validation cases). Test files are scoped; do not reorganize across
+  files or add shared cross-phase fixtures. Before adding any test, answer
+  *what bug would this catch?* (`docs/architecture/test-suite-review.md`).
 - Test the *meaning*, not just the plumbing: assert the computed value on a
   small known dataset. Bias toward asserting the **absence of a wrong
   answer** (e.g. a ratio measure is a ratio of totals, not a mean of per-row
@@ -171,9 +184,9 @@ baseline) and **after**. A passing suite is the minimum bar.
   sections' fingerprints must stay byte-identical. Drift where something
   moved, stability where nothing did — that is your review signal.
 - **Renaming or removing** a measure is a breaking contract change: grep
-  `reports/` and `examples/` for references, run `tracebi spec validate` on
-  any spec that names it, and `tracebi report build` each package that binds
-  it (a binding to a missing measure fails the build).
+  `reports/` and `examples/` for references and `tracebi report build` each
+  package that binds it (a binding to a missing measure fails the build); a
+  published model's impact check lists the reports that break.
 
 Useful while working:
 
@@ -219,12 +232,12 @@ Per CLAUDE.md:
 - **No lambdas or callables, ever** — see §2.3. Do not wrap one, do not
   precompute a column in an ad-hoc transform and pretend it is governed.
 - **Do not edit `tracebi/` internals for a project need.** Adding a measure,
-  a dimension, or a format belongs in `models/*.py`. New measure kinds,
+  a dimension, or a format belongs in the model file. New measure kinds,
   relaxed expression rules, new aggregation functions, or reaching into
   `_measures` and other `_private` attributes are framework changes with their
   own review bar — propose them, don't sneak them in with a model change.
 - **Do not solve presentation problems in the definition plane** (a
-  one-report label tweak is `column_labels` in the spec) **or shared-meaning
+  one-report label tweak belongs in the report package) **or shared-meaning
   problems in the presentation plane** (recomputing "gain" inside a report is
   how two reports disagree about the same number).
 - **Do not duplicate a definition.** Before adding a measure, check
@@ -240,21 +253,21 @@ Before opening the PR, confirm every box:
 
 - [ ] The change is **shared meaning**, not one report's presentation (§1);
       ambiguity was surfaced, not silently resolved.
-- [ ] Edited `models/<name>.py` only; module-level `model` variable intact;
-      no `tracebi/` internals touched.
-- [ ] Each new measure uses exactly one of `column=` / `expr=` / `ratio=`;
+- [ ] Edited the model file only (a `.py` keeps its module-level `model`
+      variable); no `tracebi/` internals touched.
+- [ ] Each new measure uses exactly one of `column` / `expr` / `ratio`;
       `agg` present for the first two, absent for `ratio`.
 - [ ] Any `expr` is bare-column arithmetic only — no functions, quotes, or
       SQL; no callables anywhere.
-- [ ] `description=` written; `format=` declared where a canonical display
+- [ ] `description` written; `format` declared where a canonical display
       format exists.
 - [ ] No duplicate/near-duplicate of an existing measure
       (`tracebi context --model <name>` checked).
-- [ ] Tests added in the correct phase-scoped file, asserting computed
-      values (including the absence-of-wrong-answer case).
+- [ ] A journey step (or, for query semantics, a unit test) asserting
+      computed values (including the absence-of-wrong-answer case).
 - [ ] `pytest tests/` green **before and after** the change.
-- [ ] Renames/removals: downstream specs and reports grepped and
-      re-validated (`tracebi spec validate`).
+- [ ] Renames/removals: downstream reports grepped and rebuilt
+      (`tracebi report build`).
 - [ ] Fingerprint drift confined to sections the change actually touches;
       untouched sections byte-identical.
 - [ ] CHANGELOG.md updated; diff is surgical; commit message is one

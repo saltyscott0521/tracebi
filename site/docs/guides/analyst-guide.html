@@ -82,12 +82,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -108,10 +103,10 @@ migrates with <code>tracebi migrate spec reports/&lt;name&gt;.json</code>.</p>
 <p><strong>Who this is for:</strong> analysts writing against an existing TraceBi project (a
 warehouse and <code>DataModel</code> someone has already wired up, or one you build with
 the workflow below). If you're setting up connectors from scratch, the
-<a href="../README.md">README</a> Quick Start and <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> are the
+<a href="../../README.md">README</a> Quick Start and <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> are the
 starting points. If your "analyst" is an AI agent, the playbook is
-<a href="../AGENTS.md">AGENTS.md</a> — the two planes, the assurance ladder, and the
-MCP gateway tools — with step-by-step SOPs in <a href="agents/">docs/agents/</a>;
+<a href="../../AGENTS.md">AGENTS.md</a> — the two planes, the assurance ladder, and the
+MCP gateway tools — with step-by-step SOPs in <a href="../agents/">docs/agents/</a>;
 agents work through the gateway against the same models this guide uses.</p>
 <hr>
 <h2 id="the-three-phase-workflow">The three-phase workflow</h2>
@@ -132,22 +127,22 @@ shape:</p>
 </code></pre>
 <p><strong>Phase ①</strong> is the real analysis: pull the queries you need and do whatever the
 data demands — window functions, prose parsing, cleaning — then <em>sink</em> clean,
-named star-schema tables into a file-backed DuckDB warehouse with
-<code>DuckDBConnector(...).write(df, "table")</code>. The framework does not constrain how
+named star-schema tables into the warehouse: <code>CREATE OR REPLACE TABLE … AS …</code>
+in SQL, or <code>DuckDBConnector(...).write(df, "table")</code> in Python. The framework does not constrain how
 you clean; the contract is <em>what lands</em>. Reference impl:
-<a href="../examples/portfolio_project/transforms/holdings_transform.sql">transforms/holdings_transform.sql</a>
+<a href="../../examples/portfolio_project/transforms/holdings_transform.sql">transforms/holdings_transform.sql</a>
 (the same work in pandas:
-<a href="../examples/portfolio_project/transforms/holdings_transform_pandas.py">holdings_transform_pandas.py</a>).</p>
+<a href="../../examples/portfolio_project/transforms/holdings_transform_pandas.py">holdings_transform_pandas.py</a>).</p>
 <p><strong>Phase ②</strong> declares a star schema over the warehouse — it reads the sink and
 never sees the transform above it. Reference impl:
-<a href="../examples/portfolio_project/models/portfolio_model.yaml">models/portfolio_model.yaml</a>.</p>
+<a href="../../examples/portfolio_project/models/portfolio_model.yaml">models/portfolio_model.yaml</a>.</p>
 <p><strong>Phase ③</strong> is an <strong>artifact package</strong> (<code>reports/&lt;name&gt;/</code>) — or a JSON
 <code>ReportSpec</code>, a serialization of the same thing — whose every figure is a
 live query against the model. Because the model is materialized, the page
 re-renders in milliseconds with no pandas in the loop — editing the report
 never re-runs phase ①. Reference impls:
-<a href="../examples/portfolio_project/reports/portfolio_model/portfolio_book/">reports/portfolio_model/portfolio_book/</a> (an editorial page) and
-<a href="../examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/">reports/portfolio_model/portfolio_dashboard/</a> (an app dashboard).</p>
+<a href="../../examples/portfolio_project/reports/portfolio_model/portfolio_book/">reports/portfolio_model/portfolio_book/</a> (an editorial page) and
+<a href="../../examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/">reports/portfolio_model/portfolio_dashboard/</a> (an app dashboard).</p>
 <pre><code class="language-bash">cd examples/portfolio_project   # the reference project ships in the repo
 python run_workflow.py       # ① builds data/warehouse.duckdb, ③ builds every report
 python -m tracebi.web.run    # serve it: portfolio_model → Reports → portfolio_dashboard
@@ -213,9 +208,9 @@ any
 script in the project), and the notes you leave it. It is the live surface for
 phases ① and ② before any report package exists. <code>tracebi dev &lt;name&gt;</code> anchors
 the workbench to one package; <code>tracebi dev</code> alone is where you look while you
-are still building the model underneath. The warehouse tables and the model's
-schema are on the model's Transform and Model tabs on Data (<code>tracebi dev --classic</code>
-lays them out beside the feed on one page).</p>
+are still building the model underneath. The warehouse tables are on Data's
+Warehouse tab (each opens on its own page), and the model's schema on its Model
+tab (<code>tracebi dev --classic</code> lays them out beside the feed on one page).</p>
 <h3 id="interactive-controls-recompute-by-query">Interactive controls recompute by query</h3>
 <p>A built artifact can carry <code>data-tb-filter</code> dropdowns, <code>data-tb-search</code>, and
 <code>data-tb-rows</code> (scrollable tables). The honesty rule is locked in the runtime:
@@ -270,7 +265,7 @@ orders                  # rich repr: shape, columns, dtypes, sample rows
 orders.help()           # cheat sheet of every DataSet verb
 </code></pre>
 <p>If no shared model exists yet, create one:</p>
-<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;   # scaffolds models/sales_model.py
+<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;   # scaffolds models/sales_model.yaml
 # edit it, then import with get_model(&quot;sales_model&quot;)
 </code></pre>
 <p>Or browse the web UI: under <strong>Data</strong>, a model's <strong>Model</strong> tab shows every table with previews
@@ -398,24 +393,24 @@ match: <code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</cod
 <p>If multiple people are writing reports against the same data, define the
 model once in <code>models/</code> so nobody has to repeat the connector and table
 setup:</p>
-<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;       # creates models/sales_model.py — edit and commit it
+<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;       # creates models/sales_model.yaml — edit and commit it
 tracebi new-pipeline &quot;Sales ETL&quot;      # creates pipelines/sales_etl.yaml — edit and commit it
 </code></pre>
 <p>Anyone on the team then gets:</p>
 <pre><code class="language-python">from tracebi.model_registry import get_model
 from tracebi.pipeline_registry import get_runner
 
-model = get_model(&quot;sales_model&quot;)      # loads models/sales_model.py on first access
-runner = get_runner(&quot;sales_etl&quot;)      # loads pipelines/sales_etl.py on first access
-runner.run(&quot;orders_silver&quot;)           # run a layer on demand
+model = get_model(&quot;sales_model&quot;)      # loads models/sales_model.yaml on first access
+runner = get_runner(&quot;sales_etl&quot;)      # loads pipelines/sales_etl.yaml on first access
+runner.run(&quot;transform&quot;)               # run a step on demand (a YAML pipeline: transform, build)
 </code></pre>
 <p>The web server auto-discovers both directories at startup — no extra
 registration needed.</p>
 <hr>
 <p><strong>Stuck?</strong> <code>ds.help()</code> and <code>model.help()</code> print these cheat sheets in any
-session. The <a href="../examples/">examples/</a> directory has complete runnable
-walkthroughs, and <code>tracebi/web/demo_app/reports/</code> shows production-shaped report
-factories.</p>
+session. The <a href="../../examples/">examples/</a> directory has complete runnable
+walkthroughs; <code>examples/portfolio_project/</code> is the reference project every
+convention here follows.</p>
   </main>
 </div>
 <script>

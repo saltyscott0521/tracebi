@@ -33,9 +33,9 @@ What an agent needs from TraceBi:
 | Write in a closed, checkable format | Package grammar (`report.json` + `data-tb-*`), validation before execution | ✅ |
 | Get told exactly what's wrong | Errors with a repair path (`sections[0].data.query.fact`) | ✅ |
 | Check its own work | `build_report`, `verify_manifest`, `workbench_state` | ✅ |
-| Take a request and propose a report | Request inbox + publish requests (a pull request where the team uses git) | ❌ Q3 |
+| Take a request and propose a report | Drafts and publish requests over `/mcp` ✅; a request inbox | ❌ Q3 |
 | Fix a report that broke overnight | Run failure → agent task with the error and the last good run | ❌ Q3 |
-| Start from a known-good pattern | Template gallery | ❌ Q1 |
+| Start from a known-good pattern | `tracebi init --template` (`saas-metrics`, `sales-pipeline`) | ✅ two of six |
 
 ## Key journeys
 
@@ -59,8 +59,8 @@ a request (journey 4), or into an analysis (journey 3).
 
 **Target:** answer in under 10 seconds, no data person involved, and the
 number matches the board pack because it uses the same definition.
-**Today:** works through any MCP agent (`query_model`) and through Ask on an
-open report. Ask anywhere in the app, Slack, and "Keep this" are Q2–Q3.
+**Today:** works through any MCP agent (`query_model`) and through Ask
+(`/ask`) in the app, where "Keep this" starts a draft. Slack is Q2–Q3.
 
 ### 3. A one-off analysis (analyst + agent)
 
@@ -85,8 +85,9 @@ with a rendered preview → the approver reviews it in the app, asks for a chang
 or approves → approval publishes it → it arrives Monday.
 
 **Target:** request to published in under a day, with the builder not
-involved. **Today:** the agent loop works from an IDE. The inbox, publish
-requests and in-app review are Q3 (see [[report-library]]).
+involved. **Today:** drafts, publish requests and in-app review are built
+(Review; see [[report-library]]), from a hosted chat over `/mcp` or from a
+laptop. The request inbox is Q3.
 
 ### 5. Monday morning (reader)
 
@@ -110,10 +111,10 @@ still ahead.
 
 ### 7. Proving a number (approver or auditor)
 
-"Where did this number in March's board pack come from?" The receipt names
+"Where did this number in March's board pack come from?" The trace names
 the definition, the query and the fingerprint. `tracebi verify` re-runs it.
 
-**Today:** works (receipts, `verify`, `verify --file`).
+**Today:** works (traces, `verify`, `verify --file`).
 
 ## What each user must never have to do
 

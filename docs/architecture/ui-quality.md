@@ -49,7 +49,7 @@ Checked by the script (rule name in brackets):
   `undefined` / `NaN` / traceback shown to a reader `[raw-garbage]`, no
   "not found" except on a page that does not exist `[not-found]`.
 - **You always know where you are.** Exactly one sidebar entry (one of the
-  four places, or Help; on an open report, the rail's) is marked as the
+  five places; on an open report, the rail's) is marked as the
   current page `[nav-you-are-here]`. Exactly one `h1`, naming the
   page `[one-h1]`.
 - **Everything works from a keyboard.** Anything that looks clickable is a
@@ -105,7 +105,7 @@ Checked by the script (rule name in brackets):
   visible text node), `report_accents` (the computed `--tb-accent` light/dark
   pair per report), `report_box_shadows` and `report_gradients` (elements with
   a resting shadow that has blur or spread, or a gradient background or SVG
-  gradient; the chart tooltip, a menu or popover and the receipt drawer may
+  gradient; the chart tooltip, a menu or popover and the trace drawer may
   keep theirs), and `report_looks` (display face + accent; a look not in the
   baseline fails the run even if the count does not grow). The target is one
   look per project, plus a named bespoke example.
@@ -201,7 +201,7 @@ Each fix that taught something general adds a line here.
   An empty cell's dash is quieter than any text in the row.
 - A row of seven buttons is a grouping problem, not a wrapping problem: one
   primary action, the rest quiet, and a menu for the family (Export holds
-  HTML, Excel and PDF, and one line saying which carries the receipt). An open item gets the
+  HTML, Excel and PDF, and one line saying which carries the trace). An open item gets the
   page's full width; its list is one click away. The report page's bar is
   what everyone may do on the left (Open, Share, Export) and what the role
   allows on the right (Rebuild, Edit as a draft, Build, then the one panel);

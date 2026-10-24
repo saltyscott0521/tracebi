@@ -82,12 +82,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -101,13 +96,16 @@ single self-contained HTML file plus a <a href="../concepts/trace.html">The trac
 <h2 id="the-shape">The shape</h2>
 <pre><code>reports/my_report/
   report.json      what data this report binds        → [report.json](../reference/report-json.html)
-  template.html    the page you draw                  → [template.html — the figure grammar](../reference/template-html.html)
+  app.jsx          a dashboard from the TraceBi kit   → [app.jsx — the React lane](../reference/app-jsx.html)
+  template.html    or a page you draw in HTML         → [template.html — the figure grammar](../reference/template-html.html)
   style.css        optional — your CSS
   script.js        optional — your JS
   report.py        optional escape hatch
 </code></pre>
 <p><strong>You own the page.</strong> The framework does not impose a layout, a component set,
-or a stylesheet you must work around. <code>template.html</code> is ordinary HTML; a
+or a stylesheet you must work around. A dashboard (<code>tracebi new-dashboard</code>) is
+an <code>app.jsx</code> of kit components (<code>&lt;Kpi&gt;</code>, <code>&lt;Chart&gt;</code>, <code>&lt;Table&gt;</code>, <code>&lt;Filter&gt;</code>); a
+page (<code>tracebi new-report</code>) is a <code>template.html</code> of ordinary HTML, where a
 handful of <code>data-tb-*</code> attributes turn elements into figures.</p>
 <p>There is exactly one renderer: a report is always built from its package. (A
 <code>reports/&lt;name&gt;.json</code> spec is a shorthand that compiles into exactly this.)</p>

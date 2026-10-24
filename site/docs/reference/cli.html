@@ -82,12 +82,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -96,7 +91,7 @@
 <h1 id="cli-reference">CLI reference</h1>
 <p><strong>Every <code>tracebi</code> command.</strong> Start with <a href="#the-everyday-loop">The everyday loop</a> — it is five
 commands, and most days you use only those.</p>
-<pre><code class="language-bash">tracebi [--models-dir DIR] [--pipelines-dir DIR] &lt;command&gt; [...]
+<pre><code class="language-bash">tracebi [--models-dir DIR] [--pipelines-dir DIR] [--connections-dir DIR] &lt;command&gt; [...]
 </code></pre>
 <p>Global flags come <strong>before</strong> the subcommand. Directory defaults come from the
 environment — see <a href="../reference/environment-variables.html">Environment variables</a>.</p>
@@ -112,18 +107,27 @@ tracebi verify output/my_report.html.manifest.json
 <hr>
 <h2 id="authoring">Authoring</h2>
 <h3 id="tracebi-init"><code>tracebi init</code></h3>
-<pre><code class="language-bash">tracebi init &lt;project&gt; [--force]
+<pre><code class="language-bash">tracebi init &lt;project&gt; [--force] [--template NAME]
 </code></pre>
 <p>Scaffolds a complete three-phase project whose sample loop ends in
 <code>tracebi verify</code> printing REPRODUCES.</p>
-<p>Creates <code>inputs/ transforms/ models/ pipelines/ reports/ scheduled/ data/
-output/</code>, plus a sample transform, model, pipeline and report package
-(<code>reports/sample_model/sample_dashboard/</code>), <code>.gitignore</code>, <code>.env.example</code>,
-<code>README.md</code> and <code>AGENTS.md</code>.</p>
+<p>Creates <code>tracebi.yaml</code> (the warehouse and the engine's limits, commented),
+<code>inputs/</code>, <code>connections/</code>, <code>transforms/</code>, <code>models/</code>, <code>pipelines/</code> and
+<code>reports/</code>, with a sample input, transform (the pandas form), model, pipeline
+and report package (<code>reports/sample_model/sample_dashboard/</code>), plus
+<code>.gitignore</code>, <code>.env.example</code>, <code>README.md</code>, <code>AGENTS.md</code> and the agent config
+(<code>.mcp.json</code>, <code>.cursor/mcp.json</code>). <code>data/</code> and <code>output/</code> appear on the first run.</p>
 <ul>
-<li><code>--force</code> — overwrite existing files, and required to init into a non-empty
+<li>
+<p><code>--template NAME</code> — scaffold a named starter instead of the sample
+  dashboard: <code>saas-metrics</code> or <code>sales-pipeline</code> (an unknown name is refused
+  with the list).</p>
+</li>
+<li>
+<p><code>--force</code> — overwrite existing files, and required to init into a non-empty
   directory. Without it, an existing file is skipped with a note and the run
-  still succeeds.</li>
+  still succeeds.</p>
+</li>
 </ul>
 <h3 id="tracebi-connect"><code>tracebi connect</code></h3>
 <pre><code class="language-bash">tracebi connect &lt;name&gt; --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force] [--store dotenv|secret]
@@ -135,9 +139,11 @@ tracebi connect wh --kind bigquery --project PROJ --dataset ANALYTICS \
 tracebi connect wh --kind duckdb --database data/warehouse.duckdb
 </code></pre>
 <p>Tests the warehouse (unless <code>--no-test</code>), then writes the secret to <code>.env</code>
-and a connector module at <code>models/_connections/&lt;name&gt;.py</code>. The module calls
-<code>load_dotenv()</code> and builds the connector from <code>os.environ</code>. TraceBi itself
-never loads <code>.env</code>.</p>
+and the connection to <code>connections/&lt;name&gt;.yaml</code> (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>), the
+secret named there as <code>${NAME}</code>, resolved when the connection is used.
+<code>--python</code> writes the legacy connector module <code>models/_connections/&lt;name&gt;.py</code>
+instead (it calls <code>load_dotenv()</code> and builds the connector from
+<code>os.environ</code>).</p>
 <p>The secret is written only to <code>.env</code> and is never printed. Other lines in
 <code>.env</code> are left as they are. An existing key, or an existing connection
 file, is refused without <code>--force</code>. Nothing is written when the test fails.</p>
@@ -147,8 +153,8 @@ is required for BigQuery because the connector takes it with no default.</p>
 <p><code>--store secret</code> puts the secret in the project's encrypted credential store
 (<code>.tracebi/secrets.yml.enc</code>, <a href="../reference/credentials.html">Credentials</a>) instead of <code>.env</code>; the legacy
 <code>--python</code> module always reads <code>.env</code>.</p>
-<p>Discovery does not load <code>models/_connections/</code>: model discovery reads only
-top-level <code>models/*.py</code>, and a file there must define <code>model</code>.</p>
+<p>Discovery does not load <code>models/_connections/</code> as models; a model reads
+<code>connections/&lt;name&gt;.yaml</code> first, then a legacy module of that name.</p>
 <h3 id="tracebi-secret"><code>tracebi secret</code></h3>
 <pre><code class="language-bash">tracebi secret list
 tracebi secret set NAME [--from-stdin]
@@ -180,8 +186,8 @@ keeps one schema. <code>--connection</code> wires <code>models/_connections/&lt;
 and measures are <code># DRAFT: review</code> comments; foreign keys are not invented.
 An existing model file is kept unless <code>--force</code>.</p>
 <h3 id="tracebi-new-transform-title-new-model-new-report-new-dashboard-new-pipeline"><code>tracebi new-transform "Title"</code> · <code>new-model</code> · <code>new-report</code> · <code>new-dashboard</code> · <code>new-pipeline</code></h3>
-<pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--transforms-dir DIR]
-tracebi new-model     &quot;Sales Model&quot;   [--force]
+<pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--python] [--transforms-dir DIR]
+tracebi new-model     &quot;Sales Model&quot;   [--force] [--python]
 tracebi new-model     &quot;Sales&quot; --from wh --tables fact_sales,dim_customer,dim_product
 tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
                       [--layout editorial|brief|tabbed|dashboard]
@@ -190,10 +196,13 @@ tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
 tracebi new-dashboard &quot;Ops Board&quot;     [--force] [--reports-dir DIR] [--html]
                       [--job overview|trend|leaderboard|scorecard|monitor|funnel]
                       [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
-tracebi new-pipeline  &quot;Sales ETL&quot;     [--force]
+tracebi new-pipeline  &quot;Sales ETL&quot;     [--force] [--python]
 </code></pre>
-<p>Each scaffolds one file (or, for <code>new-report</code> and <code>new-dashboard</code>, a package directory) with the
-title slugified: <code>"Portfolio Book"</code> → <code>portfolio_book</code>.</p>
+<p>Each scaffolds one file (<code>new-transform</code> two: <code>transforms/&lt;name&gt;.sql</code> and its
+<code>&lt;name&gt;.contract.yaml</code>; <code>new-report</code> and <code>new-dashboard</code> a package directory)
+with the title slugified: <code>"Portfolio Book"</code> → <code>portfolio_book</code>. <code>--python</code>
+writes the Python form instead of the default: the notebook-shaped pandas
+transform, a <code>models/&lt;name&gt;.py</code>, a <code>pipelines/&lt;name&gt;.py</code>.</p>
 <p><code>new-report</code> can put the report in a folder: <code>"Finance/Month end/Close pack"</code>
 creates <code>reports/finance/month_end/close_pack/</code>. A report in a folder is named
 by that path everywhere after: <code>tracebi report build finance/month_end/close_pack</code>,
@@ -403,6 +412,14 @@ refuses it by name.</p>
 watcher would post straight over the reset.</p>
 <hr>
 <h2 id="sharing">Sharing</h2>
+<h3 id="tracebi-login-tracebi-logout"><code>tracebi login</code> · <code>tracebi logout</code></h3>
+<pre><code class="language-bash">tracebi login  --server &lt;url&gt; [--timeout 300]
+tracebi logout --server &lt;url&gt;
+</code></pre>
+<p><code>login</code> signs this machine in to a TraceBi server through the browser (the
+company's login, OAuth with PKCE) and keeps the token in
+<code>~/.config/tracebi/credentials.json</code>; <code>push</code> uses it. <code>logout</code> revokes the
+token on the server and forgets it. See <a href="../guides/push-from-a-laptop.html">Push from a laptop</a>.</p>
 <h3 id="tracebi-push"><code>tracebi push</code></h3>
 <pre><code class="language-bash">tracebi push &lt;paths…&gt; --server &lt;url&gt; [--note &quot;why&quot;]
 </code></pre>
@@ -517,6 +534,15 @@ that succeeded on a report's first attempt in a gateway session. <code>--since</
 takes a number and <code>d</code>, <code>h</code> or <code>m</code>.</p>
 <hr>
 <h2 id="pipelines">Pipelines</h2>
+<h3 id="tracebi-run-transform"><code>tracebi run-transform</code></h3>
+<pre><code class="language-bash">tracebi run-transform &lt;name&gt;
+</code></pre>
+<p>Runs <code>transforms/&lt;name&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code> (the suffix is optional) top
+to bottom, fresh: a SQL file in one new warehouse connection, a Python file or
+notebook in a new namespace, so the sink never comes from out-of-order state.
+Then the <code>&lt;name&gt;.contract.yaml</code> beside it, if any. Prints <code>form: sql | python
+| notebook</code>. Two forms of one name are refused, naming both. See
+<a href="../reference/transform-sql.html">SQL transforms</a>.</p>
 <h3 id="tracebi-run-pipeline"><code>tracebi run-pipeline</code></h3>
 <pre><code class="language-bash">tracebi run-pipeline &lt;name&gt; [--layer LAYER] [--refresh] [--status]
 </code></pre>
@@ -553,6 +579,16 @@ running, or compile and render.</p>
 <p>Compiles a spec into <code>reports/&lt;name&gt;/</code> <strong>alongside</strong> the original — it emits,
 never replaces. At discovery the directory shadows the same-named spec, so the
 cutover is the directory existing and the rollback is deleting it.</p>
+<h3 id="tracebi-migrate-model-connection-pipeline"><code>tracebi migrate model</code> · <code>connection</code> · <code>pipeline</code></h3>
+<pre><code class="language-bash">tracebi migrate model      models/&lt;name&gt;.py [--write] [--force]
+tracebi migrate connection models/_connections/&lt;name&gt;.py [--write]
+tracebi migrate pipeline   pipelines/&lt;name&gt;.py [--write]
+</code></pre>
+<p>Converts the Python form to the YAML one: prints it, or with <code>--write</code> writes
+the <code>.yaml</code> beside the project's other files. The Python file is never
+deleted: for a model or a pipeline the <code>.py</code> wins while both exist, so the
+cutover is deleting it; a connection's YAML is read first. See
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>, <a href="../reference/connections-yaml.html">Connection files (YAML)</a> and <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>.</p>
 <hr>
 <h2 id="related">Related</h2>
 <ul>

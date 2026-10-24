@@ -23,7 +23,7 @@ engine:
   memory_limit: 1GB                  # past it, a query spills to temp_directory
   threads: 4                         # default: min(4, CPUs)
   temp_directory: data/.duckdb-tmp   # relative to the project root
-  query_timeout_s: 30                # Explore, Ask and agent queries stop here
+  query_timeout_s: 30                # Ask and agent queries stop here
 ```
 
 ---
@@ -114,7 +114,7 @@ any fingerprint is compared, in report manifests, the Warehouse tab and
 
 ## `engine`
 
-Every model query (a report build, Explore and Ask in the app, the agent
+Every model query (a report build, Ask in the app, the agent
 gateway's `query_model`, a selection recompute, `tracebi verify`) and every
 SQL calculation runs in its own DuckDB connection. It attaches the warehouse
 file read-only and holds the model's tables as views over it; a table from a
@@ -127,7 +127,7 @@ runs, the connection is locked.
 | `memory_limit` | `1GB` | DuckDB's memory limit for one query connection, as a size (`512MB`, `2GiB`). Past it a query spills to `temp_directory` instead of taking the process down. |
 | `threads` | `min(4, CPUs)` | Worker threads per query connection, a whole number of at least 1. |
 | `temp_directory` | `data/.duckdb-tmp` | Where a query spills. Relative paths are from the project root. DuckDB creates it only when it spills. |
-| `query_timeout_s` | `30` | Seconds a reader's query may run: `POST /api/models/{name}/query` (Explore, Ask), `POST /api/reports/{name}/selection` and the gateway's `query_model`. Past it the query is interrupted and the caller gets an error naming the limit (HTTP 504 with the usual `{message, exception_type, traceback}` detail; the gateway's `{ok: false, errors}`). Builds and `verify` run without a timeout. |
+| `query_timeout_s` | `30` | Seconds a reader's query may run: `POST /api/models/{name}/query` (Ask), `POST /api/reports/{name}/selection` and the gateway's `query_model`. Past it the query is interrupted and the caller gets an error naming the limit (HTTP 504 with the usual `{message, exception_type, traceback}` detail; the gateway's `{ok: false, errors}`). Builds and `verify` run without a timeout. |
 
 ### What a query connection cannot do
 

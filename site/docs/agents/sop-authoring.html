@@ -82,12 +82,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a class="on" href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -101,19 +96,23 @@ contract, every answer you receive is stamped, and every number you show a
 human carries its trace.</strong></p>
 <p><strong>Where this sits in the three-phase workflow (see <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>).</strong> This is
 <strong>phase ③ — REPORT</strong>, authoring over the model boundary. You are handed two
-freeze points: a warehouse phase ① already sank (<code>data/warehouse.duckdb</code>)
-and a model phase ② already declared over it (<code>models/*.py</code>, e.g.
-<code>models/portfolio_model.yaml</code>). You do not re-run the phase-① pandas and you do not
-see it — the model is the contract you author against, and everything below is
+freeze points: a warehouse phase ① already sank (<code>data/warehouse.duckdb</code> by
+default) and a model phase ② already declared over it (<code>models/&lt;name&gt;.yaml</code>,
+e.g. <code>models/portfolio_model.yaml</code>). You do not re-run the phase-① transform and
+you do not see it — the model is the contract you author against, and everything below is
 exactly how the reference project's reports (<code>reports/portfolio_model/</code>) were written. <strong>The trust
 machinery in this SOP — stamped queries, validate-before-execute, <code>verify</code> —
 governs from that model boundary onward. It says nothing about phase ①, which is
-unconstrained pandas trusted as reviewed code, not by fingerprint.</strong> If a number
+unconstrained SQL or pandas trusted as reviewed code, not by fingerprint.</strong> If a number
 you need is wrong or absent below the model, this SOP cannot fix it; escalate to
 the engineer SOP (a model change) or, if the raw data was never sunk, to a
 phase-① transform change.</p>
-<p>The gateway exposes thirteen tools (<code>tracebi mcp</code>; the MCP <code>tools/list</code> call is
-the source of truth if this table drifts):</p>
+<p>The gateway exposes twenty-two tools and three prompts (<code>author_report</code>,
+<code>answer_question</code>, <code>address_pins</code>); the MCP <code>tools/list</code> call is the source of
+truth if this table drifts. This SOP walks the spec path; a report package is
+the same loop with <code>build_report</code>, and over a hosted connection the draft tools
+below are how a package reaches the server (<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>,
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>):</p>
 <table>
 <thead>
 <tr>
@@ -173,6 +172,26 @@ the source of truth if this table drifts):</p>
 <tr>
 <td><code>verify_manifest</code></td>
 <td>Re-run every recorded query in a rendered manifest and classify each figure (<code>reproduces</code> / <code>source_drift</code> / <code>model_changed</code> / <code>unexplained</code> / <code>unverifiable</code>) — the built-in replay for step 6 at L2/L3</td>
+</tr>
+<tr>
+<td><code>list_drafts</code> · <code>start_draft</code> · <code>read_draft</code> · <code>write_draft_file</code></td>
+<td>Your drafts on the server: start one (empty, or a copy of the published report or model), read it, write one allowed file</td>
+</tr>
+<tr>
+<td><code>preview_draft</code></td>
+<td>Validate and render a draft in memory; errors, warnings and the draft's address in the app</td>
+</tr>
+<tr>
+<td><code>model_impact</code></td>
+<td>For a model draft: each published report that reads the model, unchanged / moves / breaks</td>
+</tr>
+<tr>
+<td><code>publish_draft</code></td>
+<td>Publish a draft, or open a publish request where the folder asks for one</td>
+</tr>
+<tr>
+<td><code>list_publish_requests</code> · <code>decide_publish_request</code></td>
+<td>Requests into folders where you hold Publish; approve or reject one</td>
 </tr>
 </tbody>
 </table>
@@ -316,9 +335,9 @@ the full JSON Schema.</p>
   express arbitrary computation — by design. If the analysis needs a measure,
   dimension attribute, or fact the contract does not declare, <strong>stop and
   escalate to the engineer SOP</strong> (this directory): the fix is a code-reviewed
-  change in the definition plane (<code>models/*.py</code>, e.g.
-  <code>model.add_measure("unrealized_gain", expr="market_value - cost_basis",
-  agg="sum", format="currency0")</code>), after which a fresh gateway process's next call
+  change in the definition plane (a <code>measures:</code> entry in
+  <code>models/&lt;name&gt;.yaml</code>, e.g. <code>{name: unrealized_gain, expr: market_value -
+  cost_basis, agg: sum, format: currency0}</code>), after which a fresh gateway process's next call
   sees the new vocabulary. Do <strong>not</strong> compute the number yourself in a text
   section, do not approximate it with a different aggregation, do not
   transcribe hand-arithmetic into the page. Change the contract in git; use

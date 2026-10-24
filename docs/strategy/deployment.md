@@ -19,7 +19,7 @@ company adds its sign-in, network shares and controls to the same install.
 | **Runs on** | One server or one container (Railway, Fly, a single VM, a spare office machine) | The same container, plus a managed Postgres | Kubernetes (Helm) or their standard VM build, inside their network |
 | **State** | SQLite, a file on disk | Postgres | Postgres, backed up by their team |
 | **Reports** | A local folder | A folder or git | Network shares and source control, with folder permissions ([[report-library]]) |
-| **Sign-in** | Built-in accounts, or "Sign in with Google/Microsoft" | The same, with roles | Their SSO: proxy header today, OIDC/SAML later; groups mapped to folders |
+| **Sign-in** | Built-in accounts, or "Sign in with Google/Microsoft" | The same, with roles | Their SSO: OIDC or a proxy header; groups mapped to folders |
 | **Schedules** | Run inside the web server | A separate worker | Several workers |
 | **Email** | Any SMTP account | The same | Their mail relay |
 | **Backups** | Copy one folder | Postgres backups | Their standard |
@@ -44,11 +44,11 @@ company adds its sign-in, network shares and controls to the same install.
 | Proxy-header sign-in (for an SSO proxy), viewer/analyst/admin roles | Growing, enterprise | ✅ |
 | The Postgres lock that makes several workers safe | Growing, enterprise | ✅ |
 | SMTP email delivery | All | ✅ |
-| **Several named accounts without an identity provider** (today Basic auth is one shared username and password), or "Sign in with Google/Microsoft" | Small shops | ❌ Next |
+| **Several named accounts without an identity provider** (`TRACEBI_LOCAL_USERS`), or "Sign in with Google/Microsoft" (OIDC) | Small shops | ✅ [[sign-in]] |
 | **Schedules inside the web server** (`TRACEBI_SCHEDULES_IN_SERVER=1`; `tracebi schedule serve` stays available for a separate worker) | Small shops | ✅ |
 | **A one-page "run it on one server" guide**: Docker, a folder, SMTP, done | Small shops | ✅ [[one-server]] |
-| OIDC/SAML sign-in and group mapping | Enterprise | ❌ |
-| Folder permissions | Growing, enterprise | ❌ See [[report-library]] |
+| OIDC sign-in and group mapping | Enterprise | ✅ (SAML ❌) |
+| Folder permissions | Growing, enterprise | ✅ [[folder-yaml]] |
 | Helm chart; audit log export; a security overview document | Enterprise | ❌ |
 | SOC 2 | Cloud | ❌ |
 
@@ -127,8 +127,10 @@ The analyst's laptop runs the package; a shared server runs the image.
 | Terraform module | ❌ | When the first customer asks. |
 
 **Configuration** stays in environment variables (already documented in
-`.env.example` and [[environment-variables]]). Add: `TRACEBI_REPO_URL`,
-`TRACEBI_REPO_BRANCH`, `TRACEBI_STATE_URL` (Postgres), and worker concurrency.
+`.env.example` and [[environment-variables]]), with a project's own settings
+in `tracebi.yaml` and connection secrets in the environment or the encrypted
+store ([[credentials]]). Several workers share `TRACEBI_STATE_URL` (Postgres)
+and `TRACEBI_SECRET_KEY`. Still to add: worker concurrency.
 
 ## TraceBi Cloud
 
@@ -137,12 +139,12 @@ of the self-hosted image, with its own Postgres database, on one managed
 platform. The customer connects:
 
 1. **Their warehouse**, with read-only credentials stored in the platform's
-   secret store.
+   secret store (the environment, which wins over the project's own store).
 2. **Their source control, if they use one** (git on any host first). Teams
    without one get a hosted library with TraceBi's own version history.
 3. **Their identity provider** (Q4). Before that, email sign-in.
 
-**What Cloud stores:** run history, receipts, delivered artifacts (for the
+**What Cloud stores:** run history, traces, delivered artifacts (for the
 retention period), users, requests and audit logs. **What it doesn't:** raw
 warehouse tables. Only the query results a report embeds.
 
@@ -163,11 +165,11 @@ warehouse tables. Only the query results a report embeds.
 | `main` | Continuous | Everything merged, CI green |
 | PyPI + GHCR release | Every 2–4 weeks | Tagged `0.x`, changelog, migration notes |
 | Cloud | Follows releases, one to three days behind, after a canary workspace | Same image |
-| Hosted demo | On every release | Reference project, read-only, reset nightly |
+| Hosted demo | On every release | The reference project (`docker compose up`), read-only, reset nightly |
 
 **Versioning:** semantic versions after 1.0. Before that, breaking changes are
 allowed but listed in the changelog with a migration step. The manifest
-`schema_version` keeps old receipts verifiable across upgrades (already
+`schema_version` keeps old traces verifiable across upgrades (already
 built).
 
 ## Data and state migrations

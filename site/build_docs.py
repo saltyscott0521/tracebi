@@ -6,7 +6,7 @@ Render the ``docs/`` vault into a static docs site under ``site/docs/``.
 
 The markdown in ``docs/`` is the single source. This script renders it; it
 never edits it. Three consumers read the same files — Obsidian, the app's
-Docs page (``/handbook``, which fetches raw markdown and renders it in the
+Docs place (``/docs``, which fetches raw markdown and renders it in the
 browser), and this static site — so a docs change lands everywhere at once.
 
 **The output is committed.** ``site/`` deploys to any static host with no
@@ -34,11 +34,14 @@ REPO = SITE.parent
 DOCS = REPO / "docs"
 OUT = SITE / "docs"
 
-#: Internal working documents. The positioning doc is gitignored outright and
-#: the roadmap is a control document — neither is product documentation.
-HIDDEN = {"north-star", "ROADMAP"}
+#: Internal working documents. The positioning doc is gitignored outright —
+#: it is not product documentation.
+HIDDEN = {"north-star"}
 
 #: The vault's sections, in reading order: ideas before look-up tables.
+#: docs/strategy/ is not one: it is intent (where the product is going, with
+#: dated targets), not a description of what ships, so neither this site nor
+#: the app's Docs place lists it.
 SECTIONS = [
     ("concepts", "Concepts", "The ideas. Read these once."),
     ("guides", "Guides", "Task-shaped walkthroughs."),

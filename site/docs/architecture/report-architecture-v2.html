@@ -82,12 +82,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -101,7 +96,7 @@ reference for <em>why the kernel is shaped this way</em> — the safe embedder, 
 the receipt semantics, and the ECharts layer it describes survived verbatim
 into the code. This document is the current architecture.</p>
 </blockquote>
-<p>Status: <strong>decided</strong>. This document is the build plan. Inputs: <code>reshape-decisions.md</code> (locked owner direction), the AltsVault field notes, three candidate designs, and three judge verdicts. The skeleton is the <em>artifact-first</em> design (selected by two of three judges); mechanisms from <em>loop-first</em> and <em>presentation-first</em> flagged as graft-worthy are incorporated as decisions, not options, and every fatal flaw raised by any judge is resolved by name in §6.</p>
+<p>Status: <strong>built</strong> (M0 to M5 shipped 2026-08-16; §4). A JSON spec is now compiled into a package at discovery, so the artifact is the only renderer. This document was the build plan. Inputs: <code>reshape-decisions.md</code> (locked owner direction), the AltsVault field notes, three candidate designs, and three judge verdicts. The skeleton is the <em>artifact-first</em> design (selected by two of three judges); mechanisms from <em>loop-first</em> and <em>presentation-first</em> flagged as graft-worthy are incorporated as decisions, not options, and every fatal flaw raised by any judge is resolved by name in §6.</p>
 <hr>
 <h2 id="1-decision-summary">1. Decision summary</h2>
 <p><strong>What changes:</strong> TraceBi collapses to one report lane. A report is a directory under <code>reports/</code> — the existing template package, promoted — containing free agent-authored HTML/CSS/JS plus a <code>report.json</code> of stamped data bindings. Verification becomes a property of each <strong>figure</strong> (a DOM element declaring which binding feeds it), not of which folder the file lives in. The <code>requests/</code> lane was removed (0.8); JSON specs survive as a serialization that compiles into the same artifact; the section enum becomes a component vocabulary, not renderer control flow.</p>

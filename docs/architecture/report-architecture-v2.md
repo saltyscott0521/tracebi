@@ -6,7 +6,7 @@
 > the receipt semantics, and the ECharts layer it describes survived verbatim
 > into the code. This document is the current architecture.
 
-Status: **decided**. This document is the build plan. Inputs: `reshape-decisions.md` (locked owner direction), the AltsVault field notes, three candidate designs, and three judge verdicts. The skeleton is the *artifact-first* design (selected by two of three judges); mechanisms from *loop-first* and *presentation-first* flagged as graft-worthy are incorporated as decisions, not options, and every fatal flaw raised by any judge is resolved by name in §6.
+Status: **built** (M0 to M5 shipped 2026-08-16; §4). A JSON spec is now compiled into a package at discovery, so the artifact is the only renderer. This document was the build plan. Inputs: `reshape-decisions.md` (locked owner direction), the AltsVault field notes, three candidate designs, and three judge verdicts. The skeleton is the *artifact-first* design (selected by two of three judges); mechanisms from *loop-first* and *presentation-first* flagged as graft-worthy are incorporated as decisions, not options, and every fatal flaw raised by any judge is resolved by name in §6.
 
 ---
 

@@ -82,12 +82,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -101,16 +96,17 @@ development flow; this guide covers what's different in a notebook.</p>
 <hr>
 <h2 id="where-the-notebook-fits-the-workflow">Where the notebook fits the workflow</h2>
 <p>TraceBi's spine is the three-phase workflow in <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>:
-phase ① <code>transforms/</code> writes clean star-schema tables into a DuckDB warehouse,
+phase ① <code>transforms/</code> writes clean star-schema tables into the warehouse,
 phase ② <code>models/</code> declares a thin <code>DataModel</code> over it, and phase ③ <code>reports/</code>
-is an artifact package (or a JSON <code>ReportSpec</code>) served in the app, in the library under its model.</p>
-<p>A notebook is the natural home for <strong>phase ①</strong> — the slow, unconstrained pandas
-analysis — because the rich previews below let you <em>see</em> the data as you clean
+is a report package served in the app, in the library under its model.</p>
+<p>A notebook is the natural home for <strong>phase ①</strong> when the work outgrows SQL —
+the slow, unconstrained pandas analysis — because the rich previews below let you <em>see</em> the data as you clean
 it, before you commit anything. When the analysis settles, sink the named
 tables:</p>
 <pre><code class="language-python">from tracebi.connectors import DuckDBConnector
+from tracebi.project_config import sink_target
 
-wh = DuckDBConnector(&quot;warehouse&quot;, database=&quot;data/warehouse.duckdb&quot;)
+wh = DuckDBConnector(&quot;warehouse&quot;, database=sink_target(ROOT))   # the warehouse tracebi.yaml names
 wh.write(fact_holdings_df, &quot;fact_holdings&quot;)   # freeze: the sink is now the contract
 </code></pre>
 <p>From there the model (②) and report (③) are small, reviewable artifacts that
@@ -131,14 +127,15 @@ pull in.</p>
 <p>Scaffold a notebook-shaped transform, or start from a blank notebook — nothing
 about TraceBi requires the scaffold:</p>
 <pre><code class="language-bash">tracebi list-models                      # see what shared models are available
-tracebi new-transform &quot;Holdings clean&quot;   # → transforms/holdings_clean.py (# %% cells)
+tracebi new-transform &quot;Holdings clean&quot; --python   # → transforms/holdings_clean.py (# %% cells)
 </code></pre>
-<p><code>tracebi new-transform</code> writes a <strong>notebook-shaped <code>.py</code></strong>: the <code># %%</code> markers
+<p><code>tracebi new-transform --python</code> writes a <strong>notebook-shaped <code>.py</code></strong> (without
+<code>--python</code> it writes the SQL form, the default): the <code># %%</code> markers
 are cell boundaries and <code># %% [markdown]</code> cells are prose, so VS Code, Cursor,
 PyCharm, and Jupyter (via jupytext) open it <em>as</em> a notebook — run it
 cell-by-cell — while it stays plain, reviewable Python that runs top-to-bottom.
-Models stay <code>.py</code> (<code>tracebi new-model</code>); reports scaffold with
-<code>tracebi new-report</code>.</p>
+Models are YAML (<code>tracebi new-model</code>); reports scaffold with
+<code>tracebi new-dashboard</code> or <code>tracebi new-report</code>.</p>
 <h2 id="rich-object-previews">Rich object previews</h2>
 <p><code>DataSet</code> and <code>DataModel</code> render as rich HTML in notebooks. Putting one at
 the end of a cell shows shape, columns, dtypes, sample rows, and the lineage
@@ -146,7 +143,7 @@ chain — no <code>print</code> calls needed:</p>
 <pre><code class="language-python">from tracebi.model_registry import get_model, list_models
 
 print(list_models())             # see what's in models/
-model = get_model(&quot;sales_model&quot;) # loads models/sales_model.py — no web server needed
+model = get_model(&quot;sales_model&quot;) # loads models/sales_model.yaml — no web server needed
 model                            # tables, relationships, facts/dimensions, as HTML
 
 orders = model.load(&quot;orders&quot;)
@@ -189,15 +186,16 @@ declaring a <strong>sink contract</strong>:</p>
 <pre><code class="language-python"># %%  Sink — the contract is the named tables, not how you produced them
 from tracebi.connectors import DuckDBConnector
 from tracebi.contracts import contract
+from tracebi.project_config import sink_target
 
-WAREHOUSE = &quot;data/warehouse.duckdb&quot;
+WAREHOUSE = sink_target(ROOT)
 DuckDBConnector(&quot;warehouse&quot;, database=WAREHOUSE).write(fact_holdings_df, &quot;fact_holdings&quot;)
 
 # %%  Declare the sink CONTRACT (optional, recommended)
 with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
-    c.rows(&quot;fact_holdings&quot;, min=1)
+    c.rows(&quot;fact_holdings&quot;, at_least=1)
     c.not_null(&quot;fact_holdings&quot;, [&quot;holding_id&quot;, &quot;market_value&quot;])
-    c.foreign_key(&quot;fact_holdings&quot;, &quot;sector_key&quot;, &quot;dim_sector&quot;, &quot;sector_key&quot;)
+    c.foreign_key(&quot;fact_holdings&quot;, &quot;sector_key&quot;, refers_to=(&quot;dim_sector&quot;, &quot;sector_key&quot;))
 </code></pre>
 <p>Run it top-to-bottom in a fresh namespace:</p>
 <pre><code class="language-bash">tracebi run-transform holdings_clean   # executes transforms/holdings_clean.py or .ipynb
@@ -229,21 +227,14 @@ is a verified figure; <code>tracebi verify</code> refuses the file by name rathe
 letting a lab notebook read as a trace. It is the honest home for the
 narrative that a governed report deliberately does not carry.</p>
 <h2 id="publishing-a-report-from-a-notebook">Publishing a report from a notebook</h2>
-<p>The same registration decorator works in a notebook cell:</p>
-<pre><code class="language-python">from tracebi import register
-
-@register.report(&quot;weekly_sales&quot;, description=&quot;Weekly sales summary&quot;)
-def _factory():
-    return report
-</code></pre>
-<p>Place the notebook (with its <code>@register.report</code> cell) in <strong><code>reports/</code></strong> — the
-server auto-discovers <code>*.py</code> and <code>*.ipynb</code> there, and the report is listed in the
-library under its model. In an interactive kernel the decorator is harmless if the web
-extras aren't installed — it raises a clear <code>ImportError</code> telling you to
-<code>pip install "tracebi[web]"</code>.</p>
-<p>For a governed, traced report, prefer the artifact package
-(<code>tracebi new-report</code> → <code>tracebi dev</code> → <code>tracebi report build</code>), covered in the
-<a href="analyst-guide.md">Analyst Guide</a>.</p>
+<p>A report the app serves is a <strong>package</strong> (<code>reports/&lt;name&gt;/</code>), and there is one
+renderer: <code>tracebi new-dashboard</code> or <code>tracebi new-report</code> → <code>tracebi dev</code> →
+<code>tracebi report build</code>, covered in the <a href="analyst-guide.md">Analyst Guide</a>.
+A notebook in <code>reports/</code> that registers a factory with <code>@register.report(...)</code>
+is still imported at startup, but a report with no package is refused (HTTP
+422 naming the fix), and <code>tracebi validate</code> flags it. The pandas a model cannot
+express goes in the package's <code>report.py</code>, whose outputs are stamped
+<code>verifiable: false</code>.</p>
 <p>Reference files: <code>examples/portfolio_project/transforms/holdings_transform_pandas.py</code>,
 <code>examples/portfolio_project/models/portfolio_model.yaml</code>, and
 <code>examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/</code>.</p>

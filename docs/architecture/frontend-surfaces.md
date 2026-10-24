@@ -25,7 +25,7 @@ FastAPI — it needs **zero** knowledge that tracebi.com exists.
 ## The adopted flow: marketing → demo
 
 `tracebi.com` is the marketing and explanation page for the product. It carries
-the pitch (the receipt, the offline verifier, the self-contained artifact),
+the pitch (the trace, the offline verifier, the self-contained artifact),
 the docs, and pricing — and its primary call to action **branches into a live
 demo app**: a hosted instance of the distributed app UI, seeded with the
 reference project, so a visitor can click through real models, run a report,
@@ -68,8 +68,8 @@ tracebi.com  ──"Try the demo"──▶  tracebi.com/app   (the app UI, seede
 Making the distributed UI a full **app** is the direction — but as an
 **operational + trust console**, not a viz builder. On-thesis growth:
 
-- browse and run published reports; download the HTML-with-receipt
-- **verify status at a glance**, click-to-verify a file, the receipt drawer
+- browse and run published reports; download the HTML-with-trace
+- **verify status at a glance**, click-to-verify a file, the trace drawer
   front-and-centre — making the trust *visible* is the UI's highest-leverage
   work
 - manage models and pipelines; schedule and deliver reports

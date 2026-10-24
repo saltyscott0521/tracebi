@@ -22,8 +22,7 @@ label: Sales Orders
 
 connectors:
   - name: warehouse
-    type: duckdb
-    database: data/warehouse.duckdb
+    type: warehouse
 
 tables:
   - {name: fact_orders, connector: warehouse, source: fact_orders}
@@ -116,12 +115,14 @@ naming the owners. The owners are shown on the model's page in the app.
   remote engine.
 - `type: duckdb` with `database: data/warehouse.duckdb` is a DuckDB file
   **inside the project**. An absolute path or one with `..` is refused.
-- `{name: warehouse, connection: warehouse}` reuses the connector in
-  `models/_connections/warehouse.py` (written by `tracebi connect`). Its own
-  `name` must match.
+- `{name: crm, connection: crm}` reuses a declared connection:
+  `connections/crm.yaml` ([[connections-yaml]], written by `tracebi connect`),
+  else the legacy module `models/_connections/crm.py`. Its own `name` must
+  match.
 
 There is no key for a URL, password or token, so a file cannot carry one. The
-secret stays in `.env`, read by the connection module.
+secret stays a `${NAME}` in the connection file, resolved from the
+environment, the project `.env` or the encrypted store ([[credentials]]).
 
 ## One model, one file
 

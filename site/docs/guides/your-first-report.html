@@ -82,12 +82,7 @@
 <a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
 <a href="../architecture/ui-quality.html">The UI quality bar</a>
 <a href="../architecture/ui-backlog.html">UI backlog</a>
-<a href="../architecture/ux-audit-2026-10-17.html">UX and UI audit — 2026-10-17</a>
-<a href="../architecture/ux-audit-2026-10-18.html">UX and UI audit, pass 2 — 2026-10-18</a>
-<a href="../architecture/ux-audit-2026-10-23.html">UX and UI audit, pass 3 — 2026-10-23</a>
-<a href="../architecture/ux-plan-2026-10-17.html">UX plan — executing the 2026-10-17 audit</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/field-test-2026-10-12-mcp-user.html">Field test: building a report as a generic MCP user (2026-10-12)</a>
 <a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
@@ -112,7 +107,6 @@ the classic wasted afternoon. Add them when you actually need them.</p>
 trust, resolved once, fingerprinted, and recorded in the trace.</p>
 <pre><code class="language-json">{
   &quot;name&quot;: &quot;Portfolio Book&quot;,
-  &quot;libs&quot;: [&quot;echarts&quot;],
   &quot;data&quot;: {
     &quot;totals&quot;: {
       &quot;model&quot;: &quot;portfolio_model&quot;,
@@ -132,7 +126,7 @@ trust, resolved once, fingerprinted, and recorded in the trace.</p>
 </code></pre>
 <p>Note <code>totals</code> has <strong>no dimensions</strong> — it returns one row. A KPI needs a one-row
 binding; a value figure over a multi-row binding is refused.</p>
-<p><code>"libs"</code> is optional. The build inlines D3 automatically when the page contains a chart figure.</p>
+<p>The build inlines D3 when the page contains a chart figure. (<code>"libs": ["echarts"]</code> keeps the older ECharts engine for a report that needs it.)</p>
 <p>→ <a href="../reference/report-json.html">report.json</a> · <a href="../reference/queries.html">Queries</a></p>
 <h2 id="3-declare-the-figures">3. Declare the figures</h2>
 <p>Add a <code>figures</code> block and let the framework build the markup:</p>
@@ -248,7 +242,7 @@ bindings. Exits 1 on any binding error, so CI can gate on it.</p>
 </tr>
 <tr>
 <td>chart panel stays blank</td>
-<td>the build inlines ECharts when the page has a chart figure; check <code>data-tb-x</code> and <code>data-tb-y</code></td>
+<td>the build inlines D3 when the page has a chart figure; check <code>data-tb-x</code> and <code>data-tb-y</code></td>
 </tr>
 <tr>
 <td><em>limit without order_by is refused</em></td>

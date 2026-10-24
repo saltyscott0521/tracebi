@@ -1,6 +1,7 @@
 # Credentials: a store people can manage
 
-*Design, 2026-10-23. Package `U-C` of the 2026-10-23 UI round.*
+*Built, 2026-10-23 (package U-C); the store became encrypted YAML the same
+day. How to use it: `docs/reference/credentials.md`.*
 
 ## The problem
 
@@ -119,7 +120,7 @@ tracebi secret unset NAME
 tracebi connect … --store secret   # write the secret here instead of .env (default stays .env)
 ```
 
-`tracebi doctor` (the existing checks) gains a line per missing name.
+`tracebi validate` (the existing checks) gains a line per missing name.
 
 ### UI
 

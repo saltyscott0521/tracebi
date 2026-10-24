@@ -24,8 +24,8 @@ tracebi init my-project
 ```
 
 Copy that folder onto the server, or clone it. Git is optional for this
-folder. The folder is the application: `models/`, `reports/`, and
-`data/`.
+folder. The folder is the application: `tracebi.yaml`, `connections/`,
+`transforms/`, `models/`, `reports/`, `pipelines/` and `data/`.
 
 ## Start it
 
@@ -65,10 +65,10 @@ in `deploy/.env`.
 
 `TRACEBI_STATE_URL` is TraceBi's own state store: run history, and the
 sign-in sessions and OAuth tokens. Give it a database (or a schema) of its
-own, and never point a connection, or the demo's `TRACEBI_DEMO_DB_URL`, at
-it: a connection is something people browse. The repository's
+own, and never point a connection, or the demo app's `TRACEBI_DEMO_DB_URL`,
+at it: a connection is something people browse. The repository's
 `docker-compose.yml` does this with two databases on one Postgres server,
-`tracebi` for the demo's data and `tracebi_state` for the store. The app
+`crm` for the reference project's CRM and `tracebi_state` for the store. The app
 hides TraceBi's tables (`tracebi_*`, `alembic_version`) from every source
 listing whatever a connection points at, and says how many it hid.
 
@@ -123,12 +123,24 @@ container: each copy would send the email. A separate worker is
 `tracebi schedule serve`, for when the web server should not be the
 thing that sends.
 
+## Connection secrets
+
+A connection keeps its secret out of the file as `${NAME}`
+(`connections/crm.yaml`: `url: ${TRACEBI_CRM_URL}`). On the server, set it in
+`deploy/.env` (the environment wins), or save it in the project's encrypted
+store: `tracebi secret set TRACEBI_CRM_URL` inside the container, or **Set…**
+on the connection under Data → Sources for a signed-in admin. The store is
+`.tracebi/secrets.yml.enc` in the project folder, encrypted with
+`TRACEBI_SECRET_KEY` (or a `.tracebi/secret.key` generated on first use);
+several containers must share the key. See [[credentials]].
+
 ## Sign-in
 
 For one team, set `TRACEBI_AUTH_USER` and `TRACEBI_AUTH_PASS` in
-`deploy/.env`. To put the app behind an SSO proxy instead, follow
-[[web-customization#Auth|Sign-in]] (`TRACEBI_AUTH_PROXY_HEADER` and
-`TRACEBI_AUTH_PROXY_TRUSTED_IPS`).
+`deploy/.env`, or name each person with `TRACEBI_LOCAL_USERS`. For your
+company's login, set `TRACEBI_OIDC_ISSUER` ([[sign-in]]). To put the app
+behind an SSO proxy instead, follow [[web-customization#Auth|Sign-in]]
+(`TRACEBI_AUTH_PROXY_HEADER` and `TRACEBI_AUTH_PROXY_TRUSTED_IPS`).
 
 With neither set, anyone who can reach the port can use the app. That
 is fine on a machine that is not reachable from anywhere else.
@@ -175,7 +187,8 @@ works on a pulled GHCR tag (python:slim alone does not).
 ## Backups
 
 Copy the project folder (`TRACEBI_PROJECT_DIR`). That folder is the
-reports, the warehouse file, and the run log. If you started the
+reports, the warehouse file, the run log and the credential store
+(`.tracebi/`; keep `TRACEBI_SECRET_KEY` with it, or the store cannot be read). If you started the
 Postgres profile, also copy `TRACEBI_PGDATA_DIR`.
 
 ## Check it

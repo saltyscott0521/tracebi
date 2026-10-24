@@ -9,19 +9,21 @@ model file holds no data.**
 
 | | What it is | Where it lives |
 |---|---|---|
-| **Connector** | A handle to a place that stores data: a DuckDB file, a folder of CSVs, a database URL, a cloud warehouse | Built in the model file (or registered in an app module) |
-| **Table** | A name the model uses, pointing at *one source inside one connector* | `add_table("fact_holdings", connector="warehouse", source="fact_holdings")` |
-| **Model** | The tables, which are facts and which are dimensions, how they join, and what every measure means | `models/<name>.py`: code, a few dozen lines |
+| **Connector** | A handle to a place that stores data: the project's warehouse, a DuckDB file, a database URL, a cloud warehouse | Named in the model file (`type: warehouse` for the project's warehouse), or declared once in `connections/<name>.yaml` |
+| **Table** | A name the model uses, pointing at *one source inside one connector* | `{name: fact_holdings, connector: warehouse, source: fact_holdings}` |
+| **Model** | The tables, which are facts and which are dimensions, how they join, and what every measure means | `models/<name>.yaml`: a few dozen declarative lines |
 
 Reading a model file, then, tells you the *shape* of the data and the *name* of
 the place it is kept, never the data itself.
 
-```python
-model = DataModel("portfolio_model")
-model.add_connector(DuckDBConnector("warehouse", database="data/warehouse.duckdb"))   # where
-model.add_table("fact_holdings", connector="warehouse", source="fact_holdings")       # which table, from where
-model.add_fact("fact_holdings", table_name="fact_holdings",                           # what it means
-               foreign_keys={"dim_fund": "fund_id"}, measures=["fair_value"])
+```yaml
+connectors:
+  - {name: warehouse, type: warehouse}                                  # where
+tables:
+  - {name: fact_holdings, connector: warehouse, source: fact_holdings}  # which table, from where
+facts:                                                                  # what it means
+  - {name: fact_holdings, table: fact_holdings, measures: [fair_value],
+     foreign_keys: {dim_fund: fund_id}}
 ```
 
 ## Finding where the data is
@@ -30,10 +32,10 @@ model.add_fact("fact_holdings", table_name="fact_holdings",                     
   *Defined in* `models/portfolio_model.yaml` · *reads*
   `data/warehouse.duckdb`. The Model tab's **Storage** view says whether the
   file is there yet and how big it is, and lists each connector, what kind of
-  place it is, and exactly which tables it serves. The **Sources** list
-  (`/data/sources`; a source is
-  a connector) is the same list
-  across all models, with the models that use each one.
+  place it is, and exactly which tables it serves. Data's **Warehouse** tab
+  (`/data/warehouse`) lists every table with the transform that wrote it and
+  the models that read it, and **Sources** (`/data/sources`) every connection
+  and input file the transforms read, with what reads each.
 - **In code**, `model.info()["connector_details"]` gives the same answer, and
   `connector.storage()` says where any connector's data lives (never a
   credential).
@@ -58,11 +60,12 @@ reports/portfolio_model/…            every report that reads it
 pipelines/portfolio_model.yaml         rebuild its data, then those reports
 ```
 
-One line makes the pipeline: `model_pipeline("portfolio_model",
-transform="holdings_transform")` registers a **transform** step (the phase ①
-script that fills the warehouse) and a **build** step (every report in
-`reports/portfolio_model/`, each with its trace). It shows on the Pipelines
-page and runs with `tracebi run-pipeline portfolio_model`. The build step
+A few lines make the pipeline (`pipelines/portfolio_model.yaml`:
+`transform: holdings_transform`, `models: [portfolio_model]`, `reports: all`):
+a **transform** step (the phase ① script that fills the warehouse) and a
+**build** step (every report in `reports/portfolio_model/`, each with its
+trace). It shows on the model's Transform tab, where **Refresh data** runs it,
+and runs with `tracebi run-pipeline portfolio_model`. The build step
 refuses to run after a transform that failed, so a report is never rebuilt on
 data the transform did not refresh.
 
