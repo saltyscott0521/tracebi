@@ -1283,22 +1283,22 @@
   "bundle_css_kb": 104,
   "engine_gz_kb": 14.7,
   "report_font_families": 5,
-  "report_accents": 5,
-  "report_box_shadows": 15,
-  "report_gradients": 58,
-  "report_looks": 6,
+  "report_accents": 2,
+  "report_box_shadows": 0,
+  "report_gradients": 0,
+  "report_looks": 4,
   "report_html_kb": {
-   "housing_model/affordability": 799,
-   "portfolio_model/portfolio_book": 641,
-   "portfolio_model/portfolio_concentration": 1239,
-   "portfolio_model/portfolio_dashboard": 1235,
-   "portfolio_model/portfolio_desk": 1261,
-   "portfolio_model/portfolio_overview": 1234,
-   "portfolio_model/portfolio_showcase": 722,
-   "saas_model/cohort_brief": 624,
-   "saas_model/mrr_dashboard": 1234,
-   "wealth_model/aum_by_branch": 1341,
-   "wealth_model/aum_by_region": 1225
+   "housing_model/affordability": 789,
+   "portfolio_model/portfolio_book": 649,
+   "portfolio_model/portfolio_concentration": 1247,
+   "portfolio_model/portfolio_dashboard": 1243,
+   "portfolio_model/portfolio_desk": 1270,
+   "portfolio_model/portfolio_overview": 1243,
+   "portfolio_model/portfolio_showcase": 730,
+   "saas_model/cohort_brief": 633,
+   "saas_model/mrr_dashboard": 1242,
+   "wealth_model/aum_by_branch": 1349,
+   "wealth_model/aum_by_region": 1234
   },
   "calc_ms_max": 2.5
  },
@@ -1312,20 +1312,12 @@
    "ui-monospace"
   ],
   "accents": [
-   "#0d6b73/#5cc4bd",
-   "#1f4e79/#8bb4e0",
    "#1f6f5c/#6cc3a8",
-   "#1f7a4d/#1f7a4d",
    "#2f5bea/#7a9cff"
   ],
   "looks": {
-   "Inter + #1f7a4d/#1f7a4d": [
-    "housing_model/affordability"
-   ],
-   "Iowan Old Style + #1f4e79/#8bb4e0": [
-    "portfolio_model/portfolio_book"
-   ],
    "Hanken Grotesk + #2f5bea/#7a9cff": [
+    "housing_model/affordability",
     "portfolio_model/portfolio_concentration",
     "portfolio_model/portfolio_dashboard",
     "portfolio_model/portfolio_desk",
@@ -1333,11 +1325,12 @@
     "saas_model/mrr_dashboard",
     "wealth_model/aum_by_region"
    ],
-   "Fraunces + #0d6b73/#5cc4bd": [
-    "portfolio_model/portfolio_showcase"
-   ],
    "Iowan Old Style + #2f5bea/#7a9cff": [
+    "portfolio_model/portfolio_book",
     "saas_model/cohort_brief"
+   ],
+   "Fraunces + #2f5bea/#7a9cff": [
+    "portfolio_model/portfolio_showcase"
    ],
    "Fraunces + #1f6f5c/#6cc3a8": [
     "wealth_model/aum_by_branch"
@@ -1352,90 +1345,15 @@
      "phone-dark": "report-shots/housing_model_affordability_118bc4__phone-dark.png"
     },
     "families": {
-     "Inter": 986,
+     "Hanken Grotesk": 984,
      "ui-monospace": 12
     },
-    "shadows": [
-     "header.tb-masthead.mp-hero (desktop-light)",
-     "div.mp-tag.mp-tag--then (desktop-light)",
-     "form.mp-scenario.mp-scenario--now (desktop-light)",
-     "header.tb-masthead.mp-hero (desktop-dark)",
-     "div.mp-tag.mp-tag--then (desktop-dark)",
-     "div.mp-tag.mp-tag--now (desktop-dark)",
-     "form.mp-scenario.mp-scenario--now (desktop-dark)",
-     "header.tb-masthead.mp-hero (phone-light)",
-     "div.mp-tag.mp-tag--then (phone-light)",
-     "div.mp-tag.mp-tag--now (phone-light)",
-     "form.mp-scenario.mp-scenario--now (phone-light)",
-     "header.tb-masthead.mp-hero (phone-dark)",
-     "div.mp-tag.mp-tag--then (phone-dark)",
-     "div.mp-tag.mp-tag--now (phone-dark)",
-     "form.mp-scenario.mp-scenario--now (phone-dark)"
-    ],
-    "gradients": [
-     "header.tb-masthead.mp-hero (desktop-light)",
-     "svg (desktop-light)",
-     "div.tb-kpi.mp-kpi (desktop-light)",
-     "form.mp-scenario.mp-scenario--now (desktop-light)",
-     "div.mp-results (desktop-light)",
-     "div.tb-kpi.mp-kpi (desktop-light)",
-     "div.tb-kpi.mp-kpi (desktop-light)",
-     "div.tb-kpi.mp-kpi (desktop-light)",
-     "div.tb-kpi.mp-kpi (desktop-light)",
-     "lineargradient (desktop-light)",
-     "lineargradient (desktop-light)",
-     "lineargradient (desktop-light)",
-     "lineargradient (desktop-light)",
-     "header.tb-masthead.mp-hero (desktop-dark)",
-     "svg (desktop-dark)",
-     "div.tb-kpi.mp-kpi (desktop-dark)",
-     "div.tb-kpi.mp-kpi (desktop-dark)",
-     "div.tb-kpi.mp-kpi (desktop-dark)",
-     "form.mp-scenario.mp-scenario--now (desktop-dark)",
-     "div.mp-results (desktop-dark)",
-     "div.tb-kpi.mp-kpi (desktop-dark)",
-     "div.tb-kpi.mp-kpi (desktop-dark)",
-     "div.tb-kpi.mp-kpi (desktop-dark)",
-     "div.tb-kpi.mp-kpi (desktop-dark)",
-     "lineargradient (desktop-dark)",
-     "lineargradient (desktop-dark)",
-     "lineargradient (desktop-dark)",
-     "lineargradient (desktop-dark)",
-     "header.tb-masthead.mp-hero (phone-light)",
-     "svg (phone-light)",
-     "div.tb-kpi.mp-kpi (phone-light)",
-     "div.tb-kpi.mp-kpi (phone-light)",
-     "div.tb-kpi.mp-kpi (phone-light)",
-     "form.mp-scenario.mp-scenario--now (phone-light)",
-     "div.mp-results (phone-light)",
-     "div.tb-kpi.mp-kpi (phone-light)",
-     "div.tb-kpi.mp-kpi (phone-light)",
-     "div.tb-kpi.mp-kpi (phone-light)",
-     "div.tb-kpi.mp-kpi (phone-light)",
-     "lineargradient (phone-light)",
-     "lineargradient (phone-light)",
-     "lineargradient (phone-light)",
-     "lineargradient (phone-light)",
-     "header.tb-masthead.mp-hero (phone-dark)",
-     "svg (phone-dark)",
-     "div.tb-kpi.mp-kpi (phone-dark)",
-     "div.tb-kpi.mp-kpi (phone-dark)",
-     "div.tb-kpi.mp-kpi (phone-dark)",
-     "form.mp-scenario.mp-scenario--now (phone-dark)",
-     "div.mp-results (phone-dark)",
-     "div.tb-kpi.mp-kpi (phone-dark)",
-     "div.tb-kpi.mp-kpi (phone-dark)",
-     "div.tb-kpi.mp-kpi (phone-dark)",
-     "div.tb-kpi.mp-kpi (phone-dark)",
-     "lineargradient (phone-dark)",
-     "lineargradient (phone-dark)",
-     "lineargradient (phone-dark)",
-     "lineargradient (phone-dark)"
-    ],
-    "accent": "#1f7a4d/#1f7a4d",
-    "html_kb": 799,
-    "calc_ms": 1.6,
-    "display": "Inter"
+    "shadows": [],
+    "gradients": [],
+    "accent": "#2f5bea/#7a9cff",
+    "html_kb": 789,
+    "calc_ms": 1.7,
+    "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_book": {
     "shots": {
@@ -1445,14 +1363,14 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_book_baec1f__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 387,
-     "Iowan Old Style": 123
+     "Hanken Grotesk": 403,
+     "Iowan Old Style": 115
     },
     "shadows": [],
     "gradients": [],
-    "accent": "#1f4e79/#8bb4e0",
-    "html_kb": 641,
-    "calc_ms": 1.6,
+    "accent": "#2f5bea/#7a9cff",
+    "html_kb": 649,
+    "calc_ms": 1.2,
     "display": "Iowan Old Style"
    },
    "portfolio_model/portfolio_concentration": {
@@ -1463,13 +1381,13 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_concentration_a93b0b__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 598
+     "Hanken Grotesk": 594
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1239,
-    "calc_ms": 2.0,
+    "html_kb": 1247,
+    "calc_ms": 2.2,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_dashboard": {
@@ -1480,13 +1398,13 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_dashboard_a12461__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 595
+     "Hanken Grotesk": 603
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1235,
-    "calc_ms": 1.6,
+    "html_kb": 1243,
+    "calc_ms": 1.2,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_desk": {
@@ -1497,13 +1415,13 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_desk_6cadf0__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 306
+     "Hanken Grotesk": 314
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1261,
-    "calc_ms": 1.4,
+    "html_kb": 1270,
+    "calc_ms": 1.3,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_overview": {
@@ -1514,13 +1432,13 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_overview_3930b0__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 254
+     "Hanken Grotesk": 262
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1234,
-    "calc_ms": 1.0,
+    "html_kb": 1243,
+    "calc_ms": 3.5,
     "display": "Hanken Grotesk"
    },
    "portfolio_model/portfolio_showcase": {
@@ -1531,15 +1449,15 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_showcase_1de249__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 854,
+     "Hanken Grotesk": 838,
      "Fraunces": 20,
      "ui-monospace": 4
     },
     "shadows": [],
     "gradients": [],
-    "accent": "#0d6b73/#5cc4bd",
-    "html_kb": 722,
-    "calc_ms": 1.5,
+    "accent": "#2f5bea/#7a9cff",
+    "html_kb": 730,
+    "calc_ms": 3.6,
     "display": "Fraunces"
    },
    "saas_model/cohort_brief": {
@@ -1550,14 +1468,14 @@
      "phone-dark": "report-shots/saas_model_cohort_brief_bcb608__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 326,
-     "Iowan Old Style": 106
+     "Hanken Grotesk": 346,
+     "Iowan Old Style": 94
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 624,
-    "calc_ms": 0.9,
+    "html_kb": 633,
+    "calc_ms": 8.3,
     "display": "Iowan Old Style"
    },
    "saas_model/mrr_dashboard": {
@@ -1568,13 +1486,13 @@
      "phone-dark": "report-shots/saas_model_mrr_dashboard_0048a3__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 256
+     "Hanken Grotesk": 258
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1234,
-    "calc_ms": 0.9,
+    "html_kb": 1242,
+    "calc_ms": 1.0,
     "display": "Hanken Grotesk"
    },
    "wealth_model/aum_by_branch": {
@@ -1585,14 +1503,14 @@
      "phone-dark": "report-shots/wealth_model_aum_by_branch_044cc8__phone-dark.png"
     },
     "families": {
-     "Inter": 479,
+     "Inter": 487,
      "Fraunces": 40
     },
     "shadows": [],
     "gradients": [],
     "accent": "#1f6f5c/#6cc3a8",
-    "html_kb": 1341,
-    "calc_ms": 2.5,
+    "html_kb": 1349,
+    "calc_ms": 1.7,
     "display": "Fraunces"
    },
    "wealth_model/aum_by_region": {
@@ -1603,13 +1521,13 @@
      "phone-dark": "report-shots/wealth_model_aum_by_region_e9c4ce__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 247
+     "Hanken Grotesk": 255
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1225,
-    "calc_ms": 1.3,
+    "html_kb": 1234,
+    "calc_ms": 1.6,
     "display": "Hanken Grotesk"
    }
   }
