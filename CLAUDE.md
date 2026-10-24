@@ -247,7 +247,8 @@ web/
                        # `npm run build` writes its output into tracebi/web/ui/dist.
     src/when.js        # stamp / ago / day / isoTitle: every date in the app; format.js: count / plural
     src/components/Shared.jsx  # the parts: Segmented, Chip (states) vs Badge (labels), Btn/BtnLink,
-                       #   ExportCsv, Empty, Time; .tb-list (global.css) for lists of things
+                       #   ExportCsv, Empty (title, body, command | action), CopyCommand, Time;
+                       #   .tb-list (global.css) for lists of things
 tests/                 # pytest suite (run `pytest tests/` for the current count), one file per area;
                        #   tests/e2e/ holds the end-to-end journeys (preferred for new coverage)
 examples/
@@ -853,6 +854,7 @@ GET  /api/reports/{name}/runs                        → recent background runs 
 GET  /api/reports/{name}/runs/{run_id}               → poll status; result/error when settled
 GET  /api/reports/{name}/built                       → the last build (disk, else the path in the run store; built once if never)
 GET  /api/runs                                       → run rows (kind, target, limit); viewer may read
+GET  /api/runs/counts?kind=                          → [{kind, target, runs, failed}] per target the caller may see (History's "N older runs")
 GET  /api/desk[?fresh=1]                             → pins, drafts, verdicts, builds, sinks; each verdict/build row carries computed_at and cached: a verdict is kept while its manifest, the models it names and their warehouse (+ certificate) are unchanged (tracebi/desk.py; process-local; fresh re-runs all)
 POST /mcp                                            → the agent gateway, when TRACEBI_MCP_TOKEN, TRACEBI_OIDC_ISSUER or the built-in sign-in is set (bearer; outside app auth)
 GET  /.well-known/oauth-*  /authorize /token /register /revoke /oauth/callback → per-person OAuth for /mcp (TRACEBI_OIDC_ISSUER, or the built-in TRACEBI_DEMO_LOGIN / TRACEBI_LOCAL_USERS; tracebi/mcp_oauth.py)
