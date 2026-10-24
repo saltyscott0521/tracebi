@@ -926,6 +926,7 @@ class TemplatePackage:
         manifest_path: Optional[str] = None,
         badges: bool = False,
         filters: Optional[dict] = None,
+        cover: bool = True,
     ) -> ReportManifest:
         """Render the package to one self-contained ``.html`` (+ manifest).
 
@@ -934,7 +935,9 @@ class TemplatePackage:
         that half-fails cannot leave a page without a receipt.
 
         *filters* is passed to :meth:`build` and applied the same way a
-        selection filter is.
+        selection filter is. *cover* takes the library's picture of the page
+        (``tracebi/reports/cover.py``); a render that only checks a package
+        and throws the page away passes False.
         """
         report, inputs = self.build(models, filters=filters)
 
@@ -1133,6 +1136,11 @@ class TemplatePackage:
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(page)
+        # The library's cover: a picture of the page just written, taken
+        # after every receipt field is settled so it can never feed one.
+        if cover:
+            from tracebi.reports.cover import capture_cover
+            manifest.cover, manifest.cover_skipped = capture_cover(output_path)
         if save_manifest:
             manifest.save(manifest_path or output_path + ".manifest.json")
         return manifest
@@ -1969,7 +1977,10 @@ def _footer_html(manifest: ReportManifest, model_labels: list[str],
     import html as _html
 
     when = _about_when(manifest.rendered_at)
-    parts = [f"Built {_html.escape(when)}"] if when else []
+    # The day in the masthead's shape; the runtime rewords both in the
+    # reader's locale from the stamp, so a page shows one date format.
+    parts = ([f'Built <time datetime="{_html.escape(manifest.rendered_at)}">'
+              f"{_html.escape(when)}</time>"] if when else [])
     parts += [_html.escape(label) for label in model_labels]
     line = (" · ".join(parts) + ". " if parts else "")
     line += "This page does not claim the numbers are right."
@@ -1993,7 +2004,7 @@ def _footer_html(manifest: ReportManifest, model_labels: list[str],
 
 
 def _about_when(rendered_at: str) -> str:
-    """UTC calendar day from an ISO stamp ("18 Oct 2026"), or empty when
+    """UTC calendar day from an ISO stamp ("Oct 18, 2026"), or empty when
     unusable."""
     if not rendered_at:
         return ""
@@ -2001,7 +2012,7 @@ def _about_when(rendered_at: str) -> str:
         # Accept trailing Z; date-only is enough for a reader.
         stamp = rendered_at.replace("Z", "+00:00")
         day = datetime.fromisoformat(stamp).date()
-        return f"{day.day} {day.strftime('%b %Y')}"
+        return f"{day.strftime('%b')} {day.day}, {day.year}"
     except ValueError:
         return rendered_at[:10] if len(rendered_at) >= 10 else ""
 

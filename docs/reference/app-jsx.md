@@ -51,7 +51,8 @@ an app follows the page's mode and the project's `reports/_theme.css`:
 `bg-accent`, `text-accent-text`, `text-on-accent` (text on an accent fill), `text-good`, `text-bad`, `chart-1` … `chart-8`,
 `font-sans` / `font-mono`, `rounded-panel`. The `tb-*` classes
 ([[styling-a-report]]) work too. A `style.css` beside `app.jsx` is a theme
-preset as for a template (the accent pair for each ground, a display face);
+preset as for a template (tokens only: the accent pair for each ground, a
+display face as `--tb-font-display`);
 its `:root` tokens give way to the dark ground as a template's do.
 
 ## The `tracebi` module

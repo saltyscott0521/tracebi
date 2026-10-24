@@ -83,6 +83,11 @@ async function putJson(path, body) {
 export const reportDownloadUrl = (name, format) =>
   `${BASE}/reports/${reportPath(name)}/download?format=${format}`
 
+// The picture of a build's first screen. Keyed on the build time, so a new
+// build is a new address and the browser never shows the last one's picture.
+export const reportCoverUrl = (name, builtAt) =>
+  `${BASE}/reports/${reportPath(name)}/cover${builtAt ? `?v=${encodeURIComponent(builtAt)}` : ''}`
+
 // The share link: the last build as a full page at /r/<name>, outside /api.
 // Under the UI's base path, so it resolves where the UI is mounted under a
 // prefix (tracebi.com serves the app at /app/ and strips it before the server).
@@ -520,6 +525,20 @@ export const useRuns = (kind, target) => {
       if (kinds.length < 2) return one(kinds[0])
       const lists = await Promise.all(kinds.map(one))
       return lists.flat().sort((a, b) => b.id - a.id)
+    },
+  })
+}
+
+// How many runs the store holds per kind and target (History's "N older runs").
+export const useRunCounts = (kind) => {
+  const kinds = [kind || ''].flat().filter(Boolean)
+  return useQuery({
+    queryKey: ['runs', 'counts', kinds.join(',')],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      for (const k of kinds) params.append('kind', k)
+      const q = params.toString()
+      return get('/runs/counts' + (q ? `?${q}` : ''))
     },
   })
 }

@@ -90,7 +90,7 @@ Errors lead with their path, e.g. `measures[2].agg`.
 | `facts` | `add_fact` | `name`, `table`, `measures`, optional `foreign_keys` |
 | `time_grains` | `add_time_grain` | `dimension`, `name`, `source`, `grain` (`month`, `quarter`, ...) |
 | `value_bins` | `add_value_bins` | `dimension`, `name`, `source`, `edges`, optional `labels` (one more than `edges`) |
-| `measures` | `add_measure` | `name` plus any keyword of [[measures]]: `column`, `agg`, `expr`, `ratio`, `share`, `rank`, `running`, `partition_by`, `period_end`, `offset`, `growth`, `to_date`, `description`, `format`, `allow_rate_agg`, `allow_additive`. Pairs and triples are lists. |
+| `measures` | `add_measure` | `name` plus any keyword of [[measures]]: `column`, `agg`, `expr`, `ratio`, `share`, `rank`, `running`, `partition_by`, `period_end`, `offset`, `growth`, `to_date`, `label`, `description`, `format`, `allow_rate_agg`, `allow_additive`. Pairs and triples are lists. |
 
 A publish by someone who is not an owner is refused (HTTP 403, MCP `ok: false`),
 naming the owners. The owners are shown on the model's page in the app.

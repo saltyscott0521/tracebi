@@ -391,6 +391,10 @@ def _presentation() -> dict:
         },
         "tokens": [
             "--tb-font", "--tb-ink", "--tb-bg", "--tb-muted", "--tb-accent",
+            "--tb-font-display (unset by default: the one display face a "
+            "theme may give the masthead headline, the lead number and the "
+            "trace's title; unset, a dashboard keeps the sans and an "
+            "editorial headline the serif)",
             "--tb-on-accent (text on an accent fill)",
             "--tb-dark-accent / --tb-dark-accent-text (the accent on the "
             "dark ground; a theme sets both pairs)",
@@ -924,9 +928,12 @@ def _presentation() -> dict:
                 "style_css": "A report's own style.css is a theme preset at "
                              "most: the accent pairs (--tb-accent / "
                              "--tb-accent-text, --tb-dark-accent / "
-                             "--tb-dark-accent-text) and one display face for "
-                             ".tb-masthead h1 and .tb-kpi--lead .tb-kpi-value "
-                             "(an @font-face from assets/). No gradient, hatch, "
+                             "--tb-dark-accent-text) and one display face, as "
+                             "--tb-font-display (an @font-face from assets/; "
+                             "the system puts it on .tb-masthead h1 and "
+                             ".tb-kpi--lead .tb-kpi-value). Tokens only: no rule "
+                             "of its own. Set a pair where a report should "
+                             "differ from the project's accent. No gradient, hatch, "
                              "glow or resting shadow; the showcase's style.css "
                              "is the example",
                 "house_style": "reports/_style.md is the team's design rules, "
@@ -1611,6 +1618,16 @@ def describe(brief: bool = False) -> dict:
                         "The stamped lineage and the trace carry the filter, and "
                         "verify re-runs it: changing it in the model shows as "
                         "drift.",
+            },
+            "measure_labels": {
+                "declare": "model.add_measure(name, ..., label='Share of fair "
+                           "value'); YAML: label: on the measure",
+                "note": "The name people read for a measure, where the app "
+                        "shows it (Ask's tokens, its answers and definitions). "
+                        "Without one the app humanises the identifier "
+                        "(fv_share reads 'Fv share'). Presentation only: a "
+                        "label never changes a number, and queries and "
+                        "bindings still name the measure by its identifier.",
             },
             "aggregations": sorted(_AGG_FUNCS) + ["p<N> (percentile, e.g. p90)"],
             "aggregations_note": "median and stddev summarize a distribution's "

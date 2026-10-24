@@ -24,6 +24,28 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-24 — Decision: a display face is a token; a package may keep its own look (UI-4B)
+
+Backlog 8 asked whether a project is one accent. The round first said yes and
+moved `portfolio_book` (navy), the showcase (teal) and affordability (its own
+272-line stylesheet) onto the project's cobalt; the owner wanted the one-off
+editorial's theming back, and the goal of the round was the app, not the
+reports. So the packages keep their looks, and what the round leaves in the
+system stands: one display face as a token of its own, `--tb-font-display`,
+which the system places (the masthead headline, the lead number, the trace's
+title), so a package that only wants its own face writes one token and its
+`@font-face`. A bespoke look remains allowed on the same masthead, grid,
+footer and trace; `aum_by_branch` and affordability are the examples.
+
+The phone pass made the system, not the packages, responsible for reading at
+390: tables scroll across with a frozen first column, controls are one
+sideways row, the selection bar rides the bottom of the screen, a run of
+numbers on an axis thins instead of turning, and stacked small multiples share
+one row of names. Item 36 (the code's "receipt" names) stays open: the app's
+frame bridge and `ReceiptFrame.jsx` would have to move in the same change.
+
+---
+
 ## 2026-10-23 — UI round 3, one demo, the board, the credential store (#273–#275)
 
 Three pull requests closed the third UI round and the work it opened.

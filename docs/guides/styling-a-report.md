@@ -200,7 +200,7 @@ The build inlines each one as a `data:` URI, so the file still fetches nothing:
   font-weight: 600;
   src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
 }
-.tb-masthead h1, .tb-kpi--lead .tb-kpi-value { font-family: "Fraunces", var(--tb-font-serif); }
+:root { --tb-font-display: "Fraunces", var(--tb-font-serif); }   /* the headline and the lead number */
 .tb-masthead-mark { width: 120px; height: 28px; background: url(assets/logo.svg) left / contain no-repeat; }
 ```
 
@@ -214,8 +214,8 @@ named. Keep images small: every byte ships inside the report. Check a font's
 licence allows embedding (SIL OFL fonts do; ship the licence text alongside).
 
 `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` shows it all on
-the system: a `style.css` that is a theme preset (an accent pair and one
-inlined display face), every chart type, a KPI delta, data bars, sortable
+the system: a `style.css` that is tokens only (one inlined display face as
+`--tb-font-display`, its own teal accent), every chart type, a KPI delta, data bars, sortable
 columns, filters, a scenario and a custom d3 figure. `reports/wealth_model/aum_by_branch`
 is the one bespoke look (its own faces, palette and hero band
 with inlined artwork) on the same masthead, grid, footer and trace.

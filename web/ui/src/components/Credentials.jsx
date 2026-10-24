@@ -31,7 +31,7 @@ function rowsFor(credentials, name) {
 const INPUT = {
   flex: '1 1 220px', minWidth: 0, padding: '8px 10px',
   border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
-  background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+  background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--text-caption)', fontFamily: 'inherit',
 }
 
 // Set or replace one value. The typed value lives only in this form's state
@@ -49,7 +49,7 @@ function SetForm({ row, onDone }) {
   }
   return (
     <form onSubmit={submit} style={{ flexBasis: '100%', marginTop: 6 }}>
-      <label htmlFor={id} style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+      <label htmlFor={id} style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 4 }}>
         Value for <code>{row.name}</code> (saved encrypted on the server; never shown again)
       </label>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

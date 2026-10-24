@@ -150,6 +150,7 @@ measures:
     description: Rank by fair value (1 = largest)
   - name: fv_share
     share: fair_value
+    label: Share of fair value
     description: Fair value as % of total
     format: percent
   - name: fv_cum_share

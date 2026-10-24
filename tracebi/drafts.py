@@ -466,7 +466,8 @@ def _validate_report(where: Path, models: dict):
     with tempfile.TemporaryDirectory() as tmp:
         try:
             return TemplatePackage(str(where)).render(
-                models, os.path.join(tmp, "check.html"), save_manifest=False)
+                models, os.path.join(tmp, "check.html"), save_manifest=False,
+                cover=False)
         except (Exception, SystemExit) as exc:  # noqa: BLE001 — a refusal is a result
             line = str(exc).splitlines()[0] if str(exc) else ""
             raise DraftError(

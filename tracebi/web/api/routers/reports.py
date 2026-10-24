@@ -4,8 +4,8 @@ import tempfile
 import threading
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from starlette.background import BackgroundTask
 
 from tracebi.web.api.errors import error_detail as _error_detail
@@ -382,6 +382,7 @@ def _artifact_payload(name: str, *, fresh: bool = False):
             name,
             payload.get("html_path"),
             manifest_path=payload.get("manifest_path"),
+            cover=manifest.cover,
         )
     return payload
 
@@ -599,6 +600,53 @@ def built_report(name: str):
     Report opens this. Rebuild is a separate action.
     """
     return _last_build(name)
+
+
+def _cover_file(name: str):
+    """The cover of *name*'s last build, or None. Never builds: a report
+    with no build, or a build that took no cover, has none, and the app
+    draws one. Only the file the manifest names beside the page is served,
+    whatever directory the manifest's path pointed at when it was written."""
+    path = _output_html(name)
+    manifest_path = path + ".manifest.json"
+    if not (os.path.isfile(path) and os.path.isfile(manifest_path)):
+        from tracebi.state import install_extra, latest_output
+        with install_extra("web"):
+            row = latest_output(name)
+        path = (row or {}).get("output_path")
+        detail = (row or {}).get("detail") or {}
+        if not path or not os.path.isfile(path):
+            return None
+        manifest_path = (detail.get("manifest_path") if isinstance(detail, dict)
+                         else None) or path + ".manifest.json"
+    try:
+        with open(manifest_path, encoding="utf-8") as fh:
+            cover = json.load(fh).get("cover")
+    except (OSError, ValueError):
+        return None
+    if not isinstance(cover, str) or not cover:
+        return None
+    found = os.path.join(os.path.dirname(path), os.path.basename(cover))
+    return found if os.path.isfile(found) else None
+
+
+@router.get("/{name:path}/cover")
+def report_cover(name: str, request: Request):
+    """The PNG of the last build's first screen; 404 when there is none.
+
+    The same permission rule as ``/built``: a report the caller cannot see
+    is missing. Cached against the build: the tag is the cover's own write
+    time, so a rebuild is a new picture and an unchanged one answers 304.
+    """
+    _package_or_404(name)
+    found = _cover_file(name)
+    if found is None:
+        raise HTTPException(status_code=404, detail=f"No cover for '{name}'.")
+    tag = f'"{os.stat(found).st_mtime_ns:x}"'
+    headers = {"ETag": tag, "Cache-Control": "private, no-cache"}
+    if request.headers.get("if-none-match") == tag:
+        return Response(status_code=304, headers=headers)
+    return FileResponse(found, media_type="image/png", headers=headers)
 
 
 @router.post("/{name:path}/run")

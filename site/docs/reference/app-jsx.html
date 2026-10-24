@@ -157,7 +157,8 @@ an app follows the page's mode and the project's <code>reports/_theme.css</code>
 <code>bg-accent</code>, <code>text-accent-text</code>, <code>text-on-accent</code> (text on an accent fill), <code>text-good</code>, <code>text-bad</code>, <code>chart-1</code> … <code>chart-8</code>,
 <code>font-sans</code> / <code>font-mono</code>, <code>rounded-panel</code>. The <code>tb-*</code> classes
 (<a href="../guides/styling-a-report.html">Styling a report</a>) work too. A <code>style.css</code> beside <code>app.jsx</code> is a theme
-preset as for a template (the accent pair for each ground, a display face);
+preset as for a template (tokens only: the accent pair for each ground, a
+display face as <code>--tb-font-display</code>);
 its <code>:root</code> tokens give way to the dark ground as a template's do.</p>
 <h2 id="the-tracebi-module">The <code>tracebi</code> module</h2>
 <pre><code class="language-jsx">import { Kpi, Value, Chart, Spark, Table, Filter, Search, Download,

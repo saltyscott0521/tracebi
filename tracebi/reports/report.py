@@ -610,6 +610,14 @@ class ReportManifest:
     #: Every binding's calc plan, or ``{"fixed": reason}``, as embedded in
     #: the page's ``tracebi-calc-plans`` block. None (omitted) with no slice.
     plans: Optional[dict] = None
+    #: The build's cover (``tracebi/reports/cover.py``): the path of a PNG of
+    #: the page's first screen, beside the HTML. A picture, never part of the
+    #: trace: nothing fingerprints it and ``verify`` never reads it. None
+    #: (omitted) when no cover was taken.
+    cover: Optional[str] = None
+    #: Why no cover was taken, for the build command's one line. Never
+    #: written to the manifest: it describes this machine, not the build.
+    cover_skipped: Optional[str] = field(default=None, repr=False)
 
     def to_dict(self) -> dict:
         d = {
@@ -643,6 +651,8 @@ class ReportManifest:
             d["slice"] = self.slice
         if self.plans is not None:
             d["plans"] = self.plans
+        if self.cover is not None:
+            d["cover"] = self.cover
         return d
 
     def to_json(self, indent: int = 2) -> str:

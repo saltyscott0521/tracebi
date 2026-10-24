@@ -20,6 +20,10 @@
              "Helvetica Neue", Arial, sans-serif;
   /* The editorial body face: a system serif, so nothing is fetched or inlined. */
   --tb-font-serif: "Iowan Old Style", Charter, "Sitka Text", Cambria, Georgia, serif;
+  /* --tb-font-display is left unset: it is the one display face a theme may
+   * give the headline and the lead number (an @font-face from the package's
+   * assets/). Unset, the masthead keeps the sans and an editorial headline
+   * the serif, so every report in a project reads as one family. */
   --tb-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
   /* Neutral grounds and one cobalt: colour is for meaning, the accent for the
    * few places you act or are. --tb-accent is the fill (focus ring, bars, the
@@ -294,7 +298,10 @@ img, svg { max-width: 100%; }
 .tb-grid > .tb-kpi { border: 0; border-radius: 0; }
 /* The lead KPI: the one number the page is about. It is larger, not wider:
  * one step up the scale, so the row has an anchor and no empty half-cell. */
-.tb-kpi--lead .tb-kpi-value { font-size: var(--tb-text-3xl); }
+.tb-kpi--lead .tb-kpi-value {
+  font-size: var(--tb-text-3xl);
+  font-family: var(--tb-font-display, inherit);
+}
 
 /* The comparison under the number — "+4.1% vs last month", "of total".
  * A KPI without one is a number, not a signal. */
@@ -437,6 +444,15 @@ span.tb-bar--neg { background: var(--tb-bad); }
   background: var(--tb-bg);
   z-index: 1;
 }
+/* A frozen cell is opaque, so the rows scroll under it; it takes its row's
+ * tint itself (the stripe, the hover), or a striped row would show a cell
+ * of the page's ground beside it. */
+:is(.tb-table, [data-tb-figure="table"]) tbody tr:not([aria-selected="true"]):hover > td:first-child {
+  background: var(--tb-surface);
+}
+.tb-table--striped tbody tr:nth-child(even):not([aria-selected="true"]) > td:first-child {
+  background: var(--tb-stripe);
+}
 
 /* Windowed tables (>500 rows): spacers are not data. A fixed row height
  * keeps the scrollbar honest; text stays in the cell, it just doesn't wrap. */
@@ -455,11 +471,18 @@ tr.tb-window-pad td {
 .tb-table--freeze tr.tb-window-pad td { position: static; background: transparent; }
 .tb-window.tb-table--striped tbody tr:nth-child(even) { background: none; }
 .tb-window.tb-table--striped tbody tr.tb-stripe { background: var(--tb-surface); }
-
-/* Variant: striped — even body rows tinted (field-notes finding #13). */
-.tb-table--striped tbody tr:nth-child(even) {
-  background: color-mix(in srgb, var(--tb-surface) 60%, transparent);
+.tb-window.tb-table--striped tbody tr:not(.tb-stripe):not([aria-selected="true"]) > td:first-child {
+  background: var(--tb-bg);
 }
+.tb-window.tb-table--striped tbody tr.tb-stripe:not([aria-selected="true"]) > td:first-child {
+  background: var(--tb-surface);
+}
+
+/* Variant: striped — even body rows tinted (field-notes finding #13). The
+ * tint is opaque (the surface over the card's own ground), so a frozen first
+ * cell can carry the same one. */
+.tb-table--striped { --tb-stripe: color-mix(in srgb, var(--tb-surface) 60%, var(--tb-bg)); }
+.tb-table--striped tbody tr:nth-child(even) { background: var(--tb-stripe); }
 
 /* Variant: compact — tighter padding (density is --tb-cell-pad only). */
 .tb-table--compact { --tb-cell-pad: var(--tb-space-1) var(--tb-space-2); }
@@ -746,6 +769,26 @@ table[data-tb-select-rows] tr[aria-selected="true"] td:first-child { box-shadow:
 .tb-selection-clear:hover, .tb-selection-download:hover { text-decoration: underline; }
 .tb-selection-bar button:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
 .tb-selection-print { display: none; margin: 0; }
+/* On a phone the bar stays in reach: once something is picked it rides the
+ * bottom of the screen, so the reader can see and clear the cut from any
+ * figure, and the page leaves room under its last line for it. Not in an
+ * app's frame (the frame is as tall as the page, and the app's header shows
+ * the selection). Opaque, with no shadow: it is the page's own strip. */
+@media screen and (max-width: 720px) {
+  :root:not([data-tb-framed]) .tb-selection-bar {
+    position: fixed;
+    left: var(--tb-space-2);
+    right: var(--tb-space-2);
+    bottom: calc(var(--tb-space-2) + env(safe-area-inset-bottom, 0px));
+    z-index: 30;
+    margin: 0;
+    max-height: 40vh;
+    overflow-y: auto;
+    background: color-mix(in oklab, var(--tb-accent) 8%, var(--tb-bg));
+    border-color: color-mix(in oklab, var(--tb-accent) 35%, var(--tb-rule));
+  }
+  :root:not([data-tb-framed]) body:has(.tb-selection-bar:not([hidden])) { padding-bottom: 120px; }
+}
 .tb-footer-filtered { display: none; }
 @media print {
   .tb-selection-bar { display: block; padding: 0; border: 0; background: none; margin: var(--tb-space-1) 0 var(--tb-space-2); }
@@ -908,6 +951,34 @@ p:has(> label > :is([data-tb-search], [data-tb-filter])) > button[data-tb-downlo
   margin: 0; font-size: 13.5px;
 }
 label > input[data-tb-search] { width: 11em; }
+/* On a phone the page's controls are one row, not a stack that pushes the
+ * first figure off the screen: the row scrolls sideways and its far edge
+ * fades while more lies there (data-tb-more, as a table's). Any box whose
+ * own children are labelled filters, searches or ranges is such a row, the
+ * kit's or a template's; the runtime marks its edge. */
+@media (max-width: 720px) {
+  /* !important only because an app page layers this sheet under its
+     utilities, and a row's own flex-wrap class would otherwise stack it. */
+  :is(div, p):has(> label > :is([data-tb-filter], [data-tb-search]), > [data-tb-range]) {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: var(--tb-space-2) var(--tb-space-3);
+    overflow-x: auto !important;
+    scrollbar-width: none;
+    max-width: 100%;
+    padding-bottom: 2px;
+  }
+  :is(div, p):has(> label > :is([data-tb-filter], [data-tb-search]), > [data-tb-range]) > * {
+    flex: none;
+    margin-bottom: 0;
+  }
+  :is(div, p):has(> label > :is([data-tb-filter], [data-tb-search]), > [data-tb-range])::-webkit-scrollbar {
+    display: none;
+  }
+  .tb-range { flex-wrap: nowrap; }
+  .tb-range-track { width: 140px; }
+}
 
 /* ── 11. Scrollable tables — presentation only ─────────────────────────── */
 /* The runtime wraps an over-long hydrated table; max-height is set inline
@@ -974,6 +1045,44 @@ label > input[data-tb-search] { width: 11em; }
      table) it keeps table layout, so a narrow table still spans its card. */
   :is(.tb-scroll, .tb-card:has(> :is(.tb-table, [data-tb-figure="table"]):last-child))
     > :is(.tb-table, [data-tb-figure="table"]) { display: table; }
+  /* A table on a phone reads across, not down: a cell keeps to one line and
+     the table scrolls sideways in its frame (its far edge fades while more
+     lies there), with the first column frozen, as .tb-table--freeze, so
+     every row keeps its name. A long name wraps inside a narrow column
+     rather than taking the width the numbers need. */
+  :is(.tb-table, [data-tb-figure="table"]) :is(th, td) { white-space: nowrap; }
+  /* In a box that scrolls it, a table takes the width its columns ask for
+     (at least the box's), rather than being squeezed into the phone. */
+  :is(.tb-scroll, .tb-card > .tb-scroll:last-child) > :is(.tb-table, [data-tb-figure="table"]) {
+    width: max-content;
+    min-width: 100%;
+  }
+  .tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child {
+    width: max-content;
+    min-width: calc(100% + 2 * var(--tb-card-pad-x));
+  }
+  :is(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--tb-bg);
+  }
+  /* The frozen cell's ground stops inside its border, so a collapsed row
+     rule is never painted over and every row stays ruled to the edge. */
+  :where(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child { background-clip: padding-box; }
+  /* A name column, not a number (a rank stays as narrow as its digits). */
+  :is(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child:not(.tb-num) {
+    white-space: normal;
+    width: 9em;                  /* a table cell takes a width as its least */
+    max-width: 11em;
+  }
+  :is(.tb-table, [data-tb-figure="table"]) thead th:first-child { z-index: 3; }
+  /* Where the header row has its own ground, its frozen cell keeps it. */
+  :is(.tb-scroll, .tb-article) thead th:first-child,
+  .tb-card > :is(.tb-table, [data-tb-figure="table"]):last-child thead th:first-child {
+    background: var(--tb-surface);
+  }
+  :is(.tb-table, [data-tb-figure="table"]) tr.tb-window-pad td { position: static; background: transparent; }
 }
 
 .tb-tabs { margin: var(--tb-space-3) 0; }
@@ -1193,6 +1302,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   margin: 0 0 var(--tb-space-1);
 }
 .tb-masthead h1 {
+  font-family: var(--tb-font-display, var(--tb-font));
   font-size: var(--tb-text-2xl);
   font-weight: 600;
   line-height: 1.15;
@@ -1213,6 +1323,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   align-items: center;
   gap: var(--tb-space-1) var(--tb-space-3);
   margin: var(--tb-space-3) 0 0;
+  max-width: none;               /* a <p> meta keeps one line, not the prose measure */
   font-size: var(--tb-text-sm);
   color: var(--tb-muted);
 }
@@ -1341,7 +1452,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 }
 .tb-article-head .tb-kicker { color: var(--tb-hero-soft); }
 .tb-article h1 {
-  font-family: var(--tb-font-serif);
+  font-family: var(--tb-font-display, var(--tb-font-serif));
   font-size: clamp(var(--tb-text-2xl), 4.2vw, var(--tb-text-3xl));
   font-weight: 600;
   line-height: 1.1;
@@ -1484,7 +1595,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   margin-right: 0;
 }
 /* Controls in the prose (a download button, a filter) are the page's sans. */
-.tb-article :is(button, select, input) { font-family: var(--tb-font); }
+.tb-article :is(button, select, input, label, .tb-range) { font-family: var(--tb-font); }
 @media (max-width: 720px) {
   .tb-article { margin: 0; border-radius: 0; border-width: 0; }
   .tb-pullstat { grid-template-columns: 1fr; row-gap: var(--tb-space-1); }
@@ -1562,16 +1673,9 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
-.tb-footer-line .tb-receipt-link {
-  display: block;
-  width: fit-content;
-  margin-top: var(--tb-space-1);
-  color: var(--tb-ink);
-  font-weight: 500;
-  text-decoration: none;
-}
-.tb-footer-line .tb-receipt-link::before { content: "\25B8\00A0"; }
-.tb-footer-line .tb-receipt-link:hover { text-decoration: underline; }
+/* The footer's line ends in its way in, as the last words of one calm
+ * sentence: the same quiet link as the masthead's Trace. */
+.tb-footer-line .tb-receipt-link { display: inline; }
 /* On a filled ground (the hero, a banner, a report's own) a masthead's
  * links take its ink; the runtime marks the ground. An author's own link
  * colour still wins (:where). */
@@ -1668,6 +1772,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 .tb-receipt { color: var(--tb-ink); font-size: var(--tb-text-sm); }
 .tb-receipt-head {
   margin: 0;
+  font-family: var(--tb-font-display, inherit);   /* the page's headline face */
   font-size: var(--tb-text-xl);
   font-weight: 600;
   line-height: 1.25;

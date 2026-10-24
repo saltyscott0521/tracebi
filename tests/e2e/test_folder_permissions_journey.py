@@ -78,6 +78,14 @@ def test_a_hidden_folder_is_not_listed_and_looks_not_found_everywhere(library, s
         assert got.text.replace(HIDDEN, "X") == missing.text.replace("finance/q3/nothing", "X"), url
         assert getattr(alice, method)(url).status_code != got.status_code, url
 
+    # Its cover is missing as the report is. This suite takes no covers, so
+    # Alice's answer is a 404 too, but one that names no cover, not no report.
+    cover = f"/api/reports/{HIDDEN}/cover"
+    got, missing = bob.get(cover), bob.get(cover.replace("q3/pack", "q3/nothing"))
+    assert got.status_code == missing.status_code == 404
+    assert got.text.replace(HIDDEN, "X") == missing.text.replace("finance/q3/nothing", "X")
+    assert "No cover" in alice.get(cover).text
+
     # A run history is empty, as for a report that does not exist.
     assert bob.get(f"/api/reports/{HIDDEN}/runs").json() == []
 

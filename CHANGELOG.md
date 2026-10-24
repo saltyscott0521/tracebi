@@ -6,6 +6,63 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the app reads as one product
+
+- **The first visit** opens the library with one quiet card: the five places
+  in a line each, Get started, the project's showcase report when it has one,
+  and ⌘K. Dismissed, it never returns (a flag in this browser).
+- **Empty states teach**: `Empty` takes a `title`, a `body` saying what the
+  thing is and why it is empty, and the one action that fills it, a button or
+  a command in a copyable block (`CopyCommand`). The library, Drafts,
+  History, Attention, Sources and Transforms use it.
+- **One type scale, one rhythm, three radii.** Every font size in the app is a
+  step of the scale (10.5/11/12/13/14/16/20/26px, plus the 15px wordmark and
+  Ask's 40px lead number); global.css's margins, paddings and gaps sit on a
+  4px grid; corners are 4px (small controls), 6px (controls) or 8px
+  (surfaces). Transitions and entrances run 120–180 ms, none under reduced
+  motion. Skeletons, a list row's hover and the sidebar's focus ring take
+  tokens, so they are right in dark too.
+- **History** names a pipeline run by its model's label, and "N older runs"
+  counts every run the store holds (`GET /api/runs/counts`), not the 50 the
+  page loaded; unfolded, it links to the rest.
+- **Ask's Keep this picks a folder** (My published, the model's folder, or
+  any folder the person can build in); the draft starts there.
+- **A measure can carry a `label`** (`label:` in the model YAML,
+  `add_measure(label=...)`): the name Ask and the model page show. Without
+  one the name is humanised, as before.
+- **Links stop at the role**: a viewer's report panel shows the model's name
+  without a link into Data, and no "Every run in History".
+- `Btn` applies a caller's `style` last, so a colour it sets sticks; the
+  phone header is opaque, so a scrolled list no longer shows through it.
+
+### Changed — one report look, and reports that read on a phone
+
+- **A display face is a token**, **`--tb-font-display`** (unset: the masthead
+  keeps the sans, an editorial headline the serif); the system puts it on the
+  masthead `<h1>`, the lead number and the trace drawer's title, so a package
+  that only wants its own face needs no rule of its own. The reference
+  project's bespoke looks (the navy book, the teal showcase, the affordability
+  editorial's own stylesheet) stay as they were: a package may still carry a
+  look of its own on the same masthead, grid, footer and trace.
+- **Tables on a phone** read across: one line per cell, the table scrolls
+  sideways in its frame with its first column frozen (a name column wraps in
+  about 9em), its far edge fading while more lies there. A frozen cell takes
+  its row's stripe and hover, so a striped frozen column no longer keeps a
+  different shade in dark (backlog 10).
+- **Controls on a phone** are one row that scrolls sideways, not a stack; the
+  **selection bar** rides the bottom of the screen once something is picked
+  (not inside the app's frame, whose header shows the selection).
+- **Charts on a phone**: a run of numbers (years, months, ranks) labels every
+  k-th tick, flat, instead of turning them 30°; stacked small multiples carry
+  the shared category names under the last panel only, every plot one height
+  on the one scale (backlog 9); a line's end label stays inside the chart at
+  the top of the scale (backlog 12).
+- **The footer is one sentence**: "Built Oct 24, 2026 · Direct Lending
+  Portfolio. This page does not claim the numbers are right. How these numbers
+  were made", the last words the same quiet link as the masthead's Trace. The
+  footer's day is written in the reader's own format, as the masthead's, so a
+  page shows one date shape. A masthead meta line in a `<p>` keeps one line.
+
 ### Changed — the credential store is encrypted YAML
 
 - **`.tracebi/secrets.yml.enc`** replaces `.tracebi/secrets.json`: one file

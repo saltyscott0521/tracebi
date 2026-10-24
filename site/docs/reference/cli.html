@@ -260,6 +260,10 @@ See <a href="../guides/updating.html">Updating TraceBi</a>.</p>
 (headless Chromium, so charts render). The PDF carries no trace; the HTML
 and manifest stay the checkable artifact. Needs <code>pip install 'tracebi[pdf]'</code>
 and <code>python -m playwright install chromium</code>.</p>
+<p>The same extra gives every build a cover, <code>output/&lt;name&gt;.cover.png</code> (the first
+screen at 1200×750, recorded as <code>cover</code> in the manifest, never fingerprinted);
+without it the build prints one line saying why no cover was taken and is
+otherwise unchanged.</p>
 <ul>
 <li><code>--badges</code> — draw per-figure provenance badges on the page. Off by default;
   the trace drawer already carries provenance in one place. <strong>The manifest is

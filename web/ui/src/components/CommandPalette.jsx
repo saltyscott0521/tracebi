@@ -159,7 +159,7 @@ export default function CommandPalette() {
         style={{
           width: 560, maxWidth: 'calc(100vw - 32px)', height: 'fit-content',
           background: 'var(--card-solid)', border: '1px solid var(--border)',
-          borderRadius: 14, boxShadow: 'var(--shadow), var(--shadow-glow)',
+          borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow), var(--shadow-glow)',
           overflow: 'hidden',
         }}
       >
@@ -175,18 +175,18 @@ export default function CommandPalette() {
             placeholder="Jump to a page, model, report, pipeline…"
             style={{
               flex: 1, border: 'none', outline: 'none', background: 'transparent',
-              color: 'var(--text)', fontSize: 14, fontFamily: 'inherit',
+              color: 'var(--text)', fontSize: 'var(--text-base)', fontFamily: 'inherit',
             }}
           />
           <kbd style={{
-            fontSize: 10, color: 'var(--muted)', border: '1px solid var(--border)',
-            borderRadius: 4, padding: '2px 6px', background: 'var(--surface)',
+            fontSize: 'var(--text-eyebrow)', color: 'var(--muted)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)', padding: '2px 6px', background: 'var(--surface)',
           }}>esc</kbd>
         </div>
 
         <div style={{ maxHeight: 380, overflowY: 'auto', padding: '6px 0' }}>
           {results.length === 0 && (
-            <div style={{ padding: '18px 18px', color: 'var(--muted)', fontSize: 13 }}>
+            <div style={{ padding: '18px 18px', color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>
               No matches for “{query}”.
             </div>
           )}
@@ -199,15 +199,15 @@ export default function CommandPalette() {
                 onMouseEnter={() => setCursor(i)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '9px 18px', cursor: 'pointer', fontSize: 13.5,
+                  padding: '9px 18px', cursor: 'pointer', fontSize: 'var(--text-base)',
                   background: i === cursor ? 'var(--blue-lt)' : 'transparent',
                   borderLeft: `2px solid ${i === cursor ? meta.color : 'transparent'}`,
                 }}
               >
                 <span style={{
-                  fontSize: 10, fontWeight: 600,
+                  fontSize: 'var(--text-eyebrow)', fontWeight: 600,
                   color: meta.color, background: `color-mix(in srgb, ${meta.color} 8%, transparent)`,
-                  border: `1px solid color-mix(in srgb, ${meta.color} 19%, transparent)`, borderRadius: 4,
+                  border: `1px solid color-mix(in srgb, ${meta.color} 19%, transparent)`, borderRadius: 'var(--radius-sm)',
                   padding: '1px 7px', width: 76, textAlign: 'center', flexShrink: 0,
                 }}>{meta.tag}</span>
                 <span style={{ color: 'var(--text)', fontWeight: i === cursor ? 600 : 400 }}>
@@ -215,7 +215,7 @@ export default function CommandPalette() {
                 </span>
                 {it.sub && (
                   <span style={{
-                    marginLeft: 'auto', fontSize: 11.5, color: 'var(--muted)',
+                    marginLeft: 'auto', fontSize: 'var(--text-sm)', color: 'var(--muted)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200,
                   }}>{it.sub}</span>
                 )}
@@ -226,7 +226,7 @@ export default function CommandPalette() {
 
         <div style={{
           padding: '8px 18px', borderTop: '1px solid var(--border)',
-          display: 'flex', gap: 16, fontSize: 10.5, color: 'var(--muted)',
+          display: 'flex', gap: 16, fontSize: 'var(--text-eyebrow)', color: 'var(--muted)',
         }}>
           <span><kbd>↑↓</kbd> navigate</span>
           <span><kbd>↵</kbd> open</span>

@@ -3,7 +3,8 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, LabelList, ResponsiveContainer } from 'recharts'
 
 import {
-  reportPath, useAppStatus, useAskAnswer, useDimensionValues, useKeepAnswer, useMe, useModel, useModels,
+  reportPath, useAppStatus, useAskAnswer, useDimensionValues, useFolders, useKeepAnswer, useMe, useModel,
+  useModels,
 } from '../api'
 import {
   answerColumnLabel, answerColumns, answerShape, canAsk, decodeQuery, definitionOf, dimensionLabel,
@@ -371,7 +372,7 @@ function AnswerBars({ result, dim, measure, label }) {
           <Bar dataKey="value" fill="var(--chart-1)" radius={[0, 2, 2, 0]} barSize={Math.min(22, Math.round(band * 0.55))}
                isAnimationActive={false}>
             <LabelList dataKey="text" position="right" offset={8}
-                       style={{ fontSize: 12, fill: 'var(--text)', fontVariantNumeric: 'tabular-nums' }} />
+                       style={{ fontSize: 'var(--text-sm)', fill: 'var(--text)', fontVariantNumeric: 'tabular-nums' }} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -417,17 +418,35 @@ function AnswerNumbers({ detail, q, result }) {
   )
 }
 
+// Where a kept answer may go: the folders the person can build in (a publish
+// there is direct or a request), their own My published first, then the
+// model's folder, then the rest. The draft starts at that path, so Publish
+// offers it as the destination.
+function keepFolders(data, model, labelOf) {
+  const mayBuild = f => ['build', 'publish', 'manage'].includes(f.level)
+  const all = (data?.folders || []).filter(mayBuild)
+  if (!all.some(f => f.path === model)) all.push({ path: model })
+  const order = f => (f.mine ? 0 : f.path === model ? 1 : 2)
+  return all.sort((a, b) => order(a) - order(b))
+    .map(f => ({ path: f.path, label: f.mine ? 'My published' : labelOf(f.path) }))
+}
+
 function Answer({ name, label, detail, q, body, result, canKeep }) {
   const shape = answerShape(q, result)
   const [view, setView] = useState('chart')
   const sentence = sentenceOf(detail, q)
   const keep = useKeepAnswer()
+  const { data: folderData } = useFolders()
+  const folders = keepFolders(folderData, name, f => (f === name ? label : f.split('/').join(' / ')))
+  const [folder, setFolder] = useState('')
+  // The model's folder until the person picks another, as before there was a pick.
+  const into = folders.some(f => f.path === folder) ? folder : name
   const navigate = useNavigate()
   const toast = useToast()
   const verdictDetail = `A live query against ${label}; built reports re-run and are checked — this answer is not.`
 
   const onKeep = () => keep.mutate({
-    pathFor: taken => keepPath(name, q, taken),
+    pathFor: taken => keepPath(into, q, taken),
     files: keepFiles({ model: name, modelLabel: label, detail, q, rows: result.rows }),
   }, {
     onSuccess: d => navigate(`/drafts/${encodeURIComponent(d.owner)}/${d.kind}/${reportPath(d.path)}`),
@@ -490,7 +509,15 @@ function Answer({ name, label, detail, q, body, result, canKeep }) {
       {canKeep && (
         <div className="ask-keep">
           <Btn onClick={onKeep} disabled={keep.isPending}>{keep.isPending ? 'Keeping…' : 'Keep this'}</Btn>
-          <span>Opens a draft report of this one figure. The draft holds the question, not these numbers: it runs the query when built.</span>
+          {folders.length > 1 && (
+            <label className="ask-keep__in">
+              in
+              <select value={into} onChange={e => setFolder(e.target.value)}>
+                {folders.map(f => <option key={f.path} value={f.path}>{f.label}</option>)}
+              </select>
+            </label>
+          )}
+          <span>Opens a draft report of this one figure{folders.length > 1 ? ', to publish into that folder' : ''}. The draft holds the question, not these numbers: it runs the query when built.</span>
         </div>
       )}
     </section>

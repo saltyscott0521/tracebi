@@ -64,9 +64,12 @@ export default function Transforms() {
         </p>
       )}
       {rows.length === 0 ? (
-        <Empty message={model
-          ? 'No transform feeds this model: no pipeline runs one for it, and no certificate names one.'
-          : 'No transforms yet. Write one with tracebi new-transform, in transforms/.'} />
+        model
+          ? <Empty title="No transform feeds this model"
+                   body="No pipeline runs one for it, and no certificate names one." />
+          : <Empty title="No transforms yet"
+                   body="A transform reads the sources and writes clean tables into the warehouse, with a contract that checks what landed. Scaffold one in transforms/:"
+                   command={'tracebi new-transform "Holdings"'} />
       ) : (
         <div className="whlist">
           <table className="tb-list transforms">

@@ -348,9 +348,12 @@ one the project default (`reports/_theme.css`, which restyles every report).
 A theme is an accent preset (the accent for the light and the dark ground),
 never a mode or a layout. A report's own `style.css` is the same thing at most:
 the accent pairs (`--tb-accent` / `--tb-accent-text`, `--tb-dark-accent` /
-`--tb-dark-accent-text`) and one display face for the `.tb-masthead h1` and the
-lead number; no gradient, hatch, glow or resting shadow, and no second set of
-components.
+`--tb-dark-accent-text`) and one display face as `--tb-font-display` (the
+system sets it on the `.tb-masthead h1`, the lead number and the trace's
+title): tokens only, no rule of its own, no gradient, hatch, glow or resting
+shadow, and no second set of components. Set the pairs where a report should
+differ from the project's accent; the reference project keeps a navy book, a
+teal showcase and the affordability editorial's own look on one system.
 `reports/_style.md` is the team's house style — `tracebi context` and
 `get_context` return it as `house_style`. Read it before you build and follow
 its Rules over these defaults. Before you build, read
@@ -729,6 +732,9 @@ freely, never re-source.
   A measure can carry its own filter (`add_measure('purchases', column='amount',
   agg='sum', filters={'activity_type': 'purchase'})`, or `filters:` in the YAML):
   it restricts that measure only, and the trace stamps the filter.
+  A measure can carry a `label` (`label: Share of fair value` in the YAML, or
+  `add_measure(..., label=...)`): the name people read in the app. Without one
+  the app humanises the identifier; queries still name the measure by it.
   A report can also calculate its own measures: a `measures` block in its
   `report.json`, keyed by model, takes the model's measure keywords. They serve
   that report's bindings only, the model is not changed, and the trace labels

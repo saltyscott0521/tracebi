@@ -1,13 +1,13 @@
 import { Fragment, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { useDesk, useModels, usePipelines, useReports, useRuns } from '../api'
+import { useDesk, useModels, usePipelines, useReports, useRunCounts, useRuns } from '../api'
 import { ago, day, isoTitle } from '../when'
 import { checkedVerdict, verdictOf } from '../verdict'
 import { useModelLabel, useReportModels } from '../components/Scope'
 import { dataPath, historyPath, pipelineModels, reportPagePath } from '../nav'
 import {
-  Btn, Chip, Spinner, Empty, ErrorDetail, Segmented, Verdict, useNarrow,
+  Btn, BtnLink, Chip, Spinner, Empty, ErrorDetail, Segmented, Verdict, useNarrow,
 } from '../components/Shared'
 
 // What a reader can tell apart: four kinds, each the store's kinds it covers
@@ -117,7 +117,7 @@ function byTarget(rows) {
   const index = new Map()
   for (const row of rows) {
     const { kind, target } = row.run
-    const key = target && `${REPORT_KINDS.has(kind) ? 'report' : kind}:${target}`
+    const key = groupKey(kind, target)
     if (key && index.has(key)) index.get(key).older.push(row)
     else {
       const group = { key: key || `#${row.run.id}`, row, older: [] }
@@ -128,22 +128,28 @@ function byTarget(rows) {
   return groups
 }
 
-// "3 older runs", and how many of them failed: a failure is never folded away unsaid.
-function olderWords(older, noun) {
-  const failed = older.filter(r => failedRun(r.run)).length
-  return `${older.length} older ${older.length === 1 ? noun : `${noun}s`}${failed ? ` · ${failed} failed` : ''}`
+// "3 older runs", and how many of them failed: a failure is never folded away
+// unsaid. *count* is what the store holds beside the newest ({runs, failed}
+// from /api/runs/counts), when it holds more than the page loaded.
+function olderWords(older, noun, count) {
+  const n = Math.max(older.length, count?.runs ?? 0)
+  const failed = Math.max(older.filter(r => failedRun(r.run)).length, count?.failed ?? 0)
+  return `${n} older ${n === 1 ? noun : `${noun}s`}${failed ? ` · ${failed} failed` : ''}`
 }
 
 /** The disclosure under a report's or pipeline's newest run. */
-export function Older({ older, open, onToggle, noun = 'run' }) {
+export function Older({ older, open, onToggle, noun = 'run', count }) {
   if (!older.length) return null
   return (
     <button type="button" className="runs-older" aria-expanded={open} onClick={onToggle}>
       <span aria-hidden="true" className="runs-older__caret">{open ? '▾' : '▸'}</span>
-      {olderWords(older, noun)}
+      {olderWords(older, noun, count)}
     </button>
   )
 }
+
+// The key a run is grouped under: a report's builds and schedule runs are one.
+const groupKey = (kind, target) => target && `${REPORT_KINDS.has(kind) ? 'report' : kind}:${target}`
 
 // An empty cell: a dash quieter than any text in the row.
 const Dash = () => <span className="runs__dash" aria-label="none">—</span>
@@ -221,6 +227,7 @@ export default function Runs({ model: only }) {
   }
   const { data, isLoading, error } = useRuns(group ? group[2] : '', target.trim())
   const { data: everything } = useRuns('', '')   // the same request when nothing is filtered
+  const { data: counts } = useRunCounts(group ? group[2] : '')
   const modelsOf = useReportModels()
   const labelOf = useModelLabel()
   const { data: modelList } = useModels()
@@ -275,7 +282,32 @@ export default function Runs({ model: only }) {
   const entries = grouped ? byTarget(rows) : rows.map(row => ({ key: `#${row.run.id}`, row, older: [] }))
   const openOf = e => unfolded.has(e.key)
 
-  const fold = e => e.older.length > 0 && <Older older={e.older} open={openOf(e)} onToggle={() => toggle(e.key)} />
+  // What the store holds per entry, beyond the newest runs this page loaded.
+  const totals = new Map()
+  for (const c of Array.isArray(counts) ? counts : []) {
+    const key = groupKey(c.kind, c.target)
+    const t = totals.get(key) || { runs: 0, failed: 0 }
+    totals.set(key, { runs: t.runs + c.runs, failed: t.failed + c.failed })
+  }
+  // The older runs the store holds for an entry: all of its runs but the newest.
+  const olderCount = e => {
+    const t = totals.get(e.key)
+    if (!t) return undefined
+    return { runs: t.runs - 1, failed: t.failed - (failedRun(e.row.run) ? 1 : 0) }
+  }
+  const fold = e => e.older.length > 0 && (
+    <Older older={e.older} open={openOf(e)} onToggle={() => toggle(e.key)} count={olderCount(e)} />
+  )
+  // Unfolded, an entry whose older runs go back past the page's list says
+  // where the rest are: that target's own list.
+  const more = e => {
+    const n = olderCount(e)?.runs ?? 0
+    if (!openOf(e) || !e.row.run.target || n <= e.older.length) return null
+    return {
+      to: `/runs?target=${encodeURIComponent(e.row.run.target)}`,
+      words: `${n - e.older.length} more in ${nameOf(e.row.run)}\u2019s own list`,
+    }
+  }
 
   const tableRow = (r, older, folded) => {
     const { run } = r
@@ -376,15 +408,19 @@ export default function Runs({ model: only }) {
       </div>}
 
       {isLoading ? (
-        <div style={{ display: 'flex', gap: 8, color: 'var(--muted)', fontSize: 13 }}>
+        <div style={{ display: 'flex', gap: 8, color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>
           <Spinner size={14} /> Loading runs…
         </div>
       ) : error ? (
         <ErrorDetail error={error} />
       ) : runs.length === 0 ? (
-        <Empty message={filtered || model
-          ? 'Nothing that ran matches these filters.'
-          : <>Nothing has run yet. A build from the app, <code>tracebi report build</code>, or a schedule appears here.</>} />
+        filtered || model
+          ? <Empty title="Nothing matches" body="Nothing that ran matches these filters."
+                   action={<Btn size="sm" variant="outline" onClick={() => setSearchParams(new URLSearchParams(), { replace: true })}>Clear the filters</Btn>} />
+          : <Empty title="Nothing has run yet"
+                   body="History lists every report build, data refresh, schedule and publish, newest first. Build a report from its page, or from the command line:"
+                   command="tracebi report build <name>"
+                   action={<BtnLink to="/" size="sm">Open the reports</BtnLink>} />
       ) : narrow ? (
         <div className="runs-cards fade-in">
           {byDay(entries).map(({ day, entries: dayEntries }) => (
@@ -395,6 +431,7 @@ export default function Runs({ model: only }) {
                   <Fragment key={e.key}>
                     {card(e.row, false, fold(e))}
                     {openOf(e) && e.older.map(r => card(r, true))}
+                    {more(e) && <li className="runs-card runs-more"><Link to={more(e).to}>{more(e).words}</Link></li>}
                   </Fragment>
                 ))}
               </ol>
@@ -420,6 +457,11 @@ export default function Runs({ model: only }) {
                 <Fragment key={e.key}>
                   {tableRow(e.row, false, fold(e))}
                   {openOf(e) && e.older.map(r => tableRow(r, true))}
+                  {more(e) && (
+                    <tr className="runs__row--older runs-more">
+                      <td colSpan={6}><Link to={more(e).to}>{more(e).words}</Link></td>
+                    </tr>
+                  )}
                 </Fragment>
               ))}
             </tbody>

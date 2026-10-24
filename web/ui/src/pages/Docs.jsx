@@ -43,11 +43,11 @@ function Reader({ name, byStem, titles, onNavigate }) {
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }) }, [name])
 
   if (isLoading) return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 24, color: 'var(--muted)', fontSize: 13 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 24, color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>
       <Spinner size={14} /> Loading…
     </div>
   )
-  if (error) return <div style={{ padding: 16, color: 'var(--red-text)', fontSize: 13 }}>{error.message}</div>
+  if (error) return <div style={{ padding: 16, color: 'var(--red-text)', fontSize: 'var(--text-caption)' }}>{error.message}</div>
   if (!data) return null
 
   // Wiki links are the vault's connective tissue; rendered as literal
@@ -177,12 +177,12 @@ export default function Docs() {
           <button onClick={() => setNavOpen(o => !o)}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              width: '100%', padding: '10px 13px', borderRadius: 8, cursor: 'pointer',
+              width: '100%', padding: '10px 13px', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
               background: 'var(--card)', border: '1px solid var(--border)',
-              color: 'var(--text)', font: 'inherit', fontSize: 13.5, fontWeight: 600,
+              color: 'var(--text)', font: 'inherit', fontSize: 'var(--text-base)', fontWeight: 600,
             }}>
             Docs menu
-            <span style={{ color: 'var(--muted)', fontSize: 11 }}>
+            <span style={{ color: 'var(--muted)', fontSize: 'var(--text-xs)' }}>
               {navOpen ? '▲' : '▼'}
             </span>
           </button>
@@ -190,7 +190,7 @@ export default function Docs() {
         <nav aria-label="Docs pages" style={narrow ? {
           display: navOpen ? 'block' : 'none',
           background: 'var(--card)', border: '1px solid var(--border)',
-          borderRadius: 8, padding: '8px 8px 12px',
+          borderRadius: 'var(--radius-lg)', padding: '8px 8px 12px',
           maxHeight: '60vh', overflowY: 'auto',
         } : {
           flex: '0 0 232px', position: 'sticky', top: 20,
@@ -206,11 +206,11 @@ export default function Docs() {
             return (
               <div key={s.key} style={{ marginTop: 18 }}>
                 <div style={{
-                  fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
+                  fontSize: 'var(--text-xs)', fontWeight: 700, letterSpacing: '.06em',
                   textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2,
                 }}>{s.title}</div>
                 {s.blurb && (
-                  <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 7 }}>
+                  <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: 7 }}>
                     {s.blurb}
                   </div>
                 )}
@@ -229,17 +229,17 @@ export default function Docs() {
           // Prose reads badly at full width; cap the measure the way the
           // rendered artifacts do, and keep the column left-aligned.
           flex: 1, minWidth: 0, maxWidth: '76ch', background: 'var(--card)',
-          border: '1px solid var(--border)', borderRadius: 10,
+          border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
           padding: narrow ? '16px 15px 22px' : '22px 30px',
           overflowWrap: 'anywhere',
         }}>
           {!sections.length && !home
-            ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>No <code>docs/</code> directory found next to this project.</div>
+            ? <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>No <code>docs/</code> directory found next to this project.</div>
             : !known
-              ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>There is no page at this address. Pick one from the list.</div>
+              ? <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>There is no page at this address. Pick one from the list.</div>
               : current
                 ? <Reader name={current} byStem={byStem} titles={titles} onNavigate={open} />
-                : <div style={{ color: 'var(--muted)', fontSize: 13 }}>Pick a page.</div>}
+                : <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>Pick a page.</div>}
         </div>
       </div>
     </>
@@ -249,9 +249,9 @@ export default function Docs() {
 function navItemStyle(isActive) {
   return {
     display: 'block', width: '100%', textAlign: 'left', textDecoration: 'none', boxSizing: 'border-box',
-    padding: '5px 9px', marginBottom: 1, borderRadius: 6,
+    padding: '5px 9px', marginBottom: 1, borderRadius: 'var(--radius)',
     border: '1px solid transparent', cursor: 'pointer',
-    fontFamily: 'inherit', fontSize: 12.5, lineHeight: 1.35,
+    fontFamily: 'inherit', fontSize: 'var(--text-caption)', lineHeight: 1.35,
     background: isActive ? 'var(--ink)' : 'transparent',
     color: isActive ? 'var(--on-ink)' : 'var(--text)',
     whiteSpace: 'normal',

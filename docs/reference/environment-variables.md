@@ -36,6 +36,7 @@ equivalent where it matters.
 | `TRACEBI_SECRET_KEY` | The Fernet key that encrypts the project's credential store (`.tracebi/secrets.yml.enc`, [[credentials]]). Unset, the server generates `.tracebi/secret.key` on the first write. Several workers or replicas must share one, as they share `TRACEBI_STATE_URL`. |
 | `TRACEBI_STATE_URL` | The shared run store. Default `sqlite:///data/tracebi.db` beside the working directory. Point every worker at the same Postgres URL so polls, last builds, and schedule ticks share one database. |
 | `TRACEBI_SCHEDULES_IN_SERVER` | `1` runs each report package's `schedule` block inside the web server (the same job as `tracebi schedule serve`). Off by default. On Postgres a tick takes one advisory lock per report. On SQLite the lock is a no-op, so several workers would each send the email. |
+| `TRACEBI_COVERS` | `0` takes no cover at build ([[report]]): no Chromium launch per build, and the library draws every cover. On by default where Playwright and Chromium are installed. |
 | `TRACEBI_DEBUG` | `run-transform` re-raises a `ContractViolation` with the full traceback instead of the clean message |
 
 > **`TRACEBI_DEV_MODE` is security-relevant.** Without it, API error responses

@@ -41,16 +41,16 @@ export function LineageNode({ data, selected }) {
       background: op.bg,
       border: `1px solid ${selected ? 'var(--blue)' : op.br}`,
       boxShadow: selected ? '0 0 0 2px var(--focus-ring)' : 'none',
-      borderRadius: 8, padding: '10px 14px', minWidth: 180, color: 'var(--text)', fontSize: 12,
+      borderRadius: 'var(--radius-lg)', padding: '10px 14px', minWidth: 180, color: 'var(--text)', fontSize: 'var(--text-sm)',
       cursor: 'pointer', transition: 'box-shadow .15s ease, border-color .15s ease',
     }}>
       <Handle type="target" position={Position.Left} style={{ background: op.br }} />
-      <div style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: 10, color: op.tx, marginBottom: 4, letterSpacing: .5 }}>
+      <div style={{ fontWeight: 700, textTransform: 'uppercase', fontSize: 'var(--text-eyebrow)', color: op.tx, marginBottom: 4, letterSpacing: .5 }}>
         {data.operation}
       </div>
       <div style={{ lineHeight: 1.4, color: 'var(--text-2)' }}>{data.description}</div>
       {rows && (
-        <div style={{ marginTop: 6, fontSize: 10, color: 'var(--muted)' }}>
+        <div style={{ marginTop: 6, fontSize: 'var(--text-eyebrow)', color: 'var(--muted)' }}>
           {rows}
         </div>
       )}
@@ -83,10 +83,10 @@ const HIDDEN_META_KEYS = new Set(['right_chain_len'])
 function MetaRow({ k, v }) {
   return (
     <div style={{ display: 'flex', gap: 10, padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
-      <span style={{ fontSize: 11, color: 'var(--muted)', minWidth: 92, textTransform: 'capitalize' }}>
+      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', minWidth: 92, textTransform: 'capitalize' }}>
         {k.replaceAll('_', ' ')}
       </span>
-      <span style={{ fontSize: 11.5, color: 'var(--text-2)', wordBreak: 'break-word', fontFamily: 'var(--font-mono)' }}>
+      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-2)', wordBreak: 'break-word', fontFamily: 'var(--font-mono)' }}>
         {fmtMetaValue(k, v)}
       </span>
     </div>
@@ -101,21 +101,21 @@ function NodeInspector({ data, onClose }) {
     <div className="fade-in" style={{
       position: 'absolute', top: 10, right: 10, bottom: 10, width: 250, zIndex: 5,
       background: 'var(--surface)',
-      border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px',
+      border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '14px 16px',
       overflowY: 'auto', boxShadow: 'var(--shadow)',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
         <span style={{
-          fontSize: 10, fontWeight: 600,
-          padding: '2px 8px', borderRadius: 20,
+          fontSize: 'var(--text-eyebrow)', fontWeight: 600,
+          padding: '2px 8px', borderRadius: '999px',
           background: op.bg, color: op.tx, border: `1px solid ${op.br}`,
         }}>{data.operation}</span>
         <button onClick={onClose} style={{
           marginLeft: 'auto', background: 'none', border: 'none',
-          color: 'var(--muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1,
+          color: 'var(--muted)', cursor: 'pointer', fontSize: 'var(--text-lg)', lineHeight: 1,
         }}>×</button>
       </div>
-      <p style={{ fontSize: 12.5, color: 'var(--text)', lineHeight: 1.5, marginBottom: 10 }}>
+      <p style={{ fontSize: 'var(--text-caption)', color: 'var(--text)', lineHeight: 1.5, marginBottom: 10 }}>
         {data.description}
       </p>
       {data.connector && Object.entries(data.connector).map(([k, v]) => <MetaRow key={k} k={k} v={v} />)}
@@ -141,10 +141,10 @@ export function LineageGraph({ graph, height = 340 }) {
   )
 
   if (!graph?.nodes?.length) return (
-    <div style={{ padding: 24, color: 'var(--muted)', fontSize: 13 }}>No lineage data available.</div>
+    <div style={{ padding: 24, color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>No lineage data available.</div>
   )
   return (
-    <div style={{ height, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', background: 'var(--flow-bg)' }}>
+    <div style={{ height, borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative', background: 'var(--flow-bg)' }}>
       <ReactFlow
         edgesFocusable={false}
         nodes={graph.nodes}
@@ -172,14 +172,14 @@ export function LineageGraph({ graph, height = 340 }) {
         {graph.nodes.length > 4 && (
           <MiniMap
             nodeColor="#cbd9ea"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, width: 140, height: 90 }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', width: 140, height: 90 }}
             maskColor="rgba(228,233,240,.6)"
           />
         )}
       </ReactFlow>
       <NodeInspector data={inspected} onClose={() => setInspected(null)} />
       <div style={{
-        position: 'absolute', left: 52, bottom: 12, fontSize: 10.5,
+        position: 'absolute', left: 52, bottom: 12, fontSize: 'var(--text-eyebrow)',
         color: 'var(--muted)', pointerEvents: 'none',
       }}>click a step to inspect</div>
     </div>

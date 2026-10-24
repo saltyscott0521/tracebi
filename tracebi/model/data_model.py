@@ -369,6 +369,7 @@ class MeasureDef:
     offset: Optional[tuple[str, str, int]] = None  # (base, unit, n): prior value
     growth: Optional[tuple[str, str, int]] = None  # (base, unit, n): (cur-prior)/prior
     to_date: Optional[tuple[str, str]] = None      # (base, period): YTD/QTD/MTD
+    label: Optional[str] = None                # the name people read ("Share of fair value")
     description: str = ""
     format: Optional[str] = None               # presentation hint, e.g. "percent"
     allow_rate_agg: bool = False               # author vouched: skip the value guard
@@ -377,7 +378,7 @@ class MeasureDef:
 
     def to_dict(self) -> dict:
         d = {"name": self.name, "kind": self.kind}
-        for key in ("agg", "column", "expr", "description", "format"):
+        for key in ("agg", "column", "expr", "label", "description", "format"):
             val = getattr(self, key)
             if val:
                 d[key] = val
@@ -1060,6 +1061,7 @@ class DataModel:
         offset: Optional[tuple[str, str, int]] = None,
         growth: Optional[tuple[str, str, int]] = None,
         to_date: Optional[tuple[str, str]] = None,
+        label: Optional[str] = None,
         description: str = "",
         format: Optional[str] = None,
         allow_rate_agg: bool = False,
@@ -1122,14 +1124,18 @@ class DataModel:
         ``tracebi verify``. Other measures are unaffected. A ratio or other
         derived measure filters through the base measures it names.
 
+        ``label`` is the name people read for the measure in the app ("Share
+        of fair value" for ``fv_share``); without one the app humanises the
+        name. It is presentation only: queries and bindings use the name.
+
         Everything here is declarative data — callables are rejected, since
         a lambda cannot be serialized, diffed, reviewed, or validated
         before it runs.
         """
-        for label, value in (("column", column), ("expr", expr), ("agg", agg)):
+        for keyword, value in (("column", column), ("expr", expr), ("agg", agg)):
             if callable(value):
                 raise TypeError(
-                    f"Measure '{name}': {label} must be declarative data, not a "
+                    f"Measure '{name}': {keyword} must be declarative data, not a "
                     f"callable. A function cannot be serialized, diffed, or "
                     f"validated before execution. Use expr='a - b' instead of "
                     f"a lambda."
@@ -1381,6 +1387,7 @@ class DataModel:
             offset=tuple(offset) if offset else None,
             growth=tuple(growth) if growth else None,
             to_date=tuple(to_date) if to_date else None,
+            label=label.strip() if isinstance(label, str) and label.strip() else None,
             description=description, format=format,
             allow_rate_agg=bool(allow_rate_agg), filters=filters,
             measure_expr=measure_expr,

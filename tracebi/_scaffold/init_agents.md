@@ -231,6 +231,9 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   'purchase'})` (YAML: `filters:` on the measure). It restricts only that
   measure, so a query's own filters still narrow every measure; the trace
   stamps the filter, and `verify` re-runs it.
+- A measure can carry a `label` (YAML: `label: Total revenue` on the measure):
+  the name people read in the app. Without one the app humanises the
+  identifier; queries and bindings still name the measure by it.
 - A report can calculate its own measures: a `"measures"` block in its
   `report.json`, keyed by model (`{"sample_model": {"big_minus_small":
   {"measure_expr": "big_orders - small_orders"}}}`), takes the model's measure
@@ -330,8 +333,9 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `report.json` `"look"` and the sidebar and title are its own components. Looks never
   change a number. A report may name a shipped theme in `report.json` `"theme"`
   (`tracebi theme list`; each is an accent preset for both grounds, never a mode);
-  a report's own `style.css` is that at most — the accent pairs and one display face for
-  the masthead `<h1>` and the lead number, no gradient, hatch, glow or resting shadow;
+  a report's own `style.css` is that at most — tokens only: the accent pairs and one
+  display face as `--tb-font-display` (the masthead `<h1>` and the lead number), no
+  gradient, hatch, glow or resting shadow;
   `tracebi theme use <name>` makes one everyone's default (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
   returns it as `house_style` — follow its Rules over the defaults. Read
   `tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an app).

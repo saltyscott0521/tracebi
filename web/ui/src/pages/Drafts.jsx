@@ -9,7 +9,7 @@ import {
 } from '../api'
 import { reportPagePath } from '../nav'
 import {
-  PageTitle, PageSub, Card, Btn, Chip, Spinner, Alert, ErrorDetail,
+  PageTitle, PageSub, Card, Btn, BtnLink, Chip, Empty, Spinner, Alert, ErrorDetail,
   ReportFrame, Segmented, SkeletonList, Time, Verdict, useToast,
 } from '../components/Shared'
 import { CodeFiles } from '../components/CodeView'
@@ -68,11 +68,10 @@ export default function DraftList() {
       {error && <ErrorDetail error={error} />}
       {isLoading && <SkeletonList rows={2} />}
       {data && list.length === 0 && (
-        <div className="review__empty">
-          <p>
-            No drafts. A draft is a report or model being written before it is published; start one
-            from a report&rsquo;s page (Edit as a draft) or ask your agent.
-          </p>
+        <>
+          <Empty title="No drafts"
+                 body="A draft is a report or model being written before it is published. Start one from a report's page with Edit as a draft, or keep an answer from Ask."
+                 action={<BtnLink to="/" size="sm">Open the reports</BtnLink>} />
           <details className="review__agent">
             <summary>For your agent</summary>
             <p>
@@ -82,7 +81,7 @@ export default function DraftList() {
               request for an admin to review.
             </p>
           </details>
-        </div>
+        </>
       )}
       {list.length > 0 && (
         <ul aria-label="Drafts" className="dlist">
@@ -143,14 +142,14 @@ export function RequestDecision({ request: r }) {
         </div>
       ) : (
         <div>
-          <label htmlFor={`decline-${r.id}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+          <label htmlFor={`decline-${r.id}`} style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 4 }}>
             Reason (the person who asked will see it)
           </label>
           <input id={`decline-${r.id}`} value={reason} onChange={e => setReason(e.target.value)}
             style={{
               width: '100%', maxWidth: 480, padding: '8px 10px', marginBottom: 8,
               border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
-              background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+              background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--text-caption)', fontFamily: 'inherit',
             }} />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Btn size="sm" variant="red" onClick={() => run(false)} disabled={decide.isPending || !reason.trim()}>
@@ -219,7 +218,7 @@ function SettledRequests() {
 
 function Diff({ text }) {
   return (
-    <pre style={{ margin: 0, padding: '8px 10px', overflowX: 'auto', fontSize: 12, lineHeight: 1.45,
+    <pre style={{ margin: 0, padding: '8px 10px', overflowX: 'auto', fontSize: 'var(--text-sm)', lineHeight: 1.45,
                   background: 'var(--surface-2)', borderRadius: 'var(--radius-sm)' }}>
       {text.split('\n').map((line, i) => (
         <div key={i} style={{
@@ -251,14 +250,14 @@ export function CodeReview({ id }) {
     <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
       {req.files.map(f => (
         <div key={f.path}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+          <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 4 }}>
             {f.path} {f.new && <Chip>New file</Chip>}
           </div>
           <Diff text={f.diff || '(no change)'} />
         </div>
       ))}
       {(req.runs || []).length > 0 && (
-        <div style={{ fontSize: 12 }}>
+        <div style={{ fontSize: 'var(--text-sm)' }}>
           Runs after approval:{' '}
           {req.runs.map(run => (
             <span key={run.pipeline} style={{ marginRight: 10 }}>
@@ -277,18 +276,18 @@ export function CodeReview({ id }) {
         </div>
       )}
       {req.status === 'pending' && !req.can_decide && (
-        <div style={{ fontSize: 12, color: 'var(--muted)' }}>An admin will review it.</div>
+        <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>An admin will review it.</div>
       )}
       {declining && (
         <div>
-          <label htmlFor={`code-decline-${id}`} style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+          <label htmlFor={`code-decline-${id}`} style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 4 }}>
             Reason (the person who asked will see it)
           </label>
           <input id={`code-decline-${id}`} value={reason} onChange={e => setReason(e.target.value)}
             style={{
               width: '100%', maxWidth: 480, padding: '8px 10px', marginBottom: 8,
               border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
-              background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+              background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--text-caption)', fontFamily: 'inherit',
             }} />
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Btn size="sm" variant="red" onClick={() => act(false)} disabled={decide.isPending || !reason.trim()}>
@@ -404,14 +403,14 @@ export function DraftPage() {
 
       {step === 'publish' && (
         <Card style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 10 }}>
+          <p style={{ fontSize: 'var(--text-caption)', lineHeight: 1.6, marginBottom: 10 }}>
             {chosen?.personal
               ? 'Publishing puts this report in My published: only you, and anyone you share the folder with, see it. The version it replaces is kept.'
               : `Publishing replaces the ${kindLabel(kind).toLowerCase()} everyone who can see it sees with this draft. The version it replaces is kept.`}
           </p>
           {isReport && places && (
             <div style={{ marginBottom: 12 }}>
-              <label htmlFor="draft-dest" style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+              <label htmlFor="draft-dest" style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 4 }}>
                 Publish to
               </label>
               <select id="draft-dest" value={chosen ? (chosen.folder || '') : ''}
@@ -419,7 +418,7 @@ export function DraftPage() {
                 style={{
                   minHeight: 36, maxWidth: '100%', padding: '6px 10px',
                   border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
-                  background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+                  background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--text-caption)', fontFamily: 'inherit',
                 }}>
                 {usable.map(p => (
                   <option key={p.folder || ''} value={p.folder || ''}>
@@ -428,7 +427,7 @@ export function DraftPage() {
                 ))}
               </select>
               {chosen && (
-                <p role="status" style={{ fontSize: 12, color: 'var(--muted)', margin: '6px 0 0' }}>
+                <p role="status" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', margin: '6px 0 0' }}>
                   {modeSentence[chosen.mode]} It will be {chosen.destination}.
                   {chosen.accepts === 'checkable' && ' This folder accepts only reports whose every number a query can re-run.'}
                 </p>
@@ -443,7 +442,7 @@ export function DraftPage() {
               △ A file has unsaved changes. Publishing uses what is saved in the draft.
             </Alert>
           )}
-          <label htmlFor="draft-note" style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+          <label htmlFor="draft-note" style={{ display: 'block', fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 4 }}>
             Note (optional)
           </label>
           <input id="draft-note" value={note} onChange={e => setNote(e.target.value)}
@@ -451,10 +450,10 @@ export function DraftPage() {
             style={{
               width: '100%', maxWidth: 480, padding: '8px 10px', marginBottom: 12,
               border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)',
-              background: 'var(--surface)', color: 'var(--text)', fontSize: 13, fontFamily: 'inherit',
+              background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--text-caption)', fontFamily: 'inherit',
             }} />
           {needsAccept && (
-            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, lineHeight: 1.5, marginBottom: 12 }}>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 'var(--text-caption)', lineHeight: 1.5, marginBottom: 12 }}>
               <input type="checkbox" checked={accept} onChange={e => setAccept(e.target.checked)}
                 style={{ marginTop: 3 }} />
               <span>
@@ -475,7 +474,7 @@ export function DraftPage() {
       )}
       {step === 'delete' && (
         <Card style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
+          <p style={{ fontSize: 'var(--text-caption)', lineHeight: 1.6, marginBottom: 12 }}>
             Delete this draft? Anything published stays as it is.
           </p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -516,7 +515,7 @@ export function DraftPage() {
       {/* Hidden, not unmounted, off its tab: an open editor keeps its text. */}
       <div hidden={tab !== 'Files'}>
         {!isReport && (
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
+          <p style={{ fontSize: 'var(--text-caption)', color: 'var(--muted)', marginBottom: 12 }}>
             A model draft has no page. It is the file below, and it becomes a model when published.
           </p>
         )}
@@ -543,13 +542,13 @@ function ModelImpact({ impact, error }) {
   if (!impact) return null
   return (
     <Card style={{ marginBottom: 16 }}>
-      <h2 style={{ fontSize: 14, margin: '0 0 6px' }}>Impact on published reports</h2>
+      <h2 style={{ fontSize: 'var(--text-base)', margin: '0 0 6px' }}>Impact on published reports</h2>
       {impact.reports.length === 0 && (
-        <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0 }}>No published report reads this model.</p>
+        <p style={{ fontSize: 'var(--text-caption)', color: 'var(--muted)', margin: 0 }}>No published report reads this model.</p>
       )}
       <ul aria-label="Reports this model draft touches" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 }}>
         {impact.reports.map(r => (
-          <li key={r.report} style={{ fontSize: 13, lineHeight: 1.5 }}>
+          <li key={r.report} style={{ fontSize: 'var(--text-caption)', lineHeight: 1.5 }}>
             <span style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{r.report}</span>{' '}
             <Chip tone={IMPACT_TONE[r.status]}>{IMPACT_LABEL[r.status]}</Chip>
             {(r.status === 'not_built' || r.status === 'not_checkable') && (
@@ -671,7 +670,7 @@ function DraftFiles({ texts, stale, edits, setEdits, write, canEdit }) {
             <Btn variant="outline" onClick={begin} style={target}>Edit</Btn>
           )}
           <span role="status" style={{
-            fontSize: 12, color: dirty ? 'var(--amber-text)' : 'var(--muted)', fontWeight: dirty ? 600 : 400,
+            fontSize: 'var(--text-sm)', color: dirty ? 'var(--amber-text)' : 'var(--muted)', fontWeight: dirty ? 600 : 400,
           }}>
             {dirty ? '△ Unsaved changes' : edit?.saved ? 'Saved' : ''}
           </span>
@@ -698,11 +697,11 @@ function DraftFiles({ texts, stale, edits, setEdits, write, canEdit }) {
             onKeyDown={onKeyDown} onBlur={() => { leave.current = false }}
             style={{
               ...mono, display: 'block', width: '100%', boxSizing: 'border-box', padding: '12px 14px',
-              fontSize: 13, lineHeight: 1.6, tabSize: 2, whiteSpace: 'pre', overflow: 'auto', resize: 'vertical',
+              fontSize: 'var(--text-caption)', lineHeight: 1.6, tabSize: 2, whiteSpace: 'pre', overflow: 'auto', resize: 'vertical',
               color: 'var(--text)', background: 'var(--surface)',
               border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-lg)',
             }} />
-          <p id="draft-editor-hint" style={{ fontSize: 12, color: 'var(--muted)', margin: '6px 0 0' }}>
+          <p id="draft-editor-hint" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', margin: '6px 0 0' }}>
             Tab inserts two spaces; Esc, then Tab, leaves the editor. Cmd or Ctrl+S saves.
           </p>
         </>

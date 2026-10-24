@@ -50,8 +50,8 @@ function FileChip({ file, kind }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 11px',
-      borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface-2)',
-      fontSize: 12.5, fontFamily: 'var(--font-mono)',
+      borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--surface-2)',
+      fontSize: 'var(--text-caption)', fontFamily: 'var(--font-mono)',
     }}>
       <span style={{ color: 'var(--accent-text)', fontWeight: 600 }}>{kind}</span>
       {file.name}
@@ -70,7 +70,7 @@ function Result({ result }) {
         borderBottom: '1px solid var(--border)', background: tone.wash,
       }}>
         <div className={v.tone === 'bad' ? 'verdict-stamp verdict-shake' : 'verdict-stamp'} style={{
-          width: 40, height: 40, borderRadius: 9, flex: 'none',
+          width: 40, height: 40, borderRadius: 'var(--radius-lg)', flex: 'none',
           border: `2px solid ${tone.color}`, color: tone.color,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
@@ -82,10 +82,10 @@ function Result({ result }) {
         </div>
         <div>
           <div style={{
-            fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 18,
+            fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 'var(--text-lg)',
             color: tone.color, letterSpacing: '.02em',
           }}>{v.label}</div>
-          <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 3 }}>{v.line}</div>
+          <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)', marginTop: 3 }}>{v.line}</div>
         </div>
       </div>
 
@@ -97,14 +97,14 @@ function Result({ result }) {
               <div key={f.figure || i} style={{
                 display: 'flex', alignItems: 'baseline', gap: 11, padding: '9px 0',
                 borderBottom: i < figures.length - 1 ? '1px solid var(--border)' : 'none',
-                fontSize: 13.5,
+                fontSize: 'var(--text-base)',
               }}>
                 <span style={{
                   fontFamily: 'var(--font-mono)', fontWeight: 600,
                   color: ok ? 'var(--accent-text)' : 'var(--red-text)',
                 }}>{ok ? '✓' : '✗'}</span>
                 <span style={{ fontFamily: 'var(--font-mono)' }}>{f.figure}</span>
-                <span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 12 }}>{f.detail}</span>
+                <span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>{f.detail}</span>
               </div>
             )
           })}
@@ -113,7 +113,7 @@ function Result({ result }) {
 
       <div style={{
         padding: '13px 22px', borderTop: '1px solid var(--border)',
-        color: 'var(--muted)', fontSize: 12.5, fontFamily: 'var(--font-mono)',
+        color: 'var(--muted)', fontSize: 'var(--text-caption)', fontFamily: 'var(--font-mono)',
       }}>{result.verdict_detail}</div>
     </Card>
   )
@@ -170,14 +170,14 @@ function VerifyZone() {
         aria-label="Choose a report and its manifest"
         style={{
           border: `2px dashed ${dragging ? 'var(--accent-text)' : 'var(--border-hl)'}`,
-          borderRadius: 14, background: dragging ? 'var(--blue-lt)' : 'var(--card)',
+          borderRadius: 'var(--radius-lg)', background: dragging ? 'var(--blue-lt)' : 'var(--card)',
           padding: '38px 24px', textAlign: 'center', cursor: 'pointer',
           transition: 'border-color .15s, background .15s, padding .15s', maxWidth: 640,
         }}
       >
         <PairArt />
-        <div style={{ fontWeight: 600, fontSize: 16 }}>Drop a report and its manifest</div>
-        <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>
+        <div style={{ fontWeight: 600, fontSize: 'var(--text-lg)' }}>Drop a report and its manifest</div>
+        <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)', marginTop: 6 }}>
           or <span style={{ color: 'var(--accent-text)', textDecoration: 'underline' }}>choose files</span> —
           the <code>.html</code> and its <code>.manifest.json</code>
         </div>
@@ -188,8 +188,8 @@ function VerifyZone() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14, alignItems: 'center' }}>
           {files.html && <FileChip file={files.html} kind="html" />}
           {files.manifest && <FileChip file={files.manifest} kind="manifest" />}
-          {!files.html && <span style={{ color: 'var(--amber-text)', fontSize: 12.5 }}>add the report <code>.html</code></span>}
-          {!files.manifest && <span style={{ color: 'var(--amber-text)', fontSize: 12.5 }}>add its <code>.manifest.json</code></span>}
+          {!files.html && <span style={{ color: 'var(--amber-text)', fontSize: 'var(--text-caption)' }}>add the report <code>.html</code></span>}
+          {!files.manifest && <span style={{ color: 'var(--amber-text)', fontSize: 'var(--text-caption)' }}>add its <code>.manifest.json</code></span>}
           <Btn onClick={runVerify} disabled={!ready || isPending} style={{ marginLeft: 'auto' }}>
             {isPending ? <><Spinner size={13} /> Verifying…</> : '✓ Verify offline'}
           </Btn>

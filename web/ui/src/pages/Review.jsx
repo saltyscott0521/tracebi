@@ -4,7 +4,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useCodeRequests, useDesk, usePipelines, usePublishRequests, useReports, useRuns } from '../api'
 import { BuildAll, attentionItems } from '../components/Attention'
 import { PageHeader, useReportModels } from '../components/Scope'
-import { Chip, Spinner, Time, Verdict } from '../components/Shared'
+import { BtnLink, Chip, Empty, Spinner, Time, Verdict } from '../components/Shared'
 import { REVIEW_TABS, whereAmI } from '../nav'
 import DraftList, { CodeReview, RequestDecision } from './Drafts'
 
@@ -55,7 +55,9 @@ export default function Review() {
         {items.length > 0 ? <Attention items={items} /> : deskLoading ? (
           <p className="review__quiet"><Spinner size={13} /> Checking the builds…</p>
         ) : (
-          <p className="review__quiet">Nothing needs attention.</p>
+          <Empty title="Nothing needs attention"
+                 body="A failed build or refresh, a report whose numbers no longer reproduce, and a request waiting on you would be listed here."
+                 action={<BtnLink to="/runs" size="sm">See what ran</BtnLink>} />
         )}
         {items.length > 0 && deskLoading && <p className="review__quiet"><Spinner size={13} /> Checking the builds…</p>}
       </section>

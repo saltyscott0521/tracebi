@@ -209,6 +209,7 @@ tables:
 #   - name: revenue
 #     column: revenue
 #     agg: sum
+#     label: Revenue                # the name people read; else the name, humanised
 #     description: Total revenue
 #     format: currency0
 """
@@ -3267,21 +3268,38 @@ def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
     return 0
 
 
+# Whether this process has said why a build took no cover. Building every
+# report of a project would otherwise repeat the same line for each one.
+_cover_note_said = False
+
+
+def _say_cover_skipped(why: Optional[str]) -> None:
+    """One line, once per process, when a build took no cover and why."""
+    global _cover_note_said
+    if not why or _cover_note_said:
+        return
+    _cover_note_said = True
+    print(f"  · no cover: {why}; the library draws one instead.")
+
+
 def _build_report_target(kind: str, path: Path, output: Path,
                          theme: Optional[str] = None,
                          badges: bool = False,
                          report_name: Optional[str] = None,
-                         filters: Optional[dict] = None) -> Path:
+                         filters: Optional[dict] = None,
+                         say_cover: bool = False) -> Path:
     """Render one report target to *output* (+ a sibling manifest). Returns output.
 
     *filters*, when set, is applied at build the same way a selection filter
     is: conjoined onto every binding whose model has that dimension.
+    *say_cover* prints why no cover was taken (`tracebi report build`; a
+    schedule's build stays quiet).
     """
     output.parent.mkdir(parents=True, exist_ok=True)
     models = _load_project_models()
     if kind == "package":
         from tracebi.reports.template_package import TemplatePackage
-        TemplatePackage(str(path)).render(
+        manifest = TemplatePackage(str(path)).render(
             models, str(output), badges=badges, filters=filters)
     else:
         # A bare .json spec compiles to the artifact package, then renders like
@@ -3300,13 +3318,16 @@ def _build_report_target(kind: str, path: Path, output: Path,
         with tempfile.TemporaryDirectory() as d:
             for fname, content in compiled.files.items():
                 (Path(d) / fname).write_text(content, encoding="utf-8")
-            TemplatePackage(d).render(
+            manifest = TemplatePackage(d).render(
                 models, str(output), badges=badges, filters=filters)
+    if say_cover:
+        _say_cover_skipped(manifest.cover_skipped)
     target = report_name or (path.stem if kind == "spec" else path.name)
     from tracebi.state import try_record_report_build
     note = try_record_report_build(
         target, str(output),
         manifest_path=str(output) + ".manifest.json",
+        cover=manifest.cover,
     )
     if note:
         print(f"report build was not recorded: {note}", file=sys.stderr)
@@ -3451,7 +3472,7 @@ def cmd_report(args: argparse.Namespace) -> int:
         _build_report_target(kind, path, output,
                              theme=getattr(args, 'theme', None),
                              badges=getattr(args, 'badges', False),
-                             report_name=args.name)
+                             report_name=args.name, say_cover=True)
     except Exception as exc:  # noqa: BLE001 — a build failure is the user's to fix
         print(f"failed to build report '{args.name}': "
               f"{type(exc).__name__}: {exc}", file=sys.stderr)

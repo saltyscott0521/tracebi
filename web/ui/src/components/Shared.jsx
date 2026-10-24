@@ -37,14 +37,14 @@ function ToastContainer({ toasts, remove }) {
             background: 'var(--surface)',
             border: `1px solid ${isErr ? 'var(--red-br)' : 'var(--border-strong)'}`,
             borderRadius: 'var(--radius-lg)', padding: '12px 14px',
-            fontSize: 13, lineHeight: 1.5,
+            fontSize: 'var(--text-caption)', lineHeight: 1.5,
             color: isErr ? 'var(--red-text)' : 'var(--text)',
             boxShadow: 'var(--shadow-pop)',
             display: 'flex', alignItems: 'center', gap: 10,
             minWidth: 260, maxWidth: 380,
           }}>
             <span style={{
-              fontSize: 15, flexShrink: 0,
+              fontSize: 'var(--text-base)', flexShrink: 0,
               color: isErr ? 'var(--red)' : isOk ? 'var(--text-2)' : 'var(--blue)',
             }}>
               {isErr ? '✕' : isOk ? '✓' : 'ℹ'}
@@ -52,7 +52,7 @@ function ToastContainer({ toasts, remove }) {
             <span style={{ flex: 1 }}>{t.message}</span>
             <button onClick={() => remove(t.id)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--muted)', fontSize: 17, lineHeight: 1, padding: '0 2px', flexShrink: 0,
+              color: 'var(--muted)', fontSize: 'var(--text-lg)', lineHeight: 1, padding: '0 2px', flexShrink: 0,
             }}>×</button>
           </div>
         )
@@ -102,7 +102,7 @@ export function SkeletonCard() {
   return (
     <div style={{
       background: 'var(--card)', border: '1px solid var(--border)',
-      borderRadius: 'var(--radius)', padding: '20px 24px', marginBottom: 20,
+      borderRadius: 'var(--radius-lg)', padding: '20px 24px', marginBottom: 20,
     }}>
       <Skeleton width="45%" height={17} radius={5} style={{ marginBottom: 18 }} />
       <Skeleton height={13} style={{ marginBottom: 9 }} />
@@ -143,7 +143,7 @@ export function Card({ children, style, hover, accent, className }) {
       style={{
         background: 'var(--card)',
         border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)',
+        borderRadius: 'var(--radius-lg)',
         padding: '20px 24px',
         marginBottom: 20,
         ...style,
@@ -223,8 +223,8 @@ const BADGE_STYLES = {
 export function Badge({ variant = 'gray', children, style, title }) {
   return (
     <span title={title} style={{
-      display: 'inline-block', padding: '2px 8px', borderRadius: 4,
-      fontSize: 11, fontWeight: 600,
+      display: 'inline-block', padding: '2px 8px', borderRadius: 'var(--radius-sm)',
+      fontSize: 'var(--text-xs)', fontWeight: 600,
       ...BADGE_STYLES[variant],
       ...style,
     }}>{children}</span>
@@ -269,15 +269,42 @@ export function Spinner({ size = 18 }) {
 }
 
 /**
- * The one empty state: a sentence saying what would fill this and how (the
- * command, the folder), and an optional *action* under it. No glyph: the
- * sentence is the state. Inside a surface it is plain text (global.css).
+ * A command to run, in a block with a Copy button: the one way the app hands a
+ * person a command line. The text is selectable either way; Copy says Copied.
  */
-export function Empty({ message, action }) {
+export function CopyCommand({ children }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(String(children))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch { /* no clipboard (an insecure origin): the text is still selectable */ }
+  }
   return (
-    <div className="empty" style={{ textAlign: 'center', padding: '60px 24px', color: 'var(--muted)' }}>
-      <p style={{ fontSize: 13, lineHeight: 1.65, maxWidth: 300, margin: '0 auto' }}>{message}</p>
-      {action && <div style={{ marginTop: 16 }}>{action}</div>}
+    <div className="copycmd">
+      <code className="copycmd__text">{children}</code>
+      <button type="button" className="copycmd__btn" onClick={copy} aria-label={`Copy: ${children}`}>
+        {copied ? 'Copied' : 'Copy'}
+      </button>
+    </div>
+  )
+}
+
+/**
+ * The one empty state. *title* names what is empty; *body* says what the
+ * thing is and why it is empty (*message* is the older name for it); then the
+ * one thing that fills it: an *action* (a button or link), or a *command* to
+ * run, shown with Copy. No glyph: the words are the state. Inside a surface it
+ * is plain text (global.css).
+ */
+export function Empty({ title, body, message, command, action }) {
+  return (
+    <div className="empty">
+      {title && <p className="empty__title">{title}</p>}
+      {(body ?? message) && <p className="empty__body">{body ?? message}</p>}
+      {command && <CopyCommand>{command}</CopyCommand>}
+      {action && <div className="empty__action">{action}</div>}
     </div>
   )
 }
@@ -324,7 +351,7 @@ export function ReportFrame({ html, title, frameRef }) {
       scrolling="no"
       style={{
         width: '100%', height, display: 'block',
-        border: 'none', borderRadius: 6, background: '#fff',
+        border: 'none', borderRadius: 'var(--radius)', background: '#fff',
       }}
     />
   )
@@ -337,7 +364,7 @@ export function Alert({ variant = 'info', children }) {
     ? { background: 'var(--amber-lt)', color: 'var(--amber-text)', borderLeft: '3px solid var(--amber)' }
     : { background: 'var(--blue-lt)', color: 'var(--accent-text)', borderLeft: '3px solid var(--blue)' }
   return (
-    <div style={{ borderRadius: 8, padding: '11px 16px', fontSize: 13, marginBottom: 16, lineHeight: 1.5, ...s }}>
+    <div style={{ borderRadius: 'var(--radius-lg)', padding: '11px 16px', fontSize: 'var(--text-caption)', marginBottom: 16, lineHeight: 1.5, ...s }}>
       {children}
     </div>
   )
@@ -353,13 +380,13 @@ export function ErrorDetail({ error }) {
       <div>{error.message}</div>
       {tb && (
         <details style={{ marginTop: 8 }}>
-          <summary style={{ cursor: 'pointer', fontSize: 12, opacity: .8 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 'var(--text-sm)', opacity: .8 }}>
             Show Python traceback
           </summary>
           <pre style={{
-            marginTop: 8, padding: 12, borderRadius: 6, overflowX: 'auto',
+            marginTop: 8, padding: 12, borderRadius: 'var(--radius)', overflowX: 'auto',
             background: 'var(--code-bg)', color: 'var(--red-text)',
-            fontSize: 11, lineHeight: 1.55,
+            fontSize: 'var(--text-xs)', lineHeight: 1.55,
             fontFamily: 'var(--font-mono)',
             whiteSpace: 'pre-wrap',
           }}>{tb}</pre>
@@ -382,7 +409,6 @@ function btnStyle(variant, size, disabled, style) {
     opacity: disabled ? .4 : 1,
     transition: 'filter var(--t), box-shadow var(--t), background var(--t), opacity var(--t), transform var(--t)',
     lineHeight: 1,
-    ...style,
   }
   const variants = {
     primary: {
@@ -400,7 +426,8 @@ function btnStyle(variant, size, disabled, style) {
       border: '1px solid var(--red-br)',
     },
   }
-  return { ...base, ...variants[variant] }
+  // The caller's style comes last: a colour it sets is the colour it gets.
+  return { ...base, ...variants[variant], ...style }
 }
 
 /** A button. `variant="outline"` is the one secondary look; `BtnLink` draws a link the same way. */
@@ -482,7 +509,7 @@ export function SplitLayout({ left, right, detail }) {
       <div className="surface" style={{
         background: 'var(--card)',
         border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)', overflow: 'hidden',
+        borderRadius: 'var(--radius-lg)', overflow: 'hidden',
       }}>
         {left}
       </div>
@@ -524,10 +551,10 @@ export function ListItem({ selected, onClick, name, sub, right, meta }) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="list-item__name" style={{ fontWeight: selected ? 600 : 500, fontSize: 13, color: selected ? 'var(--text)' : 'var(--text-2)', overflowWrap: 'anywhere' }}>{name}</div>
+          <div className="list-item__name" style={{ fontWeight: selected ? 600 : 500, fontSize: 'var(--text-caption)', color: selected ? 'var(--text)' : 'var(--text-2)', overflowWrap: 'anywhere' }}>{name}</div>
           {sub && (
             <div title={typeof sub === 'string' ? sub : undefined} style={{
-              fontSize: 11, color: 'var(--muted)', marginTop: 2,
+              fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 2,
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
             }}>{sub}</div>
           )}
