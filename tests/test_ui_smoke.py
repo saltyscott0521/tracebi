@@ -180,6 +180,28 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(lib_row).to_be_visible()
             fail_on_browser_errors()
 
+            # On a wide window the library is a gallery: a tile per report,
+            # each one link, the showcase first. With no covers taken here,
+            # every tile draws its own. List is one toggle away, and stays
+            # picked after a reload.
+            page.goto(base + "/")
+            listed = len(json.loads(urllib.request.urlopen(f"{base}/api/reports").read()))
+            tiles = page.locator(".lgrid a.ltile[data-report]")
+            expect(tiles).to_have_count(listed)
+            assert tiles.first.get_attribute("data-report") == _REPORT
+            expect(page.locator(".lgrid .gcover")).to_have_count(listed)
+            view = page.get_by_role("group", name="View")
+            view.get_by_role("button", name="List").click()
+            expect(page.locator(".lfolder__rows a.lrow[data-report]")).to_have_count(listed)
+            expect(tiles).to_have_count(0)
+            page.reload()
+            expect(page.locator(".lfolder__rows a.lrow[data-report]")).to_have_count(listed)
+            view.get_by_role("button", name="Grid").click()
+            expect(tiles).to_have_count(listed)
+            # The whole tile is the link; a later step follows it.
+            expect(tiles.first).to_have_attribute("href", f"/reports/{_REPORT}")
+            fail_on_browser_errors()
+
             # Data opens on the board: five lanes in the order the data moves,
             # then the lists behind it, each a tab with an address of its own.
             sidebar.get_by_role("link", name="Data", exact=True).click()

@@ -302,12 +302,17 @@ def record_report_build(
     verdict: Optional[str] = None,
     manifest_path: Optional[str] = None,
     url: Optional[str] = None,
+    cover: Optional[str] = None,
 ) -> int:
     """A ``tracebi report build`` / ``build_report`` / web render.
 
     Verdict stays unset until a caller has actually verified the receipt.
+    *cover* is the build's picture (``tracebi/reports/cover.py``), recorded
+    beside the page's path when one was taken.
     """
     detail = {"manifest_path": manifest_path} if manifest_path else None
+    if cover:
+        detail = {**(detail or {}), "cover": cover}
     return record_run(
         kind="report_build",
         target=target,
@@ -325,12 +330,14 @@ def try_record_report_build(
     *,
     manifest_path: Optional[str] = None,
     url: Optional[str] = None,
+    cover: Optional[str] = None,
 ) -> Optional[str]:
     """Record a report build. A store failure returns a short note; it does
     not raise. The artifact is already written."""
     try:
         record_report_build(
             target, output_path, manifest_path=manifest_path, url=url,
+            cover=cover,
         )
     except ImportError as exc:
         return str(exc)

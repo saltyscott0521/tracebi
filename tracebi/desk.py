@@ -119,6 +119,27 @@ def _built_at(path: str) -> Optional[str]:
         return None
 
 
+def _face(manifest_path: str, html_path: str) -> dict:
+    """What the library draws a build's tile from: whether it has a cover
+    (a picture of its first screen, served by ``/api/reports/<name>/cover``)
+    and how many figures of each kind it holds, for the cover the app draws
+    when it has none. Read from the manifest; a picture, never a claim."""
+    try:
+        with open(manifest_path, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+    except (OSError, ValueError):
+        return {"cover": False, "figure_kinds": {}}
+    kinds: dict = {}
+    for fig in manifest.get("figures") or []:
+        kind = fig.get("kind") if isinstance(fig, dict) else None
+        if kind:
+            kinds[kind] = kinds.get(kind, 0) + 1
+    cover = manifest.get("cover")
+    has_cover = isinstance(cover, str) and os.path.isfile(
+        os.path.join(os.path.dirname(html_path), os.path.basename(cover)))
+    return {"cover": has_cover, "figure_kinds": kinds}
+
+
 def _verdicts(
     root: str, models: Mapping[str, Any], fresh: bool = False,
 ) -> tuple[Optional[dict], list[dict], list[dict]]:
@@ -153,6 +174,7 @@ def _verdicts(
                 "report": report,
                 "verdict": verdict_,
                 "built_at": _built_at(html_path),
+                **_face(path, html_path),
                 **when,
             })
         if verdict_ == "reproduces":

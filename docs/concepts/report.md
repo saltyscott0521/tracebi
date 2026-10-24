@@ -51,7 +51,11 @@ tracebi report build my_report
 ```
 
 Produces one offline HTML — CSS, JS, data and charting library all inlined, a
-strict CSP, no CDN — plus `my_report.html.manifest.json`.
+strict CSP, no CDN — plus `my_report.html.manifest.json`. With the `pdf`
+extra installed (Playwright and Chromium), the build also writes
+`my_report.cover.png`, a picture of the page's first screen that the library
+shows as the report's cover; it is not part of the trace, and without the
+extra the library draws a cover instead.
 
 Email it, archive it, open it on a plane. Then:
 

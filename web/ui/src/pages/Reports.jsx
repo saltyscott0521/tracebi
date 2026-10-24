@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   useReports, useStartReportRun, useReportRun, useRuns,
   useReportLineage, useBuiltReport,
-  useReportSource, reportDownloadUrl, reportShareUrl, useDesk, useModels,
+  useReportSource, reportDownloadUrl, reportShareUrl, reportCoverUrl, useDesk, useModels,
   useAppStatus, useMe, useRole, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview, fetchDeskFresh,
 } from '../api'
 import { FRAME_SANDBOX, followSelection, listenToFrame, setFrameSelection, tellFrame, tellVerdict } from '../frameBridge'
@@ -22,6 +22,7 @@ import { count, plural } from '../format'
 import { Older } from './Runs'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
+import { ReportCover } from '../components/Cover'
 import {
   Moved, useModelLabel, useOpenReport, useNavMenu,
 } from '../components/Scope'
@@ -367,7 +368,9 @@ const FAILED = new Set(['failed', 'error', 'refused'])
 // A report's runs, newest first: every build (from the app, the command line or
 // a schedule), not only the ones started here. As on History: the newest
 // successful build carries the page's verdict, a scheduled run the verdict its
-// check recorded, and every older build a plain "Not checked".
+// check recorded, and every older build a plain "Not checked". The newest
+// build shows its cover when it took one: each build writes over the last
+// one's picture, so an older build has none left to show.
 function HistoryTab({ name, verdict }) {
   const role = useRole()
   const { data, isLoading, error } = useRuns('', name)
@@ -391,6 +394,9 @@ function HistoryTab({ name, verdict }) {
     const v = said(r)
     return (
       <li key={r.id}>
+        {r === newest && r.detail?.cover && (
+          <img className="rp__thumb" src={reportCoverUrl(name, r.finished || r.started)} alt="" />
+        )}
         <span>{r.status === 'running' ? '… Running' : <Time iso={r.started} />}</span>
         <span>{RUN_KIND[r.kind]}{dur ? ` · ${dur}` : ''}{r.actor ? ` · ${r.actor}` : ''}</span>
         {v && <Verdict state={v.state} detail={v.detail} size="sm" />}
@@ -886,7 +892,9 @@ function ReportSource({ name }) {
 
 // Reports in folders are named by their path ("finance/weekly"). The list
 // groups them under their folder; top-level reports come first, unheaded.
-function groupByFolder(reports, mine) {
+// The gallery opens on its hero: the showcase's folder first (after the
+// person's own My published), the showcase first in it.
+function groupByFolder(reports, mine, heroFirst = false) {
   const groups = new Map()
   // Their own My published is always there, even before anything is in it.
   if (mine) groups.set(mine, [])
@@ -895,9 +903,15 @@ function groupByFolder(reports, mine) {
     if (!groups.has(folder)) groups.set(folder, [])
     groups.get(folder).push(r)
   }
+  const hero = heroFirst ? reports.find(isShowcase) : null
+  const first = hero ? folderOf(hero.name) : null
+  const rank = f => (f === mine ? 0 : f === first ? 1 : f === '' && !hero ? -1 : f === '' ? 2 : 3)
   return [...groups.entries()]
-    .sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : a === mine ? -1 : b === mine ? 1 : a.localeCompare(b)))
-    .map(([folder, items]) => ({ folder, items }))
+    .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+    .map(([folder, items]) => ({
+      folder,
+      items: hero && folder === first ? [hero, ...items.filter(r => r !== hero)] : items,
+    }))
 }
 
 const YOU_CAN = {
@@ -979,7 +993,36 @@ function LibraryRow({ report, verdict, built }) {
   )
 }
 
-function LibraryFolder({ folder, label, items, info, usual, open, onToggle, verdictFor, builds, searching }) {
+// The same report as a tile in the gallery: its cover, then the row's facts
+// under it. The whole tile is one link; the showcase's (the hero) is twice as
+// wide on a wide window.
+function LibraryTile({ report, verdict, built, hero }) {
+  const words = scheduleWords(report.schedule)
+  const name = report.display_name || report.name.slice(report.name.lastIndexOf('/') + 1)
+  return (
+    <li className={hero ? 'ltile--hero' : undefined}>
+      <Link to={reportPagePath(report.name)} className="ltile" data-report={report.name}>
+        <ReportCover report={report} name={name} build={built} />
+        <span className="ltile__body">
+          <span className="ltile__name">{name}</span>
+          {report.description && <span className="ltile__desc" title={report.description}>{report.description}</span>}
+          <span className="ltile__meta">
+            {verdict && <Verdict state={verdict.state} detail={verdict.detail} size="sm" />}
+            {built && <span className="lrow__built">Built <Time iso={built.built_at} /></span>}
+            {words && (
+              <span className="lrow__sched" title={words.long}><Icon name="calendar" size={12} /> {words.short}</span>
+            )}
+          </span>
+        </span>
+      </Link>
+    </li>
+  )
+}
+
+// The showcase: the report that shows everything a report can do, by its name.
+const isShowcase = r => /(^|\/|_)showcase$/.test(r.name)
+
+function LibraryFolder({ folder, label, items, info, usual, open, onToggle, verdictFor, builds, searching, view }) {
   const [perm, setPerm] = useState(false)
   const worth = permissionsWorthSaying(info, usual)
   return (
@@ -1004,13 +1047,19 @@ function LibraryFolder({ folder, label, items, info, usual, open, onToggle, verd
           Nothing here yet. Publish a draft to My published from Review to put a report here.
         </p>
       )}
-      {open && items.length > 0 && (
+      {open && items.length > 0 && (view === 'grid' ? (
+        <ul className="lgrid">
+          {items.map(r => (
+            <LibraryTile key={r.name} report={r} verdict={verdictFor(r)} built={builds[r.name]} hero={isShowcase(r)} />
+          ))}
+        </ul>
+      ) : (
         <ul className="lfolder__rows">
           {items.map(r => (
             <LibraryRow key={r.name} report={r} verdict={verdictFor(r)} built={builds[r.name]} />
           ))}
         </ul>
-      )}
+      ))}
     </section>
   )
 }
@@ -1049,6 +1098,23 @@ const PLACE_LINE = {
   docs: 'the handbook: concepts, guides and reference.',
 }
 const WELCOMED = 'tracebi-welcomed'
+const VIEW_KEY = 'tracebi-library-view'
+const VIEWS = [['grid', 'Grid'], ['list', 'List']]
+
+// Grid or list, kept per person in this browser; until they pick, a grid on a
+// wide window and a list at phone width.
+function useLibraryView() {
+  const narrow = useNarrow('(max-width: 640px)')
+  const [picked, setPicked] = useState(() => {
+    try { return localStorage.getItem(VIEW_KEY) } catch { return null }
+  })
+  const pick = v => {
+    try { localStorage.setItem(VIEW_KEY, v) } catch { /* private window: kept for this visit */ }
+    setPicked(v)
+  }
+  const view = VIEWS.some(([v]) => v === picked) ? picked : narrow ? 'list' : 'grid'
+  return [view, pick]
+}
 
 /**
  * One quiet card at the top of the library the first time a person opens the
@@ -1101,6 +1167,7 @@ export default function Library() {
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [closed, setClosed] = useState(() => new Set())
+  const [view, setView] = useLibraryView()
   const role = useRole()
   if (moved) return <Navigate to={moved} replace />
 
@@ -1140,7 +1207,7 @@ export default function Library() {
         <PageTitle>Reports</PageTitle>
         <PageSub>{PAGES[0].sub}</PageSub>
       </header>
-      <Welcome role={role} showcase={all.find(r => /(^|\/|_)showcase$/.test(r.name))} />
+      <Welcome role={role} showcase={all.find(isShowcase)} />
       {isLoading ? <SkeletonList /> : !all.length && !(canPublish && folderData?.personal) ? (
         canPublish ? (
           <Empty title="No reports yet"
@@ -1169,18 +1236,21 @@ export default function Library() {
                 ))}
               </div>
             )}
-            <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" label="Search reports"
-                         style={{ padding: 0, borderBottom: 0 }} />
+            <div className="library__search">
+              <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" label="Search reports"
+                           style={{ padding: 0, borderBottom: 0 }} />
+              <Segmented options={VIEWS} value={view} onChange={setView} label="View" className="library__view" />
+            </div>
           </div>
-          <div className="library__list">
+          <div className={view === 'grid' ? 'library__gallery' : 'library__list'}>
             {!listed.length && !mine
               ? <p className="lfolder__none">No report matches. Clear the search or pick All models.</p>
-              : groupByFolder(listed, mine).map(({ folder, items }) => (
+              : groupByFolder(listed, mine, view === 'grid').map(({ folder, items }) => (
                 <LibraryFolder key={folder || '(top)'} folder={folder} label={folderLabel(folder, folderInfo[folder])}
                                items={items} info={folderInfo[folder]} usual={usual}
                                // A search always shows its matches, even in a closed folder.
                                open={!folder || !!needle || !closed.has(folder)} onToggle={() => toggle(folder)}
-                               verdictFor={verdictFor} builds={builds} searching={!!needle} />
+                               verdictFor={verdictFor} builds={builds} searching={!!needle} view={view} />
               ))}
           </div>
         </>

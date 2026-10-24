@@ -111,7 +111,11 @@ result, embeds the bytes, and fills the figure from them.</p>
 <pre><code class="language-bash">tracebi report build my_report
 </code></pre>
 <p>Produces one offline HTML — CSS, JS, data and charting library all inlined, a
-strict CSP, no CDN — plus <code>my_report.html.manifest.json</code>.</p>
+strict CSP, no CDN — plus <code>my_report.html.manifest.json</code>. With the <code>pdf</code>
+extra installed (Playwright and Chromium), the build also writes
+<code>my_report.cover.png</code>, a picture of the page's first screen that the library
+shows as the report's cover; it is not part of the trace, and without the
+extra the library draws a cover instead.</p>
 <p>Email it, archive it, open it on a plane. Then:</p>
 <pre><code class="language-bash">tracebi verify --file output/my_report.html
 </code></pre>

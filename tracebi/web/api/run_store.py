@@ -125,6 +125,9 @@ class RunStore:
             detail["name"] = result.get("name")
             detail["retained"] = result.get("retained")
             detail["manifest_path"] = result.get("manifest_path")
+            cover = (result.get("manifest") or {}).get("cover")
+            if cover:
+                detail["cover"] = cover
         finished = _now()
         with install_extra("web"):
             update_run(

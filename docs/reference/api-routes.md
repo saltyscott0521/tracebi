@@ -144,6 +144,7 @@ missing one is. Folder permissions do not apply: a table is not a report.
 | `GET` | `/api/reports/{name}/runs` | viewer |
 | `GET` | `/api/reports/{name}/runs/{run_id}` | viewer |
 | `GET` | `/api/reports/{name}/built` | viewer |
+| `GET` | `/api/reports/{name}/cover` | viewer |
 | `GET` | `/api/runs` | viewer |
 | `GET` | `/api/reports/{name}/download?format=xlsx\|html\|pdf` | analyst |
 | `GET` | `/api/reports/{name}/lineage` | viewer |
@@ -185,7 +186,9 @@ same work in the background and returns a `run_id` to poll.
 `output/<name>.html` or, when that file is not there, the path recorded in
 the run store. A report never built on this server is built once on first
 open and kept. Opening never re-queries after that; fresh data comes from
-`/run`, `/runs` (Rebuild) or a schedule.
+`/run`, `/runs` (Rebuild) or a schedule. `/cover` is the PNG of that last
+build's first screen (an `ETag` of its write time), or `404` when the build
+took none and the app draws one; it never builds.
 
 `GET /api/runs` lists rows from that store, newest first. Query params:
 `kind`, `target`, `limit`. A viewer may read it. The HTML of a report stays
