@@ -39,14 +39,12 @@ OUT = SITE / "docs"
 HIDDEN = {"north-star", "receipts"}
 
 #: The vault's sections, in reading order: ideas before look-up tables.
-#: docs/strategy/ is not one: it is intent (where the product is going, with
-#: dated targets), not a description of what ships, so neither this site nor
-#: the app's Docs place lists it.
+#: Design notes and strategy are not in the vault: they live in design/ at the
+#: repo root, internal to building TraceBi.
 SECTIONS = [
     ("concepts", "Concepts", "The ideas. Read these once."),
     ("guides", "Guides", "Task-shaped walkthroughs."),
     ("reference", "Reference", "Look things up."),
-    ("architecture", "Architecture", "For changing the framework."),
     ("agents", "Agent SOPs", "Standard operating procedures."),
 ]
 

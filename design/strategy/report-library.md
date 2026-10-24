@@ -12,8 +12,8 @@ Status: built, except the source-control adapter beyond a git pull
 (`POST /api/library/sync`) and per-report version history in the app.
 Folders, the library (Reports), path identity, `open_report`, mounts
 (`TRACEBI_LIBRARY_MOUNTS`), folder permissions (`_folder.yaml`,
-[[folder-yaml]]), drafts, publish requests and "My published" are in the
-product; how to use them is in [[folder-yaml]] and [[push-from-a-laptop]].
+[Folder permissions (_folder.yaml)](../../docs/reference/folder-yaml.md)), drafts, publish requests and "My published" are in the
+product; how to use them is in [Folder permissions (_folder.yaml)](../../docs/reference/folder-yaml.md) and [Push from a laptop](../../docs/guides/push-from-a-laptop.md).
 
 ---
 
@@ -116,7 +116,7 @@ Rules:
    become the defaults a folder can override.
 3. **An agent acts as the person using it.** An analyst's Claude sees exactly
    what the analyst sees, through a sign-in per person on the gateway ✅
-   ([[connect-chatgpt-and-claude]]); the shared token stays for local use.
+   ([Connect ChatGPT and Claude](../../docs/guides/connect-chatgpt-and-claude.md)); the shared token stays for local use.
 4. **Built outputs inherit the folder's permissions.** A board pack's past
    builds are no more visible than the pack.
 5. **Delivery is a deliberate exception.** A scheduled email goes to whoever

@@ -19,9 +19,9 @@ tracebi.web.demo_app`), both in this folder. The sheets are not committed (they
 are megabytes); a run prints where it wrote them.
 
 ```bash
-python scripts/ui_audit.py --out /tmp/a --baseline docs/architecture/ui-audit-baseline-reference.json
+python scripts/ui_audit.py --out /tmp/a --baseline design/ui-audit-baseline-reference.json
 python scripts/ui_audit.py --app tracebi.web.demo_app --out /tmp/d \
-    --baseline docs/architecture/ui-audit-baseline-demo.json
+    --baseline design/ui-audit-baseline-demo.json
 ```
 
 A change that fixes findings, or deliberately changes a count, commits the new
@@ -79,7 +79,7 @@ Checked by the script (rule name in brackets):
 - **Every model has a pipeline** `[model-without-pipeline]`: something its
   Transform tab can run. A pipeline belongs to the models it names
   (`runner.models`), else the one `model_pipeline` stamped, else its own name.
-- **The look** ([[design-direction]]): Hanken Grotesk loads `[theme-font-loaded]`
+- **The look** ([Design direction](design-direction.md)): Hanken Grotesk loads `[theme-font-loaded]`
   `[theme-font]`; the brand is cobalt and stays in its blue family, and other
   colour means something (green reproduces, amber needs a look, red does not
   reproduce) `[theme-brand-colour]`; the dark theme
@@ -109,7 +109,7 @@ Checked by the script (rule name in brackets):
   keep theirs), and `report_looks` (display face + accent; a look not in the
   baseline fails the run even if the count does not grow). The target is one
   look per project, plus a named bespoke example.
-- **A live page stays light and quick** ([[live-reports-plan]], decision 10):
+- **A live page stays light and quick** ([Live reports — the plan](live-reports-plan.md), decision 10):
   the page engine, `tracebi-calc.js`, is at most 50 KB gzipped
   `[engine-size]` and never grows against the baseline
   `[metric:engine_gz_kb]`; each delivered report's file grows at most 10%

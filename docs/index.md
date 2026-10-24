@@ -24,7 +24,6 @@ an agent as by a person.
 | Build your first report | [[your-first-report]] |
 | Run it for a team | [[one-server]] |
 | Look up a specific thing | [[#Reference]] |
-| Understand where TraceBi is going and why | [[vision-and-positioning]] |
 
 ## Concepts
 
@@ -81,46 +80,10 @@ vocabulary, so they describe what the code actually accepts.
 - [[environment-variables]] — every `TRACEBI_*` variable
 - [[api-routes]] — the HTTP surface, and the app's addresses
 
-## Architecture
-
-Design notes. Written for someone changing the framework, not using it; each
-records a decision and why. The app's Docs sidebar does not list them; a link
-opens them.
-
-- [[duckdb-first]] — one engine from the sink to the page: SQL transforms, the locked query connection, storage tiers
-- [[live-reports-plan]] — how a built page recomputes every figure under one selection, offline
-- [[report-architecture-v2]] — the one-lane report artifact: per-figure claims, manifest v2, the loop
-- [[report-generator-architecture]] — the two-lane design it replaced; kept for its kernel sections
-- [[large-detail-artifacts]] — how big datasets ship inside one HTML file, still verifiable
-- [[frontend-surfaces]] — tracebi.com, the app, and a hosted plane: three front ends and why
-- [[nav-v3]] — Docs as a place and Data as the chain: the app's five places
-- [[data-flow-board]] — Data as a board: the lanes, the edges, what the board never claims
-- [[one-demo]] — what tracebi.com serves, and the conventions every model follows
-- `architecture/credentials.md` — the credential store's design: resolution order, the key, the API
-- [[design-direction]] — who the builder experience is for, and what the app looks like
-- [[ui-quality]] — the UI quality bar and the audit that checks it
-- [[ui-backlog]] — the UI items still open
-- [[test-suite-review]] — what the tests should cover, what was removed, and why
-
 ## Agent SOPs
 
-- [[pitfalls]] — bugs already hit in this repo, and the rule that prevents each
 - [[sop-authoring]] — authoring a report through the gateway
 - [[sop-model-changes]] — changing the semantic contract
-
-## Strategy
-
-Where the product is going and why. Intent, not documentation of what ships
-today, so neither the app's Docs sidebar nor the docs site lists it; a link
-opens each page.
-
-- [[vision-and-positioning]] — the bet, the positioning, the principles
-- [[users-and-jobs]] — the seven user types and their journeys
-- [[product-strategy]] — the ask, build and schedule paths, BI parity, templates
-- [[deployment]] — local, self-hosted, Cloud, customer VPC
-- [[report-library]] — folders, permissions, drafts and publishing
-- [[remote-authoring]] — building from a hosted chat or a laptop: drafts, sign-in, code requests
-- [[analyst-freedom]] — calculating anything, labelled: model, report, SQL and code
 
 ## The canon
 

@@ -66,23 +66,7 @@
 <a href="../reference/transform-sql.html">SQL transforms</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
-<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
-<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
-<a href="../architecture/data-flow-board.html">Data as a flow: the board</a>
-<a href="../architecture/design-direction.html">Design direction</a>
-<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
-<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
-<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
-<a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
-<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
-<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
-<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
-<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
-<a href="../architecture/ui-quality.html">The UI quality bar</a>
-<a href="../architecture/ui-backlog.html">UI backlog</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a class="on" href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
@@ -283,7 +267,7 @@ baseline) and <strong>after</strong>. A passing suite is the minimum bar.</p>
   (<code>tests/test_phase25.py</code> holds the <code>add_measure</code> callable-rejection and
   expr-validation cases). Test files are scoped; do not reorganize across
   files or add shared cross-phase fixtures. Before adding any test, answer
-  <em>what bug would this catch?</em> (<code>docs/architecture/test-suite-review.md</code>).</li>
+  <em>what bug would this catch?</em> (<code>design/test-suite-review.md</code>).</li>
 <li>Test the <em>meaning</em>, not just the plumbing: assert the computed value on a
   small known dataset. Bias toward asserting the <strong>absence of a wrong
   answer</strong> (e.g. a ratio measure is a ratio of totals, not a mean of per-row

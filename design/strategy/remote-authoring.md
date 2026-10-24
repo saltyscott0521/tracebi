@@ -10,8 +10,8 @@ publishing. Code that runs on the server, pipelines and transforms, is
 published only after someone approves it.**
 
 Status: built (decided 2026-10-08; steps 1 to 4 shipped by 2026-10-17).
-Builds steps 4 and 6 of [[report-library]]. How to use it:
-[[connect-chatgpt-and-claude]], [[push-from-a-laptop]], [[folder-yaml]]. The
+Builds steps 4 and 6 of [Report library](report-library.md). How to use it:
+[Connect ChatGPT and Claude](../../docs/guides/connect-chatgpt-and-claude.md), [Push from a laptop](../../docs/guides/push-from-a-laptop.md), [Folder permissions (_folder.yaml)](../../docs/reference/folder-yaml.md). The
 sandbox for remote Python is still ahead.
 
 ---
@@ -43,7 +43,7 @@ pipelines with its own secrets and builds its own warehouse; sink contracts
 check what landed there. Connections are named (`tracebi connect` writes
 `connections/<name>.yaml`, whose secrets are `${NAME}` references), so the
 same code runs on the laptop with a dev secret and on the server with the
-production one ([[connections-yaml]], [[credentials]]).
+production one ([Connection files (YAML)](../../docs/reference/connections-yaml.md), [Credentials](../../docs/reference/credentials.md)).
 
 ## What may come in which way
 
@@ -70,7 +70,7 @@ The existing roles, unchanged in meaning (Authorization in `CLAUDE.md`):
 | analyst | their own | reports and declarative models | no |
 | admin | everyone's | yes | yes |
 
-Folder permissions ([[folder-yaml]]) narrow this per folder; the check
+Folder permissions ([Folder permissions (_folder.yaml)](../../docs/reference/folder-yaml.md)) narrow this per folder; the check
 stays in one place.
 
 ---
@@ -242,7 +242,7 @@ the actual login to the company's provider:**
   with its own secret) pulls `main`, and live discovery picks up the change.
 
 Built 2026-10-17: `tracebi push` (`tracebi/_push.py`) and `POST /api/library/sync`
-(`tracebi/web/api/routers/library.py`); [[push-from-a-laptop]]. Connections
+(`tracebi/web/api/routers/library.py`); [Push from a laptop](../../docs/guides/push-from-a-laptop.md). Connections
 (`connections/*.yaml`) go as code too: they decide which server secrets a
 transform reads.
 

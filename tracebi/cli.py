@@ -1172,7 +1172,7 @@ def _dev_in_the_app(args: argparse.Namespace) -> int:
     that report with Build already on; without one, Data, where what the agent
     shows you lands before any report exists. The agent's chat goes
     beside it; the app is where you watch it work and point at what you mean
-    (see docs/architecture/design-direction.md).
+    (see design/design-direction.md).
     """
     from urllib.parse import quote, urlencode
 

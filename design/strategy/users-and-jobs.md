@@ -86,7 +86,7 @@ or approves → approval publishes it → it arrives Monday.
 
 **Target:** request to published in under a day, with the builder not
 involved. **Today:** drafts, publish requests and in-app review are built
-(Review; see [[report-library]]), from a hosted chat over `/mcp` or from a
+(Review; see [Report library](report-library.md)), from a hosted chat over `/mcp` or from a
 laptop. The request inbox is Q3.
 
 ### 5. Monday morning (reader)

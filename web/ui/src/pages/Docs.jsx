@@ -9,13 +9,9 @@ import { PageTitle, PageSub, Spinner, useNarrow } from '../components/Shared'
 import GettingStarted from './GettingStarted'
 
 // docs/ is a vault: pages live under concepts/, guides/, reference/ and
-// architecture/, and the API addresses a subdirectory page as "dir--stem".
+// agents/, and the API addresses a subdirectory page as "dir--stem".
 // The sidebar rebuilds that tree, in reading order — a visitor should meet
 // the ideas before the look-up tables.
-// docs/architecture/ (design notes for changing the framework) and
-// docs/strategy/ (intent, with dated targets, not what ships) are not listed:
-// a reader meets them only through a link from a page that cites them, the
-// same rule the docs site follows.
 const SECTIONS = [
   { key: 'concepts',     label: 'Concepts',     blurb: 'The ideas. Read once.' },
   { key: 'guides',       label: 'Guides',       blurb: 'Task-shaped walkthroughs.' },

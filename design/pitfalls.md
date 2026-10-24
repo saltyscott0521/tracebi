@@ -99,7 +99,7 @@ Business strategy almost went out with it.
 **14. Don't pin presentation in tests.**
 Tests pinned hex colours, CSS text, SVG hashes and file sizes. None caught a
 bug; every design change broke them. They were removed (see
-[[test-suite-review]]).
+[Test suite review, 2026-09-22](test-suite-review.md)).
 - *Rule:* test behaviour: the data is unchanged, honesty rules hold, two
   implementations agree, security holds. Not how it looks.
 

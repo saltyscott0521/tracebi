@@ -202,7 +202,7 @@ carries no trace; the HTML file is what `verify --file` checks.
 
 ## Drafts
 
-Remote drafts (design: `docs/strategy/remote-authoring.md`). `{kind}` is `reports` or `models`.
+Remote drafts. `{kind}` is `reports` or `models`.
 A draft's owner is the acting principal; `{owner}` is that name slugged to
 `[a-z0-9._-]`.
 

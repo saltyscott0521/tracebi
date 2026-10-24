@@ -1,7 +1,7 @@
 # Navigation v3 — Docs as a place, Data as the chain
 
 **Status: built, 2026-10-21; Data reshaped as a board on 2026-10-23 (v3.1,
-below).** Follows the 2026-10-17 plan (the four places) and the three rounds of [[live-reports-plan]]. Two things the
+below).** Follows the 2026-10-17 plan (the four places) and the three rounds of [Live reports — the plan](live-reports-plan.md). Two things the
 maintainer named after using the app: the docs are hidden behind a small
 "Help" link at the foot of the sidebar, and from the Data place it is hard to
 see what is available, database by database, table by table, on the way to a
@@ -98,4 +98,4 @@ the cards; the tabs follow the flow: Flow (`/data`), Sources, Transforms (new,
 `/data/transforms`), Warehouse, Models (the chain rows, now `/data/models`).
 The Map is gone: its picture is the board, and a model's map is the model
 page's line (`/data/map` and `/data?view=map` redirect). The decision, the
-lane and edge rules: [[data-flow-board]].
+lane and edge rules: [Data as a flow: the board](data-flow-board.md).

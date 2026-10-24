@@ -2,7 +2,7 @@
 
 The artifact embeds a figure's data as **Parquet** — compact (≈8–17× smaller
 than the same CSV), and the format the page engine (``tracebi-calc.js``)
-decodes in the browser. See ``docs/architecture/large-detail-artifacts.md``.
+decodes in the browser. See ``design/large-detail-artifacts.md``.
 
 The receipt for a Parquet block hashes the SHIPPED BYTES. The manifest records
 ``payload_sha256`` — SHA-256 over the exact base64-decoded Parquet payload the

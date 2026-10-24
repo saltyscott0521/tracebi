@@ -3,7 +3,7 @@
 Read this before touching a TraceBi project. Deeper references: `docs/concepts/the-three-phase-workflow.md`
 (the three-phase workflow, end to end), `CLAUDE.md` (codebase rules), `NOTES.md`
 (design decisions), `examples/agent_gateway/` (a complete recorded agent
-session), `docs/agents/pitfalls.md` (bugs already hit here, and the rule that
+session), `design/pitfalls.md` (bugs already hit here, and the rule that
 prevents each: read it before changing the runtime, styles or compiler).
 
 ## What TraceBi is

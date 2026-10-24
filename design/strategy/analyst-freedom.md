@@ -7,10 +7,10 @@ happens around it, and what proves itself is promoted into it.**
 
 Status: decided 2026-10-13; built except personal calculations, promotion
 and the Python sandbox (steps 5 and 6 of the order of work). Report
-calculations and the filtered measure ([[measures]]), SQL calculations
-(`sql_calculations` in [[report-json]]), sandboxed report frames, the impact
+calculations and the filtered measure ([Measures](../../docs/reference/measures.md)), SQL calculations
+(`sql_calculations` in [report.json](../../docs/reference/report-json.md)), sandboxed report frames, the impact
 check, model owners, folders and "My published" are in the product. Builds on
-[[report-library]] (folders, publishing) and [[remote-authoring]] (drafts,
+[Report library](report-library.md) (folders, publishing) and [Remote authoring](remote-authoring.md) (drafts,
 what may come in which way). Prompted by a 2026-10-12 field test of an MCP
 user (the notes are in the history).
 
@@ -160,7 +160,7 @@ So: the model is the foundation, SQL is the escape hatch, each labelled.
 ## Keeping the model correct with many editors
 
 - **Every model change is a draft, then published.** Nobody edits the live
-  model ([[remote-authoring]] step 1, already built).
+  model ([Remote authoring](remote-authoring.md) step 1, already built).
 - **Impact check before publishing (built).** Re-run every published report that
   reads the model against the changed model and show which numbers move (the
   re-run and compare `tracebi verify` already does). A change that moves
@@ -171,12 +171,12 @@ So: the model is the foundation, SQL is the escape hatch, each labelled.
   is proposed into the model (or into the transform, as a table) and goes
   through that review.
 
-## Workspaces (from [[report-library]], one addition)
+## Workspaces (from [Report library](report-library.md), one addition)
 
 - Personal drafts (`drafts/<owner>/`, "My work") and publishing as TraceBi's
   own step, with history kept beside each report, are decided; drafts are built.
 - Folders with View / Build / Publish / Manage per sign-in group, and
-  publish-with-approval, are built ([[folder-yaml]]).
+  publish-with-approval, are built ([Folder permissions (_folder.yaml)](../../docs/reference/folder-yaml.md)).
 - **Addition:** a personal folder a person can **publish into** ("My
   published"), for something shareable and scheduled without the public folder.
 - A folder decides what it accepts: anything honestly labelled, or only

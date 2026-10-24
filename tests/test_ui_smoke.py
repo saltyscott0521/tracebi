@@ -1021,7 +1021,7 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             viewer.keyboard.press("Control+k")
             viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("History")
             viewer.get_by_text("No matches for").wait_for()
-            # Nor the design notes under docs/architecture/.
+            # Nor the design notes (design/, outside the handbook).
             viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("Navigation v3")
             viewer.get_by_text("No matches for").wait_for()
             viewer.keyboard.press("Escape")

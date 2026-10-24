@@ -16,7 +16,7 @@ You are changing the TraceBi framework, not building a report with it.
   `tracebi/capabilities.py`, `AGENTS.md` and `tracebi/_scaffold/init_agents.md`
   in the same change; `tests/test_agent_guides.py` enforces it.
 - **The work is GitHub issues labeled**
-  `agent-ready` (`docs/architecture/ui-backlog.md` holds the open UI items). Do only what your issue asks.
+  `agent-ready` (`design/ui-backlog.md` holds the open UI items). Do only what your issue asks.
 
 ## Working an issue
 

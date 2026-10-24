@@ -18,7 +18,7 @@ company adds its sign-in, network shares and controls to the same install.
 | --- | --- | --- | --- |
 | **Runs on** | One server or one container (Railway, Fly, a single VM, a spare office machine) | The same container, plus a managed Postgres | Kubernetes (Helm) or their standard VM build, inside their network |
 | **State** | SQLite, a file on disk | Postgres | Postgres, backed up by their team |
-| **Reports** | A local folder | A folder or git | Network shares and source control, with folder permissions ([[report-library]]) |
+| **Reports** | A local folder | A folder or git | Network shares and source control, with folder permissions ([Report library](report-library.md)) |
 | **Sign-in** | Built-in accounts, or "Sign in with Google/Microsoft" | The same, with roles | Their SSO: OIDC or a proxy header; groups mapped to folders |
 | **Schedules** | Run inside the web server | A separate worker | Several workers |
 | **Email** | Any SMTP account | The same | Their mail relay |
@@ -44,11 +44,11 @@ company adds its sign-in, network shares and controls to the same install.
 | Proxy-header sign-in (for an SSO proxy), viewer/analyst/admin roles | Growing, enterprise | ✅ |
 | The Postgres lock that makes several workers safe | Growing, enterprise | ✅ |
 | SMTP email delivery | All | ✅ |
-| **Several named accounts without an identity provider** (`TRACEBI_LOCAL_USERS`), or "Sign in with Google/Microsoft" (OIDC) | Small shops | ✅ [[sign-in]] |
+| **Several named accounts without an identity provider** (`TRACEBI_LOCAL_USERS`), or "Sign in with Google/Microsoft" (OIDC) | Small shops | ✅ [Sign in to the app and the CLI](../../docs/guides/sign-in.md) |
 | **Schedules inside the web server** (`TRACEBI_SCHEDULES_IN_SERVER=1`; `tracebi schedule serve` stays available for a separate worker) | Small shops | ✅ |
-| **A one-page "run it on one server" guide**: Docker, a folder, SMTP, done | Small shops | ✅ [[one-server]] |
+| **A one-page "run it on one server" guide**: Docker, a folder, SMTP, done | Small shops | ✅ [Run TraceBi on one server](../../docs/guides/one-server.md) |
 | OIDC sign-in and group mapping | Enterprise | ✅ (SAML ❌) |
-| Folder permissions | Growing, enterprise | ✅ [[folder-yaml]] |
+| Folder permissions | Growing, enterprise | ✅ [Folder permissions (_folder.yaml)](../../docs/reference/folder-yaml.md) |
 | Helm chart; audit log export; a security overview document | Enterprise | ❌ |
 | SOC 2 | Cloud | ❌ |
 
@@ -127,9 +127,9 @@ The analyst's laptop runs the package; a shared server runs the image.
 | Terraform module | ❌ | When the first customer asks. |
 
 **Configuration** stays in environment variables (already documented in
-`.env.example` and [[environment-variables]]), with a project's own settings
+`.env.example` and [Environment variables](../../docs/reference/environment-variables.md)), with a project's own settings
 in `tracebi.yaml` and connection secrets in the environment or the encrypted
-store ([[credentials]]). Several workers share `TRACEBI_STATE_URL` (Postgres)
+store ([Credentials](../../docs/reference/credentials.md)). Several workers share `TRACEBI_STATE_URL` (Postgres)
 and `TRACEBI_SECRET_KEY`. Still to add: worker concurrency.
 
 ## TraceBi Cloud

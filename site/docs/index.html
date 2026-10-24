@@ -66,23 +66,7 @@
 <a href="reference/transform-sql.html">SQL transforms</a>
 <a href="reference/template-html.html">template.html — the figure grammar</a>
 <a href="reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
-<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
-<a href="architecture/credentials.html">Credentials: a store people can manage</a>
-<a href="architecture/data-flow-board.html">Data as a flow: the board</a>
-<a href="architecture/design-direction.html">Design direction</a>
-<a href="architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
-<a href="architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
-<a href="architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="architecture/live-reports-plan.html">Live reports — the plan</a>
-<a href="architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
-<a href="architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
-<a href="architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
-<a href="architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
-<a href="architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
-<a href="architecture/ui-quality.html">The UI quality bar</a>
-<a href="architecture/ui-backlog.html">UI backlog</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
@@ -135,10 +119,6 @@ graph. The app serves it as <strong>Docs</strong> (<code>/docs</code>), with <st
 <tr>
 <td>Look up a specific thing</td>
 <td><a href="#reference">Reference</a></td>
-</tr>
-<tr>
-<td>Understand where TraceBi is going and why</td>
-<td><strong>vision-and-positioning</strong></td>
 </tr>
 </tbody>
 </table>
@@ -194,44 +174,10 @@ vocabulary, so they describe what the code actually accepts.</p>
 <li><a href="reference/environment-variables.html">Environment variables</a> — every <code>TRACEBI_*</code> variable</li>
 <li><a href="reference/api-routes.html">API routes</a> — the HTTP surface, and the app's addresses</li>
 </ul>
-<h2 id="architecture">Architecture</h2>
-<p>Design notes. Written for someone changing the framework, not using it; each
-records a decision and why. The app's Docs sidebar does not list them; a link
-opens them.</p>
-<ul>
-<li><a href="architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a> — one engine from the sink to the page: SQL transforms, the locked query connection, storage tiers</li>
-<li><a href="architecture/live-reports-plan.html">Live reports — the plan</a> — how a built page recomputes every figure under one selection, offline</li>
-<li><a href="architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a> — the one-lane report artifact: per-figure claims, manifest v2, the loop</li>
-<li><a href="architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a> — the two-lane design it replaced; kept for its kernel sections</li>
-<li><a href="architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a> — how big datasets ship inside one HTML file, still verifiable</li>
-<li><a href="architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a> — tracebi.com, the app, and a hosted plane: three front ends and why</li>
-<li><a href="architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a> — Docs as a place and Data as the chain: the app's five places</li>
-<li><a href="architecture/data-flow-board.html">Data as a flow: the board</a> — Data as a board: the lanes, the edges, what the board never claims</li>
-<li><a href="architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a> — what tracebi.com serves, and the conventions every model follows</li>
-<li><code>architecture/credentials.md</code> — the credential store's design: resolution order, the key, the API</li>
-<li><a href="architecture/design-direction.html">Design direction</a> — who the builder experience is for, and what the app looks like</li>
-<li><a href="architecture/ui-quality.html">The UI quality bar</a> — the UI quality bar and the audit that checks it</li>
-<li><a href="architecture/ui-backlog.html">UI backlog</a> — the UI items still open</li>
-<li><a href="architecture/test-suite-review.html">Test suite review, 2026-09-22</a> — what the tests should cover, what was removed, and why</li>
-</ul>
 <h2 id="agent-sops">Agent SOPs</h2>
 <ul>
-<li><a href="agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a> — bugs already hit in this repo, and the rule that prevents each</li>
 <li><a href="agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a> — authoring a report through the gateway</li>
 <li><a href="agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a> — changing the semantic contract</li>
-</ul>
-<h2 id="strategy">Strategy</h2>
-<p>Where the product is going and why. Intent, not documentation of what ships
-today, so neither the app's Docs sidebar nor the docs site lists it; a link
-opens each page.</p>
-<ul>
-<li><strong>vision-and-positioning</strong> — the bet, the positioning, the principles</li>
-<li><strong>users-and-jobs</strong> — the seven user types and their journeys</li>
-<li><strong>product-strategy</strong> — the ask, build and schedule paths, BI parity, templates</li>
-<li><strong>deployment</strong> — local, self-hosted, Cloud, customer VPC</li>
-<li><strong>report-library</strong> — folders, permissions, drafts and publishing</li>
-<li><strong>remote-authoring</strong> — building from a hosted chat or a laptop: drafts, sign-in, code requests</li>
-<li><strong>analyst-freedom</strong> — calculating anything, labelled: model, report, SQL and code</li>
 </ul>
 <h2 id="the-canon">The canon</h2>
 <p>Short, stable, opinionated documents that define the project.</p>

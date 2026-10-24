@@ -1,7 +1,7 @@
 """The slice: what a built report carries so its page can recompute.
 
 A live page filters, groups, sums and divides in the browser
-(``docs/architecture/live-reports-plan.md``, decisions 2 and 8). It does that
+(``design/live-reports-plan.md``, decisions 2 and 8). It does that
 over the **slice**: per fact, one table the build computes with the model's own
 engine, embedded as one Parquet block. This module derives the slice's grain,
 runs the one query per fact that produces it, and encodes the block. It never

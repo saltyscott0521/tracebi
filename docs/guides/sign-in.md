@@ -101,4 +101,3 @@ when it is about to expire. When the sign-in has ended it says to run
 - [[connect-chatgpt-and-claude]]: the identity-provider registration and the connectors
 - [[push-from-a-laptop]]: `tracebi push`, once you are signed in
 - [[environment-variables]]: every variable
-- [[remote-authoring]]: the design

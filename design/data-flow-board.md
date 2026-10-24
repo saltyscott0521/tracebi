@@ -1,6 +1,6 @@
 # Data as a flow: the board
 
-**Status: built, 2026-10-23** (package U-10). Follows [[nav-v3]].
+**Status: built, 2026-10-23** (package U-10). Follows [Navigation v3 — Docs as a place, Data as the chain](nav-v3.md).
 
 ## The decision
 

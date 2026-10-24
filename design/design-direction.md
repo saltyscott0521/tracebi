@@ -2,7 +2,7 @@
 
 **Status: agreed (2026-10-04); the theme pass below is done.** What the builder
 experience is, and what the app looks like. The quality bar and the audit that
-checks it are in [[ui-quality]]; the work queue is [[ui-backlog]].
+checks it are in [The UI quality bar](ui-quality.md); the work queue is [UI backlog](ui-backlog.md).
 
 ## Who it is for
 
@@ -51,7 +51,7 @@ that both read and write them, so:
   there is no server-side key, no bill, and no web page with the power to
   write files on its own.
 
-Hard rules, kept from the workbench's design ([[report-architecture-v2]] §2.5):
+Hard rules, kept from the workbench's design ([Report Architecture v2 — the one-lane reshape](report-architecture-v2.md) §2.5):
 everything here is dev-state; none of it enters a build or a manifest; no
 trace is minted. Build mode exists only on loopback with dev mode on. The
 point-mode script is injected by the server at serve time, never into a built
@@ -213,5 +213,5 @@ Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
      Reports as home, the report page, Data and Review, the verdict chip
      everywhere; the report contact sheet in the audit (DS-9).
    - Ask (done, Step 4); since then Docs is a fifth place and Data opens on
-     the board ([[nav-v3]], [[data-flow-board]]). Still to do: lists as
+     the board ([Navigation v3 — Docs as a place, Data as the chain](nav-v3.md), [Data as a flow: the board](data-flow-board.md)). Still to do: lists as
      console rows throughout, and illustrations beyond the mark.

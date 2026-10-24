@@ -32,7 +32,7 @@ reference project, so a visitor can click through real models, run a report,
 and verify a file without installing anything.
 
 The demo instance is exactly the app UI running the Docker image on one
-server (see [[one-server]]): a try-it surface, not a production claim.
+server (see [Run TraceBi on one server](../docs/guides/one-server.md)): a try-it surface, not a production claim.
 
 ```
 tracebi.com  ──"Try the demo"──▶  tracebi.com/app   (the app UI, seeded)
@@ -82,9 +82,9 @@ for agents.
 
 ## The app's places
 
-The app is five places in its sidebar (`web/ui/src/nav.js`, [[nav-v3]]):
+The app is five places in its sidebar (`web/ui/src/nav.js`, [Navigation v3 — Docs as a place, Data as the chain](nav-v3.md)):
 **Reports** (the library, where it opens), **Ask**, **Data**, **Review** and
-**Docs**. Data opens on Flow, the board ([[data-flow-board]]): one lane per
+**Docs**. Data opens on Flow, the board ([Data as a flow: the board](data-flow-board.md)): one lane per
 stage, sources → transforms → warehouse → models → reports. Then the lists
 behind it: Sources (every connection and the `inputs/` folder, what each holds
 and what reads it), Transforms (every file in `transforms/`), Warehouse (every
@@ -92,4 +92,4 @@ table, who wrote it, who reads it, its checks) and Models (each model's chain
 of sources → transform → tables → measures → reports). Docs
 is the handbook served from the project's `docs/`, with Get started first; it
 is the app's own manual, not tracebi.com's docs, and every role sees it. The
-addresses are in [[api-routes]].
+addresses are in [API routes](../docs/reference/api-routes.md).

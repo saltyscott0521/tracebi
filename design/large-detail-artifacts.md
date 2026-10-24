@@ -1,7 +1,7 @@
 # Large-detail artifacts — data-heavy, offline, still verifiable
 
 **Status:** shipped (merged to `main` in August 2026); **the engine is
-superseded by [[live-reports-plan]] (2026-10)**: parquet-wasm, Arquero and the
+superseded by [Live reports — the plan](live-reports-plan.md) (2026-10)**: parquet-wasm, Arquero and the
 Web Worker are gone, and a Parquet block is decoded by the pure-JS page engine
 (`tracebi/reports/assets/tracebi-calc.js`, Snappy only, no CSP grant). What
 stands is the Parquet transport and its trust rules, built in

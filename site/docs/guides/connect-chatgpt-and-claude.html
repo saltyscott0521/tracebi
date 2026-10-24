@@ -66,23 +66,7 @@
 <a href="../reference/transform-sql.html">SQL transforms</a>
 <a href="../reference/template-html.html">template.html — the figure grammar</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
-<div class="sec"><span>Architecture</span><em>For changing the framework.</em></div>
-<a href="../architecture/credentials.html">Credentials: a store people can manage</a>
-<a href="../architecture/data-flow-board.html">Data as a flow: the board</a>
-<a href="../architecture/design-direction.html">Design direction</a>
-<a href="../architecture/duckdb-first.html">DuckDB-first — one engine from the sink to the page</a>
-<a href="../architecture/frontend-surfaces.html">Front-end surfaces — tracebi.com vs. the distributed app</a>
-<a href="../architecture/large-detail-artifacts.html">Large-detail artifacts — data-heavy, offline, still verifiable</a>
-<a href="../architecture/live-reports-plan.html">Live reports — the plan</a>
-<a href="../architecture/nav-v3.html">Navigation v3 — Docs as a place, Data as the chain</a>
-<a href="../architecture/one-demo.html">One demo: what tracebi.com serves, and the conventions every model follows</a>
-<a href="../architecture/report-architecture-v2.html">Report Architecture v2 — the one-lane reshape</a>
-<a href="../architecture/report-generator-architecture.html">Report Generator — Architecture (locked)</a>
-<a href="../architecture/test-suite-review.html">Test suite review, 2026-09-22</a>
-<a href="../architecture/ui-quality.html">The UI quality bar</a>
-<a href="../architecture/ui-backlog.html">UI backlog</a>
 <div class="sec"><span>Agent SOPs</span><em>Standard operating procedures.</em></div>
-<a href="../agents/pitfalls.html">Pitfalls: bugs we hit, and the rule that prevents each</a>
 <a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
 <a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
   </details>
@@ -93,7 +77,7 @@ make is theirs: drafts, publishes and runs are recorded under their name, and
 their role decides what they may do.</strong></p>
 <p>This is for the person who runs the TraceBi server (an admin) and for the
 people who then add the connector. It needs the web app, because the sign-in
-pages live there. The design is in <strong>remote-authoring</strong>.</p>
+pages live there.</p>
 <hr>
 <h2 id="how-it-works">How it works</h2>
 <p>TraceBi runs a small OAuth server for <code>/mcp</code>. ChatGPT and Claude find it on
@@ -269,7 +253,6 @@ people see it only if they are admins.</p>
 <h2 id="related">Related</h2>
 <ul>
 <li><a href="../guides/sign-in.html">Sign in to the app and the CLI</a> — the same login for the web app and <code>tracebi login</code></li>
-<li><strong>remote-authoring</strong> — the design: drafts, publishing, and this sign-in</li>
 <li><a href="../reference/environment-variables.html">Environment variables</a> — every variable above</li>
 <li><a href="../guides/one-server.html">Run TraceBi on one server</a> — hosting on one server</li>
 </ul>

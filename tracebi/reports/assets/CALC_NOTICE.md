@@ -4,7 +4,7 @@
 the embedded slice blocks (Parquet) and runs each binding's calc plan
 (`tracebi/reports/calc_plan.py`) under the reader's selection. Plain
 JavaScript, no wasm, no worker, nothing fetched; it is inlined like
-`tracebi.js`. See `docs/architecture/live-reports-plan.md` (L-3).
+`tracebi.js`. See `design/live-reports-plan.md` (L-3).
 
 | File | What it is |
 |---|---|

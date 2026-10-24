@@ -6,7 +6,7 @@ their role decides what they may do.**
 
 This is for the person who runs the TraceBi server (an admin) and for the
 people who then add the connector. It needs the web app, because the sign-in
-pages live there. The design is in [[remote-authoring]].
+pages live there.
 
 ---
 
@@ -177,6 +177,5 @@ people see it only if they are admins.
 ## Related
 
 - [[sign-in]] — the same login for the web app and `tracebi login`
-- [[remote-authoring]] — the design: drafts, publishing, and this sign-in
 - [[environment-variables]] — every variable above
 - [[one-server]] — hosting on one server

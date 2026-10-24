@@ -2,21 +2,21 @@
 
 **Status: built (S-1 to S-4, 2026-10-19 to 10-21), decisions closed
 2026-10-19.** Written from a maintainer discussion; the packages at the end
-were the plan, and the page half is [[live-reports-plan]]. **D3 and D10 shipped in S-1
+were the plan, and the page half is [Live reports — the plan](live-reports-plan.md). **D3 and D10 shipped in S-1
 (2026-10-19)**: a model query runs in one locked, read-only DuckDB connection
 over views of the attached warehouse (`tracebi/model/engine.py`), limits in
-[[tracebi-yaml]]. Not yet: the per-measure `MACRO`s (`{{ measure() }}`
+[Project settings (tracebi.yaml)](../docs/reference/tracebi-yaml.md). Not yet: the per-measure `MACRO`s (`{{ measure() }}`
 still expands to inline SQL). **D2 shipped in S-2 (2026-10-19)**: the
-`warehouse:` block of [[tracebi-yaml]] (file, object, remote),
+`warehouse:` block of [Project settings (tracebi.yaml)](../docs/reference/tracebi-yaml.md) (file, object, remote),
 `type: warehouse` in a model, `sink_target()` in a transform, object-tier
 credentials through `CREATE TEMPORARY SECRET`, and ETags plus the engine
 version in the certificate. Not yet: the object tier's manifest swap (§10;
 each Parquet file is replaced on its own) and `tracebi migrate warehouse`.
 Supersedes the
-engine choice in [[large-detail-artifacts]] (parquet-wasm + Arquero) and the
+engine choice in [Large-detail artifacts — data-heavy, offline, still verifiable](large-detail-artifacts.md) (parquet-wasm + Arquero) and the
 "controls never compute new numbers" rule in `tracebi/capabilities.py`.
 Everything in the three-phase workflow and the honesty rules
-([[MANIFESTO]]) stands; this changes *how* each phase computes, and
+([The TraceBi Manifesto](../MANIFESTO.md)) stands; this changes *how* each phase computes, and
 how much the report file may do on its own.
 
 **One line:** DuckDB is the only engine on the server. Transforms are SQL by
@@ -61,7 +61,7 @@ number it shows is still a query the trace can name.
 
 | # | Decision | Why |
 |---|---|---|
-| D1 | A transform is a `.sql` file by default; `.py` and `.ipynb` still run and end by handing DuckDB an Arrow table (pandas or polars). The UI names which form ran. **Built (S-3, 2026-10-19):** `tracebi run-transform` runs either form and reports it, the pipeline run records it, `<name>.contract.yaml` beside the transform; the reference transform is SQL with the pandas one beside it, fingerprints equal ([[transform-sql]]). | The trace line is drawn at the sink, so a Python transform is exactly as traceable as a SQL one. Only `report.py`, which computes after the model, stays `verifiable: false`. |
+| D1 | A transform is a `.sql` file by default; `.py` and `.ipynb` still run and end by handing DuckDB an Arrow table (pandas or polars). The UI names which form ran. **Built (S-3, 2026-10-19):** `tracebi run-transform` runs either form and reports it, the pipeline run records it, `<name>.contract.yaml` beside the transform; the reference transform is SQL with the pandas one beside it, fingerprints equal ([SQL transforms](../docs/reference/transform-sql.md)). | The trace line is drawn at the sink, so a Python transform is exactly as traceable as a SQL one. Only `report.py`, which computes after the model, stays `verifiable: false`. |
 | D2 | The warehouse has three storage tiers, chosen per project: a local `.duckdb` file (today), **Parquet on object storage** (the hosted default), or a remote engine (`ATTACH`). The freeze point is the same in all three; only its address moves. | The storage concern. Parquet also sidesteps DuckDB's storage-format versioning and the single-writer file. |
 | D3 | The model compiles to a DuckDB schema: one view per table, one `MACRO` per simple measure, and the star-schema joins as the query planner's input. Measures that need the grain (ratio, share, rank, running, percentile) stay model-level and compile per query, as now. | One SQL text the server, the page and `verify` all run. The YAML stays the contract a reviewer reads. |
 | D4 | SQL is a first-class figure binding on the server. `{"model", "sql"}` (already in `sql_calc.py`) is promoted, documented and scaffolded; `{{ measure() }}` expands before it runs. It runs at build time and is **fixed in the file**: it does not react to filters, hosted or not. | Authors and agents write what they mean when the spec cannot. The JSON spec stays the governed lane and the only live one; a gap that drives an author to SQL is a gap to close in the spec. |
@@ -344,7 +344,7 @@ Kept, and doing more (this is the library):
 ## 13. Packages
 
 **Execution order changed 2026-10-19:** the page half (D5–D9) goes first, as
-[[live-reports-plan]] (packages L-1 to L-5); the server half (Q-2, Q-4, Q-5)
+[Live reports — the plan](live-reports-plan.md) (packages L-1 to L-5); the server half (Q-2, Q-4, Q-5)
 follows. The table below stays as the full inventory.
 
 Each lands with the discoverability trio (vocabulary, scaffold or

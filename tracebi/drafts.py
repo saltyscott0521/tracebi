@@ -14,7 +14,7 @@ those above (no ``report.py``), each at most
 :data:`MAX_FILE_BYTES` of UTF-8 text. Publishing validates the draft, keeps the
 version it replaces under ``.tracebi/history/<kind>/<path>/<timestamp>/``,
 copies the files into the library and records a ``publish`` run. The draft is
-kept. See ``docs/strategy/remote-authoring.md``.
+kept. See ``design/strategy/remote-authoring.md``.
 
 ``kind`` is ``"reports"`` or ``"models"`` (the singular is accepted).
 

@@ -28,7 +28,7 @@ added for the new features.
 
 | Test | Why it went |
 | --- | --- |
-| The size cap in `test_presentation_js.py::TestAssetHygiene` | Capped `tracebi.js` at a byte size. See [[#Why is there a KB limit?]] The test now only checks the asset exists; `test_no_eval`, `test_no_innerhtml` and `test_public_api_defined` stay. |
+| The size cap in `test_presentation_js.py::TestAssetHygiene` | Capped `tracebi.js` at a byte size. See [Why is there a KB limit?](#why-is-there-a-kb-limit) The test now only checks the asset exists; `test_no_eval`, `test_no_innerhtml` and `test_public_api_defined` stay. |
 | The size assertion in `test_engine_assets.py::test_parquet_wasm_is_gzipped` | Asserted the WebAssembly file was "substantial". The gzip check stays. |
 | `test_phase1.py::test_dataset_help_prints`, `test_datamodel_help_prints`; `test_phase2.py::test_report_help_prints`; `test_phase5.py::test_help_text_returns_the_string`, `test_help_still_prints_the_same_text` | Asserted `help()` prints text with a few method names in it. `test_cheat_sheet_kwargs_are_real_parameters` still checks the cheat sheets name real parameters, which is the bug that actually shipped. |
 | `test_phase1.py::test_dataset_repr_html`, `test_datamodel_repr_html`; `test_phase2.py::test_report_repr_html_is_iframe` | Pinned the notebook display markup. `test_dataset_repr_html_escapes` (HTML injection) and `test_dataset_repr_html_caps_preview` (a huge frame can't freeze a notebook) stay. |
@@ -128,7 +128,7 @@ Python/JavaScript formatting parity, fingerprints and verify verdicts,
 contracts, security, the honesty rules. Never a look-alike (parametrize, or
 pick the one case that matters), never an assert on a private field, never
 "it didn't raise" or "the string appears" on its own. See
-[[pitfalls]] for the bugs that did happen, and the checks that would have
+[Pitfalls: bugs we hit, and the rule that prevents each](pitfalls.md) for the bugs that did happen, and the checks that would have
 caught them.
 
 ## The cull, 2026-10-18

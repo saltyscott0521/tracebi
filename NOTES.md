@@ -93,7 +93,7 @@ loses:
 
 ## 2026-10-23 — The reference project follows its own conventions (U-D1)
 
-`docs/architecture/one-demo.md`, rules 1–4, for the three models that exist.
+`design/one-demo.md`, rules 1–4, for the three models that exist.
 `examples/portfolio_project/tracebi.yaml` declares the one warehouse
 (`data/warehouse.duckdb`) and the engine limits; housing's model says
 `type: warehouse` and its transform sinks through `sink_target()`, so
@@ -331,7 +331,7 @@ ours. A Rust port is the fallback if the 100 ms query budget fails;
 `engine: duckdb` is a later opt-in for arbitrary SQL offline.
 
 Design, closed decisions and the eight packages:
-`docs/architecture/duckdb-first.md`.
+`design/duckdb-first.md`.
 
 ---
 
@@ -369,7 +369,7 @@ classes, `data-tb-receipt-*` attributes, `renderReceipt` /
 `ReceiptFrame.jsx`, the panel's `receipt` tab key, and the `receipt_drawer`
 key in `tracebi context`. Renaming them buys a reader nothing and moves the
 artifact contract that every file already built depends on. A later rename is
-item 36 in `docs/architecture/ui-backlog.md`. History (`changes/*.md`, this
+item 36 in `design/ui-backlog.md`. History (`changes/*.md`, this
 file, the architecture and strategy records) keeps the word it was written
 in. `tests/test_agent_guides.py` now fails if AGENTS.md, the scaffolded
 AGENTS.md or `tracebi context` says "receipt" outside those identifiers.
@@ -701,7 +701,7 @@ sign-in loops; and only `/mcp` is documented as forwarded. Check with
   app-wide (still exactly as written) was offered, not done.
 - Remote authoring steps 3 (`tracebi push`, a git-mounted library) and 4
   (pipelines publish with approval, run on the server); see
-  `docs/strategy/remote-authoring.md`.
+  `design/strategy/remote-authoring.md`.
 - The AltsVault worked example (see 2026-08-14) is still parked.
 
 ### Notes for whoever continues
@@ -840,7 +840,7 @@ rule: *a logged-out stranger's content is .com; anything needing a customer's
 warehouse loaded is the app.* Growing the app is endorsed — as an operational +
 **trust console** (browse/verify/run/schedule, trust made visible), never a
 drag-and-drop viz builder, which is the Tableau turf the artifact displaces.
-Full write-up: [docs/architecture/frontend-surfaces.md](docs/architecture/frontend-surfaces.md).
+Full write-up: [design/frontend-surfaces.md](design/frontend-surfaces.md).
 
 ## 2026-08-19 — Design decisions of the artifact arc (recorded after the fact)
 
@@ -1808,10 +1808,10 @@ lane, were resolved and the lane removed in 0.8):
   row-level security. Not started.
 - **Running pushed Python in a sandbox.** Remote drafts carry no Python today;
   a locked-down worker with dev credentials is the proposed answer
-  (`docs/strategy/analyst-freedom.md`, `remote-authoring.md`).
+  (`design/strategy/analyst-freedom.md`, `remote-authoring.md`).
 - **DuckDB-first, what is not built:** per-measure `MACRO`s, the object tier's
   manifest swap, `tracebi migrate warehouse`, and the questions in
-  `docs/architecture/duckdb-first.md` §14 (the parity definitions, the default
+  `design/duckdb-first.md` §14 (the parity definitions, the default
   `embed`, Local in the library chip).
 - **The word "receipt" in identifiers** (`tracebi-receipt`, `.tb-receipt*`,
   `renderReceipt`): renamed together or never (`ui-backlog.md` item 36).

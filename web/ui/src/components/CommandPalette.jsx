@@ -29,9 +29,8 @@ function pagesFor(role) {
   ]
 }
 
-// Handbook pages that are not listed in Docs (internal, retired, the design
-// notes under docs/architecture/ or the intent under docs/strategy/).
-const UNLISTED = /^(architecture|strategy)--|(^|--)(north-star|receipts)$/
+// Handbook pages that are not listed in Docs (internal or retired).
+const UNLISTED = /(^|--)(north-star|receipts)$/
 
 const KIND_META = {
   page:      { tag: 'Page',      color: 'var(--role-table)' },

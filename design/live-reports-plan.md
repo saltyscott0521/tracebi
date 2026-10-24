@@ -9,8 +9,8 @@ in `tracebi/reports/assets/tracebi.js`, parity held by
 `tests/test_calc_parity.py` and every shipped report walked by
 `tests/e2e/test_live_cascade.py`. Round 3 (the server half: the model query in
 a locked DuckDB connection, storage tiers, SQL transforms, the medallion layers
-in DuckDB) is built too; [[duckdb-first]] holds its design. How to author a
-live page is in [[report-json]], [[template-html]] and [[app-jsx]]. What
+in DuckDB) is built too; [DuckDB-first — one engine from the sink to the page](duckdb-first.md) holds its design. How to author a
+live page is in [report.json](../docs/reference/report-json.md), [template.html — the figure grammar](../docs/reference/template-html.md) and [app.jsx — the React lane](../docs/reference/app-jsx.md). What
 follows is the design as decided, kept for its reasons.
 
 It started from the maintainer's goal:
@@ -56,7 +56,7 @@ It started from the maintainer's goal:
    hashes; `verify --local` replays it on the server). Fingerprints round
    floats to 9 significant digits under a total order before hashing (new
    algo version; verify reads both). Parquet blocks hash the shipped bytes
-   (`payload_sha256`), as [[large-detail-artifacts]] §11 settled.
+   (`payload_sha256`), as [Large-detail artifacts — data-heavy, offline, still verifiable](large-detail-artifacts.md) §11 settled.
 8. **Parquet types in a slice** are numbers, booleans, strings and naive
    datetimes only; grains are strings (`2026-03`, `2026-Q1`, `2026-W09`);
    anything else fails the build by name. Snappy or uncompressed pages (what
@@ -257,7 +257,7 @@ report needs.
 ## Round 3 — the server half (2026-10-19)
 
 The report file is done; this round makes the server
-side DuckDB-first per [[duckdb-first]] D1–D3 and D10, and removes the last
+side DuckDB-first per [DuckDB-first — one engine from the sink to the page](duckdb-first.md) D1–D3 and D10, and removes the last
 pandas from the query path.
 
 18. **A model query runs in the warehouse, not in pandas.** Today
