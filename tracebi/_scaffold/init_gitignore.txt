@@ -19,6 +19,7 @@ output/**
 # Workbench dev-state (exhibit feed, pins) — session scratch, never traces.
 # It also holds the credential store and its key: never commit those.
 .tracebi/
+.tracebi/secrets.yml.enc
 .tracebi/secrets.json
 .tracebi/secret.key
 # Remote-authoring drafts: private working copies, written over MCP or HTTP

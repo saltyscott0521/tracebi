@@ -30,6 +30,7 @@ data/
 .env.local
 .env.*.local
 # The project credential store (`tracebi secret`) and its key.
+.tracebi/secrets.yml.enc
 .tracebi/secrets.json
 .tracebi/secret.key
 *.db

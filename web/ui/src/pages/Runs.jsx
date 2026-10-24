@@ -211,13 +211,13 @@ export default function Runs({ model: only }) {
     else next.add(key)
     return next
   })
+  // From the address as it is now, not as it was last rendered: two changes
+  // in quick succession (Every run, then a kind) must both stay.
   const setFilter = (key, value) => {
-    setSearchParams(prev => {
-      const next = new URLSearchParams(prev)
-      if (value) next.set(key, value)
-      else next.delete(key)
-      return next
-    }, { replace: true })
+    const next = new URLSearchParams(window.location.search)
+    if (value) next.set(key, value)
+    else next.delete(key)
+    setSearchParams(next, { replace: true })
   }
   const { data, isLoading, error } = useRuns(group ? group[2] : '', target.trim())
   const { data: everything } = useRuns('', '')   // the same request when nothing is filtered

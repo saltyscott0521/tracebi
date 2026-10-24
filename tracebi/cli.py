@@ -1413,9 +1413,11 @@ def _record_secret(name: str, status: str) -> None:
 
 
 def cmd_secret(args: argparse.Namespace) -> int:
-    """``tracebi secret set|list|unset``: the project's credential store
-    (``.tracebi/secrets.json``, :mod:`tracebi.project_credentials`). A value is
-    read from a prompt with no echo, or from stdin, and never printed."""
+    """``tracebi secret set|list|unset|edit``: the project's credential store
+    (``.tracebi/secrets.yml.enc``, :mod:`tracebi.project_credentials`). A value is
+    read from a prompt with no echo, or from stdin, and never printed; ``edit``
+    opens the decrypted YAML in ``$VISUAL`` / ``$EDITOR`` and encrypts it back,
+    as ``rails credentials:edit`` does."""
     import getpass
 
     from tracebi import project_credentials as pc
@@ -1437,6 +1439,8 @@ def cmd_secret(args: argparse.Namespace) -> int:
                 if r.get("problem"):
                     print(f"    {r['problem']}")
             return 0
+        if args.action == "edit":
+            return _edit_secrets(pc, root)
         if not args.name:
             print(f"tracebi secret {args.action} needs a NAME", file=sys.stderr)
             return 2
@@ -1463,6 +1467,46 @@ def cmd_secret(args: argparse.Namespace) -> int:
     print(f"saved {args.name} in {pc.STORE_FILE}")
     if args.name not in {r["name"] for r in pc.required(root)}:
         print(f"note: nothing in this project references ${{{args.name}}} yet")
+    return 0
+
+
+def _edit_secrets(pc, root: Path) -> int:
+    """Decrypt the store to a 0600 temp file, open the editor on it, encrypt
+    what comes back. The plaintext exists only while the editor runs."""
+    import contextlib
+    import shlex
+    import subprocess
+    import tempfile
+
+    editor = os.environ.get("VISUAL") or os.environ.get("EDITOR")
+    if not editor:
+        print("tracebi secret edit opens the store in your editor: set VISUAL or EDITOR",
+              file=sys.stderr)
+        return 2
+    text = pc.document(root)
+    fd, tmp = tempfile.mkstemp(prefix="tracebi-secrets-", suffix=".yml")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        proc = subprocess.run([*shlex.split(editor), tmp], check=False)
+        if proc.returncode != 0:
+            print(f"the editor exited {proc.returncode}; nothing changed", file=sys.stderr)
+            return 1
+        edited = Path(tmp).read_text(encoding="utf-8")
+    finally:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+    if edited == text:
+        print("nothing changed")
+        return 0
+    changes = pc.replace_document(edited, root)
+    for name, status in sorted(changes.items()):
+        _record_secret(name, status)
+    if not changes:
+        print("nothing changed")
+        return 0
+    print(f"saved {pc.STORE_FILE}: " + ", ".join(
+        f"{name} {status}" for name, status in sorted(changes.items())))
     return 0
 
 
@@ -3937,18 +3981,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_connect.add_argument(
         "--store", choices=["dotenv", "secret"], default="dotenv",
         help="Where the secret goes: .env (default), or `secret`, the project's "
-             "encrypted credential store (.tracebi/secrets.json, `tracebi secret`).",
+             "encrypted credential store (.tracebi/secrets.yml.enc, `tracebi secret`).",
     )
     p_connect.set_defaults(func=cmd_connect)
 
     p_secret = sub.add_parser(
         "secret",
-        help="The project's credential store (.tracebi/secrets.json, encrypted): "
-             "`secret list` shows every ${NAME} the connections reference and "
-             "where each is set; `secret set NAME` saves one (prompted, no echo); "
-             "`secret unset NAME` removes it. The environment and .env still win.",
+        help="The project's credential store (.tracebi/secrets.yml.enc: encrypted "
+             "YAML, NAME: value): `secret list` shows every ${NAME} the connections "
+             "reference and where each is set; `secret set NAME` saves one (prompted, "
+             "no echo); `secret unset NAME` removes it; `secret edit` opens the "
+             "decrypted YAML in $EDITOR and encrypts it back. The environment and "
+             ".env still win.",
     )
-    p_secret.add_argument("action", choices=["set", "list", "unset"])
+    p_secret.add_argument("action", choices=["set", "list", "unset", "edit"])
     p_secret.add_argument("name", nargs="?", help="The name a connection references, e.g. TRACEBI_CRM_URL.")
     p_secret.add_argument(
         "--from-stdin", action="store_true",

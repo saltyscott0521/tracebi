@@ -6,6 +6,16 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the credential store is encrypted YAML
+
+- **`.tracebi/secrets.yml.enc`** replaces `.tracebi/secrets.json`: one file
+  whose plaintext is a plain `NAME: value` YAML document, encrypted whole, the
+  shape Rails credentials and Ansible Vault use. **`tracebi secret edit`**
+  opens it in `$EDITOR` and encrypts it back. Who set a value and when now
+  comes from History's credential rows. An existing `secrets.json` is still
+  read and is rewritten in the new form on the next change; the key and
+  `tracebi secret set|list|unset` are unchanged.
+
 ### Changed — Data is a board
 
 - **Data opens on one board**, read left to right in the order the data moves:

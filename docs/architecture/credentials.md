@@ -34,12 +34,17 @@ the environment.
 
 ### The store
 
-`.tracebi/secrets.json` in the project root: a JSON object `{NAME:
-{"value": <Fernet token>, "updated_at": iso, "updated_by": actor}}`, mode
-`0600`, created on first write. Values are encrypted at rest with
-[Fernet](https://cryptography.io/en/latest/fernet/) (`cryptography`, already
-resolved in `uv.lock`; add it to the `web` extra and fail loudly per core
-invariant 4 if a store is read without it).
+`.tracebi/secrets.yml.enc` in the project root, the shape Rails credentials
+(`credentials.yml.enc` + `master.key`) and Ansible Vault use: one file whose
+plaintext is a plain YAML mapping, `NAME: value`, encrypted whole with
+[Fernet](https://cryptography.io/en/latest/fernet/) (`cryptography`, in the
+`web` extra; a store read without it fails loudly per core invariant 4), mode
+`0600`, created on first write. `tracebi secret edit` decrypts it to a `0600`
+temp file, opens `$VISUAL` / `$EDITOR`, validates what comes back (names,
+non-empty string values) and encrypts it again. Who set a value and when is
+the audit row, not the file. The first design (0.8) kept a JSON object of
+per-value tokens with the metadata beside each; that file is still read and
+is rewritten in the new form on the next change.
 
 The key, in order: `TRACEBI_SECRET_KEY` (a Fernet key, base64, 32 bytes),
 else `.tracebi/secret.key`, generated `0600` on first use. One process
@@ -49,7 +54,7 @@ replicas must share `TRACEBI_SECRET_KEY`, and the docs say so where
 A store written under one key and read under another says exactly that
 (`CredentialKeyMismatch`, naming the file), never "not set".
 
-`.tracebi/secrets.json` and `.tracebi/secret.key` go in `.gitignore`
+`.tracebi/secrets.yml.enc` and `.tracebi/secret.key` go in `.gitignore`
 (`tracebi init` writes it; the repo's own `.gitignore` gains the two lines).
 `tracebi push` never packages `.tracebi/`; `POST /api/library/sync` never
 pulls it; the session export never reads it.

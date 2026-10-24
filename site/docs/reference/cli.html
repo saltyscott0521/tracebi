@@ -145,7 +145,7 @@ file, is refused without <code>--force</code>. Nothing is written when the test 
 <code>getpass</code>); otherwise the command exits 2 and names the flags. <code>--dataset</code>
 is required for BigQuery because the connector takes it with no default.</p>
 <p><code>--store secret</code> puts the secret in the project's encrypted credential store
-(<code>.tracebi/secrets.json</code>, <a href="../reference/credentials.html">Credentials</a>) instead of <code>.env</code>; the legacy
+(<code>.tracebi/secrets.yml.enc</code>, <a href="../reference/credentials.html">Credentials</a>) instead of <code>.env</code>; the legacy
 <code>--python</code> module always reads <code>.env</code>.</p>
 <p>Discovery does not load <code>models/_connections/</code>: model discovery reads only
 top-level <code>models/*.py</code>, and a file there must define <code>model</code>.</p>
@@ -153,15 +153,18 @@ top-level <code>models/*.py</code>, and a file there must define <code>model</co
 <pre><code class="language-bash">tracebi secret list
 tracebi secret set NAME [--from-stdin]
 tracebi secret unset NAME
+tracebi secret edit
 </code></pre>
 <p>The project's credential store (<a href="../reference/credentials.html">Credentials</a>). <code>list</code> prints every
 <code>${NAME}</code> the connection files and <code>tracebi.yaml</code> reference, where each is
 set (<code>set from environment</code>, <code>set from .env</code>, <code>set in store</code>, <code>default</code>,
 <code>MISSING</code>) and what uses it. <code>set</code> prompts with no echo (or reads stdin with
-<code>--from-stdin</code>) and encrypts the value into <code>.tracebi/secrets.json</code>; it never
-prints it. <code>unset</code> removes the store's value only. The environment and <code>.env</code>
-still win over the store. Each change records a <code>credential</code> row in the run
-store.</p>
+<code>--from-stdin</code>) and encrypts the value into <code>.tracebi/secrets.yml.enc</code>; it never
+prints it. <code>unset</code> removes the store's value only. <code>edit</code> decrypts the store
+to a temporary file, opens <code>$VISUAL</code> / <code>$EDITOR</code> on the plain <code>NAME: value</code>
+YAML, and encrypts what you saved (a line that is not a name and a non-empty
+string is refused, and nothing changes). The environment and <code>.env</code> still win
+over the store. Each change records a <code>credential</code> row in the run store.</p>
 <h3 id="tracebi-import-dbt"><code>tracebi import dbt</code></h3>
 <pre><code class="language-bash">tracebi import dbt &lt;path&gt; [--name NAME] [--connection NAME] [--schema SCHEMA] [--force]
 tracebi import dbt ./jaffle_shop --connection wh --name jaffle

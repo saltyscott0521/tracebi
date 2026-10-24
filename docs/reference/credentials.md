@@ -9,7 +9,7 @@ A connection keeps its secret out of the file as `${NAME}`
 
 1. the **process environment**,
 2. the project's **`.env`**,
-3. the project's **credential store**, `.tracebi/secrets.json`.
+3. the project's **credential store**, `.tracebi/secrets.yml.enc`.
 
 The environment comes first, so a deployment's own configuration (a vault or
 secrets manager that injects variables) always wins over anything saved
@@ -41,11 +41,14 @@ A name is only ever "missing" against something that references it.
 
 ## The store
 
-`.tracebi/secrets.json` in the project root, mode `0600`, created on the
-first write. Each value is encrypted with
-[Fernet](https://cryptography.io/en/latest/fernet/) (`pip install
-'tracebi[web]'` brings `cryptography`), with who set it and when beside it;
-never in clear.
+`.tracebi/secrets.yml.enc` in the project root, mode `0600`, created on the
+first write: the shape Rails credentials and Ansible Vault use. Decrypted it
+is plain YAML, one `NAME: value` per line; on disk it is one
+[Fernet](https://cryptography.io/en/latest/fernet/) ciphertext (`pip install
+'tracebi[web]'` brings `cryptography`), never in clear. Who set a value and
+when is in History (each change records a row), not in the file. A store
+from before 0.9 (`.tracebi/secrets.json`) is still read, and is rewritten in
+the new form on the next change.
 
 The key is `TRACEBI_SECRET_KEY` (a Fernet key) when set, else
 `.tracebi/secret.key`, generated `0600` on the first write. One server can
@@ -68,6 +71,7 @@ tracebi secret set TRACEBI_CRM_URL            # prompts, no echo
 printf %s "$URL" | tracebi secret set TRACEBI_CRM_URL --from-stdin
 tracebi secret list
 tracebi secret unset TRACEBI_CRM_URL          # the store's value only
+tracebi secret edit                           # the decrypted YAML in $EDITOR, encrypted on save
 tracebi connect crm --kind postgres --url ... --store secret   # the store instead of .env
 ```
 

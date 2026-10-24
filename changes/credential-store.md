@@ -1,7 +1,7 @@
 ### Added — credentials people can manage, and `${NAME:-default}`
 
 - A project's connection secrets can live in an encrypted store on the server,
-  `.tracebi/secrets.json` (Fernet; `cryptography` joins the `web` extra), keyed
+  `.tracebi/secrets.yml.enc` (an encrypted YAML document, Fernet; `cryptography` joins the `web` extra), keyed
   by `TRACEBI_SECRET_KEY` or a generated `.tracebi/secret.key`. A `${NAME}`
   resolves from the environment, then `.env`, then the store, so every existing
   project behaves as before and a deployment's environment still wins. One

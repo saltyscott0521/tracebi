@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shutil
+import sys
 
 import pytest
 
@@ -379,14 +380,14 @@ def test_the_crm_credential_is_kept_on_the_server_and_never_shown(
         assert refused.status_code == 403
         assert refused.json()["detail"]["reason"] == \
             "credentials are set on the server: tracebi secret set TRACEBI_CRM_URL"
-        assert not (reference / ".tracebi" / "secrets.json").exists()
+        assert not (reference / ".tracebi" / "secrets.yml.enc").exists()
 
         # On the server: the CLI, from stdin, never echoing it.
         monkeypatch.setattr("sys.stdin", io.StringIO(secret + "\n"))
         code, out = run_cli("secret", "set", "TRACEBI_CRM_URL", "--from-stdin")
         assert code == 0, out
         bodies.append(out)
-        stored = (reference / ".tracebi" / "secrets.json").read_text()
+        stored = (reference / ".tracebi" / "secrets.yml.enc").read_text()
         assert "throwaway" not in stored
         after = row()
         assert after["set"] is True and after["source"] == "store" and after["stored"] is True
@@ -395,6 +396,30 @@ def test_the_crm_credential_is_kept_on_the_server_and_never_shown(
         assert "TRACEBI_CRM_URL · set in store · used by crm.url" in out, out
         audit = [r for r in c.get("/api/runs", params={"kind": "credential"}).json()]
         assert [(r["target"], r["status"]) for r in audit] == [("TRACEBI_CRM_URL", "set")]
+        # The app says who set it and when, from that row, never the value.
+        assert after["updated_at"] and after["updated_by"]
+
+        # `tracebi secret edit` is the decrypted YAML in an editor: the editor
+        # here is a script that adds a name and keeps the other; what it
+        # wrote lands encrypted, and only the change is recorded.
+        editor = reference / "editor.py"
+        editor.write_text(
+            "import sys, pathlib\n"
+            "p = pathlib.Path(sys.argv[1]); t = p.read_text()\n"
+            "assert 'TRACEBI_CRM_URL' in t and 'throwaway' in t, t\n"
+            "p.write_text(t + 'TRACEBI_BANK_URL: sqlite:///inputs/other.sqlite\\n')\n")
+        monkeypatch.setenv("EDITOR", f"{sys.executable} {editor}")
+        code, out = run_cli("secret", "edit")
+        assert code == 0 and "TRACEBI_BANK_URL set" in out and "CRM" not in out, out
+        stored = (reference / ".tracebi" / "secrets.yml.enc").read_text()
+        assert "throwaway" not in stored and "other.sqlite" not in stored
+        code, out = run_cli("secret", "list")
+        assert "TRACEBI_BANK_URL · set in store · used by bank.url" in out, out
+        assert "TRACEBI_CRM_URL · set in store" in out, out
+        audit = c.get("/api/runs", params={"kind": "credential"}).json()
+        assert [(r["target"], r["status"]) for r in audit] == [
+            ("TRACEBI_BANK_URL", "set"), ("TRACEBI_CRM_URL", "set")]
+        assert run_cli("secret", "unset", "TRACEBI_BANK_URL")[0] == 0
 
         # The connection now resolves from the store; the test reaches for the
         # host and reports why it could not, with the password scrubbed.
