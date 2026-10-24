@@ -1008,7 +1008,9 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             sidebar.get_by_role("link", name="Docs", exact=True).click()
             viewer.wait_for_url("**/docs")
             viewer.get_by_role("heading", name="Docs", exact=True).wait_for()
-            viewer.get_by_role("link", name="Get started", exact=True).click()
+            # The sidebar's link: the home page links it too, in its Start here list.
+            viewer.get_by_role("navigation", name="Docs pages").get_by_role(
+                "link", name="Get started", exact=True).click()
             viewer.wait_for_url("**/docs/get-started")
             viewer.get_by_role("heading", name="Get started", exact=True).wait_for()
             # A Docs page's one h1 is its own title; "Docs" is the crumb.

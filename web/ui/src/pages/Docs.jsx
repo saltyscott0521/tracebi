@@ -187,7 +187,7 @@ export default function Docs() {
             </span>
           </button>
         )}
-        <nav style={narrow ? {
+        <nav aria-label="Docs pages" style={narrow ? {
           display: navOpen ? 'block' : 'none',
           background: 'var(--card)', border: '1px solid var(--border)',
           borderRadius: 8, padding: '8px 8px 12px',
