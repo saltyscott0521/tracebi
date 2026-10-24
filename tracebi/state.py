@@ -360,6 +360,30 @@ def list_runs(
     return [_public(dict(r)) for r in rows]
 
 
+def count_runs(*, kinds: Optional[list[str]] = None, url: Optional[str] = None) -> list[dict]:
+    """Every (kind, target) the store holds a run for: ``runs`` and ``failed``.
+
+    A failed run is one whose status is ``failed``, ``error`` or ``refused``,
+    the statuses History marks red. *kinds* narrows it to those kinds.
+    """
+    eng = ensure(url)
+    from sqlalchemy import bindparam, text
+    sql = ("SELECT kind, target, COUNT(*) AS runs, "
+           "SUM(CASE WHEN status IN ('failed', 'error', 'refused') THEN 1 ELSE 0 END) AS failed "
+           "FROM tracebi_runs WHERE target IS NOT NULL")
+    params: dict = {}
+    if kinds:
+        sql += " AND kind IN :kinds"
+        params["kinds"] = list(kinds)
+    stmt = text(sql + " GROUP BY kind, target")
+    if kinds:
+        stmt = stmt.bindparams(bindparam("kinds", expanding=True))
+    with eng.connect() as conn:
+        rows = conn.execute(stmt, params).mappings().all()
+    return [{"kind": r["kind"], "target": r["target"], "runs": int(r["runs"]),
+             "failed": int(r["failed"] or 0)} for r in rows]
+
+
 def newest_by_target(kind: str, url: Optional[str] = None) -> dict[str, dict]:
     """The newest row of *kind* for each target.
 

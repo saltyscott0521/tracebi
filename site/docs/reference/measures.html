@@ -85,11 +85,14 @@ re-runnable, and therefore <a href="../concepts/trace.html">traceable</a>.</p>
     period_end=None, offset=None, growth=None, to_date=None,   # exactly ONE
     partition_by=None,      # rank / running only
     agg=None,               # required for column= / expr=; rejected by the rest
-    description=&quot;&quot;, format=None,
+    label=None, description=&quot;&quot;, format=None,
     allow_rate_agg=False, allow_additive=False,
 )
 </code></pre>
 <p>Exactly one kind argument. <code>format</code> takes a name from <a href="../reference/number-formats.html">Number formats</a>.
+<code>label</code> is the name people read in the app ("Share of fair value" for
+<code>fv_share</code>); without one the app humanises the name. It changes no number,
+and queries still name the measure by <code>name</code>.
 Chainable — it returns the model.</p>
 <hr>
 <h2 id="the-ten-kinds">The ten kinds</h2>

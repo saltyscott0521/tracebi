@@ -1612,6 +1612,16 @@ def describe(brief: bool = False) -> dict:
                         "verify re-runs it: changing it in the model shows as "
                         "drift.",
             },
+            "measure_labels": {
+                "declare": "model.add_measure(name, ..., label='Share of fair "
+                           "value'); YAML: label: on the measure",
+                "note": "The name people read for a measure, where the app "
+                        "shows it (Ask's tokens, its answers and definitions). "
+                        "Without one the app humanises the identifier "
+                        "(fv_share reads 'Fv share'). Presentation only: a "
+                        "label never changes a number, and queries and "
+                        "bindings still name the measure by its identifier.",
+            },
             "aggregations": sorted(_AGG_FUNCS) + ["p<N> (percentile, e.g. p90)"],
             "aggregations_note": "median and stddev summarize a distribution's "
                                  "shape — a mean hides skew and tails, so use "

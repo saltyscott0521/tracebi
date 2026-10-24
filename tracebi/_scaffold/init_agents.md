@@ -231,6 +231,9 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   'purchase'})` (YAML: `filters:` on the measure). It restricts only that
   measure, so a query's own filters still narrow every measure; the trace
   stamps the filter, and `verify` re-runs it.
+- A measure can carry a `label` (YAML: `label: Total revenue` on the measure):
+  the name people read in the app. Without one the app humanises the
+  identifier; queries and bindings still name the measure by it.
 - A report can calculate its own measures: a `"measures"` block in its
   `report.json`, keyed by model (`{"sample_model": {"big_minus_small":
   {"measure_expr": "big_orders - small_orders"}}}`), takes the model's measure

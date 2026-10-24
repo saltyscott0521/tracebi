@@ -209,6 +209,7 @@ tables:
 #   - name: revenue
 #     column: revenue
 #     agg: sum
+#     label: Revenue                # the name people read; else the name, humanised
 #     description: Total revenue
 #     format: currency0
 """

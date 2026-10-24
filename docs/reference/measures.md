@@ -17,12 +17,15 @@ model.add_measure(
     period_end=None, offset=None, growth=None, to_date=None,   # exactly ONE
     partition_by=None,      # rank / running only
     agg=None,               # required for column= / expr=; rejected by the rest
-    description="", format=None,
+    label=None, description="", format=None,
     allow_rate_agg=False, allow_additive=False,
 )
 ```
 
 Exactly one kind argument. `format` takes a name from [[number-formats]].
+`label` is the name people read in the app ("Share of fair value" for
+`fv_share`); without one the app humanises the name. It changes no number,
+and queries still name the measure by `name`.
 Chainable — it returns the model.
 
 ---
