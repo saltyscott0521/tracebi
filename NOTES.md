@@ -418,7 +418,7 @@ Keep this. At 390 the sentence wraps over three lines above a full-width Ask
 button, the suggestions open under it, Advanced stays folded. Dark keeps the
 accent bars and a neutral chip. No console errors.
 
-**Deliberately left** ([[ui-backlog]] 28–31): no fingerprint on an Ask
+**Deliberately left** (`design/ui-backlog.md` 28–31): no fingerprint on an Ask
 answer (the HTTP query returns lineage, not `query_model`'s stamp); filters
 are equality on dimension values (ranges and `having` are Advanced only);
 measure labels are humanised names ("Fv share"); Keep this starts at
@@ -469,7 +469,7 @@ Report metrics did not move (fonts 5, accents 4 / 5, shadows 16, gradients 60,
 looks 5 / 6); `bundle_js_kb` reads 1,215, not 2,345: the Step 1 run counted a
 stale second bundle in `dist/`.
 
-**Deliberately left** ([[ui-backlog]]): `CLAUDE.md` still says reports are
+**Deliberately left** (`design/ui-backlog.md`): `CLAUDE.md` still says reports are
 served "on the model's Overview" (the project instructions are the owner's to
 edit); the Map's labels in mono; the Model tab's inner tab row and its lone
 Edit as a draft button; the Transform flow's two-step zoom; the report page's
@@ -520,7 +520,7 @@ list; most builds show no duration, because `tracebi report build` records
 no finish time, so Took appears only beside background runs, schedules and
 pipeline runs. The phone header is translucent over a scrolled list.
 
-**Deliberately left** ([[ui-backlog]]): the Data page's Reports-stage
+**Deliberately left** (`design/ui-backlog.md`): the Data page's Reports-stage
 preview keeps its Preview/Config switch until Step 3 retires it; the
 committed ui-audit baselines still name the old addresses (re-run them);
 about nine lines in the Markdown docs (and their `site/docs` twins) still
@@ -567,7 +567,7 @@ report's `style.css` follows the same rule. *The 12-column grid*
 *One receipt component*: Step 2 mounts `tracebi.renderReceipt(mount,
 receipt, options)` in the app's report panel.
 
-**Deliberately left** ([[ui-backlog]]): small multiples are dense on a phone;
+**Deliberately left** (`design/ui-backlog.md`): small multiples are dense on a phone;
 the showcase's striped frozen column keeps a light shade in dark; the
 selection handshake with a parent that is not the app; affordability keeps
 its own look (Inter, green, paper, shadows, gradients), pinned light; the

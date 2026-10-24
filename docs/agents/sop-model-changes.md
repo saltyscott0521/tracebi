@@ -1,5 +1,9 @@
 # SOP: Changing the Semantic Contract
 
+> **Read `AGENTS.md` first.** It is the brief every agent reads before working in a
+> TraceBi project (`tracebi init` writes one into each). This SOP is the
+> step-by-step for one job in it: changing what a model's numbers mean.
+
 **Audience:** an engineer-agent (or a human doing the same job) editing the
 **definition plane** — the `models/<name>.yaml` files (a `models/<name>.py`
 for anything exotic) that declare what numbers mean in this project.
