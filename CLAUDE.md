@@ -284,8 +284,11 @@ docker-compose.yml     # Serves examples/portfolio_project only (TRACEBI_APP uns
 pyproject.toml         # Single source of truth for deps, build, and pytest config
 CHANGELOG.md           # Keep-a-changelog format
 LICENSE                # MIT
-README.md              # Full user-facing docs
-NOTES.md               # Architecture decisions and open questions
+README.md              # The front door: what it is, install, the reference project, the app, deploy, agents
+NOTES.md               # The decision journal (dated entries), build status, open questions
+docs/                  # The handbook (Obsidian vault). The app's Docs lists concepts/, guides/, reference/,
+                       #   agents/; architecture/ (design notes) and strategy/ (intent) open only by link.
+                       #   docs/index.md lists every page; site/build_docs.py renders it (commit site/docs).
 ```
 
 ---
@@ -927,7 +930,7 @@ Don't add these unless asked.
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
 | See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing_model/affordability/` + `tracebi/reports/scenario.py` |
 | See every artifact feature at once | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/e2e/test_reference_project.py` and `tests/test_agent_guides.py`) |
-| Understand architecture decisions | `NOTES.md` |
+| Understand architecture decisions | `NOTES.md` (the journal) + `docs/architecture/` (the design notes) |
 | Avoid bugs already hit in this repo | `docs/agents/pitfalls.md` |
 | Decide whether a test is worth writing | `docs/architecture/test-suite-review.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |

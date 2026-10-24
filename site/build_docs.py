@@ -34,9 +34,9 @@ REPO = SITE.parent
 DOCS = REPO / "docs"
 OUT = SITE / "docs"
 
-#: Internal working documents. The positioning doc is gitignored outright —
-#: it is not product documentation.
-HIDDEN = {"north-star"}
+#: Pages the site never publishes: the positioning doc, and the stub that
+#: only redirects an old address in the app (receipts → trace).
+HIDDEN = {"north-star", "receipts"}
 
 #: The vault's sections, in reading order: ideas before look-up tables.
 #: docs/strategy/ is not one: it is intent (where the product is going, with
