@@ -1,4 +1,4 @@
-# Quickstart
+# Get started
 
 **Install, scaffold a project, and build one verified report — about five
 minutes.**

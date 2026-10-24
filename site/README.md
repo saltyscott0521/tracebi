@@ -27,8 +27,13 @@ works in both light and dark, following the visitor's system theme.
 is the single source, shared with Obsidian and the app's own Docs page.
 
 ```bash
-python site/build_docs.py     # docs/*.md → site/docs/*.html
+python site/build_docs.py     # docs/*.md → site/docs/*.html, and docs/index.md
 ```
+
+The order of sections and pages is `docs/toc.yaml`, the one list the site's nav,
+the app's Docs sidebar (through `/api/docs`) and the generated `docs/index.md`
+all read. A page that changes folder is listed under `moved:` there, and the
+generator writes a forwarding page at its old address.
 
 **Run this whenever you edit `docs/`.** The output is committed on purpose, so
 the site still deploys with no build step; the price is that it can go stale,

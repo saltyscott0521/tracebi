@@ -167,7 +167,7 @@ Five places in the sidebar:
   refresh, a build that needs a look, a request to publish), then **Drafts**,
   **History** (what ran, when, for whom, whether it reproduced) and **Verify**
   (drop in a report file and its manifest).
-- **Docs** (`/docs`) — this repository's handbook, **Get started** first.
+- **Docs** (`/docs`) — this repository's handbook, in the order of `docs/toc.yaml`, **Start here** first.
 
 Roles decide what shows: everyone Reports, Ask and Docs; an analyst also Data
 (read-only) and Review; only an admin runs a refresh or sets a credential.
@@ -202,7 +202,7 @@ A `"schedule"` block in `report.json` makes it recurring: `tracebi schedule
 run <name>` (or `serve`, or `TRACEBI_SCHEDULES_IN_SERVER=1`) refreshes, builds,
 verifies, and emails it only when it verifies.
 
-The handbook: [your first report](docs/guides/your-first-report.md),
+The handbook: [your first report](docs/start/your-first-report.md),
 [`report.json`](docs/reference/report-json.md),
 [`app.jsx`](docs/reference/app-jsx.md),
 [`template.html`](docs/reference/template-html.md),
@@ -411,8 +411,9 @@ tracebi/                        ← the framework repo
 ├── examples/portfolio_project/ THE reference project: tracebi.yaml, inputs/, connections/,
 │                               transforms/, models/, reports/, pipelines/, run_workflow.py
 ├── tests/                      the pytest suite; tests/e2e/ the journeys
-├── docs/                       the handbook (an Obsidian vault): concepts, guides, reference,
-│                               architecture, agents, strategy
+├── docs/                       the handbook (an Obsidian vault): start, concepts, guides,
+│                               reference, agents; docs/toc.yaml orders it
+├── design/                     internal: design notes, strategy, pitfalls (never published)
 ├── AGENTS.md                   the agent's brief
 ├── MANIFESTO.md                what TraceBi is, and what it refuses to build
 ├── NOTES.md                    the decision journal

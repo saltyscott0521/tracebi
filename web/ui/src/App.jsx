@@ -58,10 +58,10 @@ export default function App() {
           <Route path="/runs" element={<ReviewFrame><Runs /></ReviewFrame>} />
           <Route path="/verify" element={<ReviewFrame><Verify /></ReviewFrame>} />
 
-          {/* Docs: the handbook, Get started first. /handbook and
+          {/* Docs: the handbook, in docs/toc.yaml's order. /handbook and
               /getting-started are Moved, page for page. */}
           <Route path="/docs/*" element={<Docs />} />
-          <Route path="/workflow" element={<Navigate to="/docs/get-started#phases" replace />} />
+          <Route path="/workflow" element={<Navigate to="/docs/concepts/the-three-phase-workflow" replace />} />
 
           <Route path="/m/:model/*" element={<Moved />} />
           <Route path="*" element={<Moved />} />

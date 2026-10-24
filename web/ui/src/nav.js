@@ -23,8 +23,9 @@
 //                               address in Review's frame; /drafts/<owner>/<kind>/<path>
 //                               (one draft) is part of it. /drafts and /review#drafts
 //                               land on /review/drafts
-//   Docs     /docs              the handbook: /docs/get-started first, then a page per
-//                               file of docs/ at /docs/<section>/<page>
+//   Docs     /docs              the handbook in docs/toc.yaml's order: a page per
+//                               file of docs/ at /docs/<section>/<page>; the
+//                               quickstart at /docs/get-started
 //
 // Who sees which place (placesFor): everyone Reports, Ask and Docs, an analyst
 // also Review and Data. Data is read-only below admin: its run buttons (Refresh
@@ -138,8 +139,14 @@ export const flowPath = (model = '') => dataTabPath('flow', model)
 export const tablePath = (source, table) =>
   `/data/tables/${encodeURIComponent(source)}/${String(table).split('/').map(encodeURIComponent).join('/')}`
 
+// Get started is the handbook's quickstart page, kept at its own short
+// address: the sidebar, the palette and old links all open it there.
+export const GET_STARTED = 'start--quickstart'
+
 /** A handbook page: /docs/<section>/<page> for the API's "section--page". */
-export const docPath = (name = '') => (name ? `/docs/${name.replace('--', '/')}` : '/docs')
+export const docPath = (name = '') => (
+  name === GET_STARTED || name === 'get-started' ? '/docs/get-started'
+    : name ? `/docs/${name.replace('--', '/')}` : '/docs')
 
 /** History, narrowed to *model* when one is given. */
 export const historyPath = (model = '') => `/runs${qs({ model })}`

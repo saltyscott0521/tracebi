@@ -4,41 +4,19 @@ import remarkGfm from 'remark-gfm'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import { useGuides, useGuide } from '../api'
-import { docPath } from '../nav'
+import { docPath, GET_STARTED } from '../nav'
 import { PageTitle, PageSub, Spinner, useNarrow } from '../components/Shared'
-import GettingStarted from './GettingStarted'
 
-// docs/ is a vault: pages live under concepts/, guides/, reference/ and
-// agents/, and the API addresses a subdirectory page as "dir--stem".
-// The sidebar rebuilds that tree, in reading order — a visitor should meet
-// the ideas before the look-up tables.
-const SECTIONS = [
-  { key: 'concepts',     label: 'Concepts',     blurb: 'The ideas. Read once.' },
-  { key: 'guides',       label: 'Guides',       blurb: 'Task-shaped walkthroughs.' },
-  { key: 'reference',    label: 'Reference',    blurb: 'Look things up.' },
-  { key: 'agents',       label: 'Agent SOPs',   blurb: 'Standard operating procedures.' },
-]
-
-// Internal working documents that ship in a source checkout but are not
-// product documentation: the positioning doc is gitignored outright. A
-// retired page stays in docs/ as a stub (old wiki links keep resolving in the
-// vault) but is not listed.
-const HIDDEN = new Set(['north-star', 'receipts'])
-
-// A retired page's stem → the page that replaced it: a wiki link to it, and
-// its old address, open the new one.
-const MOVED = { receipts: 'trace' }
-
-// Get started is the handbook's first page: the app's own walkthrough, not a
-// file in docs/, at /docs/get-started.
-const GET_STARTED = 'get-started'
+// docs/ is a vault: pages live under start/, concepts/, guides/, reference/
+// and agents/, and the API addresses a subdirectory page as "dir--stem". The
+// API lists them in the handbook's order (docs/toc.yaml, the file the docs
+// site reads too), with the old address of every page that moved, so the
+// sidebar keeps no order of its own. The one thing it adds: the quickstart
+// lives at /docs/get-started (nav.js GET_STARTED).
 
 // A distinctive fragment prefix, so a genuine in-page #anchor in the markdown
 // is never mistaken for a cross-reference.
 const WIKI_PREFIX = 'tb-doc:'
-
-// Within a section, lead with the page that orients you.
-const FIRST = { concepts: 'the-three-phase-workflow', guides: 'plain-english' }
 
 const clean = t => (t || '').replace(/`/g, '')
 
@@ -125,11 +103,11 @@ function Reader({ name, byStem, titles, onNavigate }) {
   )
 }
 
-/** The page an address under /docs names: home, Get started, or "section--stem". */
+/** The page an address under /docs names: home (null) or "section--stem". */
 function addressed(pathname) {
   const rest = pathname.replace(/^\/docs\/?/, '').replace(/\/+$/, '')
   if (!rest) return null
-  if (rest === GET_STARTED) return GET_STARTED
+  if (rest === 'get-started') return GET_STARTED
   return rest.replace('/', '--')
 }
 
@@ -142,45 +120,43 @@ export default function Docs() {
   // so it collapses to a disclosure that closes again after a tap.
   const [navOpen, setNavOpen] = useState(false)
 
-  const { tree, byStem, titles, home } = useMemo(() => {
-    const tree = new Map(SECTIONS.map(s => [s.key, []]))
+  const { sections, moved, byStem, titles, home } = useMemo(() => {
+    const sections = guides?.sections || []
+    const moved = guides?.moved || {}
     const byStem = new Map()
     const titles = new Map()
-    let home = null
-    for (const g of guides || []) {
-      const { section, stem } = split(g.name)
-      if (HIDDEN.has(stem)) continue
-      byStem.set(stem, g.name)
-      titles.set(g.name, g.title)
-      if (!section) { if (stem === 'index') home = g.name; continue }
-      if (tree.has(section)) tree.get(section).push({ ...g, stem })
+    const home = guides?.home?.name || null
+    if (home) { byStem.set('index', home); titles.set(home, guides.home.title) }
+    for (const s of sections) {
+      for (const g of s.pages) {
+        byStem.set(split(g.name).stem, g.name)
+        titles.set(g.name, g.title)
+      }
     }
-    for (const [old, now] of Object.entries(MOVED)) {
-      if (byStem.has(now)) byStem.set(old, byStem.get(now))
+    // A wiki link to a page that moved (receipts → trace) opens its new place.
+    for (const [old, now] of Object.entries(moved)) {
+      const stem = split(old).stem
+      if (!byStem.has(stem)) byStem.set(stem, now)
     }
-    for (const [key, items] of tree) {
-      const lead = FIRST[key]
-      items.sort((a, b) =>
-        (a.stem === lead ? -1 : b.stem === lead ? 1 : 0) ||
-        a.title.localeCompare(b.title))
-    }
-    return { tree, byStem, titles, home }
+    return { sections, moved, byStem, titles, home }
   }, [guides])
 
   const asked = addressed(pathname)
   const current = asked || home
   const open = name => navigate(docPath(name))
   if (isLoading) return <div style={{ padding: 24 }}><Spinner size={16} /></div>
-  // A retired page's address opens the page that replaced it.
-  const stem = asked && asked !== GET_STARTED ? asked.split('--').pop() : null
-  if (stem && MOVED[stem] && byStem.has(stem)) return <Navigate to={docPath(byStem.get(stem))} replace />
-  const known = !asked || asked === GET_STARTED || titles.has(asked)
+  // An old address opens the page that replaced it, and a page with a short
+  // address of its own (Get started) is opened there.
+  if (asked && moved[asked]) return <Navigate to={docPath(moved[asked])} replace />
+  if (asked && titles.has(asked) && pathname.replace(/\/+$/, '') !== docPath(asked)) {
+    return <Navigate to={docPath(asked)} replace />
+  }
+  const known = !asked || titles.has(asked)
   // The handbook's home is "Docs"; any other page is its own title, under a
   // "Docs" crumb back to the home.
   const atHome = !asked || asked === home
   const title = atHome ? 'Docs'
-    : asked === GET_STARTED ? 'Get started'
-      : known ? clean(titles.get(asked)) : 'No page at this address'
+    : known ? clean(titles.get(asked)) : 'No page at this address'
 
   return (
     <>
@@ -221,25 +197,24 @@ export default function Docs() {
           maxHeight: 'calc(100vh - 40px)', overflowY: 'auto', paddingBottom: 20,
         }}
           onClick={e => { if (narrow && e.target.closest('a')) setNavOpen(false) }}>
-          <Link to={docPath(GET_STARTED)} style={navItemStyle(current === GET_STARTED)}
-                aria-current={current === GET_STARTED ? 'page' : undefined}>Get started</Link>
           {home && (
             <Link to={docPath()} style={navItemStyle(current === home)}
                   aria-current={current === home ? 'page' : undefined}>Overview</Link>
           )}
-          {SECTIONS.map(s => {
-            const items = tree.get(s.key) || []
-            if (!items.length) return null
+          {sections.map(s => {
+            if (!s.pages.length) return null
             return (
               <div key={s.key} style={{ marginTop: 18 }}>
                 <div style={{
                   fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
                   textTransform: 'uppercase', color: 'var(--muted)', marginBottom: 2,
-                }}>{s.label}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 7 }}>
-                  {s.blurb}
-                </div>
-                {items.map(g => (
+                }}>{s.title}</div>
+                {s.blurb && (
+                  <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 7 }}>
+                    {s.blurb}
+                  </div>
+                )}
+                {s.pages.map(g => (
                   <Link key={g.name} to={docPath(g.name)} style={navItemStyle(current === g.name)}
                         aria-current={current === g.name ? 'page' : undefined} title={clean(g.title)}>
                     {clean(g.title)}
@@ -250,27 +225,22 @@ export default function Docs() {
           })}
         </nav>
 
-        {current === GET_STARTED ? (
-          // Get started carries its own cards and code blocks: no card around it.
-          <div style={{ flex: 1, minWidth: 0, maxWidth: 880 }}><GettingStarted /></div>
-        ) : (
-          <div style={{
-            // Prose reads badly at full width; cap the measure the way the
-            // rendered artifacts do, and keep the column left-aligned.
-            flex: 1, minWidth: 0, maxWidth: '76ch', background: 'var(--card)',
-            border: '1px solid var(--border)', borderRadius: 10,
-            padding: narrow ? '16px 15px 22px' : '22px 30px',
-            overflowWrap: 'anywhere',
-          }}>
-            {!guides?.length
-              ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>No <code>docs/</code> directory found next to this project.</div>
-              : !known
-                ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>There is no page at this address. Pick one from the list.</div>
-                : current
-                  ? <Reader name={current} byStem={byStem} titles={titles} onNavigate={open} />
-                  : <div style={{ color: 'var(--muted)', fontSize: 13 }}>Pick a page.</div>}
-          </div>
-        )}
+        <div style={{
+          // Prose reads badly at full width; cap the measure the way the
+          // rendered artifacts do, and keep the column left-aligned.
+          flex: 1, minWidth: 0, maxWidth: '76ch', background: 'var(--card)',
+          border: '1px solid var(--border)', borderRadius: 10,
+          padding: narrow ? '16px 15px 22px' : '22px 30px',
+          overflowWrap: 'anywhere',
+        }}>
+          {!sections.length && !home
+            ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>No <code>docs/</code> directory found next to this project.</div>
+            : !known
+              ? <div style={{ color: 'var(--muted)', fontSize: 13 }}>There is no page at this address. Pick one from the list.</div>
+              : current
+                ? <Reader name={current} byStem={byStem} titles={titles} onNavigate={open} />
+                : <div style={{ color: 'var(--muted)', fontSize: 13 }}>Pick a page.</div>}
+        </div>
       </div>
     </>
   )

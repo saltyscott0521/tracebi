@@ -9,89 +9,86 @@ an agent as by a person.
 
 > This folder is an [[#Using this vault|Obsidian vault]] — pages link to each
 > other with wiki links, so you can open `docs/` as a vault and navigate the
-> graph. The app serves it as **Docs** (`/docs`), with **Get started** first.
+> graph. The app serves it as **Docs** (`/docs`), and tracebi.com as `/docs/`,
+> in the order below.
 
 ---
 
 ## Start here
 
-| If you want to… | Read |
-| --- | --- |
-| Understand TraceBi without a technical background | [[plain-english]] |
-| Show TraceBi to someone in ten minutes | [[demo-script]] |
-| Understand what TraceBi is in five minutes | [[the-three-phase-workflow]] |
-| Get something running | [[quickstart]] |
-| Build your first report | [[your-first-report]] |
-| Run it for a team | [[one-server]] |
-| Look up a specific thing | [[#Reference]] |
+What TraceBi is and your first report, in an afternoon.
+
+- [[plain-english]] — TraceBi makes reports where every number comes with a trace, so anyone can check later that the number still matches what it was built from
+- [[quickstart]] — Install, scaffold a project, and build one verified report — about five minutes
+- [[your-first-report]] — Author a report package end to end — from `tracebi new-report` to a verified artifact
+- [[demo-script]] — A click-by-click script for showing TraceBi to people who read and approve reports: finance, operations, compliance, leadership
 
 ## Concepts
 
-The ideas. Read these once and the rest of the docs make sense.
+The ideas, in the order the data moves. Read these once.
 
-- [[the-three-phase-workflow]] — the spine: transform → model → report, and the app's five places
-- [[transform]] — phase ①: SQL (or pandas, the escape hatch) that lands clean tables
-- [[model]] — phase ②: the star-schema contract over those tables
-- [[models-and-connectors]] — a model says what the data means; a connector says where it is
-- [[report]] — phase ③: figures that are live queries, not typed-in numbers
-- [[freeze-points]] — why the three phases don't block each other
-- [[trace]] — what a trace proves, and what it deliberately does not
-- [[lineage]] — every operation leaves a node; nothing is untracked
-- [[sink-contracts]] — checks a transform's tables must satisfy before the data counts
+- [[the-three-phase-workflow]] — TraceBi takes data from messy to reportable in three folders, each with its own cadence, separated by [[freeze-points|freeze points]]
+- [[transform]] — Unconstrained work that ends by landing clean star-schema tables in the warehouse
+- [[sink-contracts]] — Closed, declarative checks a [[transform]]'s tables must satisfy before the data counts
+- [[model]] — A declarative star schema over the warehouse: the grain, the keys, and the [[measures]] — in a few dozen lines a reviewer reads in one screen
+- [[models-and-connectors]] — A model says what the data means; a connector says where it is
+- [[report]] — A package where every figure is a live query
+- [[trace]] — Every number drawn through the model has a trace: how it was made
+- [[lineage]] — Every data operation appends a node describing what happened
+- [[freeze-points]] — A freeze point is a materialized artifact handed from one phase to the next
 
 ## Guides
 
-Task-shaped walkthroughs.
+Task-shaped walkthroughs, in the order you meet the tasks.
 
-- [[plain-english]] — what TraceBi does, for readers and approvers who don't code
-- [[demo-script]] — a click-by-click ten-minute demo for a non-technical audience
-- [[quickstart]] — install, scaffold, and build one report
-- [[your-first-report]] — author a report package end to end
-- [[styling-a-report]] — your own CSS and JS, and where the framework stops
-- [[analyst-guide]] — the longer analyst walkthrough, from messy data to a served report
-- [[notebook-guide]] — working in notebooks, and a notebook as a transform
-- [[web-customization]] — pointing the web app at your project, extending its UI and API
-- [[one-server]] — one VM, Docker or Coolify, a folder, connection secrets, SMTP, a schedule
-- [[sign-in]] — the app's and the CLI's sign-in through your identity provider
-- [[updating]] — `tracebi update`: what's new, and the command for your install
-- [[connect-chatgpt-and-claude]] — a sign-in per person for the MCP connector
-- [[push-from-a-laptop]] — `tracebi push`: drafts from your machine, code an admin approves
+- [[analyst-guide]] — The analyst's path from messy data to a served, verified report
+- [[notebook-guide]] — How to use TraceBi from Jupyter — rich previews while you explore, and how a notebook becomes a phase-① transform once the analysis settles
+- [[styling-a-report]] — Your CSS and JS, unrestricted — plus a design system you can lean on instead of fighting
+- [[one-server]] — One VM, one folder, one container
+- [[sign-in]] — With the company login turned on, everyone signs in to the TraceBi app as themselves, and their role decides what they may do
+- [[push-from-a-laptop]] — Build and preview on your own machine, then send the files to the server: `tracebi push`
+- [[connect-chatgpt-and-claude]] — People sign in to the TraceBi connector with their company login
+- [[web-customization]] — How to point the web server at your own data, add your own reports and restyle or extend the React UI, and deploy
+- [[updating]] — `tracebi update`: what's new, and the one command that updates your install
 
 ## Reference
 
-Look-up pages. These are kept in step with `tracebi context`, the generated
-vocabulary, so they describe what the code actually accepts.
+Look things up: the project, the data, the model, the report, the server.
 
-- [[report-json]] — the package declaration, key by key
-- [[template-html]] — the `data-tb-*` figure grammar
-- [[app-jsx]] — the React lane: an app-like dashboard from the TraceBi kit
-- [[figure-helper]] — `{{ figure("name") }}`: framework-built figures, your layout
-- [[measures]] — every measure kind the semantic layer knows
-- [[model-json]] — a model as data: `models/<name>.yaml` (or `.json`)
-- [[transform-sql]] — a transform as SQL, its `-- source:` lines and its `.contract.yaml`
-- [[connections-yaml]] — a source as data: `connections/<name>.yaml`, secrets as `${NAME}`
-- [[credentials]] — where a `${NAME}` resolves, and the encrypted store (`tracebi secret`)
-- [[pipeline-yaml]] — a pipeline as data: transform, models, reports, schedule
-- [[tracebi-yaml]] — the project's settings: the warehouse's tier and the engine's limits
-- [[folder-yaml]] — folder permissions: who may view, build, publish and manage
-- [[queries]] — filters, `having`, ordering, limits
-- [[number-formats]] — the named formats and how defaults are derived
-- [[cli]] — every `tracebi` command
-- [[environment-variables]] — every `TRACEBI_*` variable
-- [[api-routes]] — the HTTP surface, and the app's addresses
+- [[cli]] — Every `tracebi` command
+- [[tracebi-yaml]] — Where the warehouse lives, and the limits of the engine that answers model queries, in one file at the project root
+- [[connections-yaml]] — A source as data: a type and its fields, with every secret kept out of the file as a `${ENV_VAR}` reference
+- [[credentials]] — The secrets a project's connections need: which names, where each is set, and a store on the server you can set them in without touching `.env`
+- [[environment-variables]] — Every `TRACEBI_*` variable the framework reads
+- [[transform-sql]] — A phase ① transform is a `.sql` file by default: DuckDB statements, run top to bottom in one fresh connection to the warehouse
+- [[model-json]] — A model as data: the same star schema as a Python `DataModel`, written as a document a person reviews and a remote agent can draft without the server running anyone's code
+- [[measures]] — Named, declarative calculations on a [[model]]
+- [[queries]] — What a report may ask a [[model]]: measures, dimensions, filters, `having`, ordering, limits — as data, not SQL
+- [[pipeline-yaml]] — A pipeline as data: which transform to run, which models it feeds, which reports to rebuild, and when
+- [[report-json]] — The package declaration: what data a report binds, and which figures the framework builds for it
+- [[app-jsx]] — The React lane: an app-like dashboard from the TraceBi kit, built into the same single offline file
+- [[template-html]] — The figure grammar: ordinary HTML, and the `data-tb-*` attributes that turn an element into a live figure
+- [[figure-helper]] — Declare a figure in [[report-json]]; the framework builds the element, you keep the layout
+- [[number-formats]] — Named formats you apply to a figure, plus the defaults TraceBi derives when you don't
+- [[folder-yaml]] — Who may see, build in, publish into and manage a folder of the report library, in a small file that sits in the folder
+- [[api-routes]] — The HTTP surface served by `tracebi serve`
 
-## Agent SOPs
+## For agents
 
-- [[sop-authoring]] — authoring a report through the gateway
-- [[sop-model-changes]] — changing the semantic contract
+Standard operating procedures. An agent reads AGENTS.md first.
+
+- [[sop-authoring]] — Authoring a report through the gateway, step by step
+- [[sop-model-changes]] — Changing the semantic contract, a model's measures and keys, safely
+
+---
 
 ## The canon
 
-Short, stable, opinionated documents that define the project.
+Short, stable, opinionated documents at the repo root that define the project.
 
-- [[MANIFESTO]] — what TraceBi is and what it refuses to build
-- [[AGENTS]] — the brief an agent reads before authoring
-- [[CLAUDE]] — behavioural guidelines for AI assistants in this repo
+- `MANIFESTO.md` — what TraceBi is and what it refuses to build
+- `AGENTS.md` — the brief an agent reads before authoring
+- `CLAUDE.md` — behavioural guidelines for AI assistants in this repo
 
 ---
 
@@ -112,3 +109,5 @@ than a link, which is the one cost of this style.
 - Locked language is quoted exactly: *"the sink satisfied its contract"*,
   *"reproduces"* (never "verified"). See [[trace]] for why the wording is
   load-bearing.
+- The order of pages is `docs/toc.yaml`. A new page goes there, and
+  `python site/build_docs.py` regenerates this index and the site.

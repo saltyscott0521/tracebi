@@ -398,7 +398,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 ("/reports", "/"),
                 ("/reports?r=portfolio_model/portfolio_book", "/reports/portfolio_model/portfolio_book"),
                 ("/?r=portfolio_model/portfolio_book", "/reports/portfolio_model/portfolio_book"),
-                ("/workflow", "/docs/get-started#phases"),
+                ("/workflow", "/docs/concepts/the-three-phase-workflow"),
                 ("/getting-started", "/docs/get-started"),
                 ("/getting-started#phases", "/docs/get-started#phases"),
                 ("/handbook", "/docs"),
@@ -1004,7 +1004,7 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             sidebar.get_by_role("link", name="Ask", exact=True).wait_for()
             for place in ("Data", "Review"):
                 expect(sidebar.get_by_role("link", name=place, exact=True)).to_have_count(0)
-            # Docs is for everyone: the handbook, Get started first.
+            # Docs is for everyone: the handbook, Get started in its first section.
             sidebar.get_by_role("link", name="Docs", exact=True).click()
             viewer.wait_for_url("**/docs")
             viewer.get_by_role("heading", name="Docs", exact=True).wait_for()

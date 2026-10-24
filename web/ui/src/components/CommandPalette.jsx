@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useModels, useReports, usePipelines, useRole, useGuides, useWarehouses } from '../api'
 import {
-  PAGES, placesFor, askPath, dataPath, dataTabPath, docPath, flowPath, reportPagePath, pipelineModels,
+  PAGES, placesFor, askPath, dataPath, dataTabPath, docPath, flowPath, GET_STARTED, reportPagePath, pipelineModels,
   sourcesPath, tablePath, transformsPath, warehousePath,
 } from '../nav'
 import { count } from '../format'
@@ -25,12 +25,9 @@ function pagesFor(role) {
       { label: 'Warehouse', path: warehousePath(), kind: 'page', sub: 'Every table: who wrote it, who reads it, its checks.' },
       { label: 'Models', path: dataTabPath('models'), kind: 'page', sub: 'Every model as a chain: sources, transform, tables, measures, reports.' },
     ] : []),
-    { label: 'Get started', path: docPath('get-started'), kind: 'doc', sub: 'How TraceBi fits together, in five steps.' },
+    { label: 'Get started', path: docPath(GET_STARTED), kind: 'doc', sub: 'Install, scaffold a project, and build one verified report.' },
   ]
 }
-
-// Handbook pages that are not listed in Docs (internal or retired).
-const UNLISTED = /(^|--)(north-star|receipts)$/
 
 const KIND_META = {
   page:      { tag: 'Page',      color: 'var(--role-table)' },
@@ -89,10 +86,12 @@ export default function CommandPalette() {
       kind: 'measure',
       sub: m.label || m.name,
     }))),
-    // The handbook, page by page, by title (everyone sees Docs).
-    ...(guides || []).filter(g => !UNLISTED.test(g.name) && g.name !== 'index').map(g => ({
-      label: (g.title || g.name).replace(/`/g, ''), path: docPath(g.name), kind: 'doc',
-    })),
+    // The handbook, page by page, by title (everyone sees Docs); Get started
+    // is listed above.
+    ...(guides?.sections || []).flatMap(s => s.pages)
+      .filter(g => g.name !== GET_STARTED).map(g => ({
+        label: (g.title || g.name).replace(/`/g, ''), path: docPath(g.name), kind: 'doc',
+      })),
   ], [models, reports, pipelines, guides, role, seesData, warehouses])
 
   const results = useMemo(() => {
