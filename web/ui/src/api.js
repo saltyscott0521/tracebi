@@ -83,6 +83,11 @@ async function putJson(path, body) {
 export const reportDownloadUrl = (name, format) =>
   `${BASE}/reports/${reportPath(name)}/download?format=${format}`
 
+// The picture of a build's first screen. Keyed on the build time, so a new
+// build is a new address and the browser never shows the last one's picture.
+export const reportCoverUrl = (name, builtAt) =>
+  `${BASE}/reports/${reportPath(name)}/cover${builtAt ? `?v=${encodeURIComponent(builtAt)}` : ''}`
+
 // The share link: the last build as a full page at /r/<name>, outside /api.
 // Under the UI's base path, so it resolves where the UI is mounted under a
 // prefix (tracebi.com serves the app at /app/ and strips it before the server).

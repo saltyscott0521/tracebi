@@ -908,6 +908,70 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   .lrow__side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
   .lfolder__note, .lfolder__none { padding-left: 16px; }
 }
+.library__search { display: flex; align-items: center; gap: 12px; }
+.library__search > :first-child { flex: 1; min-width: 0; }
+.library__view { flex: none; }
+
+/* The gallery: the same folders, each a grid of tiles. A tile is the report's
+   cover (its first screen at build, or one drawn from its manifest), then its
+   name, what it is, and the row's facts. Three columns on a wide window, two
+   at about 1000px, one on a phone; the grid answers to its own width, since
+   the sidebar takes part of the window. The showcase's tile is the library's
+   hero: two columns and two rows wide where three fit, two columns where two
+   do. Hover lifts a tile a little; never under reduced motion. */
+.library__gallery { container-type: inline-size; display: flex; flex-direction: column; gap: 24px; }
+.library__gallery .lfolder + .lfolder { border-top: 0; }
+.library__gallery .lfolder__head { padding: 0 0 12px; background: none; }
+.library__gallery .lfolder__toggle { padding: 4px 0; font-size: var(--text-base); color: var(--text); }
+.library__gallery .lfolder__note { margin-bottom: 12px; padding-left: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.library__gallery .lfolder__none { padding-left: 16px; border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); }
+.lgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(296px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.lgrid > li { display: flex; min-width: 0; }
+.ltile {
+  display: flex; flex-direction: column; flex: 1; min-width: 0; overflow: hidden;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  color: var(--text); text-decoration: none;
+  transition: transform .16s ease, border-color .16s ease;
+}
+.ltile:hover { transform: translateY(-2px); border-color: var(--border-hl); }
+.ltile:focus-visible { outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .ltile { transition: none; } .ltile:hover { transform: none; } }
+.lcover { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.lcover img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; }
+.ltile__body { display: flex; flex-direction: column; gap: 4px; padding: 12px 16px 16px; }
+.ltile__name { font-size: var(--text-base); font-weight: 600; overflow-wrap: anywhere; }
+.ltile__desc {
+  font-size: var(--text-caption); line-height: 1.45; color: var(--text-2);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ltile__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; }
+@container (min-width: 620px) {
+  .lgrid > .ltile--hero { grid-column: span 2; }
+  .ltile--hero .ltile__name { font-size: var(--text-lg); }
+}
+@container (min-width: 940px) {
+  .lgrid > .ltile--hero { grid-row: span 2; }
+  .ltile--hero .lcover { flex: 1; aspect-ratio: auto; min-height: 0; }
+}
+
+/* The cover drawn when a build took none: the Models lane's tint from Data's
+   board, the name set large, a glyph per kind of figure the build holds, and
+   when it was built. */
+.gcover {
+  position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+  padding: 20px; background: color-mix(in srgb, var(--phase-model) 7%, var(--bg));
+}
+[data-theme="dark"] .gcover { background: color-mix(in srgb, var(--phase-model) 9%, var(--bg)); }
+.gcover__name {
+  font-size: var(--text-2xl); font-weight: 600; line-height: 1.15; letter-spacing: var(--tracking-tight); color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+}
+@container (min-width: 620px) { .ltile--hero .gcover__name { font-size: var(--text-display); } }
+.gcover__foot { display: flex; flex-direction: column; gap: 8px; }
+.gcover__kinds { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.gcover__kind { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-sm); color: var(--accent-text); }
+.gcover__when { font-size: var(--text-sm); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.rp__thumb { flex: none; width: 64px; height: 40px; object-fit: cover; object-position: top left; border: 1px solid var(--border); border-radius: var(--radius-sm); align-self: center; }
 /* ── History (/runs): one row a sentence, grouped by day under a sticky header;
    on a phone a card per run. A column every row leaves empty is not drawn. */
 .runs__find { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
