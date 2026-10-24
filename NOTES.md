@@ -24,18 +24,18 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
-## 2026-10-24 — Decision: a project is one accent; a package's look is tokens (UI-4B)
+## 2026-10-24 — Decision: a display face is a token; a package may keep its own look (UI-4B)
 
-Backlog 8 asked whether a project is one accent. It is: a reader moving from
-one report to the next should feel one studio made them, and the accent is
-the strongest signal of that. `portfolio_book` (navy) and the showcase (teal)
-took the project's cobalt; the bespoke example stays `aum_by_branch`, named as
-such. What a package may still set is tokens and nothing else: the accent
-pairs, where a report must differ, and one display face, now a token of its
-own, `--tb-font-display`, which the system places (the masthead headline, the
-lead number, the trace's title). The showcase's `style.css` is that token and
-its `@font-face`; affordability's 272-line stylesheet is gone, its layout and
-its what-if kept in the system's parts (backlog 7).
+Backlog 8 asked whether a project is one accent. The round first said yes and
+moved `portfolio_book` (navy), the showcase (teal) and affordability (its own
+272-line stylesheet) onto the project's cobalt; the owner wanted the one-off
+editorial's theming back, and the goal of the round was the app, not the
+reports. So the packages keep their looks, and what the round leaves in the
+system stands: one display face as a token of its own, `--tb-font-display`,
+which the system places (the masthead headline, the lead number, the trace's
+title), so a package that only wants its own face writes one token and its
+`@font-face`. A bespoke look remains allowed on the same masthead, grid,
+footer and trace; `aum_by_branch` and affordability are the examples.
 
 The phone pass made the system, not the packages, responsible for reading at
 390: tables scroll across with a frozen first column, controls are one

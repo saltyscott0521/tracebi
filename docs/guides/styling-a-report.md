@@ -215,7 +215,7 @@ licence allows embedding (SIL OFL fonts do; ship the licence text alongside).
 
 `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` shows it all on
 the system: a `style.css` that is tokens only (one inlined display face as
-`--tb-font-display`, the project's own accent), every chart type, a KPI delta, data bars, sortable
+`--tb-font-display`, its own teal accent), every chart type, a KPI delta, data bars, sortable
 columns, filters, a scenario and a custom d3 figure. `reports/wealth_model/aum_by_branch`
 is the one bespoke look (its own faces, palette and hero band
 with inlined artwork) on the same masthead, grid, footer and trace.

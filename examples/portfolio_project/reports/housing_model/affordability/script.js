@@ -37,22 +37,16 @@ tracebi.ready(function () {
     });
     /* Mark the row whose share is larger as the harder one: a comparison of
      * two numbers the page shows, never a new one. Again on every selection,
-     * so the mark follows the numbers it compares; none with one year. The
-     * mark is the system's own: the value in --tb-bad (.tb-bad) and the
-     * row's word shown. */
-    function mark(strong, on) {
-      strong.classList.toggle("tb-bad", on);
-      strong.closest("tr").querySelector("[data-mp-harder]").hidden = !on;
-    }
+     * so the mark follows the numbers it compares; none with one year. */
     Array.prototype.forEach.call(document.querySelectorAll("[data-mp-vs]"), function (card) {
       var a = card.querySelector('[data-tb-vs="a"] strong');
       var b = card.querySelector('[data-tb-vs="b"] strong');
-      mark(a, false);
-      mark(b, false);
+      a.parentNode.classList.remove("mp-harder");
+      b.parentNode.classList.remove("mp-harder");
       if (one) return;
       var va = current(a), vb = current(b);
       if (!isFinite(va) || !isFinite(vb) || va === vb) return;
-      mark(va > vb ? a : b, true);
+      (va > vb ? a : b).parentNode.classList.add("mp-harder");
     });
   }
   update();

@@ -749,8 +749,7 @@ CSS — scaffold a package instead: `tracebi new-report "My Report"` creates
 (CSS, JS, and fingerprinted data inlined; strict CSP; D3 vendored, no CDN)
 plus a manifest. `report.py` beside `report.json` is the escape hatch for pandas
 the model can't express — its output stamps `verifiable: false` and never reads
-green under `verify`. A package's `style.css` is tokens only: the accent pairs and one
-display face as `--tb-font-display`; one accent per project. Charts render with D3 in the browser (SVG; `tracebi.js`
+green under `verify`. Charts render with D3 in the browser (SVG; `tracebi.js`
 "The D3 chart engine"): legend toggles, tooltips, arrow-key reading, animated
 updates, and a click on a mark sets the page's filter control for that column.
 It draws only the rows' own values and colours series from the unfiltered rows.

@@ -351,8 +351,9 @@ the accent pairs (`--tb-accent` / `--tb-accent-text`, `--tb-dark-accent` /
 `--tb-dark-accent-text`) and one display face as `--tb-font-display` (the
 system sets it on the `.tb-masthead h1`, the lead number and the trace's
 title): tokens only, no rule of its own, no gradient, hatch, glow or resting
-shadow, and no second set of components. A project reads as one family with
-one accent; set a pair only where a report must differ.
+shadow, and no second set of components. Set the pairs where a report should
+differ from the project's accent; the reference project keeps a navy book, a
+teal showcase and the affordability editorial's own look on one system.
 `reports/_style.md` is the team's house style — `tracebi context` and
 `get_context` return it as `house_style`. Read it before you build and follow
 its Rules over these defaults. Before you build, read

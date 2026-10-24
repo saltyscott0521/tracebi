@@ -37,18 +37,13 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ### Changed — one report look, and reports that read on a phone
 
-- **One family.** The reference project is one accent: `portfolio_book`
-  drops its navy and the showcase its teal. A display face is a token now,
-  **`--tb-font-display`** (unset: the masthead keeps the sans, an editorial
-  headline the serif); the system puts it on the masthead `<h1>`, the lead
-  number and the trace drawer's title, so a package's `style.css` is tokens
-  only. The showcase's is: Fraunces as `--tb-font-display`, nothing else.
-- **Affordability is on the system** (backlog 7): no second stylesheet, no
-  Inter, paper ground, gradients, shadows, animation or pinned light mode. It
-  keeps its layout (the question as the headline, the years and buyers the
-  reader picks, the one number, the why, the trends) and its what-if, in the
-  system's scenario frame behind a disclosure; the harder of two years is
-  marked in `--tb-bad`. It follows the reader's light or dark setting.
+- **A display face is a token**, **`--tb-font-display`** (unset: the masthead
+  keeps the sans, an editorial headline the serif); the system puts it on the
+  masthead `<h1>`, the lead number and the trace drawer's title, so a package
+  that only wants its own face needs no rule of its own. The reference
+  project's bespoke looks (the navy book, the teal showcase, the affordability
+  editorial's own stylesheet) stay as they were: a package may still carry a
+  look of its own on the same masthead, grid, footer and trace.
 - **Tables on a phone** read across: one line per cell, the table scrolls
   sideways in its frame with its first column frozen (a name column wraps in
   about 9em), its far edge fading while more lies there. A frozen cell takes

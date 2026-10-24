@@ -1,0 +1,9 @@
+/* The book's house style: a deep-ink accent for each ground (the hero, the
+ * section marks, the chart and the pull-stat). Everything else is the system. */
+:root {
+  --tb-accent: #1f4e79;
+  --tb-accent-text: #1f4e79;
+  --tb-surface-accent: #eef3f8;
+  --tb-dark-accent: #8bb4e0;
+  --tb-dark-accent-text: #a9c8ea;
+}

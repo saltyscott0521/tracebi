@@ -932,9 +932,8 @@ def _presentation() -> dict:
                              "--tb-font-display (an @font-face from assets/; "
                              "the system puts it on .tb-masthead h1 and "
                              ".tb-kpi--lead .tb-kpi-value). Tokens only: no rule "
-                             "of its own. One accent per project reads as one "
-                             "family; set a pair only where a report must "
-                             "differ. No gradient, hatch, "
+                             "of its own. Set a pair where a report should "
+                             "differ from the project's accent. No gradient, hatch, "
                              "glow or resting shadow; the showcase's style.css "
                              "is the example",
                 "house_style": "reports/_style.md is the team's design rules, "
