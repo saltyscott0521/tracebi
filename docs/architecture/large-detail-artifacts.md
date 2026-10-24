@@ -1,13 +1,15 @@
 # Large-detail artifacts — data-heavy, offline, still verifiable
 
-**Status:** shipped (built on `feat/artifact-parquet-embed`, merged to `main` in
-August 2026); **the engine is superseded by [[live-reports-plan]] (2026-10)**:
-parquet-wasm, Arquero and the Web Worker are gone, and a Parquet block is
-decoded by the pure-JS page engine (`tracebi-calc.js`, Snappy only, no CSP
-grant). The Parquet lessons below stand: hash the shipped bytes, restrict the
-types, never re-derive. The design below is the plan as agreed; §11 records where the implementation deliberately diverged after two
-adversarial reviews. Supersedes the "just add a size guard" stopgap and the
-DuckDB-vs-Parquet open question in the scale audit (ROADMAP 11c).
+**Status:** shipped (merged to `main` in August 2026); **the engine is
+superseded by [[live-reports-plan]] (2026-10)**: parquet-wasm, Arquero and the
+Web Worker are gone, and a Parquet block is decoded by the pure-JS page engine
+(`tracebi/reports/assets/tracebi-calc.js`, Snappy only, no CSP grant). What
+stands is the Parquet transport and its trust rules, built in
+`tracebi/reports/embed.py`: hash the shipped bytes (`payload_sha256`), restrict
+the types to what the browser renders identically, never re-derive. The design
+below is the plan as agreed, with its implementation sequence cut (the history
+keeps it); §11 records where the implementation deliberately diverged after two
+adversarial reviews.
 
 **One-line:** let a single self-contained artifact embed up to ~500MB-of-JSON-equivalent
 of detail, filter it client-side, and still open offline and re-check with `verify --file` —
@@ -176,38 +178,6 @@ No WebGL/deck.gl (that's for 1M+ individual marks, which an aggregated BI artifa
   laundering question — badge/docs language must not overclaim while page scripting is unprovable.)
 - **Brushing scope for v1** — click-to-filter (worker + ~0.5s, ship first) vs continuous brushing
   (needs precomputed bins, later).
-
----
-
-## 8. Implementation plan (sequenced)
-
-**Phase 0 — Lock the receipt decisions.** Content-hash algo design + money/decimal call +
-schema-version sequencing. Gates everything; one-time.
-
-**Phase 1 — End-to-end prototype (scratch, de-risk).** Parquet embed + parquet-wasm + Arquero **in a
-blob-URL worker** + one live filter + SSR'd default values + a `verify` re-run. Measure *perceived*
-latency (not just query time) and mobile memory. Decide brushing scope from real numbers.
-
-**Phase 2 — Content-hash fingerprint** in the Python build + `verify` (the v-next algo), behind the
-schema-version bump. Re-pin the fingerprint corpus.
-
-**Phase 3 — Columnar embed + worker runtime in the artifact build.** Vendor parquet-wasm + Arquero +
-flechette (self-contained, offline, provenance/NOTICE like ECharts). Emit Parquet instead of CSV;
-build the worker; keep strict CSP.
-
-**Phase 4 — Filter-grain contract + interactive controls** wired to the worker engine (build-time
-grain check → build error on a control the grain can't back).
-
-**Phase 5 — No-JS / print legibility** — SSR default values + print receipt appendix (also fixes the
-artifact-last-mile "blank verified numbers" finding).
-
-**Phase 6 (optional/later) — Precomputed bins/cubes** for continuous brushing; hyparquet-columnar
-re-benchmark to maybe shed parquet-wasm's WASM.
-
-**Cross-cutting gates (execution charter):** full suite green on both pandas majors before every push;
-receipts-monotonicity + showcase + agent-guides drift tests as hard gates; the discoverability trio
-(vocabulary + scaffold + both guides) for any new authoring surface; browser drills incl. `file://`
-open and mobile; NOTICE/SBOM for the new WASM deps.
 
 ---
 

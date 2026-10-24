@@ -3,7 +3,7 @@ Reports in folders (epic E6, step 1).
 
 A report in a folder is named by its path below ``reports/``
 (``finance/weekly_summary``), so two folders can each hold a report of the same
-name. The done-when from docs/strategy/epics.md: two folders each hold a
+name. The done-when (from the epics plan, retired 2026-10-24): two folders each hold a
 ``weekly_summary``; both are discovered, build, open and schedule
 independently, and nothing a name turns into can climb out of ``reports/`` or
 ``output/``.
