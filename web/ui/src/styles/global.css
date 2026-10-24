@@ -654,105 +654,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .markdown-doc thead th { font-size: 10.5px; }
 .markdown-doc .md-deadlink { color: var(--accent-text); font-weight: 600; }
 
-/* ── Workflow diagram ───────────────────────────────────────────────────────── */
-.wf-wrap {
-  display: flex;
-  align-items: stretch;
-  gap: 6px;
-}
-.wf-phase {
-  flex: 1 1 0;
-  min-width: 0;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--wf);
-  border-radius: var(--radius);
-  padding: 16px 16px 14px;
-  display: flex;
-  flex-direction: column;
-}
-.wf-phase-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
-.wf-num {
-  width: 22px; height: 22px; flex: none;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--wf) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--wf) 28%, transparent);
-  color: var(--wf);
-  font-size: 12px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-}
-.wf-tag {
-  font-family: var(--font-mono);
-  font-size: 11.5px; color: var(--wf);
-  background: color-mix(in srgb, var(--wf) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--wf) 22%, transparent);
-  padding: 1px 7px; border-radius: 5px;
-}
-.wf-title {
-  font-size: 15px; font-weight: 800; color: var(--text);
-  letter-spacing: -0.01em; margin-bottom: 6px;
-}
-.wf-body { font-size: 12.5px; line-height: 1.5; color: var(--text-2); margin: 0 0 12px; }
-.wf-cadence {
-  margin-top: auto;
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
-  text-transform: uppercase; color: var(--muted);
-  padding-top: 10px; border-top: 1px dashed var(--border);
-}
-
-.wf-handoff {
-  flex: none;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 6px; padding: 0 2px;
-}
-.wf-freeze {
-  text-align: center;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 9px;
-  max-width: 92px;
-}
-.wf-freeze-label {
-  display: flex; align-items: center; gap: 4px; justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 10.5px; font-weight: 600; color: var(--text);
-  line-height: 1.2; flex-wrap: wrap; overflow-wrap: anywhere;
-}
-.wf-freeze-sub { font-size: 9.5px; color: var(--muted); margin-top: 2px; line-height: 1.2; }
-.wf-arrow { flex: none; }
-
-.wf-endcap {
-  flex: none;
-  align-self: center;
-  display: flex; flex-direction: column; gap: 2px;
-  text-align: center;
-  max-width: 78px;
-}
-.wf-endcap span { font-size: 11px; font-weight: 800; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.03em; }
-.wf-endcap small { font-size: 9.5px; color: var(--muted); line-height: 1.3; }
-
-/* Stack vertically when the band is too narrow for a left-to-right flow.
-   Breakpoint is 1140, not 900, because the 232px sidebar eats into the band:
-   a 3-phase horizontal flow needs ~820px of content, which a viewport only
-   clears above ~1140 once the sidebar is subtracted. Below that the phases
-   crush to one word per line, so stack instead. (On phones ≤768 the sidebar
-   is gone, but vertical is still the right call there.) */
-@media (max-width: 1140px) {
-  .wf-wrap { flex-direction: column; align-items: stretch; }
-  .wf-handoff { flex-direction: row; gap: 8px; padding: 2px 0; }
-  .wf-freeze { max-width: none; flex: 1; }
-  .wf-endcap { max-width: none; align-self: stretch; }
-  /* every arrow now points down the vertical flow */
-  .wf-wrap .wf-arrow { transform: rotate(90deg); }
-}
-
-/* Workflow page layout */
-.workflow-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-@media (max-width: 760px) {
-  .workflow-detail-grid { grid-template-columns: 1fr; gap: 12px; }
-}
-
 /* ── Motion & illustration ──────────────────────────────────────────────
    Motion here always shows something happening: a report assembling, a
    file re-hashed, data moving between phases. Everything below
@@ -841,17 +742,6 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
   20%, 60% { transform: translateX(-4px) rotate(-2deg); }
   40%, 80% { transform: translateX(4px) rotate(2deg); }
 }
-
-/* The workflow diagram: data packets travel the arrows; freeze points
-   shimmer like frost; the phases rise in turn. */
-.wf-packet { animation: wf-travel 2.4s var(--ease-io) infinite; animation-delay: calc(var(--i, 0) * .4s); }
-@keyframes wf-travel {
-  0%   { transform: translateX(0); opacity: 0; }
-  12%, 80% { opacity: 1; }
-  100% { transform: translateX(13px); opacity: 0; }
-}
-.wf-freeze { position: relative; overflow: hidden; }
-.wf-wrap > .wf-phase { animation: rise .5s var(--ease-out) both; animation-delay: calc(var(--i, 0) * .12s); }
 
 /* Folders on the Reports page: the caret turns, the reports rise in. */
 .folder-caret { display: inline-block; transition: transform .2s var(--ease-out); }

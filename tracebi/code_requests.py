@@ -14,7 +14,7 @@ mapped on the server to its configured directories. An admin reviews the
 files and their diff against what is published, then approves (the files are
 copied in, what they replace is kept under ``.tracebi/history/code/``, and the
 pipelines they touch run once, with the server's secrets) or rejects with a
-note. See ``docs/strategy/remote-authoring.md``, step 4.
+note. See ``design/strategy/remote-authoring.md``, step 4.
 """
 
 from __future__ import annotations

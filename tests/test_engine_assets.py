@@ -2,7 +2,7 @@
 only where a page has something for it to read.
 
 ``tracebi-calc.js`` decodes a page's Parquet blocks (slices and large-detail
-bindings) and runs its calc plans (docs/architecture/live-reports-plan.md).
+bindings) and runs its calc plans (design/live-reports-plan.md).
 Like the chart bundles it lives in ``tracebi/reports/assets`` and is
 force-included in the wheel.
 """

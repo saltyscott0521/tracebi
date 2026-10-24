@@ -1,5 +1,9 @@
 # SOP: Changing the Semantic Contract
 
+> **Read `AGENTS.md` first.** It is the brief every agent reads before working in a
+> TraceBi project (`tracebi init` writes one into each). This SOP is the
+> step-by-step for one job in it: changing what a model's numbers mean.
+
 **Audience:** an engineer-agent (or a human doing the same job) editing the
 **definition plane** — the `models/<name>.yaml` files (a `models/<name>.py`
 for anything exotic) that declare what numbers mean in this project.
@@ -173,7 +177,7 @@ baseline) and **after**. A passing suite is the minimum bar.
   (`tests/test_phase25.py` holds the `add_measure` callable-rejection and
   expr-validation cases). Test files are scoped; do not reorganize across
   files or add shared cross-phase fixtures. Before adding any test, answer
-  *what bug would this catch?* (`docs/architecture/test-suite-review.md`).
+  *what bug would this catch?* (`design/test-suite-review.md`).
 - Test the *meaning*, not just the plumbing: assert the computed value on a
   small known dataset. Bias toward asserting the **absence of a wrong
   answer** (e.g. a ratio measure is a ratio of totals, not a mean of per-row

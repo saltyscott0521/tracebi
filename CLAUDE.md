@@ -88,7 +88,7 @@ suite holds those six, plus a test where a module no journey reaches would
 otherwise go uncovered.
 Don't add look-alikes, tests of private fields, "it didn't raise" or
 "the string appears" checks. Before adding any test, answer *what bug would
-this catch?* — `docs/architecture/test-suite-review.md`.
+this catch?* — `design/test-suite-review.md`.
 
 ---
 
@@ -286,9 +286,12 @@ CHANGELOG.md           # Keep-a-changelog format
 LICENSE                # MIT
 README.md              # The front door: what it is, install, the reference project, the app, deploy, agents
 NOTES.md               # The decision journal (dated entries), build status, open questions
-docs/                  # The handbook (Obsidian vault). The app's Docs lists concepts/, guides/, reference/,
-                       #   agents/; architecture/ (design notes) and strategy/ (intent) open only by link.
-                       #   docs/index.md lists every page; site/build_docs.py renders it (commit site/docs).
+docs/                  # The handbook (Obsidian vault): start/, concepts/, guides/, reference/, agents/.
+                       #   docs/toc.yaml is the one order (sections, pages, blurbs, moved: old → new
+                       #   address); /api/docs and site/build_docs.py read it. build_docs.py generates
+                       #   docs/index.md and site/docs (commit both; test_docs_site guards them).
+design/                # Internal, never published or served: design notes (one decision each), strategy/
+                       #   (intent), pitfalls.md, the ui-audit baselines. Decisions are dated in NOTES.md.
 ```
 
 ---
@@ -781,7 +784,7 @@ result is compared to the server's cell by cell within 1e-9 (`calc_plan.rows_mat
 never by a rounded hash. Fingerprint algo 3 (`frame_fingerprint(df, algo=3)`:
 9 significant digits, no dtypes, rows total-ordered) is the cross-engine canonical
 form; server stamps stay algo 2 and `verify` re-hashes under the recorded algo.
-Design: `docs/architecture/duckdb-first.md`; plan: `docs/architecture/live-reports-plan.md`.
+Design: `design/duckdb-first.md`; plan: `design/live-reports-plan.md`.
 
 ### New medallion layer
 ```python
@@ -893,7 +896,7 @@ GET  /                                               → React SPA (tracebi/web/
                                                        Data · Columns · Used by, the grid's sort, search, filters and page in the
                                                        address; a model's page keeps its view in the address: /data/<m>?view=diagram|
                                                        tables|measures|relationships|storage|code[&table=<t>|&measure=<name>]) · Review (/review) · Docs
-                                                       (/docs: the handbook, /docs/get-started first), plus History
+                                                       (/docs: the handbook in docs/toc.yaml's order; the quickstart at /docs/get-started), plus History
                                                        (/runs) and Verify (/verify); older addresses redirect (movedTo in
                                                        web/ui/src/nav.js; /handbook, /getting-started, /data?view=map,
                                                        /data/map too). FastAPI's API reference is /api-docs. When it has not been
@@ -922,17 +925,18 @@ Don't add these unless asked.
 | Goal | Start here |
 |---|---|
 | Understand the whole framework | `README.md` |
+| Add or reorder a handbook page | `docs/toc.yaml`, then `python site/build_docs.py` |
 | Understand the three-phase workflow | `docs/concepts/the-three-phase-workflow.md` + `examples/portfolio_project/` |
 | Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.sql` + `docs/reference/transform-sql.md` |
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.yaml` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/` |
 | Build an app dashboard (React lane) | `tracebi new-dashboard` → `examples/portfolio_project/reports/portfolio_model/portfolio_desk/` + `docs/reference/app-jsx.md` |
-| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `docs/architecture/report-generator-architecture.md` |
+| Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `design/report-generator-architecture.md` |
 | See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing_model/affordability/` + `tracebi/reports/scenario.py` |
 | See every artifact feature at once | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/e2e/test_reference_project.py` and `tests/test_agent_guides.py`) |
-| Understand architecture decisions | `NOTES.md` (the journal) + `docs/architecture/` (the design notes) |
-| Avoid bugs already hit in this repo | `docs/agents/pitfalls.md` |
-| Decide whether a test is worth writing | `docs/architecture/test-suite-review.md` |
+| Understand architecture decisions | `NOTES.md` (the journal) + `design/` (the design notes; internal, never published) |
+| Avoid bugs already hit in this repo | `design/pitfalls.md` |
+| Decide whether a test is worth writing | `design/test-suite-review.md` |
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |

@@ -1,7 +1,7 @@
 # tracebi.com — the marketing site
 
 The public product/explanation page for TraceBi. This is **surface #1** of the
-three in [docs/architecture/frontend-surfaces.md](../docs/architecture/frontend-surfaces.md): the pitch,
+three in [design/frontend-surfaces.md](../design/frontend-surfaces.md): the pitch,
 docs, and pricing, whose primary call to action branches into the live demo app.
 
 **It is a separate front-end from the distributed app UI** (`web/ui/`). It is a
@@ -27,8 +27,13 @@ works in both light and dark, following the visitor's system theme.
 is the single source, shared with Obsidian and the app's own Docs page.
 
 ```bash
-python site/build_docs.py     # docs/*.md → site/docs/*.html
+python site/build_docs.py     # docs/*.md → site/docs/*.html, and docs/index.md
 ```
+
+The order of sections and pages is `docs/toc.yaml`, the one list the site's nav,
+the app's Docs sidebar (through `/api/docs`) and the generated `docs/index.md`
+all read. A page that changes folder is listed under `moved:` there, and the
+generator writes a forwarding page at its old address.
 
 **Run this whenever you edit `docs/`.** The output is committed on purpose, so
 the site still deploys with no build step; the price is that it can go stale,
@@ -37,9 +42,9 @@ result differs from what is checked in. The failure names the fix.
 
 The generator takes the palette and the favicon out of `index.html` rather than
 keeping a second copy, so the docs site cannot drift into a different blue than
-the landing page. The internal positioning doc (`north-star.md`) and the
-strategy notes (`docs/strategy/`) are never published, and a test asserts the
-positioning doc never appears.
+the landing page. The internal positioning doc (`north-star.md`) is never
+published, and a test asserts it never appears. Design notes and strategy live
+in `design/` at the repo root, outside the vault, so nothing renders them.
 
 ## Deploy
 
@@ -55,7 +60,7 @@ internal hostname is not a public URL). nginx also proxies
 ## Status
 
 The **ask / build / schedule page**, corrected to the product of 2026-10-24
-(first written 2026-09-23, following `docs/strategy/vision-and-positioning.md`).
+(first written 2026-09-23, following `design/strategy/vision-and-positioning.md`).
 It leads with the three ways to use TraceBi — ask a question, build a one-off
 analysis, schedule a recurring report — all from one set of approved
 definitions, and says what the demo at `/app` serves (the reference project's

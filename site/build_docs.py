@@ -16,6 +16,13 @@ generated HTML can drift from the markdown, so ``tests/test_docs_site.py``
 re-runs this and fails if the tree it produces differs from the tree in git.
 Run this script whenever you edit ``docs/``.
 
+**The order is ``docs/toc.yaml``**: sections, their titles and blurbs, and
+the pages of each in reading order. The app's Docs place reads the same file
+(through ``/api/docs``), so the site's nav and the app's sidebar cannot drift
+apart. ``docs/index.md`` is generated from it too (one line per page: its
+title and its first sentence, or the blurb the toc gives it) and committed;
+the same test that guards ``site/docs`` guards it.
+
 **The palette is extracted from ``site/index.html``**, not copied. A docs site
 in a different blue than the landing page reads as a different product, and a
 second hand-maintained copy of the tokens is exactly how that happens.
@@ -34,24 +41,12 @@ REPO = SITE.parent
 DOCS = REPO / "docs"
 OUT = SITE / "docs"
 
-#: Pages the site never publishes: the positioning doc, and the stub that
-#: only redirects an old address in the app (receipts → trace).
-HIDDEN = {"north-star", "receipts"}
+TOC = DOCS / "toc.yaml"
 
-#: The vault's sections, in reading order: ideas before look-up tables.
-#: docs/strategy/ is not one: it is intent (where the product is going, with
-#: dated targets), not a description of what ships, so neither this site nor
-#: the app's Docs place lists it.
-SECTIONS = [
-    ("concepts", "Concepts", "The ideas. Read these once."),
-    ("guides", "Guides", "Task-shaped walkthroughs."),
-    ("reference", "Reference", "Look things up."),
-    ("architecture", "Architecture", "For changing the framework."),
-    ("agents", "Agent SOPs", "Standard operating procedures."),
-]
-
-#: Within a section, the page that orients you comes first.
-FIRST = {"concepts": "the-three-phase-workflow", "guides": "plain-english"}
+#: A page the site never publishes even if it exists: the positioning doc is
+#: gitignored and internal, but a checkout may hold it. Design notes and
+#: strategy are not in the vault at all: they live in design/ at the repo root.
+HIDDEN = {"north-star"}
 
 
 def _require_markdown():
@@ -97,6 +92,24 @@ def theme_css() -> str:
     return body[start:end].strip()
 
 
+def _require_yaml():
+    try:
+        import yaml
+    except ImportError:
+        sys.exit("This generator needs PyYAML.\n  pip install -e \".[dev]\"")
+    return yaml
+
+
+def load_toc() -> dict:
+    """``docs/toc.yaml``, each page entry normalised to ``{page, blurb}``."""
+    toc = _require_yaml().safe_load(TOC.read_text(encoding="utf-8"))
+    for sec in toc["sections"]:
+        sec["pages"] = [p if isinstance(p, dict) else {"page": p}
+                        for p in sec["pages"]]
+    toc.setdefault("moved", {})
+    return toc
+
+
 def title_of(path: Path) -> str:
     """The page's first H1, with any inline-code backticks stripped."""
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -105,29 +118,76 @@ def title_of(path: Path) -> str:
     return path.stem.replace("-", " ").capitalize()
 
 
-def collect() -> tuple[dict, dict, Path | None]:
-    """Return ``(tree, by_stem, home)`` over the vault."""
-    tree: dict[str, list] = {key: [] for key, _, _ in SECTIONS}
-    by_stem: dict[str, tuple[str, str]] = {}
-    home = None
-    for md in sorted(DOCS.rglob("*.md")):
-        rel = md.relative_to(DOCS)
-        stem = md.stem
-        if stem in HIDDEN:
+def collect(toc: dict) -> tuple[dict, dict, Path]:
+    """Return ``(tree, by_stem, home)``: the toc's pages, in its order."""
+    tree: dict[str, list] = {}
+    by_stem: dict[str, tuple[str, str]] = {"index": ("", "index")}
+    for sec in toc["sections"]:
+        key = sec["key"]
+        tree[key] = []
+        for entry in sec["pages"]:
+            md = DOCS / key / f"{entry['page']}.md"
+            if not md.is_file():
+                sys.exit(f"docs/toc.yaml lists {key}/{entry['page']}, "
+                         f"but docs/{key}/{entry['page']}.md does not exist")
+            tree[key].append(md)
+            by_stem[md.stem] = (key, md.stem)
+    # A wiki link to a page that moved (a retired stem, or a stub kept for
+    # Obsidian) resolves to the page that replaced it.
+    for old, new in toc["moved"].items():
+        old_stem, new_stem = old.split("/")[1], new.split("/")[1]
+        if old_stem != new_stem:
+            by_stem[old_stem] = by_stem[new_stem]
+    return tree, by_stem, DOCS / "index.md"
+
+
+def lead_sentence(md: Path) -> str:
+    """The page's first sentence: what it is, for its line in the index."""
+    lines = md.read_text(encoding="utf-8").splitlines()
+    start = next(i for i, ln in enumerate(lines) if ln.startswith("# ")) + 1
+    para: list[str] = []
+    for ln in lines[start:]:
+        s = ln.strip()
+        if not s:
+            if para:
+                break
             continue
-        section = rel.parts[0] if len(rel.parts) > 1 else ""
-        if not section:
-            if stem == "index":
-                home = md
-                by_stem[stem] = ("", stem)
+        if not para and (s == "---" or s.startswith((">", "```", "|", "#"))):
             continue
-        if section in tree:
-            tree[section].append(md)
-            by_stem[stem] = (section, stem)
-    for key, items in tree.items():
-        lead = FIRST.get(key)
-        items.sort(key=lambda p: (p.stem != lead, title_of(p).lower()))
-    return tree, by_stem, home
+        para.append(s)
+    text = " ".join(para).replace("**", "")
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)   # [label](path) → label
+    m = re.match(r"(.+?[.!?])(\s|$)", text)
+    return (m.group(1) if m else text).rstrip(".")
+
+
+def index_markdown(toc: dict, tree: dict) -> str:
+    """docs/index.md: the toc's intro, a line per page in order, its outro.
+
+    No "generated" banner in the file: an HTML comment is literal text in the
+    app's reader, and the page's title must be its first line. The outro says
+    where the order comes from instead.
+    """
+    out = ["# TraceBi Docs", "", toc["intro"].rstrip(), "", "---", ""]
+    for sec in toc["sections"]:
+        out += [f"## {sec['title']}", "", sec["blurb"], ""]
+        for entry, md in zip(sec["pages"], tree[sec["key"]]):
+            out.append(f"- [[{md.stem}]] — {entry.get('blurb') or lead_sentence(md)}")
+        out.append("")
+    out += ["---", "", toc["outro"].rstrip(), ""]
+    return "\n".join(out)
+
+
+REDIRECT = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Moved — TraceBi docs</title>
+<meta http-equiv="refresh" content="0; url={href}">
+</head>
+<body><p>This page moved to <a href="{href}">{href}</a>.</p></body>
+</html>
+"""
 
 
 def href_for(section: str, stem: str, *, depth: int) -> str:
@@ -221,17 +281,15 @@ SHELL = """<!doctype html>
 """
 
 
-def build_nav(tree, home, *, current: Path, depth: int) -> str:
+def build_nav(sections, tree, home, *, current: Path, depth: int) -> str:
     out = []
-    if home is not None:
-        cls = ' class="on"' if current == home else ""
-        out.append(f'<a{cls} href="{href_for("", "index", depth=depth)}">Overview</a>')
-    for key, label, blurb in SECTIONS:
-        items = tree.get(key) or []
-        if not items:
-            continue
-        out.append(f'<div class="sec"><span>{label}</span><em>{html.escape(blurb)}</em></div>')
-        for md in items:
+    cls = ' class="on"' if current == home else ""
+    out.append(f'<a{cls} href="{href_for("", "index", depth=depth)}">Overview</a>')
+    for sec in sections:
+        key = sec["key"]
+        out.append(f'<div class="sec"><span>{html.escape(sec["title"])}</span>'
+                   f'<em>{html.escape(sec["blurb"])}</em></div>')
+        for md in tree[key]:
             cls = ' class="on"' if md == current else ""
             out.append(
                 f'<a{cls} href="{href_for(key, md.stem, depth=depth)}">'
@@ -246,7 +304,11 @@ def main() -> int:
         sys.exit(f"no docs directory at {DOCS}")
 
     icon = favicon_href()
-    tree, by_stem, home = collect()
+    toc = load_toc()
+    tree, by_stem, home = collect(toc)
+    index = index_markdown(toc, tree)
+    if not home.is_file() or home.read_text(encoding="utf-8") != index:
+        home.write_text(index, encoding="utf-8")
     _TITLES.clear()
     for stem, (sec, _) in by_stem.items():
         src = (DOCS / sec / f"{stem}.md") if sec else (DOCS / f"{stem}.md")
@@ -259,9 +321,9 @@ def main() -> int:
     (OUT / "docs.css").write_text(PAGE_CSS.replace("/*TOKENS*/", theme_css()),
                                   encoding="utf-8")
 
-    pages = [(home, "", 0)] if home else []
-    for key, _, _ in SECTIONS:
-        pages += [(md, key, 1) for md in (tree.get(key) or [])]
+    pages = [(home, "", 0)]
+    for sec in toc["sections"]:
+        pages += [(md, sec["key"], 1) for md in tree[sec["key"]]]
 
     written = 0
     for md, section, depth in pages:
@@ -278,7 +340,7 @@ def main() -> int:
             title=html.escape(title),
             desc=html.escape(re.sub(r"[*`\[\]]", "", first_para))[:180],
             up="../" * depth,
-            nav=build_nav(tree, home, current=md, depth=depth),
+            nav=build_nav(toc["sections"], tree, home, current=md, depth=depth),
             body=body,
         )
         target = (OUT / section / f"{md.stem}.html") if section else (OUT / "index.html")
@@ -286,7 +348,15 @@ def main() -> int:
         target.write_text(page, encoding="utf-8")
         written += 1
 
-    print(f"docs site → {OUT.relative_to(REPO)}  ({written} pages)")
+    # An old address forwards to the page that replaced it, so a link
+    # someone saved still lands.
+    for old, new in toc["moved"].items():
+        target = OUT / f"{old}.html"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(REDIRECT.format(href=f"../{new}.html"), encoding="utf-8")
+
+    print(f"docs site → {OUT.relative_to(REPO)}  ({written} pages, "
+          f"{len(toc['moved'])} forwarding)")
     return 0
 
 

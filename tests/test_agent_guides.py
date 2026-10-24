@@ -107,8 +107,8 @@ class TestCLISurfaceIsDocumented:
             (_REPO / "README.md").read_text(encoding="utf-8"),
             (_REPO / "AGENTS.md").read_text(encoding="utf-8"),
         ]
-        # rglob, not glob: docs/ is a tree (concepts/, guides/, reference/,
-        # architecture/), so a flat scan would miss the very pages that
+        # rglob, not glob: docs/ is a tree (start/, concepts/, guides/, reference/,
+        # agents/), so a flat scan would miss the very pages that
         # document a command and let an undocumented one pass.
         parts += [
             p.read_text(encoding="utf-8") for p in (_REPO / "docs").rglob("*.md")

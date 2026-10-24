@@ -301,7 +301,7 @@ EMBED_FORMAT_PARQUET = "parquet"
 
 #: The default transport when no choice is made. Callers that hold the whole
 #: binding set should use :func:`choose_embed_format` instead, which picks by
-#: size (see ``docs/architecture/large-detail-artifacts.md``).
+#: size (see ``design/large-detail-artifacts.md``).
 DEFAULT_EMBED_FORMAT = EMBED_FORMAT_CSV
 
 

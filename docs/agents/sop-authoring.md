@@ -1,5 +1,9 @@
 # SOP — Authoring a Report Through the Gateway (Analyst Agent)
 
+> **Read `AGENTS.md` first.** It is the brief every agent reads before working in a
+> TraceBi project (`tracebi init` writes one into each). This SOP is the
+> step-by-step for one job in it: a report authored over the gateway.
+
 Standard operating procedure for an AI analyst agent producing reports over
 TraceBi's MCP gateway (`tracebi mcp`). Follow the steps in order. The
 governing principle: **you never touch the warehouse — you speak the semantic

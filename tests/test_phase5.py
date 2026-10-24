@@ -822,6 +822,21 @@ class TestDocsEndpoints:
         assert "TraceBi" in body["content"]
 
 
+    def test_listing_is_the_sites_order(self, client):
+        # docs/toc.yaml is the one order: the app's sidebar is this listing,
+        # and the static site's nav is generated from the same file. If the
+        # two ever disagree, the app and tracebi.com show different handbooks.
+        import re
+        body = client.get("/api/docs").json()
+        app_order = [g["name"].replace("--", "/")
+                     for s in body["sections"] for g in s["pages"]]
+        site_nav = (Path(__file__).parent.parent / "site/docs/index.html").read_text()
+        nav = site_nav[site_nav.index('<div class="links">'):site_nav.index("</details>")]
+        site_order = re.findall(r'href="([a-z-]+/[a-z0-9-]+)\.html"', nav)
+        assert app_order == site_order
+        # An old address names the page that replaced it.
+        assert body["moved"]["guides--quickstart"] == "start--quickstart"
+
     def test_path_traversal_is_unaddressable(self, client):
         # Names are matched against a directory listing of docs/*.md, so
         # traversal inputs can never resolve to a file.

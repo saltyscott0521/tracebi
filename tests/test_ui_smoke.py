@@ -398,7 +398,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 ("/reports", "/"),
                 ("/reports?r=portfolio_model/portfolio_book", "/reports/portfolio_model/portfolio_book"),
                 ("/?r=portfolio_model/portfolio_book", "/reports/portfolio_model/portfolio_book"),
-                ("/workflow", "/docs/get-started#phases"),
+                ("/workflow", "/docs/concepts/the-three-phase-workflow"),
                 ("/getting-started", "/docs/get-started"),
                 ("/getting-started#phases", "/docs/get-started#phases"),
                 ("/handbook", "/docs"),
@@ -1004,11 +1004,13 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             sidebar.get_by_role("link", name="Ask", exact=True).wait_for()
             for place in ("Data", "Review"):
                 expect(sidebar.get_by_role("link", name=place, exact=True)).to_have_count(0)
-            # Docs is for everyone: the handbook, Get started first.
+            # Docs is for everyone: the handbook, Get started in its first section.
             sidebar.get_by_role("link", name="Docs", exact=True).click()
             viewer.wait_for_url("**/docs")
             viewer.get_by_role("heading", name="Docs", exact=True).wait_for()
-            viewer.get_by_role("link", name="Get started", exact=True).click()
+            # The sidebar's link: the home page links it too, in its Start here list.
+            viewer.get_by_role("navigation", name="Docs pages").get_by_role(
+                "link", name="Get started", exact=True).click()
             viewer.wait_for_url("**/docs/get-started")
             viewer.get_by_role("heading", name="Get started", exact=True).wait_for()
             # A Docs page's one h1 is its own title; "Docs" is the crumb.
@@ -1021,7 +1023,7 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             viewer.keyboard.press("Control+k")
             viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("History")
             viewer.get_by_text("No matches for").wait_for()
-            # Nor the design notes under docs/architecture/.
+            # Nor the design notes (design/, outside the handbook).
             viewer.get_by_placeholder("Jump to a page, model, report, pipeline…").fill("Navigation v3")
             viewer.get_by_text("No matches for").wait_for()
             viewer.keyboard.press("Escape")

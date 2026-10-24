@@ -202,7 +202,7 @@ carries no trace; the HTML file is what `verify --file` checks.
 
 ## Drafts
 
-Remote drafts (design: `docs/strategy/remote-authoring.md`). `{kind}` is `reports` or `models`.
+Remote drafts. `{kind}` is `reports` or `models`.
 A draft's owner is the acting principal; `{owner}` is that name slugged to
 `[a-z0-9._-]`.
 
@@ -363,7 +363,7 @@ The app's addresses, five places in the sidebar (`web/ui/src/nav.js`):
 | Ask | `/ask` (`?model=<m>` picks the model) |
 | Data | five tabs: `/data` Flow (the board: sources → transforms → warehouse → models → reports; `?model=<m>` opens with that model's path lit), `/data/sources` Sources (every connection and the `inputs/` folder), `/data/transforms` Transforms (every file in `transforms/`), `/data/warehouse` Warehouse (every table: who wrote it, who reads it, its checks), `/data/models` Models (a chain row per model); `?model=<m>` narrows Sources, Transforms and Warehouse. `/data/<m>` one model, then `/transform`, `/sources`, `/runs` |
 | Review | four tabs: `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
-| Docs | `/docs` the handbook; `/docs/get-started` first, then `/docs/<section>/<page>` per file of `docs/` |
+| Docs | `/docs` the handbook, in the order of `docs/toc.yaml`: `/docs/<section>/<page>` per file of `docs/`, the quickstart at `/docs/get-started`; a page that moved keeps its old address (the toc's `moved:`) |
 
 The sidebar shows the places a role uses (`placesFor` in `web/ui/src/nav.js`):
 everyone Reports, Ask and Docs, an analyst also Review and Data (read-only: its run
@@ -376,7 +376,7 @@ same thing under Data, Ask, History or the library; `/models` to `/data/models`
 (`/models?m=<m>` to `/data/<m>`); `/explore` to `/ask`; `/sources` and `/connectors` to
 `/data/sources`; `/map`, `/data/map` and `/data?view=map` to `/data` (with `model=<m>`, to
 `/data/<m>`: a model's page draws its line); `/handbook` (and `/handbook/<page>`) to `/docs`;
-`/getting-started` and `/workflow` to `/docs/get-started`; `/drafts` and `/review#drafts`
+`/getting-started` to `/docs/get-started`; `/workflow` to `/docs/concepts/the-three-phase-workflow`; `/drafts` and `/review#drafts`
 to `/review/drafts`; `/reports?r=<name>` to `/reports/<name>`.
 
 ---

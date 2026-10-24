@@ -1,15 +1,20 @@
 """
 Read-only access to the markdown guides in docs/.
 
-Serves the files as raw markdown; the React UI renders them on the
-Getting Started page. Only files that exist in the docs directory are
-addressable — names are matched against a directory listing, so path
-traversal is structurally impossible.
+Serves the files as raw markdown; the React UI renders them in its Docs
+place. Only files that exist in the docs directory are addressable — names
+are matched against a directory listing, so path traversal is structurally
+impossible.
+
+The listing is in the handbook's order, ``docs/toc.yaml``: the same file the
+static site's generator reads, so the app's sidebar and tracebi.com/docs show
+one order and neither keeps its own copy.
 """
 
 import os
 from pathlib import Path
 
+import yaml
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/docs", tags=["docs"])
@@ -59,13 +64,53 @@ def _guides() -> dict[str, Path]:
     return guides
 
 
+def _toc(docs_dir: Path, guides: dict[str, Path]) -> dict:
+    """The sections in order, from docs/toc.yaml when there is one.
+
+    A project that ships its own docs/ without a toc still gets a listing:
+    each subdirectory a section, alphabetically, its pages by title.
+    """
+    toc_file = docs_dir / "toc.yaml"
+    if toc_file.is_file():
+        toc = yaml.safe_load(toc_file.read_text(encoding="utf-8")) or {}
+        sections = [
+            {"key": s["key"], "title": s["title"], "blurb": s.get("blurb", ""),
+             "pages": [f"{s['key']}--{e['page'] if isinstance(e, dict) else e}"
+                       for e in s["pages"]]}
+            for s in toc.get("sections", [])
+        ]
+        moved = {old.replace("/", "--"): new.replace("/", "--")
+                 for old, new in (toc.get("moved") or {}).items()}
+        return {"sections": sections, "moved": moved}
+    keys = sorted({name.split("--")[0] for name in guides if "--" in name})
+    return {"sections": [
+        {"key": k, "title": k.replace("-", " ").capitalize(), "blurb": "",
+         "pages": sorted((n for n in guides if n.startswith(f"{k}--")),
+                         key=lambda n: _title(guides[n]).lower())}
+        for k in keys
+    ], "moved": {}}
+
+
 @router.get("")
 def list_guides():
-    """List available guides: name (slug), title, and size."""
-    return [
-        {"name": name, "title": _title(path), "bytes": path.stat().st_size}
-        for name, path in _guides().items()
-    ]
+    """The handbook in reading order: its home page, its sections (each with
+    its pages: name, title, size) and the old addresses of pages that moved.
+    A toc entry with no file is left out rather than listed as a dead link."""
+    guides = _guides()
+    toc = _toc(_docs_dir(), guides)
+
+    def page(name):
+        path = guides[name]
+        return {"name": name, "title": _title(path), "bytes": path.stat().st_size}
+
+    return {
+        "home": page("index") if "index" in guides else None,
+        "sections": [
+            {**s, "pages": [page(n) for n in s["pages"] if n in guides]}
+            for s in toc["sections"]
+        ],
+        "moved": {old: new for old, new in toc["moved"].items() if new in guides},
+    }
 
 
 @router.get("/{name}")
