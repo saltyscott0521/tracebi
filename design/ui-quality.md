@@ -217,6 +217,14 @@ Each fix that taught something general adds a line here.
   `ExportCsv`; `Empty`; `Time`), `when.js` (`stamp`, `ago`, `isoTitle`) and
   `format.js` (`count`, `plural`), and a list of things is a `.tb-list`
   table. Reach for them before writing a local one.
+- A package's look is tokens, never rules: the accent pairs and one display
+  face (`--tb-font-display`), so the system can change a part and every report
+  follows. A rule in a package's `style.css` is a second design system
+  waiting (affordability had one).
+- On an app page `tracebi.css` sits in a cascade layer under Tailwind's
+  utilities, so a phone layout the system must hold (the controls' one row)
+  loses to an author's `flex-wrap` class unless it is `!important`. Check a
+  phone rule on an `app.jsx` report, not only on a template page.
 - A phone is not a narrow desktop window. The Step 1 captures were taken at
   390px in a desktop browser, where a page with no viewport meta still lays out
   at 390; a phone lays it out at 980 and shrinks it, and only affordability
