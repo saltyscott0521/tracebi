@@ -277,10 +277,14 @@ title block, still works.)
 A report's look beyond that is a theme preset: `tracebi theme use <name>`, or
 in `style.css` the accent pair for each ground (`--tb-accent` /
 `--tb-accent-text` and `--tb-dark-accent` / `--tb-dark-accent-text`) and at
-most one display face for the headline and the lead number. The showcase's
-`style.css` is exactly that: Fraunces from `assets/fonts/` on
-`.tb-masthead h1` and `.tb-kpi--lead .tb-kpi-value`, and a teal accent. No
-gradient, no shadow, no second set of components.
+most one display face for the headline and the lead number, as
+`--tb-font-display` (the system puts it on `.tb-masthead h1`,
+`.tb-kpi--lead .tb-kpi-value` and the trace drawer's title; unset, a dashboard
+keeps the sans and an editorial headline the serif). Tokens only: no rule of
+its own, no gradient, no shadow, no second set of components. The showcase's
+`style.css` is exactly that: Fraunces from `assets/fonts/` as
+`--tb-font-display`, and the project's own accent, so it reads as one family
+with every other report in the project.
 
 **The footer** — every page ends with one:
 
@@ -291,12 +295,13 @@ gradient, no shadow, no second set of components.
 ```
 
 Your sources come first. The build adds one line — when the file was built and
-from which model, by its label ("Built 18 Oct 2026 · Direct Lending Portfolio."),
+from which model, by its label ("Built Oct 18, 2026 · Direct Lending Portfolio.";
+the runtime writes the day in the reader's own format, as the masthead's),
 and *"This page does not claim the numbers are right."* —
 then "How these numbers were made" behind a `<details>`: what the trace is
 for, and the stated methodology (below). A template with no
 `data-tb-methodology` gets the whole footer at the end of the page. With the
-runtime, the line ends in "▸ How these numbers were made", which opens the
+runtime, the line ends in "How these numbers were made", a link that opens the
 trace drawer, and the `<details>` hides: the drawer's About this build holds
 the same notes. The `<details>` stays for a reader without JavaScript.
 

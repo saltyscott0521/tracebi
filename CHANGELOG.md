@@ -35,6 +35,39 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 - `Btn` applies a caller's `style` last, so a colour it sets sticks; the
   phone header is opaque, so a scrolled list no longer shows through it.
 
+### Changed — one report look, and reports that read on a phone
+
+- **One family.** The reference project is one accent: `portfolio_book`
+  drops its navy and the showcase its teal. A display face is a token now,
+  **`--tb-font-display`** (unset: the masthead keeps the sans, an editorial
+  headline the serif); the system puts it on the masthead `<h1>`, the lead
+  number and the trace drawer's title, so a package's `style.css` is tokens
+  only. The showcase's is: Fraunces as `--tb-font-display`, nothing else.
+- **Affordability is on the system** (backlog 7): no second stylesheet, no
+  Inter, paper ground, gradients, shadows, animation or pinned light mode. It
+  keeps its layout (the question as the headline, the years and buyers the
+  reader picks, the one number, the why, the trends) and its what-if, in the
+  system's scenario frame behind a disclosure; the harder of two years is
+  marked in `--tb-bad`. It follows the reader's light or dark setting.
+- **Tables on a phone** read across: one line per cell, the table scrolls
+  sideways in its frame with its first column frozen (a name column wraps in
+  about 9em), its far edge fading while more lies there. A frozen cell takes
+  its row's stripe and hover, so a striped frozen column no longer keeps a
+  different shade in dark (backlog 10).
+- **Controls on a phone** are one row that scrolls sideways, not a stack; the
+  **selection bar** rides the bottom of the screen once something is picked
+  (not inside the app's frame, whose header shows the selection).
+- **Charts on a phone**: a run of numbers (years, months, ranks) labels every
+  k-th tick, flat, instead of turning them 30°; stacked small multiples carry
+  the shared category names under the last panel only, every plot one height
+  on the one scale (backlog 9); a line's end label stays inside the chart at
+  the top of the scale (backlog 12).
+- **The footer is one sentence**: "Built Oct 24, 2026 · Direct Lending
+  Portfolio. This page does not claim the numbers are right. How these numbers
+  were made", the last words the same quiet link as the masthead's Trace. The
+  footer's day is written in the reader's own format, as the masthead's, so a
+  page shows one date shape. A masthead meta line in a `<p>` keeps one line.
+
 ### Changed — the credential store is encrypted YAML
 
 - **`.tracebi/secrets.yml.enc`** replaces `.tracebi/secrets.json`: one file

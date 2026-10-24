@@ -281,7 +281,7 @@ The build inlines each one as a <code>data:</code> URI, so the file still fetche
   font-weight: 600;
   src: url(assets/fonts/fraunces-latin-600-normal.woff2) format(&quot;woff2&quot;);
 }
-.tb-masthead h1, .tb-kpi--lead .tb-kpi-value { font-family: &quot;Fraunces&quot;, var(--tb-font-serif); }
+:root { --tb-font-display: &quot;Fraunces&quot;, var(--tb-font-serif); }   /* the headline and the lead number */
 .tb-masthead-mark { width: 120px; height: 28px; background: url(assets/logo.svg) left / contain no-repeat; }
 </code></pre>
 <pre><code class="language-html">&lt;img src=&quot;assets/logo.svg&quot; alt=&quot;Company&quot;&gt;
@@ -291,8 +291,8 @@ file, any other type, or a path outside <code>assets/</code> fails the load with
 named. Keep images small: every byte ships inside the report. Check a font's
 licence allows embedding (SIL OFL fonts do; ship the licence text alongside).</p>
 <p><code>examples/portfolio_project/reports/portfolio_model/portfolio_showcase/</code> shows it all on
-the system: a <code>style.css</code> that is a theme preset (an accent pair and one
-inlined display face), every chart type, a KPI delta, data bars, sortable
+the system: a <code>style.css</code> that is tokens only (one inlined display face as
+<code>--tb-font-display</code>, the project's own accent), every chart type, a KPI delta, data bars, sortable
 columns, filters, a scenario and a custom d3 figure. <code>reports/wealth_model/aum_by_branch</code>
 is the one bespoke look (its own faces, palette and hero band
 with inlined artwork) on the same masthead, grid, footer and trace.</p>

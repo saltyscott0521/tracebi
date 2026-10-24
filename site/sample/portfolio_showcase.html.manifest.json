@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
   "report_name": "Portfolio Showcase",
-  "rendered_at": "2026-10-24T02:22:43.285216+00:00",
+  "rendered_at": "2026-10-24T20:01:04.628043+00:00",
   "rendered_by": "tracebi reference",
   "format": "html",
   "output_path": "portfolio_showcase.html",
-  "git_sha": "74a11c4379cf2688268c92a51cb84b4c22cfa182",
+  "git_sha": "39dcbe0d45d6cd1cded7bf7d13ee9068b12c6fb9",
   "parameters": {},
   "sections": [
     {
@@ -26,7 +26,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.655675+00:00",
+          "timestamp": "2026-10-24T20:01:03.554110+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -44,7 +44,7 @@
           "description": "Derived measure column(s): positions = holding_id, cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.657060+00:00",
+          "timestamp": "2026-10-24T20:01:03.557429+00:00",
           "metadata": {
             "derived": {
               "positions": "holding_id",
@@ -57,7 +57,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.667372+00:00",
+          "timestamp": "2026-10-24T20:01:03.580211+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -72,7 +72,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.667406+00:00",
+          "timestamp": "2026-10-24T20:01:03.580268+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -121,7 +121,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.687233+00:00",
+          "timestamp": "2026-10-24T20:01:03.614174+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -142,7 +142,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.693718+00:00",
+          "timestamp": "2026-10-24T20:01:03.626055+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -160,7 +160,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.697031+00:00",
+          "timestamp": "2026-10-24T20:01:03.631074+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -174,7 +174,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.sector",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.706778+00:00",
+          "timestamp": "2026-10-24T20:01:03.647304+00:00",
           "metadata": {
             "order_by": [
               {
@@ -194,7 +194,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.706805+00:00",
+          "timestamp": "2026-10-24T20:01:03.647409+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -251,7 +251,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.727462+00:00",
+          "timestamp": "2026-10-24T20:01:03.672976+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -272,7 +272,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.731818+00:00",
+          "timestamp": "2026-10-24T20:01:03.678844+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -290,7 +290,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.735135+00:00",
+          "timestamp": "2026-10-24T20:01:03.682629+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -304,7 +304,7 @@
           "description": "Share measure(s): fv_share = fair_value / total(fair_value)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.744291+00:00",
+          "timestamp": "2026-10-24T20:01:03.696574+00:00",
           "metadata": {
             "shares": {
               "fv_share": "fair_value"
@@ -316,7 +316,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.sector, fv_share, limit 1",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.746405+00:00",
+          "timestamp": "2026-10-24T20:01:03.699428+00:00",
           "metadata": {
             "order_by": [
               {
@@ -340,7 +340,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.746427+00:00",
+          "timestamp": "2026-10-24T20:01:03.699461+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -403,7 +403,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.765445+00:00",
+          "timestamp": "2026-10-24T20:01:03.725960+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -421,7 +421,7 @@
           "description": "Derived measure column(s): unrealized = fair_value - cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.767652+00:00",
+          "timestamp": "2026-10-24T20:01:03.728790+00:00",
           "metadata": {
             "derived": {
               "unrealized": "fair_value - cost"
@@ -433,7 +433,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.772754+00:00",
+          "timestamp": "2026-10-24T20:01:03.736272+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -478,7 +478,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.791800+00:00",
+          "timestamp": "2026-10-24T20:01:03.760954+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -499,7 +499,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_fund",
-          "timestamp": "2026-10-24T02:22:42.796057+00:00",
+          "timestamp": "2026-10-24T20:01:03.769684+00:00",
           "metadata": {
             "rows_loaded": 3,
             "filter": null,
@@ -517,7 +517,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_fund' on fund_id = fund_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.798926+00:00",
+          "timestamp": "2026-10-24T20:01:03.773177+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_fund",
@@ -531,7 +531,7 @@
           "description": "Ordered by fair_value desc, dim_fund.fund",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.807852+00:00",
+          "timestamp": "2026-10-24T20:01:03.784145+00:00",
           "metadata": {
             "order_by": [
               {
@@ -551,7 +551,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.807878+00:00",
+          "timestamp": "2026-10-24T20:01:03.784184+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -608,7 +608,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.827390+00:00",
+          "timestamp": "2026-10-24T20:01:03.815760+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -629,7 +629,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_rating",
-          "timestamp": "2026-10-24T02:22:42.834302+00:00",
+          "timestamp": "2026-10-24T20:01:03.829067+00:00",
           "metadata": {
             "rows_loaded": 9,
             "filter": null,
@@ -647,7 +647,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_rating' on rating_id = rating_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.837151+00:00",
+          "timestamp": "2026-10-24T20:01:03.834136+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_rating",
@@ -661,7 +661,7 @@
           "description": "Ordered by fair_value desc, dim_rating.rating",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.846408+00:00",
+          "timestamp": "2026-10-24T20:01:03.848672+00:00",
           "metadata": {
             "order_by": [
               {
@@ -681,7 +681,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.846438+00:00",
+          "timestamp": "2026-10-24T20:01:03.848716+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -738,7 +738,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.864601+00:00",
+          "timestamp": "2026-10-24T20:01:03.873606+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -759,7 +759,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.869082+00:00",
+          "timestamp": "2026-10-24T20:01:03.878986+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -780,7 +780,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_fund",
-          "timestamp": "2026-10-24T02:22:42.870544+00:00",
+          "timestamp": "2026-10-24T20:01:03.880437+00:00",
           "metadata": {
             "rows_loaded": 3,
             "filter": null,
@@ -798,7 +798,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.875277+00:00",
+          "timestamp": "2026-10-24T20:01:03.884663+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -812,7 +812,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_fund' on fund_id = fund_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.875296+00:00",
+          "timestamp": "2026-10-24T20:01:03.884688+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_fund",
@@ -826,7 +826,7 @@
           "description": "Ordered by dim_issuer.sector, dim_fund.fund, fair_value",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.885748+00:00",
+          "timestamp": "2026-10-24T20:01:03.900881+00:00",
           "metadata": {
             "order_by": [
               {
@@ -850,7 +850,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.885777+00:00",
+          "timestamp": "2026-10-24T20:01:03.900923+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -912,7 +912,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.903881+00:00",
+          "timestamp": "2026-10-24T20:01:03.926248+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -930,7 +930,7 @@
           "description": "Derived measure column(s): cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.905306+00:00",
+          "timestamp": "2026-10-24T20:01:03.928114+00:00",
           "metadata": {
             "derived": {
               "cost_basis": "cost"
@@ -945,7 +945,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.910426+00:00",
+          "timestamp": "2026-10-24T20:01:03.934943+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -963,7 +963,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.912958+00:00",
+          "timestamp": "2026-10-24T20:01:03.940895+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -977,7 +977,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.922666+00:00",
+          "timestamp": "2026-10-24T20:01:03.953726+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -992,7 +992,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.issuer, dim_issuer.sector, cost_basis, mark",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.924925+00:00",
+          "timestamp": "2026-10-24T20:01:03.957223+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1024,7 +1024,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.924945+00:00",
+          "timestamp": "2026-10-24T20:01:03.957274+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1097,7 +1097,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.944025+00:00",
+          "timestamp": "2026-10-24T20:01:03.981984+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -1115,7 +1115,7 @@
           "description": "Derived measure column(s): cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.945419+00:00",
+          "timestamp": "2026-10-24T20:01:03.983941+00:00",
           "metadata": {
             "derived": {
               "cost_basis": "cost"
@@ -1127,7 +1127,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.954632+00:00",
+          "timestamp": "2026-10-24T20:01:04.003528+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -1142,7 +1142,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.954662+00:00",
+          "timestamp": "2026-10-24T20:01:04.003574+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1190,7 +1190,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.972390+00:00",
+          "timestamp": "2026-10-24T20:01:04.028340+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -1211,7 +1211,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.976471+00:00",
+          "timestamp": "2026-10-24T20:01:04.033898+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -1229,7 +1229,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.979402+00:00",
+          "timestamp": "2026-10-24T20:01:04.037780+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -1243,7 +1243,7 @@
           "description": "Share measure(s): fv_share = fair_value / total(fair_value)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.987830+00:00",
+          "timestamp": "2026-10-24T20:01:04.127346+00:00",
           "metadata": {
             "shares": {
               "fv_share": "fair_value"
@@ -1255,7 +1255,7 @@
           "description": "Window measure(s): fv_rank = rank(fair_value desc), fv_cum_share = running(fv_share desc)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.992442+00:00",
+          "timestamp": "2026-10-24T20:01:04.135447+00:00",
           "metadata": {
             "ranks": {
               "fv_rank": "fair_value"
@@ -1271,7 +1271,7 @@
           "description": "Ordered by fv_rank, dim_issuer.issuer, fair_value, fv_share, fv_cum_share",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.993975+00:00",
+          "timestamp": "2026-10-24T20:01:04.137571+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1303,7 +1303,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.993996+00:00",
+          "timestamp": "2026-10-24T20:01:04.137603+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1373,7 +1373,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:43.012891+00:00",
+          "timestamp": "2026-10-24T20:01:04.161491+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -1391,7 +1391,7 @@
           "description": "Derived measure column(s): cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.014284+00:00",
+          "timestamp": "2026-10-24T20:01:04.167315+00:00",
           "metadata": {
             "derived": {
               "cost_basis": "cost"
@@ -1406,7 +1406,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:43.019143+00:00",
+          "timestamp": "2026-10-24T20:01:04.173862+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -1424,7 +1424,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.021928+00:00",
+          "timestamp": "2026-10-24T20:01:04.177208+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -1438,7 +1438,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.031016+00:00",
+          "timestamp": "2026-10-24T20:01:04.187370+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -1453,7 +1453,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.issuer, cost_basis, mark, limit 8",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.033080+00:00",
+          "timestamp": "2026-10-24T20:01:04.190539+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1481,7 +1481,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.033101+00:00",
+          "timestamp": "2026-10-24T20:01:04.190573+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1549,7 +1549,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_cashflows",
-          "timestamp": "2026-10-24T02:22:43.055012+00:00",
+          "timestamp": "2026-10-24T20:01:04.217420+00:00",
           "metadata": {
             "rows_loaded": 62,
             "filter": null,
@@ -1567,7 +1567,7 @@
           "description": "Derived measure column(s): net_flow = amount, flow_count = cashflow_id",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.056398+00:00",
+          "timestamp": "2026-10-24T20:01:04.219226+00:00",
           "metadata": {
             "derived": {
               "net_flow": "amount",
@@ -1580,7 +1580,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.062147+00:00",
+          "timestamp": "2026-10-24T20:01:04.228141+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1627,7 +1627,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_cashflows",
-          "timestamp": "2026-10-24T02:22:43.079742+00:00",
+          "timestamp": "2026-10-24T20:01:04.252770+00:00",
           "metadata": {
             "rows_loaded": 62,
             "filter": null,
@@ -1645,7 +1645,7 @@
           "description": "Derived measure column(s): net_flow = amount",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.080815+00:00",
+          "timestamp": "2026-10-24T20:01:04.254357+00:00",
           "metadata": {
             "derived": {
               "net_flow": "amount"
@@ -1660,7 +1660,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_date",
-          "timestamp": "2026-10-24T02:22:43.086212+00:00",
+          "timestamp": "2026-10-24T20:01:04.262463+00:00",
           "metadata": {
             "rows_loaded": 12,
             "filter": null,
@@ -1678,7 +1678,7 @@
           "description": "Joined fact 'fact_cashflows' \u2192 dim 'dim_date' on flow_date = flow_date (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.090494+00:00",
+          "timestamp": "2026-10-24T20:01:04.266964+00:00",
           "metadata": {
             "fact": "fact_cashflows",
             "dimension": "dim_date",
@@ -1692,7 +1692,7 @@
           "description": "Ordered by dim_date.month, net_flow",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.100530+00:00",
+          "timestamp": "2026-10-24T20:01:04.277945+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1712,7 +1712,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.102541+00:00",
+          "timestamp": "2026-10-24T20:01:04.279955+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1772,7 +1772,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_cashflows",
-          "timestamp": "2026-10-24T02:22:43.120627+00:00",
+          "timestamp": "2026-10-24T20:01:04.301980+00:00",
           "metadata": {
             "rows_loaded": 62,
             "filter": null,
@@ -1790,7 +1790,7 @@
           "description": "Derived measure column(s): net_flow = amount, flow_count = cashflow_id",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.121861+00:00",
+          "timestamp": "2026-10-24T20:01:04.303600+00:00",
           "metadata": {
             "derived": {
               "net_flow": "amount",
@@ -1806,7 +1806,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_flow_type",
-          "timestamp": "2026-10-24T02:22:43.127581+00:00",
+          "timestamp": "2026-10-24T20:01:04.310608+00:00",
           "metadata": {
             "rows_loaded": 3,
             "filter": null,
@@ -1827,7 +1827,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_fund",
-          "timestamp": "2026-10-24T02:22:43.128986+00:00",
+          "timestamp": "2026-10-24T20:01:04.312617+00:00",
           "metadata": {
             "rows_loaded": 3,
             "filter": null,
@@ -1845,7 +1845,7 @@
           "description": "Joined fact 'fact_cashflows' \u2192 dim 'dim_flow_type' on flow_type_id = flow_type_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.133471+00:00",
+          "timestamp": "2026-10-24T20:01:04.319468+00:00",
           "metadata": {
             "fact": "fact_cashflows",
             "dimension": "dim_flow_type",
@@ -1859,7 +1859,7 @@
           "description": "Joined fact 'fact_cashflows' \u2192 dim 'dim_fund' on fund_id = fund_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.133487+00:00",
+          "timestamp": "2026-10-24T20:01:04.319506+00:00",
           "metadata": {
             "fact": "fact_cashflows",
             "dimension": "dim_fund",
@@ -1873,7 +1873,7 @@
           "description": "Ordered by dim_fund.fund, dim_flow_type.flow_type, net_flow, flow_count",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.144428+00:00",
+          "timestamp": "2026-10-24T20:01:04.332640+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1901,7 +1901,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.144450+00:00",
+          "timestamp": "2026-10-24T20:01:04.332699+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1966,7 +1966,7 @@
           "description": "report.py output (python-derived)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.148306+00:00",
+          "timestamp": "2026-10-24T20:01:04.337547+00:00",
           "metadata": {
             "python_derived": true
           }
@@ -2514,7 +2514,7 @@
     "dim_date": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-24T18:55:21.039116+00:00",
       "checks": 2,
       "fingerprint": "df70370a6f29f92523d4af1c45e848c972ffe778ce37ac65e550b7f0007f39b1",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2526,14 +2526,14 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-24T18:55:20.818540+00:00"
         }
       }
     },
     "dim_flow_type": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-24T18:55:21.039116+00:00",
       "checks": 2,
       "fingerprint": "ebcc07dbb0a38cbd69da5ac93bf3aef46c8d1a43e67d0cb216d7370349018576",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2545,14 +2545,14 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-24T18:55:20.818540+00:00"
         }
       }
     },
     "dim_fund": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-24T18:55:21.039116+00:00",
       "checks": 2,
       "fingerprint": "544dcca864e67ca4dd7f74fb0692f2cfe8728b387ca5aa8a3734889048ed40f4",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2564,14 +2564,14 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-24T18:55:20.818540+00:00"
         }
       }
     },
     "dim_issuer": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-24T18:55:21.039116+00:00",
       "checks": 3,
       "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2583,14 +2583,14 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-24T18:55:20.818540+00:00"
         }
       }
     },
     "dim_rating": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-24T18:55:21.039116+00:00",
       "checks": 4,
       "fingerprint": "ce56858e94bceb16f7e0e9096e3863338ca9a50e9043b958f986d67b5f30dad9",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2602,14 +2602,14 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-24T18:55:20.818540+00:00"
         }
       }
     },
     "fact_cashflows": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-24T18:55:21.039116+00:00",
       "checks": 6,
       "fingerprint": "c313d4f72ec1f45e6b45c50e553f64c4daf2d719cc5a216dca7111fb18567906",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2621,14 +2621,14 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-24T18:55:20.818540+00:00"
         }
       }
     },
     "fact_holdings": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-24T18:55:21.039116+00:00",
       "checks": 5,
       "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2640,7 +2640,7 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-24T18:55:20.818540+00:00"
         }
       }
     }

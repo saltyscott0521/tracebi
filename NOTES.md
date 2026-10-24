@@ -24,6 +24,28 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-24 — Decision: a project is one accent; a package's look is tokens (UI-4B)
+
+Backlog 8 asked whether a project is one accent. It is: a reader moving from
+one report to the next should feel one studio made them, and the accent is
+the strongest signal of that. `portfolio_book` (navy) and the showcase (teal)
+took the project's cobalt; the bespoke example stays `aum_by_branch`, named as
+such. What a package may still set is tokens and nothing else: the accent
+pairs, where a report must differ, and one display face, now a token of its
+own, `--tb-font-display`, which the system places (the masthead headline, the
+lead number, the trace's title). The showcase's `style.css` is that token and
+its `@font-face`; affordability's 272-line stylesheet is gone, its layout and
+its what-if kept in the system's parts (backlog 7).
+
+The phone pass made the system, not the packages, responsible for reading at
+390: tables scroll across with a frozen first column, controls are one
+sideways row, the selection bar rides the bottom of the screen, a run of
+numbers on an axis thins instead of turning, and stacked small multiples share
+one row of names. Item 36 (the code's "receipt" names) stays open: the app's
+frame bridge and `ReceiptFrame.jsx` would have to move in the same change.
+
+---
+
 ## 2026-10-23 — UI round 3, one demo, the board, the credential store (#273–#275)
 
 Three pull requests closed the third UI round and the work it opened.

@@ -1,14 +1,17 @@
 /* ─────────────────────────────────────────────────────────────────────────
- * Portfolio Showcase: a theme preset, and nothing structural.
+ * Portfolio Showcase: a theme, and nothing structural.
  *
  * This file stacks AFTER tracebi.css (the design system), so it wins. It
- * does what a theme does and no more:
+ * sets tokens and no rule of its own:
  *
- *   • The accent pair for each ground. Every accent in the system follows:
- *     the first chart series, links, the active tab, the data bars.
- *   • One display face for the headline and the lead number: Fraunces
- *     (SIL Open Font License 1.1, assets/fonts/). The build inlines it as a
- *     data: URI, so the file still works offline and fetches nothing.
+ *   • One display face for the headline and the lead number, through
+ *     --tb-font-display: Fraunces (SIL Open Font License 1.1,
+ *     assets/fonts/). The build inlines it as a data: URI, so the file still
+ *     works offline and fetches nothing.
+ *   • The accent stays the project's, so this page reads as one family with
+ *     every other report beside it. A package that needs its own sets the
+ *     pair for each ground here (--tb-accent / --tb-accent-text,
+ *     --tb-dark-accent / --tb-dark-accent-text).
  *
  * The masthead, the KPI strip, the grid, the charts, the tables, the footer
  * and dark mode are the system's own. Presentation only: nothing here can
@@ -23,14 +26,5 @@
 }
 
 :root {
-  --tb-accent: #0d6b73;
-  --tb-accent-text: #0b5c63;
-  --tb-surface-accent: #e8f3f3;
-  --tb-dark-accent: #5cc4bd;
-  --tb-dark-accent-text: #8fdcd6;
-}
-
-.tb-masthead h1, .tb-kpi--lead .tb-kpi-value {
-  font-family: "Fraunces", var(--tb-font-serif);
-  letter-spacing: -0.01em;
+  --tb-font-display: "Fraunces", var(--tb-font-serif);
 }

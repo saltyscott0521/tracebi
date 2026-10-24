@@ -2017,18 +2017,24 @@
       m.left = Math.ceil(tv.w) + 10;
       var room = (W - m.left - m.right) / Math.max(1, cats.length);
       /* Names that collide wrap to two lines while a band is 48px or wider;
-       * narrower, up to 16 categories turn 30°; more than that (a run of
-       * years, months) label every k-th one, flat. */
+       * narrower, up to 16 categories turn 30°; more than that, or a run of
+       * numbers (years, months, ranks: the reader fills in the ones between),
+       * label every k-th one, flat. */
+      var run = cats.length > 1 && cats.every(function (c) { return /^[\d\s.,:\/-]+$/.test(String(c)); });
       if (cats.length && room < catLabelW + 6) {
-        if (cats.length > 16) every = Math.ceil((catLabelW + 14) / room);
+        if (cats.length > 16 || run) every = Math.ceil((catLabelW + 14) / room);
         else if (room >= 48) wrapAll();
         else rotate = true;
       }
       m.bottom = rotate ? Math.min(Math.ceil(catLabelW * 0.5) + 22, Math.round(H * 0.4))
         : wrapW ? 42 : 28;
     }
+    /* A small-multiples panel with another panel under it leaves the shared
+     * category names (and the x title) to the bottom one (renderFacets). */
+    var bare = !!opt.bareCats && !horizontal;
     if (plan.yTitle) m.left += 18;
-    if (plan.xTitle) m.bottom += 18;
+    if (plan.xTitle && !bare) m.bottom += 18;
+    if (bare) m.bottom = 18;
     var marks = marksWanted(plan);
     if (marks.length && !horizontal) m.top += 14;
     if (marks.length && horizontal) m.right += 56;
@@ -2036,6 +2042,7 @@
      * the KPI beside it carries the number. Still zero-based. */
     if (plan.spark) m = { top: 3, right: 3, bottom: 3, left: 3 };
     var iw = Math.max(10, W - m.left - m.right), ih = Math.max(10, H - m.top - m.bottom);
+    if (opt.out) opt.out.bottom = m.bottom;
     if (horizontal) tv = tickVals(Math.max(2, Math.floor(iw / 80)), iw);
     /* Bars take 55% of their band. */
     var isBar = kind === "bar" || kind === "barh";
@@ -2109,8 +2116,9 @@
       ca.selectAll("text").attr("text-anchor", "end").attr("dx", "-0.4em")
         .attr("dy", "0.5em").attr("transform", "rotate(-30)");
     }
+    ca.selectAll("text").attr("display", bare ? "none" : null);
     var titles = [];
-    if (plan.xTitle) titles.push({ text: plan.xTitle, x: iw / 2, y: ih + m.bottom - 6, rot: 0 });
+    if (plan.xTitle && !bare) titles.push({ text: plan.xTitle, x: iw / 2, y: ih + m.bottom - 6, rot: 0 });
     if (plan.yTitle) titles.push({ text: plan.yTitle, x: -ih / 2, y: -m.left + 12, rot: -90 });
     g.selectAll("text.tb-axis-title").data(titles).join("text").attr("class", "tb-axis-title")
       .attr("text-anchor", "middle").attr("fill", t.muted).attr("font-size", 11)
@@ -2286,7 +2294,7 @@
         var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
         if (!pts.length) return;
         var p = pts[pts.length - 1];
-        ends.push({ key: s.key, p: p, y: val(to(p)) - 9,
+        ends.push({ key: s.key, p: p, y: Math.max(val(to(p)) - 9, 11 - m.top),
                     text: chartFormatter(plan, rows, s.col)(p.y), colour: colour(s.key) });
       });
       /* Labels that would overlap step apart, top to bottom. */
@@ -2510,16 +2518,37 @@
     var cols = Math.max(1, Math.min(facets.length, Math.floor(W / 260)));
     var rowsN = Math.ceil(facets.length / cols);
     var pw = Math.floor(W / cols), ph = Math.max(160, Math.floor((H + (rowsN - 1) * 40) / rowsN));
-    entry.svg.attr("height", ph * rowsN).attr("viewBox", "0 0 " + W + " " + (ph * rowsN));
     var panels = entry.svg.selectAll("svg.tb-panel").data(facets, function (f) { return f; }).join("svg")
-      .attr("class", "tb-panel").attr("overflow", "visible")
-      .attr("x", function (f, i) { return (i % cols) * pw; })
-      .attr("y", function (f, i) { return Math.floor(i / cols) * ph; })
-      .attr("width", pw).attr("height", ph);
+      .attr("class", "tb-panel").attr("overflow", "visible").attr("width", pw);
+    /* The category names are shared, so only a panel with none under it
+     * carries them (on a phone the panels stack, and the names would repeat
+     * under every one). A bare panel is shorter by exactly what the names
+     * take, so every panel's plot keeps one height on the one scale: the
+     * last panel is drawn first to measure it. */
+    var bareOf = function (i) { return kind !== "barh" && i + cols < facets.length; };
+    var cut = 0, last = facets.length - 1;
+    if (facets.some(function (f, i) { return bareOf(i); })) {
+      var out = {};
+      renderCategorical(entry, d3.select(panels.nodes()[last]), byFacet[facets[last]], kind, pw, ph, t,
+        { domain: domain, title: facets[last], panel: last + 1, cats: shared, out: out });
+      cut = Math.max(0, (out.bottom || 0) - 18);
+    }
+    var tops = [], y = 0;
+    for (var r = 0; r < rowsN; r++) {
+      tops.push(y);
+      var rowBare = true;
+      for (var c = r * cols; c < Math.min(facets.length, (r + 1) * cols); c++) rowBare = rowBare && bareOf(c);
+      y += rowBare ? ph - cut : ph;
+    }
+    entry.svg.attr("height", y).attr("viewBox", "0 0 " + W + " " + y);
+    panels.attr("x", function (f, i) { return (i % cols) * pw; })
+      .attr("y", function (f, i) { return tops[Math.floor(i / cols)]; })
+      .attr("height", function (f, i) { return bareOf(i) ? ph - cut : ph; });
     var readouts = [];
     panels.each(function (f, i) {
-      readouts.push(renderCategorical(entry, d3.select(this), byFacet[f], kind, pw, ph, t,
-        { domain: domain, title: f, panel: i + 1, cats: shared }));
+      readouts.push(renderCategorical(entry, d3.select(this), byFacet[f], kind, pw,
+        bareOf(i) ? ph - cut : ph, t,
+        { domain: domain, title: f, panel: i + 1, cats: shared, bareCats: bareOf(i) }));
     });
     return readouts;
   }
@@ -4678,6 +4707,12 @@
    * fades that edge. Kept current on scroll, on resize, and when the table
    * inside changes size (a filter, a tab shown). Presentation only. */
   var _moreSeen = typeof WeakSet !== "undefined" ? new WeakSet() : null, _moreObserver = null;
+  /* A row of the page's controls, which scrolls sideways on a phone (tracebi.css). */
+  var CONTROL_ROW = ":is(div, p):has(> label > :is([data-tb-filter], [data-tb-search]), > [data-tb-range])";
+  var MORE_BOXES = ".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card";
+  function controlRows() {
+    try { return document.querySelectorAll(CONTROL_ROW); } catch (e) { return []; }
+  }
   function markMore(box) {
     var cs = getComputedStyle(box);
     var sx = /auto|scroll/.test(cs.overflowX), sy = /auto|scroll/.test(cs.overflowY);
@@ -4687,7 +4722,9 @@
     else box.removeAttribute("data-tb-more");
   }
   function moreBox(el) {
-    return el && el.matches && el.matches(".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card");
+    if (!el || !el.matches) return false;
+    if (el.matches(MORE_BOXES)) return true;
+    try { return el.matches(CONTROL_ROW); } catch (e) { return false; }
   }
   function hydrateMore() {
     if (typeof getComputedStyle === "undefined" || !_moreSeen) return;
@@ -4707,7 +4744,8 @@
         _moreObserver = { observe: function () {} };
       }
     }
-    var boxes = document.querySelectorAll(".tb-scroll, .tb-table, [data-tb-figure=\"table\"], .tb-card"), i;
+    var boxes = Array.prototype.slice.call(document.querySelectorAll(MORE_BOXES))
+      .concat(Array.prototype.slice.call(controlRows())), i;
     for (i = 0; i < boxes.length; i++) {
       markMore(boxes[i]);
       if (!_moreSeen.has(boxes[i])) {
@@ -5486,6 +5524,15 @@
    * page with no masthead keeps the floating Trace button. Safe to call
    * again: a masthead an app mounts later gets its link then. */
   function placeReceiptTriggers() {
+    /* The footer's build day in the reader's own words, as the masthead
+     * writes its build time (builtText), so one page never shows a date in
+     * two shapes. The build writes the stamp; this only rewords it. */
+    Array.prototype.forEach.call(document.querySelectorAll(".tb-footer-line time[datetime]"), function (tm) {
+      var when = new Date(tm.getAttribute("datetime"));
+      if (!isNaN(when.getTime())) {
+        tm.textContent = when.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      }
+    });
     var drawer = receiptDrawer();
     if (!drawer) return;
     var metas = document.querySelectorAll(".tb-masthead .tb-masthead-meta"), i, chip;
@@ -5503,6 +5550,7 @@
     var lines = document.querySelectorAll(".tb-footer-line");
     for (i = 0; i < lines.length; i++) {
       if (!lines[i].querySelector(".tb-receipt-link")) {
+        lines[i].appendChild(document.createTextNode(" "));
         lines[i].appendChild(receiptLinkButton("How these numbers were made"));
       }
       var disclosure = lines[i].nextElementSibling;
@@ -6171,6 +6219,9 @@
   function hostBridge() {
     if (typeof document === "undefined" || !root.parent || root.parent === root) return;
     var host = root.parent;
+    /* The frame grows to the page's height, so nothing in it can ride the
+     * bottom of the screen; tracebi.css keeps the selection bar in flow. */
+    if (document.documentElement) document.documentElement.setAttribute("data-tb-framed", "");
     function post(msg) {
       msg.tracebiFrame = 1;
       try { host.postMessage(msg, "*"); } catch (e) { /* defensive */ }

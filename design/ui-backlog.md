@@ -43,19 +43,6 @@ Ask:
 
 Reports:
 
-7. **Affordability is a second bespoke look**: Inter, a green accent, its own
-   paper ground, resting shadows and gradients, pinned light. Move it onto
-   the system, or name it beside `aum_by_branch` as a bespoke example.
-8. **The reference project has more than one look**: `portfolio_book` (navy)
-   and `portfolio_showcase` (teal, Fraunces) carry their own accent presets
-   (`report_accents`, `report_looks` in the baseline). Decide whether a project
-   is one accent, and ratchet the count down.
-9. **Small multiples are dense on a phone** (DS-4).
-10. **The showcase's striped frozen column keeps a light shade in dark** (DS-5).
-12. **A line's end label is cut at the plot's top edge on a phone**
-    (`portfolio_concentration`'s cumulative share at 390px).
-18. **`site/sample/portfolio_showcase.html` predates the report design
-    system** (built 2026-10-03): rebuild it with the current runtime.
 38. **The page engine keys slices by fact name.** `tracebiCalc.load(fact, …)`
     holds one slice per fact name, so a page reading two models that each
     have a fact of the same name would load one over the other. Key by

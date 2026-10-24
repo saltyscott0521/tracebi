@@ -348,9 +348,11 @@ one the project default (`reports/_theme.css`, which restyles every report).
 A theme is an accent preset (the accent for the light and the dark ground),
 never a mode or a layout. A report's own `style.css` is the same thing at most:
 the accent pairs (`--tb-accent` / `--tb-accent-text`, `--tb-dark-accent` /
-`--tb-dark-accent-text`) and one display face for the `.tb-masthead h1` and the
-lead number; no gradient, hatch, glow or resting shadow, and no second set of
-components.
+`--tb-dark-accent-text`) and one display face as `--tb-font-display` (the
+system sets it on the `.tb-masthead h1`, the lead number and the trace's
+title): tokens only, no rule of its own, no gradient, hatch, glow or resting
+shadow, and no second set of components. A project reads as one family with
+one accent; set a pair only where a report must differ.
 `reports/_style.md` is the team's house style — `tracebi context` and
 `get_context` return it as `house_style`. Read it before you build and follow
 its Rules over these defaults. Before you build, read
