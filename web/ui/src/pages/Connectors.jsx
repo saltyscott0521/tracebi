@@ -187,7 +187,7 @@ function InputsDetail({ files }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         <Badge variant="gray">Files</Badge>
       </div>
-      <Section label="Where the data lives"><code style={{ fontSize: 12 }}>inputs/</code></Section>
+      <Section label="Where the data lives"><code style={{ fontSize: 'var(--text-sm)' }}>inputs/</code></Section>
       <Section label="Data files">
         {files.length === 0 ? <p className="src-quiet">The folder is empty.</p> : (
           <>
@@ -261,9 +261,12 @@ export default function Connectors({ model: scoped }) {
         </p>
       )}
       {!isLoading && connectors.length === 0 && !showInputs ? (
-        <Empty message={model
-          ? 'Its transform reads no connection or input file. The tables it is built on are under Warehouse.'
-          : 'No sources yet. Declare a connection with tracebi connect, or put files under inputs/.'} />
+        model
+          ? <Empty title="No sources for this model"
+                   body="Its transform reads no connection or input file. The tables it is built on are under Warehouse." />
+          : <Empty title="No sources yet"
+                   body="A source is where the data comes from: a database connection, or files under inputs/. Declare a connection (its secret goes in the project's store), or drop a file in inputs/."
+                   command="tracebi connect crm --kind postgres --store secret" />
       ) : (
         <SplitLayout
           left={

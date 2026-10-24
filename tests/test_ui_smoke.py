@@ -148,6 +148,25 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 sidebar.get_by_role("link", name=place, exact=True).wait_for()
             expect(sidebar.get_by_role("link", name="Help")).to_have_count(0)
             expect(sidebar.get_by_role("link", name="Reports", exact=True)).to_have_attribute("aria-current", "page")
+            # The first visit opens with one quiet card: the places, Get
+            # started, the showcase. Dismissed, it is gone, and stays gone.
+            welcome = page.get_by_role("region", name="Welcome to TraceBi")
+            expect(welcome).to_be_visible()
+            expect(welcome.get_by_role("link", name="Get started")).to_have_attribute("href", "/docs/get-started")
+            expect(welcome.get_by_role("link", name=re.compile(r"^Open .*Showcase"))).to_have_attribute(
+                "href", "/reports/portfolio_model/portfolio_showcase")
+            welcome.get_by_role("button", name="Dismiss the welcome").click()
+            expect(welcome).to_have_count(0)
+            page.reload()
+            page.get_by_role("heading", name="Reports", exact=True).wait_for()
+            expect(page.get_by_role("region", name="Welcome to TraceBi")).to_have_count(0)
+            # An empty list says what it is and offers the one thing that
+            # fills it, and that action lands where it says.
+            page.goto(base + "/review/drafts")
+            page.get_by_text("No drafts", exact=True).wait_for()
+            page.get_by_role("link", name="Open the reports").click()
+            page.wait_for_url(base + "/")
+            page.get_by_role("heading", name="Reports", exact=True).wait_for()
             lib_row = page.locator(f'[data-report="{_REPORT}"]')
             expect(lib_row).to_contain_text(_TITLE)
             # The verdict waits on the desk re-checking every receipt the

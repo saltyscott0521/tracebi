@@ -222,3 +222,11 @@ Each fix that taught something general adds a line here.
   at 390; a phone lays it out at 980 and shrinks it, and only affordability
   named one. The report pass opens reports as a phone does (`is_mobile`), and
   the build now adds the meta to any page that lacks it.
+- A size, a gap or a corner written as a literal drifts one page at a time.
+  The app's are tokens: font sizes are `--text-*` steps (no px in JSX or
+  global.css), spacing in global.css is on the 4px grid (1px and 2px insets
+  aside), radii are `--radius-sm` / `--radius` / `--radius-lg`. Inline
+  paddings in JSX still hold off-grid values; move them as pages are touched.
+- An empty list is the first thing a new project shows. `Empty` carries a
+  title, what the thing is and why it is empty, and the one action that fills
+  it (`action`, or `command` with Copy); a page never writes its own.

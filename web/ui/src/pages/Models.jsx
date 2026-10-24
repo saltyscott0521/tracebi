@@ -58,51 +58,51 @@ function ERDTableNode({ data }) {
   return (
     <div style={{
       background: 'var(--surface)', border: `1.5px solid color-mix(in srgb, ${rs.accent} 22%, transparent)`,
-      borderRadius: 10, width: 300, overflow: 'hidden',
+      borderRadius: 'var(--radius-lg)', width: 300, overflow: 'hidden',
       boxShadow: data.selected ? `0 0 0 2px ${rs.accent}` : 'var(--shadow-sm)',
-      fontSize: 12, cursor: 'pointer',
+      fontSize: 'var(--text-sm)', cursor: 'pointer',
     }}>
       <Handle id="in-l" type="target" position={Position.Left} style={{ ...HANDLE, background: rs.accent, left: -6 }} />
       <Handle id="out-l" type="source" position={Position.Left} style={{ ...HANDLE, background: rs.accent, left: -6 }} />
 
       <div style={{ background: rs.header, padding: '10px 14px', borderBottom: `1px solid color-mix(in srgb, ${rs.accent} 15%, transparent)`, height: 62, boxSizing: 'border-box' }}>
-        <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--text)', letterSpacing: .15, marginBottom: 4 }}>
+        <div style={{ fontWeight: 700, fontSize: 'var(--text-caption)', color: 'var(--text)', letterSpacing: .15, marginBottom: 4 }}>
           {data.label}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{
-            fontSize: 10, fontWeight: 600,
-            padding: '1px 7px', borderRadius: 20,
+            fontSize: 'var(--text-eyebrow)', fontWeight: 600,
+            padding: '1px 7px', borderRadius: '999px',
             background: 'var(--surface)', color: rs.accent, border: `1px solid color-mix(in srgb, ${rs.accent} 23%, transparent)`,
           }}>{rs.label}</span>
-          {data.connector && <span style={{ fontSize: 9.5, color: 'var(--muted)' }}>{data.connector}</span>}
+          {data.connector && <span style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--muted)' }}>{data.connector}</span>}
         </div>
       </div>
 
       <div style={{ padding: '0 0 12px' }}>
         {data.columns.length === 0 && (
-          <div style={{ padding: '3px 14px', height: 22, color: 'var(--muted)', fontStyle: 'italic', fontSize: 11 }}>columns not available</div>
+          <div style={{ padding: '3px 14px', height: 22, color: 'var(--muted)', fontStyle: 'italic', fontSize: 'var(--text-xs)' }}>columns not available</div>
         )}
         {data.columns.map(c => {
           const fs = FLAG_STYLES[c.flag]
           return (
             <div key={c.name} style={{ height: 22, boxSizing: 'border-box', padding: '0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span title={fs?.title} style={{
-                width: 22, textAlign: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: .3,
+                width: 22, textAlign: 'center', fontSize: 'var(--text-eyebrow)', fontWeight: 700, letterSpacing: .3,
                 color: fs?.color, border: fs ? `1px solid ${fs.border}` : '1px solid transparent',
-                borderRadius: 4, lineHeight: '14px',
+                borderRadius: 'var(--radius-sm)', lineHeight: '14px',
               }}>{c.flag}</span>
               <span style={{
-                fontFamily: MONO, fontSize: 11, flex: 1, minWidth: 0,
+                fontFamily: MONO, fontSize: 'var(--text-xs)', flex: 1, minWidth: 0,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 color: c.flag ? 'var(--text)' : 'var(--text-2)', fontWeight: c.flag ? 600 : 400,
               }}>{c.name}</span>
-              <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: MONO }}>{c.dtype || ''}</span>
+              <span style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--muted)', fontFamily: MONO }}>{c.dtype || ''}</span>
             </div>
           )
         })}
         {data.hidden > 0 && (
-          <div style={{ height: 22, padding: '0 14px 0 44px', display: 'flex', alignItems: 'center', fontSize: 10.5, color: 'var(--muted)' }}>
+          <div style={{ height: 22, padding: '0 14px 0 44px', display: 'flex', alignItems: 'center', fontSize: 'var(--text-eyebrow)', color: 'var(--muted)' }}>
             + {data.hidden} more column{data.hidden !== 1 ? 's' : ''}
           </div>
         )}
@@ -140,7 +140,7 @@ function ERDDiagram({ data, selected, onSelect }) {
         style: { stroke: 'var(--muted)', strokeWidth: 1.25 },
         markerEnd: { type: MarkerType.ArrowClosed, color: '#8a8a8a', width: 12, height: 12 },
         label: edgeLabel(e),
-        labelStyle: { fontSize: 9, fill: 'var(--muted)', fontFamily: MONO },
+        labelStyle: { fontSize: 'var(--text-eyebrow)', fill: 'var(--muted)', fontFamily: MONO },
         labelBgStyle: { fill: 'var(--surface)', fillOpacity: 0.92 },
       })),
     }
@@ -170,11 +170,11 @@ function ERDDiagram({ data, selected, onSelect }) {
         onInit={flow => setTimeout(() => flow.fitView({ padding: 0.12 }), 350)}
       >
         <Background color="var(--flow-dots)" gap={30} size={1} />
-        <Controls style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }} />
+        <Controls style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }} />
         {nodes.length > 10 && (
           <MiniMap
             nodeColor={n => ROLE_STYLES[n.data?.role]?.accent || '#64748b'}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
             maskColor="rgba(228,233,240,.6)"
           />
         )}
@@ -198,16 +198,16 @@ function ERDLegend() {
   return (
     <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
       {roles.map(({ role, label }) => (
-        <span key={role} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)' }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, display: 'inline-block', background: ROLE_STYLES[role].accent, opacity: .8 }} />
+        <span key={role} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
+          <span style={{ width: 10, height: 10, borderRadius: 'var(--radius-sm)', display: 'inline-block', background: ROLE_STYLES[role].accent, opacity: .8 }} />
           {label}
         </span>
       ))}
       <span style={{ width: 1, height: 14, background: 'var(--border)' }} />
       {flags.map(([f, label]) => (
-        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--muted)' }}>
+        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
           <span style={{
-            fontSize: 8.5, fontWeight: 700, padding: '0 4px', borderRadius: 4, lineHeight: '14px',
+            fontSize: 'var(--text-eyebrow)', fontWeight: 700, padding: '0 4px', borderRadius: 'var(--radius-sm)', lineHeight: '14px',
             color: FLAG_STYLES[f].color, border: `1px solid ${FLAG_STYLES[f].border}`,
           }}>{f}</span>
           {label}
@@ -285,7 +285,7 @@ function ModelStorage({ details, tables, hidden }) {
   if (!details.length) return <Empty message="This model declares no connector, so its tables have no data behind them." />
   return (
     <div>
-      <p style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '72ch' }}>
+      <p style={{ fontSize: 'var(--text-caption)', color: 'var(--text-2)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: '72ch' }}>
         The model file only says what the data <em>means</em>. Each table below reads from a
         connector, and the connector says where the data is kept.
       </p>
@@ -293,13 +293,13 @@ function ModelStorage({ details, tables, hidden }) {
         {details.map(c => {
           const served = tables.filter(t => t.connector === c.name)
           return (
-            <div key={c.name} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', background: 'var(--surface)' }}>
+            <div key={c.name} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '12px 14px', background: 'var(--surface)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                <strong style={{ fontSize: 13 }}>{c.name}</strong>
+                <strong style={{ fontSize: 'var(--text-caption)' }}>{c.name}</strong>
                 <Badge variant="gray" style={{ textTransform: 'none' }} title={c.type}>{sourceKind(c)}</Badge>
               </div>
               <div style={{ marginBottom: 10 }}><StorageLine storage={c.storage} /></div>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>
+              <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 }}>
                 Tables it serves ({served.length})
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -497,7 +497,7 @@ export function ModelDetail({ name, action }) {
         </div>
         {action && (phone ? <MoreMenu>{action}</MoreMenu> : <div className="mdetail__action">{action}</div>)}
       </div>
-      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
+      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
         {grain && <div title={grainRefs.join(', ')}>Grain: {grain}</div>}
         {(data.owners || []).length > 0 && (
           <div>Owners: {data.owners.join(', ')} (only they or an admin publish changes to it)</div>
@@ -526,11 +526,11 @@ export function ModelDetail({ name, action }) {
                     <tr key={e.id}>
                       <td><code>{e.from}</code></td>
                       <td><code>{e.to}</code></td>
-                      <td style={{ color: 'var(--muted)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+                      <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-mono)' }}>
                         {e.fromKey} = {e.toKey}
                       </td>
                       <td><Chip>{e.cardinality === 'many-to-one' ? 'Many to one' : e.how ? `${e.how[0].toUpperCase()}${e.how.slice(1)} join` : 'Join'}</Chip></td>
-                      <td style={{ color: 'var(--muted)', fontSize: 12 }}>
+                      <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>
                         {e.declared ? <><code>foreign_keys:</code> on the fact</> : <code>relationships:</code>}
                       </td>
                     </tr>
@@ -551,7 +551,7 @@ export function ModelDetail({ name, action }) {
           <ERDLegend />
           <ERDDiagram data={data} selected={openTable?.name}
                       onSelect={t => openOn(openTable?.name === t ? null : t)} />
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 10 }}>
             Click a table to see its rows · drag to rearrange · scroll to zoom · each join runs from a fact to the dimension it references
           </p>
           {openTable && (

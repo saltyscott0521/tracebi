@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { dataPath } from '../nav'
+import { useRole } from '../api'
+import { dataPath, mayUse } from '../nav'
 import { ReactFlow, Background, Controls, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -30,20 +31,20 @@ function FlowNode({ data }) {
   const dashed = data.status === 'derived' || data.kind === 'unverified'
   return (
     <div style={{
-      width: NODE_W, boxSizing: 'border-box', background: st.tint, borderRadius: 10,
+      width: NODE_W, boxSizing: 'border-box', background: st.tint, borderRadius: 'var(--radius-lg)',
       border: `1.5px ${dashed ? 'dashed' : 'solid'} ${data.selected ? 'var(--focus-ring)' : 'var(--border)'}`,
       borderLeft: `5px solid ${st.stripe}`, padding: '9px 12px', cursor: 'pointer',
       boxShadow: data.selected ? '0 0 0 2px #2563eb55' : 'var(--shadow-sm)',
       opacity: data.dim ? 0.28 : 1, transition: 'opacity .15s', height: data.height, overflow: 'hidden',
     }}>
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', color: 'var(--muted)' }}>
+      <div style={{ fontSize: 'var(--text-eyebrow)', fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', color: 'var(--muted)' }}>
         {KIND_LABEL[data.kind]}
       </div>
-      <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--text)', margin: '2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontWeight: 700, fontSize: 'var(--text-caption)', color: 'var(--text)', margin: '2px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {data.label}
       </div>
-      <div style={{ fontSize: 10.5, color: 'var(--text-2)', fontFamily: data.kind === 'binding' ? MONO : undefined, lineHeight: 1.35,
+      <div style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--text-2)', fontFamily: data.kind === 'binding' ? MONO : undefined, lineHeight: 1.35,
         overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
         {data.sub}
       </div>
@@ -54,7 +55,7 @@ function FlowNode({ data }) {
 
 function ColumnLabel({ data }) {
   return (
-    <div style={{ width: NODE_W, fontSize: 10.5, fontWeight: 700, letterSpacing: .7, textTransform: 'uppercase',
+    <div style={{ width: NODE_W, fontSize: 'var(--text-eyebrow)', fontWeight: 700, letterSpacing: .7, textTransform: 'uppercase',
       color: 'var(--muted)', borderBottom: '1px solid var(--border)', paddingBottom: 5 }}>
       {data.label}
     </div>
@@ -106,7 +107,7 @@ function FlowGraph({ flow, selected, onSelect }) {
         onInit={f => setTimeout(() => f.fitView({ padding: 0.06 }), 350)}
       >
         <Background color="var(--flow-dots)" gap={30} size={1} />
-        <Controls showInteractive={false} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8 }} />
+        <Controls showInteractive={false} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }} />
       </ReactFlow>
     </div>
   )
@@ -114,12 +115,12 @@ function FlowGraph({ flow, selected, onSelect }) {
 
 // ── detail ───────────────────────────────────────────────────────────────────
 
-const H = { fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, margin: '12px 0 6px' }
+const H = { fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: .5, margin: '12px 0 6px' }
 const short = h => (h ? `${h.slice(0, 12)}…` : '')
 
 function Row({ label, children }) {
   return (
-    <div style={{ display: 'flex', gap: 10, fontSize: 12.5, padding: '3px 0', alignItems: 'baseline' }}>
+    <div style={{ display: 'flex', gap: 10, fontSize: 'var(--text-caption)', padding: '3px 0', alignItems: 'baseline' }}>
       <span style={{ width: 96, flexShrink: 0, color: 'var(--muted)' }}>{label}</span>
       <span style={{ minWidth: 0 }}>{children}</span>
     </div>
@@ -128,10 +129,12 @@ function Row({ label, children }) {
 
 function Detail({ node }) {
   const d = node.detail || {}
+  // Only a role that can open Data gets the link to the model there.
+  const mayData = mayUse(useRole(), 'data')
   return (
     <div className="fade-in" style={{ marginTop: 14, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <strong style={{ fontSize: 14 }}>{node.label}</strong>
+        <strong style={{ fontSize: 'var(--text-base)' }}>{node.label}</strong>
         <Badge variant="gray">{KIND_LABEL[node.kind]}</Badge>
       </div>
 
@@ -140,7 +143,7 @@ function Detail({ node }) {
           <Row label="Connector">{d.connector} <span style={{ color: 'var(--muted)' }}>({d.connector_type})</span></Row>
           <Row label="Stored at"><StorageLine storage={d.storage} /></Row>
           {d.rows != null && <Row label="Rows read">{d.rows}</Row>}
-          {d.fingerprint && <Row label="Fingerprint"><code title={d.fingerprint} style={{ fontSize: 11.5 }}>{short(d.fingerprint)}</code></Row>}
+          {d.fingerprint && <Row label="Fingerprint"><code title={d.fingerprint} style={{ fontSize: 'var(--text-sm)' }}>{short(d.fingerprint)}</code></Row>}
           {d.contract && (
             <Row label="Written by">
               <code>{d.contract.transform}</code>{' '}
@@ -159,7 +162,7 @@ function Detail({ node }) {
           {d.note && (
             <>
               <div style={H}>What the transform states</div>
-              <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.55, maxWidth: '80ch' }}>{d.note}</div>
+              <div style={{ fontSize: 'var(--text-caption)', color: 'var(--text-2)', lineHeight: 1.55, maxWidth: '80ch' }}>{d.note}</div>
             </>
           )}
         </>
@@ -172,16 +175,18 @@ function Detail({ node }) {
           {(d.joins || []).length > 0 && (
             <Row label="Joins">
               {d.joins.map(j => (
-                <div key={`${j.from}${j.fromKey}${j.to}`} style={{ fontFamily: MONO, fontSize: 11.5 }}>
+                <div key={`${j.from}${j.fromKey}${j.to}`} style={{ fontFamily: MONO, fontSize: 'var(--text-sm)' }}>
                   {j.from}.{j.fromKey} → {j.to}.{j.toKey}
                 </div>
               ))}
             </Row>
           )}
-          {d.sha256 && <Row label="Contract"><code title={d.sha256} style={{ fontSize: 11.5 }}>{short(d.sha256)}</code></Row>}
-          <div style={{ marginTop: 8 }}>
-            <Link to={dataPath(node.label, 'model')} style={{ fontSize: 12.5 }}>Open model →</Link>
-          </div>
+          {d.sha256 && <Row label="Contract"><code title={d.sha256} style={{ fontSize: 'var(--text-sm)' }}>{short(d.sha256)}</code></Row>}
+          {mayData && (
+            <div style={{ marginTop: 8 }}>
+              <Link to={dataPath(node.label, 'model')} style={{ fontSize: 'var(--text-caption)' }}>Open model →</Link>
+            </div>
+          )}
         </>
       )}
 
@@ -201,9 +206,9 @@ function Detail({ node }) {
           {(d.steps || []).length > 0 && (
             <>
               <div style={H}>Steps</div>
-              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: 'var(--text-2)', lineHeight: 1.7 }}>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 'var(--text-sm)', color: 'var(--text-2)', lineHeight: 1.7 }}>
                 {d.steps.map((s, i) => (
-                  <li key={i}><code style={{ fontSize: 11 }}>{s.operation}</code> {s.description}</li>
+                  <li key={i}><code style={{ fontSize: 'var(--text-xs)' }}>{s.operation}</code> {s.description}</li>
                 ))}
               </ol>
             </>
@@ -231,18 +236,18 @@ export function ReportLineage({ flow }) {
   const node = flow.nodes.find(n => n.id === selected)
   return (
     <div className="fade-in">
-      <p style={{ fontSize: 12.5, color: 'var(--text-2)', margin: '0 0 10px', maxWidth: '78ch', lineHeight: 1.55 }}>
+      <p style={{ fontSize: 'var(--text-caption)', color: 'var(--text-2)', margin: '0 0 10px', maxWidth: '78ch', lineHeight: 1.55 }}>
         Where each number on the page came from, as this build recorded it.
         Select a node to trace it: its upstream and downstream light up.
       </p>
       <FlowGraph flow={flow} selected={selected} onSelect={setSelected} />
       {node
         ? <Detail node={node} />
-        : <p style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 10 }}>
+        : <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginTop: 10 }}>
             {count(flow.summary.tables, 'stored table')} · {count(flow.summary.queries, 'query', 'queries')} · {count(flow.summary.figures, 'figure')}
           </p>}
       {flow.notes.map(t => (
-        <p key={t} style={{ fontSize: 11.5, color: 'var(--muted)', margin: '8px 0 0', maxWidth: '78ch' }}>{t}</p>
+        <p key={t} style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', margin: '8px 0 0', maxWidth: '78ch' }}>{t}</p>
       ))}
     </div>
   )

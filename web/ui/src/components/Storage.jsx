@@ -49,8 +49,8 @@ export function StorageLine({ storage }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       {storage.variable
-        ? <span style={{ fontSize: 13 }}>Set by <code style={{ fontSize: 12 }}>{storage.variable}</code></span>
-        : <code style={{ fontSize: 12 }}>{storage.where}</code>}
+        ? <span style={{ fontSize: 'var(--text-caption)' }}>Set by <code style={{ fontSize: 'var(--text-sm)' }}>{storage.variable}</code></span>
+        : <code style={{ fontSize: 'var(--text-sm)' }}>{storage.where}</code>}
       {missing && (
         <Chip tone="warn" title="Nothing at this location yet. Run the transform or pipeline that writes it.">
           Not built yet

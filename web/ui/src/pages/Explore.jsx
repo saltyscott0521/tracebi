@@ -23,7 +23,7 @@ const MEASURE_COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'v
 function SectionLabel({ children }) {
   return (
     <div style={{
-      fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .8,
+      fontSize: 'var(--text-eyebrow)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: .8,
       color: 'var(--muted)', margin: '18px 0 8px',
     }}>{children}</div>
   )
@@ -33,7 +33,7 @@ function CheckRow({ checked, onToggle, label, sub, right, disabled }) {
   return (
     <label title={sub || undefined} style={{
       display: 'flex', alignItems: 'center', gap: 9, padding: sub ? '3px 10px' : '6px 10px',
-      borderRadius: 6, cursor: disabled ? 'default' : 'pointer', fontSize: 13,
+      borderRadius: 'var(--radius)', cursor: disabled ? 'default' : 'pointer', fontSize: 'var(--text-caption)',
       background: checked ? 'var(--blue-lt)' : 'transparent',
       border: `1px solid ${checked ? 'var(--blue-br)' : 'transparent'}`,
       transition: 'background var(--t)',
@@ -41,13 +41,13 @@ function CheckRow({ checked, onToggle, label, sub, right, disabled }) {
       <input type="checkbox" checked={checked} onChange={onToggle} disabled={disabled}
         style={{ accentColor: 'var(--ink)' }} />
       <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, lineHeight: 1.3 }}>
-        <span style={{ color: checked ? 'var(--text)' : 'var(--text-2)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+        <span style={{ color: checked ? 'var(--text)' : 'var(--text-2)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)' }}>
           {label}
         </span>
         {/* One line, cut with an ellipsis; the whole text is the row's tooltip. */}
         {sub && (
           <span style={{
-            fontSize: 11.5, color: 'var(--muted)',
+            fontSize: 'var(--text-sm)', color: 'var(--muted)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{sub}</span>
         )}
@@ -59,7 +59,7 @@ function CheckRow({ checked, onToggle, label, sub, right, disabled }) {
 
 const selectStyle = {
   background: 'var(--surface)', color: 'var(--accent-text)', border: '1px solid var(--border)',
-  borderRadius: 5, fontSize: 11, padding: '3px 6px', cursor: 'pointer',
+  borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-xs)', padding: '3px 6px', cursor: 'pointer',
 }
 
 // A filter typed as a number matches a numeric column: "12" is 12, "1." stays
@@ -85,26 +85,26 @@ function FilterRows({ columns, filters, setFilters }) {
             {columns.filter(c => c === col || !(c in filters)).map(c =>
               <option key={c} value={c}>{c}</option>)}
           </select>
-          <span style={{ color: 'var(--muted)', fontSize: 12 }}>=</span>
+          <span style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>=</span>
           <input
             value={Array.isArray(val) ? val.join(', ') : String(val)}
             onChange={e => setFilters({ ...filters, [col]: typed(e.target.value) })}
             placeholder="value"
             style={{
               flex: 1, minWidth: 60, background: 'var(--surface)', color: 'var(--text)',
-              border: '1px solid var(--border)', borderRadius: 5, fontSize: 12, padding: '4px 8px',
+              border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--text-sm)', padding: '4px 8px',
             }}
           />
           <button onClick={() => {
             const next = { ...filters }; delete next[col]; setFilters(next)
           }} style={{
-            background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 14,
+            background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 'var(--text-base)',
           }}>×</button>
         </div>
       ))}
       <button onClick={addFilter} disabled={entries.length >= columns.length} style={{
         background: 'none', border: '1px dashed var(--border)', color: 'var(--muted)',
-        borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer', width: '100%',
+        borderRadius: 'var(--radius)', padding: '5px 12px', fontSize: 'var(--text-sm)', cursor: 'pointer', width: '100%',
       }}>+ Add filter</button>
     </div>
   )
@@ -116,7 +116,7 @@ const fmtTick = v => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 
 
 const tooltipStyle = {
   background: 'var(--card)', border: '1px solid var(--border)',
-  borderRadius: 8, fontSize: 12, color: 'var(--text)',
+  borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-sm)', color: 'var(--text)',
 }
 
 // The tooltip shows the server's text for the number (the model's declared
@@ -136,12 +136,12 @@ function ChartTypeToggle({ type, onChange }) {
   return (
     <div style={{
       display: 'inline-flex', gap: 2, padding: 2,
-      background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7,
+      background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
     }}>
       {types.map(t => (
         <button key={t.id} onClick={() => onChange(t.id)} title={t.title} style={{
-          border: 'none', borderRadius: 5, cursor: 'pointer',
-          padding: '3px 10px', fontSize: 13, lineHeight: 1.4,
+          border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+          padding: '3px 10px', fontSize: 'var(--text-caption)', lineHeight: 1.4,
           background: type === t.id ? 'var(--card)' : 'transparent',
           color: type === t.id ? 'var(--accent-text)' : 'var(--muted)',
           fontWeight: type === t.id ? 700 : 400,
@@ -171,7 +171,7 @@ function ResultChart({ data, display, dimCol, measureCols, type = 'bar' }) {
   const grid = <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={type !== 'bar'} vertical={type === 'bar'} />
   const tooltip = <Tooltip contentStyle={tooltipStyle} formatter={fmtValue} labelFormatter={() => ''} />
   const legend = measureCols.length > 1
-    ? <Legend wrapperStyle={{ fontSize: 11, color: 'var(--muted)', paddingTop: 8 }} />
+    ? <Legend wrapperStyle={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', paddingTop: 8 }} />
     : null
 
   const height = type === 'bar'
@@ -184,10 +184,10 @@ function ResultChart({ data, display, dimCol, measureCols, type = 'bar' }) {
       <BarChart data={trimmed} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
         layout="vertical" barCategoryGap="28%">
         {grid}
-        <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--muted)' }}
+        <XAxis type="number" tick={{ fontSize: 'var(--text-xs)', fill: 'var(--muted)' }}
           tickFormatter={fmtTick} axisLine={false} tickLine={false} />
         <YAxis type="category" dataKey="_label" width={110}
-          tick={{ fontSize: 11, fill: 'var(--text-2)' }} axisLine={false} tickLine={false} />
+          tick={{ fontSize: 'var(--text-xs)', fill: 'var(--text-2)' }} axisLine={false} tickLine={false} />
         {tooltip}{legend}
         {measureCols.map((col, ci) => (
           <Bar key={col} dataKey={col} fill={MEASURE_COLORS[ci % MEASURE_COLORS.length]}
@@ -198,9 +198,9 @@ function ResultChart({ data, display, dimCol, measureCols, type = 'bar' }) {
   } else {
     const axes = (
       <>
-        <XAxis dataKey="_label" tick={{ fontSize: 11, fill: 'var(--text-2)' }}
+        <XAxis dataKey="_label" tick={{ fontSize: 'var(--text-xs)', fill: 'var(--text-2)' }}
           axisLine={false} tickLine={false} interval="preserveStartEnd" />
-        <YAxis tick={{ fontSize: 11, fill: 'var(--muted)' }}
+        <YAxis tick={{ fontSize: 'var(--text-xs)', fill: 'var(--muted)' }}
           tickFormatter={fmtTick} axisLine={false} tickLine={false} width={52} />
       </>
     )
@@ -329,7 +329,7 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {facts.map(f => (
                 <button key={f.name} onClick={() => selectFact(f.name)} style={{
-                  padding: '6px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  padding: '6px 12px', borderRadius: 'var(--radius)', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer',
                   background: fact?.name === f.name ? 'var(--blue-lt)' : 'var(--surface-2)',
                   color: fact?.name === f.name ? 'var(--accent-text)' : 'var(--muted)',
                   border: `1px solid ${fact?.name === f.name ? 'var(--blue-br)' : 'var(--border)'}`,
@@ -388,13 +388,13 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
 
                 <SectionLabel>Group by</SectionLabel>
                 {joined.length === 0 && (
-                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)' }}>
                     {dims.length === 0 ? 'No dimensions defined.' : `No dimension is joined to ${fact.name}.`}
                   </p>
                 )}
                 {joined.map(d => (
                   <div key={d.name} style={{ marginBottom: 6 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-2)', margin: '4px 0 2px', fontWeight: 600 }}>
+                    <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-2)', margin: '4px 0 2px', fontWeight: 600 }}>
                       {d.name} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>· {d.table}</span>
                     </div>
                     {d.attributes.map(attr => {
@@ -415,7 +415,7 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
                     {isPending ? <><Spinner size={14} /> Running…</> : '▶ Run query'}
                   </Btn>
                   {!canRun && (
-                    <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
+                    <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 8, textAlign: 'center' }}>
                       Select at least one measure to run.
                     </p>
                   )}
@@ -464,7 +464,7 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
                     </>
                   )}
 
-                  <div style={{ overflowX: 'auto', borderRadius: 6, border: '1px solid var(--border)', marginTop: chartDim ? 14 : 0 }}>
+                  <div style={{ overflowX: 'auto', borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginTop: chartDim ? 14 : 0 }}>
                     <table>
                       <thead><tr>{result.columns.map(c => <th key={c}>{c}</th>)}</tr></thead>
                       <tbody>
@@ -486,7 +486,7 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
 
                 <Card>
                   <CardTitle>How this number was made</CardTitle>
-                  <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+                  <p style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: 12 }}>
                     Full lineage of the query you just ran — loads, joins, filters, and aggregation.
                   </p>
                   <LineageGraph graph={result.lineage_graph} height={300} />

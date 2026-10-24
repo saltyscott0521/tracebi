@@ -524,6 +524,20 @@ export const useRuns = (kind, target) => {
   })
 }
 
+// How many runs the store holds per kind and target (History's "N older runs").
+export const useRunCounts = (kind) => {
+  const kinds = [kind || ''].flat().filter(Boolean)
+  return useQuery({
+    queryKey: ['runs', 'counts', kinds.join(',')],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      for (const k of kinds) params.append('kind', k)
+      const q = params.toString()
+      return get('/runs/counts' + (q ? `?${q}` : ''))
+    },
+  })
+}
+
 // Drafts: what an agent (or a person) is writing before it is published. A
 // draft's path may hold slashes, so each part is encoded like a report's.
 const draftUrl = (d) => `/drafts/${encodeURIComponent(d.owner)}/${d.kind}/${reportPath(d.path)}`

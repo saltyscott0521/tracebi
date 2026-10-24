@@ -378,13 +378,13 @@ export function resolve(model, q, values, text, scope, chosen) {
 // ── Keep this: the question as a one-figure draft ────────────────────────────
 
 /** The draft's path: `<model>/<measures>_by_<dimensions>`, unused so far. */
-export function keepPath(model, q, taken = []) {
+export function keepPath(folder, q, taken = []) {
   const dims = (q.dimensions || []).map(d => d.split('.').pop())
   const base = [measureNames(q).slice(0, 2).join('_and_'), dims.length ? `by_${dims.join('_')}` : '']
     .filter(Boolean).join('_').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'answer'
   const used = new Set(taken)
-  let path = `${model}/${base}`
-  for (let n = 2; used.has(path); n++) path = `${model}/${base}_${n}`
+  let path = `${folder}/${base}`
+  for (let n = 2; used.has(path); n++) path = `${folder}/${base}_${n}`
   return path
 }
 

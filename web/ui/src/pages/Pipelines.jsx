@@ -78,9 +78,9 @@ function LayerNode({ data }) {
     <div style={{
       background: 'var(--surface)',
       border: `1.5px solid color-mix(in srgb, ${accent} 22%, transparent)`,
-      borderRadius: 10, minWidth: 200, overflow: 'hidden',
+      borderRadius: 'var(--radius-lg)', minWidth: 200, overflow: 'hidden',
       boxShadow: 'var(--shadow-sm)',
-      fontSize: 12,
+      fontSize: 'var(--text-sm)',
     }}>
       <Handle type="target" position={Position.Left}
         style={{ background: accent, width: 9, height: 9, border: '2px solid #fff', left: -5 }} />
@@ -95,11 +95,11 @@ function LayerNode({ data }) {
         }} />
         {step ? (
           <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-            <span style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--text)' }}>{stepLine(data.layer)}</span>
-            <span style={{ fontSize: 10.5, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{data.layer.name}</span>
+            <span style={{ fontWeight: 600, fontSize: 'var(--text-caption)', color: 'var(--text)' }}>{stepLine(data.layer)}</span>
+            <span style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{data.layer.name}</span>
           </span>
         ) : (
-          <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontWeight: 700, fontSize: 'var(--text-sm)', color: 'var(--text)', fontFamily: 'var(--font-mono)' }}>
             {data.layer.name}
           </span>
         )}
@@ -107,18 +107,18 @@ function LayerNode({ data }) {
       <div style={{ padding: '7px 13px 9px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
           {TYPE_LABEL[data.layer.type] && <span style={{
-            fontSize: 10, fontWeight: 600,
-            padding: '1px 7px', borderRadius: 20,
+            fontSize: 'var(--text-eyebrow)', fontWeight: 600,
+            padding: '1px 7px', borderRadius: '999px',
             background: `color-mix(in srgb, ${accent} 8%, transparent)`, color: accent, border: `1px solid color-mix(in srgb, ${accent} 23%, transparent)`,
           }}>{TYPE_LABEL[data.layer.type]}</span>}
           {data.layer.schedule && (
-            <span style={{ fontSize: 9.5, color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
+            <span style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>
               {data.layer.schedule}
             </span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {!step && <span style={{ fontSize: 10.5, color: 'var(--muted)' }}>
+          {!step && <span style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--muted)' }}>
             {data.layer.last_rows_out != null ? `${data.layer.last_rows_out} rows`
               : data.layer.last_status === 'failed' ? 'Failed'
                 : data.layer.last_status ? 'Ran' : 'Not run yet'}
@@ -128,8 +128,8 @@ function LayerNode({ data }) {
             disabled={data.running}
             title={`Run ${data.layer.name}`}
             style={{
-              marginLeft: 'auto', padding: '2px 10px', borderRadius: 5,
-              fontSize: 10, fontWeight: 700, cursor: data.running ? 'default' : 'pointer',
+              marginLeft: 'auto', padding: '2px 10px', borderRadius: 'var(--radius-sm)',
+              fontSize: 'var(--text-eyebrow)', fontWeight: 700, cursor: data.running ? 'default' : 'pointer',
               background: `color-mix(in srgb, ${accent} 7%, transparent)`, color: accent, border: `1px solid color-mix(in srgb, ${accent} 25%, transparent)`,
               opacity: data.running ? .5 : 1,
             }}
@@ -186,7 +186,7 @@ function PipelineDag({ layers, onRun, running }) {
   return (
     <div style={{
       height: Math.max(190, maxRows * 125 + 70),
-      borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border)',
     }}>
       <ReactFlow
         edgesFocusable={false}
@@ -208,9 +208,9 @@ function PipelineDag({ layers, onRun, running }) {
 
 function LayerHistory({ pipeline, layer }) {
   const { data, isLoading } = useLayerHistory(pipeline, layer)
-  if (isLoading) return <div style={{ display: 'flex', gap: 8, color: 'var(--muted)', fontSize: 13, padding: '12px 0' }}><Spinner size={14} /> Loading history…</div>
+  if (isLoading) return <div style={{ display: 'flex', gap: 8, color: 'var(--muted)', fontSize: 'var(--text-caption)', padding: '12px 0' }}><Spinner size={14} /> Loading history…</div>
   const runs = data?.runs || []
-  if (runs.length === 0) return <p style={{ fontSize: 13, color: 'var(--muted)', padding: '12px 0' }}>No runs yet for this layer.</p>
+  if (runs.length === 0) return <p style={{ fontSize: 'var(--text-caption)', color: 'var(--muted)', padding: '12px 0' }}>No runs yet for this layer.</p>
   return (
     <div style={{ overflowX: 'auto' }} className="fade-in">
       <table className="tb-list">
@@ -220,11 +220,11 @@ function LayerHistory({ pipeline, layer }) {
         <tbody>
           {runs.map(r => (
             <tr key={r.id}>
-              <td style={{ color: 'var(--muted)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{r.id}</td>
+              <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', fontVariantNumeric: 'tabular-nums' }}>{r.id}</td>
               <td><StepStatus status={r.last_status?.startsWith?.('error:') ? r.last_status : r.status} /></td>
               <td style={{ color: 'var(--text-2)' }}>{r.rows_in ?? '—'}</td>
               <td style={{ color: 'var(--text-2)' }}>{r.rows_out ?? '—'}</td>
-              <td style={{ color: 'var(--muted)', fontSize: 12 }}>
+              <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>
                 <Time iso={r.completed_at} fallback="—" />
               </td>
             </tr>
@@ -318,7 +318,7 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
       {tab === 'Flow' && (
         <div className="fade-in">
           <PipelineDag layers={layers} onRun={admin ? handleRunLayer : undefined} running={busy} />
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 10 }}>
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 10 }}>
             Each step runs after the one it depends on. Status updates every 10 s{admin ? '; run any step from its node' : ''}.
           </p>
         </div>
@@ -335,9 +335,9 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
               {layers.map(l => (
                 <tr key={l.name}>
                   <td>
-                    <code style={{ fontSize: 12 }}>{l.name}</code>
+                    <code style={{ fontSize: 'var(--text-sm)' }}>{l.name}</code>
                     {FORM_LABEL[l.last_detail?.form] && (
-                      <span style={{ color: 'var(--muted)', fontSize: 12 }}> · {FORM_LABEL[l.last_detail.form]}</span>
+                      <span style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}> · {FORM_LABEL[l.last_detail.form]}</span>
                     )}
                   </td>
                   {typed && (
@@ -347,13 +347,13 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
                       </Badge>
                     </td>
                   )}
-                  {!phone && <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.schedule || '—'}</td>}
-                  {!phone && <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.depends_on || '—'}</td>}
+                  {!phone && <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>{l.schedule || '—'}</td>}
+                  {!phone && <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>{l.depends_on || '—'}</td>}
                   <td><StepStatus status={l.last_status} /></td>
                   <td style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
                     {l.last_rows_out ?? '—'}
                   </td>
-                  <td style={{ color: 'var(--muted)', fontSize: 12 }}>
+                  <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>
                     <Time iso={l.last_run} fallback="—" />
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
@@ -388,8 +388,8 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
           </table>
           {openStep && (
             <div style={{ marginTop: 18 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
-                History of <code style={{ fontSize: 12 }}>{openStep}</code>
+              <div style={{ fontSize: 'var(--text-caption)', fontWeight: 600, marginBottom: 6 }}>
+                History of <code style={{ fontSize: 'var(--text-sm)' }}>{openStep}</code>
               </div>
               <LayerHistory pipeline={pipeline} layer={openStep} />
             </div>

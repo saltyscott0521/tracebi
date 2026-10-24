@@ -18,22 +18,15 @@ The app:
    handle borders and arrow markers in `Models.jsx`, `Pipelines.jsx`,
    `Lineage.jsx`, `ReportLineage.jsx`): each is a dark-mode bug waiting.
    Move them to tokens.
-6. **`Btn` drops a caller's colours**: its variant styles are applied after
-   `style`, so `style={{ background }}` is silently overridden.
-21. **The phone header is translucent**: a scrolled list shows through it
-    (History's sticky day header sits under it).
-24. **The Transform flow zooms in two steps** only (D-1).
 27. **`scripts/ui_audit.py`'s `scope-mismatch` detail still says "the model
     switcher"**; it means the model chip.
-32. **A pipeline run in History goes by its identifier** (`portfolio_model`):
-    `/api/runs` gives a report run a `display_name` and a pipeline run none.
-    Give it its model's label.
-33. **History's "N older runs" counts what `/api/runs` returned** (the last
-    50 runs, default `limit`), not every run the store holds.
-35. **Links inside a page still point past the role**: a viewer's report
-    panel and Ask can link to History or a model's Data page, which then shows
-    the plain "for analysts / admins" page. Hide those links by the same
-    `mayUse` rule the sidebar uses.
+39. **Inline paddings in JSX are off the 4px grid** (about 150 values of 6,
+    10, 14, 18px in `style={{…}}`, mostly the React Flow nodes, the palette
+    and the sidebar). global.css is on the grid (UI-4A); move these as each
+    page is touched, into a class where the style is shared.
+40. **Diagram node labels now use the eyebrow step** (10.5px, was 8.5–10px
+    inside the ERD and step nodes): check the ERD's column rows at a narrow
+    canvas still fit their 300px node, and move the node styles into classes.
 
 Ask:
 
@@ -43,11 +36,6 @@ Ask:
 29. **Ask's filters are equality on dimension values.** Ranges, a measure
     threshold (`having`) and fact columns are Advanced only; the sentence
     shows them in words but offers no token for them.
-30. **A measure's label is its humanised name** ("Fv share"): models have no
-    measure `label`, so Ask reads `fv_share` as "Fv share" beside its
-    description.
-31. **Keep this cannot pick a folder**: the draft starts at
-    `<model>/<slug>`; the folder is chosen when it is published.
 37. **Ask's "Keep this" does not carry a selection into the page.** A kept
     answer opens a one-figure draft; it could instead open the report it came
     from with the selection in the frame's hash (`#sel=`), so the reader lands

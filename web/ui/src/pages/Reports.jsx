@@ -26,11 +26,12 @@ import {
   Moved, useModelLabel, useOpenReport, useNavMenu,
 } from '../components/Scope'
 import {
-  PAGES, dataPath, folderOf, libraryPath, movedTo, reportBelongsToModel, reportModels, reportPagePath,
+  PAGES, dataPath, folderOf, libraryPath, mayUse, movedTo, placesFor, reportBelongsToModel, reportModels,
+  reportPagePath,
 } from '../nav'
 import { scheduleWords } from '../schedule'
 import {
-  Spinner, Verdict, Empty, Btn, ErrorDetail, PageTitle, PageSub,
+  Spinner, Verdict, Empty, Btn, BtnLink, ErrorDetail, PageTitle, PageSub,
   SearchInput, Segmented, SkeletonList, SkeletonCard, Time, useToast, useNarrow,
 } from '../components/Shared'
 
@@ -300,6 +301,9 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
   const words = scheduleWords(report.schedule)
   const last = report.last_run
   const labelOf = useModelLabel()
+  // A link to a place the role cannot use is not drawn (the sidebar's rule):
+  // a viewer reads the model's name, not a link to a page that turns them away.
+  const role = useRole()
   const queries = (manifest?.embedded_data || []).length
   const form = (FORMS[report.form === 'package' ? report.made_from : report.form] || FORMS.code).label
   return (
@@ -317,7 +321,11 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
           {manifest && manifest.schema_version !== 2 && (
             <Fact k="Trace">○ Manifest v{manifest.schema_version ?? '?'}: no per-figure queries to re-run</Fact>
           )}
-          {model && <Fact k="Model"><Link to={dataPath(model, 'model')}>{labelOf(model)}</Link></Fact>}
+          {model && (
+            <Fact k="Model">
+              {mayUse(role, 'data') ? <Link to={dataPath(model, 'model')}>{labelOf(model)}</Link> : labelOf(model)}
+            </Fact>
+          )}
           {manifest && (
             <Fact k="Figures">
               {count(p.total, 'figure')} from {count(queries, 'query', 'queries')}
@@ -361,6 +369,7 @@ const FAILED = new Set(['failed', 'error', 'refused'])
 // successful build carries the page's verdict, a scheduled run the verdict its
 // check recorded, and every older build a plain "Not checked".
 function HistoryTab({ name, verdict }) {
+  const role = useRole()
   const { data, isLoading, error } = useRuns('', name)
   const [open, setOpen] = useState(false)
   if (isLoading) return <div className="rp__none"><Spinner /> Loading builds…</div>
@@ -405,7 +414,9 @@ function HistoryTab({ name, verdict }) {
         )}
         {open && older.map(row)}
       </ul>
-      <Link to={`/runs?target=${encodeURIComponent(name)}`} className="rpanel__link">Every run in History</Link>
+      {mayUse(role, 'runs') && (
+        <Link to={`/runs?target=${encodeURIComponent(name)}`} className="rpanel__link">Every run in History</Link>
+      )}
     </>
   )
 }
@@ -866,7 +877,7 @@ const FORMS = {
 // package is report.json + template.html + style.css + script.js (+ assets).
 function ReportSource({ name }) {
   const { data, isLoading, error } = useReportSource(name, true)
-  if (isLoading) return <div style={{ color: 'var(--muted)', fontSize: 13 }}><Spinner /> Loading code…</div>
+  if (isLoading) return <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)' }}><Spinner /> Loading code…</div>
   if (error) return <ErrorDetail error={error} />
   return <CodeFiles files={data?.files || []} hint={data?.hint} other={data?.other_files} />
 }
@@ -1028,6 +1039,53 @@ function Glance({ reports, verdictFor, known }) {
   )
 }
 
+// The first visit: what each place is for, in one line, for the places this
+// role sees (nav.js placesFor, the sidebar's list).
+const PLACE_LINE = {
+  reports: 'every report, and whether its numbers still hold. Start here.',
+  ask: 'a question of a model, answered with the query behind it.',
+  data: 'how the numbers are made: sources, transforms, the warehouse, models.',
+  review: 'what waits on a person: attention, drafts, what ran, checking a file.',
+  docs: 'the handbook: concepts, guides and reference.',
+}
+const WELCOMED = 'tracebi-welcomed'
+
+/**
+ * One quiet card at the top of the library the first time a person opens the
+ * app in this browser: the places in a line each, Get started, and a report
+ * that shows everything a report can do when the project has one. Dismissed,
+ * it never comes back (a flag in this browser's storage; with no storage it
+ * is not shown, since it could not stay dismissed).
+ */
+function Welcome({ role, showcase }) {
+  const [shown, setShown] = useState(() => {
+    try { return !localStorage.getItem(WELCOMED) } catch { return false }
+  })
+  if (!shown || role === null) return null
+  const dismiss = () => {
+    try { localStorage.setItem(WELCOMED, '1') } catch { /* private window: gone for this visit */ }
+    setShown(false)
+  }
+  return (
+    <section className="welcome" aria-labelledby="welcome-h">
+      <div className="welcome__head">
+        <h2 id="welcome-h">Welcome to TraceBi</h2>
+        <button type="button" className="welcome__x" onClick={dismiss} aria-label="Dismiss the welcome">×</button>
+      </div>
+      <dl className="welcome__places">
+        {placesFor(role).map(p => (
+          <div key={p.key}><dt>{p.label}</dt><dd>{PLACE_LINE[p.key]}</dd></div>
+        ))}
+      </dl>
+      <div className="welcome__foot">
+        <BtnLink to="/docs/get-started" variant="primary" size="sm">Get started</BtnLink>
+        {showcase && <BtnLink to={reportPagePath(showcase.name)} size="sm">Open {showcase.display_name || 'the showcase'}</BtnLink>}
+        <span className="welcome__kbd">Press <kbd>⌘K</kbd> (<kbd>Ctrl K</kbd>) anywhere to jump to a report, a model or a page.</span>
+      </div>
+    </section>
+  )
+}
+
 /**
  * The library (`/`): every report the person may see, by folder, filtered by
  * model (?model=<name>) and a search. A row opens the report as a page of its
@@ -1082,8 +1140,17 @@ export default function Library() {
         <PageTitle>Reports</PageTitle>
         <PageSub>{PAGES[0].sub}</PageSub>
       </header>
+      <Welcome role={role} showcase={all.find(r => /(^|\/|_)showcase$/.test(r.name))} />
       {isLoading ? <SkeletonList /> : !all.length && !(canPublish && folderData?.personal) ? (
-        <Empty message="No reports yet. Scaffold one with tracebi new-report, or see Get started." />
+        canPublish ? (
+          <Empty title="No reports yet"
+                 body="A report is a page where every number is a live query against a model. Scaffold one, build it, and it is listed here."
+                 command={'tracebi new-report "My report"'}
+                 action={<BtnLink to="/docs/get-started" size="sm">Get started</BtnLink>} />
+        ) : (
+          <Empty title="No reports yet"
+                 body="Reports appear here once an analyst publishes one into a folder you can see." />
+        )
       ) : (
         <>
           <Glance reports={reports} verdictFor={verdictFor} known={!!desk} />

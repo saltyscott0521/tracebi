@@ -112,10 +112,10 @@ function NavItem({ path, label, icon, active, onNavigate }) {
           gap: 10,
           padding: '8px 12px',
           margin: '0 8px',
-          borderRadius: 6,
+          borderRadius: 'var(--radius)',
           color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
           textDecoration: 'none',
-          fontSize: 13,
+          fontSize: 'var(--text-caption)',
           fontWeight: active ? 500 : 400,
           background: active ? 'var(--sidebar-active)' : 'transparent',
         }}
@@ -272,7 +272,7 @@ export default function Layout({ children }) {
         {/* On a phone the header says which of the four places you are in. */}
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <BrandMark />
-          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 'var(--text-wordmark)', fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             TraceBi
             {place && <span className="mobile-header__place">{place.label}</span>}
           </span>
@@ -323,10 +323,10 @@ export default function Layout({ children }) {
             position: 'absolute', top: 10, right: 10,
             background: 'var(--sidebar-field)',
             border: '1px solid var(--sidebar-field-border)',
-            borderRadius: 6, width: 32, height: 32,
+            borderRadius: 'var(--radius)', width: 32, height: 32,
             alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
-            color: 'var(--sidebar-text)', fontSize: 17, lineHeight: 1,
+            color: 'var(--sidebar-text)', fontSize: 'var(--text-lg)', lineHeight: 1,
             zIndex: 1,
           }}
           aria-label="Close menu"
@@ -336,7 +336,7 @@ export default function Layout({ children }) {
         <div style={{ padding: '22px 20px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
             <BrandMark />
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+            <div style={{ fontSize: 'var(--text-wordmark)', fontWeight: 600, color: 'var(--sidebar-text-active)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
               TraceBi
             </div>
           </div>
@@ -346,8 +346,8 @@ export default function Layout({ children }) {
               width: '100%',
               display: 'flex', alignItems: 'center', gap: 8,
               background: 'var(--sidebar-field)', border: '1px solid var(--sidebar-field-border)',
-              borderRadius: 6, padding: '7px 10px', cursor: 'pointer',
-              color: 'var(--sidebar-text)', fontSize: 12, fontFamily: 'inherit',
+              borderRadius: 'var(--radius)', padding: '7px 10px', cursor: 'pointer',
+              color: 'var(--sidebar-text)', fontSize: 'var(--text-sm)', fontFamily: 'inherit',
               transition: 'background .15s',
             }}
           >
@@ -356,9 +356,9 @@ export default function Layout({ children }) {
             </svg>
             Search…
             <kbd style={{
-              marginLeft: 'auto', fontSize: 10, padding: '1px 5px',
+              marginLeft: 'auto', fontSize: 'var(--text-eyebrow)', padding: '1px 5px',
               background: 'var(--sidebar-field)', border: '1px solid var(--sidebar-field-border)',
-              borderRadius: 3, color: 'var(--sidebar-text)',
+              borderRadius: 'var(--radius-sm)', color: 'var(--sidebar-text)',
             }}>⌘K</kbd>
           </button>
         </div>
@@ -378,13 +378,13 @@ export default function Layout({ children }) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {version ? (
-              <span style={{ fontSize: 11, color: 'var(--sidebar-text)' }}>v{version}</span>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--sidebar-text)' }}>v{version}</span>
             ) : null}
             {update && (
               <a href={update.url || '#'} target="_blank" rel="noreferrer"
                  title={`TraceBi ${update.latest} is available. To update this ${update.kind} install:\n${update.command}\n\n(or run: tracebi update)`}
                  style={{
-                   fontSize: 10.5, fontWeight: 600, color: 'var(--sidebar-accent)', textDecoration: 'none',
+                   fontSize: 'var(--text-eyebrow)', fontWeight: 600, color: 'var(--sidebar-accent)', textDecoration: 'none',
                    border: '1px solid var(--sidebar-field-border)', borderRadius: 999,
                    padding: '1px 7px', whiteSpace: 'nowrap',
                  }}>
@@ -396,7 +396,7 @@ export default function Layout({ children }) {
               title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
               style={{
                 marginLeft: 'auto', background: 'var(--sidebar-field)',
-                border: '1px solid var(--sidebar-field-border)', borderRadius: 5,
+                border: '1px solid var(--sidebar-field-border)', borderRadius: 'var(--radius-sm)',
                 color: 'var(--sidebar-text)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 26, height: 26, flexShrink: 0, transition: 'background .15s',
@@ -406,15 +406,15 @@ export default function Layout({ children }) {
             </button>
           </div>
           {person && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 11.5, color: 'var(--sidebar-text)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 'var(--text-sm)', color: 'var(--sidebar-text)' }}>
               <span title={`${person.actor} (${person.role})`}
                     style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {person.actor}
               </span>
               <button onClick={signOut} style={{
                 marginLeft: 'auto', flexShrink: 0, background: 'none', cursor: 'pointer',
-                border: '1px solid var(--sidebar-field-border)', borderRadius: 5,
-                color: 'var(--sidebar-text)', fontSize: 11, padding: '2px 8px', fontFamily: 'inherit',
+                border: '1px solid var(--sidebar-field-border)', borderRadius: 'var(--radius-sm)',
+                color: 'var(--sidebar-text)', fontSize: 'var(--text-xs)', padding: '2px 8px', fontFamily: 'inherit',
               }}>Sign out</button>
             </div>
           )}
@@ -439,7 +439,7 @@ export default function Layout({ children }) {
         @media (max-width: 860px) {
           .mobile-header { display: flex !important; }
           .nav-close-btn { display: flex !important; }
-          .app-nav { transform: translateX(-100%); transition: transform .25s ease; }
+          .app-nav { transform: translateX(-100%); transition: transform .18s ease; }
           .app-nav.nav-open { transform: translateX(0); }
           main { margin-left: 0 !important; margin-top: 52px; padding: 20px 16px !important; max-width: 100% !important; }
         }

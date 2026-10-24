@@ -6,6 +6,35 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the app reads as one product
+
+- **The first visit** opens the library with one quiet card: the five places
+  in a line each, Get started, the project's showcase report when it has one,
+  and ⌘K. Dismissed, it never returns (a flag in this browser).
+- **Empty states teach**: `Empty` takes a `title`, a `body` saying what the
+  thing is and why it is empty, and the one action that fills it, a button or
+  a command in a copyable block (`CopyCommand`). The library, Drafts,
+  History, Attention, Sources and Transforms use it.
+- **One type scale, one rhythm, three radii.** Every font size in the app is a
+  step of the scale (10.5/11/12/13/14/16/20/26px, plus the 15px wordmark and
+  Ask's 40px lead number); global.css's margins, paddings and gaps sit on a
+  4px grid; corners are 4px (small controls), 6px (controls) or 8px
+  (surfaces). Transitions and entrances run 120–180 ms, none under reduced
+  motion. Skeletons, a list row's hover and the sidebar's focus ring take
+  tokens, so they are right in dark too.
+- **History** names a pipeline run by its model's label, and "N older runs"
+  counts every run the store holds (`GET /api/runs/counts`), not the 50 the
+  page loaded; unfolded, it links to the rest.
+- **Ask's Keep this picks a folder** (My published, the model's folder, or
+  any folder the person can build in); the draft starts there.
+- **A measure can carry a `label`** (`label:` in the model YAML,
+  `add_measure(label=...)`): the name Ask and the model page show. Without
+  one the name is humanised, as before.
+- **Links stop at the role**: a viewer's report panel shows the model's name
+  without a link into Data, and no "Every run in History".
+- `Btn` applies a caller's `style` last, so a colour it sets sticks; the
+  phone header is opaque, so a scrolled list no longer shows through it.
+
 ### Changed — the credential store is encrypted YAML
 
 - **`.tracebi/secrets.yml.enc`** replaces `.tracebi/secrets.json`: one file
