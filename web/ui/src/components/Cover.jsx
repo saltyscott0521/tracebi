@@ -47,8 +47,8 @@ export function GeneratedCover({ name, kinds, builtAt }) {
 }
 
 /** A report's cover: the build's picture, or the drawn one when it has none
- *  or the picture will not load. The drawn one sits under the picture until
- *  the picture has loaded, so a tile is never blank while it arrives. */
+ *  or the picture will not load. The drawn one stays under the picture (a
+ *  loaded image can still be a frame from painting), so a tile is never blank. */
 export function ReportCover({ report, name, build }) {
   const [failed, setFailed] = useState(null)
   const [loaded, setLoaded] = useState(null)
@@ -56,11 +56,9 @@ export function ReportCover({ report, name, build }) {
   const picture = src && failed !== src
   return (
     <div className="lcover">
-      {!(picture && loaded === src) && (
-        <GeneratedCover name={name} kinds={build?.figure_kinds} builtAt={build?.built_at} />
-      )}
+      <GeneratedCover name={name} kinds={build?.figure_kinds} builtAt={build?.built_at} />
       {picture && (
-        <img src={src} alt="" loading="lazy" decoding="async"
+        <img src={src} alt="" loading="lazy" decoding="async" className={loaded === src ? 'is-loaded' : undefined}
              onLoad={() => setLoaded(src)} onError={() => setFailed(src)} />
       )}
     </div>
