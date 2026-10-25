@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a class="on" href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,34 +61,71 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="your-first-report">Your first report</h1>
-<p><strong>Author a report package end to end — from <code>tracebi new-report</code> to a verified
-artifact.</strong></p>
-<p>Assumes you have a <a href="../concepts/model.html">Model — phase ②</a> over a warehouse. If not, start with
-<a href="../start/quickstart.html">Get started</a>.</p>
-<hr>
-<h2 id="1-scaffold">1. Scaffold</h2>
+<p>Change the query behind one number in the sample report, rebuild it, and see
+the trace follow. Then start a report of your own.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ul>
+<li>The project from the <a href="../start/quickstart.html">Get started</a>, with its transform run once</li>
+</ul>
+<h2 id="1-open-the-reports-data">1. Open the report's data</h2>
+<p>Open <code>reports/sample_model/sample_dashboard/report.json</code>. The <code>measures</code> block
+holds calculations that belong to this report. <code>big_orders</code> is the revenue of
+orders of 10 units or more:</p>
+<pre><code class="language-json">&quot;big_orders&quot;: {
+  &quot;column&quot;: &quot;revenue&quot;,
+  &quot;agg&quot;: &quot;sum&quot;,
+  &quot;filters&quot;: {&quot;qty&quot;: {&quot;gte&quot;: 10}},
+  &quot;format&quot;: &quot;currency0&quot;
+}
+</code></pre>
+<p>The <strong>Large orders</strong> card on the page reads it through the <code>split</code> binding.</p>
+<h2 id="2-change-the-query">2. Change the query</h2>
+<p>Raise the threshold to 20 units:</p>
+<pre><code class="language-json">&quot;filters&quot;: {&quot;qty&quot;: {&quot;gte&quot;: 20}}
+</code></pre>
+<p>Make the same change to <code>small_orders</code>, so the two still add up to revenue:</p>
+<pre><code class="language-json">&quot;filters&quot;: {&quot;qty&quot;: {&quot;lt&quot;: 20}}
+</code></pre>
+<h2 id="3-rebuild">3. Rebuild</h2>
+<pre><code class="language-bash">tracebi report build sample_model/sample_dashboard
+</code></pre>
+<p>Open <code>output/sample_model/sample_dashboard.html</code>. The <strong>Large orders</strong> card
+shows the new number. Click it: the trace opens at that figure, with this
+build's query and fingerprint.</p>
+<h2 id="4-check-it">4. Check it</h2>
+<pre><code class="language-bash">tracebi verify output/sample_model/sample_dashboard.html.manifest.json
+</code></pre>
+<p>Every figure reads <code>REPRODUCES</code>, because the manifest now records the new
+query. An older manifest would not match the new numbers.</p>
+<h2 id="5-watch-it-live">5. Watch it live</h2>
+<pre><code class="language-bash">tracebi dev sample_model/sample_dashboard
+</code></pre>
+<p>The app opens the report in Build mode. Edit <code>report.json</code> or <code>app.jsx</code> and
+the page reloads. The panel beside it lists what changed on each save, the
+data each figure reads, and <strong>Checks</strong>: figures with no data, bindings no
+figure reads, and numbers typed outside figures.</p>
+<h2 id="start-a-report-of-your-own">Start a report of your own</h2>
+<h3 id="1-create-the-package">1. Create the package</h3>
 <pre><code class="language-bash">tracebi new-report &quot;Portfolio Book&quot;
 </code></pre>
-<p>Creates <code>reports/portfolio_book/</code> with <code>report.json</code> and <code>template.html</code>, bound
-to the first model it finds.</p>
-<p>There is deliberately <strong>no <code>script.js</code> or <code>style.css</code></strong> yet. The runtime draws
-every figure from the stamped bytes, so hand-rolling a CSV parser and a chart is
-the classic wasted afternoon. Add them when you actually need them.</p>
-<h2 id="2-declare-the-data">2. Declare the data</h2>
-<p>Open <code>report.json</code>. Each entry under <code>data</code> is a <strong>binding</strong> — the unit of
-trust, resolved once, fingerprinted, and recorded in the trace.</p>
+<p>This creates <code>reports/portfolio_book/</code> with <code>report.json</code> and <code>template.html</code>,
+bound to the first model it finds. Use <code>tracebi new-dashboard</code> instead for an
+<code>app.jsx</code> dashboard (<a href="../reference/app-jsx.html">app.jsx</a>).</p>
+<h3 id="2-declare-the-data">2. Declare the data</h3>
+<p>Each entry under <code>data</code> is a binding: a named query against a model. The build
+runs it once, fingerprints the result and records it in the trace.</p>
 <pre><code class="language-json">{
   &quot;name&quot;: &quot;Portfolio Book&quot;,
   &quot;data&quot;: {
@@ -108,12 +145,9 @@ trust, resolved once, fingerprinted, and recorded in the trace.</p>
   }
 }
 </code></pre>
-<p>Note <code>totals</code> has <strong>no dimensions</strong> — it returns one row. A KPI needs a one-row
-binding; a value figure over a multi-row binding is refused.</p>
-<p>The build inlines D3 when the page contains a chart figure. (<code>"libs": ["echarts"]</code> keeps the older ECharts engine for a report that needs it.)</p>
-<p>→ <a href="../reference/report-json.html">report.json</a> · <a href="../reference/queries.html">Queries</a></p>
-<h2 id="3-declare-the-figures">3. Declare the figures</h2>
-<p>Add a <code>figures</code> block and let the framework build the markup:</p>
+<p><code>totals</code> has no dimensions, so it returns one row. A KPI needs a one-row
+binding.</p>
+<h3 id="3-declare-the-figures">3. Declare the figures</h3>
 <pre><code class="language-json">&quot;figures&quot;: {
   &quot;kpi_value&quot;:  {&quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: &quot;totals&quot;, &quot;cell&quot;: &quot;fair_value&quot;,
                  &quot;label&quot;: &quot;Fair value&quot;, &quot;format&quot;: &quot;currency0&quot;},
@@ -125,9 +159,9 @@ binding; a value figure over a multi-row binding is refused.</p>
   &quot;sector_tbl&quot;: {&quot;kind&quot;: &quot;table&quot;, &quot;binding&quot;: &quot;by_sector&quot;}
 }
 </code></pre>
-<p>→ <a href="../reference/figure-helper.html">{{ figure("name") }}</a></p>
-<h2 id="4-draw-the-page">4. Draw the page</h2>
-<p><code>template.html</code> is yours. Place each figure where it belongs:</p>
+<p>The build adds the D3 charting library when the page has a chart. See
+<a href="../reference/figure-helper.html">{{ figure("name") }}</a> for every key.</p>
+<h3 id="4-place-them-on-the-page">4. Place them on the page</h3>
 <pre><code class="language-html">&lt;!doctype html&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;title&gt;{{ title }}&lt;/title&gt;&lt;/head&gt;
 &lt;body&gt;
@@ -137,12 +171,12 @@ binding; a value figure over a multi-row binding is refused.</p>
     &lt;p class=&quot;tb-standfirst&quot;&gt;The book at fair value, by sector.&lt;/p&gt;
   &lt;/header&gt;
 
-  &lt;div class=&quot;tb-grid&quot;&gt;            &lt;!-- a value figure is a KPI card: one strip --&gt;
+  &lt;div class=&quot;tb-grid&quot;&gt;
     {{ figure(&quot;kpi_value&quot;) }}
     {{ figure(&quot;kpi_count&quot;) }}
   &lt;/div&gt;
 
-  &lt;div class=&quot;tb-grid&quot;&gt;            &lt;!-- the 12-column grid: 8 beside 4 --&gt;
+  &lt;div class=&quot;tb-grid&quot;&gt;
     &lt;div class=&quot;tb-card tb-span-8&quot;&gt;
       &lt;h2&gt;Fair value by sector&lt;/h2&gt;
       {{ figure(&quot;sector_mix&quot;) }}
@@ -160,85 +194,73 @@ binding; a value figure over a multi-row binding is refused.</p>
 &lt;/main&gt;
 &lt;/body&gt;&lt;/html&gt;
 </code></pre>
-<p>Every declared figure must be placed <strong>exactly once</strong>, or the build fails —
-a declared number must not silently vanish.</p>
-<blockquote>
-<p>Prefer writing the attributes yourself? Do — <a href="../reference/template-html.html">template.html — the figure grammar</a> documents the
-grammar, and both styles produce identical bytes. Mix them freely.</p>
-</blockquote>
-<h2 id="5-bind-the-prose">5. Bind the prose</h2>
-<p>The highest-value habit in the whole file:</p>
+<p>Place each declared figure exactly once. The build fails if one is missing or
+placed twice. You can also write the <code>data-tb-*</code> attributes by hand
+(<a href="../reference/template-html.html">template.html</a>); both produce the same page.</p>
+<h3 id="5-bind-the-numbers-in-your-prose">5. Bind the numbers in your prose</h3>
 <pre><code class="language-html">&lt;p&gt;The book stands at
    &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;totals&quot;
          data-tb-cell=&quot;fair_value&quot; data-tb-format=&quot;compact&quot;
-         id=&quot;prose-fv&quot;&gt;—&lt;/span&gt;
+         id=&quot;prose-fv&quot;&gt;&lt;/span&gt;
    across
    &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;totals&quot;
          data-tb-cell=&quot;positions&quot; data-tb-format=&quot;comma&quot;
-         id=&quot;prose-pos&quot;&gt;—&lt;/span&gt;
+         id=&quot;prose-pos&quot;&gt;&lt;/span&gt;
    positions.&lt;/p&gt;
 </code></pre>
-<p>Narrative prose is where hard-coded numbers hide. Here the honest path costs one
-attribute — and each bound span becomes a verified figure in the trace.</p>
-<h2 id="6-iterate-live">6. Iterate live</h2>
-<pre><code class="language-bash">tracebi dev portfolio_book
-</code></pre>
-<p>This opens the web app on the report. Edit and the page reloads; the panel beside it
-shows what each figure is bound to (Data) and what needs a look (Checks). Wrap scratch work in <code>data-tb-stage="exploration"</code> — it is
-deleted at final build.</p>
-<h2 id="7-build-and-verify">7. Build and verify</h2>
+<p>A number typed into a sentence has no trace. A bound one gets its own row in
+the trace.</p>
+<h3 id="6-build-check-and-review">6. Build, check and review</h3>
 <pre><code class="language-bash">tracebi report build portfolio_book
 tracebi verify output/portfolio_book.html.manifest.json
 tracebi verify --file output/portfolio_book.html
+tracebi report status portfolio_book
 </code></pre>
-<p>You want <code>✓ REPRODUCES</code> per figure. See <a href="../concepts/trace.html">The trace</a> for what that does and
-does not claim.</p>
-<h2 id="8-check-what-it-earned">8. Check what it earned</h2>
-<pre><code class="language-bash">tracebi report status portfolio_book
-</code></pre>
-<p>Per figure: verified, python-derived, or unverified — plus unused and failing
-bindings. Exits 1 on any binding error, so CI can gate on it.</p>
-<hr>
-<h2 id="common-refusals-and-what-they-mean">Common refusals, and what they mean</h2>
+<p><code>tracebi report status</code> lists each figure as verified, python-derived or
+unverified, then unused and failing bindings. It exits 1 on any binding error,
+so CI can use it as a gate.</p>
+<p>Wrap scratch work in <code>data-tb-stage="exploration"</code> while you iterate. The
+final build removes it.</p>
+<h2 id="if-the-build-refuses">If the build refuses</h2>
 <table>
 <thead>
 <tr>
-<th>Refusal</th>
+<th>Message</th>
 <th>Fix</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><em>a value figure needs a one-row binding</em></td>
-<td>aggregate the query, or use a table figure</td>
+<td>Aggregate the query, or use a table figure.</td>
 </tr>
 <tr>
 <td><em>names binding 'x', which is not declared in 'data'</em></td>
-<td>typo, or you forgot the binding</td>
+<td>Fix the typo, or add the binding.</td>
 </tr>
 <tr>
 <td><em>declares 'x' … but template.html never places it</em></td>
-<td>add <code>{{ figure("x") }}</code>, or drop the declaration</td>
+<td>Add <code>{{ figure("x") }}</code>, or remove the declaration.</td>
 </tr>
 <tr>
 <td><em>figure('x') is placed more than once</em></td>
-<td>declare a second figure; one id addresses one number</td>
+<td>Declare a second figure. One id addresses one number.</td>
 </tr>
 <tr>
-<td>chart panel stays blank</td>
-<td>the build inlines D3 when the page has a chart figure; check <code>data-tb-x</code> and <code>data-tb-y</code></td>
+<td>A chart stays blank</td>
+<td>Check <code>data-tb-x</code> and <code>data-tb-y</code> name columns of the binding.</td>
 </tr>
 <tr>
 <td><em>limit without order_by is refused</em></td>
-<td>state the ranking → <a href="../reference/queries.html">Queries</a></td>
+<td>Add an <code>order_by</code>. See <a href="../reference/queries.html">Queries</a>.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="next">Next</h2>
 <ul>
-<li><a href="../guides/styling-a-report.html">Styling a report</a> — your own CSS and JS</li>
-<li><a href="../reference/measures.html">Measures</a> — add a measure instead of computing in Python</li>
-<li><a href="../reference/cli.html">CLI reference</a> — <code>report send</code>, <code>snapshot</code>, <code>preview</code></li>
+<li>Style the page: <a href="../guides/styling-a-report.html">Style a report</a></li>
+<li>Add a measure to the model: <a href="../reference/measures.html">Measures</a></li>
+<li>Send or schedule the report: <code>tracebi report send</code> and <code>tracebi schedule</code> in <a href="../reference/cli.html">CLI reference</a></li>
 </ul>
   </main>
 </div>

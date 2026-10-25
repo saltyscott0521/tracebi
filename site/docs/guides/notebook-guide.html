@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>TraceBi in Notebooks — TraceBi docs</title>
+<title>Use TraceBi in a notebook — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="TraceBi in Notebooks">
+<meta name="description" content="Use TraceBi in a notebook">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a class="on" href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a class="on" href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,113 +61,71 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="tracebi-in-notebooks">TraceBi in Notebooks</h1>
-<p>How to use TraceBi from Jupyter — rich previews while you explore, and how a
-notebook becomes a phase-① transform once the analysis settles.</p>
-<p>Companion to the <a href="analyst-guide.md">Analyst Guide</a>, which covers the full
-development flow; this guide covers what's different in a notebook.</p>
-<hr>
-<h2 id="where-the-notebook-fits-the-workflow">Where the notebook fits the workflow</h2>
-<p>TraceBi's spine is the three-phase workflow in <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>:
-phase ① <code>transforms/</code> writes clean star-schema tables into the warehouse,
-phase ② <code>models/</code> declares a thin <code>DataModel</code> over it, and phase ③ <code>reports/</code>
-is a report package served in the app, in the library under its model.</p>
-<p>A notebook is the natural home for <strong>phase ①</strong> when the work outgrows SQL —
-the slow, unconstrained pandas analysis — because the rich previews below let you <em>see</em> the data as you clean
-it, before you commit anything. When the analysis settles, sink the named
-tables:</p>
-<pre><code class="language-python">from tracebi.connectors import DuckDBConnector
-from tracebi.project_config import sink_target
-
-wh = DuckDBConnector(&quot;warehouse&quot;, database=sink_target(ROOT))   # the warehouse tracebi.yaml names
-wh.write(fact_holdings_df, &quot;fact_holdings&quot;)   # freeze: the sink is now the contract
+<h1 id="use-tracebi-in-a-notebook">Use TraceBi in a notebook</h1>
+<p>Explore data in Jupyter with rich previews, then turn the notebook into a
+transform that writes the warehouse.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ul>
+<li>A TraceBi project (<code>tracebi init</code>)</li>
+<li>The data dependencies and IPython for previews:</li>
+</ul>
+<p><code>bash
+  pip install "tracebi[analyst]"   # DuckDB, the pandas stack, dotenv
+  pip install ipython              # rich HTML previews, unless you already run Jupyter</code></p>
+<h2 id="1-create-a-notebook-shaped-transform">1. Create a notebook-shaped transform</h2>
+<pre><code class="language-bash">tracebi new-transform &quot;Holdings clean&quot; --python   # transforms/holdings_clean.py
 </code></pre>
-<p>From there the model (②) and report (③) are small, reviewable artifacts that
-never re-run the notebook. The trust machinery (<code>tracebi verify</code>, stamped
-queries) applies from the model boundary onward — it does not read the pandas in
-your notebook, by design.</p>
-<p>So a notebook has two surviving roles: the <strong>discovery workbench feed</strong> while
-you explore, and — once the cleaning settles — a <strong>notebook-shaped transform</strong>
-you run with <code>tracebi run-transform</code>. Both are covered below.</p>
-<hr>
-<h2 id="setup">Setup</h2>
-<pre><code class="language-bash">pip install &quot;tracebi[analyst]&quot;   # the data deps: DuckDB, the pandas stack, dotenv
-pip install ipython              # rich HTML previews (or run inside an existing Jupyter env)
-</code></pre>
-<p><code>tracebi[analyst]</code> gives you the data dependencies; the rich <code>_repr_html_</code>
-previews below additionally need IPython, which the <code>analyst</code> extra does not
-pull in.</p>
-<p>Scaffold a notebook-shaped transform, or start from a blank notebook — nothing
-about TraceBi requires the scaffold:</p>
-<pre><code class="language-bash">tracebi list-models                      # see what shared models are available
-tracebi new-transform &quot;Holdings clean&quot; --python   # → transforms/holdings_clean.py (# %% cells)
-</code></pre>
-<p><code>tracebi new-transform --python</code> writes a <strong>notebook-shaped <code>.py</code></strong> (without
-<code>--python</code> it writes the SQL form, the default): the <code># %%</code> markers
-are cell boundaries and <code># %% [markdown]</code> cells are prose, so VS Code, Cursor,
-PyCharm, and Jupyter (via jupytext) open it <em>as</em> a notebook — run it
-cell-by-cell — while it stays plain, reviewable Python that runs top-to-bottom.
-Models are YAML (<code>tracebi new-model</code>); reports scaffold with
-<code>tracebi new-dashboard</code> or <code>tracebi new-report</code>.</p>
-<h2 id="rich-object-previews">Rich object previews</h2>
-<p><code>DataSet</code> and <code>DataModel</code> render as rich HTML in notebooks. Putting one at
-the end of a cell shows shape, columns, dtypes, sample rows, and the lineage
-chain — no <code>print</code> calls needed:</p>
+<p>The file uses <code># %%</code> cell markers and <code># %% [markdown]</code> prose cells. VS Code,
+Cursor, PyCharm and Jupyter (with jupytext) open it as a notebook, and it
+stays plain Python that runs top to bottom. A blank <code>.ipynb</code> works too.
+Without <code>--python</code>, <code>tracebi new-transform</code> writes a SQL transform.</p>
+<h2 id="2-look-at-the-data">2. Look at the data</h2>
+<p><code>DataSet</code> and <code>DataModel</code> render as HTML at the end of a cell:</p>
 <pre><code class="language-python">from tracebi.model_registry import get_model, list_models
 
-print(list_models())             # see what's in models/
-model = get_model(&quot;sales_model&quot;) # loads models/sales_model.yaml — no web server needed
-model                            # tables, relationships, facts/dimensions, as HTML
+print(list_models())             # what's in models/
+model = get_model(&quot;sales_model&quot;) # no web server needed
+model                            # tables, relationships, facts and dimensions
 
 orders = model.load(&quot;orders&quot;)
-orders                           # shape, dtypes, sample rows, operation chain
-
-orders.help()          # plain-text cheat sheet of every verb
-model.describe()       # plain-text model summary
+orders                           # shape, dtypes, sample rows, lineage
+orders.help()                    # every DataSet method
+model.describe()                 # the model as text
 </code></pre>
-<p>This makes notebooks the best place to <em>discover</em> data before committing
-transforms to a script.</p>
-<h2 id="the-discovery-workbench">The discovery workbench</h2>
-<p>While you explore, push what you find into a live, shared surface. Open the
-app with no report named, in a terminal:</p>
-<pre><code class="language-bash">tracebi dev            # no report named → the app's Data page, with the project feed
+<h2 id="3-show-your-work-in-the-app-optional">3. Show your work in the app (optional)</h2>
+<p>In a terminal:</p>
+<pre><code class="language-bash">tracebi dev            # the app's Data page, with the project feed
 </code></pre>
-<p>Then, from any notebook cell, <code>show()</code> frames, charts, and notes into its feed
-(the app's Data page, under <em>From your agent</em>):</p>
+<p>Then, from any cell:</p>
 <pre><code class="language-python">import tracebi.workbench as workbench
 
-workbench.show(fact_holdings_df, note=&quot;after dedupe — 3 rows dropped&quot;)
+workbench.show(fact_holdings_df, note=&quot;after dedupe: 3 rows dropped&quot;)
 workbench.show(by_sector_df, chart=&quot;bar&quot;, x=&quot;sector&quot;, y=&quot;market_value&quot;)
 </code></pre>
-<p><code>show()</code> is zero-config and a no-op when nothing is listening (no fresh
-heartbeat), so the same cell is harmless outside a <code>tracebi dev</code> session. It is
-where phases ① and ② become visible before any report package exists.</p>
-<h2 id="inline-report-preview">Inline report preview</h2>
-<p>Render a report directly into the notebook output — no server, no files left
-behind:</p>
+<p>Each call appears on the Data page under <em>From your agent</em>. <code>show()</code> needs no
+setup and does nothing when <code>tracebi dev</code> is not running, so the cell is safe
+to leave in.</p>
+<h2 id="4-preview-a-report-in-the-notebook-optional">4. Preview a report in the notebook (optional)</h2>
 <pre><code class="language-python">from tracebi.reports.html_renderer import HTMLRenderer
 
-HTMLRenderer().preview(report)                  # embedded iframe, 800px tall
-HTMLRenderer().preview(report, height=1200)     # taller
+HTMLRenderer().preview(report)                  # an embedded frame, 800px tall
+HTMLRenderer().preview(report, height=1200)
 </code></pre>
-<p>This is the notebook equivalent of <code>tracebi dev</code>'s live preview loop:
-re-run the cell after each change.</p>
-<h2 id="from-notebook-to-transform">From notebook to transform</h2>
-<p>The notebook-shaped <code>.py</code> <strong>is</strong> the production artifact — there is no separate
-conversion step. End it by sinking your clean star-schema tables and, optionally,
-declaring a <strong>sink contract</strong>:</p>
-<pre><code class="language-python"># %%  Sink — the contract is the named tables, not how you produced them
+<p>Re-run the cell after each change.</p>
+<h2 id="5-write-the-warehouse-tables">5. Write the warehouse tables</h2>
+<p>End the file by writing clean star-schema tables, and declare a sink contract:</p>
+<pre><code class="language-python"># %%  Sink: the named tables are what the model reads
 from tracebi.connectors import DuckDBConnector
 from tracebi.contracts import contract
 from tracebi.project_config import sink_target
@@ -175,53 +133,49 @@ from tracebi.project_config import sink_target
 WAREHOUSE = sink_target(ROOT)
 DuckDBConnector(&quot;warehouse&quot;, database=WAREHOUSE).write(fact_holdings_df, &quot;fact_holdings&quot;)
 
-# %%  Declare the sink CONTRACT (optional, recommended)
+# %%  The sink contract (optional, recommended)
 with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
     c.rows(&quot;fact_holdings&quot;, at_least=1)
     c.not_null(&quot;fact_holdings&quot;, [&quot;holding_id&quot;, &quot;market_value&quot;])
     c.foreign_key(&quot;fact_holdings&quot;, &quot;sector_key&quot;, refers_to=(&quot;dim_sector&quot;, &quot;sector_key&quot;))
 </code></pre>
-<p>Run it top-to-bottom in a fresh namespace:</p>
-<pre><code class="language-bash">tracebi run-transform holdings_clean   # executes transforms/holdings_clean.py or .ipynb
+<h2 id="6-run-it-top-to-bottom">6. Run it top to bottom</h2>
+<pre><code class="language-bash">tracebi run-transform holdings_clean   # runs transforms/holdings_clean.py or .ipynb
 </code></pre>
-<p><strong>How <code>tracebi run-transform</code> executes a file:</strong> the code cells are
-concatenated top-to-bottom into one script and executed in a fresh namespace,
-so the sink never comes from out-of-order kernel state. Line magics
-(<code>%matplotlib inline</code>) and shell escapes (<code>!pip install ...</code>) are silently
-dropped — they only mean something inside a Jupyter kernel. In a notebook-shaped
-<code>.py</code>, <code># %% [markdown]</code> cells stay as reviewable prose comments; only a literal
-<code>.ipynb</code>'s markdown cells are dropped at run time.</p>
-<p>Practical implications:</p>
+<p>The runner joins the code cells into one script and runs it in a fresh
+namespace. Line magics (<code>%matplotlib inline</code>) and shell escapes
+(<code>!pip install ...</code>) are dropped, because they only work inside a Jupyter
+kernel. Markdown cells in a <code>.py</code> stay as comments; a <code>.ipynb</code>'s markdown
+cells are dropped.</p>
+<h2 id="what-happened">What happened</h2>
 <ul>
-<li><strong>Cell order matters.</strong> The file must run clean top-to-bottom
-  (<code>Kernel → Restart &amp; Run All</code> is the honesty test). Hidden state from
-  out-of-order execution won't exist when the runner executes it.</li>
-<li><strong>Don't rely on magics for logic.</strong> Anything load-bearing belongs in
-  plain Python.</li>
-<li><strong>Keep the sink idempotent.</strong> A rerun replaces the warehouse tables.</li>
+<li>The notebook file is the production transform. There is no conversion step.</li>
+<li>A fresh run means hidden state from cells run out of order cannot reach the
+  warehouse. Test with <strong>Kernel → Restart &amp; Run All</strong> before you commit.</li>
+<li>A rerun replaces the warehouse tables.</li>
+<li>The model and reports read only the tables. They never re-run the notebook.
+  <code>tracebi verify</code> does not read the notebook's pandas: lineage is traced from
+  the sink, not through the transform.</li>
 </ul>
-<h2 id="exporting-the-exploration-record">Exporting the exploration record</h2>
-<p>A discovery session is a lab notebook, not a report. Capture it verbatim:</p>
-<pre><code class="language-bash">tracebi session export             # → explorations/&lt;name&gt;.html
-tracebi session export --format md # → explorations/&lt;name&gt;.md (the markdown twin)
+<h2 id="save-the-exploration">Save the exploration</h2>
+<pre><code class="language-bash">tracebi session export             # explorations/&lt;name&gt;.html
+tracebi session export --format md # explorations/&lt;name&gt;.md
 </code></pre>
-<p>This writes the committed record of what you looked at — frames, charts, and
-notes from the workbench feed. It carries <strong>no manifest</strong>, because nothing in it
-is a verified figure; <code>tracebi verify</code> refuses the file by name rather than
-letting a lab notebook read as a trace. It is the honest home for the
-narrative that a governed report deliberately does not carry.</p>
-<h2 id="publishing-a-report-from-a-notebook">Publishing a report from a notebook</h2>
-<p>A report the app serves is a <strong>package</strong> (<code>reports/&lt;name&gt;/</code>), and there is one
-renderer: <code>tracebi new-dashboard</code> or <code>tracebi new-report</code> → <code>tracebi dev</code> →
-<code>tracebi report build</code>, covered in the <a href="analyst-guide.md">Analyst Guide</a>.
-A notebook in <code>reports/</code> that registers a factory with <code>@register.report(...)</code>
-is still imported at startup, but a report with no package is refused (HTTP
-422 naming the fix), and <code>tracebi validate</code> flags it. The pandas a model cannot
-express goes in the package's <code>report.py</code>, whose outputs are stamped
-<code>verifiable: false</code>.</p>
-<p>Reference files: <code>examples/portfolio_project/transforms/holdings_transform_pandas.py</code>,
-<code>examples/portfolio_project/models/portfolio_model.yaml</code>, and
-<code>examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/</code>.</p>
+<p>This saves the tables, charts and notes you posted with <code>show()</code>. It carries
+no manifest, and <code>tracebi verify</code> refuses it.</p>
+<h2 id="next">Next</h2>
+<ul>
+<li>Build a report on the tables you wrote: <code>tracebi new-dashboard</code> or
+  <code>tracebi new-report</code>, then <code>tracebi dev</code> and <code>tracebi report build</code>
+  (<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>)</li>
+<li>A notebook in <code>reports/</code> that registers a factory with
+  <code>@register.report(...)</code> is still imported, but a report with no package is
+  refused (HTTP 422) and <code>tracebi validate</code> flags it. Pandas a model cannot
+  express goes in a package's <code>report.py</code>.</li>
+<li>Reference files: <code>examples/portfolio_project/transforms/holdings_transform_pandas.py</code>,
+  <code>examples/portfolio_project/models/portfolio_model.yaml</code> and
+  <code>examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/</code>.</li>
+</ul>
   </main>
 </div>
 <script>

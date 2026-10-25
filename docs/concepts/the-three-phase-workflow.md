@@ -1,169 +1,133 @@
 # The three-phase workflow
 
-**TraceBi takes data from messy to reportable in three folders, each with its
-own cadence, separated by [[freeze-points|freeze points]].**
+A TraceBi project moves data through three folders: a transform cleans it, a
+model defines it, and a report presents it. Each stage hands the next a fixed
+artifact, called a [[freeze-points|freeze point]].
 
 ```
 inputs/  →  transforms/  →  [ warehouse ]  →  models/  →  reports/
    ⓪            ①            freeze          ②            ③
 ```
 
-Each phase has one job, and the phases are deliberately decoupled so the slow
-one never blocks the fast one.
-
----
-
-> **In the app** there are four places. **Reports** is where it opens: the library as a
-> directory, a tile and a row of covers per folder, each report with whether its numbers
-> still reproduce, narrowed to a model by a chip; a folder has a page of its own, and the
-> sidebar is the folder tree. **Ask this model**, on a folder's page or a model's, puts a
-> question to that model. **Data** (analysts and admins) opens on the
-> board, **Flow**: these stages as lanes, sources first and reports last, with the warehouse
-> between Transform and Model, the freeze point it is; its other tabs list the same things
-> in the same order (**Sources**, **Transforms**, **Warehouse**, **Models**), and any table
-> opens on a page of its own (its rows, columns and who uses it). A model's page draws its
-> line: **Transform** (the pipeline that rebuilds its warehouse, and what the sink contract
-> says about it), **Model** (its tables, joins and measures, in the data browser: a tree,
-> the schema drawn, and an inspector for the table you select) and **Reports** (what reads
-> it); **Refresh data**, on the Transform tab, runs the pipeline. **Review** holds what
-> needs attention (a failed refresh, a build that needs a look, a request to publish), then
-> drafts, **History** (what ran) and **Verify** (check a report file from anywhere).
-> **Docs** is this handbook. Reports and Ask only ever ask the model; see
-> [[models-and-connectors]].
-
-## ① Transform — `transforms/`
-
-SQL by default: `transforms/<name>.sql`, DuckDB statements run top to bottom
-in one fresh connection. Pull the queries, do the real analysis — window
-functions, prose parsing, cleaning, dedupe — then **sink** clean star-schema
-tables into the warehouse. When the work outgrows SQL, the escape hatch is
-pandas or polars (a `.py` or `.ipynb`); both forms run with
-`tracebi run-transform`, which says which one ran.
-
-The framework does not constrain this phase. The contract is not *how* you
-clean; it is **what lands**: the named tables at the end of the script. The
-[[sink-contracts|sink contract]] that checks them sits beside the transform, in
-`<name>.contract.yaml`.
-
-"Pull the queries" has a concrete form when the input is a database rather
-than a file. A [[connections-yaml|connection]] declares it
-(`connections/crm.yaml`, with the URL kept in an environment variable), and a
-header line `-- source: crm.issuer_ratings` in the SQL loads that table
-through the connection before the first statement, so the transform reads it
-as `crm.issuer_ratings` beside its CSVs. The certificate records each load's
-fingerprint under `sources`, so the sink satisfied its contract against named
-inputs, and `tracebi verify --contracts` says when one has moved since. The
-reference project's ratings come from a Postgres CRM this way, with a committed
-CSV snapshot standing in (and the certificate saying so) when no database is
-configured. → [[transform-sql]]
-
-→ [[transform]]
-
-*Freeze: `data/warehouse.duckdb` — materialized tables.*
-
-## ② Model — `models/`
-
-A declarative `DataModel` over the warehouse: the grain, the keys, the
-[[measures]]. A few dozen lines a reviewer reads without opening the pandas
-above it.
-
-It reads the sink. It never sees the transform.
-
-→ [[model]]
-
-*Freeze: the model — the semantic contract.*
-
-## ③ Report — `reports/`
-
-A report package where **every figure is a live query**. Because the model is
-materialized, the page re-renders in milliseconds with no pandas in the loop.
-
-→ [[report]]
-
----
-
-## Where each phase lives
-
-| Stage | Folder | What you write | How the server finds it |
+| Stage | Folder | What you write | Where you see it |
 |---|---|---|---|
-| ⓪ Input | `inputs/` | a raw pull: a CSV, an API export, a SQL dump | it doesn't; you put it there |
-| ① Transform | `transforms/` | DuckDB SQL (a `.sql`, with its `.contract.yaml` beside it), or pandas as the escape hatch (a `.py` or `.ipynb`), that lands warehouse tables | it doesn't; you run it with `tracebi run-transform` |
-| ② Model | `models/` | a `DataModel` as YAML (`models/<name>.yaml`; a `.py` with a variable named `model` for anything exotic) | its page on **Data** (`/data/<model>`), Model tab |
-| ③ Report | `reports/` | a package (`report.json` + an `app.jsx` dashboard or a `template.html` page), or a JSON spec that compiles into one | listed in **Reports** (the library), under its model |
+| Input | `inputs/` | Raw files: a CSV, an API export, a SQL dump | Data → Sources |
+| Transform | `transforms/` | DuckDB SQL (`.sql` with a `.contract.yaml` beside it), or pandas (`.py`, `.ipynb`) | Data → Transforms; run it with `tracebi run-transform` |
+| Model | `models/` | A YAML file: tables, joins, measures (`.py` for anything YAML cannot say) | Data → the model's page, Model tab |
+| Report | `reports/` | A package: `report.json` plus an `app.jsx` dashboard or a `template.html` page | Reports, under its model |
 
-The warehouse is one per project, declared in `tracebi.yaml` (by default one
-file, `data/warehouse.duckdb`): every transform sinks into it and every model
-reads it (`type: warehouse`), so phase ① and phase ② can run in separate
-processes. `output/` holds what
-`tracebi report build` renders. Both folders are gitignored except the
-`*.manifest.json` traces inside them, which stay tracked as the audit trail
-behind every rendered number.
+## Transform
+
+A transform is a SQL file by default: `transforms/<name>.sql`, DuckDB
+statements run top to bottom in one fresh connection. It reads the inputs,
+does whatever cleaning the data needs (window functions, parsing, dedupe), and
+ends by writing clean star-schema tables into the warehouse. When SQL is not
+enough, write pandas or polars in a `.py` or `.ipynb`. `tracebi run-transform`
+runs either form and prints which one ran.
+
+TraceBi does not constrain how you clean. It cares about what lands: the named
+tables at the end. A [[sink-contracts|sink contract]] in `<name>.contract.yaml`
+checks those tables.
+
+A transform can also read a database. Declare it once as a connection
+(`connections/crm.yaml`, its URL kept in an environment variable), then add a
+header line to the SQL:
+
+```sql
+-- source: crm.issuer_ratings
+```
+
+The table loads through the connection before the first statement, and the
+SQL reads it as `crm.issuer_ratings`. The contract's certificate records each
+load's fingerprint under `sources`, and `tracebi verify --contracts` reports
+when a source has changed since. See [[transform-sql]].
+
+**Freeze point:** the warehouse, `data/warehouse.duckdb` by default.
+
+## Model
+
+A model is a short YAML file over the warehouse: its grain, keys and
+[[measures]]. It reads the warehouse tables and never sees the transform. See
+[[model]].
+
+**Freeze point:** the model itself, the definitions every report uses.
+
+## Report
+
+A report package where every figure is a query against the model. The model's
+tables already exist, so the page rebuilds in milliseconds without running
+the transform. See [[report]].
+
+## One warehouse per project
+
+`tracebi.yaml` declares the warehouse. Every transform writes to it and every
+model reads it (`type: warehouse`), so transforms and reports can run in
+separate processes. `output/` holds what `tracebi report build` writes. Both
+`data/` and `output/` are gitignored, except the `*.manifest.json` traces,
+which stay in git as the record behind every built number.
 
 ## Try it on the reference project
 
 ```bash
 cd examples/portfolio_project
-python run_workflow.py          # ① build the warehouse, ③ build every report
-tracebi serve                   # browse it: portfolio_model → Reports → portfolio_dashboard
+python run_workflow.py          # build the warehouse, then every report
+tracebi serve                   # open portfolio_model, then portfolio_dashboard
 ```
 
-The first run generates a deliberately messy Schedule of Investments into
-`inputs/`, so phase ① has real work to do: prose position descriptions to parse
-into issuers, trailing position counters to strip, sectors spelled six ways,
-money stored as strings.
+The first run writes a messy Schedule of Investments into `inputs/`: position
+descriptions to parse into issuers, sectors spelled six ways, money stored as
+strings. The project has four models sharing one warehouse.
+`holdings_transform.sql`, `saas_transform.sql` and `wealth_transform.sql` are
+SQL with a `.contract.yaml` beside each; the last two read SQLite databases
+in `inputs/` through `-- source:` lines. `affordability_transform.py` is
+pandas and declares its contract in a `with contract(...)` block.
 
-Its four models follow the same conventions and share the one warehouse its
-`tracebi.yaml` names. `holdings_transform.sql`, `saas_transform.sql` and
-`wealth_transform.sql` are SQL with a `.contract.yaml` beside each (the last two
-read SQLite databases that ship in `inputs/`, through `-- source:` lines);
-`affordability_transform.py`, which follows
-each home buyer year by year, is the pandas escape hatch and declares its
-contract in a `with contract(...)` block. Every table on the Warehouse tab reads
-"Checks passed", or an honest failure.
+## In the app
 
-## Exploring before a report exists
+The app has four places in its sidebar.
 
-`tracebi dev` with no report name opens the app's Data page with the
-**project feed**. Any script run while it's open can call
-`tracebi.workbench.show(df, note=...)` to post an excerpt, and you can leave
-your agent notes there (folded under one line, below the board). The
-warehouse tables are on the Warehouse tab, and a model's Model tab shows the star
-schema taking shape. Sink-contract status and
-column profiles of the warehouse tables are in the agent's `workbench_state`,
-and on the classic page (`tracebi dev --classic`), which lays the warehouse,
-models and packages out beside the feed.
-`tracebi session export` saves the session to `explorations/` as a committed
-record (`--format md` for a version that reads well in a git review). It is
-marked as exploration and carries no trace, and `verify` refuses it by name.
+- **Reports** opens first. It is the library: a folder per model, each report
+  with whether its numbers still reproduce. **Ask this model**, on a folder's
+  or a model's page, puts a question to that model.
+- **Data** (analysts and admins) opens on **Flow**, a board with these stages
+  as lanes: sources, transforms, the warehouse, models, reports. Its other
+  tabs are **Sources**, **Transforms**, **Warehouse** and **Models**. A model's
+  page has a **Transform** tab (the pipeline that rebuilds its data, where an
+  admin clicks **Refresh data**), a **Model** tab (tables, joins and measures)
+  and a **Reports** tab.
+- **Review** holds what needs attention, drafts, **History** (what ran) and
+  **Verify** (check a report file from anywhere).
+- **Docs** is this handbook.
 
-## Why the split
+## Before a report exists
 
-The slow, unconstrained analysis (①) and the fast, iterated reporting (③)
-never block each other, because the model (②) is a frozen contract between
-them.
-
-**Editing a report never re-runs the pandas.** That single property is what
-makes the reporting loop fast enough to iterate on, and it is the reason the
-phases are separate folders rather than one script.
+`tracebi dev` with no report name opens the app's Data page with a project
+feed. Any script can post a table or a note to it with
+`tracebi.workbench.show(df, note=...)`. `tracebi dev --classic` lays the
+warehouse, models and packages out beside the feed on one page. `tracebi
+session export` saves the session to `explorations/` as a committed record
+(`--format md` for a version that reads well in review). It carries no trace,
+and `tracebi verify` refuses it.
 
 ## Where trust starts
 
-Tracing lineage *through* the raw analysis in phase ① is intentionally **not**
-done. The line is drawn at the **sink**, where numbers become a contract you
-can report against.
+Lineage is traced from the sink, not through the transform. The trust
+features (stamped queries, [[lineage]], fingerprints and `tracebi verify`)
+apply to the model and the report. `tracebi verify` re-runs a manifest's
+recorded queries and compares fingerprints; it does not assert a number is
+correct.
 
-The trust machinery — stamped queries, [[lineage]], fingerprints, and
-`tracebi verify` — applies **from the model boundary onward**, phases ② and ③.
-Phase ① is trusted the way you trust reviewed code in git, not the way you
-trust a hash.
+The transform is reviewed like any code in git. A sink contract adds
+checks its tables must pass before the data counts. See [[trace]] for what a
+trace proves and what it does not.
 
-A transform can narrow that gap by declaring a [[sink-contracts|sink contract]]:
-closed, declarative checks its tables must satisfy before the data counts.
+## Why it works this way
 
-See [[trace]] for exactly what this does and does not prove.
+The slow analysis in the transform and the fast work on reports never block
+each other, because the model sits between them as a fixed contract. Editing
+a report never re-runs the transform.
 
-## Related
+## Next
 
-- [[freeze-points]] — the handoff between phases
-- [[quickstart]] — run all three in about five minutes
-- [[sink-contracts]] — the checks a transform's tables must pass
+- Run all three stages: [[quickstart]]
+- Write a transform: [[transform]]

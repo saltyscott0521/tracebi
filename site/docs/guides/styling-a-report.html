@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Styling a report — TraceBi docs</title>
+<title>Style a report — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Presentation never changes a number.">
+<meta name="description" content="Style a report">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a class="on" href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a class="on" href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,42 +61,50 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="styling-a-report">Styling a report</h1>
-<p><strong>Your CSS and JS, unrestricted — plus a design system you can lean on instead
-of fighting.</strong></p>
-<hr>
-<h2 id="the-stack">The stack</h2>
-<p>Three layers, later wins:</p>
+<h1 id="style-a-report">Style a report</h1>
+<p>Give a report your colours, fonts and layout by setting design tokens, using
+the shipped components, and adding your own CSS and JavaScript.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ul>
+<li>A report package (<code>tracebi new-report</code> or <code>tracebi new-dashboard</code>)</li>
+<li><code>tracebi dev &lt;name&gt;</code> running, so you see each change</li>
+</ul>
+<p>Styles stack in three layers, and the later one wins:</p>
 <pre><code>1. tracebi.css            the shipped design system
-2. reports/_theme.css     your project brand layer   (optional)
-3. style.css              this report                (optional)
+2. reports/_theme.css     your project's brand (optional)
+3. style.css              this report (optional)
 </code></pre>
-<p><strong>Override tokens; don't fork the sheet.</strong> Redefining a token restyles every
-component coherently; copying the stylesheet means inheriting every future fix
-by hand.</p>
-<h2 id="design-tokens">Design tokens</h2>
+<h2 id="1-pick-a-theme">1. Pick a theme</h2>
+<pre><code class="language-bash">tracebi theme list                 # the shipped themes
+tracebi theme use ocean            # writes reports/_theme.css for every report
+</code></pre>
+<p>A single report can pick one in <code>report.json</code>: <code>"theme": "ocean"</code>
+(<a href="../reference/report-json.html">report.json</a>). A theme sets the accent for the light and dark grounds and
+nothing else.</p>
+<h2 id="2-set-your-own-tokens">2. Set your own tokens</h2>
+<p>Override tokens in <code>reports/_theme.css</code> or a report's <code>style.css</code>. Don't copy
+the stylesheet: a copy misses every later fix.</p>
 <pre><code class="language-css">:root {
   --tb-accent:      #2e74b5;
-  --tb-accent-text: #1f5a96;   /* the same blue, deep enough for small text */
+  --tb-accent-text: #1f5a96;   /* the same blue, dark enough for small text */
   --tb-ink:         #0a1628;
   --tb-bg:          #eef2f8;
 }
 </code></pre>
-<p>Out of the box a report is Geist on neutral grounds with one cobalt
-accent and hairline cards: the same look as the web app. The face is inlined into
-the file (about 45 KB, Latin subset), so nothing is fetched and nothing needs installing;
-set <code>--tb-font</code> to use your own face instead.</p>
+<p>By default a report uses Geist on neutral grounds, one cobalt accent and
+hairline cards, like the web app. The font is inlined in the file (about
+45 KB, Latin subset). Set <code>--tb-font</code> to use your own.</p>
 <table>
 <thead>
 <tr>
@@ -107,96 +115,91 @@ set <code>--tb-font</code> to use your own face instead.</p>
 <tbody>
 <tr>
 <td><code>--tb-font</code> / <code>--tb-mono</code></td>
-<td>the type family, and the one for code</td>
+<td>The text font, and the font for code</td>
 </tr>
 <tr>
 <td><code>--tb-ink</code> / <code>--tb-muted</code></td>
-<td>text</td>
+<td>Text colours</td>
 </tr>
 <tr>
 <td><code>--tb-page</code> / <code>--tb-bg</code> / <code>--tb-surface</code></td>
-<td>the page, cards and tables, raised tints</td>
+<td>The page, cards and tables, raised tints</td>
 </tr>
 <tr>
 <td><code>--tb-accent</code> / <code>--tb-accent-text</code></td>
-<td>the accent (focus ring, bars, the first chart series, the editorial hero), and the same blue deepened for small text (links, hovers): override both</td>
+<td>The accent (focus ring, bars, first chart series, editorial hero) and a darker shade for small text such as links. Set both.</td>
 </tr>
 <tr>
 <td><code>--tb-dark-accent</code> / <code>--tb-dark-accent-text</code></td>
-<td>the same pair for the dark ground; set them too, or dark mode keeps the default cobalt</td>
+<td>The same pair on the dark ground. Without them dark mode keeps the default cobalt.</td>
 </tr>
 <tr>
 <td><code>--tb-text-xs</code> … <code>--tb-text-3xl</code></td>
-<td>the type scale: 12, 13, 14 (body), 16, 20, 28, 40px; <code>--tb-tracking-tight</code> from 28px up</td>
+<td>Type scale: 12, 13, 14 (body), 16, 20, 28, 40px; <code>--tb-tracking-tight</code> from 28px up</td>
 </tr>
 <tr>
 <td><code>--tb-good</code> / <code>--tb-bad</code></td>
-<td>direction: better and worse</td>
+<td>Better and worse</td>
 </tr>
 <tr>
 <td><code>--tb-rule</code></td>
-<td>borders and rules</td>
+<td>Borders and rules</td>
 </tr>
 <tr>
 <td><code>--tb-shadow</code></td>
-<td>none; the sheet draws no resting shadow (cards are a hairline). Left for a report's own CSS</td>
+<td>None by default (cards use a hairline); available to your own CSS</td>
 </tr>
 <tr>
 <td><code>--tb-radius</code>, <code>--tb-space-1..4</code></td>
-<td>shape and rhythm</td>
+<td>Corner radius and spacing</td>
 </tr>
 <tr>
 <td><code>--tb-cell-pad</code></td>
-<td>table density, in one place</td>
+<td>Table density</td>
 </tr>
 <tr>
 <td><code>--tb-measure</code></td>
-<td>the editorial's reading column: 68ch of its serif body</td>
+<td>The editorial reading column: 68 characters of its serif body</td>
 </tr>
 <tr>
 <td><code>--tb-chart-1..8</code></td>
-<td>the chart palette; <code>--tb-chart-1</code> is the accent</td>
+<td>Chart palette; <code>--tb-chart-1</code> is the accent</td>
 </tr>
 </tbody>
 </table>
-<p>Setting the accent pairs in <code>reports/_theme.css</code> is usually all a house style
-needs: the first chart series, links, the hero and the active tab follow it.
-The shipped themes (<code>tracebi theme list</code>) are exactly that, an accent preset
-for each ground.</p>
-<p><strong>Modes.</strong> A page follows the reader's system by default: the build gives a
-<code>&lt;html&gt;</code> with no <code>data-tb-mode</code> the value <code>auto</code>. Set <code>data-tb-mode="light"</code>
-(or <code>"dark"</code>) to pin it; an app sets <code>report.json</code> <code>"look"</code>. A report whose own
-<code>style.css</code> paints a light ground (a fixed paper colour, a light-only palette)
-should pin <code>light</code> until it styles the dark ground too.</p>
-<h2 id="components">Components</h2>
-<pre><code>.tb-page                     the page measure, 1,200px
+<p>The accent pairs are usually all a house style needs. The first chart series,
+links, the hero and the active tab follow them.</p>
+<p><strong>Light and dark.</strong> A page follows the reader's system by default
+(<code>data-tb-mode="auto"</code>). Set <code>data-tb-mode="light"</code> or <code>"dark"</code> on <code>&lt;html&gt;</code> to
+fix it; an app sets <code>report.json</code> <code>"look"</code>. If your <code>style.css</code> paints a light
+background, set <code>light</code> until you style the dark one too.</p>
+<h2 id="3-use-the-components">3. Use the components</h2>
+<pre><code>.tb-page                     the page width, 1,200px
 .tb-masthead                 opens the page: .tb-kicker, &lt;h1&gt;, .tb-standfirst,
                              .tb-masthead-meta (period, build time, .tb-verdict)
 .tb-footer                   ends the page: your sources, then the build's line
 .tb-grid   .tb-card
-.tb-span-4 / -6 / -8 / -12   the 12-column grid: a .tb-grid's panels name a span
+.tb-span-4 / -6 / -8 / -12   the 12-column grid
 .tb-lede                     the answer sentence under the masthead
 .tb-kpi  (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context)
-.tb-kpi--lead                the strip's main number: larger, not wider
-.tb-kpi-delta                a stamped change leading the context line
-.tb-spark                    a line/area chart in a KPI: the trend's shape alone
+.tb-kpi--lead                the main number: larger, not wider
+.tb-kpi-delta                a stamped change at the start of the context line
+.tb-spark                    a line or area chart inside a KPI
 .tb-table  (.tb-table--striped / .tb-table--compact / .tb-table--freeze)
 .tb-callout   .tb-note   .tb-badge
-.tb-good / .tb-bad           direction tones; pair with a sign or a word
-.tb-cols-2 / .tb-cols-3      shorthands: equal columns, one under 720px
+.tb-good / .tb-bad           better and worse; pair with a sign or a word
+.tb-cols-2 / .tb-cols-3      equal columns, one column under 720px
 .tb-tabs                     with data-tb-tab sections
 </code></pre>
-<p>Use them or ignore them — <a href="../reference/template-html.html">template.html</a> is your page, and
-nothing requires these classes.</p>
-<p>A typical top of page, built only from these:</p>
+<p>None are required. A typical top of page:</p>
 <pre><code class="language-html">&lt;header class=&quot;tb-masthead&quot; data-tb-period=&quot;End of August&quot;&gt;
   &lt;h1&gt;Fund book&lt;/h1&gt;
   &lt;p class=&quot;tb-standfirst&quot;&gt;The book at fair value, by sector and fund.&lt;/p&gt;
 &lt;/header&gt;
 &lt;p class=&quot;tb-lede&quot;&gt;
-  &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_issuer.sector&quot; id=&quot;top-sector&quot;&gt;—&lt;/span&gt;
+  &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;dim_issuer.sector&quot; id=&quot;top-sector&quot;&gt;&lt;/span&gt;
   is the largest sector, at
-  &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;fv_share&quot; data-tb-format=&quot;percent&quot; id=&quot;top-share&quot;&gt;—&lt;/span&gt;
+  &lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;top&quot; data-tb-cell=&quot;fv_share&quot; data-tb-format=&quot;percent&quot; id=&quot;top-share&quot;&gt;&lt;/span&gt;
   of the book.&lt;/p&gt;
 
 &lt;div class=&quot;tb-grid&quot;&gt;
@@ -211,96 +214,84 @@ nothing requires these classes.</p>
   &lt;/div&gt;
 &lt;/div&gt;
 </code></pre>
-<p>The <code>data-tb-*</code> attributes are covered in <a href="../reference/template-html.html">template.html — the figure grammar</a>. Here <code>fv_share</code> is
-a <code>share=</code> measure and <code>fv_growth</code> a <code>growth=</code> measure (<a href="../reference/measures.html">Measures</a>), so the
-comparison is a governed number with its own trace. <code>data-tb-direction</code> draws
-the ▲/▼ and picks <code>--tb-good</code> or <code>--tb-bad</code> from that number's sign.</p>
-<h2 id="what-you-get-without-writing-css">What you get without writing CSS</h2>
-<ul>
-<li>Numbers right-align in table columns, in tabular digits, and never wrap.</li>
-<li>A value figure with no <code>data-tb-format</code> gets the model's declared format, or
-  a readable default (<a href="../reference/number-formats.html">Number formats</a>).</li>
-<li>Keyboard focus is always visible, headings wrap evenly, and running text
-  stops at a readable line length.</li>
-<li>An empty table or chart says "no data" instead of showing a blank.</li>
-<li>Printing keeps the trace, the badges and every tab's content.</li>
-<li>The trace drawer doesn't animate for people who've turned motion off.</li>
-</ul>
-<h2 id="design-guidance">Design guidance</h2>
-<p>The framework ships design lessons next to its analysis lessons. List them with
-<code>tracebi knowledge</code> (the design ones start <code>design-</code>) and read one with
-<code>tracebi knowledge design-lead-with-the-answer</code>. They cover leading with the
-answer, KPIs with context, choosing the chart, color, number formats, tables,
-layout and spacing, hierarchy, the words on the page, theming with tokens,
-empty states and accessibility. Agents that load skills get the same review as
-the <code>tracebi-designer</code> skill.</p>
-<p><code>tracebi spec validate</code> also warns about common design problems in a JSON spec,
-such as unsorted bar charts or more than five KPI cards, and names the lesson
-that explains the fix.</p>
-<h2 id="the-one-rule">The one rule</h2>
-<p><strong>Presentation never changes a number.</strong></p>
-<p>A stylesheet may restyle a <code>.tb-badge</code>; it may never re-colour honesty.
-Provenance chooses the badge class — <code>--verified</code> / <code>--derived</code> /
-<code>--unverified</code> — and CSS cannot move a figure between them.</p>
-<p>Likewise <a href="../reference/number-formats.html">derived formats</a> change how a number is <em>displayed</em>,
-never its value.</p>
-<h2 id="writing-scriptjs">Writing <code>script.js</code></h2>
-<pre><code class="language-js">tracebi.ready(function (data) {
-  // data is the stamped rows, already decoded
-});
-</code></pre>
-<p><strong>Never call <code>tracebi.data()</code> at the top level.</strong> On a large-detail artifact the
-data decodes in a worker <em>after</em> <code>script.js</code> runs, so a bare call returns <code>[]</code>
-there and rows on a small report. <code>ready(fn)</code> behaves identically on both.</p>
-<p>Two things that belong in the query, not in JS:</p>
-<ul>
-<li><strong>Sorting and slicing</strong> — <code>order_by</code> + <code>limit</code> (<a href="../reference/queries.html">Queries</a>). Sorting in JS
-  moves the ordering out of the trace. If readers should re-sort a table,
-  add <code>data-tb-sort</code> to it: the query's order stays the default, and the
-  reader's clicks only reorder the stamped rows.</li>
-<li><strong>Aggregation</strong> — never in <code>script.js</code>. A figure's number is only ever a
-  query result: a filter re-runs the binding's own query on the page; a sum in
-  your script is a number nobody can re-run.</li>
-</ul>
-<h2 id="what-you-cannot-load">What you cannot load</h2>
-<p>The artifact ships with a strict CSP and is meant to work offline, on a plane,
-from an email attachment. So:</p>
-<ul>
-<li><strong>no CDN scripts, stylesheets, fonts or images</strong></li>
-<li><strong>no <code>fetch</code>/XHR</strong> — <code>connect-src 'none'</code></li>
-</ul>
-<p>Everything must be inlined at build time. That constraint is what makes the file
-self-contained and the offline <code>verify --file</code> check meaningful.</p>
-<p>Charting is inlined for you when the page has a chart figure. <code>"libs":
-["echarts"]</code> in <a href="../reference/report-json.html">report.json</a> is optional.</p>
-<h2 id="fonts-and-images">Fonts and images</h2>
-<p>Put them in the package's <code>assets/</code> folder and reference them by relative path.
-The build inlines each one as a <code>data:</code> URI, so the file still fetches nothing:</p>
+<p><code>fv_share</code> is a <code>share=</code> measure and <code>fv_growth</code> a <code>growth=</code> measure
+(<a href="../reference/measures.html">Measures</a>), so the comparison has its own trace. <code>data-tb-direction</code> draws
+▲ or ▼ and picks <code>--tb-good</code> or <code>--tb-bad</code> from the number's sign. The
+attributes are in <a href="../reference/template-html.html">template.html</a>.</p>
+<h2 id="4-add-fonts-and-images">4. Add fonts and images</h2>
+<p>Put them in the package's <code>assets/</code> folder and reference them by relative
+path. The build inlines each one, so the file still fetches nothing:</p>
 <pre><code class="language-css">@font-face {
   font-family: &quot;Fraunces&quot;;
   font-weight: 600;
   src: url(assets/fonts/fraunces-latin-600-normal.woff2) format(&quot;woff2&quot;);
 }
-:root { --tb-font-display: &quot;Fraunces&quot;, var(--tb-font-serif); }   /* the headline and the lead number */
+:root { --tb-font-display: &quot;Fraunces&quot;, var(--tb-font-serif); }   /* headline and lead number */
 .tb-masthead-mark { width: 120px; height: 28px; background: url(assets/logo.svg) left / contain no-repeat; }
 </code></pre>
 <pre><code class="language-html">&lt;img src=&quot;assets/logo.svg&quot; alt=&quot;Company&quot;&gt;
 </code></pre>
 <p>Allowed types: woff2, woff, ttf, otf, svg, png, jpg, webp, gif, avif. A missing
-file, any other type, or a path outside <code>assets/</code> fails the load with the file
-named. Keep images small: every byte ships inside the report. Check a font's
-licence allows embedding (SIL OFL fonts do; ship the licence text alongside).</p>
-<p><code>examples/portfolio_project/reports/portfolio_model/portfolio_showcase/</code> shows it all on
-the system: a <code>style.css</code> that is tokens only (one inlined display face as
-<code>--tb-font-display</code>, its own teal accent), every chart type, a KPI delta, data bars, sortable
-columns, filters, a scenario and a custom d3 figure. <code>reports/wealth_model/aum_by_branch</code>
-is the one bespoke look (its own faces, palette and hero band
-with inlined artwork) on the same masthead, grid, footer and trace.</p>
-<h2 id="related">Related</h2>
+file, another type, or a path outside <code>assets/</code> fails the build with the file
+named. Every byte ships inside the report, so keep images small. Check that a
+font's licence allows embedding (SIL OFL fonts do; ship the licence text too).</p>
+<h2 id="5-add-javascript">5. Add JavaScript</h2>
+<pre><code class="language-js">tracebi.ready(function (data) {
+  // data is the stamped rows, already decoded
+});
+</code></pre>
+<p>Don't call <code>tracebi.data()</code> at the top level. A large report decodes its data
+after <code>script.js</code> runs, so a top-level call returns <code>[]</code> there. <code>ready(fn)</code>
+works on every report.</p>
+<p>Two things belong in the query, not in JavaScript:</p>
 <ul>
-<li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup</li>
-<li><a href="../guides/web-customization.html">Customizing the TraceBi Web App</a> — theming the served web UI (a different surface)</li>
-<li><a href="../reference/number-formats.html">Number formats</a> — display defaults</li>
+<li><strong>Sorting and slicing.</strong> Use <code>order_by</code> and <code>limit</code> (<a href="../reference/queries.html">Queries</a>). For a
+  table readers can re-sort, add <code>data-tb-sort</code>: the query's order stays the
+  default and clicks only reorder the stamped rows.</li>
+<li><strong>Totals.</strong> A figure's number is only ever a query result. A sum in your
+  script is a number nobody can re-run.</li>
+</ul>
+<h2 id="what-happened">What happened</h2>
+<p>You get these without writing CSS:</p>
+<ul>
+<li>Numbers right-align in tables, use tabular digits and never wrap.</li>
+<li>A value with no <code>data-tb-format</code> gets the model's format, or a readable
+  default (<a href="../reference/number-formats.html">Number formats</a>).</li>
+<li>Keyboard focus is visible, headings wrap evenly, and text stops at a
+  readable line length.</li>
+<li>An empty table or chart says "no data".</li>
+<li>Printing keeps the trace, the badges and every tab's content.</li>
+<li>The trace drawer doesn't animate for readers who turned motion off.</li>
+</ul>
+<h2 id="rules">Rules</h2>
+<ul>
+<li><strong>Styles never change a number.</strong> A stylesheet can restyle a <code>.tb-badge</code>,
+  but the badge class (<code>--verified</code>, <code>--derived</code>, <code>--unverified</code>) comes from
+  the figure's provenance, and CSS cannot move a figure between them. Number
+  formats change how a number is shown, never its value.</li>
+<li><strong>Nothing loads from outside the file.</strong> The page has a strict content
+  security policy and works offline: no CDN scripts, stylesheets, fonts or
+  images, and no <code>fetch</code> or XHR (<code>connect-src 'none'</code>). The build inlines the
+  charting library when the page has a chart; <code>"libs": ["echarts"]</code> in
+  <a href="../reference/report-json.html">report.json</a> keeps the older engine.</li>
+</ul>
+<h2 id="design-advice">Design advice</h2>
+<p><code>tracebi knowledge</code> lists TraceBi's lessons; the design ones start with
+<code>design-</code>. Read one with <code>tracebi knowledge design-lead-with-the-answer</code>. They
+cover leading with the answer, KPIs with context, choosing a chart, colour,
+number formats, tables, layout, hierarchy, wording, themes, empty states and
+accessibility. Agents that load skills get the same review from the
+<code>tracebi-designer</code> skill. <code>tracebi spec validate</code> warns about common design
+problems in a JSON spec, such as unsorted bar charts or more than five KPI
+cards.</p>
+<h2 id="next">Next</h2>
+<ul>
+<li>See it all in one report: <code>examples/portfolio_project/reports/portfolio_model/portfolio_showcase/</code>
+  uses a tokens-only <code>style.css</code> (one inlined display face, its own teal
+  accent) with every chart type, a KPI delta, data bars, sortable columns,
+  filters, a scenario and a custom D3 figure. <code>reports/wealth_model/aum_by_branch</code>
+  has its own fonts, palette and hero artwork on the same frame.</li>
+<li>Restyle the web app itself: <a href="../guides/web-customization.html">Customize the web app</a></li>
 </ul>
   </main>
 </div>

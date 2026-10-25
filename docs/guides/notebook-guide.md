@@ -1,140 +1,84 @@
-# TraceBi in Notebooks
+# Use TraceBi in a notebook
 
-How to use TraceBi from Jupyter — rich previews while you explore, and how a
-notebook becomes a phase-① transform once the analysis settles.
+Explore data in Jupyter with rich previews, then turn the notebook into a
+transform that writes the warehouse.
 
-Companion to the [Analyst Guide](analyst-guide.md), which covers the full
-development flow; this guide covers what's different in a notebook.
+## Before you begin
 
----
+- A TraceBi project (`tracebi init`)
+- The data dependencies and IPython for previews:
 
-## Where the notebook fits the workflow
+  ```bash
+  pip install "tracebi[analyst]"   # DuckDB, the pandas stack, dotenv
+  pip install ipython              # rich HTML previews, unless you already run Jupyter
+  ```
 
-TraceBi's spine is the three-phase workflow in [[the-three-phase-workflow]]:
-phase ① `transforms/` writes clean star-schema tables into the warehouse,
-phase ② `models/` declares a thin `DataModel` over it, and phase ③ `reports/`
-is a report package served in the app, in the library under its model.
-
-A notebook is the natural home for **phase ①** when the work outgrows SQL —
-the slow, unconstrained pandas analysis — because the rich previews below let you *see* the data as you clean
-it, before you commit anything. When the analysis settles, sink the named
-tables:
-
-```python
-from tracebi.connectors import DuckDBConnector
-from tracebi.project_config import sink_target
-
-wh = DuckDBConnector("warehouse", database=sink_target(ROOT))   # the warehouse tracebi.yaml names
-wh.write(fact_holdings_df, "fact_holdings")   # freeze: the sink is now the contract
-```
-
-From there the model (②) and report (③) are small, reviewable artifacts that
-never re-run the notebook. The trust machinery (`tracebi verify`, stamped
-queries) applies from the model boundary onward — it does not read the pandas in
-your notebook, by design.
-
-So a notebook has two surviving roles: the **discovery workbench feed** while
-you explore, and — once the cleaning settles — a **notebook-shaped transform**
-you run with `tracebi run-transform`. Both are covered below.
-
----
-
-## Setup
+## 1. Create a notebook-shaped transform
 
 ```bash
-pip install "tracebi[analyst]"   # the data deps: DuckDB, the pandas stack, dotenv
-pip install ipython              # rich HTML previews (or run inside an existing Jupyter env)
+tracebi new-transform "Holdings clean" --python   # transforms/holdings_clean.py
 ```
 
-`tracebi[analyst]` gives you the data dependencies; the rich `_repr_html_`
-previews below additionally need IPython, which the `analyst` extra does not
-pull in.
+The file uses `# %%` cell markers and `# %% [markdown]` prose cells. VS Code,
+Cursor, PyCharm and Jupyter (with jupytext) open it as a notebook, and it
+stays plain Python that runs top to bottom. A blank `.ipynb` works too.
+Without `--python`, `tracebi new-transform` writes a SQL transform.
 
-Scaffold a notebook-shaped transform, or start from a blank notebook — nothing
-about TraceBi requires the scaffold:
+## 2. Look at the data
 
-```bash
-tracebi list-models                      # see what shared models are available
-tracebi new-transform "Holdings clean" --python   # → transforms/holdings_clean.py (# %% cells)
-```
-
-`tracebi new-transform --python` writes a **notebook-shaped `.py`** (without
-`--python` it writes the SQL form, the default): the `# %%` markers
-are cell boundaries and `# %% [markdown]` cells are prose, so VS Code, Cursor,
-PyCharm, and Jupyter (via jupytext) open it *as* a notebook — run it
-cell-by-cell — while it stays plain, reviewable Python that runs top-to-bottom.
-Models are YAML (`tracebi new-model`); reports scaffold with
-`tracebi new-dashboard` or `tracebi new-report`.
-
-## Rich object previews
-
-`DataSet` and `DataModel` render as rich HTML in notebooks. Putting one at
-the end of a cell shows shape, columns, dtypes, sample rows, and the lineage
-chain — no `print` calls needed:
+`DataSet` and `DataModel` render as HTML at the end of a cell:
 
 ```python
 from tracebi.model_registry import get_model, list_models
 
-print(list_models())             # see what's in models/
-model = get_model("sales_model") # loads models/sales_model.yaml — no web server needed
-model                            # tables, relationships, facts/dimensions, as HTML
+print(list_models())             # what's in models/
+model = get_model("sales_model") # no web server needed
+model                            # tables, relationships, facts and dimensions
 
 orders = model.load("orders")
-orders                           # shape, dtypes, sample rows, operation chain
-
-orders.help()          # plain-text cheat sheet of every verb
-model.describe()       # plain-text model summary
+orders                           # shape, dtypes, sample rows, lineage
+orders.help()                    # every DataSet method
+model.describe()                 # the model as text
 ```
 
-This makes notebooks the best place to *discover* data before committing
-transforms to a script.
+## 3. Show your work in the app (optional)
 
-## The discovery workbench
-
-While you explore, push what you find into a live, shared surface. Open the
-app with no report named, in a terminal:
+In a terminal:
 
 ```bash
-tracebi dev            # no report named → the app's Data page, with the project feed
+tracebi dev            # the app's Data page, with the project feed
 ```
 
-Then, from any notebook cell, `show()` frames, charts, and notes into its feed
-(the app's Data page, under *From your agent*):
+Then, from any cell:
 
 ```python
 import tracebi.workbench as workbench
 
-workbench.show(fact_holdings_df, note="after dedupe — 3 rows dropped")
+workbench.show(fact_holdings_df, note="after dedupe: 3 rows dropped")
 workbench.show(by_sector_df, chart="bar", x="sector", y="market_value")
 ```
 
-`show()` is zero-config and a no-op when nothing is listening (no fresh
-heartbeat), so the same cell is harmless outside a `tracebi dev` session. It is
-where phases ① and ② become visible before any report package exists.
+Each call appears on the Data page under *From your agent*. `show()` needs no
+setup and does nothing when `tracebi dev` is not running, so the cell is safe
+to leave in.
 
-## Inline report preview
-
-Render a report directly into the notebook output — no server, no files left
-behind:
+## 4. Preview a report in the notebook (optional)
 
 ```python
 from tracebi.reports.html_renderer import HTMLRenderer
 
-HTMLRenderer().preview(report)                  # embedded iframe, 800px tall
-HTMLRenderer().preview(report, height=1200)     # taller
+HTMLRenderer().preview(report)                  # an embedded frame, 800px tall
+HTMLRenderer().preview(report, height=1200)
 ```
 
-This is the notebook equivalent of `tracebi dev`'s live preview loop:
-re-run the cell after each change.
+Re-run the cell after each change.
 
-## From notebook to transform
+## 5. Write the warehouse tables
 
-The notebook-shaped `.py` **is** the production artifact — there is no separate
-conversion step. End it by sinking your clean star-schema tables and, optionally,
-declaring a **sink contract**:
+End the file by writing clean star-schema tables, and declare a sink contract:
 
 ```python
-# %%  Sink — the contract is the named tables, not how you produced them
+# %%  Sink: the named tables are what the model reads
 from tracebi.connectors import DuckDBConnector
 from tracebi.contracts import contract
 from tracebi.project_config import sink_target
@@ -142,62 +86,54 @@ from tracebi.project_config import sink_target
 WAREHOUSE = sink_target(ROOT)
 DuckDBConnector("warehouse", database=WAREHOUSE).write(fact_holdings_df, "fact_holdings")
 
-# %%  Declare the sink CONTRACT (optional, recommended)
+# %%  The sink contract (optional, recommended)
 with contract("holdings", warehouse=WAREHOUSE) as c:
     c.rows("fact_holdings", at_least=1)
     c.not_null("fact_holdings", ["holding_id", "market_value"])
     c.foreign_key("fact_holdings", "sector_key", refers_to=("dim_sector", "sector_key"))
 ```
 
-Run it top-to-bottom in a fresh namespace:
+## 6. Run it top to bottom
 
 ```bash
-tracebi run-transform holdings_clean   # executes transforms/holdings_clean.py or .ipynb
+tracebi run-transform holdings_clean   # runs transforms/holdings_clean.py or .ipynb
 ```
 
-**How `tracebi run-transform` executes a file:** the code cells are
-concatenated top-to-bottom into one script and executed in a fresh namespace,
-so the sink never comes from out-of-order kernel state. Line magics
-(`%matplotlib inline`) and shell escapes (`!pip install ...`) are silently
-dropped — they only mean something inside a Jupyter kernel. In a notebook-shaped
-`.py`, `# %% [markdown]` cells stay as reviewable prose comments; only a literal
-`.ipynb`'s markdown cells are dropped at run time.
+The runner joins the code cells into one script and runs it in a fresh
+namespace. Line magics (`%matplotlib inline`) and shell escapes
+(`!pip install ...`) are dropped, because they only work inside a Jupyter
+kernel. Markdown cells in a `.py` stay as comments; a `.ipynb`'s markdown
+cells are dropped.
 
-Practical implications:
+## What happened
 
-- **Cell order matters.** The file must run clean top-to-bottom
-  (`Kernel → Restart & Run All` is the honesty test). Hidden state from
-  out-of-order execution won't exist when the runner executes it.
-- **Don't rely on magics for logic.** Anything load-bearing belongs in
-  plain Python.
-- **Keep the sink idempotent.** A rerun replaces the warehouse tables.
+- The notebook file is the production transform. There is no conversion step.
+- A fresh run means hidden state from cells run out of order cannot reach the
+  warehouse. Test with **Kernel → Restart & Run All** before you commit.
+- A rerun replaces the warehouse tables.
+- The model and reports read only the tables. They never re-run the notebook.
+  `tracebi verify` does not read the notebook's pandas: lineage is traced from
+  the sink, not through the transform.
 
-## Exporting the exploration record
-
-A discovery session is a lab notebook, not a report. Capture it verbatim:
+## Save the exploration
 
 ```bash
-tracebi session export             # → explorations/<name>.html
-tracebi session export --format md # → explorations/<name>.md (the markdown twin)
+tracebi session export             # explorations/<name>.html
+tracebi session export --format md # explorations/<name>.md
 ```
 
-This writes the committed record of what you looked at — frames, charts, and
-notes from the workbench feed. It carries **no manifest**, because nothing in it
-is a verified figure; `tracebi verify` refuses the file by name rather than
-letting a lab notebook read as a trace. It is the honest home for the
-narrative that a governed report deliberately does not carry.
+This saves the tables, charts and notes you posted with `show()`. It carries
+no manifest, and `tracebi verify` refuses it.
 
-## Publishing a report from a notebook
+## Next
 
-A report the app serves is a **package** (`reports/<name>/`), and there is one
-renderer: `tracebi new-dashboard` or `tracebi new-report` → `tracebi dev` →
-`tracebi report build`, covered in the [Analyst Guide](analyst-guide.md).
-A notebook in `reports/` that registers a factory with `@register.report(...)`
-is still imported at startup, but a report with no package is refused (HTTP
-422 naming the fix), and `tracebi validate` flags it. The pandas a model cannot
-express goes in the package's `report.py`, whose outputs are stamped
-`verifiable: false`.
-
-Reference files: `examples/portfolio_project/transforms/holdings_transform_pandas.py`,
-`examples/portfolio_project/models/portfolio_model.yaml`, and
-`examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/`.
+- Build a report on the tables you wrote: `tracebi new-dashboard` or
+  `tracebi new-report`, then `tracebi dev` and `tracebi report build`
+  ([[analyst-guide]])
+- A notebook in `reports/` that registers a factory with
+  `@register.report(...)` is still imported, but a report with no package is
+  refused (HTTP 422) and `tracebi validate` flags it. Pandas a model cannot
+  express goes in a package's `report.py`.
+- Reference files: `examples/portfolio_project/transforms/holdings_transform_pandas.py`,
+  `examples/portfolio_project/models/portfolio_model.yaml` and
+  `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/`.

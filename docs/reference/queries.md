@@ -1,31 +1,7 @@
 # Queries
 
-**What a report may ask a [[model]]: measures, dimensions, filters, `having`,
-ordering, limits — as data, not SQL.**
-
-A query is a `QuerySpec`: validatable, serializable, diffable in a pull request,
-and replayable. That is what lets [[trace|`tracebi verify`]] re-run it later.
-
----
-
-## The shape
-
-```python
-model.query(
-    fact,                 # required — a registered fact
-    measures,             # required — declared names, or {out_col: spec}
-    dimensions=None,      # ["dim_name.attribute", ...]; None = totals only
-    filters=None,         # WHERE  — before aggregation
-    having=None,          # HAVING — after aggregation
-    aggregate=True,
-    allow_fanout=False,
-    allow_rate_agg=False,
-    order_by=None,
-    limit=None,
-)
-```
-
-The same thing as JSON, which is what a [[report-json]] binding holds:
+A query is what a report asks a [[model]]: measures, dimensions, filters,
+`having`, ordering and a limit, written as data rather than SQL.
 
 ```json
 {
@@ -39,157 +15,28 @@ The same thing as JSON, which is what a [[report-json]] binding holds:
 }
 ```
 
-Unknown fields are rejected by name.
+This is what a [[report-json]] binding holds. Because a query is data (a
+`QuerySpec`), it can be checked before it runs, reviewed in a pull request,
+and re-run later by `tracebi verify`. Unknown fields are refused by name.
 
-## Measures
-
-**By declared name** — the governed form:
-
-```python
-measures=["revenue", "gross_margin", "margin_pct"]
-```
-
-**Ad hoc**, when the model hasn't declared it yet — the same three kinds:
+## In Python
 
 ```python
-measures={
-    "revenue":    "sum",                                    # aggregate a column
-    "units":      ("qty", "sum"),                           # aggregate a renamed column
-    "margin":     {"expr": "revenue - cost", "agg": "sum"}, # a row expression
-    "margin_pct": {"ratio": ["margin", "revenue"]},         # divided AFTER aggregation
-}
+model.query(
+    fact,                 # required: a registered fact
+    measures,             # required: declared names, or {out_col: spec}
+    dimensions=None,      # ["dim_name.attribute", ...]; None for totals only
+    filters=None,         # WHERE: before aggregation
+    having=None,          # HAVING: after aggregation
+    aggregate=True,
+    allow_fanout=False,
+    allow_rate_agg=False,
+    order_by=None,
+    limit=None,
+)
 ```
 
-An undeclared name in the list form is refused, and tells you both fixes:
-declare it with `add_measure()`, or pass the ad-hoc form.
-
-## Dimensions
-
-Dotted references — `"dim_name.attribute"`. Attributes include declared ones
-plus derived [[measures#`add_time_grain` — group by month/quarter/…|time grains]]
-and [[measures#`add_value_bins` — group by a numeric band|value bins]].
-
-Omit them for totals only.
-
----
-
-## Filters — `WHERE`, before aggregation
-
-### Operators
-
-```
-eq  ne  in  not_in  gt  gte  lt  lte  between  is_null  not_null  contains
-```
-
-A **closed set**, deliberately: free SQL cannot be validated and is an injection
-surface. Every operator is parameterised.
-
-- `between` takes `[low, high]`
-- `in` / `not_in` take a list — an empty list matches nothing / everything,
-  explicitly
-- `contains` is a substring match
-- `is_null` / `not_null` ignore the value
-
-### The five forms
-
-```python
-filters={"status": "shipped"}                    # 1. equality
-filters={"region": ["NE", "SE"]}                 # 2. list → in
-filters={"revenue": {"gte": 1000}}               # 3. explicit operator
-filters={"dim_customer.region": "West"}          # 4. dimension attribute
-filters={"or": [{"sector": "Tech"},              # 5. boolean group
-                {"rating": "AAA"}]}
-```
-
-A dimension referenced only by a filter is still joined.
-
-### Boolean groups
-
-`or` and `and` are reserved keys taking a list of condition groups. **Every
-other key in the same dict ANDs with the group**, and groups nest:
-
-```python
-filters={
-    "status": "shipped",                      # AND-ed with the group below
-    "or": [
-        {"dim_customer.segment": "Enterprise"},
-        {"revenue": {"gte": 10_000}},
-        {"and": [                             # groups nest
-            {"dim_customer.region": ["NE", "SE"]},
-            {"qty": {"gt": 100}},
-        ]},
-    ],
-}
-# WHERE status = 'shipped'
-#   AND (segment = 'Enterprise' OR revenue >= 10000
-#        OR (region IN ('NE','SE') AND qty > 100))
-```
-
-Use `in` for OR over **one column's values**; use `or` for OR across
-**different columns or operators**.
-
----
-
-## `having` — after aggregation
-
-**This is the distinction that quietly ruins totals if you get it backwards:**
-
-```python
-having={"revenue": {"gte": 250}}    # keeps GROUPS whose summed revenue ≥ 250 — totals intact
-filters={"revenue": {"gte": 250}}   # drops raw ROWS below 250 BEFORE summing — every total changes
-```
-
-Same operators and value spellings as filters, on **result** columns — measure
-names, ratios, shares, ranks, running totals, growth. It runs after every
-post-aggregation measure is computed, which is exactly why it can filter them.
-
-Two limits worth knowing:
-
-- **No boolean grouping.** `having` is a flat dict; every entry ANDs. Only
-  `filters` supports `or`/`and`.
-- Refused with `aggregate=False` — there are no group totals to filter.
-
----
-
-## Ordering and limit
-
-```python
-order_by=["-revenue"]                            # '-col' desc, 'col' asc
-order_by=[{"column": "revenue", "desc": True}]   # canonical form
-order_by=["dim_customer.region", "-revenue"]     # earlier keys sort first
-```
-
-A lone key (`"-revenue"`, or a single dict) is accepted and wrapped — otherwise
-a bare string would iterate as characters and fail at a character. The canonical
-form is a list.
-
-Keys may be any **result** column, measures included.
-
-### `limit` requires `order_by`
-
-```python
-limit=10                       # REFUSED on its own
-order_by=["-revenue"], limit=10  # correct
-```
-
-> *"without a stated ordering, 'first N rows' silently masquerades as 'top N'."*
-
-### Ties break deterministically
-
-After your stated keys, **every remaining column** is appended as an ascending
-tie-break — the dimension columns first, then the measures — so the sort key
-uniquely orders every row.
-
-Without this, a "top 10" whose values tie at the boundary returns a different
-set across identical runs, and the fingerprint moves for no reason.
-
-The fully resolved ordering is stamped into the recorded query, so a replay
-compares like with like. A non-aggregate query with no `order_by` gets a
-canonical total order imposed for the same reason.
-
----
-
-## A complete query
+It returns a `DataSet` with full [[lineage]]:
 
 ```python
 top_segments = model.query(
@@ -206,26 +53,125 @@ top_segments = model.query(
     order_by=["-revenue"],
     limit=10,
 )
-
 top_segments.print_lineage()   # load → join → filter → aggregate → assign → filter → sort
-top_segments.fingerprint()     # reproducible content hash
+top_segments.fingerprint()     # a content hash that reproduces
 ```
 
-Returns a `DataSet` with full [[lineage]] — hand it to a report section and the
-lineage travels into the manifest.
+## `measures`
+
+| Form | Example |
+|---|---|
+| Declared names | `["revenue", "gross_margin", "margin_pct"]` |
+| Ad hoc: aggregate a column | `{"revenue": "sum"}` |
+| Ad hoc: aggregate a renamed column | `{"units": ("qty", "sum")}` |
+| Ad hoc: row expression | `{"margin": {"expr": "revenue - cost", "agg": "sum"}}` |
+| Ad hoc: ratio after aggregation | `{"margin_pct": {"ratio": ["margin", "revenue"]}}` |
+
+An undeclared name in the list form is refused with both fixes: declare it
+with `add_measure()`, or use the ad-hoc form.
+
+## `dimensions`
+
+Dotted references, `"dim_name.attribute"`. Attributes include declared ones,
+time grains and value bins ([[measures]]). Leave them out for totals only.
+
+## `filters`
+
+Filters apply before aggregation (`WHERE`). Every operator is parameterised,
+and the set is closed:
+
+```
+eq  ne  in  not_in  gt  gte  lt  lte  between  is_null  not_null  contains
+```
+
+| Operator | Value |
+|---|---|
+| `between` | `[low, high]` |
+| `in` / `not_in` | A list. An empty list matches nothing / everything. |
+| `contains` | A substring |
+| `is_null` / `not_null` | Ignored |
+
+```python
+filters={"status": "shipped"}                    # equality
+filters={"region": ["NE", "SE"]}                 # a list means in
+filters={"revenue": {"gte": 1000}}               # an operator
+filters={"dim_customer.region": "West"}          # a dimension attribute
+filters={"or": [{"sector": "Tech"},              # a boolean group
+                {"rating": "AAA"}]}
+```
+
+A dimension used only in a filter is still joined.
+
+**Boolean groups.** `or` and `and` take a list of condition groups. Every
+other key in the same dict is ANDed with the group, and groups nest:
+
+```python
+filters={
+    "status": "shipped",                      # ANDed with the group below
+    "or": [
+        {"dim_customer.segment": "Enterprise"},
+        {"revenue": {"gte": 10_000}},
+        {"and": [
+            {"dim_customer.region": ["NE", "SE"]},
+            {"qty": {"gt": 100}},
+        ]},
+    ],
+}
+# WHERE status = 'shipped'
+#   AND (segment = 'Enterprise' OR revenue >= 10000
+#        OR (region IN ('NE','SE') AND qty > 100))
+```
+
+Use `in` for several values of one column; use `or` across columns or
+operators.
+
+## `having`
+
+`having` applies after aggregation, to result columns: measures, ratios,
+shares, ranks, running totals, growth. It uses the same operators as filters.
+
+```python
+having={"revenue": {"gte": 250}}    # keeps groups whose total revenue is ≥ 250; totals unchanged
+filters={"revenue": {"gte": 250}}   # drops rows under 250 before summing; every total changes
+```
+
+- `having` is a flat dict; every entry is ANDed. Only `filters` takes `or` and
+  `and`.
+- It is refused with `aggregate=False`.
+
+## `order_by`
+
+```python
+order_by=["-revenue"]                            # '-col' descending, 'col' ascending
+order_by=[{"column": "revenue", "desc": True}]   # the canonical form
+order_by=["dim_customer.region", "-revenue"]     # earlier keys sort first
+```
+
+- Keys may be any result column, measures included.
+- A lone key (`"-revenue"`, or one dict) is wrapped in a list.
+- After your keys, every remaining column is added as an ascending
+  tie-break, dimensions first, then measures. Without it, a top 10 with ties
+  at the boundary could return a different set each run and move the
+  fingerprint.
+- The resolved ordering is stamped into the recorded query. A non-aggregate
+  query with no `order_by` gets a full ordering for the same reason.
+
+## `limit`
+
+`limit` requires `order_by`. Without a stated order, "first N rows" would pass
+for "top N".
+
+```python
+order_by=["-revenue"], limit=10    # correct
+limit=10                           # refused
+```
 
 ## Order of operations
 
-Worth knowing, because it explains what `having` can filter and what `share`
-and `running` are computed over:
-
 ```
-engine aggregation → ratios → shares → windows (rank/running)
+aggregation → ratios → shares → windows (rank, running)
   → period-over-period → to-date → having → order_by → limit
 ```
 
-## Related
-
-- [[measures]] — what you can ask for
-- [[report-json]] — where a query lives in a report
-- [[model]] — what answers it
+This is why `having` can filter a rank, and why a share is computed over the
+whole result.

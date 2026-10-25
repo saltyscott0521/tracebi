@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Sign in to the app and the CLI — TraceBi docs</title>
+<title>Sign in with your company login — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Sign in to the app and the CLI">
+<meta name="description" content="Sign in with your company login">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a class="on" href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a class="on" href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,87 +61,99 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="sign-in-to-the-app-and-the-cli">Sign in to the app and the CLI</h1>
-<p><strong>With the company login turned on, everyone signs in to the TraceBi app as
-themselves, and their role decides what they may do. The command line signs in
-the same way: <code>tracebi login</code>.</strong></p>
-<p>This is for the person who runs the server (an admin) and for the people who
-use it. It uses the same identity-provider registration as the connector setup
-in <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>; set that up first, then the one extra
-redirect address below.</p>
-<hr>
-<h2 id="turn-it-on-admin">Turn it on (admin)</h2>
-<p>Set the OIDC variables from <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-(<code>TRACEBI_OIDC_ISSUER</code>, <code>TRACEBI_OIDC_CLIENT_ID</code>, <code>TRACEBI_OIDC_CLIENT_SECRET</code>,
-<code>TRACEBI_OIDC_ROLE_MAP</code>, <code>TRACEBI_PUBLIC_URL</code>). The app's own sign-in comes on
-with them. At your identity provider, <strong>register two redirect URIs</strong> on the one
-app registration:</p>
+<h1 id="sign-in-with-your-company-login">Sign in with your company login</h1>
+<p>Turn on single sign-on so people sign in to TraceBi with their company account
+and get a role from their groups. The CLI uses the same sign-in through
+<code>tracebi login</code>.</p>
+<h2 id="before-you-begin">Before you begin</h2>
 <ul>
-<li><code>https://bi.example.com/oauth/callback</code> (the connectors)</li>
-<li><code>https://bi.example.com/login/callback</code> (the app)</li>
+<li>An OIDC identity provider (Okta, Entra ID, Google Workspace, Keycloak)</li>
+<li>The connector setup from <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>, which registers the
+  app with your provider</li>
 </ul>
-<p>Restart. The server log says <code>app sign-in: /login</code>.</p>
-<p><strong>This turns on role enforcement.</strong> Elsewhere enforcement is opt-in so a
-running server is never locked out of its own pipelines. Here you chose
-per-person sign-in, so roles apply from the first request: <code>viewer</code> reads and
-queries, <code>analyst</code> runs reports and writes drafts, <code>admin</code> also runs pipelines
-and keeps selection cuts. A person in no mapped group gets
-<code>TRACEBI_OIDC_DEFAULT_ROLE</code> (<code>viewer</code>). Map your admins before you restart.</p>
-<p><strong>It replaces Basic and proxy-header auth.</strong> The server refuses to start with
-<code>TRACEBI_OIDC_ISSUER</code> and <code>TRACEBI_AUTH_USER</code>/<code>TRACEBI_AUTH_PASS</code> or
-<code>TRACEBI_AUTH_PROXY_HEADER</code> together: pick one way to say who a person is. If a
-proxy in front of TraceBi has a login of its own, let <code>/login</code>, <code>/logout</code>,
-<code>/login/callback</code>, <code>/authorize</code>, <code>/token</code>, <code>/register</code>, <code>/revoke</code>,
-<code>/oauth/callback</code>, <code>/mcp</code> and <code>/.well-known/</code> through without it.</p>
-<h2 id="in-the-browser">In the browser</h2>
-<p>Open the app. Without a session you are sent to the company login and, once
-signed in, back to the page you asked for. The sidebar shows the places your
-role uses: everyone Reports and Docs, an analyst also Review and Data
-(where only an admin runs a refresh or sets a credential). The sidebar footer shows who you are and a <strong>Sign out</strong> button. Signing out ends the session at TraceBi; your
-identity provider may still be signed in, so the next visit signs you back in
-without a password.</p>
-<p>What is kept:</p>
+<h2 id="for-admins-turn-it-on">For admins: turn it on</h2>
+<ol>
+<li>Set these variables on the server: <code>TRACEBI_OIDC_ISSUER</code>,
+   <code>TRACEBI_OIDC_CLIENT_ID</code>, <code>TRACEBI_OIDC_CLIENT_SECRET</code>,
+   <code>TRACEBI_OIDC_ROLE_MAP</code> and <code>TRACEBI_PUBLIC_URL</code>. The app's sign-in turns on
+   with them.</li>
+<li>At your identity provider, add a second redirect URI to the same app
+   registration: <code>https://bi.example.com/login/callback</code>. The first,
+   <code>https://bi.example.com/oauth/callback</code>, is the connectors'.</li>
+<li>Map your admins' group in <code>TRACEBI_OIDC_ROLE_MAP</code> before you restart.
+   Roles apply from the first request.</li>
+<li>Restart. The log prints <code>app sign-in: /login</code>.</li>
+</ol>
+<h3 id="what-changes">What changes</h3>
 <ul>
-<li>The session is a random id in a cookie (<code>tracebi_session</code>: <code>HttpOnly</code>,
-  <code>Secure</code> over https, <code>SameSite=Lax</code>). The database holds only its SHA-256.</li>
-<li>A session ends after <strong>12 hours unused</strong> or <strong>7 days</strong> in all, or when you
-  sign out. Your role is read at sign-in; a change of group applies at the next
-  one.</li>
-<li>The page shell (<code>/</code>, <code>/assets</code>) loads without a session because it holds no
-  data. Every <code>/api</code>, <code>/r/</code> and <code>/dashboards/</code> request needs the session; the
-  API answers <code>401</code> and the app sends you to sign in. <code>/api/health</code> stays open
-  for probes.</li>
-<li><code>GET /api/me</code> says who you are: <code>{actor, role, sign_in}</code>. <code>sign_in</code> is
-  <code>oidc</code>, <code>basic</code>, <code>proxy</code> or <code>none</code>.</li>
+<li><strong>Roles are enforced.</strong> <code>viewer</code> reads and queries. <code>analyst</code> also runs
+  reports and writes drafts. <code>admin</code> also runs pipelines and keeps selection
+  cuts. A person in no mapped group gets <code>TRACEBI_OIDC_DEFAULT_ROLE</code>
+  (<code>viewer</code>). Without sign-in, enforcement is off so a running server is never
+  shut out of its own pipelines; turning sign-in on is your choice to
+  enforce.</li>
+<li><strong>It replaces Basic and proxy-header auth.</strong> The server refuses to start
+  with <code>TRACEBI_OIDC_ISSUER</code> and either <code>TRACEBI_AUTH_USER</code>/<code>TRACEBI_AUTH_PASS</code>
+  or <code>TRACEBI_AUTH_PROXY_HEADER</code>.</li>
+<li><strong>A proxy in front must let some paths through.</strong> If a proxy has a login of
+  its own, let <code>/login</code>, <code>/logout</code>, <code>/login/callback</code>, <code>/authorize</code>, <code>/token</code>,
+  <code>/register</code>, <code>/revoke</code>, <code>/oauth/callback</code>, <code>/mcp</code> and <code>/.well-known/</code>
+  through without it.</li>
 </ul>
-<h2 id="from-the-command-line">From the command line</h2>
+<h2 id="for-users-sign-in-to-the-app">For users: sign in to the app</h2>
+<ol>
+<li>Open the app. Without a session you are sent to the company login, then
+   back to the page you asked for.</li>
+<li>The sidebar shows the places your role uses: Reports and Docs for
+   everyone; Review and Data for analysts and admins. Only an admin runs a
+   refresh or sets a credential.</li>
+<li>To sign out, click <strong>Sign out</strong> in the sidebar footer. This ends the
+   TraceBi session. Your identity provider may still be signed in, so the next
+   visit can sign you back in without a password.</li>
+</ol>
+<h2 id="for-users-sign-in-from-the-command-line">For users: sign in from the command line</h2>
 <pre><code class="language-bash">tracebi login --server https://bi.example.com
 </code></pre>
-<p>The command opens your browser at the company login, receives the answer on a
-one-shot listener on <code>127.0.0.1</code> (a random port), and stores the result in
-<code>~/.config/tracebi/credentials.json</code> (<code>$XDG_CONFIG_HOME</code> is respected), readable
-by you alone (mode 0600). It registers itself with the server once and
-remembers that. The address must be <code>https</code> (or loopback for local testing).</p>
+<p>This opens your browser at the company login and stores the result in
+<code>~/.config/tracebi/credentials.json</code> (<code>$XDG_CONFIG_HOME</code> is respected),
+readable only by you. The address must be <code>https</code>, or loopback for local
+testing.</p>
 <pre><code class="language-bash">tracebi logout --server https://bi.example.com
 </code></pre>
-<p>revokes the sign-in at the server and removes the tokens from the file.</p>
-<p>The tokens are TraceBi access tokens (one hour) with a refresh token (rotated
-on each use, 7 days sliding, 30 days at most). Tools that call the server's API
-for you send <code>Authorization: Bearer &lt;token&gt;</code>, acting as you with your role;
-<code>tracebi.credentials.access_token(server)</code> returns a valid one and refreshes it
-when it is about to expire. When the sign-in has ended it says to run
-<code>tracebi login</code> again.</p>
+<p>This revokes the sign-in at the server and removes the tokens from the file.</p>
+<p>Tools that call the API for you send <code>Authorization: Bearer &lt;token&gt;</code> and act
+as you, with your role. <code>tracebi.credentials.access_token(server)</code> returns a
+valid token and refreshes it when needed. When the sign-in has ended it tells
+you to run <code>tracebi login</code> again.</p>
+<h2 id="what-happened">What happened</h2>
+<ul>
+<li><strong>The session</strong> is a random id in a cookie (<code>tracebi_session</code>: <code>HttpOnly</code>,
+  <code>Secure</code> over https, <code>SameSite=Lax</code>). The database stores only its SHA-256.
+  It ends after 12 hours unused, 7 days in all, or when you sign out.</li>
+<li><strong>Your role</strong> is read at sign-in. A change of group applies at the next
+  sign-in.</li>
+<li><strong>Protected paths.</strong> The page shell (<code>/</code>, <code>/assets</code>) loads without a
+  session because it holds no data. Every <code>/api</code>, <code>/r/</code> and <code>/dashboards/</code>
+  request needs one: the API answers <code>401</code> and the app sends you to sign in.
+  <code>/api/health</code> stays open for health checks.</li>
+<li><strong>Who am I.</strong> <code>GET /api/me</code> returns <code>{actor, role, sign_in}</code>, where
+  <code>sign_in</code> is <code>oidc</code>, <code>basic</code>, <code>proxy</code> or <code>none</code>.</li>
+<li><strong>CLI tokens</strong> are TraceBi access tokens that last one hour, with a refresh
+  token that rotates on each use (7 days sliding, 30 days at most). The CLI
+  receives them on a one-time listener on <code>127.0.0.1</code> (a random port), and
+  registers itself with the server once.</li>
+</ul>
 <h2 id="if-it-does-not-work">If it does not work</h2>
 <table>
 <thead>
@@ -153,31 +165,30 @@ when it is about to expire. When the sign-in has ended it says to run
 <tbody>
 <tr>
 <td>"Sign-in could not be verified" after the company login</td>
-<td>Wrong client secret or issuer, or <code>…/login/callback</code> is not registered at the provider. The reason is in the server log.</td>
+<td>Wrong client secret or issuer, or <code>…/login/callback</code> is not registered at the provider. The server log has the reason.</td>
 </tr>
 <tr>
 <td>"Started in a different browser"</td>
-<td>The sign-in link was opened in another browser than the one that began it. Start again.</td>
+<td>The sign-in link was opened in a different browser from the one that started it. Start again.</td>
 </tr>
 <tr>
 <td>A <code>403</code> for something you could do before</td>
-<td>Enforcement is on: your group is not mapped to a role that allows it.</td>
+<td>Your group is not mapped to a role that allows it.</td>
 </tr>
 <tr>
 <td><code>tracebi login</code>: "says its address is …"</td>
 <td><code>TRACEBI_PUBLIC_URL</code> on the server differs from the address you passed.</td>
 </tr>
 <tr>
-<td><code>tracebi login</code> waits, the browser shows an error about the client</td>
+<td><code>tracebi login</code> waits and the browser shows a client error</td>
 <td>The server lost its record of this CLI. Run it again; it registers afresh.</td>
 </tr>
 </tbody>
 </table>
-<h2 id="related">Related</h2>
+<h2 id="next">Next</h2>
 <ul>
-<li><a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>: the identity-provider registration and the connectors</li>
-<li><a href="../guides/push-from-a-laptop.html">Push from a laptop</a>: <code>tracebi push</code>, once you are signed in</li>
-<li><a href="../reference/environment-variables.html">Environment variables</a>: every variable</li>
+<li>Push work from your laptop once signed in: <a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a></li>
+<li>Every variable: <a href="../reference/environment-variables.html">Environment variables</a></li>
 </ul>
   </main>
 </div>

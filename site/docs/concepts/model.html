@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Model — phase ② — TraceBi docs</title>
+<title>Models — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Model — phase ②">
+<meta name="description" content="Models">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a class="on" href="../concepts/model.html">Model — phase ②</a>
+<a class="on" href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,23 +61,21 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="model-phase-2">Model — phase ②</h1>
-<p><strong>A declarative star schema over the warehouse: the grain, the keys, and the
-<a href="../reference/measures.html">Measures</a> — in a few dozen lines a reviewer reads in one screen.</strong></p>
-<p>Lives in <code>models/</code>, one file per model: <code>models/&lt;name&gt;.yaml</code>.</p>
-<hr>
-<h2 id="what-it-is">What it is</h2>
+<h1 id="models">Models</h1>
+<p>A model is a YAML file in <code>models/</code> that names the warehouse tables a report
+may read, how they join, and the measures it can compute. Here is the one the
+reference project ships, shortened:</p>
 <pre><code class="language-yaml"># models/portfolio_model.yaml
 name: portfolio_model
 label: Direct Lending Portfolio
@@ -105,47 +103,43 @@ facts:
 measures:
   - {name: fair_value, column: fair_value, agg: sum, format: currency0}
 </code></pre>
-<p>That is the whole shape: connectors, tables, dimensions, facts, measures.
-The file declares meaning; the connector says where the data is kept — see
+<p>A model has five parts: connectors, tables, dimensions, facts and measures.
+The connector says where the data is kept; the rest says what it means. See
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>.</p>
-<p>A model is a declarative <code>models/&lt;name&gt;.yaml</code> by default (<code>.json</code> is the same schema, see <a href="../reference/model-json.html">Model files (YAML or JSON)</a>), with a <code>.py</code> file for anything exotic: the same connectors, tables, dimensions, facts and measures as builder calls on a <code>DataModel</code> held in a variable named <code>model</code> (<code>tracebi new-model --python</code>; <code>tracebi migrate model</code> converts one back to YAML). The reason is the remote case. An agent without access to the server can draft a YAML model and publish it through the gateway, because a YAML file runs no code. A Python model runs on the server with its connections, so it stays a file someone reviews and commits.</p>
-<h2 id="why-it-is-only-a-declaration">Why it is only a declaration</h2>
-<p>The model is the second <a href="../concepts/freeze-points.html">freeze point</a> — the <strong>semantic
-contract</strong> between the analysis and the reporting.</p>
-<ul>
-<li>It <strong>reads the sink</strong>. It never sees the <a href="../concepts/transform.html">Transform — phase ①</a> that produced it.</li>
-<li>Reports speak only its vocabulary — measure names and dimension attributes,
-  never raw SQL.</li>
-</ul>
-<p>That constraint is what makes a figure re-runnable, and therefore what makes a
-<a href="../concepts/trace.html">The trace</a> possible. A report cannot ask for something the model has
-not declared, so anything the model <em>can</em> express is automatically replayable.</p>
-<h2 id="the-corollary-worth-internalising">The corollary worth internalising</h2>
-<p><strong>Every expressiveness gap in the model pushes work into ungoverned Python</strong> —
-a <code>report.py</code> whose outputs are stamped <code>verifiable: false</code> and never read
-green.</p>
-<p>So adding a measure kind is not only a convenience feature; it pulls a number
-back into the verifiable lane. That is why the <a href="../reference/measures.html">Measures</a> vocabulary is
-deliberately broad and deliberately closed: broad, so real analysis fits; closed,
-so nothing arbitrary slips in.</p>
-<h2 id="validate-it">Validate it</h2>
-<pre><code class="language-bash">tracebi validate
+<h2 id="create-one">Create one</h2>
+<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;            # models/sales_model.yaml
+tracebi validate                           # load every model, check its keys
 </code></pre>
-<p>Chiefly checks that dimension keys are <strong>unique</strong>. A non-unique key silently
-inflates every additive measure — it is the failure most worth catching early,
-and the one hardest to notice in a finished report.</p>
-<h2 id="use-it-anywhere">Use it anywhere</h2>
+<p><code>.json</code> uses the same schema (<a href="../reference/model-json.html">Model files (YAML or JSON)</a>). For anything YAML cannot say,
+<code>tracebi new-model --python</code> writes a <code>.py</code> that builds a <code>DataModel</code> in a
+variable named <code>model</code>. <code>tracebi migrate model</code> converts one back to YAML.</p>
+<h2 id="use-it-from-python">Use it from Python</h2>
 <pre><code class="language-python">from tracebi.model_registry import get_model
 model = get_model(&quot;portfolio_model&quot;)
 </code></pre>
-<p>No web server required. The same registry backs the CLI, notebooks, and the
-served UI.</p>
-<h2 id="related">Related</h2>
+<p>No web server is needed. The CLI, notebooks and the app read models through
+the same registry.</p>
+<h2 id="rules">Rules</h2>
 <ul>
-<li><a href="../reference/measures.html">Measures</a> — every measure kind</li>
-<li><a href="../reference/queries.html">Queries</a> — what a report may ask it</li>
-<li><a href="../concepts/freeze-points.html">Freeze points</a> — why it is frozen</li>
-<li><a href="../concepts/report.html">Report — phase ③</a> — what reads it</li>
+<li><strong>A model reads the warehouse and never sees the transform.</strong></li>
+<li><strong>Reports ask only for what the model declares</strong>: measure names and
+  dimension attributes, never SQL. That is what lets every figure be re-run.</li>
+<li><strong>Dimension keys must be unique.</strong> A repeated key multiplies the fact rows
+  and inflates every sum. <code>tracebi validate</code> checks this.</li>
+<li><strong>YAML runs no code.</strong> An agent without access to the server can draft a
+  YAML model and publish it through the gateway. A Python model runs on the
+  server with its connections, so it stays a file someone reviews and
+  commits.</li>
+</ul>
+<h2 id="why-it-works-this-way">Why it works this way</h2>
+<p>A number the model cannot express ends up in a <code>report.py</code>, whose outputs are
+stamped <code>verifiable: false</code> and never read green. So each new measure kind
+brings more numbers back into the checkable path. The <a href="../reference/measures.html">Measures</a> list is
+broad, so real analysis fits, and closed, so nothing arbitrary gets in.</p>
+<h2 id="next">Next</h2>
+<ul>
+<li>Declare measures: <a href="../reference/measures.html">Measures</a></li>
+<li>Every key of a model file: <a href="../reference/model-json.html">Model files (YAML or JSON)</a></li>
 </ul>
   </main>
 </div>

@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a class="on" href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,244 +61,160 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="tracebi-analyst-guide">TraceBi Analyst Guide</h1>
-<p>The analyst path from messy data to a served report, plus the full
-development flow for ad-hoc reports as <strong>artifact packages</strong> — from blank
-scaffold to a built, verified, fully-traceable artifact. Every code block is
-runnable.</p>
-<blockquote>
-<p><strong>The <code>requests/</code> script lane was removed (0.8, breaking).</strong> Earlier
-versions of this guide centered on request scripts; that lane — with no
-trace and no way to earn one — is gone. The one report lane is the
-<strong>artifact package</strong> (<code>reports/&lt;name&gt;/</code>), covered below. A JSON spec
-migrates with <code>tracebi migrate spec reports/&lt;name&gt;.json</code>.</p>
-</blockquote>
-<p><strong>Who this is for:</strong> analysts writing against an existing TraceBi project (a
-warehouse and <code>DataModel</code> someone has already wired up, or one you build with
-the workflow below). If you're setting up connectors from scratch, the
-<a href="../../README.md">README</a> Quick Start and <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> are the
-starting points. If your "analyst" is an AI agent, the playbook is
-<a href="../../AGENTS.md">AGENTS.md</a> — the two planes, the assurance ladder, and the
-MCP gateway tools — with step-by-step SOPs in <a href="../agents/">docs/agents/</a>;
-agents work through the gateway against the same models this guide uses.</p>
-<hr>
-<h2 id="the-three-phase-workflow">The three-phase workflow</h2>
-<p>The primary analyst path is three project-root folders, each with its own
-cadence, decoupled by <strong>freeze points</strong> — a materialized artifact handed from
-one phase to the next. <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> is the full account; the
-shape:</p>
-<pre><code>①  TRANSFORM    transforms/       SQL by default; pandas is the escape hatch
-     read a messy source → parse, clean, key, dedupe → WRITE star-schema tables
-                                                        │
-                                                        ▼  freeze: data/warehouse.duckdb
-②  MODEL        models/           a thin DataModel over the warehouse
-     grain, keys, measures in a few dozen lines a reviewer reads without the pandas
-                                                        │
-                                                        ▼  freeze: the model (the semantic contract)
-③  REPORT       reports/          an artifact package (or JSON ReportSpec) over the model
-     KPI cards, charts, tables — every figure a live query; served in the app, in the library under its model
-</code></pre>
-<p><strong>Phase ①</strong> is the real analysis: pull the queries you need and do whatever the
-data demands — window functions, prose parsing, cleaning — then <em>sink</em> clean,
-named star-schema tables into the warehouse: <code>CREATE OR REPLACE TABLE … AS …</code>
-in SQL, or <code>DuckDBConnector(...).write(df, "table")</code> in Python. The framework does not constrain how
-you clean; the contract is <em>what lands</em>. Reference impl:
-<a href="../../examples/portfolio_project/transforms/holdings_transform.sql">transforms/holdings_transform.sql</a>
-(the same work in pandas:
-<a href="../../examples/portfolio_project/transforms/holdings_transform_pandas.py">holdings_transform_pandas.py</a>).</p>
-<p><strong>Phase ②</strong> declares a star schema over the warehouse — it reads the sink and
-never sees the transform above it. Reference impl:
-<a href="../../examples/portfolio_project/models/portfolio_model.yaml">models/portfolio_model.yaml</a>.</p>
-<p><strong>Phase ③</strong> is an <strong>artifact package</strong> (<code>reports/&lt;name&gt;/</code>) — or a JSON
-<code>ReportSpec</code>, a serialization of the same thing — whose every figure is a
-live query against the model. Because the model is materialized, the page
-re-renders in milliseconds with no pandas in the loop — editing the report
-never re-runs phase ①. Reference impls:
-<a href="../../examples/portfolio_project/reports/portfolio_model/portfolio_book/">reports/portfolio_model/portfolio_book/</a> (an editorial page) and
-<a href="../../examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/">reports/portfolio_model/portfolio_dashboard/</a> (an app dashboard).</p>
-<pre><code class="language-bash">cd examples/portfolio_project   # the reference project ships in the repo
-python run_workflow.py       # ① builds data/warehouse.duckdb, ③ builds every report
-python -m tracebi.web.run    # serve it: portfolio_model → Reports → portfolio_dashboard
-</code></pre>
-<p><strong>Honest scope of the trust machinery.</strong> Lineage is <em>not</em> traced through the
-phase-① pandas — the framework draws the line at the sink, where the numbers
-become a contract you can report against. Stamped queries, validate-before-
-execute on specs, and <code>tracebi verify</code> apply from the <strong>model boundary onward</strong>
-(phases ② and ③). <code>tracebi verify</code> re-runs a manifest's recorded queries and
-compares fingerprints; it does not read a transform and does not assert a
-number is correct.</p>
-<p>The rest of this guide covers the <strong>artifact-package</strong> path — the ad-hoc
-route for reports you author as free HTML over the model — then the model and
-<code>DataSet</code> verbs both the package and any factory report are built on.</p>
-<hr>
-<h2 id="the-artifact-package-loop-at-a-glance">The artifact-package loop at a glance</h2>
-<pre><code>tracebi new-report &quot;My Report&quot;      # 1. scaffold reports/my_report/
-tracebi dev my_report               # 2. live loop — workbench, pins, exploration
-tracebi report build my_report      # 3. render → output/my_report.html + manifest
-tracebi verify output/my_report.html.manifest.json --strict --contracts
-                                    # 4. re-run its trace before anyone reads it
-</code></pre>
-<p>An artifact package is a directory <code>reports/&lt;name&gt;/</code>: <code>report.json</code> (the
-data bindings — named queries against a model) plus <code>template.html</code> /
-<code>style.css</code> / <code>script.js</code> — free HTML where every <strong>figure claims a
-binding</strong> (<code>data-tb-figure</code> + <code>data-tb-binding</code>). A figure with no binding
-carries <code>data-tb-unverified</code>; there is no third state.</p>
-<p>The dev loop, step by step:</p>
+<p>Take a report from a blank folder to a built, checked file that the app
+serves, then work with the model directly in Python.</p>
+<h2 id="before-you-begin">Before you begin</h2>
 <ul>
-<li><strong><code>tracebi dev &lt;name&gt;</code> blocks</strong> — keep it open in its own terminal. It
-  opens the web app on the report with Build mode on: the report, and beside
-  it the <strong>workbench</strong> (what changed on each save, the data each binding
-  reads, checks, and the notes a reviewer left), re-rendering on every save
-  to the package, <code>models/</code>, or <code>transforms/</code>. (<code>--classic</code> is the older
-  stdlib preview, with the workbench at <code>/__workbench</code>.)</li>
-<li><strong>Explore inside the artifact.</strong> Blocks marked
-  <code>data-tb-stage="exploration"</code> render under <code>tracebi dev</code> and die at
-  build — scratch work never ships.</li>
-<li><strong>Read the pins before every pass.</strong> <code>tracebi report status &lt;name&gt;</code>
-  prints the earned state in the terminal; 📌 lines are a reviewer pointing
-  at a figure with a note. Address those first.</li>
-<li><strong>Drafts are snapshots.</strong> <code>tracebi report snapshot &lt;name&gt;</code> writes one
-  HTML with exploration kept and a review banner; it carries no manifest
-  and <code>verify</code> refuses it by name — a draft cannot impersonate a final.</li>
-<li><strong>Publishing is build + verify.</strong> <code>tracebi report build &lt;name&gt;</code> strips
-  exploration, validates every figure claim against its binding, and writes
-  <code>output/&lt;name&gt;.html</code> plus the <code>.manifest.json</code> trace. The package is
-  already served in the app, in the library under its model — there is no separate publish
-  step. <code>--contracts</code> also re-runs the sink contracts, so the trace can
-  say <strong>the sink satisfied its contract</strong> (never "the transform was
-  verified" — contract status certifies what landed, not the pandas above
-  it, and never colors a figure status).</li>
+<li>A TraceBi project with a warehouse and a model. The reference project in
+  <code>examples/portfolio_project/</code> has both, and so does a project from
+  <code>tracebi init</code> (<a href="../start/quickstart.html">Get started</a>).</li>
+<li>If your analyst is an AI agent, give it <code>AGENTS.md</code> and the SOPs in
+  <code>docs/agents/</code> instead (<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>).</li>
 </ul>
-<p><code>report.py</code> beside <code>report.json</code> is the escape hatch for pandas the model
-can't express; its output stamps <code>verifiable: false</code> and never reads green
-under <code>verify</code>. A JSON <code>ReportSpec</code> under <code>reports/</code> still renders — it is
-a serialization, not a lane — and <code>tracebi migrate spec reports/&lt;name&gt;.json</code>
-compiles it into a package, which shadows the same-named spec at discovery.</p>
-<h3 id="the-project-feed-the-workbench-before-a-report-exists">The project feed — the workbench before a report exists</h3>
-<p>Run <code>tracebi dev</code> with <strong>no argument</strong> and the app opens on the Data page
-with the project feed: what your agent shows you while it works (<code>show()</code> from
-any
-script in the project), and the notes you leave it. It is the live surface for
-phases ① and ② before any report package exists. <code>tracebi dev &lt;name&gt;</code> anchors
-the workbench to one package; <code>tracebi dev</code> alone is where you look while you
-are still building the model underneath. The warehouse tables are on Data's
-Warehouse tab (each opens on its own page), and the model's schema on its Model
-tab (<code>tracebi dev --classic</code> lays them out beside the feed on one page).</p>
-<h3 id="interactive-controls-recompute-by-query">Interactive controls recompute by query</h3>
-<p>A built artifact can carry <code>data-tb-filter</code> dropdowns, <code>data-tb-search</code>, and
-<code>data-tb-rows</code> (scrollable tables). The honesty rule is locked in the runtime:
-<strong>a figure's number is only ever a query result.</strong> A filter re-runs each
-figure's own query over the slice the page carries (the chip reads Local, the
-trace shows the plan and the selection, and <code>tracebi verify --local</code> replays it
-on the server); search only narrows the rows shown. Nothing sums the rows on
-screen, which is what keeps an interactive page as trustworthy as a static one.</p>
-<h3 id="capturing-the-exploration-record">Capturing the exploration record</h3>
-<p>A discovery session is a lab notebook, not a report. <code>tracebi session export</code>
-writes <code>explorations/&lt;name&gt;.html</code> (or <code>--format md</code> for the markdown twin) —
-the committed record of the frames, charts, and notes you pushed to the
-workbench. It carries <strong>no manifest</strong>, and <code>tracebi verify</code> refuses the file by
-name: a lab notebook must not read as a trace. It is the honest home for the
-narrative a governed report deliberately does not carry.</p>
-<h3 id="delivering-the-report">Delivering the report</h3>
-<p><code>tracebi report send</code> builds the report, verifies it, and emails it with its
-manifest — and <strong>refuses to send a report that does not verify</strong>:</p>
+<h2 id="build-a-report">Build a report</h2>
+<h3 id="1-build-the-reference-project">1. Build the reference project</h3>
+<pre><code class="language-bash">cd examples/portfolio_project
+python run_workflow.py       # runs the transforms, then builds every report
+python -m tracebi.web.run    # serves it at http://127.0.0.1:8000
+</code></pre>
+<p>The transform <code>transforms/holdings_transform.sql</code> writes the warehouse,
+<code>models/portfolio_model.yaml</code> defines it, and the packages under
+<code>reports/portfolio_model/</code> read it. <code>portfolio_book/</code> is an editorial page and
+<code>portfolio_dashboard/</code> is an app dashboard.</p>
+<h3 id="2-create-a-report-package">2. Create a report package</h3>
+<pre><code class="language-bash">tracebi new-report &quot;My Report&quot;
+</code></pre>
+<p>This writes <code>reports/my_report/</code>: <code>report.json</code> with the data bindings (named
+queries against a model) and <code>template.html</code>, the page. Every figure on the
+page names a binding with <code>data-tb-figure</code> and <code>data-tb-binding</code>. A figure
+with no binding must carry <code>data-tb-unverified</code>.</p>
+<h3 id="3-open-the-live-loop">3. Open the live loop</h3>
+<pre><code class="language-bash">tracebi dev my_report
+</code></pre>
+<p>Keep it running in its own terminal. It opens the app on the report in Build
+mode. The page re-renders when you save the package, a model or a transform.
+The panel beside it shows what changed on each save, the data each binding
+reads, checks, and notes a reviewer left. Put scratch work in
+<code>data-tb-stage="exploration"</code> blocks; they show here and are removed at build.</p>
+<h3 id="4-read-the-pins">4. Read the pins</h3>
+<pre><code class="language-bash">tracebi report status my_report
+</code></pre>
+<p>This prints what each figure has earned. Lines marked 📌 are a reviewer
+pointing at a figure with a note. Handle those first.</p>
+<h3 id="5-build">5. Build</h3>
+<pre><code class="language-bash">tracebi report build my_report
+</code></pre>
+<p>The build removes exploration blocks, checks every figure against its binding,
+and writes <code>output/my_report.html</code> and <code>output/my_report.html.manifest.json</code>.
+The app already lists the package under its model, so there is no separate
+publish step.</p>
+<h3 id="6-check-it">6. Check it</h3>
+<pre><code class="language-bash">tracebi verify output/my_report.html.manifest.json --strict --contracts
+</code></pre>
+<p><code>--strict</code> fails unless every figure reproduces. <code>--contracts</code> also re-runs
+the sink contracts, so the trace can say the sink satisfied its contract.
+Contract status never changes a figure's status.</p>
+<h3 id="7-send-it">7. Send it</h3>
 <pre><code class="language-bash">tracebi report send my_report --to team@example.com --subject &quot;Q3 book&quot;
 </code></pre>
-<p><code>--force</code> sends anyway, but the failing verdict travels with the report rather
-than being hidden. Delivery reads <code>TRACEBI_SMTP_URL</code> / <code>TRACEBI_SMTP_FROM</code> for
-email and <code>TRACEBI_SLACK_WEBHOOK</code> for a Slack text ping. A scheduled
-run (<code>tracebi schedule</code>) also uploads the HTML and the manifest when
-<code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> are both set. Point
-cron or CI at <code>tracebi schedule run</code> to run one on a timer. The refusal is the point: a report that does not
-reproduce should never leave the building looking clean.</p>
-<hr>
-<h2 id="working-with-a-model-in-code">Working with a model in code</h2>
-<p>The package's figures — and any <code>@register.report</code> factory — are built on the
-same model surface and immutable <code>DataSet</code> verbs. This section is the shared
-reference for both.</p>
-<p><code>tracebi validate</code> checks your project layout and then loads every model in
-<code>models/</code>, verifying each dimension key is unique — a duplicate key silently
-inflates every total it touches. Run it before you trust a number.</p>
-<h3 id="discover-what-data-you-have">Discover what data you have</h3>
-<p>First, see what shared models the project has defined:</p>
-<pre><code class="language-bash">tracebi list-models            # lists files in models/
+<p>This builds, verifies and emails the report with its manifest. It refuses to
+send a report that does not verify. <code>--force</code> sends anyway, with the failing
+verdict in the email. It needs <code>TRACEBI_SMTP_URL</code> and <code>TRACEBI_SMTP_FROM</code>;
+<code>TRACEBI_SLACK_WEBHOOK</code> adds a Slack ping. To send on a timer, add a
+<code>schedule</code> block to <code>report.json</code> and run <code>tracebi schedule run</code> from cron, or
+<code>tracebi schedule serve</code> (<a href="../reference/report-json.html">report.json</a>).</p>
+<h2 id="what-happened">What happened</h2>
+<ul>
+<li>The report's numbers are queries against the model, run once at build and
+  fingerprinted.</li>
+<li>The built page can filter: each filter re-runs every figure's own query over
+  the slice the page carries, and the chip reads Local. A figure's number is
+  only ever a query result. Search only narrows the rows shown.</li>
+<li><code>report.py</code> beside <code>report.json</code> is the escape hatch for pandas the model
+  cannot express. Its outputs are stamped <code>verifiable: false</code> and never read
+  green.</li>
+<li>A JSON <code>ReportSpec</code> under <code>reports/</code> still builds. <code>tracebi migrate spec
+  reports/&lt;name&gt;.json</code> compiles it into a package, which then takes its place.</li>
+</ul>
+<h2 id="explore-before-a-report-exists">Explore before a report exists</h2>
+<pre><code class="language-bash">tracebi dev
 </code></pre>
-<p>Then load the one you need — this works whether or not the web server is running:</p>
+<p>With no report name, the app opens on the Data page with the project feed.
+Any script in the project can post to it with <code>tracebi.workbench.show(df,
+note=...)</code>. The warehouse tables are on Data's Warehouse tab, and each model's
+schema on its Model tab.</p>
+<p>To keep a record of the session:</p>
+<pre><code class="language-bash">tracebi session export               # explorations/&lt;name&gt;.html
+tracebi session export --format md   # the Markdown version
+</code></pre>
+<p>The export carries no manifest, and <code>tracebi verify</code> refuses it.</p>
+<h2 id="work-with-a-model-in-python">Work with a model in Python</h2>
+<h3 id="1-find-the-models">1. Find the models</h3>
+<pre><code class="language-bash">tracebi list-models
+tracebi validate        # loads every model and checks dimension keys are unique
+</code></pre>
+<h3 id="2-load-one">2. Load one</h3>
 <pre><code class="language-python">from tracebi.model_registry import get_model, get_default_model, list_models
 
-print(list_models())           # [&quot;sales_model&quot;, &quot;banking_model&quot;]
-model = get_model(&quot;sales_model&quot;)   # load a specific model by name
-# or: model = get_default_model()  # load the first / default model
+print(list_models())               # [&quot;sales_model&quot;, &quot;banking_model&quot;]
+model = get_model(&quot;sales_model&quot;)   # or get_default_model()
 
 model.describe()        # tables, relationships, facts, dimensions
-model.info()            # same, as a dict
-
 orders = model.load(&quot;orders&quot;)
-orders                  # rich repr: shape, columns, dtypes, sample rows
-orders.help()           # cheat sheet of every DataSet verb
+orders                  # shape, columns, dtypes, sample rows
+orders.help()           # every DataSet method
 </code></pre>
-<p>If no shared model exists yet, create one:</p>
-<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;   # scaffolds models/sales_model.yaml
-# edit it, then import with get_model(&quot;sales_model&quot;)
-</code></pre>
-<p>Or browse the web UI: under <strong>Data</strong>, a model's <strong>Model</strong> tab shows every table with previews
-and the ER diagram. <strong>Ask</strong> puts a question to a model as a sentence of its own
-tokens ("Show <em>fair value</em> by <em>sector</em> for <em>Software</em>, <em>largest first</em>, <em>top 8</em>"):
-typing finds the measure, dimension or value, and the answer is the model's query
-run on it, a chart, table or number with each measure's definition in words and
-the query behind it. It is marked Not checked: a live query has no trace. <strong>Keep
-this</strong> (analyst) starts a draft report of that one figure, holding the query, not
-the numbers. <strong>Advanced</strong> under it is the query builder on the same question, and
-its "The query as code" gives the Python and the <code>report.json</code> binding to paste.</p>
-<h3 id="load-and-transform">Load and transform</h3>
-<p>Every verb returns a <strong>new immutable DataSet</strong> and appends a step to its
-lineage chain. Nothing mutates in place.</p>
+<p>No web server is needed. If no model exists yet, <code>tracebi new-model "Sales
+Model"</code> writes <code>models/sales_model.yaml</code>.</p>
+<p>In the app, <strong>Ask</strong> puts a question to a model as a sentence built from its
+own measures and dimensions ("Show <em>fair value</em> by <em>sector</em>, <em>largest first</em>,
+<em>top 8</em>"). The answer is a fresh query, marked Not checked. <strong>Keep this</strong>
+starts a draft report of that figure. <strong>Advanced</strong> opens the query builder,
+and "The query as code" gives the Python and the <code>report.json</code> binding.</p>
+<h3 id="3-transform-the-data">3. Transform the data</h3>
+<p>Every method returns a new <code>DataSet</code> and adds a step to its lineage:</p>
 <pre><code class="language-python">orders = (
-    model.load(&quot;orders&quot;, filter={&quot;status&quot;: &quot;shipped&quot;})   # filter pushed to source
-    .deduplicate(subset=&quot;order_id&quot;)                      # structured cleaning verbs
+    model.load(&quot;orders&quot;, filter={&quot;status&quot;: &quot;shipped&quot;})   # filter at the source
+    .deduplicate(subset=&quot;order_id&quot;)
     .dropna(subset=&quot;region&quot;)
     .fillna({&quot;discount&quot;: 0})
     .cast({&quot;qty&quot;: &quot;int64&quot;})
-    .assign(margin=lambda df: df.revenue - df.cost)      # add columns
-    .filter(&quot;margin &gt; 0&quot;, description=&quot;Profitable only&quot;) # pandas query syntax
+    .assign(margin=lambda df: df.revenue - df.cost)
+    .filter(&quot;margin &gt; 0&quot;, description=&quot;Profitable only&quot;)
     .sort(&quot;margin&quot;, ascending=False)
-    .limit(100)                                          # top-N after sort
+    .limit(100)
 )
-
-orders.print_lineage()   # the full audit chain, one line per step
+orders.print_lineage()   # one line per step
 </code></pre>
-<p><strong>Prefer the named verbs over <code>.transform(lambda ...)</code>.</strong> Both work, but named
-verbs record structured lineage (rows removed, columns cast, fill counts) that
-shows up in report manifests and the web UI's lineage graphs. <code>.transform()</code>
-is the escape hatch when no verb fits.</p>
-<p>Joining and aggregating:</p>
+<p>Use the named methods rather than <code>.transform(lambda ...)</code> where you can. They
+record what they did (rows removed, columns cast, cells filled) in lineage.</p>
 <pre><code class="language-python">enriched = orders.join(customers, on=&quot;customer_id&quot;, how=&quot;left&quot;)
-
 by_region = enriched.aggregate(
     by=&quot;region&quot;,
     revenue=&quot;sum&quot;,
     orders=(&quot;order_id&quot;, &quot;nunique&quot;),   # (column, func) names the output
 )
 </code></pre>
-<p>Mistyped a column? Errors tell you what's available and suggest the closest
-match: <code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</code>.</p>
-<h2 id="verbs-cheat-sheet">Verbs cheat sheet</h2>
+<p>A mistyped column names the closest match:
+<code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</code>.</p>
+<h3 id="dataset-methods">DataSet methods</h3>
 <table>
 <thead>
 <tr>
-<th>Verb</th>
-<th>What it does</th>
+<th>Method</th>
+<th>Does</th>
 <th>Lineage records</th>
 </tr>
 </thead>
@@ -306,7 +222,7 @@ match: <code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</cod
 <tr>
 <td><code>.filter(expr)</code></td>
 <td>Pandas query string</td>
-<td>expr, rows before/after</td>
+<td>expr, rows before and after</td>
 </tr>
 <tr>
 <td><code>.dropna(subset=)</code></td>
@@ -330,8 +246,8 @@ match: <code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</cod
 </tr>
 <tr>
 <td><code>.assign(col=...)</code></td>
-<td>Add/replace columns</td>
-<td>columns added/replaced</td>
+<td>Add or replace columns</td>
+<td>columns added or replaced</td>
 </tr>
 <tr>
 <td><code>.join(other, on=)</code></td>
@@ -340,7 +256,7 @@ match: <code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</cod
 </tr>
 <tr>
 <td><code>.aggregate(by=, ...)</code></td>
-<td>Group + aggregate</td>
+<td>Group and aggregate</td>
 <td>group keys, agg map</td>
 </tr>
 <tr>
@@ -350,7 +266,7 @@ match: <code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</cod
 </tr>
 <tr>
 <td><code>.select(cols)</code></td>
-<td>Keep only these columns</td>
+<td>Keep these columns</td>
 <td>column list</td>
 </tr>
 <tr>
@@ -365,36 +281,31 @@ match: <code>dropna() column(s) not found: 'regin' (did you mean 'region'?)</cod
 </tr>
 <tr>
 <td><code>.transform(func)</code></td>
-<td>Escape hatch — any DataFrame → DataFrame</td>
-<td>rows/columns delta</td>
+<td>Any DataFrame to DataFrame</td>
+<td>rows and columns changed</td>
 </tr>
 </tbody>
 </table>
-<p>Inspection (no lineage step): <code>.shape</code>, <code>.columns</code>, <code>len(ds)</code>, <code>.to_pandas()</code>,
+<p>These add no lineage step: <code>.shape</code>, <code>.columns</code>, <code>len(ds)</code>, <code>.to_pandas()</code>,
 <code>.print_lineage()</code>, <code>.fingerprint()</code>, <code>.help()</code>.</p>
-<hr>
-<h2 id="shared-models-and-pipelines">Shared models and pipelines</h2>
-<p>If multiple people are writing reports against the same data, define the
-model once in <code>models/</code> so nobody has to repeat the connector and table
-setup:</p>
-<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;       # creates models/sales_model.yaml — edit and commit it
-tracebi new-pipeline &quot;Sales ETL&quot;      # creates pipelines/sales_etl.yaml — edit and commit it
+<h2 id="share-a-model-and-a-pipeline-with-your-team">Share a model and a pipeline with your team</h2>
+<pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;       # models/sales_model.yaml
+tracebi new-pipeline &quot;Sales ETL&quot;      # pipelines/sales_etl.yaml
 </code></pre>
-<p>Anyone on the team then gets:</p>
+<p>Commit both. Anyone on the team can then load them:</p>
 <pre><code class="language-python">from tracebi.model_registry import get_model
 from tracebi.pipeline_registry import get_runner
 
-model = get_model(&quot;sales_model&quot;)      # loads models/sales_model.yaml on first access
-runner = get_runner(&quot;sales_etl&quot;)      # loads pipelines/sales_etl.yaml on first access
-runner.run(&quot;transform&quot;)               # run a step on demand (a YAML pipeline: transform, build)
+model = get_model(&quot;sales_model&quot;)
+runner = get_runner(&quot;sales_etl&quot;)
+runner.run(&quot;transform&quot;)               # a YAML pipeline has two steps: transform, build
 </code></pre>
-<p>The web server auto-discovers both directories at startup — no extra
-registration needed.</p>
-<hr>
-<p><strong>Stuck?</strong> <code>ds.help()</code> and <code>model.help()</code> print these cheat sheets in any
-session. The <a href="../../examples/">examples/</a> directory has complete runnable
-walkthroughs; <code>examples/portfolio_project/</code> is the reference project every
-convention here follows.</p>
+<p>The web server finds both folders at startup.</p>
+<h2 id="next">Next</h2>
+<ul>
+<li>Use a notebook for the transform: <a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a></li>
+<li>Style the page: <a href="../guides/styling-a-report.html">Style a report</a></li>
+</ul>
   </main>
 </div>
 <script>

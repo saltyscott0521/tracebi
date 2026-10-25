@@ -1,59 +1,45 @@
 # Freeze points
 
-**A freeze point is a materialized artifact handed from one phase to the next.
-It is what lets the three phases run at different speeds.**
+A freeze point is a stored artifact one stage hands to the next. There are
+two:
 
-There are two, one between each pair of phases in [[the-three-phase-workflow]]:
-
-| Freeze | What it is | Written by | Read by |
+| Freeze point | What it is | Written by | Read by |
 | --- | --- | --- | --- |
-| **The sink** | the warehouse `tracebi.yaml` names (by default `data/warehouse.duckdb`) — real tables | [[transform]] (①) | [[model]] (②) |
-| **The model** | the semantic contract: grain, keys, [[measures]] | you, in `models/` | [[report]] (③) |
+| The sink | The warehouse `tracebi.yaml` names (by default `data/warehouse.duckdb`): real tables | The [[transform]] | The [[model]] |
+| The model | The definitions: grain, keys, [[measures]] | You, in `models/` | The [[report]] |
 
----
+## What they give you
 
-## Why they matter
+- **Editing a report rebuilds in milliseconds.** It queries stored tables; no
+  transform runs.
+- **Re-running a transform does not touch your reports.** They keep showing
+  the last good data until you rebuild them.
+- **Changing a model is a diff someone can review.** What sits below it is
+  fixed, and what sits above it only uses the model's names.
 
-Without a freeze point, every report render would re-run the analysis above it.
-With one, the expensive work happens once and the cheap work happens as often
-as you like.
+## What they cost
 
-That is the whole reason the reporting loop is fast:
+- **The model cannot see the transform.** If a number is wrong because the
+  cleaning was wrong, the model has no way to know.
+- **The report cannot read the warehouse directly.** It asks for measures and
+  dimensions the model declares. That is what makes a figure re-runnable, and
+  why a gap in the model pushes work into code the trace cannot check.
 
-- **Editing a report re-renders in milliseconds.** It queries materialized
-  tables; no pandas runs.
-- **Re-running a transform does not touch your reports.** They keep serving
-  the last good sink until you refresh it.
-- **Changing a model is a reviewable diff**, not a cascade — because what sits
-  below it is frozen, and what sits above it only speaks the model's
-  vocabulary.
+## Refresh one
 
-## What crossing a freeze point costs
+```bash
+tracebi run-transform <name>
+```
 
-A freeze point is a *contract*, so crossing it deliberately loses information.
+The rerun replaces the warehouse tables. It never appends.
 
-- **The model cannot see the transform.** It reads tables, not the code that
-  produced them. If a number is wrong because the pandas was wrong, the model
-  has no way to know — this is the honest boundary described in [[trace]].
-- **The report cannot see the warehouse directly.** It speaks in
-  [[measures]] and dimensions the model declares. That is what makes a figure
-  re-runnable, and it is why an expressiveness gap in the model pushes work
-  into ungoverned code where the trace weakens.
+A DuckDB file has one writer at a time. A model query opens the warehouse
+read-only for that query alone, so a running `tracebi dev` or `tracebi serve`
+does not block a refresh. The write waits a few seconds for a read in progress
+to finish. A read that arrives during the write is refused, naming the
+transform to wait for.
 
-## Refreshing a freeze point
+## Next
 
-Re-run the transform (`tracebi run-transform <name>`) and the sink is replaced.
-Transforms are written to be **idempotent** — a rerun replaces the warehouse
-tables rather than appending to them.
-
-> **One operational catch:** a DuckDB file has one writer at a time. A model
-> query opens the warehouse read-only for that query alone, so a running
-> `tracebi dev` or `tracebi serve` does not block a refresh: the write waits a
-> few seconds for a read in progress to let go, and a read that comes during the
-> write is refused, naming the transform to let finish.
-
-## Related
-
-- [[transform]] — what writes the sink
-- [[sink-contracts]] — checks that run at sink time
-- [[model]] — what reads it
+- The three stages they connect: [[the-three-phase-workflow]]
+- Checks that run before the sink counts: [[sink-contracts]]

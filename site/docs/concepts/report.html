@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Report — phase ③ — TraceBi docs</title>
+<title>Reports — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="a figure&#x27;s number is only ever a query result.">
+<meta name="description" content="Reports">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a class="on" href="../concepts/report.html">Report — phase ③</a>
+<a class="on" href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,86 +61,78 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="report-phase-3">Report — phase ③</h1>
-<p><strong>A package where every figure is a live query. One command turns it into a
-single self-contained HTML file plus a <a href="../concepts/trace.html">The trace</a>.</strong></p>
-<p>Lives in <code>reports/</code>.</p>
-<hr>
-<h2 id="the-shape">The shape</h2>
+<h1 id="reports">Reports</h1>
+<p>A report is a folder in <code>reports/</code> whose every figure is a query against a
+model. One command builds it into a single HTML file and a <a href="../concepts/trace.html">The trace</a>:</p>
 <pre><code>reports/my_report/
-  report.json      what data this report binds        → [report.json](../reference/report-json.html)
-  app.jsx          a dashboard from the TraceBi kit   → [app.jsx — the React lane](../reference/app-jsx.html)
-  template.html    or a page you draw in HTML         → [template.html — the figure grammar](../reference/template-html.html)
-  style.css        optional — your CSS
-  script.js        optional — your JS
-  report.py        optional escape hatch
+  report.json      the data the report reads           → [report.json](../reference/report-json.html)
+  app.jsx          a dashboard built from the kit       → [app.jsx](../reference/app-jsx.html)
+  template.html    or a page written in HTML            → [template.html](../reference/template-html.html)
+  style.css        optional: your CSS
+  script.js        optional: your JavaScript
+  report.py        optional: Python for numbers the model cannot express
 </code></pre>
-<p><strong>You own the page.</strong> The framework does not impose a layout, a component set,
-or a stylesheet you must work around. A dashboard (<code>tracebi new-dashboard</code>) is
-an <code>app.jsx</code> of kit components (<code>&lt;Kpi&gt;</code>, <code>&lt;Chart&gt;</code>, <code>&lt;Table&gt;</code>, <code>&lt;Filter&gt;</code>); a
-page (<code>tracebi new-report</code>) is a <code>template.html</code> of ordinary HTML, where a
-handful of <code>data-tb-*</code> attributes turn elements into figures.</p>
-<p>There is exactly one renderer: a report is always built from its package. (A
-<code>reports/&lt;name&gt;.json</code> spec is a shorthand that compiles into exactly this.)</p>
-<h2 id="what-every-figure-is-a-live-query-means">What "every figure is a live query" means</h2>
-<p>A figure never contains a typed-in number. It names a <strong>binding</strong> — a query
-declared in <code>report.json</code> — and the framework resolves it, fingerprints the
-result, embeds the bytes, and fills the figure from them.</p>
-<p>The consequences are the point:</p>
-<ul>
-<li><strong>A hard-coded number cannot be a figure.</strong> There is no way to bind a literal
-  to a figure and have it read as governed — the honest mark
-  (<code>data-tb-unverified</code>) is the only alternative, and there is no third state.</li>
-<li><strong>The page and the trace cannot disagree</strong>, because the page draws from the
-  same fingerprinted bytes the trace covers.</li>
-<li><strong>Re-rendering is milliseconds</strong>, because the <a href="../concepts/model.html">Model — phase ②</a> is already
-  materialized. No pandas runs.</li>
-</ul>
+<p>A dashboard (<code>tracebi new-dashboard</code>) is an <code>app.jsx</code> made of kit components
+such as <code>&lt;Kpi&gt;</code>, <code>&lt;Chart&gt;</code>, <code>&lt;Table&gt;</code> and <code>&lt;Filter&gt;</code>. A page
+(<code>tracebi new-report</code>) is a <code>template.html</code> of ordinary HTML, where
+<code>data-tb-*</code> attributes turn elements into figures. You own the layout and the
+styles.</p>
 <h2 id="build-it">Build it</h2>
 <pre><code class="language-bash">tracebi report build my_report
 </code></pre>
-<p>Produces one offline HTML — CSS, JS, data and charting library all inlined, a
-strict CSP, no CDN — plus <code>my_report.html.manifest.json</code>. With the <code>pdf</code>
-extra installed (Playwright and Chromium), the build also writes
-<code>my_report.cover.png</code>, a picture of the page's first screen that the library
-shows as the report's cover; it is not part of the trace, and without the
-extra the library draws a cover instead.</p>
-<p>Email it, archive it, open it on a plane. Then:</p>
+<p>This writes <code>output/my_report.html</code>, with its CSS, JavaScript, data and
+charting library inlined, a strict content security policy and no CDN, and
+<code>output/my_report.html.manifest.json</code>, the trace. With the <code>pdf</code> extra
+(Playwright and Chromium) the build also writes <code>my_report.cover.png</code>, a
+picture of the first screen that the library uses as a cover. The cover is
+not part of the trace.</p>
+<p>Check the file later, offline:</p>
 <pre><code class="language-bash">tracebi verify --file output/my_report.html
 </code></pre>
-<h2 id="interactivity-and-its-one-rule">Interactivity, and its one rule</h2>
-<p>Filters, search, tabs, scrolling tables and CSV download all ship. The rule:
-<strong>a figure's number is only ever a query result.</strong></p>
-<p>The built page carries a slice of the model (the rows its figures and filters
-need) and each binding's query as a calc plan. A filter writes the page's
-selection, and the page engine re-runs every figure's own query under it:
-values, tables, charts and sparks all recompute, the chip reads Local, and
-<code>tracebi verify --local</code> replays the same plans on the server. Nothing sums the
-rows on screen. Search only narrows the rows shown. See
-<a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
-<h2 id="when-the-query-surface-isnt-enough">When the query surface isn't enough</h2>
-<p>Add <code>report.py</code> with a <code>build(inputs) -&gt; {name: DataFrame}</code> function. Its
-<strong>inputs</strong> stay stamped and green-eligible; its <strong>outputs</strong> are permanently
-<code>verifiable: false</code> and never read green.</p>
-<p>That asymmetry is deliberate — see <a href="../concepts/trace.html">The trace</a>. Reach for
-it only when the <a href="../concepts/model.html">Model — phase ②</a> genuinely cannot express the number, because
-everything you compute here leaves the verifiable lane.</p>
-<h2 id="related">Related</h2>
+<h2 id="how-a-figure-gets-its-number">How a figure gets its number</h2>
+<p>A figure never holds a typed-in number. It names a <strong>binding</strong>, a query
+declared in <code>report.json</code>. The build runs the query, fingerprints the result,
+embeds the rows in the page and fills the figure from them. So:</p>
 <ul>
-<li><a href="../reference/report-json.html">report.json</a> · <a href="../reference/template-html.html">template.html — the figure grammar</a> · <a href="../reference/figure-helper.html">{{ figure("name") }}</a></li>
-<li><a href="../guides/styling-a-report.html">Styling a report</a> — the CSS stack</li>
-<li><a href="../start/your-first-report.html">Your first report</a> — the walkthrough</li>
+<li>A typed-in number cannot pass as a figure. A number with no query must be
+  marked <code>data-tb-unverified</code>. There is no third state.</li>
+<li>The page and the trace cannot disagree, because both come from the same
+  fingerprinted rows.</li>
+<li>Rebuilding takes milliseconds. The model's tables already exist, and no
+  transform runs.</li>
+</ul>
+<p>There is one renderer: a report is always built from its package. A
+<code>reports/&lt;name&gt;.json</code> spec is shorthand that compiles into a package.</p>
+<h2 id="filters-and-interactivity">Filters and interactivity</h2>
+<p>Filters, search, tabs, scrolling tables and CSV download all work in the
+built file. The rule: a figure's number is only ever a query result.</p>
+<p>The built page carries a slice of the model (the rows its figures and filters
+need) and each binding's query as a calc plan. A filter changes the page's
+selection, and the page re-runs each figure's own query under it. Values,
+tables, charts and sparklines all recompute, and the chip reads Local.
+<code>tracebi verify --local</code> replays the same plans on the server. Nothing sums the
+rows on screen. Search only narrows the rows shown. See <a href="../reference/template-html.html">template.html</a>.</p>
+<h2 id="when-the-model-cannot-express-a-number">When the model cannot express a number</h2>
+<p>Add <code>report.py</code> with a <code>build(inputs) -&gt; {name: DataFrame}</code> function. Its
+inputs are stamped queries and can still reproduce. Its outputs are stamped
+<code>verifiable: false</code> and never read green. Use it only when the model cannot
+express the number, because everything it computes leaves the checkable path.
+See <a href="../concepts/trace.html">The trace</a>.</p>
+<h2 id="next">Next</h2>
+<ul>
+<li>Build one step by step: <a href="../start/your-first-report.html">Your first report</a></li>
+<li>Style it: <a href="../guides/styling-a-report.html">Style a report</a></li>
 </ul>
   </main>
 </div>

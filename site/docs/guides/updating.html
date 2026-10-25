@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Updating TraceBi — TraceBi docs</title>
+<title>Update TraceBi — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Updating TraceBi">
+<meta name="description" content="Update TraceBi">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a class="on" href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a class="on" href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,33 +61,36 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="updating-tracebi">Updating TraceBi</h1>
-<p><strong>Run <code>tracebi update</code>. It says whether a newer TraceBi is out, what changed,
-and the one command that updates <em>your</em> install. The web app shows the same
-thing as a small "available" badge next to the version in the sidebar.</strong></p>
-<hr>
-<h2 id="where-updates-come-from">Where updates come from</h2>
-<p>Each TraceBi release is a tagged GitHub release carrying two things:</p>
+<h1 id="update-tracebi">Update TraceBi</h1>
+<p>Check for a newer release, see what changed, and run the command that updates
+your install. The web app shows a small "available" badge beside the version
+in the sidebar when one is out.</p>
+<h2 id="before-you-begin">Before you begin</h2>
 <ul>
-<li>a <strong>wheel</strong> with the web app already built in (a plain <code>git+</code> install
-  has no web UI), and</li>
+<li>A TraceBi install: pip, a git checkout, or the Docker image
+  (<a href="../guides/one-server.html">Run TraceBi on one server</a>)</li>
+</ul>
+<p>Each release is a tagged GitHub release with two things:</p>
+<ul>
+<li>a <strong>wheel</strong> with the web app built in (a plain <code>git+</code> install has no web
+  app), and</li>
 <li>a <strong>Docker image</strong> at <code>ghcr.io/saltyscott0521/tracebi</code>, tagged with the
   version and, for full releases, <code>latest</code>.</li>
 </ul>
-<p>Your projects (<code>transforms/</code>, <code>models/</code>, <code>reports/</code>) are yours and are never
-touched by an update. Only the TraceBi package or image changes.</p>
-<h2 id="check">Check</h2>
+<p>An update changes only the TraceBi package or image. Your project folders
+(<code>transforms/</code>, <code>models/</code>, <code>reports/</code>) are never touched.</p>
+<h2 id="1-check">1. Check</h2>
 <pre><code class="language-bash">tracebi update --check
 </code></pre>
 <pre><code>installed: TraceBi 0.6.0 (pip install)
@@ -100,59 +103,78 @@ What's new:
 To update:
   pip install --upgrade &quot;https://github.com/.../tracebi-0.7.0-py3-none-any.whl&quot;
 </code></pre>
-<p>The check is one request to GitHub's public releases API, cached for a day.
-It sends nothing about your install or your data. Offline, it says it couldn't
-reach a release and carries on. Turn it off with <code>TRACEBI_UPDATE_CHECK=0</code>, or
-point it at an internal mirror with <code>TRACEBI_UPDATE_URL</code>
-(<a href="../reference/environment-variables.html">Environment variables</a>).</p>
-<h2 id="update">Update</h2>
-<p>How depends on how TraceBi was installed; <code>tracebi update</code> detects which.</p>
+<p>The check is one request to GitHub's public releases API, cached for a day. It
+sends nothing about your install or your data. Offline, it says it couldn't
+reach a release and carries on.</p>
+<h2 id="2-update">2. Update</h2>
+<pre><code class="language-bash">tracebi update
+</code></pre>
+<p>The command detects how TraceBi was installed:</p>
 <table>
 <thead>
 <tr>
 <th>Installed with</th>
 <th>The update</th>
-<th><code>tracebi update</code></th>
+<th>What <code>tracebi update</code> does</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>pip</strong></td>
+<td>pip</td>
 <td><code>pip install --upgrade "&lt;the release wheel&gt;"</code></td>
-<td>asks, then runs it (<code>--yes</code> skips the question)</td>
+<td>Asks, then runs it (<code>--yes</code> skips the question)</td>
 </tr>
 <tr>
-<td><strong>Docker</strong> (<a href="../guides/one-server.html">Run TraceBi on one server</a>)</td>
+<td>Docker</td>
 <td><code>TRACEBI_VERSION=&lt;version&gt; docker compose -f deploy/compose.yml pull</code>, then <code>… up -d</code></td>
-<td>prints it; run it on the host</td>
+<td>Prints it; run it on the host</td>
 </tr>
 <tr>
-<td><strong>a git checkout</strong> (<code>pip install -e .</code>)</td>
+<td>A git checkout (<code>pip install -e .</code>)</td>
 <td><code>git fetch --tags &amp;&amp; git checkout v&lt;version&gt; &amp;&amp; pip install -e .</code>, then rebuild the UI</td>
-<td>prints it</td>
+<td>Prints it</td>
 </tr>
 </tbody>
 </table>
-<p>If you installed with extras (<code>tracebi[web,analyst]</code>), name them again when
-you upgrade so any new dependencies they gained come too:
+<p>If you installed with extras, name them again so new dependencies come too:
 <code>pip install --upgrade "tracebi[web,analyst] @ &lt;the release wheel&gt;"</code>.</p>
-<p>Pinning <code>TRACEBI_VERSION</code> in <code>deploy/.env</code> keeps a server on a known version
-until you choose to move it; leaving it at <code>latest</code> means every <code>pull</code> takes
-the newest full release.</p>
-<h2 id="after-updating">After updating</h2>
+<p>On a server, pin <code>TRACEBI_VERSION</code> in <code>deploy/.env</code> to stay on a known
+version. Left at <code>latest</code>, every <code>pull</code> takes the newest full release.</p>
+<h2 id="3-restart-and-check-your-reports">3. Restart and check your reports</h2>
 <ol>
 <li>Restart <code>tracebi serve</code>, or the container.</li>
-<li>Check your reports still reproduce on the new version:
-   <code>bash
-   tracebi verify output/&lt;report&gt;.html.manifest.json</code>
-   A changed number shows up here, before anyone reads it.</li>
-<li>Read the release notes' "Changed" section for anything you need to act on.</li>
+<li>Check your reports still reproduce:</li>
 </ol>
-<h2 id="related">Related</h2>
+<p><code>bash
+   tracebi verify output/&lt;report&gt;.html.manifest.json</code></p>
+<p>A changed number shows here, before anyone reads it.</p>
+<ol start="3">
+<li>Read the "Changed" section of the release notes for anything you need to
+   act on.</li>
+</ol>
+<h2 id="settings">Settings</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TRACEBI_UPDATE_CHECK=0</code></td>
+<td>Turns off the check in <code>tracebi update</code> and the app's badge</td>
+</tr>
+<tr>
+<td><code>TRACEBI_UPDATE_URL</code></td>
+<td>Checks an internal mirror instead of GitHub</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../reference/environment-variables.html">Environment variables</a>.</p>
+<h2 id="next">Next</h2>
 <ul>
-<li><a href="../guides/one-server.html">Run TraceBi on one server</a> — the Docker setup that pulls the image</li>
-<li><a href="../reference/cli.html">CLI reference</a> — every command</li>
-<li><a href="../reference/environment-variables.html">Environment variables</a> — the update settings</li>
+<li>Every command: <a href="../reference/cli.html">CLI reference</a></li>
 </ul>
   </main>
 </div>

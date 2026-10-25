@@ -1,30 +1,89 @@
 # Your first report
 
-**Author a report package end to end — from `tracebi new-report` to a verified
-artifact.**
+Change the query behind one number in the sample report, rebuild it, and see
+the trace follow. Then start a report of your own.
 
-Assumes you have a [[model]] over a warehouse. If not, start with
-[[quickstart]].
+## Before you begin
 
----
+- The project from the [[quickstart]], with its transform run once
 
-## 1. Scaffold
+## 1. Open the report's data
+
+Open `reports/sample_model/sample_dashboard/report.json`. The `measures` block
+holds calculations that belong to this report. `big_orders` is the revenue of
+orders of 10 units or more:
+
+```json
+"big_orders": {
+  "column": "revenue",
+  "agg": "sum",
+  "filters": {"qty": {"gte": 10}},
+  "format": "currency0"
+}
+```
+
+The **Large orders** card on the page reads it through the `split` binding.
+
+## 2. Change the query
+
+Raise the threshold to 20 units:
+
+```json
+"filters": {"qty": {"gte": 20}}
+```
+
+Make the same change to `small_orders`, so the two still add up to revenue:
+
+```json
+"filters": {"qty": {"lt": 20}}
+```
+
+## 3. Rebuild
+
+```bash
+tracebi report build sample_model/sample_dashboard
+```
+
+Open `output/sample_model/sample_dashboard.html`. The **Large orders** card
+shows the new number. Click it: the trace opens at that figure, with this
+build's query and fingerprint.
+
+## 4. Check it
+
+```bash
+tracebi verify output/sample_model/sample_dashboard.html.manifest.json
+```
+
+Every figure reads `REPRODUCES`, because the manifest now records the new
+query. An older manifest would not match the new numbers.
+
+## 5. Watch it live
+
+```bash
+tracebi dev sample_model/sample_dashboard
+```
+
+The app opens the report in Build mode. Edit `report.json` or `app.jsx` and
+the page reloads. The panel beside it lists what changed on each save, the
+data each figure reads, and **Checks**: figures with no data, bindings no
+figure reads, and numbers typed outside figures.
+
+## Start a report of your own
+
+### 1. Create the package
 
 ```bash
 tracebi new-report "Portfolio Book"
 ```
 
-Creates `reports/portfolio_book/` with `report.json` and `template.html`, bound
-to the first model it finds.
+This creates `reports/portfolio_book/` with `report.json` and `template.html`,
+bound to the first model it finds. Use `tracebi new-dashboard` instead for an
+`app.jsx` dashboard ([[app-jsx]]).
 
-There is deliberately **no `script.js` or `style.css`** yet. The runtime draws
-every figure from the stamped bytes, so hand-rolling a CSV parser and a chart is
-the classic wasted afternoon. Add them when you actually need them.
+### 2. Declare the data
 
-## 2. Declare the data
-
-Open `report.json`. Each entry under `data` is a **binding** — the unit of
-trust, resolved once, fingerprinted, and recorded in the trace.
+Each entry under `data` is a binding: a named query against a model. The build
+runs it once, fingerprints the result and records it in the trace.
 
 ```json
 {
@@ -47,16 +106,10 @@ trust, resolved once, fingerprinted, and recorded in the trace.
 }
 ```
 
-Note `totals` has **no dimensions** — it returns one row. A KPI needs a one-row
-binding; a value figure over a multi-row binding is refused.
+`totals` has no dimensions, so it returns one row. A KPI needs a one-row
+binding.
 
-The build inlines D3 when the page contains a chart figure. (`"libs": ["echarts"]` keeps the older ECharts engine for a report that needs it.)
-
-→ [[report-json]] · [[queries]]
-
-## 3. Declare the figures
-
-Add a `figures` block and let the framework build the markup:
+### 3. Declare the figures
 
 ```json
 "figures": {
@@ -71,11 +124,10 @@ Add a `figures` block and let the framework build the markup:
 }
 ```
 
-→ [[figure-helper]]
+The build adds the D3 charting library when the page has a chart. See
+[[figure-helper]] for every key.
 
-## 4. Draw the page
-
-`template.html` is yours. Place each figure where it belongs:
+### 4. Place them on the page
 
 ```html
 <!doctype html>
@@ -87,12 +139,12 @@ Add a `figures` block and let the framework build the markup:
     <p class="tb-standfirst">The book at fair value, by sector.</p>
   </header>
 
-  <div class="tb-grid">            <!-- a value figure is a KPI card: one strip -->
+  <div class="tb-grid">
     {{ figure("kpi_value") }}
     {{ figure("kpi_count") }}
   </div>
 
-  <div class="tb-grid">            <!-- the 12-column grid: 8 beside 4 -->
+  <div class="tb-grid">
     <div class="tb-card tb-span-8">
       <h2>Fair value by sector</h2>
       {{ figure("sector_mix") }}
@@ -111,76 +163,56 @@ Add a `figures` block and let the framework build the markup:
 </body></html>
 ```
 
-Every declared figure must be placed **exactly once**, or the build fails —
-a declared number must not silently vanish.
+Place each declared figure exactly once. The build fails if one is missing or
+placed twice. You can also write the `data-tb-*` attributes by hand
+([[template-html]]); both produce the same page.
 
-> Prefer writing the attributes yourself? Do — [[template-html]] documents the
-> grammar, and both styles produce identical bytes. Mix them freely.
-
-## 5. Bind the prose
-
-The highest-value habit in the whole file:
+### 5. Bind the numbers in your prose
 
 ```html
 <p>The book stands at
    <span data-tb-figure="value" data-tb-binding="totals"
          data-tb-cell="fair_value" data-tb-format="compact"
-         id="prose-fv">—</span>
+         id="prose-fv"></span>
    across
    <span data-tb-figure="value" data-tb-binding="totals"
          data-tb-cell="positions" data-tb-format="comma"
-         id="prose-pos">—</span>
+         id="prose-pos"></span>
    positions.</p>
 ```
 
-Narrative prose is where hard-coded numbers hide. Here the honest path costs one
-attribute — and each bound span becomes a verified figure in the trace.
+A number typed into a sentence has no trace. A bound one gets its own row in
+the trace.
 
-## 6. Iterate live
-
-```bash
-tracebi dev portfolio_book
-```
-
-This opens the web app on the report. Edit and the page reloads; the panel beside it
-shows what each figure is bound to (Data) and what needs a look (Checks). Wrap scratch work in `data-tb-stage="exploration"` — it is
-deleted at final build.
-
-## 7. Build and verify
+### 6. Build, check and review
 
 ```bash
 tracebi report build portfolio_book
 tracebi verify output/portfolio_book.html.manifest.json
 tracebi verify --file output/portfolio_book.html
-```
-
-You want `✓ REPRODUCES` per figure. See [[trace]] for what that does and
-does not claim.
-
-## 8. Check what it earned
-
-```bash
 tracebi report status portfolio_book
 ```
 
-Per figure: verified, python-derived, or unverified — plus unused and failing
-bindings. Exits 1 on any binding error, so CI can gate on it.
+`tracebi report status` lists each figure as verified, python-derived or
+unverified, then unused and failing bindings. It exits 1 on any binding error,
+so CI can use it as a gate.
 
----
+Wrap scratch work in `data-tb-stage="exploration"` while you iterate. The
+final build removes it.
 
-## Common refusals, and what they mean
+## If the build refuses
 
-| Refusal | Fix |
+| Message | Fix |
 | --- | --- |
-| *a value figure needs a one-row binding* | aggregate the query, or use a table figure |
-| *names binding 'x', which is not declared in 'data'* | typo, or you forgot the binding |
-| *declares 'x' … but template.html never places it* | add `{{ figure("x") }}`, or drop the declaration |
-| *figure('x') is placed more than once* | declare a second figure; one id addresses one number |
-| chart panel stays blank | the build inlines D3 when the page has a chart figure; check `data-tb-x` and `data-tb-y` |
-| *limit without order_by is refused* | state the ranking → [[queries]] |
+| *a value figure needs a one-row binding* | Aggregate the query, or use a table figure. |
+| *names binding 'x', which is not declared in 'data'* | Fix the typo, or add the binding. |
+| *declares 'x' … but template.html never places it* | Add `{{ figure("x") }}`, or remove the declaration. |
+| *figure('x') is placed more than once* | Declare a second figure. One id addresses one number. |
+| A chart stays blank | Check `data-tb-x` and `data-tb-y` name columns of the binding. |
+| *limit without order_by is refused* | Add an `order_by`. See [[queries]]. |
 
 ## Next
 
-- [[styling-a-report]] — your own CSS and JS
-- [[measures]] — add a measure instead of computing in Python
-- [[cli]] — `report send`, `snapshot`, `preview`
+- Style the page: [[styling-a-report]]
+- Add a measure to the model: [[measures]]
+- Send or schedule the report: `tracebi report send` and `tracebi schedule` in [[cli]]

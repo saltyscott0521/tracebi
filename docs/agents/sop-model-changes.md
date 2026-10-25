@@ -1,61 +1,50 @@
-# SOP: Changing the Semantic Contract
+# SOP: Change a model's measures and keys
 
-> **Read `AGENTS.md` first.** It is the brief every agent reads before working in a
-> TraceBi project (`tracebi init` writes one into each). This SOP is the
-> step-by-step for one job in it: changing what a model's numbers mean.
+The procedure an engineer agent (or a person doing the same job) follows to
+change what a model's numbers mean: the `models/<name>.yaml` files, or a
+`models/<name>.py` for anything YAML cannot say.
 
-**Audience:** an engineer-agent (or a human doing the same job) editing the
-**definition plane** — the `models/<name>.yaml` files (a `models/<name>.py`
-for anything exotic) that declare what numbers mean in this project.
+Read `AGENTS.md` first. It is the brief every agent reads before working in a
+TraceBi project (`tracebi init` writes one into each). This SOP is one job
+from it.
 
-**Where this sits in the three-phase workflow (see [[the-three-phase-workflow]]).** This is
-**phase ② — MODEL**, the freeze point between the unconstrained phase-① transform
-(`transforms/<name>.sql`, or pandas as the escape hatch, that sinks the
-warehouse) and the fast phase-③ report (a package in `reports/<model>/`) that
-queries the model by name. The
-model **reads the sink; it never sees the transform** — it is the semantic
-contract, a few dozen declarative lines a reviewer reads without opening the
-pandas above it (`models/portfolio_model.yaml` is the reference). It is also where
-the trust machinery begins: everything from this boundary onward is stamped and
-verifiable; phase ① below it is unverified by design, trusted as reviewed code.
+## Before you begin
 
-**The rule this whole document unpacks:** *change the contract in git; use the
-contract over MCP.* The gateway (`tracebi mcp`) is read-and-compute only. When
-an agent authoring a dashboard hits a vocabulary gap — a measure that does not
-exist, a definition that should — the fix is a reviewed, committed change to a
-model file, never a workaround at the report layer and never a runtime
-mutation. Every consumer then inherits the fix (fresh gateway processes immediately;
-long-running ones after restart).
+- **You work at the model stage.** The model sits between the transform that
+  writes the warehouse (`transforms/<name>.sql`, or pandas) and the reports in
+  `reports/<model>/` that query it by name. It reads the warehouse and never
+  sees the transform. `models/portfolio_model.yaml` is the reference. See
+  [[the-three-phase-workflow]].
+- **Change the contract in git; use it over MCP.** The gateway (`tracebi mcp`)
+  only reads and computes. When a report author hits a missing measure, the
+  fix is a reviewed, committed change to a model file: never a workaround in a
+  report, never a change at runtime. Every consumer then gets the fix (a fresh
+  gateway process at once, a long-running one after a restart).
 
----
+## 1. Decide whether a model change is the fix
 
-## 1. Is a model change the right fix?
+1. **Is the data in the warehouse?** A model can only name columns and tables
+   the transform wrote. If the number needs a column the transform dropped or
+   a table it never built, the fix is in the transform. Check the tables first
+   (`describe_model`, `describe_table`, or Data → Warehouse in the app).
+2. **Is it shared meaning or presentation?**
 
-First, a phase question: **is the data even in the warehouse?** A model can only
-name measures over columns and tables phase ① actually sank. If the number needs
-a column the transform never wrote — a field it dropped, a table it never built —
-no measure will conjure it; the fix is **upstream in phase ①**, sinking the
-missing column or table in the transform, after which the model can reference
-it. Only once the underlying data is in the sink is a model change the right
-tool. Check the warehouse's tables (`describe_model`, `describe_table`, or the
-app's Data → Warehouse) before assuming this is a phase-② edit.
-
-Then the plane question: **is this shared meaning, or presentation?**
-
-| Situation | Plane | Fix |
+| Situation | Where it goes | Fix |
 |---|---|---|
-| A business definition several reports should agree on ("unrealized gain", "margin %") | Definition | a `measures:` entry in `models/<name>.yaml` (`add_measure` in a `.py`) |
-| The canonical display format for a measure, everywhere it appears | Definition | `format` on the measure |
-| A new slicing attribute, table, or join everyone needs | Definition | `dimensions` / `tables` / `relationships` in the model file |
-| One report wants a different label, column order, layout, or a one-off format | Presentation | The report package (`report.json`, the page) |
-| One report needs a derived column nothing else will ever use | Presentation first | A report calculation in `report.json` (`measures`, `sql_calculations`); promote to the model only when a second consumer wants it |
+| A business definition several reports should agree on ("unrealized gain", "margin %") | The model | A `measures:` entry in `models/<name>.yaml` (`add_measure` in a `.py`) |
+| The standard display format for a measure | The model | `format` on the measure |
+| A new attribute, table or join everyone needs | The model | `dimensions`, `tables` or `relationships` in the model file |
+| One report wants a different label, column order, layout or one-off format | The report | The report package (`report.json`, the page) |
+| One report needs a derived column nothing else uses | The report first | A report calculation in `report.json` (`measures`, `sql_calculations`); promote it to the model when a second report wants it |
 
-The canonical example (see `examples/agent_gateway/README.md`): an agent
-wanted an *unrealized gain* column. A spec cannot express arbitrary
-computation — by design — so the correct fix was a small, reviewed change to
-the wealth model (the actual commit also declared `market_value` and
-`cost_basis` as named measures with formats; the two gain measures were the
-point). In the reference project's `models/wealth_model.yaml` it reads:
+3. **If the request is ambiguous** ("add a margin column": to the model, or to
+   this report?), list the interpretations and ask before you change anything
+   (CLAUDE.md §1).
+
+The standard example (`examples/agent_gateway/README.md`): an agent wanted an
+*unrealized gain* column. A spec cannot express arbitrary computation, so the
+fix was a small, reviewed change to the wealth model. In
+`models/wealth_model.yaml`:
 
 ```yaml
   - name: unrealized_gain
@@ -67,213 +56,168 @@ point). In the reference project's `models/wealth_model.yaml` it reads:
     format: percent
 ```
 
-Defining it once in the model means every report, query, and agent gets the
-*same* "unrealized gain" — instead of each consumer re-deriving it, perhaps
-differently. That is the entire point of the semantic contract.
+Defined once in the model, every report, query and agent gets the same
+"unrealized gain" instead of each deriving it, possibly differently.
 
-If the ask is genuinely ambiguous ("add a margin column" — to the model, or to
-this one report?), surface the interpretations before implementing, per
-CLAUDE.md §1.
+## 2. Make the change
 
----
+### Where model files live
 
-## 2. Mechanics
+- Edit `models/<name>.yaml` (`.yml` and `.json` use the same schema,
+  [[model-json]]). A `models/<name>.py` must define a module-level variable
+  named `model` (a `DataModel`).
+- Files starting with `_` are skipped, and subfolders are not scanned. Two
+  declarative forms of one name are both refused; a `.py` beside a declarative
+  file wins. A file that fails to load is a failed entry in `/api/discovery`,
+  not a startup error: run `tracebi validate` if something disappears.
+- Through the server, a model change is a draft: edit it as a draft in the
+  app, or with `start_draft` and `write_draft_file` over MCP, then publish.
+  Publishing re-runs every published report that reads the model against the
+  draft (the impact check) and asks for `accept_impact` when numbers move.
+- A gateway process started per call (stdio) sees a committed change on its
+  next start. A long-running gateway caches imported model modules and must be
+  restarted. Either way agents see the change on their next call.
 
-### 2.1 Where model changes live
+### Declare a measure
 
-- Edit `models/<name>.yaml` (`.yml` and `.json` are the same schema,
-  [[model-json]]). A `models/<name>.py` **must** expose a module-level
-  variable named `model` (a `DataModel`) — that is the convention the registry
-  looks for.
-- Files starting with `_` are skipped; subdirectories are not scanned. Two
-  declarative forms of one name are both refused, and a `.py` beside a
-  declarative file wins. A file that fails to load is a failed entry in
-  `/api/discovery`, not an error at startup — run `tracebi validate` if
-  something silently disappears.
-- Through the server, a model change is a draft: Edit as a draft in the app,
-  or `start_draft` / `write_draft_file` over MCP, then publish. Publishing
-  re-runs every published report that reads the model against the draft
-  (the impact check) and asks for `accept_impact` when numbers move.
-- A one-shot gateway process (stdio, spawned per call) picks up a committed
-  change on its next spawn; a long-running gateway keeps already-imported
-  model modules cached and must be restarted. Either way a change is
-  visible to agents on their **next** gateway call — no server restart, no
-  cache to invalidate.
-
-### 2.2 A measure — the exact keys
-
-A YAML measure entry takes the same keys as `add_measure`'s keyword
-arguments (`name`, `column`, `agg`, `expr`, `ratio`, `description`,
-`format`, and the other kinds in [[measures]]). From
-`tracebi/model/data_model.py`:
+A YAML measure entry takes the same keys as `add_measure` (`name`, `column`,
+`agg`, `expr`, `ratio`, `description`, `format`, and the other kinds in
+[[measures]]). From `tracebi/model/data_model.py`:
 
 ```python
 model.add_measure(
     name,                 # positional; everything else is keyword-only
     *,
-    column=None,          # simple:     aggregate one column
-    agg=None,             # required for column= and expr=; forbidden for ratio=
-    expr=None,            # expression: aggregate a row-level arithmetic expr
-    ratio=None,           # ratio:      (numerator, denominator) measure names
-    description="",       # write this — it is the shared meaning, documented
-    format=None,          # presentation hint; becomes the renderer default
+    column=None,          # simple: aggregate one column
+    agg=None,             # required for column= and expr=; refused for ratio=
+    expr=None,            # expression: aggregate row-level arithmetic
+    ratio=None,           # ratio: (numerator, denominator) measure names
+    description="",       # write this: it documents the shared meaning
+    format=None,          # display hint; becomes the renderer's default
 )
 ```
 
-Exactly **one** of `column=`, `expr=`, or `ratio=` must be given. The three
-kinds, deliberately closed:
+Give exactly one of `column=`, `expr=` or `ratio=` for these three kinds:
 
 | Kind | Example | Notes |
 |---|---|---|
-| **simple** | `add_measure("revenue", column="revenue", agg="sum")` | Aggregation of one fact column. `agg` is one of `sum, count, mean` (alias `avg`), `min, max, nunique`. |
-| **expression** | `add_measure("gross_margin", expr="revenue - cost", agg="sum")` | Row-level arithmetic, then aggregated. |
-| **ratio** | `add_measure("margin_pct", ratio=("gross_margin", "revenue"), format="percent")` | Takes **no** `agg`. Computed *after* aggregation — a true ratio of totals, not a mean of per-row ratios. |
+| Simple | `add_measure("revenue", column="revenue", agg="sum")` | One fact column, aggregated. `agg` is `sum`, `count`, `mean` (alias `avg`), `min`, `max` or `nunique`. |
+| Expression | `add_measure("gross_margin", expr="revenue - cost", agg="sum")` | Row arithmetic, then aggregated. |
+| Ratio | `add_measure("margin_pct", ratio=("gross_margin", "revenue"), format="percent")` | No `agg`. Computed after aggregation: a ratio of totals, not a mean of row ratios. |
 
-### 2.3 `expr` is arithmetic-only, and callables are rejected — by design
+### Expressions and callables
 
-An `expr` may contain **only bare column names, numeric literals, and
-`+ - * / ( )`**. No function calls, no quotes, no SQL fragments — an
-identifier followed by `(` is rejected as a function call, and the expression
-is validated against the fact's actual columns before it ever reaches an
-engine. Aggregation is declared separately via `agg=`.
+An `expr` may contain only column names, numbers and `+ - * / ( )`. A name
+followed by `(` is refused as a function call, and the expression is checked
+against the fact's columns before it reaches an engine. The aggregation is
+`agg=`.
 
-Passing a callable for `column`, `expr`, or `agg` raises `TypeError`. This is
-the single most consequential API constraint in the codebase and it is not a
-limitation to route around: **a lambda cannot be serialized, diffed, reviewed
-as data, validated before execution, or sent over the wire.** Accepting one
-would forfeit reproducibility at the root — the model would stop being a
-checkable contract and become opaque code. If your calculation does not fit
-`column`/`expr`/`ratio`, that is a design conversation (a richer declarative
-grammar compiling down to these structures), not a reason to smuggle in a
-function. Do not relax `_EXPR_ALLOWED` / `_EXPR_CALL` in `tracebi/model/
-data_model.py` for a project need.
+A callable for `column`, `expr` or `agg` raises `TypeError`. A function cannot
+be serialized, diffed, reviewed as data, checked before it runs or sent over
+the wire, so accepting one would make the model opaque code instead of a
+checkable contract. If a calculation does not fit `column`, `expr` or `ratio`,
+propose a richer declarative form; don't relax `_EXPR_ALLOWED` or `_EXPR_CALL`
+in `tracebi/model/data_model.py` for a project's need.
 
-### 2.4 Declared formats flow to renderers
+### Declared formats reach every report
 
-`format=` takes a named shortcut — `currency` (`${:,.2f}`), `currency0`,
-`percent`, `comma`, `decimal` — or a raw Python format string. With
-`HTMLRenderer(derive_defaults=True)` (the default), the precedence for a
-column's number format is:
+`format=` takes `currency` (`${:,.2f}`), `currency0`, `percent`, `comma`,
+`decimal`, or a Python format string. With `HTMLRenderer(derive_defaults=True)`
+(the default), a column's format comes from, in order:
 
-1. the report author's explicit `number_formats` (always wins),
-2. **the format declared on the model's measure**,
-3. a column-name suffix hint (`_pct`, `_rate`, …),
-4. shape-based fallback.
+1. the report author's `number_formats`;
+2. the format declared on the model's measure;
+3. a column-name hint (`_pct`, `_rate`, …);
+4. the value's shape.
 
-So declaring `format="currency0"` on a measure means every report that names
-it renders correctly with **no formatting code in the spec at all** — which is
-exactly what an agent composing at volume needs, since nobody is proofreading
-its raw output.
+So `format="currency0"` on a measure formats it in every report that names it,
+with no formatting in the spec.
 
----
+## 3. Test it
 
-## 3. Tests, then the full suite
-
-Per CLAUDE.md §4: run `pytest tests/` **before** your change (confirm a green
-baseline) and **after**. A passing suite is the minimum bar.
-
-- Prefer a step in an end-to-end journey (`tests/e2e/`) that uses the
-  measure; add a unit test only for query semantics a journey cannot pin
-  (`tests/test_phase25.py` holds the `add_measure` callable-rejection and
-  expr-validation cases). Test files are scoped; do not reorganize across
-  files or add shared cross-phase fixtures. Before adding any test, answer
-  *what bug would this catch?* (`design/test-suite-review.md`).
-- Test the *meaning*, not just the plumbing: assert the computed value on a
-  small known dataset. Bias toward asserting the **absence of a wrong
-  answer** (e.g. a ratio measure is a ratio of totals, not a mean of per-row
-  ratios), not just the presence of a right one — silent-wrong-output is this
-  framework's named enemy.
-- For a demo-model change, re-render affected specs and check fingerprints:
-  sections whose data your change touches **should** drift; untouched
-  sections' fingerprints must stay byte-identical. Drift where something
-  moved, stability where nothing did — that is your review signal.
-- **Renaming or removing** a measure is a breaking contract change: grep
-  `reports/` and `examples/` for references and `tracebi report build` each
-  package that binds it (a binding to a missing measure fails the build); a
-  published model's impact check lists the reports that break.
+1. Run `pytest tests/` before the change, to confirm a green baseline
+   (CLAUDE.md §4).
+2. Add coverage. Prefer a step in an end-to-end journey (`tests/e2e/`) that
+   uses the measure. Add a unit test only for query semantics a journey cannot
+   pin (`tests/test_phase25.py` holds the callable and expression cases). Keep
+   tests in their own files, with no shared cross-phase fixtures. Before adding
+   one, ask what bug it would catch (`design/test-suite-review.md`).
+3. Test the meaning: assert the computed value on a small known dataset, and
+   assert a wrong answer is absent (a ratio is a ratio of totals, not a mean
+   of row ratios).
+4. For a demo-model change, re-render the affected specs and compare
+   fingerprints. Sections your change touches should change; every other
+   section's fingerprint must stay identical.
+5. **Renaming or removing a measure breaks the contract.** Search `reports/`
+   and `examples/` for it, and `tracebi report build` each package that binds
+   it (a binding to a missing measure fails the build). A published model's
+   impact check lists the reports that break.
+6. Run `pytest tests/` again. A passing suite is the minimum.
 
 Useful while working:
 
 ```bash
-tracebi context --model <name>     # see the vocabulary as an agent sees it
+tracebi context --model <name>     # the vocabulary as an agent sees it
 tracebi spec validate report.json  # check a downstream spec without running it
-pytest tests/                      # full suite (run it for the current count)
+pytest tests/                      # the full suite
 ```
 
----
+## 4. Commit and open the pull request
 
-## 4. Git commit / PR etiquette
+1. Keep the diff small. Every changed line traces to the request; don't
+   reformat or refactor nearby code. Adding a measure is usually a few lines in
+   one model file, plus tests.
+2. Write the commit message as one imperative sentence in the repository's
+   style, such as `Declare the wealth model's shared measures; collapse
+   gateway model aliases`.
+3. Record user-visible contract changes (new, renamed or removed measures,
+   format changes) in `CHANGELOG.md` (keep-a-changelog format).
+4. In the pull request, say why this belongs in the model and not a report,
+   list your assumptions, and give the suite result before and after. Ask open
+   questions instead of deciding them.
 
-Per CLAUDE.md:
+Reviewing this diff is the governance step; that is why model files live in
+git.
 
-- **Surgical diffs.** Every changed line traces directly to the request. Do
-  not reformat, "improve", or refactor adjacent code; match existing style.
-  A measure addition is typically a handful of lines in one model file plus
-  tests.
-- **Commit messages** follow the repo's style: one imperative, descriptive
-  sentence — e.g. `Declare the wealth model's shared measures; collapse
-  gateway model aliases`. Say what changed and, when it matters, why.
-- **CHANGELOG.md** is keep-a-changelog format; record user-visible contract
-  changes (new/renamed/removed measures, format changes) there.
-- **In the PR description**, state the shared-meaning justification (why this
-  belongs in the model and not a report), your assumptions, and the
-  before/after suite result. Surface open questions rather than deciding them
-  silently.
-- Suite green before and after is the bar for merging; the model files are
-  the contract, and review of this diff **is** the governance step — that is
-  why the definition plane lives in git at all.
+## What not to do
 
----
-
-## 5. What NOT to do
-
-- **No runtime mutation of the contract.** Never call `add_measure` (or
+- **Don't change the contract at runtime.** Never call `add_measure` (or
   `add_fact`, `add_dimension`, …) from a request script, a report factory, a
-  route handler, or anything executed at serve time to patch a gap. The
-  registry is populated at startup and read at request time; the gateway is
-  read-and-compute only. A measure that exists only in one process's memory
-  is exactly the ungoverned state this architecture exists to prevent.
-- **No lambdas or callables, ever** — see §2.3. Do not wrap one, do not
-  precompute a column in an ad-hoc transform and pretend it is governed.
-- **Do not edit `tracebi/` internals for a project need.** Adding a measure,
-  a dimension, or a format belongs in the model file. New measure kinds,
-  relaxed expression rules, new aggregation functions, or reaching into
-  `_measures` and other `_private` attributes are framework changes with their
-  own review bar — propose them, don't sneak them in with a model change.
-- **Do not solve presentation problems in the definition plane** (a
-  one-report label tweak belongs in the report package) **or shared-meaning
-  problems in the presentation plane** (recomputing "gain" inside a report is
-  how two reports disagree about the same number).
-- **Do not duplicate a definition.** Before adding a measure, check
-  `model.measures()` / `tracebi context --model <name>` — if a near-duplicate
-  exists, fix or reuse it; two names for almost the same number is a
-  trust-layer bug.
+  route handler or anything that runs while serving. A measure that exists
+  only in one process's memory is ungoverned.
+- **No lambdas or callables.** Don't wrap one, and don't compute a column in
+  an ad-hoc transform and present it as governed.
+- **Don't edit `tracebi/` for a project's need.** New measure kinds, looser
+  expression rules, new aggregations, or reaching into `_measures` are
+  framework changes with their own review.
+- **Keep each fix in its place.** A label tweak for one report belongs in the
+  report; a shared definition belongs in the model. Recomputing "gain" inside
+  a report is how two reports disagree about the same number.
+- **Don't duplicate a definition.** Check `model.measures()` or
+  `tracebi context --model <name>` first. Two names for nearly the same number
+  is a trust bug.
 
----
+## Checklist
 
-## 6. Checklist
-
-Before opening the PR, confirm every box:
-
-- [ ] The change is **shared meaning**, not one report's presentation (§1);
-      ambiguity was surfaced, not silently resolved.
-- [ ] Edited the model file only (a `.py` keeps its module-level `model`
-      variable); no `tracebi/` internals touched.
-- [ ] Each new measure uses exactly one of `column` / `expr` / `ratio`;
-      `agg` present for the first two, absent for `ratio`.
-- [ ] Any `expr` is bare-column arithmetic only — no functions, quotes, or
-      SQL; no callables anywhere.
-- [ ] `description` written; `format` declared where a canonical display
-      format exists.
-- [ ] No duplicate/near-duplicate of an existing measure
-      (`tracebi context --model <name>` checked).
-- [ ] A journey step (or, for query semantics, a unit test) asserting
-      computed values (including the absence-of-wrong-answer case).
-- [ ] `pytest tests/` green **before and after** the change.
-- [ ] Renames/removals: downstream reports grepped and rebuilt
+- [ ] The change is shared meaning, not one report's presentation, and any
+      ambiguity was raised, not resolved silently.
+- [ ] Only the model file changed (a `.py` keeps its module-level `model`);
+      nothing in `tracebi/`.
+- [ ] Each new measure uses exactly one of `column`, `expr` or `ratio`; `agg`
+      present for the first two and absent for `ratio`.
+- [ ] Every `expr` is column arithmetic only: no functions, quotes or SQL, and
+      no callables anywhere.
+- [ ] `description` written; `format` declared where there is a standard
+      display.
+- [ ] No duplicate or near-duplicate measure (`tracebi context --model <name>`
+      checked).
+- [ ] A journey step (or, for query semantics, a unit test) asserts computed
+      values, including that a wrong answer is absent.
+- [ ] `pytest tests/` green before and after.
+- [ ] Renames and removals: downstream reports found and rebuilt
       (`tracebi report build`).
-- [ ] Fingerprint drift confined to sections the change actually touches;
-      untouched sections byte-identical.
-- [ ] CHANGELOG.md updated; diff is surgical; commit message is one
-      imperative, descriptive sentence.
-- [ ] PR states the shared-meaning rationale and the suite result.
+- [ ] Fingerprint changes only in sections the change touches.
+- [ ] `CHANGELOG.md` updated; the diff is small; the commit message is one
+      imperative sentence.
+- [ ] The pull request states why this belongs in the model, and the suite
+      result.

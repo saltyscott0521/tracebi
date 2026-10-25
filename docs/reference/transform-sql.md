@@ -1,67 +1,61 @@
 # SQL transforms
 
-**A phase ① transform is a `.sql` file by default: DuckDB statements, run top
-to bottom in one fresh connection to the warehouse. Python is the escape hatch.
-The sink contract sits beside it as a `.contract.yaml`.**
+A transform is a `.sql` file of DuckDB statements, run top to bottom in one
+fresh connection to the warehouse, with its sink contract beside it in a
+`.contract.yaml`.
 
 ```
 transforms/
   holdings_transform.sql             # the transform
-  holdings_transform.contract.yaml   # what the tables it lands must satisfy
+  holdings_transform.contract.yaml   # what the tables it writes must satisfy
 ```
 
 ```bash
-tracebi new-transform "Holdings"      # → transforms/holdings.sql + holdings.contract.yaml
+tracebi new-transform "Holdings"      # transforms/holdings.sql + holdings.contract.yaml
 tracebi run-transform holdings        # runs it, then the contract; prints form: sql
 ```
 
-The reference is
-`examples/portfolio_project/transforms/holdings_transform.sql`; the same work
-in pandas, `holdings_transform_pandas.py`, sinks identical tables (every
-table's fingerprint equal, row order included).
-
----
+The reference is `examples/portfolio_project/transforms/holdings_transform.sql`.
+The pandas version, `holdings_transform_pandas.py`, writes identical tables:
+every fingerprint equal, row order included.
 
 ## How it runs
 
-`tracebi run-transform <name>` (and the `transform` step of a
-[[pipeline-yaml|pipeline]], and a report's `refresh`) finds
-`transforms/<name>.sql`, `.py` or `.ipynb`, runs it and prints
-`form: sql | python | notebook`; a pipeline run records the form, and
+`tracebi run-transform <name>`, a pipeline's `transform` step and a schedule's
+`refresh` all find `transforms/<name>.sql`, `.py` or `.ipynb`, run it, and
+print `form: sql | python | notebook`. A pipeline run records the form, and
 `tracebi run-pipeline <name> --status` and the model's Transform tab show it.
 
-A SQL transform:
+A SQL transform runs in five steps:
 
-1. has its two placeholders substituted (below);
-2. loads each table its `-- source:` lines name, through their connections
-   (below);
-3. runs statement by statement, in order, in **one** fresh read-write DuckDB
-   connection to the warehouse `tracebi.yaml` names, with the project's
-   `engine` limits. A failing statement stops the run with its number and
-   line: `transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …`;
-4. on the object tier, lands every table it created (below);
-5. closes the connection, then runs `<name>.contract.yaml` if there is one.
+1. Its two placeholders are substituted.
+2. Each table its `-- source:` lines name is loaded through its connection.
+3. Its statements run in order in one fresh read-write DuckDB connection to
+   the warehouse `tracebi.yaml` names, with the project's `engine` limits. A
+   failing statement stops the run with its number and line:
+   `transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …`.
+4. On the object tier, every table it created is written out.
+5. The connection closes, then `<name>.contract.yaml` runs if there is one.
 
-Nothing persists between runs but the tables that landed: `TEMP` tables and
-`TEMP MACRO`s are scratch and vanish with the connection. Keep it idempotent
-with `CREATE OR REPLACE`, so a rerun replaces the tables.
+`TEMP` tables and `TEMP MACRO`s vanish with the connection. Use
+`CREATE OR REPLACE` so a rerun replaces the tables.
 
-The connection is not locked like a model's query connection: it may read
-files and, on the object tier, load `httpfs`. It runs only from the CLI, the
-scheduler and an approved code request, never to answer a reader.
+This connection may read files and, on the object tier, load `httpfs`. It runs
+only from the CLI, the scheduler and an approved code request, never to answer
+a reader.
 
-## Where a table lands, per tier
+## Where a table lands
 
-A table the script creates (`CREATE OR REPLACE TABLE fact_x AS …`, not `TEMP`)
-is a **sink table**.
+A table the script creates without `TEMP` (`CREATE OR REPLACE TABLE fact_x AS
+…`) is a sink table.
 
-| Tier (`tracebi.yaml` `warehouse.tier`) | `CREATE OR REPLACE TABLE fact_x` lands | `{{ sink }}` is |
+| Tier (`warehouse.tier`) | `CREATE OR REPLACE TABLE fact_x` lands | `{{ sink }}` is |
 |---|---|---|
-| `file` (default) | in `data/warehouse.duckdb` itself | the `.duckdb` path |
-| `object` | as `<location>/fact_x.parquet`, written after the script | the prefix (`s3://bucket/project`, or a directory) |
-| `remote` | in the attached database (`USE`d for the run) | the attach string |
+| `file` (default) | In `data/warehouse.duckdb` | The `.duckdb` path |
+| `object` | As `<location>/fact_x.parquet`, written after the script | The prefix (`s3://bucket/project`, or a directory) |
+| `remote` | In the attached database (`USE`d for the run) | The attach string |
 
-On the object tier a script may also write a table itself, which is the idiom
+On the object tier a script may write a table itself instead, which is what
 `tracebi new-transform` scaffolds there:
 
 ```sql
@@ -69,36 +63,33 @@ CREATE OR REPLACE TEMP TABLE dim_x AS SELECT …;
 COPY dim_x TO '{{ sink }}/dim_x.parquet' (FORMAT PARQUET);
 ```
 
-Use one or the other for a table: a `CREATE`d table that is also `COPY`'d is
-written twice.
+Use one way or the other for a table. A table that is both created and
+copied is written twice.
 
 ## Placeholders
 
-Exactly two, substituted as text with any single quote doubled, so each
-belongs inside a `'…'` literal:
+There are two. Each is substituted as text with any single quote doubled, so
+put it inside a `'…'` literal.
 
 | Placeholder | Becomes |
 |---|---|
 | `{{ sink }}` | `str(sink_target(root))`: the warehouse address on its tier |
-| `{{ root }}` | the project root, absolute |
+| `{{ root }}` | The project root, absolute |
 
 Anything else between `{{` and `}}` is an error naming it:
 `transforms/x.sql: {{ warehouse }} is not a placeholder; a SQL transform has
-two, {{ sink }} and {{ root }}`. There are no loops, conditionals or
-`ref()`s: one transform file per pipeline, statements in order.
+two, {{ sink }} and {{ root }}`. There are no loops, conditionals or `ref()`s.
 
 ## Relative paths
 
-A **read** with a relative path, `read_csv('inputs/holdings.csv')`, resolves
-against the project root: the connection's `file_search_path` is set to it, so
-the transform reads the same file whichever directory it was started from. A
-**write** names its destination with `{{ sink }}` or `{{ root }}`.
+A relative read, `read_csv('inputs/holdings.csv')`, resolves against the
+project root (the connection's `file_search_path`), whatever directory the run
+started from. A write names its destination with `{{ sink }}` or `{{ root }}`.
 
-## Sources outside the warehouse
+## Read a table from a database
 
-A table that lives in a database, not a file, is read through a declared
-[[connections-yaml|connection]] with a `-- source:` line in the transform's
-header (the comment lines above its first statement):
+Declare the database as a connection ([[connections-yaml]]), then name each
+table in a `-- source:` line in the header, above the first statement:
 
 ```sql
 -- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv
@@ -107,39 +98,33 @@ CREATE OR REPLACE TABLE dim_rating AS
 SELECT … FROM crm.issuer_ratings …;
 ```
 
-The grammar, one table per line, as many lines as tables:
-
 ```
 -- source: <connection>.<table> [fallback: <path>.csv]
 ```
 
-- `<connection>` is `connections/<connection>.yaml` (`tracebi connect crm
-  --kind postgres` writes one; any connection type works). `<table>` is a
-  table that connection's connector loads. Both are names: letters, digits
-  and underscores.
-- Before the first statement runs, the runner loads each table through the
-  connection's connector, the whole table with nothing pushed down, as a model
-  would. The SQL reads it as `<connection>.<table>`: an in-memory database
-  named after the connection, attached for this run only, so nothing of it
-  lands in the warehouse. A relational table has no row order, so the loaded
-  rows are sorted by every column.
-- `fallback:` names a committed CSV snapshot inside the project, read through
-  the CSV connector **only** when the connection's `${VAR}` is unset (a fresh
-  clone, CI). Any other failure (the server down, the table missing, a wrong
-  password) stops the run: a snapshot never covers for a source that is set
-  but unreachable. With no fallback, an unset variable stops the run naming
-  it.
-- Refused, naming the line: `-- source: crm` with no table (name each one),
-  a table named twice, a `-- source:` line below the first statement (it
-  would read as a directive the runner skips), and anything after the table
-  but `fallback: <path>`.
+| Part | Meaning |
+|---|---|
+| `<connection>` | `connections/<connection>.yaml`, any type (`tracebi connect crm --kind postgres` writes one). Letters, digits and underscores. |
+| `<table>` | A table that connection's connector loads. |
+| `fallback:` | A committed CSV snapshot inside the project, read only when the connection's `${VAR}` is unset (a fresh clone, CI). Any other failure (server down, table missing, wrong password) stops the run. With no fallback, an unset variable stops the run, naming it. |
 
-There are still exactly two placeholders: a source is a name the SQL reads,
-not a substitution.
+- Before the first statement, each table loads in full through the
+  connection's connector, with nothing pushed down. The SQL reads it as
+  `<connection>.<table>`, from an in-memory database attached for this run
+  only, so none of it lands in the warehouse.
+- The loaded rows are sorted by every column, because a database table has no
+  row order.
+- Refused, naming the line: `-- source: crm` with no table, a table named
+  twice, a `-- source:` line below the first statement, and anything after the
+  table except `fallback: <path>`.
 
-**What the certificate records.** When a `<name>.contract.yaml` sits beside
-the transform, its certificate (`data/warehouse.contracts.json`) records each
-load under the transform's `sources`:
+A source is a name the SQL reads, not a placeholder.
+
+### What the certificate records
+
+With a `<name>.contract.yaml` beside the transform, the certificate
+(`data/warehouse.contracts.json`) records each load under the transform's
+`sources`:
 
 ```json
 "sources": {
@@ -150,44 +135,42 @@ load under the transform's `sources`:
 }
 ```
 
-and, when the snapshot stood in, `"source_fallback": "csv"`, `"fallback":
-"inputs/issuer_ratings.csv"` and the `reason` (the unset variable). So the
-claim stays exact: **the sink satisfied its contract** against those inputs.
-Each report manifest's `transform_contracts` entry carries the same
-`sources` (less the reason), so a report's trace says where the sunk data came
-from, and that the CRM was not reached when it was not. Contract status is
-never colored by it.
+When the snapshot stood in, it also records `"source_fallback": "csv"`,
+`"fallback": "inputs/issuer_ratings.csv"` and the `reason` (the unset
+variable). The claim is then exact: the sink satisfied its contract against
+those inputs. Each report manifest's `transform_contracts` entry carries the
+same `sources` (without the reason), so a report's trace says where the data
+came from, including when the CRM was not reached. It never changes the
+contract's status.
 
-`tracebi verify <manifest> --contracts` re-reads each recorded source (a load
-the snapshot served from the snapshot again, never from the connection) and
-compares fingerprints: `unchanged`, or `CHANGED` with exit 1 (a re-run of the
-transform would land other tables; the figures may still reproduce, because
-the warehouse did not move). A source it cannot read now (its variable unset,
-the server down) is `not checked`, which is neither green nor a failure.
+`tracebi verify <manifest> --contracts` re-reads each recorded source (a
+snapshot load from the snapshot again) and compares fingerprints:
 
-**In Python.** `tracebi.transforms.load_source(ref, root, fallback=None)`
-returns `(frame, record)`, the same load and the same record; pass the records
-to `contract(name, warehouse=..., sources={ref: record})` and the certificate
-says the same thing. `examples/portfolio_project/transforms/holdings_transform_pandas.py`
-does this.
+| Result | Meaning |
+|---|---|
+| `unchanged` | The source returns the same data. |
+| `CHANGED` | A re-run of the transform would write different tables. Exit 1. The figures may still reproduce, because the warehouse did not move. |
+| `not checked` | The source cannot be read now (variable unset, server down). Neither green nor a failure. |
+
+**In Python:** `tracebi.transforms.load_source(ref, root, fallback=None)`
+returns `(frame, record)`, the same load and record. Pass the records to
+`contract(name, warehouse=..., sources={ref: record})` and the certificate
+says the same thing. `holdings_transform_pandas.py` does this.
 
 ## Cells
 
-`-- %% [markdown]` and `-- %%` lines mark cells, as `# %%` does in a Python
-transform, so an editor that understands percent cells folds them. They are
-comments: the run ignores them.
+`-- %% [markdown]` and `-- %%` lines mark cells, like `# %%` in Python, so an
+editor that understands percent cells can fold them. The run ignores them.
 
 ## The contract file
 
-`<name>.contract.yaml` beside the transform declares the
-[[sink-contracts|sink contract]] in the same closed vocabulary as
-`with contract(...)` in Python, through the same parser, and writes the same
-certificate. It is honoured beside a `.py` or `.ipynb` transform too (run after
-the script).
+`<name>.contract.yaml` declares the [[sink-contracts|sink contract]]. It uses
+the same checks and parser as `with contract(...)` in Python and writes the
+same certificate. It also runs beside a `.py` or `.ipynb` transform.
 
 ```yaml
 name: holdings          # the certificate's record; default: the transform's file name
-note: >-                # the STATED methodology, recorded verbatim, never verified
+note: >-                # the stated methodology, recorded as written, never checked
   rows with no keyable issuer dropped and counted
 checks:
   - rows: fact_holdings          # the check, with its table as the value
@@ -209,36 +192,26 @@ checks:
 | `values` | `column`, `within` (a list) |
 | `reconcile` | `column`, `against: [table, column]`, `by`, `tolerance` (default 0) |
 
-Every check takes a `note`. The top level holds only `name`, `note` and
-`checks`; an unknown key, a check outside the vocabulary or a parameter it
-does not take is an error naming the file and the entry
-(`checks[0] must name exactly one check …`). No checks, or all of them
-commented out, declares nothing and writes nothing.
+- Every check takes a `note`.
+- The top level holds only `name`, `note` and `checks`. An unknown key, check
+  or parameter is an error naming the file and entry
+  (`checks[0] must name exactly one check …`).
+- No checks, or all commented out, declares nothing and writes nothing.
+- The checks run after the transform's connection closes, through the
+  warehouse's own reader, so they check what landed.
+- A failed check raises and writes no certificate. Passing means the sink
+  satisfied its contract, never that the transform was verified.
 
-The checks run after the transform's connection is closed, through the
-warehouse's own reader, so they check what landed (on the object tier the
-transform's connection also holds in-memory tables that are not the sink).
-A failed check raises and no certificate is written; the claim is **the sink
-satisfied its contract**, never that the transform was verified.
+## Python transforms
 
-## The escape hatch: Python
-
-`tracebi new-transform "Name" --python` scaffolds `transforms/<name>.py`,
-notebook-shaped pandas that ends by writing frames:
+`tracebi new-transform "Name" --python` writes `transforms/<name>.py`:
+notebook-shaped pandas that ends with
 `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`.
-A literal `.ipynb` runs too. Either runs top to bottom in a fresh namespace.
-Nothing is converted: a pandas transform keeps working until its author
-rewrites it. The trace line is drawn at the sink, so a Python transform is as
-traceable as a SQL one.
+A `.ipynb` runs too. Either runs top to bottom in a fresh namespace. A pandas
+transform keeps working until you rewrite it; nothing converts it. Lineage
+starts at the sink, so a Python transform is as traceable as a SQL one.
 
 ## One file per name
 
-A transform is one file. `x.sql` beside `x.py` (or `x.ipynb`) is refused by
-`run-transform`, naming both, and `new-transform` will not create the second.
-
-## Related
-
-- [[transform]] — the phase, and why it is unconstrained
-- [[sink-contracts]] — what a certificate says, and what it does not
-- [[pipeline-yaml]] — the pipeline that runs a transform, then the reports
-- [[tracebi-yaml]] — the warehouse block that decides the tier
+`x.sql` beside `x.py` or `x.ipynb` is refused by `run-transform`, naming both,
+and `new-transform` will not create the second.

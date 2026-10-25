@@ -1,16 +1,7 @@
 # `{{ figure("name") }}`
 
-**Declare a figure in [[report-json]]; the framework builds the element, you
-keep the layout.**
-
-The middle ground between writing the [[template-html|`data-tb-*` grammar]] by
-hand and giving up control of the page.
-
----
-
-## Use it
-
-Declare the figure:
+Declare a figure in [[report-json]] and place it in your page with one call.
+TraceBi builds the element; you keep the layout.
 
 ```json
 "figures": {
@@ -19,21 +10,19 @@ Declare the figure:
 }
 ```
 
-Place it anywhere in your own markup:
-
 ```html
 <section class="my-own-card">
   {{ figure("total") }}
 </section>
 ```
 
-Your CSS, your JS, your layout — untouched. The framework supplies only the
-element, and the element it emits is byte-identical to what a compiled `.json`
-spec would produce for the same declaration.
+The element it writes is identical to what a compiled `.json` spec produces
+for the same declaration, and to the `data-tb-*` markup you could write by
+hand ([[template-html]]). Mix both styles freely.
 
-## Kinds
+## `value`
 
-### `value` — a single number
+A single number.
 
 ```json
 {"kind": "value", "binding": "totals", "cell": "revenue",
@@ -42,15 +31,15 @@ spec would produce for the same declaration.
 
 | Key | Meaning |
 | --- | --- |
-| `cell` | **required** — the column to read, from row 0 |
-| `label` | the caption shown beside the number |
-| `format` | a named format → [[number-formats]] |
+| `cell` | Required. The column to read from the binding's one row. |
+| `label` | The caption beside the number. |
+| `format` | A named format ([[number-formats]]). |
 
-The binding must be a **one-row** query. A value figure over a multi-row
-binding is refused at build: *"a value figure needs a one-row binding
-(aggregate the query, or use a table figure)."*
+The binding must be a one-row binding. Over a multi-row binding the build
+fails: *"a value figure needs a one-row binding (aggregate the query, or use a
+table figure)."*
 
-### `chart`
+## `chart`
 
 ```json
 {"kind": "chart", "binding": "by_sector", "chart_type": "bar",
@@ -59,17 +48,16 @@ binding is refused at build: *"a value figure needs a one-row binding
 
 | Key | Meaning |
 | --- | --- |
-| `chart_type` | `bar`, `barh`, `line`, `area`, `pie`, `scatter` (default `bar`) |
-| `x` | the category column |
-| `y` | the value column, or a list for multi-series |
-| `color` | series/colour column |
-| `palette` | explicit colour list |
-| `value_format` | formats labels, axes and tooltips → [[number-formats]] |
+| `chart_type` | `bar`, `barh`, `line`, `area`, `pie` or `scatter`. Default `bar`. |
+| `x` | The category column. |
+| `y` | The value column, or a list for several series. |
+| `color` | The series column. |
+| `palette` | A list of colours. |
+| `value_format` | Format for labels, axes and tooltips ([[number-formats]]). |
 
-The build inlines D3 automatically when the page contains this figure.
-`"libs"` in [[report-json]] is optional.
+The build inlines D3 automatically when the page has a chart.
 
-### `table`
+## `table`
 
 ```json
 {"kind": "table", "binding": "holdings", "columns": ["issuer", "fair_value"],
@@ -78,39 +66,28 @@ The build inlines D3 automatically when the page contains this figure.
 
 | Key | Meaning |
 | --- | --- |
-| `columns` | allowlist and column order |
-| `style` | `striped` or `compact` |
-| `labels` | `{column: header}` — overrides the derived header |
-| `formats` | `{column: format}` — `compact`, `comma`, `currency`, `currency0`, `percent`, `decimal`; overrides the derived format |
+| `columns` | Which columns, in order. |
+| `style` | `striped` or `compact`. |
+| `labels` | `{column: header}`, replacing the derived header. |
+| `formats` | `{column: format}`: `compact`, `comma`, `currency`, `currency0`, `percent` or `decimal`, replacing the derived format. |
 
-### Not `custom`
-
-A `custom` figure has no framework markup by definition — your `script.js`
-draws it. Write and mark that one yourself; see [[template-html]].
+A `custom` figure has no generated markup: your `script.js` draws it. Write
+and mark it yourself ([[template-html]]).
 
 ## Figure ids
 
-The declared name becomes the figure id: `total` → `fig-total`.
-
-That id is the trace's stable address for the number, and it is how a human
-redirects you — *"fix `fig-total`"*. Name figures accordingly.
+The declared name becomes the id: `total` → `fig-total`. The trace uses the id
+as the figure's address, and a reviewer uses it to point at a number ("fix
+`fig-total`"), so choose names that say what the number is.
 
 ## Refusals
 
-The helper is strict, because each of these failures is otherwise silent:
-
-| You did | What happens |
+| You did | Result |
 | --- | --- |
-| named a binding that isn't in `data` | fails when the package **loads** |
-| declared a figure, never placed it | fails the **build** — a declared number must not vanish |
-| placed the same figure twice | fails — one id addresses one number |
-| called `figure("typo")` | fails, listing the declared names |
+| Named a binding that isn't in `data` | Fails when the package loads. |
+| Declared a figure and never placed it | Fails the build. A declared number must not vanish. |
+| Placed the same figure twice | Fails. One id addresses one number. |
+| Called `figure("typo")` | Fails, listing the declared names. |
 
-> **Jinja parses inside HTML comments.** Never write a `{{ figure(...) }}` call
-> in a comment — it is still evaluated and will error.
-
-## Related
-
-- [[report-json]] — where figures are declared
-- [[template-html]] — the markup this emits, and the hand-written form
-- [[number-formats]] — `format` and `value_format` values
+Jinja evaluates `{{ figure(...) }}` even inside an HTML comment, so never put
+one in a comment.

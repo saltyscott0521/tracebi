@@ -1,76 +1,72 @@
-# SOP — Authoring a Report Through the Gateway (Analyst Agent)
+# SOP: Author a report through the gateway
 
-> **Read `AGENTS.md` first.** It is the brief every agent reads before working in a
-> TraceBi project (`tracebi init` writes one into each). This SOP is the
-> step-by-step for one job in it: a report authored over the gateway.
+The procedure an AI analyst agent follows to produce a report over TraceBi's
+MCP gateway (`tracebi mcp`). Follow the steps in order.
 
-Standard operating procedure for an AI analyst agent producing reports over
-TraceBi's MCP gateway (`tracebi mcp`). Follow the steps in order. The
-governing principle: **you never touch the warehouse — you speak the semantic
-contract, every answer you receive is stamped, and every number you show a
-human carries its trace.**
+Read `AGENTS.md` first. It is the brief every agent reads before working in a
+TraceBi project (`tracebi init` writes one into each). This SOP is one job
+from it.
 
-**Where this sits in the three-phase workflow (see [[the-three-phase-workflow]]).** This is
-**phase ③ — REPORT**, authoring over the model boundary. You are handed two
-freeze points: a warehouse phase ① already sank (`data/warehouse.duckdb` by
-default) and a model phase ② already declared over it (`models/<name>.yaml`,
-e.g. `models/portfolio_model.yaml`). You do not re-run the phase-① transform and
-you do not see it — the model is the contract you author against, and everything below is
-exactly how the reference project's reports (`reports/portfolio_model/`) were written. **The trust
-machinery in this SOP — stamped queries, validate-before-execute, `verify` —
-governs from that model boundary onward. It says nothing about phase ①, which is
-unconstrained SQL or pandas trusted as reviewed code, not by fingerprint.** If a number
-you need is wrong or absent below the model, this SOP cannot fix it; escalate to
-the engineer SOP (a model change) or, if the raw data was never sunk, to a
-phase-① transform change.
+## Before you begin
 
-The gateway exposes twenty-two tools and three prompts (`author_report`,
-`answer_question`, `address_pins`); the MCP `tools/list` call is the source of
-truth if this table drifts. This SOP walks the spec path; a report package is
-the same loop with `build_report`, and over a hosted connection the draft tools
-below are how a package reaches the server ([[push-from-a-laptop]],
-[[connect-chatgpt-and-claude]]):
+- **You work at the report stage.** A transform has already written the
+  warehouse (`data/warehouse.duckdb` by default), and a model is declared over
+  it (`models/<name>.yaml`, such as `models/portfolio_model.yaml`). You don't
+  run or see the transform; the model is what you author against. The reports
+  in `reports/portfolio_model/` were written this way. See
+  [[the-three-phase-workflow]].
+- **You never touch the warehouse.** You use the model's names, every answer
+  you get is stamped, and every number you show a person carries its trace.
+- **The checks cover the model onward.** Stamped queries, validation and
+  `verify` say nothing about the transform, which is reviewed as code. If a
+  number is wrong or missing below the model, this SOP cannot fix it: escalate
+  to a model change ([[sop-model-changes]]), or to a transform change if the
+  data was never written.
+
+### The tools
+
+The gateway has twenty-two tools and three prompts (`author_report`,
+`answer_question`, `address_pins`) that run this procedure for you. The MCP
+`tools/list` call is the source of truth if this table drifts. This SOP walks
+the spec path. A report package is the same loop with `build_report`. Over a
+hosted connection, the draft tools are how a package reaches the server
+([[push-from-a-laptop]], [[connect-chatgpt-and-claude]]).
 
 | Tool | Purpose |
 |---|---|
-| `get_context` | The semantic contract: full vocabulary, optionally plus one model's schema. Pass `brief` for the token-lean version |
-| `list_models` | Models this project exposes, with facts/dimensions/measures |
+| `get_context` | The full vocabulary, optionally with one model's schema. Pass `brief` for the smaller version. |
+| `list_models` | The project's models, with facts, dimensions and measures |
 | `describe_model` | One model's full schema |
-| `describe_table` | Columns and types of a raw warehouse table, for before a model exists |
-| `query_model` | Run a star-schema query; returns rows **plus a stamp** |
-| `validate_report_spec` | Check a spec against the models without loading a row; also returns `design —` warnings |
-| `render_report_spec` | Validate, build and render a spec to HTML + manifest |
-| `build_report` | Build a report package under `reports/` to one HTML file + manifest |
+| `describe_table` | Columns and types of a raw warehouse table, before a model exists |
+| `query_model` | Run a star-schema query; returns rows and a stamp |
+| `validate_report_spec` | Check a spec against the models without loading a row; also returns `design` warnings |
+| `render_report_spec` | Validate, build and render a spec to HTML and a manifest |
+| `build_report` | Build a report package under `reports/` to one HTML file and a manifest |
 | `fetch_artifact` | Read back a built HTML or manifest, so a remote agent can deliver it |
-| `list_reports` | Reports the project already exposes |
-| `workbench_state` | What the live `tracebi dev` workbench shows, including a reviewer's pins |
+| `list_reports` | Reports the project already has |
+| `workbench_state` | What the `tracebi dev` workbench shows, including a reviewer's pins |
 | `resolve_pin` | Mark a reviewer's pin as addressed, with a note |
-| `verify_manifest` | Re-run every recorded query in a rendered manifest and classify each figure (`reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`) — the built-in replay for step 6 at L2/L3 |
-| `list_drafts` · `start_draft` · `read_draft` · `write_draft_file` | Your drafts on the server: start one (empty, or a copy of the published report or model), read it, write one allowed file |
-| `preview_draft` | Validate and render a draft in memory; errors, warnings and the draft's address in the app |
-| `model_impact` | For a model draft: each published report that reads the model, unchanged / moves / breaks |
+| `verify_manifest` | Re-run every recorded query in a manifest and classify each figure (`reproduces`, `source_drift`, `model_changed`, `unexplained`, `unverifiable`) |
+| `list_drafts` · `start_draft` · `read_draft` · `write_draft_file` | Your drafts on the server: start one (empty, or a copy of a published report or model), read it, write one allowed file |
+| `preview_draft` | Validate and render a draft in memory; returns errors, warnings and its address in the app |
+| `model_impact` | For a model draft: each published report that reads the model, unchanged, moves or breaks |
 | `publish_draft` | Publish a draft, or open a publish request where the folder asks for one |
 | `list_publish_requests` · `decide_publish_request` | Requests into folders where you hold Publish; approve or reject one |
 
-It also offers three prompts that run this procedure for you: `author_report`,
-`answer_question` and `address_pins`.
-
-Where you stand on the assurance ladder:
+### Assurance levels
 
 | Level | You do | The company can prove |
 |---|---|---|
-| L0 | Raw SQL, raw HTML | Nothing — **never operate here** |
-| L1 | Query via gateway, render your own HTML | Every number traceable |
-| L2 | Emit a report package or a ReportSpec; TraceBi builds it | Artifact reproducible |
-| L3 | L2 + signed manifest + re-verification | Attestable (future) |
+| L0 | Raw SQL, raw HTML | Nothing. Never work here. |
+| L1 | Query through the gateway, write your own HTML | Every number traceable |
+| L2 | Emit a report package or a ReportSpec; TraceBi builds it | The artifact reproduces |
+| L3 | L2 plus a signed manifest and re-verification | Attestable (future) |
 
-Default to **L2**. Drop to L1 only when the six section types genuinely
-cannot express the presentation — and then step 6 (self-audit) is mandatory,
-because at L1 nothing machine-checks your transcription.
+Work at L2. Drop to L1 only when the six section types cannot express the
+page, and then step 6 is mandatory, because nothing checks your
+transcription.
 
----
-
-## Step 1 — Load the contract: `get_context`
+## 1. Load the contract with `get_context`
 
 Always the first call. Nothing outside what it returns will validate.
 
@@ -78,35 +74,26 @@ Always the first call. Nothing outside what it returns will validate.
 { "tool": "get_context", "arguments": { "model": "wealth_model" } }
 ```
 
-The response contains, among other keys:
+The response includes:
 
-- `report_sections` — every section type (`text`, `table`, `chart`,
-  `metrics`, `row`, `spacer`) with fields, defaults and allowed values
-  (`chart_type`: `bar`, `barh`, `line`, `area`, `pie`, `scatter`;
-  text `style`: `normal`, `heading1`, `heading2`, `note`, `callout`;
-  table `style`: `default`, `striped`, `compact`)
-- `semantic_model` — aggregations (`sum`, `count`, `mean`, `avg`, `min`,
-  `max`, `nunique`), filter operators (`eq`, `ne`, `in`, `not_in`, `gt`,
-  `gte`, `lt`, `lte`, `between`, `is_null`, `not_null`, `contains`), filter
-  forms, and the measure kinds (`simple`, `expression`, `ratio`)
-- `number_formats` — named formats (`currency`, `currency0`, `percent`,
-  `comma`, `decimal`)
-- `model` (because we passed `model=`) — that model's tables, relationships,
-  facts, dimensions, and **named measures**
+| Key | Holds |
+|---|---|
+| `report_sections` | Every section type (`text`, `table`, `chart`, `metrics`, `row`, `spacer`) with fields, defaults and allowed values: `chart_type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`), text `style` (`normal`, `heading1`, `heading2`, `note`, `callout`), table `style` (`default`, `striped`, `compact`) |
+| `semantic_model` | Aggregations (`sum`, `count`, `mean`, `avg`, `min`, `max`, `nunique`), filter operators (`eq`, `ne`, `in`, `not_in`, `gt`, `gte`, `lt`, `lte`, `between`, `is_null`, `not_null`, `contains`), filter forms, and measure kinds |
+| `number_formats` | `currency`, `currency0`, `percent`, `comma`, `decimal` |
+| `model` | With `model=`: that model's tables, relationships, facts, dimensions and named measures |
 
-Use `list_models` first if you do not know which model to ask for;
-`describe_model` (`{"model": "wealth_model"}`) re-fetches one schema later
-without the full vocabulary.
+Use `list_models` first if you don't know which model to ask for.
+`describe_model` (`{"model": "wealth_model"}`) re-fetches one schema later.
 
-**Rule: treat the contract as closed.** If a fact, dimension attribute or
-measure is not in the response, it does not exist. Do not guess names —
-validation will reject them, and inventing vocabulary is the exact failure
-mode this gateway exists to prevent.
+**Treat the contract as closed.** A fact, attribute or measure not in the
+response does not exist. Don't guess names: validation rejects them, and
+invented vocabulary is the failure this gateway exists to prevent.
 
-## Step 2 — Explore with `query_model`, and handle the stamp
+## 2. Explore with `query_model` and keep the stamp
 
-Probe the data before deciding what to write. A query names a fact, measures,
-and dimension attributes as `dim_name.attribute`:
+Probe the data before you decide what to write. A query names a fact,
+measures, and dimension attributes as `dim_name.attribute`:
 
 ```json
 {
@@ -120,9 +107,9 @@ and dimension attributes as `dim_name.attribute`:
 }
 ```
 
-`measures` accepts either a list of **named measures** the model declares, or
-an inline `{column: agg}` dict such as `{"market_value": "sum"}`. `filters`
-accepts equality (`{"dim_client.segment": "private"}`), lists meaning IN
+`measures` takes declared names, or an inline `{column: agg}` dict such as
+`{"market_value": "sum"}`. `filters` takes equality
+(`{"dim_client.segment": "private"}`), lists meaning IN
 (`{"region": ["NE", "SE"]}`), and operator dicts
 (`{"market_value": {"gte": 1000}}`).
 
@@ -151,90 +138,80 @@ The response:
 }
 ```
 
-**Stamp handling — non-negotiable:**
+Handle the stamp this way, every time:
 
-1. **Record `query` and `fingerprint` verbatim** for every query whose
-   numbers you might later cite. The recorded pair is your working paper;
-   step 6 replays it.
-2. **The fingerprint covers the full result; `rows` is transport.** Row
-   delivery is capped (`limit`, default 50, hard cap 500) but the SHA-256
-   fingerprint always hashes the *uncapped* DataSet. If `truncated` is
-   `true`, any number you compute from `rows` alone describes a preview, not
-   the result — raise `limit` (≤ 500), narrow the query, or put the table in
-   a report spec instead of paging rows through your context.
-3. **Never re-derive a stamped number downstream.** If you need a total, ask
-   the query for it (or use the section's `totals`); summing displayed rows
-   yourself is how the $1 rounding error in
-   `examples/agent_gateway/verify_report.py` happened.
+1. **Record `query` and `fingerprint` exactly** for every query whose numbers
+   you might cite. Step 6 replays them.
+2. **The fingerprint covers the full result; `rows` is only delivery.** Rows
+   are capped (`limit`, default 50, at most 500), but the fingerprint hashes
+   the uncapped result. If `truncated` is `true`, a number computed from
+   `rows` describes a preview. Raise `limit` (up to 500), narrow the query, or
+   put the table in a spec.
+3. **Never re-derive a stamped number.** Ask the query for a total, or use a
+   section's `totals`. Summing displayed rows yourself is how the $1 rounding
+   error in `examples/agent_gateway/verify_report.py` happened.
 
-## Step 3 — Author the spec
+## 3. Write the spec
 
-A report spec is JSON: `name` (required), plus optional `sections`, `author`,
-`description`, `parameters`. Each data-bearing section (`table`, `chart`)
-carries a `data` reference — `{"model": …, "query": …}` — where `query` has
-exactly the fields `fact`, `measures`, `dimensions`, `filters`, `aggregate`,
-`allow_fanout`. `tracebi spec schema` (or `GET /api/spec/schema`) publishes
-the full JSON Schema.
+A spec is JSON: `name` (required), plus optional `sections`, `author`,
+`description` and `parameters`. Each `table` or `chart` section carries a
+`data` reference, `{"model": …, "query": …}`, where `query` has exactly
+`fact`, `measures`, `dimensions`, `filters`, `aggregate` and `allow_fanout`.
+`tracebi spec schema` (or `GET /api/spec/schema`) prints the JSON Schema.
 
-Authoring rules:
+- **Use named measures.** `"measures": ["market_value", "unrealized_gain"]`
+  uses the model's shared definitions, so "unrealized gain" means the same in
+  every report, and each measure's declared format reaches the page with no
+  formatting in your spec. Use `{column: agg}` only for a concept the model
+  has no name for, and treat that as a signal (next rule).
+- **A missing concept is an escalation.** A spec cannot express arbitrary
+  computation. If you need a measure, attribute or fact the contract lacks,
+  stop and follow [[sop-model-changes]]: the fix is a reviewed change to the
+  model file (a `measures:` entry in `models/<name>.yaml`, such as
+  `{name: unrealized_gain, expr: market_value - cost_basis, agg: sum, format: currency0}`),
+  after which a fresh gateway process sees it. Don't compute the number in a
+  text section, approximate it with another aggregation, or type
+  hand arithmetic into the page. Change the contract in git; use it over MCP.
+- **Set `author`**, e.g. `"claude (via mcp gateway)"`, so the artifact says
+  who made it.
+- Use `text` sections for narrative and a closing provenance note. Use
+  `column_labels`, `totals` and `number_formats` on tables rather than
+  reformatting in the query.
+- **Leave `allow_fanout` false.** An error about a non-unique dimension key is
+  TraceBi refusing to inflate sums. Investigate or escalate; don't flip the
+  flag.
 
-- **Named measures beat inline aggs.** `"measures": ["market_value",
-  "unrealized_gain"]` uses the model's shared definitions — "unrealized gain"
-  means the same thing in every report, and the measure's declared format
-  (`currency0`, `percent`, …) flows to the renderer with no formatting code
-  in your spec. Fall back to `{column: agg}` only for a concept the model has
-  no name for — and treat that as a signal (next rule).
-- **A missing concept is an escalation, never a workaround.** A spec cannot
-  express arbitrary computation — by design. If the analysis needs a measure,
-  dimension attribute, or fact the contract does not declare, **stop and
-  escalate to the engineer SOP** (this directory): the fix is a code-reviewed
-  change in the definition plane (a `measures:` entry in
-  `models/<name>.yaml`, e.g. `{name: unrealized_gain, expr: market_value -
-  cost_basis, agg: sum, format: currency0}`), after which a fresh gateway process's next call
-  sees the new vocabulary. Do **not** compute the number yourself in a text
-  section, do not approximate it with a different aggregation, do not
-  transcribe hand-arithmetic into the page. Change the contract in git; use
-  the contract over MCP.
-- **Set `author`** so the artifact says who made it, e.g.
-  `"claude (via mcp gateway)"`.
-- Use `text` sections for narrative and a closing provenance note; use
-  `column_labels`, `totals`, and `number_formats` on tables rather than
-  reformatting data in the query.
-- Leave `allow_fanout` false. If a query raises about a non-unique dimension
-  key, that is the framework refusing to silently inflate additive measures —
-  investigate or escalate; do not flip the flag to make an error go away.
-
-## Step 4 — Validate, repair from the path, repeat
+## 4. Validate and repair
 
 ```json
 { "tool": "validate_report_spec", "arguments": { "spec": { "name": "…", "sections": [ "…" ] } } }
 ```
 
-Returns `{"ok": bool, "errors": [...], "warnings": [...]}`. Every error
-carries a path into the spec (top-level parse failures — malformed JSON,
-missing `name` — return a plain message without one):
+It returns `{"ok": bool, "errors": [...], "warnings": [...]}`. Every error
+carries a path into the spec (malformed JSON or a missing `name` return a
+plain message):
 
 ```
 sections[1].data.query.fact: 'fact_hallucinated' is not a fact on model 'wealth_model'. Available: ['fact_activities', 'fact_holdings']
 ```
 
-The loop: read the path, fix exactly that field (many errors include a
-did-you-mean hint and the valid set), re-validate. Iterate until `ok` is
-`true` **and** you have read every warning — a warning like *"no data
-reference — this section cannot be rendered from the spec alone"* means the
-section is presentation-only and will not carry a fingerprint. Validation
-loads no data, so this loop is free; never skip it and let the renderer be
-your first check.
+1. Read the path.
+2. Fix exactly that field. Many errors include a did-you-mean hint and the
+   valid set.
+3. Validate again.
+4. Repeat until `ok` is `true` and you have read every warning. A warning
+   that a section has *no data reference* means it carries no fingerprint.
 
-## Step 5 — Render: `render_report_spec`
+Validation loads no data, so the loop is free. Never let the renderer be your
+first check.
+
+## 5. Render with `render_report_spec`
 
 ```json
 { "tool": "render_report_spec", "arguments": { "spec": { "…": "…" }, "output_dir": "output" } }
 ```
 
-The gateway re-validates and **refuses an invalid spec** — an artifact from a
-spec that failed validation is exactly the ungoverned output this surface
-exists to prevent. On success:
+The gateway validates again and refuses an invalid spec. On success:
 
 ```json
 {
@@ -248,158 +225,133 @@ exists to prevent. On success:
 }
 ```
 
-The manifest is the trace: for every data-bearing section it records
-`dataset_fingerprint`, `dataset_lineage` (connector → aggregate),
-`dataset_name` and `dataset_shape`, plus the repo `git_sha` at render time.
-Confirm that each fingerprint in `dataset_fingerprints` matches the
-fingerprint of your corresponding step-2 exploratory query. A match proves
-the rendered artifact contains the same data you analyzed — same hash,
-provably the same data. A mismatch means the data moved between exploration
-and render: re-run your exploratory queries and reconcile before publishing.
+The manifest is the trace. For each data section it records
+`dataset_fingerprint`, `dataset_lineage` (connector to aggregate),
+`dataset_name` and `dataset_shape`, plus the repository's `git_sha`.
 
-## Step 6 — Self-audit: replay the traces
+Check that each fingerprint in `dataset_fingerprints` matches the one from
+your step 2 query. A match proves the artifact holds the data you analysed. A
+mismatch means the data moved between exploration and render: re-run your
+queries and reconcile before you publish.
 
-Before presenting anything, audit your own output. The pattern is
-`examples/agent_gateway/verify_report.py`, which caught a real $1 error in a
-page whose fingerprints all matched. Two independent checks, both required:
+## 6. Audit your own output
 
-1. **Fingerprints** — re-run every recorded query through `query_model` and
-   compare the returned `fingerprint` against the one you recorded (and, for
-   L2, against the manifest's `dataset_fingerprint`). Match ⇒ the data has
-   not drifted since authorship.
-2. **Figures** — for every number displayed to the human, recompute it from
-   the fresh query result and compare to what the artifact shows. Match ⇒
-   you transcribed faithfully.
+Before you present anything, run both checks.
+`examples/agent_gateway/verify_report.py` is the pattern; it caught a real $1
+error on a page whose fingerprints all matched.
 
-These catch different failure modes: a fingerprint match with a figure
-mismatch localizes the fault to *your transcription* (the verify script's
-first run: page said `+$523,045` — sum of rounded rows; truth was
-`$523,044.32` — round-then-sum vs sum-then-round, invisible to any human
-eye). A fingerprint mismatch means *source drift*, and every figure must be
-re-derived. Encode the discipline the script encodes: round the true total,
-never sum the rounded rows.
+1. **Fingerprints.** Re-run every recorded query with `query_model` and
+   compare its `fingerprint` to the one you recorded (and, at L2, to the
+   manifest's `dataset_fingerprint`). A match means the data has not drifted.
+2. **Figures.** Recompute every number you show from the fresh result and
+   compare it to the artifact. A match means you transcribed it correctly.
 
-At L2, `verify_manifest` is the built-in that runs check 1 for you: point it at
-the manifest `render_report_spec` just produced and read the per-section
-`verdict`, not just `ok` — only `reproduces` means a number was re-run and
-matched. TraceBi rendered the figures from the same query the manifest
-fingerprints, so check 2 reduces to any numbers you quote in surrounding
-narrative. At L1 — a page you wrote yourself — there is no manifest for
-`verify_manifest` to read, so check every figure on the page with your own
-replay script (`examples/agent_gateway/verify_report.py` is the template) and
-keep it beside the artifact so anyone can re-run it.
+The two catch different faults. A matching fingerprint with a mismatched
+figure is your transcription: the script's first run found a page saying
+`+$523,045` (the sum of rounded rows) where the truth was `$523,044.32`.
+Round the true total; never sum rounded rows. A fingerprint mismatch is source
+drift, and every figure must be re-derived.
 
-## Step 7 — Presenting numbers to humans
+At L2, `verify_manifest` runs check 1 for you. Point it at the manifest from
+step 5 and read each section's `verdict`, not just `ok`: only `reproduces`
+means a number was re-run and matched. TraceBi drew the figures from the
+queries the manifest fingerprints, so check 2 covers only numbers you quote in
+your own text. At L1 there is no manifest: check every figure with your own
+replay script (`verify_report.py` is the template) and keep it beside the
+artifact.
 
-**Never state a number without its citation.** Every figure you put in front
-of a person traces to a stamped query; say so:
+## 7. Present numbers with their citation
+
+Never state a number without its citation:
 
 > Total book AUM is **$7,521,674** (query fingerprint `b3d614c1d264`,
 > `fact_holdings` by `dim_product.asset_class`, wealth_model).
 
-Conventions:
+- Cite the first 12 hex characters of the fingerprint on a page for people.
+  Keep the full hash in your working papers and the manifest.
+- On an L1 page, add a "Working Papers" section listing each query (model,
+  fact, measures, dimensions, filters) with its fingerprint.
+- For an L2 artifact, point at the manifest.
+- When someone asks where a number came from, answer with the recorded query
+  and its fingerprint, which can be re-run today.
 
-- Cite the fingerprint git-style — the first 12 hex characters are enough for
-  a human page; keep the full hash in your working papers and the manifest.
-- In an L1 page, include a "Working Papers" section listing each query
-  (model, fact, measures, dimensions, filters) with its fingerprint, so an
-  auditor can replay it without you.
-- For an L2 artifact, point at the manifest: it already carries the exact
-  query, lineage chain, and fingerprint per section.
-- If a stakeholder asks "where does this number come from?", the answer is
-  never prose — it is the recorded query and its fingerprint, re-runnable
-  today.
+## Worked example (wealth_model)
 
----
+The smallest complete pass. The demo data is seeded, so these queries
+reproduce.
 
-## Worked minimal example (wealth_model)
+1. **Contract.** `get_context` with `{"model": "wealth_model"}` returns
+   `fact_holdings` (columns `units`, `market_value`, `cost_basis`), four
+   dimensions (`dim_client`, `dim_branch`, `dim_product`, `dim_account`) and
+   four named measures: `market_value`, `cost_basis`, `unrealized_gain`,
+   `gain_pct`.
+2. **Explore.** The step 2 query: AUM, basis, gain and gain % by asset class.
+   Record fingerprint `b3d614c1d264…`, `row_count` 4, `truncated` false. Had
+   the model lacked `unrealized_gain`, you would escalate here instead of
+   computing `market_value - cost_basis`.
+3. **Write and validate.** A two-section spec using named measures only:
 
-The smallest complete pass through steps 1–7. The demo data is seeded, so
-these queries reproduce.
+   ```json
+   {
+     "name": "Asset Class Snapshot",
+     "author": "analyst-agent (via mcp gateway)",
+     "description": "AUM and unrealized gains by asset class, from the model's shared measure definitions.",
+     "sections": [
+       {
+         "type": "table",
+         "title": "AUM and gains by asset class",
+         "column_labels": {
+           "dim_product.asset_class": "Asset class",
+           "market_value": "Market value",
+           "cost_basis": "Cost basis",
+           "unrealized_gain": "Unrealized gain",
+           "gain_pct": "Gain %"
+         },
+         "totals": ["market_value", "cost_basis", "unrealized_gain"],
+         "data": {
+           "model": "wealth_model",
+           "query": {
+             "fact": "fact_holdings",
+             "measures": ["market_value", "cost_basis", "unrealized_gain", "gain_pct"],
+             "dimensions": ["dim_product.asset_class"]
+           }
+         }
+       },
+       {
+         "type": "text",
+         "title": "Provenance",
+         "style": "note",
+         "content": "Rendered from a validated report spec. The manifest beside this artifact records the exact query, full lineage, and a SHA-256 fingerprint for the table above."
+       }
+     ]
+   }
+   ```
 
-**1. Contract.** `get_context` with `{"model": "wealth_model"}` →
-`fact_holdings` (measure columns `units`, `market_value`, `cost_basis`), four
-dimensions (`dim_client`, `dim_branch`, `dim_product`, `dim_account`), and
-four named measures: `market_value`, `cost_basis`, `unrealized_gain`,
-`gain_pct`.
+   `validate_report_spec` returns `{"ok": true, "errors": [], "warnings": []}`.
+   A typo such as `"fact": "fact_holding"` would return
+   `sections[0].data.query.fact: 'fact_holding' is not a fact on model 'wealth_model'`.
+4. **Render.** `render_report_spec` returns `ok: true`,
+   `html_path: "output/asset-class-snapshot.html"`,
+   `manifest_path: "output/asset-class-snapshot.manifest.json"`, and one
+   fingerprint in `dataset_fingerprints`, equal to step 2's `b3d614c1d264…`.
+5. **Audit.** Re-run the query; the fingerprint still starts `b3d614c1d264`,
+   and the totals you will quote equal the fresh sums
+   (`round(sum(unrealized_gain rows))`, never a sum of rounded rows).
+6. **Present.**
 
-**2. Explore.** One stamped query, shown above in step 2 — AUM, basis, gain
-and gain% by asset class. Record: fingerprint `b3d614c1d264…`, `row_count`
-4, `truncated` false. (Had we needed `unrealized_gain` and the model not
-declared it, this is where we would have escalated to the engineer SOP
-rather than computing `market_value - cost_basis` ourselves.)
+   > Unrealized gains across the book stand at **+$523,044** on
+   > **$6,998,630** of cost basis, a 7.5% return on basis
+   > (fingerprint `b3d614c1d264`, `fact_holdings` by asset class,
+   > wealth_model; manifest: `output/asset-class-snapshot.manifest.json`).
 
-**3–4. Author and validate.** A two-section spec using only named measures:
-
-```json
-{
-  "name": "Asset Class Snapshot",
-  "author": "analyst-agent (via mcp gateway)",
-  "description": "AUM and unrealized gains by asset class, from the model's shared measure definitions.",
-  "sections": [
-    {
-      "type": "table",
-      "title": "AUM and gains by asset class",
-      "column_labels": {
-        "dim_product.asset_class": "Asset class",
-        "market_value": "Market value",
-        "cost_basis": "Cost basis",
-        "unrealized_gain": "Unrealized gain",
-        "gain_pct": "Gain %"
-      },
-      "totals": ["market_value", "cost_basis", "unrealized_gain"],
-      "data": {
-        "model": "wealth_model",
-        "query": {
-          "fact": "fact_holdings",
-          "measures": ["market_value", "cost_basis", "unrealized_gain", "gain_pct"],
-          "dimensions": ["dim_product.asset_class"]
-        }
-      }
-    },
-    {
-      "type": "text",
-      "title": "Provenance",
-      "style": "note",
-      "content": "Rendered from a validated report spec. The manifest beside this artifact records the exact query, full lineage, and a SHA-256 fingerprint for the table above."
-    }
-  ]
-}
-```
-
-`validate_report_spec` → `{"ok": true, "errors": [], "warnings": []}`. (A
-typo such as `"fact": "fact_holding"` would instead return
-`sections[0].data.query.fact: 'fact_holding' is not a fact on model
-'wealth_model'` — fix the pathed field and re-validate.)
-
-**5. Render.** `render_report_spec` → `ok: true`,
-`html_path: "output/asset-class-snapshot.html"`,
-`manifest_path: "output/asset-class-snapshot.manifest.json"`, and
-`dataset_fingerprints` containing one hash — which must equal the step-2
-fingerprint `b3d614c1d264…`. It does: same hash, same data.
-
-**6. Audit.** Re-run the recorded query; assert the fingerprint still starts
-`b3d614c1d264` and that the totals you plan to quote equal the fresh sums
-(round the true total — `round(sum(unrealized_gain rows))`, never the sum of
-rounded rows).
-
-**7. Present.**
-
-> Unrealized gains across the book stand at **+$523,044** on
-> **$6,998,630** of cost basis — a 7.5% return on basis
-> (fingerprint `b3d614c1d264`, `fact_holdings` by asset class, wealth_model;
-> manifest: `output/asset-class-snapshot.manifest.json`).
-
----
-
-## Failure handling, in one place
+## When something goes wrong
 
 | Situation | Action |
 |---|---|
-| Vocabulary you need is absent from `get_context` | Escalate to the engineer SOP. Never invent, approximate, or hand-compute. |
-| `validate_report_spec` returns errors | Repair the exact pathed field; re-validate until `ok`. |
-| `render_report_spec` returns `ok: false` | It refused an invalid spec — return to step 4; never route around the renderer. |
-| Query raises on dimension fan-out | Investigate the join grain or escalate; do not set `allow_fanout: true` to silence it. |
-| `truncated: true` on a query you need fully | Raise `limit` (≤ 500), narrow the query, or move the table into a spec. |
-| Fingerprint mismatch on audit | Source drift: re-run every recorded query and re-derive every figure before publishing. |
-| Figure mismatch with matching fingerprint | Your transcription is wrong: fix the artifact, re-run the audit to green. |
+| The vocabulary you need is not in `get_context` | Follow [[sop-model-changes]]. Never invent, approximate or hand-compute. |
+| `validate_report_spec` returns errors | Fix the field at each path; validate until `ok`. |
+| `render_report_spec` returns `ok: false` | It refused an invalid spec. Go back to step 4; never route around the renderer. |
+| A query fails on dimension fan-out | Investigate the join grain or escalate. Don't set `allow_fanout: true`. |
+| `truncated: true` on a query you need in full | Raise `limit` (up to 500), narrow the query, or move the table into a spec. |
+| Fingerprint mismatch on audit | Source drift: re-run every query and re-derive every figure before publishing. |
+| Figure mismatch with a matching fingerprint | Your transcription is wrong. Fix the artifact and audit again. |

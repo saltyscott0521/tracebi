@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>A ten-minute demo for a non-technical audience — TraceBi docs</title>
+<title>A ten-minute demo — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="A ten-minute demo for a non-technical audience">
+<meta name="description" content="A ten-minute demo">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a class="on" href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a class="on" href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,128 +61,144 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="a-ten-minute-demo-for-a-non-technical-audience">A ten-minute demo for a non-technical audience</h1>
-<p><strong>A click-by-click script for showing TraceBi to people who read and approve
-reports: finance, operations, compliance, leadership. No terminal on screen
-and no code on screen.</strong></p>
-<p>The story you are telling has three beats: <em>here is a report</em>, <em>every number
-has a trace</em>, <em>a changed number gets caught</em>. Everything else is optional.
-If the audience needs the concepts first, send them <a href="../start/plain-english.html">TraceBi in plain English</a> ahead of
-the meeting.</p>
-<hr>
-<h2 id="before-the-meeting-15-minutes-once">Before the meeting (15 minutes, once)</h2>
-<p>Someone comfortable with a terminal does this part.</p>
-<pre><code class="language-bash">pip install -e &quot;.[dev]&quot;                 # from the repo root
-cd examples/portfolio_project
-python run_workflow.py                  # builds the demo data and every report (≈10 seconds)
-tracebi serve                           # → http://127.0.0.1:8000
-</code></pre>
-<p>Then, in the browser:</p>
+<h1 id="a-ten-minute-demo">A ten-minute demo</h1>
+<p>A click-by-click script for showing TraceBi to people who read and approve
+reports: finance, operations, compliance, leadership. No terminal and no code
+appear on screen.</p>
+<p>The demo has three moments: here is a report, every number has a trace, and a
+changed number gets caught. Send <a href="../start/plain-english.html">What is TraceBi</a> ahead of the meeting if the
+audience wants the ideas first.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<p>Someone comfortable with a terminal prepares this once, about 15 minutes
+before the meeting.</p>
 <ol>
-<li><strong>Check the two reports you will show</strong> open instantly. The app opens on
-   <strong>Reports</strong>, the library. Under Direct Lending Portfolio, open <strong>Portfolio
-   Dashboard</strong> and <strong>Portfolio Showcase</strong> in turn: <code>run_workflow.py</code> built
-   both. (A report that has never been built says so; <strong>Build it now</strong> builds
-   it, and it is kept.)</li>
-<li><strong>Make the "edited" copy for beat 3.</strong> Open Portfolio Dashboard and choose
-   <strong>Export → HTML</strong> in the bar above it. The build also saved the matching pair in
-   <code>examples/portfolio_project/output/portfolio_model/</code>:
-   <code>portfolio_dashboard.html</code> and <code>portfolio_dashboard.html.manifest.json</code>.
-   Copy both into a folder on your desktop called <code>demo/</code>. Then make a second
-   copy of the pair named <code>edited.html</code> and <code>edited.html.manifest.json</code>.
-   Also download <code>portfolio_showcase</code> with <strong>Export → HTML</strong> into
-   <code>demo/</code>. You will use it for beat 2.</li>
+<li>Build the demo data and serve it:</li>
+</ol>
+<p><code>bash
+   pip install -e ".[dev]"                 # from the repository root
+   cd examples/portfolio_project
+   python run_workflow.py                  # builds the data and every report, about 10 seconds
+   tracebi serve                           # http://127.0.0.1:8000</code></p>
+<ol start="2">
+<li>In the browser, open <strong>Reports</strong>. Under <strong>Direct Lending Portfolio</strong>, open
+   <strong>Portfolio Dashboard</strong> and <strong>Portfolio Showcase</strong> to check they load. A
+   report that was never built says so; <strong>Build it now</strong> builds it.</li>
+<li>Make a folder on your desktop called <code>demo/</code>. Copy these two files from
+   <code>examples/portfolio_project/output/portfolio_model/</code> into it:
+   <code>portfolio_dashboard.html</code> and <code>portfolio_dashboard.html.manifest.json</code>.</li>
+<li>Make a second copy of the pair in <code>demo/</code>, named <code>edited.html</code> and
+   <code>edited.html.manifest.json</code>.</li>
+<li>Open Portfolio Showcase in the app and choose <strong>Export → HTML</strong>. Save it in
+   <code>demo/</code> as <code>portfolio_showcase.html</code>.</li>
 <li>Open <code>edited.html</code> in a plain text editor (TextEdit in plain-text mode, or
-   Notepad). Find <code>285904445.21</code> (two data blocks carry it) and change each to
-   <code>295904445.21</code>. Save. Open <code>edited.html</code> in the browser and check the
-   headline now reads <strong>$295,904,445</strong>, $10 million more than the real
-   report.</li>
-<li>Close every other tab. The app opens on <strong>Reports</strong>, the library, which is
-   where the demo starts.</li>
+   Notepad). Replace both copies of <code>285904445.21</code> with <code>295904445.21</code>. Save.</li>
+<li>Open <code>edited.html</code> in the browser. The headline should read
+   <strong>$295,904,445</strong>, $10 million more than the real report.</li>
+<li>Close every other tab and leave the app on <strong>Reports</strong>.</li>
 </ol>
 <h2 id="the-script">The script</h2>
-<h3 id="beat-0-the-problem-1-minute-no-clicks">Beat 0: the problem (1 minute, no clicks)</h3>
+<h3 id="1-the-problem-1-minute-no-clicks">1. The problem (1 minute, no clicks)</h3>
 <blockquote>
 <p>"AI can now write a full financial report in minutes. The problem is that a
-wrong number looks exactly like a right one. It's the same font and the same
-chart. So the question is no longer <em>who can make the chart</em>, it's <em>which
-numbers can we believe</em>."</p>
+wrong number looks exactly like a right one. Same font, same chart. So the
+question is no longer who can make the chart. It's which numbers we can
+believe."</p>
 </blockquote>
-<h3 id="beat-1-a-report-built-from-definitions-2-minutes">Beat 1: a report built from definitions (2 minutes)</h3>
-<p>On <strong>Reports</strong>, open <strong>Portfolio Dashboard</strong>.</p>
+<h3 id="2-a-report-built-from-definitions-2-minutes">2. A report built from definitions (2 minutes)</h3>
+<ol>
+<li>On <strong>Reports</strong>, open <strong>Portfolio Dashboard</strong>.</li>
+</ol>
 <blockquote>
 <p>"This is a fund's holdings report: fair value, positions, breakdowns by
-sector and fund. It could have been built by an analyst or by an AI
-assistant. Either way, nobody typed these numbers in."</p>
+sector and fund. An analyst or an AI assistant could have built it.
+Either way, nobody typed these numbers in."</p>
 </blockquote>
-<p>Point at the green <strong>Reproduces</strong> chip beside the report's title.</p>
+<ol start="2">
+<li>Point at the green <strong>Reproduces</strong> chip beside the title.</li>
+</ol>
 <blockquote>
 <p>"Each number was looked up from a written-down definition of what 'fair
-value' means, and the chip says the app re-ran every one of those lookups
-and got the same numbers. Nobody can quietly use a different formula on one
-page."</p>
+value' means. This chip says the app re-ran every lookup and got the same
+numbers. Nobody can quietly use a different formula on one page."</p>
 </blockquote>
-<p>Optional: click <strong>Data</strong> in the sidebar. The board shows where the numbers come
-from, left to right; click the Direct Lending Portfolio card, and its <strong>Model</strong>
-tab shows the definitions in one screen. Go back to <strong>Reports</strong>.</p>
-<h3 id="beat-2-every-number-has-a-trace-2-minutes">Beat 2: every number has a trace (2 minutes)</h3>
-<p>Open <code>demo/portfolio_showcase.html</code> straight from the desktop. It's an ordinary
-file in an ordinary browser tab, with no server involved. Click <strong>Trace</strong>
-beside the chip under the title.</p>
+<ol start="3">
+<li>Optional: click <strong>Data</strong> in the sidebar. The board shows where the numbers
+   come from, left to right. Click the Direct Lending Portfolio card; its
+   <strong>Model</strong> tab shows the definitions on one screen. Go back to <strong>Reports</strong>.</li>
+</ol>
+<h3 id="3-every-number-has-a-trace-2-minutes">3. Every number has a trace (2 minutes)</h3>
+<ol>
+<li>Open <code>demo/portfolio_showcase.html</code> from the desktop. It is an ordinary file
+   in an ordinary browser tab, with no server.</li>
+<li>Click <strong>Trace</strong> beside the chip under the title.</li>
+</ol>
 <blockquote>
-<p>"This is the file you'd email. It works offline. Every figure carries its trace: how it was made. It records where
-the number came from and a fingerprint of the exact data behind it. If a
-single digit changes, the fingerprint no longer matches."</p>
+<p>"This is the file you'd email. It works offline. Every figure carries its
+trace: where the number came from, and a fingerprint of the exact data
+behind it. Change one digit and the fingerprint no longer matches."</p>
 </blockquote>
-<p>Point at the <strong>unverified</strong> tag on one line of the trace.</p>
+<ol start="3">
+<li>Point at the <strong>unverified</strong> tag on one line of the trace.</li>
+</ol>
 <blockquote>
-<p>"And a number that <em>can't</em> be checked, like an estimate someone typed in, is
+<p>"A number that can't be checked, like an estimate someone typed in, is
 labelled as such. It can't pass itself off as checked."</p>
 </blockquote>
-<h3 id="beat-3-a-changed-number-gets-caught-3-minutes-the-moment">Beat 3: a changed number gets caught (3 minutes) ★ the moment</h3>
-<p>Show the browser tab with <code>edited.html</code> open.</p>
+<h3 id="4-a-changed-number-gets-caught-3-minutes">4. A changed number gets caught (3 minutes)</h3>
+<p>This is the moment the demo is for.</p>
+<ol>
+<li>Show the tab with <code>edited.html</code>.</li>
+</ol>
 <blockquote>
-<p>"Say someone emails this report around and a number gets changed on the way,
-by accident or on purpose. Fair value now says $295 million. It looks
+<p>"Say this report gets emailed around and a number changes on the way, by
+accident or on purpose. Fair value now says $295 million. It looks
 completely normal."</p>
 </blockquote>
-<p>Click <strong>Review</strong> in the sidebar, then its <strong>Verify</strong> tab. Drag in <code>edited.html</code>
-and <code>edited.html.manifest.json</code>, then click <strong>Verify offline</strong>.</p>
-<p>The screen turns red: <strong>FILE ALTERED</strong>, with the exact figures listed.</p>
+<ol start="2">
+<li>Click <strong>Review</strong> in the sidebar, then the <strong>Verify</strong> tab.</li>
+<li>Drag in <code>edited.html</code> and <code>edited.html.manifest.json</code>, then click
+   <strong>Verify offline</strong>. The screen turns red: <strong>FILE ALTERED</strong>, with the
+   changed figures listed.</li>
+</ol>
 <blockquote>
 <p>"Caught in about a second, and it points to exactly which numbers were
-touched. This check needs no database access and no login."</p>
+touched. This check needs no database and no login."</p>
 </blockquote>
-<p>Then drag in the untouched pair (<code>portfolio_dashboard.html</code> and its
-<code>.manifest.json</code>) and verify again. It reads <strong>FILE INTACT</strong>.</p>
-<h3 id="beat-4-ask-a-question-1-minute-optional">Beat 4: ask a question (1 minute, optional)</h3>
-<p>Open <strong>Direct Lending Portfolio</strong> in the sidebar and click <strong>Ask this model</strong>. Build the
-sentence "Show fair value by sector" (type, or pick each word), then <strong>Ask</strong>.</p>
+<ol start="4">
+<li>Drag in the untouched pair, <code>portfolio_dashboard.html</code> and its
+   <code>.manifest.json</code>, and verify again. It reads <strong>FILE INTACT</strong>.</li>
+</ol>
+<h3 id="5-ask-a-question-1-minute-optional">5. Ask a question (1 minute, optional)</h3>
+<ol>
+<li>Open <strong>Direct Lending Portfolio</strong> in the sidebar and click <strong>Ask this
+   model</strong>.</li>
+<li>Build the sentence "Show fair value by sector" (type, or pick each word),
+   then click <strong>Ask</strong>.</li>
+</ol>
 <blockquote>
-<p>"You can ask your own question of the same definitions, and the answer
-comes with the exact query behind it, so it can be checked the same way."</p>
+<p>"You can ask your own question of the same definitions. The answer comes
+with the exact query behind it, so it can be checked the same way."</p>
 </blockquote>
-<h3 id="beat-5-the-honest-boundary-1-minute-dont-skip">Beat 5: the honest boundary (1 minute, don't skip)</h3>
+<h3 id="6-what-it-does-not-claim-1-minute-dont-skip">6. What it does not claim (1 minute, don't skip)</h3>
 <blockquote>
-<p>"One thing TraceBi does <em>not</em> claim: a trace shows a number is consistent
-and unedited, not that it's <em>correct</em>. If bad data goes in at the start, the
-report will faithfully show the bad number. That's why a person still
+<p>"One thing TraceBi does not claim: a trace shows a number is consistent and
+unedited, not that it's correct. If bad data goes in at the start, the
+report will show the bad number every time. That's why a person still
 approves the definitions and the cleaning. TraceBi makes sure that what they
 approved is what gets shipped."</p>
 </blockquote>
-<p>Being upfront about this builds more trust with a finance or compliance
-audience than any feature.</p>
+<p>A finance or compliance audience trusts this more than any feature.</p>
 <h2 id="likely-questions">Likely questions</h2>
 <table>
 <thead>
@@ -193,12 +209,12 @@ audience than any feature.</p>
 </thead>
 <tbody>
 <tr>
-<td>"Does this replace Tableau / Power BI?"</td>
-<td>"No. It's for the reports where being able to prove the number matters most: board packs, investor reports, regulatory filings, anything an AI drafts."</td>
+<td>"Does this replace Tableau or Power BI?"</td>
+<td>"No. It's for the reports where proving the number matters most: board packs, investor reports, regulatory filings, anything an AI drafts."</td>
 </tr>
 <tr>
 <td>"Can the AI change our data?"</td>
-<td>"No. The AI builds the report through a gateway that has no write access to the data it reports on. A person approves every change."</td>
+<td>"No. The AI builds reports through a gateway with no write access to the data it reports on. A person approves every change."</td>
 </tr>
 <tr>
 <td>"What does the reader need?"</td>
@@ -214,9 +230,7 @@ audience than any feature.</p>
 </tr>
 </tbody>
 </table>
-<h2 id="words-to-avoid-on-stage">Words to avoid on stage</h2>
-<p>Engineers love these words. A non-technical room does not. Here's what to say
-instead:</p>
+<h2 id="words-to-use-on-stage">Words to use on stage</h2>
 <table>
 <thead>
 <tr>
@@ -230,7 +244,7 @@ instead:</p>
 <td>trace</td>
 </tr>
 <tr>
-<td>SHA-256 fingerprint / hash</td>
+<td>SHA-256 fingerprint, hash</td>
 <td>fingerprint</td>
 </tr>
 <tr>
@@ -242,11 +256,11 @@ instead:</p>
 <td>the clean data</td>
 </tr>
 <tr>
-<td>transform / pandas</td>
+<td>transform, pandas</td>
 <td>the cleaning step</td>
 </tr>
 <tr>
-<td>MCP gateway / agent</td>
+<td>MCP gateway, agent</td>
 <td>the AI assistant</td>
 </tr>
 <tr>

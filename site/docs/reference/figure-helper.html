@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,40 +61,34 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a class="on" href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="figurename"><code>{{ figure("name") }}</code></h1>
-<p><strong>Declare a figure in <a href="../reference/report-json.html">report.json</a>; the framework builds the element, you
-keep the layout.</strong></p>
-<p>The middle ground between writing the <a href="../reference/template-html.html">data-tb-* grammar</a> by
-hand and giving up control of the page.</p>
-<hr>
-<h2 id="use-it">Use it</h2>
-<p>Declare the figure:</p>
+<p>Declare a figure in <a href="../reference/report-json.html">report.json</a> and place it in your page with one call.
+TraceBi builds the element; you keep the layout.</p>
 <pre><code class="language-json">&quot;figures&quot;: {
   &quot;total&quot;: {&quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: &quot;totals&quot;, &quot;cell&quot;: &quot;revenue&quot;,
             &quot;label&quot;: &quot;Revenue&quot;, &quot;format&quot;: &quot;currency&quot;}
 }
 </code></pre>
-<p>Place it anywhere in your own markup:</p>
 <pre><code class="language-html">&lt;section class=&quot;my-own-card&quot;&gt;
   {{ figure(&quot;total&quot;) }}
 &lt;/section&gt;
 </code></pre>
-<p>Your CSS, your JS, your layout — untouched. The framework supplies only the
-element, and the element it emits is byte-identical to what a compiled <code>.json</code>
-spec would produce for the same declaration.</p>
-<h2 id="kinds">Kinds</h2>
-<h3 id="value-a-single-number"><code>value</code> — a single number</h3>
+<p>The element it writes is identical to what a compiled <code>.json</code> spec produces
+for the same declaration, and to the <code>data-tb-*</code> markup you could write by
+hand (<a href="../reference/template-html.html">template.html</a>). Mix both styles freely.</p>
+<h2 id="value"><code>value</code></h2>
+<p>A single number.</p>
 <pre><code class="language-json">{&quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: &quot;totals&quot;, &quot;cell&quot;: &quot;revenue&quot;,
  &quot;label&quot;: &quot;Revenue&quot;, &quot;format&quot;: &quot;currency&quot;}
 </code></pre>
@@ -108,22 +102,22 @@ spec would produce for the same declaration.</p>
 <tbody>
 <tr>
 <td><code>cell</code></td>
-<td><strong>required</strong> — the column to read, from row 0</td>
+<td>Required. The column to read from the binding's one row.</td>
 </tr>
 <tr>
 <td><code>label</code></td>
-<td>the caption shown beside the number</td>
+<td>The caption beside the number.</td>
 </tr>
 <tr>
 <td><code>format</code></td>
-<td>a named format → <a href="../reference/number-formats.html">Number formats</a></td>
+<td>A named format (<a href="../reference/number-formats.html">Number formats</a>).</td>
 </tr>
 </tbody>
 </table>
-<p>The binding must be a <strong>one-row</strong> query. A value figure over a multi-row
-binding is refused at build: <em>"a value figure needs a one-row binding
-(aggregate the query, or use a table figure)."</em></p>
-<h3 id="chart"><code>chart</code></h3>
+<p>The binding must be a one-row binding. Over a multi-row binding the build
+fails: <em>"a value figure needs a one-row binding (aggregate the query, or use a
+table figure)."</em></p>
+<h2 id="chart"><code>chart</code></h2>
 <pre><code class="language-json">{&quot;kind&quot;: &quot;chart&quot;, &quot;binding&quot;: &quot;by_sector&quot;, &quot;chart_type&quot;: &quot;bar&quot;,
  &quot;x&quot;: &quot;dim_issuer.sector&quot;, &quot;y&quot;: &quot;fair_value&quot;, &quot;value_format&quot;: &quot;compact&quot;}
 </code></pre>
@@ -137,33 +131,32 @@ binding is refused at build: <em>"a value figure needs a one-row binding
 <tbody>
 <tr>
 <td><code>chart_type</code></td>
-<td><code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code> (default <code>bar</code>)</td>
+<td><code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code> or <code>scatter</code>. Default <code>bar</code>.</td>
 </tr>
 <tr>
 <td><code>x</code></td>
-<td>the category column</td>
+<td>The category column.</td>
 </tr>
 <tr>
 <td><code>y</code></td>
-<td>the value column, or a list for multi-series</td>
+<td>The value column, or a list for several series.</td>
 </tr>
 <tr>
 <td><code>color</code></td>
-<td>series/colour column</td>
+<td>The series column.</td>
 </tr>
 <tr>
 <td><code>palette</code></td>
-<td>explicit colour list</td>
+<td>A list of colours.</td>
 </tr>
 <tr>
 <td><code>value_format</code></td>
-<td>formats labels, axes and tooltips → <a href="../reference/number-formats.html">Number formats</a></td>
+<td>Format for labels, axes and tooltips (<a href="../reference/number-formats.html">Number formats</a>).</td>
 </tr>
 </tbody>
 </table>
-<p>The build inlines D3 automatically when the page contains this figure.
-<code>"libs"</code> in <a href="../reference/report-json.html">report.json</a> is optional.</p>
-<h3 id="table"><code>table</code></h3>
+<p>The build inlines D3 automatically when the page has a chart.</p>
+<h2 id="table"><code>table</code></h2>
 <pre><code class="language-json">{&quot;kind&quot;: &quot;table&quot;, &quot;binding&quot;: &quot;holdings&quot;, &quot;columns&quot;: [&quot;issuer&quot;, &quot;fair_value&quot;],
  &quot;style&quot;: &quot;striped&quot;}
 </code></pre>
@@ -177,67 +170,57 @@ binding is refused at build: <em>"a value figure needs a one-row binding
 <tbody>
 <tr>
 <td><code>columns</code></td>
-<td>allowlist and column order</td>
+<td>Which columns, in order.</td>
 </tr>
 <tr>
 <td><code>style</code></td>
-<td><code>striped</code> or <code>compact</code></td>
+<td><code>striped</code> or <code>compact</code>.</td>
 </tr>
 <tr>
 <td><code>labels</code></td>
-<td><code>{column: header}</code> — overrides the derived header</td>
+<td><code>{column: header}</code>, replacing the derived header.</td>
 </tr>
 <tr>
 <td><code>formats</code></td>
-<td><code>{column: format}</code> — <code>compact</code>, <code>comma</code>, <code>currency</code>, <code>currency0</code>, <code>percent</code>, <code>decimal</code>; overrides the derived format</td>
+<td><code>{column: format}</code>: <code>compact</code>, <code>comma</code>, <code>currency</code>, <code>currency0</code>, <code>percent</code> or <code>decimal</code>, replacing the derived format.</td>
 </tr>
 </tbody>
 </table>
-<h3 id="not-custom">Not <code>custom</code></h3>
-<p>A <code>custom</code> figure has no framework markup by definition — your <code>script.js</code>
-draws it. Write and mark that one yourself; see <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
+<p>A <code>custom</code> figure has no generated markup: your <code>script.js</code> draws it. Write
+and mark it yourself (<a href="../reference/template-html.html">template.html</a>).</p>
 <h2 id="figure-ids">Figure ids</h2>
-<p>The declared name becomes the figure id: <code>total</code> → <code>fig-total</code>.</p>
-<p>That id is the trace's stable address for the number, and it is how a human
-redirects you — <em>"fix <code>fig-total</code>"</em>. Name figures accordingly.</p>
+<p>The declared name becomes the id: <code>total</code> → <code>fig-total</code>. The trace uses the id
+as the figure's address, and a reviewer uses it to point at a number ("fix
+<code>fig-total</code>"), so choose names that say what the number is.</p>
 <h2 id="refusals">Refusals</h2>
-<p>The helper is strict, because each of these failures is otherwise silent:</p>
 <table>
 <thead>
 <tr>
 <th>You did</th>
-<th>What happens</th>
+<th>Result</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>named a binding that isn't in <code>data</code></td>
-<td>fails when the package <strong>loads</strong></td>
+<td>Named a binding that isn't in <code>data</code></td>
+<td>Fails when the package loads.</td>
 </tr>
 <tr>
-<td>declared a figure, never placed it</td>
-<td>fails the <strong>build</strong> — a declared number must not vanish</td>
+<td>Declared a figure and never placed it</td>
+<td>Fails the build. A declared number must not vanish.</td>
 </tr>
 <tr>
-<td>placed the same figure twice</td>
-<td>fails — one id addresses one number</td>
+<td>Placed the same figure twice</td>
+<td>Fails. One id addresses one number.</td>
 </tr>
 <tr>
-<td>called <code>figure("typo")</code></td>
-<td>fails, listing the declared names</td>
+<td>Called <code>figure("typo")</code></td>
+<td>Fails, listing the declared names.</td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p><strong>Jinja parses inside HTML comments.</strong> Never write a <code>{{ figure(...) }}</code> call
-in a comment — it is still evaluated and will error.</p>
-</blockquote>
-<h2 id="related">Related</h2>
-<ul>
-<li><a href="../reference/report-json.html">report.json</a> — where figures are declared</li>
-<li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup this emits, and the hand-written form</li>
-<li><a href="../reference/number-formats.html">Number formats</a> — <code>format</code> and <code>value_format</code> values</li>
-</ul>
+<p>Jinja evaluates <code>{{ figure(...) }}</code> even inside an HTML comment, so never put
+one in a comment.</p>
   </main>
 </div>
 <script>

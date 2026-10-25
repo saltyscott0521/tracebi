@@ -1,120 +1,52 @@
-# TraceBi in plain English
+# What is TraceBi
 
-**TraceBi makes reports where every number comes with a trace, so anyone can
-check later that the number still matches what it was built from.**
-
-This page is for people who read, approve or pay for reports and don't write
-code. No technical background is needed. Engineers should start at
-[[quickstart]].
-
----
+TraceBi makes reports where every number carries a record of how it was made,
+so anyone can check later that the number still matches its source.
 
 ## The problem
 
-AI tools can now write a full report in minutes: charts, tables, headline
-numbers. That is useful. But **a wrong number looks exactly like a right one.**
-A figure the AI got wrong shows up in the same font and the same chart as the
-ones it got right.
+AI tools can write a full report in minutes. A wrong number in that report
+looks exactly like a right one: same font, same chart. Checking usually means
+asking someone where a figure came from and trusting their memory.
 
-Today, most of the checking happens by memory and by trust. People ask "where
-did this number come from?", someone digs through a spreadsheet, and the answer
-is "I think it was the March export." When reports get made faster than anyone
-can check them, that approach stops working.
+## How TraceBi works
 
-## The idea, in one picture
+Every number in a TraceBi report comes with a **trace**, like the tracking on
+a parcel. The trace records which data and which definition produced the
+number, and a fingerprint of that data. Change one digit and the fingerprint
+no longer matches.
 
-Think of **tracking on a parcel**. Every step it took is written down as it
-happens, so you can check the route later. You don't have to trust anyone's
-memory.
+A report is made in three steps, each owned by the person best at it:
 
-TraceBi gives every number in a report a trace like that: how the number was
-made. The trace records:
+1. **Clean.** Messy exports become tidy tables.
+2. **Define.** Each business term ("fair value", "revenue") is written down
+   once, and reviewed.
+3. **Present.** The page is laid out. Every number on it is looked up from
+   the definitions, never typed in.
 
-- **where the number came from:** which data and which definition (for example
-  "total fair value = the sum of fair value across all holdings"), and
-- **what came out:** a tamper-evident "fingerprint" of the exact data behind
-  it. If one digit changes, the fingerprint no longer matches.
+## What you can check
 
-Anyone can later ask two questions, and a computer answers them in seconds:
+Anyone with the report file can ask two questions and get an answer in
+seconds:
 
-1. **"If I run this again today, do I get the same number?"** TraceBi calls this
-   *reproduces*.
-2. **"Has anyone edited the numbers in this file since it was made?"** If
-   someone changed a figure by hand, the check says *file altered* and points to
-   the figure.
+- **Does it reproduce?** Run it again today: is the number the same?
+- **Was the file altered?** Did someone edit a number after it was built?
 
-## How a report gets made: three steps
+## What it does not promise
 
-A report travels through three stages. Each one is a separate folder, owned by
-whoever is best at that job.
+A trace shows a number is consistent and unedited. It does not show the number
+is right. If bad data went into the cleaning step, the report will show the
+bad number every time. People still review the cleaning and the definitions.
+When the cleaned tables pass their declared checks, TraceBi says "the sink
+satisfied its contract", and nothing more.
 
-| Stage | In everyday terms | Who usually does it |
-| --- | --- | --- |
-| **1. Clean** (`transforms/`) | Take messy exports and tidy them into clean, well-labelled tables. Like prepping ingredients before cooking. | An analyst, an engineer or an AI assistant |
-| **2. Define** (`models/`) | Write down, once, what each business term means: what "fair value" is, what a "sector" is, how totals add up. Like a recipe card everyone cooks from. | An analyst, reviewed by someone who knows the business |
-| **3. Present** (`reports/`) | Lay out the page: headline numbers, charts, tables. Every number on the page is looked up from step 2, never typed in by hand. | An analyst or an AI assistant |
+## In one sentence
 
-Because the definitions in step 2 are written down once, "revenue" means the
-same thing in every report. Nobody can quietly use a different formula on one
-page.
-
-## Who does what
-
-- **The builder** (a person or an AI assistant) prepares the data and designs
-  the report.
-- **The reviewer** reads the definitions and the finished page, then approves
-  them. The changes arrive as a proposal to approve, edit or reject, the way
-  engineers review code. An AI working through TraceBi's gateway can check its
-  own work, but it has no write access to the data it reports on.
-- **The reader** gets one file. It opens in any web browser, works offline, and
-  carries its own trace. They can check it with **Verify a file** in the app
-  by dropping in the report and its `.manifest.json` file.
-
-## What the trace does *not* promise
-
-This matters, and TraceBi is deliberately strict about it.
-
-- **A trace shows a number is consistent. It does not show the number is
-  right.** If bad data went in at step 1, the report will faithfully and
-  repeatably show the bad number. The trace proves it *reproduces*, not that
-  it is *correct*.
-- **Step 1, the cleaning, is checked by people, not by the trace.** TraceBi
-  can run simple checks on the cleaned tables ("no duplicate holdings", "every
-  holding belongs to a known fund"). When they pass, the phrase is *"the sink
-  satisfied its contract."* It is not a guarantee that the analysis was right.
-- **The trace is made by whoever made the report.** Between two companies it
-  is good documentation, not independent proof. It becomes proof when the
-  person checking also has access to the original data. Signed traces, which
-  prove *who* issued them, are planned but not built yet.
-
-## Words you will see in the app
-
-| Word in the app | What it means |
-| --- | --- |
-| **Trace** / **manifest** | The record of where each number came from and its fingerprint. Saved as a small `.manifest.json` file next to the report. |
-| **Fingerprint** | A short code computed from the exact data. Any change to the data gives a different code. |
-| **Reproduces** | Running it again gave exactly the same data. |
-| **File altered** | Someone changed numbers in the file after it was built. |
-| **Unverified** | The author marked this number as not checkable, for example a hand-written note. It is labelled, never hidden. |
-| **Model** / **Contract** | The written-down definitions from step 2: what each measure and category means. |
-| **Measure** | A defined calculation, such as "total fair value" or "average spread". |
-| **Sink** / **warehouse** | The clean tables produced by step 1, stored in one place (by default one file). |
-| **Contract satisfied / no contract** | Whether the cleaned tables passed their declared checks, or have no checks declared. |
-| **Ask** | Put a question to a model by picking its own measures and categories ("fair value by sector"). The answer is a fresh query, so it says Not checked; **Keep this** turns it into a draft report. The app does not guess at free text: plain-English questions go to your agent, which uses the same definitions. |
-| **Reports, Data, Review, Docs** | The app's places. Everyone sees Reports (the library: a folder per model, each with a page of its own, and Ask from a folder or a model) and Docs (this handbook); an analyst also sees Review (what needs attention, drafts, history, checking a file) and Data (how the numbers are made, drawn as a board from the sources to the reports), where only an admin refreshes the data. |
-| **Needs attention** | The first tab of Review: anything a person should look at right now, such as a report that no longer reproduces, a refresh that failed or a request to publish. When there is nothing it says so. |
-| **Draft / exploration** | A report still being worked on. It contains scratch work that is removed before publishing. |
-| **Agent** | An AI assistant that builds reports using the same rules as a person. |
-
-## The one-sentence version for your boss
-
-> "Our reports are built from written-down definitions, every number carries a
-> trace, and anyone can check in seconds that a number still matches its
-> source and hasn't been edited, including numbers an AI produced."
+"Our reports are built from written-down definitions, every number carries a
+trace, and anyone can check in seconds that a number still matches its source
+and hasn't been edited, including numbers an AI produced."
 
 ## Next
 
-- See it working: [[demo-script]], a ten-minute walkthrough you can give to
-  anyone.
-- The technical version of this page: [[the-three-phase-workflow]] and
-  [[trace]].
+- Show it to someone: [[demo-script]]
+- Try it yourself: [[quickstart]]

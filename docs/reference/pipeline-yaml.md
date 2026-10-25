@@ -1,21 +1,7 @@
 # Pipeline files (YAML)
 
-**A pipeline as data: which transform to run, which models it feeds, which
-reports to rebuild, and when. A transform stays its own file (SQL by default,
-Python as the escape hatch); a pipeline only names one.**
-
-`pipelines/<name>.yaml` (or `.yml`) compiles to the same runner as
-`model_pipeline(...)`: `tracebi run-pipeline <name>` and the app's **Refresh data**
-run the transform fresh (`tracebi run-transform`), then rebuild the reports,
-recording each run. `tracebi new-pipeline "Sales ETL"` writes a commented
-starter; `--python` writes the old `pipelines/<name>.py`.
-
-The file loads with `yaml.safe_load` semantics, a repeated key is an error,
-and the schema is closed.
-
----
-
-## Example
+A pipeline file names the transform to run, the models it feeds, the reports
+to rebuild, and when.
 
 ```yaml
 # pipelines/portfolio_model.yaml
@@ -27,29 +13,41 @@ reports: all
 schedule: null
 ```
 
----
+- `tracebi run-pipeline <name>` and **Refresh data** in the app run the
+  transform fresh (as `tracebi run-transform` does), then rebuild the reports,
+  recording each run.
+- It compiles to the same runner as `model_pipeline(...)` in Python.
+- `tracebi new-pipeline "Sales ETL"` writes a commented starter; `--python`
+  writes `pipelines/<name>.py`.
+- `.yml` works too. The file loads with `yaml.safe_load` rules, a repeated key
+  is an error, and unknown keys are refused.
 
 ## Keys
 
-| key | |
+| Key | Meaning |
 |---|---|
-| `name` | required; letters, digits, underscore; equals the file name |
-| `transform` | required; a bare name of `transforms/<x>.sql`, `.py` or `.ipynb` (an extension is allowed, a folder is not). The step runs it with `tracebi run-transform`, then the `<x>.contract.yaml` beside it, and records which form ran (`sql`, `python`, `notebook`): `tracebi run-pipeline <name> --status` and the model's Transform tab show it. See [[transform-sql]] |
-| `models` | required; a list of model names the transform feeds |
-| `reports` | `all` (default): every report in `reports/<model>/` of each model; or a list of report names (`<model>/<report>`) |
-| `schedule` | a 5-field cron expression, or `null` (on demand only). When the scheduler fires it, the whole chain runs: transform, then reports |
-| `description` | free text |
+| `name` | Required. Letters, digits and underscores; equals the file name. |
+| `transform` | Required. The name of `transforms/<x>.sql`, `.py` or `.ipynb` (an extension is allowed, a folder is not). The step runs it, then the `<x>.contract.yaml` beside it, and records the form (`sql`, `python`, `notebook`), shown by `tracebi run-pipeline <name> --status` and the model's Transform tab. See [[transform-sql]]. |
+| `models` | Required. The models the transform feeds. |
+| `reports` | `all` (default): every report in `reports/<model>/` of each model. Or a list of names (`<model>/<report>`). |
+| `schedule` | A five-field cron expression, or `null` for on demand only. A scheduled run does the whole chain: transform, then reports. |
+| `description` | Free text. |
 
 ## One file per name
 
-A pipeline is one file. `x.py` beside `x.yaml` -> the Python file wins and the
-YAML is refused (reported in `/api/discovery`); `x.yaml` and `x.yml` together
-are both refused.
+| Files present | Result |
+|---|---|
+| `x.py` and `x.yaml` | The Python file wins; the YAML is refused and reported in `/api/discovery`. |
+| `x.yaml` and `x.yml` | Both are refused. |
 
-## Migrating
+## Convert a Python pipeline
 
-`tracebi migrate pipeline pipelines/x.py [--write]` writes the YAML for a
-runner built by `model_pipeline(...)` and leaves the `.py` in place. It refuses,
-with the reason, a runner that registers anything else (medallion layers,
-custom steps), keeps its history at a custom `db_url`, builds reports from
-another folder, or is named differently from its file.
+```bash
+tracebi migrate pipeline pipelines/x.py [--write]
+```
+
+Writes the YAML for a runner built by `model_pipeline(...)` and leaves the
+`.py` in place. It refuses, with the reason, a runner that registers anything
+else (medallion layers, custom steps), keeps its history at a custom
+`db_url`, builds reports from another folder, or is named differently from its
+file.

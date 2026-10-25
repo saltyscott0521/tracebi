@@ -1,20 +1,7 @@
 # Models and connectors
 
-**A model says what the data means. A connector says where the data is. The
-model file holds no data.**
-
----
-
-## The three things
-
-| | What it is | Where it lives |
-|---|---|---|
-| **Connector** | A handle to a place that stores data: the project's warehouse, a DuckDB file, a database URL, a cloud warehouse | Named in the model file (`type: warehouse` for the project's warehouse), or declared once in `connections/<name>.yaml` |
-| **Table** | A name the model uses, pointing at *one source inside one connector* | `{name: fact_holdings, connector: warehouse, source: fact_holdings}` |
-| **Model** | The tables, which are facts and which are dimensions, how they join, and what every measure means | `models/<name>.yaml`: a few dozen declarative lines |
-
-Reading a model file, then, tells you the *shape* of the data and the *name* of
-the place it is kept, never the data itself.
+A model says what the data means. A connector says where the data is. The
+model file holds no data:
 
 ```yaml
 connectors:
@@ -26,57 +13,59 @@ facts:                                                                  # what i
      foreign_keys: {dim_fund: fund_id}}
 ```
 
-## Finding where the data is
+| Part | What it is | Where it is declared |
+|---|---|---|
+| Connector | A handle to a place that stores data: the project's warehouse, a DuckDB file, a database, a cloud warehouse | In the model file (`type: warehouse` for the project's warehouse), or once in `connections/<name>.yaml` |
+| Table | A name the model uses for one source inside one connector | `{name: fact_holdings, connector: warehouse, source: fact_holdings}` |
+| Model | The tables, which are facts and which are dimensions, how they join, and what each measure means | `models/<name>.yaml` |
 
-- **In the app**, open **Data**, then the model: the header says
-  *Defined in* `models/portfolio_model.yaml` · *reads*
-  `data/warehouse.duckdb`. The Model tab is the data browser: a tree of the
-  model's tables, its star schema drawn beside it, and an inspector for the
-  table you select (its columns with their nulls and ranges, a sample of its
-  rows, its joins and measures). With nothing selected, the inspector's
-  **Storage** fold says whether the file is there yet and how big it is, and
-  lists each connector, what kind of place it is, and exactly which tables it
-  serves. Data's **Warehouse** tab (`/data/warehouse`) is the same browser
-  over every table, grouped by the transform that wrote it, with the joins
-  every model declares over them, and **Sources** (`/data/sources`) every connection
-  and input file the transforms read, with what reads each.
-- **In code**, `model.info()["connector_details"]` gives the same answer, and
-  `connector.storage()` says where any connector's data lives (never a
-  credential).
+## Find where a model's data is
 
-## Why it is split this way
+**In the app:** open **Data**, then the model. The header names the file that
+defines it and the warehouse it reads. The **Model** tab shows the model's
+tables, its star schema, and an inspector for the table you select: columns
+with nulls and ranges, sample rows, joins and measures. With nothing selected,
+the **Storage** fold says whether the warehouse file exists, how big it is,
+and which tables each connector serves.
 
-- **The model can be reviewed on one screen**, because it holds meaning, not
-  data or plumbing.
-- **The data can be rebuilt without touching the model.** A [[transform]]
-  writes the warehouse file; the model keeps reading the same table names.
-- **A [[trace]] can name its source.** Every query records which
-  connector and which table it read, plus a fingerprint of that table, so a
-  number can be traced to stored data.
+Two Data tabs cover the whole project. **Warehouse** (`/data/warehouse`) shows
+every table, grouped by the transform that wrote it. **Sources**
+(`/data/sources`) lists every connection and input file, and what reads each.
+
+**In code:** `model.info()["connector_details"]` gives the same answer.
+`connector.storage()` says where a connector's data lives, never a credential.
 
 ## A model, its reports and its pipeline
 
-Reports are organised **by model**: the folder is the model's name.
+Reports are grouped by model: the folder name is the model's name.
 
 ```
 models/portfolio_model.yaml            what the data means
-reports/portfolio_model/…            every report that reads it
+reports/portfolio_model/…              every report that reads it
 pipelines/portfolio_model.yaml         rebuild its data, then those reports
 ```
 
-A few lines make the pipeline (`pipelines/portfolio_model.yaml`:
-`transform: holdings_transform`, `models: [portfolio_model]`, `reports: all`):
-a **transform** step (the phase ① script that fills the warehouse) and a
-**build** step (every report in `reports/portfolio_model/`, each with its
-trace). It shows on the model's Transform tab, where **Refresh data** runs it,
-and runs with `tracebi run-pipeline portfolio_model`. The build step
-refuses to run after a transform that failed, so a report is never rebuilt on
-data the transform did not refresh.
+The pipeline file is a few lines: `transform: holdings_transform`,
+`models: [portfolio_model]`, `reports: all`. It runs the transform, then
+builds every report in `reports/portfolio_model/` with its trace. It appears on
+the model's Transform tab, where **Refresh data** runs it, and from the
+terminal as `tracebi run-pipeline portfolio_model`. If the transform fails,
+the reports are not rebuilt.
 
-## When the data is "not built yet"
+## "Not built yet"
 
-A file connector points at a path that exists only after phase ① has run. The
-app shows **not built yet** beside the location until the [[transform]] (or
-the model's pipeline) has written it.
+A file connector points at a path that exists only after the transform has
+run. Until then the app shows **not built yet** beside it.
 
-See also [[model]] and [[lineage]].
+## Why it works this way
+
+- The model fits on one screen for review, because it holds meaning only.
+- The data can be rebuilt without touching the model. The transform rewrites
+  the warehouse; the model keeps reading the same table names.
+- Every query records which connector and table it read, with a fingerprint
+  of that table, so a trace can name its source.
+
+## Next
+
+- Declare a database connection: [[connections-yaml]]
+- See how a number is traced to its table: [[lineage]]

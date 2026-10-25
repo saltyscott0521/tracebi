@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Queries — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="This is the distinction that quietly ruins totals if you get it backwards:">
+<meta name="description" content="Queries">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,38 +61,20 @@
 <a class="on" href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="queries">Queries</h1>
-<p><strong>What a report may ask a <a href="../concepts/model.html">Model — phase ②</a>: measures, dimensions, filters, <code>having</code>,
-ordering, limits — as data, not SQL.</strong></p>
-<p>A query is a <code>QuerySpec</code>: validatable, serializable, diffable in a pull request,
-and replayable. That is what lets <a href="../concepts/trace.html">tracebi verify</a> re-run it later.</p>
-<hr>
-<h2 id="the-shape">The shape</h2>
-<pre><code class="language-python">model.query(
-    fact,                 # required — a registered fact
-    measures,             # required — declared names, or {out_col: spec}
-    dimensions=None,      # [&quot;dim_name.attribute&quot;, ...]; None = totals only
-    filters=None,         # WHERE  — before aggregation
-    having=None,          # HAVING — after aggregation
-    aggregate=True,
-    allow_fanout=False,
-    allow_rate_agg=False,
-    order_by=None,
-    limit=None,
-)
-</code></pre>
-<p>The same thing as JSON, which is what a <a href="../reference/report-json.html">report.json</a> binding holds:</p>
+<p>A query is what a report asks a <a href="../concepts/model.html">Models</a>: measures, dimensions, filters,
+<code>having</code>, ordering and a limit, written as data rather than SQL.</p>
 <pre><code class="language-json">{
   &quot;fact&quot;: &quot;fact_orders&quot;,
   &quot;measures&quot;: [&quot;revenue&quot;, &quot;margin_pct&quot;],
@@ -103,112 +85,24 @@ and replayable. That is what lets <a href="../concepts/trace.html">tracebi verif
   &quot;limit&quot;: 10
 }
 </code></pre>
-<p>Unknown fields are rejected by name.</p>
-<h2 id="measures">Measures</h2>
-<p><strong>By declared name</strong> — the governed form:</p>
-<pre><code class="language-python">measures=[&quot;revenue&quot;, &quot;gross_margin&quot;, &quot;margin_pct&quot;]
+<p>This is what a <a href="../reference/report-json.html">report.json</a> binding holds. Because a query is data (a
+<code>QuerySpec</code>), it can be checked before it runs, reviewed in a pull request,
+and re-run later by <code>tracebi verify</code>. Unknown fields are refused by name.</p>
+<h2 id="in-python">In Python</h2>
+<pre><code class="language-python">model.query(
+    fact,                 # required: a registered fact
+    measures,             # required: declared names, or {out_col: spec}
+    dimensions=None,      # [&quot;dim_name.attribute&quot;, ...]; None for totals only
+    filters=None,         # WHERE: before aggregation
+    having=None,          # HAVING: after aggregation
+    aggregate=True,
+    allow_fanout=False,
+    allow_rate_agg=False,
+    order_by=None,
+    limit=None,
+)
 </code></pre>
-<p><strong>Ad hoc</strong>, when the model hasn't declared it yet — the same three kinds:</p>
-<pre><code class="language-python">measures={
-    &quot;revenue&quot;:    &quot;sum&quot;,                                    # aggregate a column
-    &quot;units&quot;:      (&quot;qty&quot;, &quot;sum&quot;),                           # aggregate a renamed column
-    &quot;margin&quot;:     {&quot;expr&quot;: &quot;revenue - cost&quot;, &quot;agg&quot;: &quot;sum&quot;}, # a row expression
-    &quot;margin_pct&quot;: {&quot;ratio&quot;: [&quot;margin&quot;, &quot;revenue&quot;]},         # divided AFTER aggregation
-}
-</code></pre>
-<p>An undeclared name in the list form is refused, and tells you both fixes:
-declare it with <code>add_measure()</code>, or pass the ad-hoc form.</p>
-<h2 id="dimensions">Dimensions</h2>
-<p>Dotted references — <code>"dim_name.attribute"</code>. Attributes include declared ones
-plus derived <a href="../reference/measures.html">time grains</a>
-and <a href="../reference/measures.html">value bins</a>.</p>
-<p>Omit them for totals only.</p>
-<hr>
-<h2 id="filters-where-before-aggregation">Filters — <code>WHERE</code>, before aggregation</h2>
-<h3 id="operators">Operators</h3>
-<pre><code>eq  ne  in  not_in  gt  gte  lt  lte  between  is_null  not_null  contains
-</code></pre>
-<p>A <strong>closed set</strong>, deliberately: free SQL cannot be validated and is an injection
-surface. Every operator is parameterised.</p>
-<ul>
-<li><code>between</code> takes <code>[low, high]</code></li>
-<li><code>in</code> / <code>not_in</code> take a list — an empty list matches nothing / everything,
-  explicitly</li>
-<li><code>contains</code> is a substring match</li>
-<li><code>is_null</code> / <code>not_null</code> ignore the value</li>
-</ul>
-<h3 id="the-five-forms">The five forms</h3>
-<pre><code class="language-python">filters={&quot;status&quot;: &quot;shipped&quot;}                    # 1. equality
-filters={&quot;region&quot;: [&quot;NE&quot;, &quot;SE&quot;]}                 # 2. list → in
-filters={&quot;revenue&quot;: {&quot;gte&quot;: 1000}}               # 3. explicit operator
-filters={&quot;dim_customer.region&quot;: &quot;West&quot;}          # 4. dimension attribute
-filters={&quot;or&quot;: [{&quot;sector&quot;: &quot;Tech&quot;},              # 5. boolean group
-                {&quot;rating&quot;: &quot;AAA&quot;}]}
-</code></pre>
-<p>A dimension referenced only by a filter is still joined.</p>
-<h3 id="boolean-groups">Boolean groups</h3>
-<p><code>or</code> and <code>and</code> are reserved keys taking a list of condition groups. <strong>Every
-other key in the same dict ANDs with the group</strong>, and groups nest:</p>
-<pre><code class="language-python">filters={
-    &quot;status&quot;: &quot;shipped&quot;,                      # AND-ed with the group below
-    &quot;or&quot;: [
-        {&quot;dim_customer.segment&quot;: &quot;Enterprise&quot;},
-        {&quot;revenue&quot;: {&quot;gte&quot;: 10_000}},
-        {&quot;and&quot;: [                             # groups nest
-            {&quot;dim_customer.region&quot;: [&quot;NE&quot;, &quot;SE&quot;]},
-            {&quot;qty&quot;: {&quot;gt&quot;: 100}},
-        ]},
-    ],
-}
-# WHERE status = 'shipped'
-#   AND (segment = 'Enterprise' OR revenue &gt;= 10000
-#        OR (region IN ('NE','SE') AND qty &gt; 100))
-</code></pre>
-<p>Use <code>in</code> for OR over <strong>one column's values</strong>; use <code>or</code> for OR across
-<strong>different columns or operators</strong>.</p>
-<hr>
-<h2 id="having-after-aggregation"><code>having</code> — after aggregation</h2>
-<p><strong>This is the distinction that quietly ruins totals if you get it backwards:</strong></p>
-<pre><code class="language-python">having={&quot;revenue&quot;: {&quot;gte&quot;: 250}}    # keeps GROUPS whose summed revenue ≥ 250 — totals intact
-filters={&quot;revenue&quot;: {&quot;gte&quot;: 250}}   # drops raw ROWS below 250 BEFORE summing — every total changes
-</code></pre>
-<p>Same operators and value spellings as filters, on <strong>result</strong> columns — measure
-names, ratios, shares, ranks, running totals, growth. It runs after every
-post-aggregation measure is computed, which is exactly why it can filter them.</p>
-<p>Two limits worth knowing:</p>
-<ul>
-<li><strong>No boolean grouping.</strong> <code>having</code> is a flat dict; every entry ANDs. Only
-  <code>filters</code> supports <code>or</code>/<code>and</code>.</li>
-<li>Refused with <code>aggregate=False</code> — there are no group totals to filter.</li>
-</ul>
-<hr>
-<h2 id="ordering-and-limit">Ordering and limit</h2>
-<pre><code class="language-python">order_by=[&quot;-revenue&quot;]                            # '-col' desc, 'col' asc
-order_by=[{&quot;column&quot;: &quot;revenue&quot;, &quot;desc&quot;: True}]   # canonical form
-order_by=[&quot;dim_customer.region&quot;, &quot;-revenue&quot;]     # earlier keys sort first
-</code></pre>
-<p>A lone key (<code>"-revenue"</code>, or a single dict) is accepted and wrapped — otherwise
-a bare string would iterate as characters and fail at a character. The canonical
-form is a list.</p>
-<p>Keys may be any <strong>result</strong> column, measures included.</p>
-<h3 id="limit-requires-order_by"><code>limit</code> requires <code>order_by</code></h3>
-<pre><code class="language-python">limit=10                       # REFUSED on its own
-order_by=[&quot;-revenue&quot;], limit=10  # correct
-</code></pre>
-<blockquote>
-<p><em>"without a stated ordering, 'first N rows' silently masquerades as 'top N'."</em></p>
-</blockquote>
-<h3 id="ties-break-deterministically">Ties break deterministically</h3>
-<p>After your stated keys, <strong>every remaining column</strong> is appended as an ascending
-tie-break — the dimension columns first, then the measures — so the sort key
-uniquely orders every row.</p>
-<p>Without this, a "top 10" whose values tie at the boundary returns a different
-set across identical runs, and the fingerprint moves for no reason.</p>
-<p>The fully resolved ordering is stamped into the recorded query, so a replay
-compares like with like. A non-aggregate query with no <code>order_by</code> gets a
-canonical total order imposed for the same reason.</p>
-<hr>
-<h2 id="a-complete-query">A complete query</h2>
+<p>It returns a <code>DataSet</code> with full <a href="../concepts/lineage.html">Lineage</a>:</p>
 <pre><code class="language-python">top_segments = model.query(
     fact=&quot;fact_orders&quot;,
     measures=[&quot;revenue&quot;, &quot;gross_margin&quot;, &quot;margin_pct&quot;,
@@ -223,24 +117,141 @@ canonical total order imposed for the same reason.</p>
     order_by=[&quot;-revenue&quot;],
     limit=10,
 )
-
 top_segments.print_lineage()   # load → join → filter → aggregate → assign → filter → sort
-top_segments.fingerprint()     # reproducible content hash
+top_segments.fingerprint()     # a content hash that reproduces
 </code></pre>
-<p>Returns a <code>DataSet</code> with full <a href="../concepts/lineage.html">Lineage</a> — hand it to a report section and the
-lineage travels into the manifest.</p>
+<h2 id="measures"><code>measures</code></h2>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Declared names</td>
+<td><code>["revenue", "gross_margin", "margin_pct"]</code></td>
+</tr>
+<tr>
+<td>Ad hoc: aggregate a column</td>
+<td><code>{"revenue": "sum"}</code></td>
+</tr>
+<tr>
+<td>Ad hoc: aggregate a renamed column</td>
+<td><code>{"units": ("qty", "sum")}</code></td>
+</tr>
+<tr>
+<td>Ad hoc: row expression</td>
+<td><code>{"margin": {"expr": "revenue - cost", "agg": "sum"}}</code></td>
+</tr>
+<tr>
+<td>Ad hoc: ratio after aggregation</td>
+<td><code>{"margin_pct": {"ratio": ["margin", "revenue"]}}</code></td>
+</tr>
+</tbody>
+</table>
+<p>An undeclared name in the list form is refused with both fixes: declare it
+with <code>add_measure()</code>, or use the ad-hoc form.</p>
+<h2 id="dimensions"><code>dimensions</code></h2>
+<p>Dotted references, <code>"dim_name.attribute"</code>. Attributes include declared ones,
+time grains and value bins (<a href="../reference/measures.html">Measures</a>). Leave them out for totals only.</p>
+<h2 id="filters"><code>filters</code></h2>
+<p>Filters apply before aggregation (<code>WHERE</code>). Every operator is parameterised,
+and the set is closed:</p>
+<pre><code>eq  ne  in  not_in  gt  gte  lt  lte  between  is_null  not_null  contains
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>between</code></td>
+<td><code>[low, high]</code></td>
+</tr>
+<tr>
+<td><code>in</code> / <code>not_in</code></td>
+<td>A list. An empty list matches nothing / everything.</td>
+</tr>
+<tr>
+<td><code>contains</code></td>
+<td>A substring</td>
+</tr>
+<tr>
+<td><code>is_null</code> / <code>not_null</code></td>
+<td>Ignored</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-python">filters={&quot;status&quot;: &quot;shipped&quot;}                    # equality
+filters={&quot;region&quot;: [&quot;NE&quot;, &quot;SE&quot;]}                 # a list means in
+filters={&quot;revenue&quot;: {&quot;gte&quot;: 1000}}               # an operator
+filters={&quot;dim_customer.region&quot;: &quot;West&quot;}          # a dimension attribute
+filters={&quot;or&quot;: [{&quot;sector&quot;: &quot;Tech&quot;},              # a boolean group
+                {&quot;rating&quot;: &quot;AAA&quot;}]}
+</code></pre>
+<p>A dimension used only in a filter is still joined.</p>
+<p><strong>Boolean groups.</strong> <code>or</code> and <code>and</code> take a list of condition groups. Every
+other key in the same dict is ANDed with the group, and groups nest:</p>
+<pre><code class="language-python">filters={
+    &quot;status&quot;: &quot;shipped&quot;,                      # ANDed with the group below
+    &quot;or&quot;: [
+        {&quot;dim_customer.segment&quot;: &quot;Enterprise&quot;},
+        {&quot;revenue&quot;: {&quot;gte&quot;: 10_000}},
+        {&quot;and&quot;: [
+            {&quot;dim_customer.region&quot;: [&quot;NE&quot;, &quot;SE&quot;]},
+            {&quot;qty&quot;: {&quot;gt&quot;: 100}},
+        ]},
+    ],
+}
+# WHERE status = 'shipped'
+#   AND (segment = 'Enterprise' OR revenue &gt;= 10000
+#        OR (region IN ('NE','SE') AND qty &gt; 100))
+</code></pre>
+<p>Use <code>in</code> for several values of one column; use <code>or</code> across columns or
+operators.</p>
+<h2 id="having"><code>having</code></h2>
+<p><code>having</code> applies after aggregation, to result columns: measures, ratios,
+shares, ranks, running totals, growth. It uses the same operators as filters.</p>
+<pre><code class="language-python">having={&quot;revenue&quot;: {&quot;gte&quot;: 250}}    # keeps groups whose total revenue is ≥ 250; totals unchanged
+filters={&quot;revenue&quot;: {&quot;gte&quot;: 250}}   # drops rows under 250 before summing; every total changes
+</code></pre>
+<ul>
+<li><code>having</code> is a flat dict; every entry is ANDed. Only <code>filters</code> takes <code>or</code> and
+  <code>and</code>.</li>
+<li>It is refused with <code>aggregate=False</code>.</li>
+</ul>
+<h2 id="order_by"><code>order_by</code></h2>
+<pre><code class="language-python">order_by=[&quot;-revenue&quot;]                            # '-col' descending, 'col' ascending
+order_by=[{&quot;column&quot;: &quot;revenue&quot;, &quot;desc&quot;: True}]   # the canonical form
+order_by=[&quot;dim_customer.region&quot;, &quot;-revenue&quot;]     # earlier keys sort first
+</code></pre>
+<ul>
+<li>Keys may be any result column, measures included.</li>
+<li>A lone key (<code>"-revenue"</code>, or one dict) is wrapped in a list.</li>
+<li>After your keys, every remaining column is added as an ascending
+  tie-break, dimensions first, then measures. Without it, a top 10 with ties
+  at the boundary could return a different set each run and move the
+  fingerprint.</li>
+<li>The resolved ordering is stamped into the recorded query. A non-aggregate
+  query with no <code>order_by</code> gets a full ordering for the same reason.</li>
+</ul>
+<h2 id="limit"><code>limit</code></h2>
+<p><code>limit</code> requires <code>order_by</code>. Without a stated order, "first N rows" would pass
+for "top N".</p>
+<pre><code class="language-python">order_by=[&quot;-revenue&quot;], limit=10    # correct
+limit=10                           # refused
+</code></pre>
 <h2 id="order-of-operations">Order of operations</h2>
-<p>Worth knowing, because it explains what <code>having</code> can filter and what <code>share</code>
-and <code>running</code> are computed over:</p>
-<pre><code>engine aggregation → ratios → shares → windows (rank/running)
+<pre><code>aggregation → ratios → shares → windows (rank, running)
   → period-over-period → to-date → having → order_by → limit
 </code></pre>
-<h2 id="related">Related</h2>
-<ul>
-<li><a href="../reference/measures.html">Measures</a> — what you can ask for</li>
-<li><a href="../reference/report-json.html">report.json</a> — where a query lives in a report</li>
-<li><a href="../concepts/model.html">Model — phase ②</a> — what answers it</li>
-</ul>
+<p>This is why <code>having</code> can filter a rank, and why a share is computed over the
+whole result.</p>
   </main>
 </div>
 <script>

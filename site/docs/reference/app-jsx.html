@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>app.jsx — the React lane — TraceBi docs</title>
+<title>app.jsx — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="App behaviour.">
+<meta name="description" content="app.jsx">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,65 +61,67 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a class="on" href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a class="on" href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="appjsx-the-react-lane"><code>app.jsx</code> — the React lane</h1>
-<p><strong>A report package can hold <code>app.jsx</code> in place of <code>template.html</code>: a React
-component for app-like dashboards (navigation, drawers, drill-downs, toggles),
-built into the same single offline file, with the same trace.</strong></p>
-<p>The data does not change: <code>report.json</code> bindings are queried, stamped and
-fingerprinted at build (<a href="../reference/report-json.html">report.json</a>). What changes is how the page is
-written. There is no Node and no server: the page carries React and the kit,
-and compiles <code>app.jsx</code> when it opens. The report's strict CSP still refuses
-<code>eval</code>; nothing is fetched.</p>
+<h1 id="appjsx"><code>app.jsx</code></h1>
+<p>A report package can hold <code>app.jsx</code> instead of <code>template.html</code>: a React
+component for dashboards people work in, built into the same single offline
+file with the same trace.</p>
 <pre><code>reports/sales_model/revenue_app/
   report.json     # the bindings, as for any package
   app.jsx         # export default a component
 </code></pre>
-<p><code>tracebi new-dashboard "Revenue App"</code> writes one (<code>--nav top|side</code> adds
-navigation, <code>--title-at</code> places the title).
-<code>tracebi report build sales_model/revenue_app</code> builds it, and the app serves
-it like any other report. Its mode and density go in <code>report.json</code> <code>"look"</code>
-and a shipped theme in <code>"theme"</code> (<a href="../reference/report-json.html">report.json</a>); the project's house style
-is <code>reports/_style.md</code>, which agents read before building.</p>
-<h2 id="when-to-use-which">When to use which</h2>
+<pre><code class="language-bash">tracebi new-dashboard &quot;Revenue App&quot;               # --nav top|side, --title-at
+tracebi report build sales_model/revenue_app
+</code></pre>
+<ul>
+<li>The data works as for any package: <code>report.json</code> bindings are queried,
+  stamped and fingerprinted at build (<a href="../reference/report-json.html">report.json</a>).</li>
+<li>There is no Node and no server. The page carries React and the kit and
+  compiles <code>app.jsx</code> when it opens. The strict CSP still refuses <code>eval</code>, and
+  nothing is fetched.</li>
+<li>Mode and density go in <code>report.json</code> <code>"look"</code>, a shipped theme in
+  <code>"theme"</code>. The project's house style is <code>reports/_style.md</code>, which agents
+  read before building.</li>
+</ul>
+<h2 id="templatehtml-or-appjsx"><code>template.html</code> or <code>app.jsx</code></h2>
 <table>
 <thead>
 <tr>
-<th><code>template.html</code> (<a href="../reference/template-html.html">template.html — the figure grammar</a>)</th>
+<th><code>template.html</code> (<a href="../reference/template-html.html">template.html</a>)</th>
 <th><code>app.jsx</code></th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Briefs, long-form, emailed and printed reports</td>
+<td>Briefs, long reads, emailed and printed reports</td>
 <td>Dashboards people work in</td>
 </tr>
 <tr>
-<td>Checkable without running anything; every number is a claim</td>
+<td>Every number on the page is a checked claim</td>
 <td>Kit figures are claims; the app's own numbers are not</td>
 </tr>
 <tr>
 <td>Reads with JavaScript off (charts fall back to a picture)</td>
-<td>Needs JavaScript: a blank page without it</td>
+<td>Needs JavaScript</td>
 </tr>
 <tr>
-<td>Written at volume by an agent with nobody reviewing</td>
-<td>Written for a person who will use it</td>
+<td>Suits agents writing at volume with no reviewer</td>
+<td>Suits a page a person will use</td>
 </tr>
 </tbody>
 </table>
-<h2 id="imports-the-kit">Imports — the kit</h2>
-<p>A report is one offline file, so <code>app.jsx</code> can import only:</p>
+<h2 id="imports">Imports</h2>
+<p><code>app.jsx</code> can import only these:</p>
 <table>
 <thead>
 <tr>
@@ -130,7 +132,7 @@ is <code>reports/_style.md</code>, which agents read before building.</p>
 <tbody>
 <tr>
 <td><code>react</code></td>
-<td>React 18: hooks, components (<code>useState</code>, <code>useMemo</code>, …)</td>
+<td>React 18: hooks and components (<code>useState</code>, <code>useMemo</code>, …)</td>
 </tr>
 <tr>
 <td><code>react-dom</code></td>
@@ -142,7 +144,7 @@ is <code>reports/_style.md</code>, which agents read before building.</p>
 </tr>
 <tr>
 <td><code>lucide-react</code></td>
-<td>Lucide icons. Import by name (<code>import { TrendingUp } from "lucide-react"</code>); only those are embedded</td>
+<td>Lucide icons, imported by name (<code>import { TrendingUp } from "lucide-react"</code>); only those are embedded</td>
 </tr>
 <tr>
 <td><code>tracebi</code></td>
@@ -150,23 +152,21 @@ is <code>reports/_style.md</code>, which agents read before building.</p>
 </tr>
 </tbody>
 </table>
-<p>Any other import fails the build and names the list. Tailwind classes work
-everywhere, generated in the page. The TraceBi tokens are Tailwind colours, so
-an app follows the page's mode and the project's <code>reports/_theme.css</code>:
-<code>bg-page</code>, <code>bg-card</code>, <code>bg-surface</code>, <code>text-ink</code>, <code>text-muted</code>, <code>border-rule</code>,
-<code>bg-accent</code>, <code>text-accent-text</code>, <code>text-on-accent</code> (text on an accent fill), <code>text-good</code>, <code>text-bad</code>, <code>chart-1</code> … <code>chart-8</code>,
-<code>font-sans</code> / <code>font-mono</code>, <code>rounded-panel</code>. The <code>tb-*</code> classes
-(<a href="../guides/styling-a-report.html">Styling a report</a>) work too. A <code>style.css</code> beside <code>app.jsx</code> is a theme
-preset as for a template (tokens only: the accent pair for each ground, a
-display face as <code>--tb-font-display</code>);
-its <code>:root</code> tokens give way to the dark ground as a template's do.</p>
-<h2 id="the-tracebi-module">The <code>tracebi</code> module</h2>
+<p>Any other import fails the build and names the list.</p>
+<p>Tailwind classes work everywhere, generated in the page. The TraceBi tokens
+are Tailwind colours, so an app follows the page's mode and
+<code>reports/_theme.css</code>: <code>bg-page</code>, <code>bg-card</code>, <code>bg-surface</code>, <code>text-ink</code>,
+<code>text-muted</code>, <code>border-rule</code>, <code>bg-accent</code>, <code>text-accent-text</code>, <code>text-on-accent</code>,
+<code>text-good</code>, <code>text-bad</code>, <code>chart-1</code> … <code>chart-8</code>, <code>font-sans</code>, <code>font-mono</code>,
+<code>rounded-panel</code>. The <code>tb-*</code> classes (<a href="../guides/styling-a-report.html">Style a report</a>) work too. A
+<code>style.css</code> beside <code>app.jsx</code> is a theme preset, tokens only (the accent pair
+for each ground, a display face as <code>--tb-font-display</code>).</p>
+<h2 id="figures">Figures</h2>
 <pre><code class="language-jsx">import { Kpi, Value, Chart, Spark, Table, Filter, Search, Download,
          useBinding, fmt } from &quot;tracebi&quot;;
 </code></pre>
-<p><strong>Figures — numbers with a trace.</strong> Each renders the element a template would
-hold, and the runtime fills it from the stamped rows: formatted, traced,
-filterable, exactly as in a template.</p>
+<p>Each figure renders the element a template would hold, and the runtime fills
+it from the stamped rows: formatted, traced and filterable.</p>
 <table>
 <thead>
 <tr>
@@ -177,11 +177,11 @@ filterable, exactly as in a template.</p>
 <tbody>
 <tr>
 <td><code>&lt;Kpi&gt;</code></td>
-<td><code>binding</code>, <code>cell</code>, <code>format</code>, <code>label</code>, <code>context</code>, <code>lead</code> (a step larger), <code>id</code>; <code>deltaBinding</code>, <code>deltaCell</code>, <code>deltaFormat</code>, <code>deltaGood</code> (<code>"up"</code> or <code>"down"</code>: which way is good) show a stamped change first on the context line, with its arrow, sign and colour; children (a <code>&lt;Spark&gt;</code>) sit on the card's bottom edge</td>
+<td><code>binding</code>, <code>cell</code>, <code>format</code>, <code>label</code>, <code>context</code>, <code>lead</code> (a step larger), <code>id</code>. <code>deltaBinding</code>, <code>deltaCell</code>, <code>deltaFormat</code> and <code>deltaGood</code> (<code>"up"</code> or <code>"down"</code>) show a stamped change first on the context line, with arrow, sign and colour. Children (a <code>&lt;Spark&gt;</code>) sit on the card's bottom edge.</td>
 </tr>
 <tr>
 <td><code>&lt;Value&gt;</code></td>
-<td><code>binding</code>, <code>cell</code>, <code>format</code>, <code>id</code> — a number inside a sentence</td>
+<td><code>binding</code>, <code>cell</code>, <code>format</code>, <code>id</code>: a number inside a sentence</td>
 </tr>
 <tr>
 <td><code>&lt;Chart&gt;</code></td>
@@ -189,7 +189,7 @@ filterable, exactly as in a template.</p>
 </tr>
 <tr>
 <td><code>&lt;Spark&gt;</code></td>
-<td>as <code>&lt;Chart&gt;</code> (default <code>type="area"</code>): the trend's shape alone, under a KPI</td>
+<td>As <code>&lt;Chart&gt;</code> (default <code>type="area"</code>): the trend's shape alone, under a KPI</td>
 </tr>
 <tr>
 <td><code>&lt;Table&gt;</code></td>
@@ -197,11 +197,12 @@ filterable, exactly as in a template.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Controls.</strong> A figure's number is only ever a query result. On a live page (the
-default) a <code>&lt;Filter&gt;</code> recomputes every figure it reaches by re-running each
-binding's own query over the data the file carries; <code>&lt;Search&gt;</code> only narrows the
-rows shown. On a page built with <code>"embed": "none"</code> a filter subsets stamped rows
-and KPIs stay the stamped totals.</p>
+<h2 id="controls">Controls</h2>
+<p>A figure's number is only ever a query result. On a live page (the default) a
+<code>&lt;Filter&gt;</code> recomputes every figure it reaches by re-running each binding's own
+query over the data the file carries. <code>&lt;Search&gt;</code> only narrows the rows shown.
+With <code>"embed": "none"</code> a filter subsets stamped rows and KPIs keep the stamped
+totals.</p>
 <table>
 <thead>
 <tr>
@@ -216,11 +217,11 @@ and KPIs stay the stamped totals.</p>
 </tr>
 <tr>
 <td><code>&lt;Range&gt;</code></td>
-<td><code>column</code>, <code>label</code>, <code>min</code>, <code>max</code>, <code>step</code> — <code>data-tb-range</code></td>
+<td><code>column</code>, <code>label</code>, <code>min</code>, <code>max</code>, <code>step</code> (<code>data-tb-range</code>)</td>
 </tr>
 <tr>
 <td><code>&lt;SelectionBar /&gt;</code></td>
-<td><code>className</code> — where the selection bar goes (<code>data-tb-selection</code>)</td>
+<td><code>className</code>: where the selection bar goes (<code>data-tb-selection</code>)</td>
 </tr>
 <tr>
 <td><code>&lt;Search&gt;</code></td>
@@ -228,23 +229,43 @@ and KPIs stay the stamped totals.</p>
 </tr>
 <tr>
 <td><code>&lt;Download&gt;</code></td>
-<td><code>binding</code>, <code>label</code> — the stamped CSV, verbatim</td>
+<td><code>binding</code>, <code>label</code>: the stamped CSV, unchanged</td>
 </tr>
 </tbody>
 </table>
-<p>Every gesture on a live page writes the same selection state: a click on a
-bar, a pie slice, a line's category or a legend entry selects that value of the
-chart's <code>x</code> (or <code>color</code>) column, no <code>&lt;Filter&gt;</code> needed (again, it clears it;
-shift-click adds one; a <code>&lt;Spark&gt;</code> does not select); a click on a row of a
-<code>&lt;Table selectRows&gt;</code> selects the row's dimension values; a <code>&lt;Range&gt;</code> writes
-<code>{gte, lte}</code> (two handles for a number column, from/to pickers for a time
-grain's labels). A chart keeps its own field's other values and draws them back
-(cross-highlighting); <code>data-tb-highlight="off"</code> on it, or on an ancestor, makes
-it narrow like every other figure. <code>&lt;SelectionBar /&gt;</code> shows one chip per picked
-value, Clear and "Download what I see"; without it the runtime puts the bar
-above the app. Escape clears; printed, the bar is one line ("Filtered to: …").
-<code>window.tracebi.onSelection(fn)</code> hears every change.</p>
-<p><strong>App behaviour.</strong></p>
+<p>Every gesture on a live page writes the same selection:</p>
+<table>
+<thead>
+<tr>
+<th>Gesture</th>
+<th>Selects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Click a bar, pie slice, line category or legend entry</td>
+<td>That value of the chart's <code>x</code> (or <code>color</code>) column, with no <code>&lt;Filter&gt;</code> needed. Click again to clear; shift-click adds. A <code>&lt;Spark&gt;</code> does not select.</td>
+</tr>
+<tr>
+<td>Click a row of a <code>&lt;Table selectRows&gt;</code></td>
+<td>The row's dimension values</td>
+</tr>
+<tr>
+<td>Move a <code>&lt;Range&gt;</code></td>
+<td><code>{gte, lte}</code>: two handles on a number column, or from/to pickers on a time grain's labels</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>A chart keeps its own field's other values and dims them
+  (cross-highlighting). <code>data-tb-highlight="off"</code> on it or an ancestor makes
+  it narrow like other figures.</li>
+<li><code>&lt;SelectionBar /&gt;</code> shows one chip per value, Clear, and "Download what I
+  see". Without it the runtime puts the bar above the app.</li>
+<li>Escape clears the selection. In print it is one line ("Filtered to: …").</li>
+<li><code>window.tracebi.onSelection(fn)</code> hears every change.</li>
+</ul>
+<h2 id="app-behaviour">App behaviour</h2>
 <table>
 <thead>
 <tr>
@@ -255,31 +276,31 @@ above the app. Escape clears; printed, the bar is one line ("Filtered to: …").
 <tbody>
 <tr>
 <td><code>&lt;Filter column label&gt;</code> with no <code>binding</code></td>
-<td>A page-wide filter. On a page built with a slice (the default <code>"embed"</code>) every filter, page-wide or bound, writes one selection state and every figure whose fact reaches the column recomputes from the embedded data — values, tables, charts, sparks, including ones mounted later; the chip reads Local, the state rides in the URL hash beside <code>useUrlState</code>'s keys, and a figure that cannot recompute carries <code>data-tb-fixed</code> (one the field does not reach, <code>data-tb-unfiltered-by</code>). With <code>"embed": "none"</code>, or on a column no slice carries, it subsets the stamped rows of every binding that has the column and KPIs stay the stamped totals.</td>
+<td>A page-wide filter. On a page with a slice (the default <code>"embed"</code>), every filter writes one selection, and every figure whose fact reaches the column recomputes from the embedded data, including figures mounted later. The chip reads Local, and the selection rides in the URL hash beside <code>useUrlState</code>'s keys. A figure that cannot recompute carries <code>data-tb-fixed</code>; one the field does not reach, <code>data-tb-unfiltered-by</code>. With <code>"embed": "none"</code>, or on a column no slice carries, it subsets the stamped rows of every binding with the column, and KPIs keep the stamped totals.</td>
 </tr>
 <tr>
 <td><code>&lt;Filter column multiple&gt;</code></td>
-<td>A list box: the reader picks several values; the selection holds all of them.</td>
+<td>A list box: the reader picks several values.</td>
 </tr>
 <tr>
 <td><code>&lt;Segmented options value onChange label&gt;</code></td>
-<td>One choice of a few — a view, a period. Use it to pick <em>which</em> figure shows: one literal-binding figure per option (<code>{p === "YTD" ? &lt;Kpi binding="kpis_ytd" …/&gt; : &lt;Kpi binding="kpis_mtd" …/&gt;}</code>), so each number keeps its trace.</td>
+<td>One choice of a few: a view, a period. Use it to pick which figure shows, one literal-binding figure per option (<code>{p === "YTD" ? &lt;Kpi binding="kpis_ytd" …/&gt; : &lt;Kpi binding="kpis_mtd" …/&gt;}</code>), so each number keeps its trace.</td>
 </tr>
 <tr>
 <td><code>useUrlState(key, initial)</code></td>
-<td><code>useState</code> kept in the URL (<code>#view=Detail&amp;period=YTD</code>): a reload or a shared link opens where the reader was.</td>
+<td><code>useState</code> kept in the URL (<code>#view=Detail&amp;period=YTD</code>), so a reload or a shared link opens where the reader was.</td>
 </tr>
 <tr>
 <td><code>usePrinting()</code></td>
-<td><code>true</code> while the page prints (the browser's Ctrl+P, and <code>tracebi report build --format pdf</code>). An app with views renders every one then, so the PDF holds the whole report: <code>{printing ? &lt;&gt;&lt;Overview /&gt;&lt;Detail /&gt;&lt;/&gt; : &lt;View /&gt;}</code>. Give navigation <code>print:hidden</code>.</td>
+<td><code>true</code> while the page prints (Ctrl+P, and <code>tracebi report build --format pdf</code>). Render every view then, so the PDF holds the whole report: <code>{printing ? &lt;&gt;&lt;Overview /&gt;&lt;Detail /&gt;&lt;/&gt; : &lt;View /&gt;}</code>. Give navigation <code>print:hidden</code>.</td>
 </tr>
 <tr>
 <td><code>&lt;Masthead title kicker period mark&gt;</code></td>
-<td>Opens the page: an optional <code>mark</code> (a node; or leave it empty and size <code>.tb-masthead-mark</code> in <code>style.css</code>), a <code>kicker</code> (unset, the model's label; <code>kicker={null}</code> shows none), the <code>title</code> (a string, or text with <code>&lt;Value&gt;</code>s in it: <code>title={&lt;&gt;Marked at &lt;Value binding="kpis" cell="mark" /&gt; of cost&lt;/&gt;}</code>), the standfirst as its children, and a meta line with the <code>period</code> (presentation, <code>"Q3 2026"</code>), the build time and the verdict chip, which the runtime fills from the file itself (<code>not-checked</code> on a built file, <code>draft</code> on a preview; never green on its own say-so). Other props go on the <code>&lt;header&gt;</code>: <code>data-tb-title="center|banner|nav"</code>. A literal <code>title</code> is checked for typed numbers like the app's text; <code>kicker</code> and <code>period</code> are labels.</td>
+<td>Opens the page: an optional <code>mark</code> (a node, or size <code>.tb-masthead-mark</code> in <code>style.css</code>), a <code>kicker</code> (unset: the model's label; <code>kicker={null}</code> shows none), the <code>title</code> (a string, or text with <code>&lt;Value&gt;</code>s: <code>title={&lt;&gt;Marked at &lt;Value binding="kpis" cell="mark" /&gt; of cost&lt;/&gt;}</code>), the standfirst as children, and a meta line with the <code>period</code> (a label such as <code>"Q3 2026"</code>), the build time and the verdict chip. The runtime fills the chip from the file: <code>not-checked</code> on a built file, <code>draft</code> on a preview, never green on its own. Other props go on the <code>&lt;header&gt;</code>: <code>data-tb-title="center|banner|nav"</code>. A literal <code>title</code> is checked for typed numbers; <code>kicker</code> and <code>period</code> are labels.</td>
 </tr>
 <tr>
 <td><code>&lt;Footer /&gt;</code></td>
-<td>Where the build's footer goes: one line on when the file was built, from which model (by its label), and that the page does not claim the numbers are right, then "How these numbers were made", which opens the trace drawer. Put it at the end of the main column (a sidebar layout's <code>&lt;main&gt;</code>); without it the footer follows the app.</td>
+<td>Where the build's footer goes: when the file was built, from which model (by its label), that the page does not claim the numbers are right, then "How these numbers were made", which opens the trace drawer. Put it at the end of the main column; without it the footer follows the app.</td>
 </tr>
 <tr>
 <td><code>&lt;Built&gt;</code></td>
@@ -287,33 +308,36 @@ above the app. Escape clears; printed, the bar is one line ("Filtered to: …").
 </tr>
 <tr>
 <td><code>tb-page</code>, <code>tb-grid</code> + <code>tb-span-4/6/8/12</code></td>
-<td>The page measure (<code>&lt;main className="tb-page space-y-8 px-6 py-8"&gt;</code>, 1,200px) and the 12-column grid (<code>&lt;div className="tb-grid"&gt;&lt;section className="tb-card tb-span-8"&gt;…</code>).</td>
+<td>The page width (<code>&lt;main className="tb-page space-y-8 px-6 py-8"&gt;</code>, 1,200px) and the 12-column grid (<code>&lt;div className="tb-grid"&gt;&lt;section className="tb-card tb-span-8"&gt;…</code>).</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Data for your own components.</strong> <code>useBinding("name")</code> returns the binding's
-stamped rows (copies), and <code>fmt(value, "currency0")</code> formats a number with the
+<p><strong>Data for your own components.</strong> <code>useBinding("name")</code> returns copies of the
+binding's stamped rows. <code>fmt(value, "currency0")</code> formats a number with the
 named formats (<a href="../reference/number-formats.html">Number formats</a>).</p>
 <h2 id="what-the-trace-covers">What the trace covers</h2>
 <p>The build reads every kit figure's props from <code>app.jsx</code> without running it,
-records each one as a claim in the manifest, and refuses a binding or a column
-that does not exist. A <code>&lt;Kpi&gt;</code>'s delta is a claim of its own
-(<code>fig-delta-&lt;binding&gt;-&lt;cell&gt;</code>); it reads a measure the model computes, such as
-fair value less cost, and the kit never computes one: no comparison measure,
-no delta. So <code>binding</code>, <code>cell</code>, <code>x</code> and <code>y</code> (and <code>deltaBinding</code>, <code>deltaCell</code>)
-must be literal strings:
-<code>&lt;Kpi binding={b}&gt;</code> fails the build. Two kit figures of the same binding and
-column need an <code>id</code> each — an id is the trace's address for one number.</p>
-<p>A number typed into the app's text (<code>&lt;p&gt;Up 1250 units&lt;/p&gt;</code>) fails the build,
-as it does in a <code>template.html</code>: bind it with <code>&lt;Value binding="…" cell="…" /&gt;</code>,
-or say it in words. A single digit ("Q3") is not a number here.</p>
-<p>Anything the app computes or draws itself — a Recharts chart, a sum, a number
-in your own markup — is the app's presentation, not a checked figure. The page's
-footer says so: <em>"This page is an app. The figures it shows through the
-TraceBi kit carry that trace; anything else it draws is the app's own
-presentation and is not checked."</em> <code>tracebi verify</code> re-runs the bindings as for
-any report.</p>
-<h2 id="an-example">An example</h2>
+records each as a claim in the manifest, and refuses a binding or column that
+does not exist.</p>
+<ul>
+<li><code>binding</code>, <code>cell</code>, <code>x</code>, <code>y</code>, <code>deltaBinding</code> and <code>deltaCell</code> must be literal
+  strings. <code>&lt;Kpi binding={b}&gt;</code> fails the build.</li>
+<li>Two kit figures of the same binding and column need an <code>id</code> each. An id is
+  the trace's address for one number.</li>
+<li>A <code>&lt;Kpi&gt;</code>'s delta is a claim of its own (<code>fig-delta-&lt;binding&gt;-&lt;cell&gt;</code>). It
+  reads a measure the model computes, such as fair value less cost; the kit
+  never computes one. No comparison measure, no delta.</li>
+<li>A number typed into the app's text (<code>&lt;p&gt;Up 1250 units&lt;/p&gt;</code>) fails the build,
+  as in a <code>template.html</code>. Bind it with <code>&lt;Value binding="…" cell="…" /&gt;</code>, or
+  say it in words. A single digit ("Q3") is not a number here.</li>
+<li>Anything the app computes or draws itself (a Recharts chart, a sum, a number
+  in your own markup) is presentation, not a checked figure. The page's footer
+  says so: <em>"This page is an app. The figures it shows through the TraceBi kit
+  carry that trace; anything else it draws is the app's own presentation and
+  is not checked."</em></li>
+</ul>
+<p><code>tracebi verify</code> re-runs the bindings as for any report.</p>
+<h2 id="example">Example</h2>
 <pre><code class="language-jsx">import { useState } from &quot;react&quot;;
 import { LayoutDashboard, CreditCard } from &quot;lucide-react&quot;;
 import { Masthead, Footer, Kpi, Spark, Chart, Table, Filter } from &quot;tracebi&quot;;
@@ -357,23 +381,49 @@ export default function App() {
 }
 </code></pre>
 <h2 id="without-javascript">Without JavaScript</h2>
-<p>An email client's preview or a phone's file viewer runs no script. The build
-writes the kit figures into the app's mount point as a static view — labelled
-KPIs, each chart's static picture, the tables — so those readers still see the
-numbers; the app replaces that view when it starts. <code>tracebi report build
+<p>An email preview or a phone's file viewer runs no script. The build writes
+the kit figures into the app's mount point as a static view (labelled KPIs,
+each chart's static picture, the tables), so those readers still see the
+numbers. The app replaces that view when it starts. <code>tracebi report build
 --format pdf</code> prints the app's first view.</p>
 <h2 id="starting-points">Starting points</h2>
 <p><code>tracebi new-dashboard "Name" --job …</code>:</p>
-<ul>
-<li><code>overview</code> (default) — a KPI strip with a lead, a chart beside its ranking, a filterable detail.</li>
-<li><code>trend</code> — the latest period leading with its sparkline, the series as a chart or a table (a <code>&lt;Segmented&gt;</code> kept in the URL). Needs a time dimension in the model.</li>
-<li><code>leaderboard</code> — the leader, a top-ten bar chart, the full ranking with search.</li>
-<li><code>scorecard</code> — every measure the fact runs (up to four) as a KPI, each with its trend when the model has a time dimension, then all of them by category.</li>
-<li><code>monitor</code> — is anything off right now: the latest period of every measure (up to four) with its sparkline, the series, and a watch list of the lowest members first. Needs a time dimension; without one it starts as a scorecard.</li>
-<li><code>funnel</code> — the fact's count measures (not money, not rates) as stages, widest first as the warehouse stands, with each stage's share of the first. The conversions are report-level ratios in <code>report.json</code> <code>"measures"</code>, so the trace names them; reorder the stages to your funnel's in <code>report.json</code>. Needs two count measures; with one it starts as an overview.</li>
-</ul>
-<p>A broken app shows its error on the page instead of a blank one. The vendored
-bundles and their licences are listed in <code>tracebi/reports/assets/REACT_NOTICE.md</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Starts with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>overview</code> (default)</td>
+<td>A KPI strip with a lead, a chart beside its ranking, a filterable detail.</td>
+</tr>
+<tr>
+<td><code>trend</code></td>
+<td>The latest period with its sparkline, and the series as a chart or a table (a <code>&lt;Segmented&gt;</code> kept in the URL). Needs a time dimension.</td>
+</tr>
+<tr>
+<td><code>leaderboard</code></td>
+<td>The leader, a top-ten bar chart, the full ranking with search.</td>
+</tr>
+<tr>
+<td><code>scorecard</code></td>
+<td>Every measure the fact runs (up to four) as a KPI, each with its trend when the model has a time dimension, then all of them by category.</td>
+</tr>
+<tr>
+<td><code>monitor</code></td>
+<td>The latest period of every measure (up to four) with its sparkline, the series, and a watch list, lowest first. Needs a time dimension; without one it starts as a scorecard.</td>
+</tr>
+<tr>
+<td><code>funnel</code></td>
+<td>The fact's count measures (not money, not rates) as stages, widest first, each with its share of the first. Conversions are report-level ratios in <code>report.json</code> <code>"measures"</code>, so the trace names them; reorder the stages there. Needs two count measures; with one it starts as an overview.</td>
+</tr>
+</tbody>
+</table>
+<p>A broken app shows its error on the page. The vendored bundles and their
+licences are listed in <code>tracebi/reports/assets/REACT_NOTICE.md</code>.</p>
   </main>
 </div>
 <script>
