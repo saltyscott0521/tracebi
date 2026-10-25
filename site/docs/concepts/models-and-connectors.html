@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a class="on" href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,50 +61,20 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="models-and-connectors">Models and connectors</h1>
-<p><strong>A model says what the data means. A connector says where the data is. The
-model file holds no data.</strong></p>
-<hr>
-<h2 id="the-three-things">The three things</h2>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>What it is</th>
-<th>Where it lives</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Connector</strong></td>
-<td>A handle to a place that stores data: the project's warehouse, a DuckDB file, a database URL, a cloud warehouse</td>
-<td>Named in the model file (<code>type: warehouse</code> for the project's warehouse), or declared once in <code>connections/&lt;name&gt;.yaml</code></td>
-</tr>
-<tr>
-<td><strong>Table</strong></td>
-<td>A name the model uses, pointing at <em>one source inside one connector</em></td>
-<td><code>{name: fact_holdings, connector: warehouse, source: fact_holdings}</code></td>
-</tr>
-<tr>
-<td><strong>Model</strong></td>
-<td>The tables, which are facts and which are dimensions, how they join, and what every measure means</td>
-<td><code>models/&lt;name&gt;.yaml</code>: a few dozen declarative lines</td>
-</tr>
-</tbody>
-</table>
-<p>Reading a model file, then, tells you the <em>shape</em> of the data and the <em>name</em> of
-the place it is kept, never the data itself.</p>
+<p>A model says what the data means. A connector says where the data is. The
+model file holds no data:</p>
 <pre><code class="language-yaml">connectors:
   - {name: warehouse, type: warehouse}                                  # where
 tables:
@@ -113,53 +83,72 @@ facts:                                                                  # what i
   - {name: fact_holdings, table: fact_holdings, measures: [fair_value],
      foreign_keys: {dim_fund: fund_id}}
 </code></pre>
-<h2 id="finding-where-the-data-is">Finding where the data is</h2>
-<ul>
-<li><strong>In the app</strong>, open <strong>Data</strong>, then the model: the header says
-  <em>Defined in</em> <code>models/portfolio_model.yaml</code> · <em>reads</em>
-  <code>data/warehouse.duckdb</code>. The Model tab is the data browser: a tree of the
-  model's tables, its star schema drawn beside it, and an inspector for the
-  table you select (its columns with their nulls and ranges, a sample of its
-  rows, its joins and measures). With nothing selected, the inspector's
-  <strong>Storage</strong> fold says whether the file is there yet and how big it is, and
-  lists each connector, what kind of place it is, and exactly which tables it
-  serves. Data's <strong>Warehouse</strong> tab (<code>/data/warehouse</code>) is the same browser
-  over every table, grouped by the transform that wrote it, with the joins
-  every model declares over them, and <strong>Sources</strong> (<code>/data/sources</code>) every connection
-  and input file the transforms read, with what reads each.</li>
-<li><strong>In code</strong>, <code>model.info()["connector_details"]</code> gives the same answer, and
-  <code>connector.storage()</code> says where any connector's data lives (never a
-  credential).</li>
-</ul>
-<h2 id="why-it-is-split-this-way">Why it is split this way</h2>
-<ul>
-<li><strong>The model can be reviewed on one screen</strong>, because it holds meaning, not
-  data or plumbing.</li>
-<li><strong>The data can be rebuilt without touching the model.</strong> A <a href="../concepts/transform.html">Transform — phase ①</a>
-  writes the warehouse file; the model keeps reading the same table names.</li>
-<li><strong>A <a href="../concepts/trace.html">The trace</a> can name its source.</strong> Every query records which
-  connector and which table it read, plus a fingerprint of that table, so a
-  number can be traced to stored data.</li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>What it is</th>
+<th>Where it is declared</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Connector</td>
+<td>A handle to a place that stores data: the project's warehouse, a DuckDB file, a database, a cloud warehouse</td>
+<td>In the model file (<code>type: warehouse</code> for the project's warehouse), or once in <code>connections/&lt;name&gt;.yaml</code></td>
+</tr>
+<tr>
+<td>Table</td>
+<td>A name the model uses for one source inside one connector</td>
+<td><code>{name: fact_holdings, connector: warehouse, source: fact_holdings}</code></td>
+</tr>
+<tr>
+<td>Model</td>
+<td>The tables, which are facts and which are dimensions, how they join, and what each measure means</td>
+<td><code>models/&lt;name&gt;.yaml</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="find-where-a-models-data-is">Find where a model's data is</h2>
+<p><strong>In the app:</strong> open <strong>Data</strong>, then the model. The header names the file that
+defines it and the warehouse it reads. The <strong>Model</strong> tab shows the model's
+tables, its star schema, and an inspector for the table you select: columns
+with nulls and ranges, sample rows, joins and measures. With nothing selected,
+the <strong>Storage</strong> fold says whether the warehouse file exists, how big it is,
+and which tables each connector serves.</p>
+<p>Two Data tabs cover the whole project. <strong>Warehouse</strong> (<code>/data/warehouse</code>) shows
+every table, grouped by the transform that wrote it. <strong>Sources</strong>
+(<code>/data/sources</code>) lists every connection and input file, and what reads each.</p>
+<p><strong>In code:</strong> <code>model.info()["connector_details"]</code> gives the same answer.
+<code>connector.storage()</code> says where a connector's data lives, never a credential.</p>
 <h2 id="a-model-its-reports-and-its-pipeline">A model, its reports and its pipeline</h2>
-<p>Reports are organised <strong>by model</strong>: the folder is the model's name.</p>
+<p>Reports are grouped by model: the folder name is the model's name.</p>
 <pre><code>models/portfolio_model.yaml            what the data means
-reports/portfolio_model/…            every report that reads it
+reports/portfolio_model/…              every report that reads it
 pipelines/portfolio_model.yaml         rebuild its data, then those reports
 </code></pre>
-<p>A few lines make the pipeline (<code>pipelines/portfolio_model.yaml</code>:
-<code>transform: holdings_transform</code>, <code>models: [portfolio_model]</code>, <code>reports: all</code>):
-a <strong>transform</strong> step (the phase ① script that fills the warehouse) and a
-<strong>build</strong> step (every report in <code>reports/portfolio_model/</code>, each with its
-trace). It shows on the model's Transform tab, where <strong>Refresh data</strong> runs it,
-and runs with <code>tracebi run-pipeline portfolio_model</code>. The build step
-refuses to run after a transform that failed, so a report is never rebuilt on
-data the transform did not refresh.</p>
-<h2 id="when-the-data-is-not-built-yet">When the data is "not built yet"</h2>
-<p>A file connector points at a path that exists only after phase ① has run. The
-app shows <strong>not built yet</strong> beside the location until the <a href="../concepts/transform.html">Transform — phase ①</a> (or
-the model's pipeline) has written it.</p>
-<p>See also <a href="../concepts/model.html">Model — phase ②</a> and <a href="../concepts/lineage.html">Lineage</a>.</p>
+<p>The pipeline file is a few lines: <code>transform: holdings_transform</code>,
+<code>models: [portfolio_model]</code>, <code>reports: all</code>. It runs the transform, then
+builds every report in <code>reports/portfolio_model/</code> with its trace. It appears on
+the model's Transform tab, where <strong>Refresh data</strong> runs it, and from the
+terminal as <code>tracebi run-pipeline portfolio_model</code>. If the transform fails,
+the reports are not rebuilt.</p>
+<h2 id="not-built-yet">"Not built yet"</h2>
+<p>A file connector points at a path that exists only after the transform has
+run. Until then the app shows <strong>not built yet</strong> beside it.</p>
+<h2 id="why-it-works-this-way">Why it works this way</h2>
+<ul>
+<li>The model fits on one screen for review, because it holds meaning only.</li>
+<li>The data can be rebuilt without touching the model. The transform rewrites
+  the warehouse; the model keeps reading the same table names.</li>
+<li>Every query records which connector and table it read, with a fingerprint
+  of that table, so a trace can name its source.</li>
+</ul>
+<h2 id="next">Next</h2>
+<ul>
+<li>Declare a database connection: <a href="../reference/connections-yaml.html">Connection files (YAML)</a></li>
+<li>See how a number is traced to its table: <a href="../concepts/lineage.html">Lineage</a></li>
+</ul>
   </main>
 </div>
 <script>

@@ -1,13 +1,8 @@
-# Model — phase ②
+# Models
 
-**A declarative star schema over the warehouse: the grain, the keys, and the
-[[measures]] — in a few dozen lines a reviewer reads in one screen.**
-
-Lives in `models/`, one file per model: `models/<name>.yaml`.
-
----
-
-## What it is
+A model is a YAML file in `models/` that names the warehouse tables a report
+may read, how they join, and the measures it can compute. Here is the one the
+reference project ships, shortened:
 
 ```yaml
 # models/portfolio_model.yaml
@@ -38,59 +33,51 @@ measures:
   - {name: fair_value, column: fair_value, agg: sum, format: currency0}
 ```
 
-That is the whole shape: connectors, tables, dimensions, facts, measures.
-The file declares meaning; the connector says where the data is kept — see
+A model has five parts: connectors, tables, dimensions, facts and measures.
+The connector says where the data is kept; the rest says what it means. See
 [[models-and-connectors]].
 
-A model is a declarative `models/<name>.yaml` by default (`.json` is the same schema, see [[model-json]]), with a `.py` file for anything exotic: the same connectors, tables, dimensions, facts and measures as builder calls on a `DataModel` held in a variable named `model` (`tracebi new-model --python`; `tracebi migrate model` converts one back to YAML). The reason is the remote case. An agent without access to the server can draft a YAML model and publish it through the gateway, because a YAML file runs no code. A Python model runs on the server with its connections, so it stays a file someone reviews and commits.
-
-## Why it is only a declaration
-
-The model is the second [[freeze-points|freeze point]] — the **semantic
-contract** between the analysis and the reporting.
-
-- It **reads the sink**. It never sees the [[transform]] that produced it.
-- Reports speak only its vocabulary — measure names and dimension attributes,
-  never raw SQL.
-
-That constraint is what makes a figure re-runnable, and therefore what makes a
-[[trace]] possible. A report cannot ask for something the model has
-not declared, so anything the model *can* express is automatically replayable.
-
-## The corollary worth internalising
-
-**Every expressiveness gap in the model pushes work into ungoverned Python** —
-a `report.py` whose outputs are stamped `verifiable: false` and never read
-green.
-
-So adding a measure kind is not only a convenience feature; it pulls a number
-back into the verifiable lane. That is why the [[measures]] vocabulary is
-deliberately broad and deliberately closed: broad, so real analysis fits; closed,
-so nothing arbitrary slips in.
-
-## Validate it
+## Create one
 
 ```bash
-tracebi validate
+tracebi new-model "Sales Model"            # models/sales_model.yaml
+tracebi validate                           # load every model, check its keys
 ```
 
-Chiefly checks that dimension keys are **unique**. A non-unique key silently
-inflates every additive measure — it is the failure most worth catching early,
-and the one hardest to notice in a finished report.
+`.json` uses the same schema ([[model-json]]). For anything YAML cannot say,
+`tracebi new-model --python` writes a `.py` that builds a `DataModel` in a
+variable named `model`. `tracebi migrate model` converts one back to YAML.
 
-## Use it anywhere
+## Use it from Python
 
 ```python
 from tracebi.model_registry import get_model
 model = get_model("portfolio_model")
 ```
 
-No web server required. The same registry backs the CLI, notebooks, and the
-served UI.
+No web server is needed. The CLI, notebooks and the app read models through
+the same registry.
 
-## Related
+## Rules
 
-- [[measures]] — every measure kind
-- [[queries]] — what a report may ask it
-- [[freeze-points]] — why it is frozen
-- [[report]] — what reads it
+- **A model reads the warehouse and never sees the transform.**
+- **Reports ask only for what the model declares**: measure names and
+  dimension attributes, never SQL. That is what lets every figure be re-run.
+- **Dimension keys must be unique.** A repeated key multiplies the fact rows
+  and inflates every sum. `tracebi validate` checks this.
+- **YAML runs no code.** An agent without access to the server can draft a
+  YAML model and publish it through the gateway. A Python model runs on the
+  server with its connections, so it stays a file someone reviews and
+  commits.
+
+## Why it works this way
+
+A number the model cannot express ends up in a `report.py`, whose outputs are
+stamped `verifiable: false` and never read green. So each new measure kind
+brings more numbers back into the checkable path. The [[measures]] list is
+broad, so real analysis fits, and closed, so nothing arbitrary gets in.
+
+## Next
+
+- Declare measures: [[measures]]
+- Every key of a model file: [[model-json]]

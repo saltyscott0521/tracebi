@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>The trace — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="It is a reproduction-and-integrity check, not a correctness check.">
+<meta name="description" content="The trace">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a class="on" href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,176 +61,125 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="the-trace">The trace</h1>
-<p><strong>Every number drawn through the model has a trace: how it was made. A trace
-proves a number <em>reproduces</em> and the file was not <em>altered</em>. It does not prove
-the number is correct.</strong></p>
-<p>That distinction is the most important sentence in these docs, and the wording
-is deliberately locked — see <a href="#the-locked-language">The locked language</a>.</p>
-<hr>
-<h2 id="what-ships">What ships</h2>
-<p>Every built report writes two files:</p>
-<pre><code>output/my_report.html                   the self-contained artifact
+<p>Every number a report draws from a model has a trace: a record of how it was
+made. A trace shows that a number reproduces and that the file was not
+altered. It does not show the number is correct.</p>
+<p>Each build writes two files:</p>
+<pre><code>output/my_report.html                   the report
 output/my_report.html.manifest.json     the trace
 </code></pre>
-<p>The manifest records, per figure: the model it came from, the exact query, and
-a SHA-256 fingerprint of the data the query returned. The artifact embeds the
-same fingerprinted bytes it draws from — so what the reader sees and what the
-trace covers are the same thing, by construction.</p>
-<h2 id="what-the-file-shows">What the file shows</h2>
-<p>Every built page carries its trace in a drawer, headed with the report's
-name and <em>How each number was made</em>: open it from the masthead's <strong>Trace</strong>
-link or verdict chip, from the footer's <strong>How these numbers were made</strong>, from
-a chart tooltip's <strong>Trace →</strong>, or by clicking a number on the page (it opens
-at that figure's row). It reads top to bottom as a certificate:</p>
-<ul>
-<li>the report, when it was built, from which model, and the verdict chip. A
-  file says <strong>Not checked</strong> of itself: nothing has re-run its queries since
-  it was built. Only a checker (<code>tracebi verify</code>, the web app) states
-  <strong>Reproduces</strong>, <strong>Needs a look</strong> (the source or model changed since the
-  build) or <strong>Does not reproduce</strong>.</li>
-<li><em>"This page does not claim the numbers are right; it records how each was
-  made so it can be checked."</em></li>
-<li>how to check the file: <code>tracebi verify --file &lt;name&gt;.html</code>, with the
-  <code>.manifest.json</code> beside it.</li>
-<li>one row per figure, in page order: the value as the page shows it, its
-  label, the measure's definition from the model, the query in one line
-  (<code>fair_value by dim_issuer.sector · order fair_value desc</code>) and the first 8
-  characters of the fingerprint. <strong>Raw</strong> holds the query exactly as run and
-  the full fingerprint.</li>
-<li><strong>About this build</strong>: the sink contracts, the stated methodology, who
-  built it, the render stamp and the git commit. (The footer's notes live
-  here; the footer keeps one line and the link that opens the drawer.)</li>
-</ul>
-<p>The drawer displays what the embedded trace block records; it re-runs
-nothing. The manifest beside the file is still the trace of record.</p>
-<h2 id="in-the-web-app">In the web app</h2>
-<p>The app shows a report as delivered, in a sandboxed frame, and knows more
-than the file: its desk re-checks the build. So it tells the frame its
-verdict, one message over the frame bridge, <code>{type: "tracebi:verdict",
-state, detail}</code>, and the masthead's chip and the drawer's say the app's
-state in the app's words (<strong>Reproduces</strong>, <strong>Needs a look</strong>, <strong>Does not
-reproduce</strong>, <strong>Not checked</strong>). This is the one place a file's chip may read
-green, and only because the host told it:</p>
-<ul>
-<li>the app sends only a state it computed from its own re-check
-  (<code>verdictOf</code>), and nothing while it has none;</li>
-<li>opened on its own (the file, the <code>/r/</code> share link, an email) nothing tells
-  it, and the chip says what the file can say of itself: <strong>Not checked</strong>;</li>
-<li>a working preview stays <strong>Draft</strong> whatever it is told;</li>
-<li>any page that frames a file could send the message, so a green chip in a
-  frame is the framing app's claim. <code>tracebi verify</code> is the check.</li>
-</ul>
-<p>The report page's <strong>About this build</strong> panel opens on <strong>Trace</strong>. On a wide
-window it sits beside the page as a card; narrower, it slides in. It follows
-one figure, the one you last clicked in the page (else the first number), in
-five steps, each read from the build's manifest and the app's last re-check:</p>
-<ol>
-<li><strong>Source</strong>: the transform that wrote the table the query read, and whether
-   the sink satisfied its contract;</li>
-<li><strong>Model</strong>: the model and the tables the query joined;</li>
-<li><strong>Query</strong>: the query the build recorded (its measures, what it is cut by,
-   its filters), the closed query, not SQL;</li>
-<li><strong>Fingerprint</strong>: the SHA-256 the build recorded, and when;</li>
-<li><strong>Re-run now</strong>: what re-running it said: the same fingerprint, or why not.</li>
-</ol>
-<p>Then the verdict on the page, and below it the same certificate the file
-carries, drawn by the build's own <code>tracebi.js</code> (<code>renderReceipt</code>) in a
-sandboxed frame, its chip in the app's verdict. None of it says a number is
-right: it says where the number came from and that the query still gives it.</p>
-<h2 id="what-you-can-check">What you can check</h2>
+<p>For each figure the manifest records the model, the exact query and a SHA-256
+fingerprint of the data the query returned. The HTML embeds the same
+fingerprinted rows it draws from, so what the reader sees is what the trace
+covers.</p>
+<h2 id="check-a-report">Check a report</h2>
 <pre><code class="language-bash">tracebi verify output/my_report.html.manifest.json
 </code></pre>
-<p>Re-runs every recorded query against the model and compares fingerprints.
-Each figure lands on one verdict:</p>
+<p>This re-runs every recorded query against the model and compares
+fingerprints. Each figure gets one verdict:</p>
 <table>
 <thead>
 <tr>
 <th>Verdict</th>
-<th>Means</th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>REPRODUCES</code></td>
-<td>re-running the query produced byte-identical data</td>
+<td>The query ran again and returned byte-identical data.</td>
 </tr>
 <tr>
 <td><code>ALTERED</code></td>
-<td>the data changed — the number moved since the render</td>
+<td>The data changed: the number moved since the build.</td>
 </tr>
 <tr>
 <td><code>UNVERIFIABLE</code></td>
-<td>no re-runnable query backs it (see <a href="#unverifiable-figures">Unverifiable figures</a>)</td>
+<td>No re-runnable query backs it (a <code>report.py</code> output).</td>
 </tr>
 <tr>
 <td><code>UNVERIFIED (marked)</code></td>
-<td>the author explicitly marked it as not a claim</td>
+<td>The author marked it as not a claim.</td>
 </tr>
 </tbody>
 </table>
 <pre><code class="language-bash">tracebi verify --file output/my_report.html
 </code></pre>
-<p>Checks the <strong>file and its trace</strong>, offline, with no database and no account:
-do the embedded bytes still hash to what the manifest says? The manifest is
-read from <code>&lt;file&gt;.manifest.json</code> beside the report (or <code>--manifest &lt;path&gt;</code>), so
-send both files together. This catches a number edited in the HTML after the
-fact.</p>
-<h2 id="what-it-does-not-prove">What it does not prove</h2>
-<p><strong>It is a reproduction-and-integrity check, not a correctness check.</strong></p>
+<p>This checks the file and its trace offline, with no database and no account:
+do the embedded rows still hash to what the manifest says? It reads
+<code>&lt;file&gt;.manifest.json</code> beside the report, or <code>--manifest &lt;path&gt;</code>, so send both
+files together. It catches a number edited in the HTML after the build.</p>
+<h2 id="read-the-trace-in-the-file">Read the trace in the file</h2>
+<p>Every built page has a trace drawer. Open it from <strong>Trace</strong> under the title,
+the verdict chip, <strong>How these numbers were made</strong> in the footer, or by
+clicking a number. It lists one row per figure: the value, its label, the
+measure's definition, the query in one line
+(<code>fair_value by dim_issuer.sector · order fair_value desc</code>) and the start of
+its fingerprint. <strong>About this build</strong> adds the sink contracts, the stated
+methodology, who built it and the commit. The full layout is in
+<a href="../reference/template-html.html">template.html</a>.</p>
+<p>The drawer re-runs nothing. A file says <strong>Not checked</strong> about itself. Only a
+checker (<code>tracebi verify</code>, the web app) says <strong>Reproduces</strong>, <strong>Needs a look</strong>
+(the source or model changed) or <strong>Does not reproduce</strong>.</p>
+<h2 id="read-the-trace-in-the-app">Read the trace in the app</h2>
+<p>The app re-checks each build and tells the framed report its verdict in one
+message, <code>{type: "tracebi:verdict", state, detail}</code>. That is the only way a
+file's chip turns green. Opened on its own (as a file, a <code>/r/</code> share link or
+an email attachment) the file hears nothing and says <strong>Not checked</strong>. Any page
+that frames a file could send the message, so a green chip in a frame is that
+app's claim; <code>tracebi verify</code> is the check.</p>
+<p>On a report's page, the <strong>Trace</strong> panel follows the figure you last clicked
+through five steps: <strong>Source</strong> (the transform that wrote the table, and
+whether the sink satisfied its contract), <strong>Model</strong>, <strong>Query</strong>,
+<strong>Fingerprint</strong> and <strong>Re-run now</strong> (what re-running the query returned).</p>
+<h2 id="what-a-trace-does-not-prove">What a trace does not prove</h2>
 <ul>
-<li>A wrong number that reproduces reliably still says <code>REPRODUCES</code>. If phase ①
-  sank bad data, every badge is green.</li>
-<li>Between two parties it travels as <em>documentation</em>, not evidence: the data,
-  the query and the fingerprint are generated together by the same author. It
-  becomes evidence only when the verifier independently holds the warehouse.</li>
-<li>It says nothing about the pandas above the sink. See
-  <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</li>
+<li><strong>It is not a correctness check.</strong> A wrong number that reproduces still
+  reads <code>REPRODUCES</code>. If the transform wrote bad data, every chip is green.</li>
+<li><strong>Between two companies it is documentation, not evidence.</strong> The data, the
+  query and the fingerprint come from the same author. It becomes evidence
+  when the checker holds the warehouse too.</li>
+<li><strong>It says nothing about the transform.</strong> Lineage is traced from the sink,
+  not through the transform. See <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</li>
 </ul>
-<p>This is a real, useful guarantee — <em>"these 40 overnight reports still reproduce,
-and this one doesn't"</em> is exactly the question it answers — but it is a narrower
-one than "the numbers are right", and the docs never widen it.</p>
-<h2 id="unverifiable-figures">Unverifiable figures</h2>
-<p>Some numbers cannot be expressed as a model query — several queries combined, a
-window function, an algorithm. Those go in a package's <code>report.py</code> escape
-hatch. Its <strong>inputs</strong> are stamped and re-runnable; its <strong>outputs</strong> are not.</p>
-<p>An output figure is stamped <code>verifiable: false</code>, permanently and
-un-overridably. It never reads green. The trace says the number is
-python-derived and not query-reproducible, because it is.</p>
-<h2 id="the-locked-language">The locked language</h2>
-<p>These phrases are fixed. The runtime writes them literally, and tests pin them:</p>
+<p>The question it does answer is useful: "these 40 overnight reports still
+reproduce, and this one doesn't."</p>
+<h2 id="numbers-no-query-can-reproduce">Numbers no query can reproduce</h2>
+<p>Some numbers need several queries combined, a window function or an
+algorithm. Those go in a package's <code>report.py</code>. Its inputs are stamped and
+re-runnable; its outputs are stamped <code>verifiable: false</code>, cannot be
+overridden, and never read green. The trace labels them python-derived.</p>
+<h2 id="words-to-use">Words to use</h2>
+<p>The runtime writes these phrases exactly, and tests check them:</p>
 <ul>
-<li><strong>"reproduces"</strong> — never "verified". The green badge means a re-runnable
-  query backs the number, not that anyone checked it is correct.</li>
-<li><strong>"the sink satisfied its contract"</strong> — never "the transform was verified".
+<li><strong>"reproduces"</strong>, never "verified". Green means a re-runnable query backs
+  the number, not that anyone checked it is correct.</li>
+<li><strong>"the sink satisfied its contract"</strong>, never "the transform was verified".
   See <a href="../concepts/sink-contracts.html">Sink contracts</a>.</li>
-<li><strong>"stated methodology"</strong> — the author's own description, not a framework
+<li><strong>"stated methodology"</strong>: the author's own description, not a TraceBi
   claim.</li>
 </ul>
-<p>Paraphrasing these is how an honest guarantee quietly becomes an overclaim, so
-they are treated as vocabulary rather than prose.</p>
 <h2 id="names-in-the-code">Names in the code</h2>
 <p>Until 2026-10-18 the trace was called the <em>receipt</em>. The word is gone from
-everything a reader sees; the code still carries it, because the names are
-part of the artifact contract: the <code>tracebi-receipt</code> block in a built page,
-the <code>.tb-receipt*</code> classes, <code>data-tb-receipt-*</code> attributes and
-<code>tracebi.renderReceipt</code>.</p>
-<h2 id="related">Related</h2>
+everything a reader sees. The code keeps it in names that are part of the
+file format: the <code>tracebi-receipt</code> block in a built page, the <code>.tb-receipt*</code>
+classes, the <code>data-tb-receipt-*</code> attributes and <code>tracebi.renderReceipt</code>.</p>
+<h2 id="next">Next</h2>
 <ul>
-<li><a href="../concepts/lineage.html">Lineage</a> — what gets recorded on the way</li>
-<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — narrowing the phase-① gap</li>
-<li><a href="../reference/cli.html">CLI reference</a> — <code>tracebi verify</code> flags</li>
+<li>Check reports in CI: <code>tracebi verify --strict</code> in <a href="../reference/cli.html">CLI reference</a></li>
+<li>See what is recorded along the way: <a href="../concepts/lineage.html">Lineage</a></li>
 </ul>
   </main>
 </div>

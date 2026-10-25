@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Transform — phase ① — TraceBi docs</title>
+<title>Transforms — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Transform — phase ①">
+<meta name="description" content="Transforms">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a class="on" href="../concepts/transform.html">Transform — phase ①</a>
+<a class="on" href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,55 +61,49 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="transform-phase-1">Transform — phase ①</h1>
-<p><strong>Unconstrained work that ends by landing clean star-schema tables in the
-warehouse. SQL by default; Python is the escape hatch.</strong></p>
-<p>Lives in <code>transforms/</code>. This is the one phase the framework does not constrain.</p>
-<hr>
-<h2 id="the-contract">The contract</h2>
-<p>The contract is <strong>not how you clean</strong>. Window functions, prose parsing, fuzzy
-dedupe, three APIs and a spreadsheet — whatever the data needs.</p>
-<p>The contract is <strong>what lands</strong>: the named tables at the end of the script.</p>
-<pre><code class="language-sql">-- transforms/holdings.sql — DuckDB, top to bottom, one fresh connection
+<h1 id="transforms">Transforms</h1>
+<p>A transform is a file in <code>transforms/</code> that reads raw data, cleans it, and
+writes star-schema tables into the warehouse. Here is the shape of the
+reference project's transform:</p>
+<pre><code class="language-sql">-- transforms/holdings.sql: DuckDB, top to bottom, one fresh connection
 CREATE OR REPLACE TEMP TABLE raw AS
 SELECT * FROM read_csv('inputs/holdings.csv', all_varchar = true);
 
--- … whatever the data needs: regexp_replace, TRY_CAST, QUALIFY row_number() …
+-- whatever the data needs: regexp_replace, TRY_CAST, QUALIFY row_number() …
 
 CREATE OR REPLACE TABLE dim_issuer AS
 SELECT row_number() OVER (ORDER BY issuer) AS issuer_id, issuer, sector
 FROM (SELECT DISTINCT issuer, sector FROM keyed);
 CREATE OR REPLACE TABLE fact_holdings AS SELECT …;
 </code></pre>
-<p>Those table names are the <a href="../concepts/freeze-points.html">freeze point</a>. Nothing downstream
-reads this file. Where a created table lands follows the project's warehouse
-tier (<code>tracebi.yaml</code>), and two placeholders, <code>{{ sink }}</code> and <code>{{ root }}</code>,
-cover the rest: see <a href="../reference/transform-sql.html">SQL transforms</a>.</p>
-<h2 id="run-it">Run it</h2>
+<p><code>TEMP</code> tables are scratch. The tables created without <code>TEMP</code> (<code>dim_issuer</code>,
+<code>fact_holdings</code>) land in the warehouse. Those table names are what the model
+reads. See <a href="../reference/transform-sql.html">SQL transforms</a> for the placeholders <code>{{ sink }}</code> and <code>{{ root }}</code>
+and where tables land on each warehouse tier.</p>
+<h2 id="create-and-run-one">Create and run one</h2>
 <pre><code class="language-bash">tracebi new-transform &quot;Holdings&quot;     # transforms/holdings.sql + holdings.contract.yaml
 tracebi run-transform holdings       # prints form: sql
 </code></pre>
-<p><code>run-transform</code> executes the file <strong>top to bottom, fresh</strong> — a SQL file in one
-new connection, a Python file in a new namespace — so the sink never comes
-from out-of-order state. It reports which form ran, and a pipeline run records
-it.</p>
-<h2 id="the-escape-hatch-pandas-or-polars">The escape hatch: pandas or polars</h2>
-<p>When the cleaning outgrows SQL, write Python:
-<code>tracebi new-transform "Holdings" --python</code> scaffolds a notebook-shaped <code>.py</code>
-(<code># %%</code> percent cells with <code># %% [markdown]</code> prose, so VS Code, Cursor,
-PyCharm and Jupyter via jupytext open it as a notebook) that ends by writing
-frames:</p>
+<p><code>tracebi run-transform</code> runs the file top to bottom in a fresh state: a SQL
+file in one new connection, a Python file in a new namespace. It prints which
+form ran, and a pipeline run records it.</p>
+<h2 id="write-it-in-pandas-or-polars-instead">Write it in pandas or polars instead</h2>
+<pre><code class="language-bash">tracebi new-transform &quot;Holdings&quot; --python
+</code></pre>
+<p>This writes <code>transforms/holdings.py</code> as a notebook-shaped file: <code># %%</code> cells
+and <code># %% [markdown]</code> prose that VS Code, Cursor, PyCharm and Jupyter (with
+jupytext) open as a notebook. It ends by writing frames:</p>
 <pre><code class="language-python">from tracebi import DuckDBConnector
 from tracebi.project_config import sink_target
 
@@ -117,16 +111,11 @@ wh = DuckDBConnector(&quot;warehouse&quot;, database=sink_target(ROOT))
 wh.write(dim_issuer, &quot;dim_issuer&quot;)
 wh.write(fact_holdings, &quot;fact_holdings&quot;)
 </code></pre>
-<p>A literal <code>.ipynb</code> works too. The reference project keeps
-<code>holdings_transform_pandas.py</code> beside <code>holdings_transform.sql</code> as the example:
-both sink identical tables. A transform is one file: <code>x.sql</code> beside <code>x.py</code> is
-refused, naming both.</p>
-<h2 id="keep-it-idempotent">Keep it idempotent</h2>
-<p>A rerun replaces the warehouse tables rather than appending
-(<code>CREATE OR REPLACE</code> in SQL, <code>write()</code> in Python). This is what makes
-refreshing a <a href="../concepts/freeze-points.html">freeze point</a> safe to do at any time.</p>
-<h2 id="declare-a-sink-contract">Declare a sink contract</h2>
-<p>Beside the transform, state what the tables must satisfy:</p>
+<p>A <code>.ipynb</code> notebook works too. The reference project keeps
+<code>holdings_transform_pandas.py</code> beside <code>holdings_transform.sql</code>; both write
+identical tables.</p>
+<h2 id="add-a-sink-contract">Add a sink contract</h2>
+<p>Put the checks the tables must pass in a file beside the transform:</p>
 <pre><code class="language-yaml"># transforms/holdings.contract.yaml
 name: holdings
 checks:
@@ -138,21 +127,27 @@ checks:
     column: issuer_id
     refers_to: [dim_issuer, issuer_id]
 </code></pre>
-<p>A Python transform may instead end with the same checks in code,
+<p>A Python transform can declare the same checks in code:
 <code>with contract("holdings", warehouse=sink_target(ROOT)) as c: c.rows("fact_holdings", at_least=1)</code>.
-A failed check raises at sink time. Success records a certificate the report
-manifests join against. See <a href="../concepts/sink-contracts.html">Sink contracts</a>.</p>
-<h2 id="what-this-phase-is-not">What this phase is <em>not</em></h2>
-<p>Lineage is <strong>not</strong> traced through this code, deliberately. The trust boundary
-starts at the sink — see <a href="../concepts/trace.html">The trace</a> and
-<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</p>
-<p>Phase ① is trusted the way you trust reviewed code in git.</p>
-<h2 id="related">Related</h2>
+A failed check stops the run. See <a href="../concepts/sink-contracts.html">Sink contracts</a>.</p>
+<h2 id="rules">Rules</h2>
 <ul>
-<li><a href="../reference/transform-sql.html">SQL transforms</a> — the SQL form, the tiers, the placeholders, the contract file</li>
-<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — checks at the boundary</li>
-<li><a href="../concepts/model.html">Model — phase ②</a> — what reads the tables you land</li>
-<li><a href="../reference/cli.html">CLI reference</a> — <code>tracebi new-transform</code>, <code>tracebi run-transform</code></li>
+<li><strong>One file per name.</strong> <code>x.sql</code> beside <code>x.py</code> is refused, naming both.</li>
+<li><strong>Rerunnable.</strong> A rerun replaces the warehouse tables (<code>CREATE OR REPLACE</code>
+  in SQL, <code>write()</code> in Python). It never appends.</li>
+<li><strong>Nothing downstream reads the transform file.</strong> Models read only the
+  tables it wrote.</li>
+<li><strong>Lineage is traced from the sink, not through the transform.</strong> Review a
+  transform as you review any code in git.</li>
+</ul>
+<h2 id="why-it-works-this-way">Why it works this way</h2>
+<p>Cleaning real data takes whatever tools the data needs, so TraceBi leaves this
+stage open. What it checks is the result: the tables that land and the
+contract they satisfy.</p>
+<h2 id="next">Next</h2>
+<ul>
+<li>Write a SQL transform: <a href="../reference/transform-sql.html">SQL transforms</a></li>
+<li>Run it with its reports: <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a></li>
 </ul>
   </main>
 </div>

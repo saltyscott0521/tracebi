@@ -1,169 +1,114 @@
 # The trace
 
-**Every number drawn through the model has a trace: how it was made. A trace
-proves a number *reproduces* and the file was not *altered*. It does not prove
-the number is correct.**
+Every number a report draws from a model has a trace: a record of how it was
+made. A trace shows that a number reproduces and that the file was not
+altered. It does not show the number is correct.
 
-That distinction is the most important sentence in these docs, and the wording
-is deliberately locked — see [[#The locked language]].
-
----
-
-## What ships
-
-Every built report writes two files:
+Each build writes two files:
 
 ```
-output/my_report.html                   the self-contained artifact
+output/my_report.html                   the report
 output/my_report.html.manifest.json     the trace
 ```
 
-The manifest records, per figure: the model it came from, the exact query, and
-a SHA-256 fingerprint of the data the query returned. The artifact embeds the
-same fingerprinted bytes it draws from — so what the reader sees and what the
-trace covers are the same thing, by construction.
+For each figure the manifest records the model, the exact query and a SHA-256
+fingerprint of the data the query returned. The HTML embeds the same
+fingerprinted rows it draws from, so what the reader sees is what the trace
+covers.
 
-## What the file shows
-
-Every built page carries its trace in a drawer, headed with the report's
-name and *How each number was made*: open it from the masthead's **Trace**
-link or verdict chip, from the footer's **How these numbers were made**, from
-a chart tooltip's **Trace →**, or by clicking a number on the page (it opens
-at that figure's row). It reads top to bottom as a certificate:
-
-- the report, when it was built, from which model, and the verdict chip. A
-  file says **Not checked** of itself: nothing has re-run its queries since
-  it was built. Only a checker (`tracebi verify`, the web app) states
-  **Reproduces**, **Needs a look** (the source or model changed since the
-  build) or **Does not reproduce**.
-- *"This page does not claim the numbers are right; it records how each was
-  made so it can be checked."*
-- how to check the file: `tracebi verify --file <name>.html`, with the
-  `.manifest.json` beside it.
-- one row per figure, in page order: the value as the page shows it, its
-  label, the measure's definition from the model, the query in one line
-  (`fair_value by dim_issuer.sector · order fair_value desc`) and the first 8
-  characters of the fingerprint. **Raw** holds the query exactly as run and
-  the full fingerprint.
-- **About this build**: the sink contracts, the stated methodology, who
-  built it, the render stamp and the git commit. (The footer's notes live
-  here; the footer keeps one line and the link that opens the drawer.)
-
-The drawer displays what the embedded trace block records; it re-runs
-nothing. The manifest beside the file is still the trace of record.
-
-## In the web app
-
-The app shows a report as delivered, in a sandboxed frame, and knows more
-than the file: its desk re-checks the build. So it tells the frame its
-verdict, one message over the frame bridge, `{type: "tracebi:verdict",
-state, detail}`, and the masthead's chip and the drawer's say the app's
-state in the app's words (**Reproduces**, **Needs a look**, **Does not
-reproduce**, **Not checked**). This is the one place a file's chip may read
-green, and only because the host told it:
-
-- the app sends only a state it computed from its own re-check
-  (`verdictOf`), and nothing while it has none;
-- opened on its own (the file, the `/r/` share link, an email) nothing tells
-  it, and the chip says what the file can say of itself: **Not checked**;
-- a working preview stays **Draft** whatever it is told;
-- any page that frames a file could send the message, so a green chip in a
-  frame is the framing app's claim. `tracebi verify` is the check.
-
-The report page's **About this build** panel opens on **Trace**. On a wide
-window it sits beside the page as a card; narrower, it slides in. It follows
-one figure, the one you last clicked in the page (else the first number), in
-five steps, each read from the build's manifest and the app's last re-check:
-
-1. **Source**: the transform that wrote the table the query read, and whether
-   the sink satisfied its contract;
-2. **Model**: the model and the tables the query joined;
-3. **Query**: the query the build recorded (its measures, what it is cut by,
-   its filters), the closed query, not SQL;
-4. **Fingerprint**: the SHA-256 the build recorded, and when;
-5. **Re-run now**: what re-running it said: the same fingerprint, or why not.
-
-Then the verdict on the page, and below it the same certificate the file
-carries, drawn by the build's own `tracebi.js` (`renderReceipt`) in a
-sandboxed frame, its chip in the app's verdict. None of it says a number is
-right: it says where the number came from and that the query still gives it.
-
-## What you can check
+## Check a report
 
 ```bash
 tracebi verify output/my_report.html.manifest.json
 ```
 
-Re-runs every recorded query against the model and compares fingerprints.
-Each figure lands on one verdict:
+This re-runs every recorded query against the model and compares
+fingerprints. Each figure gets one verdict:
 
-| Verdict | Means |
+| Verdict | Meaning |
 | --- | --- |
-| `REPRODUCES` | re-running the query produced byte-identical data |
-| `ALTERED` | the data changed — the number moved since the render |
-| `UNVERIFIABLE` | no re-runnable query backs it (see [[#Unverifiable figures]]) |
-| `UNVERIFIED (marked)` | the author explicitly marked it as not a claim |
+| `REPRODUCES` | The query ran again and returned byte-identical data. |
+| `ALTERED` | The data changed: the number moved since the build. |
+| `UNVERIFIABLE` | No re-runnable query backs it (a `report.py` output). |
+| `UNVERIFIED (marked)` | The author marked it as not a claim. |
 
 ```bash
 tracebi verify --file output/my_report.html
 ```
 
-Checks the **file and its trace**, offline, with no database and no account:
-do the embedded bytes still hash to what the manifest says? The manifest is
-read from `<file>.manifest.json` beside the report (or `--manifest <path>`), so
-send both files together. This catches a number edited in the HTML after the
-fact.
+This checks the file and its trace offline, with no database and no account:
+do the embedded rows still hash to what the manifest says? It reads
+`<file>.manifest.json` beside the report, or `--manifest <path>`, so send both
+files together. It catches a number edited in the HTML after the build.
 
-## What it does not prove
+## Read the trace in the file
 
-**It is a reproduction-and-integrity check, not a correctness check.**
+Every built page has a trace drawer. Open it from **Trace** under the title,
+the verdict chip, **How these numbers were made** in the footer, or by
+clicking a number. It lists one row per figure: the value, its label, the
+measure's definition, the query in one line
+(`fair_value by dim_issuer.sector · order fair_value desc`) and the start of
+its fingerprint. **About this build** adds the sink contracts, the stated
+methodology, who built it and the commit. The full layout is in
+[[template-html]].
 
-- A wrong number that reproduces reliably still says `REPRODUCES`. If phase ①
-  sank bad data, every badge is green.
-- Between two parties it travels as *documentation*, not evidence: the data,
-  the query and the fingerprint are generated together by the same author. It
-  becomes evidence only when the verifier independently holds the warehouse.
-- It says nothing about the pandas above the sink. See
-  [[the-three-phase-workflow#Where trust starts]].
+The drawer re-runs nothing. A file says **Not checked** about itself. Only a
+checker (`tracebi verify`, the web app) says **Reproduces**, **Needs a look**
+(the source or model changed) or **Does not reproduce**.
 
-This is a real, useful guarantee — *"these 40 overnight reports still reproduce,
-and this one doesn't"* is exactly the question it answers — but it is a narrower
-one than "the numbers are right", and the docs never widen it.
+## Read the trace in the app
 
-## Unverifiable figures
+The app re-checks each build and tells the framed report its verdict in one
+message, `{type: "tracebi:verdict", state, detail}`. That is the only way a
+file's chip turns green. Opened on its own (as a file, a `/r/` share link or
+an email attachment) the file hears nothing and says **Not checked**. Any page
+that frames a file could send the message, so a green chip in a frame is that
+app's claim; `tracebi verify` is the check.
 
-Some numbers cannot be expressed as a model query — several queries combined, a
-window function, an algorithm. Those go in a package's `report.py` escape
-hatch. Its **inputs** are stamped and re-runnable; its **outputs** are not.
+On a report's page, the **Trace** panel follows the figure you last clicked
+through five steps: **Source** (the transform that wrote the table, and
+whether the sink satisfied its contract), **Model**, **Query**,
+**Fingerprint** and **Re-run now** (what re-running the query returned).
 
-An output figure is stamped `verifiable: false`, permanently and
-un-overridably. It never reads green. The trace says the number is
-python-derived and not query-reproducible, because it is.
+## What a trace does not prove
 
-## The locked language
+- **It is not a correctness check.** A wrong number that reproduces still
+  reads `REPRODUCES`. If the transform wrote bad data, every chip is green.
+- **Between two companies it is documentation, not evidence.** The data, the
+  query and the fingerprint come from the same author. It becomes evidence
+  when the checker holds the warehouse too.
+- **It says nothing about the transform.** Lineage is traced from the sink,
+  not through the transform. See [[the-three-phase-workflow]].
 
-These phrases are fixed. The runtime writes them literally, and tests pin them:
+The question it does answer is useful: "these 40 overnight reports still
+reproduce, and this one doesn't."
 
-- **"reproduces"** — never "verified". The green badge means a re-runnable
-  query backs the number, not that anyone checked it is correct.
-- **"the sink satisfied its contract"** — never "the transform was verified".
+## Numbers no query can reproduce
+
+Some numbers need several queries combined, a window function or an
+algorithm. Those go in a package's `report.py`. Its inputs are stamped and
+re-runnable; its outputs are stamped `verifiable: false`, cannot be
+overridden, and never read green. The trace labels them python-derived.
+
+## Words to use
+
+The runtime writes these phrases exactly, and tests check them:
+
+- **"reproduces"**, never "verified". Green means a re-runnable query backs
+  the number, not that anyone checked it is correct.
+- **"the sink satisfied its contract"**, never "the transform was verified".
   See [[sink-contracts]].
-- **"stated methodology"** — the author's own description, not a framework
+- **"stated methodology"**: the author's own description, not a TraceBi
   claim.
-
-Paraphrasing these is how an honest guarantee quietly becomes an overclaim, so
-they are treated as vocabulary rather than prose.
 
 ## Names in the code
 
 Until 2026-10-18 the trace was called the *receipt*. The word is gone from
-everything a reader sees; the code still carries it, because the names are
-part of the artifact contract: the `tracebi-receipt` block in a built page,
-the `.tb-receipt*` classes, `data-tb-receipt-*` attributes and
-`tracebi.renderReceipt`.
+everything a reader sees. The code keeps it in names that are part of the
+file format: the `tracebi-receipt` block in a built page, the `.tb-receipt*`
+classes, the `data-tb-receipt-*` attributes and `tracebi.renderReceipt`.
 
-## Related
+## Next
 
-- [[lineage]] — what gets recorded on the way
-- [[sink-contracts]] — narrowing the phase-① gap
-- [[cli]] — `tracebi verify` flags
+- Check reports in CI: `tracebi verify --strict` in [[cli]]
+- See what is recorded along the way: [[lineage]]

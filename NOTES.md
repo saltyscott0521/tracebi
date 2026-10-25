@@ -4,6 +4,17 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-25 — The handbook in a plain, task-first voice (DOCS-3)
+
+The owner: "Go through the docs again and make them 100% easy to use and not
+sound like AI. Use another company's docs as example." Stripe's docs are the
+model (dbt's for Concepts). The rules every page now follows:
+1. Each page opens with one plain sentence saying what you will do or get; no bold thesis, no philosophy first.
+2. Guides are Before you begin, numbered steps (one action, command first), What happened, Next; admin and user steps are separate.
+3. Reference pages are a short example, then tables or lists with one sentence per key, flag or route.
+4. No em-dashes, no "X, not Y" framings, no "locked", "honest", "verbatim", "deliberately"; a why goes in one closing note.
+5. Stems, toc keys and order, every `tracebi <cmd>` and the fixed product phrases stay; "Get started" and "TraceBi Analyst Guide" keep their titles because the UI smoke test and the docs API test read them.
+
 ## 2026-10-25 — UI rounds 4–8 closed with the owner's sign-off
 
 The owner's verdict on rounds 4–8 (welcome and empty states; the data browser;

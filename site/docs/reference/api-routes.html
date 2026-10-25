@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,27 +61,32 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a class="on" href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="api-routes">API routes</h1>
-<p><strong>The HTTP surface served by <code>tracebi serve</code>.</strong> Everything reads from the
-registry; nothing is app-specific.</p>
-<p>Roles in the table are the minimum required when authorization is enabled — see
-<a href="../reference/environment-variables.html">Environment variables</a>.</p>
-<p>To try a route from the browser, open <a href="/api-docs"><code>/api-docs</code></a> on a running
-server (FastAPI's Swagger UI; ReDoc at <code>/api-redoc</code>). It moved there from
-<code>/docs</code>, which is the app's Docs place; <code>tracebi serve</code> prints the address
-when it starts.</p>
-<hr>
+<p>The HTTP API <code>tracebi serve</code> provides. Every route reads from the registry.</p>
+<pre><code class="language-bash">curl -s http://127.0.0.1:8000/api/health
+# {&quot;status&quot;: &quot;ok&quot;, &quot;version&quot;: &quot;0.7.0&quot;}
+</code></pre>
+<ul>
+<li>The role in each table is the minimum when roles are enforced
+  (<a href="../reference/environment-variables.html">Environment variables</a>).</li>
+<li>To try routes in the browser, open <code>/api-docs</code> on a running server
+  (FastAPI's Swagger UI; ReDoc at <code>/api-redoc</code>). <code>/docs</code> is the app's handbook.</li>
+<li>A failed run returns <code>{"message": "...", "exception_type": "ValueError",
+  "traceback": ""}</code> in <code>detail</code>. <code>traceback</code> is empty unless
+  <code>TRACEBI_DEV_MODE</code> is set, because it would show file paths, the server's
+  user name and package versions.</li>
+</ul>
 <h2 id="health-and-discovery">Health and discovery</h2>
 <table>
 <thead>
@@ -96,39 +101,43 @@ when it starts.</p>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/health</code></td>
-<td>—</td>
-<td>liveness: <code>{"status": "ok", "version": "&lt;installed version&gt;"}</code></td>
+<td>none</td>
+<td><code>{"status": "ok", "version": "&lt;installed version&gt;"}</code></td>
 </tr>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/status</code></td>
 <td>viewer</td>
-<td><code>{"version", "checks": [{"name", "ok", "detail"}]}</code> — output writable, discovery failures, models loaded, SMTP configured, in-server schedules, auth posture</td>
+<td><code>{"version", "checks": [{"name", "ok", "detail"}]}</code>: output writable, discovery failures, models loaded, SMTP configured, in-server schedules, sign-in setup</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/schema</code></td>
 <td>viewer</td>
-<td>the machine-readable vocabulary (same source as <code>tracebi context</code>)</td>
+<td>The vocabulary, from the same source as <code>tracebi context</code></td>
 </tr>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/discovery</code></td>
 <td>viewer</td>
-<td>per-file registered / skipped / failed, <strong>with the reason</strong></td>
+<td>Each file: registered, skipped or failed, with the reason</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/me</code></td>
+<td>viewer</td>
+<td><code>{actor, role, sign_in}</code>; <code>sign_in</code> is <code>oidc</code>, <code>basic</code>, <code>proxy</code> or <code>none</code></td>
 </tr>
 </tbody>
 </table>
-<p><code>/api/discovery</code> is the first place to look when something you wrote doesn't
-appear: auto-discovery is convention-based and quiet, and this is where the
-silence gets a reason.</p>
-<p><code>/api/status</code> is the operator page: one check per thing that is usually
-wrong. <code>email_configured.detail</code> is the SMTP variable names and whether each
-is set. It never includes a URL, host, user, or password.
-<code>schedules_in_server.detail</code> is <code>{"on", "count"}</code>. <code>auth.detail</code> is the
-posture line. Beside the checks, <code>build_mode</code> says the app runs in dev mode and
-<code>gateway</code> that it serves the agent gateway at <code>/mcp</code>; Ask points at the agent
-when either is true.</p>
+<ul>
+<li><code>/api/discovery</code> is where to look when something you wrote doesn't appear.</li>
+<li>In <code>/api/status</code>, <code>email_configured.detail</code> lists the SMTP variable names and
+  whether each is set, never a URL, host, user or password.
+  <code>schedules_in_server.detail</code> is <code>{"on", "count"}</code>. <code>auth.detail</code> describes
+  the sign-in setup. <code>build_mode</code> says the app runs in dev mode and <code>gateway</code>
+  that it serves <code>/mcp</code>; Ask points at the agent when either is true.</li>
+</ul>
 <h2 id="models">Models</h2>
 <table>
 <thead>
@@ -176,43 +185,42 @@ when either is true.</p>
 </tr>
 </tbody>
 </table>
-<p><code>GET /api/models</code> and <code>GET /api/models/{name}</code> carry each model's <code>label</code> (what a list
-shows; see <a href="../reference/model-json.html">Model files (YAML or JSON)</a>) beside <code>name</code>, the identifier every other route takes.</p>
-<p>A model table that is one of TraceBi's own (<code>tracebi_*</code> or <code>alembic_version</code>, by its
-name or its source) is left out of <code>GET /api/models/{name}</code> (counted in
-<code>hidden_framework_tables</code>), and its <code>/preview</code> and <code>/export.csv</code> answer 404, as a
-missing table does: the state store holds sessions and tokens.</p>
-<p><code>/source</code> returns the model's file, read-only (the <strong>Code</strong> tab). A model registered in
-Python code has no file and says so. <code>/query</code> takes a <a href="../reference/queries.html">QuerySpec</a> and returns the result plus a lineage
-graph. It computes but persists nothing, which is why <code>viewer</code> may call it.</p>
-<p><code>/dimensions/{dim.attr}/values</code> (<code>dim_issuer.sector</code>; <code>?limit=</code>, default 200,
-at most 1,000) lists one dimension attribute's distinct values, sorted, from the
-dimension's own table: <code>{"values", "total", "truncated"}</code>. It is what Ask offers
-to filter on. An unknown attribute is 404; one derived when a query runs (a time
-grain, a bin) has no stored values and is 422.</p>
-<p><code>/query</code> returns each row twice: <code>data</code> holds the raw values (what a CSV download
-uses) and <code>display</code> holds the same cells as text, written the way a built report's
-table writes them: a numeric column takes the model's declared format on that
-measure (<code>currency0</code>, <code>percent</code>, …), else the shape-derived default, and anything
-else stays plain text. A value JSON cannot carry (NaN from an empty total, infinity
-from a division by zero) is <code>null</code> in <code>data</code> and an empty string in <code>display</code>, never
-an error. <code>GET /api/models/{name}</code> lists, on each fact,
-<code>runnable_measures</code>: the declared measures whose columns exist on that fact's table,
-so a UI offers only what will run. When the connector cannot describe the table (the
-warehouse is not built yet), every declared measure is listed and a run reports the
-real error.</p>
-<p><code>/preview</code> (<code>?rows=</code>, default 50, at most 500) and <code>/export.csv</code> resolve the model
-table to its connector and source table and read through the table API below: the
-first rows and an exact total from the engine, the types in the engine's spelling
-(<code>DOUBLE</code>, <code>DATE</code>), and the CSV streamed, never the whole table loaded into pandas.
-A source the table API does not read (a <code>SELECT</code> source, a CSV folder, Snowflake or
-BigQuery) keeps the connector's own load.</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/models</code>, <code>/api/models/{name}</code></td>
+<td>Each model carries <code>label</code> (<a href="../reference/model-json.html">Model files (YAML or JSON)</a>) beside <code>name</code>, the identifier other routes take. Each fact lists <code>runnable_measures</code>: declared measures whose columns exist on its table. When the warehouse is not built yet, every declared measure is listed and a run reports the real error. TraceBi's own tables (<code>tracebi_*</code>, <code>alembic_version</code>) are left out and counted in <code>hidden_framework_tables</code>.</td>
+</tr>
+<tr>
+<td><code>/query</code></td>
+<td>Takes a <a href="../reference/queries.html">Queries</a> spec; returns the result and a lineage graph. Computes but saves nothing, so a viewer may call it. Each row comes twice: <code>data</code> (raw values, used by CSV download) and <code>display</code> (text formatted as a built report would: the measure's declared format, else the shape default). NaN or infinity is <code>null</code> in <code>data</code> and an empty string in <code>display</code>.</td>
+</tr>
+<tr>
+<td><code>/dimensions/{dim.attr}/values</code></td>
+<td>One attribute's distinct values, sorted, from the dimension's table: <code>{"values", "total", "truncated"}</code>. <code>?limit=</code> default 200, at most 1,000. Unknown attribute: 404. A time grain or bin has no stored values: 422. Ask uses it for filters.</td>
+</tr>
+<tr>
+<td><code>/preview</code>, <code>/export.csv</code></td>
+<td>Read through the table API below: the first rows (<code>?rows=</code>, default 50, at most 500) with an exact total and engine types (<code>DOUBLE</code>, <code>DATE</code>), or the CSV streamed. A source the table API does not read (a <code>SELECT</code> source, a CSV folder, Snowflake, BigQuery) uses the connector's own load. A framework table is 404.</td>
+</tr>
+<tr>
+<td><code>/source</code></td>
+<td>The model's file, read-only (the Code tab). A model registered in Python has no file and says so.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="tables">Tables</h2>
-<p>One read-only API for every place a table lives, addressed as <code>(source, table)</code>:
-<code>source</code> is a connector's name (a warehouse on any tier, a SQL connection, a
-Python <code>MemoryConnector</code>) or <code>inputs</code>, where <code>table</code> is a file's path inside the
-project's <code>inputs/</code> folder (CSV, TSV, Parquet or JSON, read by DuckDB; the path is
-confined to that folder).</p>
+<p>One read-only API for every table, addressed as <code>(source, table)</code>. <code>source</code> is
+a connector's name (a warehouse on any tier, a SQL connection, a
+<code>MemoryConnector</code>) or <code>inputs</code>, where <code>table</code> is a file's path inside
+<code>inputs/</code> (CSV, TSV, Parquet or JSON, read by DuckDB, confined to that
+folder).</p>
 <table>
 <thead>
 <tr>
@@ -244,42 +252,44 @@ confined to that folder).</p>
 </tr>
 </tbody>
 </table>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/{source}/{table}</code></td>
+<td><code>{source, table, kind: "warehouse" \| "connection" \| "file", rows, rows_exact, columns: [{name, type}], written_by: {transform, contract, at} \| null, contract: {status, file, checks, note, checked_at} \| null, read_by: [model], used_by: [{report, display_name}], transform_read: [{ref, snapshot, fingerprint}]}</code>. <code>type</code> is the engine's spelling. <code>written_by</code>, <code>contract</code> and <code>transform_read</code> (what the writing run read from outside the warehouse; <code>snapshot</code> when a committed file stood in) come from the certificate, for warehouse tables only. <code>used_by</code> lists reports the caller may view whose bindings read a model in <code>read_by</code>.</td>
+</tr>
+<tr>
+<td><code>/rows</code></td>
+<td><code>?offset=0&amp;limit=100&amp;sort=&lt;col&gt;&amp;desc=1&amp;q=&lt;text&gt;&amp;where=&lt;json&gt;</code> → <code>{columns, rows, offset, limit, total, total_exact, elapsed_ms}</code>. <code>limit</code> at most 500 (more is 422). <code>q</code> matches text columns, ignoring case. <code>where</code> is a JSON list of <code>{column, op, value}</code>, <code>op</code> one of <code>eq ne lt le gt ge contains is_null not_null</code>, the value of the column's kind. Dates come back as ISO strings. <code>total</code> is exact, except an unfiltered SQL connection with a catalog estimate (<code>total_exact: false</code>).</td>
+</tr>
+<tr>
+<td><code>/profile</code></td>
+<td><code>{rows, columns: {name: {type, nulls, null_share, distinct, min, max, mean?, top: [{value, count}]}}}</code>. <code>min</code>/<code>max</code> for numbers and dates, <code>mean</code> for numbers, <code>top</code> (the five commonest) for text and booleans. Past 50 columns nothing is profiled and <code>note</code> says so.</td>
+</tr>
+<tr>
+<td><code>/export.csv</code></td>
+<td>The same <code>sort</code>, <code>q</code> and <code>where</code>, streamed from the engine.</td>
+</tr>
+</tbody>
+</table>
 <ul>
-<li><code>/{source}/{table}</code> → <code>{source, table, kind: "warehouse" | "connection" | "file",
-  rows, rows_exact, columns: [{name, type}], written_by: {transform, contract, at} | null,
-  contract: {status, file, checks, note, checked_at} | null, read_by: [model],
-  used_by: [{report, display_name}], transform_read: [{ref, snapshot, fingerprint}]}</code>.
-  <code>type</code> is the engine's spelling (<code>BIGINT</code>, <code>DOUBLE</code>, <code>DATE</code>, <code>VARCHAR</code>; a SQL
-  connection's own). <code>rows</code> follows the row-count rule of <code>/connectors/{name}/tables</code>.
-  <code>written_by</code>, <code>contract</code> and <code>transform_read</code> (what the run that wrote the table read
-  from outside the warehouse; <code>snapshot</code> when a committed file stood in for a
-  connection) come from the warehouse's certificate, for a warehouse table only.
-  <code>used_by</code> lists the reports, of those the caller may view, whose bindings read a
-  model in <code>read_by</code>.</li>
-<li><code>/rows?offset=0&amp;limit=100&amp;sort=&lt;col&gt;&amp;desc=1&amp;q=&lt;text&gt;&amp;where=&lt;json&gt;</code> →
-  <code>{columns: [{name, type}], rows: **…**, offset, limit, total, total_exact, elapsed_ms}</code>.
-  <code>limit</code> is at most 500 (more is 422). <code>q</code> matches the text columns,
-  case-insensitively. <code>where</code> is a JSON list of <code>{column, op, value}</code>, <code>op</code> one of
-  <code>eq ne lt le gt ge contains is_null not_null</code>; a comparison's value must be of the
-  column's kind (a number, an ISO date, a string, a boolean). Dates and timestamps
-  come back as ISO strings, numbers as numbers. <code>total</code> is exact, except an
-  unfiltered SQL connection that keeps a catalog estimate (<code>total_exact: false</code>).</li>
-<li><code>/profile</code> → <code>{rows, columns: {name: {type, nulls, null_share, distinct, min, max,
-  mean?, top: [{value, count}]}}}</code> for this one table: <code>min</code>/<code>max</code> for numbers and
-  dates (null otherwise), <code>mean</code> for numbers, <code>top</code> (five commonest, with counts) for
-  text and booleans. Past 50 columns nothing is profiled and <code>note</code> says so.</li>
-<li><code>/export.csv</code> takes the same <code>sort</code>, <code>q</code>, <code>where</code> and streams the cut from the
-  engine's cursor.</li>
+<li>Nothing free-form reaches SQL. The table must be in the source's catalog and
+  every column must be the table's. A quoted identifier, unknown op or column,
+  or a value of the wrong kind is 422 before any statement is built. Values
+  are bound.</li>
+<li>DuckDB reads use the read-only query connection. A SQL connection gets a
+  short-lived engine for the request, stopped at <code>engine.query_timeout_s</code>
+  (504 past it).</li>
+<li>An unreachable source answers <code>200 {connected: false, reason, variable?}</code>.</li>
+<li>A framework table (<code>tracebi_*</code>, <code>alembic_version</code>) is 404.</li>
+<li>Folder permissions do not apply: a table is not a report.</li>
 </ul>
-<p>Nothing free-form reaches SQL: the table must be in the source's catalog; every
-column a request names must be the table's; an identifier carrying a quote, an
-unknown op or column, or a value of the wrong kind is 422 before a statement is
-composed; values are bound. DuckDB reads go through the locked, read-only query
-connection; a SQL connection gets a short-lived engine for the request, stopped at
-the project's statement timeout (<code>engine.query_timeout_s</code>; 504 past it). A source
-that cannot be reached here answers <code>200 {connected: false, reason, variable?}</code> on
-every route. A framework table (<code>tracebi_*</code>, <code>alembic_version</code>) is 404, as a
-missing one is. Folder permissions do not apply: a table is not a report.</p>
 <h2 id="reports">Reports</h2>
 <table>
 <thead>
@@ -332,6 +342,16 @@ missing one is. Folder permissions do not apply: a table is not a report.</p>
 </tr>
 <tr>
 <td><code>GET</code></td>
+<td><code>/api/runs/counts?kind=</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/desk[?fresh=1]</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
 <td><code>/api/reports/{name}/download?format=xlsx\|html\|pdf</code></td>
 <td>analyst</td>
 </tr>
@@ -350,59 +370,82 @@ missing one is. Folder permissions do not apply: a table is not a report.</p>
 <td><code>/api/reports/{name}/source</code></td>
 <td>viewer</td>
 </tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/r/{name}</code></td>
+<td>viewer</td>
+</tr>
 </tbody>
 </table>
-<p><code>GET /api/reports</code> gives each report a <code>form</code>: <code>spec</code> (a <code>reports/&lt;name&gt;.json</code>
-in the default style), <code>package</code> (a <code>reports/&lt;name&gt;/</code> with its own template
-and style) or <code>code</code>, and <code>made_from</code>: <code>app.jsx</code> (a dashboard), <code>template.html</code>
-(a page) or <code>null</code>, what a package draws its page from. It also carries
-<code>folder</code> and <code>owner</code> (the last publisher, or the owner of a My published
-folder). <code>/source</code> returns the files that define the report —
-the spec, or the package's <code>report.json</code>, <code>template.html</code>, <code>style.css</code>,
-<code>script.js</code> and <code>report.py</code> — read-only, and only the files discovery
-registered for it. It also gives each report <code>models</code> (the models its data
-bindings read) and <code>measures</code> (the declared measure names they ask for, read
-from the file, never from a warehouse). <code>display_name</code> is
-<code>report.json</code>'s <code>name</code> (what a list or title shows); <code>name</code> stays the path
-identifier the routes take. <code>GET /api/runs</code> rows and the <code>report</code> entries of
-<code>GET /api/desk</code> carry <code>display_name</code> beside <code>target</code> / <code>report</code> (a model
-publish carries the model's <code>label</code>; a pipeline run carries <code>null</code>).</p>
-<p><code>/run</code> returns <code>{name, html, manifest}</code> — the <strong>real artifact render</strong>, so what
-the browser shows is what <code>verify --file</code> can check. <code>POST /runs</code> starts the
-same work in the background and returns a <code>run_id</code> to poll.</p>
-<blockquote>
-<p><strong>Folders can hide reports.</strong> With a <code>_folder.yaml</code> (<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>) a person
-without <code>view</code> on a report's folder sees it nowhere: it is not in
-<code>GET /api/reports</code>, <code>/api/runs</code> or <code>/api/discovery</code>, and every route above,
-and <code>/r/{name}</code>, answers as for a name that does not exist (<code>404</code>; an empty
-list for <code>GET .../runs</code>). A report they can see but may not act on (<code>build</code> to
-start a draft in its folder, <code>publish</code> to publish into it) is <code>403</code> with
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/reports</code></td>
+<td>Each report has <code>name</code> (the path routes take), <code>display_name</code> (<code>report.json</code>'s <code>name</code>), <code>form</code> (<code>spec</code>, <code>package</code> or <code>code</code>), <code>made_from</code> (<code>app.jsx</code>, <code>template.html</code> or <code>null</code>), <code>folder</code>, <code>owner</code> (the last publisher, or a My published folder's owner), <code>models</code> (those its bindings read) and <code>measures</code> (the declared measure names they ask for, read from the file).</td>
+</tr>
+<tr>
+<td><code>/run</code></td>
+<td><code>{name, html, manifest}</code>: the real build, which <code>verify --file</code> can check.</td>
+</tr>
+<tr>
+<td><code>POST /runs</code></td>
+<td>Starts the same build in the background and returns a <code>run_id</code> to poll.</td>
+</tr>
+<tr>
+<td><code>/built</code></td>
+<td>The last build: <code>output/&lt;name&gt;.html</code>, else the path in the run store. A report never built on this server is built once on first open and kept. Fresh data comes from <code>/run</code>, <code>/runs</code> (Rebuild) or a schedule.</td>
+</tr>
+<tr>
+<td><code>/cover</code></td>
+<td>The PNG of the last build's first screen, with an <code>ETag</code> of its write time (304 when unchanged). 404 when the build took none; it never builds.</td>
+</tr>
+<tr>
+<td><code>/api/runs</code></td>
+<td>Run rows, newest first; <code>kind</code>, <code>target</code>, <code>limit</code>. Rows carry <code>display_name</code> beside <code>target</code> (a model publish carries its <code>label</code>; a pipeline run <code>null</code>). The HTML stays on disk; the row holds its path. A build row stores no verdict, so History shows the <code>/api/desk</code> re-check on a report's newest build and "Not checked" on older ones.</td>
+</tr>
+<tr>
+<td><code>/api/runs/counts</code></td>
+<td><code>[{kind, target, runs, failed}]</code> per target the caller may see.</td>
+</tr>
+<tr>
+<td><code>/api/desk</code></td>
+<td>Only reports the caller may view: pins, drafts, verdicts, builds (each with <code>values</code> [{id, label, text, delta, spark}], its KPIs as built), sinks. Each verdict or build row has <code>computed_at</code> and <code>cached</code>. A verdict is kept while its manifest, its models and their warehouse (and certificate) are unchanged; <code>?fresh=1</code> re-runs all.</td>
+</tr>
+<tr>
+<td><code>/download</code></td>
+<td><code>html</code>: the last build. <code>pdf</code>: a print of it by headless Chromium, with no trace. <code>xlsx</code>: the Excel renderer, which derives no <a href="../reference/number-formats.html">Number formats</a> and runs the report to do so.</td>
+</tr>
+<tr>
+<td><code>/lineage</code></td>
+<td>Transform → tables → model → queries → figures, from the last build's manifest. <code>/mermaid</code> returns a diagram.</td>
+</tr>
+<tr>
+<td><code>/source</code></td>
+<td>The files that define the report (the spec, or <code>report.json</code>, <code>template.html</code>, <code>style.css</code>, <code>script.js</code>, <code>report.py</code>), read-only, and only files discovery registered.</td>
+</tr>
+<tr>
+<td><code>/r/{name}</code></td>
+<td>A share link: the last build as a full page.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Folders can hide reports.</strong> With a <code>_folder.yaml</code> (<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>), a
+person without <code>view</code> on a report's folder finds it nowhere: not in
+<code>/api/reports</code>, <code>/api/runs</code> or <code>/api/discovery</code>, and every route above,
+including <code>/r/{name}</code>, answers 404 (an empty list for <code>GET .../runs</code>). A
+report they can see but may not act on is 403 with
 <code>detail.required_permission</code>.</p>
-<p><strong>There is one renderer.</strong> A registered report with no package is refused with
-<code>422</code> naming the fix, never served through a weaker path. See <a href="../concepts/report.html">Report — phase ③</a>.</p>
-</blockquote>
-<p><code>/built</code> is what the app opens for a report: the <strong>last build</strong>, from
-<code>output/&lt;name&gt;.html</code> or, when that file is not there, the path recorded in
-the run store. A report never built on this server is built once on first
-open and kept. Opening never re-queries after that; fresh data comes from
-<code>/run</code>, <code>/runs</code> (Rebuild) or a schedule. <code>/cover</code> is the PNG of that last
-build's first screen (an <code>ETag</code> of its write time), or <code>404</code> when the build
-took none and the app draws one; it never builds.</p>
-<p><code>GET /api/runs</code> lists rows from that store, newest first. Query params:
-<code>kind</code>, <code>target</code>, <code>limit</code>. A viewer may read it. The HTML of a report stays
-on disk; the row holds the output path. The <strong>History</strong> list (<code>/runs</code>) is this list.
-A build row stores no verdict (a build is not a check), so the page shows the
-<code>/api/desk</code> re-check, the one the Reports list shows, on a report's newest
-build, and "Not checked" on the older ones.</p>
-<p>The <code>html</code> download is that last build, the file the reader is looking at.
-<code>pdf</code> is a print of that same file (headless Chromium, so charts render). It
-carries no trace; the HTML file is what <code>verify --file</code> checks.
-<code>xlsx</code> goes through the Excel renderer, which derives no
-<a href="../reference/number-formats.html">formats</a>, and runs the report to do so.</p>
-<h2 id="drafts">Drafts</h2>
-<p>Remote drafts. <code>{kind}</code> is <code>reports</code> or <code>models</code>.
-A draft's owner is the acting principal; <code>{owner}</code> is that name slugged to
-<code>[a-z0-9._-]</code>.</p>
+<p><strong>One renderer.</strong> A registered report with no package is refused with 422
+naming the fix (<a href="../concepts/report.html">Reports</a>).</p>
+<h2 id="drafts-and-publishing">Drafts and publishing</h2>
+<p><code>{kind}</code> is <code>reports</code> or <code>models</code>. A draft's owner is the acting principal;
+<code>{owner}</code> is that name slugged to <code>[a-z0-9._-]</code>.</p>
 <table>
 <thead>
 <tr>
@@ -415,12 +458,12 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/drafts</code></td>
-<td>owner (their own); admin (everyone's)</td>
+<td>The caller's own; an admin sees everyone's</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/drafts</code></td>
-<td>analyst: start your own draft of a published report or model</td>
+<td>analyst</td>
 </tr>
 <tr>
 <td><code>PUT</code></td>
@@ -448,6 +491,11 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 <td>owner or admin</td>
 </tr>
 <tr>
+<td><code>GET</code></td>
+<td><code>/api/drafts/{owner}/reports/{path}/destinations</code></td>
+<td>owner or admin</td>
+</tr>
+<tr>
 <td><code>POST</code></td>
 <td><code>/api/drafts/{owner}/{kind}/{path}/publish</code></td>
 <td>analyst, and owner or admin</td>
@@ -457,57 +505,115 @@ A draft's owner is the acting principal; <code>{owner}</code> is that name slugg
 <td><code>/api/drafts/{owner}/{kind}/{path}</code></td>
 <td>analyst, and owner or admin</td>
 </tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/folders</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/publish-requests?status=</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/publish-requests/{id}/approve</code></td>
+<td>analyst, and <code>publish</code> on the destination</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/publish-requests/{id}/reject</code></td>
+<td>analyst, and <code>publish</code> on the destination</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/code-requests</code></td>
+<td>analyst</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/code-requests?status=</code></td>
+<td>viewer</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/code-requests/{id}</code></td>
+<td>the requester or an admin</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/code-requests/{id}/approve</code></td>
+<td>admin</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/code-requests/{id}/reject</code></td>
+<td>admin</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/library/sync</code></td>
+<td>outside sign-in (see below)</td>
+</tr>
 </tbody>
 </table>
-<p>| <code>GET</code> | <code>/api/folders</code> | viewer: the folders the caller may see, with their level and whether a publish there is direct or a request. <code>personal</code> is the caller's own <code>my-published/&lt;sign-in name&gt;</code> (null with no sign-in identity). <code>permissions</code> (read-only, <code>editable: false</code>) only for <code>manage</code> and for the owner of a personal folder |
-| <code>GET</code> | <code>/api/drafts/{owner}/reports/{path}/destinations</code> | owner or admin: where the draft may be published, each <code>mode: publish</code> or <code>request</code> |
-| <code>GET</code> | <code>/api/publish-requests?status=</code> | viewer: the caller's own requests, and those into folders where they hold <code>publish</code> |
-| <code>POST</code> | <code>/api/publish-requests/{id}/approve</code> | analyst, and <code>publish</code> on the destination |
-| <code>POST</code> | <code>/api/publish-requests/{id}/reject</code> | analyst, and <code>publish</code> on the destination; body <code>{"note"}</code> (required) |
-| <code>POST</code> | <code>/api/code-requests</code> | analyst: Python from <code>tracebi push</code>, body <code>{"files": {path: text}, "note"}</code> (note required) |
-| <code>GET</code> | <code>/api/code-requests?status=</code> | viewer: the caller's own; an admin sees every one |
-| <code>GET</code> | <code>/api/code-requests/{id}</code> | the requester or an admin: each file with its diff, and the runs an approval started |
-| <code>POST</code> | <code>/api/code-requests/{id}/approve</code> | admin: copy the files in, run the pipelines they touch once |
-| <code>POST</code> | <code>/api/code-requests/{id}/reject</code> | admin; body <code>{"note"}</code> (required) |
-| <code>POST</code> | <code>/api/library/sync</code> | outside sign-in: <code>TRACEBI_LIBRARY_SYNC_SECRET</code> as <code>X-Hub-Signature-256</code> or <code>X-TraceBi-Sync-Token</code>; 404 when unset |</p>
-<p><code>POST /api/drafts</code> takes <code>{"kind": "reports"|"models", "path", "from_published"}</code>
-and answers <code>201</code> with the new draft, or <code>200</code> with the one the caller already
-has; a Python model, or a report with a <code>report.py</code>, is <code>422</code> and the message
-says to edit it from a laptop. <code>PUT .../files/{file}</code> takes <code>{"content"}</code> and
-answers with the draft's new <code>version</code>.</p>
-<p>A draft of a report is also checked against its folder's <code>_folder.yaml</code>
-(<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>): starting one needs <code>build</code> there. <code>/publish</code> takes
-<code>{"note", "folder"}</code>; <code>folder</code> is a library path to publish into (default: the
-draft's own path). With <code>publish</code> on the destination it answers <code>200</code>,
-<code>"status": "published"</code>; with only <code>build</code> it answers <code>202</code>,
-<code>"status": "requested"</code> and the request, for someone with <code>publish</code> there to
-approve or reject; with less, <code>403</code>. A folder with <code>accepts: checkable</code> refuses
-(<code>422</code>) a report that is not made of re-runnable numbers, at publish and at
-request. Approving answers <code>200</code> with the request, now <code>approved</code>; deciding a
-request already decided is <code>422</code>; one the caller may not see is <code>404</code>.</p>
-<p><code>/preview</code> renders the draft in memory against the published models plus the
-owner's draft models, and writes nothing. <code>/publish</code> validates the draft first,
-keeps the version it replaces under <code>.tracebi/history/</code>, copies it into the
-library and records a <code>publish</code> run. The draft is kept. <code>DELETE</code> removes the
-draft only, never the published copy.</p>
-<p><code>/impact</code> is for a model draft (a report draft is <code>422</code>). It re-runs the
-recorded queries of every published report that reads the model, from each
-report's last build, against the draft, and answers
-<code>{reports: [{report, status, detail, moved, broken}], summary, needs_acceptance}</code>.
-<code>status</code> is <code>unchanged</code>, <code>moves</code> (<code>moved[].figures</code> carry <code>id</code>, <code>old</code>, <code>new</code>),
-<code>breaks</code> (<code>broken[].error</code>), <code>not_built</code> (no last build to compare; listed,
-never unchanged) or <code>not_checkable</code>. It writes nothing. <code>/publish</code> of a model
-whose impact has a <code>moves</code> or <code>breaks</code> is <code>409</code> with the same <code>impact</code> in
-<code>detail</code>, unless the body carries <code>"accept_impact": true</code>; a break needs
-accepting too. The accepted impact is stored in the <code>publish</code> run's <code>detail</code>.
-The MCP tool <code>model_impact(path)</code> is the same check, and <code>publish_draft</code> (also <code>folder</code>; with only Build there it returns <code>status:
-requested</code>) and <code>list_publish_requests</code> / <code>decide_publish_request</code> (approve or
-reject; Publish on the destination) are the same flow for an agent. <code>publish_draft</code> takes
-<code>accept_impact</code>.</p>
-<p>A model that names <code>owners</code> in its published file may be published only by one
-of them or an admin; anyone else gets <code>403</code> (MCP <code>ok: false</code>) naming the owners,
-checked before the impact. They can still draft and read <code>/impact</code>. Names only,
-no groups; no owners means any analyst.</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /api/drafts</code></td>
+<td><code>{"kind", "path", "from_published"}</code>. 201 with a new draft, 200 with the one the caller has. A Python model, or a report with a <code>report.py</code>, is 422 and says to edit it from a laptop. Starting a report draft needs <code>build</code> on its folder.</td>
+</tr>
+<tr>
+<td><code>PUT .../files/{file}</code></td>
+<td><code>{"content"}</code>; answers with the draft's new <code>version</code>.</td>
+</tr>
+<tr>
+<td><code>/preview</code></td>
+<td>Renders the draft in memory against the published models plus the owner's draft models. Writes nothing.</td>
+</tr>
+<tr>
+<td><code>/impact</code></td>
+<td>Model drafts only (a report draft is 422). Re-runs the recorded queries of every published report that reads the model, from each report's last build, against the draft: <code>{reports: [{report, status, detail, moved, broken}], summary, needs_acceptance}</code>. <code>status</code> is <code>unchanged</code>, <code>moves</code> (<code>moved[].figures</code> with <code>id</code>, <code>old</code>, <code>new</code>), <code>breaks</code> (<code>broken[].error</code>), <code>not_built</code> or <code>not_checkable</code>. Writes nothing.</td>
+</tr>
+<tr>
+<td><code>/destinations</code></td>
+<td>Where a report draft may go, each <code>mode: publish</code> or <code>request</code>.</td>
+</tr>
+<tr>
+<td><code>/publish</code></td>
+<td><code>{"note", "folder", "accept_impact"}</code>; <code>folder</code> defaults to the draft's own path. Validates the draft, keeps the version it replaces under <code>.tracebi/history/</code>, copies it into the library and records a <code>publish</code> run. The draft is kept. With <code>publish</code> on the destination: 200, <code>"status": "published"</code>. With only <code>build</code>: 202, <code>"status": "requested"</code> and the request. Less: 403. A <code>checkable</code> folder refuses a report that is not all re-runnable numbers (422). A model whose impact <code>moves</code> or <code>breaks</code> is 409 with the impact until <code>"accept_impact": true</code>; the accepted impact is stored in the run's <code>detail</code>. A model naming <code>owners</code> may be published only by an owner or an admin (403 otherwise, checked before the impact).</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td>Removes the draft, never the published copy.</td>
+</tr>
+<tr>
+<td><code>/api/folders</code></td>
+<td>The folders the caller may see, with their level and whether a publish there is direct or a request. <code>personal</code> is the caller's <code>my-published/&lt;sign-in name&gt;</code> (null with no sign-in identity). <code>permissions</code> (read-only, <code>editable: false</code>) only for <code>manage</code> and a personal folder's owner.</td>
+</tr>
+<tr>
+<td><code>/api/publish-requests</code></td>
+<td>The caller's own requests and those into folders where they hold <code>publish</code>; each row carries <code>can_decide</code>. Approve answers 200 with the request, now <code>approved</code>. Reject needs <code>{"note"}</code>. Deciding a decided request is 422; one the caller may not see is 404.</td>
+</tr>
+<tr>
+<td><code>/api/code-requests</code></td>
+<td>Python from <code>tracebi push</code>: <code>{"files": {path: text}, "note"}</code> (note required). An admin sees all; others their own. <code>GET /{id}</code> gives each file's diff and the runs an approval started. Approve copies the files in and runs the pipelines they touch once. Reject needs <code>{"note"}</code>.</td>
+</tr>
+<tr>
+<td><code>/api/library/sync</code></td>
+<td>Exists only with <code>TRACEBI_LIBRARY_SYNC_SECRET</code>, sent as <code>X-Hub-Signature-256</code> or <code>X-TraceBi-Sync-Token</code> (404 otherwise).</td>
+</tr>
+</tbody>
+</table>
+<p>The MCP tools do the same: <code>model_impact(path)</code>, <code>publish_draft</code> (with
+<code>folder</code> and <code>accept_impact</code>; <code>status: requested</code> with only Build there),
+<code>list_publish_requests</code> and <code>decide_publish_request</code>.</p>
 <h2 id="report-specs">Report specs</h2>
 <table>
 <thead>
@@ -535,8 +641,8 @@ no groups; no owners means any analyst.</p>
 </tr>
 </tbody>
 </table>
-<p><code>/render</code> compiles the spec to a package and renders it like a hand-authored
-one — same figures, same trace drawer, same schema-2 manifest.</p>
+<p><code>/render</code> compiles the spec to a package and builds it like any other: the
+same figures, trace drawer and schema-2 manifest.</p>
 <h2 id="verify">Verify</h2>
 <table>
 <thead>
@@ -554,8 +660,8 @@ one — same figures, same trace drawer, same schema-2 manifest.</p>
 </tr>
 </tbody>
 </table>
-<p>The offline file check over HTTP: embedded bytes against the manifest. No model
-needed. See <a href="../concepts/trace.html">The trace</a>.</p>
+<p>The offline file check over HTTP: the embedded rows against the manifest. No
+model needed (<a href="../concepts/trace.html">The trace</a>).</p>
 <h2 id="pipelines">Pipelines</h2>
 <table>
 <thead>
@@ -574,12 +680,12 @@ needed. See <a href="../concepts/trace.html">The trace</a>.</p>
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/pipelines/{name}/run</code></td>
-<td><strong>admin</strong></td>
+<td>admin</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/pipelines/{name}/layers/{layer}/run</code></td>
-<td><strong>admin</strong></td>
+<td>admin</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -589,7 +695,7 @@ needed. See <a href="../concepts/trace.html">The trace</a>.</p>
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/pipelines/{name}/runs</code></td>
-<td><strong>admin</strong></td>
+<td>admin</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -608,26 +714,109 @@ needed. See <a href="../concepts/trace.html">The trace</a>.</p>
 </tr>
 </tbody>
 </table>
-<p><code>GET /api/pipelines</code> lists each pipeline with its <code>layers</code> and last run of each,
-the <code>model</code>(s) it feeds, and, from its <code>pipelines/&lt;name&gt;.yaml</code>, the <code>transform</code>
-it runs (the phase ① script; <code>null</code> for a hand-built runner) and its
-<code>description</code>; a model's Data page (its line and Transform tab) and Data's board (<code>/data</code>) show them.</p>
-<p>These <strong>write to the warehouse</strong>, which is why they require <code>admin</code> — the split
-in the role model is by side effect, not by resource.</p>
-<p><code>POST …/runs</code> is what <strong>Refresh data</strong> (the primary action on a model's Transform tab, shown only to an admin) and
-per-step <strong>Run</strong> use. It
-starts the run in the background and returns at once (<code>202</code>; <code>?layer=</code> runs one
-step, <code>?refresh=true</code> adds what it depends on). A pipeline already running
-returns that run with <code>already_running: true</code>. The run's output is a log:
-<code>GET …/runs/{id}/log?after=&lt;offset&gt;</code> returns the new lines, a <code>next</code> offset to
-ask from, and <code>done</code>. Reading a log needs <code>analyst</code> because it is whatever the
-steps printed, not only their status. Logs are files under
-<code>data/logs/pipelines/&lt;name&gt;/</code>, the newest 30 per pipeline.</p>
-<p><code>GET …/runs</code> lists every recorded run of the pipeline, newest first, whether it
-started from the app or from <code>tracebi run-pipeline</code> (those carry
-<code>actor_role: "cli"</code>). A run has <code>layers</code> (the steps it ran) and <code>reports</code> (the
-reports its build step rebuilt, only those it actually built).</p>
-<h2 id="connectors-docs-dev">Connectors, docs, dev</h2>
+<ul>
+<li>Running a pipeline writes the warehouse, so it needs <code>admin</code>. Roles are
+  split by what a route changes, not by resource.</li>
+<li><code>GET /api/pipelines</code> lists each pipeline's <code>layers</code> with their last run, the
+  <code>model</code>(s) it feeds, and from <code>pipelines/&lt;name&gt;.yaml</code> the <code>transform</code> it
+  runs (<code>null</code> for a runner built in Python) and its <code>description</code>.</li>
+<li><code>POST …/runs</code> is what <strong>Refresh data</strong> and a step's <strong>Run</strong> call. It returns
+  202 at once (<code>?layer=</code> for one step, <code>?refresh=true</code> to add what it depends
+  on). A pipeline already running returns that run with
+  <code>already_running: true</code>.</li>
+<li><code>GET …/runs/{id}/log?after=&lt;offset&gt;</code> returns new lines, a <code>next</code> offset and
+  <code>done</code>. It needs <code>analyst</code> because it is whatever the steps printed. Logs
+  live in <code>data/logs/pipelines/&lt;name&gt;/</code>, the newest 30 per pipeline.</li>
+<li><code>GET …/runs</code> lists every run, from the app or <code>tracebi run-pipeline</code> (those
+  carry <code>actor_role: "cli"</code>), each with <code>layers</code> (the steps it ran) and
+  <code>reports</code> (the reports its build step rebuilt).</li>
+</ul>
+<h2 id="sources-transforms-and-the-warehouse">Sources, transforms and the warehouse</h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Path</th>
+<th>Role</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/connectors</code> · <code>/api/connectors/{name}</code></td>
+<td>viewer</td>
+<td>Each carries <code>read_by</code>: <code>{transforms: [{name, tables}], layers: [{pipeline, layer}], models}</code>, read from transform files (<code>-- source:</code> lines, <code>load_source(...)</code>), pipeline layers and models; also <code>warehouse</code> (bool), <code>label</code> and <code>dialect</code> (SQL).</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/connectors/{name}/source</code></td>
+<td>viewer</td>
+<td>The model files that declare it</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/connectors/{name}/tables</code></td>
+<td>viewer</td>
+<td><code>{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}], hidden_framework_tables}</code>, or <code>200 {connected: false, reason, variable?}</code> when its <code>${VAR}</code> is unset or it refuses. <code>rows</code> is exact for a DuckDB file or in-memory frames, the catalog estimate for a database that keeps one (Postgres <code>pg_class.reltuples</code>, <code>rows_exact: false</code>), else null. No table is counted row by row. The connection is opened for this request only.</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/connectors/{name}/test</code></td>
+<td>admin</td>
+<td>Opens the connection, lists its tables, closes it: <code>{ok: true, tables: n}</code> or <code>{ok: false, reason}</code>, with every resolved credential removed from the reason (<a href="../reference/credentials.html">Credentials</a>).</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/connectors/{name}/warehouse</code></td>
+<td>viewer</td>
+<td>Tables, row counts, column profiles and sink-contract status of a DuckDB file source, plus <code>hidden_framework_tables</code>. Each contract names the <code>file</code> that declares it and the transform's <code>note</code>. Opened read-only and closed within the request.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/credentials</code></td>
+<td>viewer</td>
+<td>Every <code>${NAME}</code> the project references and where it is set, never a value (<a href="../reference/credentials.html">Credentials</a>).</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/credentials/{name}</code></td>
+<td>admin, identified</td>
+<td><code>{value}</code> → the status row: 201 new, 200 replaced, 422 for an unreferenced name. Without sign-in: 403 naming <code>tracebi secret set NAME</code>. Records a <code>credential</code> run row.</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/credentials/{name}</code></td>
+<td>admin, identified</td>
+<td>Removes the store's value: 204, or 404 when it holds none. Environment and <code>.env</code> values are untouched.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/inputs</code></td>
+<td>viewer</td>
+<td><code>{folder, exists, files: [{path, size, modified, read_by: [transform], table}]}</code>. <code>read_by</code> comes from each transform's literal paths into <code>inputs/</code>.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/transforms</code></td>
+<td>viewer</td>
+<td>Every file in <code>transforms/</code>: <code>[{name, form: sql\|python\|notebook, file, contract_file, note, pipelines, models, tables, written_at}]</code>. <code>contract_file</code> is the <code>.contract.yaml</code> beside it, or the file itself when it holds a <code>with contract(...)</code> block. <code>models</code> are those its pipelines refresh, then those reading what it wrote. <code>tables</code> and <code>written_at</code> come from the certificate.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/transforms/{name}/source</code></td>
+<td>viewer</td>
+<td>The transform's file and its contract (<code>{files, hint}</code>). <code>name</code> is a stem in <code>transforms/</code>, never a path (404 otherwise).</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/warehouse</code></td>
+<td>viewer</td>
+<td><code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}</code>, one per warehouse connector; <code>writers</code> lists what each transform's run read, once per transform. Read-only; framework tables are never listed.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="docs-dev-and-the-gateway">Docs, dev and the gateway</h2>
 <table>
 <thead>
 <tr>
@@ -639,90 +828,34 @@ reports its build step rebuilt, only those it actually built).</p>
 <tbody>
 <tr>
 <td><code>GET</code></td>
-<td><code>/api/connectors</code> · <code>/api/connectors/{name}</code></td>
-<td>viewer. Each carries <code>read_by</code>: <code>{transforms: [{name, tables}], layers: [{pipeline, layer}], models}</code>, read from the transform files (<code>-- source:</code> lines, <code>load_source(...)</code>), the pipelines' layers and the models</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/connectors/{name}/source</code></td>
-<td>viewer</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/connectors/{name}/tables</code></td>
-<td>viewer. What the source holds, read now: <code>{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}], hidden_framework_tables}</code> (<code>rows</code> exact for a DuckDB file or frames in memory; the catalog's estimate with <code>rows_exact: false</code> for a SQL database that keeps one, Postgres <code>pg_class.reltuples</code>; else null: no table is counted row by row), or <code>{connected: false, reason, variable?}</code> with status 200 when its <code>${VAR}</code> is unset or it refuses. The connection is resolved on this request only and released before it returns</td>
-</tr>
-<tr>
-<td><code>POST</code></td>
-<td><code>/api/connectors/{name}/test</code></td>
-<td><strong>admin</strong>. Opens the connection, lists its tables, closes it: <code>{ok: true, tables: n}</code> or <code>{ok: false, reason}</code>, the reason scrubbed of every resolved credential value (<a href="../reference/credentials.html">Credentials</a>)</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/credentials</code></td>
-<td>viewer. Every <code>${NAME}</code> the project references and where it is set, never a value: <code>{credentials: [{name, used_by: [{kind, name, field, default}], set, source: environment\|dotenv\|store\|default\|null, stored, updated_at?, updated_by?, problem?}], key_source: env\|file, can_change}</code></td>
-</tr>
-<tr>
-<td><code>PUT</code></td>
-<td><code>/api/credentials/{name}</code></td>
-<td><strong>admin, identified</strong> (a sign-in role; with no sign-in it is 403 naming <code>tracebi secret set NAME</code>). Body <code>{value}</code>; answers the status row, 201 new or 200 replaced, 422 for a name nothing references. Records a <code>credential</code> run row</td>
-</tr>
-<tr>
-<td><code>DELETE</code></td>
-<td><code>/api/credentials/{name}</code></td>
-<td><strong>admin, identified</strong>. Removes the store's value (204, 404 when it holds none); an environment or <code>.env</code> value is untouched</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/connectors/{name}/warehouse</code></td>
-<td>viewer. Tables, row counts, column profiles and sink-contract status of a file-backed DuckDB source, and <code>hidden_framework_tables</code> (the <code>tracebi_*</code> / <code>alembic_version</code> tables left out); the file is opened read-only and closed within the request</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/inputs</code></td>
-<td>viewer. The project's <code>inputs/</code> folder: <code>{folder, exists, files: [{path, size, modified, read_by: [transform]}]}</code>; <code>read_by</code> is found by reading each transform for a literal path into <code>inputs/</code></td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/transforms</code></td>
-<td>viewer. Every file in <code>transforms/</code>: <code>[{name, form: sql\|python\|notebook, file, contract_file \| null, note \| null, pipelines: [name], models: [name], tables: [name], written_at \| null}]</code>. <code>contract_file</code> is the <code>.contract.yaml</code> beside it, or the file itself when it holds a <code>with contract(...)</code> block; <code>models</code> are those its pipelines refresh, then those that read what it wrote; <code>tables</code> and <code>written_at</code> are what a certificate says it wrote (empty and null for a transform no certificate names). Read-only</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/transforms/{name}/source</code></td>
-<td>viewer. The transform's file and the contract beside it (<code>{files, hint}</code>, as the other <code>/source</code> routes); <code>name</code> is a file's stem in <code>transforms/</code>, never a path (404 otherwise)</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
-<td><code>/api/warehouse</code></td>
-<td>viewer. <code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by: {transform, contract, at} \| null, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}</code>, one per warehouse-kind connector, read-only; framework tables are never listed</td>
-</tr>
-<tr>
-<td><code>GET</code></td>
 <td><code>/api/docs</code> · <code>/api/docs/{name}</code></td>
 <td>viewer</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
 <td><code>/api/_dev/reload</code></td>
-<td><strong>admin</strong>, and only with <code>TRACEBI_DEV_MODE</code></td>
-</tr>
-<tr>
-<td><code>POST</code> · <code>GET</code> · <code>DELETE</code></td>
-<td><code>/mcp</code></td>
-<td>the agent gateway, only when <code>TRACEBI_MCP_TOKEN</code>, <code>TRACEBI_OIDC_ISSUER</code> or the built-in sign-in (<code>TRACEBI_DEMO_LOGIN</code>, <code>TRACEBI_LOCAL_USERS</code>) is set. Bearer token, outside the app's Basic/proxy auth (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>)</td>
+<td>admin, and only with <code>TRACEBI_DEV_MODE</code></td>
 </tr>
 <tr>
 <td><code>GET</code></td>
 <td><code>/api/_dev/discovered</code></td>
 <td>admin</td>
 </tr>
+<tr>
+<td><code>POST</code> · <code>GET</code> · <code>DELETE</code></td>
+<td><code>/mcp</code></td>
+<td>Only with <code>TRACEBI_MCP_TOKEN</code>, <code>TRACEBI_OIDC_ISSUER</code> or the built-in sign-in (<code>TRACEBI_DEMO_LOGIN</code>, <code>TRACEBI_LOCAL_USERS</code>). A bearer token, outside the app's Basic or proxy auth (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>).</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/login?next=</code> · <code>/login/callback</code> · <code>POST /logout</code></td>
+<td>App sign-in through the OIDC provider (<a href="../guides/sign-in.html">Sign in with your company login</a>)</td>
+</tr>
 </tbody>
 </table>
-<h2 id="the-spa">The SPA</h2>
-<p><code>GET /</code> serves the built React bundle. When it has not been built, the page
-says so and names the build command rather than 404ing.</p>
-<p>The app's addresses, four places in the sidebar (<code>web/ui/src/nav.js</code>):</p>
+<h2 id="the-apps-addresses">The app's addresses</h2>
+<p><code>GET /</code> serves the built React app. When it has not been built, the page names
+the build command.</p>
 <table>
 <thead>
 <tr>
@@ -733,55 +866,47 @@ says so and names the build command rather than 404ing.</p>
 <tbody>
 <tr>
 <td>Reports</td>
-<td><code>/</code> the library as a directory (<code>?model=&lt;m&gt;</code> narrows it); <code>/?folder=&lt;path&gt;</code> one folder's page (a folder the caller may not see is a page not found); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on); <code>/ask</code> a question of one model (<code>?model=&lt;m&gt;</code> picks it), reached by <strong>Ask this model</strong> on a folder's page or a model's Data page</td>
+<td><code>/</code> the library (<code>?model=&lt;m&gt;</code> narrows it); <code>/?folder=&lt;path&gt;</code> one folder (one the caller may not see is not found); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on); <code>/ask</code> a question of one model (<code>?model=&lt;m&gt;</code>), reached by <strong>Ask this model</strong> on a folder's page or a model's Data page</td>
 </tr>
 <tr>
 <td>Data</td>
-<td>five tabs: <code>/data</code> Flow (the board: sources → transforms → warehouse → models → reports; <code>?model=&lt;m&gt;</code> opens with that model's path lit), <code>/data/sources</code> Sources (every connection and the <code>inputs/</code> folder), <code>/data/transforms</code> Transforms (every file in <code>transforms/</code>), <code>/data/warehouse</code> Warehouse (the data browser over every table, grouped by the transform that wrote it; <code>?table=&lt;t&gt;</code> selects a table, <code>?group=</code> a transform's group), <code>/data/models</code> Models (a chain row per model); <code>?model=&lt;m&gt;</code> narrows Sources, Transforms and Warehouse. <code>/data/&lt;m&gt;</code> one model, its Model tab the data browser (<code>?table=&lt;t&gt;</code> selects a table, <code>?measure=&lt;name&gt;</code> its fact, <code>?view=measures\|relationships\|storage\|code</code> opens that fold of the summary), then <code>/transform</code>, <code>/sources</code>, <code>/runs</code></td>
+<td><code>/data</code> Flow (the board: sources → transforms → warehouse → models → reports; <code>?model=&lt;m&gt;</code> lights that model's path), <code>/data/sources</code>, <code>/data/transforms</code>, <code>/data/warehouse</code> (<code>?table=&lt;t&gt;</code>, <code>?group=&lt;writer&gt;</code>), <code>/data/models</code>; <code>?model=&lt;m&gt;</code> narrows Sources, Transforms and Warehouse. <code>/data/&lt;m&gt;</code> one model: its Model tab (<code>?table=&lt;t&gt;</code>, <code>?measure=&lt;name&gt;</code>, <code>?view=measures\|relationships\|storage\|code</code>), then <code>/transform</code>, <code>/sources</code>, <code>/runs</code>. <code>/data/tables/&lt;source&gt;/&lt;table&gt;</code> one table.</td>
 </tr>
 <tr>
 <td>Review</td>
-<td>four tabs: <code>/review</code> Attention, <code>/review/drafts</code> Drafts, <code>/runs</code> History, <code>/verify</code> Verify; <code>/drafts/&lt;owner&gt;/&lt;kind&gt;/&lt;path&gt;</code> one draft</td>
+<td><code>/review</code> Attention, <code>/review/drafts</code> Drafts, <code>/runs</code> History, <code>/verify</code> Verify; <code>/drafts/&lt;owner&gt;/&lt;kind&gt;/&lt;path&gt;</code> one draft</td>
 </tr>
 <tr>
 <td>Docs</td>
-<td><code>/docs</code> the handbook, in the order of <code>docs/toc.yaml</code>: <code>/docs/&lt;section&gt;/&lt;page&gt;</code> per file of <code>docs/</code>, the quickstart at <code>/docs/get-started</code>; a page that moved keeps its old address (the toc's <code>moved:</code>)</td>
+<td><code>/docs</code> the handbook in <code>docs/toc.yaml</code>'s order; <code>/docs/&lt;section&gt;/&lt;page&gt;</code> per file; the quickstart at <code>/docs/get-started</code>. A page that moved keeps its old address (the toc's <code>moved:</code>).</td>
 </tr>
 </tbody>
 </table>
-<p>The sidebar shows the places a role uses (<code>placesFor</code> in <code>web/ui/src/nav.js</code>):
-everyone Reports and Docs, an analyst also Review and Data (read-only: its run
-buttons and credential forms show for an admin). With no
-sign-in <code>/api/me</code> names everyone admin, so all four show. Under Reports the
-sidebar lists the library's folders (All reports, then one row per folder the
-caller may see). An address above the
-role renders a plain page saying who it is for; the API enforces the roles.</p>
-<p>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
-same thing under Data, Ask, History or the library; <code>/models</code> to <code>/data/models</code>
-(<code>/models?m=&lt;m&gt;</code> to <code>/data/&lt;m&gt;</code>); <code>/explore</code> to <code>/ask</code>; <code>/sources</code> and <code>/connectors</code> to
-<code>/data/sources</code>; <code>/map</code>, <code>/data/map</code> and <code>/data?view=map</code> to <code>/data</code> (with <code>model=&lt;m&gt;</code>, to
-<code>/data/&lt;m&gt;</code>: a model's page draws its line); <code>/handbook</code> (and <code>/handbook/&lt;page&gt;</code>) to <code>/docs</code>;
-<code>/getting-started</code> to <code>/docs/get-started</code>; <code>/workflow</code> to <code>/docs/concepts/the-three-phase-workflow</code>; <code>/drafts</code> and <code>/review#drafts</code>
-to <code>/review/drafts</code>; <code>/reports?r=&lt;name&gt;</code> to <code>/reports/&lt;name&gt;</code>.</p>
-<hr>
-<h2 id="error-shape">Error shape</h2>
-<p>A failed run returns a structured <code>detail</code>:</p>
-<pre><code class="language-json">{&quot;message&quot;: &quot;...&quot;, &quot;exception_type&quot;: &quot;ValueError&quot;, &quot;traceback&quot;: &quot;&quot;}
-</code></pre>
-<p><strong><code>traceback</code> is empty unless <code>TRACEBI_DEV_MODE</code> is set</strong> — a traceback leaks
-file paths, the server username and package versions. Keep it unset in
-production.</p>
-<h2 id="adding-a-route">Adding a route</h2>
-<p>Add a file under <code>tracebi/web/api/routers/</code>, include it in <code>main.py</code>, and read
-resources <strong>only from the registry</strong> — never import app-specific objects.</p>
-<p>Any non-GET route the authorizer does not recognise requires <code>analyst</code> by
-default, so a new write route is guarded rather than open. Add an explicit rule
-when it needs <code>admin</code>.</p>
-<h2 id="related">Related</h2>
 <ul>
-<li><a href="../reference/environment-variables.html">Environment variables</a> — auth configuration</li>
-<li><a href="../reference/cli.html">CLI reference</a> — the same operations from the terminal</li>
+<li>The sidebar shows the places a role uses (<code>placesFor</code> in
+  <code>web/ui/src/nav.js</code>): Reports and Docs for everyone, Review and Data for
+  analysts and admins (run buttons and credential forms for admins only).
+  With no sign-in <code>/api/me</code> says everyone is admin, so all four show.</li>
+<li>An address above the caller's role shows a page saying who it is for. The
+  API enforces the roles.</li>
+<li>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
+  same thing under Data, Ask, History or the library; <code>/models</code> to
+  <code>/data/models</code> (<code>/models?m=&lt;m&gt;</code> to <code>/data/&lt;m&gt;</code>); <code>/explore</code> to <code>/ask</code>;
+  <code>/sources</code> and <code>/connectors</code> to <code>/data/sources</code>; <code>/map</code>, <code>/data/map</code> and
+  <code>/data?view=map</code> to <code>/data</code> (with <code>model=&lt;m&gt;</code>, to <code>/data/&lt;m&gt;</code>); <code>/handbook</code>
+  and <code>/handbook/&lt;page&gt;</code> to <code>/docs</code>; <code>/getting-started</code> to
+  <code>/docs/get-started</code>; <code>/workflow</code> to
+  <code>/docs/concepts/the-three-phase-workflow</code>; <code>/drafts</code> and <code>/review#drafts</code>
+  to <code>/review/drafts</code>; <code>/reports?r=&lt;name&gt;</code> to <code>/reports/&lt;name&gt;</code>.</li>
 </ul>
+<h2 id="add-a-route">Add a route</h2>
+<ol>
+<li>Add a file under <code>tracebi/web/api/routers/</code>.</li>
+<li>Include it in <code>main.py</code>.</li>
+<li>Read resources only from the registry. Never import app-specific objects.</li>
+</ol>
+<p>Any write route the authorizer does not recognise requires <code>analyst</code>, so a new
+route is guarded by default. Add an explicit rule when it needs <code>admin</code>.</p>
   </main>
 </div>
 <script>

@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>SOP — Authoring a Report Through the Gateway (Analyst Agent) — TraceBi docs</title>
+<title>SOP: Author a report through the gateway — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Stamp handling — non-negotiable:">
+<meta name="description" content="SOP: Author a report through the gateway">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,47 +61,46 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a class="on" href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a class="on" href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="sop-authoring-a-report-through-the-gateway-analyst-agent">SOP — Authoring a Report Through the Gateway (Analyst Agent)</h1>
-<blockquote>
-<p><strong>Read <code>AGENTS.md</code> first.</strong> It is the brief every agent reads before working in a
-TraceBi project (<code>tracebi init</code> writes one into each). This SOP is the
-step-by-step for one job in it: a report authored over the gateway.</p>
-</blockquote>
-<p>Standard operating procedure for an AI analyst agent producing reports over
-TraceBi's MCP gateway (<code>tracebi mcp</code>). Follow the steps in order. The
-governing principle: <strong>you never touch the warehouse — you speak the semantic
-contract, every answer you receive is stamped, and every number you show a
-human carries its trace.</strong></p>
-<p><strong>Where this sits in the three-phase workflow (see <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>).</strong> This is
-<strong>phase ③ — REPORT</strong>, authoring over the model boundary. You are handed two
-freeze points: a warehouse phase ① already sank (<code>data/warehouse.duckdb</code> by
-default) and a model phase ② already declared over it (<code>models/&lt;name&gt;.yaml</code>,
-e.g. <code>models/portfolio_model.yaml</code>). You do not re-run the phase-① transform and
-you do not see it — the model is the contract you author against, and everything below is
-exactly how the reference project's reports (<code>reports/portfolio_model/</code>) were written. <strong>The trust
-machinery in this SOP — stamped queries, validate-before-execute, <code>verify</code> —
-governs from that model boundary onward. It says nothing about phase ①, which is
-unconstrained SQL or pandas trusted as reviewed code, not by fingerprint.</strong> If a number
-you need is wrong or absent below the model, this SOP cannot fix it; escalate to
-the engineer SOP (a model change) or, if the raw data was never sunk, to a
-phase-① transform change.</p>
-<p>The gateway exposes twenty-two tools and three prompts (<code>author_report</code>,
-<code>answer_question</code>, <code>address_pins</code>); the MCP <code>tools/list</code> call is the source of
-truth if this table drifts. This SOP walks the spec path; a report package is
-the same loop with <code>build_report</code>, and over a hosted connection the draft tools
-below are how a package reaches the server (<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>,
-<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>):</p>
+<h1 id="sop-author-a-report-through-the-gateway">SOP: Author a report through the gateway</h1>
+<p>The procedure an AI analyst agent follows to produce a report over TraceBi's
+MCP gateway (<code>tracebi mcp</code>). Follow the steps in order.</p>
+<p>Read <code>AGENTS.md</code> first. It is the brief every agent reads before working in a
+TraceBi project (<code>tracebi init</code> writes one into each). This SOP is one job
+from it.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ul>
+<li><strong>You work at the report stage.</strong> A transform has already written the
+  warehouse (<code>data/warehouse.duckdb</code> by default), and a model is declared over
+  it (<code>models/&lt;name&gt;.yaml</code>, such as <code>models/portfolio_model.yaml</code>). You don't
+  run or see the transform; the model is what you author against. The reports
+  in <code>reports/portfolio_model/</code> were written this way. See
+  <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</li>
+<li><strong>You never touch the warehouse.</strong> You use the model's names, every answer
+  you get is stamped, and every number you show a person carries its trace.</li>
+<li><strong>The checks cover the model onward.</strong> Stamped queries, validation and
+  <code>verify</code> say nothing about the transform, which is reviewed as code. If a
+  number is wrong or missing below the model, this SOP cannot fix it: escalate
+  to a model change (<a href="../agents/sop-model-changes.html">SOP: Change a model's measures and keys</a>), or to a transform change if the
+  data was never written.</li>
+</ul>
+<h3 id="the-tools">The tools</h3>
+<p>The gateway has twenty-two tools and three prompts (<code>author_report</code>,
+<code>answer_question</code>, <code>address_pins</code>) that run this procedure for you. The MCP
+<code>tools/list</code> call is the source of truth if this table drifts. This SOP walks
+the spec path. A report package is the same loop with <code>build_report</code>. Over a
+hosted connection, the draft tools are how a package reaches the server
+(<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>, <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>).</p>
 <table>
 <thead>
 <tr>
@@ -112,11 +111,11 @@ below are how a package reaches the server (<a href="../guides/push-from-a-lapto
 <tbody>
 <tr>
 <td><code>get_context</code></td>
-<td>The semantic contract: full vocabulary, optionally plus one model's schema. Pass <code>brief</code> for the token-lean version</td>
+<td>The full vocabulary, optionally with one model's schema. Pass <code>brief</code> for the smaller version.</td>
 </tr>
 <tr>
 <td><code>list_models</code></td>
-<td>Models this project exposes, with facts/dimensions/measures</td>
+<td>The project's models, with facts, dimensions and measures</td>
 </tr>
 <tr>
 <td><code>describe_model</code></td>
@@ -124,23 +123,23 @@ below are how a package reaches the server (<a href="../guides/push-from-a-lapto
 </tr>
 <tr>
 <td><code>describe_table</code></td>
-<td>Columns and types of a raw warehouse table, for before a model exists</td>
+<td>Columns and types of a raw warehouse table, before a model exists</td>
 </tr>
 <tr>
 <td><code>query_model</code></td>
-<td>Run a star-schema query; returns rows <strong>plus a stamp</strong></td>
+<td>Run a star-schema query; returns rows and a stamp</td>
 </tr>
 <tr>
 <td><code>validate_report_spec</code></td>
-<td>Check a spec against the models without loading a row; also returns <code>design —</code> warnings</td>
+<td>Check a spec against the models without loading a row; also returns <code>design</code> warnings</td>
 </tr>
 <tr>
 <td><code>render_report_spec</code></td>
-<td>Validate, build and render a spec to HTML + manifest</td>
+<td>Validate, build and render a spec to HTML and a manifest</td>
 </tr>
 <tr>
 <td><code>build_report</code></td>
-<td>Build a report package under <code>reports/</code> to one HTML file + manifest</td>
+<td>Build a report package under <code>reports/</code> to one HTML file and a manifest</td>
 </tr>
 <tr>
 <td><code>fetch_artifact</code></td>
@@ -148,11 +147,11 @@ below are how a package reaches the server (<a href="../guides/push-from-a-lapto
 </tr>
 <tr>
 <td><code>list_reports</code></td>
-<td>Reports the project already exposes</td>
+<td>Reports the project already has</td>
 </tr>
 <tr>
 <td><code>workbench_state</code></td>
-<td>What the live <code>tracebi dev</code> workbench shows, including a reviewer's pins</td>
+<td>What the <code>tracebi dev</code> workbench shows, including a reviewer's pins</td>
 </tr>
 <tr>
 <td><code>resolve_pin</code></td>
@@ -160,19 +159,19 @@ below are how a package reaches the server (<a href="../guides/push-from-a-lapto
 </tr>
 <tr>
 <td><code>verify_manifest</code></td>
-<td>Re-run every recorded query in a rendered manifest and classify each figure (<code>reproduces</code> / <code>source_drift</code> / <code>model_changed</code> / <code>unexplained</code> / <code>unverifiable</code>) — the built-in replay for step 6 at L2/L3</td>
+<td>Re-run every recorded query in a manifest and classify each figure (<code>reproduces</code>, <code>source_drift</code>, <code>model_changed</code>, <code>unexplained</code>, <code>unverifiable</code>)</td>
 </tr>
 <tr>
 <td><code>list_drafts</code> · <code>start_draft</code> · <code>read_draft</code> · <code>write_draft_file</code></td>
-<td>Your drafts on the server: start one (empty, or a copy of the published report or model), read it, write one allowed file</td>
+<td>Your drafts on the server: start one (empty, or a copy of a published report or model), read it, write one allowed file</td>
 </tr>
 <tr>
 <td><code>preview_draft</code></td>
-<td>Validate and render a draft in memory; errors, warnings and the draft's address in the app</td>
+<td>Validate and render a draft in memory; returns errors, warnings and its address in the app</td>
 </tr>
 <tr>
 <td><code>model_impact</code></td>
-<td>For a model draft: each published report that reads the model, unchanged / moves / breaks</td>
+<td>For a model draft: each published report that reads the model, unchanged, moves or breaks</td>
 </tr>
 <tr>
 <td><code>publish_draft</code></td>
@@ -184,9 +183,7 @@ below are how a package reaches the server (<a href="../guides/push-from-a-lapto
 </tr>
 </tbody>
 </table>
-<p>It also offers three prompts that run this procedure for you: <code>author_report</code>,
-<code>answer_question</code> and <code>address_pins</code>.</p>
-<p>Where you stand on the assurance ladder:</p>
+<h3 id="assurance-levels">Assurance levels</h3>
 <table>
 <thead>
 <tr>
@@ -199,59 +196,67 @@ below are how a package reaches the server (<a href="../guides/push-from-a-lapto
 <tr>
 <td>L0</td>
 <td>Raw SQL, raw HTML</td>
-<td>Nothing — <strong>never operate here</strong></td>
+<td>Nothing. Never work here.</td>
 </tr>
 <tr>
 <td>L1</td>
-<td>Query via gateway, render your own HTML</td>
+<td>Query through the gateway, write your own HTML</td>
 <td>Every number traceable</td>
 </tr>
 <tr>
 <td>L2</td>
 <td>Emit a report package or a ReportSpec; TraceBi builds it</td>
-<td>Artifact reproducible</td>
+<td>The artifact reproduces</td>
 </tr>
 <tr>
 <td>L3</td>
-<td>L2 + signed manifest + re-verification</td>
+<td>L2 plus a signed manifest and re-verification</td>
 <td>Attestable (future)</td>
 </tr>
 </tbody>
 </table>
-<p>Default to <strong>L2</strong>. Drop to L1 only when the six section types genuinely
-cannot express the presentation — and then step 6 (self-audit) is mandatory,
-because at L1 nothing machine-checks your transcription.</p>
-<hr>
-<h2 id="step-1-load-the-contract-get_context">Step 1 — Load the contract: <code>get_context</code></h2>
+<p>Work at L2. Drop to L1 only when the six section types cannot express the
+page, and then step 6 is mandatory, because nothing checks your
+transcription.</p>
+<h2 id="1-load-the-contract-with-get_context">1. Load the contract with <code>get_context</code></h2>
 <p>Always the first call. Nothing outside what it returns will validate.</p>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;get_context&quot;, &quot;arguments&quot;: { &quot;model&quot;: &quot;wealth_model&quot; } }
 </code></pre>
-<p>The response contains, among other keys:</p>
-<ul>
-<li><code>report_sections</code> — every section type (<code>text</code>, <code>table</code>, <code>chart</code>,
-  <code>metrics</code>, <code>row</code>, <code>spacer</code>) with fields, defaults and allowed values
-  (<code>chart_type</code>: <code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>;
-  text <code>style</code>: <code>normal</code>, <code>heading1</code>, <code>heading2</code>, <code>note</code>, <code>callout</code>;
-  table <code>style</code>: <code>default</code>, <code>striped</code>, <code>compact</code>)</li>
-<li><code>semantic_model</code> — aggregations (<code>sum</code>, <code>count</code>, <code>mean</code>, <code>avg</code>, <code>min</code>,
-  <code>max</code>, <code>nunique</code>), filter operators (<code>eq</code>, <code>ne</code>, <code>in</code>, <code>not_in</code>, <code>gt</code>,
-  <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>between</code>, <code>is_null</code>, <code>not_null</code>, <code>contains</code>), filter
-  forms, and the measure kinds (<code>simple</code>, <code>expression</code>, <code>ratio</code>)</li>
-<li><code>number_formats</code> — named formats (<code>currency</code>, <code>currency0</code>, <code>percent</code>,
-  <code>comma</code>, <code>decimal</code>)</li>
-<li><code>model</code> (because we passed <code>model=</code>) — that model's tables, relationships,
-  facts, dimensions, and <strong>named measures</strong></li>
-</ul>
-<p>Use <code>list_models</code> first if you do not know which model to ask for;
-<code>describe_model</code> (<code>{"model": "wealth_model"}</code>) re-fetches one schema later
-without the full vocabulary.</p>
-<p><strong>Rule: treat the contract as closed.</strong> If a fact, dimension attribute or
-measure is not in the response, it does not exist. Do not guess names —
-validation will reject them, and inventing vocabulary is the exact failure
-mode this gateway exists to prevent.</p>
-<h2 id="step-2-explore-with-query_model-and-handle-the-stamp">Step 2 — Explore with <code>query_model</code>, and handle the stamp</h2>
-<p>Probe the data before deciding what to write. A query names a fact, measures,
-and dimension attributes as <code>dim_name.attribute</code>:</p>
+<p>The response includes:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Holds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>report_sections</code></td>
+<td>Every section type (<code>text</code>, <code>table</code>, <code>chart</code>, <code>metrics</code>, <code>row</code>, <code>spacer</code>) with fields, defaults and allowed values: <code>chart_type</code> (<code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>), text <code>style</code> (<code>normal</code>, <code>heading1</code>, <code>heading2</code>, <code>note</code>, <code>callout</code>), table <code>style</code> (<code>default</code>, <code>striped</code>, <code>compact</code>)</td>
+</tr>
+<tr>
+<td><code>semantic_model</code></td>
+<td>Aggregations (<code>sum</code>, <code>count</code>, <code>mean</code>, <code>avg</code>, <code>min</code>, <code>max</code>, <code>nunique</code>), filter operators (<code>eq</code>, <code>ne</code>, <code>in</code>, <code>not_in</code>, <code>gt</code>, <code>gte</code>, <code>lt</code>, <code>lte</code>, <code>between</code>, <code>is_null</code>, <code>not_null</code>, <code>contains</code>), filter forms, and measure kinds</td>
+</tr>
+<tr>
+<td><code>number_formats</code></td>
+<td><code>currency</code>, <code>currency0</code>, <code>percent</code>, <code>comma</code>, <code>decimal</code></td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td>With <code>model=</code>: that model's tables, relationships, facts, dimensions and named measures</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>list_models</code> first if you don't know which model to ask for.
+<code>describe_model</code> (<code>{"model": "wealth_model"}</code>) re-fetches one schema later.</p>
+<p><strong>Treat the contract as closed.</strong> A fact, attribute or measure not in the
+response does not exist. Don't guess names: validation rejects them, and
+invented vocabulary is the failure this gateway exists to prevent.</p>
+<h2 id="2-explore-with-query_model-and-keep-the-stamp">2. Explore with <code>query_model</code> and keep the stamp</h2>
+<p>Probe the data before you decide what to write. A query names a fact,
+measures, and dimension attributes as <code>dim_name.attribute</code>:</p>
 <pre><code class="language-json">{
   &quot;tool&quot;: &quot;query_model&quot;,
   &quot;arguments&quot;: {
@@ -262,9 +267,9 @@ and dimension attributes as <code>dim_name.attribute</code>:</p>
   }
 }
 </code></pre>
-<p><code>measures</code> accepts either a list of <strong>named measures</strong> the model declares, or
-an inline <code>{column: agg}</code> dict such as <code>{"market_value": "sum"}</code>. <code>filters</code>
-accepts equality (<code>{"dim_client.segment": "private"}</code>), lists meaning IN
+<p><code>measures</code> takes declared names, or an inline <code>{column: agg}</code> dict such as
+<code>{"market_value": "sum"}</code>. <code>filters</code> takes equality
+(<code>{"dim_client.segment": "private"}</code>), lists meaning IN
 (<code>{"region": ["NE", "SE"]}</code>), and operator dicts
 (<code>{"market_value": {"gte": 1000}}</code>).</p>
 <p>The response:</p>
@@ -289,78 +294,70 @@ accepts equality (<code>{"dim_client.segment": "private"}</code>), lists meaning
   &quot;actor&quot;: &quot;mcp:agent&quot;
 }
 </code></pre>
-<p><strong>Stamp handling — non-negotiable:</strong></p>
+<p>Handle the stamp this way, every time:</p>
 <ol>
-<li><strong>Record <code>query</code> and <code>fingerprint</code> verbatim</strong> for every query whose
-   numbers you might later cite. The recorded pair is your working paper;
-   step 6 replays it.</li>
-<li><strong>The fingerprint covers the full result; <code>rows</code> is transport.</strong> Row
-   delivery is capped (<code>limit</code>, default 50, hard cap 500) but the SHA-256
-   fingerprint always hashes the <em>uncapped</em> DataSet. If <code>truncated</code> is
-   <code>true</code>, any number you compute from <code>rows</code> alone describes a preview, not
-   the result — raise <code>limit</code> (≤ 500), narrow the query, or put the table in
-   a report spec instead of paging rows through your context.</li>
-<li><strong>Never re-derive a stamped number downstream.</strong> If you need a total, ask
-   the query for it (or use the section's <code>totals</code>); summing displayed rows
-   yourself is how the $1 rounding error in
-   <code>examples/agent_gateway/verify_report.py</code> happened.</li>
+<li><strong>Record <code>query</code> and <code>fingerprint</code> exactly</strong> for every query whose numbers
+   you might cite. Step 6 replays them.</li>
+<li><strong>The fingerprint covers the full result; <code>rows</code> is only delivery.</strong> Rows
+   are capped (<code>limit</code>, default 50, at most 500), but the fingerprint hashes
+   the uncapped result. If <code>truncated</code> is <code>true</code>, a number computed from
+   <code>rows</code> describes a preview. Raise <code>limit</code> (up to 500), narrow the query, or
+   put the table in a spec.</li>
+<li><strong>Never re-derive a stamped number.</strong> Ask the query for a total, or use a
+   section's <code>totals</code>. Summing displayed rows yourself is how the $1 rounding
+   error in <code>examples/agent_gateway/verify_report.py</code> happened.</li>
 </ol>
-<h2 id="step-3-author-the-spec">Step 3 — Author the spec</h2>
-<p>A report spec is JSON: <code>name</code> (required), plus optional <code>sections</code>, <code>author</code>,
-<code>description</code>, <code>parameters</code>. Each data-bearing section (<code>table</code>, <code>chart</code>)
-carries a <code>data</code> reference — <code>{"model": …, "query": …}</code> — where <code>query</code> has
-exactly the fields <code>fact</code>, <code>measures</code>, <code>dimensions</code>, <code>filters</code>, <code>aggregate</code>,
-<code>allow_fanout</code>. <code>tracebi spec schema</code> (or <code>GET /api/spec/schema</code>) publishes
-the full JSON Schema.</p>
-<p>Authoring rules:</p>
+<h2 id="3-write-the-spec">3. Write the spec</h2>
+<p>A spec is JSON: <code>name</code> (required), plus optional <code>sections</code>, <code>author</code>,
+<code>description</code> and <code>parameters</code>. Each <code>table</code> or <code>chart</code> section carries a
+<code>data</code> reference, <code>{"model": …, "query": …}</code>, where <code>query</code> has exactly
+<code>fact</code>, <code>measures</code>, <code>dimensions</code>, <code>filters</code>, <code>aggregate</code> and <code>allow_fanout</code>.
+<code>tracebi spec schema</code> (or <code>GET /api/spec/schema</code>) prints the JSON Schema.</p>
 <ul>
-<li><strong>Named measures beat inline aggs.</strong> <code>"measures": ["market_value",
-  "unrealized_gain"]</code> uses the model's shared definitions — "unrealized gain"
-  means the same thing in every report, and the measure's declared format
-  (<code>currency0</code>, <code>percent</code>, …) flows to the renderer with no formatting code
-  in your spec. Fall back to <code>{column: agg}</code> only for a concept the model has
-  no name for — and treat that as a signal (next rule).</li>
-<li><strong>A missing concept is an escalation, never a workaround.</strong> A spec cannot
-  express arbitrary computation — by design. If the analysis needs a measure,
-  dimension attribute, or fact the contract does not declare, <strong>stop and
-  escalate to the engineer SOP</strong> (this directory): the fix is a code-reviewed
-  change in the definition plane (a <code>measures:</code> entry in
-  <code>models/&lt;name&gt;.yaml</code>, e.g. <code>{name: unrealized_gain, expr: market_value -
-  cost_basis, agg: sum, format: currency0}</code>), after which a fresh gateway process's next call
-  sees the new vocabulary. Do <strong>not</strong> compute the number yourself in a text
-  section, do not approximate it with a different aggregation, do not
-  transcribe hand-arithmetic into the page. Change the contract in git; use
-  the contract over MCP.</li>
-<li><strong>Set <code>author</code></strong> so the artifact says who made it, e.g.
-  <code>"claude (via mcp gateway)"</code>.</li>
-<li>Use <code>text</code> sections for narrative and a closing provenance note; use
-  <code>column_labels</code>, <code>totals</code>, and <code>number_formats</code> on tables rather than
-  reformatting data in the query.</li>
-<li>Leave <code>allow_fanout</code> false. If a query raises about a non-unique dimension
-  key, that is the framework refusing to silently inflate additive measures —
-  investigate or escalate; do not flip the flag to make an error go away.</li>
+<li><strong>Use named measures.</strong> <code>"measures": ["market_value", "unrealized_gain"]</code>
+  uses the model's shared definitions, so "unrealized gain" means the same in
+  every report, and each measure's declared format reaches the page with no
+  formatting in your spec. Use <code>{column: agg}</code> only for a concept the model
+  has no name for, and treat that as a signal (next rule).</li>
+<li><strong>A missing concept is an escalation.</strong> A spec cannot express arbitrary
+  computation. If you need a measure, attribute or fact the contract lacks,
+  stop and follow <a href="../agents/sop-model-changes.html">SOP: Change a model's measures and keys</a>: the fix is a reviewed change to the
+  model file (a <code>measures:</code> entry in <code>models/&lt;name&gt;.yaml</code>, such as
+  <code>{name: unrealized_gain, expr: market_value - cost_basis, agg: sum, format: currency0}</code>),
+  after which a fresh gateway process sees it. Don't compute the number in a
+  text section, approximate it with another aggregation, or type
+  hand arithmetic into the page. Change the contract in git; use it over MCP.</li>
+<li><strong>Set <code>author</code></strong>, e.g. <code>"claude (via mcp gateway)"</code>, so the artifact says
+  who made it.</li>
+<li>Use <code>text</code> sections for narrative and a closing provenance note. Use
+  <code>column_labels</code>, <code>totals</code> and <code>number_formats</code> on tables rather than
+  reformatting in the query.</li>
+<li><strong>Leave <code>allow_fanout</code> false.</strong> An error about a non-unique dimension key is
+  TraceBi refusing to inflate sums. Investigate or escalate; don't flip the
+  flag.</li>
 </ul>
-<h2 id="step-4-validate-repair-from-the-path-repeat">Step 4 — Validate, repair from the path, repeat</h2>
+<h2 id="4-validate-and-repair">4. Validate and repair</h2>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;validate_report_spec&quot;, &quot;arguments&quot;: { &quot;spec&quot;: { &quot;name&quot;: &quot;…&quot;, &quot;sections&quot;: [ &quot;…&quot; ] } } }
 </code></pre>
-<p>Returns <code>{"ok": bool, "errors": [...], "warnings": [...]}</code>. Every error
-carries a path into the spec (top-level parse failures — malformed JSON,
-missing <code>name</code> — return a plain message without one):</p>
+<p>It returns <code>{"ok": bool, "errors": [...], "warnings": [...]}</code>. Every error
+carries a path into the spec (malformed JSON or a missing <code>name</code> return a
+plain message):</p>
 <pre><code>sections[1].data.query.fact: 'fact_hallucinated' is not a fact on model 'wealth_model'. Available: ['fact_activities', 'fact_holdings']
 </code></pre>
-<p>The loop: read the path, fix exactly that field (many errors include a
-did-you-mean hint and the valid set), re-validate. Iterate until <code>ok</code> is
-<code>true</code> <strong>and</strong> you have read every warning — a warning like <em>"no data
-reference — this section cannot be rendered from the spec alone"</em> means the
-section is presentation-only and will not carry a fingerprint. Validation
-loads no data, so this loop is free; never skip it and let the renderer be
-your first check.</p>
-<h2 id="step-5-render-render_report_spec">Step 5 — Render: <code>render_report_spec</code></h2>
+<ol>
+<li>Read the path.</li>
+<li>Fix exactly that field. Many errors include a did-you-mean hint and the
+   valid set.</li>
+<li>Validate again.</li>
+<li>Repeat until <code>ok</code> is <code>true</code> and you have read every warning. A warning
+   that a section has <em>no data reference</em> means it carries no fingerprint.</li>
+</ol>
+<p>Validation loads no data, so the loop is free. Never let the renderer be your
+first check.</p>
+<h2 id="5-render-with-render_report_spec">5. Render with <code>render_report_spec</code></h2>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;render_report_spec&quot;, &quot;arguments&quot;: { &quot;spec&quot;: { &quot;…&quot;: &quot;…&quot; }, &quot;output_dir&quot;: &quot;output&quot; } }
 </code></pre>
-<p>The gateway re-validates and <strong>refuses an invalid spec</strong> — an artifact from a
-spec that failed validation is exactly the ungoverned output this surface
-exists to prevent. On success:</p>
+<p>The gateway validates again and refuses an invalid spec. On success:</p>
 <pre><code class="language-json">{
   &quot;ok&quot;: true,
   &quot;html_path&quot;: &quot;output/book-of-business-review.html&quot;,
@@ -371,134 +368,118 @@ exists to prevent. On success:</p>
   &quot;warnings&quot;: []
 }
 </code></pre>
-<p>The manifest is the trace: for every data-bearing section it records
-<code>dataset_fingerprint</code>, <code>dataset_lineage</code> (connector → aggregate),
-<code>dataset_name</code> and <code>dataset_shape</code>, plus the repo <code>git_sha</code> at render time.
-Confirm that each fingerprint in <code>dataset_fingerprints</code> matches the
-fingerprint of your corresponding step-2 exploratory query. A match proves
-the rendered artifact contains the same data you analyzed — same hash,
-provably the same data. A mismatch means the data moved between exploration
-and render: re-run your exploratory queries and reconcile before publishing.</p>
-<h2 id="step-6-self-audit-replay-the-traces">Step 6 — Self-audit: replay the traces</h2>
-<p>Before presenting anything, audit your own output. The pattern is
-<code>examples/agent_gateway/verify_report.py</code>, which caught a real $1 error in a
-page whose fingerprints all matched. Two independent checks, both required:</p>
+<p>The manifest is the trace. For each data section it records
+<code>dataset_fingerprint</code>, <code>dataset_lineage</code> (connector to aggregate),
+<code>dataset_name</code> and <code>dataset_shape</code>, plus the repository's <code>git_sha</code>.</p>
+<p>Check that each fingerprint in <code>dataset_fingerprints</code> matches the one from
+your step 2 query. A match proves the artifact holds the data you analysed. A
+mismatch means the data moved between exploration and render: re-run your
+queries and reconcile before you publish.</p>
+<h2 id="6-audit-your-own-output">6. Audit your own output</h2>
+<p>Before you present anything, run both checks.
+<code>examples/agent_gateway/verify_report.py</code> is the pattern; it caught a real $1
+error on a page whose fingerprints all matched.</p>
 <ol>
-<li><strong>Fingerprints</strong> — re-run every recorded query through <code>query_model</code> and
-   compare the returned <code>fingerprint</code> against the one you recorded (and, for
-   L2, against the manifest's <code>dataset_fingerprint</code>). Match ⇒ the data has
-   not drifted since authorship.</li>
-<li><strong>Figures</strong> — for every number displayed to the human, recompute it from
-   the fresh query result and compare to what the artifact shows. Match ⇒
-   you transcribed faithfully.</li>
+<li><strong>Fingerprints.</strong> Re-run every recorded query with <code>query_model</code> and
+   compare its <code>fingerprint</code> to the one you recorded (and, at L2, to the
+   manifest's <code>dataset_fingerprint</code>). A match means the data has not drifted.</li>
+<li><strong>Figures.</strong> Recompute every number you show from the fresh result and
+   compare it to the artifact. A match means you transcribed it correctly.</li>
 </ol>
-<p>These catch different failure modes: a fingerprint match with a figure
-mismatch localizes the fault to <em>your transcription</em> (the verify script's
-first run: page said <code>+$523,045</code> — sum of rounded rows; truth was
-<code>$523,044.32</code> — round-then-sum vs sum-then-round, invisible to any human
-eye). A fingerprint mismatch means <em>source drift</em>, and every figure must be
-re-derived. Encode the discipline the script encodes: round the true total,
-never sum the rounded rows.</p>
-<p>At L2, <code>verify_manifest</code> is the built-in that runs check 1 for you: point it at
-the manifest <code>render_report_spec</code> just produced and read the per-section
-<code>verdict</code>, not just <code>ok</code> — only <code>reproduces</code> means a number was re-run and
-matched. TraceBi rendered the figures from the same query the manifest
-fingerprints, so check 2 reduces to any numbers you quote in surrounding
-narrative. At L1 — a page you wrote yourself — there is no manifest for
-<code>verify_manifest</code> to read, so check every figure on the page with your own
-replay script (<code>examples/agent_gateway/verify_report.py</code> is the template) and
-keep it beside the artifact so anyone can re-run it.</p>
-<h2 id="step-7-presenting-numbers-to-humans">Step 7 — Presenting numbers to humans</h2>
-<p><strong>Never state a number without its citation.</strong> Every figure you put in front
-of a person traces to a stamped query; say so:</p>
+<p>The two catch different faults. A matching fingerprint with a mismatched
+figure is your transcription: the script's first run found a page saying
+<code>+$523,045</code> (the sum of rounded rows) where the truth was <code>$523,044.32</code>.
+Round the true total; never sum rounded rows. A fingerprint mismatch is source
+drift, and every figure must be re-derived.</p>
+<p>At L2, <code>verify_manifest</code> runs check 1 for you. Point it at the manifest from
+step 5 and read each section's <code>verdict</code>, not just <code>ok</code>: only <code>reproduces</code>
+means a number was re-run and matched. TraceBi drew the figures from the
+queries the manifest fingerprints, so check 2 covers only numbers you quote in
+your own text. At L1 there is no manifest: check every figure with your own
+replay script (<code>verify_report.py</code> is the template) and keep it beside the
+artifact.</p>
+<h2 id="7-present-numbers-with-their-citation">7. Present numbers with their citation</h2>
+<p>Never state a number without its citation:</p>
 <blockquote>
 <p>Total book AUM is <strong>$7,521,674</strong> (query fingerprint <code>b3d614c1d264</code>,
 <code>fact_holdings</code> by <code>dim_product.asset_class</code>, wealth_model).</p>
 </blockquote>
-<p>Conventions:</p>
 <ul>
-<li>Cite the fingerprint git-style — the first 12 hex characters are enough for
-  a human page; keep the full hash in your working papers and the manifest.</li>
-<li>In an L1 page, include a "Working Papers" section listing each query
-  (model, fact, measures, dimensions, filters) with its fingerprint, so an
-  auditor can replay it without you.</li>
-<li>For an L2 artifact, point at the manifest: it already carries the exact
-  query, lineage chain, and fingerprint per section.</li>
-<li>If a stakeholder asks "where does this number come from?", the answer is
-  never prose — it is the recorded query and its fingerprint, re-runnable
-  today.</li>
+<li>Cite the first 12 hex characters of the fingerprint on a page for people.
+  Keep the full hash in your working papers and the manifest.</li>
+<li>On an L1 page, add a "Working Papers" section listing each query (model,
+  fact, measures, dimensions, filters) with its fingerprint.</li>
+<li>For an L2 artifact, point at the manifest.</li>
+<li>When someone asks where a number came from, answer with the recorded query
+  and its fingerprint, which can be re-run today.</li>
 </ul>
-<hr>
-<h2 id="worked-minimal-example-wealth_model">Worked minimal example (wealth_model)</h2>
-<p>The smallest complete pass through steps 1–7. The demo data is seeded, so
-these queries reproduce.</p>
-<p><strong>1. Contract.</strong> <code>get_context</code> with <code>{"model": "wealth_model"}</code> →
-<code>fact_holdings</code> (measure columns <code>units</code>, <code>market_value</code>, <code>cost_basis</code>), four
-dimensions (<code>dim_client</code>, <code>dim_branch</code>, <code>dim_product</code>, <code>dim_account</code>), and
-four named measures: <code>market_value</code>, <code>cost_basis</code>, <code>unrealized_gain</code>,
-<code>gain_pct</code>.</p>
-<p><strong>2. Explore.</strong> One stamped query, shown above in step 2 — AUM, basis, gain
-and gain% by asset class. Record: fingerprint <code>b3d614c1d264…</code>, <code>row_count</code>
-4, <code>truncated</code> false. (Had we needed <code>unrealized_gain</code> and the model not
-declared it, this is where we would have escalated to the engineer SOP
-rather than computing <code>market_value - cost_basis</code> ourselves.)</p>
-<p><strong>3–4. Author and validate.</strong> A two-section spec using only named measures:</p>
-<pre><code class="language-json">{
-  &quot;name&quot;: &quot;Asset Class Snapshot&quot;,
-  &quot;author&quot;: &quot;analyst-agent (via mcp gateway)&quot;,
-  &quot;description&quot;: &quot;AUM and unrealized gains by asset class, from the model's shared measure definitions.&quot;,
-  &quot;sections&quot;: [
-    {
-      &quot;type&quot;: &quot;table&quot;,
-      &quot;title&quot;: &quot;AUM and gains by asset class&quot;,
-      &quot;column_labels&quot;: {
-        &quot;dim_product.asset_class&quot;: &quot;Asset class&quot;,
-        &quot;market_value&quot;: &quot;Market value&quot;,
-        &quot;cost_basis&quot;: &quot;Cost basis&quot;,
-        &quot;unrealized_gain&quot;: &quot;Unrealized gain&quot;,
-        &quot;gain_pct&quot;: &quot;Gain %&quot;
-      },
-      &quot;totals&quot;: [&quot;market_value&quot;, &quot;cost_basis&quot;, &quot;unrealized_gain&quot;],
-      &quot;data&quot;: {
-        &quot;model&quot;: &quot;wealth_model&quot;,
-        &quot;query&quot;: {
-          &quot;fact&quot;: &quot;fact_holdings&quot;,
-          &quot;measures&quot;: [&quot;market_value&quot;, &quot;cost_basis&quot;, &quot;unrealized_gain&quot;, &quot;gain_pct&quot;],
-          &quot;dimensions&quot;: [&quot;dim_product.asset_class&quot;]
-        }
-      }
-    },
-    {
-      &quot;type&quot;: &quot;text&quot;,
-      &quot;title&quot;: &quot;Provenance&quot;,
-      &quot;style&quot;: &quot;note&quot;,
-      &quot;content&quot;: &quot;Rendered from a validated report spec. The manifest beside this artifact records the exact query, full lineage, and a SHA-256 fingerprint for the table above.&quot;
-    }
-  ]
-}
-</code></pre>
-<p><code>validate_report_spec</code> → <code>{"ok": true, "errors": [], "warnings": []}</code>. (A
-typo such as <code>"fact": "fact_holding"</code> would instead return
-<code>sections[0].data.query.fact: 'fact_holding' is not a fact on model
-'wealth_model'</code> — fix the pathed field and re-validate.)</p>
-<p><strong>5. Render.</strong> <code>render_report_spec</code> → <code>ok: true</code>,
-<code>html_path: "output/asset-class-snapshot.html"</code>,
-<code>manifest_path: "output/asset-class-snapshot.manifest.json"</code>, and
-<code>dataset_fingerprints</code> containing one hash — which must equal the step-2
-fingerprint <code>b3d614c1d264…</code>. It does: same hash, same data.</p>
-<p><strong>6. Audit.</strong> Re-run the recorded query; assert the fingerprint still starts
-<code>b3d614c1d264</code> and that the totals you plan to quote equal the fresh sums
-(round the true total — <code>round(sum(unrealized_gain rows))</code>, never the sum of
-rounded rows).</p>
-<p><strong>7. Present.</strong></p>
+<h2 id="worked-example-wealth_model">Worked example (wealth_model)</h2>
+<p>The smallest complete pass. The demo data is seeded, so these queries
+reproduce.</p>
+<ol>
+<li><strong>Contract.</strong> <code>get_context</code> with <code>{"model": "wealth_model"}</code> returns
+   <code>fact_holdings</code> (columns <code>units</code>, <code>market_value</code>, <code>cost_basis</code>), four
+   dimensions (<code>dim_client</code>, <code>dim_branch</code>, <code>dim_product</code>, <code>dim_account</code>) and
+   four named measures: <code>market_value</code>, <code>cost_basis</code>, <code>unrealized_gain</code>,
+   <code>gain_pct</code>.</li>
+<li><strong>Explore.</strong> The step 2 query: AUM, basis, gain and gain % by asset class.
+   Record fingerprint <code>b3d614c1d264…</code>, <code>row_count</code> 4, <code>truncated</code> false. Had
+   the model lacked <code>unrealized_gain</code>, you would escalate here instead of
+   computing <code>market_value - cost_basis</code>.</li>
+<li><strong>Write and validate.</strong> A two-section spec using named measures only:</li>
+</ol>
+<p><code>json
+   {
+     "name": "Asset Class Snapshot",
+     "author": "analyst-agent (via mcp gateway)",
+     "description": "AUM and unrealized gains by asset class, from the model's shared measure definitions.",
+     "sections": [
+       {
+         "type": "table",
+         "title": "AUM and gains by asset class",
+         "column_labels": {
+           "dim_product.asset_class": "Asset class",
+           "market_value": "Market value",
+           "cost_basis": "Cost basis",
+           "unrealized_gain": "Unrealized gain",
+           "gain_pct": "Gain %"
+         },
+         "totals": ["market_value", "cost_basis", "unrealized_gain"],
+         "data": {
+           "model": "wealth_model",
+           "query": {
+             "fact": "fact_holdings",
+             "measures": ["market_value", "cost_basis", "unrealized_gain", "gain_pct"],
+             "dimensions": ["dim_product.asset_class"]
+           }
+         }
+       },
+       {
+         "type": "text",
+         "title": "Provenance",
+         "style": "note",
+         "content": "Rendered from a validated report spec. The manifest beside this artifact records the exact query, full lineage, and a SHA-256 fingerprint for the table above."
+       }
+     ]
+   }</code></p>
+<p><code>validate_report_spec</code> returns <code>{"ok": true, "errors": [], "warnings": []}</code>.
+   A typo such as <code>"fact": "fact_holding"</code> would return
+   <code>sections[0].data.query.fact: 'fact_holding' is not a fact on model 'wealth_model'</code>.
+4. <strong>Render.</strong> <code>render_report_spec</code> returns <code>ok: true</code>,
+   <code>html_path: "output/asset-class-snapshot.html"</code>,
+   <code>manifest_path: "output/asset-class-snapshot.manifest.json"</code>, and one
+   fingerprint in <code>dataset_fingerprints</code>, equal to step 2's <code>b3d614c1d264…</code>.
+5. <strong>Audit.</strong> Re-run the query; the fingerprint still starts <code>b3d614c1d264</code>,
+   and the totals you will quote equal the fresh sums
+   (<code>round(sum(unrealized_gain rows))</code>, never a sum of rounded rows).
+6. <strong>Present.</strong></p>
 <blockquote>
 <p>Unrealized gains across the book stand at <strong>+$523,044</strong> on
-<strong>$6,998,630</strong> of cost basis — a 7.5% return on basis
-(fingerprint <code>b3d614c1d264</code>, <code>fact_holdings</code> by asset class, wealth_model;
-manifest: <code>output/asset-class-snapshot.manifest.json</code>).</p>
+<strong>$6,998,630</strong> of cost basis, a 7.5% return on basis
+(fingerprint <code>b3d614c1d264</code>, <code>fact_holdings</code> by asset class,
+wealth_model; manifest: <code>output/asset-class-snapshot.manifest.json</code>).</p>
 </blockquote>
-<hr>
-<h2 id="failure-handling-in-one-place">Failure handling, in one place</h2>
+<h2 id="when-something-goes-wrong">When something goes wrong</h2>
 <table>
 <thead>
 <tr>
@@ -508,32 +489,32 @@ manifest: <code>output/asset-class-snapshot.manifest.json</code>).</p>
 </thead>
 <tbody>
 <tr>
-<td>Vocabulary you need is absent from <code>get_context</code></td>
-<td>Escalate to the engineer SOP. Never invent, approximate, or hand-compute.</td>
+<td>The vocabulary you need is not in <code>get_context</code></td>
+<td>Follow <a href="../agents/sop-model-changes.html">SOP: Change a model's measures and keys</a>. Never invent, approximate or hand-compute.</td>
 </tr>
 <tr>
 <td><code>validate_report_spec</code> returns errors</td>
-<td>Repair the exact pathed field; re-validate until <code>ok</code>.</td>
+<td>Fix the field at each path; validate until <code>ok</code>.</td>
 </tr>
 <tr>
 <td><code>render_report_spec</code> returns <code>ok: false</code></td>
-<td>It refused an invalid spec — return to step 4; never route around the renderer.</td>
+<td>It refused an invalid spec. Go back to step 4; never route around the renderer.</td>
 </tr>
 <tr>
-<td>Query raises on dimension fan-out</td>
-<td>Investigate the join grain or escalate; do not set <code>allow_fanout: true</code> to silence it.</td>
+<td>A query fails on dimension fan-out</td>
+<td>Investigate the join grain or escalate. Don't set <code>allow_fanout: true</code>.</td>
 </tr>
 <tr>
-<td><code>truncated: true</code> on a query you need fully</td>
-<td>Raise <code>limit</code> (≤ 500), narrow the query, or move the table into a spec.</td>
+<td><code>truncated: true</code> on a query you need in full</td>
+<td>Raise <code>limit</code> (up to 500), narrow the query, or move the table into a spec.</td>
 </tr>
 <tr>
 <td>Fingerprint mismatch on audit</td>
-<td>Source drift: re-run every recorded query and re-derive every figure before publishing.</td>
+<td>Source drift: re-run every query and re-derive every figure before publishing.</td>
 </tr>
 <tr>
-<td>Figure mismatch with matching fingerprint</td>
-<td>Your transcription is wrong: fix the artifact, re-run the audit to green.</td>
+<td>Figure mismatch with a matching fingerprint</td>
+<td>Your transcription is wrong. Fix the artifact and audit again.</td>
 </tr>
 </tbody>
 </table>

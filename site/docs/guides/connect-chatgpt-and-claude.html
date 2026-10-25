@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Connect ChatGPT and Claude — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="3. Give TraceBi the registration:">
+<meta name="description" content="Connect ChatGPT and Claude">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a class="on" href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,76 +61,92 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="connect-chatgpt-and-claude">Connect ChatGPT and Claude</h1>
-<p><strong>People sign in to the TraceBi connector with their company login. What they
-make is theirs: drafts, publishes and runs are recorded under their name, and
-their role decides what they may do.</strong></p>
-<p>This is for the person who runs the TraceBi server (an admin) and for the
-people who then add the connector. It needs the web app, because the sign-in
-pages live there.</p>
-<hr>
-<h2 id="how-it-works">How it works</h2>
-<p>TraceBi runs a small OAuth server for <code>/mcp</code>. ChatGPT and Claude find it on
-their own: a request to <code>/mcp</code> with no token answers <code>401</code> and points at
-TraceBi's metadata, and the connector registers itself and sends the person to
-TraceBi's <code>/authorize</code>. TraceBi holds no passwords. It sends the person on to
-your company's identity provider (Entra ID, Okta, Google, any OIDC provider),
-checks the answer, and then gives the connector its own short-lived tokens.</p>
-<p>Because TraceBi issues the tokens, your identity provider only needs <strong>one
-ordinary app registration</strong>. Nothing is registered for ChatGPT or Claude there,
-and Entra needs no Application ID URI for the MCP address.</p>
-<h2 id="turn-it-on-admin">Turn it on (admin)</h2>
-<p><strong>1. Pick the public address.</strong> It must be <code>https</code>, and ChatGPT's and Claude's
-servers must be able to reach it (a VPN-only address will not work). Set:</p>
-<pre><code class="language-bash">TRACEBI_PUBLIC_URL=https://bi.example.com
-</code></pre>
-<p>The MCP address is that origin plus <code>/mcp</code>: <code>https://bi.example.com/mcp</code>. This
-exact address is what people paste into the connector. If yours differs, set
-<code>TRACEBI_PUBLIC_MCP_URL</code> to it.</p>
-<p><strong>2. Register TraceBi at your identity provider.</strong> One web application with a
-client secret:</p>
+<p>Let people add TraceBi as a connector in ChatGPT or Claude and sign in with
+their company login. What they make is recorded under their name, and their
+role decides what they may do.</p>
+<h2 id="before-you-begin">Before you begin</h2>
 <ul>
-<li>Redirect URI: <code>https://bi.example.com/oauth/callback</code>, and, if people also
-  sign in to the app and the CLI, <code>https://bi.example.com/login/callback</code>
-  (<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>)</li>
-<li>Scopes: <code>openid</code>, <code>email</code>, <code>profile</code></li>
-<li>Send the person's groups in the ID token. In Entra: <em>Token configuration</em>,
-  add a groups claim (security groups). In Okta: add a <code>groups</code> claim to the ID
-  token. The claim carries group object IDs in Entra and group names in Okta;
-  use the same values in the role map below. Entra stops listing groups when a
-  person is in more than 200; assign the app to a small set of groups.</li>
+<li>The TraceBi web app running at a public <code>https</code> address that ChatGPT's and
+  Claude's servers can reach (a VPN-only address will not work)</li>
+<li>An OIDC identity provider (Entra ID, Okta, Google, any OIDC provider), or
+  see <a href="#no-identity-provider">No identity provider</a> below</li>
+<li>Postgres for the run store if you run more than one worker</li>
 </ul>
-<p><strong>3. Give TraceBi the registration:</strong></p>
-<pre><code class="language-bash">TRACEBI_OIDC_ISSUER=https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0
-TRACEBI_OIDC_CLIENT_ID=&lt;application id&gt;
-TRACEBI_OIDC_CLIENT_SECRET=&lt;secret&gt;
-TRACEBI_OIDC_ROLE_MAP=&lt;admin-group&gt;:admin,&lt;analyst-group&gt;:analyst
-</code></pre>
-<p>The issuer is the provider's single-tenant OIDC issuer (the page at
-<code>&lt;issuer&gt;/.well-known/openid-configuration</code> must exist). A misconfiguration
-stops the server at startup with the reason; it never starts half open.</p>
-<p><strong>4. Let the connectors' requests through.</strong> If a proxy or SSO gateway sits in
-front of TraceBi, these paths must reach it without a login of their own (they
-carry their own authentication): <code>/mcp</code>, <code>/authorize</code>, <code>/token</code>, <code>/register</code>,
-<code>/revoke</code>, <code>/oauth/callback</code>, <code>/login</code>, <code>/login/callback</code>, <code>/logout</code> and
-everything under <code>/.well-known/</code>. The rest of
-the app stays behind whatever you already use.</p>
-<p><strong>5. Use Postgres if you run more than one worker.</strong> Clients, codes and tokens
-live in the run store (<code>TRACEBI_STATE_URL</code>), so several workers share them. See
-the note on workers in <a href="../guides/one-server.html">Run TraceBi on one server</a>.</p>
-<p>Restart, then open <code>https://bi.example.com/.well-known/oauth-authorization-server</code>:
-it should answer with TraceBi's endpoints.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>TraceBi runs a small OAuth server for <code>/mcp</code>. A request to <code>/mcp</code> with no token
+answers <code>401</code> and points at TraceBi's metadata. The connector registers itself
+and sends the person to TraceBi's <code>/authorize</code>, which sends them on to your
+identity provider. TraceBi checks the answer and gives the connector its own
+short-lived tokens. It stores no passwords.</p>
+<p>Because TraceBi issues the tokens, your provider needs one ordinary app
+registration. Nothing is registered there for ChatGPT or Claude, and Entra
+needs no Application ID URI for the MCP address.</p>
+<h2 id="for-admins-turn-it-on">For admins: turn it on</h2>
+<ol>
+<li>Set the public address:</li>
+</ol>
+<p><code>bash
+   TRACEBI_PUBLIC_URL=https://bi.example.com</code></p>
+<p>The MCP address is that origin plus <code>/mcp</code>: <code>https://bi.example.com/mcp</code>.
+   People paste this exact address into the connector. If yours differs, set
+   <code>TRACEBI_PUBLIC_MCP_URL</code>.</p>
+<ol start="2">
+<li>Register TraceBi at your identity provider as one web application with a
+   client secret:</li>
+</ol>
+<ul>
+<li>Redirect URI: <code>https://bi.example.com/oauth/callback</code>. If people also
+     sign in to the app and the CLI, add <code>https://bi.example.com/login/callback</code>
+     (<a href="../guides/sign-in.html">Sign in with your company login</a>).</li>
+<li>Scopes: <code>openid</code>, <code>email</code>, <code>profile</code>.</li>
+<li>Send the person's groups in the ID token. In Entra: <em>Token
+     configuration</em>, add a groups claim (security groups). In Okta: add a
+     <code>groups</code> claim to the ID token. Entra sends group object IDs and Okta
+     sends group names; use the same values in the role map. Entra stops
+     listing groups past 200, so assign the app to a small set of groups.</li>
+</ul>
+<ol start="3">
+<li>Give TraceBi the registration:</li>
+</ol>
+<p><code>bash
+   TRACEBI_OIDC_ISSUER=https://login.microsoftonline.com/&lt;tenant-id&gt;/v2.0
+   TRACEBI_OIDC_CLIENT_ID=&lt;application id&gt;
+   TRACEBI_OIDC_CLIENT_SECRET=&lt;secret&gt;
+   TRACEBI_OIDC_ROLE_MAP=&lt;admin-group&gt;:admin,&lt;analyst-group&gt;:analyst</code></p>
+<p>The issuer is the provider's single-tenant issuer;
+   <code>&lt;issuer&gt;/.well-known/openid-configuration</code> must exist. A mistake stops the
+   server at startup with the reason. It never starts half open.</p>
+<ol start="4">
+<li>
+<p>If a proxy or SSO gateway sits in front of TraceBi, let these paths through
+   without its login (they carry their own authentication): <code>/mcp</code>,
+   <code>/authorize</code>, <code>/token</code>, <code>/register</code>, <code>/revoke</code>, <code>/oauth/callback</code>,
+   <code>/login</code>, <code>/login/callback</code>, <code>/logout</code> and everything under
+   <code>/.well-known/</code>.</p>
+</li>
+<li>
+<p>With more than one worker, point <code>TRACEBI_STATE_URL</code> at Postgres. Clients,
+   codes and tokens live in the run store, so workers must share it
+   (<a href="../guides/one-server.html">Run TraceBi on one server</a>).</p>
+</li>
+<li>
+<p>Restart, then open
+   <code>https://bi.example.com/.well-known/oauth-authorization-server</code>. It should
+   answer with TraceBi's endpoints.</p>
+</li>
+</ol>
 <h3 id="roles">Roles</h3>
 <table>
 <thead>
@@ -142,82 +158,81 @@ it should answer with TraceBi's endpoints.</p>
 <tbody>
 <tr>
 <td><code>viewer</code></td>
-<td>reads and queries: <code>get_context</code>, <code>list_models</code>, <code>describe_*</code>, <code>query_model</code>, <code>list_reports</code>, <code>verify_manifest</code>, <code>fetch_artifact</code>, reading drafts</td>
+<td>Reads and queries: <code>get_context</code>, <code>list_models</code>, <code>describe_*</code>, <code>query_model</code>, <code>list_reports</code>, <code>verify_manifest</code>, <code>fetch_artifact</code>, reading drafts</td>
 </tr>
 <tr>
 <td><code>analyst</code></td>
-<td>everything above, plus drafts, previews, <code>build_report</code>, <code>render_report_spec</code>, <code>resolve_pin</code> and publishing</td>
+<td>All of the above, plus drafts, previews, <code>build_report</code>, <code>render_report_spec</code>, <code>resolve_pin</code> and publishing</td>
 </tr>
 <tr>
 <td><code>admin</code></td>
-<td>the same tools as analyst in the connector</td>
+<td>The same tools as <code>analyst</code></td>
 </tr>
 </tbody>
 </table>
-<p>A person gets the highest role of any group in <code>TRACEBI_OIDC_ROLE_MAP</code>. A
-person in none gets <code>TRACEBI_OIDC_DEFAULT_ROLE</code>, <code>viewer</code> unless you change it.
-Anyone who can sign in at your identity provider and is assigned to the app can
-therefore read the models: assign the app to the people you mean.</p>
-<p>The role is read when the person signs in and kept for that sign-in. Move
-someone between groups and it takes effect at their next sign-in (at most 30
-days, sooner if they disconnect and reconnect).</p>
-<h3 id="automation-keeps-its-token">Automation keeps its token</h3>
-<p><code>TRACEBI_MCP_TOKEN</code>, if also set, is still accepted for scripts and agents that
-cannot sign in. Work done with it is recorded as <code>TRACEBI_MCP_ACTOR</code> (default
-<code>agent</code>) with the <code>analyst</code> role. Leave it unset if you do not need it.</p>
-<h2 id="no-identity-provider-a-demo-user-or-named-users">No identity provider? A demo user, or named users</h2>
+<p>A person gets the highest role of any of their groups in
+<code>TRACEBI_OIDC_ROLE_MAP</code>. A person in none gets <code>TRACEBI_OIDC_DEFAULT_ROLE</code>,
+<code>viewer</code> unless you change it. So anyone your provider lets sign in to the app
+can read the models: assign the app only to the people you mean.</p>
+<p>The role is read at sign-in and kept for that sign-in. A change of group takes
+effect at the next sign-in: at most 30 days, sooner if they disconnect and
+reconnect.</p>
+<h3 id="keep-a-token-for-automation">Keep a token for automation</h3>
+<p><code>TRACEBI_MCP_TOKEN</code>, if also set, still works for scripts and agents that
+cannot sign in. Their work is recorded as <code>TRACEBI_MCP_ACTOR</code> (default
+<code>agent</code>) with the <code>analyst</code> role. Leave it unset if you don't need it.</p>
+<h2 id="no-identity-provider">No identity provider</h2>
 <p>For a demo, a trial or a small team, TraceBi can sign people in itself. Set
-these instead of the <code>TRACEBI_OIDC_*</code> ones (the two cannot be combined):</p>
+these instead of the <code>TRACEBI_OIDC_*</code> variables (the two cannot be combined):</p>
 <pre><code class="language-bash">TRACEBI_PUBLIC_URL=https://bi.example.com
 TRACEBI_OAUTH_SECRET=&lt;openssl rand -hex 32&gt;
 TRACEBI_DEMO_LOGIN=admin                         # a one-click demo user
 TRACEBI_LOCAL_USERS=alice:analyst:a-long-password,vera:viewer:another-one
 </code></pre>
-<p>Either, or both. <strong>Connect</strong> then opens a TraceBi page: the named users type a
+<p>Use either or both. <strong>Connect</strong> then opens a TraceBi page: named users type a
 name and password, and the demo user is one button, <strong>Continue as the demo
-user</strong>. Work is recorded under the name (<code>demo</code>, <code>alice</code>) and the role in the
-variable decides what they may do, exactly as with a company login.</p>
-<p>Know what you are switching on:</p>
+user</strong>. Work is recorded under the name (<code>demo</code>, <code>alice</code>), and the role in the
+variable decides what each may do.</p>
 <ul>
 <li><strong>The demo button lets in anyone who has the address.</strong> Use it only on a
-  server that holds sample data. Give it the lowest role that shows what you
-  want to show: <code>viewer</code> reads and queries, <code>analyst</code> and <code>admin</code> also draft and
-  publish (in the connector <code>admin</code> can do what <code>analyst</code> can).</li>
-<li><strong>Passwords live in the environment</strong>, like the identity provider's client
-  secret, and are compared as written. There is no reset and no sign-up page.
-  For a team that grows, move to your company login above.</li>
-<li>Ten wrong passwords for a name stop that name for ten minutes, per process:
-  run one worker.</li>
-<li>It signs people in to <code>/mcp</code> only. The app's own pages stay as they are.</li>
+  server with sample data, and give it the lowest role that shows what you
+  want.</li>
+<li><strong>Passwords live in the environment</strong> and are compared as written. There
+  is no reset and no sign-up page. For a growing team, move to your company
+  login.</li>
+<li><strong>Ten wrong passwords</strong> for one name stop that name for ten minutes, per
+  process. Run one worker.</li>
+<li><strong>It covers <code>/mcp</code> only.</strong> The app's own pages are not put behind it.</li>
 </ul>
-<h2 id="add-the-connector-each-person">Add the connector (each person)</h2>
+<h2 id="for-users-add-the-connector">For users: add the connector</h2>
 <p>The menu names change; the address is what matters.</p>
-<p><strong>Claude</strong> (claude.ai or the desktop app): <em>Settings</em>, <em>Connectors</em>, <em>Add
-custom connector</em>. Name it, paste <code>https://bi.example.com/mcp</code>, and add. Choose
-<em>Connect</em>; a window opens at your company login. Claude Code: <code>claude mcp add
---transport http tracebi https://bi.example.com/mcp</code>, then <code>/mcp</code> inside Claude
-Code to sign in.</p>
-<p><strong>ChatGPT</strong>: <em>Settings</em>, <em>Connectors</em> (turn on developer mode if your plan asks
-for it), <em>Create</em>. Paste the same address, choose OAuth, and sign in when the
-window opens. A workspace admin may need to allow custom connectors first.</p>
-<p>Then ask in plain words: <em>"Start a draft of the sales report and add a chart of
-revenue by region."</em> The reply links the draft in the app. It is yours: other
-people see it only if they are admins.</p>
-<h2 id="what-is-kept-and-for-how-long">What is kept, and for how long</h2>
 <ul>
-<li><strong>Access tokens</strong> last one hour. <strong>Refresh tokens</strong> last 7 days and are
-  replaced each time they are used. A sign-in ends at 30 days at most.</li>
-<li>Presenting an old refresh token, or an authorization code a second time,
-  ends that whole sign-in: the person signs in again.</li>
-<li>Codes, access tokens and refresh tokens are stored as SHA-256 hashes. A copy
-  of the database holds no working token. The provider's client secret is only
-  in your environment.</li>
-<li>Clients that register themselves (Dynamic Client Registration) are stored
-  until you remove them. ChatGPT and Claude may instead identify themselves with
-  a Client ID Metadata Document, which TraceBi fetches from the client's
-  public https address and does not store.</li>
-<li>Return addresses are limited to Claude's and ChatGPT's callbacks and loopback
-  addresses (<code>localhost</code>, <code>127.0.0.1</code>, any port). Add others, exactly, with
+<li><strong>Claude</strong> (claude.ai or the desktop app): <em>Settings</em>, <em>Connectors</em>, <em>Add
+  custom connector</em>. Name it, paste <code>https://bi.example.com/mcp</code>, and add.
+  Choose <em>Connect</em>; your company login opens.</li>
+<li><strong>Claude Code:</strong> <code>claude mcp add --transport http tracebi https://bi.example.com/mcp</code>,
+  then <code>/mcp</code> inside Claude Code to sign in.</li>
+<li><strong>ChatGPT:</strong> <em>Settings</em>, <em>Connectors</em> (turn on developer mode if your plan
+  asks), <em>Create</em>. Paste the same address, choose OAuth, and sign in. A
+  workspace admin may need to allow custom connectors first.</li>
+</ul>
+<p>Then ask: <em>"Start a draft of the sales report and add a chart of revenue by
+region."</em> The reply links the draft in the app. Only you and admins can see
+it.</p>
+<h2 id="what-happened">What happened</h2>
+<ul>
+<li><strong>Tokens.</strong> Access tokens last one hour. Refresh tokens last 7 days and are
+  replaced on each use. A sign-in ends at 30 days at most. Reusing an old
+  refresh token or an authorization code ends the whole sign-in.</li>
+<li><strong>Storage.</strong> Codes and tokens are stored as SHA-256 hashes, so a copy of the
+  database holds no working token. The provider's client secret is only in
+  your environment.</li>
+<li><strong>Clients.</strong> Clients that register themselves (Dynamic Client
+  Registration) are stored until you remove them. ChatGPT and Claude may
+  instead identify themselves with a Client ID Metadata Document, which
+  TraceBi fetches from their public https address and does not store.</li>
+<li><strong>Redirects.</strong> Only Claude's and ChatGPT's callbacks and loopback addresses
+  (<code>localhost</code>, <code>127.0.0.1</code>, any port) are allowed. Add others, exactly, with
   <code>TRACEBI_OAUTH_REDIRECTS</code>.</li>
 </ul>
 <h2 id="if-it-does-not-work">If it does not work</h2>
@@ -230,32 +245,31 @@ people see it only if they are admins.</p>
 </thead>
 <tbody>
 <tr>
-<td>The connector says it cannot reach the server</td>
-<td>The address is not public, or a proxy blocks <code>/.well-known/</code> or <code>/mcp</code></td>
+<td>The connector cannot reach the server</td>
+<td>The address is not public, or a proxy blocks <code>/.well-known/</code> or <code>/mcp</code>.</td>
 </tr>
 <tr>
-<td>"Resource mismatch" or the sign-in loops</td>
-<td>The address in the connector is not exactly <code>TRACEBI_PUBLIC_URL</code>'s origin plus <code>/mcp</code> (or <code>TRACEBI_PUBLIC_MCP_URL</code>)</td>
+<td>"Resource mismatch", or the sign-in loops</td>
+<td>The address in the connector is not exactly <code>TRACEBI_PUBLIC_URL</code>'s origin plus <code>/mcp</code> (or <code>TRACEBI_PUBLIC_MCP_URL</code>).</td>
 </tr>
 <tr>
-<td>"Sign-in could not be verified" on return</td>
-<td>Wrong client secret or issuer; the provider's clock is off; the redirect URI at the provider is not <code>…/oauth/callback</code>. The reason is in the server log.</td>
+<td>"Sign-in could not be verified"</td>
+<td>Wrong client secret or issuer, the provider's clock is off, or the redirect URI at the provider is not <code>…/oauth/callback</code>. The server log has the reason.</td>
 </tr>
 <tr>
 <td>"Started in a different browser"</td>
-<td>The person opened the sign-in link in another browser than the one that began it. Start again from the connector.</td>
+<td>The sign-in link was opened in a different browser. Start again from the connector.</td>
 </tr>
 <tr>
 <td>A person is a viewer who should write</td>
-<td>Their group is not in <code>TRACEBI_OIDC_ROLE_MAP</code>, or the provider did not send groups. Check the claim, then sign in again.</td>
+<td>Their group is not in <code>TRACEBI_OIDC_ROLE_MAP</code>, or the provider sent no groups. Check the claim, then sign in again.</td>
 </tr>
 </tbody>
 </table>
-<h2 id="related">Related</h2>
+<h2 id="next">Next</h2>
 <ul>
-<li><a href="../guides/sign-in.html">Sign in to the app and the CLI</a> — the same login for the web app and <code>tracebi login</code></li>
-<li><a href="../reference/environment-variables.html">Environment variables</a> — every variable above</li>
-<li><a href="../guides/one-server.html">Run TraceBi on one server</a> — hosting on one server</li>
+<li>The same login for the app and the CLI: <a href="../guides/sign-in.html">Sign in with your company login</a></li>
+<li>Host it: <a href="../guides/one-server.html">Run TraceBi on one server</a></li>
 </ul>
   </main>
 </div>

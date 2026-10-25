@@ -1,92 +1,96 @@
-# Styling a report
+# Style a report
 
-**Your CSS and JS, unrestricted — plus a design system you can lean on instead
-of fighting.**
+Give a report your colours, fonts and layout by setting design tokens, using
+the shipped components, and adding your own CSS and JavaScript.
 
----
+## Before you begin
 
-## The stack
+- A report package (`tracebi new-report` or `tracebi new-dashboard`)
+- `tracebi dev <name>` running, so you see each change
 
-Three layers, later wins:
+Styles stack in three layers, and the later one wins:
 
 ```
 1. tracebi.css            the shipped design system
-2. reports/_theme.css     your project brand layer   (optional)
-3. style.css              this report                (optional)
+2. reports/_theme.css     your project's brand (optional)
+3. style.css              this report (optional)
 ```
 
-**Override tokens; don't fork the sheet.** Redefining a token restyles every
-component coherently; copying the stylesheet means inheriting every future fix
-by hand.
+## 1. Pick a theme
 
-## Design tokens
+```bash
+tracebi theme list                 # the shipped themes
+tracebi theme use ocean            # writes reports/_theme.css for every report
+```
+
+A single report can pick one in `report.json`: `"theme": "ocean"`
+([[report-json]]). A theme sets the accent for the light and dark grounds and
+nothing else.
+
+## 2. Set your own tokens
+
+Override tokens in `reports/_theme.css` or a report's `style.css`. Don't copy
+the stylesheet: a copy misses every later fix.
 
 ```css
 :root {
   --tb-accent:      #2e74b5;
-  --tb-accent-text: #1f5a96;   /* the same blue, deep enough for small text */
+  --tb-accent-text: #1f5a96;   /* the same blue, dark enough for small text */
   --tb-ink:         #0a1628;
   --tb-bg:          #eef2f8;
 }
 ```
 
-Out of the box a report is Geist on neutral grounds with one cobalt
-accent and hairline cards: the same look as the web app. The face is inlined into
-the file (about 45 KB, Latin subset), so nothing is fetched and nothing needs installing;
-set `--tb-font` to use your own face instead.
+By default a report uses Geist on neutral grounds, one cobalt accent and
+hairline cards, like the web app. The font is inlined in the file (about
+45 KB, Latin subset). Set `--tb-font` to use your own.
 
 | Token | Controls |
 | --- | --- |
-| `--tb-font` / `--tb-mono` | the type family, and the one for code |
-| `--tb-ink` / `--tb-muted` | text |
-| `--tb-page` / `--tb-bg` / `--tb-surface` | the page, cards and tables, raised tints |
-| `--tb-accent` / `--tb-accent-text` | the accent (focus ring, bars, the first chart series, the editorial hero), and the same blue deepened for small text (links, hovers): override both |
-| `--tb-dark-accent` / `--tb-dark-accent-text` | the same pair for the dark ground; set them too, or dark mode keeps the default cobalt |
-| `--tb-text-xs` … `--tb-text-3xl` | the type scale: 12, 13, 14 (body), 16, 20, 28, 40px; `--tb-tracking-tight` from 28px up |
-| `--tb-good` / `--tb-bad` | direction: better and worse |
-| `--tb-rule` | borders and rules |
-| `--tb-shadow` | none; the sheet draws no resting shadow (cards are a hairline). Left for a report's own CSS |
-| `--tb-radius`, `--tb-space-1..4` | shape and rhythm |
-| `--tb-cell-pad` | table density, in one place |
-| `--tb-measure` | the editorial's reading column: 68ch of its serif body |
-| `--tb-chart-1..8` | the chart palette; `--tb-chart-1` is the accent |
+| `--tb-font` / `--tb-mono` | The text font, and the font for code |
+| `--tb-ink` / `--tb-muted` | Text colours |
+| `--tb-page` / `--tb-bg` / `--tb-surface` | The page, cards and tables, raised tints |
+| `--tb-accent` / `--tb-accent-text` | The accent (focus ring, bars, first chart series, editorial hero) and a darker shade for small text such as links. Set both. |
+| `--tb-dark-accent` / `--tb-dark-accent-text` | The same pair on the dark ground. Without them dark mode keeps the default cobalt. |
+| `--tb-text-xs` … `--tb-text-3xl` | Type scale: 12, 13, 14 (body), 16, 20, 28, 40px; `--tb-tracking-tight` from 28px up |
+| `--tb-good` / `--tb-bad` | Better and worse |
+| `--tb-rule` | Borders and rules |
+| `--tb-shadow` | None by default (cards use a hairline); available to your own CSS |
+| `--tb-radius`, `--tb-space-1..4` | Corner radius and spacing |
+| `--tb-cell-pad` | Table density |
+| `--tb-measure` | The editorial reading column: 68 characters of its serif body |
+| `--tb-chart-1..8` | Chart palette; `--tb-chart-1` is the accent |
 
-Setting the accent pairs in `reports/_theme.css` is usually all a house style
-needs: the first chart series, links, the hero and the active tab follow it.
-The shipped themes (`tracebi theme list`) are exactly that, an accent preset
-for each ground.
+The accent pairs are usually all a house style needs. The first chart series,
+links, the hero and the active tab follow them.
 
-**Modes.** A page follows the reader's system by default: the build gives a
-`<html>` with no `data-tb-mode` the value `auto`. Set `data-tb-mode="light"`
-(or `"dark"`) to pin it; an app sets `report.json` `"look"`. A report whose own
-`style.css` paints a light ground (a fixed paper colour, a light-only palette)
-should pin `light` until it styles the dark ground too.
+**Light and dark.** A page follows the reader's system by default
+(`data-tb-mode="auto"`). Set `data-tb-mode="light"` or `"dark"` on `<html>` to
+fix it; an app sets `report.json` `"look"`. If your `style.css` paints a light
+background, set `light` until you style the dark one too.
 
-## Components
+## 3. Use the components
 
 ```
-.tb-page                     the page measure, 1,200px
+.tb-page                     the page width, 1,200px
 .tb-masthead                 opens the page: .tb-kicker, <h1>, .tb-standfirst,
                              .tb-masthead-meta (period, build time, .tb-verdict)
 .tb-footer                   ends the page: your sources, then the build's line
 .tb-grid   .tb-card
-.tb-span-4 / -6 / -8 / -12   the 12-column grid: a .tb-grid's panels name a span
+.tb-span-4 / -6 / -8 / -12   the 12-column grid
 .tb-lede                     the answer sentence under the masthead
 .tb-kpi  (.tb-kpi-label / .tb-kpi-value / .tb-kpi-context)
-.tb-kpi--lead                the strip's main number: larger, not wider
-.tb-kpi-delta                a stamped change leading the context line
-.tb-spark                    a line/area chart in a KPI: the trend's shape alone
+.tb-kpi--lead                the main number: larger, not wider
+.tb-kpi-delta                a stamped change at the start of the context line
+.tb-spark                    a line or area chart inside a KPI
 .tb-table  (.tb-table--striped / .tb-table--compact / .tb-table--freeze)
 .tb-callout   .tb-note   .tb-badge
-.tb-good / .tb-bad           direction tones; pair with a sign or a word
-.tb-cols-2 / .tb-cols-3      shorthands: equal columns, one under 720px
+.tb-good / .tb-bad           better and worse; pair with a sign or a word
+.tb-cols-2 / .tb-cols-3      equal columns, one column under 720px
 .tb-tabs                     with data-tb-tab sections
 ```
 
-Use them or ignore them — [[template-html|`template.html`]] is your page, and
-nothing requires these classes.
-
-A typical top of page, built only from these:
+None are required. A typical top of page:
 
 ```html
 <header class="tb-masthead" data-tb-period="End of August">
@@ -94,9 +98,9 @@ A typical top of page, built only from these:
   <p class="tb-standfirst">The book at fair value, by sector and fund.</p>
 </header>
 <p class="tb-lede">
-  <span data-tb-figure="value" data-tb-binding="top" data-tb-cell="dim_issuer.sector" id="top-sector">—</span>
+  <span data-tb-figure="value" data-tb-binding="top" data-tb-cell="dim_issuer.sector" id="top-sector"></span>
   is the largest sector, at
-  <span data-tb-figure="value" data-tb-binding="top" data-tb-cell="fv_share" data-tb-format="percent" id="top-share">—</span>
+  <span data-tb-figure="value" data-tb-binding="top" data-tb-cell="fv_share" data-tb-format="percent" id="top-share"></span>
   of the book.</p>
 
 <div class="tb-grid">
@@ -112,87 +116,15 @@ A typical top of page, built only from these:
 </div>
 ```
 
-The `data-tb-*` attributes are covered in [[template-html]]. Here `fv_share` is
-a `share=` measure and `fv_growth` a `growth=` measure ([[measures]]), so the
-comparison is a governed number with its own trace. `data-tb-direction` draws
-the ▲/▼ and picks `--tb-good` or `--tb-bad` from that number's sign.
+`fv_share` is a `share=` measure and `fv_growth` a `growth=` measure
+([[measures]]), so the comparison has its own trace. `data-tb-direction` draws
+▲ or ▼ and picks `--tb-good` or `--tb-bad` from the number's sign. The
+attributes are in [[template-html]].
 
-## What you get without writing CSS
+## 4. Add fonts and images
 
-- Numbers right-align in table columns, in tabular digits, and never wrap.
-- A value figure with no `data-tb-format` gets the model's declared format, or
-  a readable default ([[number-formats]]).
-- Keyboard focus is always visible, headings wrap evenly, and running text
-  stops at a readable line length.
-- An empty table or chart says "no data" instead of showing a blank.
-- Printing keeps the trace, the badges and every tab's content.
-- The trace drawer doesn't animate for people who've turned motion off.
-
-## Design guidance
-
-The framework ships design lessons next to its analysis lessons. List them with
-`tracebi knowledge` (the design ones start `design-`) and read one with
-`tracebi knowledge design-lead-with-the-answer`. They cover leading with the
-answer, KPIs with context, choosing the chart, color, number formats, tables,
-layout and spacing, hierarchy, the words on the page, theming with tokens,
-empty states and accessibility. Agents that load skills get the same review as
-the `tracebi-designer` skill.
-
-`tracebi spec validate` also warns about common design problems in a JSON spec,
-such as unsorted bar charts or more than five KPI cards, and names the lesson
-that explains the fix.
-
-## The one rule
-
-**Presentation never changes a number.**
-
-A stylesheet may restyle a `.tb-badge`; it may never re-colour honesty.
-Provenance chooses the badge class — `--verified` / `--derived` /
-`--unverified` — and CSS cannot move a figure between them.
-
-Likewise [[number-formats|derived formats]] change how a number is *displayed*,
-never its value.
-
-## Writing `script.js`
-
-```js
-tracebi.ready(function (data) {
-  // data is the stamped rows, already decoded
-});
-```
-
-**Never call `tracebi.data()` at the top level.** On a large-detail artifact the
-data decodes in a worker *after* `script.js` runs, so a bare call returns `[]`
-there and rows on a small report. `ready(fn)` behaves identically on both.
-
-Two things that belong in the query, not in JS:
-
-- **Sorting and slicing** — `order_by` + `limit` ([[queries]]). Sorting in JS
-  moves the ordering out of the trace. If readers should re-sort a table,
-  add `data-tb-sort` to it: the query's order stays the default, and the
-  reader's clicks only reorder the stamped rows.
-- **Aggregation** — never in `script.js`. A figure's number is only ever a
-  query result: a filter re-runs the binding's own query on the page; a sum in
-  your script is a number nobody can re-run.
-
-## What you cannot load
-
-The artifact ships with a strict CSP and is meant to work offline, on a plane,
-from an email attachment. So:
-
-- **no CDN scripts, stylesheets, fonts or images**
-- **no `fetch`/XHR** — `connect-src 'none'`
-
-Everything must be inlined at build time. That constraint is what makes the file
-self-contained and the offline `verify --file` check meaningful.
-
-Charting is inlined for you when the page has a chart figure. `"libs":
-["echarts"]` in [[report-json]] is optional.
-
-## Fonts and images
-
-Put them in the package's `assets/` folder and reference them by relative path.
-The build inlines each one as a `data:` URI, so the file still fetches nothing:
+Put them in the package's `assets/` folder and reference them by relative
+path. The build inlines each one, so the file still fetches nothing:
 
 ```css
 @font-face {
@@ -200,7 +132,7 @@ The build inlines each one as a `data:` URI, so the file still fetches nothing:
   font-weight: 600;
   src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
 }
-:root { --tb-font-display: "Fraunces", var(--tb-font-serif); }   /* the headline and the lead number */
+:root { --tb-font-display: "Fraunces", var(--tb-font-serif); }   /* headline and lead number */
 .tb-masthead-mark { width: 120px; height: 28px; background: url(assets/logo.svg) left / contain no-repeat; }
 ```
 
@@ -209,19 +141,71 @@ The build inlines each one as a `data:` URI, so the file still fetches nothing:
 ```
 
 Allowed types: woff2, woff, ttf, otf, svg, png, jpg, webp, gif, avif. A missing
-file, any other type, or a path outside `assets/` fails the load with the file
-named. Keep images small: every byte ships inside the report. Check a font's
-licence allows embedding (SIL OFL fonts do; ship the licence text alongside).
+file, another type, or a path outside `assets/` fails the build with the file
+named. Every byte ships inside the report, so keep images small. Check that a
+font's licence allows embedding (SIL OFL fonts do; ship the licence text too).
 
-`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` shows it all on
-the system: a `style.css` that is tokens only (one inlined display face as
-`--tb-font-display`, its own teal accent), every chart type, a KPI delta, data bars, sortable
-columns, filters, a scenario and a custom d3 figure. `reports/wealth_model/aum_by_branch`
-is the one bespoke look (its own faces, palette and hero band
-with inlined artwork) on the same masthead, grid, footer and trace.
+## 5. Add JavaScript
 
-## Related
+```js
+tracebi.ready(function (data) {
+  // data is the stamped rows, already decoded
+});
+```
 
-- [[template-html]] — the markup
-- [[web-customization]] — theming the served web UI (a different surface)
-- [[number-formats]] — display defaults
+Don't call `tracebi.data()` at the top level. A large report decodes its data
+after `script.js` runs, so a top-level call returns `[]` there. `ready(fn)`
+works on every report.
+
+Two things belong in the query, not in JavaScript:
+
+- **Sorting and slicing.** Use `order_by` and `limit` ([[queries]]). For a
+  table readers can re-sort, add `data-tb-sort`: the query's order stays the
+  default and clicks only reorder the stamped rows.
+- **Totals.** A figure's number is only ever a query result. A sum in your
+  script is a number nobody can re-run.
+
+## What happened
+
+You get these without writing CSS:
+
+- Numbers right-align in tables, use tabular digits and never wrap.
+- A value with no `data-tb-format` gets the model's format, or a readable
+  default ([[number-formats]]).
+- Keyboard focus is visible, headings wrap evenly, and text stops at a
+  readable line length.
+- An empty table or chart says "no data".
+- Printing keeps the trace, the badges and every tab's content.
+- The trace drawer doesn't animate for readers who turned motion off.
+
+## Rules
+
+- **Styles never change a number.** A stylesheet can restyle a `.tb-badge`,
+  but the badge class (`--verified`, `--derived`, `--unverified`) comes from
+  the figure's provenance, and CSS cannot move a figure between them. Number
+  formats change how a number is shown, never its value.
+- **Nothing loads from outside the file.** The page has a strict content
+  security policy and works offline: no CDN scripts, stylesheets, fonts or
+  images, and no `fetch` or XHR (`connect-src 'none'`). The build inlines the
+  charting library when the page has a chart; `"libs": ["echarts"]` in
+  [[report-json]] keeps the older engine.
+
+## Design advice
+
+`tracebi knowledge` lists TraceBi's lessons; the design ones start with
+`design-`. Read one with `tracebi knowledge design-lead-with-the-answer`. They
+cover leading with the answer, KPIs with context, choosing a chart, colour,
+number formats, tables, layout, hierarchy, wording, themes, empty states and
+accessibility. Agents that load skills get the same review from the
+`tracebi-designer` skill. `tracebi spec validate` warns about common design
+problems in a JSON spec, such as unsorted bar charts or more than five KPI
+cards.
+
+## Next
+
+- See it all in one report: `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`
+  uses a tokens-only `style.css` (one inlined display face, its own teal
+  accent) with every chart type, a KPI delta, data bars, sortable columns,
+  filters, a scenario and a custom D3 figure. `reports/wealth_model/aum_by_branch`
+  has its own fonts, palette and hero artwork on the same frame.
+- Restyle the web app itself: [[web-customization]]

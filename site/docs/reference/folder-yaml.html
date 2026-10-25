@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,226 +61,228 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a class="on" href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="folder-permissions-_folderyaml">Folder permissions (<code>_folder.yaml</code>)</h1>
-<p><strong>Who may see, build in, publish into and manage a folder of the report library,
-in a small file that sits in the folder.</strong></p>
-<p>A folder in the library is any directory under <code>reports/</code> (or a mount, see
-<code>TRACEBI_LIBRARY_MOUNTS</code> in <a href="../reference/environment-variables.html">Environment variables</a>) that is not itself a
-report package. Put a <code>_folder.yaml</code> in it to say who may do what there. The
-file is optional: with no <code>_folder.yaml</code> anywhere, the roles <code>viewer</code>,
-<code>analyst</code> and <code>admin</code> decide, exactly as before, and nobody is locked out.</p>
-<hr>
-<h2 id="example">Example</h2>
+<p>A <code>_folder.yaml</code> in a library folder says who may see, build in, publish into
+and manage that folder.</p>
 <pre><code class="language-yaml"># reports/finance/_folder.yaml
-view:    [finance, ceo@example.com]    # see the folder; open reports and their builds
+view:    [finance, ceo@example.com]    # see the folder; open its reports and their builds
 build:   [finance-analysts]            # + create and edit drafts in it
-publish: [finance-leads]               # + publish a draft into it; its schedules
+publish: [finance-leads]               # + publish a draft into it; change its schedules
 manage:  [bi-admins]                   # + change this file
-accepts: checkable                     # optional: only re-checkable numbers (see below)
+accepts: checkable                     # optional: only re-checkable numbers
 </code></pre>
-<hr>
-<h2 id="keys">Keys</h2>
-<p>Four keys, each a name or a list of names. Names are sign-in <strong>groups</strong> or
-<strong>person names</strong> (the sign-in name: usually an email), compared ignoring case.
-<code>'*'</code> means every signed-in person.</p>
+<ul>
+<li>A library folder is any directory under <code>reports/</code> (or a mount,
+  <code>TRACEBI_LIBRARY_MOUNTS</code> in <a href="../reference/environment-variables.html">Environment variables</a>) that is not itself a
+  report package.</li>
+<li>The file is optional. With no <code>_folder.yaml</code> anywhere, the roles <code>viewer</code>,
+  <code>analyst</code> and <code>admin</code> decide, and nobody is shut out.</li>
+</ul>
+<h2 id="permission-keys">Permission keys</h2>
+<p>Each key is a name or a list of names. A name is a sign-in group or a person's
+sign-in name (usually an email), compared ignoring case. <code>'*'</code> means every
+signed-in person.</p>
 <table>
 <thead>
 <tr>
-<th>key</th>
-<th>may</th>
+<th>Key</th>
+<th>May</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>view</code></td>
-<td>see the folder in lists; open its reports, past builds, traces, lineage, downloads and share links</td>
+<td>See the folder in lists; open its reports, past builds, traces, lineage, downloads and share links.</td>
 </tr>
 <tr>
 <td><code>build</code></td>
-<td>view, and start and edit drafts in the folder</td>
+<td>View, and start and edit drafts in the folder.</td>
 </tr>
 <tr>
 <td><code>publish</code></td>
-<td>build, and publish a draft into the folder; change a report's schedule</td>
+<td>Build, and publish a draft into the folder; change a report's schedule.</td>
 </tr>
 <tr>
 <td><code>manage</code></td>
-<td>publish, and change the folder's permissions</td>
+<td>Publish, and change the folder's permissions.</td>
 </tr>
 </tbody>
 </table>
-<p>A level includes the ones above it in the table: someone named under <code>publish</code>
-also builds and views. Any other key, or a value that is not a name or a list
-of names, makes the file malformed (see below).</p>
-<hr>
-<h2 id="what-a-folder-accepts">What a folder accepts</h2>
-<p><code>accepts</code> is the one key that is not a permission. It says what may be
-published into the folder, and binds everyone who publishes there, admins
-included.</p>
+<p>Each level includes those above it in the table. Any other key, or a value
+that is not a name or a list of names, makes the file malformed.</p>
+<h2 id="accepts"><code>accepts</code></h2>
+<p>What may be published into the folder. It binds everyone who publishes there,
+admins included.</p>
 <table>
 <thead>
 <tr>
-<th>value</th>
-<th>the folder takes</th>
+<th>Value</th>
+<th>The folder takes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>labelled</code> (default)</td>
-<td>anything honestly labelled: a number that cannot be re-run says so in its trace</td>
+<td>Anything labelled correctly: a number that cannot be re-run says so in its trace.</td>
 </tr>
 <tr>
 <td><code>checkable</code></td>
-<td>only reports whose every number a query can re-run</td>
+<td>Only reports whose every number a query can re-run.</td>
 </tr>
 </tbody>
 </table>
-<p>Under <code>checkable</code>, publishing a draft (or asking to) is refused with a plain
-message naming the cause when the report has a <code>report.py</code> (Python computes its
-numbers), or when its build holds a figure's data that is marked
-<code>verifiable: false</code> or is not a single recorded query. A figure that a page's
-<code>script.js</code> changes in the browser is marked in the trace when the page runs,
-so it cannot be judged at publish time. Any other value of <code>accepts</code> makes the
-file malformed (below), and a malformed file reads as <code>checkable</code>.</p>
-<hr>
-<h2 id="publishing-into-a-folder-and-asking-to">Publishing into a folder, and asking to</h2>
-<p>A draft of a report is published to a folder you choose (<code>folder</code>, a library
-path such as <code>finance/q3</code>; it is created if it does not exist, and the report
-keeps its last name). What happens depends on the level you hold on the
-destination, checked against its nearest <code>_folder.yaml</code>:</p>
-<ul>
-<li><strong><code>publish</code></strong> (or more): it is published, as before. The history beside the
-  kept versions (<code>.tracebi/history/reports/&lt;path&gt;/publishes.jsonl</code>) records who
-  published and when.</li>
-<li><strong><code>build</code> only</strong>: it becomes a <strong>publish request</strong>, not a publish. The
-  request holds a copy of the draft as it was when asked. It is a file,
-  <code>drafts/_requests/&lt;id&gt;.json</code>, so it survives a restart. Anyone with
-  <code>publish</code> on the destination can <strong>approve</strong> it (the copy is published
-  exactly as a direct publish would, and the history records who asked, who
-  approved and when) or <strong>reject</strong> it with a note. The permission is checked
-  when they decide, not when it was asked, so a requester with only <code>build</code>
-  cannot approve their own.</li>
-<li><strong>less than <code>build</code></strong>: refused, <code>403</code>, naming the permission.</li>
-</ul>
-<p>With no <code>_folder.yaml</code> anywhere, roles decide as before: an analyst publishes
-directly and there are no requests. A person sees their own requests, and those
-into folders where they hold <code>publish</code>.</p>
-<hr>
-<h2 id="my-published">My published</h2>
-<p>Every signed-in person has a folder of their own, <code>my-published/&lt;their sign-in
-name&gt;/</code> under the library (shown in the app as <strong>My published</strong>, always listed,
-even empty). They hold <code>publish</code> there without any <code>_folder.yaml</code>, so a report
-published into it is shareable and schedulable without the shared folders.</p>
-<ul>
-<li>Nobody else sees it. To share it, put a <code>_folder.yaml</code> <strong>inside that folder</strong>
-  (<code>view: [bob@example.com]</code>). A <code>_folder.yaml</code> higher up, even <code>view: ['*']</code>,
-  never reaches in. Admins keep <code>manage</code>, as everywhere.</li>
-<li>The app shows a folder's permissions, read-only, to people with <code>manage</code> and
-  to the owner of a personal folder. Editing is file-only for now, and the app
-  says so.</li>
-<li>A session with no sign-in identity (the shared gateway token, the command
-  line, the scheduler, an app with no sign-in) has no personal folder; it holds
-  <code>manage</code> everywhere and publishes into a shared folder. <code>GET /api/folders</code>
-  answers <code>personal: null</code> with the reason.</li>
-<li>Not offered when <code>TRACEBI_LIBRARY_MOUNTS</code> is set: the library is then several
-  labelled roots with no place for it.</li>
-</ul>
-<p>In the app, a draft's <strong>Publish</strong> step lists the places it can go (My published,
-each folder where you hold <code>build</code> or more, and its own place) and says for
-each whether it publishes directly or sends a request. Approvers (<code>publish</code> on
-the folder) see pending requests under <strong>Review</strong> (Needs attention) and approve, or decline with
-a reason the requester sees.</p>
-<hr>
+<p>Under <code>checkable</code>, a publish (or a request) is refused with the cause when the
+report has a <code>report.py</code>, or when its build holds a figure whose data is
+marked <code>verifiable: false</code> or is not a single recorded query. A figure that a
+page's <code>script.js</code> changes in the browser is marked in the trace when the page
+runs, so it cannot be judged at publish time. Any other value is malformed,
+and a malformed file reads as <code>checkable</code>.</p>
 <h2 id="how-a-file-applies">How a file applies</h2>
-<ol>
-<li><strong>The nearest file wins.</strong> Starting at a report's folder and walking up to
-   the library root (or the mount), the first <code>_folder.yaml</code> found is the whole
-   rule for everything below it. It replaces the files above it; it does not add
-   to them. A sub-folder that should be open to everyone says so itself
-   (<code>view: ['*']</code>).</li>
-<li><strong>It is read at request time.</strong> Edit the file and the next request sees it:
-   no restart, no rescan.</li>
-<li><strong>A folder narrows a role; it never widens one.</strong> The role still limits what
-   kind of thing a person may do: a <code>viewer</code> who is named under <code>manage</code> is
-   still only a viewer, because the routes keep checking roles. Roles are the
-   ceiling, folders decide where.</li>
-<li><strong>Admins keep the folder.</strong> The <code>admin</code> role always has Manage, so a typo in a
-   file cannot lock out the people who can fix it. So does anything with no
-   sign-in role at all: the command line, the scheduler, a notebook, and an app
-   run without authentication.</li>
-<li><strong>A malformed file fails closed.</strong> If the file cannot be read or parsed, or
-   has a key it does not know (<code>veiw:</code>) or an <code>accepts</code> it does not know, nobody but admins is granted anything
-   under it, a warning is logged, and nothing else breaks. An <strong>empty</strong> file is
-   valid and grants no one but admins.</li>
-</ol>
-<hr>
-<h2 id="what-hidden-means">What "hidden" means</h2>
-<p>A person without <code>view</code> on a folder gets the same answer for its reports as for
-a name that does not exist: they are not in <code>GET /api/reports</code>, the agent
-gateway's <code>list_reports</code>, <code>GET /api/discovery</code> or <code>GET /api/runs</code>; opening,
-running, downloading, reading the source, lineage or past builds of one is a
-404 (or, for the run history, an empty list); the share link <code>/r/&lt;name&gt;</code> is a
-404; <code>fetch_artifact</code> and <code>verify_manifest</code> do not find its built files. Built
-outputs inherit the folder's permissions.</p>
-<p>A person who can see a report but lacks the level an action needs is refused
-with <strong>403</strong> and the permission it needs (<code>build permission is needed on the
-folder of finance/q3/pack</code>): starting a draft in the folder needs <code>build</code>,
-publishing a draft into it needs <code>publish</code> (with <code>build</code> only, it becomes a
-request, below).</p>
-<hr>
-<h2 id="where-the-groups-come-from">Where the groups come from</h2>
 <table>
 <thead>
 <tr>
-<th>Sign-in</th>
-<th>Groups come from</th>
+<th>Rule</th>
+<th>Detail</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>App sign-in or <code>/mcp</code> sign-in through <code>TRACEBI_OIDC_ISSUER</code></td>
-<td>the ID token's groups claim (<code>TRACEBI_OIDC_GROUPS_CLAIM</code>, default <code>groups</code>), all of them, whether or not <code>TRACEBI_OIDC_ROLE_MAP</code> maps them to a role</td>
+<td>The nearest file wins</td>
+<td>Walking up from a report's folder to the library root (or mount), the first <code>_folder.yaml</code> is the whole rule for everything below it. It replaces the files above; it does not add to them. A sub-folder open to everyone says <code>view: ['*']</code> itself.</td>
 </tr>
 <tr>
-<td>Proxy headers (<code>TRACEBI_AUTH_PROXY_HEADER</code>)</td>
-<td>the header named by <code>TRACEBI_AUTH_GROUPS_HEADER</code>, comma separated; the proxy must set or replace it, like the role header</td>
+<td>Read at request time</td>
+<td>Edit the file and the next request sees it. No restart, no rescan.</td>
 </tr>
 <tr>
-<td>Built-in <code>/mcp</code> sign-in (<code>TRACEBI_LOCAL_USERS</code>)</td>
-<td><code>name:role@group+group:password</code>, e.g. <code>alice:analyst@finance+ops:a-long-password</code></td>
+<td>Narrows, never widens</td>
+<td>The role still limits what a person may do. A <code>viewer</code> named under <code>manage</code> is still a viewer. Roles are the ceiling; folders decide where.</td>
 </tr>
 <tr>
-<td>Basic auth</td>
-<td>no groups: name the person</td>
+<td>Admins keep Manage</td>
+<td>The <code>admin</code> role always has Manage, so a typo cannot shut out the people who fix it. So does anything with no sign-in role: the CLI, the scheduler, a notebook, an app without sign-in.</td>
 </tr>
 <tr>
-<td>The static <code>TRACEBI_MCP_TOKEN</code></td>
-<td>no groups. Beside a per-person sign-in it is the principal <code>mcp:&lt;TRACEBI_MCP_ACTOR&gt;</code> with the analyst role, so a folder opens to it only by that name. A gateway with only the token (and stdio) has no sign-in role at all, so it is the operator and sees every folder</td>
+<td>A bad file grants nothing</td>
+<td>A file that cannot be read or parsed, or has an unknown key (<code>veiw:</code>) or <code>accepts</code> value, grants nobody but admins anything below it, and logs a warning. An empty file is valid and grants nobody but admins.</td>
 </tr>
 </tbody>
 </table>
-<p>An agent acts as the person using it: over <code>/mcp</code> with a per-person sign-in, the
-agent's list and reads are exactly the person's. Folder permissions only bind
-an agent that signs in as a person.</p>
-<hr>
-<h2 id="the-command-line-and-the-scheduler">The command line and the scheduler</h2>
-<p><code>tracebi report build</code>, <code>tracebi schedule run</code> and the in-server scheduler ask
+<h2 id="publish-into-a-folder-or-ask-to">Publish into a folder, or ask to</h2>
+<p>A report draft is published into a folder you choose (<code>folder</code>, a library
+path such as <code>finance/q3</code>; created if missing; the report keeps its name).
+What happens depends on your level on the destination:</p>
+<table>
+<thead>
+<tr>
+<th>Your level</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>publish</code> or more</td>
+<td>Published. <code>.tracebi/history/reports/&lt;path&gt;/publishes.jsonl</code> records who and when.</td>
+</tr>
+<tr>
+<td><code>build</code> only</td>
+<td>A publish request: a copy of the draft as it was, stored in <code>drafts/_requests/&lt;id&gt;.json</code>, so it survives a restart. Anyone with <code>publish</code> there can approve it (published exactly as a direct publish; the history records who asked, who approved and when) or reject it with a note. The level is checked when they decide, so a <code>build</code>-only requester cannot approve their own.</td>
+</tr>
+<tr>
+<td>Less</td>
+<td>Refused with <code>403</code>, naming the permission.</td>
+</tr>
+</tbody>
+</table>
+<p>With no <code>_folder.yaml</code> anywhere, an analyst publishes directly and there are
+no requests. A person sees their own requests, and those into folders where
+they hold <code>publish</code>.</p>
+<p>In the app, a draft's <strong>Publish</strong> step lists where it can go (My published,
+each folder where you hold <code>build</code> or more, and its own place), each marked as
+a direct publish or a request. Approvers see pending requests under <strong>Review</strong>
+(Needs attention).</p>
+<h2 id="my-published">My published</h2>
+<p>Every signed-in person has a folder of their own,
+<code>my-published/&lt;sign-in name&gt;/</code>, shown as <strong>My published</strong> and always listed,
+even when empty. They hold <code>publish</code> there with no <code>_folder.yaml</code>, so a report
+published into it can be shared and scheduled.</p>
+<ul>
+<li>Nobody else sees it. To share it, put a <code>_folder.yaml</code> inside it
+  (<code>view: [bob@example.com]</code>). A file higher up, even <code>view: ['*']</code>, never
+  reaches in. Admins keep <code>manage</code>.</li>
+<li>The app shows a folder's permissions, read-only, to people with <code>manage</code>
+  and to a personal folder's owner. You edit them in the file.</li>
+<li>A session with no sign-in identity (the shared gateway token, the CLI, the
+  scheduler, an app with no sign-in) has no personal folder. It holds <code>manage</code>
+  everywhere and publishes into shared folders. <code>GET /api/folders</code> answers
+  <code>personal: null</code> with the reason.</li>
+<li>There is none when <code>TRACEBI_LIBRARY_MOUNTS</code> is set.</li>
+</ul>
+<h2 id="hidden-means-not-found">Hidden means not found</h2>
+<p>A person without <code>view</code> on a folder gets the same answer for its reports as
+for a name that does not exist:</p>
+<ul>
+<li>They are not in <code>GET /api/reports</code>, the gateway's <code>list_reports</code>,
+  <code>GET /api/discovery</code> or <code>GET /api/runs</code>.</li>
+<li>Opening, running, downloading, or reading the source, lineage or past
+  builds of one is a 404 (an empty list for run history). <code>/r/&lt;name&gt;</code> is a
+  404. <code>fetch_artifact</code> and <code>verify_manifest</code> do not find its files.</li>
+<li>Built outputs inherit the folder's permissions.</li>
+</ul>
+<p>A person who can see a report but lacks the level an action needs gets
+<strong>403</strong> with the permission (<code>build permission is needed on the folder of
+finance/q3/pack</code>).</p>
+<h2 id="where-groups-come-from">Where groups come from</h2>
+<table>
+<thead>
+<tr>
+<th>Sign-in</th>
+<th>Groups</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App or <code>/mcp</code> sign-in through <code>TRACEBI_OIDC_ISSUER</code></td>
+<td>The ID token's groups claim (<code>TRACEBI_OIDC_GROUPS_CLAIM</code>, default <code>groups</code>), all of them, mapped to a role or not.</td>
+</tr>
+<tr>
+<td>Proxy headers (<code>TRACEBI_AUTH_PROXY_HEADER</code>)</td>
+<td>The header <code>TRACEBI_AUTH_GROUPS_HEADER</code> names, comma separated. The proxy must set or replace it.</td>
+</tr>
+<tr>
+<td>Built-in <code>/mcp</code> sign-in (<code>TRACEBI_LOCAL_USERS</code>)</td>
+<td><code>name:role@group+group:password</code>, e.g. <code>alice:analyst@finance+ops:a-long-password</code>.</td>
+</tr>
+<tr>
+<td>Basic auth</td>
+<td>None: name the person.</td>
+</tr>
+<tr>
+<td><code>TRACEBI_MCP_TOKEN</code></td>
+<td>None. Beside a per-person sign-in it is the principal <code>mcp:&lt;TRACEBI_MCP_ACTOR&gt;</code> with the analyst role, so a folder opens to it only by that name. A gateway with only the token (or stdio) has no sign-in role, acts as the operator and sees every folder.</td>
+</tr>
+</tbody>
+</table>
+<p>An agent over <code>/mcp</code> with a per-person sign-in sees exactly what its person
+sees. Folder permissions bind an agent only when it signs in as a person.</p>
+<p>Sessions opened before folder permissions existed have no stored groups; the
+person signs in again to get them.</p>
+<h2 id="the-cli-and-the-scheduler">The CLI and the scheduler</h2>
+<p><code>tracebi report build</code>, <code>tracebi schedule run</code> and the in-server scheduler use
 the same check but run as the operator (role <code>cli</code>), which holds Manage
 everywhere: they have no sign-in, and whoever runs them can already read the
-files. A folder file does not stop a scheduled report from running.</p>
-<p>Sessions opened before this feature have no stored groups: the person signs in
-again to get their groups.</p>
+files. A folder file never stops a scheduled report from running.</p>
   </main>
 </div>
 <script>

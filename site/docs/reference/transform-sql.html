@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,64 +61,59 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="sql-transforms">SQL transforms</h1>
-<p><strong>A phase ① transform is a <code>.sql</code> file by default: DuckDB statements, run top
-to bottom in one fresh connection to the warehouse. Python is the escape hatch.
-The sink contract sits beside it as a <code>.contract.yaml</code>.</strong></p>
+<p>A transform is a <code>.sql</code> file of DuckDB statements, run top to bottom in one
+fresh connection to the warehouse, with its sink contract beside it in a
+<code>.contract.yaml</code>.</p>
 <pre><code>transforms/
   holdings_transform.sql             # the transform
-  holdings_transform.contract.yaml   # what the tables it lands must satisfy
+  holdings_transform.contract.yaml   # what the tables it writes must satisfy
 </code></pre>
-<pre><code class="language-bash">tracebi new-transform &quot;Holdings&quot;      # → transforms/holdings.sql + holdings.contract.yaml
+<pre><code class="language-bash">tracebi new-transform &quot;Holdings&quot;      # transforms/holdings.sql + holdings.contract.yaml
 tracebi run-transform holdings        # runs it, then the contract; prints form: sql
 </code></pre>
-<p>The reference is
-<code>examples/portfolio_project/transforms/holdings_transform.sql</code>; the same work
-in pandas, <code>holdings_transform_pandas.py</code>, sinks identical tables (every
-table's fingerprint equal, row order included).</p>
-<hr>
+<p>The reference is <code>examples/portfolio_project/transforms/holdings_transform.sql</code>.
+The pandas version, <code>holdings_transform_pandas.py</code>, writes identical tables:
+every fingerprint equal, row order included.</p>
 <h2 id="how-it-runs">How it runs</h2>
-<p><code>tracebi run-transform &lt;name&gt;</code> (and the <code>transform</code> step of a
-<a href="../reference/pipeline-yaml.html">pipeline</a>, and a report's <code>refresh</code>) finds
-<code>transforms/&lt;name&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code>, runs it and prints
-<code>form: sql | python | notebook</code>; a pipeline run records the form, and
+<p><code>tracebi run-transform &lt;name&gt;</code>, a pipeline's <code>transform</code> step and a schedule's
+<code>refresh</code> all find <code>transforms/&lt;name&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code>, run it, and
+print <code>form: sql | python | notebook</code>. A pipeline run records the form, and
 <code>tracebi run-pipeline &lt;name&gt; --status</code> and the model's Transform tab show it.</p>
-<p>A SQL transform:</p>
+<p>A SQL transform runs in five steps:</p>
 <ol>
-<li>has its two placeholders substituted (below);</li>
-<li>loads each table its <code>-- source:</code> lines name, through their connections
-   (below);</li>
-<li>runs statement by statement, in order, in <strong>one</strong> fresh read-write DuckDB
-   connection to the warehouse <code>tracebi.yaml</code> names, with the project's
-   <code>engine</code> limits. A failing statement stops the run with its number and
-   line: <code>transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …</code>;</li>
-<li>on the object tier, lands every table it created (below);</li>
-<li>closes the connection, then runs <code>&lt;name&gt;.contract.yaml</code> if there is one.</li>
+<li>Its two placeholders are substituted.</li>
+<li>Each table its <code>-- source:</code> lines name is loaded through its connection.</li>
+<li>Its statements run in order in one fresh read-write DuckDB connection to
+   the warehouse <code>tracebi.yaml</code> names, with the project's <code>engine</code> limits. A
+   failing statement stops the run with its number and line:
+   <code>transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …</code>.</li>
+<li>On the object tier, every table it created is written out.</li>
+<li>The connection closes, then <code>&lt;name&gt;.contract.yaml</code> runs if there is one.</li>
 </ol>
-<p>Nothing persists between runs but the tables that landed: <code>TEMP</code> tables and
-<code>TEMP MACRO</code>s are scratch and vanish with the connection. Keep it idempotent
-with <code>CREATE OR REPLACE</code>, so a rerun replaces the tables.</p>
-<p>The connection is not locked like a model's query connection: it may read
-files and, on the object tier, load <code>httpfs</code>. It runs only from the CLI, the
-scheduler and an approved code request, never to answer a reader.</p>
-<h2 id="where-a-table-lands-per-tier">Where a table lands, per tier</h2>
-<p>A table the script creates (<code>CREATE OR REPLACE TABLE fact_x AS …</code>, not <code>TEMP</code>)
-is a <strong>sink table</strong>.</p>
+<p><code>TEMP</code> tables and <code>TEMP MACRO</code>s vanish with the connection. Use
+<code>CREATE OR REPLACE</code> so a rerun replaces the tables.</p>
+<p>This connection may read files and, on the object tier, load <code>httpfs</code>. It runs
+only from the CLI, the scheduler and an approved code request, never to answer
+a reader.</p>
+<h2 id="where-a-table-lands">Where a table lands</h2>
+<p>A table the script creates without <code>TEMP</code> (<code>CREATE OR REPLACE TABLE fact_x AS
+…</code>) is a sink table.</p>
 <table>
 <thead>
 <tr>
-<th>Tier (<code>tracebi.yaml</code> <code>warehouse.tier</code>)</th>
+<th>Tier (<code>warehouse.tier</code>)</th>
 <th><code>CREATE OR REPLACE TABLE fact_x</code> lands</th>
 <th><code>{{ sink }}</code> is</th>
 </tr>
@@ -126,31 +121,31 @@ is a <strong>sink table</strong>.</p>
 <tbody>
 <tr>
 <td><code>file</code> (default)</td>
-<td>in <code>data/warehouse.duckdb</code> itself</td>
-<td>the <code>.duckdb</code> path</td>
+<td>In <code>data/warehouse.duckdb</code></td>
+<td>The <code>.duckdb</code> path</td>
 </tr>
 <tr>
 <td><code>object</code></td>
-<td>as <code>&lt;location&gt;/fact_x.parquet</code>, written after the script</td>
-<td>the prefix (<code>s3://bucket/project</code>, or a directory)</td>
+<td>As <code>&lt;location&gt;/fact_x.parquet</code>, written after the script</td>
+<td>The prefix (<code>s3://bucket/project</code>, or a directory)</td>
 </tr>
 <tr>
 <td><code>remote</code></td>
-<td>in the attached database (<code>USE</code>d for the run)</td>
-<td>the attach string</td>
+<td>In the attached database (<code>USE</code>d for the run)</td>
+<td>The attach string</td>
 </tr>
 </tbody>
 </table>
-<p>On the object tier a script may also write a table itself, which is the idiom
+<p>On the object tier a script may write a table itself instead, which is what
 <code>tracebi new-transform</code> scaffolds there:</p>
 <pre><code class="language-sql">CREATE OR REPLACE TEMP TABLE dim_x AS SELECT …;
 COPY dim_x TO '{{ sink }}/dim_x.parquet' (FORMAT PARQUET);
 </code></pre>
-<p>Use one or the other for a table: a <code>CREATE</code>d table that is also <code>COPY</code>'d is
-written twice.</p>
+<p>Use one way or the other for a table. A table that is both created and
+copied is written twice.</p>
 <h2 id="placeholders">Placeholders</h2>
-<p>Exactly two, substituted as text with any single quote doubled, so each
-belongs inside a <code>'…'</code> literal:</p>
+<p>There are two. Each is substituted as text with any single quote doubled, so
+put it inside a <code>'…'</code> literal.</p>
 <table>
 <thead>
 <tr>
@@ -165,58 +160,65 @@ belongs inside a <code>'…'</code> literal:</p>
 </tr>
 <tr>
 <td><code>{{ root }}</code></td>
-<td>the project root, absolute</td>
+<td>The project root, absolute</td>
 </tr>
 </tbody>
 </table>
 <p>Anything else between <code>{{</code> and <code>}}</code> is an error naming it:
 <code>transforms/x.sql: {{ warehouse }} is not a placeholder; a SQL transform has
-two, {{ sink }} and {{ root }}</code>. There are no loops, conditionals or
-<code>ref()</code>s: one transform file per pipeline, statements in order.</p>
+two, {{ sink }} and {{ root }}</code>. There are no loops, conditionals or <code>ref()</code>s.</p>
 <h2 id="relative-paths">Relative paths</h2>
-<p>A <strong>read</strong> with a relative path, <code>read_csv('inputs/holdings.csv')</code>, resolves
-against the project root: the connection's <code>file_search_path</code> is set to it, so
-the transform reads the same file whichever directory it was started from. A
-<strong>write</strong> names its destination with <code>{{ sink }}</code> or <code>{{ root }}</code>.</p>
-<h2 id="sources-outside-the-warehouse">Sources outside the warehouse</h2>
-<p>A table that lives in a database, not a file, is read through a declared
-<a href="../reference/connections-yaml.html">connection</a> with a <code>-- source:</code> line in the transform's
-header (the comment lines above its first statement):</p>
+<p>A relative read, <code>read_csv('inputs/holdings.csv')</code>, resolves against the
+project root (the connection's <code>file_search_path</code>), whatever directory the run
+started from. A write names its destination with <code>{{ sink }}</code> or <code>{{ root }}</code>.</p>
+<h2 id="read-a-table-from-a-database">Read a table from a database</h2>
+<p>Declare the database as a connection (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>), then name each
+table in a <code>-- source:</code> line in the header, above the first statement:</p>
 <pre><code class="language-sql">-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv
 
 CREATE OR REPLACE TABLE dim_rating AS
 SELECT … FROM crm.issuer_ratings …;
 </code></pre>
-<p>The grammar, one table per line, as many lines as tables:</p>
 <pre><code>-- source: &lt;connection&gt;.&lt;table&gt; [fallback: &lt;path&gt;.csv]
 </code></pre>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&lt;connection&gt;</code></td>
+<td><code>connections/&lt;connection&gt;.yaml</code>, any type (<code>tracebi connect crm --kind postgres</code> writes one). Letters, digits and underscores.</td>
+</tr>
+<tr>
+<td><code>&lt;table&gt;</code></td>
+<td>A table that connection's connector loads.</td>
+</tr>
+<tr>
+<td><code>fallback:</code></td>
+<td>A committed CSV snapshot inside the project, read only when the connection's <code>${VAR}</code> is unset (a fresh clone, CI). Any other failure (server down, table missing, wrong password) stops the run. With no fallback, an unset variable stops the run, naming it.</td>
+</tr>
+</tbody>
+</table>
 <ul>
-<li><code>&lt;connection&gt;</code> is <code>connections/&lt;connection&gt;.yaml</code> (<code>tracebi connect crm
-  --kind postgres</code> writes one; any connection type works). <code>&lt;table&gt;</code> is a
-  table that connection's connector loads. Both are names: letters, digits
-  and underscores.</li>
-<li>Before the first statement runs, the runner loads each table through the
-  connection's connector, the whole table with nothing pushed down, as a model
-  would. The SQL reads it as <code>&lt;connection&gt;.&lt;table&gt;</code>: an in-memory database
-  named after the connection, attached for this run only, so nothing of it
-  lands in the warehouse. A relational table has no row order, so the loaded
-  rows are sorted by every column.</li>
-<li><code>fallback:</code> names a committed CSV snapshot inside the project, read through
-  the CSV connector <strong>only</strong> when the connection's <code>${VAR}</code> is unset (a fresh
-  clone, CI). Any other failure (the server down, the table missing, a wrong
-  password) stops the run: a snapshot never covers for a source that is set
-  but unreachable. With no fallback, an unset variable stops the run naming
-  it.</li>
-<li>Refused, naming the line: <code>-- source: crm</code> with no table (name each one),
-  a table named twice, a <code>-- source:</code> line below the first statement (it
-  would read as a directive the runner skips), and anything after the table
-  but <code>fallback: &lt;path&gt;</code>.</li>
+<li>Before the first statement, each table loads in full through the
+  connection's connector, with nothing pushed down. The SQL reads it as
+  <code>&lt;connection&gt;.&lt;table&gt;</code>, from an in-memory database attached for this run
+  only, so none of it lands in the warehouse.</li>
+<li>The loaded rows are sorted by every column, because a database table has no
+  row order.</li>
+<li>Refused, naming the line: <code>-- source: crm</code> with no table, a table named
+  twice, a <code>-- source:</code> line below the first statement, and anything after the
+  table except <code>fallback: &lt;path&gt;</code>.</li>
 </ul>
-<p>There are still exactly two placeholders: a source is a name the SQL reads,
-not a substitution.</p>
-<p><strong>What the certificate records.</strong> When a <code>&lt;name&gt;.contract.yaml</code> sits beside
-the transform, its certificate (<code>data/warehouse.contracts.json</code>) records each
-load under the transform's <code>sources</code>:</p>
+<p>A source is a name the SQL reads, not a placeholder.</p>
+<h3 id="what-the-certificate-records">What the certificate records</h3>
+<p>With a <code>&lt;name&gt;.contract.yaml</code> beside the transform, the certificate
+(<code>data/warehouse.contracts.json</code>) records each load under the transform's
+<code>sources</code>:</p>
 <pre><code class="language-json">&quot;sources&quot;: {
   &quot;crm.issuer_ratings&quot;: {
     &quot;connection&quot;: &quot;crm&quot;, &quot;table&quot;: &quot;issuer_ratings&quot;,
@@ -224,36 +226,50 @@ load under the transform's <code>sources</code>:</p>
   }
 }
 </code></pre>
-<p>and, when the snapshot stood in, <code>"source_fallback": "csv"</code>, <code>"fallback":
-"inputs/issuer_ratings.csv"</code> and the <code>reason</code> (the unset variable). So the
-claim stays exact: <strong>the sink satisfied its contract</strong> against those inputs.
-Each report manifest's <code>transform_contracts</code> entry carries the same
-<code>sources</code> (less the reason), so a report's trace says where the sunk data came
-from, and that the CRM was not reached when it was not. Contract status is
-never colored by it.</p>
-<p><code>tracebi verify &lt;manifest&gt; --contracts</code> re-reads each recorded source (a load
-the snapshot served from the snapshot again, never from the connection) and
-compares fingerprints: <code>unchanged</code>, or <code>CHANGED</code> with exit 1 (a re-run of the
-transform would land other tables; the figures may still reproduce, because
-the warehouse did not move). A source it cannot read now (its variable unset,
-the server down) is <code>not checked</code>, which is neither green nor a failure.</p>
-<p><strong>In Python.</strong> <code>tracebi.transforms.load_source(ref, root, fallback=None)</code>
-returns <code>(frame, record)</code>, the same load and the same record; pass the records
-to <code>contract(name, warehouse=..., sources={ref: record})</code> and the certificate
-says the same thing. <code>examples/portfolio_project/transforms/holdings_transform_pandas.py</code>
-does this.</p>
+<p>When the snapshot stood in, it also records <code>"source_fallback": "csv"</code>,
+<code>"fallback": "inputs/issuer_ratings.csv"</code> and the <code>reason</code> (the unset
+variable). The claim is then exact: the sink satisfied its contract against
+those inputs. Each report manifest's <code>transform_contracts</code> entry carries the
+same <code>sources</code> (without the reason), so a report's trace says where the data
+came from, including when the CRM was not reached. It never changes the
+contract's status.</p>
+<p><code>tracebi verify &lt;manifest&gt; --contracts</code> re-reads each recorded source (a
+snapshot load from the snapshot again) and compares fingerprints:</p>
+<table>
+<thead>
+<tr>
+<th>Result</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>unchanged</code></td>
+<td>The source returns the same data.</td>
+</tr>
+<tr>
+<td><code>CHANGED</code></td>
+<td>A re-run of the transform would write different tables. Exit 1. The figures may still reproduce, because the warehouse did not move.</td>
+</tr>
+<tr>
+<td><code>not checked</code></td>
+<td>The source cannot be read now (variable unset, server down). Neither green nor a failure.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>In Python:</strong> <code>tracebi.transforms.load_source(ref, root, fallback=None)</code>
+returns <code>(frame, record)</code>, the same load and record. Pass the records to
+<code>contract(name, warehouse=..., sources={ref: record})</code> and the certificate
+says the same thing. <code>holdings_transform_pandas.py</code> does this.</p>
 <h2 id="cells">Cells</h2>
-<p><code>-- %% [markdown]</code> and <code>-- %%</code> lines mark cells, as <code># %%</code> does in a Python
-transform, so an editor that understands percent cells folds them. They are
-comments: the run ignores them.</p>
+<p><code>-- %% [markdown]</code> and <code>-- %%</code> lines mark cells, like <code># %%</code> in Python, so an
+editor that understands percent cells can fold them. The run ignores them.</p>
 <h2 id="the-contract-file">The contract file</h2>
-<p><code>&lt;name&gt;.contract.yaml</code> beside the transform declares the
-<a href="../concepts/sink-contracts.html">sink contract</a> in the same closed vocabulary as
-<code>with contract(...)</code> in Python, through the same parser, and writes the same
-certificate. It is honoured beside a <code>.py</code> or <code>.ipynb</code> transform too (run after
-the script).</p>
+<p><code>&lt;name&gt;.contract.yaml</code> declares the <a href="../concepts/sink-contracts.html">sink contract</a>. It uses
+the same checks and parser as <code>with contract(...)</code> in Python and writes the
+same certificate. It also runs beside a <code>.py</code> or <code>.ipynb</code> transform.</p>
 <pre><code class="language-yaml">name: holdings          # the certificate's record; default: the transform's file name
-note: &gt;-                # the STATED methodology, recorded verbatim, never verified
+note: &gt;-                # the stated methodology, recorded as written, never checked
   rows with no keyable issuer dropped and counted
 checks:
   - rows: fact_holdings          # the check, with its table as the value
@@ -299,34 +315,27 @@ checks:
 </tr>
 </tbody>
 </table>
-<p>Every check takes a <code>note</code>. The top level holds only <code>name</code>, <code>note</code> and
-<code>checks</code>; an unknown key, a check outside the vocabulary or a parameter it
-does not take is an error naming the file and the entry
-(<code>checks[0] must name exactly one check …</code>). No checks, or all of them
-commented out, declares nothing and writes nothing.</p>
-<p>The checks run after the transform's connection is closed, through the
-warehouse's own reader, so they check what landed (on the object tier the
-transform's connection also holds in-memory tables that are not the sink).
-A failed check raises and no certificate is written; the claim is <strong>the sink
-satisfied its contract</strong>, never that the transform was verified.</p>
-<h2 id="the-escape-hatch-python">The escape hatch: Python</h2>
-<p><code>tracebi new-transform "Name" --python</code> scaffolds <code>transforms/&lt;name&gt;.py</code>,
-notebook-shaped pandas that ends by writing frames:
-<code>DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")</code>.
-A literal <code>.ipynb</code> runs too. Either runs top to bottom in a fresh namespace.
-Nothing is converted: a pandas transform keeps working until its author
-rewrites it. The trace line is drawn at the sink, so a Python transform is as
-traceable as a SQL one.</p>
-<h2 id="one-file-per-name">One file per name</h2>
-<p>A transform is one file. <code>x.sql</code> beside <code>x.py</code> (or <code>x.ipynb</code>) is refused by
-<code>run-transform</code>, naming both, and <code>new-transform</code> will not create the second.</p>
-<h2 id="related">Related</h2>
 <ul>
-<li><a href="../concepts/transform.html">Transform — phase ①</a> — the phase, and why it is unconstrained</li>
-<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — what a certificate says, and what it does not</li>
-<li><a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a> — the pipeline that runs a transform, then the reports</li>
-<li><a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a> — the warehouse block that decides the tier</li>
+<li>Every check takes a <code>note</code>.</li>
+<li>The top level holds only <code>name</code>, <code>note</code> and <code>checks</code>. An unknown key, check
+  or parameter is an error naming the file and entry
+  (<code>checks[0] must name exactly one check …</code>).</li>
+<li>No checks, or all commented out, declares nothing and writes nothing.</li>
+<li>The checks run after the transform's connection closes, through the
+  warehouse's own reader, so they check what landed.</li>
+<li>A failed check raises and writes no certificate. Passing means the sink
+  satisfied its contract, never that the transform was verified.</li>
 </ul>
+<h2 id="python-transforms">Python transforms</h2>
+<p><code>tracebi new-transform "Name" --python</code> writes <code>transforms/&lt;name&gt;.py</code>:
+notebook-shaped pandas that ends with
+<code>DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")</code>.
+A <code>.ipynb</code> runs too. Either runs top to bottom in a fresh namespace. A pandas
+transform keeps working until you rewrite it; nothing converts it. Lineage
+starts at the sink, so a Python transform is as traceable as a SQL one.</p>
+<h2 id="one-file-per-name">One file per name</h2>
+<p><code>x.sql</code> beside <code>x.py</code> or <code>x.ipynb</code> is refused by <code>run-transform</code>, naming both,
+and <code>new-transform</code> will not create the second.</p>
   </main>
 </div>
 <script>

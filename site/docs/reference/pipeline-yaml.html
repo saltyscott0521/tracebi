@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,30 +61,20 @@
 <a href="../reference/queries.html">Queries</a>
 <a class="on" href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="pipeline-files-yaml">Pipeline files (YAML)</h1>
-<p><strong>A pipeline as data: which transform to run, which models it feeds, which
-reports to rebuild, and when. A transform stays its own file (SQL by default,
-Python as the escape hatch); a pipeline only names one.</strong></p>
-<p><code>pipelines/&lt;name&gt;.yaml</code> (or <code>.yml</code>) compiles to the same runner as
-<code>model_pipeline(...)</code>: <code>tracebi run-pipeline &lt;name&gt;</code> and the app's <strong>Refresh data</strong>
-run the transform fresh (<code>tracebi run-transform</code>), then rebuild the reports,
-recording each run. <code>tracebi new-pipeline "Sales ETL"</code> writes a commented
-starter; <code>--python</code> writes the old <code>pipelines/&lt;name&gt;.py</code>.</p>
-<p>The file loads with <code>yaml.safe_load</code> semantics, a repeated key is an error,
-and the schema is closed.</p>
-<hr>
-<h2 id="example">Example</h2>
+<p>A pipeline file names the transform to run, the models it feeds, the reports
+to rebuild, and when.</p>
 <pre><code class="language-yaml"># pipelines/portfolio_model.yaml
 name: portfolio_model          # equals the file name
 description: Rebuild the portfolio warehouse, then its reports.
@@ -93,52 +83,78 @@ models: [portfolio_model]
 reports: all
 schedule: null
 </code></pre>
-<hr>
+<ul>
+<li><code>tracebi run-pipeline &lt;name&gt;</code> and <strong>Refresh data</strong> in the app run the
+  transform fresh (as <code>tracebi run-transform</code> does), then rebuild the reports,
+  recording each run.</li>
+<li>It compiles to the same runner as <code>model_pipeline(...)</code> in Python.</li>
+<li><code>tracebi new-pipeline "Sales ETL"</code> writes a commented starter; <code>--python</code>
+  writes <code>pipelines/&lt;name&gt;.py</code>.</li>
+<li><code>.yml</code> works too. The file loads with <code>yaml.safe_load</code> rules, a repeated key
+  is an error, and unknown keys are refused.</li>
+</ul>
 <h2 id="keys">Keys</h2>
 <table>
 <thead>
 <tr>
-<th>key</th>
-<th></th>
+<th>Key</th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>name</code></td>
-<td>required; letters, digits, underscore; equals the file name</td>
+<td>Required. Letters, digits and underscores; equals the file name.</td>
 </tr>
 <tr>
 <td><code>transform</code></td>
-<td>required; a bare name of <code>transforms/&lt;x&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code> (an extension is allowed, a folder is not). The step runs it with <code>tracebi run-transform</code>, then the <code>&lt;x&gt;.contract.yaml</code> beside it, and records which form ran (<code>sql</code>, <code>python</code>, <code>notebook</code>): <code>tracebi run-pipeline &lt;name&gt; --status</code> and the model's Transform tab show it. See <a href="../reference/transform-sql.html">SQL transforms</a></td>
+<td>Required. The name of <code>transforms/&lt;x&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code> (an extension is allowed, a folder is not). The step runs it, then the <code>&lt;x&gt;.contract.yaml</code> beside it, and records the form (<code>sql</code>, <code>python</code>, <code>notebook</code>), shown by <code>tracebi run-pipeline &lt;name&gt; --status</code> and the model's Transform tab. See <a href="../reference/transform-sql.html">SQL transforms</a>.</td>
 </tr>
 <tr>
 <td><code>models</code></td>
-<td>required; a list of model names the transform feeds</td>
+<td>Required. The models the transform feeds.</td>
 </tr>
 <tr>
 <td><code>reports</code></td>
-<td><code>all</code> (default): every report in <code>reports/&lt;model&gt;/</code> of each model; or a list of report names (<code>&lt;model&gt;/&lt;report&gt;</code>)</td>
+<td><code>all</code> (default): every report in <code>reports/&lt;model&gt;/</code> of each model. Or a list of names (<code>&lt;model&gt;/&lt;report&gt;</code>).</td>
 </tr>
 <tr>
 <td><code>schedule</code></td>
-<td>a 5-field cron expression, or <code>null</code> (on demand only). When the scheduler fires it, the whole chain runs: transform, then reports</td>
+<td>A five-field cron expression, or <code>null</code> for on demand only. A scheduled run does the whole chain: transform, then reports.</td>
 </tr>
 <tr>
 <td><code>description</code></td>
-<td>free text</td>
+<td>Free text.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="one-file-per-name">One file per name</h2>
-<p>A pipeline is one file. <code>x.py</code> beside <code>x.yaml</code> -&gt; the Python file wins and the
-YAML is refused (reported in <code>/api/discovery</code>); <code>x.yaml</code> and <code>x.yml</code> together
-are both refused.</p>
-<h2 id="migrating">Migrating</h2>
-<p><code>tracebi migrate pipeline pipelines/x.py [--write]</code> writes the YAML for a
-runner built by <code>model_pipeline(...)</code> and leaves the <code>.py</code> in place. It refuses,
-with the reason, a runner that registers anything else (medallion layers,
-custom steps), keeps its history at a custom <code>db_url</code>, builds reports from
-another folder, or is named differently from its file.</p>
+<table>
+<thead>
+<tr>
+<th>Files present</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x.py</code> and <code>x.yaml</code></td>
+<td>The Python file wins; the YAML is refused and reported in <code>/api/discovery</code>.</td>
+</tr>
+<tr>
+<td><code>x.yaml</code> and <code>x.yml</code></td>
+<td>Both are refused.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="convert-a-python-pipeline">Convert a Python pipeline</h2>
+<pre><code class="language-bash">tracebi migrate pipeline pipelines/x.py [--write]
+</code></pre>
+<p>Writes the YAML for a runner built by <code>model_pipeline(...)</code> and leaves the
+<code>.py</code> in place. It refuses, with the reason, a runner that registers anything
+else (medallion layers, custom steps), keeps its history at a custom
+<code>db_url</code>, builds reports from another folder, or is named differently from its
+file.</p>
   </main>
 </div>
 <script>

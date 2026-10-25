@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Push from a laptop — TraceBi docs</title>
+<title>Push a report from your laptop — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Push from a laptop">
+<meta name="description" content="Push a report from your laptop">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a class="on" href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a class="on" href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,27 +61,29 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="push-from-a-laptop">Push from a laptop</h1>
-<p><strong>Build and preview on your own machine, then send the files to the server:
-<code>tracebi push</code>. Reports and declarative models land in your drafts. Python
-goes to an admin, who reads the diff and approves it before it runs.</strong></p>
-<p>This is for analysts who work in a local project (often with an agent such as
-Claude Code), and for the admin who approves code on the server. Sign in first
-(<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>).</p>
-<hr>
+<h1 id="push-a-report-from-your-laptop">Push a report from your laptop</h1>
+<p>Build and preview on your own machine, then send the files to the server with
+<code>tracebi push</code>. Reports and YAML models become your drafts. Python goes to an
+admin, who reads the diff and approves it before it runs.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ul>
+<li>A local TraceBi project (you may work in it with an agent such as Claude
+  Code)</li>
+<li>A server with sign-in turned on, and <code>tracebi login</code> done (<a href="../guides/sign-in.html">Sign in with your company login</a>)</li>
+<li>The <code>analyst</code> role or higher</li>
+</ul>
 <h2 id="what-goes-where">What goes where</h2>
-<p>What a file can do on the server decides where it lands:</p>
 <table>
 <thead>
 <tr>
@@ -94,7 +96,7 @@ Claude Code), and for the admin who approves code on the server. Sign in first
 <tr>
 <td>A report package (<code>reports/&lt;model&gt;/&lt;name&gt;/</code>)</td>
 <td>Your draft of that report</td>
-<td>You publish it in the app, as any draft</td>
+<td>You publish it in the app</td>
 </tr>
 <tr>
 <td><code>models/&lt;name&gt;.yaml</code> or <code>.json</code></td>
@@ -103,57 +105,68 @@ Claude Code), and for the admin who approves code on the server. Sign in first
 </tr>
 <tr>
 <td><code>transforms/*.sql</code> (with its <code>.contract.yaml</code>), <code>.py</code> or <code>.ipynb</code>, <code>pipelines/*</code>, <code>models/&lt;name&gt;.py</code>, <code>connections/*.yaml</code>, a package's <code>report.py</code></td>
-<td>One <strong>code request</strong></td>
+<td>One code request</td>
 <td>An admin approves or declines it</td>
 </tr>
 </tbody>
 </table>
-<p>Data never goes. The server runs the transform with its own secrets and builds
-its own warehouse; the sink contract checks what landed there. A path outside
-the table above (<code>inputs/orders.csv</code>, <code>data/warehouse.duckdb</code>) is refused.</p>
-<p>Connections count as code because they decide which of the server's secrets a
+<p>Data never goes. The server runs the transform with its own secrets and
+builds its own warehouse, and the sink contract checks what landed. Any other
+path, such as <code>inputs/orders.csv</code> or <code>data/warehouse.duckdb</code>, is refused.
+Connections count as code because they decide which of the server's secrets a
 transform reads.</p>
-<h2 id="push">Push</h2>
-<pre><code class="language-bash">tracebi push reports/sales_model/weekly models/sales_model.yaml --server https://bi.example.com
-tracebi push transforms/sales_transform.py --server https://bi.example.com \
-    --note &quot;Drop test accounts before the sink&quot;
-</code></pre>
-<p>Paths are files, package folders, or folders of them, inside the project you
-are in. A code request needs <code>--note</code>: the admin reads it beside the diff.
-Nothing is sent when a path is refused or the note is missing.</p>
-<p>The command prints each draft's page and the request's id. A draft that already
-held a file you did not push says so; delete it in the app if it should go.</p>
-<h2 id="approve-code-admin">Approve code (admin)</h2>
-<p><strong>Review</strong> lists a pending code request under <strong>Needs attention</strong>. <strong>Review</strong> on its row shows every file with
-its diff against what is published (a new file says so). Then:</p>
-<ul>
-<li><strong>Approve and run</strong> copies the files in, keeps what they replace under
-  <code>.tracebi/history/code/&lt;version&gt;/</code>, and runs once every pipeline the request
-  touches: the pipelines it holds, and each <code>pipelines/*.yaml</code> whose
-  <code>transform</code> it changes. The run uses the server's secrets, the sink contract
-  checks what landed, and the request records the run and its outcome.</li>
-<li><strong>Decline</strong> needs a reason; the person who asked sees it.</li>
-</ul>
-<p>Only <code>admin</code> approves. An analyst sees their own requests, an admin everyone's.
-Over the hosted MCP connector, Python is refused: a chat cannot send code.</p>
-<p>The API is <code>POST /api/code-requests</code> (<code>{files: {path: text}, note}</code>),
+<h2 id="for-users-push">For users: push</h2>
+<ol>
+<li>Push reports and models:</li>
+</ol>
+<p><code>bash
+   tracebi push reports/sales_model/weekly models/sales_model.yaml --server https://bi.example.com</code></p>
+<ol start="2">
+<li>Push code with a note. The admin reads the note beside the diff:</li>
+</ol>
+<p><code>bash
+   tracebi push transforms/sales_transform.py --server https://bi.example.com \
+       --note "Drop test accounts before the sink"</code></p>
+<ol start="3">
+<li>Open the links the command prints: one per draft, and the code request's
+   id.</li>
+</ol>
+<p>Paths are files, package folders, or folders of them, inside the current
+project. Nothing is sent if a path is refused or a code request has no note.
+If a draft already held a file you did not push, the command says so; delete
+the file in the app if it should go.</p>
+<h2 id="for-admins-approve-code">For admins: approve code</h2>
+<ol>
+<li>Open <strong>Review</strong>. A pending code request is under <strong>Needs attention</strong>.</li>
+<li>Click <strong>Review</strong> on its row. Each file shows its diff against what is
+   published; a new file says so.</li>
+<li>Click <strong>Approve and run</strong>, or <strong>Decline</strong> with a reason the requester sees.</li>
+</ol>
+<p>Approving copies the files in, keeps what they replace under
+<code>.tracebi/history/code/&lt;version&gt;/</code>, and runs once every pipeline the request
+touches: the pipelines it contains, and each <code>pipelines/*.yaml</code> whose
+<code>transform</code> it changes. The run uses the server's secrets, the sink contract
+checks what landed, and the request records the run and its result.</p>
+<p>Only <code>admin</code> approves. An analyst sees their own requests; an admin sees all
+of them. The hosted MCP connector refuses Python: a chat cannot send code.</p>
+<p>The API: <code>POST /api/code-requests</code> (<code>{files: {path: text}, note}</code>),
 <code>GET /api/code-requests[/&lt;id&gt;]</code>, and <code>POST /api/code-requests/&lt;id&gt;/approve</code>
 or <code>/reject</code> (<code>{note}</code>). Each request is stored under
 <code>.tracebi/requests/&lt;id&gt;/</code> with a row in the run store.</p>
-<h2 id="or-a-git-checkout-and-a-webhook">Or: a git checkout and a webhook</h2>
-<p>When changes reach the library by pull request, review happens there. Make the
-project (or a library folder) a git checkout on the server, set
-<code>TRACEBI_LIBRARY_SYNC_SECRET</code>, and point the repository's push webhook at
-<code>POST /api/library/sync</code>:</p>
-<ul>
-<li>GitHub: content type <code>application/json</code>, the secret as the webhook secret
-  (the server checks <code>X-Hub-Signature-256</code>).</li>
-<li>Anything else: send the secret itself in <code>X-TraceBi-Sync-Token</code>.</li>
-</ul>
-<p>The endpoint fast-forwards each checkout (<code>git pull --ff-only</code>), registers new
+<h2 id="or-sync-from-git-with-a-webhook">Or sync from git with a webhook</h2>
+<p>When changes reach the library by pull request, review them there instead.</p>
+<ol>
+<li>Make the project, or a library folder, a git checkout on the server.</li>
+<li>Set <code>TRACEBI_LIBRARY_SYNC_SECRET</code>.</li>
+<li>Point the repository's push webhook at <code>POST /api/library/sync</code>. On GitHub,
+   use content type <code>application/json</code> and the secret as the webhook secret
+   (the server checks <code>X-Hub-Signature-256</code>). Other senders put the secret in
+   <code>X-TraceBi-Sync-Token</code>.</li>
+</ol>
+<p>The endpoint runs <code>git pull --ff-only</code> on each checkout, registers new
 reports, models and pipelines, and reloads any pipeline file that changed. It
-sits outside the app's sign-in because a webhook has none; without the secret
-set it does not exist.</p>
+sits outside the app's sign-in because a webhook cannot sign in. Without the
+secret set, the endpoint does not exist.</p>
 <h2 id="if-it-does-not-work">If it does not work</h2>
 <table>
 <thead>
@@ -173,7 +186,7 @@ set it does not exist.</p>
 </tr>
 <tr>
 <td><code>→ 403</code> on push</td>
-<td>Your role is <code>viewer</code>; pushing needs <code>analyst</code>.</td>
+<td>Your role is <code>viewer</code>. Pushing needs <code>analyst</code>.</td>
 </tr>
 <tr>
 <td>A request approved, its run <code>failed</code></td>
@@ -185,10 +198,10 @@ set it does not exist.</p>
 </tr>
 </tbody>
 </table>
-<h2 id="related">Related</h2>
+<h2 id="next">Next</h2>
 <ul>
-<li><a href="../guides/sign-in.html">Sign in to the app and the CLI</a> — <code>tracebi login</code>, and the roles</li>
-<li><a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a> — drafting from a chat instead</li>
+<li>Draft from a chat instead: <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a></li>
+<li>Control who may publish where: <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a></li>
 </ul>
   </main>
 </div>

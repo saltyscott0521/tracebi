@@ -1,174 +1,93 @@
 # Measures
 
-**Named, declarative calculations on a [[model]]. Ten kinds, a closed set of
-aggregations, and guardrails that refuse the arithmetic that is quietly wrong.**
+A measure is a named calculation on a [[model]]. A report asks for it by
+name, which is what lets every figure be re-run.
 
-A report asks for a measure **by name**. That is what makes a figure
-re-runnable, and therefore [[trace|traceable]].
+```python
+model.add_measure("revenue", column="revenue", agg="sum", format="currency0")
+model.add_measure("margin_pct", ratio=("gross_margin", "revenue"), format="percent")
+```
 
----
+In a YAML model the same keywords go in a `measures:` entry
+([[model-json]]).
 
-## Declaring one
+## Signature
 
 ```python
 model.add_measure(
     name, *,
     column=None, expr=None, ratio=None, share=None, rank=None, running=None,
-    period_end=None, offset=None, growth=None, to_date=None,   # exactly ONE
-    partition_by=None,      # rank / running only
-    agg=None,               # required for column= / expr=; rejected by the rest
+    period_end=None, offset=None, growth=None, to_date=None,   # exactly one
+    partition_by=None,      # rank and running only
+    agg=None,               # required for column= and expr=; refused by the rest
     label=None, description="", format=None,
     allow_rate_agg=False, allow_additive=False,
 )
 ```
 
-Exactly one kind argument. `format` takes a name from [[number-formats]].
-`label` is the name people read in the app ("Share of fair value" for
-`fv_share`); without one the app humanises the name. It changes no number,
-and queries still name the measure by `name`.
-Chainable — it returns the model.
+| Argument | Meaning |
+|---|---|
+| One kind argument | Exactly one of the ten kinds below. |
+| `format` | A name from [[number-formats]]. |
+| `label` | The name people read in the app ("Share of fair value" for `fv_share`). Changes no number; queries still use `name`. Without it the app makes one from the name. |
+| `description` | The shared meaning, shown in tooltips and the trace. |
 
----
+It returns the model, so calls chain.
 
 ## The ten kinds
 
-### `simple` — one column, one aggregation
+| Kind | Example | What it computes |
+|---|---|---|
+| `column` (simple) | `add_measure("revenue", column="revenue", agg="sum")` | One column, one aggregation. |
+| `expr` (expression) | `add_measure("gross_margin", expr="revenue - cost", agg="sum")` | Row arithmetic, then the aggregation. Column names, numbers and `+ - * / ( )` only: no function calls, quotes or SQL. |
+| `ratio` | `add_measure("margin_pct", ratio=("gross_margin", "revenue"), format="percent")` | `sum(a) / sum(b)`: totals divided, never a mean of row ratios. A zero denominator gives null. Also the way to write a weighted average. |
+| `share` | `add_measure("revenue_share", share="revenue", format="percent")` | Each row's value over the total of the whole result, before `having` and `limit`. A top-10 table shows each row's share of everything. |
+| `rank` | `add_measure("rev_rank", rank="revenue")` | Position 1..N by the measure, largest first, with a full tie-break. `partition_by="dim_customer.region"` restarts it per group. |
+| `running` | `add_measure("cum_share", running="revenue_share", format="percent")` | A cumulative total ordered by the measure, largest first (Pareto). |
+| `period_end` | `add_measure("aum", period_end=("balance", "dim_date.as_of_date"), format="currency0")` | For balances (AUM, NAV, headcount, inventory): summed across other dimensions, taken at the latest snapshot over time. |
+| `offset` | `add_measure("rev_ly", offset=("revenue", "year", 1), format="currency0")` | The prior period's value. `(base, unit, n)`; unit is `day`, `week`, `month`, `quarter` or `year`. |
+| `growth` | `add_measure("rev_yoy", growth=("revenue", "year", 1), format="percent")` | `(current − prior) / prior`. QoQ and MoM by unit. |
+| `to_date` | `add_measure("rev_ytd", to_date=("revenue", "year"), format="currency0")` | A running total from the start of the period: `week`, `month`, `quarter` or `year` (not `day`). |
 
-```python
-model.add_measure("revenue", column="revenue", agg="sum", format="currency0")
-model.add_measure("orders",  column="order_id", agg="nunique")
-```
+### Notes by kind
 
-### `expression` — row arithmetic, then aggregate
+- **`rank` with `partition_by` and `having`** gives the top N per group, which
+  a global `order_by` and `limit` cannot. Every `partition_by` column must be
+  in the query's `dimensions`:
 
-```python
-model.add_measure("gross_margin", expr="revenue - cost", agg="sum")
-```
+  ```python
+  model.query(
+      fact="fact_orders",
+      measures=["revenue", "rank_in_region"],
+      dimensions=["dim_customer.region", "dim_customer.segment"],
+      having={"rank_in_region": {"lte": 3}},        # top 3 per region
+      order_by=["dim_customer.region", "-revenue"],
+  )
+  ```
 
-**Arithmetic over column names only** — no function calls, no quotes, no SQL
-fragments. A spec that cannot be validated before execution is not a spec.
+- **`rank`, `share` and `running(share)` together** make a concentration
+  table.
+- **`period_end`**: group by a time grain to get the period-end series.
+  January AUM plus February AUM is not AUM.
+- **`offset` and `growth` compare against periods present in the result.**
+  Don't filter out the comparison period. Limit what is shown with `order_by`
+  and `limit`, which run after the shift:
 
-### `ratio` — divide aggregated totals
+  ```python
+  model.query(
+      fact="fact_orders",
+      measures=["revenue", "rev_ly", "rev_yoy"],
+      dimensions=["dim_date.order_month"],
+      order_by=["-dim_date.order_month"], limit=12,     # not a filter
+  )
+  ```
 
-```python
-model.add_measure("margin_pct", ratio=("gross_margin", "revenue"), format="percent")
-```
-
-**Divides totals, not per-row values** — `sum(a) / sum(b)`, never the mean of
-per-row ratios. This is the fix the rate guard points you at, and it is also how
-you express a **weighted average**: a ratio whose numerator carries the weight
-(sum it, then divide).
-
-Null-safe: a zero denominator yields null, not an infinity.
-
-### `share` — percent of total
-
-```python
-model.add_measure("revenue_share", share="revenue", format="percent")
-```
-
-Each row's value over the total **across the whole result, before `having` and
-before `limit`** — so a top-10 table shows each row's share of the whole
-population, not of the ten rows displayed.
-
-### `rank` — 1..N position
-
-```python
-model.add_measure("rev_rank",       rank="revenue")
-model.add_measure("rank_in_region", rank="revenue", partition_by="dim_customer.region")
-```
-
-Ordered by the named measure descending (rank 1 = largest), with a total
-tie-break so it reproduces.
-
-`partition_by` restarts the rank per group. Paired with `having`, it expresses
-**top-N-per-group** — which a global `order_by` + `limit` cannot:
-
-```python
-model.query(
-    fact="fact_orders",
-    measures=["revenue", "rank_in_region"],
-    dimensions=["dim_customer.region", "dim_customer.segment"],
-    having={"rank_in_region": {"lte": 3}},        # top 3 per region
-    order_by=["dim_customer.region", "-revenue"],
-)
-```
-
-Every `partition_by` column must be in the query's `dimensions`.
-
-### `running` — cumulative, largest first
-
-```python
-model.add_measure("cum_share", running="revenue_share", format="percent")
-```
-
-The Pareto/concentration direction. `running` of a share is the cumulative
-percent of total, so `rank` + `share` + `running(share)` is the whole
-concentration table — governed, with its trace intact.
-
-### `period_end` — semi-additive balances
-
-```python
-model.add_measure("aum", period_end=("balance", "dim_date.as_of_date"),
-                  format="currency0")
-```
-
-For **stocks**, not flows: AUM, NAV, headcount, inventory. Summed across
-non-time dimensions, but taken at the **latest snapshot** over time — never
-summed across snapshots, because January AUM + February AUM is not AUM.
-
-Group by a time grain to get the period-end series.
-
-### `offset` — the prior period's value
-
-```python
-model.add_measure("rev_ly", offset=("revenue", "year", 1), format="currency0")
-```
-
-A `(base, unit, n)` triple; unit is `day`/`week`/`month`/`quarter`/`year`.
-
-### `growth` — period-over-period change
-
-```python
-model.add_measure("rev_yoy", growth=("revenue", "year", 1), format="percent")
-```
-
-`(current − prior) / prior`. YoY with `('revenue','year',1)`; QoQ and MoM by
-unit.
-
-> **Both compare against periods *present in the result*.** Don't filter out the
-> comparison period — a `WHERE` removes the prior period the measure needs.
-> Restrict the display with `order_by` + `limit`, which run *after* the shift.
-
-```python
-model.query(
-    fact="fact_orders",
-    measures=["revenue", "rev_ly", "rev_yoy"],
-    dimensions=["dim_date.order_month"],
-    order_by=["-dim_date.order_month"], limit=12,     # not a filter
-)
-```
-
-### `to_date` — YTD / QTD / MTD
-
-```python
-model.add_measure("rev_ytd", to_date=("revenue", "year"), format="currency0")
-```
-
-A running total from the start of the reset period. Reset periods are
-`week`/`month`/`quarter`/`year` — **`day` is not one**.
-
-The query's time grain must be **finer** than the reset period: YTD over
-monthly works; YTD over yearly does not.
-
-> **`running` vs `to_date`:** `running` is a cumulative ordered by the *base
-> measure* (largest first, Pareto). `to_date` is a cumulative ordered by *time*
-> within a reset partition. Different orderings, different questions.
-
-Both `offset`/`growth`/`to_date` require exactly **one** declared time grain
-among the query's dimensions.
-
----
+- **`to_date`** needs a time grain finer than its period: YTD by month works,
+  YTD by year does not.
+- **`running` and `to_date` differ.** `running` orders by the measure, largest
+  first. `to_date` orders by time within each period.
+- `offset`, `growth` and `to_date` need exactly one declared time grain among
+  the query's dimensions.
 
 ## Aggregations
 
@@ -176,24 +95,23 @@ among the query's dimensions.
 avg  count  max  mean  median  min  nunique  stddev  sum  p<N>
 ```
 
-- `count` counts non-null rows; `nunique` counts distinct values.
-- `median` and `stddev` summarize a distribution's **shape** — a mean hides skew
-  and tails, so reach for them on returns, P&L, sizes and spreads.
-- `p<N>` is any percentile from `p0` to `p100`. `p50` is the median; `p90`/`p95`/
-  `p99` are the tail a mean and even a median hide.
+| Aggregation | Meaning |
+|---|---|
+| `count` | Non-null rows |
+| `nunique` | Distinct values |
+| `median`, `stddev` | The shape of a distribution, which a mean hides: use them on returns, P&L, sizes and spreads. |
+| `p<N>` | Any percentile from `p0` to `p100`. `p50` is the median; `p90`, `p95` and `p99` show the tail. |
 
 ```python
 model.add_measure("p95_order", column="revenue", agg="p95", format="currency")
 ```
 
----
+## Derived attributes
 
-## Derived dimension attributes
+Two ways to group by something the warehouse doesn't store as a column. Both
+are declared on a dimension and used as `dim.name`.
 
-Two governed ways to group by something the warehouse doesn't store as a column.
-Both are declared on a dimension and referenced as `dim.name` like any attribute.
-
-### `add_time_grain` — group by month/quarter/…
+### `add_time_grain`
 
 ```python
 model.add_time_grain("dim_date", "order_month", source="order_date", grain="month")
@@ -202,14 +120,11 @@ model.query(fact="fact_orders", measures=["revenue"],
             dimensions=["dim_date.order_month"])
 ```
 
-A governed `date_trunc`. Grains: `day`, `week`, `month`, `quarter`, `year`.
-The result holds each period as its label: `2026-03-14`, `2026-W11` (ISO
-week), `2026-03`, `2026-Q1`, `2026`, the spelling a built page's filters and
-recomputed figures use too.
-This is "group by month" without dropping to `report.py` or pre-baking the
-bucket in the [[transform]].
+Grains: `day`, `week`, `month`, `quarter`, `year`. Each period is a label:
+`2026-03-14`, `2026-W11` (ISO week), `2026-03`, `2026-Q1`, `2026`. A built
+page's filters and recomputed figures use the same labels.
 
-### `add_value_bins` — group by a numeric band
+### `add_value_bins`
 
 ```python
 model.add_value_bins("dim_customer", "score_band",
@@ -217,72 +132,25 @@ model.add_value_bins("dim_customer", "score_band",
 # 3 edges → 4 bands: "< 600", "600–700", "700–800", "≥ 800"
 ```
 
-A governed `CASE` over ranges — credit score, age, vintage. Custom `labels` take
-one per band (`len(edges) + 1`).
+- `labels` takes one per band (`len(edges) + 1`).
+- A null source groups as null, not as the top band.
+- Bands sort by label as text, so pick labels that sort (`"1 subprime"`,
+  `"2 near-prime"`).
+- You can group by a band but not filter on it; filter on the source column.
 
-Three things to know:
-- A **null** source groups as null, not as the top band.
-- Bands sort **lexicographically by label**, so choose labels that sort if
-  magnitude order matters (`"1 subprime"`, `"2 near-prime"`, …).
-- Bands are **groupable, not filterable** — filter on the source column.
+## Refusals
 
----
+Each refusal stops a confident wrong number.
 
-## The guardrails
+| Refusal | When | Override |
+|---|---|---|
+| Callable | A `column`, `expr` or `agg` that is a function. A function cannot be serialized, diffed or checked before running. | None |
+| Fan-out | A dimension's key repeats, which multiplies fact rows and inflates every sum. The error names the duplicate values and the multiplication. | `allow_fanout=True` on the query; it adds a `warning` lineage node. |
+| Rate by name | `sum`, `mean` or `avg` of a measure named `*_pct`, `*_bps`, `*_yield`, `*_rate`, or described as "weighted". `min` and `max` are fine. Fix: a `ratio` measure. | `allow_rate_agg=True` on the measure or the query |
+| Rate by value | At query time, `sum` or `mean` of a float column centred near 1.0 over at least 20 rows (such as `fair_value / cost`). | `allow_rate_agg=True` on the measure or the query |
+| Summing a stock | `agg="sum"` on a measure named `aum`, `nav`, `balance`, `headcount`, `inventory` or `outstanding`. Fix: a `period_end` measure. | `allow_additive=True` on the measure only, for a real flow |
 
-Five refusals. Each exists because the alternative is a confident wrong number.
+## Lessons
 
-### Callables are rejected
-
-A `column`, `expr` or `agg` that is a function is refused outright, with no
-override. A function cannot be serialized, diffed, or validated before
-execution — so it cannot be part of a declarative contract.
-
-### Non-unique dimension keys → `allow_fanout=True`
-
-Joining a dimension whose key repeats fans out the fact table and **inflates
-every additive measure**. The refusal names the duplicate values and the exact
-row multiplication.
-
-The override is a *query* argument, and taking it records a `warning` lineage
-node — so the opt-in leaves its own trace.
-
-### Rate aggregation, by name → `allow_rate_agg=True`
-
-Aggregating a rate-named measure (`*_pct`, `*_bps`, `*_yield`, `*_rate`, or
-anything described as "weighted") with `sum`/`mean`/`avg` is refused.
-
-You do not additively combine per-row rates: summing is meaningless, and
-averaging overweights small rows. `min`/`max` stay fine.
-
-**The fix is a `ratio` measure** — the blended rate is
-`sum(numerator) / sum(denominator)`.
-
-### Rate aggregation, by value → `allow_rate_agg=True`
-
-The name guard is blind to a per-row ratio whose name matches nothing —
-`mark_cost = fair_value / cost`, sitting near 1.0. So the same guard fires again
-at **query** time on the values: a floating column centred near 1.0, over at
-least 20 rows, refuses `sum`/`mean`.
-
-Override on the measure or on the query.
-
-### Summing a stock → `allow_additive=True`
-
-`agg="sum"` on a measure named `aum`, `nav`, `balance`, `headcount`,
-`inventory` or `outstanding` is refused — a point-in-time balance
-double-counts when summed across snapshots.
-
-**The fix is a `period_end` measure.** Override only for a genuine *flow* (a
-delta, not a level). This one is declare-time only; there is no query-level
-escape.
-
----
-
-## Related
-
-- [[queries]] — asking for these measures
-- [[model]] — where they are declared
-- [[number-formats]] — the `format` argument
-- Lessons: `tracebi knowledge ratio-of-totals`, `semi-additive`,
-  `period-over-period`, `year-to-date`, `group-by-band`
+`tracebi knowledge ratio-of-totals`, `semi-additive`, `period-over-period`,
+`year-to-date` and `group-by-band` explain these in full.

@@ -8,6 +8,7 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ### Changed
 
+- The handbook is rewritten in a plain, task-first voice (Stripe's docs as the model); every address and command stays.
 - **Built reports use Geist**, the app's typeface, inlined as before (Latin subset, no font fetched): app and report read as one.
 
 ### Changed — one type system (Geist); the home shows no figures; the welcome is one row; the schema ring

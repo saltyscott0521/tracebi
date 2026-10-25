@@ -1,48 +1,23 @@
-# Report — phase ③
+# Reports
 
-**A package where every figure is a live query. One command turns it into a
-single self-contained HTML file plus a [[trace]].**
-
-Lives in `reports/`.
-
----
-
-## The shape
+A report is a folder in `reports/` whose every figure is a query against a
+model. One command builds it into a single HTML file and a [[trace]]:
 
 ```
 reports/my_report/
-  report.json      what data this report binds        → [[report-json]]
-  app.jsx          a dashboard from the TraceBi kit   → [[app-jsx]]
-  template.html    or a page you draw in HTML         → [[template-html]]
-  style.css        optional — your CSS
-  script.js        optional — your JS
-  report.py        optional escape hatch
+  report.json      the data the report reads           → [[report-json]]
+  app.jsx          a dashboard built from the kit       → [[app-jsx]]
+  template.html    or a page written in HTML            → [[template-html]]
+  style.css        optional: your CSS
+  script.js        optional: your JavaScript
+  report.py        optional: Python for numbers the model cannot express
 ```
 
-**You own the page.** The framework does not impose a layout, a component set,
-or a stylesheet you must work around. A dashboard (`tracebi new-dashboard`) is
-an `app.jsx` of kit components (`<Kpi>`, `<Chart>`, `<Table>`, `<Filter>`); a
-page (`tracebi new-report`) is a `template.html` of ordinary HTML, where a
-handful of `data-tb-*` attributes turn elements into figures.
-
-There is exactly one renderer: a report is always built from its package. (A
-`reports/<name>.json` spec is a shorthand that compiles into exactly this.)
-
-## What "every figure is a live query" means
-
-A figure never contains a typed-in number. It names a **binding** — a query
-declared in `report.json` — and the framework resolves it, fingerprints the
-result, embeds the bytes, and fills the figure from them.
-
-The consequences are the point:
-
-- **A hard-coded number cannot be a figure.** There is no way to bind a literal
-  to a figure and have it read as governed — the honest mark
-  (`data-tb-unverified`) is the only alternative, and there is no third state.
-- **The page and the trace cannot disagree**, because the page draws from the
-  same fingerprinted bytes the trace covers.
-- **Re-rendering is milliseconds**, because the [[model]] is already
-  materialized. No pandas runs.
+A dashboard (`tracebi new-dashboard`) is an `app.jsx` made of kit components
+such as `<Kpi>`, `<Chart>`, `<Table>` and `<Filter>`. A page
+(`tracebi new-report`) is a `template.html` of ordinary HTML, where
+`data-tb-*` attributes turn elements into figures. You own the layout and the
+styles.
 
 ## Build it
 
@@ -50,44 +25,56 @@ The consequences are the point:
 tracebi report build my_report
 ```
 
-Produces one offline HTML — CSS, JS, data and charting library all inlined, a
-strict CSP, no CDN — plus `my_report.html.manifest.json`. With the `pdf`
-extra installed (Playwright and Chromium), the build also writes
-`my_report.cover.png`, a picture of the page's first screen that the library
-shows as the report's cover; it is not part of the trace, and without the
-extra the library draws a cover instead.
+This writes `output/my_report.html`, with its CSS, JavaScript, data and
+charting library inlined, a strict content security policy and no CDN, and
+`output/my_report.html.manifest.json`, the trace. With the `pdf` extra
+(Playwright and Chromium) the build also writes `my_report.cover.png`, a
+picture of the first screen that the library uses as a cover. The cover is
+not part of the trace.
 
-Email it, archive it, open it on a plane. Then:
+Check the file later, offline:
 
 ```bash
 tracebi verify --file output/my_report.html
 ```
 
-## Interactivity, and its one rule
+## How a figure gets its number
 
-Filters, search, tabs, scrolling tables and CSV download all ship. The rule:
-**a figure's number is only ever a query result.**
+A figure never holds a typed-in number. It names a **binding**, a query
+declared in `report.json`. The build runs the query, fingerprints the result,
+embeds the rows in the page and fills the figure from them. So:
+
+- A typed-in number cannot pass as a figure. A number with no query must be
+  marked `data-tb-unverified`. There is no third state.
+- The page and the trace cannot disagree, because both come from the same
+  fingerprinted rows.
+- Rebuilding takes milliseconds. The model's tables already exist, and no
+  transform runs.
+
+There is one renderer: a report is always built from its package. A
+`reports/<name>.json` spec is shorthand that compiles into a package.
+
+## Filters and interactivity
+
+Filters, search, tabs, scrolling tables and CSV download all work in the
+built file. The rule: a figure's number is only ever a query result.
 
 The built page carries a slice of the model (the rows its figures and filters
-need) and each binding's query as a calc plan. A filter writes the page's
-selection, and the page engine re-runs every figure's own query under it:
-values, tables, charts and sparks all recompute, the chip reads Local, and
+need) and each binding's query as a calc plan. A filter changes the page's
+selection, and the page re-runs each figure's own query under it. Values,
+tables, charts and sparklines all recompute, and the chip reads Local.
 `tracebi verify --local` replays the same plans on the server. Nothing sums the
-rows on screen. Search only narrows the rows shown. See
-[[template-html#Interactivity]].
+rows on screen. Search only narrows the rows shown. See [[template-html]].
 
-## When the query surface isn't enough
+## When the model cannot express a number
 
 Add `report.py` with a `build(inputs) -> {name: DataFrame}` function. Its
-**inputs** stay stamped and green-eligible; its **outputs** are permanently
-`verifiable: false` and never read green.
+inputs are stamped queries and can still reproduce. Its outputs are stamped
+`verifiable: false` and never read green. Use it only when the model cannot
+express the number, because everything it computes leaves the checkable path.
+See [[trace]].
 
-That asymmetry is deliberate — see [[trace#Unverifiable figures]]. Reach for
-it only when the [[model]] genuinely cannot express the number, because
-everything you compute here leaves the verifiable lane.
+## Next
 
-## Related
-
-- [[report-json]] · [[template-html]] · [[figure-helper]]
-- [[styling-a-report]] — the CSS stack
-- [[your-first-report]] — the walkthrough
+- Build one step by step: [[your-first-report]]
+- Style it: [[styling-a-report]]

@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,30 +61,20 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a class="on" href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="reportjson"><code>report.json</code></h1>
-<p><strong>The package declaration: what data a report binds, and which figures the
-framework builds for it.</strong></p>
-<p>Every report package is a directory under <code>reports/</code>:</p>
-<pre><code>reports/my_report/
-  report.json      ← this page
-  template.html    the page you draw          → [template.html — the figure grammar](../reference/template-html.html)
-  style.css        optional, your CSS
-  script.js        optional, your JS
-  report.py        optional escape hatch      → [The trace](../concepts/trace.html)
-</code></pre>
-<hr>
-<h2 id="minimal-example">Minimal example</h2>
+<p><code>report.json</code> declares a report package's data: the queries it runs, and the
+figures TraceBi builds for it.</p>
 <pre><code class="language-json">{
   &quot;name&quot;: &quot;Portfolio Overview&quot;,
   &quot;data&quot;: {
@@ -100,85 +90,172 @@ framework builds for it.</strong></p>
   }
 }
 </code></pre>
-<h2 id="keys">Keys</h2>
-<h3 id="name-string"><code>name</code> — string</h3>
-<p>The report's display name: what people read in every list and title
-(<code>"Portfolio Overview"</code>), not the folder slug. The path
-(<code>portfolio_model/portfolio_overview</code>) stays the identifier commands and URLs
-take. <code>GET /api/reports</code> returns it as <code>display_name</code> beside <code>name</code> (the
-path); with no <code>name</code> here, <code>display_name</code> is the directory name title-cased.</p>
-<h3 id="author-string-optional"><code>author</code> — string, optional</h3>
-<p>Recorded in the manifest as <code>rendered_by</code>, and shown in the trace's About
-this build ("built by …"), not on the page.</p>
-<h3 id="description-string-optional"><code>description</code> — string, optional</h3>
-<p>One sentence for the reader: what the page shows — its measures, breakdowns
-and period (<code>"Ending MRR, customers and logo churn, month by month and by
-plan."</code>). Shown in the library under the report's name and at the top of About
-this build. How the page is built (the lane, which file draws what, why a
-measure is declared the way it is) does not belong here: put it in <code>notes</code>.</p>
-<h3 id="notes-string-optional"><code>notes</code> — string, optional</h3>
-<p>For the people and agents who edit the package: how the page is built, what
-<code>report.py</code> or <code>script.js</code> does. Nothing renders it.</p>
-<h3 id="data-object-required"><code>data</code> — object, <strong>required</strong></h3>
-<p>Maps a <strong>binding name</strong> to a query. A binding is the unit of trust: it is
-resolved once, fingerprinted, embedded in the artifact, and recorded in the
-trace.</p>
-<pre><code class="language-json">&quot;data&quot;: {
-  &quot;&lt;binding_name&gt;&quot;: {
-    &quot;model&quot;: &quot;&lt;model name&gt;&quot;,
-    &quot;query&quot;: { ... }                  → [Queries](../reference/queries.html)
-  }
-}
+<p>It sits in the package folder:</p>
+<pre><code>reports/my_report/
+  report.json      this file
+  template.html    the page you write     → [template.html](../reference/template-html.html)
+  app.jsx          or a dashboard         → [app.jsx](../reference/app-jsx.html)
+  style.css        optional
+  script.js        optional
+  report.py        optional: numbers the model cannot express (never read green)
 </code></pre>
-<p>Must be a non-empty object. Each entry must have <code>model</code> and <code>query</code>.</p>
-<p>Figures refer to bindings by name — see <a href="../reference/template-html.html">template.html — the figure grammar</a> and <a href="../reference/figure-helper.html">{{ figure("name") }}</a>.</p>
-<h3 id="figures-object-optional"><code>figures</code> — object, optional</h3>
-<p>Figures the framework builds for you, placed in <code>template.html</code> with
-<code>{{ figure("name") }}</code>. Full page: <a href="../reference/figure-helper.html">{{ figure("name") }}</a>.</p>
+<h2 id="keys">Keys</h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>string</td>
+<td>The display name in every list and title. The path (<code>portfolio_model/portfolio_overview</code>) stays the identifier commands and URLs take. <code>GET /api/reports</code> returns it as <code>display_name</code>; unset, the folder name title-cased.</td>
+</tr>
+<tr>
+<td><code>author</code></td>
+<td>string</td>
+<td>Recorded in the manifest as <code>rendered_by</code> and shown in the trace's About this build.</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>string</td>
+<td>One sentence for the reader: what the page shows (measures, breakdowns, period), e.g. <code>"Ending MRR, customers and logo churn, month by month and by plan."</code>. Shown under the name in the library. How the page is built goes in <code>notes</code>.</td>
+</tr>
+<tr>
+<td><code>notes</code></td>
+<td>string</td>
+<td>For people and agents who edit the package: how the page is built. Nothing renders it.</td>
+</tr>
+<tr>
+<td><code>data</code></td>
+<td>object, required</td>
+<td>Binding name → <code>{"model": …, "query": …}</code> (<a href="../reference/queries.html">Queries</a>). Each binding runs once, is fingerprinted, embedded and recorded in the trace. Must be non-empty; each entry needs <code>model</code> and <code>query</code>. A binding may name a SQL calculation instead: <code>{"model": …, "sql": "&lt;name&gt;"}</code>.</td>
+</tr>
+<tr>
+<td><code>figures</code></td>
+<td>object</td>
+<td>Figures TraceBi builds for you, placed with <code>{{ figure("name") }}</code> (<a href="../reference/figure-helper.html">{{ figure("name") }}</a>). Leave it out if you write the markup yourself.</td>
+</tr>
+<tr>
+<td><code>measures</code></td>
+<td>object</td>
+<td>This report's own calculations: <code>{"&lt;model&gt;": {"&lt;name&gt;": {&lt;add_measure keywords&gt;}}}</code>, plus <code>filters</code> and <code>measure_expr</code>. A binding lists one by name. The model is unchanged, a name the model declares is refused, and the trace labels them "calculated in this report".</td>
+</tr>
+<tr>
+<td><code>sql_calculations</code></td>
+<td>object</td>
+<td><code>{"&lt;model&gt;": {"&lt;name&gt;": "SELECT ..."}}</code>: one read-only <code>SELECT</code> or <code>WITH</code> over the warehouse's own tables. Writes, <code>ATTACH</code>, <code>COPY</code>, <code>PRAGMA</code>, <code>SET</code>, <code>INSTALL</code>, <code>LOAD</code> or a second statement are refused at discovery. <code>{{ measure('name') }}</code> expands a simple model measure. A selection cannot reach a SQL binding yet.</td>
+</tr>
+<tr>
+<td><code>libs</code></td>
+<td>array</td>
+<td>Charting libraries to inline: <code>"d3"</code>, <code>"echarts"</code>. Optional (see below).</td>
+</tr>
+<tr>
+<td><code>theme</code></td>
+<td>string</td>
+<td>A shipped theme: <code>graphite</code>, <code>indigo</code>, <code>midnight</code>, <code>ocean</code>, <code>plum</code> or <code>sand</code> (<code>tracebi theme list</code>). It sets the accent pair for each ground. Stacks over <code>reports/_theme.css</code> and under <code>style.css</code>.</td>
+</tr>
+<tr>
+<td><code>look</code></td>
+<td>object</td>
+<td><code>app.jsx</code> only: <code>"mode"</code> (<code>light</code>, <code>dark</code>, or <code>auto</code>, the default) and <code>"density"</code> (<code>comfortable</code> or <code>compact</code>).</td>
+</tr>
+<tr>
+<td><code>embed</code></td>
+<td>string</td>
+<td>What the page carries to recompute under filters: <code>"required"</code> (default), <code>"model"</code> or <code>"none"</code> (see below).</td>
+</tr>
+<tr>
+<td><code>embed_budget_mb</code></td>
+<td>number</td>
+<td>The limit for that data. Default 25.</td>
+</tr>
+<tr>
+<td><code>schedule</code></td>
+<td>object</td>
+<td>When the report runs and who gets it (see below). The build ignores it.</td>
+</tr>
+</tbody>
+</table>
 <pre><code class="language-json">&quot;figures&quot;: {
   &quot;total&quot;:  {&quot;kind&quot;: &quot;value&quot;, &quot;binding&quot;: &quot;totals&quot;, &quot;cell&quot;: &quot;revenue&quot;,
              &quot;label&quot;: &quot;Revenue&quot;, &quot;format&quot;: &quot;currency&quot;},
   &quot;detail&quot;: {&quot;kind&quot;: &quot;table&quot;, &quot;binding&quot;: &quot;by_sector&quot;}
 }
 </code></pre>
-<p>Omit it entirely if you hand-write your figure markup — both styles work, and
-they produce the same bytes.</p>
-<h3 id="libs-array-optional"><code>libs</code> — array, optional</h3>
-<p>Charting libraries to inline into the self-contained file: <code>"d3"</code> and
-<code>"echarts"</code>.</p>
-<pre><code class="language-json">&quot;libs&quot;: [&quot;d3&quot;]
+<pre><code class="language-json">&quot;measures&quot;: {&quot;wealth_model&quot;: {
+  &quot;purchases&quot;: {&quot;column&quot;: &quot;amount&quot;, &quot;agg&quot;: &quot;sum&quot;, &quot;filters&quot;: {&quot;activity_type&quot;: &quot;purchase&quot;}},
+  &quot;sales&quot;: {&quot;column&quot;: &quot;amount&quot;, &quot;agg&quot;: &quot;sum&quot;, &quot;filters&quot;: {&quot;activity_type&quot;: &quot;sale&quot;}},
+  &quot;net_new_assets&quot;: {&quot;measure_expr&quot;: &quot;purchases - sales&quot;, &quot;format&quot;: &quot;currency0&quot;}
+}}
 </code></pre>
-<p><code>libs</code> is optional. The build inlines D3 automatically when the page
-contains a chart figure — a hand-written <code>data-tb-figure="chart"</code>, a
-<code>{{ figure("…") }}</code> chart, or a chart compiled from a spec — and draws every
-chart type with it. It leaves D3 out when the page has no chart figure, so a
-data-only report stays small. A final build decides from the page after
-exploration blocks are stripped; <code>tracebi dev</code> and a snapshot include D3 when
-that rendered page has a chart. List <code>"d3"</code> yourself for a <code>custom</code> figure
-drawn with <code>tracebi.draw</code>. List <code>"echarts"</code> to keep the older ECharts engine
-for the page's charts (no D3 is then added for them); <code>tracebi.configureChart</code>
-patches apply only there. Each library is inlined once. An unknown value is
-refused at load.</p>
-<h3 id="theme-string-optional"><code>theme</code> — string, optional</h3>
-<p>A shipped theme by name: <code>graphite</code>, <code>indigo</code>, <code>midnight</code>, <code>ocean</code>, <code>plum</code>
-or <code>sand</code> (<code>tracebi theme list</code>). A theme is an accent preset: it sets the
-accent for the light and the dark ground (<code>--tb-accent</code>, <code>--tb-accent-text</code>,
-<code>--tb-dark-accent</code>, <code>--tb-dark-accent-text</code>) and nothing structural; the mode
-is <code>look</code> (or <code>data-tb-mode</code> on a template's <code>&lt;html&gt;</code>). It stacks over the
-project's <code>reports/_theme.css</code> and under the package's own <code>style.css</code>. An
-unknown name is refused at load.</p>
-<pre><code class="language-json">&quot;theme&quot;: &quot;ocean&quot;
-</code></pre>
-<h3 id="look-object-optional-appjsx-only"><code>look</code> — object, optional (app.jsx only)</h3>
-<p>An <a href="../reference/app-jsx.html">app</a>'s mode and density — the attributes a <code>template.html</code>
-puts on its own <code>&lt;html&gt;</code>: <code>"mode"</code> is <code>light</code>, <code>dark</code> or <code>auto</code> (follows the
-reader's system; the default when <code>mode</code> is unset); <code>"density"</code> is
-<code>comfortable</code> or <code>compact</code>.</p>
-<pre><code class="language-json">&quot;look&quot;: {&quot;mode&quot;: &quot;dark&quot;, &quot;density&quot;: &quot;compact&quot;}
-</code></pre>
-<h3 id="schedule-object-optional"><code>schedule</code> — object, optional</h3>
-<p>When the report runs and who receives it. Read by <code>tracebi schedule</code> (<a href="../reference/cli.html">CLI reference</a>).
-The build itself ignores it.</p>
+<h2 id="libs"><code>libs</code></h2>
+<p>The build inlines D3 automatically when the page contains a chart figure (a
+hand-written <code>data-tb-figure="chart"</code>, a <code>{{ figure("…") }}</code> chart, or a chart
+compiled from a spec), and leaves it out otherwise. A final build decides
+after exploration blocks are removed; <code>tracebi dev</code> and a snapshot decide from
+the page they render.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>When to list it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"d3"</code></td>
+<td>For a <code>custom</code> figure drawn with <code>tracebi.draw</code>.</td>
+</tr>
+<tr>
+<td><code>"echarts"</code></td>
+<td>To keep the older ECharts engine for the page's charts. <code>tracebi.configureChart</code> applies only there.</td>
+</tr>
+</tbody>
+</table>
+<p>Each library is inlined once. An unknown value is refused at load.</p>
+<h2 id="embed"><code>embed</code></h2>
+<p>Besides each binding's rows, a live page carries a <strong>slice</strong>: per fact, one
+Parquet block (<code>tracebi-slice-&lt;fact&gt;</code>) at the coarsest grain that answers
+every figure and filter, plus a <code>tracebi-calc-plans</code> block with each binding's
+calc plan.</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>The page carries</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"required"</code> (default)</td>
+<td>That grain. Base grain when a measure is <code>nunique</code>, a percentile or a row expression; a mean is stored as its sum and count.</td>
+</tr>
+<tr>
+<td><code>"model"</code></td>
+<td>Every fact at base grain, with every dimension attribute it reaches.</td>
+</tr>
+<tr>
+<td><code>"none"</code></td>
+<td>Nothing extra. Filters subset the stamped rows and value figures stay as built.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Past <code>embed_budget_mb</code> the build fails and names the fix: remove a control
+  or a grouping, raise the budget, or use <code>"none"</code>.</li>
+<li>A slice holds numbers, booleans, strings and naive datetimes. Any other type
+  in a needed column fails the build by name.</li>
+<li>A SQL binding and a <code>report.py</code> output are never in a slice; they stay as
+  built.</li>
+<li>The manifest records each block's <code>payload_sha256</code> under <code>slice</code> and every
+  plan under <code>plans</code>.</li>
+</ul>
+<h2 id="schedule"><code>schedule</code></h2>
 <pre><code class="language-json">&quot;schedule&quot;: {
   &quot;cron&quot;: &quot;0 9 * * MON&quot;,
   &quot;timezone&quot;: &quot;America/New_York&quot;,
@@ -186,41 +263,42 @@ The build itself ignores it.</p>
   &quot;refresh&quot;: {&quot;transforms&quot;: [&quot;holdings_transform&quot;]}
 }
 </code></pre>
+<p>Read by <code>tracebi schedule</code> (<a href="../reference/cli.html">CLI reference</a>).</p>
 <table>
 <thead>
 <tr>
 <th>Field</th>
-<th></th>
+<th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>cron</code></td>
-<td>Required. Five fields: minute hour day month day_of_week.</td>
+<td>Required. Five fields: minute, hour, day, month, day of week.</td>
 </tr>
 <tr>
 <td><code>timezone</code></td>
-<td>Optional IANA name. Default <code>UTC</code>.</td>
+<td>An IANA name. Default <code>UTC</code>.</td>
 </tr>
 <tr>
 <td><code>to</code></td>
-<td>Optional list of email addresses. Without it, a run sends no email. When <code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> are both set, a successful run still uploads the HTML and the manifest to that channel.</td>
+<td>Email addresses. Without it, a run sends no email. With <code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> set, a successful run still uploads the HTML and manifest to Slack.</td>
 </tr>
 <tr>
 <td><code>refresh</code></td>
-<td>Optional. <code>{"transforms": [...], "pipelines": [...]}</code> to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (<code>tracebi run-transform</code> / <code>tracebi run-pipeline</code>). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent.</td>
+<td><code>{"transforms": [...], "pipelines": [...]}</code> to run before the build: transforms first, then pipelines, each in a fresh process (<code>tracebi run-transform</code>, <code>tracebi run-pipeline</code>). A failed step, including a sink contract that refuses the data, fails the run; nothing is built or sent.</td>
 </tr>
 <tr>
 <td><code>retries</code></td>
-<td>Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A trace that does not verify, and a delivery failure, are not retried.</td>
+<td>0 to 5. Default 2. A failed refresh or build is retried after 1 minute, then 5, then 5 again. A trace that does not verify and a delivery failure are not retried.</td>
 </tr>
 <tr>
 <td><code>owner</code></td>
-<td>Optional. One email address. A run recorded <code>failed</code>, <code>refused</code>, or <code>empty</code> emails this address a plain-text alert and does not send the report to <code>to</code>. Without it, nothing is alerted.</td>
+<td>One email address. A run recorded <code>failed</code>, <code>refused</code> or <code>empty</code> alerts it in plain text and is not sent to <code>to</code>.</td>
 </tr>
 <tr>
 <td><code>burst</code></td>
-<td>Optional. One build per filter value, each with its own recipients. <code>filter</code> is one dimension key mapped to a list or <code>{"in": [...]}</code>. <code>to</code> maps each value to email addresses. A value missing from <code>to</code> is skipped and recorded, and is not sent to the top-level <code>to</code>. <code>burst</code> without <code>to</code> is refused when the package loads.</td>
+<td>One build per filter value, each with its own recipients (below).</td>
 </tr>
 </tbody>
 </table>
@@ -233,23 +311,27 @@ The build itself ignores it.</p>
   }
 }
 </code></pre>
-<p>Each value is its own HTML and manifest under <code>output/</code>. The filter is
-applied at build on every binding whose model has that dimension, through
-the same path as a selection filter. Each slice is verified on its own. A
-refused, empty, or failed slice is not sent; the others still are. The run
-is one parent record with a <code>slices</code> list (value, status, recipients,
-output path). If any slice failed, came back empty, or was refused, one
-owner alert names those slices.</p>
-<p>A run whose figure bindings include one with zero rows is recorded <code>empty</code>
-and is not sent. A binding no figure uses does not count.</p>
-<p>Any other field, a cron that isn't five fields, an unknown time zone, an
-address with no <code>@</code> (in <code>to</code> or <code>owner</code>), a malformed <code>refresh</code>, or a
-<code>retries</code> value that is not an integer from 0 to 5 is refused when the
-package loads. A <code>refresh</code> name that doesn't exist fails the run, not the
-load.</p>
-<hr>
-<h2 id="what-is-checked-and-when">What is checked, and when</h2>
-<p>Checked when the package <strong>loads</strong> (before any query runs):</p>
+<ul>
+<li><code>filter</code> is one dimension key mapped to a list or <code>{"in": [...]}</code>. <code>to</code>
+  maps each value to addresses. A value missing from <code>to</code> is skipped and
+  recorded, not sent to the top-level <code>to</code>. <code>burst</code> without <code>to</code> is refused at
+  load.</li>
+<li>Each value gets its own HTML and manifest under <code>output/</code>. The filter
+  applies at build to every binding whose model has that dimension, the same
+  way a selection does. Each slice is verified on its own; a refused, empty or
+  failed slice is not sent, and the others still are.</li>
+<li>The run is one record with a <code>slices</code> list (value, status, recipients,
+  output path). Any slice that failed, came back empty or was refused is named
+  in one owner alert.</li>
+</ul>
+<p>A run where a figure's binding returns zero rows is recorded <code>empty</code> and not
+sent. A binding no figure uses does not count.</p>
+<p>Refused at load: any other field, a cron that isn't five fields, an unknown
+time zone, an address without <code>@</code> (in <code>to</code> or <code>owner</code>), a malformed <code>refresh</code>,
+or <code>retries</code> outside 0 to 5. A <code>refresh</code> name that doesn't exist fails the
+run, not the load.</p>
+<h2 id="when-it-is-checked">When it is checked</h2>
+<p>When the package loads, before any query runs:</p>
 <table>
 <thead>
 <tr>
@@ -259,7 +341,7 @@ load.</p>
 </thead>
 <tbody>
 <tr>
-<td>top level is an object</td>
+<td>The top level is an object</td>
 <td><code>the top level must be an object</code></td>
 </tr>
 <tr>
@@ -267,11 +349,11 @@ load.</p>
 <td><code>needs a non-empty 'data' object mapping…</code></td>
 </tr>
 <tr>
-<td>each binding is an object with <code>model</code>/<code>query</code></td>
+<td>Each binding is an object with <code>model</code> and <code>query</code></td>
 <td><code>data binding 'x' must be an object…</code></td>
 </tr>
 <tr>
-<td><code>libs</code> ⊆ known libraries</td>
+<td><code>libs</code> uses known libraries</td>
 <td><code>'libs' must be a list drawn from ['echarts']</code></td>
 </tr>
 <tr>
@@ -279,39 +361,29 @@ load.</p>
 <td><code>'figures' must be an object mapping…</code></td>
 </tr>
 <tr>
-<td>a figure's <code>kind</code> is known</td>
+<td>A figure's <code>kind</code> is known</td>
 <td><code>has kind 'x'; expected one of [...]</code></td>
 </tr>
 <tr>
-<td>a figure's <code>binding</code> exists in <code>data</code></td>
+<td>A figure's <code>binding</code> is in <code>data</code></td>
 <td><code>names binding 'x', which is not declared in 'data'</code></td>
 </tr>
 <tr>
-<td>a <code>value</code> figure has <code>cell</code></td>
+<td>A <code>value</code> figure has <code>cell</code></td>
 <td><code>is a value figure and needs 'cell'</code></td>
 </tr>
 </tbody>
 </table>
-<p>Checked when the report <strong>builds</strong>:</p>
+<p>When the report builds:</p>
 <ul>
-<li>every declared figure is placed in <code>template.html</code> exactly once
-  (<a href="../reference/figure-helper.html">{{ figure("name") }}</a>)</li>
-<li>every figure's binding resolves against a registered model</li>
-<li>the query is valid against the model's grain and <a href="../reference/measures.html">Measures</a></li>
+<li>every declared figure is placed in <code>template.html</code> exactly once;</li>
+<li>every binding resolves against a registered model;</li>
+<li>every query is valid against the model (<a href="../reference/measures.html">Measures</a>).</li>
 </ul>
-<blockquote>
-<p><strong>Known gap.</strong> Unknown keys are currently <strong>ignored, not rejected</strong> — a typo
-like <code>"figure"</code> for <code>"figures"</code> loads quietly with no figures declared, and a
-typo inside a figure entry falls back to a default. The <code>.json</code> spec format
-does reject unknown keys with a suggestion; the package format does not yet.</p>
-</blockquote>
-<h2 id="related">Related</h2>
-<ul>
-<li><a href="../reference/template-html.html">template.html — the figure grammar</a> — the markup side</li>
-<li><a href="../reference/figure-helper.html">{{ figure("name") }}</a> — declaring figures instead of hand-writing them</li>
-<li><a href="../reference/queries.html">Queries</a> — what goes inside <code>query</code></li>
-<li><a href="../concepts/report.html">Report — phase ③</a> — the concept</li>
-</ul>
+<p><strong>Known gap.</strong> Unknown keys in <code>report.json</code> are ignored, not refused. A typo
+like <code>"figure"</code> for <code>"figures"</code> loads with no figures, and a typo inside a
+figure falls back to a default. The <code>.json</code> spec format does refuse unknown
+keys.</p>
   </main>
 </div>
 <script>

@@ -1,22 +1,7 @@
 # `report.json`
 
-**The package declaration: what data a report binds, and which figures the
-framework builds for it.**
-
-Every report package is a directory under `reports/`:
-
-```
-reports/my_report/
-  report.json      ← this page
-  template.html    the page you draw          → [[template-html]]
-  style.css        optional, your CSS
-  script.js        optional, your JS
-  report.py        optional escape hatch      → [[trace#Unverifiable figures]]
-```
-
----
-
-## Minimal example
+`report.json` declares a report package's data: the queries it runs, and the
+figures TraceBi builds for it.
 
 ```json
 {
@@ -35,57 +20,36 @@ reports/my_report/
 }
 ```
 
-## Keys
+It sits in the package folder:
 
-### `name` — string
-
-The report's display name: what people read in every list and title
-(`"Portfolio Overview"`), not the folder slug. The path
-(`portfolio_model/portfolio_overview`) stays the identifier commands and URLs
-take. `GET /api/reports` returns it as `display_name` beside `name` (the
-path); with no `name` here, `display_name` is the directory name title-cased.
-
-### `author` — string, optional
-
-Recorded in the manifest as `rendered_by`, and shown in the trace's About
-this build ("built by …"), not on the page.
-
-### `description` — string, optional
-
-One sentence for the reader: what the page shows — its measures, breakdowns
-and period (`"Ending MRR, customers and logo churn, month by month and by
-plan."`). Shown in the library under the report's name and at the top of About
-this build. How the page is built (the lane, which file draws what, why a
-measure is declared the way it is) does not belong here: put it in `notes`.
-
-### `notes` — string, optional
-
-For the people and agents who edit the package: how the page is built, what
-`report.py` or `script.js` does. Nothing renders it.
-
-### `data` — object, **required**
-
-Maps a **binding name** to a query. A binding is the unit of trust: it is
-resolved once, fingerprinted, embedded in the artifact, and recorded in the
-trace.
-
-```json
-"data": {
-  "<binding_name>": {
-    "model": "<model name>",
-    "query": { ... }                  → [[queries]]
-  }
-}
+```
+reports/my_report/
+  report.json      this file
+  template.html    the page you write     → [[template-html]]
+  app.jsx          or a dashboard         → [[app-jsx]]
+  style.css        optional
+  script.js        optional
+  report.py        optional: numbers the model cannot express (never read green)
 ```
 
-Must be a non-empty object. Each entry must have `model` and `query`.
+## Keys
 
-Figures refer to bindings by name — see [[template-html]] and [[figure-helper]].
-
-### `figures` — object, optional
-
-Figures the framework builds for you, placed in `template.html` with
-`{{ figure("name") }}`. Full page: [[figure-helper]].
+| Key | Type | Meaning |
+|---|---|---|
+| `name` | string | The display name in every list and title. The path (`portfolio_model/portfolio_overview`) stays the identifier commands and URLs take. `GET /api/reports` returns it as `display_name`; unset, the folder name title-cased. |
+| `author` | string | Recorded in the manifest as `rendered_by` and shown in the trace's About this build. |
+| `description` | string | One sentence for the reader: what the page shows (measures, breakdowns, period), e.g. `"Ending MRR, customers and logo churn, month by month and by plan."`. Shown under the name in the library. How the page is built goes in `notes`. |
+| `notes` | string | For people and agents who edit the package: how the page is built. Nothing renders it. |
+| `data` | object, required | Binding name → `{"model": …, "query": …}` ([[queries]]). Each binding runs once, is fingerprinted, embedded and recorded in the trace. Must be non-empty; each entry needs `model` and `query`. A binding may name a SQL calculation instead: `{"model": …, "sql": "<name>"}`. |
+| `figures` | object | Figures TraceBi builds for you, placed with `{{ figure("name") }}` ([[figure-helper]]). Leave it out if you write the markup yourself. |
+| `measures` | object | This report's own calculations: `{"<model>": {"<name>": {<add_measure keywords>}}}`, plus `filters` and `measure_expr`. A binding lists one by name. The model is unchanged, a name the model declares is refused, and the trace labels them "calculated in this report". |
+| `sql_calculations` | object | `{"<model>": {"<name>": "SELECT ..."}}`: one read-only `SELECT` or `WITH` over the warehouse's own tables. Writes, `ATTACH`, `COPY`, `PRAGMA`, `SET`, `INSTALL`, `LOAD` or a second statement are refused at discovery. `{{ measure('name') }}` expands a simple model measure. A selection cannot reach a SQL binding yet. |
+| `libs` | array | Charting libraries to inline: `"d3"`, `"echarts"`. Optional (see below). |
+| `theme` | string | A shipped theme: `graphite`, `indigo`, `midnight`, `ocean`, `plum` or `sand` (`tracebi theme list`). It sets the accent pair for each ground. Stacks over `reports/_theme.css` and under `style.css`. |
+| `look` | object | `app.jsx` only: `"mode"` (`light`, `dark`, or `auto`, the default) and `"density"` (`comfortable` or `compact`). |
+| `embed` | string | What the page carries to recompute under filters: `"required"` (default), `"model"` or `"none"` (see below). |
+| `embed_budget_mb` | number | The limit for that data. Default 25. |
+| `schedule` | object | When the report runs and who gets it (see below). The build ignores it. |
 
 ```json
 "figures": {
@@ -95,59 +59,52 @@ Figures the framework builds for you, placed in `template.html` with
 }
 ```
 
-Omit it entirely if you hand-write your figure markup — both styles work, and
-they produce the same bytes.
-
-### `libs` — array, optional
-
-Charting libraries to inline into the self-contained file: `"d3"` and
-`"echarts"`.
-
 ```json
-"libs": ["d3"]
+"measures": {"wealth_model": {
+  "purchases": {"column": "amount", "agg": "sum", "filters": {"activity_type": "purchase"}},
+  "sales": {"column": "amount", "agg": "sum", "filters": {"activity_type": "sale"}},
+  "net_new_assets": {"measure_expr": "purchases - sales", "format": "currency0"}
+}}
 ```
 
-`libs` is optional. The build inlines D3 automatically when the page
-contains a chart figure — a hand-written `data-tb-figure="chart"`, a
-`{{ figure("…") }}` chart, or a chart compiled from a spec — and draws every
-chart type with it. It leaves D3 out when the page has no chart figure, so a
-data-only report stays small. A final build decides from the page after
-exploration blocks are stripped; `tracebi dev` and a snapshot include D3 when
-that rendered page has a chart. List `"d3"` yourself for a `custom` figure
-drawn with `tracebi.draw`. List `"echarts"` to keep the older ECharts engine
-for the page's charts (no D3 is then added for them); `tracebi.configureChart`
-patches apply only there. Each library is inlined once. An unknown value is
-refused at load.
+## `libs`
 
-### `theme` — string, optional
+The build inlines D3 automatically when the page contains a chart figure (a
+hand-written `data-tb-figure="chart"`, a `{{ figure("…") }}` chart, or a chart
+compiled from a spec), and leaves it out otherwise. A final build decides
+after exploration blocks are removed; `tracebi dev` and a snapshot decide from
+the page they render.
 
-A shipped theme by name: `graphite`, `indigo`, `midnight`, `ocean`, `plum`
-or `sand` (`tracebi theme list`). A theme is an accent preset: it sets the
-accent for the light and the dark ground (`--tb-accent`, `--tb-accent-text`,
-`--tb-dark-accent`, `--tb-dark-accent-text`) and nothing structural; the mode
-is `look` (or `data-tb-mode` on a template's `<html>`). It stacks over the
-project's `reports/_theme.css` and under the package's own `style.css`. An
-unknown name is refused at load.
+| Value | When to list it |
+|---|---|
+| `"d3"` | For a `custom` figure drawn with `tracebi.draw`. |
+| `"echarts"` | To keep the older ECharts engine for the page's charts. `tracebi.configureChart` applies only there. |
 
-```json
-"theme": "ocean"
-```
+Each library is inlined once. An unknown value is refused at load.
 
-### `look` — object, optional (app.jsx only)
+## `embed`
 
-An [[app-jsx|app]]'s mode and density — the attributes a `template.html`
-puts on its own `<html>`: `"mode"` is `light`, `dark` or `auto` (follows the
-reader's system; the default when `mode` is unset); `"density"` is
-`comfortable` or `compact`.
+Besides each binding's rows, a live page carries a **slice**: per fact, one
+Parquet block (`tracebi-slice-<fact>`) at the coarsest grain that answers
+every figure and filter, plus a `tracebi-calc-plans` block with each binding's
+calc plan.
 
-```json
-"look": {"mode": "dark", "density": "compact"}
-```
+| Value | The page carries |
+|---|---|
+| `"required"` (default) | That grain. Base grain when a measure is `nunique`, a percentile or a row expression; a mean is stored as its sum and count. |
+| `"model"` | Every fact at base grain, with every dimension attribute it reaches. |
+| `"none"` | Nothing extra. Filters subset the stamped rows and value figures stay as built. |
 
-### `schedule` — object, optional
+- Past `embed_budget_mb` the build fails and names the fix: remove a control
+  or a grouping, raise the budget, or use `"none"`.
+- A slice holds numbers, booleans, strings and naive datetimes. Any other type
+  in a needed column fails the build by name.
+- A SQL binding and a `report.py` output are never in a slice; they stay as
+  built.
+- The manifest records each block's `payload_sha256` under `slice` and every
+  plan under `plans`.
 
-When the report runs and who receives it. Read by `tracebi schedule` ([[cli]]).
-The build itself ignores it.
+## `schedule`
 
 ```json
 "schedule": {
@@ -158,15 +115,17 @@ The build itself ignores it.
 }
 ```
 
-| Field | |
+Read by `tracebi schedule` ([[cli]]).
+
+| Field | Meaning |
 | --- | --- |
-| `cron` | Required. Five fields: minute hour day month day_of_week. |
-| `timezone` | Optional IANA name. Default `UTC`. |
-| `to` | Optional list of email addresses. Without it, a run sends no email. When `TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` are both set, a successful run still uploads the HTML and the manifest to that channel. |
-| `refresh` | Optional. `{"transforms": [...], "pipelines": [...]}` to run before the build, so the report shows fresh data: transforms first, then pipelines, each in a fresh process (`tracebi run-transform` / `tracebi run-pipeline`). A failed step, including a sink contract that refuses the new data, fails the run; nothing is built or sent. |
-| `retries` | Optional integer from 0 to 5. Default 2. A failed refresh or build is retried that many times, waiting 1 minute, then 5 minutes, then 5 minutes again. 0 disables retries. A trace that does not verify, and a delivery failure, are not retried. |
-| `owner` | Optional. One email address. A run recorded `failed`, `refused`, or `empty` emails this address a plain-text alert and does not send the report to `to`. Without it, nothing is alerted. |
-| `burst` | Optional. One build per filter value, each with its own recipients. `filter` is one dimension key mapped to a list or `{"in": [...]}`. `to` maps each value to email addresses. A value missing from `to` is skipped and recorded, and is not sent to the top-level `to`. `burst` without `to` is refused when the package loads. |
+| `cron` | Required. Five fields: minute, hour, day, month, day of week. |
+| `timezone` | An IANA name. Default `UTC`. |
+| `to` | Email addresses. Without it, a run sends no email. With `TRACEBI_SLACK_BOT_TOKEN` and `TRACEBI_SLACK_CHANNEL` set, a successful run still uploads the HTML and manifest to Slack. |
+| `refresh` | `{"transforms": [...], "pipelines": [...]}` to run before the build: transforms first, then pipelines, each in a fresh process (`tracebi run-transform`, `tracebi run-pipeline`). A failed step, including a sink contract that refuses the data, fails the run; nothing is built or sent. |
+| `retries` | 0 to 5. Default 2. A failed refresh or build is retried after 1 minute, then 5, then 5 again. A trace that does not verify and a delivery failure are not retried. |
+| `owner` | One email address. A run recorded `failed`, `refused` or `empty` alerts it in plain text and is not sent to `to`. |
+| `burst` | One build per filter value, each with its own recipients (below). |
 
 ```json
 "burst": {
@@ -179,55 +138,48 @@ The build itself ignores it.
 }
 ```
 
-Each value is its own HTML and manifest under `output/`. The filter is
-applied at build on every binding whose model has that dimension, through
-the same path as a selection filter. Each slice is verified on its own. A
-refused, empty, or failed slice is not sent; the others still are. The run
-is one parent record with a `slices` list (value, status, recipients,
-output path). If any slice failed, came back empty, or was refused, one
-owner alert names those slices.
+- `filter` is one dimension key mapped to a list or `{"in": [...]}`. `to`
+  maps each value to addresses. A value missing from `to` is skipped and
+  recorded, not sent to the top-level `to`. `burst` without `to` is refused at
+  load.
+- Each value gets its own HTML and manifest under `output/`. The filter
+  applies at build to every binding whose model has that dimension, the same
+  way a selection does. Each slice is verified on its own; a refused, empty or
+  failed slice is not sent, and the others still are.
+- The run is one record with a `slices` list (value, status, recipients,
+  output path). Any slice that failed, came back empty or was refused is named
+  in one owner alert.
 
-A run whose figure bindings include one with zero rows is recorded `empty`
-and is not sent. A binding no figure uses does not count.
+A run where a figure's binding returns zero rows is recorded `empty` and not
+sent. A binding no figure uses does not count.
 
-Any other field, a cron that isn't five fields, an unknown time zone, an
-address with no `@` (in `to` or `owner`), a malformed `refresh`, or a
-`retries` value that is not an integer from 0 to 5 is refused when the
-package loads. A `refresh` name that doesn't exist fails the run, not the
-load.
+Refused at load: any other field, a cron that isn't five fields, an unknown
+time zone, an address without `@` (in `to` or `owner`), a malformed `refresh`,
+or `retries` outside 0 to 5. A `refresh` name that doesn't exist fails the
+run, not the load.
 
----
+## When it is checked
 
-## What is checked, and when
-
-Checked when the package **loads** (before any query runs):
+When the package loads, before any query runs:
 
 | Rule | Refusal |
 | --- | --- |
-| top level is an object | `the top level must be an object` |
+| The top level is an object | `the top level must be an object` |
 | `data` is a non-empty object | `needs a non-empty 'data' object mapping…` |
-| each binding is an object with `model`/`query` | `data binding 'x' must be an object…` |
-| `libs` ⊆ known libraries | `'libs' must be a list drawn from ['echarts']` |
+| Each binding is an object with `model` and `query` | `data binding 'x' must be an object…` |
+| `libs` uses known libraries | `'libs' must be a list drawn from ['echarts']` |
 | `figures` is an object | `'figures' must be an object mapping…` |
-| a figure's `kind` is known | `has kind 'x'; expected one of [...]` |
-| a figure's `binding` exists in `data` | `names binding 'x', which is not declared in 'data'` |
-| a `value` figure has `cell` | `is a value figure and needs 'cell'` |
+| A figure's `kind` is known | `has kind 'x'; expected one of [...]` |
+| A figure's `binding` is in `data` | `names binding 'x', which is not declared in 'data'` |
+| A `value` figure has `cell` | `is a value figure and needs 'cell'` |
 
-Checked when the report **builds**:
+When the report builds:
 
-- every declared figure is placed in `template.html` exactly once
-  ([[figure-helper#Refusals]])
-- every figure's binding resolves against a registered model
-- the query is valid against the model's grain and [[measures]]
+- every declared figure is placed in `template.html` exactly once;
+- every binding resolves against a registered model;
+- every query is valid against the model ([[measures]]).
 
-> **Known gap.** Unknown keys are currently **ignored, not rejected** — a typo
-> like `"figure"` for `"figures"` loads quietly with no figures declared, and a
-> typo inside a figure entry falls back to a default. The `.json` spec format
-> does reject unknown keys with a suggestion; the package format does not yet.
-
-## Related
-
-- [[template-html]] — the markup side
-- [[figure-helper]] — declaring figures instead of hand-writing them
-- [[queries]] — what goes inside `query`
-- [[report]] — the concept
+**Known gap.** Unknown keys in `report.json` are ignored, not refused. A typo
+like `"figure"` for `"figures"` loads with no figures, and a typo inside a
+figure falls back to a default. The `.json` spec format does refuse unknown
+keys.

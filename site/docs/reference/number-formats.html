@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,29 +61,31 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a class="on" href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="number-formats">Number formats</h1>
-<p><strong>Named formats you apply to a figure, plus the defaults TraceBi derives when
-you don't.</strong></p>
-<hr>
-<h2 id="the-named-formats">The named formats</h2>
-<p>Use these as <code>format</code> in <a href="../reference/figure-helper.html">{{ figure("name") }}</a>, or <code>data-tb-format</code> /
-<code>data-tb-value-format</code> in <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
+<p>The named formats you can give a figure, and the defaults TraceBi picks when
+you give none.</p>
+<pre><code class="language-html">&lt;span data-tb-figure=&quot;value&quot; data-tb-binding=&quot;totals&quot;
+      data-tb-cell=&quot;fair_value&quot; data-tb-format=&quot;currency0&quot;&gt;&lt;/span&gt;
+</code></pre>
+<p>Use a name as <code>format</code> in <a href="../reference/figure-helper.html">{{ figure("name") }}</a>, or as <code>data-tb-format</code> or
+<code>data-tb-value-format</code> in <a href="../reference/template-html.html">template.html</a>.</p>
+<h2 id="named-formats">Named formats</h2>
 <table>
 <thead>
 <tr>
 <th>Name</th>
-<th>Renders <code>1705495.22</code> as</th>
+<th><code>1705495.22</code> renders as</th>
 </tr>
 </thead>
 <tbody>
@@ -105,71 +107,65 @@ you don't.</strong></p>
 </tr>
 <tr>
 <td><code>percent</code></td>
-<td>applies to a fraction: <code>0.069</code> → <code>6.9%</code></td>
+<td>For a fraction: <code>0.069</code> → <code>6.9%</code></td>
 </tr>
 <tr>
 <td><code>compact</code></td>
-<td><code>1.7M</code> (<code>550.7B</code> at scale)</td>
+<td><code>1.7M</code> (<code>550.7B</code> at scale). Good for chart axes and tooltips.</td>
 </tr>
 <tr>
 <td><code>currency_compact</code></td>
-<td><code>$1.7M</code> (<code>-$6.3M</code> for a loss)</td>
+<td><code>$1.7M</code> (<code>-$6.3M</code> for a loss). Good on a KPI card or in a sentence.</td>
 </tr>
 </tbody>
 </table>
-<p><code>compact</code> is the right default for chart axes and tooltips, where space is
-tight; <code>currency_compact</code> is the same for money, and reads best on a KPI card
-or in a sentence.</p>
-<h2 id="derived-defaults">Derived defaults</h2>
-<p>If you set no format, TraceBi fills one in from what the query already knows —
-so <code>dim_branch.region</code> renders as <strong>Region</strong> and <code>1705495.2200000002</code> renders
-as <strong>1,705,495.22</strong>.</p>
-<p>Preference order, first match wins:</p>
+<h2 id="defaults">Defaults</h2>
+<p>With no format set, TraceBi derives one: <code>dim_branch.region</code> renders as
+<strong>Region</strong>, and <code>1705495.2200000002</code> as <strong>1,705,495.22</strong>. The first match
+wins:</p>
 <ol>
-<li>the format <strong>you</strong> set on the figure</li>
-<li>a format the <strong>model declares</strong> on that measure</li>
-<li>a <strong>column-name hint</strong> — a <code>_pct</code> suffix</li>
-<li><strong>shape</strong> — whole numbers get separators, fractional ones two decimals</li>
+<li>the format set on the figure;</li>
+<li>a format the model declares on the measure;</li>
+<li>a column-name hint: a <code>_pct</code> suffix;</li>
+<li>the value's shape: whole numbers get separators, fractions two decimals.</li>
 </ol>
-<p>Columns named like <code>year</code>, <code>id</code>, or <code>*_key</code> get <strong>no</strong> format: a separator
-would render 2024 as <code>2,024</code>.</p>
-<p>This applies to table columns and to value figures alike. A KPI or a number
-bound in a sentence with no <code>data-tb-format</code> reads <code>4,846.10</code> rather than
-<code>4846.1</code>, and the server-rendered page and the browser use the same rule, so the
-number doesn't change when the page finishes loading.</p>
-<h2 id="the-percent-guard">The percent guard</h2>
-<p>The <code>_pct</code> name hint is unit-aware, and it is the only rung that is.</p>
-<p>Both conventions exist in real data — a declared ratio measure holds <code>0.069</code>,
-a hand-computed <code>pct_change().mul(100)</code> holds <code>12.5</code>. So the hint applies
-<strong>only when every non-null value is fraction-shaped</strong> (<code>|v| &lt;= 1.5</code>).
-Otherwise the column falls through to the shape default and keeps its own
-magnitude with no <code>%</code>.</p>
-<p>A format the model declares still wins over this guard, because a model saying
-<code>format="percent"</code> is a statement, not a guess.</p>
-<blockquote>
-<p><strong>The rule underneath:</strong> a presentation default must never change the number
-it presents.</p>
-</blockquote>
-<p>The guard is shape-based, so it cannot see a pre-scaled column whose values
-happen to be small — a fund fee of <code>0.0945</code> meaning 0.0945% is
-indistinguishable from a fraction. Store such a column in a unit its <strong>name</strong>
-states, e.g. <code>expense_ratio_bps</code>.</p>
-<h2 id="two-things-worth-knowing">Two things worth knowing</h2>
-<ul>
-<li><strong>Excel derives nothing.</strong> <code>ExcelRenderer</code> applies only explicit formats, so a
-  stored convention chosen to please the HTML renderer lands unformatted in the
-  spreadsheet. Check both if you change data.</li>
-<li><strong>Opt out entirely</strong> with <code>HTMLRenderer(derive_defaults=False)</code> for raw output.</li>
-</ul>
-<h2 id="why-this-exists">Why this exists</h2>
-<p>Raw defaults are a trap that scales badly. A human authoring one report sees
-<code>DIM_BRANCH.REGION</code> and fixes it; an agent composing at volume, with nobody
-reading the output, does not.</p>
-<h2 id="related">Related</h2>
-<ul>
-<li><a href="../reference/figure-helper.html">{{ figure("name") }}</a> — where <code>format</code> is declared</li>
-<li><a href="../reference/measures.html">Measures</a> — declaring a format on a measure</li>
-</ul>
+<p>Columns named like <code>year</code>, <code>id</code> or <code>*_key</code> get no format, so 2024 never
+renders as <code>2,024</code>.</p>
+<p>This applies to table columns and value figures alike. A KPI with no
+<code>data-tb-format</code> reads <code>4,846.10</code>, not <code>4846.1</code>. The server and the browser
+use the same rule, so the number doesn't change when the page finishes
+loading.</p>
+<h2 id="the-_pct-hint">The <code>_pct</code> hint</h2>
+<p>A presentation default must never change the number it presents. Real data
+stores percentages two ways: a declared ratio holds <code>0.069</code>, a hand-computed
+<code>pct_change().mul(100)</code> holds <code>12.5</code>. So the <code>_pct</code> hint applies only when
+every non-null value is fraction-shaped (<code>|v| &lt;= 1.5</code>). Otherwise the column
+falls through to the shape default and keeps its own magnitude, with no <code>%</code>.</p>
+<p>A format the model declares still wins over this check: <code>format="percent"</code> on
+a measure is a statement, not a guess.</p>
+<p>The check looks only at the values, so it cannot spot a pre-scaled column
+whose values happen to be small: a fee of <code>0.0945</code> meaning 0.0945% looks like
+a fraction. Store such a column in a unit its name states, e.g.
+<code>expense_ratio_bps</code>.</p>
+<h2 id="other-renderers">Other renderers</h2>
+<table>
+<thead>
+<tr>
+<th>Renderer</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ExcelRenderer</code></td>
+<td>Applies only explicit formats and derives nothing. A convention chosen for the HTML page lands unformatted in the spreadsheet; check both when you change data.</td>
+</tr>
+<tr>
+<td><code>HTMLRenderer(derive_defaults=False)</code></td>
+<td>Turns derivation off and shows raw values.</td>
+</tr>
+</tbody>
+</table>
   </main>
 </div>
 <script>

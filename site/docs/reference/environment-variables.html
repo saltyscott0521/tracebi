@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Environment variables — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Every TRACEBI_ variable the framework reads.">
+<meta name="description" content="Environment variables">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,25 +61,28 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="environment-variables">Environment variables</h1>
-<p><strong>Every <code>TRACEBI_*</code> variable the framework reads.</strong></p>
-<p>TraceBi does <strong>not</strong> auto-load <code>.env</code>. <code>python-dotenv</code> ships with the
-<code>analyst</code>/<code>all</code> extras, but a transform script calls <code>load_dotenv()</code> itself.</p>
-<hr>
+<p>Every <code>TRACEBI_*</code> variable TraceBi reads.</p>
+<pre><code class="language-bash">TRACEBI_STATE_URL=postgresql+psycopg://tracebi@db/tracebi_state
+TRACEBI_SCHEDULES_IN_SERVER=1
+TRACEBI_SMTP_URL=smtp://user:password@host:587
+</code></pre>
+<p>TraceBi does not load <code>.env</code> on its own. <code>python-dotenv</code> ships with the
+<code>analyst</code> and <code>all</code> extras; a transform script calls <code>load_dotenv()</code> itself.
+The exception is a <code>${NAME}</code> in a connection file or the warehouse block,
+which is looked up in <code>.env</code> when the connection is used (<a href="../reference/credentials.html">Credentials</a>).</p>
 <h2 id="project-layout">Project layout</h2>
-<p>Where each phase of <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a> lives. Each has a CLI flag
-equivalent where it matters.</p>
 <table>
 <thead>
 <tr>
@@ -106,8 +109,8 @@ equivalent where it matters.</p>
 </tr>
 <tr>
 <td><code>TRACEBI_LIBRARY_MOUNTS</code></td>
-<td>—</td>
-<td>Comma-separated <code>label:/absolute/path</code> roots for the report Library. Each label is a top-level folder; report identity is <code>label/relative_path</code>. When set, this is authoritative over <code>TRACEBI_REPORTS_DIR</code>.</td>
+<td>none</td>
+<td>Comma-separated <code>label:/absolute/path</code> roots for the report library. Each label is a top-level folder; a report's identity is <code>label/relative_path</code>. Overrides <code>TRACEBI_REPORTS_DIR</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_PIPELINES_DIR</code></td>
@@ -117,17 +120,17 @@ equivalent where it matters.</p>
 <tr>
 <td><code>TRACEBI_CONNECTIONS_DIR</code></td>
 <td><code>connections</code></td>
-<td>declarative sources (<code>connections/&lt;name&gt;.yaml</code>), <code>tracebi connect</code>, discovery</td>
+<td>Connection files, <code>tracebi connect</code>, discovery</td>
 </tr>
 <tr>
 <td><code>TRACEBI_DRAFTS_DIR</code></td>
 <td><code>drafts</code></td>
-<td>Remote drafts: each owner's drafts live under <code>drafts/&lt;owner&gt;/</code>. The <code>/mcp</code> draft tools and <code>/api/drafts</code> read and write there. Publishing copies a draft into the library.</td>
+<td>Remote drafts, under <code>drafts/&lt;owner&gt;/</code>. The <code>/mcp</code> draft tools and <code>/api/drafts</code> read and write here; publishing copies a draft into the library.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_SCHEDULED_DIR</code></td>
 <td><code>scheduled</code></td>
-<td>discovery. <strong>Deprecated.</strong> The folder is still imported if it exists, and a script in it logs one deprecation line. It never ran reports. Use a <code>"schedule"</code> block in <code>report.json</code> (<code>tracebi schedule</code>).</td>
+<td>Deprecated. Still imported if the folder exists, with one deprecation line per script. It never ran reports; use a <code>"schedule"</code> block in <code>report.json</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_WORKBENCH_DIR</code></td>
@@ -137,12 +140,12 @@ equivalent where it matters.</p>
 <tr>
 <td><code>TRACEBI_OUTPUT_ROOT</code></td>
 <td><code>output</code></td>
-<td>build outputs</td>
+<td>Build outputs</td>
 </tr>
 <tr>
 <td><code>TRACEBI_DOCS_DIR</code></td>
-<td>—</td>
-<td>the served docs browser</td>
+<td>none</td>
+<td>The folder the app's Docs place serves</td>
 </tr>
 </tbody>
 </table>
@@ -157,45 +160,39 @@ equivalent where it matters.</p>
 <tbody>
 <tr>
 <td><code>TRACEBI_APP</code></td>
-<td>app module to import at startup. Default: none. <code>tracebi serve</code> sets it to empty so the bundled demo is never dragged into your project — set it yourself to opt in.</td>
+<td>App module to import at startup. Default: none. <code>tracebi serve</code> sets it empty so the bundled demo never loads into your project; set it yourself to opt in.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_DEV_MODE</code></td>
-<td>enables <code>POST /api/_dev/reload</code>, <strong>and</strong> allows tracebacks in API error payloads</td>
+<td>Turns on <code>POST /api/_dev/reload</code> and puts tracebacks in API errors. Don't set it in production: a traceback shows file paths, the server's user name and package versions.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_DISCOVERY_INTERVAL</code></td>
-<td>Seconds between live-discovery scans. A running server picks up report packages, specs, model files and pipeline files added to <code>reports/</code>, <code>models/</code> and <code>pipelines/</code> (and drops deleted reports) without a restart. Default <code>5</code>; <code>0</code> turns it off, so new reports need a restart. Python report modules are still found only at startup.</td>
+<td>Seconds between scans of <code>reports/</code>, <code>models/</code> and <code>pipelines/</code> for added or deleted files. Default <code>5</code>; <code>0</code> turns scanning off. Python report modules are found only at startup.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_SECRET_KEY</code></td>
-<td>The Fernet key that encrypts the project's credential store (<code>.tracebi/secrets.yml.enc</code>, <a href="../reference/credentials.html">Credentials</a>). Unset, the server generates <code>.tracebi/secret.key</code> on the first write. Several workers or replicas must share one, as they share <code>TRACEBI_STATE_URL</code>.</td>
+<td>The Fernet key for the credential store (<a href="../reference/credentials.html">Credentials</a>). Unset, <code>.tracebi/secret.key</code> is generated on the first write. Several workers must share one.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_STATE_URL</code></td>
-<td>The shared run store. Default <code>sqlite:///data/tracebi.db</code> beside the working directory. Point every worker at the same Postgres URL so polls, last builds, and schedule ticks share one database.</td>
+<td>The shared run store. Default <code>sqlite:///data/tracebi.db</code>. Point every worker at the same Postgres URL.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_SCHEDULES_IN_SERVER</code></td>
-<td><code>1</code> runs each report package's <code>schedule</code> block inside the web server (the same job as <code>tracebi schedule serve</code>). Off by default. On Postgres a tick takes one advisory lock per report. On SQLite the lock is a no-op, so several workers would each send the email.</td>
+<td><code>1</code> runs each package's <code>schedule</code> block inside the web server (the same job as <code>tracebi schedule serve</code>). Off by default. On Postgres a run takes one advisory lock per report; on SQLite the lock does nothing, so several workers would each send the email.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_COVERS</code></td>
-<td><code>0</code> takes no cover at build (<a href="../concepts/report.html">Report — phase ③</a>): no Chromium launch per build, and the library draws every cover. On by default where Playwright and Chromium are installed.</td>
+<td><code>0</code> takes no cover at build (<a href="../concepts/report.html">Reports</a>): no Chromium launch per build, and the library draws every cover. On by default where Playwright and Chromium are installed.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_DEBUG</code></td>
-<td><code>run-transform</code> re-raises a <code>ContractViolation</code> with the full traceback instead of the clean message</td>
+<td><code>run-transform</code> re-raises a <code>ContractViolation</code> with the full traceback instead of the short message.</td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p><strong><code>TRACEBI_DEV_MODE</code> is security-relevant.</strong> Without it, API error responses
-carry a message and exception type but an <strong>empty traceback</strong> — a traceback
-leaks file paths, the server username and package versions. Do not set it in
-production.</p>
-</blockquote>
-<h2 id="authentication-and-roles">Authentication and roles</h2>
+<h2 id="sign-in-and-roles">Sign-in and roles</h2>
 <table>
 <thead>
 <tr>
@@ -210,23 +207,23 @@ production.</p>
 </tr>
 <tr>
 <td><code>TRACEBI_AUTH_REALM</code></td>
-<td>the Basic auth realm</td>
+<td>The Basic auth realm</td>
 </tr>
 <tr>
 <td><code>TRACEBI_AUTH_PROXY_HEADER</code></td>
-<td>header carrying the authenticated user, when a proxy sets it</td>
+<td>The header a proxy sets with the signed-in user</td>
 </tr>
 <tr>
 <td><code>TRACEBI_AUTH_PROXY_TRUSTED_IPS</code></td>
-<td>CIDRs allowed to assert that header</td>
+<td>CIDRs allowed to set that header</td>
 </tr>
 <tr>
 <td><code>TRACEBI_AUTH_ROLE_HEADER</code></td>
-<td>header carrying the caller's role</td>
+<td>The header carrying the caller's role (proxy mode only)</td>
 </tr>
 <tr>
 <td><code>TRACEBI_AUTH_GROUPS_HEADER</code></td>
-<td>header carrying the caller's groups, comma separated, in proxy mode only (the proxy must set or replace it). A folder's <code>_folder.yaml</code> matches them: <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a></td>
+<td>The header carrying the caller's groups, comma separated, in proxy mode only; the proxy must set or replace it. Matched by <code>_folder.yaml</code> (<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>).</td>
 </tr>
 <tr>
 <td><code>TRACEBI_AUTH_ROLE_MAP</code></td>
@@ -234,7 +231,7 @@ production.</p>
 </tr>
 <tr>
 <td><code>TRACEBI_AUTH_DEFAULT_ROLE</code></td>
-<td>fallback role for principals the map omits</td>
+<td>The role for principals the map leaves out</td>
 </tr>
 <tr>
 <td><code>TRACEBI_ALLOWED_ORIGINS</code></td>
@@ -242,19 +239,15 @@ production.</p>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p><strong>Enforcement is opt-in, and the default is permissive.</strong> With no usable role
-source — no <code>TRACEBI_AUTH_ROLE_MAP</code>, and no <code>TRACEBI_AUTH_ROLE_HEADER</code> —
-<strong>every principal resolves to <code>admin</code></strong>, including on the pipeline routes that
-write to the warehouse. This is deliberate, so adding authorization could not
-lock a running deployment out of its own pipelines.</p>
-<p><code>TRACEBI_AUTH_DEFAULT_ROLE</code> is <strong>not a role source on its own</strong>: set by itself
-it names a fallback but leaves enforcement off. It switches enforcement on
-only alongside <code>TRACEBI_AUTH_ROLE_HEADER</code>.</p>
-</blockquote>
-<p>Roles: <code>viewer</code> (read, and run queries that persist nothing) → <code>analyst</code>
-(+ execute reports) → <code>admin</code> (+ run pipeline layers, which write, and keep
-a selection cut, which writes the published report).</p>
+<p>Role enforcement is off until there is a role source. With no
+<code>TRACEBI_AUTH_ROLE_MAP</code> and no <code>TRACEBI_AUTH_ROLE_HEADER</code>, every principal is
+<code>admin</code>, including on the pipeline routes that write the warehouse. That way
+adding sign-in cannot shut a running deployment out of its own pipelines.
+<code>TRACEBI_AUTH_DEFAULT_ROLE</code> alone is not a role source: it turns enforcement
+on only with <code>TRACEBI_AUTH_ROLE_HEADER</code>.</p>
+<p>Roles, in order: <code>viewer</code> (read, and run queries that save nothing),
+<code>analyst</code> (also run reports), <code>admin</code> (also run pipeline layers, which write,
+and keep a selection cut, which writes the published report).</p>
 <h2 id="delivery">Delivery</h2>
 <table>
 <thead>
@@ -266,33 +259,26 @@ a selection cut, which writes the published report).</p>
 <tbody>
 <tr>
 <td><code>TRACEBI_SMTP_URL</code></td>
-<td><code>smtp://user:pass@host:587</code> (STARTTLS) or <code>smtps://</code> (implicit TLS)</td>
+<td><code>smtp://user:pass@host:587</code> (STARTTLS) or <code>smtps://</code> (TLS from the start). Required by <code>tracebi report send</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_SMTP_FROM</code></td>
-<td>sender address</td>
+<td>The sender address. Required by <code>tracebi report send</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_SLACK_WEBHOOK</code></td>
-<td>optional text ping after a successful <code>report send</code>, and with an owner schedule alert. An incoming webhook cannot upload a file.</td>
+<td>A text ping after a successful <code>report send</code>, and with an owner's schedule alert. A failed ping is reported but does not fail the command. A webhook cannot upload a file.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_SLACK_BOT_TOKEN</code></td>
-<td>bot token (<code>files:write</code>) for scheduled file delivery. Does nothing unless <code>TRACEBI_SLACK_CHANNEL</code> is set too.</td>
+<td>A bot token (<code>files:write</code>) for scheduled file delivery. Needs <code>TRACEBI_SLACK_CHANNEL</code> too.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_SLACK_CHANNEL</code></td>
-<td>channel id (<code>C…</code>) or name the scheduled HTML and manifest are uploaded to.</td>
+<td>The channel id (<code>C…</code>) or name a scheduled run uploads the HTML and manifest to. A failed upload is recorded on the run (<code>delivery.slack.error</code>) and not retried.</td>
 </tr>
 </tbody>
 </table>
-<p>Both SMTP variables are required by <code>tracebi report send</code>. A webhook ping
-that fails is reported but does not fail the command — the report already
-went out. A scheduled run also uploads the HTML and the manifest when both
-<code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> are set. That upload
-is separate from the webhook. A failed upload is recorded on the run
-(<code>delivery.slack.error</code>) and is not retried. <code>--no-send</code> records the intent
-and does not call Slack.</p>
 <h2 id="agent-gateway">Agent gateway</h2>
 <table>
 <thead>
@@ -304,25 +290,26 @@ and does not call Slack.</p>
 <tbody>
 <tr>
 <td><code>TRACEBI_MCP_TOKEN</code></td>
-<td>bearer token for <code>tracebi mcp --transport http</code>. Set on the web app, it also serves the gateway at <code>/mcp</code> behind the same token.</td>
+<td>Bearer token for <code>tracebi mcp --transport http</code>. Set on the web app, it also serves the gateway at <code>/mcp</code> behind the same token.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_MCP_ACTOR</code></td>
-<td>audit attribution for gateway work (default <code>agent</code>)</td>
+<td>Who gateway work is recorded as (default <code>agent</code>).</td>
 </tr>
 <tr>
 <td><code>TRACEBI_MCP_LOG</code></td>
-<td><code>1</code> appends one line per gateway tool call to <code>.tracebi/gateway_log.jsonl</code>: tool, ok or error, duration, actor, argument <strong>names</strong>. Never argument values or results. Off by default; local only. Read it with <code>tracebi agent log</code>.</td>
+<td><code>1</code> appends one line per gateway tool call to <code>.tracebi/gateway_log.jsonl</code>: tool, ok or error, duration, actor, argument names. Never values or results. Read it with <code>tracebi agent log</code>.</td>
 </tr>
 </tbody>
 </table>
-<h3 id="a-sign-in-per-person">A sign-in per person</h3>
-<p>Set <code>TRACEBI_OIDC_ISSUER</code> and the web app serves <code>/mcp</code> with a sign-in per
-person (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>) and signs people in to the app itself
-at <code>/login</code> (<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>), which turns role enforcement on. It cannot be
-combined with <code>TRACEBI_AUTH_USER</code>/<code>TRACEBI_AUTH_PASS</code> or
-<code>TRACEBI_AUTH_PROXY_HEADER</code>: the server refuses to start. Nothing is read from
-these variables when it is unset.</p>
+<p>The http transport refuses to start until you set the token or pass
+<code>--insecure</code>. The web app has no insecure mode: without a token or a sign-in
+it serves no <code>/mcp</code>.</p>
+<h3 id="sign-in-through-your-identity-provider">Sign-in through your identity provider</h3>
+<p><code>TRACEBI_OIDC_ISSUER</code> turns on a per-person sign-in for <code>/mcp</code>
+(<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>) and for the app at <code>/login</code> (<a href="../guides/sign-in.html">Sign in with your company login</a>),
+which turns role enforcement on. The server refuses to start if it is combined
+with <code>TRACEBI_AUTH_USER</code>/<code>TRACEBI_AUTH_PASS</code> or <code>TRACEBI_AUTH_PROXY_HEADER</code>.</p>
 <table>
 <thead>
 <tr>
@@ -333,50 +320,49 @@ these variables when it is unset.</p>
 <tbody>
 <tr>
 <td><code>TRACEBI_OIDC_ISSUER</code></td>
-<td>the company identity provider's OIDC issuer URL (https). Turns per-person sign-in on.</td>
+<td>The provider's OIDC issuer URL (https).</td>
 </tr>
 <tr>
 <td><code>TRACEBI_OIDC_CLIENT_ID</code> / <code>TRACEBI_OIDC_CLIENT_SECRET</code></td>
-<td>the one app registration at the provider. Both required once the issuer is set.</td>
+<td>The app registration at the provider. Both required once the issuer is set.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_OIDC_SCOPES</code></td>
-<td>scopes asked of the provider (default <code>openid email profile</code>; <code>openid</code> is always included)</td>
+<td>Scopes to ask for. Default <code>openid email profile</code>; <code>openid</code> is always included.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_OIDC_GROUPS_CLAIM</code></td>
-<td>the ID-token claim that lists the person's groups (default <code>groups</code>)</td>
+<td>The ID-token claim listing the person's groups. Default <code>groups</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_OIDC_ROLE_MAP</code></td>
-<td><code>group:role</code> pairs, comma separated, e.g. <code>bi-admins:admin,bi-analysts:analyst</code>. The highest matching role wins. A bad entry stops startup.</td>
+<td><code>group:role</code> pairs, comma separated, e.g. <code>bi-admins:admin,bi-analysts:analyst</code>. The highest match wins. A bad entry stops startup.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_OIDC_DEFAULT_ROLE</code></td>
-<td>role for a person in no mapped group (default <code>viewer</code>)</td>
+<td>The role for a person in no mapped group. Default <code>viewer</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_PUBLIC_URL</code></td>
-<td>the address people reach this server at. The MCP address is its origin plus <code>/mcp</code>.</td>
+<td>The address people reach the server at. The MCP address is its origin plus <code>/mcp</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_PUBLIC_MCP_URL</code></td>
-<td>the public MCP address when it is not <code>&lt;TRACEBI_PUBLIC_URL origin&gt;/mcp</code>. Must equal what you give ChatGPT or Claude.</td>
+<td>The public MCP address when it is not <code>&lt;TRACEBI_PUBLIC_URL origin&gt;/mcp</code>. Must equal what you give ChatGPT or Claude.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_OAUTH_REDIRECTS</code></td>
-<td>extra exact redirect URIs a connector may return to, comma separated. Claude's and ChatGPT's callbacks and loopback addresses on any port are always allowed.</td>
+<td>Extra exact redirect URIs a connector may return to, comma separated. Claude's and ChatGPT's callbacks and loopback addresses are always allowed.</td>
 </tr>
 </tbody>
 </table>
-<p><code>TRACEBI_MCP_TOKEN</code> keeps working beside it, for automation, acting as
+<p><code>TRACEBI_MCP_TOKEN</code> keeps working beside it for automation, acting as
 <code>TRACEBI_MCP_ACTOR</code> with the <code>analyst</code> role.</p>
-<h3 id="a-built-in-sign-in-with-no-identity-provider">A built-in sign-in, with no identity provider</h3>
-<p>For a demo or a small team. The gateway signs people in on a page of its own at
-<code>/oauth/callback</code> (<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>). It serves <code>/mcp</code> only: the
-app's own pages are not put behind it. It cannot be combined with
-<code>TRACEBI_OIDC_ISSUER</code> (the server refuses to start), and it needs
-<code>TRACEBI_PUBLIC_URL</code> and <code>TRACEBI_OAUTH_SECRET</code>. Run it as one worker.</p>
+<h3 id="built-in-sign-in-with-no-identity-provider">Built-in sign-in, with no identity provider</h3>
+<p>For a demo or a small team. The gateway signs people in on a page of its own
+(<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>). It covers <code>/mcp</code> only, cannot be combined
+with <code>TRACEBI_OIDC_ISSUER</code>, and needs <code>TRACEBI_PUBLIC_URL</code> and
+<code>TRACEBI_OAUTH_SECRET</code>. Run it as one worker.</p>
 <table>
 <thead>
 <tr>
@@ -387,23 +373,19 @@ app's own pages are not put behind it. It cannot be combined with
 <tbody>
 <tr>
 <td><code>TRACEBI_DEMO_LOGIN</code></td>
-<td>a role (<code>viewer</code>, <code>analyst</code> or <code>admin</code>). Adds a <strong>Continue as the demo user</strong> button that signs anyone who reaches the page in, with that role, as <code>demo</code>. Use it only on a server that holds sample data.</td>
+<td>A role (<code>viewer</code>, <code>analyst</code> or <code>admin</code>). Adds a <strong>Continue as the demo user</strong> button that signs anyone in as <code>demo</code> with that role. Use it only on a server with sample data.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_LOCAL_USERS</code></td>
-<td><code>name:role:password</code> entries, comma separated, e.g. <code>alice:analyst:a-long-password</code>. Groups for folder permissions (<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>) follow the role after <code>@</code>, joined by <code>+</code>: <code>alice:analyst@finance+ops:a-long-password</code>. A password has at least 8 characters, may contain <code>:</code> but not <code>,</code>. Ten wrong passwords for one name in ten minutes stop that name for a while.</td>
+<td><code>name:role:password</code> entries, comma separated, e.g. <code>alice:analyst:a-long-password</code>. Groups for folder permissions follow the role after <code>@</code>, joined by <code>+</code>: <code>alice:analyst@finance+ops:a-long-password</code>. A password has at least 8 characters and may contain <code>:</code> but not <code>,</code>. Ten wrong passwords for one name in ten minutes stop that name for a while.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_OAUTH_SECRET</code></td>
-<td>a random secret of at least 32 characters (<code>openssl rand -hex 32</code>). It signs the sign-in while it is in flight, so every worker needs the same one.</td>
+<td>A random secret of at least 32 characters (<code>openssl rand -hex 32</code>). It signs the sign-in in flight, so every worker needs the same one.</td>
 </tr>
 </tbody>
 </table>
-<p>The http transport <strong>refuses to start</strong> until you either set the token or pass
-<code>--insecure</code> deliberately. The web app has no insecure mode: without the token
-it serves no <code>/mcp</code>.</p>
-<h2 id="updates">Updates</h2>
-<p>How an install learns about a newer TraceBi (<a href="../guides/updating.html">Updating TraceBi</a>).</p>
+<h2 id="updates-and-sync">Updates and sync</h2>
 <table>
 <thead>
 <tr>
@@ -416,44 +398,38 @@ it serves no <code>/mcp</code>.</p>
 <tr>
 <td><code>TRACEBI_LIBRARY_SYNC_SECRET</code></td>
 <td>unset</td>
-<td>Turns on <code>POST /api/library/sync</code>, the git webhook that fast-forwards each library checkout and rescans (<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>). GitHub signs with it (<code>X-Hub-Signature-256</code>); other senders put it in <code>X-TraceBi-Sync-Token</code>.</td>
+<td>Turns on <code>POST /api/library/sync</code>, the git webhook that pulls each library checkout and rescans (<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>). GitHub signs with it (<code>X-Hub-Signature-256</code>); other senders put it in <code>X-TraceBi-Sync-Token</code>.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_UPDATE_CHECK</code></td>
 <td>on</td>
-<td><code>0</code> turns off the release check in <code>tracebi update</code> and the web app's "available" notice. Nothing else changes.</td>
+<td><code>0</code> turns off the release check in <code>tracebi update</code> and the app's "available" badge (<a href="../guides/updating.html">Update TraceBi</a>).</td>
 </tr>
 <tr>
 <td><code>TRACEBI_UPDATE_URL</code></td>
-<td>GitHub's <code>releases/latest</code> for this repo</td>
-<td>Where to check: any URL that answers like GitHub's releases API, e.g. an internal mirror.</td>
+<td>GitHub's <code>releases/latest</code> for this repository</td>
+<td>Any URL that answers like GitHub's releases API, such as an internal mirror.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_IN_DOCKER</code></td>
 <td>set in the image</td>
-<td>Marks a container install, so the update command pulls a new image instead of upgrading in place.</td>
+<td>Marks a container install, so <code>tracebi update</code> pulls a new image instead of upgrading in place.</td>
 </tr>
 </tbody>
 </table>
 <h2 id="connector-urls">Connector URLs</h2>
-<p>The framework never reads a connector URL implicitly. Construct connectors in
-your own code and pass credential-bearing URLs explicitly:</p>
+<p>TraceBi never reads a connector URL from the environment on its own. In
+Python, build the connector and pass the URL yourself:</p>
 <pre><code class="language-python">DuckDBConnector(&quot;warehouse&quot;, database=os.environ[&quot;MY_WAREHOUSE_PATH&quot;])
 </code></pre>
-<p><code>.env.example</code> shows the pattern with names like <code>TRACEBI_SALES_DB_URL</code> — those
-are <strong>yours to read</strong>, not framework-read variables.</p>
-<hr>
-<h2 id="known-drift">Known drift</h2>
-<p>A handful of variables are read by the code but absent from <code>.env.example</code>:
-<code>TRACEBI_DEBUG</code>, <code>TRACEBI_DEV_MODE</code>, <code>TRACEBI_AUTH_REALM</code>, <code>TRACEBI_DOCS_DIR</code>,
-and the demo app's <code>TRACEBI_DEMO_DB_URL</code> / <code>TRACEBI_DEMO_DB_DIR</code>.
-<code>TRACEBI_SCHEDULED_DIR</code> is deprecated (see the table above).</p>
-<p>Conversely <code>TRACEBI_WAREHOUSE_URL</code> appears in <code>.env.example</code> and <strong>no code reads
-it</strong> — it is a leftover.</p>
-<h2 id="related">Related</h2>
+<p>Names like <code>TRACEBI_SALES_DB_URL</code> in <code>.env.example</code> are yours to read, not
+TraceBi's.</p>
+<h2 id="gaps-in-envexample">Gaps in <code>.env.example</code></h2>
 <ul>
-<li><a href="../reference/cli.html">CLI reference</a> — the flags that override these</li>
-<li><a href="../guides/one-server.html">Run TraceBi on one server</a> — hosting on one server</li>
+<li>Read by the code but missing from <code>.env.example</code>: <code>TRACEBI_DEBUG</code>,
+  <code>TRACEBI_DEV_MODE</code>, <code>TRACEBI_AUTH_REALM</code>, <code>TRACEBI_DOCS_DIR</code>, and the demo
+  app's <code>TRACEBI_DEMO_DB_URL</code> and <code>TRACEBI_DEMO_DB_DIR</code>.</li>
+<li>In <code>.env.example</code> but read by nothing: <code>TRACEBI_WAREHOUSE_URL</code>.</li>
 </ul>
   </main>
 </div>

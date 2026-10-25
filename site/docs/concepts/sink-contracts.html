@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a class="on" href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,29 +61,20 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="sink-contracts">Sink contracts</h1>
-<p><strong>Closed, declarative checks a <a href="../concepts/transform.html">Transform — phase ①</a>'s tables must satisfy before the
-data counts. The narrowest honest claim about phase ①.</strong></p>
-<hr>
-<h2 id="why-they-exist">Why they exist</h2>
-<p><a href="../concepts/lineage.html">Lineage</a> deliberately stops at the sink. Everything above it is arbitrary
-SQL or pandas, which nothing machine-checks — see
-<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>.</p>
-<p>A sink contract does not close that gap. It narrows it: it lets you state, in a
-form a machine can re-run, what the tables you just wrote must be true of.</p>
-<h2 id="declaring-one">Declaring one</h2>
-<p>Beside the transform, in <code>transforms/&lt;name&gt;.contract.yaml</code>:</p>
+<p>A sink contract is a list of checks a transform's tables must pass before the
+data counts. It sits beside the transform in <code>transforms/&lt;name&gt;.contract.yaml</code>:</p>
 <pre><code class="language-yaml">name: holdings
 checks:
   - rows: fact_holdings
@@ -94,7 +85,7 @@ checks:
     column: issuer_id
     refers_to: [dim_issuer, issuer_id]
 </code></pre>
-<p>Or, in a Python transform, after the writes:</p>
+<p>A Python transform can declare the same checks after it writes its tables:</p>
 <pre><code class="language-python">from tracebi.contracts import contract
 
 with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
@@ -107,9 +98,11 @@ with contract(&quot;holdings&quot;, warehouse=WAREHOUSE) as c:
     c.reconcile(&quot;fact_holdings&quot;, &quot;fair_value&quot;,
                 against=(&quot;raw_holdings&quot;, &quot;fair_value&quot;), by=&quot;position_id&quot;)
 </code></pre>
-<p>The vocabulary is <strong>closed</strong>, one vocabulary in either form. Every check also
-takes an optional <code>note</code>, which the report's methodology appendix shows beside
-it:</p>
+<p>The reference is
+<code>examples/portfolio_project/transforms/holdings_transform.contract.yaml</code>.</p>
+<h2 id="the-checks">The checks</h2>
+<p>Both forms use the same six checks. Each also takes an optional <code>note</code>, which
+the report's methodology shows beside it.</p>
 <table>
 <thead>
 <tr>
@@ -119,48 +112,42 @@ it:</p>
 </thead>
 <tbody>
 <tr>
-<td>row count</td>
+<td>Row count</td>
 <td><code>c.rows(table, at_least=…, at_most=…, exactly=…)</code></td>
 </tr>
 <tr>
-<td>unique key</td>
+<td>Unique key</td>
 <td><code>c.unique(table, columns=[…])</code></td>
 </tr>
 <tr>
-<td>no NULLs</td>
+<td>No nulls</td>
 <td><code>c.not_null(table, columns=[…])</code></td>
 </tr>
 <tr>
-<td>foreign key</td>
+<td>Foreign key</td>
 <td><code>c.foreign_key(table, column, refers_to=(dim_table, dim_col))</code></td>
 </tr>
 <tr>
-<td>value domain</td>
+<td>Value domain</td>
 <td><code>c.values(table, column, within=[…])</code></td>
 </tr>
 <tr>
-<td>reconciliation</td>
+<td>Reconciliation</td>
 <td><code>c.reconcile(table, column, against=(other_table, other_col), by=key_col, tolerance=0.0)</code></td>
 </tr>
 </tbody>
 </table>
-<p>No callables, for the same reason <a href="../reference/measures.html">Measures</a> rejects them: a check that cannot
-be serialized cannot be re-run by someone else. The reference declaration is
-<code>examples/portfolio_project/transforms/holdings_transform.contract.yaml</code>
-(beside the SQL transform it checks; the pandas form,
-<code>holdings_transform_pandas.py</code>, declares the same checks in a <code>with contract</code>
-block). The file form is in <a href="../reference/transform-sql.html">SQL transforms</a>.</p>
-<p>The checks run as read-only SQL against the tables you just sank.</p>
-<h2 id="what-happens">What happens</h2>
+<p>The list is closed and takes no functions. A check that cannot be written
+down cannot be re-run by someone else. The YAML form is in <a href="../reference/transform-sql.html">SQL transforms</a>.</p>
+<h2 id="what-happens-when-it-runs">What happens when it runs</h2>
+<p>The checks run as read-only SQL against the tables just written.</p>
 <ul>
-<li><strong>A failed check raises at sink time.</strong> The transform stops; bad data does not
-  become a <a href="../concepts/freeze-points.html">freeze point</a>.</li>
-<li><strong>Success records a certificate</strong> — <code>data/warehouse.contracts.json</code> — carrying
-  per-table fingerprints.</li>
+<li><strong>A failed check stops the run.</strong> Bad data never becomes the warehouse the
+  model reads.</li>
+<li><strong>Success writes a certificate</strong>, <code>data/warehouse.contracts.json</code>, with a
+  fingerprint per table.</li>
 </ul>
-<p>Report manifests join against that certificate, so a built report can say what
-the warehouse certified about itself at build time.</p>
-<h2 id="statuses">Statuses</h2>
+<p>Each report manifest records the certificate's status for the tables it read:</p>
 <table>
 <thead>
 <tr>
@@ -171,42 +158,33 @@ the warehouse certified about itself at build time.</p>
 <tbody>
 <tr>
 <td><code>satisfied</code></td>
-<td>the checks passed, and the data still matches the fingerprint</td>
+<td>The checks passed, and the data still matches the fingerprint.</td>
 </tr>
 <tr>
 <td><code>stale</code></td>
-<td>the tables were re-sunk after the transform checked them — the certificate no longer describes this data</td>
+<td>The tables were rewritten after the checks ran. The certificate no longer describes this data, and never shows green.</td>
 </tr>
 <tr>
 <td><code>no_contract</code></td>
-<td>the transform declared none</td>
+<td>The transform declares no checks.</td>
 </tr>
 </tbody>
 </table>
-<p><strong><code>stale</code> never reads green.</strong> A certificate that describes different data is
-not evidence.</p>
-<h2 id="re-running-them">Re-running them</h2>
+<h2 id="re-run-the-checks">Re-run the checks</h2>
 <pre><code class="language-bash">tracebi verify output/report.html.manifest.json --contracts
 </code></pre>
-<p>Re-runs the recorded contracts against the <em>current</em> warehouse <strong>and</strong> compares
-the certified fingerprints to the data now — catching an out-of-band change that
-would still pass the declared checks.</p>
-<h2 id="the-locked-language">The locked language</h2>
-<blockquote>
-<p><strong>"the sink satisfied its contract"</strong> — never <em>"the transform was verified"</em>.</p>
-</blockquote>
-<p>A contract checks what you thought to check. It says nothing about the SQL or
-pandas that produced the numbers, and nothing about whether the numbers are right.
-Contract status <strong>never colours a figure status</strong>; it is reported in its own
-block.</p>
-<p>That wording is fixed for the same reason as the rest of the vocabulary in
-<a href="../concepts/trace.html">The trace</a>: paraphrasing is how an honest guarantee
-becomes an overclaim.</p>
-<h2 id="related">Related</h2>
+<p>This re-runs the recorded checks against the current warehouse and compares
+the certified fingerprints to the data now. It catches a change made outside
+the transform that would still pass the checks.</p>
+<h2 id="what-to-call-it">What to call it</h2>
+<p>When the checks pass, say "the sink satisfied its contract". Do not say the
+transform was verified. A contract checks what you thought to check. It says
+nothing about the code that produced the tables or whether the numbers are
+right. Its status is reported on its own and never changes a figure's status.</p>
+<h2 id="next">Next</h2>
 <ul>
-<li><a href="../concepts/transform.html">Transform — phase ①</a> — where contracts are declared</li>
-<li><a href="../concepts/trace.html">The trace</a> — the separate, downstream claim</li>
-<li><a href="../reference/cli.html">CLI reference</a> — <code>tracebi verify --contracts</code></li>
+<li>Add a contract to a transform: <a href="../reference/transform-sql.html">SQL transforms</a></li>
+<li>See how it appears in a report's trace: <a href="../concepts/trace.html">The trace</a></li>
 </ul>
   </main>
 </div>

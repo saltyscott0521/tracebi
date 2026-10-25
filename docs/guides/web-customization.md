@@ -1,341 +1,257 @@
-# Customizing the TraceBi Web App
+# Customize the web app
 
-How to point the web server at your own data, add your own reports and
-restyle or extend the React UI, and deploy. Written for the
-person who has outgrown the reference project.
+Point the web server at your own project, add resources in code when files
+are not enough, restyle or extend the React UI, and deploy it.
 
----
+## Before you begin
 
-## Architecture in one paragraph
+- A TraceBi project (`tracebi init`), or the reference project
+- `pip install -e ".[all]"`, and Node.js 22 for UI work
 
-The web layer is a FastAPI app ([tracebi/web/api/main.py](../../tracebi/web/api/main.py)) that
-serves a JSON API under `/api` and serves the built React SPA
-(`tracebi/web/ui/dist/`) at `/`. Everything the API exposes — connectors, models,
-reports, pipelines — is read from a **singleton registry**
-([tracebi/registry.py](../../tracebi/registry.py), also re-exported as
-`tracebi.web.api.registry` for older code) that your *app module*
-populates once at startup. Routes never construct resources themselves;
-they only read the registry. That seam is what makes the whole web layer
-swappable onto your data.
+The server is a FastAPI app (`tracebi/web/api/main.py`). It serves a JSON API
+under `/api` and the built React app (`tracebi/web/ui/dist/`) at `/`. Every
+route reads connectors, models, reports and pipelines from one shared registry
+(`tracebi/registry.py`), which is filled at startup:
 
 ```
-your app module ──populates──▶ registry ◀──reads── API routes ◀── React UI
-(import time)                 (singleton)          (request time)
+your project folders ──discovery──▶ registry ◀──reads── API routes ◀── React UI
+your app module      ──registers──▶ (shared)            (request time)
 ```
 
-## The three-phase workflow this serves
+## 1. Add resources as files
 
-The server front-ends the analyst workflow described in
-[[the-three-phase-workflow]]: phase ① `transforms/` writes clean star-schema
-tables into the warehouse `tracebi.yaml` names, phase ② `models/` declares a
-thin `DataModel` over that warehouse, and phase ③ `reports/` holds report
-packages (`reports/<model>/<name>/`) pointed at the model.
-Phases ② and ③ are auto-discovered directories (below): a model lands
-under **Data** (its page, Model tab) and a report in **Reports**, the library, under its
-model. Phase ① runs explicitly (`tracebi run-transform`, a pipeline, or
-**Refresh data** on the model's Transform tab); the server lists the
-transforms (Data → Transforms) but runs one only when asked — the sink it
-produces is the input the model reads.
+The server finds these folders at the project root, and picks up changes
+while it runs:
 
-## Step 1: Project-root directories (recommended)
-
-The server auto-discovers these directories at the project root. This is the
-lowest-friction way to add resources — no app module configuration needed:
-
-| Directory | Convention | What the server does |
+| Folder | File | Appears in the app as |
 |---|---|---|
-| `connections/` | each `<name>.yaml` declares a source: a type and its fields, secrets as `${NAME}` ([[connections-yaml]]) | lists it under Data → Sources; resolves its secrets only when it is used |
-| `transforms/` | each `.sql` (with its `.contract.yaml`), `.py` or `.ipynb` is one phase ① transform | lists it under Data → Transforms; runs it only when a pipeline or `run-transform` asks |
-| `models/` | each `<name>.yaml` (or `.json`) is one model; a `.py` exposes a `model` variable (a `DataModel`) | registers it via `registry.add_model()` |
-| `pipelines/` | each `<name>.yaml` names a transform, models and reports; a `.py` exposes a `runner` variable (a `PipelineRunner`) | registers it via `registry.add_pipeline()` |
-| `reports/` | a `<name>/` **report package** (`report.json` + `app.jsx` or `template.html`), or a `.json` `ReportSpec` compiled into one at discovery (a package directory shadows a same-named spec) | registered as a report, listed in the library under its model |
+| `connections/` | `<name>.yaml`: a type and its fields, secrets as `${NAME}` ([[connections-yaml]]) | **Data → Sources**, and a card in the board's first lane. Secrets resolve only when used. |
+| `transforms/` | `<name>.sql` (with its `.contract.yaml`), `.py` or `.ipynb` | **Data → Transforms**. Runs only when a pipeline or `tracebi run-transform` asks. |
+| `models/` | `<name>.yaml` or `.json`; a `.py` with a `model` variable | The model's **Data** page and **Ask** |
+| `pipelines/` | `<name>.yaml`; a `.py` with a `runner` variable | The model's **Transform** tab |
+| `reports/` | A `<name>/` package (`report.json` plus `app.jsx` or `template.html`), or a `.json` spec compiled into one (a package beats a spec of the same name) | **Reports**, under its model |
 
-A `.py` in `reports/` that registers a report with `@register.report(...)` is
-still imported at startup, but a report with no package is refused (HTTP 422
-naming the fix): there is one renderer, the package. The `requests/` lane was
-removed in 0.8.
-
-Scaffold files with the CLI, then edit and commit them:
+Scaffold them with the CLI:
 
 ```bash
-tracebi connect crm --kind postgres  # → connections/crm.yaml (the secret to .env, or --store secret)
-tracebi new-transform "Sales"        # → transforms/sales.sql + sales.contract.yaml
-tracebi new-model "Sales Model"      # → models/sales_model.yaml
-tracebi new-pipeline "Sales ETL"     # → pipelines/sales_etl.yaml
-tracebi new-dashboard "Weekly"       # → reports/weekly/ (report.json + app.jsx)
-tracebi new-report "Weekly Report"   # → reports/weekly_report/ (report.json + template.html)
+tracebi connect crm --kind postgres  # connections/crm.yaml (secret to .env, or --store secret)
+tracebi new-transform "Sales"        # transforms/sales.sql + sales.contract.yaml
+tracebi new-model "Sales Model"      # models/sales_model.yaml
+tracebi new-pipeline "Sales ETL"     # pipelines/sales_etl.yaml
+tracebi new-dashboard "Weekly"       # reports/weekly/ (report.json + app.jsx)
+tracebi new-report "Weekly Report"   # reports/weekly_report/ (report.json + template.html)
 ```
 
-These directories also work without the web server — notebooks and scripts
-can import from them directly:
+Set `TRACEBI_CONNECTIONS_DIR`, `TRACEBI_TRANSFORMS_DIR`, `TRACEBI_MODELS_DIR`,
+`TRACEBI_PIPELINES_DIR` or `TRACEBI_REPORTS_DIR` to move a folder. Scripts and
+notebooks read the same folders without a server:
 
 ```python
 from tracebi.model_registry import get_model
 from tracebi.pipeline_registry import get_runner
 
-model = get_model("sales_model")    # no server needed
+model = get_model("sales_model")
 runner = get_runner("sales_etl")
 ```
 
-Override any directory path via env var (`TRACEBI_CONNECTIONS_DIR`,
-`TRACEBI_TRANSFORMS_DIR`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`,
-`TRACEBI_REPORTS_DIR`).
+A `.py` in `reports/` that registers a report with `@register.report(...)` is
+still imported at startup, but a report with no package is refused (HTTP 422
+naming the fix). The package is the only renderer.
 
-## Step 1b: An app module (optional, Python wiring)
+## 2. Add resources in code (optional)
 
-Most projects need none: a source is a `connections/<name>.yaml`, and its
-secret resolves from the environment, the project `.env` or the encrypted
-store ([[credentials]]). An app module is for wiring the declarative files
-cannot express, such as a connector type of your own or medallion layers
-built in code. The bundled demo app
-([tracebi/web/demo_app/](../../tracebi/web/demo_app/)) is the example, opt-in
-and never the demo tracebi.com serves — copy its layout:
+Most projects need no code. Use an app module for wiring the files cannot
+express, such as a connector type of your own or medallion layers built in
+Python. The bundled demo app (`tracebi/web/demo_app/`) is the example:
 
 ```
 myapp/
-  __init__.py        # imports registry module (one line, like demo_app)
-  model.py           # connectors + DataModel construction (optional if using models/)
-  pipeline.py        # PipelineRunner + layer setup (optional if using pipelines/)
-  registry.py        # THE wiring file — connector registration lives here
+  __init__.py        # imports registry (one line)
+  model.py           # connectors and a DataModel (optional if you use models/)
+  pipeline.py        # PipelineRunner and layers (optional if you use pipelines/)
+  registry.py        # the registration calls
 ```
 
-`registry.py` is the only file with registration side effects:
-
 ```python
+# myapp/registry.py
 import os
 from tracebi.registry import registry
 from myapp.model import connector, model
 
 registry.add_connector(connector)
-# Models and pipelines in models/ and pipelines/ are auto-discovered;
-# register here only if you build them inside the app module.
 registry.add_model(model, default=True)
 ```
-
-Then point the server at it:
 
 ```bash
 TRACEBI_APP=myapp python -m tracebi.web.run
 ```
 
-`TRACEBI_APP` defaults to none — a serve shows your project's discovered
-directories; set `TRACEBI_APP=tracebi.web.demo_app` for the bundled demo app (the example of Python wiring). If
-the named module fails to import, the
-server emits a `UserWarning` and starts with an **empty registry** — no
-connectors, no models — rather than refusing to boot, so check the startup log
-after changing it. `/api/health` returns 200 either way, which means a
-healthcheck alone will not tell you the app module loaded.
+| Resource | Call | Appears as |
+|---|---|---|
+| Connector | `registry.add_connector(conn)` | **Data → Sources** |
+| Model | `registry.add_model(model, default=False)` | The model's **Data** page and **Ask** |
+| Report | `@registry.report("name", description="…")` on a zero-argument factory, with a package to render it | **Reports** |
+| Pipeline | `registry.add_pipeline("name", runner)` | The model's **Transform** tab: steps, run buttons, a live log, history |
+| Scheduled report | Deprecated: `@registry.scheduled(...)` warns and only registers. Use a `"schedule"` block in `report.json`. | **Reports** |
 
-The one exception is a `TRACEBI_APP` still naming the old top-level `web`
-package (`web.demo_app`): that is refused outright with the replacement
-spelling, because it is an unfinished upgrade rather than a broken module.
+Rules for an app module:
 
-**Rules that keep you out of trouble** (enforced by convention, violated at
-your peril):
-
-- Register everything at import time; never mutate the registry inside a
+- Register everything at import time. Never change the registry inside a
   route handler.
-- Construct connectors in your app module and pass credential-bearing URLs
-  via `os.environ[...]` explicitly. The framework never reads connector
-  URLs from env vars implicitly. See [.env.example](../../.env.example).
+- Build connectors in your module and pass credential-bearing URLs from
+  `os.environ[...]` yourself. TraceBi never reads a connector URL from the
+  environment on its own. See `.env.example`.
 
-## Step 2: Add resources
+`TRACEBI_APP` defaults to none. `TRACEBI_APP=tracebi.web.demo_app` serves the
+bundled demo. If the module fails to import, the server logs a `UserWarning`
+and starts with an empty registry, and `/api/health` still returns 200, so
+check the startup log. A `TRACEBI_APP` that still names the old top-level
+`web` package (`web.demo_app`) is refused with the new spelling.
 
-**Preferred — project-root directories (auto-discovered, no registration code):**
-
-| Directory | File convention | Result |
-|---|---|---|
-| `connections/` | `<name>.yaml` | **Data → Sources**, and a card in the board's first lane |
-| `transforms/` | `<name>.sql` (+ `.contract.yaml`), `.py` or `.ipynb` | **Data → Transforms** |
-| `models/` | `<name>.yaml` (or a `.py` with a `model` variable) | the model's **Data** page (Model tab) + **Ask** |
-| `pipelines/` | `<name>.yaml` (or a `.py` with a `runner` variable) | the model's **Transform** tab on **Data** |
-| `reports/` | a `<name>/` **report package** (shadows a same-named `.json` spec), or a `.json` `ReportSpec` | **Reports** (the library), under its model |
-
-**Or register explicitly** (in your app module's `registry.py`, or the notebook facade `tracebi.web.register`):
-
-| Resource | Call | Appears in UI as |
-|---|---|---|
-| Connector | `registry.add_connector(conn)` | **Data → Sources** (`/data/sources`) |
-| Model | `registry.add_model(model, default=False)` | a model chip on **Reports**, the model's **Data** page (its Model tab) + **Ask** |
-| Report | `@registry.report("name", description="…")` on a zero-arg factory, with a package to render it | **Reports** (the library), under its model |
-| Scheduled report | **Deprecated**: `@registry.scheduled(...)` warns and only registers; a schedule is a `"schedule"` block in `report.json` | **Reports** |
-| Pipeline | `registry.add_pipeline("name", runner)` | the model's **Transform** tab under **Data** (DAG, run buttons, a live run log, history) |
-
-**History** is not a folder. It reads `GET /api/runs`: what ran, when,
-for whom, and whether it reproduced. It lives under **Review**;
-`/runs?model=<model>` narrows it to one model.
-
-## Step 3: The development loop
+## 3. Run the development server
 
 ```bash
-python -m tracebi.web.run                       # uvicorn with hot-reload, port 8000
-python -m tracebi.web.run --port 9000           # different port
+python -m tracebi.web.run                       # hot reload, port 8000
+python -m tracebi.web.run --port 9000
 TRACEBI_DEV_MODE=1 python -m tracebi.web.run    # adds POST /api/_dev/reload
 ```
 
-Hot-reload restarts the server on Python file changes. Dev mode additionally
-mounts `POST /api/_dev/reload`, which re-imports every auto-discovered
-module *without* a restart — useful when iterating on Python models and
-pipelines. Packages, specs, YAML models and pipelines need neither: live
-discovery picks them up every `TRACEBI_DISCOVERY_INTERVAL` seconds.
+Hot reload restarts the server when a Python file changes. Dev mode adds
+`POST /api/_dev/reload`, which re-imports discovered Python modules without a
+restart. Packages, specs, YAML models and pipelines need neither: discovery
+picks them up every `TRACEBI_DISCOVERY_INTERVAL` seconds.
 
-For UI work, run Vite's dev server alongside the API (see below).
-
-## Step 4: Customize the React UI
-
-The UI lives in [web/ui/](../../web/ui/) — React 18 + Vite, React Query for
-data, React Flow for lineage/ERD graphs, Recharts for charts.
+## 4. Change the React UI
 
 ```bash
 cd web/ui
 npm install
-npm run dev      # Vite dev server on :5173, proxies /api to the API server
-npm run build    # writes tracebi/web/ui/dist/ — FastAPI serves it at / when present
+npm run dev      # Vite on :5173, proxies /api to the API server
+npm run build    # writes tracebi/web/ui/dist/, which FastAPI serves at /
 ```
 
-Layout of `src/`:
+The UI is React 18 and Vite, with React Query for data, React Flow for graphs
+and Recharts for charts. In `web/ui/src/`:
 
 ```
-api.js               # all API hooks (React Query) — one hook per endpoint
-nav.js               # the four places, Data's tabs, their addresses, movedTo (old addresses)
-folders.js           # the library's folders: one list, its order, a hue per folder
+api.js               one React Query hook per endpoint
+nav.js               the four places, Data's tabs, their addresses, movedTo for old addresses
+folders.js           the library's folders: order and a hue per folder
 components/
-  Layout.jsx         # sidebar, theme toggle, ⌘K trigger
-  Scope.jsx          # page header, one-model routes, redirects from old addresses
-  Shared.jsx         # Card, Badge, Btn, Tabs, toasts, skeletons…
-  Lineage.jsx        # React Flow lineage graph renderer
-  CommandPalette.jsx # ⌘K navigation
-pages/               # one file per route
-styles/global.css    # ALL design tokens — start here for theming
+  Layout.jsx         sidebar, theme toggle, ⌘K
+  Scope.jsx          page header, one-model routes, redirects from old addresses
+  Shared.jsx         Card, Badge, Btn, Tabs, toasts, skeletons
+  Lineage.jsx        the lineage graph
+  CommandPalette.jsx ⌘K navigation
+pages/               one file per route
+styles/global.css    every design token
 ```
 
-**Theming:** every color in the UI is a CSS variable defined at the top of
-[global.css](../../web/ui/src/styles/global.css). Light theme under `:root`,
-dark under `[data-theme="dark"]`. To rebrand, edit the tokens (`--blue`,
-`--bg`, `--card`, the `--op-*` lineage-node palette) — components never
-hard-code colors. The brand gradient is `--brand`.
+**Restyle it.** Every colour is a CSS variable at the top of
+`styles/global.css`: light under `:root`, dark under `[data-theme="dark"]`.
+Edit the tokens (`--blue`, `--bg`, `--card`, the `--op-*` lineage palette);
+components never hard-code colours. The brand gradient is `--brand`.
 
-**Adding a nav page:** the sidebar is four places, `PAGES` in `nav.js`
-(Reports `/`, Data `/data`, Review `/review`, Docs `/docs`; Ask `/ask` is a
-page inside Reports), drawn
-by `Layout.jsx`; Data's own tabs are `DATA_TABS` (Flow, Sources, Transforms,
-Warehouse, Models). A new page lives inside one of them: give it a route in
-`App.jsx` under that place's address and teach `whereAmI` in `nav.js` which
-place it belongs to, so its sidebar entry reads as current. A model is a
-filter, not a frame: pass it in the query (`?model=<name>`) or, on Data, the
-path (`/data/<model>/<tab>`: `pages/Overview.jsx` draws that page, the line from
-`components/TheLine.jsx` with its three stations, then the tabs in `TABS`,
-`model`, `transform`, `sources`, `runs`; the Model tab and Data's Warehouse tab
-are one component, `components/DataBrowser.jsx`, fed by `modelSchema` or
-`warehouseSchema` in `components/modelGraph.js`). An
-address that moves gets an entry in `movedTo` so old links keep working. Use
-the hooks in `api.js` for data and the primitives in `Shared.jsx` for visual
-consistency.
+**Add a page.** The sidebar has four places, `PAGES` in `nav.js`: Reports
+`/`, Data `/data`, Review `/review` and Docs `/docs` (Ask, `/ask`, is a page
+inside Reports). Data's tabs are `DATA_TABS`: Flow, Sources, Transforms,
+Warehouse, Models.
 
-## Step 5: Extend the API
+1. Give the page a route in `App.jsx` under its place's address.
+2. Teach `whereAmI` in `nav.js` which place it belongs to, so the sidebar
+   marks it current.
+3. Pass a model as a filter (`?model=<name>`), or on Data as the path
+   (`/data/<model>/<tab>`).
+4. When an address moves, add it to `movedTo` so old links keep working.
+5. Use the hooks in `api.js` for data and the parts in `Shared.jsx` for the
+   look.
 
-New endpoints follow one pattern: a router file under
-[tracebi/web/api/routers/](../../tracebi/web/api/routers/), included in `main.py` with the
-`/api` prefix, reading **only from the registry** — never importing your
-app module directly. Failed runs should return the structured error shape
-(`{message, exception_type, traceback}`) via `tracebi/web/api/errors.py`; the UI
-knows how to render it.
+A model's Data page is `pages/Overview.jsx`: the line from
+`components/TheLine.jsx`, then the tabs in `TABS` (`model`, `transform`,
+`sources`, `runs`). Its Model tab and Data's Warehouse tab are one component,
+`components/DataBrowser.jsx`, fed by `modelSchema` or `warehouseSchema` in
+`components/modelGraph.js`.
 
-## Auth
+## 5. Add an API route
 
-Optional, enabled entirely by env vars (see
-[tracebi/web/api/auth.py](../../tracebi/web/api/auth.py) and `.env.example`):
+1. Add a file under `tracebi/web/api/routers/`.
+2. Include it in `main.py` with the `/api` prefix.
+3. Read resources only from the registry. Never import your app module.
+4. Return failures in the structured shape `{message, exception_type,
+   traceback}` through `tracebi/web/api/errors.py`; the UI renders it.
+
+## Turn on sign-in and roles
+
+Sign-in is off until you set variables (see `tracebi/web/api/auth.py` and
+`.env.example`):
 
 ```bash
-# Basic auth — single shared credential
+# Basic auth: one shared credential
 TRACEBI_AUTH_USER=admin
 TRACEBI_AUTH_PASS=changeme
 
-# OR reverse-proxy header trust (Authelia, oauth2-proxy, Cloudflare Access)
+# Or trust a reverse proxy's header (Authelia, oauth2-proxy, Cloudflare Access)
 TRACEBI_AUTH_PROXY_HEADER=X-Forwarded-User
 TRACEBI_AUTH_PROXY_TRUSTED_IPS=10.0.0.0/8,172.16.0.0/12
 
-# OR the app's own sign-in through your identity provider (see the Sign-in guide)
+# Or the app's own sign-in through your identity provider
 TRACEBI_OIDC_ISSUER=https://login.example.com
 ```
 
-No auth vars set ⇒ the app is open (fine on localhost, not on a network).
-OIDC sign-in, and named local users (`TRACEBI_LOCAL_USERS`), are in
-[[sign-in]]; folder permissions narrow what a role allows, per folder
-([[folder-yaml]]).
+With none set, the app is open: fine on localhost, not on a network. OIDC
+sign-in and named local users (`TRACEBI_LOCAL_USERS`) are in [[sign-in]].
+Folder permissions narrow what a role allows, per folder ([[folder-yaml]]).
 
-**Roles.** Authentication says who a caller is; authorization says what they
-may do. Three ordered roles, split by side effect: `viewer` (read models,
-reports, lineage; run Ask queries and spec validation — they compute
-but persist nothing), `analyst` (viewer + execute report and request code),
-`admin` (analyst + run pipeline layers, which write to the warehouse,
-`/api/_dev/reload`, keeping a selection cut, which writes the published
-`report.json`, approving code requests, and setting a connection's
-credential, which also needs a role a sign-in or role source gave). Assign roles per principal with
-`TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst` or, **in proxy mode only**,
-from the proxy's group claim with
-`TRACEBI_AUTH_ROLE_HEADER=X-Forwarded-Groups` — your proxy must *replace*
-that header on client requests, not append to it; TraceBi reads the last
-occurrence, so an appending proxy still wins over a client copy, but a proxy
-that does neither hands the role to the caller. Under Basic auth there is no
-upstream, so the header would be self-asserted by the caller it promotes: it
-is ignored there, with a startup warning. Unlisted principals get
-`TRACEBI_AUTH_DEFAULT_ROLE` (default `viewer`), but it is not a role source on
-its own: set by itself it names the fallback and leaves enforcement off, and
-it switches enforcement on only alongside `TRACEBI_AUTH_ROLE_HEADER`. With *no
-usable* role source set, every authenticated principal is `admin` — role
-enforcement is opt-in so enabling auth cannot lock a deployment out of its own
-pipelines.
+Three roles, ordered by what they change:
 
-**The MCP gateway authenticates separately.** `tracebi mcp --transport http`
-is not behind the web app's auth — it requires its own bearer token
-(`TRACEBI_MCP_TOKEN`; every request sends `Authorization: Bearer <token>`)
-and refuses to start without one unless `--insecure` is passed explicitly.
-With `TRACEBI_MCP_TOKEN`, `TRACEBI_OIDC_ISSUER` or the built-in sign-in set,
-the web app also serves the gateway at `/mcp` ([[connect-chatgpt-and-claude]]).
+| Role | May |
+|---|---|
+| `viewer` | Read models, reports and lineage. Run Ask queries and spec validation, which compute but save nothing. |
+| `analyst` | Viewer, plus run reports and request code. |
+| `admin` | Analyst, plus run pipeline layers (they write the warehouse), `/api/_dev/reload`, keep a selection cut (it writes the published `report.json`), approve code requests, and set a connection's credential (which also needs a role from a sign-in or a role source). |
 
-## Deployment
+Assign roles with `TRACEBI_AUTH_ROLE_MAP=alice:admin,bob:analyst`, or, in
+proxy mode only, from the proxy's group header with
+`TRACEBI_AUTH_ROLE_HEADER=X-Forwarded-Groups`.
+
+- The proxy must replace that header on client requests. TraceBi reads the
+  last copy, so an appending proxy still wins, but a proxy that does neither
+  hands the role to the caller.
+- Under Basic auth the header is ignored, with a startup warning: with no
+  proxy, the caller would set its own role.
+- People not in the map get `TRACEBI_AUTH_DEFAULT_ROLE` (default `viewer`).
+  That variable alone does not turn enforcement on; it does so only with
+  `TRACEBI_AUTH_ROLE_HEADER`.
+- With no role source at all, every signed-in person is `admin`. Turning on
+  sign-in can never shut a deployment out of its own pipelines.
+
+The MCP gateway signs in separately. `tracebi mcp --transport http` needs its
+own bearer token (`TRACEBI_MCP_TOKEN`; each request sends
+`Authorization: Bearer <token>`) and refuses to start without one unless you
+pass `--insecure`. With `TRACEBI_MCP_TOKEN`, `TRACEBI_OIDC_ISSUER` or the
+built-in sign-in set, the web app also serves the gateway at `/mcp`
+([[connect-chatgpt-and-claude]]).
+
+## Deploy
 
 ```bash
-# Bare uvicorn
+# uvicorn
 uvicorn tracebi.web.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 
-# Docker — multi-stage build compiles the React UI, then runs the API
+# Docker: builds the React UI, then runs the API
 docker compose up --build
 ```
 
-> **More than one worker requires Postgres.** Each process gets its own
-> in-process layer lock, so the lock that counts is the database one: on
-> Postgres a `pg_try_advisory_lock` per layer refuses a concurrent run with a
-> clear error, while on SQLite the cross-process lock is a no-op and two
-> workers will both execute the same layer — interleaving writes to the sink
-> and leaving two "running" rows in the run history. Point
-> `TRACEBI_STATE_URL` (and any `PipelineRunner(db_url=...)` that keeps its own
-> database) at Postgres, and share one `TRACEBI_SECRET_KEY`, before scaling
-> past one process.
+More than one worker needs Postgres. Each process has its own layer lock, so
+the lock that counts is the database's. On Postgres, a `pg_try_advisory_lock`
+per layer refuses a second run with a clear error. On SQLite that lock does
+nothing, so two workers would both run the same layer, interleave writes to
+the sink and leave two "running" rows in the history. Before running more
+than one process, point `TRACEBI_STATE_URL` (and any
+`PipelineRunner(db_url=...)` with its own database) at Postgres, and share one
+`TRACEBI_SECRET_KEY`.
 
+## Next
 
-## Environment variable reference
-
-| Variable | Default | Effect |
-|---|---|---|
-| `TRACEBI_APP` | *(none)* | App module imported at startup; `tracebi.web.demo_app` opts into the bundled demo |
-| `TRACEBI_CONNECTIONS_DIR` | `connections` | Folder scanned for `<name>.yaml` sources |
-| `TRACEBI_TRANSFORMS_DIR` | `transforms` | Folder of phase ① transforms |
-| `TRACEBI_MODELS_DIR` | `models` | Folder scanned for model files (`.yaml`, `.json`, `.py`) |
-| `TRACEBI_PIPELINES_DIR` | `pipelines` | Folder scanned for pipeline files (`.yaml`, `.py`) |
-| `TRACEBI_REPORTS_DIR` | `reports` | Folder scanned for report packages and `.json` `ReportSpec`s (phase ③); all served in the app, in the library under each model |
-| `TRACEBI_SCHEDULED_DIR` | `scheduled` | **Deprecated.** Still scanned if the folder exists. `@register.scheduled()` never ran anything; use a `"schedule"` block in `report.json` |
-| `TRACEBI_DEV_MODE` | unset | `1` mounts `POST /api/_dev/reload` |
-| `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` | unset | HTTP Basic auth |
-| `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` | unset | Proxy-header auth |
-| `TRACEBI_AUTH_REALM` | `TraceBi` | Basic-auth realm string |
-| `TRACEBI_AUTH_ROLE_MAP` | unset | `principal:role` pairs (e.g. `alice:admin,bob:analyst`) |
-| `TRACEBI_AUTH_ROLE_HEADER` | unset | Read roles from the proxy's group header (e.g. `X-Forwarded-Groups`) — proxy mode only; ignored under Basic auth |
-| `TRACEBI_AUTH_DEFAULT_ROLE` | `viewer` | Role for principals not covered above. Not a role source by itself — set alone it leaves enforcement off and everyone `admin`; it switches enforcement on only alongside `TRACEBI_AUTH_ROLE_HEADER` |
-| `TRACEBI_DOCS_DIR` | `docs` | Folder the Docs place (`/docs`) serves the handbook from |
-| `TRACEBI_MCP_TOKEN` | unset | Bearer token for `tracebi mcp --transport http` (gateway, not the web app — required unless `--insecure`) |
-| `TRACEBI_MCP_ACTOR` | `agent` | Audit attribution for gateway work (recorded as `mcp:<actor>`) |
-
-Every variable, with sign-in, the state store and the credential store, is in
-[[environment-variables]].
+- Every variable the server reads: [[environment-variables]]
+- Every route: [[api-routes]]

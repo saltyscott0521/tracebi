@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a class="on" href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,58 +61,57 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="cli-reference">CLI reference</h1>
-<p><strong>Every <code>tracebi</code> command.</strong> Start with <a href="#the-everyday-loop">The everyday loop</a> — it is five
-commands, and most days you use only those.</p>
-<pre><code class="language-bash">tracebi [--models-dir DIR] [--pipelines-dir DIR] [--connections-dir DIR] &lt;command&gt; [...]
-</code></pre>
-<p>Global flags come <strong>before</strong> the subcommand. Directory defaults come from the
-environment — see <a href="../reference/environment-variables.html">Environment variables</a>.</p>
-<hr>
-<h2 id="the-everyday-loop">The everyday loop</h2>
-<pre><code class="language-bash">tracebi dev                      # the app, in dev mode (no name = where your agent's exhibits land)
-tracebi run-transform holdings   # ① clean + sink to the warehouse (.sql, .py or .ipynb; says which)
-tracebi report build my_report   # ③ render one self-contained .html + trace
-tracebi report status my_report  # what the artifact has actually earned
+<p>Every <code>tracebi</code> command, grouped by task. Most days you use these five:</p>
+<pre><code class="language-bash">tracebi dev                      # the app in dev mode (no name: the project feed)
+tracebi run-transform holdings   # clean the inputs and write the warehouse (.sql, .py or .ipynb)
+tracebi report build my_report   # build one self-contained .html and its trace
+tracebi report status my_report  # what each figure has earned
 tracebi verify output/my_report.html.manifest.json
 </code></pre>
-<p>Everything else is scaffolding, serving, or one-time migration.</p>
-<hr>
-<h2 id="authoring">Authoring</h2>
+<p>Global flags come before the subcommand:</p>
+<pre><code class="language-bash">tracebi [--models-dir DIR] [--pipelines-dir DIR] [--connections-dir DIR] &lt;command&gt; [...]
+</code></pre>
+<p>Their defaults come from the environment (<a href="../reference/environment-variables.html">Environment variables</a>).</p>
+<h2 id="create-a-project">Create a project</h2>
 <h3 id="tracebi-init"><code>tracebi init</code></h3>
 <pre><code class="language-bash">tracebi init &lt;project&gt; [--force] [--template NAME]
 </code></pre>
-<p>Scaffolds a complete three-phase project whose sample loop ends in
-<code>tracebi verify</code> printing REPRODUCES.</p>
-<p>Creates <code>tracebi.yaml</code> (the warehouse and the engine's limits, commented),
-<code>inputs/</code>, <code>connections/</code>, <code>transforms/</code>, <code>models/</code>, <code>pipelines/</code> and
-<code>reports/</code>, with a sample input, transform (the pandas form), model, pipeline
-and report package (<code>reports/sample_model/sample_dashboard/</code>), plus
-<code>.gitignore</code>, <code>.env.example</code>, <code>README.md</code>, <code>AGENTS.md</code> and the agent config
-(<code>.mcp.json</code>, <code>.cursor/mcp.json</code>). <code>data/</code> and <code>output/</code> appear on the first run.</p>
-<ul>
-<li>
-<p><code>--template NAME</code> — scaffold a named starter instead of the sample
-  dashboard: <code>saas-metrics</code> or <code>sales-pipeline</code> (an unknown name is refused
-  with the list).</p>
-</li>
-<li>
-<p><code>--force</code> — overwrite existing files, and required to init into a non-empty
-  directory. Without it, an existing file is skipped with a note and the run
-  still succeeds.</p>
-</li>
-</ul>
+<p>Creates a complete project: <code>tracebi.yaml</code>, <code>inputs/</code>, <code>connections/</code>,
+<code>transforms/</code>, <code>models/</code>, <code>pipelines/</code> and <code>reports/</code>, with a sample input,
+transform (pandas), model, pipeline and report
+(<code>reports/sample_model/sample_dashboard/</code>), plus <code>.gitignore</code>, <code>.env.example</code>,
+<code>README.md</code>, <code>AGENTS.md</code>, <code>.mcp.json</code> and <code>.cursor/mcp.json</code>. <code>data/</code> and
+<code>output/</code> appear on the first run.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--template NAME</code></td>
+<td>Start from <code>saas-metrics</code> or <code>sales-pipeline</code> instead of the sample. An unknown name is refused with the list.</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>Overwrite existing files; required for a non-empty directory. Without it, existing files are skipped with a note.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tracebi-connect"><code>tracebi connect</code></h3>
 <pre><code class="language-bash">tracebi connect &lt;name&gt; --kind postgres|snowflake|bigquery|duckdb [--test|--no-test] [--force] [--store dotenv|secret]
 tracebi connect wh --kind postgres --url postgresql://user:pass@host/db
@@ -122,54 +121,112 @@ tracebi connect wh --kind bigquery --project PROJ --dataset ANALYTICS \
     [--credentials /path/service-account.json]
 tracebi connect wh --kind duckdb --database data/warehouse.duckdb
 </code></pre>
-<p>Tests the warehouse (unless <code>--no-test</code>), then writes the secret to <code>.env</code>
-and the connection to <code>connections/&lt;name&gt;.yaml</code> (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>), the
-secret named there as <code>${NAME}</code>, resolved when the connection is used.
-<code>--python</code> writes the legacy connector module <code>models/_connections/&lt;name&gt;.py</code>
-instead (it calls <code>load_dotenv()</code> and builds the connector from
-<code>os.environ</code>).</p>
-<p>The secret is written only to <code>.env</code> and is never printed. Other lines in
-<code>.env</code> are left as they are. An existing key, or an existing connection
-file, is refused without <code>--force</code>. Nothing is written when the test fails.</p>
-<p>Missing required flags are prompted when stdin is a terminal (a password via
-<code>getpass</code>); otherwise the command exits 2 and names the flags. <code>--dataset</code>
-is required for BigQuery because the connector takes it with no default.</p>
-<p><code>--store secret</code> puts the secret in the project's encrypted credential store
-(<code>.tracebi/secrets.yml.enc</code>, <a href="../reference/credentials.html">Credentials</a>) instead of <code>.env</code>; the legacy
-<code>--python</code> module always reads <code>.env</code>.</p>
-<p>Discovery does not load <code>models/_connections/</code> as models; a model reads
-<code>connections/&lt;name&gt;.yaml</code> first, then a legacy module of that name.</p>
+<p>Tests the connection, then writes <code>connections/&lt;name&gt;.yaml</code>
+(<a href="../reference/connections-yaml.html">Connection files (YAML)</a>) with the secret named as <code>${NAME}</code>, and the secret
+itself to <code>.env</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--no-test</code></td>
+<td>Skip the connection test. Nothing is written when the test fails.</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>Replace an existing <code>.env</code> key or connection file.</td>
+</tr>
+<tr>
+<td><code>--store secret</code></td>
+<td>Put the secret in the encrypted store (<code>.tracebi/secrets.yml.enc</code>, <a href="../reference/credentials.html">Credentials</a>) instead of <code>.env</code>.</td>
+</tr>
+<tr>
+<td><code>--python</code></td>
+<td>Write the older module <code>models/_connections/&lt;name&gt;.py</code> instead. It calls <code>load_dotenv()</code> and always reads <code>.env</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The secret is never printed, and other lines in <code>.env</code> stay as they are.
+Missing required flags are prompted on a terminal (passwords without echo);
+otherwise the command exits 2 and names them. BigQuery requires <code>--dataset</code>.
+A model reads <code>connections/&lt;name&gt;.yaml</code> first, then a module of that name.</p>
 <h3 id="tracebi-secret"><code>tracebi secret</code></h3>
 <pre><code class="language-bash">tracebi secret list
 tracebi secret set NAME [--from-stdin]
 tracebi secret unset NAME
 tracebi secret edit
 </code></pre>
-<p>The project's credential store (<a href="../reference/credentials.html">Credentials</a>). <code>list</code> prints every
-<code>${NAME}</code> the connection files and <code>tracebi.yaml</code> reference, where each is
-set (<code>set from environment</code>, <code>set from .env</code>, <code>set in store</code>, <code>default</code>,
-<code>MISSING</code>) and what uses it. <code>set</code> prompts with no echo (or reads stdin with
-<code>--from-stdin</code>) and encrypts the value into <code>.tracebi/secrets.yml.enc</code>; it never
-prints it. <code>unset</code> removes the store's value only. <code>edit</code> decrypts the store
-to a temporary file, opens <code>$VISUAL</code> / <code>$EDITOR</code> on the plain <code>NAME: value</code>
-YAML, and encrypts what you saved (a line that is not a name and a non-empty
-string is refused, and nothing changes). The environment and <code>.env</code> still win
-over the store. Each change records a <code>credential</code> row in the run store.</p>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>list</code></td>
+<td>Every <code>${NAME}</code> the connection files and <code>tracebi.yaml</code> use, where it is set (<code>set from environment</code>, <code>set from .env</code>, <code>set in store</code>, <code>default</code>, <code>MISSING</code>) and what uses it.</td>
+</tr>
+<tr>
+<td><code>set</code></td>
+<td>Prompts without echo (or reads stdin with <code>--from-stdin</code>) and encrypts the value into <code>.tracebi/secrets.yml.enc</code>. Never prints it.</td>
+</tr>
+<tr>
+<td><code>unset</code></td>
+<td>Removes the store's value only.</td>
+</tr>
+<tr>
+<td><code>edit</code></td>
+<td>Opens the decrypted <code>NAME: value</code> YAML in <code>$VISUAL</code> or <code>$EDITOR</code>, then encrypts what you saved. A line that is not a name and a non-empty string is refused, and nothing changes.</td>
+</tr>
+</tbody>
+</table>
+<p>The environment and <code>.env</code> win over the store. Each change records a
+<code>credential</code> row in the run store. See <a href="../reference/credentials.html">Credentials</a>.</p>
 <h3 id="tracebi-import-dbt"><code>tracebi import dbt</code></h3>
 <pre><code class="language-bash">tracebi import dbt &lt;path&gt; [--name NAME] [--connection NAME] [--schema SCHEMA] [--force]
 tracebi import dbt ./jaffle_shop --connection wh --name jaffle
 tracebi import dbt target/manifest.json --connection wh
 </code></pre>
-<p>Reads a dbt <code>manifest.json</code> — a project root that contains
-<code>target/manifest.json</code>, or the file itself — and drafts <code>models/&lt;name&gt;.py</code>.
-It does not run dbt and does not load <code>.env</code>. The default name is the dbt
-project name, otherwise the folder name.</p>
-<p>Tables are dbt models (<code>resource_type</code> model, not ephemeral). <code>--schema</code>
-keeps one schema. <code>--connection</code> wires <code>models/_connections/&lt;name&gt;.py</code> from
-<code>tracebi connect</code> and is refused when that module is missing. Relationships
-and measures are <code># DRAFT: review</code> comments; foreign keys are not invented.
-An existing model file is kept unless <code>--force</code>.</p>
-<h3 id="tracebi-new-transform-title-new-model-new-report-new-dashboard-new-pipeline"><code>tracebi new-transform "Title"</code> · <code>new-model</code> · <code>new-report</code> · <code>new-dashboard</code> · <code>new-pipeline</code></h3>
+<p>Reads a dbt <code>manifest.json</code> (a project root containing
+<code>target/manifest.json</code>, or the file itself) and drafts <code>models/&lt;name&gt;.py</code>. It
+does not run dbt or load <code>.env</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--name</code></td>
+<td>The model name. Default: the dbt project's name, else the folder's.</td>
+</tr>
+<tr>
+<td><code>--schema</code></td>
+<td>Keep only this schema.</td>
+</tr>
+<tr>
+<td><code>--connection</code></td>
+<td>Wire <code>models/_connections/&lt;name&gt;.py</code> from <code>tracebi connect</code>; refused when that module is missing.</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>Replace an existing model file.</td>
+</tr>
+</tbody>
+</table>
+<p>Tables are dbt models (<code>resource_type</code> model, not ephemeral). Relationships
+and measures are drafted as <code># DRAFT: review</code> comments; no foreign key is
+invented.</p>
+<h2 id="scaffold-files">Scaffold files</h2>
+<h3 id="tracebi-new-transform-tracebi-new-model-tracebi-new-report-tracebi-new-dashboard-tracebi-new-pipeline"><code>tracebi new-transform</code> · <code>tracebi new-model</code> · <code>tracebi new-report</code> · <code>tracebi new-dashboard</code> · <code>tracebi new-pipeline</code></h3>
 <pre><code class="language-bash">tracebi new-transform &quot;Orders Clean&quot;  [--force] [--python] [--transforms-dir DIR]
 tracebi new-model     &quot;Sales Model&quot;   [--force] [--python]
 tracebi new-model     &quot;Sales&quot; --from wh --tables fact_sales,dim_customer,dim_product
@@ -182,118 +239,212 @@ tracebi new-dashboard &quot;Ops Board&quot;     [--force] [--reports-dir DIR] [-
                       [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
 tracebi new-pipeline  &quot;Sales ETL&quot;     [--force] [--python]
 </code></pre>
-<p>Each scaffolds one file (<code>new-transform</code> two: <code>transforms/&lt;name&gt;.sql</code> and its
-<code>&lt;name&gt;.contract.yaml</code>; <code>new-report</code> and <code>new-dashboard</code> a package directory)
-with the title slugified: <code>"Portfolio Book"</code> → <code>portfolio_book</code>. <code>--python</code>
-writes the Python form instead of the default: the notebook-shaped pandas
-transform, a <code>models/&lt;name&gt;.py</code>, a <code>pipelines/&lt;name&gt;.py</code>.</p>
-<p><code>new-report</code> can put the report in a folder: <code>"Finance/Month end/Close pack"</code>
-creates <code>reports/finance/month_end/close_pack/</code>. A report in a folder is named
-by that path everywhere after: <code>tracebi report build finance/month_end/close_pack</code>,
-<code>output/finance/month_end/close_pack.html</code>, and the app, which groups
-reports by folder. Two folders can each hold a report of the same name.</p>
-<p>All refuse to overwrite without <code>--force</code>.</p>
-<p><strong>A report is read; a dashboard is worked in.</strong> <code>new-report</code> writes a
-<code>template.html</code> — by default an <strong>editorial</strong> page: a kicker, a headline that
-states the finding, a standfirst, a byline with the build time, prose with its
-numbers bound, captioned figures, a pull-stat, "What to do" and the
-methodology (<a href="../reference/template-html.html">template.html — the figure grammar</a> "Editorial"). It reads with JavaScript off,
-prints and emails. <code>--layout brief</code> (answer, KPIs, one chart), <code>tabbed</code>
-(Overview and Detail tabs) and <code>dashboard</code> (the template dashboard) are the
-other pages.</p>
-<p><code>new-dashboard</code> writes an <strong>app</strong>: <code>app.jsx</code>, a React component built from the
-TraceBi kit (<a href="../reference/app-jsx.html">app.jsx — the React lane</a>) — a KPI strip with a lead, a chart beside its
-ranking, a filterable detail. <code>--job trend</code> starts from the latest period and
-its series (the model needs a time dimension); <code>--job leaderboard</code> from the
-leader, the top ten and the full ranking; <code>--job scorecard</code> from every measure
-(up to four) with its trend; <code>--job monitor</code> from the latest period of each
-measure, its trend and a watch list, lowest first; <code>--job funnel</code> from the
-fact's count measures as stages, widest first, each conversion a report-level
-ratio in <code>report.json</code> <code>"measures"</code>. <code>--html</code> writes the dashboard as <code>template.html</code>
-instead (the same page as <code>new-report --layout dashboard</code>).</p>
-<p>The look flags answer the questions an agent asks before it builds: <code>--mode</code>,
-<code>--density</code>, <code>--nav</code> (top tabs or a sidebar) and <code>--title-at</code> (<code>nav</code> puts the
-title at the top of the sidebar). For an app they shape its navigation and
-title components, and the mode and density go in <code>report.json</code> <code>"look"</code>. For
-a template page they set the <code>&lt;html&gt;</code> attributes and the title block described
-in <a href="../reference/template-html.html">template.html — the figure grammar</a> (<code>--nav</code> then implies the tabbed layout). <code>--theme</code> names
-a shipped theme in <code>report.json</code> <code>"theme"</code>.</p>
-<p><code>new-model --from &lt;connection&gt; --tables a,b,c</code> drafts that file from the
-connection <code>tracebi connect</code> wrote, using column metadata only — no row
-scan. A table named <code>fact_*</code>, or one with numeric non-key columns and
-<code>*_id</code>/<code>*_key</code> columns that match another listed table's key, is drafted as
-a fact; the rest are dimensions. Relationships follow those key names, and
-each numeric non-key column on a fact becomes a <code>sum</code> measure. Every guess
-is marked <code># DRAFT: review</code> for a person or an agent to edit. <code>--tables</code> is
-required with <code>--from</code> (prompted on a terminal, otherwise exit 2).</p>
-<p><code>new-report</code> deliberately writes <strong>no</strong> <code>script.js</code> or <code>style.css</code> — the
-runtime draws every figure from the stamped bytes, so hand-rolling a CSV parser
-and a chart is a trap. Its page teaches the grammar instead: bound prose, a
-KPI strip, a chart, and a filter/search/download table — as kit components in
-an <code>app.jsx</code>, or as <code>data-tb-*</code> elements in a <code>template.html</code>.
-See <a href="../reference/app-jsx.html">app.jsx — the React lane</a> and <a href="../reference/template-html.html">template.html — the figure grammar</a>.</p>
+<p>The title becomes the file name: <code>"Portfolio Book"</code> → <code>portfolio_book</code>. Each
+refuses to overwrite without <code>--force</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Writes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>new-transform</code></td>
+<td><code>transforms/&lt;name&gt;.sql</code> and <code>&lt;name&gt;.contract.yaml</code>. <code>--python</code>: a notebook-shaped pandas <code>.py</code>.</td>
+</tr>
+<tr>
+<td><code>new-model</code></td>
+<td><code>models/&lt;name&gt;.yaml</code>. <code>--python</code>: <code>models/&lt;name&gt;.py</code>.</td>
+</tr>
+<tr>
+<td><code>new-report</code></td>
+<td><code>reports/&lt;name&gt;/</code> with <code>report.json</code> and <code>template.html</code>: by default an editorial page (<a href="../reference/template-html.html">template.html</a>).</td>
+</tr>
+<tr>
+<td><code>new-dashboard</code></td>
+<td><code>reports/&lt;name&gt;/</code> with <code>report.json</code> and <code>app.jsx</code>, a dashboard from the kit (<a href="../reference/app-jsx.html">app.jsx</a>). <code>--html</code>: a <code>template.html</code> dashboard instead.</td>
+</tr>
+<tr>
+<td><code>new-pipeline</code></td>
+<td><code>pipelines/&lt;name&gt;.yaml</code>. <code>--python</code>: <code>pipelines/&lt;name&gt;.py</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>new-report</code> and <code>new-dashboard</code> write no <code>script.js</code> or <code>style.css</code>. The
+runtime draws every figure from the stamped rows.</p>
+<p><strong>Folders.</strong> <code>new-report "Finance/Month end/Close pack"</code> creates
+<code>reports/finance/month_end/close_pack/</code>. The report is then named by that path
+everywhere: <code>tracebi report build finance/month_end/close_pack</code>,
+<code>output/finance/month_end/close_pack.html</code>, and in the app's folders. Two
+folders can each hold a report of the same name.</p>
+<p><strong><code>--layout</code></strong> (template pages):</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Page</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>editorial</code> (default)</td>
+<td>A kicker, a headline that states the finding, a standfirst, a byline with the build time, prose with bound numbers, captioned figures, a pull-stat, "What to do" and the methodology. Reads with JavaScript off, prints and emails.</td>
+</tr>
+<tr>
+<td><code>brief</code></td>
+<td>The answer, KPIs, one chart.</td>
+</tr>
+<tr>
+<td><code>tabbed</code></td>
+<td>Overview and Detail tabs.</td>
+</tr>
+<tr>
+<td><code>dashboard</code></td>
+<td>The template dashboard.</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>--job</code></strong> (dashboards):</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Starts from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>overview</code> (default)</td>
+<td>A KPI strip with a lead, a chart beside its ranking, a filterable detail.</td>
+</tr>
+<tr>
+<td><code>trend</code></td>
+<td>The latest period and its series. Needs a time dimension.</td>
+</tr>
+<tr>
+<td><code>leaderboard</code></td>
+<td>The leader, the top ten and the full ranking.</td>
+</tr>
+<tr>
+<td><code>scorecard</code></td>
+<td>Every measure (up to four) with its trend.</td>
+</tr>
+<tr>
+<td><code>monitor</code></td>
+<td>The latest period of each measure, its trend and a watch list, lowest first.</td>
+</tr>
+<tr>
+<td><code>funnel</code></td>
+<td>The fact's count measures as stages, widest first, each conversion a report-level ratio in <code>report.json</code> <code>"measures"</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Look flags.</strong> <code>--mode</code>, <code>--density</code>, <code>--nav</code> (top tabs or a sidebar) and
+<code>--title-at</code> (<code>nav</code> puts the title at the top of the sidebar). For an app they
+shape its navigation and title, and mode and density go in <code>report.json</code>
+<code>"look"</code>. For a template they set the <code>&lt;html&gt;</code> attributes and the title block
+(<code>--nav</code> implies the tabbed layout). <code>--theme</code> names a shipped theme in
+<code>report.json</code> <code>"theme"</code>.</p>
+<p><strong><code>new-model --from &lt;connection&gt; --tables a,b,c</code></strong> drafts the model from the
+connection's column metadata, with no row scan. A table named <code>fact_*</code>, or one
+with numeric non-key columns and <code>*_id</code>/<code>*_key</code> columns matching another
+listed table's key, becomes a fact; the rest become dimensions. Relationships
+follow those key names, and each numeric non-key column on a fact becomes a
+<code>sum</code> measure. Every guess is marked <code># DRAFT: review</code>. <code>--tables</code> is required
+with <code>--from</code>.</p>
 <h3 id="tracebi-theme"><code>tracebi theme</code></h3>
 <pre><code class="language-bash">tracebi theme list                 # the shipped themes, one line each
 tracebi theme use ocean [--force]  # make one the project default
 </code></pre>
-<p>The shipped themes are contrast-checked token sets (accent, and for <code>sand</code> and
-<code>midnight</code> the page and surfaces too). <code>use</code> writes it to <code>reports/_theme.css</code>,
-which every report in the project stacks over <code>tracebi.css</code>; it refuses to
-replace an existing file without <code>--force</code>. A single report picks one with
-<code>report.json</code> <code>"theme"</code>, which stacks over the project default
+<p>Themes are contrast-checked token sets: an accent, and for <code>sand</code> and
+<code>midnight</code> the page and surfaces too. <code>use</code> writes <code>reports/_theme.css</code>, which
+every report stacks over <code>tracebi.css</code>; it refuses to replace that file
+without <code>--force</code>. One report picks a theme with <code>report.json</code> <code>"theme"</code>
 (<a href="../reference/report-json.html">report.json</a>).</p>
-<hr>
-<h2 id="building-and-checking">Building and checking</h2>
-<h3 id="tracebi-update"><code>tracebi update</code></h3>
-<pre><code class="language-bash">tracebi update [--check] [--yes]
-</code></pre>
-<p>Says whether a newer TraceBi is published, what changed, and the command that
-updates this install (pip, Docker or a git checkout). A pip install can run it
-here after asking; <code>--yes</code> skips the question and <code>--check</code> never runs it.
-See <a href="../guides/updating.html">Updating TraceBi</a>.</p>
+<h2 id="build-and-check">Build and check</h2>
 <h3 id="tracebi-report-build"><code>tracebi report build</code></h3>
 <pre><code class="language-bash">tracebi report build &lt;name&gt; [--output PATH] [--format html|pdf] [--badges] [--reports-dir DIR]
 </code></pre>
-<p>Renders to one self-contained, offline <code>.html</code> plus a sibling
-<code>&lt;output&gt;.html.manifest.json</code>. Default output is <code>output/&lt;name&gt;.html</code>.</p>
-<p><code>--format pdf</code> also writes a sibling <code>.pdf</code>: a print of that built HTML
-(headless Chromium, so charts render). The PDF carries no trace; the HTML
-and manifest stay the checkable artifact. Needs <code>pip install 'tracebi[pdf]'</code>
-and <code>python -m playwright install chromium</code>.</p>
-<p>The same extra gives every build a cover, <code>output/&lt;name&gt;.cover.png</code> (the first
-screen at 1200×750, recorded as <code>cover</code> in the manifest, never fingerprinted);
-without it the build prints one line saying why no cover was taken and is
-otherwise unchanged.</p>
-<ul>
-<li><code>--badges</code> — draw per-figure provenance badges on the page. Off by default;
-  the trace drawer already carries provenance in one place. <strong>The manifest is
-  identical either way.</strong></li>
-</ul>
-<p>A <code>.json</code> spec target is compiled to a package first, then rendered like a
-hand-authored one — one report form.</p>
+<p>Builds one self-contained, offline <code>.html</code> and its
+<code>&lt;output&gt;.html.manifest.json</code>. Default output: <code>output/&lt;name&gt;.html</code>. A <code>.json</code>
+spec is compiled to a package first.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--output</code></td>
+<td>Where to write the HTML.</td>
+</tr>
+<tr>
+<td><code>--format pdf</code></td>
+<td>Also write a <code>.pdf</code>, printed from the built HTML by headless Chromium. It carries no trace. Needs <code>pip install 'tracebi[pdf]'</code> and <code>python -m playwright install chromium</code>.</td>
+</tr>
+<tr>
+<td><code>--badges</code></td>
+<td>Draw a provenance badge on each figure. The manifest is the same either way.</td>
+</tr>
+</tbody>
+</table>
+<p>With the <code>pdf</code> extra installed, every build also writes
+<code>output/&lt;name&gt;.cover.png</code>: the first screen at 1200×750, recorded as <code>cover</code>
+in the manifest and never fingerprinted. Without it, the build prints one line
+saying why there is no cover.</p>
 <h3 id="tracebi-report-status"><code>tracebi report status</code></h3>
 <pre><code class="language-bash">tracebi report status &lt;name&gt; [--json]
 </code></pre>
-<p>The earned state of an artifact — what a driving agent or CI calls between
-edits. Prints a per-figure line (<code>✓</code> verified, <code>·</code> derived or unverified,
-<code>✗</code> otherwise), then unused and failing bindings.</p>
-<p><strong>Exits 1</strong> if any binding errors. Packages only.</p>
+<p>Prints one line per figure (<code>✓</code> verified, <code>·</code> derived or unverified, <code>✗</code>
+otherwise), then unused and failing bindings. Exits 1 on any binding error.
+Packages only.</p>
 <h3 id="tracebi-report-pins"><code>tracebi report pins</code></h3>
 <pre><code class="language-bash">tracebi report pins &lt;name&gt;
 tracebi report pins &lt;name&gt; --resolve &lt;id&gt; [--note &quot;what changed&quot;]
 </code></pre>
-<p>Lists open workbench pins (id, kind, note). <code>--resolve</code> moves one into the
-resolved list in that session's <code>pins.json</code>, keeping it with a timestamp,
-the current actor, and the note. An unknown id is an error. Open pins are
-what <code>tracebi report status</code> and <code>workbench_state</code> show.</p>
+<p>Lists open reviewer pins (id, kind, note). <code>--resolve</code> moves one to the
+resolved list in the session's <code>pins.json</code>, with a timestamp, the actor and
+the note. An unknown id is an error.</p>
 <h3 id="tracebi-verify"><code>tracebi verify</code></h3>
 <pre><code class="language-bash">tracebi verify &lt;manifest.json&gt; [--strict] [--contracts] [--local]
 tracebi verify --file &lt;report.html&gt; [--manifest PATH] [--strict]
 </code></pre>
-<p>Two deliberately separate checks. See <a href="../concepts/trace.html">The trace</a> for what each proves.</p>
-<p><strong>Mode 1 — query → model.</strong> Re-runs every recorded query and classifies each
-section: <code>REPRODUCES</code>, <code>SOURCE DRIFT</code>, <code>MODEL CHANGED</code>, <code>UNEXPLAINED</code>, or
+<p>Two separate checks (<a href="../concepts/trace.html">The trace</a>).</p>
+<p><strong>With a manifest</strong> it re-runs every recorded query and classifies each
+section: <code>REPRODUCES</code>, <code>SOURCE DRIFT</code>, <code>MODEL CHANGED</code>, <code>UNEXPLAINED</code> or
 <code>UNVERIFIABLE</code>.</p>
+<p><strong>With <code>--file</code></strong> it re-hashes the rows embedded in the HTML against the
+manifest, offline, with no model or database. It catches a number edited in
+the file.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--strict</code></td>
+<td>Fail unless every figure reproduces. Use it as a CI gate.</td>
+</tr>
+<tr>
+<td><code>--contracts</code></td>
+<td>Also re-run the warehouse's <a href="../concepts/sink-contracts.html">Sink contracts</a> and compare certified fingerprints to the data now. Reported separately; never changes a figure's status.</td>
+</tr>
+<tr>
+<td><code>--local</code></td>
+<td>Also replay what the built page recomputes under a selection: every plan not fixed at build, over the slice the file carries (its <code>payload_sha256</code> checked first), under the authored selection and one per filter, by the page engine in Node and by the server. They must agree cell by cell; the first difference is named. Without Node, the engine half is skipped and says so.</td>
+</tr>
+<tr>
+<td><code>--manifest</code></td>
+<td>The manifest for <code>--file</code>. Default: <code>&lt;file&gt;.manifest.json</code>.</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr>
@@ -304,286 +455,323 @@ section: <code>REPRODUCES</code>, <code>SOURCE DRIFT</code>, <code>MODEL CHANGED
 <tbody>
 <tr>
 <td><code>0</code></td>
-<td>all reproduce or are unverifiable</td>
+<td>Everything reproduces or is unverifiable.</td>
 </tr>
 <tr>
 <td><code>2</code></td>
-<td>diagnosed drift only</td>
+<td>Explained drift only.</td>
 </tr>
 <tr>
 <td><code>1</code></td>
-<td>anything unexplained or errored — <strong>or a manifest with nothing to verify</strong></td>
+<td>Anything unexplained or errored, or a manifest with nothing to verify.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Mode 2 — <code>--file</code>.</strong> Rehashes the bytes embedded in the shipped HTML against
-the manifest. No model, no database, fully offline. Catches a number edited in
-the file after the fact.</p>
-<ul>
-<li><code>--strict</code> — fail unless <strong>every figure</strong> reproduces. The CI gate.</li>
-<li><code>--contracts</code> — also re-run the warehouse's recorded <a href="../concepts/sink-contracts.html">Sink contracts</a> and
-  compare certified fingerprints to the data now. Reported separately; it never
-  colours a figure status.</li>
-<li><code>--local</code> — also replay what the built page (the file beside the manifest)
-  recomputes under a selection: every plan not fixed at build, over the slice
-  the file carries (its <code>payload_sha256</code> checked first), under the authored
-  selection and one per filter, by the page engine in node and by the server.
-  They must agree cell by cell; the first disagreement is named. Without node
-  the engine half is skipped and says so. A separate claim: the page's
-  arithmetic is the server's, not that a figure is right.</li>
-</ul>
-<p>Verify is read-only and refuses a review snapshot by name rather than printing
-a check that looks like it ran.</p>
+<p>Verify is read-only. It refuses a review snapshot by name.</p>
 <h3 id="tracebi-validate"><code>tracebi validate</code></h3>
 <pre><code class="language-bash">tracebi validate
 </code></pre>
-<p>Cheap pre-flight: checks the project layout, reports any discovery import that
-failed, and runs <code>DataModel.validate()</code> on every model — chiefly that dimension
-keys are unique, since a non-unique key silently inflates every additive
-measure. Prints one line for each credential a connection references that
-is set nowhere (<a href="../reference/credentials.html">Credentials</a>). Exits 1 on any problem.</p>
-<hr>
-<h2 id="working-live">Working live</h2>
+<p>Checks the project layout, reports discovery imports that failed, and runs
+<code>DataModel.validate()</code> on every model, chiefly that dimension keys are unique.
+Prints one line per credential a connection uses that is set nowhere. Exits 1
+on any problem.</p>
+<h3 id="tracebi-update"><code>tracebi update</code></h3>
+<pre><code class="language-bash">tracebi update [--check] [--yes]
+</code></pre>
+<p>Says whether a newer TraceBi is out, what changed, and the command that
+updates this install. A pip install can run it after asking. <code>--yes</code> skips the
+question; <code>--check</code> never runs it. See <a href="../guides/updating.html">Update TraceBi</a>.</p>
+<h2 id="work-live">Work live</h2>
 <h3 id="tracebi-dev"><code>tracebi dev</code></h3>
 <pre><code class="language-bash">tracebi dev [name] [--port 8001] [--no-browser] [--classic]
 </code></pre>
-<p>The live-preview loop, and <strong>the everyday surface</strong>. It opens the <strong>web app</strong>
-in dev mode (on <code>127.0.0.1</code> only), so there is one place to look at a report and
-to build it.</p>
-<p>With a package name it opens <code>reports/&lt;name&gt;/</code> with <strong>Build mode</strong> on: put your
-agent's chat beside it. The report re-renders each time the agent saves, a
-timeline lists which figures each save changed (flip back to the version
-before), and you can click a figure to point at it, so "make this a line chart"
-means that figure. The panel also lists <strong>Data</strong> (each binding: its model, rows
-× columns, the figures that read it, a few rows) and <strong>Checks</strong> (figures with no
-data behind them, bindings no figure reads, numbers typed outside figures), and
-has a note box for your agent. You instruct the agent in its chat; a note is
-for later.</p>
-<p>With <strong>no name</strong> it opens the app's Data page, where what your agent shows you
-(<code>tracebi.workbench.show</code>, from any script in the project) appears under <em>From
-your agent</em>, before any report exists, along with the notes you leave it.</p>
-<p><code>--classic</code> serves the older stdlib preview server instead: the report at the
-root and the workbench page at <code>/__workbench</code> (figures, per-binding data, code,
-lint; with no name, <em>discovery mode</em> lays out the warehouse tables, sink
-contracts, models and packages beside the feed). It is also what runs, with a
-one-line note, when the <code>web</code> extra is not installed. <code>--app</code> is still
-accepted; it is the default.</p>
+<p>Opens the web app in dev mode, on <code>127.0.0.1</code> only.</p>
+<ul>
+<li><strong>With a report name</strong> it opens the report in Build mode. The page
+  re-renders on each save; a timeline lists which figures each save changed
+  (and lets you go back); click a figure to point your agent at it. The panel
+  lists <strong>Data</strong> (each binding: its model, rows × columns, the figures that
+  read it, a few rows) and <strong>Checks</strong> (figures with no data, bindings no
+  figure reads, numbers typed outside figures), and has a note box for your
+  agent.</li>
+<li><strong>With no name</strong> it opens the Data page. What your scripts post with
+  <code>tracebi.workbench.show</code> appears under <em>From your agent</em>, with the notes you
+  leave.</li>
+<li><strong><code>--classic</code></strong> serves the older preview server: the report at the root and
+  the workbench at <code>/__workbench</code>. With no name it lays out the warehouse
+  tables, sink contracts, models and packages beside the feed. It also runs,
+  with a note, when the <code>web</code> extra is not installed. <code>--app</code> is still
+  accepted; it is the default.</li>
+</ul>
 <h3 id="tracebi-report-preview"><code>tracebi report preview</code></h3>
 <pre><code class="language-bash">tracebi report preview &lt;name&gt; [--port 8080] [--no-browser]
 </code></pre>
-<p>Builds, then serves the built static file. Bound to <code>127.0.0.1</code> only, because
-it serves a directory of rendered reports unauthenticated.</p>
+<p>Builds, then serves the built file on <code>127.0.0.1</code> only (it serves rendered
+reports without authentication).</p>
 <h3 id="tracebi-serve"><code>tracebi serve</code></h3>
 <pre><code class="language-bash">tracebi serve [--host 127.0.0.1] [--port 8000] [--reload]
 </code></pre>
-<p>Serves the project's web UI. Refuses with an actionable message if there is no
-project in the current directory, or if <code>uvicorn</code> is not installed.</p>
+<p>Serves the project's web app. Refuses, with what to do, when the current
+directory has no project or <code>uvicorn</code> is not installed.</p>
 <h3 id="tracebi-warehouse-tables"><code>tracebi warehouse tables</code></h3>
 <pre><code class="language-bash">tracebi warehouse tables [--connector NAME] [--table T] [--json]
 </code></pre>
-<p>Column names and types of a sunk table, from connector metadata. No row scan.
-Connectors come from the models in <code>models/</code>, plus <code>data/warehouse.duckdb</code>
-when that file exists. Omit <code>--table</code> to list tables. A connector that raises
-is reported in place (<code>error</code>: exception type plus the first message line);
-the others still list. The same lookup is the MCP tool <code>describe_table</code>.</p>
+<p>Column names and types of a warehouse table, from connector metadata, with no
+row scan. Connectors come from the models in <code>models/</code>, plus
+<code>data/warehouse.duckdb</code> when it exists. Omit <code>--table</code> to list tables. A
+connector that fails is reported in place (<code>error</code>: the exception type and
+first line) and the others still list. The MCP tool <code>describe_table</code> is the
+same lookup.</p>
 <h3 id="tracebi-session"><code>tracebi session</code></h3>
 <pre><code class="language-bash">tracebi session export [name] [-o PATH] [--format {html,md}] [--title T]
 tracebi session clear  [name]
 </code></pre>
-<p>Saves or resets the workbench exhibit feed that <code>tracebi dev</code> writes (stored
-under <code>.tracebi/workbench/&lt;name&gt;/</code>). Omit <code>name</code> for the discovery session.</p>
-<p><code>export</code> writes <strong>one living record per session</strong> — re-exporting overwrites the
-same file so git carries the timeline as a readable diff. The <code>md</code> format is
-the pull-request twin. It is a lab notebook: <strong>no manifest</strong>, and <code>verify</code>
-refuses it by name.</p>
-<p><code>clear</code> refuses while a dev-server heartbeat is fresh (15s), since the live
-watcher would post straight over the reset.</p>
-<hr>
-<h2 id="sharing">Sharing</h2>
+<p>Saves or resets the workbench feed <code>tracebi dev</code> writes (under
+<code>.tracebi/workbench/&lt;name&gt;/</code>). Omit <code>name</code> for the project feed.</p>
+<table>
+<thead>
+<tr>
+<th>Subcommand</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>export</code></td>
+<td>Writes one record per session, overwriting the same file so git shows the history as a diff. <code>--format md</code> is the version for pull requests. It carries no manifest, and <code>verify</code> refuses it.</td>
+</tr>
+<tr>
+<td><code>clear</code></td>
+<td>Resets the feed. Refused while <code>tracebi dev</code> is running (a heartbeat under 15 seconds old).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="share-and-deliver">Share and deliver</h2>
 <h3 id="tracebi-login-tracebi-logout"><code>tracebi login</code> · <code>tracebi logout</code></h3>
 <pre><code class="language-bash">tracebi login  --server &lt;url&gt; [--timeout 300]
 tracebi logout --server &lt;url&gt;
 </code></pre>
-<p><code>login</code> signs this machine in to a TraceBi server through the browser (the
-company's login, OAuth with PKCE) and keeps the token in
-<code>~/.config/tracebi/credentials.json</code>; <code>push</code> uses it. <code>logout</code> revokes the
-token on the server and forgets it. See <a href="../guides/push-from-a-laptop.html">Push from a laptop</a>.</p>
+<p><code>login</code> signs this machine in to a server through the browser (the company
+login, OAuth with PKCE) and keeps the token in
+<code>~/.config/tracebi/credentials.json</code>. <code>logout</code> revokes it on the server and
+forgets it. See <a href="../guides/sign-in.html">Sign in with your company login</a>.</p>
 <h3 id="tracebi-push"><code>tracebi push</code></h3>
 <pre><code class="language-bash">tracebi push &lt;paths…&gt; --server &lt;url&gt; [--note &quot;why&quot;]
 </code></pre>
-<p>Sends files to a server you signed in to (<code>tracebi login</code>). Report packages and
-<code>models/&lt;name&gt;.yaml</code> / <code>.json</code> become your drafts; <code>transforms/</code>, <code>pipelines/</code>,
-<code>models/&lt;name&gt;.py</code>, <code>connections/</code> and a package's <code>report.py</code> become one code
-request that an admin approves in the app (it needs <code>--note</code>). Data files are
-refused. See <a href="../guides/push-from-a-laptop.html">Push from a laptop</a>.</p>
+<p>Sends files to a server you signed in to. Report packages and
+<code>models/&lt;name&gt;.yaml</code> or <code>.json</code> become your drafts. <code>transforms/</code>,
+<code>pipelines/</code>, <code>models/&lt;name&gt;.py</code>, <code>connections/</code> and a package's <code>report.py</code>
+become one code request an admin approves; it needs <code>--note</code>. Data files are
+refused. See <a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>.</p>
 <h3 id="tracebi-report-send"><code>tracebi report send</code></h3>
 <pre><code class="language-bash">tracebi report send &lt;name&gt; --to a@b.com[,c@d.com] [--subject S] [--force]
 </code></pre>
-<p>Builds, <strong>verifies the fresh manifest in-process</strong>, then emails the HTML and
-its trace together.</p>
-<p><strong>It refuses to send when the report does not verify</strong> — distribution never
-outruns verification. <code>--force</code> sends anyway with the failing verdict pasted
-into the body, so the red flag travels <em>with</em> the report.</p>
-<p>Requires <code>TRACEBI_SMTP_URL</code> and <code>TRACEBI_SMTP_FROM</code>; optional
-<code>TRACEBI_SLACK_WEBHOOK</code> pings after a successful send.</p>
-<p>To send on a schedule, declare it in the package and use
-<code>tracebi schedule</code> below.</p>
+<p>Builds, verifies the new manifest, then emails the HTML and its trace.
+Refuses to send a report that does not verify. <code>--force</code> sends anyway, with
+the failing verdict in the email body. Needs <code>TRACEBI_SMTP_URL</code> and
+<code>TRACEBI_SMTP_FROM</code>; <code>TRACEBI_SLACK_WEBHOOK</code> adds a ping after a successful
+send.</p>
 <h3 id="tracebi-schedule"><code>tracebi schedule</code></h3>
-<pre><code class="language-bash">tracebi schedule list [--json]              # scheduled packages + each last run
-tracebi schedule run &lt;name&gt; [--no-send]     # build → verify → email → record, now
+<pre><code class="language-bash">tracebi schedule list [--json]              # scheduled packages, each with its last run
+tracebi schedule run &lt;name&gt; [--no-send]     # refresh, build, verify, email, record: now
 tracebi schedule serve                      # run every schedule until Ctrl+C
 </code></pre>
-<p>A run is refresh → build → verify → email → record. It reads the <code>schedule</code>
-block in each package's <code>report.json</code> (see
-<a href="../reference/report-json.html">report.json</a>). A run is <code>report send</code> with
-the recipients taken from the package: a report that does not verify is
-recorded <code>refused</code> and nothing is sent. A failed refresh or build is
-retried twice (1 minute, then 5 minutes) before that failure is recorded;
-<code>"retries"</code> (0–5) changes how many, and a refused trace or a send
-failure is not retried. An optional <code>owner</code> address is emailed a
-plain-text alert when a run ends <code>failed</code>, <code>refused</code>, or <code>empty</code>, and
-that run is not sent to <code>to</code>. When <code>TRACEBI_SLACK_BOT_TOKEN</code> and
-<code>TRACEBI_SLACK_CHANNEL</code> are both set, a successful send also uploads the
-HTML and the manifest to that channel. A failed upload is recorded on the
-run and not retried. <code>--no-send</code> records that intent and does not call
-Slack. <code>TRACEBI_SLACK_WEBHOOK</code> stays a text ping. Every run is a row in
-<code>tracebi_runs</code> (kind <code>schedule</code>). An existing
-<code>output/schedule_runs.jsonl</code> is imported once. Status is <code>delivered</code>,
-<code>built</code> (nothing to deliver, or <code>--no-send</code>), <code>refused</code>, <code>empty</code> (a figure
-binding returned no rows), or <code>failed</code>, with the verdict and who ran it.</p>
+<p>Reads the <code>schedule</code> block in each package's <code>report.json</code> (<a href="../reference/report-json.html">report.json</a>).
+A run is <code>report send</code> with the package's recipients.</p>
+<table>
+<thead>
+<tr>
+<th>Behaviour</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Refusal</td>
+<td>A report that does not verify is recorded <code>refused</code> and nothing is sent.</td>
+</tr>
+<tr>
+<td>Retries</td>
+<td>A failed refresh or build is retried twice (after 1, then 5 minutes). <code>"retries"</code> (0–5) changes the count. A refused trace or a send failure is not retried.</td>
+</tr>
+<tr>
+<td>Owner alert</td>
+<td>An optional <code>owner</code> address gets a plain-text alert when a run ends <code>failed</code>, <code>refused</code> or <code>empty</code>, and that run is not sent to <code>to</code>.</td>
+</tr>
+<tr>
+<td>Slack upload</td>
+<td>With <code>TRACEBI_SLACK_BOT_TOKEN</code> and <code>TRACEBI_SLACK_CHANNEL</code> set, a successful send also uploads the HTML and manifest. A failed upload is recorded and not retried. <code>--no-send</code> skips Slack.</td>
+</tr>
+<tr>
+<td>Record</td>
+<td>Every run is a row in <code>tracebi_runs</code> (kind <code>schedule</code>), with the verdict and who ran it. An existing <code>output/schedule_runs.jsonl</code> is imported once.</td>
+</tr>
+<tr>
+<td>Status</td>
+<td><code>delivered</code>, <code>built</code> (nothing to deliver, or <code>--no-send</code>), <code>refused</code>, <code>empty</code> (a figure's binding returned no rows) or <code>failed</code>.</td>
+</tr>
+</tbody>
+</table>
 <p><code>serve</code> needs <code>pip install "tracebi[pipeline]"</code> (APScheduler) and reads the
-schedules at startup, so restart it after changing one. To use your own
-scheduler instead, call <code>run</code> from it:</p>
+schedules at startup, so restart it after a change. To use your own scheduler,
+call <code>run</code> from it:</p>
 <pre><code class="language-bash">0 7 * * MON cd /path/to/project &amp;&amp; tracebi schedule run weekly
 </code></pre>
 <h3 id="tracebi-report-snapshot"><code>tracebi report snapshot</code></h3>
 <pre><code class="language-bash">tracebi report snapshot &lt;name&gt; [--output PATH]
 </code></pre>
-<p>Writes the sendable <strong>working state</strong> — exploration blocks kept, a self-banner,
-a read-only code appendix, and deliberately <strong>no manifest</strong>, because a
-weaker-looking trace is worse than none. <code>verify --file</code> refuses it by name.</p>
-<hr>
-<h2 id="agent-surfaces">Agent surfaces</h2>
+<p>Writes a sendable working copy: exploration blocks kept, a review banner, a
+read-only code appendix, and no manifest. <code>verify --file</code> refuses it by name.</p>
+<h2 id="agents">Agents</h2>
 <h3 id="tracebi-context"><code>tracebi context</code></h3>
 <pre><code class="language-bash">tracebi context [--model NAME] [--brief] [--compact]
 </code></pre>
-<p>The framework's vocabulary as JSON — generated from the code, so it cannot
-drift. This is what an agent reads first.</p>
-<ul>
-<li><code>--brief</code> — the token-lean tier: semantic model, figure grammar, contracts,
-  conventions</li>
-<li><code>--model NAME</code> — also include that model's schema</li>
-</ul>
+<p>TraceBi's vocabulary as JSON, generated from the code. An agent reads it first.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--brief</code></td>
+<td>The smaller version: semantic model, figure grammar, contracts, conventions.</td>
+</tr>
+<tr>
+<td><code>--model NAME</code></td>
+<td>Also include that model's schema.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tracebi-knowledge"><code>tracebi knowledge</code></h3>
 <pre><code class="language-bash">tracebi knowledge [slug]
 </code></pre>
-<p>Analyst good-practice lessons. No argument lists the curriculum; a slug prints
-that lesson in full.</p>
+<p>Lessons on analysis and design. No argument lists them; a slug prints one.</p>
 <h3 id="tracebi-mcp"><code>tracebi mcp</code></h3>
 <pre><code class="language-bash">tracebi mcp [--transport {stdio,http}] [--host 127.0.0.1] [--port 8765] [--insecure]
 </code></pre>
-<p>Serves the agent gateway over MCP. <strong>The http transport refuses to start until
-an auth decision is made</strong> — set <code>TRACEBI_MCP_TOKEN</code>, or pass <code>--insecure</code>
-deliberately. <code>--host</code> defaults to <code>127.0.0.1</code>. A non-loopback host with
-<code>--insecure</code> and no token refuses to start unless <code>--allow-insecure-bind</code> is
-also passed: anyone who can reach the port gets full query access. Inside a
-container, bind <code>0.0.0.0</code> and set the token.</p>
+<p>Serves the agent gateway over MCP.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--transport http</code></td>
+<td>Refuses to start until you set <code>TRACEBI_MCP_TOKEN</code> or pass <code>--insecure</code>.</td>
+</tr>
+<tr>
+<td><code>--host</code></td>
+<td>Default <code>127.0.0.1</code>. A non-loopback host with <code>--insecure</code> and no token also needs <code>--allow-insecure-bind</code>: anyone who can reach the port gets full query access. In a container, bind <code>0.0.0.0</code> and set the token.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tracebi-mcp-config"><code>tracebi mcp config</code></h3>
 <pre><code class="language-bash">tracebi mcp config --client claude-code|cursor|claude-desktop [--http URL]
 </code></pre>
-<p>Prints the MCP client snippet as JSON and does not start the server.
+<p>Prints an MCP client snippet as JSON; it does not start a server.
 <code>tracebi init</code> already writes <code>.mcp.json</code> (Claude Code) and
-<code>.cursor/mcp.json</code> (Cursor): both run <code>tracebi mcp</code> over stdio from the
-project folder. This command is for another client, or for a remote gateway.</p>
-<ul>
-<li><code>--client claude-desktop</code> uses an absolute path to the <code>tracebi</code>
-  executable (<code>shutil.which("tracebi")</code>, or <code>sys.executable -m tracebi.cli</code>
-  when it is not on <code>PATH</code>). The <code>--http</code> form is not offered for Claude
-  Desktop: add the URL as a custom connector under Settings → Connectors.
-  That combination exits 1 and prints no JSON.</li>
-<li><code>--http URL</code> prints the streamable-HTTP form (<code>type: http</code>, that URL)
-  for Claude Code and Cursor. The <code>Authorization</code> placeholder differs by
-  client: <code>Bearer ${TRACEBI_MCP_TOKEN}</code> for Claude Code,
-  <code>Bearer ${env:TRACEBI_MCP_TOKEN}</code> for Cursor. The command never prints
-  a token value.</li>
-</ul>
+<code>.cursor/mcp.json</code> (Cursor), both running <code>tracebi mcp</code> over stdio.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--client claude-desktop</code></td>
+<td>Uses an absolute path to <code>tracebi</code> (<code>shutil.which("tracebi")</code>, else <code>sys.executable -m tracebi.cli</code>). Not offered with <code>--http</code>: add the URL as a custom connector in Claude Desktop's settings. That combination exits 1 and prints nothing.</td>
+</tr>
+<tr>
+<td><code>--http URL</code></td>
+<td>Prints the streamable-HTTP form for Claude Code and Cursor. The placeholder is <code>Bearer ${TRACEBI_MCP_TOKEN}</code> for Claude Code and <code>Bearer ${env:TRACEBI_MCP_TOKEN}</code> for Cursor. A token value is never printed.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="tracebi-agent-log"><code>tracebi agent log</code></h3>
 <pre><code class="language-bash">tracebi agent log [--since 7d] [--json]
 </code></pre>
-<p>Summarizes the gateway call log, <code>.tracebi/gateway_log.jsonl</code>. The gateway
-writes it only when <code>TRACEBI_MCP_LOG=1</code> is set: one line per tool call with
-the tool, ok or error, the duration, the actor, and the <strong>names</strong> of the
-arguments passed. Argument values, results and tokens are never written,
-and an error line has any argument value it echoes masked as <code>&lt;value&gt;</code>.
-Nothing leaves the machine.</p>
-<p>The summary shows calls and the error rate per tool, the ten most common
-errors with counts, and the first-build success rate: <code>build_report</code> calls
-that succeeded on a report's first attempt in a gateway session. <code>--since</code>
-takes a number and <code>d</code>, <code>h</code> or <code>m</code>.</p>
-<hr>
+<p>Summarizes <code>.tracebi/gateway_log.jsonl</code>, which the gateway writes only with
+<code>TRACEBI_MCP_LOG=1</code>: one line per tool call with the tool, ok or error, the
+duration, the actor and the names of the arguments. Values, results and tokens
+are never written; an error line masks any echoed value as <code>&lt;value&gt;</code>. Nothing
+leaves the machine.</p>
+<p>The summary shows calls and error rate per tool, the ten most common errors,
+and the first-build success rate (<code>build_report</code> calls that succeeded on a
+report's first attempt in a session). <code>--since</code> takes a number and <code>d</code>, <code>h</code>
+or <code>m</code>.</p>
 <h2 id="pipelines">Pipelines</h2>
 <h3 id="tracebi-run-transform"><code>tracebi run-transform</code></h3>
 <pre><code class="language-bash">tracebi run-transform &lt;name&gt;
 </code></pre>
 <p>Runs <code>transforms/&lt;name&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code> (the suffix is optional) top
-to bottom, fresh: a SQL file in one new warehouse connection, a Python file or
-notebook in a new namespace, so the sink never comes from out-of-order state.
-Then the <code>&lt;name&gt;.contract.yaml</code> beside it, if any. Prints <code>form: sql | python
-| notebook</code>. Two forms of one name are refused, naming both. See
-<a href="../reference/transform-sql.html">SQL transforms</a>.</p>
+to bottom in a fresh state: SQL in one new warehouse connection, Python in a
+new namespace. Then runs <code>&lt;name&gt;.contract.yaml</code> if there is one. Prints
+<code>form: sql | python | notebook</code>. Two forms of one name are refused, naming
+both. See <a href="../reference/transform-sql.html">SQL transforms</a>.</p>
 <h3 id="tracebi-run-pipeline"><code>tracebi run-pipeline</code></h3>
 <pre><code class="language-bash">tracebi run-pipeline &lt;name&gt; [--layer LAYER] [--refresh] [--status]
 </code></pre>
-<p>Runs a pipeline's layers, upstream first. Any external scheduler can drive it.</p>
-<ul>
-<li><code>--layer</code> — run only this layer; add <code>--refresh</code> to run its upstream chain</li>
-<li><code>--status</code> — show each layer's last run, executing nothing</li>
-</ul>
-<p><strong>It does not stop at the first failure</strong> — downstream layers read what upstream
-wrote, so every failure is reported, then a summary and exit 1.</p>
-<p>Records the OS user as the audit actor, so "who ran this" answers for cron and
-CI runs too.</p>
-<p>A run is recorded like one started from the app: a <code>pipeline_run</code> row in the
-state store (so the app's <strong>History</strong> lists it) and
-the same log, <code>data/logs/pipelines/&lt;name&gt;/&lt;id&gt;.log</code>, while the terminal prints
-what it always did. <code>--status</code> runs nothing and records nothing. If the state
-store cannot be reached the pipeline still runs; it says the run is not being
-recorded.</p>
+<p>Runs a pipeline's layers, upstream first.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--layer</code></td>
+<td>Run only this layer.</td>
+</tr>
+<tr>
+<td><code>--refresh</code></td>
+<td>With <code>--layer</code>, also run its upstream chain.</td>
+</tr>
+<tr>
+<td><code>--status</code></td>
+<td>Show each layer's last run. Runs and records nothing.</td>
+</tr>
+</tbody>
+</table>
+<p>It does not stop at the first failure: it reports every failure, then a
+summary, and exits 1. It records the OS user as the actor, so cron and CI runs
+say who ran them. The run is a <code>pipeline_run</code> row in the state store (the
+app's <strong>History</strong> lists it) with its log in
+<code>data/logs/pipelines/&lt;name&gt;/&lt;id&gt;.log</code>. If the state store is unreachable the
+pipeline still runs and says it is not being recorded.</p>
 <h3 id="tracebi-list-models-tracebi-list-pipelines"><code>tracebi list-models</code> · <code>tracebi list-pipelines</code></h3>
-<p>List definition files. Never fail: a missing or empty directory prints a note
-and exits 0.</p>
-<hr>
-<h2 id="legacy">Legacy</h2>
+<p>List the files in <code>models/</code> or <code>pipelines/</code>. A missing or empty folder prints
+a note and exits 0.</p>
+<h2 id="older-forms">Older forms</h2>
 <h3 id="tracebi-spec"><code>tracebi spec</code></h3>
 <pre><code class="language-bash">tracebi spec {schema|validate|render} [file] [--theme CSS] [--output PATH]
 </code></pre>
-<p>Works with the JSON <code>ReportSpec</code> form: print its JSON Schema, validate without
-running, or compile and render.</p>
-<p>It <strong>refuses a package <code>report.json</code> by name</strong> and points you at
-<code>tracebi report build</code> rather than emitting confusing "unknown field" errors.</p>
+<p>Works with the JSON <code>ReportSpec</code>: print its JSON Schema, validate it without
+running, or compile and render it. A package's <code>report.json</code> is refused by
+name, pointing at <code>tracebi report build</code>.</p>
 <h3 id="tracebi-migrate-spec"><code>tracebi migrate spec</code></h3>
 <pre><code class="language-bash">tracebi migrate spec reports/&lt;name&gt;.json [--force]
 </code></pre>
-<p>Compiles a spec into <code>reports/&lt;name&gt;/</code> <strong>alongside</strong> the original — it emits,
-never replaces. At discovery the directory shadows the same-named spec, so the
-cutover is the directory existing and the rollback is deleting it.</p>
+<p>Compiles a spec into <code>reports/&lt;name&gt;/</code> beside the original, which it never
+replaces. The folder takes precedence at discovery, so deleting it rolls back.</p>
 <h3 id="tracebi-migrate-model-connection-pipeline"><code>tracebi migrate model</code> · <code>connection</code> · <code>pipeline</code></h3>
 <pre><code class="language-bash">tracebi migrate model      models/&lt;name&gt;.py [--write] [--force]
 tracebi migrate connection models/_connections/&lt;name&gt;.py [--write]
 tracebi migrate pipeline   pipelines/&lt;name&gt;.py [--write]
 </code></pre>
-<p>Converts the Python form to the YAML one: prints it, or with <code>--write</code> writes
-the <code>.yaml</code> beside the project's other files. The Python file is never
-deleted: for a model or a pipeline the <code>.py</code> wins while both exist, so the
-cutover is deleting it; a connection's YAML is read first. See
-<a href="../reference/model-json.html">Model files (YAML or JSON)</a>, <a href="../reference/connections-yaml.html">Connection files (YAML)</a> and <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>.</p>
-<hr>
-<h2 id="related">Related</h2>
-<ul>
-<li><a href="../reference/environment-variables.html">Environment variables</a> — every <code>TRACEBI_*</code> variable</li>
-<li><a href="../start/quickstart.html">Get started</a> — these commands in order, once</li>
-<li><a href="../concepts/trace.html">The trace</a> — what <code>verify</code> proves</li>
-</ul>
+<p>Converts the Python form to YAML: prints it, or with <code>--write</code> writes the
+<code>.yaml</code>. The Python file is never deleted. For a model or pipeline the <code>.py</code>
+wins while both exist, so delete it to switch; a connection's YAML is read
+first. See <a href="../reference/model-json.html">Model files (YAML or JSON)</a>, <a href="../reference/connections-yaml.html">Connection files (YAML)</a> and <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>.</p>
   </main>
 </div>
 <script>

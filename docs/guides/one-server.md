@@ -1,210 +1,186 @@
 # Run TraceBi on one server
 
-**One VM, one folder, one container.** The app, the schedules, and the
-email all run in that container. You do not need Kubernetes. Git is
-optional for the project folder. The server still needs a copy of this
-repository, because `deploy/compose.yml` builds from its `Dockerfile`.
+Serve a project, its schedules and its email from one container on one
+virtual machine. No Kubernetes needed.
 
----
+## Before you begin
 
-## What you need
+- A virtual machine with Docker and Docker Compose
+- A copy of this repository on that machine: `deploy/compose.yml` builds from
+  its `Dockerfile`. Clone it, or unpack the source archive from a
+  [GitHub release](https://github.com/saltyscott0521/tracebi/releases).
+- A domain name, if you want a public address (optional)
+- An SMTP account, if a schedule should send email (optional)
 
-- A virtual machine with Docker and Docker Compose.
-- A domain name, if you want a public address. The app works on the
-  machine's own address without one.
-- An SMTP account, if a schedule should send email. Without one, a
-  schedule can still rebuild the report and write the run down.
+## For admins: start the server
 
-## Put your project on the server
+1. On your own machine, create a project, or use one you have:
 
-On your own machine, create a project (or use one you already have):
+   ```bash
+   tracebi init my-project
+   ```
 
-```bash
-tracebi init my-project
-```
+2. Copy the project folder onto the server, or clone it. Git is optional for
+   this folder. It holds everything: `tracebi.yaml`, `connections/`,
+   `transforms/`, `models/`, `reports/`, `pipelines/` and `data/`.
+3. On the server, get the repository and make the settings file:
 
-Copy that folder onto the server, or clone it. Git is optional for this
-folder. The folder is the application: `tracebi.yaml`, `connections/`,
-`transforms/`, `models/`, `reports/`, `pipelines/` and `data/`.
+   ```bash
+   git clone https://github.com/saltyscott0521/tracebi
+   cd tracebi
+   cp deploy/.env.example deploy/.env
+   ```
 
-## Start it
+4. In `deploy/.env`, set `TRACEBI_PROJECT_DIR` to the project folder.
+5. Start it:
 
-The server needs a copy of this repository. `deploy/compose.yml` builds
-from `..`, the repository's `Dockerfile`. Clone it:
+   ```bash
+   docker compose -f deploy/compose.yml up -d
+   ```
 
-```bash
-git clone https://github.com/saltyscott0521/tracebi
-```
+6. Open `http://<the-machine>:8000`.
 
-Or download the source archive from a
-[GitHub release](https://github.com/saltyscott0521/tracebi/releases) and
-unpack it.
-
-From that copy, on the server:
-
-```bash
-cp deploy/.env.example deploy/.env
-```
-
-In `deploy/.env`, set `TRACEBI_PROJECT_DIR` to the project folder from
-the previous step. Then:
-
-```bash
-docker compose -f deploy/compose.yml up -d
-```
-
-Open `http://<the-machine>:8000`.
-
-To expose the agent gateway on the same host (Cursor / Claude with only a
-URL + token), see `deploy/mcp/README.md` in the repository — the public
-demo uses `https://tracebi.com/mcp`.
-
-The container serves that folder. SQLite is the default. Add
-`--profile postgres` when you want Postgres, and set `POSTGRES_PASSWORD`
-in `deploy/.env`.
-
-`TRACEBI_STATE_URL` is TraceBi's own state store: run history, and the
-sign-in sessions and OAuth tokens. Give it a database (or a schema) of its
-own, and never point a connection, or the demo app's `TRACEBI_DEMO_DB_URL`,
-at it: a connection is something people browse. The repository's
-`docker-compose.yml` does this with two databases on one Postgres server,
-`crm` for the reference project's CRM and `tracebi_state` for the store. The app
-hides TraceBi's tables (`tracebi_*`, `alembic_version`) from every source
-listing whatever a connection points at, and says how many it hid.
-
-The image name is `ghcr.io/saltyscott0521/tracebi`. Set `TRACEBI_VERSION`
-in `deploy/.env` when you want a pinned tag. If that image is not on the
-machine, Compose builds it from the `Dockerfile` in this repository.
-
-To move to a newer release, see [[updating]]: `tracebi update --check` inside
-the container prints the exact `docker compose pull` / `up -d` lines to run on
-the host.
-
-## Add or change a report while it runs
-
-Copy a report folder into the project's `reports/`, a model file into
-`models/`, or a pipeline file into `pipelines/`. The running server picks it up within a few seconds, with no
-restart: it rescans every `TRACEBI_DISCOVERY_INTERVAL` seconds (default
-5). Deleting a report folder takes it out of the app the same way.
-Edits to an existing report show on its next view.
-
-## Turn on schedules and email
-
-In `deploy/.env`:
-
-```bash
-TRACEBI_SCHEDULES_IN_SERVER=1
-TRACEBI_SMTP_URL=smtp://user:password@host:587
-TRACEBI_SMTP_FROM=reports@example.com
-```
-
-In the report you want to send, add a `schedule` block to `report.json`
-([[report-json]]):
-
-```json
-"schedule": {
-  "cron": "0 9 * * MON",
-  "timezone": "America/New_York",
-  "to": ["cfo@example.com"]
-}
-```
-
-`cron` is five fields. `to` is who receives the email. Leave `to` out
-and the run still rebuilds the report and records it, and sends nothing.
-
-Apply the env file:
-
-```bash
-docker compose -f deploy/compose.yml up -d
-```
-
-This assumes **one process**. Do not run several copies of the
-container: each copy would send the email. A separate worker is
-`tracebi schedule serve`, for when the web server should not be the
-thing that sends.
-
-## Connection secrets
-
-A connection keeps its secret out of the file as `${NAME}`
-(`connections/crm.yaml`: `url: ${TRACEBI_CRM_URL}`). On the server, set it in
-`deploy/.env` (the environment wins), or save it in the project's encrypted
-store: `tracebi secret set TRACEBI_CRM_URL` inside the container, or **Set…**
-on the connection under Data → Sources for a signed-in admin. The store is
-`.tracebi/secrets.yml.enc` in the project folder, encrypted with
-`TRACEBI_SECRET_KEY` (or a `.tracebi/secret.key` generated on first use);
-several containers must share the key. See [[credentials]].
-
-## Sign-in
-
-For one team, set `TRACEBI_AUTH_USER` and `TRACEBI_AUTH_PASS` in
-`deploy/.env`, or name each person with `TRACEBI_LOCAL_USERS`. For your
-company's login, set `TRACEBI_OIDC_ISSUER` ([[sign-in]]). To put the app
-behind an SSO proxy instead, follow [[web-customization#Auth|Sign-in]]
-(`TRACEBI_AUTH_PROXY_HEADER` and `TRACEBI_AUTH_PROXY_TRUSTED_IPS`).
-
-With neither set, anyone who can reach the port can use the app. That
-is fine on a machine that is not reachable from anywhere else.
-
-## With Coolify
-
-Prefer a **Docker Image** resource that **pulls** a GHCR tag — do not let
-Coolify build the repo Dockerfile on every push (that leaves a multi-GB
-image per commit on the box).
-
-Two tags, two jobs:
-
-| Tag | Who | How it updates |
-| --- | --- | --- |
-| `ghcr.io/saltyscott0521/tracebi:<version>` | A client install that should match a release | You bump the tag when you cut a release |
-| `ghcr.io/saltyscott0521/tracebi:main` | The hosted demo (built with `UI_BASE=/app/`) | After CI is green on `main`, `publish-demo.yml` pushes the image and hits Coolify's deploy webhook |
-
-The demo image, like the repository's `docker-compose.yml`, serves one
-project: the reference project `examples/portfolio_project`, its warehouse
-baked at build. `TRACEBI_APP` is unset there; the bundled demo app is opt-in
-(`TRACEBI_APP=tracebi.web.demo_app`) and never served beside a project. The
-reference project's CRM is a standing mock CRM database, loaded once at first
-start: `docker-compose.yml`'s Postgres creates `crm` from
-`examples/portfolio_project/inputs/seed_crm.sql` when its volume is empty
-(`docker/postgres-init.sql`), and `TRACEBI_CRM_URL` points at it. Nothing in
-the app writes it afterwards. Without `TRACEBI_CRM_URL` the transform reads the
-committed snapshot instead, and the certificate says so.
-
-Keep git **auto-deploy** off on the Docker Image resource; the webhook is
-what redeploys. Set the same variables from `deploy/.env` in Coolify's
-environment screen. Bind-mount a folder on the host at `/project` when
-you want a live project tree; the compose file's `output-perms` service
-mounts `output/` and `data/` from that same folder. A backup is still a
-copy of that folder.
-
-Give the resource a domain in Coolify if you have one. TLS ends at
-Coolify. This page does not name a host, an address, or a password.
-
-On the Coolify server, keep image retention tight (`docker_images_to_keep`
-low, or prune unused images regularly) so old tags do not fill the disk.
-The image ships `curl` so Coolify's HTTP healthcheck against `/api/health`
-works on a pulled GHCR tag (python:slim alone does not).
-
-## Backups
-
-Copy the project folder (`TRACEBI_PROJECT_DIR`). That folder is the
-reports, the warehouse file, the run log and the credential store
-(`.tracebi/`; keep `TRACEBI_SECRET_KEY` with it, or the store cannot be read). If you started the
-Postgres profile, also copy `TRACEBI_PGDATA_DIR`.
+The image is `ghcr.io/saltyscott0521/tracebi`. Set `TRACEBI_VERSION` in
+`deploy/.env` to pin a tag. If the image is not on the machine, Compose builds
+it from the repository's `Dockerfile`.
 
 ## Check it
-
-On the server:
 
 ```bash
 curl -s http://127.0.0.1:8000/api/health
 ```
 
-You want `"status": "ok"`. The container's own health check calls the
-same path.
+You want `"status": "ok"`. The container's health check calls the same path.
+`GET /api/status` is the longer report: the output folder, files that failed
+to load, whether SMTP is set, whether schedules are on, and the sign-in setup.
 
-`GET /api/status` is available. It is the longer page: output folder,
-files that failed to load, whether SMTP is set, whether schedules are
-on, and the sign-in posture. It is not a substitute for `/api/health`,
-which stays the cheap check.
+## Choose a database for TraceBi's own state
 
-Then open the app in a browser and open the report.
+SQLite is the default. For Postgres, add `--profile postgres` to the
+`docker compose` command and set `POSTGRES_PASSWORD` in `deploy/.env`.
+
+`TRACEBI_STATE_URL` holds TraceBi's own state: run history, sign-in sessions
+and OAuth tokens. Give it its own database or schema, and never point a
+connection at it, or the demo app's `TRACEBI_DEMO_DB_URL`: people browse
+connections. The repository's `docker-compose.yml` uses two databases on one
+Postgres server, `crm` for the reference project's CRM and `tracebi_state` for
+the store. The app hides TraceBi's own tables (`tracebi_*`, `alembic_version`)
+from every source listing and says how many it hid.
+
+## Add or change a report while it runs
+
+Copy a report folder into `reports/`, a model into `models/` or a pipeline
+into `pipelines/`. The server picks it up within a few seconds without a
+restart: it rescans every `TRACEBI_DISCOVERY_INTERVAL` seconds (default 5).
+Deleting a report folder removes it the same way. An edit to an existing
+report shows on its next view.
+
+## Turn on schedules and email
+
+1. In `deploy/.env`:
+
+   ```bash
+   TRACEBI_SCHEDULES_IN_SERVER=1
+   TRACEBI_SMTP_URL=smtp://user:password@host:587
+   TRACEBI_SMTP_FROM=reports@example.com
+   ```
+
+2. Add a `schedule` block to the report's `report.json` ([[report-json]]):
+
+   ```json
+   "schedule": {
+     "cron": "0 9 * * MON",
+     "timezone": "America/New_York",
+     "to": ["cfo@example.com"]
+   }
+   ```
+
+   `cron` has five fields. `to` lists who gets the email. Without `to`, a run
+   rebuilds and records the report and sends nothing.
+
+3. Apply the settings:
+
+   ```bash
+   docker compose -f deploy/compose.yml up -d
+   ```
+
+Run one container only. Each copy would send the email. To keep sending out of
+the web server, run `tracebi schedule serve` as a separate worker instead.
+
+## Set connection secrets
+
+A connection keeps its secret out of the file as `${NAME}`, for example
+`url: ${TRACEBI_CRM_URL}` in `connections/crm.yaml`. Set the value in one of
+two places:
+
+- `deploy/.env`. The environment wins over everything else.
+- The project's encrypted store: run `tracebi secret set TRACEBI_CRM_URL`
+  inside the container, or click **Set…** on the connection under
+  Data → Sources as a signed-in admin.
+
+The store is `.tracebi/secrets.yml.enc`, encrypted with `TRACEBI_SECRET_KEY`
+(or a `.tracebi/secret.key` made on first use). Several containers must share
+the key. See [[credentials]].
+
+## Turn on sign-in
+
+- For one team: set `TRACEBI_AUTH_USER` and `TRACEBI_AUTH_PASS`, or name each
+  person with `TRACEBI_LOCAL_USERS`.
+- For your company login: set `TRACEBI_OIDC_ISSUER` ([[sign-in]]).
+- Behind an SSO proxy: set `TRACEBI_AUTH_PROXY_HEADER` and
+  `TRACEBI_AUTH_PROXY_TRUSTED_IPS` ([[web-customization]]).
+
+With none set, anyone who can reach the port can use the app. That is fine
+only on a machine nothing else can reach.
+
+To serve the agent gateway on the same host, see `deploy/mcp/README.md`. The
+public demo uses `https://tracebi.com/mcp`.
+
+## Back it up
+
+Copy the project folder (`TRACEBI_PROJECT_DIR`): the reports, the warehouse,
+the run log and the credential store in `.tracebi/`. Keep `TRACEBI_SECRET_KEY`
+with it, or the store cannot be read. With the Postgres profile, also copy
+`TRACEBI_PGDATA_DIR`.
+
+## Update it
+
+`tracebi update --check` inside the container prints the `docker compose pull`
+and `up -d` lines to run on the host. See [[updating]].
+
+## Run it on Coolify
+
+Use a **Docker Image** resource that pulls a GHCR tag. Don't let Coolify build
+the repository's Dockerfile on every push: that leaves a multi-GB image per
+commit on the machine.
+
+| Tag | For | How it updates |
+| --- | --- | --- |
+| `ghcr.io/saltyscott0521/tracebi:<version>` | A client install that matches a release | You change the tag when you cut a release |
+| `ghcr.io/saltyscott0521/tracebi:main` | The hosted demo (built with `UI_BASE=/app/`) | After CI passes on `main`, `publish-demo.yml` pushes the image and calls Coolify's deploy webhook |
+
+1. Turn git **auto-deploy** off on the resource. The webhook redeploys it.
+2. Copy the variables from `deploy/.env` into Coolify's environment screen.
+3. To serve a live project folder, bind-mount it at `/project`. The compose
+   file's `output-perms` service mounts `output/` and `data/` from the same
+   folder.
+4. Give the resource a domain if you have one. TLS ends at Coolify.
+5. Keep image retention low (`docker_images_to_keep`, or prune unused images)
+   so old tags do not fill the disk.
+
+The image ships `curl`, so Coolify's health check against `/api/health` works.
+
+The demo image, like the repository's `docker-compose.yml`, serves one
+project: `examples/portfolio_project`, with its warehouse built into the image.
+`TRACEBI_APP` is unset; the bundled demo app is opt-in
+(`TRACEBI_APP=tracebi.web.demo_app`) and never served beside a project. The
+reference project's CRM is a mock Postgres database: `docker-compose.yml`'s
+Postgres creates `crm` from `examples/portfolio_project/inputs/seed_crm.sql`
+when its volume is empty (`docker/postgres-init.sql`), and `TRACEBI_CRM_URL`
+points at it. Nothing in the app writes to it. Without `TRACEBI_CRM_URL` the
+transform reads the committed snapshot, and the certificate says so.
+
+## Next
+
+- Let people sign in as themselves: [[sign-in]]
+- Connect ChatGPT and Claude: [[connect-chatgpt-and-claude]]

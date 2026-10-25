@@ -1,19 +1,7 @@
 # Model files (YAML or JSON)
 
-**A model as data: the same star schema as a Python `DataModel`, written as a
-document a person reviews and a remote agent can draft without the server
-running anyone's code.**
-
-`models/<name>.yaml` is the human form (comments say why a measure is weighted
-and which trap it avoids); `.yml` and `.json` are the same schema and load
-through the same validator and builder. The document mirrors the builder calls
-one to one. Loading it reads no rows; a query is what opens the warehouse,
-exactly as with `models/<name>.py`. `tracebi new-model "Sales"` writes a
-commented `models/sales.yaml`.
-
----
-
-## Example
+A model file declares a star schema: the same model as a Python `DataModel`,
+written as data that runs no code.
 
 ```yaml
 # models/sales_model.yaml
@@ -40,14 +28,14 @@ facts:
     measures: [amount]
     foreign_keys: {dim_region: region_id}
 
-# Derived, groupable attributes: declared once, not re-cut in every report.
+# Derived attributes you can group by
 time_grains:
   - {dimension: dim_date, name: order_month, source: order_date, grain: month}
 value_bins:
   - dimension: dim_customer
     name: score_band
     source: credit_score
-    edges: [600, 700, 800]      # N edges make N+1 bands
+    edges: [600, 700, 800]      # 3 edges make 4 bands
 
 measures:
   - name: revenue
@@ -56,7 +44,7 @@ measures:
     format: currency0
 ```
 
-The same model as JSON, for a tool that writes JSON:
+The same model as JSON:
 
 ```json
 {
@@ -73,91 +61,86 @@ The same model as JSON, for a tool that writes JSON:
 }
 ```
 
+- `models/<name>.yaml`, `.yml` and `.json` share one schema, validator and
+  builder. YAML can carry comments explaining a measure.
+- Each key maps to one builder call. Loading the file reads no rows; a query
+  opens the warehouse.
+- `tracebi new-model "Sales"` writes a commented `models/sales.yaml`.
+
 ## Keys
 
-The schema is closed: an unknown key is an error that names the closest key.
-Errors lead with their path, e.g. `measures[2].agg`.
+The schema is closed: an unknown key is an error naming the closest key.
+Errors start with their path, e.g. `measures[2].agg`.
 
 | Key | Builder call | Fields |
 |---|---|---|
-| `name` | `DataModel(name)` | **Required.** Must equal the file name without its extension. The identifier: queries, bindings and commands use it. |
-| `label` | `DataModel(name, label=)` | Optional non-empty string: what people read where the model is listed (`Direct Lending Portfolio`). Unset, it is the name title-cased (`portfolio_model` → `Portfolio Model`; nothing is stripped). `GET /api/models`, `describe_model` and `tracebi list-models` carry it. |
-| `owners` | `DataModel(name, owners=)` | Optional list of non-empty sign-in names. Only an owner or an admin may publish a change to this model; anyone else can still draft it and run the impact check. Read from the *published* file, so a draft cannot grant itself ownership. No `owners` (or a brand-new model) means any analyst may publish. Names only: sign-in groups are not matched. |
-| `connectors` | `add_connector` | `{name, type: "duckdb", database}` or `{name, connection}` |
+| `name` | `DataModel(name)` | Required. Equals the file name without its extension. Queries, bindings and commands use it. |
+| `label` | `DataModel(name, label=)` | Optional. What people read where the model is listed (`Direct Lending Portfolio`). Unset: the name title-cased (`portfolio_model` → `Portfolio Model`). `GET /api/models`, `describe_model` and `tracebi list-models` carry it. |
+| `owners` | `DataModel(name, owners=)` | Optional list of sign-in names. Only an owner or an admin may publish a change to this model; others can still draft it and run the impact check. Read from the published file, so a draft cannot grant itself ownership. No `owners`, or a new model: any analyst may publish. Names only, not groups. |
+| `connectors` | `add_connector` | `{name, type: warehouse}`, `{name, type: "duckdb", database}` or `{name, connection}` |
 | `tables` | `add_table` | `name`, `connector`, `source` |
 | `relationships` | `add_relationship` | `name`, `left_table`, `right_table`, `left_key`, optional `right_key`, `how` |
 | `dimensions` | `add_dimension` | `name`, `table`, `key`, optional `attributes` |
 | `facts` | `add_fact` | `name`, `table`, `measures`, optional `foreign_keys` |
 | `time_grains` | `add_time_grain` | `dimension`, `name`, `source`, `grain` (`month`, `quarter`, ...) |
 | `value_bins` | `add_value_bins` | `dimension`, `name`, `source`, `edges`, optional `labels` (one more than `edges`) |
-| `measures` | `add_measure` | `name` plus any keyword of [[measures]]: `column`, `agg`, `expr`, `ratio`, `share`, `rank`, `running`, `partition_by`, `period_end`, `offset`, `growth`, `to_date`, `label`, `description`, `format`, `allow_rate_agg`, `allow_additive`. Pairs and triples are lists. |
+| `measures` | `add_measure` | `name` plus any keyword in [[measures]]: `column`, `agg`, `expr`, `ratio`, `share`, `rank`, `running`, `partition_by`, `period_end`, `offset`, `growth`, `to_date`, `label`, `description`, `format`, `allow_rate_agg`, `allow_additive`. Pairs and triples are lists. |
 
-A publish by someone who is not an owner is refused (HTTP 403, MCP `ok: false`),
-naming the owners. The owners are shown on the model's page in the app.
+`time_grains` and `value_bins` call the dimension `dimension` (the builder's
+`dim`). A publish by someone who is not an owner is refused (HTTP 403, MCP
+`ok: false`), naming the owners. The model's page in the app shows them.
 
-`time_grains` and `value_bins` name the dimension as `dimension` (the builder's
-`dim`); the other fields are the builder's own keyword arguments.
+## Connectors
 
-### YAML specifics
+| Form | Meaning |
+|---|---|
+| `type: warehouse` | The project's warehouse, wherever `tracebi.yaml` puts it ([[tracebi-yaml]]): a DuckDB file (default `data/warehouse.duckdb`), Parquet on object storage, or a remote engine. |
+| `type: duckdb`, `database: data/warehouse.duckdb` | A DuckDB file inside the project. An absolute path or `..` is refused. |
+| `{name: crm, connection: crm}` | A declared connection: `connections/crm.yaml` ([[connections-yaml]]), else the older `models/_connections/crm.py`. Its own `name` must match. |
 
-- The file is read with a safe loader only: no YAML tag can construct an
-  object, so `!!python/object` is refused.
-- **A repeated key is an error**, not last-wins: a second `agg:` in one measure
-  would otherwise quietly replace the first.
-- Beware YAML's own scalars when a value is text: `no`, `on` and `null` are not
-  strings. Quote them.
+There is no key for a URL, password or token, so a model file cannot carry
+one. Secrets stay as `${NAME}` in the connection file ([[credentials]]).
 
-### Connectors, and no credentials
+## YAML rules
 
-- `type: warehouse` (no other key) is the project's warehouse, wherever the
-  `warehouse:` block of [`tracebi.yaml`](tracebi-yaml.md) puts it: a DuckDB
-  file (the default, `data/warehouse.duckdb`), Parquet on object storage, or a
-  remote engine.
-- `type: duckdb` with `database: data/warehouse.duckdb` is a DuckDB file
-  **inside the project**. An absolute path or one with `..` is refused.
-- `{name: crm, connection: crm}` reuses a declared connection:
-  `connections/crm.yaml` ([[connections-yaml]], written by `tracebi connect`),
-  else the legacy module `models/_connections/crm.py`. Its own `name` must
-  match.
-
-There is no key for a URL, password or token, so a file cannot carry one. The
-secret stays a `${NAME}` in the connection file, resolved from the
-environment, the project `.env` or the encrypted store ([[credentials]]).
+- The file is read with a safe loader. No YAML tag can build an object;
+  `!!python/object` is refused.
+- A repeated key is an error, so a second `agg:` cannot quietly replace the
+  first.
+- YAML reads `no`, `on` and `null` as non-strings. Quote them when you mean
+  text.
 
 ## One model, one file
 
-`models/<name>.yaml`, `.yml` and `.json` are discovered beside `models/*.py` at
-startup and by live discovery, validated structurally, and loaded on first
-use. A bad file is a **failed** entry in `/api/discovery` (and `tracebi
-validate`) with the path of the problem; the other models keep loading.
+Model files are found at startup and by live discovery, checked for shape,
+and loaded on first use. A bad file is a **failed** entry in `/api/discovery`
+and `tracebi validate`, with the path of the problem; other models still load.
 
-- If `x.py` and any declarative `x.*` both exist, **the Python file wins** and
-  the declarative one is reported as failed ("`x.yaml` refused: `x.py`
-  exists").
-- If more than one declarative form exists (`x.yaml` and `x.json`), **all of
-  them are refused**, each with a reason naming the others, because nothing
-  says which is current. Delete all but one.
+| Files present | Result |
+|---|---|
+| `x.py` and any `x.yaml`/`x.yml`/`x.json` | The Python file wins. The other is reported as failed ("`x.yaml` refused: `x.py` exists"). |
+| More than one of `x.yaml`, `x.yml`, `x.json` | All are refused, each naming the others. Delete all but one. |
 
-## Converting a Python model
+## Convert a Python model
 
 ```
 tracebi migrate model models/sales.py            # print the YAML
 tracebi migrate model models/sales.py --write    # write models/sales.yaml beside it
 ```
 
-The YAML is built from the loaded model, compiled again, and compared with the
-original; a model that cannot be expressed is refused with the reason (a
-connector that is not a DuckDB file inside the project, a name that differs
-from the file name, a measure that needed `allow_additive`). Comments in the
-Python file are not carried over. Nothing is renamed or deleted: the `.py`
-keeps winning until you delete it, and a query through the YAML fingerprints
-the same as through the Python.
+The YAML is built from the loaded model, compiled again and compared with the
+original. A model YAML cannot express is refused with the reason: a connector
+that is not a DuckDB file inside the project, a name that differs from the
+file name, or a measure that needed `allow_additive`. Comments are not
+carried over. Nothing is renamed or deleted: the `.py` wins until you delete
+it, and a query through the YAML fingerprints the same.
 
 ## Drafts over the gateway
 
-A model draft is one file, `<name>.yaml` or `<name>.json`, under
-`drafts/<owner>/models/`. A new draft starts as YAML. Writing the other form
-replaces the draft's file, so the two never coexist. Publishing copies the file
-as it is to `models/`, replacing any other declarative form of that name there
-(the previous one is kept under `.tracebi/history/`). A `.yml` model can be
-drafted (it opens as `.yaml`) but a draft is never written as `.yml`.
+| Rule | Detail |
+|---|---|
+| Location | One file, `<name>.yaml` or `<name>.json`, under `drafts/<owner>/models/`. |
+| New draft | Starts as YAML. |
+| Switching form | Writing the other form replaces the draft's file; the two never coexist. |
+| Publishing | Copies the file to `models/`, replacing any other declarative form of that name. The previous one is kept under `.tracebi/history/`. |
+| `.yml` | Can be drafted (it opens as `.yaml`); a draft is never written as `.yml`. |

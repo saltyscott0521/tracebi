@@ -1,143 +1,126 @@
 # Get started
 
-**Install, scaffold a project, and build one verified report — about five
-minutes.**
+In five minutes you will install TraceBi, create a project, build a report and
+open it in the app.
 
----
+## Before you begin
+
+- Python 3.10 or later
+- Git
+- Node.js 22, to build the web app (skip it if you only need the command line)
 
 ## 1. Install
 
+TraceBi is not on PyPI yet. Install it from a clone:
+
 ```bash
+git clone https://github.com/saltyscott0521/tracebi
+cd tracebi
 pip install -e ".[all]"
+(cd web/ui && npm ci && npm run build)
 ```
 
-The minimum working set is pandas + duckdb + jinja2. `[all]` covers it plus the
-web UI and Excel export.
+The last line builds the web app. A release wheel and the Docker image ship it
+already built. `pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"`
+installs without cloning, but has no web app.
 
-## 2. Scaffold
+## 2. Create a project
 
 ```bash
-tracebi init my_project
-cd my_project
-git init && git add . && git commit -m init
+tracebi init my_project && cd my_project
+git init && git add . && git commit -m "init"
 ```
 
-Commit early: every manifest stamps the current commit as `git_sha`, so a
-report built in a repo with no commits records `unknown` and warns.
+Commit now. Each build records the commit it was made from. A build in a
+repository with no commits records `unknown` and warns.
 
-You get the three-phase layout from [[the-three-phase-workflow]]:
+The project has one folder per stage:
 
 ```
-tracebi.yaml  the project's settings: the warehouse and the engine's limits
-inputs/       ⓪ raw pulls
-connections/  the sources a transform reads, one YAML file each
-transforms/   ① the transform that lands clean tables
-models/       ② the star-schema contract
-reports/      ③ the report packages, one folder per model
+tracebi.yaml  settings: where the warehouse is, and the query engine's limits
+inputs/       raw files
+connections/  the databases a transform reads, one YAML file each
+transforms/   the code that cleans the inputs and writes warehouse tables
+models/       the model: tables, joins and measures
+reports/      report packages, one folder per model
 pipelines/    one per model: run its transform, then build its reports
-data/         the warehouse lives here
-output/       built artifacts + traces
+data/         the warehouse (created on the first run)
+output/       built reports and their traces (created on the first build)
 ```
 
-The sample transform is the pandas form (`transforms/sample_transform.py`);
-`tracebi new-transform` scaffolds the SQL form, the default for a new one.
-
-## 3. Run the transform — phase ①
+## 3. Run the transform
 
 ```bash
 tracebi run-transform sample_transform
 ```
 
-Reads `inputs/orders.csv`, cleans it, and sinks star-schema tables into
-`data/warehouse.duckdb`. That file is the first [[freeze-points|freeze point]].
+This reads `inputs/orders.csv`, cleans it, and writes star-schema tables to
+`data/warehouse.duckdb`. The sample is written in pandas. New transforms are
+SQL by default (`tracebi new-transform`).
 
-→ [[transform]]
-
-## 4. Look at the model — phase ②
-
-Open `models/sample_model.yaml`. A few dozen lines: tables, keys, and
-[[measures]]. Nothing to run — it is a declaration.
+Then check the model:
 
 ```bash
 tracebi validate
 ```
 
-Checks the model loads and its dimension keys are unique. A non-unique key
-silently inflates every additive measure, so this is worth running.
+It loads `models/sample_model.yaml` and checks that every dimension key is
+unique. A repeated key would inflate every total.
 
-→ [[model]]
-
-## 5. Build the report — phase ③
+## 4. Build the report
 
 ```bash
 tracebi report build sample_model/sample_dashboard
 ```
 
-The report lives in its model's folder, `reports/sample_model/sample_dashboard/`,
-and is named by that path. It writes two files:
+The report lives in `reports/sample_model/sample_dashboard/` and is named by
+that path. The build writes two files:
 
 ```
-output/sample_model/sample_dashboard.html                   the artifact
-output/sample_model/sample_dashboard.html.manifest.json     the trace
+output/sample_model/sample_dashboard.html                 the report
+output/sample_model/sample_dashboard.html.manifest.json   its trace
 ```
 
-The HTML is fully self-contained — no CDN, no network. Open it directly.
-
-**Steps 3 and 5 in one command.** `pipelines/sample_model.yaml` ties the model's
-transform to its reports, so this runs the transform and then builds every
-report in `reports/sample_model/`:
-
-```bash
-tracebi run-pipeline sample_model
-```
-
-It is what **Refresh data** in `tracebi serve` runs.
-
-→ [[report]]
-
-## 6. Verify
+The HTML file is self-contained and works offline. Check it:
 
 ```bash
 tracebi verify output/sample_model/sample_dashboard.html.manifest.json
 ```
 
-Re-runs every recorded query and compares fingerprints. You should see
-`✓ REPRODUCES` per figure.
+Every figure should read `REPRODUCES`: its query ran again and returned the
+same data.
 
-Then the offline check — no database, no model, just the file:
-
-```bash
-tracebi verify --file output/sample_model/sample_dashboard.html
-```
-
-Edit a number inside the HTML by hand and run it again: it reports
-`FILE ALTERED` and names the binding.
-
-→ [[trace]]
-
----
-
-## Now iterate
+## 5. Open the app
 
 ```bash
-tracebi dev sample_model/sample_dashboard
+tracebi serve
 ```
 
-The live loop, in the web app. Edit `reports/sample_model/sample_dashboard/app.jsx` and the page
-reloads. The panel beside the report shows what changed on each save, the data
-each figure is bound to, and checks on what it has earned.
+Open `http://127.0.0.1:8000`. The library lists **Sample Dashboard** under
+**Sample Orders**. Open it, then click **Trace** under the title to see how
+each number was made.
 
-**Because the model is materialized, editing a report never re-runs the
-pandas** — that is the whole point of [[freeze-points]].
+## What you have now
 
-## Where to go next
+- A warehouse file with clean tables, written by a transform.
+- A model that names those tables, their joins and their measures.
+- A report whose every number is a query against the model, with a trace
+  beside it.
 
-| You want to… | Go to |
+`tracebi run-pipeline sample_model` runs steps 3 and 4 in one command. It is
+what **Refresh data** runs in the app.
+
+To work on the report with live reload, run `tracebi dev sample_model/sample_dashboard`
+and edit `reports/sample_model/sample_dashboard/app.jsx`. The page reloads on
+each save. Editing a report never re-runs the transform.
+
+## Next
+
+| To | Read |
 | --- | --- |
-| Author a report properly | [[your-first-report]] |
-| Add a figure without writing markup | [[figure-helper]] |
-| Understand the `data-tb-*` attributes | [[template-html]] |
+| Change a number and rebuild | [[your-first-report]] |
+| Understand the three stages | [[the-three-phase-workflow]] |
 | Add a measure | [[measures]] |
-| Filter, sort, or limit | [[queries]] |
-| Style the page | [[styling-a-report]] |
+| Filter, sort or limit a query | [[queries]] |
+| Check a report file someone sent you | [[trace]] |
 | See every command | [[cli]] |

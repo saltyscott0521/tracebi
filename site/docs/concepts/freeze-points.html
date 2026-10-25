@@ -24,32 +24,32 @@
   <details class="side" id="nav" open>
     <summary>Docs menu</summary>
     <div class="links"><a href="../index.html">Overview</a>
-<div class="sec"><span>Start here</span><em>What TraceBi is and your first report, in an afternoon.</em></div>
-<a href="../start/plain-english.html">TraceBi in plain English</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
 <a href="../start/quickstart.html">Get started</a>
 <a href="../start/your-first-report.html">Your first report</a>
-<a href="../start/demo-script.html">A ten-minute demo for a non-technical audience</a>
-<div class="sec"><span>Concepts</span><em>The ideas, in the order the data moves. Read these once.</em></div>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
-<a href="../concepts/transform.html">Transform — phase ①</a>
+<a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
-<a href="../concepts/model.html">Model — phase ②</a>
+<a href="../concepts/model.html">Models</a>
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>
-<a href="../concepts/report.html">Report — phase ③</a>
+<a href="../concepts/report.html">Reports</a>
 <a href="../concepts/trace.html">The trace</a>
 <a href="../concepts/lineage.html">Lineage</a>
 <a class="on" href="../concepts/freeze-points.html">Freeze points</a>
-<div class="sec"><span>Guides</span><em>Task-shaped walkthroughs, in the order you meet the tasks.</em></div>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
 <a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
-<a href="../guides/notebook-guide.html">TraceBi in Notebooks</a>
-<a href="../guides/styling-a-report.html">Styling a report</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
-<a href="../guides/sign-in.html">Sign in to the app and the CLI</a>
-<a href="../guides/push-from-a-laptop.html">Push from a laptop</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
-<a href="../guides/web-customization.html">Customizing the TraceBi Web App</a>
-<a href="../guides/updating.html">Updating TraceBi</a>
-<div class="sec"><span>Reference</span><em>Look things up: the project, the data, the model, the report, the server.</em></div>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
 <a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
@@ -61,25 +61,24 @@
 <a href="../reference/queries.html">Queries</a>
 <a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
 <a href="../reference/report-json.html">report.json</a>
-<a href="../reference/app-jsx.html">app.jsx — the React lane</a>
-<a href="../reference/template-html.html">template.html — the figure grammar</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
-<div class="sec"><span>For agents</span><em>Standard operating procedures. An agent reads AGENTS.md first.</em></div>
-<a href="../agents/sop-authoring.html">SOP — Authoring a Report Through the Gateway (Analyst Agent)</a>
-<a href="../agents/sop-model-changes.html">SOP: Changing the Semantic Contract</a></div>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
 <h1 id="freeze-points">Freeze points</h1>
-<p><strong>A freeze point is a materialized artifact handed from one phase to the next.
-It is what lets the three phases run at different speeds.</strong></p>
-<p>There are two, one between each pair of phases in <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>:</p>
+<p>A freeze point is a stored artifact one stage hands to the next. There are
+two:</p>
 <table>
 <thead>
 <tr>
-<th>Freeze</th>
+<th>Freeze point</th>
 <th>What it is</th>
 <th>Written by</th>
 <th>Read by</th>
@@ -87,61 +86,49 @@ It is what lets the three phases run at different speeds.</strong></p>
 </thead>
 <tbody>
 <tr>
-<td><strong>The sink</strong></td>
-<td>the warehouse <code>tracebi.yaml</code> names (by default <code>data/warehouse.duckdb</code>) — real tables</td>
-<td><a href="../concepts/transform.html">Transform — phase ①</a> (①)</td>
-<td><a href="../concepts/model.html">Model — phase ②</a> (②)</td>
+<td>The sink</td>
+<td>The warehouse <code>tracebi.yaml</code> names (by default <code>data/warehouse.duckdb</code>): real tables</td>
+<td>The <a href="../concepts/transform.html">Transforms</a></td>
+<td>The <a href="../concepts/model.html">Models</a></td>
 </tr>
 <tr>
-<td><strong>The model</strong></td>
-<td>the semantic contract: grain, keys, <a href="../reference/measures.html">Measures</a></td>
-<td>you, in <code>models/</code></td>
-<td><a href="../concepts/report.html">Report — phase ③</a> (③)</td>
+<td>The model</td>
+<td>The definitions: grain, keys, <a href="../reference/measures.html">Measures</a></td>
+<td>You, in <code>models/</code></td>
+<td>The <a href="../concepts/report.html">Reports</a></td>
 </tr>
 </tbody>
 </table>
-<hr>
-<h2 id="why-they-matter">Why they matter</h2>
-<p>Without a freeze point, every report render would re-run the analysis above it.
-With one, the expensive work happens once and the cheap work happens as often
-as you like.</p>
-<p>That is the whole reason the reporting loop is fast:</p>
+<h2 id="what-they-give-you">What they give you</h2>
 <ul>
-<li><strong>Editing a report re-renders in milliseconds.</strong> It queries materialized
-  tables; no pandas runs.</li>
-<li><strong>Re-running a transform does not touch your reports.</strong> They keep serving
-  the last good sink until you refresh it.</li>
-<li><strong>Changing a model is a reviewable diff</strong>, not a cascade — because what sits
-  below it is frozen, and what sits above it only speaks the model's
-  vocabulary.</li>
+<li><strong>Editing a report rebuilds in milliseconds.</strong> It queries stored tables; no
+  transform runs.</li>
+<li><strong>Re-running a transform does not touch your reports.</strong> They keep showing
+  the last good data until you rebuild them.</li>
+<li><strong>Changing a model is a diff someone can review.</strong> What sits below it is
+  fixed, and what sits above it only uses the model's names.</li>
 </ul>
-<h2 id="what-crossing-a-freeze-point-costs">What crossing a freeze point costs</h2>
-<p>A freeze point is a <em>contract</em>, so crossing it deliberately loses information.</p>
+<h2 id="what-they-cost">What they cost</h2>
 <ul>
-<li><strong>The model cannot see the transform.</strong> It reads tables, not the code that
-  produced them. If a number is wrong because the pandas was wrong, the model
-  has no way to know — this is the honest boundary described in <a href="../concepts/trace.html">The trace</a>.</li>
-<li><strong>The report cannot see the warehouse directly.</strong> It speaks in
-  <a href="../reference/measures.html">Measures</a> and dimensions the model declares. That is what makes a figure
-  re-runnable, and it is why an expressiveness gap in the model pushes work
-  into ungoverned code where the trace weakens.</li>
+<li><strong>The model cannot see the transform.</strong> If a number is wrong because the
+  cleaning was wrong, the model has no way to know.</li>
+<li><strong>The report cannot read the warehouse directly.</strong> It asks for measures and
+  dimensions the model declares. That is what makes a figure re-runnable, and
+  why a gap in the model pushes work into code the trace cannot check.</li>
 </ul>
-<h2 id="refreshing-a-freeze-point">Refreshing a freeze point</h2>
-<p>Re-run the transform (<code>tracebi run-transform &lt;name&gt;</code>) and the sink is replaced.
-Transforms are written to be <strong>idempotent</strong> — a rerun replaces the warehouse
-tables rather than appending to them.</p>
-<blockquote>
-<p><strong>One operational catch:</strong> a DuckDB file has one writer at a time. A model
-query opens the warehouse read-only for that query alone, so a running
-<code>tracebi dev</code> or <code>tracebi serve</code> does not block a refresh: the write waits a
-few seconds for a read in progress to let go, and a read that comes during the
-write is refused, naming the transform to let finish.</p>
-</blockquote>
-<h2 id="related">Related</h2>
+<h2 id="refresh-one">Refresh one</h2>
+<pre><code class="language-bash">tracebi run-transform &lt;name&gt;
+</code></pre>
+<p>The rerun replaces the warehouse tables. It never appends.</p>
+<p>A DuckDB file has one writer at a time. A model query opens the warehouse
+read-only for that query alone, so a running <code>tracebi dev</code> or <code>tracebi serve</code>
+does not block a refresh. The write waits a few seconds for a read in progress
+to finish. A read that arrives during the write is refused, naming the
+transform to wait for.</p>
+<h2 id="next">Next</h2>
 <ul>
-<li><a href="../concepts/transform.html">Transform — phase ①</a> — what writes the sink</li>
-<li><a href="../concepts/sink-contracts.html">Sink contracts</a> — checks that run at sink time</li>
-<li><a href="../concepts/model.html">Model — phase ②</a> — what reads it</li>
+<li>The three stages they connect: <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a></li>
+<li>Checks that run before the sink counts: <a href="../concepts/sink-contracts.html">Sink contracts</a></li>
 </ul>
   </main>
 </div>

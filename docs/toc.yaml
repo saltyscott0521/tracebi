@@ -10,7 +10,7 @@
 sections:
   - key: start
     title: Start here
-    blurb: What TraceBi is and your first report, in an afternoon.
+    blurb: Install TraceBi and build your first report.
     pages:
       - plain-english
       - quickstart
@@ -19,7 +19,7 @@ sections:
 
   - key: concepts
     title: Concepts
-    blurb: The ideas, in the order the data moves. Read these once.
+    blurb: How data moves from raw files to a checked report.
     pages:
       - the-three-phase-workflow
       - transform
@@ -34,10 +34,10 @@ sections:
 
   - key: guides
     title: Guides
-    blurb: Task-shaped walkthroughs, in the order you meet the tasks.
+    blurb: Step-by-step instructions for common tasks.
     pages:
       - page: analyst-guide
-        blurb: The analyst's path from messy data to a served, verified report
+        blurb: Build a report, check it, send it, and work with a model in Python
       - notebook-guide
       - styling-a-report
       - one-server
@@ -46,11 +46,11 @@ sections:
       - connect-chatgpt-and-claude
       - web-customization
       - page: updating
-        blurb: "`tracebi update`: what's new, and the one command that updates your install"
+        blurb: Check for a new release and update your install with `tracebi update`
 
   - key: reference
     title: Reference
-    blurb: "Look things up: the project, the data, the model, the report, the server."
+    blurb: Every file, key, command and route.
     pages:
       - cli
       - tracebi-yaml
@@ -64,9 +64,9 @@ sections:
       - pipeline-yaml
       - report-json
       - page: app-jsx
-        blurb: "The React lane: an app-like dashboard from the TraceBi kit, built into the same single offline file"
+        blurb: Build a dashboard from the TraceBi kit in React, into the same single offline file
       - page: template-html
-        blurb: "The figure grammar: ordinary HTML, and the `data-tb-*` attributes that turn an element into a live figure"
+        blurb: Turn ordinary HTML into live figures with `data-tb-*` attributes
       - figure-helper
       - number-formats
       - folder-yaml
@@ -74,12 +74,12 @@ sections:
 
   - key: agents
     title: For agents
-    blurb: Standard operating procedures. An agent reads AGENTS.md first.
+    blurb: Procedures for AI agents. An agent reads AGENTS.md first.
     pages:
       - page: sop-authoring
-        blurb: Authoring a report through the gateway, step by step
+        blurb: Author a report through the gateway, step by step
       - page: sop-model-changes
-        blurb: Changing the semantic contract, a model's measures and keys, safely
+        blurb: Change a model's measures and keys safely
 
 # An old address → the page that replaced it (<section>/<stem> both sides).
 # The app redirects it; the site writes a page there that forwards. An old
@@ -94,45 +94,43 @@ moved:
 # docs/index.md is generated: this intro, one line per page above (its title
 # and the first sentence of the page), then this outro.
 intro: |
-  **Reports as code — to keep agents in line.**
+  **Reports as code, with a trace behind every number.**
 
-  You build a report the way you build software: the connections, the
-  transforms, the star schema, the measures and the figures are all files in your
-  repo — reviewed in a pull request, versioned, tested, and authored as easily by
-  an agent as by a person.
+  You build a report the way you build software. The connections, transforms,
+  star schema, measures and figures are files in your repository: reviewed in
+  a pull request, versioned, tested, and written as easily by an agent as by a
+  person.
 
-  > This folder is an [[#Using this vault|Obsidian vault]] — pages link to each
-  > other with wiki links, so you can open `docs/` as a vault and navigate the
-  > graph. The app serves it as **Docs** (`/docs`), and tracebi.com as `/docs/`,
-  > in the order below.
+  > This folder is an [[#Using this vault|Obsidian vault]]. Pages link to each
+  > other with wiki links, so you can open `docs/` as a vault and browse the
+  > graph. The app serves it as **Docs** (`/docs`), and tracebi.com as
+  > `/docs/`, in the order below.
 
 outro: |
   ## The canon
 
-  Short, stable, opinionated documents at the repo root that define the project.
+  Short, stable documents at the repository root that define the project.
 
-  - `MANIFESTO.md` — what TraceBi is and what it refuses to build
-  - `AGENTS.md` — the brief an agent reads before authoring
-  - `CLAUDE.md` — behavioural guidelines for AI assistants in this repo
+  - `MANIFESTO.md`: what TraceBi is and what it will not build
+  - `AGENTS.md`: the brief an agent reads before authoring
+  - `CLAUDE.md`: guidelines for AI assistants working in this repository
 
   ---
 
   ## Using this vault
 
-  Open the `docs/` folder as an Obsidian vault to get backlinks, the graph view,
-  and wiki-link autocomplete. Everything is plain Markdown, so it also reads fine
-  in an editor or on GitHub — GitHub renders a wiki link as literal text rather
-  than a link, which is the one cost of this style.
+  Open the `docs/` folder as an Obsidian vault for backlinks, the graph view
+  and wiki-link autocomplete. Everything is plain Markdown, so it also reads in
+  an editor or on GitHub, where a wiki link shows as plain text.
 
-  **Conventions used throughout:**
+  **Conventions:**
 
-  - One page is about **one thing**. If a page needs two headings that could each
-    be a page, it becomes two pages.
-  - Every page opens with a one-sentence answer to *"what is this?"*
-  - Reference pages state what the code accepts, with the refusal it raises when
-    you get it wrong — the refusals are part of the contract, not an afterthought.
-  - Locked language is quoted exactly: *"the sink satisfied its contract"*,
-    *"reproduces"* (never "verified"). See [[trace]] for why the wording is
-    load-bearing.
-  - The order of pages is `docs/toc.yaml`. A new page goes there, and
-    `python site/build_docs.py` regenerates this index and the site.
+  - Each page is about one thing.
+  - Each page opens with one sentence saying what you will do or get.
+  - Reference pages list what the code accepts, and the refusal it gives when
+    you get it wrong.
+  - Some phrases are fixed because the product uses them exactly: *"the sink
+    satisfied its contract"* and *"reproduces"* (never "verified"). See
+    [[trace]].
+  - The order of pages is `docs/toc.yaml`. Add a new page there, then run
+    `python site/build_docs.py` to regenerate this index and the site.
