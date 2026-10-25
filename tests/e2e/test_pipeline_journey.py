@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from tests.e2e.conftest import follow_run, run_cli, serve_app
+from tests.e2e.conftest import follow_run, release_warehouses, run_cli, serve_app
 
 LAYERS = '''
 from tracebi import CSVConnector, SQLConnector
@@ -474,16 +474,106 @@ def test_a_model_and_its_connector_show_the_file_that_declares_them(reference, m
     assert c.get("/api/models/nope/source").status_code == 404
 
 
+SECTOR_MODEL = """\
+name: sector_model
+connectors:
+  - name: warehouse
+    type: warehouse
+tables:
+  - name: busy_sectors
+    connector: warehouse
+    source: v_busy_sectors
+facts:
+  - name: busy_sectors
+    table: busy_sectors
+    measures: [fair_value, positions]
+measures:
+  - name: fair_value
+    column: fair_value
+    agg: sum
+"""
+
+
+def test_a_sink_view_reads_only_the_warehouse_and_a_model_reads_it(reference, monkeypatch):
+    """The reference transform leaves a sink view. A view over its -- source:
+    table, over a file, or calling a TEMP MACRO fails the run, naming the view
+    and the fix, and is not left in the warehouse. A view over that view
+    lands, the certificate names its base, and a model table over it queries,
+    on the file tier and on the remote tier."""
+    import duckdb
+
+    from tracebi import model_registry
+    from tracebi.contracts import read_contracts
+    from tracebi.project_config import warehouse
+
+    monkeypatch.delenv("TRACEBI_CRM_URL", raising=False)
+    sql = reference / "transforms" / "holdings_transform.sql"
+    text = sql.read_text()
+    refused = {
+        "v_ratings": ("SELECT * FROM crm.issuer_ratings",
+                      "view v_ratings reads crm.issuer_ratings, a -- source: table"),
+        "v_raw": ("SELECT * FROM read_csv('inputs/holdings.csv')",
+                  "view v_raw reads read_csv(…), which reads outside the warehouse"),
+        "v_cents": ("SELECT cents(fair_value) AS fv FROM fact_holdings",
+                    "view v_cents cannot be read the way a model reads the warehouse"),
+    }
+    for name, (select, said) in refused.items():
+        sql.write_text(f"{text}\nCREATE OR REPLACE VIEW {name} AS {select};\n")
+        code, out = run_cli("run-transform", "holdings_transform")
+        assert code == 1 and said in out, out
+        assert f"materialize it: CREATE OR REPLACE TABLE {name} AS" in out, out
+    con = duckdb.connect(str(reference / "data" / "warehouse.duckdb"), read_only=True)
+    try:
+        left = {r[0] for r in con.execute("SELECT view_name FROM duckdb_views() WHERE NOT internal").fetchall()}
+    finally:
+        con.close()
+    assert not left & set(refused), left
+
+    sql.write_text(text + "\nCREATE OR REPLACE VIEW v_busy_sectors AS\n"
+                          "SELECT * FROM fact_holdings_by_sector WHERE positions > 1;\n")
+    (reference / "models" / "sector_model.yaml").write_text(SECTOR_MODEL)
+    for block in ("", "warehouse:\n  tier: remote\n  location: data/remote.duckdb\n"):
+        if block:
+            (reference / "tracebi.yaml").write_text(block)
+        code, out = run_cli("run-transform", "holdings_transform")
+        assert code == 0, out
+        sink = warehouse(str(reference)).sink
+        views = {v["name"]: v["bases"] for v in read_contracts(sink)["transforms"]["holdings"]["views"]}
+        assert views == {"fact_holdings_by_sector": ["dim_issuer", "fact_holdings"],
+                         "v_busy_sectors": ["fact_holdings_by_sector"]}
+        con = duckdb.connect(str(reference / "data" / ("remote.duckdb" if block else "warehouse.duckdb")),
+                             read_only=True)
+        try:
+            [(expected,)] = con.execute(
+                "SELECT round(sum(fair_value), 2) FROM fact_holdings_by_sector WHERE positions > 1").fetchall()
+        finally:
+            con.close()
+        monkeypatch.setattr(model_registry, "_registry", model_registry.ModelRegistry())
+        monkeypatch.setattr(model_registry, "_auto_discovered", False)
+        total = model_registry.get_model("sector_model").query(
+            fact="busy_sectors", measures=["fair_value"]).to_pandas()
+        assert round(float(total["fair_value"].iloc[0]), 2) == expected
+        release_warehouses()
+
+
 def _object_tier_journey(proj, monkeypatch, warehouse_block, rewrite):
     """One tracebi.yaml block moves the reference project's warehouse to the
-    object tier: the pipeline's transform sinks one Parquet file per table and
-    the certificate beside them, the model reads them where they lie, a
+    object tier: the transform's sink view is refused there until it is
+    materialized, then the pipeline's transform sinks one Parquet file per
+    table and the certificate beside them, the model reads them where they lie, a
     report built from them reproduces, and a file rewritten behind the
     transform's back reads stale. Returns the warehouse."""
     from tracebi.project_config import warehouse
 
     (proj / "tracebi.yaml").write_text(warehouse_block)
     wh = warehouse(str(proj))
+    # The object tier keeps no definitions, so the transform's sink view is
+    # refused, saying so; materialized as a table, it lands as Parquet.
+    code, out = run_cli("run-pipeline", "portfolio_model", "--layer", "transform")
+    assert code != 0 and "view fact_holdings_by_sector: the object tier" in out, out
+    sql = proj / "transforms" / "holdings_transform.sql"
+    sql.write_text(sql.read_text().replace(
+        "CREATE OR REPLACE VIEW fact_holdings_by_sector", "CREATE OR REPLACE TABLE fact_holdings_by_sector"))
     code, out = run_cli("run-pipeline", "portfolio_model", "--layer", "transform")
     assert code == 0, out
     assert not (proj / "data" / "warehouse.duckdb").exists()
@@ -535,7 +625,7 @@ def test_the_object_tier_sinks_parquet_the_model_reads_in_place(reference, monke
     assert sorted(p.name for p in (reference / "data" / "lake").iterdir()) == [
         "_contracts.json", "dim_date.parquet", "dim_flow_type.parquet", "dim_fund.parquet",
         "dim_issuer.parquet", "dim_rating.parquet", "fact_cashflows.parquet",
-        "fact_holdings.parquet"]   # the CRM source it read lands nowhere
+        "fact_holdings.parquet", "fact_holdings_by_sector.parquet"]   # the CRM source it read lands nowhere
     from tracebi.contracts import check_fingerprints
     [row] = [r for r in check_fingerprints(wh.sink) if r["table"] == "dim_fund"]
     assert row["rewritten"] and row["current"] == row["recorded"] and not row["matches"]

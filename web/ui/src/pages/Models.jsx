@@ -245,7 +245,7 @@ export function ModelDetail({ name, action }) {
     if (whLoading) return () => null
     const listed = t => (wh?.warehouses || []).find(w => w.name === t.connector)?.tables.find(x => x.name === t.source)
     if (!schema.tables.every(listed)) return undefined
-    return t => { const x = t && listed(t); return x ? { rows: x.rows, exact: true, contract: x.contract } : null }
+    return t => { const x = t && listed(t); return x ? { rows: x.rows, exact: true, contract: x.contract, view: x.kind === 'view' } : null }
   }, [schema, wh, whLoading])
   // A named measure (⌘K links one) selects the fact it runs on.
   useEffect(() => {

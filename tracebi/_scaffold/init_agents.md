@@ -65,7 +65,11 @@ DuckDB statements run top to bottom in ONE fresh warehouse connection
 (`read_csv('inputs/…')` resolves against the project root; a table you
 `CREATE OR REPLACE` — not `TEMP` — is a sink table; on the object tier
 write `COPY (…) TO '{{ sink }}/<table>.parquet' (FORMAT PARQUET)`, or let
-the created table land there). Exactly two placeholders: `{{ sink }}` (the
+the created table land there). A view you `CREATE OR REPLACE VIEW` is a
+sink view on the file and remote tiers: it may read only warehouse tables
+and views, and one that reads a `-- source:` table or a file is refused
+(the object tier refuses every view). Materialize the facts you aggregate,
+view the derivations. Exactly two placeholders: `{{ sink }}` (the
 warehouse tracebi.yaml names) and `{{ root }}` (the project root). To read
 a table from a database outside the warehouse, declare the connection
 (`tracebi connect crm --kind postgres` writes `connections/crm.yaml`) and

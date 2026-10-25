@@ -91,6 +91,9 @@ CREATE OR REPLACE TABLE fact_holdings AS SELECT …;
 <code>fact_holdings</code>) land in the warehouse. Those table names are what the model
 reads. See <a href="../reference/transform-sql.html">SQL transforms</a> for the placeholders <code>{{ sink }}</code> and <code>{{ root }}</code>
 and where tables land on each warehouse tier.</p>
+<p>A transform may also leave a view (<code>CREATE OR REPLACE VIEW</code>) over the tables
+it wrote, and a model reads it as a table. It may read only warehouse tables,
+never a source or a file: see <a href="../reference/transform-sql.html">SQL transforms</a>.</p>
 <h2 id="create-and-run-one">Create and run one</h2>
 <pre><code class="language-bash">tracebi new-transform &quot;Holdings&quot;     # transforms/holdings.sql + holdings.contract.yaml
 tracebi run-transform holdings       # prints form: sql

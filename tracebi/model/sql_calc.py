@@ -304,12 +304,13 @@ def run(model, query: SqlQuery) -> DataSet:
             raise RuntimeError(
                 f"Cannot attach '{connector.database}' read-only: "
                 f"{con.attach_errors.get('wh')}")
-        # On the object tier the warehouse's tables are views over its Parquet.
-        kinds = ("BASE TABLE",) if connector.tier == "file" else ("BASE TABLE", "VIEW")
+        # A view is an input too: a transform's sink view on the file and
+        # remote tiers, and every table on the object tier, where the
+        # warehouse's tables are views over its Parquet.
         base = {row[0] for row in con.execute(
             "SELECT table_name FROM information_schema.tables "
             "WHERE table_catalog = 'wh' AND table_schema = 'main' "
-            f"AND table_type IN ({', '.join(repr(k) for k in kinds)})").fetchall()}
+            "AND table_type IN ('BASE TABLE', 'VIEW')").fetchall()}
         inputs = [(t, con.execute(f"SELECT * FROM {_ident(t)}").df())
                   for t in sorted(_tables_read(con, resolved) & base)]
         df = con.execute(resolved).df()

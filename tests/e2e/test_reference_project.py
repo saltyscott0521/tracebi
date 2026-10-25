@@ -78,7 +78,9 @@ def test_every_report_reproduces_and_its_file_is_intact(built, name):
 
 
 HOLDINGS_TABLES = ("dim_fund", "dim_issuer", "dim_rating", "fact_holdings", "dim_date",
-                   "dim_flow_type", "fact_cashflows")
+                   "dim_flow_type", "fact_cashflows",
+                   # a sink view in the SQL form, a table in the pandas one: the same rows
+                   "fact_holdings_by_sector")
 
 
 def test_the_sql_transform_and_its_pandas_escape_hatch_sink_identical_tables(built, tmp_path, monkeypatch):
@@ -119,6 +121,59 @@ def test_the_sql_transform_and_its_pandas_escape_hatch_sink_identical_tables(bui
         assert src["source_fallback"] == "csv" and src["fallback"] == "inputs/issuer_ratings.csv"
         assert "TRACEBI_CRM_URL" in src["reason"] and src["rows"] == 12
     assert sql_src["fingerprint"] == pandas_src["fingerprint"]
+
+
+def test_a_sink_view_lands_as_a_definition_and_the_app_says_what_it_reads(built, monkeypatch):
+    """holdings_transform.sql leaves one sink view beside its tables,
+    fact_holdings_by_sector. It is a view in the warehouse (not a copy of
+    rows), its certificate names it with the tables it reads, its rows check
+    ran against it as against a table, and the app lists it as a view, under
+    the transform that defined it, with its bases."""
+    import duckdb
+
+    from tests.e2e.conftest import release_warehouses, serve_app
+
+    con = duckdb.connect(str(built / "data" / "warehouse.duckdb"), read_only=True)
+    try:
+        views = {r[0] for r in con.execute(
+            "SELECT view_name FROM duckdb_views() WHERE NOT internal").fetchall()}
+        [(sectors,)] = con.execute(
+            "SELECT count(DISTINCT sector) FROM fact_holdings JOIN dim_issuer USING (issuer_id)").fetchall()
+    finally:
+        con.close()
+    assert views == {"fact_holdings_by_sector"}
+
+    rec = json.loads((built / "data" / "warehouse.contracts.json").read_text())["transforms"]["holdings"]
+    [view] = rec["views"]
+    assert view["name"] == "fact_holdings_by_sector"
+    assert view["bases"] == ["dim_issuer", "fact_holdings"] and len(view["definition_sha256"]) == 64
+    [check] = [c for c in rec["checks"] if c["table"] == "fact_holdings_by_sector"]
+    assert check["passed"] and check["observed"] == sectors
+    assert "fact_holdings_by_sector" in rec["tables"]       # the check read it: a fingerprint
+
+    monkeypatch.delenv("TRACEBI_CRM_URL", raising=False)
+    c = serve_app(monkeypatch, models=True)
+    try:
+        [wh] = c.get("/api/warehouse").json()["warehouses"]
+        listed = {t["name"]: t for t in wh["tables"]}
+        by_sector = listed["fact_holdings_by_sector"]
+        assert by_sector["kind"] == "view" and listed["fact_holdings"]["kind"] == "table"
+        assert by_sector["bases"] == ["dim_issuer", "fact_holdings"]
+        assert by_sector["written_by"]["transform"] == "holdings_transform"
+        assert by_sector["rows"] == sectors and by_sector["contract"]["status"] == "satisfied"
+        writers = {w["transform"]: w for w in wh["writers"]}
+        assert "fact_holdings_by_sector" in writers["holdings_transform"]["tables"]
+
+        table = c.get("/api/tables/warehouse/fact_holdings_by_sector").json()
+        assert (table["kind"], table["table_kind"], table["rows"]) == ("warehouse", "view", sectors)
+        assert table["view"] == {"transform": "holdings_transform",
+                                 "bases": ["dim_issuer", "fact_holdings"]}
+        assert c.get("/api/tables/warehouse/fact_holdings").json()["table_kind"] == "table"
+        page = c.get("/api/tables/warehouse/fact_holdings_by_sector/rows",
+                     params={"sort": "positions", "desc": 1}).json()
+        assert page["total"] == sectors
+    finally:
+        release_warehouses()
 
 
 def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(built, monkeypatch):
@@ -229,7 +284,7 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         assert "fed_from" not in rating
         writers = {w["transform"]: w for w in whs["warehouse"]["writers"]}
         holdings = writers["holdings_transform"]
-        assert "dim_rating" in holdings["tables"] and len(holdings["tables"]) == 7
+        assert "dim_rating" in holdings["tables"] and len(holdings["tables"]) == 8   # 7 tables, 1 view
         [fed] = holdings["read"]
         assert fed["ref"] == "crm.issuer_ratings" and fed["snapshot"] == "inputs/issuer_ratings.csv"
         assert holdings["file"] == "transforms/holdings_transform.contract.yaml" and holdings["note"]

@@ -27,6 +27,7 @@ function GroupView({ g, onSelect }) {
   const home = useTransformHome()
   const wr = g.writer
   const own = g.warehouse.tables.filter(t => g.tables.includes(t.name) || g.tables.includes(`${g.warehouse.name}.${t.name}`))
+  const views = wr ? wr.tables.filter(n => g.warehouse.tables.find(t => t.name === n)?.kind === 'view').length : 0
   return (
     <div className="dbx-insp__summary" data-writer={wr ? wr.transform || wr.contract : ''}>
       <header className="dbx-insp__head">
@@ -37,7 +38,7 @@ function GroupView({ g, onSelect }) {
           <>
             <p className="whgroup__head dbx-insp__sub">
               {wr.transform ? <TransformName name={wr.transform} home={home} /> : <code>{wr.contract}</code>}
-              {' · '}wrote {count(wr.tables.length, 'table')}
+              {' · '}wrote {count(wr.tables.length - views, 'table')}{views > 0 && ` and ${count(views, 'view')}`}
               {wr.tables.length > own.length && ` (${own.length} shown)`}
               {wr.read.length > 0 && <> · read {wr.read.map((src, i) => (
                 <span key={src.ref}>{i > 0 && ', '}<ReadInput src={src} /></span>))} on that run</>}
@@ -100,6 +101,7 @@ function Summary({ warehouses, schema, model }) {
         <p className="dbx-quiet">
           Select a transform in the tree for what its run read and what its checks say, or a table for its columns and rows.
           The kinds are the models': <KindGlyph role="fact" /> a fact, <KindGlyph role="dimension" /> a dimension.
+          {warehouses.some(w => w.tables.some(t => t.kind === 'view')) && <> <KindGlyph view /> is a view a transform defined over warehouse tables.</>}
         </p>
       </InspectorSection>
     </div>
@@ -127,7 +129,7 @@ export default function Warehouses() {
     () => (loaded ? warehouseSchema(warehouses, payloads, extra, model) : null),
     [loaded, warehouses, payloads.length, extraKey, model], // eslint-disable-line react-hooks/exhaustive-deps
   )
-  const infoOf = useMemo(() => t => t && { rows: t.listed.rows, exact: true, contract: t.listed.contract }, [])
+  const infoOf = useMemo(() => t => t && { rows: t.listed.rows, exact: true, contract: t.listed.contract, view: t.listed.kind === 'view' }, [])
 
   // A link to one warehouse lands on it (#wh-<name>).
   useEffect(() => {

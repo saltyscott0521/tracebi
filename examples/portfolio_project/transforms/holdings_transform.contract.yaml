@@ -70,3 +70,8 @@ checks:
   - foreign_key: fact_cashflows
     column: flow_type_id
     refers_to: [dim_flow_type, flow_type_id]
+  - rows: fact_holdings_by_sector
+    at_least: 1
+    note: >-
+      a sink view over fact_holdings and dim_issuer, checked as a table is;
+      every held position has a sector, so it has at least one row

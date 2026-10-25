@@ -6,6 +6,7 @@ import {
 } from '../api'
 import { DataFrame } from './Data'
 import { FORM_LABEL } from '../chain'
+import { KindGlyph } from '../components/DataBrowser'
 import { fmtBytes, sourceKind } from '../components/Storage'
 import { count } from '../format'
 import {
@@ -255,7 +256,7 @@ function WarehouseCard({ w, groups, lit, focus, cardProps, groupRef }) {
                   <li key={t.name}>
                     <Link to={tablePath(w.name, t.name)} className={`fcard__tbl${ok ? ' fcard__tbl--ok' : ''}`}
                           title={ok ? 'The sink satisfied its contract on the run that wrote it' : undefined}>
-                      {t.name}
+                      {t.kind === 'view' && <KindGlyph view />}<span className="fcard__tbln">{t.name}</span>
                     </Link>
                   </li>
                 )

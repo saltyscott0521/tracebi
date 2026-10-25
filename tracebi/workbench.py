@@ -1213,16 +1213,22 @@ def _warehouse_tables(path: str, profile: bool = True,
     deterministically. A table's profile failure lands in that entry's
     ``"error"``, never raised. Framework tables (``tracebi_*``,
     ``alembic_version``) are never read: their names go into *hidden*, so a
-    caller can say how many it left out."""
+    caller can say how many it left out. ``kind`` is ``view`` for a sink
+    view and ``table`` otherwise: on the object tier every table is a view
+    over its Parquet file, which is the reader's mechanics, not a view."""
     from tracebi.contracts import _reader
     from tracebi.sources import is_framework_table
+    from tracebi.warehouse import as_warehouse
 
     tables: list[dict] = []
+    views_kept = as_warehouse(path).tier != "object"
     con = _reader(path)
     try:
-        names = [r[0] for r in con.execute(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = 'main' ORDER BY table_name").fetchall()]
+        listed = con.execute(
+            "SELECT table_name, table_type FROM information_schema.tables "
+            "WHERE table_schema = 'main' ORDER BY table_name").fetchall()
+        names = [r[0] for r in listed]
+        kinds = {r[0]: "view" if views_kept and r[1] == "VIEW" else "table" for r in listed}
         for t in names:
             if is_framework_table(t):
                 if hidden is not None:
@@ -1235,7 +1241,7 @@ def _warehouse_tables(path: str, profile: bool = True,
                 "ORDER BY ordinal_position", [t]).fetchall()}
             n = con.execute(
                 f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]
-            entry: dict = {"name": t, "rows": int(n), "columns": columns}
+            entry: dict = {"name": t, "kind": kinds[t], "rows": int(n), "columns": columns}
             if profile and len(columns) > PROFILE_COLUMN_CAP:
                 entry["profile"] = None
                 entry["note"] = (f"profile skipped — {len(columns)} columns "

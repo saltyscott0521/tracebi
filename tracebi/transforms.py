@@ -11,7 +11,16 @@ one of three forms:
   tier the runner writes it to ``<location>/x.parquet`` after the script, as
   ``write()`` would. A script may instead ``COPY (…) TO '{{ sink }}/x.parquet'``
   itself. ``TEMP`` tables and ``TEMP MACRO``\\ s are scratch and vanish with
-  the connection.
+  the connection. A view the script creates (``CREATE OR REPLACE VIEW x AS
+  …``) is a **sink view**: the choice to keep a derivation as a definition
+  rather than materialize it. It may read only the warehouse's own tables
+  and views, because the model reads it through a locked connection that can
+  reach nothing else (:mod:`tracebi.model.engine`), and because a view that
+  re-read a source or a file at read time would make the certificate's word
+  for what landed untrue. One that reads a ``-- source:`` table, a file, a
+  URL or a ``TEMP`` object fails the run and is dropped, and the message
+  names the reference and the fix. The object tier keeps no definitions, so
+  it refuses every view.
 - **python** (``<name>.py``) and **notebook** (``<name>.ipynb``): the escape
   hatch, run top to bottom in a fresh namespace, ending by writing frames
   (pandas, or anything DuckDB reads as Arrow) with
@@ -73,6 +82,14 @@ _PLACEHOLDER = re.compile(r"\{\{(.*?)\}\}", re.S)
 _DIRECTIVE = re.compile(r"^\s*--\s*source:(.*)$")
 _SOURCE = re.compile(r"\s*(?P<connection>[A-Za-z_]\w*)(?:\.(?P<table>[A-Za-z_]\w*))?"
                      r"(?:\s+fallback:\s*(?P<fallback>\S+))?\s*")
+
+
+#: Table functions a sink view may call: they make rows and read nothing.
+_PURE_TABLE_FUNCTIONS = frozenset({"range", "generate_series", "unnest"})
+# The head DuckDB writes for a view's definition in duckdb_views().sql,
+# ``CREATE VIEW <name> [(<columns>)] AS ``, whatever the script spelled.
+_VIEW_HEAD = re.compile(r'^\s*CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+(?:"(?:[^"]|"")*"|[^\s(]+)'
+                        r'\s*(?:\([^)]*\))?\s+AS\s+', re.I | re.S)
 
 
 class TransformError(ValueError):
@@ -277,11 +294,13 @@ def _line_of(text: str, start: int, statement: str) -> int:
 
 
 def run_sql(path: "str | os.PathLike[str]", root: Optional[str] = None,
-            sources: Optional[dict] = None) -> int:
+            sources: Optional[dict] = None, views: Optional[list] = None) -> int:
     """Run a SQL transform in one fresh write connection to the project's
     warehouse; on the object tier, land the tables it created as Parquet.
     Returns the number of statements run. Each ``-- source:`` load's record
-    goes into *sources* (``{ref: record}``) when a dict is passed."""
+    goes into *sources* (``{ref: record}``) when a dict is passed, and each
+    sink view the script created into *views* (``{name, definition_sha256,
+    bases}``, :func:`_sink_views`) when a list is passed."""
     import duckdb
 
     from tracebi.connectors.duckdb_connector import DuckDBConnector
@@ -304,6 +323,7 @@ def run_sql(path: "str | os.PathLike[str]", root: Optional[str] = None,
         loaded = _attach_sources(con, directives, root, where)
         if sources is not None:
             sources.update(loaded)
+        before = _view_oids(con)
         cursor = 0
         for i, statement in enumerate(statements, 1):
             start = text.find(statement.query, cursor)
@@ -314,9 +334,158 @@ def run_sql(path: "str | os.PathLike[str]", root: Optional[str] = None,
                 line = _line_of(text, max(start, 0), statement.query)
                 raise TransformError(f"{where}: statement {i} (line {line}) failed: "
                                      f"{' '.join(str(exc).split())}") from exc
+        created = _sink_views(con, before, directives, where, sink.warehouse.tier)
         if sink.warehouse.tier == "object":
             _land_tables(con, sink.warehouse)
+    _check_views_read(sink, created, where)
+    if views is not None:
+        views.extend(created)
     return len(statements)
+
+
+def _view_oids(con) -> dict:
+    """``{view: oid}`` for the views in the connection's own catalog. A
+    ``CREATE OR REPLACE VIEW`` gives a view a new oid, so comparing this
+    before and after the script says which views the script created."""
+    return dict(con.execute(
+        "SELECT view_name, view_oid FROM duckdb_views() WHERE database_name = current_database() "
+        "AND schema_name = 'main' AND NOT internal AND NOT temporary").fetchall())
+
+
+def _view_refs(con, definition: str) -> tuple[list[tuple[str, str, str]], list[str]]:
+    """What a view's definition reads, from DuckDB's own parse of it:
+    ``([(catalog, schema, name)], [table function])``, with a common table
+    expression's own name left out. DuckDB records no dependency of a view on
+    the tables it reads, so its parse tree is the most exact answer it gives."""
+    import json
+
+    body = _VIEW_HEAD.sub("", definition, count=1).strip().rstrip(";")
+    tree = json.loads(con.execute("SELECT json_serialize_sql(?)", [body]).fetchone()[0])
+    if tree.get("error"):
+        raise TransformError(tree.get("error_message") or "its definition does not parse")
+    tables: list[tuple[str, str, str]] = []
+    functions: list[str] = []
+    ctes: set[str] = set()
+
+    def walk(node) -> None:
+        if isinstance(node, list):
+            for item in node:
+                walk(item)
+            return
+        if not isinstance(node, dict):
+            return
+        if node.get("type") == "BASE_TABLE":
+            tables.append((node.get("catalog_name") or "", node.get("schema_name") or "",
+                           node.get("table_name") or ""))
+        elif node.get("type") == "TABLE_FUNCTION":
+            functions.append(str((node.get("function") or {}).get("function_name") or "?"))
+        for entry in (node.get("cte_map") or {}).get("map") or []:
+            ctes.add(str(entry.get("key")).lower())
+        for value in node.values():
+            walk(value)
+
+    walk(tree.get("statements"))
+    return [t for t in tables if t[0] or t[1] or t[2].lower() not in ctes], functions
+
+
+def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str) -> list[dict]:
+    """The views the script created in the warehouse, each checked to read
+    only the warehouse's own tables and views: ``[{name, definition_sha256,
+    bases}]``, *bases* being what the view names directly. A view that reads
+    anything else (a ``-- source:`` table, a file, a URL, a ``TEMP`` table)
+    is dropped and the run fails, naming the view, the reference and the fix.
+    On the object tier, which keeps no definitions, every view does."""
+    import hashlib
+
+    rows = con.execute(
+        "SELECT view_name, view_oid, sql FROM duckdb_views() WHERE database_name = current_database() "
+        "AND schema_name = 'main' AND NOT internal AND NOT temporary ORDER BY view_name").fetchall()
+    created = [(name, sql) for name, oid, sql in rows if before.get(name) != oid]
+    if not created:
+        return []
+    if tier == "object":
+        raise TransformError(
+            f"{where}: view {', '.join(name for name, _ in created)}: the object tier lands "
+            f"each table as a Parquet file and keeps no definitions, so a view cannot be a "
+            f"sink there. Materialize it (CREATE OR REPLACE TABLE … AS …), or keep the "
+            f"warehouse on the file or remote tier, which keeps views")
+    own = {r[0].lower() for r in con.execute(
+        "SELECT table_name FROM duckdb_tables() WHERE database_name = current_database() "
+        "AND schema_name = 'main' AND NOT temporary "
+        "UNION SELECT view_name FROM duckdb_views() WHERE database_name = current_database() "
+        "AND schema_name = 'main' AND NOT internal AND NOT temporary").fetchall()}
+    attached = {d["connection"].lower() for d in directives}
+    out: list[dict] = []
+    for name, sql in created:
+        try:
+            tables, functions = _view_refs(con, sql)
+        except TransformError as exc:
+            _drop_views(con, [name])
+            raise TransformError(f"{where}: view {name}: {exc}") from None
+        bad = next((f"{f}(…), which reads outside the warehouse"
+                    for f in functions if f.lower() not in _PURE_TABLE_FUNCTIONS), None)
+        bases: list[str] = []
+        for catalog, schema, table in tables:
+            if bad:
+                break
+            # Two parts (crm.issuer_ratings) parse as schema.table; DuckDB
+            # binds the first to a catalog when no schema has that name.
+            qualifier = catalog or (schema if schema.lower() != "main" else "")
+            shown = ".".join(p for p in (catalog, schema, table) if p)
+            if qualifier.lower() in attached:
+                bad = (f"{shown}, a -- source: table, which is attached for the run only "
+                       f"and never lands in the warehouse")
+            elif qualifier or table.lower() not in own:
+                bad = (f"{shown}, which is not a table or view of the warehouse "
+                       f"(a file, a URL, another database or a TEMP table)")
+            elif table.lower() != name.lower() and table not in bases:
+                bases.append(table)
+        if bad:
+            _drop_views(con, [name])
+            raise TransformError(
+                f"{where}: view {name} reads {bad}. A sink view may read only the "
+                f"warehouse's own tables and views; materialize it: CREATE OR REPLACE "
+                f"TABLE {name} AS …, or move the read into a table the view selects from")
+        out.append({"name": name, "bases": sorted(bases),
+                    "definition_sha256": hashlib.sha256(sql.encode("utf-8")).hexdigest()})
+    return out
+
+
+def _drop_views(con, names: list[str]) -> None:
+    """A refused view is not left in the warehouse for a model to fail on."""
+    for name in names:
+        con.execute('DROP VIEW IF EXISTS "' + name.replace('"', '""') + '"')
+
+
+def _check_views_read(sink, views: list[dict], where: str) -> None:
+    """Read each sink view once as the model will, through the locked query
+    connection, with the transform's connection closed. This catches what a
+    parse cannot see, such as a ``TEMP MACRO`` the view calls: the view is
+    dropped and the run fails with DuckDB's own words."""
+    import duckdb
+
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.model.engine import query_connection
+
+    if not views:
+        return
+    failed: dict[str, str] = {}
+    with query_connection({"wh": sink.warehouse}, default="wh") as con:
+        for view in views:
+            ident = '"' + view["name"].replace('"', '""') + '"'
+            try:
+                con.execute(f'SELECT * FROM "wh"."main".{ident} LIMIT 0').fetchall()
+            except duckdb.Error as exc:
+                failed[view["name"]] = " ".join(str(exc).split())
+    if failed:
+        with DuckDBConnector("transform", database=sink).write_connection() as con:
+            _drop_views(con, list(failed))
+        name, reason = next(iter(failed.items()))
+        raise TransformError(
+            f"{where}: view {name} cannot be read the way a model reads the warehouse "
+            f"({reason}). A sink view may read only the warehouse's own tables and views; "
+            f"materialize it: CREATE OR REPLACE TABLE {name} AS …, or move what it needs "
+            f"into a table the view selects from")
 
 
 def _land_tables(con, wh) -> None:
@@ -346,8 +515,9 @@ def run_transform(path: "str | os.PathLike[str]", root: Optional[str] = None) ->
     path = Path(path)
     form = transform_form(path)
     sources: dict = {}
+    views: list = []
     if form == "sql":
-        run_sql(path, root, sources)
+        run_sql(path, root, sources, views)
     elif form == "notebook":
         from tracebi._notebook import notebook_to_source
         source = notebook_to_source(path)
@@ -358,5 +528,5 @@ def run_transform(path: "str | os.PathLike[str]", root: Optional[str] = None) ->
     beside = contract_file(path)
     if beside is not None:
         run_contract_file(beside, sink_target(root), default_name=path.stem,
-                          sources=sources or None)
+                          sources=sources or None, views=views or None)
     return form

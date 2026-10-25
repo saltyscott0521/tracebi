@@ -293,9 +293,10 @@ def is_warehouse(entry: dict) -> bool:
 def warehouses(registry) -> list[dict]:
     """Every warehouse the project's connectors name, each with its tier,
     where it is, its size, the DuckDB version its certificate records, the
-    models that read it, and every table in it: rows, column count, who wrote
-    it (the transform named by the certificate, and when), which models read
-    it and its sink-contract status. ``writers`` is each transform whose
+    models that read it, and every table in it: its kind (``table``, or
+    ``view`` with the ``bases`` the certificate recorded), rows, column count,
+    who wrote it (the transform named by the certificate, and when), which
+    models read it and its sink-contract status. ``writers`` is each transform whose
     certificate covers tables here, once: its contract file and note, its
     tables, and what its run read from outside the warehouse (``read``). The
     certificate records what a run read, not what each table came from, so
@@ -327,7 +328,7 @@ def warehouses(registry) -> list[dict]:
         latest = max(certs.values(), key=lambda r: r.get("checked_at") or "", default={})
         storage = entry.get("storage") or {}
         readers = tables_of.get(entry["name"], {})
-        tables = [_table_entry(t, readers, owners) for t in view["tables"]]
+        tables = [_table_entry(t, readers, owners, certs) for t in view["tables"]]
         section: dict[str, Any] = {
             "name": entry["name"],
             "tier": getattr(connector, "tier", "file"),
@@ -346,15 +347,26 @@ def warehouses(registry) -> list[dict]:
     return out
 
 
-def _table_entry(t: dict, readers: dict[str, list[str]], owners: dict[str, str]) -> dict:
+def _table_entry(t: dict, readers: dict[str, list[str]], owners: dict[str, str],
+                 certs: Optional[dict] = None) -> dict:
+    from tracebi.contracts import view_record
+
     contract = t.get("contract") or {"status": "no_contract"}
     record = contract.get("transform")
+    # A sink view: the certificate names the transform that defined it and
+    # the tables it reads, whether or not a check touches it.
+    defined = view_record({"transforms": certs or {}}, t["name"]) if t.get("kind") == "view" else None
+    at = contract.get("checked_at")
+    if not record and defined:
+        record, at = defined["contract"], defined["checked_at"]
     written_by: Optional[dict] = None
     if record:
-        written_by = {"transform": owners.get(record), "contract": record,
-                      "at": contract.get("checked_at")}
+        written_by = {"transform": owners.get(record), "contract": record, "at": at}
+    extra = {"bases": defined["bases"]} if defined else {}
     return {
         "name": t["name"],
+        "kind": t.get("kind", "table"),
+        **extra,
         "rows": t["rows"],
         "columns": len(t["columns"]),
         "written_by": written_by,
