@@ -9,13 +9,17 @@
 //                               opens it with that model's path lit), Sources
 //                               (/data/sources: every connection and the inputs/ folder),
 //                               Transforms (/data/transforms: every file in transforms/),
-//                               Warehouse (/data/warehouse: every table, who wrote it,
-//                               who reads it, its checks) and Models (/data/models: one
-//                               row per model, its chain of sources → transform → tables
-//                               → measures → reports). ?model=<m> narrows Sources,
-//                               Transforms and Warehouse to one model. /data/<m> one
-//                               model: its line, then the tabs
-//                               /data/<m>/model|transform|sources|runs (Model at /data/<m>).
+//                               Warehouse (/data/warehouse: the data browser over every
+//                               table, grouped by the transform that wrote it; ?table=<t>
+//                               selects one, ?group= a transform's group) and Models
+//                               (/data/models: one row per model, its chain of sources →
+//                               transform → tables → measures → reports). ?model=<m>
+//                               narrows Sources, Transforms and Warehouse to one model.
+//                               /data/<m> one model: its line, then the tabs
+//                               /data/<m>/model|transform|sources|runs (Model at /data/<m>:
+//                               the data browser; ?table=<t> selects a table, ?measure=
+//                               its fact, ?view=measures|relationships|storage|code opens
+//                               that fold of the summary, ?view=diagram|tables the browser).
 //                               /data/tables/<source>/<table> one table (tablePath): its
 //                               rows, columns and who uses it
 //   Review   /review            its tabs: Attention (/review), Drafts (/review/drafts),

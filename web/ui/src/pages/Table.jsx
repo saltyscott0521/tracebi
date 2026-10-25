@@ -6,6 +6,8 @@ import DataGrid, { cellText } from '../components/DataGrid'
 import { CredentialChip } from '../components/Credentials'
 import { useModelLabel } from '../components/Scope'
 import { CONTRACT } from '../components/Warehouse'
+import { KindGlyph, TypeGlyph } from '../components/DataBrowser'
+import { buildModelGraph } from '../components/modelGraph'
 import { TransformName, useTransformHome } from './Connectors'
 import { count } from '../format'
 import { dataPath, libraryPath, reportPagePath, sourcesPath, tablePath, warehousePath } from '../nav'
@@ -172,7 +174,7 @@ function ColumnsView({ source, table }) {
         <tbody>
           {Object.entries(data.columns).map(([name, p]) => (
             <tr key={name}>
-              <td><code>{name}</code></td>
+              <td><span className="tpage__col"><TypeGlyph type={p.type} /><code>{name}</code></span></td>
               <td className="tpage__type">{p.type}</td>
               <td className="grid__num" title={`${p.nulls.toLocaleString('en-US')} of ${count(data.rows, 'row')}`}>{share(p.null_share)}</td>
               <td className="grid__num">{p.distinct.toLocaleString('en-US')}</td>
@@ -291,6 +293,11 @@ export default function TablePage() {
   // else (a connection nothing models) one its readers name.
   const conn = (connectors || []).find(c => c.name === source)
   const model = t?.read_by?.[0] || conn?.read_by?.models?.[0] || conn?.used_by?.[0] || ''
+  // What that model calls it and its kind there (fact, dimension), for the
+  // glyph the data browser draws.
+  const { data: modelData } = useModel(model)
+  const modelTable = (modelData?.tables || []).find(x => x.connector === source && x.source === table)
+  const role = modelTable && buildModelGraph(modelData).nodes.find(n => n.name === modelTable.name)?.role
   const setView = v => setParams(p => {
     const next = new URLSearchParams(p)
     if (v === 'data') next.delete('view'); else next.set('view', v)
@@ -328,11 +335,20 @@ export default function TablePage() {
   }
 
   const c = t.contract && (CONTRACT[t.contract.status] || CONTRACT.no_contract)
+  // The data browser it sits in: the Warehouse tab for a warehouse table,
+  // else the model that reads it, with the table selected.
+  const named = modelTable?.name
+  const schemaLink = t.kind === 'warehouse' ? `${warehousePath()}?table=${encodeURIComponent(table)}`
+    : named ? `${dataPath(model)}?table=${encodeURIComponent(named)}` : null
   return (
     <div className="tpage fade-in">
       {crumb}
       <header className="tpage__head">
-        <h1 className="tpage__name">{table}</h1>
+        <div className="tpage__title">
+          {role && <KindGlyph role={role} />}
+          <h1 className="tpage__name">{table}</h1>
+          {schemaLink && <Link to={schemaLink} className="tpage__schema">Show in schema</Link>}
+        </div>
         <p className="tpage__shape">
           <span>{rowsText(t)} · {count(t.columns.length, 'column')}</span>
           {c && <Chip tone={c.tone} title={c.title}>{c.label}</Chip>}

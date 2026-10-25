@@ -158,6 +158,9 @@ export const useModels = () =>
 
 export const useModel = (name) =>
   useQuery({ queryKey: ['model', name], queryFn: () => get(`/models/${name}`), enabled: !!name })
+/** The same read for each model in *names*, in order. */
+export const useModelDetails = (names) =>
+  useQueries({ queries: names.map(name => ({ queryKey: ['model', name], queryFn: () => get(`/models/${name}`) })) })
 
 export const useTablePreview = (model, table) =>
   useQuery({
@@ -307,13 +310,17 @@ function cutQuery({ sort, desc, q, where } = {}, extra = {}) {
 // its checks, the models that read it and the reports over them; or
 // {connected: false, reason, variable?} when its source is not reachable here.
 // A table that is not there (or is TraceBi's own) is a 404, said at once.
-export const useTable = (source, table) =>
-  useQuery({
-    queryKey: ['table', source, table],
-    queryFn: () => get(tableUrl(source, table)),
-    enabled: !!(source && table),
-    retry: false,
-  })
+// (tableQuery is the same read for useQueries: a list of tables, one cache.)
+export const tableQuery = (source, table, enabled = true) => ({
+  queryKey: ['table', source, table],
+  queryFn: () => get(tableUrl(source, table)),
+  enabled: !!(source && table) && enabled,
+  retry: false,
+})
+export const useTable = (source, table) => useQuery(tableQuery(source, table))
+/** The same read for each `[source, table]` of *tables*, in order. */
+export const useTables = (tables, enabled = true) =>
+  useQueries({ queries: tables.map(([source, table]) => tableQuery(source, table, enabled)) })
 
 // One page of a table's rows under a cut ({offset, limit, sort, desc, q,
 // where}). The page on screen stays while the next one is read.

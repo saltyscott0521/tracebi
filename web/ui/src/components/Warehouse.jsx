@@ -62,7 +62,7 @@ export function ContractLine({ contract, subject = 'This table' }) {
 
 // What one outside input was on the run: the connection's table (its own
 // page), live with its fingerprint, or the committed snapshot that stood in.
-function ReadInput({ src }) {
+export function ReadInput({ src }) {
   const dot = src.ref.indexOf('.')
   const ref = dot > 0
     ? <Link to={tablePath(src.ref.slice(0, dot), src.ref.slice(dot + 1))}><code>{src.ref}</code></Link>
@@ -111,7 +111,7 @@ function TableList({ warehouse, tables }) {
 }
 
 /** The checks of a transform's group: satisfied while every table it wrote is unchanged. */
-function groupContract(writer, tables) {
+export function groupContract(writer, tables) {
   const stale = tables.some(t => t.contract?.status === 'stale')
   return { status: stale ? 'stale' : 'satisfied', checks: writer.checks, file: writer.file,
            transform: writer.contract, note: writer.note, checked_at: writer.at }

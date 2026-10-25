@@ -117,11 +117,15 @@ facts:                                                                  # what i
 <ul>
 <li><strong>In the app</strong>, open <strong>Data</strong>, then the model: the header says
   <em>Defined in</em> <code>models/portfolio_model.yaml</code> · <em>reads</em>
-  <code>data/warehouse.duckdb</code>. The Model tab's <strong>Storage</strong> view says whether the
-  file is there yet and how big it is, and lists each connector, what kind of
-  place it is, and exactly which tables it serves. Data's <strong>Warehouse</strong> tab
-  (<code>/data/warehouse</code>) lists every table with the transform that wrote it and
-  the models that read it, and <strong>Sources</strong> (<code>/data/sources</code>) every connection
+  <code>data/warehouse.duckdb</code>. The Model tab is the data browser: a tree of the
+  model's tables, its star schema drawn beside it, and an inspector for the
+  table you select (its columns with their nulls and ranges, a sample of its
+  rows, its joins and measures). With nothing selected, the inspector's
+  <strong>Storage</strong> fold says whether the file is there yet and how big it is, and
+  lists each connector, what kind of place it is, and exactly which tables it
+  serves. Data's <strong>Warehouse</strong> tab (<code>/data/warehouse</code>) is the same browser
+  over every table, grouped by the transform that wrote it, with the joins
+  every model declares over them, and <strong>Sources</strong> (<code>/data/sources</code>) every connection
   and input file the transforms read, with what reads each.</li>
 <li><strong>In code</strong>, <code>model.info()["connector_details"]</code> gives the same answer, and
   <code>connector.storage()</code> says where any connector's data lives (never a
