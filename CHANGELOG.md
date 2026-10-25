@@ -33,6 +33,18 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
   `text`, `delta`, and `spark`, the series the build embedded, only when the
   KPI has one). Before, a report in a hidden folder still had its build on the
   desk.
+### Changed — the data browser: tree, schema, inspector
+
+- **A model's Model tab and Data's Warehouse tab are one data browser**: a
+  tree of the tables (grouped Facts, Dimensions, Other on a model; by the
+  transform that wrote them on the warehouse), the schema drawn at 100 % with
+  a join from each foreign-key column to its key and crow's feet at its ends,
+  and an inspector for the selected table: its columns with nulls, distinct
+  counts and ranges, its joins as sentences, its measures, a 20-row sample and
+  who uses it. The second row of tabs (Diagram, Tables, Measures,
+  Relationships, Storage, Code) is gone; with nothing selected the inspector
+  holds the model's summary with those as folds, and their old addresses still
+  open them. The table page links back with **Show in schema**.
 
 ### Changed — the app reads as one product
 

@@ -56,6 +56,41 @@ folder holds in facts instead; neither the model nor `_folder.yaml` has a
 description field), the north-star's Schema button, and a "Refresh data" on
 the home page. A build row stores no verdict, so the folder's build timeline
 counts builds and failures and never claims the older ones reproduced.
+## 2026-10-24 — Decision: one browser for a model and for the warehouse; the second tab row is gone (UI-6)
+
+The owner, after round 4: the database and schema viewer still did not come
+together. A model's page had two rows of tabs (Model · Transform · Sources ·
+Runs, then Diagram · Tables · Measures · Relationships · Storage · Code), a
+diagram boxed in a card at 9 px with labels on its edges, and the Warehouse
+tab was a long document of prose and tables. Nothing sat side by side.
+
+Now one component, `components/DataBrowser.jsx`, lays out what a database tool
+does: a tree (groups with counts, a table's columns under it, a filter that
+narrows tables and columns, arrows and `/`), the schema drawn on xyflow at
+100 % (a header band per table, a row per column, a join from the foreign-key
+column to the key column in steps with crow's feet and no words on the line),
+and an inspector (the selected table's columns with their profile, its joins
+as sentences, its measures, a 20-row sample, who uses it; with nothing
+selected, the scope's summary and its folds). The Model tab is that browser
+over the model; the Warehouse tab is the same browser over every table,
+grouped by the transform that wrote it, with every model's joins drawn, and a
+transform's group selected says what its run read and what its checks say.
+
+The old addresses land: `?view=measures|relationships|storage|code` open that
+fold of the summary, `?view=diagram|tables` are the browser, `?table=` selects
+the table and `?measure=` its fact. The browser adds no route: the tree's
+counts are the table API's (per table on a model, the warehouse listing on the
+Warehouse tab), the columns' nulls and ranges the profile route's and the
+sample the rows route's, each read only for the table selected. The layout is
+ours and deterministic (dimensions beside the facts they join, a shared one
+between them, stars packed in rows); a rearranged diagram is kept per scope in
+the browser (`tracebi-diagram-<scope>`), with Reset layout.
+
+Its widths are the browser's own, not the window's: three panes from 1040 px
+of browser (a 1440 window with the sidebar), the inspector a sheet below
+that, and the tree a drop-down on a phone with the inspector under the canvas.
+
+---
 
 ## 2026-10-24 — Decision: a display face is a token; a package may keep its own look (UI-4B)
 

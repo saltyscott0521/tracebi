@@ -335,7 +335,9 @@ place it belongs to, so its sidebar entry reads as current. A model is a
 filter, not a frame: pass it in the query (<code>?model=&lt;name&gt;</code>) or, on Data, the
 path (<code>/data/&lt;model&gt;/&lt;tab&gt;</code>: <code>pages/Overview.jsx</code> draws that page, the line from
 <code>components/TheLine.jsx</code> with its three stations, then the tabs in <code>TABS</code>,
-<code>model</code>, <code>transform</code>, <code>sources</code>, <code>runs</code>). An
+<code>model</code>, <code>transform</code>, <code>sources</code>, <code>runs</code>; the Model tab and Data's Warehouse tab
+are one component, <code>components/DataBrowser.jsx</code>, fed by <code>modelSchema</code> or
+<code>warehouseSchema</code> in <code>components/modelGraph.js</code>). An
 address that moves gets an entry in <code>movedTo</code> so old links keep working. Use
 the hooks in <code>api.js</code> for data and the primitives in <code>Shared.jsx</code> for visual
 consistency.</p>

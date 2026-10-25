@@ -30,11 +30,15 @@ facts:                                                                  # what i
 
 - **In the app**, open **Data**, then the model: the header says
   *Defined in* `models/portfolio_model.yaml` · *reads*
-  `data/warehouse.duckdb`. The Model tab's **Storage** view says whether the
-  file is there yet and how big it is, and lists each connector, what kind of
-  place it is, and exactly which tables it serves. Data's **Warehouse** tab
-  (`/data/warehouse`) lists every table with the transform that wrote it and
-  the models that read it, and **Sources** (`/data/sources`) every connection
+  `data/warehouse.duckdb`. The Model tab is the data browser: a tree of the
+  model's tables, its star schema drawn beside it, and an inspector for the
+  table you select (its columns with their nulls and ranges, a sample of its
+  rows, its joins and measures). With nothing selected, the inspector's
+  **Storage** fold says whether the file is there yet and how big it is, and
+  lists each connector, what kind of place it is, and exactly which tables it
+  serves. Data's **Warehouse** tab (`/data/warehouse`) is the same browser
+  over every table, grouped by the transform that wrote it, with the joins
+  every model declares over them, and **Sources** (`/data/sources`) every connection
   and input file the transforms read, with what reads each.
 - **In code**, `model.info()["connector_details"]` gives the same answer, and
   `connector.storage()` says where any connector's data lives (never a
