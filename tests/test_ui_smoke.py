@@ -29,9 +29,8 @@ _REPO = Path(__file__).resolve().parents[1]
 _PROJECT = _REPO / "examples" / "portfolio_project"
 _REPORT = "portfolio_model/portfolio_showcase"   # its path: it lives in a folder
 _TITLE = "Portfolio Showcase"
-# The library's h1 says how fresh it is: "What's true tonight." once something
-# is built, what the library is for before.
-_LIBRARY_H1 = re.compile(r"^(What\u2019s true|Every report, and whether it still holds)")
+# The library's h1 is its name; how fresh it is is the lede's, in plain words.
+_LIBRARY_H1 = re.compile(r"^Reports$")
 
 
 def _free_port() -> int:
@@ -158,7 +157,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(all_reports).to_have_attribute("aria-current", "page")
             folder_row = sidebar.get_by_role("link", name=re.compile(r"^Direct Lending Portfolio \d+$"))
             expect(folder_row).to_have_attribute("href", "/?folder=portfolio_model")
-            # The first visit opens with one quiet card: the places, Get
+            # The first visit shows one quiet row under the folder tiles: Get
             # started, the showcase. Dismissed, it is gone, and stays gone.
             welcome = page.get_by_role("region", name="Welcome to TraceBi")
             expect(welcome).to_be_visible()

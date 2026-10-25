@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 
 import { ReportCover } from './Cover'
 import { Verdict, Time } from './Shared'
-import { VERDICT_LABEL } from '../verdict'
 import { reportPagePath } from '../nav'
 import { KIND_TAG, folderPath, hueStyle, kindOf, newestBuild, reportLabel } from '../folders'
 import { scheduleWords } from '../schedule'
@@ -11,9 +10,9 @@ import { count, plural } from '../format'
 import { stamp } from '../when'
 
 // The parts of the library as a directory (/ and /?folder=<path>): a report's
-// cover tile, a sideways row of them, a folder's tile, the health pills, and
-// the Today ribbon of headline numbers. Every number here is one a build
-// printed (the desk's `values`, read from the built page); none is computed.
+// cover tile, a sideways row of them, a folder's tile and the health pills.
+// They draw no figure: a number appears only inside a report. The counts here
+// are of reports, and the times are of builds.
 
 function CalendarIcon() {
   return (
@@ -130,16 +129,16 @@ export function CoverRow({ title, hue, meta, open, row, empty, children }) {
   )
 }
 
-/** A folder on the directory: its hue, a fan of its newest covers, its name, how many reports, a headline number. */
+/** A folder on the directory: its hue, a fan of its newest covers, its name, how many reports, when it was last built. */
 export function FolderTile({ folder, builds }) {
-  const lead = newestBuild(folder.items, builds)?.values?.[0]
+  const newest = newestBuild(folder.items, builds)
   return (
     <Link to={folderPath(folder.path)} className="ftile" style={hueStyle(folder.hue)} data-folder={folder.path}>
       <CoverFan reports={folder.items} builds={builds} />
       <span className="ftile__name">{folder.label}</span>
       <span className="ftile__meta">
         <span><b>{folder.items.length}</b> {plural(folder.items.length, 'report')}</span>
-        {lead && <span className="ftile__lead" title={`${lead.label}, as last built`}>{lead.text}</span>}
+        {newest && <span className="ftile__when">Built <Time iso={newest.built_at} /></span>}
       </span>
     </Link>
   )
@@ -175,70 +174,6 @@ export function Health({ reports, verdictFor, builds, known }) {
       {scheduled.length === 1 && <span className="glance__item">Next: {scheduled[0]}</span>}
       {scheduled.length > 1 && <span className="glance__item">{count(scheduled.length, 'schedule')}</span>}
     </div>
-  )
-}
-
-/** A series the build recorded, drawn small; never one made up. */
-function Spark({ points }) {
-  const lo = Math.min(...points)
-  const span = Math.max(...points) - lo || 1
-  const xy = points.map((p, i) => [(i / (points.length - 1)) * 84 + 1, 31 - ((p - lo) / span) * 28])
-  const line = xy.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
-  const [lx, ly] = xy[xy.length - 1]
-  return (
-    <svg className="today__spark" viewBox="0 0 86 34" fill="none" aria-hidden="true">
-      <path d={`${line} V34 H1Z`} className="today__area" />
-      <path d={line} className="today__line" />
-      <circle cx={lx} cy={ly} r="2.5" className="today__end" />
-    </svg>
-  )
-}
-
-/**
- * The home page's headline numbers: one tile per pinned figure, or, when
- * nothing is pinned, the first number of each folder's newest build (at most
- * four). Each is the value the build printed, with its delta and series only
- * when the build carries them, its build's verdict, and the report it is
- * from, which the tile opens.
- */
-export function Today({ library, builds, verdictFor, pins }) {
-  const folderOfReport = Object.fromEntries(library.folders.flatMap(f => f.items.map(r => [r.name, f])))
-  const report = name => library.all.find(r => r.name === name)
-  let tiles = (pins || []).map(p => {
-    const value = builds[p.report]?.values?.find(v => v.id === p.id)
-    return value && report(p.report) ? { report: report(p.report), value, pinned: true } : null
-  }).filter(Boolean)
-  if (!tiles.length) {
-    tiles = library.folders.map(f => {
-      const b = newestBuild(f.items, builds)
-      return b?.values?.[0] ? { report: report(b.report), value: b.values[0], pinned: false } : null
-    }).filter(t => t?.report)
-  }
-  tiles = tiles.slice(0, 4)
-  if (!tiles.length) return null
-  return (
-    <ul className="today" aria-label="Today">
-      {tiles.map(({ report: r, value, pinned }) => {
-        const folder = folderOfReport[r.name]
-        const v = verdictFor(r)
-        return (
-          <li key={`${r.name}#${value.id}`}>
-            <Link to={reportPagePath(r.name)} className="today__tile" style={folder ? hueStyle(folder.hue) : undefined}>
-              <span className="today__label">
-                <span title={`${value.label}${folder ? ` · ${folder.label}` : ''}`}>{value.label}{folder && <> · {folder.label}</>}</span>
-                {v && <span className={`today__dot today__dot--${v.state}`} title={v.detail}>
-                  <span className="sr-only">{VERDICT_LABEL[v.state]}</span>
-                </span>}
-              </span>
-              <span className="today__value">{value.text}</span>
-              {value.delta && <span className="today__delta">{value.delta}</span>}
-              {value.spark && <Spark points={value.spark} />}
-              <span className="today__from">from {reportLabel(r)}{pinned ? ' · pinned' : ''}</span>
-            </Link>
-          </li>
-        )
-      })}
-    </ul>
   )
 }
 

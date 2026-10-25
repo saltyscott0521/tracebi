@@ -220,10 +220,10 @@ PAGE_CHECKS_JS = r"""
               detail: `page is ${sw}px wide on a ${vw}px screen`});
   }
 
-  // The face is Hanken Grotesk, and it actually loaded (a failed font falls back silently).
-  if (!document.fonts.check('14px "Hanken Grotesk Variable"'))
+  // The face is Geist, and it actually loaded (a failed font falls back silently).
+  if (!document.fonts.check('14px "Geist Variable"'))
     out.push({rule: 'theme-font-loaded', severity: 'serious', target: 'body',
-              detail: 'Hanken Grotesk did not load; the page is in the fallback face'});
+              detail: 'Geist did not load; the page is in the fallback face'});
 
   // One h1 per page: it is the page's name for screen readers and tabs.
   const h1s = [...document.querySelectorAll('main h1')].filter(visible);
@@ -984,7 +984,7 @@ def report_style_findings() -> list[dict]:
 
 
 def theme_findings() -> list[dict]:
-    """The look, as rules ([[design-direction]]): Hanken Grotesk, a cobalt brand that stays in
+    """The look, as rules ([[design-direction]]): Geist, a cobalt brand that stays in
     its blue family, no gradients or blur, shadows only on popovers. Other colour
     means something: the status tokens, the diagram roles.
     """
@@ -997,10 +997,10 @@ def theme_findings() -> list[dict]:
                     "rule": rule, "severity": sev, "target": target, "detail": detail})
 
     root = re.search(r":root\s*\{(.*?)\n\}", css, re.S)
-    if not root or "Hanken Grotesk" not in re.search(r"--font-sans:\s*([^;]*);", root.group(1)).group(1):
-        finding("theme-font", "--font-sans", "the sans face must be Hanken Grotesk")
-    if "hanken-grotesk" not in (ui / "main.jsx").read_text().lower():
-        finding("theme-font", "main.jsx", "Hanken Grotesk is not imported")
+    if not root or "Geist Variable" not in re.search(r"--font-sans:\s*([^;]*);", root.group(1)).group(1):
+        finding("theme-font", "--font-sans", "the sans face must be Geist")
+    if "@fontsource-variable/geist'" not in (ui / "main.jsx").read_text().lower():
+        finding("theme-font", "main.jsx", "Geist is not imported")
 
     light = _tokens(css, ":root")
     dark_own = _tokens(css, '[data-theme="dark"]')

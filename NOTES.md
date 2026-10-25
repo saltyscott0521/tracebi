@@ -24,6 +24,22 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-25 — Decision: no serif, no italics, no figures on the home (UI-8)
+
+No serif, no italics, no figures on the home: the owner read the serif display
+and the KPI ribbon as generated. Type is one family; a number appears only
+inside a report. The app is Geist and Geist Mono (`--font-display` is now the
+sans at 600, tracked -0.02em; body at 450, since Geist's 400 read thin at
+13-14px). The Today ribbon, each folder tile's lead number and the folder
+hero's figures are gone; the tile says when the folder was last built and the
+hero what it is made of (reports, tables, measures, last build). The desk keeps
+`values` and its permission filter: the data stays, it is not drawn on the
+home. The library's h1 is "Reports". The welcome is one dismissible row under
+the folder tiles. The schema canvas lays each star out as a ring (facts at the
+centre, a shared dimension above or below between the facts it joins), its
+cards one family with a 3px rule for their kind. Reports still carry Hanken
+Grotesk (`tracebi.css`): bringing them to Geist is a report-side change.
+
 ## 2026-10-25 — Decision: the trace sits beside the report; it shows what the manifest recorded, not SQL (UI-7)
 
 A report page on a wide window (its column 1240 px or more) is the north-star's:

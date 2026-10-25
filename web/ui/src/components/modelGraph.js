@@ -13,13 +13,14 @@ import { humanise, inSentence } from '../ask'
 
 // The browser's node: a fixed width, a header band, then one row per column.
 // A wide table shows its keys and measures first and the rest behind "+N more".
-export const NODE_W = 260
+export const NODE_W = 248
 export const MAX_COLUMNS = 12
-export const ROW_H = 24
-export const HEAD_H = 36
-const GAP_X = 120         // room between columns for a join's steps and its crow's feet
-const GAP_Y = 40
-const GROUP_GAP = 160     // between the separate stars of the warehouse
+export const ROW_H = 23
+export const HEAD_H = 34
+const GAP_Y = 40          // between the tables with no joins
+const FACT_GAP = 80       // between two facts at a ring's centre
+const RING_GAP = 56       // the least room around a table on a ring, for a join's steps and its crow's feet
+const GROUP_GAP = 160     // between rings, and between two writers' facts in one ring
 
 const tableOf = (data, name) => (data.tables || []).find(t => t.name === name)
 
@@ -195,15 +196,17 @@ export function warehouseSchema(warehouses, models, extra = {}, only = '') {
 
 // ── Layout ──────────────────────────────────────────────────────────────────
 //
-// Deterministic and layered: each connected star is laid out on its own, its
-// facts in one column and its dimensions beside them, each as near as it can
-// sit to the middle of the facts it joins (so one shared by two facts sits
-// between them). Up to four dimensions sit on the left of the facts; more are
-// shared out left and right by degree. Stars, then the tables with no joins,
-// are packed in rows. Every column is stacked with a 40 px gutter, so nothing
-// overlaps.
+// Deterministic: each connected star is a ring. Its facts sit at the centre in
+// a row (80 px apart; a writer's facts together, two writers' further apart),
+// its dimensions on an ellipse around them. A dimension's place on the ring
+// follows the facts it joins: one joined by the facts on the left sits on the
+// left, one shared by facts on both sides sits above or below between them,
+// so each join is short and none crosses another. The ellipse grows until no
+// two tables overlap. Rings sit in a row (in the order their tables come, so
+// the warehouse's writers keep the tree's order), then the tables with no
+// joins in a row of their own. The row wraps to keep the drawing about square.
 
-/** `{[id]: {x, y}}` for *tables* (each with `id`, `role`, `columns`) joined by *edges*. */
+/** `{[id]: {x, y}}` for *tables* (each with `id`, `role`, `columns`, optional `group`) joined by *edges*. */
 export function layoutSchema(tables, edges) {
   const byId = Object.fromEntries(tables.map(t => [t.id, t]))
   const h = Object.fromEntries(tables.map(t => [t.id, nodeHeight(t)]))
@@ -219,10 +222,12 @@ export function layoutSchema(tables, edges) {
   })
   const boxes = parts.map(ids => (ids.length === 1
     ? { pos: { [ids[0]]: { x: 0, y: 0 } }, w: NODE_W, h: h[ids[0]], n: 1 }
-    : star(ids, byId, edges, h)))
-  // Stars first, the largest first; then the tables with no joins, in order.
-  const order = boxes.map((_, i) => i).sort((a, b) => boxes[b].n - boxes[a].n || a - b)
-  const limit = Math.max(1400, ...boxes.map(b => b.w))
+    : ring(ids, byId, edges, h)))
+  // Rings first, in the order their tables come; then the tables with no joins.
+  const order = boxes.map((_, i) => i).sort((a, b) => (boxes[a].n === 1) - (boxes[b].n === 1) || a - b)
+  // A row wraps where the drawing would turn wider than it is tall, so a
+  // warehouse of several rings still reads when it is fitted to the canvas.
+  const limit = Math.max(Math.sqrt(boxes.reduce((s, b) => s + (b.w + GROUP_GAP) * (b.h + GROUP_GAP), 0)), ...boxes.map(b => b.w))
   const pos = {}
   let x = 0
   let y = 0
@@ -240,47 +245,75 @@ export function layoutSchema(tables, edges) {
   return pos
 }
 
-function star(ids, byId, edges, h) {
+const DEG = Math.PI / 180
+
+function ring(ids, byId, edges, h) {
   const inPart = new Set(ids)
   const own = edges.filter(e => inPart.has(e.from) && inPart.has(e.to))
-  const centre = ids.filter(id => ['fact', 'bridge'].includes(byId[id].role) || own.some(e => e.from === id))
-  const sides = ids.filter(id => !centre.includes(id))
+  let centre = ids.filter(id => ['fact', 'bridge'].includes(byId[id].role) || own.some(e => e.from === id))
+  if (!centre.length) centre = [ids[0]]
+  // A writer's facts side by side; two writers' with a wider gap between them.
+  const groups = [...new Set(centre.map(id => byId[id].group))]
+  centre = [...centre].sort((a, b) => groups.indexOf(byId[a].group) - groups.indexOf(byId[b].group) || ids.indexOf(a) - ids.indexOf(b))
+  const fx = {}
   let at = 0
-  const fy = {}
-  centre.forEach(id => { fy[id] = at; at += h[id] + GAP_Y })
-  const degree = id => own.filter(e => e.to === id || e.from === id).length
-  const target = id => {
-    const fs = own.filter(e => e.to === id && e.from in fy).map(e => fy[e.from] + h[e.from] / 2)
-    return fs.length ? fs.reduce((s, v) => s + v, 0) / fs.length : 0
-  }
-  const left = []
-  const right = []
-  if (sides.length <= 4) left.push(...sides)
-  else {
-    let lh = 0
-    let rh = 0
-    ;[...sides].sort((a, b) => degree(b) - degree(a) || ids.indexOf(a) - ids.indexOf(b)).forEach(id => {
-      if (lh <= rh) { left.push(id); lh += h[id] + GAP_Y } else { right.push(id); rh += h[id] + GAP_Y }
-    })
-  }
-  const cx = left.length ? NODE_W + GAP_X : 0
+  centre.forEach((id, i) => {
+    if (i) at += NODE_W + (byId[id].group === byId[centre[i - 1]].group ? FACT_GAP : GROUP_GAP)
+    fx[id] = at
+  })
+  const cx = (at + NODE_W) / 2
   const pos = {}
-  const place = (list, x) => {
-    let floor = -Infinity
-    ;[...list].sort((a, b) => target(a) - target(b) || ids.indexOf(a) - ids.indexOf(b)).forEach(id => {
-      const y = Math.max(floor, target(id) - h[id] / 2)
-      pos[id] = { x, y }
-      floor = y + h[id] + GAP_Y
+  centre.forEach(id => { pos[id] = { x: fx[id], y: -h[id] / 2 } })
+
+  // Where each dimension leans: the middle of the facts it joins, from the centre.
+  const sides = ids.filter(id => !(id in fx))
+  const lean = Object.fromEntries(sides.map(id => {
+    const xs = own.filter(e => (e.to === id && e.from in fx) || (e.from === id && e.to in fx))
+      .map(e => fx[e.to === id ? e.from : e.to] + NODE_W / 2)
+    return [id, xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length - cx : 0]
+  }))
+  const byLean = [...sides].sort((a, b) => lean[a] - lean[b] || ids.indexOf(a) - ids.indexOf(b))
+  const mid = byLean.filter(id => Math.abs(lean[id]) < 1)
+  const top = mid.filter((_, i) => i % 2 === 0)
+  const bottom = mid.filter((_, i) => i % 2 === 1).reverse()
+  const right = byLean.filter(id => lean[id] >= 1)
+  const left = byLean.filter(id => lean[id] <= -1).reverse()
+
+  // Angles clockwise from the top: the shared ones centred on the top and the
+  // bottom, the rest spread evenly over the side they lean to.
+  const step = 360 / sides.length
+  const half = n => (n ? ((n - 1) / 2) * step + step / 2 : 0)
+  const angle = {}
+  const around = (list, centreAt) => list.forEach((id, i) => { angle[id] = centreAt + (i - (list.length - 1) / 2) * step })
+  const spread = (list, from, to) => list.forEach((id, i) => { angle[id] = from + ((to - from) * (i + 0.5)) / list.length })
+  around(top, 0)
+  around(bottom, 180)
+  spread(right, half(top.length), 180 - half(bottom.length))
+  spread(left, 180 + half(bottom.length), 360 - half(top.length))
+
+  const factH = Math.max(...centre.map(id => h[id]))
+  const sideH = Math.max(0, ...sides.map(id => h[id]))
+  let rx = (at + NODE_W) / 2 + NODE_W / 2 + RING_GAP
+  let ry = factH / 2 + sideH / 2 + RING_GAP
+  const boxOf = id => ({ x: pos[id].x, y: pos[id].y, w: NODE_W, h: h[id] })
+  const clash = (a, b) => a.x < b.x + b.w + RING_GAP && b.x < a.x + a.w + RING_GAP
+    && a.y < b.y + b.h + RING_GAP && b.y < a.y + a.h + RING_GAP
+  for (let tries = 0; tries < 80; tries += 1) {
+    sides.forEach(id => {
+      const a = angle[id] * DEG
+      pos[id] = { x: cx + rx * Math.sin(a) - NODE_W / 2, y: -ry * Math.cos(a) - h[id] / 2 }
     })
+    const boxes = ids.map(boxOf)
+    if (!boxes.some((b, i) => boxes.some((c, j) => j > i && clash(b, c)))) break
+    rx *= 1.06
+    ry *= 1.06
   }
-  place(left, 0)
-  centre.forEach(id => { pos[id] = { x: cx, y: fy[id] } })
-  place(right, cx + NODE_W + GAP_X)
-  const top = Math.min(...Object.values(pos).map(p => p.y))
-  Object.values(pos).forEach(p => { p.y -= top })
-  const cols = 1 + (left.length ? 1 : 0) + (right.length ? 1 : 0)
+  const minX = Math.min(...ids.map(id => pos[id].x))
+  const minY = Math.min(...ids.map(id => pos[id].y))
+  ids.forEach(id => { pos[id] = { x: pos[id].x - minX, y: pos[id].y - minY } })
   return {
-    pos, w: cols * NODE_W + (cols - 1) * GAP_X, n: ids.length,
+    pos, n: ids.length,
+    w: Math.max(...ids.map(id => pos[id].x + NODE_W)),
     h: Math.max(...ids.map(id => pos[id].y + h[id])),
   }
 }

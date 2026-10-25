@@ -143,11 +143,12 @@ stack.
 `tracebi serve` (or the Docker image) serves the web app over your project.
 Four places in the sidebar:
 
-- **Reports** (`/`) — the library as a directory: today's headline numbers as
-  each build printed them, a tile per folder, then rows of covers (the newest
+- **Reports** (`/`) — the library as a directory: a tile per folder (how many
+  reports, when last built; no figures: a number appears only inside a
+  report), then rows of covers (the newest
   builds, then each folder), every report with its verdict, when it was built
   and its schedule, narrowed to a model by a chip. The sidebar is the folder
-  tree; each folder has a page (`/?folder=<path>`) with its numbers, its builds,
+  tree; each folder has a page (`/?folder=<path>`) with what it holds, its builds,
   its reports by kind and **Ask this model**; the library's head has **New
   report** (analysts) and **Refresh data** (admins). A report opens at
   `/reports/<name>` as delivered, under one command bar: **Open**, **Share**,

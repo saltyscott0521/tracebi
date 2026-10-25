@@ -18,12 +18,12 @@ import { ReportLineage } from '../components/ReportLineage'
 import { LOCAL_DETAIL, VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
 import { humanise } from '../ask'
 import { useLineFacts } from '../components/TheLine'
-import { day, stamp } from '../when'
+import { stamp } from '../when'
 import { count } from '../format'
 import { Older } from './Runs'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
-import { CoverRow, CoverTile, FolderTile, Health, Today, builtLine, tagOf } from '../components/Directory'
+import { CoverRow, CoverTile, FolderTile, Health, builtLine, tagOf } from '../components/Directory'
 import { useDocumentTitle } from '../components/Layout'
 import FolderPage, { FolderNote } from './Folder'
 import { folderPath, hueStyle, newestBuild, useBuilds, useLibrary } from '../folders'
@@ -31,7 +31,7 @@ import {
   Moved, useModelLabel, useOpenReport, useNavMenu,
 } from '../components/Scope'
 import {
-  dataPath, folderOf, mayUse, movedTo, pipelineBelongsToModel, placesFor, reportBelongsToModel, reportModels,
+  dataPath, folderOf, mayUse, movedTo, pipelineBelongsToModel, reportBelongsToModel, reportModels,
   reportPagePath,
 } from '../nav'
 import { scheduleWords } from '../schedule'
@@ -1161,14 +1161,6 @@ function LibraryFolder({ folder, label, items, info, usual, open, onToggle, verd
   )
 }
 
-// The first visit: what each place is for, in one line, for the places this
-// role sees (nav.js placesFor, the sidebar's list).
-const PLACE_LINE = {
-  reports: 'every report, and whether its numbers still hold. Start here.',
-  data: 'how the numbers are made: sources, transforms, the warehouse, models.',
-  review: 'what waits on a person: attention, drafts, what ran, checking a file.',
-  docs: 'the handbook: concepts, guides and reference.',
-}
 const WELCOMED = 'tracebi-welcomed'
 const VIEW_KEY = 'tracebi-library-view'
 const VIEWS = [['grid', 'Grid'], ['list', 'List']]
@@ -1188,11 +1180,11 @@ function useLibraryView() {
 }
 
 /**
- * One quiet card at the top of the library the first time a person opens the
- * app in this browser: the places in a line each, Get started, and a report
- * that shows everything a report can do when the project has one. Dismissed,
- * it never comes back (a flag in this browser's storage; with no storage it
- * is not shown, since it could not stay dismissed).
+ * One quiet row under the library's folder tiles the first time a person
+ * opens the app in this browser: Get started, a report that shows everything
+ * a report can do when the project has one, and the jump key. Dismissed, it
+ * never comes back (a flag in this browser's storage; with no storage it is
+ * not shown, since it could not stay dismissed).
  */
 function Welcome({ role, showcase }) {
   const [shown, setShown] = useState(() => {
@@ -1204,21 +1196,15 @@ function Welcome({ role, showcase }) {
     setShown(false)
   }
   return (
-    <section className="welcome" aria-labelledby="welcome-h">
-      <div className="welcome__head">
-        <h2 id="welcome-h">Welcome to TraceBi</h2>
-        <button type="button" className="welcome__x" onClick={dismiss} aria-label="Dismiss the welcome">×</button>
-      </div>
-      <dl className="welcome__places">
-        {placesFor(role).map(p => (
-          <div key={p.key}><dt>{p.label}</dt><dd>{PLACE_LINE[p.key]}</dd></div>
-        ))}
-      </dl>
-      <div className="welcome__foot">
-        <BtnLink to="/docs/get-started" variant="primary" size="sm">Get started</BtnLink>
-        {showcase && <BtnLink to={reportPagePath(showcase.name)} size="sm">Open {showcase.display_name || 'the showcase'}</BtnLink>}
-        <span className="welcome__kbd">Press <kbd>⌘K</kbd> (<kbd>Ctrl K</kbd>) anywhere to jump to a report, a model or a page.</span>
-      </div>
+    <section className="welcome" aria-label="Welcome to TraceBi">
+      <p className="welcome__line">
+        New here? <Link to="/docs/get-started" className="welcome__go">Get started</Link>
+        {showcase && <><span aria-hidden="true"> · </span>
+          <Link to={reportPagePath(showcase.name)}>Open {showcase.display_name || 'the showcase'}</Link></>}
+        <span aria-hidden="true"> · </span>
+        <span className="welcome__kbd"><kbd>⌘K</kbd> jumps to any report, folder or table</span>
+      </p>
+      <button type="button" className="welcome__x" onClick={dismiss} aria-label="Dismiss the welcome">×</button>
     </section>
   )
 }
@@ -1300,24 +1286,26 @@ export default function Library() {
     </div>
   )
 
+  const welcome = <Welcome role={role} showcase={all.find(isShowcase)} />
+
   return (
     <div className="library">
       <header className="dir-head">
         <div className="dir-head__row">
           <div className="dir-head__text">
             <nav aria-label="Breadcrumb" className="crumbs"><span aria-current="page">Library</span></nav>
-            <h1 className="display-title"><Headline newest={newest} /></h1>
+            <h1 className="display-title">Reports</h1>
             {all.length > 0 && (
               <p className="dir-head__lede">
-                {count(library.folders.filter(f => f.items.length).length, 'folder')}, {count(all.length, 'report')}.
-                {' '}Every cover is its page as it was last built; open a folder for its reports.
+                {count(library.folders.filter(f => f.items.length).length, 'folder')}, {count(all.length, 'report')},
+                {' '}every cover its page as it was last built.
+                {newest && <> Last built <Time iso={newest.built_at} />.</>}
               </p>
             )}
           </div>
           <LibraryActions models={models} />
         </div>
       </header>
-      <Welcome role={role} showcase={all.find(isShowcase)} />
       {isLoading ? <SkeletonList /> : !all.length && !(canPublish && folderData?.personal) ? (
         canPublish ? (
           <Empty title="No reports yet"
@@ -1331,15 +1319,13 @@ export default function Library() {
       ) : (
         <>
           <Health reports={reports} verdictFor={verdictFor} builds={builds} known={!!desk} />
-          {view === 'grid' && !needle && !model && (
-            <Today library={library} builds={builds} verdictFor={verdictFor} pins={desk?.pins} />
-          )}
           {!listed.length && !mine
-            ? <>{find}<p className="lfolder__none">No report matches. Clear the search or pick All models.</p></>
+            ? <>{welcome}{find}<p className="lfolder__none">No report matches. Clear the search or pick All models.</p></>
             : view === 'grid' ? (
-              <DirectoryView library={library} listed={listed} mine={mine} builds={builds} verdictFor={verdictFor} find={find} />
+              <DirectoryView library={library} listed={listed} mine={mine} builds={builds} verdictFor={verdictFor}
+                             find={find} welcome={welcome} />
             ) : (
-              <>{find}<div className="library__list">
+              <>{welcome}{find}<div className="library__list">
                 {groupByFolder(listed, mine).map(({ folder, items }) => (
                   <LibraryFolder key={folder || '(top)'} folder={folder} label={folderLabel(folder, folderInfo[folder])}
                                  items={items} info={folderInfo[folder]} usual={usual}
@@ -1410,22 +1396,11 @@ function LibraryActions({ models }) {
   )
 }
 
-// The library's h1 says how fresh what it shows is: "What's true tonight." (or
-// "today.") when the newest build is from today, else as of that build's day.
-// With nothing built yet it says what the library is for.
-function Headline({ newest }) {
-  if (!newest) return <>Every report, <em>and whether it still holds.</em></>
-  const built = new Date(newest.built_at)
-  const now = new Date()
-  if (built.toDateString() !== now.toDateString()) return <>What&rsquo;s true <em>as of {day(newest.built_at)}.</em></>
-  return <>What&rsquo;s true <em>{now.getHours() >= 18 ? 'tonight.' : 'today.'}</em></>
-}
-
-// Grid: the library as a directory. Its folders as tiles, then a row of covers
-// for the newest builds, then a row per folder; a search or a model narrows
-// every row and drops the empty ones (their own My published stays, to say
-// how it fills).
-function DirectoryView({ library, listed, mine, builds, verdictFor, find }) {
+// Grid: the library as a directory. Its folders as tiles (the first visit's
+// welcome under them), then a row of covers for the newest builds, then a row
+// per folder; a search or a model narrows every row and drops the empty ones
+// (their own My published stays, to say how it fills).
+function DirectoryView({ library, listed, mine, builds, verdictFor, find, welcome }) {
   const shown = new Set(listed.map(r => r.name))
   const rows = library.folders
     .map(f => ({ ...f, items: f.items.filter(r => shown.has(r.name)) }))
@@ -1448,6 +1423,7 @@ function DirectoryView({ library, listed, mine, builds, verdictFor, find }) {
       <ul className="ftiles" aria-label="Folders">
         {rows.map(f => <li key={f.path}><FolderTile folder={f} builds={builds} /></li>)}
       </ul>
+      {welcome}
       {find}
       {recent.length > 0 && (
         <CoverRow title="Recently built" row="recent" meta={builtLine(recent, builds)}>
