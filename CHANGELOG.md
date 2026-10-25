@@ -6,6 +6,10 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed
+
+- **Built reports use Geist**, the app's typeface, inlined as before (Latin subset, no font fetched): app and report read as one.
+
 ### Changed — one type system (Geist); the home shows no figures; the welcome is one row; the schema ring
 
 - **One type system.** The app is set in Geist and Geist Mono (self-hosted,

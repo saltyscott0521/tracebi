@@ -4,6 +4,18 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-25 — UI rounds 4–8 closed with the owner's sign-off
+
+The owner's verdict on rounds 4–8 (welcome and empty states; the data browser;
+the library as a directory; the report page with its trace beside it; one type
+system, no figures on the home, the schema ring) was "Yes, done" on
+tracebi.com/app. What moved the needle, in the owner's words: the folders and
+card navigation; the type ("looks vibe coded … I think it's a font thing" — the
+serif display went, one family stayed); no figures outside a report. The last
+follow-up: the built reports take the same typeface (this entry's change), so
+app and report are one face. The UI audit baseline still records Hanken Grotesk
+for the report face and is recommitted on the next audit run.
+
 ## Build Status
 
 | Phase | Status | Description |

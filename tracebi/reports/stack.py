@@ -45,16 +45,14 @@ def read_asset(name: str) -> str:
         return f.read()
 
 
-#: What the shipped Hanken Grotesk subset covers (Latin, punctuation, currency, arrows).
+#: What the shipped Geist subset covers (Latin, punctuation, currency, arrows).
 #: Anything outside it falls through to the system face, as a bad glyph would.
-_FONT_RANGE = ("U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,"
-                "U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,"
-                "U+2212,U+2215,U+FEFF,U+FFFD")
+_FONT_RANGE = ("U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD")
 
 
 @functools.lru_cache(maxsize=1)
 def font_face_css() -> str:
-    """Hanken Grotesk as an inlined ``@font-face``: the one face a report carries.
+    """Geist as an inlined ``@font-face``: the one face a report carries.
 
     A shipped report is one file under a strict CSP (``font-src data:``), so the
     face travels inside it, base64, rather than being fetched or installed. It is
@@ -62,7 +60,7 @@ def font_face_css() -> str:
     licence (SIL OFL 1.1) is in NOTICE.
     """
     import base64
-    path = os.path.join(_ASSETS_DIR, "hanken-grotesk-latin-wght-normal.woff2")
+    path = os.path.join(_ASSETS_DIR, "geist-latin-wght-normal.woff2")
     if not os.path.isfile(path):
         raise FileNotFoundError(
             f"shipped presentation asset missing: {path} — this is a "
@@ -70,7 +68,7 @@ def font_face_css() -> str:
         )
     with open(path, "rb") as f:
         data = base64.b64encode(f.read()).decode("ascii")
-    return ('@font-face{font-family:"Hanken Grotesk";font-style:normal;font-display:swap;'
+    return ('@font-face{font-family:"Geist";font-style:normal;font-display:swap;'
             f'font-weight:100 900;src:url("data:font/woff2;base64,{data}") '
             f'format("woff2");unicode-range:{_FONT_RANGE}}}')
 
@@ -216,7 +214,7 @@ def libraries_comment(libs) -> str:
         f"Built with TraceBi {__version__}. Everything below is inlined: no "
         "script, style, font or image is fetched from a CDN or the web.",
         "  tracebi.css  TraceBi design system (MIT)",
-        "  Hanken Grotesk  the typeface, Latin subset (SIL OFL 1.1): inlined, no font fetched",
+        "  Geist  the typeface, Latin subset (SIL OFL 1.1): inlined, no font fetched",
         "  tracebi.js   TraceBi runtime (MIT): fills each figure from the "
         "embedded, fingerprinted data; tabs, filters, trace drawer",
     ]
