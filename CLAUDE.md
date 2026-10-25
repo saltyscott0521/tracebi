@@ -124,7 +124,10 @@ phase to the next):
    fresh warehouse connection (`tracebi/transforms.py`; placeholders
    `{{ sink }}` and `{{ root }}` only; `-- source:` lines attach declared
    connections' tables in memory, never sunk; a created non-TEMP table is a sink
-   table on every tier); a `.py` / `.ipynb` ends with
+   table on every tier; a created view over warehouse tables is a sink view on the
+   file and remote tiers, recorded with its bases (certificate `views: [{name,
+   definition_sha256, bases}]`), refused over a source, a file or a TEMP object,
+   and on the object tier); a `.py` / `.ipynb` ends with
    `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`.
    `tracebi run-transform` reports `form: sql | python | notebook`. The
    framework does not constrain this phase. The contract is not
@@ -671,6 +674,11 @@ effectively does not exist).
    or write `COPY (…) TO '{{ sink }}/x.parquet' (FORMAT PARQUET)` yourself);
    in Python, `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`.
    The contract is the named tables that land, not how you produced them.
+   A derivation may stay a definition: `CREATE OR REPLACE VIEW x AS …` over the
+   warehouse's own tables and views is a sink view (file and remote tiers), read
+   by a model as a table; one over a `-- source:` table, a file, a URL or a TEMP
+   object fails the run and is dropped. A view may read only what is frozen:
+   materialize the facts you aggregate, view the derivations.
 3. Declare the sink contract in `<name>.contract.yaml` (`name`, `note`,
    `checks: - rows: fact_x …`), or in Python a `with contract(name,
    warehouse=sink_target(ROOT)) as c:` block — one vocabulary, one parser
@@ -833,14 +841,14 @@ GET  /api/connectors/{name}
 GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}, warehouse (bool; Sources lists the rest), label, dialect (SQL)
 GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact}], hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
-GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read, said once per transform
+GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read, said once per transform
 GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
 GET  /api/transforms/{name}/source                   → the transform's file and its .contract.yaml (read-only; name is a stem in transforms/)
 GET  /api/models
 GET  /api/models/{name}                              → tables, relationships, facts (each with its runnable_measures), dimensions
 GET  /api/models/{name}/tables/{t}/preview           → first N (≤500) rows + engine dtypes + total_rows, read through the table API
 GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV, streamed through the table API
-GET  /api/tables/{source}/{table}                    → one table wherever it lives (source: a connector, or `inputs` for a file under inputs/): kind, rows, rows_exact, columns [{name,type}] in the engine's spelling, written_by, contract, read_by, used_by, transform_read; 200 {connected: false…} when unreachable; framework tables 404
+GET  /api/tables/{source}/{table}                    → one table wherever it lives (source: a connector, or `inputs` for a file under inputs/): kind, table_kind (table|view, warehouse only), view {transform, bases} for a sink view, rows, rows_exact, columns [{name,type}] in the engine's spelling, written_by, contract, read_by, used_by, transform_read; 200 {connected: false…} when unreachable; framework tables 404
 GET  /api/tables/{source}/{table}/rows               → ?offset&limit(≤500)&sort&desc&q&where=[{column,op,value}] (closed ops; refused 422 before any SQL) → {columns, rows, offset, limit, total, total_exact, elapsed_ms}
 GET  /api/tables/{source}/{table}/profile            → {rows, columns: {name: {type, nulls, null_share, distinct, min, max, mean?, top:[{value,count}]}}}
 GET  /api/tables/{source}/{table}/export.csv         → the same cut as CSV, streamed from the engine
