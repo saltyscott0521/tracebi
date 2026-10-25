@@ -588,14 +588,16 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             fail_on_browser_errors()
 
             # An open report is a page of its own: the nav stays as a rail, the list
-            # does not, and the breadcrumb's Reports link goes back to the library.
+            # does not, and the breadcrumb's Library link goes back to the library;
+            # its folder link opens the folder's page.
             rail = page.get_by_role("navigation", name="Main")
             expect(rail.get_by_role("link", name="Reports")).to_have_attribute("aria-current", "page")
             assert not page.get_by_placeholder("Search reports…").is_visible()
             crumb = page.get_by_role("navigation", name="Where this report is")
-            back = crumb.get_by_role("link", name="Reports", exact=True)
+            back = crumb.get_by_role("link", name="Library", exact=True)
             back.wait_for()
-            crumb.get_by_role("link", name="Direct Lending Portfolio").wait_for()
+            expect(crumb.get_by_role("link", name="Direct Lending Portfolio")).to_have_attribute(
+                "href", "/?folder=portfolio_model")
 
             # Export is one menu of the three files, and says which carries the trace.
             page.get_by_role("button", name="Export").click()

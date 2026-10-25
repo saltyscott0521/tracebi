@@ -4,8 +4,10 @@
 // an opaque origin: no cookies, no app API, no way to reach window.parent's
 // DOM. That also means the app cannot read the frame's DOM. The report runtime
 // (tracebi.js, "Host bridge") and the app talk by postMessage instead, and only
-// about presentation: how tall the report is, which figures it holds, what the
-// person pointed at, what its selection is, and what the app's check says of it.
+// about presentation: how tall the report is, which figures it holds, which
+// one the reader clicked (`figure`, its id only: the trace beside the page
+// follows it), what the person pointed at, what its selection is, and what the
+// app's check says of it.
 //
 // A message counts only if it came from this frame's own window (its origin is
 // "null", so the origin is no use) and carries the bridge tag.

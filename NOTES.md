@@ -24,6 +24,27 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-25 — Decision: the trace sits beside the report; it shows what the manifest recorded, not SQL (UI-7)
+
+A report page on a wide window (its column 1240 px or more) is the north-star's:
+one command bar (name, verdict, "Built … · N figures · N queries", Open, Share,
+Export quiet, Rebuild outlined, **Edit as a draft** the primary), the built page
+in a card on the left and the trace in a 340 px card on the right, open until
+closed. Narrower, the trace is the sliding panel it was; `tracebi-report-panel`
+still remembers it, and "not yet chosen" means open beside, closed over. The
+trace follows the figure the reader last clicked: `tracebi.js`'s host bridge
+posts one new message, `{type: "figure", id}`, nothing else. Its five steps are
+read from the manifest and the desk: the sink certificate of the table the
+query read, the model and the joins its dimensions reach, the recorded query,
+the binding's `embedded_sha256`, and the desk's re-check. The mock showed SQL
+in step 3; the manifest records the closed query spec, not SQL, so the step
+prints the spec in one line rather than compose SQL the build never ran. Step 5
+shows the value only as the page printed it (the desk's `values`) and says
+"same fingerprint" only when the re-check reproduced. ⌘K groups its results
+(Recent, Folders, Reports, Tables, Models, Places) and remembers the last six
+picks in this browser; the home page gained New report and Refresh data (each
+model's own pipeline, admins only), which UI-5 left out.
+
 ## 2026-10-24 — Decision: Ask leaves the nav: a question is about one model, so it is asked from the model's folder or page (UI-5)
 
 The owner, after round 4: the app did not wow, it wanted folders, carousels

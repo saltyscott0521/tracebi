@@ -6210,8 +6210,8 @@
    * The web app shows a report in a sandboxed frame with an opaque origin: the
    * app cannot read the frame's DOM and the frame cannot read the app's. The
    * two talk by postMessage, and only about presentation: the frame tells the
-   * app how tall it is and what its selection is (tracebi-selection, from
-   * postLocal); the app sets a selection, tells it its verdict on this build,
+   * app how tall it is, what its selection is (tracebi-selection, from
+   * postLocal) and which figure was clicked; the app sets a selection, tells it its verdict on this build,
    * or has it take part in Build mode (above). Every
    * message carries tracebiFrame: 1; the frame accepts commands only from the
    * window that embeds it. A report opened on its own (no embedding window)
@@ -6247,6 +6247,13 @@
     }
     if (document.readyState === "complete") watch();
     else root.addEventListener("load", watch);
+    /* A click inside a figure tells the app which one, by its id and nothing
+     * else, so the trace beside the page follows the figure being read. In
+     * the capture phase: a chart's own click handler cannot hide it. */
+    document.addEventListener("click", function (e) {
+      var el = e.target && e.target.closest ? e.target.closest("[data-tb-figure][id]") : null;
+      if (el) post({ type: "figure", id: el.id });
+    }, true);
 
     var commands = {
       /* The app's header clears a field from the selection it shows. */

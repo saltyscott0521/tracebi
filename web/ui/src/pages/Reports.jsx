@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef, forwardRef } from 'react'
-import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -7,6 +7,7 @@ import {
   useReportLineage, useBuiltReport,
   useReportSource, reportDownloadUrl, reportShareUrl, reportCoverUrl, useDesk, useModels,
   useAppStatus, useMe, useRole, useFolders, usePointing, useWorkbenchVersion, useWorkbenchState, useWorkbenchPreview, fetchDeskFresh,
+  usePipelines, useStartPipelineRun,
 } from '../api'
 import { FRAME_SANDBOX, followSelection, listenToFrame, setFrameSelection, tellFrame, tellVerdict } from '../frameBridge'
 import Workbench from '../components/Workbench'
@@ -25,17 +26,17 @@ import { ReportArt } from '../components/Art'
 import { CoverRow, CoverTile, FolderTile, Health, Today, builtLine, tagOf } from '../components/Directory'
 import { useDocumentTitle } from '../components/Layout'
 import FolderPage, { FolderNote } from './Folder'
-import { folderPath, newestBuild, useBuilds, useLibrary } from '../folders'
+import { folderPath, hueStyle, newestBuild, useBuilds, useLibrary } from '../folders'
 import {
   Moved, useModelLabel, useOpenReport, useNavMenu,
 } from '../components/Scope'
 import {
-  dataPath, folderOf, libraryPath, mayUse, movedTo, placesFor, reportBelongsToModel, reportModels,
+  dataPath, folderOf, mayUse, movedTo, pipelineBelongsToModel, placesFor, reportBelongsToModel, reportModels,
   reportPagePath,
 } from '../nav'
 import { scheduleWords } from '../schedule'
 import {
-  Spinner, Verdict, Empty, Btn, BtnLink, ErrorDetail,
+  Spinner, Verdict, Empty, Btn, BtnLink, CopyCommand, ErrorDetail,
   SearchInput, Segmented, SkeletonList, SkeletonCard, Time, useToast, useNarrow,
 } from '../components/Shared'
 
@@ -103,17 +104,19 @@ function useReportBuild(name) {
 }
 
 // ── The report's own page ────────────────────────────────────────────────────
-// The page is the report. The app's nav stays as a rail; above the report, a
-// slim header (where it is, its name, the app's verdict on this build and, when
-// that asks for a look, why, and when it was built) and one command bar: Open,
-// Share and Export for everyone; Rebuild and Edit as a draft for an analyst or
-// admin, Build in dev mode, and the "About this build" panel (Receipt, Lineage,
-// History, Files). A command the person's role cannot use is not shown, nor
-// one that needs a build (Open, Share, Export, About this build) before there
-// is one. The
-// report fills the rest of the screen and keeps its own receipt drawer
-// (tracebi.js); the app tells the frame its verdict, so the report's masthead
-// chip says what the app's check found rather than the file's "Not checked".
+// The page is the report. The app's nav stays as a rail; above the report, the
+// breadcrumb (Library, its folder, the report) and one command bar: its name,
+// the app's verdict on this build (and, when that asks for a look, why), when
+// it was built and how many figures and queries it holds, then Open, Share and
+// Export for everyone as quiet commands; Rebuild and Edit as a draft (the
+// primary) for an analyst or admin, Build in dev mode, and "About this build"
+// (the trace, Lineage, History, Files). A command the person's role cannot use
+// is not shown, nor one that needs a build (Open, Share, Export, About this
+// build) before there is one. On a wide window the trace sits beside the page
+// as a card, open until it is closed; narrower, it is a panel that slides in.
+// The report keeps its own receipt drawer (tracebi.js); the app tells the
+// frame its verdict, so the report's masthead chip says what the app's check
+// found rather than the file's "Not checked".
 
 const ICON = {
   rebuild: <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />,
@@ -285,61 +288,199 @@ const TABS = [['receipt', 'Trace'], ['lineage', 'Lineage'], ['history', 'History
 const PANEL_KEY = 'tracebi-report-panel'
 // Narrower than this, the command bar is Open, Share and a menu of the rest.
 const BAR_QUERY = '(max-width: 720px)'
+// From this width of the report's own column, the trace sits beside the page.
+const WIDE = 1240
 
+// The panel's state as last left. `open` is null until the person opens or
+// closes it: then the trace is open beside a wide page and closed over a
+// narrow one, where it would cover the report.
 function readPanel() {
   try {
     const v = JSON.parse(localStorage.getItem(PANEL_KEY) || 'null')
-    return v && TABS.some(([k]) => k === v.tab) ? { open: !!v.open, tab: v.tab } : { open: false, tab: 'receipt' }
-  } catch { return { open: false, tab: 'receipt' } }
+    return v && TABS.some(([k]) => k === v.tab)
+      ? { open: typeof v.open === 'boolean' ? v.open : null, tab: v.tab } : { open: null, tab: 'receipt' }
+  } catch { return { open: null, tab: 'receipt' } }
 }
 
-function Facts({ children }) { return <dl className="rpanel__kv">{children}</dl> }
+// How wide *ref*'s element is, as it changes.
+function useWidth(ref) {
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    setWidth(el.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const watch = new ResizeObserver(([e]) => setWidth(e.contentRect.width))
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [ref])
+  return width
+}
+
+function Facts({ children }) { return <dl className="rpanel__kv rpanel__kv--tight">{children}</dl> }
 function Fact({ k, children }) { return <><dt>{k}</dt><dd>{children}</dd></> }
 
+/**
+ * The figure the trace is about: the one the reader last clicked in the page
+ * (*id*), else the build's first value figure, else its first. Its label is
+ * the one the page printed for it (the desk's `values`), else its cell's name.
+ */
+function focusOf(manifest, id, values) {
+  const figures = manifest?.figures || []
+  const figure = figures.find(f => f.id === id) || figures.find(f => f.kind === 'value') || figures[0]
+  if (!figure) return null
+  const printed = (values || []).find(v => v.id === figure.id)
+  return { figure, printed, label: printed?.label || humanise(figure.cell || figure.binding || figure.id) }
+}
+
+// The query a binding recorded, in one line: its measures, what it is cut
+// by, its filters and its limit. It is the closed query the build stamped,
+// not SQL: the manifest records no SQL to show.
+function queryLine(spec) {
+  if (!spec) return null
+  const measures = Array.isArray(spec.measures) ? spec.measures : Object.keys(spec.measures || {})
+  const where = Object.entries(spec.filters || {})
+    .map(([k, v]) => `${k} = ${Array.isArray(v) ? v.join(', ') : typeof v === 'object' ? JSON.stringify(v) : v}`)
+  return [
+    measures.join(', ') || '(rows)',
+    spec.dimensions?.length ? `by ${spec.dimensions.join(', ')}` : '',
+    where.length ? `where ${where.join('; ')}` : '',
+    spec.limit ? `limit ${spec.limit}` : '',
+  ].filter(Boolean).join(' ')
+}
+
+const shortSha = sha => (sha && sha.length > 12 ? `${sha.slice(0, 4)}…${sha.slice(-4)}` : sha)
+
+// What a sink certificate says of the table a figure's query read, in the
+// locked words: the sink satisfied its contract, never "verified".
+const SINK_WORDS = {
+  satisfied: n => `the sink satisfied its contract${n ? ` (${count(n, 'check')})` : ''}`,
+  stale: () => 'the table changed since the sink last satisfied its contract',
+  no_contract: () => 'no contract declared',
+}
+
+function Step({ n, k, children }) {
+  return (
+    <li className="rtrace__step">
+      <span className="rtrace__n" aria-hidden="true">{n}</span>
+      <div><div className="rtrace__k">{k}</div><div className="rtrace__v">{children}</div></div>
+    </li>
+  )
+}
+
+/**
+ * The trace of the figure in focus, in five steps (where its table came from,
+ * the model and the join it read, the query, the fingerprint the build
+ * recorded, and what re-running it said), then the verdict on the page. Every
+ * value is read from the build's manifest and the desk's last re-check;
+ * nothing is computed here.
+ */
+function TraceSteps({ manifest, focus, verdict, checkedAt, selection }) {
+  const labelOf = useModelLabel()
+  const role = useRole()
+  if (!manifest) return null
+  if (!focus) return <p className="rpanel__empty">This build records no figures to trace.</p>
+  const { figure, printed } = focus
+  const binding = (manifest.embedded_data || []).find(e => e.name === figure.binding)
+  const spec = binding?.query_spec
+  const model = binding?.model
+  const slice = manifest.semantic_contract?.[model]?.slice
+  const table = slice?.tables?.find(t => t.name === spec?.fact)?.source || spec?.fact
+  const cert = table ? (manifest.transform_contracts || {})[table] : null
+  const sources = Object.keys(cert?.sources || {})
+  // The dimensions the query reached through its joins: what it is cut and filtered by.
+  const joined = [...new Set([...(spec?.dimensions || []), ...Object.keys(spec?.filters || {})]
+    .filter(c => c.includes('.')).map(c => c.split('.')[0]))]
+  const derived = binding?.verifiable === false
+  const rerun = !figure.binding || figure.unverified ? 'Typed in by its author: there is no query to re-run.'
+    : derived ? 'Computed in report.py, so it cannot be re-run.'
+      : !verdict ? 'Checking…'
+        : verdict.state === 'reproduces'
+          ? <>{printed && <><code>{printed.text}</code> · </>}same fingerprint{checkedAt && <>, <Time iso={checkedAt} /></>}</>
+          : verdict.detail
+  const band = verdict && VERDICT_LABEL[verdict.state] ? verdict : null
+  return (
+    <section className="rtrace" aria-label="How this figure was made">
+      <ol className="rtrace__steps">
+        <Step n={1} k="Source">
+          {cert ? (
+            <>
+              {sources.length > 0 && <>{sources.join(' + ')} → </>}
+              {cert.transform ? <code>{cert.transform}</code> : 'a transform'} wrote <code>{table}</code>
+              {' · '}{(SINK_WORDS[cert.status] || SINK_WORDS.no_contract)(cert.checks)}
+            </>
+          ) : table ? <><code>{table}</code> · no sink certificate recorded</> : 'Not recorded'}
+        </Step>
+        <Step n={2} k="Model">
+          {model ? (
+            <>
+              <code>{model}</code>
+              {mayUse(role, 'data') && labelOf(model) !== model && <> (<Link to={dataPath(model, 'model')}>{labelOf(model)}</Link>)</>}
+              {spec?.fact && <> · {spec.fact}{joined.length > 0 && <> ⋈ {joined.join(', ')}</>}</>}
+            </>
+          ) : 'Not recorded'}
+        </Step>
+        <Step n={3} k="Query">
+          {spec ? <code title={JSON.stringify(spec)}>{queryLine(spec)}</code> : 'No query: typed in by its author'}
+        </Step>
+        <Step n={4} k="Fingerprint">
+          {binding?.embedded_sha256
+            ? <><code title={binding.embedded_sha256}>sha256 · {shortSha(binding.embedded_sha256)}</code>
+              {manifest.rendered_at && <> · recorded <Time iso={manifest.rendered_at} /></>}</>
+            : 'None recorded'}
+        </Step>
+        <Step n={5} k="Re-run now">{rerun}</Step>
+      </ol>
+      {selection && (
+        <p className="rpanel__hint rtrace__hint">The page shows your selection, recomputed in it; this is the trace of the build as authored.</p>
+      )}
+      {band && (
+        <p className={`rtrace__verdict rtrace__verdict--${band.state}`}>
+          <span className="rtrace__dot" aria-hidden="true" />
+          {VERDICT_LABEL[band.state]}{band.state === 'reproduces' ? ' · every figure on this page' : ''}
+        </p>
+      )}
+    </section>
+  )
+}
+
 // The Trace tab: a few facts the trace does not carry (whether the app's
-// check still holds, the model, the figures, the schedule, the kind), then the
-// build's own certificate, its chip in the app's verdict.
-function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onCheck, checking }) {
+// check still holds, the schedule, the kind), the trace of the figure in
+// focus, then the build's own certificate, its chip in the app's verdict.
+function ReceiptTab({ report, shown, lastBuild, checkedAt, verdict, onCheck, checking, focus, selection, beside }) {
   const manifest = shown?.manifest
   const p = figureProvenance(manifest)
   const words = scheduleWords(report.schedule)
   const last = report.last_run
-  const labelOf = useModelLabel()
-  // A link to a place the role cannot use is not drawn (the sidebar's rule):
-  // a viewer reads the model's name, not a link to a page that turns them away.
-  const role = useRole()
-  const queries = (manifest?.embedded_data || []).length
   const form = (FORMS[report.form === 'package' ? report.made_from : report.form] || FORMS.code).label
   return (
     <>
       <section className="rpanel__sec">
-        {report.description && <p className="rpanel__lead rpanel__lead--facts">{report.description}</p>}
+        {report.description && (
+          <p className={`rpanel__lead rpanel__lead--facts${beside ? ' rpanel__lead--clamp' : ''}`} title={beside ? report.description : undefined}>
+            {report.description}
+          </p>
+        )}
         <Facts>
           {lastBuild && (
             <Fact k="Checked">
               {!verdict ? 'Checking…' : checkedAt ? <Time iso={checkedAt} /> : 'Not yet'}
+              {' · '}<button type="button" className="rpanel__link" onClick={onCheck} disabled={checking}>Check again</button>
               {verdict && verdict.state !== 'reproduces' && <div className="rpanel__hint">{verdict.detail}</div>}
-              <div><button type="button" className="rpanel__link" onClick={onCheck} disabled={checking}>Check again</button></div>
             </Fact>
           )}
           {manifest && manifest.schema_version !== 2 && (
             <Fact k="Trace">○ Manifest v{manifest.schema_version ?? '?'}: no per-figure queries to re-run</Fact>
           )}
-          {model && (
-            <Fact k="Model">
-              {mayUse(role, 'data') ? <Link to={dataPath(model, 'model')}>{labelOf(model)}</Link> : labelOf(model)}
-            </Fact>
-          )}
-          {manifest && (
+          {(p.derived > 0 || p.unverified > 0) && (
             <Fact k="Figures">
-              {count(p.total, 'figure')} from {count(queries, 'query', 'queries')}
               {p.derived > 0 && <div><span aria-hidden="true">○</span> {p.derived} from python, which cannot be re-run</div>}
               {p.unverified > 0 && <div><span aria-hidden="true">△</span> {p.unverified} unverified</div>}
             </Fact>
           )}
           <Fact k="Schedule">
             {words ? words.long : 'Not scheduled'}
-            {!words && <div className="rpanel__hint">A <code>schedule</code> block in report.json builds it on a timetable.</div>}
+            {!words && !beside && <div className="rpanel__hint">A <code>schedule</code> block in report.json builds it on a timetable.</div>}
           </Fact>
           {last && (
             <Fact k="Last run">
@@ -354,6 +495,7 @@ function ReceiptTab({ report, model, shown, lastBuild, checkedAt, verdict, onChe
           <Fact k="Kind">{form}</Fact>
         </Facts>
       </section>
+      <TraceSteps manifest={manifest} focus={focus} verdict={verdict} checkedAt={checkedAt} selection={selection} />
       {shown?.html
         ? <ReceiptFrame html={shown.html} verdict={verdict?.state} title={`How ${report.display_name || report.name} was made`}
                         file={`${report.name.slice(report.name.lastIndexOf('/') + 1)}.html`} />
@@ -510,21 +652,28 @@ function FullGraph({ onClose, children }) {
   )
 }
 
-// "About this build", beside the report (a sheet from the bottom on a phone):
-// its tabs, a close, and the open tab's content.
-function ReportPanel({ tab, setTab, onClose, ...props }) {
-  const { report, shown, verdict } = props
+// "About this build": the trace, a card beside a wide page, a panel that
+// slides in over a narrower one (a sheet from the bottom on a phone). Its
+// title and the figure in focus, a close, its tabs (the trace, then Lineage,
+// History and Files), and the open tab's content.
+function ReportPanel({ tab, setTab, onClose, beside, ...props }) {
+  const { report, shown, verdict, focus } = props
   return (
-    <aside className="rpanel" aria-label="About this build">
+    <aside className={beside ? 'rpanel rpanel--beside' : 'rpanel'} aria-label="About this build">
       <div className="rpanel__top">
-        <h2 className="rpanel__title">About this build</h2>
+        <h2 className="rpanel__title">The trace</h2>
+        {focus && tab === 'receipt' && (
+          <span className="rpanel__focus" title={`The figure this trace follows: ${focus.label}. Click a figure in the page to follow it.`}>
+            figure: {focus.label}
+          </span>
+        )}
         <button type="button" className="cmd" onClick={onClose} aria-label="Close the panel"><Icon name="close" /></button>
       </div>
       <div className="rpanel__tabs">
         <Segmented options={TABS} value={tab} onChange={setTab} label="About this build" panel="rp-tabpanel" />
       </div>
       <div className="rpanel__body" role="tabpanel" id="rp-tabpanel" aria-labelledby={`rp-tabpanel-${tab}`}>
-        {tab === 'receipt' && <ReceiptTab {...props} />}
+        {tab === 'receipt' && <ReceiptTab {...props} beside={beside} />}
         {tab === 'lineage' && <LineageTab name={report.name} manifest={shown?.manifest} />}
         {tab === 'history' && <div className="rpanel__sec rpanel__sec--last"><HistoryTab name={report.name} verdict={verdict} /></div>}
         {tab === 'files' && <div className="rpanel__sec rpanel__sec--last"><ReportSource name={report.name} /></div>}
@@ -605,6 +754,9 @@ function OpenReport({ report, model }) {
   // a filter, and says so: the header shows Local and the selection, each
   // field a chip that clears it. A new page starts as authored.
   const [selection, setSelection] = useState(null)
+  // The figure the trace follows: the one the reader last clicked in the page
+  // (the frame says which, by its id), else the build's first value figure.
+  const [clicked, setClicked] = useState(null)
   // A build is deterministic, so a rebuild on unchanged data gives the same
   // HTML string; the frame is keyed on the build's time as well, so a new
   // build is a new page (and starts as authored) even when its bytes match.
@@ -613,13 +765,17 @@ function OpenReport({ report, model }) {
   // frame, so nothing the page says is missed.
   useLayoutEffect(() => {
     setSelection(null)
+    setClicked(null)
     const frame = frameRef.current
     if (!frame) return undefined
     // A new build starts as authored, so when the page says it is up it is
     // told the authored state (a no-op on a page that has none), before any
     // gesture. (A page in a srcdoc frame keeps no selection in its address
     // either, tracebi.js writeHash, so a re-created frame has none to inherit.)
-    const stopReady = listenToFrame(frame, m => { if (m.type === 'ready') setFrameSelection(frame, {}) })
+    const stopReady = listenToFrame(frame, m => {
+      if (m.type === 'ready') setFrameSelection(frame, {})
+      else if (m.type === 'figure' && typeof m.id === 'string') setClicked(m.id)
+    })
     const stopFollow = followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
     return () => { stopReady(); stopFollow() }
   }, [frameHtml, buildKey])
@@ -652,39 +808,45 @@ function OpenReport({ report, model }) {
     if (pointOn) sendPointing({ name, pointing: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointOn, name])
-  // The workbench and the panel share the right edge: one at a time.
+  // On a wide window the trace is a card beside the page; narrower, the panel
+  // and the workbench share the right edge, one at a time.
+  const rootRef = useRef(null)
+  const wide = useWidth(rootRef) >= WIDE
   const togglePoint = () => {
     setWantBuild(on => !on); setPointed(null); timeline.reset()
-    setPanel(p => ({ ...p, open: false }))
+    if (!wide) setPanel(p => ({ ...p, open: false }))
   }
 
-
-  // The panel's open/closed and its tab are remembered for next time.
+  // The panel's open/closed and its tab are remembered for next time, once
+  // the person has opened or closed it.
   useEffect(() => {
+    if (panel.open === null) return
     try { localStorage.setItem(PANEL_KEY, JSON.stringify(panel)) } catch { /* private window */ }
   }, [panel])
-  const showPanel = panel.open && !pointOn
+  const isOpen = p => p.open ?? wide
+  const showPanel = isOpen(panel) && !pointOn
   const openPanel = (tab, e) => {
     panelOpener.current = e?.currentTarget || null
     setWantBuild(false)
-    setPanel(p => (p.open && p.tab === tab ? { ...p, open: false } : { open: true, tab }))
+    setPanel(p => (isOpen(p) && p.tab === tab ? { ...p, open: false } : { open: true, tab }))
   }
   // "About this build" opens the panel on the tab it was last left on.
   const togglePanel = e => {
     panelOpener.current = e?.currentTarget || null
-    setPanel(p => ({ ...p, open: !p.open }))
+    setPanel(p => ({ ...p, open: !isOpen(p) }))
   }
   const closePanel = useCallback(() => {
     setPanel(p => ({ ...p, open: false }))
     if (panelOpener.current?.isConnected) panelOpener.current.focus()
   }, [])
-  // Escape closes the panel (a menu or dialog has already taken the key).
+  // Escape closes the panel that lies over the report (a menu or dialog has
+  // already taken the key); the card beside a wide page covers nothing.
   useEffect(() => {
-    if (!showPanel) return undefined
+    if (!showPanel || wide) return undefined
     const esc = e => { if (e.key === 'Escape' && !e.defaultPrevented) closePanel() }
     document.addEventListener('keydown', esc)
     return () => document.removeEventListener('keydown', esc)
-  }, [showPanel, closePanel])
+  }, [showPanel, wide, closePanel])
 
   // The desk keeps a verdict while its inputs are unchanged, so a plain refetch
   // would hand back the kept one; Check again asks it to re-run every recorded
@@ -719,22 +881,34 @@ function OpenReport({ report, model }) {
   const opening = !frameHtml && !running && ((!desk && !deskFailed) || built.isLoading)
   const label = report.display_name || name.slice(name.lastIndexOf('/') + 1)
   const words = scheduleWords(report.schedule)
+  const manifest = shown?.manifest
+  const focus = focusOf(manifest, clicked, lastBuild?.values)
+  // The folder the report sits in, as the library names it, in its hue.
+  const library = useLibrary()
+  const folder = folderOf(name)
+  const inFolder = folder ? library.byPath[folder] : null
 
   return (
-    <div className={pointOn ? 'rp rp--build' : 'rp'}>
+    <div ref={rootRef} className={['rp', pointOn && 'rp--build', wide && 'rp--wide'].filter(Boolean).join(' ')}>
       <header className="rp__head">
         <nav aria-label="Where this report is" className="rp__crumb">
           {navMenu && (
             <button type="button" className="cmd rp__menu-btn" aria-label="Menu" onClick={navMenu.open}><Icon name="menu" size={18} /></button>
           )}
-          <Link to="/">Reports</Link>
-          {model && (
+          <Link to="/">Library</Link>
+          {folder && (
             <>
               <span aria-hidden="true">›</span>
-              <Link to={libraryPath(model)}>{labelOf(model)}</Link>
+              <Link to={folderPath(folder)} className="rp__crumb-folder"
+                    style={inFolder ? hueStyle(inFolder.hue) : undefined}>
+                {inFolder?.label || (model && folder === model ? labelOf(model) : folder.split('/').join(' / '))}
+              </Link>
             </>
           )}
+          <span aria-hidden="true">›</span>
+          <span aria-current="page" className="rp__crumb-here" title={label}>{label}</span>
         </nav>
+        <div className="rp__bar-r">
         <div className="rp__titlerow">
           <h1 className="rp__name" title={name}>{label}</h1>
           {selection ? <Verdict state="local" detail={LOCAL_DETAIL} onClick={e => openPanel('receipt', e)} />
@@ -756,15 +930,12 @@ function OpenReport({ report, model }) {
             {builtAt && (
               <span title="Opening a report shows its last build. Rebuild or a schedule refreshes the data.">Built {builtAt}</span>
             )}
-            {refreshed && <span className="rp__hide-sm">Data refreshed <Time iso={refreshed} /></span>}
+            {manifest && <span className="rp__hide-sm">{count((manifest.figures || []).length, 'figure')}</span>}
+            {manifest && <span className="rp__hide-sm">{count((manifest.embedded_data || []).length, 'query', 'queries')}</span>}
+            {refreshed && <span className="rp__hide-sm rp__hide-md">Data refreshed <Time iso={refreshed} /></span>}
             {words && <span className="rp__hide-sm"><Icon name="calendar" size={13} /> {words.short}</span>}
           </div>
         </div>
-        {message && (
-          <p role="status" className={`rp__why${message.state === 'does-not-reproduce' ? ' rp__why--bad' : ''}`}>
-            {message.detail}
-          </p>
-        )}
 
       <div role="toolbar" aria-label="Report actions" className={narrow ? 'rp__bar rp__bar--narrow' : 'rp__bar'}>
         {shown && (
@@ -786,12 +957,12 @@ function OpenReport({ report, model }) {
         ) : (
           <>
             {canBuild && shown && (
-              <Cmd icon="rebuild" onClick={rebuild} disabled={running}
+              <Cmd icon="rebuild" onClick={rebuild} disabled={running} className="cmd--outline"
                    title="Re-run every query and build the report again">
                 {running ? <><Spinner size={12} /> Rebuilding…</> : 'Rebuild'}
               </Cmd>
             )}
-            <EditAsDraft kind="reports" path={name} bare />
+            <EditAsDraft kind="reports" path={name} bare className="cmd cmd--primary" />
             {canPoint && (
               <Cmd icon="build" on={pointOn} onClick={togglePoint}
                    title="Build mode: point at a figure or area, leave your agent notes, and watch it work.">
@@ -807,6 +978,12 @@ function OpenReport({ report, model }) {
           </>
         )}
       </div>
+        {message && (
+          <p role="status" className={`rp__why${message.state === 'does-not-reproduce' ? ' rp__why--bad' : ''}`}>
+            {message.detail}
+          </p>
+        )}
+        </div>
       </header>
 
       <div className="rp__body">
@@ -841,8 +1018,9 @@ function OpenReport({ report, model }) {
           <>
             <div className="rp__scrim rp__scrim--panel" onClick={closePanel} aria-hidden="true" />
             <ReportPanel tab={panel.tab} setTab={tab => setPanel({ open: true, tab })} onClose={closePanel}
-                         report={report} model={model} shown={shown} lastBuild={lastBuild}
-                         checkedAt={lastBuild?.computed_at ?? dataUpdatedAt} verdict={verdict} onCheck={checkAgain} checking={checking} />
+                         beside={wide} report={report} shown={shown} lastBuild={lastBuild} focus={focus}
+                         selection={selection} checkedAt={lastBuild?.computed_at ?? dataUpdatedAt}
+                         verdict={verdict} onCheck={checkAgain} checking={checking} />
           </>
         )}
       </div>
@@ -1125,14 +1303,19 @@ export default function Library() {
   return (
     <div className="library">
       <header className="dir-head">
-        <nav aria-label="Breadcrumb" className="crumbs"><span aria-current="page">Library</span></nav>
-        <h1 className="display-title"><Headline newest={newest} /></h1>
-        {all.length > 0 && (
-          <p className="dir-head__lede">
-            {count(library.folders.filter(f => f.items.length).length, 'folder')}, {count(all.length, 'report')}.
-            {' '}Every cover is its page as it was last built; open a folder for its reports.
-          </p>
-        )}
+        <div className="dir-head__row">
+          <div className="dir-head__text">
+            <nav aria-label="Breadcrumb" className="crumbs"><span aria-current="page">Library</span></nav>
+            <h1 className="display-title"><Headline newest={newest} /></h1>
+            {all.length > 0 && (
+              <p className="dir-head__lede">
+                {count(library.folders.filter(f => f.items.length).length, 'folder')}, {count(all.length, 'report')}.
+                {' '}Every cover is its page as it was last built; open a folder for its reports.
+              </p>
+            )}
+          </div>
+          <LibraryActions models={models} />
+        </div>
       </header>
       <Welcome role={role} showcase={all.find(isShowcase)} />
       {isLoading ? <SkeletonList /> : !all.length && !(canPublish && folderData?.personal) ? (
@@ -1167,6 +1350,61 @@ export default function Library() {
               </div></>
             )}
         </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The library's two actions, right of its h1, as a folder's page has them:
+ * New report (the command that scaffolds one; an analyst's or admin's) and
+ * Refresh data (an admin's: it writes the warehouse). Refresh runs each
+ * model's own pipeline once, the one its Transform tab calls Refresh data;
+ * with no pipeline for any model there is nothing to refresh, so no button.
+ */
+function LibraryActions({ models }) {
+  const role = useRole()
+  const { data: me } = useMe()
+  const { data: pipelines } = usePipelines()
+  const { mutateAsync: start } = useStartPipelineRun()
+  const [making, setMaking] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const navigate = useNavigate()
+  const toast = useToast()
+  // With no sign-in everyone is admin: the same gate as the folder page's.
+  const admin = !!me && (!me.role || me.role === 'admin')
+  const canAuthor = role === 'analyst' || role === 'admin'
+  const own = admin ? [...new Set(models.map(m => (
+    (pipelines || []).find(p => p.model === m.name) || (pipelines || []).find(p => pipelineBelongsToModel(p, m.name))
+  )?.pipeline).filter(Boolean))] : []
+  const refresh = async () => {
+    setStarting(true)
+    const failed = []
+    for (const pipeline of own) {
+      try { await start({ pipeline }) } catch (err) { failed.push(`${pipeline}: ${err.message}`) }
+    }
+    setStarting(false)
+    if (failed.length) toast(`Could not start ${failed.join('; ')}`, 'error')
+    if (failed.length < own.length) navigate('/runs')
+  }
+  if (!canAuthor && !own.length) return null
+  return (
+    <div className="dir-head__acts">
+      <div className="fhero__acts">
+        {canAuthor && (
+          <Btn aria-expanded={making} onClick={() => setMaking(m => !m)}>New report</Btn>
+        )}
+        {own.length > 0 && (
+          <Btn variant="outline" onClick={refresh} disabled={starting}
+               title={`Runs ${count(own.length, 'pipeline')}: ${own.join(', ')}`}>
+            {starting ? <><Spinner size={12} /> Starting…</> : 'Refresh data'}
+          </Btn>
+        )}
+      </div>
+      {making && (
+        <div className="fhero__new">
+          <CopyCommand>{'tracebi new-dashboard "New dashboard"'}</CopyCommand>
+        </div>
       )}
     </div>
   )
