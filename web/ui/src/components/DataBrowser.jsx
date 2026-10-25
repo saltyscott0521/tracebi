@@ -43,8 +43,24 @@ const KeyIcon = () => (
   </svg>
 )
 
-/** A table's kind as a small square: Σ for a fact, a key for a dimension. */
-export function KindGlyph({ role }) {
+// A view: one square laid over another, the rows a definition shows of the
+// tables under it.
+const ViewIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3"
+       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="1.5" y="3.5" width="7" height="7" rx="1" /><path d="M3.5 1.5h6a1 1 0 0 1 1 1v6" />
+  </svg>
+)
+const VIEW_TITLE = 'View: a definition over warehouse tables, its rows computed when read'
+
+/**
+ * A table's kind as a small square: Σ for a fact, a key for a dimension. A
+ * sink view (*view*) has its own square, whatever role a model gives it.
+ */
+export function KindGlyph({ role, view }) {
+  if (view) {
+    return <span className="dbx-kind dbx-kind--view" role="img" aria-label="View" title={VIEW_TITLE}><ViewIcon /></span>
+  }
   return (
     <span className={`dbx-kind dbx-kind--${role}`} role="img" aria-label={KIND_WORD[role]} title={KIND[role]}>
       {role === 'dimension' ? <KeyIcon /> : role === 'table' ? '' : 'Σ'}
@@ -207,7 +223,7 @@ function Tree({ schema, infoOf, selected, onTable, onColumn, onGroup, query, set
             return (
               <li {...common} aria-expanded={it.expanded} aria-selected={on} data-table={it.t.id}
                   className={`dbx-tree__table${on ? ' is-on' : ''}`}>
-                {chev}<KindGlyph role={it.t.role} />
+                {chev}<KindGlyph role={it.t.role} view={info?.view} />
                 <span className="dbx-tree__name" title={it.t.name}><Hit text={it.t.name} q={q} /></span>
                 <span className="dbx-tree__n">{rowsWords(info, true)}</span>
                 {c
@@ -263,7 +279,7 @@ const TableNode = memo(function TableNode({ data }) {
         </Fragment>
       ))}
       <div className="dbx-node__band">
-        <KindGlyph role={t.role} />
+        <KindGlyph role={t.role} view={info?.view} />
         <span className="dbx-node__name" title={t.name}>{t.name}</span>
         <span className="dbx-node__rows">{rowsWords(info)}</span>
       </div>
@@ -589,24 +605,31 @@ function TableInspector({ t, edges, measures, focusColumn, onSelect, onClose }) 
   const { data: info, error } = useTable(t.connector, t.source)
   const c = info?.contract && (CONTRACT[info.contract.status] || CONTRACT.no_contract)
   const connected = info && info.connected !== false
+  const view = connected && info.table_kind === 'view'
   const sql = `SELECT * FROM ${t.source} LIMIT 100`
   return (
     <div className="dbx-insp__table" data-inspecting={t.id}>
       <header className="dbx-insp__head">
         <div className="dbx-insp__title">
-          <KindGlyph role={t.role} />
+          <KindGlyph role={t.role} view={view} />
           <h2 className="dbx-insp__name" title={t.name}>{t.name}</h2>
           {c && <Chip tone={c.tone} title={c.title}>{c.label}</Chip>}
           <button type="button" className="dbx-close" onClick={onClose} aria-label="Close the table" title="Back to the summary">×</button>
         </div>
         <p className="dbx-insp__sub">
-          {KIND_WORD[t.role]}
+          {view ? 'View' : KIND_WORD[t.role]}
           {connected && <> · {info.rows == null ? 'rows not counted' : `${info.rows_exact === false ? '~' : ''}${count(info.rows, 'row')}`} × {count(info.columns.length, 'column')}</>}
+          {view && (info.view?.transform || info.view?.bases?.length > 0) && <>
+            {' · '}defined by {info.view.transform ? <code>{info.view.transform}</code> : 'a transform'}
+            {info.view.bases?.length > 0 && <> over {info.view.bases.map((b, i) => <Fragment key={b}>{i > 0 && ', '}<code>{b}</code></Fragment>)}</>}
+          </>}
           {t.source !== t.name && <> · stored as <code>{t.source}</code></>}
         </p>
         {connected && info.kind === 'warehouse' && (
           <p className="dbx-insp__sub">
-            Written by {info.written_by?.transform ? <code>{info.written_by.transform}</code> : 'no recorded transform'}
+            {/* A view's line above already names the transform that defined it. */}
+            {view && info.view?.transform ? 'Recorded'
+              : <>Written by {info.written_by?.transform ? <code>{info.written_by.transform}</code> : 'no recorded transform'}</>}
             {info.written_by?.at && <> · <Time iso={info.written_by.at} /></>}
             {' · '}read by {count((info.used_by || []).length, 'report')}
           </p>
@@ -646,7 +669,7 @@ const modeOf = w => (w >= 1040 ? 'wide' : w >= 640 ? 'mid' : 'phone')
  * modelGraph.js).
  *
  * - *storeKey*: where a rearranged diagram is kept (`tracebi-diagram-<key>`).
- * - *infoOf*(table): `{rows, exact, contract}` when the page already has it
+ * - *infoOf*(table): `{rows, exact, contract, view}` when the page already has it
  *   (the warehouse listing); otherwise each table is read from the table API.
  * - *summary*: the inspector when nothing is selected.
  * - *groupView*(group): the inspector when a tree group is selected (only
@@ -676,7 +699,7 @@ export default function DataBrowser({ schema, storeKey, infoOf: given, summary, 
     if (!t) return null
     if (given) return given(t)
     const d = reads[schema.tables.indexOf(t)]?.data
-    return d && d.connected !== false ? { rows: d.rows, exact: d.rows_exact, contract: d.contract } : null
+    return d && d.connected !== false ? { rows: d.rows, exact: d.rows_exact, contract: d.contract, view: d.table_kind === 'view' } : null
   }, [given, reads, schema]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = useCallback(patch => setParams(p => {
@@ -741,7 +764,7 @@ export default function DataBrowser({ schema, storeKey, infoOf: given, summary, 
       <Markers />
       {mode === 'phone' ? (
         <details className="dbx__drop">
-          <summary>{t ? <><KindGlyph role={t.role} /> <code>{t.name}</code></> : `Tables (${schema.tables.length})`}</summary>
+          <summary>{t ? <><KindGlyph role={t.role} view={infoOf(t)?.view} /> <code>{t.name}</code></> : `Tables (${schema.tables.length})`}</summary>
           {tree}
         </details>
       ) : <div className="dbx__tree">{tree}</div>}

@@ -347,8 +347,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             inspector = page.get_by_role("complementary", name="Inspector")
             group = inspector.locator('[data-writer="holdings_transform"]')
             expect(group).to_contain_text(
-                "holdings_transform · wrote 7 tables · read crm.issuer_ratings (snapshot inputs/issuer_ratings.csv) on that run")
+                "holdings_transform · wrote 7 tables and 1 view · read crm.issuer_ratings (snapshot inputs/issuer_ratings.csv) on that run")
             expect(page.get_by_text("read crm.issuer_ratings", exact=False)).to_have_count(1)
+            # A sink view has its own glyph and says what defines it.
+            tree.locator('[data-table="fact_holdings_by_sector"]').click()
+            page.wait_for_url("**/data/warehouse?table=fact_holdings_by_sector")
+            expect(inspector.locator('.dbx-insp__title [aria-label="View"]')).to_be_visible()
+            expect(inspector).to_contain_text("defined by holdings_transform over dim_issuer, fact_holdings")
             tree.locator('[data-table="dim_rating"]').click()
             page.wait_for_url("**/data/warehouse?table=dim_rating")
             expect(inspector.get_by_role("link", name="Open rows")).to_have_attribute(

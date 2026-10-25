@@ -9,8 +9,8 @@
 --
 -- DuckDB SQL, run top to bottom in one fresh connection by
 -- `tracebi run-transform holdings_transform`. The contract is not *how* you
--- clean, it is *what lands*: the seven tables created below. Phase ② (models/)
--- reads those tables and never sees this file. The checks they must pass sit
+-- clean, it is *what lands*: the seven tables and the one view created below.
+-- Phase ② (models/) reads those and never sees this file. The checks they must pass sit
 -- beside it in holdings_transform.contract.yaml.
 --
 -- One input sits outside inputs/: the credit team's CRM, a Postgres database
@@ -205,3 +205,25 @@ ORDER BY cashflow_id;
 
 CREATE OR REPLACE TABLE dim_date AS
 SELECT DISTINCT flow_date FROM fact_cashflows ORDER BY flow_date;
+
+-- %% [markdown]
+-- ## A sink view: the book by sector
+-- Materialize the facts you aggregate, view the derivations. This one is a
+-- definition kept in the warehouse, not a copy of rows: the model reads it as
+-- it reads a table, and it always agrees with the two tables it names. A view
+-- may read only the warehouse's own tables and views, never crm.… or a file.
+-- The sum is rounded to the cent: the last bits of a float sum depend on the
+-- order the rows are added in, and the pandas form adds them in another.
+-- (No cents() here: a view cannot call a TEMP MACRO, which is gone when it
+-- is read.)
+
+-- %%
+CREATE OR REPLACE VIEW fact_holdings_by_sector AS
+SELECT i.sector,
+       count(DISTINCT h.issuer_id) AS issuers,
+       count(*) AS positions,
+       round(sum(h.fair_value), 2) AS fair_value
+FROM fact_holdings h
+JOIN dim_issuer i USING (issuer_id)
+GROUP BY i.sector
+ORDER BY i.sector;

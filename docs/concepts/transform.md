@@ -22,6 +22,10 @@ CREATE OR REPLACE TABLE fact_holdings AS SELECT …;
 reads. See [[transform-sql]] for the placeholders `{{ sink }}` and `{{ root }}`
 and where tables land on each warehouse tier.
 
+A transform may also leave a view (`CREATE OR REPLACE VIEW`) over the tables
+it wrote, and a model reads it as a table. It may read only warehouse tables,
+never a source or a file: see [[transform-sql#Views]].
+
 ## Create and run one
 
 ```bash

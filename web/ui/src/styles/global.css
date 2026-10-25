@@ -2214,6 +2214,10 @@ code.fcard__nm, .fcard__t code { font-size: var(--text-caption); font-weight: 50
   background: var(--surface-2); border: 1px solid var(--border); text-decoration: none; white-space: nowrap;
 }
 .fcard__tbl:hover { border-color: var(--border-hl); }
+/* A name longer than the card (a view's, often) ends in an ellipsis inside it. */
+.fcard__tbls li { min-width: 0; max-width: 100%; }
+.fcard__tbl { max-width: 100%; }
+.fcard__tbln { overflow: hidden; text-overflow: ellipsis; }
 .fcard__tbl--ok::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 
 .flow-wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
@@ -2356,6 +2360,9 @@ code.fcard__nm, .fcard__t code { font-size: var(--text-caption); font-weight: 50
 .dbx-kind--dimension { background: var(--role-dimension); }
 .dbx-kind--bridge { background: var(--role-bridge); }
 [data-theme="dark"] .dbx-kind { color: #0a0a0a; }
+/* A view holds no rows of its own: an outline, not a filled square. */
+.dbx-kind--view, [data-theme="dark"] .dbx-kind--view { color: var(--text-2); background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.fcard__tbl .dbx-kind { width: 14px; height: 14px; vertical-align: 0; }
 .dbx-ty { flex: none; display: inline-flex; width: 14px; justify-content: center; color: var(--muted); }
 .dbx-mark { flex: none; display: inline-flex; width: 14px; justify-content: center; font-family: var(--font-sans); font-weight: 700; color: var(--accent-text); }
 .dbx-mark--m { color: var(--role-fact); font-weight: 600; }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>SQL transforms — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="SQL transforms">
+<meta name="description" content="On each tier.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -143,6 +143,96 @@ COPY dim_x TO '{{ sink }}/dim_x.parquet' (FORMAT PARQUET);
 </code></pre>
 <p>Use one way or the other for a table. A table that is both created and
 copied is written twice.</p>
+<h2 id="views">Views</h2>
+<pre><code class="language-sql">CREATE OR REPLACE VIEW fact_holdings_by_sector AS
+SELECT i.sector, count(*) AS positions, round(sum(h.fair_value), 2) AS fair_value
+FROM fact_holdings h
+JOIN dim_issuer i USING (issuer_id)
+GROUP BY i.sector;
+</code></pre>
+<p>A view the script creates without <code>TEMP</code> is a sink view. It lands in the
+warehouse as a definition, not as rows. A model table can name it
+(<code>source: fact_holdings_by_sector</code>) and reads it as it reads a table. A
+contract check runs against it as against a table, and <code>tracebi verify
+--contracts</code> re-runs that check the same way.</p>
+<p>Materialize the facts you aggregate. View the derivations. When the facts
+outgrow a file, move the warehouse to another tier, not the design.</p>
+<p><strong>What a view may read.</strong> Only the warehouse's own tables and views, by their
+plain names. The run checks each view it created. A view that reads anything
+else fails the run and is dropped, and the message names the view, what it
+read and the fix:</p>
+<pre><code>transforms/x.sql: view v_ratings reads crm.issuer_ratings, a -- source: table,
+which is attached for the run only and never lands in the warehouse. A sink
+view may read only the warehouse's own tables and views; materialize it:
+CREATE OR REPLACE TABLE v_ratings AS …, or move the read into a table the view
+selects from
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Refused</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A <code>-- source:</code> table (<code>crm.issuer_ratings</code>)</td>
+<td>It is attached for the run only. A model's query connection cannot reach it.</td>
+</tr>
+<tr>
+<td>A file or URL (<code>read_csv(…)</code>, <code>read_parquet(…)</code>, <code>'inputs/x.csv'</code>, <code>https://…</code>)</td>
+<td>The query connection is locked: no files, no network.</td>
+</tr>
+<tr>
+<td>A <code>TEMP</code> table or a <code>TEMP MACRO</code></td>
+<td>It is gone when the connection closes.</td>
+</tr>
+<tr>
+<td>A table named with its database (<code>warehouse.main.x</code>)</td>
+<td>The model attaches the warehouse under another name.</td>
+</tr>
+</tbody>
+</table>
+<p>There is a second reason. A view runs its query each time it is read. A view
+over a source would read the source again at read time, so the certificate's
+claim that the sink satisfied its contract would describe data that has since
+changed, and <code>tracebi verify</code> would compare against something new.</p>
+<p><strong>On each tier.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>A view</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>file</code></td>
+<td>Kept in <code>data/warehouse.duckdb</code></td>
+</tr>
+<tr>
+<td><code>remote</code></td>
+<td>Kept in the attached database</td>
+</tr>
+<tr>
+<td><code>object</code></td>
+<td>Refused. The tier keeps one Parquet file per table and no definitions. Materialize it with <code>CREATE OR REPLACE TABLE</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What the certificate records.</strong> With a contract beside the transform, the
+certificate lists the views the run created under the transform's <code>views</code>:</p>
+<pre><code class="language-json">&quot;views&quot;: [
+  {&quot;name&quot;: &quot;fact_holdings_by_sector&quot;, &quot;bases&quot;: [&quot;dim_issuer&quot;, &quot;fact_holdings&quot;],
+   &quot;definition_sha256&quot;: &quot;fc7a…&quot;}
+]
+</code></pre>
+<p><code>bases</code> are the tables and views the definition names. A view a check
+touches also has a fingerprint under <code>tables</code>, read like a table. The app
+marks a view with its own glyph and says which transform defined it over
+which tables.</p>
+<p>A Python transform's <code>write()</code> always materializes. The reference project's
+<code>holdings_transform_pandas.py</code> writes the same rows as a table.</p>
 <h2 id="placeholders">Placeholders</h2>
 <p>There are two. Each is substituted as text with any single quote doubled, so
 put it inside a <code>'…'</code> literal.</p>

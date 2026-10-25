@@ -66,6 +66,76 @@ COPY dim_x TO '{{ sink }}/dim_x.parquet' (FORMAT PARQUET);
 Use one way or the other for a table. A table that is both created and
 copied is written twice.
 
+## Views
+
+```sql
+CREATE OR REPLACE VIEW fact_holdings_by_sector AS
+SELECT i.sector, count(*) AS positions, round(sum(h.fair_value), 2) AS fair_value
+FROM fact_holdings h
+JOIN dim_issuer i USING (issuer_id)
+GROUP BY i.sector;
+```
+
+A view the script creates without `TEMP` is a sink view. It lands in the
+warehouse as a definition, not as rows. A model table can name it
+(`source: fact_holdings_by_sector`) and reads it as it reads a table. A
+contract check runs against it as against a table, and `tracebi verify
+--contracts` re-runs that check the same way.
+
+Materialize the facts you aggregate. View the derivations. When the facts
+outgrow a file, move the warehouse to another tier, not the design.
+
+**What a view may read.** Only the warehouse's own tables and views, by their
+plain names. The run checks each view it created. A view that reads anything
+else fails the run and is dropped, and the message names the view, what it
+read and the fix:
+
+```
+transforms/x.sql: view v_ratings reads crm.issuer_ratings, a -- source: table,
+which is attached for the run only and never lands in the warehouse. A sink
+view may read only the warehouse's own tables and views; materialize it:
+CREATE OR REPLACE TABLE v_ratings AS …, or move the read into a table the view
+selects from
+```
+
+| Refused | Why |
+|---|---|
+| A `-- source:` table (`crm.issuer_ratings`) | It is attached for the run only. A model's query connection cannot reach it. |
+| A file or URL (`read_csv(…)`, `read_parquet(…)`, `'inputs/x.csv'`, `https://…`) | The query connection is locked: no files, no network. |
+| A `TEMP` table or a `TEMP MACRO` | It is gone when the connection closes. |
+| A table named with its database (`warehouse.main.x`) | The model attaches the warehouse under another name. |
+
+There is a second reason. A view runs its query each time it is read. A view
+over a source would read the source again at read time, so the certificate's
+claim that the sink satisfied its contract would describe data that has since
+changed, and `tracebi verify` would compare against something new.
+
+**On each tier.**
+
+| Tier | A view |
+|---|---|
+| `file` | Kept in `data/warehouse.duckdb` |
+| `remote` | Kept in the attached database |
+| `object` | Refused. The tier keeps one Parquet file per table and no definitions. Materialize it with `CREATE OR REPLACE TABLE`. |
+
+**What the certificate records.** With a contract beside the transform, the
+certificate lists the views the run created under the transform's `views`:
+
+```json
+"views": [
+  {"name": "fact_holdings_by_sector", "bases": ["dim_issuer", "fact_holdings"],
+   "definition_sha256": "fc7a…"}
+]
+```
+
+`bases` are the tables and views the definition names. A view a check
+touches also has a fingerprint under `tables`, read like a table. The app
+marks a view with its own glyph and says which transform defined it over
+which tables.
+
+A Python transform's `write()` always materializes. The reference project's
+`holdings_transform_pandas.py` writes the same rows as a table.
+
 ## Placeholders
 
 There are two. Each is substituted as text with any single quote doubled, so

@@ -226,6 +226,17 @@ def run() -> dict:
     fact_cashflows["cashflow_id"] += 1
     dim_date = pd.DataFrame({"flow_date": sorted(fact_cashflows["flow_date"].unique())})
 
+    # ── the book by sector ────────────────────────────────────────────────────
+    # The SQL form keeps this as a sink view (CREATE OR REPLACE VIEW), a
+    # definition over fact_holdings and dim_issuer. write() always
+    # materializes, so here it lands as a table with the same rows.
+    by_sector = fact.merge(dim_issuer[["issuer_id", "sector"]], on="issuer_id").groupby(
+        "sector", sort=True).agg(issuers=("issuer_id", "nunique"),
+                                 positions=("issuer_id", "size"),
+                                 fair_value=("fair_value", "sum")).reset_index()
+    # To the cent: the two engines add a sector's floats in different orders.
+    by_sector["fair_value"] = by_sector["fair_value"].round(2)
+
     # ── SINK to the warehouse ─────────────────────────────────────────────────
     # No connect() here: write() manages its own short-lived read-write
     # connection, and a read-only connect would fail on a fresh clone whose
@@ -239,6 +250,7 @@ def run() -> dict:
     wh.write(dim_date, "dim_date")
     wh.write(dim_flow_type, "dim_flow_type")
     wh.write(fact_cashflows, "fact_cashflows")
+    wh.write(by_sector, "fact_holdings_by_sector")
 
     # ── the sink CONTRACT ─────────────────────────────────────────────────────
     # Declare what must be true of the tables that just landed — checked as
@@ -281,6 +293,9 @@ def run() -> dict:
         for column, dim in (("fund_id", "dim_fund"), ("issuer_id", "dim_issuer"),
                             ("flow_date", "dim_date"), ("flow_type_id", "dim_flow_type")):
             c.foreign_key("fact_cashflows", column, refers_to=(dim, column))
+        c.rows("fact_holdings_by_sector", at_least=1,
+               note="the book by sector (a sink view in the SQL form); every "
+                    "held position has a sector, so it has at least one row")
 
     return {
         "rows_in": n_raw,

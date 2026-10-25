@@ -345,7 +345,7 @@ export default function TablePage() {
       {crumb}
       <header className="tpage__head">
         <div className="tpage__title">
-          {role && <KindGlyph role={role} />}
+          {(role || t.table_kind === 'view') && <KindGlyph role={role} view={t.table_kind === 'view'} />}
           <h1 className="tpage__name">{table}</h1>
           {schemaLink && <Link to={schemaLink} className="tpage__schema">Show in schema</Link>}
         </div>

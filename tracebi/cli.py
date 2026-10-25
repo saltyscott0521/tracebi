@@ -432,7 +432,9 @@ def _transform_sql_template_text(title: str, tier: str) -> str:
                 "-- SELECT row_number() OVER (ORDER BY x) AS x_id, x FROM (SELECT DISTINCT x FROM clean);\n"
                 "-- COPY dim_x TO '{{ sink }}/dim_x.parquet' (FORMAT PARQUET);\n"
                 "-- COPY (SELECT c.id, d.x_id, c.value FROM clean c JOIN dim_x d USING (x))\n"
-                f"--   TO '{{{{ sink }}}}/fact_{slug}.parquet' (FORMAT PARQUET);")
+                f"--   TO '{{{{ sink }}}}/fact_{slug}.parquet' (FORMAT PARQUET);\n"
+                "-- (No CREATE VIEW here: the object tier keeps no definitions, so a\n"
+                "-- view is refused. Materialize the derivation as a table.)")
     else:
         where = (f"This project's warehouse is the {tier.upper()} tier: a table you CREATE\n"
                  "-- (not TEMP) lands in it. On the object tier a table is a Parquet file\n"
@@ -442,7 +444,11 @@ def _transform_sql_template_text(title: str, tier: str) -> str:
         sink = ("-- CREATE OR REPLACE TABLE dim_x AS\n"
                 "-- SELECT row_number() OVER (ORDER BY x) AS x_id, x FROM (SELECT DISTINCT x FROM clean);\n"
                 f"-- CREATE OR REPLACE TABLE fact_{slug} AS\n"
-                "-- SELECT c.id, d.x_id, c.value FROM clean c JOIN dim_x d USING (x);")
+                "-- SELECT c.id, d.x_id, c.value FROM clean c JOIN dim_x d USING (x);\n"
+                "-- A derivation may stay a definition: a sink view, read as a table is.\n"
+                "-- It reads only warehouse tables and views (never crm.… or a file).\n"
+                f"-- CREATE OR REPLACE VIEW fact_{slug}_by_x AS\n"
+                f"-- SELECT x_id, count(*) AS n FROM fact_{slug} GROUP BY x_id;")
     return f'''\
 -- %% [markdown]
 -- # {title}

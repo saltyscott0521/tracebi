@@ -4,6 +4,40 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-25 — Decision: sink views; materialization is a per-table choice (VIEWS)
+
+The sink stays the freeze point. A SQL transform may now leave a **sink view**
+beside its sink tables: `CREATE OR REPLACE VIEW x AS …`, legitimate when and
+only when it reads warehouse tables. The owner's rule of thumb: materialize
+the facts you aggregate, view the derivations; when the facts outgrow a file,
+move the tier, not the design. (dbt's `materialized: table | view`; here the
+statement itself is the choice.)
+
+Why a view cannot read a `-- source:` attachment or a file: the model's query
+connection is locked (no ATTACH, no URLs, `tracebi/model/engine.py`), so such
+a view would fail at query time; and it would re-read a source at read time,
+which breaks what the certificate says ("the sink satisfied its contract" when
+it was written) and what `verify` compares.
+
+How it holds: after the script, `run_sql` takes the views it created (a new
+oid in `duckdb_views()`), walks DuckDB's own parse of each definition
+(`json_serialize_sql`; DuckDB records no view-to-table dependency), and fails
+the run, dropping the view, on anything but a plain name in the warehouse's
+catalog or a pure table function (`range`, `generate_series`, `unnest`). Then
+each view is read once through the locked query connection, which catches
+what a parse cannot see (a `TEMP MACRO`). The object tier refuses every view:
+it keeps one Parquet file per table and no definitions. The certificate keeps
+`tables` as it was (`{name: fingerprint}`, for what the checks touch) and adds
+`views: [{name, definition_sha256, bases}]` beside it, the smaller change;
+checks run against a view as against a table. `/api/warehouse` tables carry
+`kind: table | view` (and `bases`); `/api/tables/{source}/{table}` carries
+`table_kind` (its `kind` already names the kind of source) and `view:
+{transform, bases}`. A SQL calculation now counts a view among its inputs on
+every tier. The reference project's `fact_holdings_by_sector` is the
+demonstration; its pandas twin materializes the same rows, so the two forms
+still certify identical tables. No model reads it: forcing one would not show
+more than the warehouse and the browser do.
+
 ## 2026-10-25 — The handbook in a plain, task-first voice (DOCS-3)
 
 The owner: "Go through the docs again and make them 100% easy to use and not

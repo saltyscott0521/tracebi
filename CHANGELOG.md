@@ -6,6 +6,10 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Added
+
+- Sink views: `CREATE OR REPLACE VIEW` in a SQL transform over warehouse tables; recorded in the certificate; refused over a source or a file.
+
 ### Changed
 
 - The handbook is rewritten in a plain, task-first voice (Stripe's docs as the model); every address and command stays.

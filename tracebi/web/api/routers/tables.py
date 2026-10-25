@@ -499,12 +499,17 @@ def open_table(connector, table: str) -> Iterator[_Reader]:
             if "wh" not in con.attached:
                 raise NotConnected({"connected": False,
                                     "reason": _reason(RuntimeError(con.attach_errors.get("wh", "")))})
-            names = {r[0] for r in con.execute(
-                "SELECT table_name FROM information_schema.tables "
-                "WHERE table_catalog = 'wh' AND table_schema = 'main'").fetchall()}
+            names = dict(con.execute(
+                "SELECT table_name, table_type FROM information_schema.tables "
+                "WHERE table_catalog = 'wh' AND table_schema = 'main'").fetchall())
             if table not in names:
                 raise NotInCatalog(table)
-            yield _DuckReader(con, f'"wh"."main".{quote(table)}', "warehouse")
+            reader = _DuckReader(con, f'"wh"."main".{quote(table)}', "warehouse")
+            # On the object tier every table is a view over its Parquet file:
+            # the reader's mechanics, not a sink view.
+            reader.table_kind = ("view" if warehouse.tier != "object" and names[table] == "VIEW"
+                                 else "table")
+            yield reader
         return
     if isinstance(connector, MemoryConnector):
         if table not in connector.list_tables():
@@ -715,22 +720,36 @@ def _shown(path: Optional[Path]) -> Optional[str]:
         return str(path)
 
 
-def _warehouse_facts(connector, table: str) -> dict:
+def _warehouse_facts(connector, table: str, view: bool = False) -> dict:
     """Who wrote a warehouse table, its sink contract judged now, and what the
     run that wrote it read from outside the warehouse: the certificate's
-    record, as the Warehouse page reads it."""
-    from tracebi.contracts import table_statuses
+    record, as the Warehouse page reads it. For a sink view (*view*), also
+    the transform that defined it and the tables it reads, which the
+    certificate records whether or not a check touches the view."""
+    from tracebi.contracts import read_contracts, table_statuses, view_record
     from tracebi.sources import _contract_owners
     from tracebi.transforms import contract_file, find_transform
 
-    status = table_statuses(_warehouse_target(connector), [table])[table]
+    target = _warehouse_target(connector)
+    status = table_statuses(target, [table])[table]
     record = status.get("transform")
-    transform = _contract_owners().get(record) if record else None
-    path = find_transform(transform) if transform else None
+    at = status.get("checked_at")
+    owners = _contract_owners()
+    defined = view_record(read_contracts(target), table) if view else None
+    if not record and defined:
+        record, at = defined["contract"], defined["checked_at"]
+    transform = owners.get(record) if record else None
+    # The file declaring checks, only where a check covers this table.
+    path = find_transform(transform) if transform and status.get("transform") else None
     file = (contract_file(path) or path) if path else None
+    extra = {}
+    if view:
+        extra["view"] = {"transform": owners.get(defined["contract"]) if defined else None,
+                         "bases": defined["bases"] if defined else []}
     return {
+        **extra,
         "written_by": ({"transform": transform, "contract": record,
-                        "at": status.get("checked_at")} if record else None),
+                        "at": at} if record else None),
         "contract": {"status": status["status"], "file": _shown(file),
                      "checks": status.get("checks"), "note": status.get("note"),
                      "checked_at": status.get("checked_at")},
@@ -820,11 +839,17 @@ def table_detail(source: str, table: str):
     """What the table is: ``{source, table, kind, rows, rows_exact, columns,
     written_by, contract, read_by, used_by, transform_read}``. ``rows`` is
     exact for DuckDB and files, the catalog's estimate for a SQL connection
-    that keeps one (``rows_exact: false``), else null."""
+    that keeps one (``rows_exact: false``), else null. A warehouse table also
+    says ``table_kind`` (``table`` or ``view``; ``kind`` names the kind of
+    source), and a sink view ``view: {transform, bases}`` from the
+    certificate."""
     def describe(reader):
         rows, exact = reader.catalog_rows()
-        return {"kind": reader.kind, "rows": rows, "rows_exact": exact,
-                "columns": reader.columns}
+        out = {"kind": reader.kind, "rows": rows, "rows_exact": exact,
+               "columns": reader.columns}
+        if reader.kind == "warehouse":
+            out["table_kind"] = reader.table_kind
+        return out
 
     got = _answer(source, table, describe)
     if "connected" in got:
@@ -833,6 +858,7 @@ def table_detail(source: str, table: str):
     facts: dict = {"written_by": None, "contract": None, "transform_read": []}
     if got["kind"] == "warehouse":
         # After the reader has closed: the contract join opens the file itself.
-        facts = _warehouse_facts(registry.get_connector(source), table)
+        facts = _warehouse_facts(registry.get_connector(source), table,
+                                 view=got["table_kind"] == "view")
     return {"source": source, "table": table, **got, **facts,
             "read_by": models, "used_by": _used_by(models)}

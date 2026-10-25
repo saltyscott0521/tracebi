@@ -218,11 +218,13 @@ class _Contract:
 
     def __init__(self, name: str, warehouse: str,
                  note: Optional[str] = None,
-                 sources: Optional[dict] = None) -> None:
+                 sources: Optional[dict] = None,
+                 views: Optional[list] = None) -> None:
         self.name = name
         self.warehouse = warehouse
         self.note = note
         self.sources = sources
+        self.views = views
         self._checks: list[dict] = []
         self._tables: set[str] = set()
         self._con = None
@@ -412,7 +414,13 @@ class _Contract:
         # for an unset connection says so (source_fallback).
         if self.sources:
             record["sources"] = self.sources
-        existing = read_contracts(self.warehouse) or {
+        # The sink views the transform left beside its tables: each one's
+        # definition (hashed) and the warehouse tables and views it names.
+        # A view a check touches also has its fingerprint under `tables`,
+        # read through the same load path as a table.
+        if self.views:
+            record["views"] = self.views
+        existing =read_contracts(self.warehouse) or {
             "schema_version": CONTRACTS_SCHEMA_VERSION, "transforms": {}}
         existing.setdefault("transforms", {})[self.name] = record
         existing["schema_version"] = CONTRACTS_SCHEMA_VERSION
@@ -431,12 +439,17 @@ class contract:
     :func:`tracebi.transforms.load_source` returns it: the inputs the
     transform read from outside the warehouse, recorded under ``sources``
     so ``tracebi verify --contracts`` can say whether they moved since.
+
+    *views* is ``[{name, definition_sha256, bases}]``, the sink views a SQL
+    transform created (:func:`tracebi.transforms.run_sql`), recorded under
+    ``views``. A check runs against a view as against a table.
     """
 
     def __init__(self, name: str, warehouse: str,
                  note: Optional[str] = None,
-                 sources: Optional[dict] = None) -> None:
-        self._c = _Contract(name, warehouse, note=note, sources=sources)
+                 sources: Optional[dict] = None,
+                 views: Optional[list] = None) -> None:
+        self._c = _Contract(name, warehouse, note=note, sources=sources, views=views)
 
     def __enter__(self) -> _Contract:
         self._c._con = _reader(self._c.warehouse)
@@ -519,16 +532,18 @@ def read_contract_file(path: "str | os.PathLike[str]", default_name: str) -> dic
 
 
 def run_contract_file(path: "str | os.PathLike[str]", warehouse: str,
-                      default_name: str, sources: Optional[dict] = None) -> dict:
+                      default_name: str, sources: Optional[dict] = None,
+                      views: Optional[list] = None) -> dict:
     """Run a ``<transform>.contract.yaml`` against the sunk tables, exactly as
     the ``with contract(...)`` block it stands for: the same checks, the same
     raise on failure, the same certificate on success (with *sources*, the
-    SQL transform's ``-- source:`` loads). Returns the parsed file."""
+    SQL transform's ``-- source:`` loads, and *views*, its sink views).
+    Returns the parsed file."""
     spec = read_contract_file(path, default_name)
     if not spec["checks"]:
         return spec     # declares nothing; writes nothing
     with contract(spec["name"], warehouse=warehouse, note=spec["note"],
-                  sources=sources) as c:
+                  sources=sources, views=views) as c:
         for decl in spec["checks"]:
             c.check(decl)
     return spec
@@ -878,6 +893,21 @@ def _record_covering(certs: Optional[dict], table: str) -> Optional[dict]:
     if not hits:
         return None
     return max(hits, key=lambda r: str(r.get("checked_at") or ""))
+
+
+def view_record(certs: Optional[dict], name: str) -> Optional[dict]:
+    """What the newest record naming *name* among its sink views says of it:
+    ``{contract, checked_at, bases, definition_sha256}``, or None. A view no
+    check touches has no fingerprint under ``tables``, so this, not
+    :func:`_record_covering`, says which transform defined it."""
+    hits = [(record, rec, v) for record, rec in ((certs or {}).get("transforms") or {}).items()
+            if isinstance(rec, dict)
+            for v in rec.get("views") or [] if isinstance(v, dict) and v.get("name") == name]
+    if not hits:
+        return None
+    record, rec, v = max(hits, key=lambda h: str(h[1].get("checked_at") or ""))
+    return {"contract": record, "checked_at": rec.get("checked_at"),
+            "bases": list(v.get("bases") or []), "definition_sha256": v.get("definition_sha256")}
 
 
 def _check_touches(chk: dict, table: str) -> bool:
