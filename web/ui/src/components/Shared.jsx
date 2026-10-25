@@ -173,12 +173,12 @@ export function CardTitle({ children, action }) {
 
 export function PageTitle({ children }) {
   return (
-    // The display face has one weight: a page's h1 is set in it at 400.
+    // A page's h1 is the display: the sans, tight, at its one weight.
     <h1 style={{
       fontFamily: 'var(--font-display)',
-      fontSize: 'var(--text-2xl)', fontWeight: 400,
+      fontSize: 'var(--text-2xl)', fontWeight: 'var(--weight-display)',
       marginBottom: 'var(--space-1)', lineHeight: 1.2,
-      letterSpacing: 'var(--tracking-tight)',
+      letterSpacing: 'var(--tracking-display)',
       color: 'var(--text)',
     }}>{children}</h1>
   )

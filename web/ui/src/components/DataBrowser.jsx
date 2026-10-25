@@ -292,7 +292,7 @@ const TableNode = memo(function TableNode({ data }) {
 // title (a tooltip) and the inspector's, never text on the line.
 function JoinEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data }) {
   const [path] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 8, offset: 20 })
-  const s = data.on ? '-on' : ''
+  const s = data.on ? '-on' : data.faded ? '-off' : ''
   return (
     <g>
       <title>{data.tip}</title>
@@ -315,15 +315,15 @@ function Markers() {
   return (
     <svg className="dbx-markers" width="0" height="0" aria-hidden="true" focusable="false">
       <defs>
-        {['', '-on'].map(s => (
+        {['', '-on', '-off'].map(s => (
           <Fragment key={s}>
-            <marker id={`dbx-many${s}`} viewBox="0 0 14 14" markerWidth="14" markerHeight="14" refX="14" refY="7"
+            <marker id={`dbx-many${s}`} viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="10" refY="5"
                     orient="auto-start-reverse" markerUnits="userSpaceOnUse">
-              <path className={`dbx-mk${s}`} d="M3 7 14 2M3 7h11M3 7l11 5" fill="none" />
+              <path className={`dbx-mk${s}`} d="M2 5 10 1.5M2 5h8M2 5l8 3.5" fill="none" />
             </marker>
-            <marker id={`dbx-one${s}`} viewBox="0 0 14 14" markerWidth="14" markerHeight="14" refX="14" refY="7"
+            <marker id={`dbx-one${s}`} viewBox="0 0 10 10" markerWidth="10" markerHeight="10" refX="10" refY="5"
                     orient="auto" markerUnits="userSpaceOnUse">
-              <path className={`dbx-mk${s}`} d="M8 2v10" fill="none" />
+              <path className={`dbx-mk${s}`} d="M6 1.5v7" fill="none" />
             </marker>
           </Fragment>
         ))}
@@ -376,16 +376,20 @@ function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
       const t = byId[id]
       return opened.has(id) || t.columns.findIndex(c => c.name === col) < MAX_COLUMNS
     }
-    // Leave on the side that faces the other table, so a join runs across.
-    const leftward = xOf[e.from] > xOf[e.to]
+    // Leave on the side that faces the other table, so a join runs across. A
+    // table above or below (the ring's top and bottom) is reached round the
+    // outer side of both, so the join never runs behind a card or across the
+    // join of the fact beside it.
+    const dx = xOf[e.to] - xOf[e.from]
+    const [out, into] = Math.abs(dx) < NODE_W ? (dx >= 0 ? ['l', 'l'] : ['r', 'r']) : dx < 0 ? ['l', 'r'] : ['r', 'l']
     const on = !!selected && (e.from === selected || e.to === selected)
     return {
       id: e.id, source: e.from, target: e.to, type: 'join',
-      sourceHandle: `s-${leftward ? 'l' : 'r'}-${visible(e.from, e.fromKey) ? e.fromKey : ''}`,
-      targetHandle: `t-${leftward ? 'r' : 'l'}-${visible(e.to, e.toKey) ? e.toKey : ''}`,
+      sourceHandle: `s-${out}-${visible(e.from, e.fromKey) ? e.fromKey : ''}`,
+      targetHandle: `t-${into}-${visible(e.to, e.toKey) ? e.toKey : ''}`,
       className: on ? 'is-on' : selected ? 'is-faded' : undefined,
       focusable: false,
-      data: { on, many: e.cardinality === 'many-to-one', tip: `${e.from}.${e.fromKey} → ${e.to}.${e.toKey} · ${joinWords(e)}` },
+      data: { on, faded: !!selected && !on, many: e.cardinality === 'many-to-one', tip: `${e.from}.${e.fromKey} → ${e.to}.${e.toKey} · ${joinWords(e)}` },
     }
   }), [schema, byId, opened, xOf, selected])
 
@@ -421,10 +425,11 @@ function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
     if (selected) reveal(selected)
   }, [selected]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Back to the ring, the whole of it in view, as it opens.
   const reset = () => {
     writeSaved(key, {})
     setNodes(base({}))
-    setTimeout(() => flow.setViewport({ x: 32, y: 32, zoom: 1 }), 0)
+    setTimeout(() => flow.fitView({ padding: 0.08, maxZoom: 1, duration: 0 }), 0)
   }
 
   return (

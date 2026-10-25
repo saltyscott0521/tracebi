@@ -95,11 +95,11 @@ grounds was picked from six side-by-side options.)
   cards, no gradients, no backdrop blur, no resting shadows (a menu or popover
   may have one). The library is the exception, on purpose (2026-10-24): its
   tiles, covers, pills and a folder's hero rest on `--shadow`, a folder's tile
-  and hero carry its hue as a tint, and page titles are set in Instrument
-  Serif (`--font-display`). ◆
-- **Type: Hanken Grotesk and IBM Plex Mono** (both SIL OFL), replacing Source
-  Sans, Inter and Source Code Pro. A clean, tightly set grotesque in the spirit
-  of Vercel's and Supabase's faces, without copying one. 14px body, 13px in dense lists, tabular numerals
+  and hero carry its hue as a tint. Page titles are the sans set tight at 600
+  (`--font-display`); no serif, no italics (2026-10-25). ◆
+- **Type: Geist and Geist Mono** (both SIL OFL), replacing Hanken Grotesk and
+  IBM Plex Mono in the app (2026-10-25; reports still carry Hanken Grotesk).
+  One family, body at 450. 14px body, 13px in dense lists, tabular numerals
   for every figure, mono for every identifier (model, table, binding, id). ◆
 - **Radius 6px, sidebar the same ground as the page**, not a separate navy
   slab. Page header small (20px): the page is the content, not the title.

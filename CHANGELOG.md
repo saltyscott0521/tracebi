@@ -6,6 +6,23 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — one type system (Geist); the home shows no figures; the welcome is one row; the schema ring
+
+- **One type system.** The app is set in Geist and Geist Mono (self-hosted,
+  SIL OFL); a page's h1 is the sans at 600, set tight. No serif, no italics.
+- **The home shows no figures.** The Today ribbon and each folder tile's
+  headline number are gone; a tile says how many reports and when it was last
+  built, and a folder's page says what it is made of (reports, tables,
+  measures, last build). A number appears only inside a report. The library's
+  h1 is "Reports".
+- **The welcome is one row** under the folder tiles: Get started, the
+  showcase, and ⌘K, with the same dismiss.
+- **The schema ring.** The data browser draws each star as a ring: its facts at
+  the centre, its dimensions around them, a dimension two facts share between
+  them, so joins are short and do not cross. Cards are one family (a 3px rule
+  for fact or dimension), edges 1.5px, the selection in the accent. Reset
+  layout returns to the ring.
+
 ### Changed — the report page: the trace beside the page; the command bar
 
 - **The trace sits beside the report.** On a wide window the built page fills

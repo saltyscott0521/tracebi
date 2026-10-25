@@ -5,7 +5,7 @@ import { useMe, useModels, usePipelines, useRole, useRuns, useStartPipelineRun }
 import { CoverFan, CoverTile, Health } from '../components/Directory'
 import { useDocumentTitle } from '../components/Layout'
 import { NotFound } from '../components/Scope'
-import { Btn, BtnLink, CopyCommand, Empty, SkeletonCard, useToast } from '../components/Shared'
+import { Btn, BtnLink, CopyCommand, Empty, SkeletonCard, Time, useToast } from '../components/Shared'
 import { KINDS, hueStyle, kindOf, newestBuild, reportLabel, useBuilds, useLibrary } from '../folders'
 import { askPath, dataPath, pipelineBelongsToModel, reportPagePath } from '../nav'
 import { count, plural } from '../format'
@@ -89,16 +89,9 @@ function BuildTimeline({ items }) {
   )
 }
 
-// A label's last word in the display face's italic, as the library's h1 sets it.
-function Titled({ label }) {
-  const words = label.split(' ')
-  if (words.length < 2) return label
-  return <>{words.slice(0, -1).join(' ')} <em>{words[words.length - 1]}</em></>
-}
-
 /**
  * One folder's page (/?folder=<path>): its hero (what it holds, its newest
- * numbers and covers, and what to do with it), its builds, its health, its
+ * covers, and what to do with it), its builds, its health, its
  * reports by kind and who may do what in it. A folder the person may not see
  * is a page that does not exist, as for one that does not.
  */
@@ -129,6 +122,8 @@ export default function FolderPage({ path }) {
   const one = models.length === 1 ? models[0] : null
   const items = folder.items
   const newest = newestBuild(items, builds)
+  const tables = models.reduce((n, m) => n + m.tables.length, 0)
+  const measures = models.reduce((n, m) => n + m.measures.length, 0)
   const lead = items.find(r => /(^|\/|_)showcase$/.test(r.name))
     || items.find(r => r.name === newest?.report) || items[0]
   // Only an admin may run a pipeline (it writes the warehouse); with no
@@ -155,22 +150,20 @@ export default function FolderPage({ path }) {
           <p className="fhero__eyebrow">
             Folder
             {models.map(m => <span key={m.name}> · {m.name}</span>)}
-            {one && <> · {count(one.tables.length, 'table')} · {count(one.measures.length, 'measure')}</>}
           </p>
-          <h1 className="display-title"><Titled label={folder.label} /></h1>
+          <h1 className="display-title">{folder.label}</h1>
           <p className="fhero__lede">
             {folder.mine ? 'Your own folder: only you see it unless you share it by file. '
               : items.length ? `${count(items.length, 'report')} ${plural(items.length, 'reads', 'read')} ${models.map(m => m.label || m.name).join(' and ') || 'this folder'}. `
                 : ''}
             {items.length ? 'Every cover is its page as it was last built.' : 'Nothing here yet.'}
           </p>
-          {newest?.values?.length > 0 && (
-            <dl className="fhero__facts" aria-label={`From ${reportLabel(items.find(r => r.name === newest.report) || { name: newest.report })}, as last built`}>
-              {newest.values.slice(0, 4).map(v => (
-                <div key={v.id}><dt>{v.label}</dt><dd>{v.text}</dd></div>
-              ))}
-            </dl>
-          )}
+          {/* What the folder is made of, never a figure: a number appears only inside a report. */}
+          <p className="fhero__facts">
+            {count(items.length, 'report')}
+            {models.length > 0 && <> · {count(tables, 'table')} · {count(measures, 'measure')}</>}
+            {newest && <> · last built <Time iso={newest.built_at} /></>}
+          </p>
           <div className="fhero__acts">
             {/* A report's name can be long: the button says which one it opens in its title. */}
             {lead && (

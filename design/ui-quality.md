@@ -79,8 +79,9 @@ Checked by the script (rule name in brackets):
 - **Every model has a pipeline** `[model-without-pipeline]`: something its
   Transform tab can run. A pipeline belongs to the models it names
   (`runner.models`), else the one `model_pipeline` stamped, else its own name.
-- **The look** ([Design direction](design-direction.md)): Hanken Grotesk loads `[theme-font-loaded]`
-  `[theme-font]`; the brand is cobalt and stays in its blue family, and other
+- **The look** ([Design direction](design-direction.md)): Geist loads `[theme-font-loaded]`
+  `[theme-font]`, the one family (a page's h1 is the sans set tight at 600, no
+  serif, no italics); the brand is cobalt and stays in its blue family, and other
   colour means something (green reproduces, amber needs a look, red does not
   reproduce; a folder's hue, `--hue-1`…`--hue-6`, names the folder and never a
   state) `[theme-brand-colour]`; the dark theme
@@ -146,6 +147,9 @@ Checked by eye, from the contact sheet:
   phone's drawer and ⌘K alike; its address shows a plain page saying who it
   is for. Review's tabs (Attention, Drafts, History, Verify) each keep an
   address, and Review is the current entry on all of them.
+- **A number is only ever a query result; the app draws none outside a
+  report.** The home and a folder's page show counts of reports and tables and
+  build times, never a figure from a build.
 - **Hierarchy is visible.** The first thing the eye lands on is the thing
   the page is for. Secondary things are quieter, not merely smaller.
 - **Empty states teach.** An empty list says what would fill it and how

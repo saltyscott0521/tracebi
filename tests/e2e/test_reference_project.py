@@ -673,8 +673,8 @@ def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, m
         assert verdicts["saas_model/mrr_dashboard"]["cached"] is False
         assert verdicts["saas_model/cohort_brief"]["cached"] is True
 
-        # The library's headline numbers (the home page's Today ribbon, a
-        # folder's facts) are what each build printed, never computed here:
+        # The desk's headline numbers (each build's `values`; the home draws
+        # none) are what each build printed, never computed here:
         # each is a value figure of the built page, under its own id and in the
         # page's own words. Catches a number read from the wrong figure, or one
         # made up where the page carries none (no series, no sparkline).
