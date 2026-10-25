@@ -30,7 +30,7 @@ by hand.
 }
 ```
 
-Out of the box a report is Hanken Grotesk on neutral grounds with one cobalt
+Out of the box a report is Geist on neutral grounds with one cobalt
 accent and hairline cards: the same look as the web app. The face is inlined into
 the file (about 45 KB, Latin subset), so nothing is fetched and nothing needs installing;
 set `--tb-font` to use your own face instead.

@@ -13,10 +13,10 @@
 /* ── 1. Tokens ─────────────────────────────────────────────────────────── */
 
 :root {
-  /* Hanken Grotesk is inlined into every report (see stack.font_face_css), so a report
+  /* Geist is inlined into every report (see stack.font_face_css), so a report
    * reads as part of the web app and needs nothing installed. Anything outside
    * its Latin subset falls through to the system face. */
-  --tb-font: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", Roboto,
+  --tb-font: "Geist", system-ui, -apple-system, "Segoe UI", Roboto,
              "Helvetica Neue", Arial, sans-serif;
   /* The editorial body face: a system serif, so nothing is fetched or inlined. */
   --tb-font-serif: "Iowan Old Style", Charter, "Sitka Text", Cambria, Georgia, serif;

@@ -963,7 +963,7 @@ def report_style_findings() -> list[dict]:
     inside the iframes a report is shown in, and a report is the product.
 
     Every text token must read at 4.5:1 on every surface a report puts text on,
-    and the stylesheet must name Hanken Grotesk first.
+    and the stylesheet must name Geist first.
     """
     css = (REPO / "tracebi" / "reports" / "assets" / "tracebi.css").read_text()
     t = _tokens(css, ":root")
@@ -974,8 +974,8 @@ def report_style_findings() -> list[dict]:
                     "theme": "-", "rule": "report-style", "severity": "serious",
                     "target": target, "detail": detail})
 
-    if not re.search(r'--tb-font:\s*"Hanken Grotesk"', css):
-        finding("--tb-font", "the report face must lead with Hanken Grotesk (inlined by stack.font_face_css)")
+    if not re.search(r'--tb-font:\s*"Geist"', css):
+        finding("--tb-font", "the report face must lead with Geist (inlined by stack.font_face_css)")
     for fg in ("--tb-ink", "--tb-muted", "--tb-accent-text", "--tb-good", "--tb-bad"):
         for bg in ("--tb-bg", "--tb-page", "--tb-surface", "--tb-surface-accent"):
             if fg in t and bg in t and (r := _contrast(t[fg], t[bg])) < 4.5:
