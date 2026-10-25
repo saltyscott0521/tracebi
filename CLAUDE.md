@@ -248,6 +248,8 @@ web/
                        # `web.py` distribution, which owns that same path in site-packages.
                        # `npm run build` writes its output into tracebi/web/ui/dist.
     src/when.js        # stamp / ago / day / isoTitle: every date in the app; format.js: count / plural
+    src/styles/global.css      # tokens: --font-display (Instrument Serif) for page h1s; --hue-1..6 folder hues, a label
+                       #   never a state; --shadow / --shadow-lg only on the library's tiles, covers, pills and hero
     src/components/Shared.jsx  # the parts: Segmented, Chip (states) vs Badge (labels), Btn/BtnLink,
                        #   ExportCsv, Empty (title, body, command | action), CopyCommand, Time;
                        #   .tb-list (global.css) for lists of things
@@ -858,7 +860,7 @@ GET  /api/reports/{name}/built                       → the last build (disk, e
 GET  /api/reports/{name}/cover                       → PNG of the last build's first screen (ETag = its write time; 304); 404 when none (the app draws one); never builds; hidden as /built
 GET  /api/runs                                       → run rows (kind, target, limit); viewer may read
 GET  /api/runs/counts?kind=                          → [{kind, target, runs, failed}] per target the caller may see (History's "N older runs")
-GET  /api/desk[?fresh=1]                             → pins, drafts, verdicts, builds, sinks; each verdict/build row carries computed_at and cached: a verdict is kept while its manifest, the models it names and their warehouse (+ certificate) are unchanged (tracebi/desk.py; process-local; fresh re-runs all)
+GET  /api/desk[?fresh=1]                             → only reports the caller may view: pins, drafts, verdicts, builds (each with `values` [{id, label, text, delta, spark}], its KPIs as the built page printed them), sinks; each verdict/build row carries computed_at and cached: a verdict is kept while its manifest, the models it names and their warehouse (+ certificate) are unchanged (tracebi/desk.py; process-local; fresh re-runs all)
 POST /mcp                                            → the agent gateway, when TRACEBI_MCP_TOKEN, TRACEBI_OIDC_ISSUER or the built-in sign-in is set (bearer; outside app auth)
 GET  /.well-known/oauth-*  /authorize /token /register /revoke /oauth/callback → per-person OAuth for /mcp (TRACEBI_OIDC_ISSUER, or the built-in TRACEBI_DEMO_LOGIN / TRACEBI_LOCAL_USERS; tracebi/mcp_oauth.py)
 GET  /api/reports/{name}/download?format=xlsx|html|pdf   → html/pdf: the last build; xlsx: rendered
@@ -891,8 +893,10 @@ GET  /api/code-requests[/{id}]                       → the caller's own (admin
 POST /api/code-requests/{id}/approve|reject          → copy the files in (history under .tracebi/history/code/) and run the pipelines they touch once / reject with a {note} (admin)
 POST /api/library/sync                               → git webhook: pull each library checkout, rescan; outside sign-in, needs TRACEBI_LIBRARY_SYNC_SECRET (X-Hub-Signature-256 or X-TraceBi-Sync-Token); 404 without it
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
-GET  /                                               → React SPA (tracebi/web/ui/dist): five places, Reports (/, the
-                                                       library) · Ask (/ask) · Data (/data: five tabs, Flow /data (the
+GET  /                                               → React SPA (tracebi/web/ui/dist): four places, Reports (/, the
+                                                       library as a directory; /?folder=<path> one folder's page; the sidebar is
+                                                       the folder tree, web/ui/src/folders.js; /ask is reached by Ask this model
+                                                       on a folder's or a model's page) · Data (/data: five tabs, Flow /data (the
                                                        board: sources → transforms → warehouse → models → reports;
                                                        ?model=<m> lights that model's path) · Sources /data/sources ·
                                                        Transforms /data/transforms · Warehouse /data/warehouse · Models
@@ -945,7 +949,7 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Change the web app's pages | `web/ui/src/nav.js` (the five places; `DATA_TABS`; `movedTo` for old addresses) + `web/ui/src/App.jsx`; the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name) |
+| Change the web app's pages | `web/ui/src/nav.js` (the five places; `DATA_TABS`; `movedTo` for old addresses) + `web/ui/src/App.jsx`; the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name); `web/ui/src/folders.js` (the library's folders, their order and hue) + `components/Directory.jsx` (cover tile, rows, folder tile, Today) |
 | Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
