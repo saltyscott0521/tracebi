@@ -31,7 +31,7 @@ export function GeneratedCover({ name, kinds, builtAt }) {
   const held = KINDS.filter(([k]) => kinds?.[k])
   return (
     <div className="gcover" aria-hidden="true">
-      <span className="gcover__name">{name}</span>
+      <span className="gcover__name" title={name}>{name}</span>
       <span className="gcover__foot">
         {held.length > 0 && (
           <span className="gcover__kinds">

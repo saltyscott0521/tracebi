@@ -197,7 +197,8 @@ Layout of `src/`:
 
 ```
 api.js               # all API hooks (React Query) — one hook per endpoint
-nav.js               # the five places, Data's tabs, their addresses, movedTo (old addresses)
+nav.js               # the four places, Data's tabs, their addresses, movedTo (old addresses)
+folders.js           # the library's folders: one list, its order, a hue per folder
 components/
   Layout.jsx         # sidebar, theme toggle, ⌘K trigger
   Scope.jsx          # page header, one-model routes, redirects from old addresses
@@ -214,8 +215,9 @@ dark under `[data-theme="dark"]`. To rebrand, edit the tokens (`--blue`,
 `--bg`, `--card`, the `--op-*` lineage-node palette) — components never
 hard-code colors. The brand gradient is `--brand`.
 
-**Adding a nav page:** the sidebar is five places, `PAGES` in `nav.js`
-(Reports `/`, Ask `/ask`, Data `/data`, Review `/review`, Docs `/docs`), drawn
+**Adding a nav page:** the sidebar is four places, `PAGES` in `nav.js`
+(Reports `/`, Data `/data`, Review `/review`, Docs `/docs`; Ask `/ask` is a
+page inside Reports), drawn
 by `Layout.jsx`; Data's own tabs are `DATA_TABS` (Flow, Sources, Transforms,
 Warehouse, Models). A new page lives inside one of them: give it a route in
 `App.jsx` under that place's address and teach `whereAmI` in `nav.js` which

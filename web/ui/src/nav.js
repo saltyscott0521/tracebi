@@ -1,8 +1,13 @@
-// The app's frame: five places, each for one job.
+// The app's frame: four places, each for one job.
 //
-//   Reports  /                  the library: every report, by folder; ?model=<m> filters it
+//   Reports  /                  the library as a directory: its folders, then a row of
+//                               covers per folder; ?model=<m> filters it. The sidebar is
+//                               its folder tree (folders.js), then Data, Review and Docs
+//            /?folder=<path>    one folder's page: its reports by kind, its models
 //            /reports/<name>    one report as a page of its own (<name> is folder/slug)
-//   Ask      /ask               a question of one model; ?model=<m> picks it
+//            /ask               a question of one model; ?model=<m> picks it. Not a place
+//                               of its own: a question is about one model, so it is asked
+//                               from that model's folder or its Data page (Ask this model)
 //   Data     /data              five tabs (DATA_TABS) in the order the data moves:
 //                               Flow (/data: the board, one lane per stage, sources →
 //                               transforms → warehouse → models → reports; ?model=<m>
@@ -31,7 +36,7 @@
 //                               file of docs/ at /docs/<section>/<page>; the
 //                               quickstart at /docs/get-started
 //
-// Who sees which place (placesFor): everyone Reports, Ask and Docs, an analyst
+// Who sees which place (placesFor): everyone Reports and Docs, an analyst
 // also Review and Data. Data is read-only below admin: its run buttons (Refresh
 // data, a step's Run) and credential forms show for an admin only. With no
 // sign-in the API names everyone admin, so every place shows. The API enforces
@@ -45,13 +50,13 @@
 // stamps): the model file models/<model>.py, its pipeline pipelines/<model>.py,
 // its reports under reports/<model>/.
 
-// The five places, then the pages inside Review (`parent`): each keeps its own
-// address, and the sidebar marks Review on it. `minRole` is the least role
-// that sees it.
+// The four places, then the pages inside them (`parent`): Ask inside Reports,
+// and Review's tabs. Each keeps its own address, and the sidebar marks the
+// place it sits in. `minRole` is the least role that sees it.
 export const PAGES = [
   { key: 'reports', label: 'Reports', path: '/', minRole: 'viewer',
     sub: 'What people read. Every report, and whether its numbers still hold.' },
-  { key: 'ask',     label: 'Ask',     path: '/ask', minRole: 'viewer',
+  { key: 'ask',     label: 'Ask',     path: '/ask', parent: 'reports', minRole: 'viewer',
     sub: 'Ask a model a question and see the query behind the answer.' },
   { key: 'data',    label: 'Data',    path: '/data', minRole: 'analyst',
     sub: 'How the numbers are made, left to right: the sources, the transforms that read them, the warehouse they write, the models over it and the reports.' },
@@ -94,7 +99,7 @@ export function mayUse(role, key) {
 /**
  * The places *role* sees, in the sidebar's order: the one list the sidebar,
  * the phone's drawer, the rail and the ⌘K palette draw. No role yet (while
- * /api/me loads) is the least: Reports and Ask, never a flash of the rest.
+ * /api/me loads) is the least: Reports and Docs, never a flash of the rest.
  */
 export const placesFor = role => PAGES.filter(p => !p.parent && mayUse(role, p.key))
 
@@ -168,7 +173,7 @@ const PLACE_OF = [
 
 /**
  * Which page a pathname is ({page, model, tab}), or null for pages outside
- * the five places (an unknown address). Inside Review it is the tab's own
+ * the four places (an unknown address). Inside Review it is the tab's own
  * page (placeOf gives Review). On Data, `tab` is one of Data's own tabs
  * (DATA_TABS) with no `model`, or, on one model's page, `model` and which of
  * its tabs.

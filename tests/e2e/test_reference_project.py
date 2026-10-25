@@ -673,6 +673,22 @@ def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, m
         assert verdicts["saas_model/mrr_dashboard"]["cached"] is False
         assert verdicts["saas_model/cohort_brief"]["cached"] is True
 
+        # The library's headline numbers (the home page's Today ribbon, a
+        # folder's facts) are what each build printed, never computed here:
+        # each is a value figure of the built page, under its own id and in the
+        # page's own words. Catches a number read from the wrong figure, or one
+        # made up where the page carries none (no series, no sparkline).
+        for name, b in verdicts.items():
+            html = (reference / "output" / f"{name}.html").read_text(encoding="utf-8")
+            for v in b["values"]:
+                assert f'id="{v["id"]}"' in html and f'>{v["text"]}<' in html, (name, v)
+                assert v["spark"] is None or len(v["spark"]) > 1
+        fair_value = next(v for v in verdicts["portfolio_model/portfolio_showcase"]["values"]
+                          if v["id"] == "kpi-fv")
+        assert (fair_value["label"], fair_value["delta"] != "") == ("Fair value", True)
+        showcase = (reference / "output" / "portfolio_model" / "portfolio_showcase.html").read_text()
+        assert f'id="kpi-fv">{fair_value["text"]}<' in showcase
+
         # Covers (tracebi/reports/cover.py). Catches a workflow that ships the
         # library with no pictures, a cover served stale or uncached, and one
         # that outlives the build that could not take it.

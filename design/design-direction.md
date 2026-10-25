@@ -93,7 +93,10 @@ grounds was picked from six side-by-side options.)
   craft); light is white with 1px borders (Vercel's).
 - **Borders, not boxes.** 1px hairlines separate regions; no cards inside
   cards, no gradients, no backdrop blur, no resting shadows (a menu or popover
-  may have one). ◆
+  may have one). The library is the exception, on purpose (2026-10-24): its
+  tiles, covers, pills and a folder's hero rest on `--shadow`, a folder's tile
+  and hero carry its hue as a tint, and page titles are set in Instrument
+  Serif (`--font-display`). ◆
 - **Type: Hanken Grotesk and IBM Plex Mono** (both SIL OFL), replacing Source
   Sans, Inter and Source Code Pro. A clean, tightly set grotesque in the spirit
   of Vercel's and Supabase's faces, without copying one. 14px body, 13px in dense lists, tabular numerals
@@ -198,9 +201,10 @@ Everything here is `tracebi.css`, `tracebi.js` and the kit; the reference is
 4. **The theme pass,** one surface at a time through the audit loop.
    - Foundation (done): Hanken Grotesk and IBM Plex Mono; cobalt as the one brand colour on
      neutral grounds that follow the OS; a near-black sidebar slab; hairline
-     borders; no gradients, blur or resting shadows. The nav is five places,
-     Reports, Ask, Data, Review, Docs (it was Build, then Use, before the 2026-10 IA;
-     Docs joined on 2026-10-21).
+     borders; no gradients, blur or resting shadows. The nav is four places,
+     Reports, Data, Review, Docs (it was Build, then Use, before the 2026-10 IA;
+     Docs joined on 2026-10-21; Ask left on 2026-10-24, into a folder's page and
+     a model's).
      The audit enforces it: `theme-font`, `theme-brand-colour`,
      `theme-dark-ink`, `theme-shadow`, `theme-decoration`.
    - Report defaults (done): `tracebi.css` takes the same type, grounds and

@@ -17,22 +17,25 @@ import { ReportLineage } from '../components/ReportLineage'
 import { LOCAL_DETAIL, VERDICT_LABEL, checkedVerdict, needsAction, verdictOf } from '../verdict'
 import { humanise } from '../ask'
 import { useLineFacts } from '../components/TheLine'
-import { stamp } from '../when'
-import { count, plural } from '../format'
+import { day, stamp } from '../when'
+import { count } from '../format'
 import { Older } from './Runs'
 import EditAsDraft from '../components/EditAsDraft'
 import { ReportArt } from '../components/Art'
-import { ReportCover } from '../components/Cover'
+import { CoverRow, CoverTile, FolderTile, Health, Today, builtLine, tagOf } from '../components/Directory'
+import { useDocumentTitle } from '../components/Layout'
+import FolderPage, { FolderNote } from './Folder'
+import { folderPath, newestBuild, useBuilds, useLibrary } from '../folders'
 import {
   Moved, useModelLabel, useOpenReport, useNavMenu,
 } from '../components/Scope'
 import {
-  PAGES, dataPath, folderOf, libraryPath, mayUse, movedTo, placesFor, reportBelongsToModel, reportModels,
+  dataPath, folderOf, libraryPath, mayUse, movedTo, placesFor, reportBelongsToModel, reportModels,
   reportPagePath,
 } from '../nav'
 import { scheduleWords } from '../schedule'
 import {
-  Spinner, Verdict, Empty, Btn, BtnLink, ErrorDetail, PageTitle, PageSub,
+  Spinner, Verdict, Empty, Btn, BtnLink, ErrorDetail,
   SearchInput, Segmented, SkeletonList, SkeletonCard, Time, useToast, useNarrow,
 } from '../components/Shared'
 
@@ -892,9 +895,7 @@ function ReportSource({ name }) {
 
 // Reports in folders are named by their path ("finance/weekly"). The list
 // groups them under their folder; top-level reports come first, unheaded.
-// The gallery opens on its hero: the showcase's folder first (after the
-// person's own My published), the showcase first in it.
-function groupByFolder(reports, mine, heroFirst = false) {
+function groupByFolder(reports, mine) {
   const groups = new Map()
   // Their own My published is always there, even before anything is in it.
   if (mine) groups.set(mine, [])
@@ -903,60 +904,10 @@ function groupByFolder(reports, mine, heroFirst = false) {
     if (!groups.has(folder)) groups.set(folder, [])
     groups.get(folder).push(r)
   }
-  const hero = heroFirst ? reports.find(isShowcase) : null
-  const first = hero ? folderOf(hero.name) : null
-  const rank = f => (f === mine ? 0 : f === first ? 1 : f === '' && !hero ? -1 : f === '' ? 2 : 3)
+  const rank = f => (f === mine ? 0 : f === '' ? -1 : 3)
   return [...groups.entries()]
     .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
-    .map(([folder, items]) => ({
-      folder,
-      items: hero && folder === first ? [hero, ...items.filter(r => r !== hero)] : items,
-    }))
-}
-
-const YOU_CAN = {
-  publish: 'You can publish here',
-  request: 'You can ask to publish here',
-}
-
-// What the person may do in a folder, and (to a manager, or the owner of a
-// personal folder) who holds what there. Permissions are edited in the
-// folder's _folder.yaml: the app only shows them.
-function FolderNote({ info }) {
-  const p = info.permissions
-  const can = YOU_CAN[info.mode] || 'View only'
-  return (
-    <div className="lfolder__note">
-      <div>
-        {can}.
-        {info.mine && ' Only you see this folder unless you share it by file.'}
-        {info.personal && !info.mine && ' Shared with you by its owner.'}
-        {info.accepts === 'checkable' && ' It accepts only reports whose every number a query can re-run.'}
-      </div>
-      {p && (
-        <div style={{ marginTop: 6 }}>
-          {p.malformed
-            ? <div>The folder file cannot be read, so nobody but admins is granted anything.</div>
-            : Object.keys(p.grants).length === 0
-              ? <div>{info.mine
-                ? 'Nobody else is granted anything.'
-                : 'No folder file applies, so roles decide.'}</div>
-              : (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {Object.entries(p.grants).map(([level, who]) => (
-                    <li key={level}><span style={{ textTransform: 'capitalize' }}>{level}</span>: {who.join(', ')}</li>
-                  ))}
-                </ul>
-              )}
-          <div style={{ color: 'var(--muted)' }}>
-            {p.file ? <>From <code>{p.file}</code>. </> : null}
-            Permissions are changed in the folder&rsquo;s <code>_folder.yaml</code> file. Editing them here is not
-            available yet.
-          </div>
-        </div>
-      )}
-    </div>
-  )
+    .map(([folder, items]) => ({ folder, items }))
 }
 
 // A folder's permissions are worth a line only where they differ from the
@@ -993,36 +944,10 @@ function LibraryRow({ report, verdict, built }) {
   )
 }
 
-// The same report as a tile in the gallery: its cover, then the row's facts
-// under it. The whole tile is one link; the showcase's (the hero) is twice as
-// wide on a wide window.
-function LibraryTile({ report, verdict, built, hero }) {
-  const words = scheduleWords(report.schedule)
-  const name = report.display_name || report.name.slice(report.name.lastIndexOf('/') + 1)
-  return (
-    <li className={hero ? 'ltile--hero' : undefined}>
-      <Link to={reportPagePath(report.name)} className="ltile" data-report={report.name}>
-        <ReportCover report={report} name={name} build={built} />
-        <span className="ltile__body">
-          <span className="ltile__name">{name}</span>
-          {report.description && <span className="ltile__desc" title={report.description}>{report.description}</span>}
-          <span className="ltile__meta">
-            {verdict && <Verdict state={verdict.state} detail={verdict.detail} size="sm" />}
-            {built && <span className="lrow__built">Built <Time iso={built.built_at} /></span>}
-            {words && (
-              <span className="lrow__sched" title={words.long}><Icon name="calendar" size={12} /> {words.short}</span>
-            )}
-          </span>
-        </span>
-      </Link>
-    </li>
-  )
-}
-
 // The showcase: the report that shows everything a report can do, by its name.
 const isShowcase = r => /(^|\/|_)showcase$/.test(r.name)
 
-function LibraryFolder({ folder, label, items, info, usual, open, onToggle, verdictFor, builds, searching, view }) {
+function LibraryFolder({ folder, label, items, info, usual, open, onToggle, verdictFor, builds, searching }) {
   const [perm, setPerm] = useState(false)
   const worth = permissionsWorthSaying(info, usual)
   return (
@@ -1047,44 +972,14 @@ function LibraryFolder({ folder, label, items, info, usual, open, onToggle, verd
           Nothing here yet. Publish a draft to My published from Review to put a report here.
         </p>
       )}
-      {open && items.length > 0 && (view === 'grid' ? (
-        <ul className="lgrid">
-          {items.map(r => (
-            <LibraryTile key={r.name} report={r} verdict={verdictFor(r)} built={builds[r.name]} hero={isShowcase(r)} />
-          ))}
-        </ul>
-      ) : (
+      {open && items.length > 0 && (
         <ul className="lfolder__rows">
           {items.map(r => (
             <LibraryRow key={r.name} report={r} verdict={verdictFor(r)} built={builds[r.name]} />
           ))}
         </ul>
-      ))}
+      )}
     </section>
-  )
-}
-
-// What the list holds before you open anything: how many reports, and how
-// many of their last builds reproduce, need a look, or were never built, in
-// the words of the chip each counts.
-function Glance({ reports, verdictFor, known }) {
-  const count = {}
-  reports.forEach(r => { const v = verdictFor(r); if (v) count[v.state] = (count[v.state] || 0) + 1 })
-  const parts = [
-    ['reproduces', n => `${n} reproduce${n === 1 ? 's' : ''}`],
-    ['needs-a-look', n => `${n} ${n === 1 ? 'needs' : 'need'} a look`],
-    ['does-not-reproduce', n => `${n} ${n === 1 ? 'does' : 'do'} not reproduce`],
-    ['not-checked', n => `${n} not checked`],
-    ['never-built', n => `${n} never built`],
-  ].filter(([state]) => count[state] || ['reproduces', 'needs-a-look', 'never-built'].includes(state))
-  return (
-    <div className="glance" role="group" aria-label="At a glance">
-      <span className="glance__item"><b>{reports.length}</b> {plural(reports.length, 'report')}</span>
-      {/* A count of nothing is not a signal: it reads muted, not in its chip's colour. */}
-      {known && parts.map(([state, say]) => (
-        <span key={state} className={`glance__item glance__item--${count[state] ? state : 'none'}`}>{say(count[state] || 0)}</span>
-      ))}
-    </div>
   )
 }
 
@@ -1092,7 +987,6 @@ function Glance({ reports, verdictFor, known }) {
 // role sees (nav.js placesFor, the sidebar's list).
 const PLACE_LINE = {
   reports: 'every report, and whether its numbers still hold. Start here.',
-  ask: 'a question of a model, answered with the query behind it.',
   data: 'how the numbers are made: sources, transforms, the warehouse, models.',
   review: 'what waits on a person: attention, drafts, what ran, checking a file.',
   docs: 'the handbook: concepts, guides and reference.',
@@ -1101,10 +995,9 @@ const WELCOMED = 'tracebi-welcomed'
 const VIEW_KEY = 'tracebi-library-view'
 const VIEWS = [['grid', 'Grid'], ['list', 'List']]
 
-// Grid or list, kept per person in this browser; until they pick, a grid on a
-// wide window and a list at phone width.
+// Grid (the directory) or list, kept per person in this browser; until they
+// pick, the directory, on a phone too: its rows scroll sideways.
 function useLibraryView() {
-  const narrow = useNarrow('(max-width: 640px)')
   const [picked, setPicked] = useState(() => {
     try { return localStorage.getItem(VIEW_KEY) } catch { return null }
   })
@@ -1112,7 +1005,7 @@ function useLibraryView() {
     try { localStorage.setItem(VIEW_KEY, v) } catch { /* private window: kept for this visit */ }
     setPicked(v)
   }
-  const view = VIEWS.some(([v]) => v === picked) ? picked : narrow ? 'list' : 'grid'
+  const view = VIEWS.some(([v]) => v === picked) ? picked : 'grid'
   return [view, pick]
 }
 
@@ -1162,14 +1055,18 @@ export default function Library() {
   const moved = movedTo('/', rawSearch)   // an old ?r=<name> link opens the report
   const { data, isLoading } = useReports()
   const { data: modelList } = useModels()
-  const { data: desk } = useDesk()
   const { data: folderData } = useFolders()
   const [params, setParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [closed, setClosed] = useState(() => new Set())
   const [view, setView] = useLibraryView()
   const role = useRole()
+  const library = useLibrary()
+  const { desk, builds, verdictFor } = useBuilds()
+  const opened = params.get('folder')
+  useDocumentTitle(opened === null ? 'Reports' : '')
   if (moved) return <Navigate to={moved} replace />
+  if (opened !== null) return <FolderPage path={opened} />
 
   const models = modelList || []
   const asked = params.get('model') || ''
@@ -1177,12 +1074,10 @@ export default function Library() {
   const labelOf = name => models.find(m => m.name === name)?.label || name
   const all = data || []
   const reports = all.filter(r => reportBelongsToModel(r, model))
-  const builds = Object.fromEntries((desk?.builds || []).map(b => [b.report, b]))
-  // Before the desk has answered nothing is claimed about any build.
-  const verdictFor = r => (desk ? verdictOf({ report: r, build: builds[r.name] }) : null)
   const needle = query.trim().toLowerCase()
-  const listed = reports.filter(r => !needle || [r.display_name, r.name, r.description]
-    .some(t => (t || '').toLowerCase().includes(needle)))
+  const matches = r => !needle || [r.display_name, r.name, r.description]
+    .some(t => (t || '').toLowerCase().includes(needle))
+  const listed = reports.filter(matches)
   const folders = folderData?.folders || []
   const folderInfo = Object.fromEntries(folders.map(f => [f.path, f]))
   // The level most folders give this person: a folder file is what moves one off it.
@@ -1200,12 +1095,44 @@ export default function Library() {
   })
   const folderLabel = (folder, info) => (info?.mine ? 'My published'
     : models.some(m => m.name === folder) ? labelOf(folder) : folder.split('/').join(' / '))
+  const newest = newestBuild(all, builds)
+  // The model chips, the search and the view: under the folder tiles in the
+  // directory (they narrow its rows), above the list.
+  const find = (
+    <div className="library__find">
+      {models.length > 1 && (
+        <div className="library__chips" role="group" aria-label="Model">
+          <button type="button" className="rsplit__chip" aria-pressed={!model} onClick={() => pick('')}>
+            All models <span className="library__n">{all.length}</span>
+          </button>
+          {models.map(m => (
+            <button key={m.name} type="button" className="rsplit__chip" aria-pressed={model === m.name}
+                    onClick={() => pick(m.name)} title={m.name}>
+              {m.label || m.name}{' '}
+              <span className="library__n">{all.filter(r => reportBelongsToModel(r, m.name)).length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="library__search">
+        <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" label="Search reports"
+                     style={{ padding: 0, borderBottom: 0 }} />
+        <Segmented options={VIEWS} value={view} onChange={setView} label="View" className="library__view" />
+      </div>
+    </div>
+  )
 
   return (
     <div className="library">
-      <header className="page-header">
-        <PageTitle>Reports</PageTitle>
-        <PageSub>{PAGES[0].sub}</PageSub>
+      <header className="dir-head">
+        <nav aria-label="Breadcrumb" className="crumbs"><span aria-current="page">Library</span></nav>
+        <h1 className="display-title"><Headline newest={newest} /></h1>
+        {all.length > 0 && (
+          <p className="dir-head__lede">
+            {count(library.folders.filter(f => f.items.length).length, 'folder')}, {count(all.length, 'report')}.
+            {' '}Every cover is its page as it was last built; open a folder for its reports.
+          </p>
+        )}
       </header>
       <Welcome role={role} showcase={all.find(isShowcase)} />
       {isLoading ? <SkeletonList /> : !all.length && !(canPublish && folderData?.personal) ? (
@@ -1220,40 +1147,86 @@ export default function Library() {
         )
       ) : (
         <>
-          <Glance reports={reports} verdictFor={verdictFor} known={!!desk} />
-          <div className="library__find">
-            {models.length > 1 && (
-              <div className="library__chips" role="group" aria-label="Model">
-                <button type="button" className="rsplit__chip" aria-pressed={!model} onClick={() => pick('')}>
-                  All models <span className="library__n">{all.length}</span>
-                </button>
-                {models.map(m => (
-                  <button key={m.name} type="button" className="rsplit__chip" aria-pressed={model === m.name}
-                          onClick={() => pick(m.name)} title={m.name}>
-                    {m.label || m.name}{' '}
-                    <span className="library__n">{all.filter(r => reportBelongsToModel(r, m.name)).length}</span>
-                  </button>
+          <Health reports={reports} verdictFor={verdictFor} builds={builds} known={!!desk} />
+          {view === 'grid' && !needle && !model && (
+            <Today library={library} builds={builds} verdictFor={verdictFor} pins={desk?.pins} />
+          )}
+          {!listed.length && !mine
+            ? <>{find}<p className="lfolder__none">No report matches. Clear the search or pick All models.</p></>
+            : view === 'grid' ? (
+              <DirectoryView library={library} listed={listed} mine={mine} builds={builds} verdictFor={verdictFor} find={find} />
+            ) : (
+              <>{find}<div className="library__list">
+                {groupByFolder(listed, mine).map(({ folder, items }) => (
+                  <LibraryFolder key={folder || '(top)'} folder={folder} label={folderLabel(folder, folderInfo[folder])}
+                                 items={items} info={folderInfo[folder]} usual={usual}
+                                 // A search always shows its matches, even in a closed folder.
+                                 open={!folder || !!needle || !closed.has(folder)} onToggle={() => toggle(folder)}
+                                 verdictFor={verdictFor} builds={builds} searching={!!needle} />
                 ))}
-              </div>
+              </div></>
             )}
-            <div className="library__search">
-              <SearchInput value={query} onChange={setQuery} placeholder="Search reports…" label="Search reports"
-                           style={{ padding: 0, borderBottom: 0 }} />
-              <Segmented options={VIEWS} value={view} onChange={setView} label="View" className="library__view" />
-            </div>
-          </div>
-          <div className={view === 'grid' ? 'library__gallery' : 'library__list'}>
-            {!listed.length && !mine
-              ? <p className="lfolder__none">No report matches. Clear the search or pick All models.</p>
-              : groupByFolder(listed, mine, view === 'grid').map(({ folder, items }) => (
-                <LibraryFolder key={folder || '(top)'} folder={folder} label={folderLabel(folder, folderInfo[folder])}
-                               items={items} info={folderInfo[folder]} usual={usual}
-                               // A search always shows its matches, even in a closed folder.
-                               open={!folder || !!needle || !closed.has(folder)} onToggle={() => toggle(folder)}
-                               verdictFor={verdictFor} builds={builds} searching={!!needle} view={view} />
-              ))}
-          </div>
         </>
+      )}
+    </div>
+  )
+}
+
+// The library's h1 says how fresh what it shows is: "What's true tonight." (or
+// "today.") when the newest build is from today, else as of that build's day.
+// With nothing built yet it says what the library is for.
+function Headline({ newest }) {
+  if (!newest) return <>Every report, <em>and whether it still holds.</em></>
+  const built = new Date(newest.built_at)
+  const now = new Date()
+  if (built.toDateString() !== now.toDateString()) return <>What&rsquo;s true <em>as of {day(newest.built_at)}.</em></>
+  return <>What&rsquo;s true <em>{now.getHours() >= 18 ? 'tonight.' : 'today.'}</em></>
+}
+
+// Grid: the library as a directory. Its folders as tiles, then a row of covers
+// for the newest builds, then a row per folder; a search or a model narrows
+// every row and drops the empty ones (their own My published stays, to say
+// how it fills).
+function DirectoryView({ library, listed, mine, builds, verdictFor, find }) {
+  const shown = new Set(listed.map(r => r.name))
+  const rows = library.folders
+    .map(f => ({ ...f, items: f.items.filter(r => shown.has(r.name)) }))
+    .filter(f => f.items.length || f.path === mine)
+  const hueOf = name => library.folders.find(f => f.path === folderOf(name))?.hue
+  const recent = (Object.values(builds))
+    .filter(b => shown.has(b.report) && b.built_at)
+    .sort((a, b) => b.built_at.localeCompare(a.built_at))
+    .slice(0, 6)
+    .map(b => listed.find(r => r.name === b.report))
+  const top = listed.filter(r => !folderOf(r.name))
+  const tile = (r, i, wide = false) => (
+    <li key={r.name}>
+      <CoverTile report={r} verdict={verdictFor(r)} built={builds[r.name]} hue={hueOf(r.name)}
+                 tag={tagOf(r)} wide={wide && i === 0} />
+    </li>
+  )
+  return (
+    <div className="dir">
+      <ul className="ftiles" aria-label="Folders">
+        {rows.map(f => <li key={f.path}><FolderTile folder={f} builds={builds} /></li>)}
+      </ul>
+      {find}
+      {recent.length > 0 && (
+        <CoverRow title="Recently built" row="recent" meta={builtLine(recent, builds)}>
+          {recent.map((r, i) => tile(r, i, true))}
+        </CoverRow>
+      )}
+      {rows.map(f => (
+        <CoverRow key={f.path} title={f.label} hue={f.hue} row="folder" open={folderPath(f.path)}
+                  meta={`${count(f.items.length, 'report')}${f.models.length === 1 && f.models[0] !== f.path ? ` · ${f.models[0]}` : ''}`}
+                  empty={f.mine ? 'Nothing here yet. Publish a draft to My published from Review to put a report here.' : null}>
+          {[...f.items].sort((a, b) => isShowcase(b) - isShowcase(a)).map((r, i) => tile(r, i))}
+        </CoverRow>
+      ))}
+      {top.length > 0 && (
+        <CoverRow title="Not in a folder" row="folder" meta={count(top.length, 'report')}>
+          {top.map((r, i) => tile(r, i))}
+        </CoverRow>
       )}
     </div>
   )

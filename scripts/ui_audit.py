@@ -893,7 +893,8 @@ def score(findings: list[dict]) -> int:
 TEXT_TOKENS = ("--text", "--text-2", "--muted", "--accent-text",
                "--green-text", "--amber-text", "--red-text",
                "--role-dimension", "--role-fact", "--role-bridge", "--role-table",
-               "--phase-transform", "--phase-model", "--phase-report")
+               "--phase-transform", "--phase-model", "--phase-report",
+               "--hue-1", "--hue-2", "--hue-3", "--hue-4", "--hue-5", "--hue-6")
 SURFACE_TOKENS = ("--bg", "--surface", "--surface-2", "--card", "--card-hl")
 
 
@@ -926,6 +927,8 @@ def token_findings() -> list[dict]:
         # Each diagram tag colour is drawn on its own background.
         pairs = [(fg, bg) for fg in TEXT_TOKENS for bg in SURFACE_TOKENS]
         pairs += [(k, k[:-3] + "-bg") for k in t if k.startswith("--op-") and k.endswith("-tx")]
+        # A folder's tag is --on-hue text on its hue.
+        pairs += [("--on-hue", k) for k in t if re.fullmatch(r"--hue-\d", k)]
         for fg, bg in pairs:
             if fg in t and bg in t and (r := _contrast(t[fg], t[bg])) < 4.5:
                 out.append({"page": "(tokens)", "pattern": "(tokens)", "viewport": "-",
@@ -1021,15 +1024,19 @@ def theme_findings() -> list[dict]:
                 finding("theme-brand-colour", f"{name} ({theme})",
                         f"{v} is hue {h * 360:.0f}; the brand is cobalt and its blues (195-250)")
     for m in re.finditer(r"\n\s*(--shadow[\w-]*):\s*([^;]*);", css):
-        if m.group(1) != "--shadow-pop" and m.group(2).strip() != "none":
+        # A popover lifts off the page; the library's tiles, covers, pills and a
+        # folder's hero rest on --shadow (--shadow-lg when hovered). Any other
+        # shadow token is a box lifted for decoration.
+        if m.group(1) not in ("--shadow-pop", "--shadow", "--shadow-lg") and m.group(2).strip() != "none":
             finding("theme-shadow", m.group(1), f"{m.group(1)} is {m.group(2).strip()[:40]}; resting shadows are none")
 
-    # Gradients and blur: decoration. A loading shimmer is not.
+    # Gradients and blur: decoration. A loading shimmer is not, nor a folder's
+    # tint (its hue fading into the card, on its tile and its page's hero).
     lines = css.splitlines()
     for n, line in enumerate(lines):
         if re.search(r"(linear|radial)-gradient|backdrop-filter", line):
             context = " ".join(lines[max(0, n - 4):n + 2])
-            if not re.search(r"skeleton|shimmer", context):
+            if not re.search(r"skeleton|shimmer|hue tint", context):
                 finding("theme-decoration", f"global.css:{n + 1}", line.strip()[:80])
     for p in sorted(ui.rglob("*.jsx")):
         for n, line in enumerate(p.read_text().splitlines(), 1):

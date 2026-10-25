@@ -13,9 +13,11 @@ one never blocks the fast one.
 
 ---
 
-> **In the app** there are five places. **Reports** is where it opens: the library, every
-> report in its folder with whether its numbers still reproduce, narrowed to a model by a
-> chip. **Ask** puts a question to one model. **Data** (analysts and admins) opens on the
+> **In the app** there are four places. **Reports** is where it opens: the library as a
+> directory, a tile and a row of covers per folder, each report with whether its numbers
+> still reproduce, narrowed to a model by a chip; a folder has a page of its own, and the
+> sidebar is the folder tree. **Ask this model**, on a folder's page or a model's, puts a
+> question to that model. **Data** (analysts and admins) opens on the
 > board, **Flow**: these stages as lanes, sources first and reports last, with the warehouse
 > between Transform and Model, the freeze point it is; its other tabs list the same things
 > in the same order (**Sources**, **Transforms**, **Warehouse**, **Models**), and any table

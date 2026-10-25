@@ -2,7 +2,10 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useMe, useRole, signOut } from '../api'
-import { page, placesFor, placeOf, mayUse, DATA_TAB_LABEL } from '../nav'
+import { page, placesFor, placeOf, mayUse, DATA_TAB_LABEL, folderOf } from '../nav'
+import { KINDS, folderPath, hueStyle, useBuilds, useLibrary, newestBuild } from '../folders'
+import { count } from '../format'
+import { stamp } from '../when'
 import { useScope, useOpenReport, NavMenuContext, NotForYou } from './Scope'
 import { SkeletonCard } from './Shared'
 import CommandPalette from './CommandPalette'
@@ -12,11 +15,6 @@ const ICONS = {
   reports: (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 3h9l4 4v14H6z" /><path d="M14 3v5h5M9 13h7M9 17h5" />
-    </svg>
-  ),
-  ask: (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 5h16v11H9l-5 4z" /><path d="M10 9.5a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9M12 14h.01" />
     </svg>
   ),
   data: (
@@ -98,7 +96,7 @@ function MoonIcon() {
   )
 }
 
-function NavItem({ path, label, icon, active, onNavigate }) {
+function NavItem({ path, label, icon, active, onNavigate, n }) {
   return (
     <li>
       <Link
@@ -130,8 +128,62 @@ function NavItem({ path, label, icon, active, onNavigate }) {
           {ICONS[icon]}
         </span>
         {label}
+        {n != null && <span className="tree__n">{n}</span>}
       </Link>
     </li>
+  )
+}
+
+// The sidebar's library: All reports, then a row per folder the person may
+// see (its hue, its count), and under the open one its Dashboards and Pages.
+// The folder you are in is the current entry: on its page, on one of its
+// reports, or asking its model.
+function FolderTree({ library, current, onNavigate }) {
+  return (
+    <ul className="tree" aria-labelledby="tree-library">
+      {library.folders.map(f => {
+        const on = f.path === current
+        return (
+          <li key={f.path}>
+            <Link to={folderPath(f.path)} onClick={onNavigate} className="tree__folder" style={hueStyle(f.hue)}
+                  aria-current={on ? 'page' : undefined}>
+              <i aria-hidden="true" /><span className="tree__label">{f.label}</span>
+              <span className="tree__n">{f.items.length}</span>
+            </Link>
+            {on && KINDS.some(([k]) => f.kinds[k]) && (
+              <ul className="tree__subs">
+                {KINDS.filter(([k]) => f.kinds[k]).map(([k, label]) => (
+                  <li key={k}>
+                    <Link to={`${folderPath(f.path)}#${k}`} onClick={onNavigate} className="tree__sub">{label} · {f.kinds[k]}</Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+// The live line at the sidebar's foot: when the newest build was made, and
+// whether every built report still reproduces (the desk's re-check), or how
+// many need a look. The dot pulses, except under reduced motion.
+function LiveLine({ library }) {
+  const { desk, builds, verdictFor } = useBuilds()
+  const newest = newestBuild(library.all, builds)
+  if (!desk || !newest) return null
+  const states = library.all.filter(r => builds[r.name]).map(r => verdictFor(r).state)
+  const off = states.filter(s => s === 'needs-a-look' || s === 'does-not-reproduce').length
+  const all = states.length && states.every(s => s === 'reproduces')
+  return (
+    <p className="liveline" role="status">
+      <span className={`liveline__dot${off ? ' liveline__dot--warn' : all ? '' : ' liveline__dot--quiet'}`} aria-hidden="true" />
+      <span>
+        Built {stamp(newest.built_at)} · {off ? `${off} need${off === 1 ? 's' : ''} a look`
+          : all ? `all ${states.length} reproduce` : count(states.length, 'build')}
+      </span>
+    </p>
   )
 }
 
@@ -197,8 +249,15 @@ export default function Layout({ children }) {
   const places = placesFor(role)
   const place = places.find(p => p.key === placeOf(scope.page))
   const openReport = useOpenReport()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const [named, setNamed] = useState(null)
+  const library = useLibrary()
+  // The folder you are in: its page, one of its reports, or Ask of its model.
+  const query = new URLSearchParams(search)
+  const current = pathname === '/' ? query.get('folder')
+    : openReport ? folderOf(openReport.name)
+      : scope.page === 'ask' ? library.folders.find(f => f.path === query.get('model') || f.models.includes(query.get('model')))?.path
+        : null
 
   // The page's h1 arrives after its data does, so the title follows the DOM
   // rather than the route alone.
@@ -246,8 +305,11 @@ export default function Layout({ children }) {
   // The opener is the clicked button (a click does not focus a button in every browser).
   const openMenu = e => { openerRef.current = e?.currentTarget || document.activeElement; setOpen(true) }
 
-  // The places this role sees. Each marks itself current on every page inside it.
+  // The places this role sees. Each marks itself current on every page inside
+  // it, but for the library, where the folder you are in is current when
+  // there is one (the rail of an open report keeps Reports).
   const items = places.map(p => ({ path: p.path, label: p.label, icon: p.key, active: placeOf(scope.page) === p.key }))
+  const inFolder = !!current && library.folders.some(f => f.path === current)
   // An address above the role is a plain page saying so (while the role loads,
   // nothing of it is drawn).
   const body = scope.page && !mayUse(role, scope.page)
@@ -363,12 +425,25 @@ export default function Layout({ children }) {
           </button>
         </div>
 
-        {/* Reports (the library), Ask, then Data and Review for the roles
-            that use them, and Docs (the handbook) for everyone, last. A model
-            is a filter inside a place, not the frame of the app. */}
-        <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', padding: '12px 0 4px' }}>
-          {items.map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
-        </ul>
+        {/* The library as a folder tree (All reports, then each folder), then
+            the workshop: Data and Review for the roles that use them, and Docs
+            (the handbook) for everyone, last. A model is a folder's, and a
+            filter inside a place, not the frame of the app. */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0 4px' }}>
+          <p className="tree__sec" id="tree-library">Library</p>
+          <ul style={{ listStyle: 'none' }}>
+            {items.filter(item => item.icon === 'reports').map(item => (
+              <NavItem key={item.path} {...item} label="All reports" n={library.all.length}
+                       active={item.active && !inFolder} onNavigate={close} />
+            ))}
+          </ul>
+          <FolderTree library={library} current={current} onNavigate={close} />
+          {items.some(item => item.icon !== 'reports') && <p className="tree__sec" id="tree-workshop">Workshop</p>}
+          <ul style={{ listStyle: 'none' }} aria-labelledby="tree-workshop">
+            {items.filter(item => item.icon !== 'reports').map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
+          </ul>
+        </div>
+        <LiveLine library={library} />
 
         {/* The foot: which TraceBi this is, whether a newer one is out, and
             the theme. The handbook is a place now (Docs, above). */}

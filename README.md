@@ -141,15 +141,20 @@ stack.
 ## The app
 
 `tracebi serve` (or the Docker image) serves the web app over your project.
-Five places in the sidebar:
+Four places in the sidebar:
 
-- **Reports** (`/`) — the library: every report by folder, its verdict, when
-  it was built, its schedule, narrowed to a model by a chip. A report opens at
+- **Reports** (`/`) — the library as a directory: today's headline numbers as
+  each build printed them, a tile per folder, then rows of covers (the newest
+  builds, then each folder), every report with its verdict, when it was built
+  and its schedule, narrowed to a model by a chip. The sidebar is the folder
+  tree; each folder has a page (`/?folder=<path>`) with its numbers, its builds,
+  its reports by kind and **Ask this model**. A report opens at
   `/reports/<name>` as delivered, under one command bar: **Open**, **Share**,
   **Export** (PDF, Excel, or the HTML with its trace), **Rebuild** and **Edit as
   a draft** for an analyst, and **About this build** (the trace, lineage,
   history and files).
-- **Ask** (`/ask`) — a question of one model as a sentence of its own tokens
+- **Ask** (`/ask`, from **Ask this model** on a folder's page or a model's) —
+  a question of one model as a sentence of its own tokens
   ("Show fair value by sector, largest first, top 8"), answered with a chart,
   table or number, each measure's definition and the query behind it. **Keep
   this** starts a draft report.
@@ -169,7 +174,7 @@ Five places in the sidebar:
   (drop in a report file and its manifest).
 - **Docs** (`/docs`) — this repository's handbook, in the order of `docs/toc.yaml`, **Start here** first.
 
-Roles decide what shows: everyone Reports, Ask and Docs; an analyst also Data
+Roles decide what shows: everyone Reports and Docs; an analyst also Data
 (read-only) and Review; only an admin runs a refresh or sets a credential.
 With no sign-in configured every caller is admin. FastAPI's API reference is
 at `/api-docs`; every route is in [API routes](docs/reference/api-routes.md).
