@@ -398,11 +398,15 @@ function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
   const start = useCallback(() => {
     const all = nodes.map(n => n.position)
     if (!all.length) return
-    // The whole schema in view first (never larger than life), then the
-    // selected table brought in if the fit left it at the edge.
+    // With a table selected, open on it and the tables it joins, at a size
+    // the columns can be read; else the whole schema (never larger than life).
+    if (selected && byId[selected]) {
+      const ids = [selected, ...near].map(id => ({ id }))
+      flow.fitView({ nodes: ids, padding: 0.12, maxZoom: 1, duration: 0 })
+      return
+    }
     flow.fitView({ padding: 0.08, maxZoom: 1, duration: 0 })
-    if (selected && byId[selected]) reveal(selected, false)
-  }, [nodes, selected, byId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [nodes, selected, byId, near]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // A table selected from the tree comes into view if it is not already.
   const reveal = (id, animate = true) => {
