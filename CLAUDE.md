@@ -899,8 +899,11 @@ GET  /                                               → React SPA (tracebi/web/
                                                        /data/models; ?model=<m> narrows Sources, Transforms and
                                                        Warehouse; one table at /data/tables/<source>/<table>:
                                                        Data · Columns · Used by, the grid's sort, search, filters and page in the
-                                                       address; a model's page keeps its view in the address: /data/<m>?view=diagram|
-                                                       tables|measures|relationships|storage|code[&table=<t>|&measure=<name>]) · Review (/review) · Docs
+                                                       address; a model's Model tab is the data browser (components/DataBrowser.jsx:
+                                                       tree, schema, inspector), its selection in the address: /data/<m>?table=<t> |
+                                                       ?measure=<name> | ?view=measures|relationships|storage|code (a fold of the
+                                                       summary); Warehouse is the same browser over every table, by writer:
+                                                       ?table=<t>, ?group=<writer>) · Review (/review) · Docs
                                                        (/docs: the handbook in docs/toc.yaml's order; the quickstart at /docs/get-started), plus History
                                                        (/runs) and Verify (/verify); older addresses redirect (movedTo in
                                                        web/ui/src/nav.js; /handbook, /getting-started, /data?view=map,
@@ -946,6 +949,7 @@ Don't add these unless asked.
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
 | Change the web app's pages | `web/ui/src/nav.js` (the five places; `DATA_TABS`; `movedTo` for old addresses) + `web/ui/src/App.jsx`; the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name) |
+| Change the data browser (a model's schema, the Warehouse tab) | `web/ui/src/components/DataBrowser.jsx` + `components/modelGraph.js` (`modelSchema` / `warehouseSchema` / `layoutSchema`) |
 | Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |

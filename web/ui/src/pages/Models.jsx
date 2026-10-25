@@ -1,221 +1,20 @@
-import { cloneElement, Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { ReactFlow, Background, Controls, MiniMap, Handle, Position, MarkerType } from '@xyflow/react'
-import '@xyflow/react/dist/style.css'
 
 import { StorageLine, sourceKind } from '../components/Storage'
-import { buildModelGraph, measureDefinition } from '../components/modelGraph'
+import { measureDefinition, modelSchema } from '../components/modelGraph'
 import { dimensionLabel, encodeQuery, humanise, inSentence } from '../ask'
 import {
-  useModels, useModel, useTable, useDesk, useReports, usePipelines,
+  useModels, useModel, useDesk, useReports, usePipelines, useWarehouses,
 } from '../api'
 import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
-import DataGrid from '../components/DataGrid'
-import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel, tablePath } from '../nav'
+import DataBrowser, { InspectorSection } from '../components/DataBrowser'
+import { count } from '../format'
+import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 import {
-  Card, Badge, Chip, Empty, Segmented, SkeletonList, SkeletonCard, useNarrow,
+  Card, Badge, BtnLink, Chip, Empty, SkeletonList, SkeletonCard,
 } from '../components/Shared'
-
-// ── One table's rows, inline ──────────────────────────────────────────────────
-
-// A model table's rows, opened in place under its row (or under the diagram):
-// the one grid, read through the table API by the table's SOURCE name (a model
-// may call a stored table something else), keeping its cut to itself so the
-// page's own address stays the model's view. Its page has the rest.
-function InlineTable({ t }) {
-  const columns = (t.columns || []).map(c => ({ name: c.name, type: c.dtype }))
-  return (
-    <div className="mtables__grid fade-in">
-      <DataGrid source={t.connector} table={t.source} columns={columns.length ? columns : undefined}
-                label={`Rows of ${t.name}`} />
-      <p className="mtables__page"><Link to={tablePath(t.connector, t.source)}>Open table page →</Link></p>
-    </div>
-  )
-}
-
-// ── ERD Diagram ──────────────────────────────────────────────────────────────
-
-const ROLE_STYLES = {
-  dimension: { header: 'var(--surface-2)',      accent: 'var(--role-dimension)', label: 'Dimension' },
-  fact:      { header: 'var(--surface-2)', accent: 'var(--role-fact)', label: 'Fact' },
-  bridge:    { header: 'var(--surface-2)',    accent: 'var(--role-bridge)', label: 'Bridge' },
-  table:     { header: 'var(--surface-2)',      accent: 'var(--role-table)', label: 'Table' },
-}
-
-// PK / FK / Σ: a text badge, not an icon, so it reads in any theme and print.
-const FLAG_STYLES = {
-  PK:  { color: 'var(--op-gold-tx)', border: 'var(--op-gold-br)', title: 'Primary key: the dimension\'s join key' },
-  FK:  { color: 'var(--accent-text)', border: 'var(--blue-br)',   title: 'Foreign key: joins to a dimension' },
-  'Σ': { color: 'var(--role-fact)',   border: 'color-mix(in srgb, var(--role-fact) 25%, transparent)', title: 'A measure column on the fact' },
-}
-
-const MONO = 'var(--font-mono)'
-const HANDLE = { width: 10, height: 10, border: '2px solid #fff' }
-
-function ERDTableNode({ data }) {
-  const rs = ROLE_STYLES[data.role] || ROLE_STYLES.table
-  return (
-    <div style={{
-      background: 'var(--surface)', border: `1.5px solid color-mix(in srgb, ${rs.accent} 22%, transparent)`,
-      borderRadius: 'var(--radius-lg)', width: 300, overflow: 'hidden',
-      boxShadow: data.selected ? `0 0 0 2px ${rs.accent}` : 'var(--shadow-sm)',
-      fontSize: 'var(--text-sm)', cursor: 'pointer',
-    }}>
-      <Handle id="in-l" type="target" position={Position.Left} style={{ ...HANDLE, background: rs.accent, left: -6 }} />
-      <Handle id="out-l" type="source" position={Position.Left} style={{ ...HANDLE, background: rs.accent, left: -6 }} />
-
-      <div style={{ background: rs.header, padding: '10px 14px', borderBottom: `1px solid color-mix(in srgb, ${rs.accent} 15%, transparent)`, height: 62, boxSizing: 'border-box' }}>
-        <div style={{ fontWeight: 700, fontSize: 'var(--text-caption)', color: 'var(--text)', letterSpacing: .15, marginBottom: 4 }}>
-          {data.label}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{
-            fontSize: 'var(--text-eyebrow)', fontWeight: 600,
-            padding: '1px 7px', borderRadius: '999px',
-            background: 'var(--surface)', color: rs.accent, border: `1px solid color-mix(in srgb, ${rs.accent} 23%, transparent)`,
-          }}>{rs.label}</span>
-          {data.connector && <span style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--muted)' }}>{data.connector}</span>}
-        </div>
-      </div>
-
-      <div style={{ padding: '0 0 12px' }}>
-        {data.columns.length === 0 && (
-          <div style={{ padding: '3px 14px', height: 22, color: 'var(--muted)', fontStyle: 'italic', fontSize: 'var(--text-xs)' }}>columns not available</div>
-        )}
-        {data.columns.map(c => {
-          const fs = FLAG_STYLES[c.flag]
-          return (
-            <div key={c.name} style={{ height: 22, boxSizing: 'border-box', padding: '0 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span title={fs?.title} style={{
-                width: 22, textAlign: 'center', fontSize: 'var(--text-eyebrow)', fontWeight: 700, letterSpacing: .3,
-                color: fs?.color, border: fs ? `1px solid ${fs.border}` : '1px solid transparent',
-                borderRadius: 'var(--radius-sm)', lineHeight: '14px',
-              }}>{c.flag}</span>
-              <span style={{
-                fontFamily: MONO, fontSize: 'var(--text-xs)', flex: 1, minWidth: 0,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                color: c.flag ? 'var(--text)' : 'var(--text-2)', fontWeight: c.flag ? 600 : 400,
-              }}>{c.name}</span>
-              <span style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--muted)', fontFamily: MONO }}>{c.dtype || ''}</span>
-            </div>
-          )
-        })}
-        {data.hidden > 0 && (
-          <div style={{ height: 22, padding: '0 14px 0 44px', display: 'flex', alignItems: 'center', fontSize: 'var(--text-eyebrow)', color: 'var(--muted)' }}>
-            + {data.hidden} more column{data.hidden !== 1 ? 's' : ''}
-          </div>
-        )}
-      </div>
-
-      <Handle id="in-r" type="target" position={Position.Right} style={{ ...HANDLE, background: rs.accent, right: -6 }} />
-      <Handle id="out-r" type="source" position={Position.Right} style={{ ...HANDLE, background: rs.accent, right: -6 }} />
-    </div>
-  )
-}
-
-const NODE_TYPES = { erdTable: ERDTableNode }
-
-function edgeLabel(e) {
-  const keys = e.fromKey === e.toKey ? e.fromKey : `${e.fromKey} → ${e.toKey}`
-  return e.cardinality === 'many-to-one' ? `N : 1  ·  ${keys}` : keys
-}
-
-function ERDDiagram({ data, selected, onSelect }) {
-  const { nodes, edges, height } = useMemo(() => {
-    const g = buildModelGraph(data)
-    const x = Object.fromEntries(g.nodes.map(n => [n.name, n.position.x]))
-    return {
-      height: g.height,
-      nodes: g.nodes.map(n => ({
-        id: n.name, type: 'erdTable', position: n.position,
-        data: { label: n.name, connector: n.connector, role: n.role, columns: n.columns, hidden: n.hidden },
-      })),
-      edges: g.edges.map(e => ({
-        id: e.id, source: e.from, target: e.to, type: 'smoothstep',
-        // Leave on the side that faces the other table, so a join runs straight
-        // across instead of looping round the outside.
-        sourceHandle: x[e.from] > x[e.to] ? 'out-l' : 'out-r',
-        targetHandle: x[e.from] > x[e.to] ? 'in-r' : 'in-l',
-        style: { stroke: 'var(--muted)', strokeWidth: 1.25 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#8a8a8a', width: 12, height: 12 },
-        label: edgeLabel(e),
-        labelStyle: { fontSize: 'var(--text-eyebrow)', fill: 'var(--muted)', fontFamily: MONO },
-        labelBgStyle: { fill: 'var(--surface)', fillOpacity: 0.92 },
-      })),
-    }
-  }, [data])
-  const shown = useMemo(
-    () => nodes.map(n => ({ ...n, data: { ...n.data, selected: n.id === selected } })),
-    [nodes, selected])
-
-  return (
-    // Tall enough to read a stack of facts, capped so the page still scrolls.
-    <div className="erd-wrapper" style={{ height: Math.min(760, Math.max(320, height * 0.8)) }}>
-      <ReactFlow
-        edgesFocusable={false}
-        nodes={shown}
-        edges={edges}
-        nodeTypes={NODE_TYPES}
-        fitView
-        fitViewOptions={{ padding: 0.12 }}
-        minZoom={0.2}
-        proOptions={{ hideAttribution: true }}
-        nodesDraggable
-        nodesConnectable={false}
-        elementsSelectable
-        onNodeClick={(_, n) => onSelect(n.id)}
-        // fitView on the first frame frames a panel that is still animating in
-        // (zero size); frame it again once it has settled.
-        onInit={flow => setTimeout(() => flow.fitView({ padding: 0.12 }), 350)}
-      >
-        <Background color="var(--flow-dots)" gap={30} size={1} />
-        <Controls style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }} />
-        {nodes.length > 10 && (
-          <MiniMap
-            nodeColor={n => ROLE_STYLES[n.data?.role]?.accent || '#64748b'}
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
-            maskColor="rgba(228,233,240,.6)"
-          />
-        )}
-      </ReactFlow>
-    </div>
-  )
-}
-
-// ── ERD legend ────────────────────────────────────────────────────────────────
-
-function ERDLegend() {
-  const roles = [
-    { role: 'dimension', label: 'Dimension' },
-    { role: 'fact',      label: 'Fact' },
-    { role: 'bridge',    label: 'Both a fact and a dimension' },
-    { role: 'table',     label: 'Table with no joins' },
-  ]
-  const flags = [
-    ['PK', 'join key on a dimension'], ['FK', 'foreign key on a fact'], ['Σ', 'measure column'],
-  ]
-  return (
-    <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
-      {roles.map(({ role, label }) => (
-        <span key={role} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
-          <span style={{ width: 10, height: 10, borderRadius: 'var(--radius-sm)', display: 'inline-block', background: ROLE_STYLES[role].accent, opacity: .8 }} />
-          {label}
-        </span>
-      ))}
-      <span style={{ width: 1, height: 14, background: 'var(--border)' }} />
-      {flags.map(([f, label]) => (
-        <span key={f} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs)', color: 'var(--muted)' }}>
-          <span style={{
-            fontSize: 'var(--text-eyebrow)', fontWeight: 700, padding: '0 4px', borderRadius: 'var(--radius-sm)', lineHeight: '14px',
-            color: FLAG_STYLES[f].color, border: `1px solid ${FLAG_STYLES[f].border}`,
-          }}>{f}</span>
-          {label}
-        </span>
-      ))}
-    </div>
-  )
-}
 
 // ── Measures ──────────────────────────────────────────────────────────────────
 
@@ -321,248 +120,161 @@ function ModelStorage({ details, tables, hidden }) {
 // What the desk says of a warehouse table, in plain words.
 const SINK_WORDS = { stale: 'changed since its checks last passed', no_contract: 'no checks declared' }
 
-// The views, in the address as ?view= (lower case), so a reload keeps the one
-// you are on and Back steps back through them.
-const VIEWS = [
-  ['diagram', 'Diagram'], ['tables', 'Tables'], ['measures', 'Measures'],
-  ['relationships', 'Relationships'], ['storage', 'Storage'], ['code', 'Code'],
-]
+// The summary's folds, in the address as ?view= (one open at a time), so a
+// reload keeps the one you are on and the model page's older addresses
+// (?view=measures, relationships, storage, code) still open what they named.
+// ?view=diagram and ?view=tables are the browser itself.
+const FOLDS = [['measures', 'Measures'], ['relationships', 'Joins'], ['storage', 'Storage'], ['code', 'Code']]
 
-// A table's role in the star, as the diagram's legend says it.
-const ROLE_WORDS = { fact: 'Fact', dimension: 'Dimension', bridge: 'Fact and dimension', table: 'No joins' }
+const shapeWords = e => (e.cardinality === 'many-to-one' ? 'Many to one'
+  : e.how ? `${e.how[0].toUpperCase()}${e.how.slice(1)} join` : 'Join')
 
-/**
- * The Tables view: where the tables are stored, said once, then one row per
- * table (its role, rows, columns, joins). A row opens its rows in place, below
- * that row; the address keeps which (?table=).
- */
-function TablesView({ data, graph, open, onOpen }) {
-  const storageOf = new Map((data.connector_details || []).map(c => [c.name, c.storage]))
-  const connectors = [...new Set(data.tables.map(t => t.connector))]
-  const roleOf = Object.fromEntries(graph.nodes.map(n => [n.name, n.role]))
-  const joins = name => graph.edges.filter(e => e.from === name || e.to === name).length
+function JoinsTable({ edges }) {
+  if (!edges.length) return <Empty message="No joins declared. Give a fact its foreign_keys:, or list one under relationships:." />
   return (
-    <div>
-      {connectors.length > 0 && (
-        <p className="mtables__where">
-          Stored in {connectors.map((c, i) => (
-            <Fragment key={c}>
-              {i > 0 && ', '}<strong>{c}</strong>
-              {storageOf.get(c)?.where && <> · <code>{storageOf.get(c).where}</code></>}
-            </Fragment>
-          ))}
+    <table className="tb-list dbx-list">
+      <thead><tr><th>From</th><th>To</th><th>Shape</th></tr></thead>
+      <tbody>
+        {edges.map(e => (
+          <tr key={e.id}>
+            <td><code>{e.from}.{e.fromKey}</code></td>
+            <td><code>{e.to}.{e.toKey}</code></td>
+            <td title={e.declared ? 'Declared as foreign_keys: on the fact' : 'Declared under relationships:'}><Chip>{shapeWords(e)}</Chip></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+// The inspector with nothing selected: what the model is, in a few lines, its
+// two actions, and its measures, joins, storage and code folded under them.
+function ModelSummary({ name, data, schema, desk, action, view, setView }) {
+  const grainRefs = (data.dimensions || []).flatMap(d => (d.attributes || []).map(attr => `${d.name}.${attr}`))
+  const grain = grainRefs.map(ref => inSentence(dimensionLabel(data, ref))).join(' · ')
+  const sinks = desk?.sinks || []
+  const where = (data.connector_details || []).filter(c => c.storage?.where).map(c => c.storage.where)
+  const fold = (key, body) => {
+    const [, title] = FOLDS.find(([k]) => k === key)
+    return (
+      <InspectorSection key={key} id={key} title={title} open={view === key}
+                        onToggle={() => setView(view === key ? null : key)}>
+        {body}
+      </InspectorSection>
+    )
+  }
+  return (
+    <div className="dbx-insp__summary">
+      <header className="dbx-insp__head">
+        <div className="dbx-insp__title"><h2 className="dbx-insp__name dbx-insp__name--sans">{data.label || name}</h2></div>
+        {grain && <p className="dbx-insp__sub" title={grainRefs.join(', ')}>Grain: {grain}</p>}
+        <p className="dbx-insp__sub">
+          {count(schema.tables.length, 'table')} · {count(schema.edges.length, 'join')} · {count((data.measures || []).length, 'measure')}
         </p>
-      )}
-      <table className="tb-list mtables">
-        <colgroup><col /><col className="mtables__n" /><col className="mtables__n mtables__cols" /><col className="mtables__n" /></colgroup>
-        <thead><tr><th>Table</th><th>Rows</th><th className="mtables__cols">Columns</th><th>Joins</th></tr></thead>
-        <tbody>
-          {data.tables.map(t => (
-            <TableRow key={t.name} t={t} role={roleOf[t.name]} joins={joins(t.name)}
-                      many={connectors.length > 1} open={open === t.name}
-                      onOpen={() => onOpen(open === t.name ? null : t.name)} />
-          ))}
-        </tbody>
-      </table>
+        {where.length > 0 && <p className="dbx-insp__sub">Reads {where.map((w, i) => <span key={w}>{i > 0 && ', '}<code>{w}</code></span>)}</p>}
+        {desk?.warehouse && sinks.length === 0 && <p className="dbx-insp__sub">Its tables satisfied their checks when they were last written.</p>}
+        {sinks.length > 0 && <p className="dbx-insp__sub">{sinks.map(s => `${s.table}: ${SINK_WORDS[s.status] || s.status}`).join(' · ')}</p>}
+        {(data.owners || []).length > 0 && (
+          <p className="dbx-insp__sub">Owners: {data.owners.join(', ')} (only they or an admin publish changes to it)</p>
+        )}
+        <div className="dbx-insp__acts">
+          {action}
+          <BtnLink size="sm" to={askPath(name)}>Ask this model</BtnLink>
+        </div>
+      </header>
+      {fold('measures', <MeasuresTable model={name} measures={data.measures || []} target={null} />)}
+      {fold('relationships', <JoinsTable edges={schema.edges} />)}
+      {fold('storage', <ModelStorage details={data.connector_details || []} tables={data.tables} hidden={data.hidden_framework_tables} />)}
+      {fold('code', <CodeView kind="models" name={name} />)}
       <FrameworkHidden n={data.hidden_framework_tables} />
     </div>
   )
 }
 
-// One table's row. Its row count is the table API's (exact for the warehouse;
-// "≈" marks a catalog estimate; "—" when the source cannot be reached).
-function TableRow({ t, role, joins, many, open, onOpen }) {
-  const { data: info } = useTable(t.connector, t.source)
-  const rows = info && info.connected !== false ? info.rows : null
-  const opened = useRef(null)
-  // Opened from the address (a link, a reload): bring it into view once.
-  useEffect(() => { if (open) opened.current?.scrollIntoView({ block: 'nearest' }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+// A fact's measures in the inspector: every measure the engine runs on it,
+// what it is in words, how it is shown, and Ask with it picked.
+function FactMeasures({ model, data, table, target }) {
+  const facts = (data.facts || []).filter(f => f.table === table)
+  const runs = new Set(facts.flatMap(f => f.runnable_measures || []))
+  const measures = (data.measures || []).filter(m => runs.has(m.name))
+  const here = useRef(null)
+  useEffect(() => { here.current?.scrollIntoView({ block: 'center' }) }, [target])
+  if (!facts.length) return null
   return (
-    <>
-      <tr ref={opened} className={`mtables__row${open ? ' mtables__row--open' : ''}`} data-table={t.name}>
-        <td>
-          <button type="button" className="mtables__name" aria-expanded={open} onClick={onOpen}>
-            <span className="mtables__chev" aria-hidden="true">›</span>
-            <code>{t.name}</code>
-          </button>
-          <span className="mtables__sub">
-            <Chip>{ROLE_WORDS[role] || ROLE_WORDS.table}</Chip>
-            {t.source !== t.name && <span>stored as <code>{t.source}</code></span>}
-            {many && <span>in {t.connector}</span>}
-          </span>
-        </td>
-        <td className="mtables__num">
-          {!info ? '' : rows == null ? '—' : `${info.rows_exact === false ? '≈' : ''}${Number(rows).toLocaleString('en-US')}`}
-        </td>
-        <td className="mtables__num mtables__cols">{(t.columns || []).length || '—'}</td>
-        <td className="mtables__num">{joins}</td>
-      </tr>
-      {open && (
-        <tr className="mtables__open"><td colSpan={4}><InlineTable t={t} /></td></tr>
+    <InspectorSection id="measures" title="Measures on this fact" aside={count(measures.length, 'measure')}>
+      {measures.length === 0 ? <p className="dbx-quiet">No named measure runs on this fact.</p> : (
+        <ul className="dbx-measures">
+          {measures.map(m => {
+            const label = m.label || m.description || humanise(m.name)
+            const on = m.name === target
+            return (
+              <li key={m.name} data-measure={m.name} ref={on ? here : undefined} className={on ? 'is-on' : undefined}>
+                <span className="dbx-measures__top">
+                  <Link to={askMeasure(model, m.name)} title={`Ask about ${label}`}>{label}</Link>
+                  <code>{m.name}</code>
+                  <Chip title="The engine runs this measure on this fact">Runs</Chip>
+                </span>
+                <span className="dbx-measures__def">
+                  {measureDefinition(m)}
+                  {m.format && <span title={m.format}> · {FORMAT_SAMPLES[m.format] || m.format}</span>}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
       )}
-    </>
+    </InspectorSection>
   )
 }
 
-// Whether a row that scrolls sideways has more past its right edge: the cue
-// (a chevron at that edge) that it scrolls at all. *ready* re-measures once the row exists.
-function useMoreToTheRight(ref, ready) {
-  const [more, setMore] = useState(false)
-  useEffect(() => {
-    const el = ref.current?.firstElementChild   // the views' row, inside its wrap
-    if (!el) return undefined
-    const check = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
-    check()
-    el.addEventListener('scroll', check, { passive: true })
-    const resized = new ResizeObserver(check)
-    resized.observe(el)
-    return () => { el.removeEventListener('scroll', check); resized.disconnect() }
-  }, [ref, ready])
-  return more
-}
-
-// On a phone the views take the row, and the page's action (Edit as a draft)
-// goes into a "…" menu, where it keeps its words.
-function MoreMenu({ children }) {
-  const [open, setOpen] = useState(false)
-  const root = useRef(null)
-  const onBlur = e => { if (!root.current?.contains(e.relatedTarget)) setOpen(false) }
-  return (
-    <div ref={root} className="mdetail__action rp__pop rp__pop--end" onBlur={onBlur}
-         onKeyDown={e => { if (e.key === 'Escape') setOpen(false) }}>
-      <button type="button" className="cmd" aria-label="More" aria-haspopup="menu" aria-expanded={open}
-              onClick={() => setOpen(o => !o)}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" />
-        </svg>
-      </button>
-      {open && (
-        <div className="rp__menu mdetail__menu" role="menu">
-          {cloneElement(children, { className: 'rp__item', role: 'menuitem' })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** *action*: what sits at the right of the views (the page's Edit as a draft). */
+/** *action*: the model's Edit as a draft, in the summary beside Ask this model. */
 export function ModelDetail({ name, action }) {
   const { data, isLoading } = useModel(name)
   const { data: desk } = useDesk()
-  // The view, the opened table and the named measure are the address's
-  // (?view=, ?table=, ?measure=): each change is a step Back undoes.
+  // The selected table, the open fold and the named measure are the
+  // address's (?table=, ?view=, ?measure=): each change is a step Back undoes.
   const [params, setParams] = useSearchParams()
-  const asked = params.get('view')
-  const view = VIEWS.some(([v]) => v === asked) ? asked : null
+  const view = FOLDS.some(([v]) => v === params.get('view')) ? params.get('view') : null
   const measure = params.get('measure')
-  const go = patch => setParams(p => {
-    const next = new URLSearchParams(p)
-    Object.entries(patch).forEach(([k, v]) => (v == null ? next.delete(k) : next.set(k, v)))
-    return next
-  })
-  // A diagram fitted to a phone shrinks every table past reading; there the
-  // Tables view (the diagram's list form) opens first.
-  const phone = useNarrow('(max-width: 720px)')
-  const viewsRef = useRef(null)
-  const more = useMoreToTheRight(viewsRef, !!data)
+  const schema = useMemo(() => (data ? modelSchema(data) : null), [data])
+  // The tree's counts and checks: from the warehouse listing (one read) when
+  // every table is in a warehouse; otherwise DataBrowser reads each table.
+  const { data: wh, isLoading: whLoading } = useWarehouses()
+  const infoOf = useMemo(() => {
+    if (!schema) return undefined
+    if (whLoading) return () => null
+    const listed = t => (wh?.warehouses || []).find(w => w.name === t.connector)?.tables.find(x => x.name === t.source)
+    if (!schema.tables.every(listed)) return undefined
+    return t => { const x = t && listed(t); return x ? { rows: x.rows, exact: true, contract: x.contract } : null }
+  }, [schema, wh, whLoading])
+  // A named measure (⌘K links one) selects the fact it runs on.
+  useEffect(() => {
+    if (!data || !measure || params.get('table')) return
+    const fact = (data.facts || []).find(f => (f.runnable_measures || []).includes(measure))
+    if (fact) setParams(p => { const n = new URLSearchParams(p); n.set('table', fact.table); return n }, { replace: true })
+  }, [data, measure]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!name) return (
     <Card>
-      <Empty
-        message="Select a model to read its file, grain, measures, tables, and connectors."
-      />
+      <Empty message="Select a model to read its file, grain, measures, tables, and connectors." />
     </Card>
   )
   if (isLoading) return <SkeletonCard />
   if (!data) return null
-
-  const graph = buildModelGraph(data)
-  // A model with joins opens on its diagram; one with none has nothing to draw.
-  const active = view || (graph.edges.length && !phone ? 'diagram' : 'tables')
-  const openTable = data.tables.find(t => t.name === params.get('table')) || null
-  const openOn = table => go({ view: active, table, measure: null })
-  // The grain in the words a report uses for each attribute; the identifiers in the title.
-  const grainRefs = (data.dimensions || []).flatMap(d =>
-    (d.attributes || []).map(attr => `${d.name}.${attr}`))
-  const grain = grainRefs.map(ref => inSentence(dimensionLabel(data, ref))).join(' · ')
-  const sinks = desk?.sinks || []
+  const setView = v => setParams(p => {
+    const n = new URLSearchParams(p)
+    if (v) n.set('view', v); else n.delete('view')
+    return n
+  })
 
   return (
-    <Card className="fade-in">
-      <div className="mdetail__head">
-        <div ref={viewsRef} className="mdetail__viewwrap">
-          <Segmented className="mdetail__views" options={VIEWS} value={active} label="What to show of the model"
-                     onChange={v => go({ view: v, table: null, measure: null })} />
-          {more && <span className="mdetail__more" aria-hidden="true">›</span>}
-        </div>
-        {action && (phone ? <MoreMenu>{action}</MoreMenu> : <div className="mdetail__action">{action}</div>)}
-      </div>
-      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>
-        {grain && <div title={grainRefs.join(', ')}>Grain: {grain}</div>}
-        {(data.owners || []).length > 0 && (
-          <div>Owners: {data.owners.join(', ')} (only they or an admin publish changes to it)</div>
-        )}
-        {desk?.warehouse && sinks.length === 0 && <div>Its tables satisfied their checks when they were last written.</div>}
-        {sinks.length > 0 && (
-          <div>
-            {sinks.map(s => `${s.table}: ${SINK_WORDS[s.status] || s.status}`).join(' · ')}
-          </div>
-        )}
-      </div>
-
-      {active === 'tables' && (
-        <TablesView data={data} graph={graph} open={openTable?.name} onOpen={openOn} />
-      )}
-
-      {active === 'relationships' && (
-        graph.edges.length === 0
-          ? <Empty message="No joins declared. Give a fact its foreign_keys:, or list one under relationships:." />
-          : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="tb-list">
-                <thead><tr><th>From</th><th>To</th><th>Keys</th><th>Shape</th><th>Declared under</th></tr></thead>
-                <tbody>
-                  {graph.edges.map(e => (
-                    <tr key={e.id}>
-                      <td><code>{e.from}</code></td>
-                      <td><code>{e.to}</code></td>
-                      <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-mono)' }}>
-                        {e.fromKey} = {e.toKey}
-                      </td>
-                      <td><Chip>{e.cardinality === 'many-to-one' ? 'Many to one' : e.how ? `${e.how[0].toUpperCase()}${e.how.slice(1)} join` : 'Join'}</Chip></td>
-                      <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>
-                        {e.declared ? <><code>foreign_keys:</code> on the fact</> : <code>relationships:</code>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-      )}
-
-      {active === 'measures' && <MeasuresTable model={name} measures={data.measures || []} target={measure} />}
-
-      {active === 'storage' && <ModelStorage details={data.connector_details || []} tables={data.tables} hidden={data.hidden_framework_tables} />}
-      {active === 'code' && <CodeView kind="models" name={name} />}
-
-      {active === 'diagram' && (
-        <div className="fade-in">
-          <ERDLegend />
-          <ERDDiagram data={data} selected={openTable?.name}
-                      onSelect={t => openOn(openTable?.name === t ? null : t)} />
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 10 }}>
-            Click a table to see its rows · drag to rearrange · scroll to zoom · each join runs from a fact to the dimension it references
-          </p>
-          {openTable && (
-            <div className="mdetail__open">
-              <h3 className="mdetail__open-name"><code>{openTable.name}</code></h3>
-              <InlineTable t={openTable} />
-            </div>
-          )}
-        </div>
-      )}
-    </Card>
+    <DataBrowser
+      schema={schema} storeKey={`model-${name}`} label={`${data.label || name}: tables, joins and measures`}
+      summary={<ModelSummary name={name} data={data} schema={schema} desk={desk} action={action} view={view} setView={setView} />}
+      summaryOpen={!!view} infoOf={infoOf}
+      measuresOf={t => <FactMeasures model={name} data={data} table={t.id} target={measure} />}
+      emptyNote={<>This model declares no relationships. Give a fact its <code>foreign_keys:</code>, or list one under <code>relationships:</code>.</>}
+    />
   )
 }
 

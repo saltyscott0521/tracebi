@@ -21,7 +21,8 @@ one never blocks the fast one.
 > in the same order (**Sources**, **Transforms**, **Warehouse**, **Models**), and any table
 > opens on a page of its own (its rows, columns and who uses it). A model's page draws its
 > line: **Transform** (the pipeline that rebuilds its warehouse, and what the sink contract
-> says about it), **Model** (its tables, joins and measures) and **Reports** (what reads
+> says about it), **Model** (its tables, joins and measures, in the data browser: a tree,
+> the schema drawn, and an inspector for the table you select) and **Reports** (what reads
 > it); **Refresh data**, on the Transform tab, runs the pipeline. **Review** holds what
 > needs attention (a failed refresh, a build that needs a look, a request to publish), then
 > drafts, **History** (what ran) and **Verify** (check a report file from anywhere).

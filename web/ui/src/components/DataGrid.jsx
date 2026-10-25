@@ -131,7 +131,7 @@ export function useGridCut(inAddress) {
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 
-async function copyText(text) {
+export async function copyText(text) {
   try {
     await navigator.clipboard.writeText(text)
     return true
@@ -316,11 +316,14 @@ function Loading({ columns }) {
  * - *inAddress*: keep the cut (sort, search, filters, page) in the address;
  *   off, it is the grid's own state (a grid mounted inside another page).
  * - *label*: the grid's accessible name (default "Rows of <table>").
+ * - *dense*: a sample of the first *limit* rows (default 20), small, with no
+ *   search, filters or pages (the data browser's inspector; its table's page
+ *   has the rest).
  */
-export default function DataGrid({ source, table, columns: known, inAddress = false, label }) {
+export default function DataGrid({ source, table, columns: known, inAddress = false, label, dense = false, limit = 20 }) {
   const toast = useToast()
   const [cut, update] = useGridCut(inAddress)
-  const { data, isLoading, isFetching, error } = useTableRows(source, table, { ...cut, limit: PAGE_SIZE })
+  const { data, isLoading, isFetching, error } = useTableRows(source, table, { ...cut, limit: dense ? limit : PAGE_SIZE })
   const columns = data?.columns || known || []
   const rows = data?.rows || []
 
@@ -442,8 +445,8 @@ export default function DataGrid({ source, table, columns: known, inAddress = fa
   const lastRow = cut.offset + rows.length
 
   return (
-    <div className="grid-wrap" ref={rootRef}>
-      <div className="grid__bar">
+    <div className={`grid-wrap${dense ? ' grid-wrap--dense' : ''}`} ref={rootRef}>
+      {!dense && <div className="grid__bar">
         <div className="search-wrap grid__search">
           <span className="search-icon" aria-hidden="true">
             <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -465,7 +468,7 @@ export default function DataGrid({ source, table, columns: known, inAddress = fa
           <ExportCsv href={tableExportUrl(source, table, cut)}
                      title={filtered ? 'Every row that matches, not only this page' : 'Every row, not only this page'} />
         </span>
-      </div>
+      </div>}
 
       {filtering !== null && (
         <FilterForm key={filtering} columns={columns} column={filtering} onApply={addFilter} onCancel={() => setFiltering(null)} />
@@ -545,7 +548,7 @@ export default function DataGrid({ source, table, columns: known, inAddress = fa
         </div>
       )}
 
-      {rows.length > 0 && (
+      {rows.length > 0 && !dense && (
         <div className="grid__pager">
           <span className="grid__count" aria-live="polite">
             {first.toLocaleString('en-US')}–{lastRow.toLocaleString('en-US')} of {approx}{count(total, 'row')}

@@ -277,20 +277,42 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(page.get_by_role("link", name="issuer_ratings.csv")).to_have_attribute(
                 "href", "/data/tables/inputs/issuer_ratings.csv")
             expect(page.get_by_text(re.compile(r"^\d+ other files$"))).to_be_visible()
-            # Warehouse: the tables grouped by the transform that wrote them;
-            # what its run read is said once, on its group.
+            # Warehouse: the data browser, its tree grouped by the transform
+            # that wrote each table; what a run read is said once, on its
+            # group, in the inspector when the group is selected.
             data_tabs.get_by_role("link", name="Warehouse").click()
             page.wait_for_url("**/data/warehouse")
             # The browser tab names the page, so tabs and bookmarks differ.
             expect(page).to_have_title("Warehouse · Data · TraceBi")
-            group = page.locator('#wh-warehouse [data-writer="holdings_transform"]')
+            tree = page.get_by_role("tree", name="Tables")
+            with urllib.request.urlopen(base + "/api/warehouse") as resp:
+                writers = [wr["transform"] for wr in json.load(resp)["warehouses"][0]["writers"]]
+            tree.locator("[data-writer]").first.wait_for()
+            assert sorted(tree.locator("[data-writer]").evaluate_all(
+                "els => els.map(e => e.dataset.writer)")) == sorted(writers)
+            tree.locator('[data-writer="holdings_transform"]').click()
+            page.wait_for_url("**/data/warehouse?group=*")
+            inspector = page.get_by_role("complementary", name="Inspector")
+            group = inspector.locator('[data-writer="holdings_transform"]')
             expect(group).to_contain_text(
                 "holdings_transform · wrote 7 tables · read crm.issuer_ratings (snapshot inputs/issuer_ratings.csv) on that run")
             expect(page.get_by_text("read crm.issuer_ratings", exact=False)).to_have_count(1)
-            expect(group.locator('[data-table="dim_rating"]').get_by_role("link", name="dim_rating")).to_have_attribute(
+            tree.locator('[data-table="dim_rating"]').click()
+            page.wait_for_url("**/data/warehouse?table=dim_rating")
+            expect(inspector.get_by_role("link", name="Open rows")).to_have_attribute(
                 "href", "/data/tables/warehouse/dim_rating")
-            page.get_by_role("searchbox", name="Filter tables").fill("rating")
-            expect(page.locator("#wh-warehouse [data-table]")).to_have_count(1)
+            page.get_by_role("searchbox", name="Find a table or column").fill("dim_rat")
+            expect(tree.locator("[data-table]")).to_have_count(1)
+            page.get_by_role("searchbox", name="Find a table or column").fill("")
+            # A table selected shows its profile: each column's distinct count
+            # is the profile route's.
+            tree.locator('[data-table="dim_cohort"]').click()
+            page.wait_for_url("**/data/warehouse?table=dim_cohort")
+            with urllib.request.urlopen(base + "/api/tables/warehouse/dim_cohort/profile") as resp:
+                profile = json.load(resp)["columns"]
+            for col, p in profile.items():
+                expect(inspector.locator(f'[data-section="columns"] tr[data-col="{col}"]')).to_contain_text(
+                    f"{p['distinct']} distinct")
             fail_on_browser_errors()
 
             # One table's page: the grid sorts and searches in the engine, so
@@ -691,37 +713,63 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             tops = {round(card.bounding_box()["y"]) for card in cards.all()}
             assert cards.count() == 3 and len(tops) == 1, tops
 
-            # The model's view is in the address. Measures: every measure says
-            # what it is in words (rank and running total too), and a reload
-            # stays on it.
+            # The model's view is in the address. Measures (a fold of the data
+            # browser's summary): every measure says what it is in words (rank
+            # and running total too), and a reload stays on it.
             page.goto(base + "/data/portfolio_model?view=measures")
             measure_rows = page.locator("tr[data-measure]")
             measure_rows.first.wait_for()
-            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-pressed", "true")
+            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-expanded", "true")
             defs = page.locator("tr[data-measure] td.mlist__def").all_inner_texts()
             assert len(defs) == measure_rows.count() and all(d.strip() for d in defs), defs
             expect(page.locator('tr[data-measure="fv_rank"] td.mlist__def')).to_have_text("rank by fair value, largest first")
             page.reload()
             measure_rows.first.wait_for()
-            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-pressed", "true")
-            # Tables: ?table= opens that table's rows in place, read through the
-            # table API, with its page one link away.
+            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-expanded", "true")
+            # Tables: ?table= (with the old ?view=tables) selects that table:
+            # its sample is read through the table API, its page one link away.
+            with urllib.request.urlopen(base + "/api/tables/warehouse/fact_holdings") as resp:
+                holdings = json.load(resp)
             page.goto(base + "/data/portfolio_model?view=tables&table=fact_holdings")
             grid = page.get_by_role("grid", name="Rows of fact_holdings")
-            expect(grid.locator("tbody tr")).to_have_count(25)
+            expect(grid.locator("tbody tr")).to_have_count(min(20, holdings["rows"]))
             expect(grid).to_contain_text("DOUBLE")
-            expect(page.get_by_role("link", name="Open table page →")).to_have_attribute(
+            expect(page.get_by_role("link", name=f"Open all {holdings['rows']} rows →")).to_have_attribute(
                 "href", "/data/tables/warehouse/fact_holdings")
-            page.get_by_role("button", name="dim_fund").click()
+            tree = page.get_by_role("tree", name="Tables")
+            tree.locator('[data-table="dim_fund"]').click()
             page.wait_for_url("**/data/portfolio_model?view=tables&table=dim_fund")
             expect(page.get_by_role("grid", name="Rows of dim_fund")).to_be_visible()
             expect(page.get_by_role("grid", name="Rows of fact_holdings")).to_have_count(0)
             page.go_back()
             page.wait_for_url("**/data/portfolio_model?view=tables&table=fact_holdings")
             fail_on_browser_errors()
+            # Selecting a table in the tree: the inspector lists its columns
+            # with their engine types, a 20-row sample, and its joins as
+            # sentences; the address keeps it.
+            page.goto(base + "/data/portfolio_model")
+            tree.locator('[data-table="fact_holdings"]').click()
+            page.wait_for_url("**/data/portfolio_model?table=fact_holdings")
+            inspector = page.get_by_role("complementary", name="Inspector")
+            cols = inspector.locator('[data-section="columns"] tr[data-col]')
+            expect(cols).to_have_count(len(holdings["columns"]))
+            for c in holdings["columns"]:
+                expect(inspector.locator(f'tr[data-col="{c["name"]}"]')).to_contain_text(c["type"])
+            expect(inspector.get_by_role("grid", name="Rows of fact_holdings").locator("tbody tr")).to_have_count(
+                min(20, holdings["rows"]))
+            join = inspector.get_by_role("button", name="fact_holdings.fund_id → dim_fund.fund_id · many to one")
+            expect(join).to_be_visible()
+            # A measure is reachable from its fact.
+            expect(inspector.locator('[data-measure="fair_value"]')).to_be_visible()
+            join.click()
+            page.wait_for_url("**/data/portfolio_model?table=dim_fund")
+            fail_on_browser_errors()
 
-            # Each tab can show the code behind what it shows.
+            # Each tab can show the code behind what it shows (the model's is
+            # a fold of the browser's summary; at this width the summary is a
+            # sheet, opened by Details).
             page.goto(base + "/data/portfolio_model/model")
+            page.get_by_role("button", name="Details", exact=True).click()
             page.get_by_role("button", name="Code", exact=True).click()
             page.get_by_text("models/portfolio_model.yaml").first.wait_for()
             page.goto(base + "/data/portfolio_model/transform")
