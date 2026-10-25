@@ -249,7 +249,8 @@ web/
                        # `web.py` distribution, which owns that same path in site-packages.
                        # `npm run build` writes its output into tracebi/web/ui/dist.
     src/when.js        # stamp / ago / day / isoTitle: every date in the app; format.js: count / plural
-    src/styles/global.css      # tokens: --font-display (Instrument Serif) for page h1s; --hue-1..6 folder hues, a label
+    src/styles/global.css      # tokens: Geist / Geist Mono (--font-sans, --font-mono); --font-display is the sans,
+                       #   tight (--weight-display 600, --tracking-display); --hue-1..6 folder hues, a label
                        #   never a state; --shadow / --shadow-lg only on the library's tiles, covers, pills and hero
     src/components/Shared.jsx  # the parts: Segmented, Chip (states) vs Badge (labels), Btn/BtnLink,
                        #   ExportCsv, Empty (title, body, command | action), CopyCommand, Time;
@@ -861,7 +862,7 @@ GET  /api/reports/{name}/built                       → the last build (disk, e
 GET  /api/reports/{name}/cover                       → PNG of the last build's first screen (ETag = its write time; 304); 404 when none (the app draws one); never builds; hidden as /built
 GET  /api/runs                                       → run rows (kind, target, limit); viewer may read
 GET  /api/runs/counts?kind=                          → [{kind, target, runs, failed}] per target the caller may see (History's "N older runs")
-GET  /api/desk[?fresh=1]                             → only reports the caller may view: pins, drafts, verdicts, builds (each with `values` [{id, label, text, delta, spark}], its KPIs as the built page printed them), sinks; each verdict/build row carries computed_at and cached: a verdict is kept while its manifest, the models it names and their warehouse (+ certificate) are unchanged (tracebi/desk.py; process-local; fresh re-runs all)
+GET  /api/desk[?fresh=1]                             → only reports the caller may view: pins, drafts, verdicts, builds (each with `values` [{id, label, text, delta, spark}], its KPIs as the built page printed them; the home draws no figure), sinks; each verdict/build row carries computed_at and cached: a verdict is kept while its manifest, the models it names and their warehouse (+ certificate) are unchanged (tracebi/desk.py; process-local; fresh re-runs all)
 POST /mcp                                            → the agent gateway, when TRACEBI_MCP_TOKEN, TRACEBI_OIDC_ISSUER or the built-in sign-in is set (bearer; outside app auth)
 GET  /.well-known/oauth-*  /authorize /token /register /revoke /oauth/callback → per-person OAuth for /mcp (TRACEBI_OIDC_ISSUER, or the built-in TRACEBI_DEMO_LOGIN / TRACEBI_LOCAL_USERS; tracebi/mcp_oauth.py)
 GET  /api/reports/{name}/download?format=xlsx|html|pdf   → html/pdf: the last build; xlsx: rendered
