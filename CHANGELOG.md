@@ -6,6 +6,31 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the report page: the trace beside the page; the command bar
+
+- **The trace sits beside the report.** On a wide window the built page fills
+  the left column and the trace is a card on the right, open until you close
+  it: the figure you last clicked in the page (else its first number), in five
+  steps (the table's source and whether the sink satisfied its contract, the
+  model and its joins, the recorded query, the fingerprint and when it was
+  recorded, and what re-running it said), then the verdict on the page and the
+  build's own certificate. Every value is read from the manifest and the last
+  re-check. Lineage, History and Files are its other tabs; on a narrower window
+  it is the sliding panel it was.
+- **One command bar.** The breadcrumb is Library › the folder (in its colour) ›
+  the report; the bar holds the name, the verdict, "Built … · N figures · N
+  queries", then Open, Share and Export as quiet commands, Rebuild, and **Edit
+  as a draft** as the primary.
+- **⌘K jumps to anything** (the sidebar's box says so): results grouped as
+  Folders (with their colour and count), Reports (with their cover and the
+  verdict's dot), Tables (fact or dimension, and the models that read them),
+  Models and Places, your last six picks first.
+- **The library's head has New report and Refresh data**, as a folder's page
+  does: the scaffold command (analysts), and each model's own pipeline run once
+  (admins; absent when no model has one).
+- A report framed by the app tells it which figure was clicked (`{type:
+  "figure", id}` from `tracebi.js`'s host bridge), and nothing else.
+
 ### Changed — the library is a directory
 
 - **The library is a directory.** The sidebar is its folder tree: All reports,

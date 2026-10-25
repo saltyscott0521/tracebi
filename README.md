@@ -148,11 +148,14 @@ Four places in the sidebar:
   builds, then each folder), every report with its verdict, when it was built
   and its schedule, narrowed to a model by a chip. The sidebar is the folder
   tree; each folder has a page (`/?folder=<path>`) with its numbers, its builds,
-  its reports by kind and **Ask this model**. A report opens at
+  its reports by kind and **Ask this model**; the library's head has **New
+  report** (analysts) and **Refresh data** (admins). A report opens at
   `/reports/<name>` as delivered, under one command bar: **Open**, **Share**,
   **Export** (PDF, Excel, or the HTML with its trace), **Rebuild** and **Edit as
   a draft** for an analyst, and **About this build** (the trace, lineage,
-  history and files).
+  history and files). On a wide window the trace sits beside the page: the
+  figure you last clicked, in five steps from its source table to the re-run
+  that checked it. **⌘K** (Ctrl K) jumps to any folder, report, table or page.
 - **Ask** (`/ask`, from **Ask this model** on a folder's page or a model's) —
   a question of one model as a sentence of its own tokens
   ("Show fair value by sector, largest first, top 8"), answered with a chart,

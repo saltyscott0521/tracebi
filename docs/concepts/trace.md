@@ -70,9 +70,23 @@ green, and only because the host told it:
 - any page that frames a file could send the message, so a green chip in a
   frame is the framing app's claim. `tracebi verify` is the check.
 
-The report page's **About this build** panel opens on **Trace**: the same
-certificate, drawn by the build's own `tracebi.js` (`renderReceipt`) in a
-sandboxed frame, its chip in the app's verdict.
+The report page's **About this build** panel opens on **Trace**. On a wide
+window it sits beside the page as a card; narrower, it slides in. It follows
+one figure, the one you last clicked in the page (else the first number), in
+five steps, each read from the build's manifest and the app's last re-check:
+
+1. **Source**: the transform that wrote the table the query read, and whether
+   the sink satisfied its contract;
+2. **Model**: the model and the tables the query joined;
+3. **Query**: the query the build recorded (its measures, what it is cut by,
+   its filters), the closed query, not SQL;
+4. **Fingerprint**: the SHA-256 the build recorded, and when;
+5. **Re-run now**: what re-running it said: the same fingerprint, or why not.
+
+Then the verdict on the page, and below it the same certificate the file
+carries, drawn by the build's own `tracebi.js` (`renderReceipt`) in a
+sandboxed frame, its chip in the app's verdict. None of it says a number is
+right: it says where the number came from and that the query still gives it.
 
 ## What you can check
 

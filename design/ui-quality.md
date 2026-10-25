@@ -85,7 +85,8 @@ Checked by the script (rule name in brackets):
   reproduce; a folder's hue, `--hue-1`…`--hue-6`, names the folder and never a
   state) `[theme-brand-colour]`; the dark theme
   sets its own ink `[theme-dark-ink]`; resting shadows only on the library's
-  tiles, covers, pills and a folder's hero (`--shadow`, `--shadow-lg` hovered)
+  tiles, covers, pills and a folder's hero, and on a wide report page's page
+  and trace cards (`--shadow`, `--shadow-lg` hovered)
   `[theme-shadow]`; no decorative gradients or blur, but for a folder's hue
   tint on its tile and hero `[theme-decoration]`.
 - **A report carries the same look** `[report-style]`: `tracebi.css` leads with
@@ -207,8 +208,9 @@ Each fix that taught something general adds a line here.
   primary action, the rest quiet, and a menu for the family (Export holds
   HTML, Excel and PDF, and one line saying which carries the trace). An open item gets the
   page's full width; its list is one click away. The report page's bar is
-  what everyone may do on the left (Open, Share, Export) and what the role
-  allows on the right (Rebuild, Edit as a draft, Build, then the one panel);
+  its name, verdict and build, then what everyone may do (Open, Share, Export,
+  quiet) and what the role allows (Rebuild outlined, Edit as a draft the
+  primary, Build, then the one panel);
   a command the role cannot use is not rendered, never disabled. On a phone
   it is Open, Share and a "…" menu of the rest.
 - Focus that sits inside a report's frame belongs to the element inside it, so

@@ -198,7 +198,8 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   assets/ (tracebi.js + tracebi.css + tracebi-calc.js, the page
                        #   engine: pure JS, _calc_src/, CALC_NOTICE.md + vendored ECharts and D3; the
                        #   interaction grammar in tracebi.js: mark/row/range clicks, the selection
-                       #   bar, cross-highlighting, tracebi.onSelection/result); cover.py (a
+                       #   bar, cross-highlighting, tracebi.onSelection/result; the host bridge's `figure`
+                       #   message: a clicked figure's id, which the app's trace follows); cover.py (a
                        #   build's cover: first screen at 1200×750 via the pdf extra's Chromium,
                        #   beside the HTML; manifest "cover"; never fingerprinted)
   pipeline/            # PipelineRunner + APScheduler integration; run_record (a recorded run: row + log)
@@ -908,6 +909,10 @@ GET  /                                               → React SPA (tracebi/web/
                                                        ?measure=<name> | ?view=measures|relationships|storage|code (a fold of the
                                                        summary); Warehouse is the same browser over every table, by writer:
                                                        ?table=<t>, ?group=<writer>) · Review (/review) · Docs
+                                                       (a report's page /reports/<name>: breadcrumb Library › folder › report, one
+                                                       command bar, and on a column 1240px or wider the trace beside the page: the
+                                                       clicked figure in five steps, source, model, query, fingerprint, re-run;
+                                                       ⌘K groups Folders, Reports, Tables, Models and Places)
                                                        (/docs: the handbook in docs/toc.yaml's order; the quickstart at /docs/get-started), plus History
                                                        (/runs) and Verify (/verify); older addresses redirect (movedTo in
                                                        web/ui/src/nav.js; /handbook, /getting-started, /data?view=map,
