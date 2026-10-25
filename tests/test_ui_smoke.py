@@ -29,6 +29,9 @@ _REPO = Path(__file__).resolve().parents[1]
 _PROJECT = _REPO / "examples" / "portfolio_project"
 _REPORT = "portfolio_model/portfolio_showcase"   # its path: it lives in a folder
 _TITLE = "Portfolio Showcase"
+# The library's h1 says how fresh it is: "What's true tonight." once something
+# is built, what the library is for before.
+_LIBRARY_H1 = re.compile(r"^(What\u2019s true|Every report, and whether it still holds)")
 
 
 def _free_port() -> int:
@@ -138,16 +141,23 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 assert not errors, "\n".join(errors)
 
             # / is the library: every report by folder, under the report's own
-            # name, with its verdict and schedule. Five places in the sidebar,
-            # Docs last; its foot keeps no Help link.
+            # name, with its verdict and schedule. The sidebar is its folder
+            # tree (All reports, then a row per folder), then Data, Review and
+            # Docs; Ask is not a place of its own, and the foot keeps no Help link.
             page.goto(base + "/")
-            page.get_by_role("heading", name="Reports", exact=True).wait_for()
+            page.get_by_role("heading", level=1, name=_LIBRARY_H1).wait_for()
+            expect(page).to_have_title("Reports · TraceBi")
             assert page.url.rstrip("/") == base, page.url
             sidebar = page.get_by_role("navigation", name="Main")
-            for place in ("Reports", "Ask", "Data", "Review", "Docs"):
+            all_reports = sidebar.get_by_role("link", name=re.compile(r"^All reports \d+$"))
+            all_reports.wait_for()
+            for place in ("Data", "Review", "Docs"):
                 sidebar.get_by_role("link", name=place, exact=True).wait_for()
+            expect(sidebar.get_by_role("link", name="Ask", exact=True)).to_have_count(0)
             expect(sidebar.get_by_role("link", name="Help")).to_have_count(0)
-            expect(sidebar.get_by_role("link", name="Reports", exact=True)).to_have_attribute("aria-current", "page")
+            expect(all_reports).to_have_attribute("aria-current", "page")
+            folder_row = sidebar.get_by_role("link", name=re.compile(r"^Direct Lending Portfolio \d+$"))
+            expect(folder_row).to_have_attribute("href", "/?folder=portfolio_model")
             # The first visit opens with one quiet card: the places, Get
             # started, the showcase. Dismissed, it is gone, and stays gone.
             welcome = page.get_by_role("region", name="Welcome to TraceBi")
@@ -158,7 +168,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             welcome.get_by_role("button", name="Dismiss the welcome").click()
             expect(welcome).to_have_count(0)
             page.reload()
-            page.get_by_role("heading", name="Reports", exact=True).wait_for()
+            page.get_by_role("heading", level=1, name=_LIBRARY_H1).wait_for()
             expect(page.get_by_role("region", name="Welcome to TraceBi")).to_have_count(0)
             # An empty list says what it is and offers the one thing that
             # fills it, and that action lands where it says.
@@ -166,8 +176,10 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_text("No drafts", exact=True).wait_for()
             page.get_by_role("link", name="Open the reports").click()
             page.wait_for_url(base + "/")
-            page.get_by_role("heading", name="Reports", exact=True).wait_for()
-            lib_row = page.locator(f'[data-report="{_REPORT}"]')
+            page.get_by_role("heading", level=1, name=_LIBRARY_H1).wait_for()
+            # The folder's own row of covers holds the report (the row of the
+            # newest builds may hold it too).
+            lib_row = page.locator(f'[data-row="folder"] [data-report="{_REPORT}"]')
             expect(lib_row).to_contain_text(_TITLE)
             # The verdict waits on the desk re-checking every receipt the
             # workflow left.
@@ -180,26 +192,67 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(lib_row).to_be_visible()
             fail_on_browser_errors()
 
-            # On a wide window the library is a gallery: a tile per report,
-            # each one link, the showcase first. With no covers taken here,
-            # every tile draws its own. List is one toggle away, and stays
-            # picked after a reload.
+            # Grid is the library as a directory: a tile per folder, then a
+            # row of covers per folder, each report in its folder's row once,
+            # each cover one link, the showcase first in its row. With no
+            # covers taken here, every tile draws its own. List is one toggle
+            # away, and stays picked after a reload.
             page.goto(base + "/")
-            listed = len(json.loads(urllib.request.urlopen(f"{base}/api/reports").read()))
-            tiles = page.locator(".lgrid a.ltile[data-report]")
+            reports = json.loads(urllib.request.urlopen(f"{base}/api/reports").read())
+            listed = len(reports)
+            folders = {r["name"].rsplit("/", 1)[0] for r in reports}
+            expect(page.locator(".ftiles a.ftile[data-folder]")).to_have_count(len(folders))
+            tiles = page.locator('[data-row="folder"] a.ctile[data-report]')
             expect(tiles).to_have_count(listed)
-            assert tiles.first.get_attribute("data-report") == _REPORT
-            expect(page.locator(".lgrid .gcover")).to_have_count(listed)
+            assert sorted(tiles.evaluate_all("els => els.map(e => e.dataset.report)")) == sorted(
+                r["name"] for r in reports)
+            expect(page.locator('[data-row="folder"] a.ctile .gcover')).to_have_count(listed)
+            row = page.get_by_role("region", name="Direct Lending Portfolio")
+            assert row.locator("a.ctile").first.get_attribute("data-report") == _REPORT
+            expect(row.get_by_role("link", name=re.compile("^Open folder"))).to_have_attribute(
+                "href", "/?folder=portfolio_model")
             view = page.get_by_role("group", name="View")
             view.get_by_role("button", name="List").click()
             expect(page.locator(".lfolder__rows a.lrow[data-report]")).to_have_count(listed)
             expect(tiles).to_have_count(0)
             page.reload()
             expect(page.locator(".lfolder__rows a.lrow[data-report]")).to_have_count(listed)
+            view = page.get_by_role("group", name="View")
             view.get_by_role("button", name="Grid").click()
             expect(tiles).to_have_count(listed)
             # The whole tile is the link; a later step follows it.
-            expect(tiles.first).to_have_attribute("href", f"/reports/{_REPORT}")
+            expect(row.locator("a.ctile").first).to_have_attribute("href", f"/reports/{_REPORT}")
+            # A search narrows every row and drops the empty ones.
+            page.get_by_label("Search reports").fill("Cohort")
+            expect(tiles).to_have_count(1)
+            expect(page.get_by_role("region", name="Direct Lending Portfolio")).to_have_count(0)
+            page.get_by_label("Search reports").fill("")
+            fail_on_browser_errors()
+
+            # A folder has a page of its own: its hero (the label as the h1, what
+            # it holds, Ask this model), then its reports by kind, and the
+            # sidebar's row for it is the current entry, with its kinds under it.
+            sidebar.get_by_role("link", name=re.compile(r"^Direct Lending Portfolio \d+$")).click()
+            page.wait_for_url("**/?folder=portfolio_model")
+            page.get_by_role("heading", level=1, name="Direct Lending Portfolio").wait_for()
+            expect(page).to_have_title("Direct Lending Portfolio · Reports · TraceBi")
+            crumbs = page.get_by_role("navigation", name="Breadcrumb")
+            expect(crumbs.get_by_role("link", name="Library")).to_have_attribute("href", "/")
+            expect(folder_row).to_have_attribute("aria-current", "page")
+            expect(all_reports).not_to_have_attribute("aria-current", "page")
+            sidebar.get_by_role("link", name=re.compile(r"^Dashboards · \d+$")).wait_for()
+            ours = [r for r in reports if r["name"].startswith("portfolio_model/")]
+            dashboards = page.get_by_role("region", name="Dashboards")
+            pages = page.get_by_role("region", name="Pages")
+            expect(dashboards.locator("a.ctile[data-report]")).to_have_count(
+                sum(r["made_from"] == "app.jsx" for r in ours))
+            expect(pages.locator("a.ctile[data-report]")).to_have_count(
+                sum(r["made_from"] == "template.html" for r in ours))
+            expect(page.get_by_role("link", name="Ask this model")).to_have_attribute(
+                "href", "/ask?model=portfolio_model")
+            # A folder that does not exist (or is hidden) is a page that does not.
+            page.goto(base + "/?folder=no_such_folder")
+            page.get_by_role("heading", name="Page not found").wait_for()
             fail_on_browser_errors()
 
             # Data opens on the board: five lanes in the order the data moves,
@@ -392,9 +445,17 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.go_back()
             fail_on_browser_errors()
 
-            # Ask keeps its own model pick.
-            sidebar.get_by_role("link", name="Ask", exact=True).click()
-            page.wait_for_url("**/ask")
+            # Ask is asked from a model: its Data page has the action, and so
+            # does its folder's page. Ask keeps its own model pick.
+            expect(page.get_by_role("link", name="Ask this model")).to_have_attribute(
+                "href", "/ask?model=portfolio_model")
+            page.goto(base + "/?folder=portfolio_model")
+            page.get_by_role("link", name="Ask this model").click()
+            page.wait_for_url("**/ask?model=portfolio_model")
+            page.get_by_role("heading", name="Ask", exact=True).wait_for()
+            # Asking a model, its folder is where you are.
+            expect(folder_row).to_have_attribute("aria-current", "page")
+            page.goto(base + "/ask")
             page.get_by_role("heading", name="Ask", exact=True).wait_for()
             # Ask's own pick of the model: the page before may still hold its
             # "Read by" links with the same text for a moment.
@@ -899,11 +960,16 @@ def test_real_app_smoke(tmp_path: Path) -> None:
 
             # The library is the folder tree, each folder under its model's name.
             # Where no folder file applies and the person's level is the same
-            # everywhere, a folder says nothing about permissions.
+            # everywhere, a folder says nothing about permissions in the list;
+            # its own page says what the person may do there.
             page.goto(base + "/")
+            page.get_by_role("group", name="View").get_by_role("button", name="List").click()
             page.get_by_role("region", name="Direct Lending Portfolio").get_by_role(
                 "button", name=re.compile(r"Direct Lending Portfolio\s*\d+$")).wait_for()
             expect(page.get_by_role("button", name="Permissions")).to_have_count(0)
+            page.goto(base + "/?folder=portfolio_model")
+            page.get_by_role("region", name="Permissions").get_by_text(
+                "No folder file applies, so roles decide.").wait_for()
             fail_on_browser_errors()
 
             # A signed-in person also has My published (always listed, even
@@ -939,6 +1005,15 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             perms.nth(1).click()
             page.get_by_text("From portfolio_model/_folder.yaml.").wait_for()
             page.get_by_text("Editing them here is not available yet.").first.wait_for()
+            # In the directory My published is a row that says how it fills,
+            # the sidebar's last folder, and a page of its own with the same note.
+            page.get_by_role("group", name="View").get_by_role("button", name="Grid").click()
+            page.get_by_role("region", name="My published").get_by_text("Nothing here yet.").wait_for()
+            mine = page.get_by_role("navigation", name="Main").locator("a.tree__folder")
+            expect(mine.last).to_contain_text("My published")
+            mine.last.click()
+            page.get_by_role("heading", level=1, name="My published").wait_for()
+            page.get_by_text("Only you see this folder unless you share it by file.").wait_for()
             fail_on_browser_errors()
             page.unroute("**/api/folders")
 
@@ -1042,7 +1117,8 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             viewer.get_by_text("You can read reports, ask a model questions and read the docs.").wait_for()
             expect(viewer.get_by_role("link", name="Go to the reports")).to_have_attribute("href", "/")
             sidebar = viewer.get_by_role("navigation", name="Main")
-            sidebar.get_by_role("link", name="Ask", exact=True).wait_for()
+            sidebar.get_by_role("link", name=re.compile(r"^All reports \d+$")).wait_for()
+            expect(sidebar.get_by_role("link", name="Ask", exact=True)).to_have_count(0)
             for place in ("Data", "Review"):
                 expect(sidebar.get_by_role("link", name=place, exact=True)).to_have_count(0)
             # Docs is for everyone: the handbook, Get started in its first section.
@@ -1076,7 +1152,7 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             viewer.goto(f"{base}/reports/{_REPORT}")
             rail = viewer.get_by_role("navigation", name="Main")
             expect(rail.get_by_role("link", name="Reports")).to_have_attribute("aria-current", "page")
-            expect(rail.get_by_role("link", name="Ask")).to_have_count(1)
+            expect(rail.get_by_role("link", name="Ask")).to_have_count(0)
             expect(rail.get_by_role("link", name="Review")).to_have_count(0)
             viewer.get_by_text("Not built yet. An analyst or admin builds it.").wait_for()
             for command in ("Share", "About this build", "Build it now"):

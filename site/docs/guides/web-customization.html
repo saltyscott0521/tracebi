@@ -309,7 +309,8 @@ npm run build    # writes tracebi/web/ui/dist/ — FastAPI serves it at / when p
 </code></pre>
 <p>Layout of <code>src/</code>:</p>
 <pre><code>api.js               # all API hooks (React Query) — one hook per endpoint
-nav.js               # the five places, Data's tabs, their addresses, movedTo (old addresses)
+nav.js               # the four places, Data's tabs, their addresses, movedTo (old addresses)
+folders.js           # the library's folders: one list, its order, a hue per folder
 components/
   Layout.jsx         # sidebar, theme toggle, ⌘K trigger
   Scope.jsx          # page header, one-model routes, redirects from old addresses
@@ -324,8 +325,9 @@ styles/global.css    # ALL design tokens — start here for theming
 dark under <code>[data-theme="dark"]</code>. To rebrand, edit the tokens (<code>--blue</code>,
 <code>--bg</code>, <code>--card</code>, the <code>--op-*</code> lineage-node palette) — components never
 hard-code colors. The brand gradient is <code>--brand</code>.</p>
-<p><strong>Adding a nav page:</strong> the sidebar is five places, <code>PAGES</code> in <code>nav.js</code>
-(Reports <code>/</code>, Ask <code>/ask</code>, Data <code>/data</code>, Review <code>/review</code>, Docs <code>/docs</code>), drawn
+<p><strong>Adding a nav page:</strong> the sidebar is four places, <code>PAGES</code> in <code>nav.js</code>
+(Reports <code>/</code>, Data <code>/data</code>, Review <code>/review</code>, Docs <code>/docs</code>; Ask <code>/ask</code> is a
+page inside Reports), drawn
 by <code>Layout.jsx</code>; Data's own tabs are <code>DATA_TABS</code> (Flow, Sources, Transforms,
 Warehouse, Models). A new page lives inside one of them: give it a route in
 <code>App.jsx</code> under that place's address and teach <code>whereAmI</code> in <code>nav.js</code> which

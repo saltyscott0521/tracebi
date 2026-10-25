@@ -49,7 +49,7 @@ Checked by the script (rule name in brackets):
   `undefined` / `NaN` / traceback shown to a reader `[raw-garbage]`, no
   "not found" except on a page that does not exist `[not-found]`.
 - **You always know where you are.** Exactly one sidebar entry (one of the
-  five places; on an open report, the rail's) is marked as the
+  four places, or the folder you are in; on an open report, the rail's) is marked as the
   current page `[nav-you-are-here]`. Exactly one `h1`, naming the
   page `[one-h1]`.
 - **Everything works from a keyboard.** Anything that looks clickable is a
@@ -82,9 +82,12 @@ Checked by the script (rule name in brackets):
 - **The look** ([Design direction](design-direction.md)): Hanken Grotesk loads `[theme-font-loaded]`
   `[theme-font]`; the brand is cobalt and stays in its blue family, and other
   colour means something (green reproduces, amber needs a look, red does not
-  reproduce) `[theme-brand-colour]`; the dark theme
-  sets its own ink `[theme-dark-ink]`; resting shadows are none
-  `[theme-shadow]`; no decorative gradients or blur `[theme-decoration]`.
+  reproduce; a folder's hue, `--hue-1`…`--hue-6`, names the folder and never a
+  state) `[theme-brand-colour]`; the dark theme
+  sets its own ink `[theme-dark-ink]`; resting shadows only on the library's
+  tiles, covers, pills and a folder's hero (`--shadow`, `--shadow-lg` hovered)
+  `[theme-shadow]`; no decorative gradients or blur, but for a folder's hue
+  tint on its tile and hero `[theme-decoration]`.
 - **A report carries the same look** `[report-style]`: `tracebi.css` leads with
   Hanken Grotesk (inlined, not fetched) and every report text token reads at 4.5:1 on
   every surface a report puts text on.
@@ -128,11 +131,12 @@ Checked by eye, from the contact sheet:
 - **One idea per page.** The title says what the page is, the subtitle says
   what to do on it, in words a reader uses (no "sink", "contract",
   "connector" unless the page explains them).
-- **The model is a filter, not the frame.** Four places (Reports, Ask, Data,
-  Review); with more than one model, the library groups reports under their
-  model's name and a chip narrows it to one.
-- **The sidebar shows what the role uses.** Everyone sees Reports, Ask and
-  Docs; an analyst also Review and Data (with no sign-in, all five). Data is
+- **The model is a filter, not the frame.** Four places (Reports, Data,
+  Review, Docs); the library is a folder per model, and a chip narrows it to
+  one. A question is about one model, so Ask is asked from its folder or its
+  page, not from the sidebar.
+- **The sidebar shows what the role uses.** Everyone sees Reports (its folder
+  tree) and Docs; an analyst also Review and Data (with no sign-in, all four). Data is
   read-only below admin: Refresh data, a step's Run and the credential forms
   show for an admin only, because they write the warehouse or point the
   server's connections. A viewer meets no instruction they cannot follow (no

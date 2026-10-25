@@ -6,6 +6,34 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ## [Unreleased]
 
+### Changed — the library is a directory
+
+- **The library is a directory.** The sidebar is its folder tree: All reports,
+  then one row per folder you may see, each in its own colour with its count,
+  and under the open folder its Dashboards and Pages; Data, Review and Docs
+  follow under Workshop, and the foot is a live line (when the newest build was
+  made and whether every report still reproduces). The home page leads with
+  today's headline numbers, each as its build printed it and linking to its
+  report, then a tile per folder (a fan of its newest covers), then rows of
+  covers that scroll sideways: the newest builds, then one row per folder.
+  Search and the model chips narrow every row; List keeps the row list.
+- **Every folder has a page** (`/?folder=<path>`): its name, its model, the
+  newest build's numbers, a stack of its covers, **Open**, **Ask this model**,
+  **Refresh data** (admins) and **New report**, a bar per recent build, its
+  reports by kind (Dashboards, Pages) and who may do what there. A folder you
+  may not see is a page that does not exist.
+- **Ask leaves the sidebar.** A question is about one model, so it is asked
+  from that model's folder or its Data page (**Ask this model**); `/ask` and
+  every old address to it still work.
+- **Depth and a display face.** Page titles are set in Instrument Serif; the
+  library's tiles, covers and pills rest on a soft shadow and lift on hover
+  (not under reduced motion).
+- **`GET /api/desk` lists only reports the caller may view**, and each build
+  carries `values`: its KPIs as the built page printed them (`id`, `label`,
+  `text`, `delta`, and `spark`, the series the build embedded, only when the
+  KPI has one). Before, a report in a hidden folder still had its build on the
+  desk.
+
 ### Changed — the app reads as one product
 
 - **The first visit** opens the library with one quiet card: the five places

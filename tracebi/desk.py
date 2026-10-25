@@ -7,10 +7,13 @@ one group does not drop the others.
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 import threading
 from collections import OrderedDict
+from html.parser import HTMLParser
 from typing import Any, Mapping, Optional
 
 
@@ -137,7 +140,133 @@ def _face(manifest_path: str, html_path: str) -> dict:
     cover = manifest.get("cover")
     has_cover = isinstance(cover, str) and os.path.isfile(
         os.path.join(os.path.dirname(html_path), os.path.basename(cover)))
-    return {"cover": has_cover, "figure_kinds": kinds}
+    return {"cover": has_cover, "figure_kinds": kinds, "values": _values(html_path)}
+
+
+# ── A build's headline numbers ───────────────────────────────────────────
+# The library leads with a few of each build's numbers (the home page's Today
+# ribbon, a folder's facts). A number is only ever a query result, and the
+# manifest records the queries, not their answers, so these are read from the
+# built page itself: each KPI's label, the value the build printed (the
+# server-side rendering of the query result, in the report's own format), the
+# delta when the KPI carries one, and its sparkline's series when it has one,
+# from the rows the build embedded for that binding. Nothing is computed here.
+
+_VALUES_MAX = 8
+_SPARK_MAX = 60
+# html path -> ((mtime, size), values): a build is read once until rewritten.
+_values_cache: dict = {}
+
+
+class _KpiReader(HTMLParser):
+    """Collects every ``.tb-kpi`` block and every embedded binding's rows."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[tuple[str, str]] = []   # (tag, role) of open elements
+        self.kpis: list[dict] = []
+        self.kpi: Optional[dict] = None
+        self.kpi_depth = 0
+        self.data: dict[str, str] = {}
+        self.script: Optional[str] = None
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "script":
+            sid = a.get("id") or ""
+            self.script = sid[len("tracebi-data-"):] if sid.startswith("tracebi-data-") else None
+            if self.script is not None:
+                self.data[self.script] = ""
+            return
+        if tag in ("br", "img", "input", "meta", "link", "hr", "source", "wbr"):
+            return
+        classes = (a.get("class") or "").split()
+        role = ""
+        if self.kpi is None and "tb-kpi" in classes:
+            self.kpi = {"id": None, "label": "", "text": "", "delta": "", "spark": None}
+            self.kpi_depth = len(self.stack) + 1
+            role = "kpi"
+        if self.kpi is not None:
+            if a.get("data-tb-figure") == "value" and not self.kpi["id"] and "tb-kpi-delta" not in classes:
+                self.kpi["id"] = a.get("id")
+            if a.get("data-tb-figure") == "chart" and a.get("data-tb-type") in ("area", "line") \
+                    and a.get("data-tb-binding") and a.get("data-tb-y"):
+                self.kpi["spark"] = (a["data-tb-binding"], a["data-tb-y"].split(",")[0])
+            for name in ("label", "value", "delta"):
+                if f"tb-kpi-{name}" in classes:
+                    role = name
+        self.stack.append((tag, role))
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.script = None
+            return
+        while self.stack:
+            open_tag, _ = self.stack.pop()
+            if self.kpi is not None and len(self.stack) < self.kpi_depth:
+                self.kpis.append(self.kpi)
+                self.kpi = None
+            if open_tag == tag:
+                break
+
+    def handle_data(self, data):
+        if self.script is not None:
+            self.data[self.script] += data
+            return
+        if self.kpi is None:
+            return
+        roles = {r for _, r in self.stack}
+        key = "delta" if "delta" in roles else "text" if "value" in roles else "label" if "label" in roles else None
+        # A label is its first words: a page may hold a second wording its
+        # script swaps in ("Latest buyer" / "The buyer in view").
+        if key == "label" and self.kpi["label"].strip() and self.stack[-1][1] != "label":
+            return
+        if key:
+            self.kpi[key] += data
+
+
+def _series(raw: str, column: str) -> Optional[list]:
+    """The column *column* of one embedded binding, as the build recorded it."""
+    try:
+        csv_text = json.loads(raw).get("csv") or ""
+        rows = list(csv.DictReader(io.StringIO(csv_text)))
+        points = [float(r[column]) for r in rows if r.get(column) not in (None, "")]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None
+    return points[-_SPARK_MAX:] if len(points) > 1 else None
+
+
+def _values(html_path: str) -> list[dict]:
+    """A build's KPIs, ``{id, label, text, delta, spark}``, in page order."""
+    try:
+        st = os.stat(html_path)
+    except OSError:
+        return []
+    stamp = (st.st_mtime, st.st_size)
+    cached = _values_cache.get(html_path)
+    if cached and cached[0] == stamp:
+        return cached[1]
+    reader = _KpiReader()
+    try:
+        with open(html_path, encoding="utf-8") as fh:
+            reader.feed(fh.read())
+        reader.close()
+    except (OSError, ValueError):
+        return []
+    found = []
+    for k in reader.kpis:
+        label, text = " ".join(k["label"].split()), " ".join(k["text"].split())
+        if not (k["id"] and label and text):
+            continue
+        spark = None
+        if k["spark"] and k["spark"][0] in reader.data:
+            spark = _series(reader.data[k["spark"][0]], k["spark"][1])
+        found.append({"id": k["id"], "label": label, "text": text,
+                      "delta": " ".join(k["delta"].split()), "spark": spark})
+        if len(found) == _VALUES_MAX:
+            break
+    _values_cache[html_path] = (stamp, found)
+    return found
 
 
 def _verdicts(

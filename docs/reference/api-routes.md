@@ -358,20 +358,21 @@ reports its build step rebuilt, only those it actually built).
 `GET /` serves the built React bundle. When it has not been built, the page
 says so and names the build command rather than 404ing.
 
-The app's addresses, five places in the sidebar (`web/ui/src/nav.js`):
+The app's addresses, four places in the sidebar (`web/ui/src/nav.js`):
 
 | Place | Addresses |
 | --- | --- |
-| Reports | `/` the library (`?model=<m>` narrows it); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on) |
-| Ask | `/ask` (`?model=<m>` picks the model) |
+| Reports | `/` the library as a directory (`?model=<m>` narrows it); `/?folder=<path>` one folder's page (a folder the caller may not see is a page not found); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on); `/ask` a question of one model (`?model=<m>` picks it), reached by **Ask this model** on a folder's page or a model's Data page |
 | Data | five tabs: `/data` Flow (the board: sources → transforms → warehouse → models → reports; `?model=<m>` opens with that model's path lit), `/data/sources` Sources (every connection and the `inputs/` folder), `/data/transforms` Transforms (every file in `transforms/`), `/data/warehouse` Warehouse (every table: who wrote it, who reads it, its checks), `/data/models` Models (a chain row per model); `?model=<m>` narrows Sources, Transforms and Warehouse. `/data/<m>` one model, then `/transform`, `/sources`, `/runs` |
 | Review | four tabs: `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
 | Docs | `/docs` the handbook, in the order of `docs/toc.yaml`: `/docs/<section>/<page>` per file of `docs/`, the quickstart at `/docs/get-started`; a page that moved keeps its old address (the toc's `moved:`) |
 
 The sidebar shows the places a role uses (`placesFor` in `web/ui/src/nav.js`):
-everyone Reports, Ask and Docs, an analyst also Review and Data (read-only: its run
+everyone Reports and Docs, an analyst also Review and Data (read-only: its run
 buttons and credential forms show for an admin). With no
-sign-in `/api/me` names everyone admin, so all five show. An address above the
+sign-in `/api/me` names everyone admin, so all four show. Under Reports the
+sidebar lists the library's folders (All reports, then one row per folder the
+caller may see). An address above the
 role renders a plain page saying who it is for; the API enforces the roles.
 
 Older addresses redirect, keeping their query (`movedTo`): `/m/<m>/…` to the

@@ -109,7 +109,7 @@ Then drag in the untouched pair (`portfolio_dashboard.html` and its
 
 ### Beat 4: ask a question (1 minute, optional)
 
-Click **Ask** in the sidebar. With Direct Lending Portfolio picked, build the
+Open **Direct Lending Portfolio** in the sidebar and click **Ask this model**. Build the
 sentence "Show fair value by sector" (type, or pick each word), then **Ask**.
 
 > "You can ask your own question of the same definitions, and the answer

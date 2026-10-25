@@ -24,6 +24,39 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-24 — Decision: Ask leaves the nav: a question is about one model, so it is asked from the model's folder or page (UI-5)
+
+The owner, after round 4: the app did not wow, it wanted folders, carousels
+and more to look at, and Ask was "kinda pointless" as a place. A question is
+always of one model, and a model is a folder of reports, so Ask is now an
+action on the folder's page and the model's Data page (**Ask this model**),
+not a place: `PAGES` keeps it as a page inside Reports, so `/ask`, `askPath()`
+and every redirect to it still work, ⌘K still lists it, and the sidebar marks
+the asked model's folder while you are there. The places are four.
+
+The library became the app's structure: the sidebar is the folder tree, the
+home page is a directory (headline numbers, a tile per folder, rows of covers
+that scroll sideways) and every folder has a page (`/?folder=<path>`). A
+folder owns a hue (six tokens, in the order of the folder paths, My published
+the accent): a label, never a state. The design direction's "no resting
+shadows, no gradients" now has one named exception, the library's tiles,
+covers, pills and a folder's hero; the audit's `theme-shadow` allows
+`--shadow`/`--shadow-lg`, and `theme-decoration` a gradient marked "hue tint".
+
+The headline numbers are what each build printed. The manifest records the
+queries, not their answers, so the desk reads each build's KPIs from the built
+page (label, value text, delta, and a series only when the KPI embeds one) and
+computes nothing. Doing so showed the desk had never been filtered by folder
+permission: a hidden folder's builds (and now their numbers) reached anyone.
+It is filtered now, with `can("view", …)` per entry, and the folder-permissions
+journey proves it.
+
+What the round did not do: a model-level description (the hero says what the
+folder holds in facts instead; neither the model nor `_folder.yaml` has a
+description field), the north-star's Schema button, and a "Refresh data" on
+the home page. A build row stores no verdict, so the folder's build timeline
+counts builds and failures and never claims the older ones reproduced.
+
 ## 2026-10-24 — Decision: a display face is a token; a package may keep its own look (UI-4B)
 
 Backlog 8 asked whether a project is one accent. The round first said yes and

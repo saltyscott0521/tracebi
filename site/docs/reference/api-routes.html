@@ -722,7 +722,7 @@ reports its build step rebuilt, only those it actually built).</p>
 <h2 id="the-spa">The SPA</h2>
 <p><code>GET /</code> serves the built React bundle. When it has not been built, the page
 says so and names the build command rather than 404ing.</p>
-<p>The app's addresses, five places in the sidebar (<code>web/ui/src/nav.js</code>):</p>
+<p>The app's addresses, four places in the sidebar (<code>web/ui/src/nav.js</code>):</p>
 <table>
 <thead>
 <tr>
@@ -733,11 +733,7 @@ says so and names the build command rather than 404ing.</p>
 <tbody>
 <tr>
 <td>Reports</td>
-<td><code>/</code> the library (<code>?model=&lt;m&gt;</code> narrows it); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on)</td>
-</tr>
-<tr>
-<td>Ask</td>
-<td><code>/ask</code> (<code>?model=&lt;m&gt;</code> picks the model)</td>
+<td><code>/</code> the library as a directory (<code>?model=&lt;m&gt;</code> narrows it); <code>/?folder=&lt;path&gt;</code> one folder's page (a folder the caller may not see is a page not found); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on); <code>/ask</code> a question of one model (<code>?model=&lt;m&gt;</code> picks it), reached by <strong>Ask this model</strong> on a folder's page or a model's Data page</td>
 </tr>
 <tr>
 <td>Data</td>
@@ -754,9 +750,11 @@ says so and names the build command rather than 404ing.</p>
 </tbody>
 </table>
 <p>The sidebar shows the places a role uses (<code>placesFor</code> in <code>web/ui/src/nav.js</code>):
-everyone Reports, Ask and Docs, an analyst also Review and Data (read-only: its run
+everyone Reports and Docs, an analyst also Review and Data (read-only: its run
 buttons and credential forms show for an admin). With no
-sign-in <code>/api/me</code> names everyone admin, so all five show. An address above the
+sign-in <code>/api/me</code> names everyone admin, so all four show. Under Reports the
+sidebar lists the library's folders (All reports, then one row per folder the
+caller may see). An address above the
 role renders a plain page saying who it is for; the API enforces the roles.</p>
 <p>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
 same thing under Data, Ask, History or the library; <code>/models</code> to <code>/data/models</code>

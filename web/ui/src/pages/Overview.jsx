@@ -12,8 +12,8 @@ import Pipelines from './Pipelines'
 import Connectors from './Connectors'
 import Runs from './Runs'
 import { ProjectFeedFold } from '../components/Workbench'
-import { dataPath, sourcesPath } from '../nav'
-import { Card, useToast } from '../components/Shared'
+import { askPath, dataPath, sourcesPath } from '../nav'
+import { BtnLink, Card, useToast } from '../components/Shared'
 
 // What changed on the line when a run ends: every station may read differently.
 const AFTER_A_RUN = ['pipelines', 'history', 'warehouse', 'warehouses', 'desk', 'reports', 'models', 'model']
@@ -129,6 +129,8 @@ function ModelPage({ model, tab }) {
       <header className="overview__head">
         <div className="overview__cap"><Link to="/data">Data</Link></div>
         <h1 className="overview__title">{label} {label !== model && <span className="overview__id">{model}</span>}</h1>
+        {/* A question is about one model, so it is asked from here (or its folder). */}
+        <div className="overview__acts"><BtnLink to={askPath(model)}>Ask this model</BtnLink></div>
         {detail && (
           <p className="overview__sub">
             {detail.source_file && <>Defined in <code>{detail.source_file}</code></>}

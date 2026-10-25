@@ -86,6 +86,19 @@ def test_a_hidden_folder_is_not_listed_and_looks_not_found_everywhere(library, s
     assert got.text.replace(HIDDEN, "X") == missing.text.replace("finance/q3/nothing", "X")
     assert "No cover" in alice.get(cover).text
 
+    # The sidebar's folder tree and a folder's page (/?folder=<path>) are drawn
+    # from the reports and folders the API lists: the hidden folder is in
+    # neither for bob, so it has no row and its page is the one for a folder
+    # that does not exist. The desk's builds (the covers, the numbers on the
+    # home page) leave it out too.
+    def folder_paths(client):
+        return {f["path"] for f in client.get("/api/folders").json()["folders"]}
+    assert "finance/q3" not in folder_paths(bob) and "finance/q3" in folder_paths(alice)
+    assert not [r for r in names(bob) if r.startswith("finance/q3/")]
+    assert HIDDEN not in {b["report"] for b in bob.get("/api/desk").json()["builds"]}
+    assert HIDDEN in {b["report"] for b in alice.get("/api/desk").json()["builds"]}
+    assert bob.get("/?folder=finance/q3").text == bob.get("/?folder=finance/nothing").text
+
     # A run history is empty, as for a report that does not exist.
     assert bob.get(f"/api/reports/{HIDDEN}/runs").json() == []
 
