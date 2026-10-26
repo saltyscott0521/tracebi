@@ -235,7 +235,7 @@ npm run build    # writes tracebi/web/ui/dist/, which FastAPI serves at /
 <p>The UI is React 18 and Vite, with React Query for data, React Flow for graphs
 and Recharts for charts. In <code>web/ui/src/</code>:</p>
 <pre><code>api.js               one React Query hook per endpoint
-nav.js               the four places, Data's tabs, their addresses, movedTo for old addresses
+nav.js               the four places, Data's folders, their addresses, movedTo for old addresses
 folders.js           the library's folders: order and a hue per folder
 components/
   Layout.jsx         sidebar, theme toggle, ⌘K
@@ -252,23 +252,26 @@ Edit the tokens (<code>--blue</code>, <code>--bg</code>, <code>--card</code>, th
 components never hard-code colours. The brand gradient is <code>--brand</code>.</p>
 <p><strong>Add a page.</strong> The sidebar has four places, <code>PAGES</code> in <code>nav.js</code>: Reports
 <code>/</code>, Data <code>/data</code>, Review <code>/review</code> and Docs <code>/docs</code> (Ask, <code>/ask</code>, is a page
-inside Reports). Data's tabs are <code>DATA_TABS</code>: Flow, Sources, Transforms,
-Warehouse, Models.</p>
+inside Reports). Data's folders are <code>DATA_FOLDERS</code>: Overview (<code>/data</code>
+itself), then Sources, Transforms, Warehouse and Models, nested under Data in
+the sidebar.</p>
 <ol>
 <li>Give the page a route in <code>App.jsx</code> under its place's address.</li>
 <li>Teach <code>whereAmI</code> in <code>nav.js</code> which place it belongs to, so the sidebar
    marks it current.</li>
-<li>Pass a model as a filter (<code>?model=&lt;name&gt;</code>), or on Data as the path
-   (<code>/data/&lt;model&gt;/&lt;tab&gt;</code>).</li>
+<li>Pass a model as a filter (<code>?model=&lt;name&gt;</code>), or on Data as the path of
+   its page (<code>modelPath</code>: <code>/data/models/&lt;model&gt;</code>). Under Data, wrap the page
+   in <code>DataFrame</code> (<code>pages/Data.jsx</code>): a folder's name as its h1, or a
+   breadcrumb for one thing's page.</li>
 <li>When an address moves, add it to <code>movedTo</code> so old links keep working.</li>
 <li>Use the hooks in <code>api.js</code> for data and the parts in <code>Shared.jsx</code> for the
    look.</li>
 </ol>
-<p>A model's Data page is <code>pages/Overview.jsx</code>: the line from
-<code>components/TheLine.jsx</code>, then the tabs in <code>TABS</code> (<code>model</code>, <code>transform</code>,
-<code>sources</code>, <code>runs</code>). Its Model tab and Data's Warehouse tab are one component,
-<code>components/DataBrowser.jsx</code>, fed by <code>modelSchema</code> or <code>warehouseSchema</code> in
-<code>components/modelGraph.js</code>.</p>
+<p>A model's page is <code>pages/Overview.jsx</code>: the line from
+<code>components/TheLine.jsx</code> (its one way to the model's sources, transform and
+reports), then the data browser. The model page and Data's Warehouse are one
+component, <code>components/DataBrowser.jsx</code>, fed by <code>modelSchema</code> or
+<code>warehouseSchema</code> in <code>components/modelGraph.js</code>.</p>
 <h2 id="5-add-an-api-route">5. Add an API route</h2>
 <ol>
 <li>Add a file under <code>tracebi/web/api/routers/</code>.</li>

@@ -1,5 +1,5 @@
-import { Fragment } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Fragment, useEffect, useState } from 'react'
+import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 
 import { useConnectors, useCredentials, useModel, useTable, useTableProfile, useWarehouses } from '../api'
 import DataGrid, { cellText } from '../components/DataGrid'
@@ -8,42 +8,23 @@ import { useModelLabel } from '../components/Scope'
 import { CONTRACT } from '../components/Warehouse'
 import { KindGlyph, TypeGlyph } from '../components/DataBrowser'
 import { buildModelGraph } from '../components/modelGraph'
-import { TransformName, useTransformHome } from './Connectors'
+import { TransformName } from './Connectors'
+import { DataFrame } from './Data'
 import { count } from '../format'
-import { dataPath, libraryPath, reportPagePath, sourcesPath, tablePath, warehousePath } from '../nav'
+import {
+  modelPath, reportPagePath, sourcePath, sourceTablePath, sourcesPath, warehousePath, warehouseTablePath,
+} from '../nav'
 import {
   BtnLink, Chip, Empty, ErrorDetail, PageSub, PageTitle, Segmented, SkeletonCard, SkeletonList, Time,
 } from '../components/Shared'
 
-// One table's page (/data/tables/<source>/<table>): wherever it lives (a
-// warehouse, a connection, a file under inputs/), what it is, who wrote it,
-// who reads it, and its rows. The view is in the address (?view=), and so is
+// One table's page, wherever it lives: a warehouse's (/data/warehouse/<table>),
+// a connection's (/data/sources/<connection>/<table>) or a file under inputs/
+// (/data/sources/inputs/<path>). What it is, who wrote it, who reads it, and
+// its rows. The view is in the address (?view=), and so is
 // the grid's cut, so a sorted, filtered page of rows can be linked.
 
 const VIEWS = [['data', 'Data'], ['columns', 'Columns'], ['used', 'Used by']]
-
-// Sources with one connection (or inputs/) open, narrowed to *model* when known.
-function sourceLink(source, model) {
-  const to = sourcesPath(model)
-  return `${to}${to.includes('?') ? '&' : '?'}source=${encodeURIComponent(source)}`
-}
-
-// "Data › Warehouse › fact_holdings", or "Data › Sources › crm › issuer_ratings".
-function Crumb({ source, table, warehouse, model }) {
-  const parts = warehouse === null ? []
-    : warehouse ? [[warehousePath(model), 'Warehouse']]
-    : [[sourcesPath(model), 'Sources'], [sourceLink(source, model), source === 'inputs' ? 'inputs/' : source]]
-  return (
-    <nav aria-label="Where this table is" className="rp__crumb tpage__crumb">
-      <Link to="/data">Data</Link>
-      {parts.map(([to, text]) => (
-        <Fragment key={text}><span aria-hidden="true">›</span><Link to={to}>{text}</Link></Fragment>
-      ))}
-      <span aria-hidden="true">›</span>
-      <span aria-current="page" className="tpage__crumb-here">{table}</span>
-    </nav>
-  )
-}
 
 function rowsText(t) {
   if (t.rows == null) return 'Rows not counted'
@@ -56,7 +37,7 @@ function ReadOnRun({ items }) {
   return items.map((src, i) => {
     const dot = src.ref.indexOf('.')
     const ref = dot > 0
-      ? <Link to={tablePath(src.ref.slice(0, dot), src.ref.slice(dot + 1))}><code>{src.ref}</code></Link>
+      ? <Link to={sourceTablePath(src.ref.slice(0, dot), src.ref.slice(dot + 1))}><code>{src.ref}</code></Link>
       : <code>{src.ref}</code>
     return (
       <Fragment key={src.ref}>
@@ -69,18 +50,33 @@ function ReadOnRun({ items }) {
   })
 }
 
+// The reports that read a table, the first few by name, the rest counted.
+const REPORTS_SHOWN = 3
+function ReportNames({ reports }) {
+  const shown = reports.slice(0, REPORTS_SHOWN)
+  const rest = reports.slice(REPORTS_SHOWN)
+  return (
+    <>
+      {shown.map((r, i) => (
+        <Fragment key={r.report}>{i > 0 && ', '}<Link to={reportPagePath(r.report)}>{r.display_name || r.report}</Link></Fragment>
+      ))}
+      {rest.length > 0 && (
+        <span title={rest.map(r => r.display_name || r.report).join(', ')}> and {count(rest.length, 'other')}</span>
+      )}
+    </>
+  )
+}
+
 // One line of facts, each a link to where that fact lives.
 function Facts({ t }) {
   const labelOf = useModelLabel()
-  const home = useTransformHome()
-  const first = t.read_by[0] || ''
   const facts = []
   if (t.kind === 'warehouse') {
     facts.push(
       <span key="w">
         Written by {t.written_by?.transform
           ? <>
-              <TransformName name={t.written_by.transform} home={home} />
+              <TransformName name={t.written_by.transform} />
               {t.written_by.at && <> · <Time iso={t.written_by.at} /></>}
             </>
           : 'no recorded transform'}
@@ -90,15 +86,13 @@ function Facts({ t }) {
   facts.push(
     <span key="r">
       Read by {t.read_by.length
-        ? t.read_by.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={dataPath(m)}>{labelOf(m)}</Link></Fragment>)
+        ? t.read_by.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={modelPath(m)}>{labelOf(m)}</Link></Fragment>)
         : 'no model'}
     </span>,
   )
   facts.push(
     <span key="u">
-      {t.used_by.length
-        ? <Link to={libraryPath(first)}>Used by {count(t.used_by.length, 'report')}</Link>
-        : 'Used by no report'}
+      Used by {t.used_by.length ? <ReportNames reports={t.used_by} /> : 'no report'}
     </span>,
   )
   if (t.transform_read?.length) {
@@ -128,7 +122,7 @@ function ContractFold({ c }) {
 
 // The source is not reachable from here: say which variable, how it is set
 // now, and where its Connection section is (the credential lives there).
-function NotConnected({ source, answer, model }) {
+function NotConnected({ source, answer }) {
   const { data } = useCredentials()
   const row = (data?.credentials || []).find(r => r.name === answer.variable)
   return (
@@ -138,7 +132,7 @@ function NotConnected({ source, answer, model }) {
         {row && <CredentialChip row={row} />}
       </p>
       {source !== 'inputs' && (
-        <BtnLink size="sm" to={sourceLink(source, model)}>
+        <BtnLink size="sm" to={sourcePath(source)}>
           {data?.can_change && row && !row.set ? 'Set it on its connection' : 'Open its connection'}
         </BtnLink>
       )}
@@ -218,7 +212,7 @@ function ModelUse({ model, source, table, columns }) {
   return (
     <li className="tpage__use">
       <p className="tpage__use-head">
-        <Link to={dataPath(model)}>{labelOf(model)}</Link>
+        <Link to={modelPath(model)}>{labelOf(model)}</Link>
         <span className="wb-meta">
           {facts.length ? ' reads it as a fact' : dims.length ? ' reads it as a dimension' : ' reads it'}
           {mine.some(n => n !== table) && <> (as <code>{mine.join(', ')}</code>)</>}
@@ -237,7 +231,7 @@ function ModelUse({ model, source, table, columns }) {
             {measures.map(m => (
               <tr key={m.name}>
                 <td>
-                  <Link to={`${dataPath(model)}?view=measures`}>{m.description || m.name}</Link>
+                  <Link to={`${modelPath(model)}?view=measures`}>{m.description || m.name}</Link>
                   {m.description && <span className="dlist__id"> {m.name}</span>}
                 </td>
                 <td><code>{definition(m)}</code></td>
@@ -276,21 +270,47 @@ function UsedBy({ t }) {
 
 // ── The page ──────────────────────────────────────────────────────────────────
 
-export default function TablePage() {
-  const { source, '*': table } = useParams()
+// The address names no data table: none by that name, or one of TraceBi's own.
+function NotATable({ source, table }) {
+  return (
+    <>
+      <PageTitle>Not a data table</PageTitle>
+      <PageSub>
+        There is no table named <code>{table}</code> in <code>{source}</code>, or it is one of TraceBi's
+        own (<code>tracebi_*</code>, <code>alembic_version</code>), which are never shown as data.
+      </PageSub>
+      <Empty message="Every table the transforms wrote is under Warehouse."
+             action={<BtnLink to={warehousePath()}>Open the Warehouse</BtnLink>} />
+    </>
+  )
+}
+
+/**
+ * One table's page. Under Warehouse (*warehouse*) the address names only the
+ * table, and the warehouse that holds it is found from the listing (?warehouse=
+ * picks one when two hold that name); under Sources it names the connection
+ * (or inputs) and the table. A table reached under Sources that the API says
+ * is a warehouse's moves to its address under Warehouse.
+ */
+export default function TablePage({ warehouse: underWarehouse = false }) {
+  const routed = useParams()
+  const { search } = useLocation()
   const [params, setParams] = useSearchParams()
+  const table = underWarehouse ? routed.table : routed['*']
   const view = VIEWS.some(([v]) => v === params.get('view')) ? params.get('view') : 'data'
+  // Which warehouse holds it, and whether an unreachable source is one (for
+  // the crumb): the listing, asked only then.
+  const [listed, setListed] = useState(underWarehouse)
+  const { data: warehouses, isLoading: whLoading } = useWarehouses(listed)
+  const all = warehouses?.warehouses || []
+  const holder = params.get('warehouse') || all.find(w => w.tables.some(x => x.name === table))?.name || all[0]?.name
+  const source = underWarehouse ? holder : routed.source
   const { data: t, isLoading, error } = useTable(source, table)
-  // Whether an unreachable source is a warehouse (for the crumb): asked only then.
-  const { data: warehouses } = useWarehouses(t?.connected === false)
+  useEffect(() => { if (t?.connected === false) setListed(true) }, [t?.connected])
   const { data: connectors } = useConnectors()
 
-  // null while not known yet: the crumb then says only Data.
-  const warehouse = t?.kind ? t.kind === 'warehouse'
-    : warehouses ? warehouses.warehouses.some(w => w.name === source)
-    : source === 'inputs' ? false : null
-  // The model to narrow Sources and Warehouse to: one that reads the table,
-  // else (a connection nothing models) one its readers name.
+  // The model whose data browser holds it: one that reads the table, else
+  // (a connection nothing models) one its readers name.
   const conn = (connectors || []).find(c => c.name === source)
   const model = t?.read_by?.[0] || conn?.read_by?.models?.[0] || conn?.used_by?.[0] || ''
   // What that model calls it and its kind there (fact, dimension), for the
@@ -304,45 +324,50 @@ export default function TablePage() {
     return next
   }, { replace: true })
 
-  const crumb = <Crumb source={source} table={table} warehouse={warehouse} model={model} />
-  if (isLoading) return <div className="tpage">{crumb}<PageTitle>{table}</PageTitle><SkeletonCard /></div>
-  if (error?.status === 404) {
+  if (underWarehouse && (whLoading || !source)) {
     return (
-      <div className="tpage">
-        {crumb}
-        <PageTitle>Not a data table</PageTitle>
-        <PageSub>
-          There is no table named <code>{table}</code> in <code>{source}</code>, or it is one of TraceBi's
-          own (<code>tracebi_*</code>, <code>alembic_version</code>), which are never shown as data.
-        </PageSub>
-        <Empty message="Every table the transforms wrote is listed on the Warehouse tab."
-               action={<BtnLink to={warehousePath()}>Open the Warehouse</BtnLink>} />
-      </div>
+      <DataFrame trail={[[warehousePath(), 'Warehouse']]} here={table} code>
+        <div className="tpage">{whLoading ? <SkeletonCard /> : <NotATable source="the warehouse" table={table} />}</div>
+      </DataFrame>
     )
   }
-  if (error) return <div className="tpage">{crumb}<PageTitle>{table}</PageTitle><ErrorDetail error={error} /></div>
+  // A warehouse's table has its address under Warehouse; the grid's cut comes along.
+  const isWarehouse = t?.kind ? t.kind === 'warehouse' : all.some(w => w.name === source)
+  if (!underWarehouse && isWarehouse) {
+    const many = all.filter(w => w.tables.some(x => x.name === table)).length > 1
+    const q = new URLSearchParams(search)
+    if (many) q.set('warehouse', source)
+    return <Navigate to={`${warehouseTablePath(table)}${q.toString() ? `?${q}` : ''}`} replace />
+  }
+
+  const trail = underWarehouse ? [[warehousePath(), 'Warehouse']]
+    : [[sourcesPath(), 'Sources'], [sourcePath(source), source === 'inputs' ? 'inputs/' : source]]
+  const frame = body => <DataFrame trail={trail} here={table} code><div className="tpage fade-in">{body}</div></DataFrame>
+  if (isLoading || (!t && !error)) return frame(<><PageTitle>{table}</PageTitle><SkeletonCard /></>)
+  if (error?.status === 404) return frame(<NotATable source={source} table={table} />)
+  if (error) return frame(<><PageTitle>{table}</PageTitle><ErrorDetail error={error} /></>)
 
   if (t.connected === false) {
-    return (
-      <div className="tpage fade-in">
-        {crumb}
+    return frame(
+      <>
         <header className="tpage__head">
           <h1 className="tpage__name">{table}</h1>
         </header>
-        <NotConnected source={source} answer={t} model={model} />
-      </div>
+        <NotConnected source={source} answer={t} />
+      </>,
     )
   }
 
   const c = t.contract && (CONTRACT[t.contract.status] || CONTRACT.no_contract)
-  // The data browser it sits in: the Warehouse tab for a warehouse table,
-  // else the model that reads it, with the table selected.
+  // The data browser it sits in: Warehouse for a warehouse table (the
+  // browser's id names the warehouse when there are two), else the model that
+  // reads it, with the table selected.
   const named = modelTable?.name
-  const schemaLink = t.kind === 'warehouse' ? `${warehousePath()}?table=${encodeURIComponent(table)}`
-    : named ? `${dataPath(model)}?table=${encodeURIComponent(named)}` : null
-  return (
-    <div className="tpage fade-in">
-      {crumb}
+  const schemaId = all.length > 1 ? `${source}.${table}` : table
+  const schemaLink = t.kind === 'warehouse' ? `${warehousePath()}?table=${encodeURIComponent(schemaId)}`
+    : named ? `${modelPath(model)}?table=${encodeURIComponent(named)}` : null
+  return frame(
+    <>
       <header className="tpage__head">
         <div className="tpage__title">
           {(role || t.table_kind === 'view') && <KindGlyph role={role} view={t.table_kind === 'view'} />}
@@ -364,6 +389,6 @@ export default function TablePage() {
         {view === 'columns' && <ColumnsView source={source} table={table} />}
         {view === 'used' && <UsedBy t={t} />}
       </div>
-    </div>
+    </>,
   )
 }

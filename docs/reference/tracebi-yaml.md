@@ -100,7 +100,7 @@ On the object tier it also carries `objects`: per table, the file's `path`,
 local directory), `size`, `last_modified` and `version_by` (`etag` or
 `size+last_modified`). A file rewritten since the certificate reads **stale**
 on that alone, before any fingerprint is compared: in report manifests, the
-Warehouse tab and `tracebi verify --contracts` (`REWRITTEN`).
+Warehouse folder and `tracebi verify --contracts` (`REWRITTEN`).
 
 ## `engine`
 

@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useModels, usePipelines, useRole, useGuides, useWarehouses } from '../api'
 import {
-  PAGES, placesFor, askPath, dataPath, dataTabPath, docPath, flowPath, GET_STARTED, reportPagePath, pipelineModels,
-  sourcesPath, tablePath, transformsPath, warehousePath,
+  useConnectors, useConnectorsTables, useModels, usePipelines, useRole, useGuides, useTransforms, useWarehouses,
+} from '../api'
+import {
+  PAGES, placesFor, askPath, docPath, GET_STARTED, reportPagePath, pipelineModels, modelPath, modelsPath,
+  sourcePath, sourceTablePath, sourcesPath, transformPath, transformsPath, warehousePath, warehouseTablePath,
 } from '../nav'
 import { count } from '../format'
 import { encodeQuery } from '../ask'
@@ -22,11 +24,10 @@ function pagesFor(role) {
     ...places.map(p => ({ label: p.label, path: p.path, kind: 'page', sub: p.sub })),
     ...places.flatMap(p => inside(p.key)),
     ...(places.some(p => p.key === 'data') ? [
-      { label: 'Flow', path: flowPath(), kind: 'page', sub: 'The board: sources, transforms, warehouse, models and reports, as the data moves.' },
       { label: 'Sources', path: sourcesPath(), kind: 'page', sub: 'Every connection and input file, and what reads each.' },
       { label: 'Transforms', path: transformsPath(), kind: 'page', sub: 'Every file in transforms/: its form, what it feeds, its checks.' },
       { label: 'Warehouse', path: warehousePath(), kind: 'page', sub: 'Every table: who wrote it, who reads it, its checks.' },
-      { label: 'Models', path: dataTabPath('models'), kind: 'page', sub: 'Every model as a chain: sources, transform, tables, measures, reports.' },
+      { label: 'Models', path: modelsPath(), kind: 'page', sub: 'Every model as a chain: sources, transform, tables, measures, reports.' },
     ] : []),
     { label: 'Get started', path: docPath(GET_STARTED), kind: 'doc', sub: 'Install, scaffold a project, and build one verified report.' },
   ]
@@ -38,6 +39,8 @@ const KIND_META = {
   folder:   { tag: 'Folder',   group: 'folder' },
   report:   { tag: 'Report',   group: 'report' },
   table:    { tag: 'Table',    group: 'table' },
+  source:   { tag: 'Source',   group: 'source', glyph: '◎' },
+  transform: { tag: 'Transform', group: 'transform', glyph: '⇢' },
   model:    { tag: 'Model',    group: 'model', glyph: '◇' },
   measure:  { tag: 'Measure',  group: 'model', glyph: 'ƒ' },
   pipeline: { tag: 'Pipeline', group: 'model', glyph: '▸' },
@@ -46,7 +49,7 @@ const KIND_META = {
 }
 const GROUPS = [
   ['recent', 'Recent'], ['folder', 'Folders'], ['report', 'Reports'], ['table', 'Tables'],
-  ['model', 'Models'], ['place', 'Places'],
+  ['source', 'Sources'], ['transform', 'Transforms'], ['model', 'Models'], ['place', 'Places'],
 ]
 // A table's glyph is what it is in the model that reads it.
 const TABLE_GLYPH = { fact: ['Σ', 'Fact'], dimension: ['⚷', 'Dimension'], table: ['▦', 'Table'] }
@@ -104,6 +107,13 @@ export default function CommandPalette() {
   const seesData = placesFor(role).some(p => p.key === 'data')
   // Tables live on Data: the warehouses' are asked for once the palette opens.
   const { data: warehouses } = useWarehouses(open && seesData)
+  // So are the connections, the transforms and each connection's tables
+  // (the same reads the board and Sources make, so mostly from the cache).
+  const { data: connectors } = useConnectors()
+  const { data: transforms } = useTransforms()
+  const sources = seesData ? (connectors || []).filter(c => !c.warehouse) : []
+  const sourceTables = useConnectorsTables(sources.map(c => c.name), open && seesData)
+  const sourceKey = sourceTables.map(q => q.dataUpdatedAt).join()
   const items = useMemo(() => {
     // What each table is, and which models read it, from the models' own lists.
     const readers = {}
@@ -124,13 +134,25 @@ export default function CommandPalette() {
         report: r, build: builds[r.name], verdict: verdictFor(r),
       })),
       // Every warehouse table (its own page), with what it is and who reads it.
-      ...(seesData ? warehouses?.warehouses || [] : []).flatMap(w => (w.tables || []).map(t => ({
-        label: t.name, path: tablePath(w.name, t.name), kind: 'table', tableKind: readers[t.name]?.kind || 'table',
+      ...(seesData ? warehouses?.warehouses || [] : []).flatMap((w, _, all) => (w.tables || []).map(t => ({
+        label: t.name, path: warehouseTablePath(t.name, all.length > 1 ? w.name : ''), kind: 'table', tableKind: readers[t.name]?.kind || 'table',
         sub: [readers[t.name]?.models.join(', ') || w.name, t.rows != null && count(t.rows, 'row')].filter(Boolean).join(' · '),
       }))),
+      // Every table of a connection that is reachable here, on its own page.
+      ...sources.flatMap((c, i) => (sourceTables[i]?.data?.tables || []).map(t => ({
+        label: t.name, path: sourceTablePath(c.name, t.name), kind: 'table', tableKind: 'table',
+        sub: [c.label || c.name, t.rows != null && count(t.rows, 'row')].filter(Boolean).join(' · '),
+      }))),
+      ...sources.map(c => ({
+        label: c.label || c.name, path: sourcePath(c.name), kind: 'source', sub: c.name,
+      })),
+      ...(seesData ? transforms || [] : []).map(t => ({
+        label: t.name, path: transformPath(t.name), kind: 'transform',
+        sub: t.tables.length ? `writes ${count(t.tables.length, 'table')}` : t.file,
+      })),
       ...(models     || []).map(m => ({
         label: m.label || m.name,
-        path: seesData ? dataPath(m.name) : askPath(m.name),
+        path: seesData ? modelPath(m.name) : askPath(m.name),
         kind: 'model',
         sub: `${m.tables.length} tables`,
       })),
@@ -138,14 +160,14 @@ export default function CommandPalette() {
       ...(models || []).flatMap(m => (m.measures || []).map(name => ({
         label: name,
         path: seesData
-          ? `${dataPath(m.name)}?view=measures&measure=${encodeURIComponent(name)}`
+          ? `${modelPath(m.name)}?view=measures&measure=${encodeURIComponent(name)}`
           : `${askPath(m.name)}&q=${encodeURIComponent(encodeQuery({ measures: [name], dimensions: [], filters: {} }))}`,
         kind: 'measure',
         sub: m.label || m.name,
       }))),
       ...(seesData ? pipelines || [] : []).map(p => ({
         label: p.pipeline,
-        path: pipelineModels(p)[0] ? dataPath(pipelineModels(p)[0], 'transform') : '/data',
+        path: p.transform ? transformPath(p.transform) : pipelineModels(p)[0] ? modelPath(pipelineModels(p)[0]) : '/data',
         kind: 'pipeline',
         sub: `${(p.layers || []).length} steps${pipelineModels(p).length ? ` · ${pipelineModels(p).join(', ')}` : ''}`,
       })),
@@ -157,7 +179,7 @@ export default function CommandPalette() {
           label: (g.title || g.name).replace(/`/g, ''), path: docPath(g.name), kind: 'doc',
         })),
     ]
-  }, [models, pipelines, guides, role, seesData, warehouses, library, builds, verdictFor])
+  }, [models, pipelines, guides, role, seesData, warehouses, library, builds, verdictFor, connectors, transforms, sourceKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The results as groups. With no query: the recent picks, the folders and
   // the places. With one: what matches, a few per group, recent picks first.

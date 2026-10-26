@@ -558,7 +558,7 @@ body, the same text as `tracebi knowledge <slug>`).
    `workbench_state` (no `report`) lists the warehouse's tables, row counts,
    column profiles, and sink-contract status as transforms land, and the
    star schema taking shape as you edit `models/`; the human sees them in
-   the model's Transform and Model tabs on Data (`tracebi dev --classic` lays
+   the transform's and the model's pages under Data (`tracebi dev --classic` lays
    them out beside the feed on one page). Column names of a sunk
    table come from the MCP `describe_table` tool (or `tracebi warehouse
    tables --table T`) — connector metadata, no row scan. A connector

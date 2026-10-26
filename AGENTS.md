@@ -650,8 +650,8 @@ line, refusals included — so the human watches you work
 (MCP: `workbench_state` with no `report` returns the feed and pins, plus
 the warehouse's tables with row counts and contract status as sinks land,
 and the models' star schemas taking shape as you edit `models/`). The human
-browses the warehouse on Data's Warehouse tab (each table on its own page) and
-the model on its Model tab (the model's Data page); `tracebi dev --classic`
+browses the warehouse under Data › Warehouse (each table on its own page) and
+the model on its page under Data › Models; `tracebi dev --classic`
 lays the Warehouse, Models and
 Packages
 panels out beside the feed on one page. Interrogate in the

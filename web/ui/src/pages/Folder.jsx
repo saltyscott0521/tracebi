@@ -7,7 +7,7 @@ import { useDocumentTitle } from '../components/Layout'
 import { NotFound } from '../components/Scope'
 import { Btn, BtnLink, CopyCommand, Empty, SkeletonCard, Time, useToast } from '../components/Shared'
 import { KINDS, hueStyle, kindOf, newestBuild, reportLabel, useBuilds, useLibrary } from '../folders'
-import { askPath, dataPath, pipelineBelongsToModel, reportPagePath } from '../nav'
+import { askPath, mayUse, modelPath, pipelineBelongsToModel, reportPagePath, transformPath } from '../nav'
 import { count, plural } from '../format'
 import { stamp } from '../when'
 
@@ -127,14 +127,14 @@ export default function FolderPage({ path }) {
   const lead = items.find(r => /(^|\/|_)showcase$/.test(r.name))
     || items.find(r => r.name === newest?.report) || items[0]
   // Only an admin may run a pipeline (it writes the warehouse); with no
-  // sign-in everyone is admin. The same gate as the model's Transform tab.
+  // sign-in everyone is admin. The same gate as Refresh data on a transform's page.
   const admin = !!me && (!me.role || me.role === 'admin')
   const pipeline = one && admin
     ? (pipelines || []).find(p => p.model === one.name) || (pipelines || []).find(p => pipelineBelongsToModel(p, one.name))
     : null
   const canAuthor = (role === 'analyst' || role === 'admin') && !folder.mine
   const refresh = () => start({ pipeline: pipeline.pipeline }, {
-    onSuccess: () => navigate(dataPath(one.name, 'transform')),
+    onSuccess: () => navigate(pipeline.transform ? transformPath(pipeline.transform) : modelPath(one.name)),
     onError: err => toast(`Could not start: ${err.message}`, 'error'),
   })
   const byKind = KINDS.map(([kind, label]) => [kind, label, items.filter(r => kindOf(r) === kind)])
@@ -149,7 +149,12 @@ export default function FolderPage({ path }) {
         <div className="fhero__text">
           <p className="fhero__eyebrow">
             Folder
-            {models.map(m => <span key={m.name}> · {m.name}</span>)}
+            {/* The way back to how the numbers are made, for those who see Data. */}
+            {models.map(m => (
+              <span key={m.name}> · {mayUse(role, 'data')
+                ? <Link to={modelPath(m.name)} className="fhero__data">Data › {m.label || m.name}</Link>
+                : m.name}</span>
+            ))}
           </p>
           <h1 className="display-title">{folder.label}</h1>
           <p className="fhero__lede">

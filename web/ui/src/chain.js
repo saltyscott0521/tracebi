@@ -1,8 +1,8 @@
 // What a model is made from, upstream of its warehouse: the transform its
 // pipeline runs, and the connections and input files that transform reads
-// (the API's read_by, from the transform files themselves). The board, the
-// Models tab's chain rows, stage ⓪ of a model's line and the Sources tab's
-// ?model= filter all read it here, so they never disagree.
+// (the API's read_by, from the transform files themselves). The Models
+// folder's chain rows and stage ⓪ of a model's line both read it here, so
+// they never disagree.
 
 import { pipelineBelongsToModel } from './nav'
 
@@ -33,12 +33,4 @@ export function upstreamOf({ model, pipelines, connectors, inputs }) {
   })
   const files = (inputs?.files || []).filter(f => (f.read_by || []).includes(transform))
   return { transform, connections, files }
-}
-
-/**
- * Whether connector *c* belongs on *model*'s Sources: the model reads it
- * (its warehouse), or the model's transform reads it.
- */
-export function feedsModel(c, model, upstream) {
-  return (c.used_by || []).includes(model) || upstream.connections.some(u => u.name === c.name)
 }

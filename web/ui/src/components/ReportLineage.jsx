@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRole } from '../api'
-import { dataPath, mayUse } from '../nav'
+import { mayUse, modelPath } from '../nav'
 import { ReactFlow, Background, Controls, Handle, Position, MarkerType } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
@@ -184,7 +184,7 @@ function Detail({ node }) {
           {d.sha256 && <Row label="Contract"><code title={d.sha256} style={{ fontSize: 'var(--text-sm)' }}>{short(d.sha256)}</code></Row>}
           {mayData && (
             <div style={{ marginTop: 8 }}>
-              <Link to={dataPath(node.label, 'model')} style={{ fontSize: 'var(--text-caption)' }}>Open model →</Link>
+              <Link to={modelPath(node.label)} style={{ fontSize: 'var(--text-caption)' }}>Open model →</Link>
             </div>
           )}
         </>

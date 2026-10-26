@@ -124,12 +124,11 @@ def serve(project: Path, app: str, workdir: Path):
 # ── what to visit ─────────────────────────────────────────────────────────────
 
 def seeds(base: str) -> list[str]:
-    """Start pages: the app's own pages, plus one per model / tab / report.
+    """Start pages: the app's own pages, plus one per model / transform / report.
 
     The crawl follows links from here, so a page reachable by a link is found
     without being listed. Pages reached only by a button (tabs) need a seed.
     """
-    tabs = ["model", "transform", "sources", "runs"]
     # Review's tabs (/review, /review/drafts, /runs, /verify) each render in
     # Review's frame; the sidebar marks Review on all four.
     paths = ["/", "/ask", "/data", "/data/sources", "/data/transforms", "/data/warehouse", "/data/models", "/review",
@@ -137,17 +136,19 @@ def seeds(base: str) -> list[str]:
     models = _safe(base, "/api/models")
     for m in models:
         name = urllib.parse.quote(m["name"])
-        paths += [f"/?model={name}", f"/ask?model={name}", f"/data/{name}"]
-        paths += [f"/data/{name}/{p}" for p in tabs]
+        paths += [f"/?model={name}", f"/ask?model={name}", f"/data/models/{name}"]
+    for t in _safe(base, "/api/transforms"):
+        paths.append("/data/transforms/" + urllib.parse.quote(t["name"], safe=""))
     # One table's page per kind of place a table lives: the first warehouse
     # table and the first file under inputs/ (nothing links to them yet).
     warehouses = _safe(base, "/api/warehouse")
     tables = [(w["name"], t["name"]) for w in (warehouses or {}).get("warehouses", []) for t in w.get("tables", [])]
     files = [f["path"].removeprefix("inputs/") for f in (_safe(base, "/api/inputs") or {}).get("files", [])
              if f["path"].endswith((".csv", ".parquet"))]
-    for source, table in tables[:1] + [("inputs", f) for f in files[:1]]:
-        paths.append("/data/tables/" + urllib.parse.quote(source, safe="") + "/"
-                     + "/".join(urllib.parse.quote(p, safe="") for p in table.split("/")))
+    for source, table in tables[:1]:
+        paths.append("/data/warehouse/" + urllib.parse.quote(table, safe=""))
+    for f in files[:1]:
+        paths.append("/data/sources/inputs/" + "/".join(urllib.parse.quote(p, safe="") for p in f.split("/")))
     reports = _safe(base, "/api/reports")
     for r in reports[:PER_PATTERN]:
         paths.append("/reports/" + "/".join(urllib.parse.quote(p, safe="") for p in r["name"].split("/")))
@@ -158,7 +159,11 @@ def seeds(base: str) -> list[str]:
         name = urllib.parse.quote(models[0]["name"])
         paths += [f"/m/{name}", f"/m/{name}/reports", f"/m/{name}/explore", f"/m/{name}/runs",
                   f"/models/{name}?tab=explore", f"/m/{name}/refresh", f"/m/{name}/sources",
-                  f"/data/{name}/reports"]
+                  f"/data/{name}/reports", f"/data/{name}", f"/data/{name}/transform",
+                  f"/data/{name}/sources", f"/data/{name}/runs"]
+        if tables:
+            paths.append("/data/tables/" + urllib.parse.quote(tables[0][0], safe="") + "/"
+                         + urllib.parse.quote(tables[0][1], safe=""))
     if reports:
         paths.append("/reports?" + urllib.parse.urlencode({"r": reports[0]["name"]}))
     paths.append("/no-such-page")
@@ -180,8 +185,14 @@ def _pattern(path: str) -> str:
     keys = sorted(f"{k}={q[k][0]}" if k == "tab" else k for k in q)
     p = re.sub(r"/models/[^/?]+", "/models/<m>", u.path)
     p = re.sub(r"/m/[^/?]+", "/m/<m>", p)
-    p = re.sub(r"^/data/tables/.+", "/data/tables/<source>/<table>", p)
-    p = re.sub(r"^/data/(?!map$|sources$|transforms$|warehouse$|models$|tables/)[^/?]+", "/data/<m>", p)
+    # One thing's page under Data: a table (under Warehouse or Sources), a
+    # connection, a transform, a model (kept under the names they had, so a
+    # finding is compared with the same page before the addresses moved).
+    p = re.sub(r"^/data/tables/.+|^/data/warehouse/.+|^/data/sources/[^/]+/.+", "/data/tables/<source>/<table>", p)
+    p = re.sub(r"^/data/sources/[^/]+$", "/data/sources/<s>", p)
+    p = re.sub(r"^/data/transforms/[^/]+$", "/data/transforms/<t>", p)
+    p = re.sub(r"^/data/models/[^/]+", "/data/<m>", p)
+    p = re.sub(r"^/data/(?!map$|sources|transforms|warehouse$|models$|tables/|<m>)[^/?]+", "/data/<m>", p)
     p = re.sub(r"^/docs/(?!get-started$).+", "/docs/<page>", p)
     p = re.sub(r"^/reports/.+", "/reports/<r>", p)
     return p + ("?" + "&".join(keys) if keys else "")
@@ -803,34 +814,20 @@ def scope_findings(browser, base: str) -> list[dict]:
 
     for m in models:
         if not any(m["name"] in pipeline_models(p) for p in pipelines):
-            out.append({"page": f"/data/{m['name']}/transform", "pattern": "/data/<m>/transform",
+            out.append({"page": f"/data/models/{m['name']}", "pattern": "/data/<m>/transform",
                         "viewport": "desktop", "theme": "light", "rule": "model-without-pipeline",
                         "severity": "serious", "target": m["name"],
-                        "detail": f"nothing refreshes {m['name']}; its Transform tab is empty"})
-    connectors, inputs = _safe(base, "/api/connectors"), (_safe(base, "/api/inputs") or {})
-
-    def model_sources(name):
-        """A model's Sources: what it reads, what its transform reads, and
-        inputs/ when its transform names a file there. A warehouse is not a
-        source: it is under Warehouse."""
-        transform = next((p.get("transform") for p in pipelines if name in pipeline_models(p)), None)
-        found = {c["name"] for c in connectors if not c.get("warehouse") and (
-                 name in (c.get("used_by") or [])
-                 or any(t["name"] == transform for t in (c.get("read_by") or {}).get("transforms", [])))}
-        if any(transform in f["read_by"] for f in inputs.get("files", [])):
-            found.add("inputs")
-        return found
-
+                        "detail": f"nothing refreshes {m['name']}; its line has no transform"})
     page = browser.new_page(viewport={"width": 1440, "height": 900})
     for m in models:
         name = m["name"]
-        # The library filtered to a model names each report in data-report; the
-        # model's Sources tab names each source in data-source.
+        # The library filtered to a model names each report in data-report.
+        # (Sources is no longer narrowed to a model: the model's line names
+        # what feeds it.)
         q = urllib.parse.quote(name)
         expect = {
             "reports": (f"/?model={q}", "/?model", "report",
                         {r["name"] for r in reports if name in (r.get("models") or [])}),
-            "sources": (f"/data/{q}/sources", "/data/<m>/sources", "source", model_sources(name)),
         }
         for key, (path, pattern, attr, want) in expect.items():
             page.goto(base + path)

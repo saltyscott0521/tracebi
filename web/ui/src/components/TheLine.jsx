@@ -11,7 +11,10 @@ import { verdictOf } from '../verdict'
 import { ago, stamp } from '../when'
 import { count } from '../format'
 import { upstreamOf } from '../chain'
-import { dataPath, libraryPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import { folderPath, useLibrary } from '../folders'
+import {
+  libraryPath, modelPath, pipelineBelongsToModel, reportBelongsToModel, sourcesPath, transformPath,
+} from '../nav'
 
 // The line: how a model is made, as four stations and the hand-offs between
 // them. ⓪ the sources the transform reads (connections and input files);
@@ -186,7 +189,7 @@ function sourcesStation(known, up) {
 // outside the app (run_workflow.py, `tracebi run-transform`) leaves no run in
 // the run store, so with none recorded that is what the station says.
 function transformStation(pipelines, t, written) {
-  const s = { name: t.name, flags: [] }
+  const s = { name: t.name, file: t.pipeline?.transform || null, flags: [] }
   if (!t.pipeline) {
     if (pipelines) s.flags.push(mark('none', 'No pipeline'))
     return s
@@ -293,18 +296,31 @@ export function LineNode({
   return <div role="group" className={cls} style={style} aria-label={label}>{body}</div>
 }
 
-function Station({ model, tab, s, info }) {
-  // Sources, Transform and Model are tabs of this page; Reports is the
-  // library, narrowed to the model.
-  const to = s.key === 'reports' ? libraryPath(model)
-    : dataPath(model, s.key === 'model' ? '' : s.key)
+/**
+ * The library folder *model*'s reports are in: the folder of its name, else
+ * one whose reports read it; with neither, the library narrowed to it.
+ */
+export function useModelFolder(model) {
+  const library = useLibrary()
+  const f = library.byPath[model] || library.folders.find(x => x.models.includes(model))
+  return f ? folderPath(f.path) : libraryPath(model)
+}
+
+function Station({ model, s, info, reports }) {
+  // Each station opens its own page: the sources, the transform the
+  // pipeline runs, this model (the page you are on) and the model's folder in
+  // the library. A model with no transform file has no transform page, so
+  // its station is plain.
+  const to = s.key === 'sources' ? sourcesPath()
+    : s.key === 'transform' ? (info.file ? transformPath(info.file) : null)
+      : s.key === 'model' ? modelPath(model) : reports
   const marks = [
     ...info.flags.map(f => <Flag key={f.text} flag={f} />),
     ...(info.states?.length ? [<VerdictSummary key="v" states={info.states} />] : []),
   ]
   return (
     <li>
-      <LineNode to={to} current={tab === s.key} kind={s.title} n={s.n}
+      <LineNode to={to} current={s.key === 'model'} kind={s.title} n={s.n}
                 name={info.name} sans={info.sans} fact={info.fact} marks={marks} />
     </li>
   )
@@ -328,16 +344,18 @@ function Hand({ hand }) {
 }
 
 /**
- * The four stations as links (the tab you are on is the current page; Reports
- * opens the library, narrowed to the model), and the hand-offs between them.
+ * The four stations as links (Model is the page you are on; Reports opens the
+ * model's folder in the library), and the hand-offs between them: the model
+ * page's one way to the other stages.
  */
-export default function TheLine({ model, tab, line }) {
+export default function TheLine({ model, line }) {
+  const reports = useModelFolder(model)
   return (
     <nav aria-label={`How ${model} is made`}>
       <ol className="line">
         {STATIONS.map((s, i) => (
           <Fragment key={s.key}>
-            <Station model={model} tab={tab} s={s} info={line[s.key]} />
+            <Station model={model} s={s} info={line[s.key]} reports={reports} />
             {i < STATIONS.length - 1 && <Hand hand={line.hands[i]} />}
           </Fragment>
         ))}

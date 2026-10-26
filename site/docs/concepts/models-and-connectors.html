@@ -112,15 +112,17 @@ facts:                                                                  # what i
 </tbody>
 </table>
 <h2 id="find-where-a-models-data-is">Find where a model's data is</h2>
-<p><strong>In the app:</strong> open <strong>Data</strong>, then the model. The header names the file that
-defines it and the warehouse it reads. The <strong>Model</strong> tab shows the model's
-tables, its star schema, and an inspector for the table you select: columns
-with nulls and ranges, sample rows, joins and measures. With nothing selected,
-the <strong>Storage</strong> fold says whether the warehouse file exists, how big it is,
-and which tables each connector serves.</p>
-<p>Two Data tabs cover the whole project. <strong>Warehouse</strong> (<code>/data/warehouse</code>) shows
-every table, grouped by the transform that wrote it. <strong>Sources</strong>
-(<code>/data/sources</code>) lists every connection and input file, and what reads each.</p>
+<p><strong>In the app:</strong> open <strong>Data › Models</strong>, then the model
+(<code>/data/models/&lt;model&gt;</code>). The header names the file that defines it, and its
+Semantic layer the warehouse it reads. The page shows the model's tables, its
+star schema, and an inspector for the table you select: its rows, who wrote
+it, its joins and measures, and <strong>Open table</strong> for its columns and rows. With
+nothing selected, the <strong>Storage</strong> fold says whether the warehouse file
+exists, how big it is, and which tables each connector serves.</p>
+<p>Two Data folders cover the whole project. <strong>Warehouse</strong> (<code>/data/warehouse</code>)
+shows every table, grouped by the transform that wrote it, each with a page
+at <code>/data/warehouse/&lt;table&gt;</code>. <strong>Sources</strong> (<code>/data/sources</code>) lists every
+connection and input file, and what reads each (<code>/data/sources/&lt;name&gt;</code>).</p>
 <p><strong>In code:</strong> <code>model.info()["connector_details"]</code> gives the same answer.
 <code>connector.storage()</code> says where a connector's data lives, never a credential.</p>
 <h2 id="a-model-its-reports-and-its-pipeline">A model, its reports and its pipeline</h2>

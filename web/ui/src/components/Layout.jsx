@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useMe, useRole, signOut } from '../api'
-import { page, placesFor, placeOf, mayUse, DATA_TAB_LABEL, folderOf } from '../nav'
+import { page, placesFor, placeOf, mayUse, DATA_FOLDERS, dataFolder, folderOf } from '../nav'
 import { KINDS, folderPath, hueStyle, useBuilds, useLibrary, newestBuild } from '../folders'
 import { count } from '../format'
 import { stamp } from '../when'
@@ -63,13 +63,12 @@ export function useDocumentTitle(...parts) {
   }, [name, text])
 }
 
-// The tab a place's address names, in the words its tab row uses (Review's,
-// Data's own, or one model's), or nothing on the place's first tab.
+// The tab a place's address names, in the words its tab row uses (Review's),
+// or nothing on the place's first tab. Data has no tabs: its folder is said
+// after the page's h1 (see the title effect in Layout).
 function tabWords(scope) {
   if (page(scope.page)?.parent) return page(scope.page).label
-  if (scope.page !== 'data' || !scope.tab) return ''
-  if (!scope.model) return scope.tab === 'flow' ? '' : DATA_TAB_LABEL[scope.tab]
-  return scope.tab === 'model' ? '' : scope.tab[0].toUpperCase() + scope.tab.slice(1)
+  return ''
 }
 
 // What an h1 says, without the small print some carry (a model's identifier
@@ -163,6 +162,31 @@ function FolderTree({ library, current, onNavigate }) {
         )
       })}
     </ul>
+  )
+}
+
+// Data in the workshop: its own row (Overview, the board), then its four
+// folders nested under it in the library tree's styling, always shown (they
+// are Data's structure, not a filter). The folder an address sits in is the
+// current entry at any depth (/data/warehouse/fact_holdings marks Warehouse);
+// Data itself is current only on its own page. No hue: a hue labels a
+// library folder.
+function DataTree({ item, folder, onNavigate }) {
+  const inside = DATA_FOLDERS.some(f => f.key !== 'overview' && f.key === folder)
+  return (
+    <>
+      <NavItem {...item} active={item.active && !inside} onNavigate={onNavigate} />
+      <li>
+        <ul className="tree__subs" aria-label="Data">
+          {DATA_FOLDERS.filter(f => f.key !== 'overview').map(f => (
+            <li key={f.key}>
+              <Link to={f.path} onClick={onNavigate} className="tree__sub"
+                    aria-current={f.key === folder ? 'page' : undefined}>{f.label}</Link>
+            </li>
+          ))}
+        </ul>
+      </li>
+    </>
   )
 }
 
@@ -265,7 +289,11 @@ export default function Layout({ children }) {
     const tab = tabWords(scope)
     const write = () => {
       const h1 = document.querySelector('.layout-main h1, .rail-shell__page h1')
-      const parts = named ? [named] : [tab, headingWords(h1)]
+      // Under Data: the page's h1, then its folder, then Data ("fact_holdings ·
+      // Warehouse · Data"; a folder's own page says its name once).
+      const parts = named ? [named]
+        : scope.page === 'data' ? [headingWords(h1), dataFolder(scope.tab)?.label, 'Data']
+          : [tab, headingWords(h1)]
       const next = [...new Set([...parts.filter(Boolean), 'TraceBi'])].join(' · ')
       if (document.title !== next) document.title = next
     }
@@ -440,7 +468,9 @@ export default function Layout({ children }) {
           <FolderTree library={library} current={current} onNavigate={close} />
           {items.some(item => item.icon !== 'reports') && <p className="tree__sec" id="tree-workshop">Workshop</p>}
           <ul style={{ listStyle: 'none' }} aria-labelledby="tree-workshop">
-            {items.filter(item => item.icon !== 'reports').map(item => <NavItem key={item.path} {...item} onNavigate={close} />)}
+            {items.filter(item => item.icon !== 'reports').map(item => (item.icon === 'data'
+              ? <DataTree key={item.path} item={item} folder={scope.page === 'data' ? scope.tab : null} onNavigate={close} />
+              : <NavItem key={item.path} {...item} onNavigate={close} />))}
           </ul>
         </div>
         <LiveLine library={library} />

@@ -244,6 +244,15 @@ export const useConnectorTables = (name) =>
     queryFn: () => get(`/connectors/${encodeURIComponent(name)}/tables`),
     enabled: !!name,
   })
+/** The same read for each connection of *names*, in order: one cache with useConnectorTables. */
+export const useConnectorsTables = (names, enabled = true) =>
+  useQueries({
+    queries: names.map(name => ({
+      queryKey: ['connector-tables', name],
+      queryFn: () => get(`/connectors/${encodeURIComponent(name)}/tables`),
+      enabled,
+    })),
+  })
 
 // The credentials the project's connections reference: where each is set,
 // never a value, and whether this caller may change them here.

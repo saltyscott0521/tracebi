@@ -266,8 +266,8 @@ the build command.
 
 | Place | Addresses |
 | --- | --- |
-| Reports | `/` the library (`?model=<m>` narrows it); `/?folder=<path>` one folder (one the caller may not see is not found); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on); `/ask` a question of one model (`?model=<m>`), reached by **Ask this model** on a folder's page or a model's Data page |
-| Data | `/data` Flow (the board: sources → transforms → warehouse → models → reports; `?model=<m>` lights that model's path), `/data/sources`, `/data/transforms`, `/data/warehouse` (`?table=<t>`, `?group=<writer>`), `/data/models`; `?model=<m>` narrows Sources, Transforms and Warehouse. `/data/<m>` one model: its Model tab (`?table=<t>`, `?measure=<name>`, `?view=measures\|relationships\|storage\|code`), then `/transform`, `/sources`, `/runs`. `/data/tables/<source>/<table>` one table. |
+| Reports | `/` the library (`?model=<m>` narrows it); `/?folder=<path>` one folder (one the caller may not see is not found); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on); `/ask` a question of one model (`?model=<m>`), reached by **Ask this model** on a folder's page or a model's page under Data |
+| Data | `/data` Overview (the board: sources → transforms → warehouse → models → reports; `?model=<m>` lights that model's path), then four folders, each a page per thing: `/data/sources` (`/data/sources/<name>` one connection, `/data/sources/inputs` the folder, `/data/sources/<name>/<table>` one source table, `/data/sources/inputs/<path>` one input file); `/data/transforms` (`/data/transforms/<name>` one transform); `/data/warehouse` (`?table=<id>`, `?group=<id>` select in its browser; `/data/warehouse/<table>` one table); `/data/models` (`/data/models/<m>` one model: `?table=<t>`, `?measure=<name>`, `?view=measures\|relationships\|storage\|code\|agent`). Nothing under `/data` is narrowed to a model. |
 | Review | `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
 | Docs | `/docs` the handbook in `docs/toc.yaml`'s order; `/docs/<section>/<page>` per file; the quickstart at `/docs/get-started`. A page that moved keeps its old address (the toc's `moved:`). |
 
@@ -279,9 +279,15 @@ the build command.
   API enforces the roles.
 - Older addresses redirect, keeping their query (`movedTo`): `/m/<m>/…` to the
   same thing under Data, Ask, History or the library; `/models` to
-  `/data/models` (`/models?m=<m>` to `/data/<m>`); `/explore` to `/ask`;
+  `/data/models` (`/models?m=<m>` to `/data/models/<m>`); `/explore` to `/ask`;
   `/sources` and `/connectors` to `/data/sources`; `/map`, `/data/map` and
-  `/data?view=map` to `/data` (with `model=<m>`, to `/data/<m>`); `/handbook`
+  `/data?view=map` to `/data` (with `model=<m>`, to `/data/models/<m>`);
+  `/data/<m>` and `/data/<m>/model` to `/data/models/<m>`,
+  `/data/<m>/transform` to the transform its pipeline runs, `/data/<m>/sources`
+  to `/data/sources`, `/data/<m>/runs` to `/runs?model=<m>`;
+  `/data/tables/<source>/<table>` to the table's page under Sources or
+  Warehouse; `/data/sources?source=<name>` to `/data/sources/<name>`, and a
+  `?model=` on a Data folder is dropped; `/handbook`
   and `/handbook/<page>` to `/docs`; `/getting-started` to
   `/docs/get-started`; `/workflow` to
   `/docs/concepts/the-three-phase-workflow`; `/drafts` and `/review#drafts`

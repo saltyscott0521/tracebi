@@ -2,10 +2,10 @@ import { createContext, useContext, useEffect, useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
 import { useModels, useReports, useRole } from '../api'
-import { page, whereAmI, rememberModel, reportModels, openedReport, movedTo } from '../nav'
+import { page, whereAmI, rememberModel, reportModels, openedReport, movedTo, modelsPath } from '../nav'
 import { PageTitle, PageSub, SkeletonCard, Empty, BtnLink } from './Shared'
 
-/** The place, and on Data the model and tab, the URL names. */
+/** The place, and on Data the folder (`tab`) and model, the URL names. */
 export function useScope() {
   const { pathname } = useLocation()
   return whereAmI(pathname) || { model: '', page: null, tab: null }
@@ -56,7 +56,7 @@ export function PageHeader({ pageKey, model, sub, children }) {
   )
 }
 
-/** A /data/<model>/… page: the model must exist; it becomes the remembered one. */
+/** A /data/models/<model> page: the model must exist; it becomes the remembered one. */
 export function OneModel({ children }) {
   const { model } = useParams()
   const { data, isLoading } = useModels()
@@ -68,7 +68,7 @@ export function OneModel({ children }) {
       <>
         <PageTitle>No model named “{model}”</PageTitle>
         <PageSub>It may have been renamed or removed.</PageSub>
-        <Link to="/data">See all models →</Link>
+        <Link to={modelsPath()}>See all models →</Link>
       </>
     )
   }

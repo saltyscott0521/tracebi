@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  useConnectors, useConnectorTables, useCredentials, useInputs, useMe, usePipelines,
+  useConnectors, useConnectorTables, useCredentials, useInputs, useMe,
   useSaveConnection, useTestConnection,
 } from '../api'
 import { StorageLine, sourceKind, fmtBytes } from '../components/Storage'
@@ -10,9 +10,8 @@ import CodeView from '../components/CodeView'
 import Credentials from '../components/Credentials'
 import ConnectionSheet from '../components/ConnectionForm'
 import { stamp } from '../when'
-import { feedsModel, upstreamOf } from '../chain'
 import { count } from '../format'
-import { dataPath, pipelineModels, sourcesPath, tablePath, warehousePath } from '../nav'
+import { modelPath, sourcePath, sourceTablePath, sourcesPath, transformPath, warehousePath } from '../nav'
 import {
   Card, CardTitle, Badge, Btn, ErrorDetail, Spinner,
   Empty, ListItem, SplitLayout, SearchInput, SkeletonList, SkeletonCard,
@@ -25,19 +24,14 @@ function Section({ label, children, sectionRef }) {
   return <div className="src-section" ref={sectionRef}><div className="src-label">{label}</div>{children}</div>
 }
 
-/** transform name → the model page whose Transform tab runs it (the pipeline that names it). */
-export function useTransformHome() {
-  const { data: pipelines } = usePipelines()
-  return name => {
-    const p = (pipelines || []).find(x => x.transform === name)
-    const model = p && pipelineModels(p)[0]
-    return model ? dataPath(model, 'transform') : null
-  }
-}
+/**
+ * transform name → its page. Every file in transforms/ has one, whether or
+ * not a pipeline runs it, so a transform's name is always a link.
+ */
+export const useTransformHome = () => transformPath
 
-export function TransformName({ name, home }) {
-  const to = home(name)
-  return to ? <Link to={to}><code>{name}</code></Link> : <code>{name}</code>
+export function TransformName({ name }) {
+  return <Link to={transformPath(name)}><code>{name}</code></Link>
 }
 
 // Who reads a source: the transforms that name its tables (in a `-- source:`
@@ -46,14 +40,13 @@ export function TransformName({ name, home }) {
 // it directly. Read from the files, so a source nothing names says so.
 function ReadBy({ c }) {
   const labelOf = useModelLabel()
-  const home = useTransformHome()
   const rb = c.read_by || { transforms: [], layers: [], models: c.used_by || [] }
   const pipelines = {}
   rb.layers.forEach(l => { (pipelines[l.pipeline] ||= []).push(l.layer) })
   const lines = [
     ...rb.transforms.map(t => (
       <li key={`t-${t.name}`}>
-        The transform <TransformName name={t.name} home={home} /> ({t.tables.join(', ')})
+        The transform <TransformName name={t.name} /> ({t.tables.join(', ')})
       </li>
     )),
     ...Object.entries(pipelines).map(([p, steps]) => (
@@ -62,7 +55,7 @@ function ReadBy({ c }) {
       </li>
     )),
     ...rb.models.map(m => (
-      <li key={`m-${m}`}>The model <Link to={dataPath(m)}>{labelOf(m)}</Link>, which reads its tables</li>
+      <li key={`m-${m}`}>The model <Link to={modelPath(m)}>{labelOf(m)}</Link>, which reads its tables</li>
     )),
   ]
   return lines.length
@@ -183,7 +176,7 @@ function Tables({ name, declared, write }) {
                       onChange={() => allow.toggle(t.name)} />
                   </td>
                 )}
-                <td><Link to={tablePath(name, t.name)}><code>{t.name}</code></Link></td>
+                <td><Link to={sourceTablePath(name, t.name)}><code>{t.name}</code></Link></td>
                 <td className="num" title={t.rows != null && t.rows_exact === false ? "The catalog's estimate" : undefined}>{rowsText(t)}</td>
                 <td className="num">{t.columns.length}</td>
               </tr>
@@ -196,7 +189,6 @@ function Tables({ name, declared, write }) {
         <p className="src-quiet src-note">
           {allow.isAll || allow.chosen.size ? 'An agent reads only the ticked tables, through the gateway.'
             : 'Agents read none of its tables until one is ticked.'}
-          {locked && <> {write.why}: <code>tracebi connect {name} --agents a,b</code></>}
         </p>
       )}
       <ErrorDetail error={allow.save.error} />
@@ -296,15 +288,15 @@ function ConnectorDetail({ c, write, onEdit, onDeleted, justSaved }) {
 
 // One file under inputs/: its name (a data file's opens its table page), size,
 // when it changed and which transforms name it.
-function InputFile({ f, home }) {
+function InputFile({ f }) {
   const name = f.path.replace(/^inputs\//, '')
   return (
     <li data-file={name}>
-      {f.table ? <Link to={tablePath(INPUTS, name)}><code>{name}</code></Link> : <code>{name}</code>}
+      {f.table ? <Link to={sourceTablePath(INPUTS, name)}><code>{name}</code></Link> : <code>{name}</code>}
       <span className="wb-meta">{fmtBytes(f.size)} · changed {stamp(f.modified)}</span>
       <span className="src-files__by">
         {f.read_by.length
-          ? <>Read by {f.read_by.map((t, i) => <span key={t}>{i > 0 && ', '}<TransformName name={t} home={home} /></span>)}</>
+          ? <>Read by {f.read_by.map((t, i) => <span key={t}>{i > 0 && ', '}<TransformName name={t} /></span>)}</>
           : 'No transform names it'}
       </span>
     </li>
@@ -315,7 +307,6 @@ function InputFile({ f, home }) {
 // reads as a table), each with when it last changed and which transforms name
 // it; scripts, notes and database files folded under them.
 function InputsDetail({ files }) {
-  const home = useTransformHome()
   const data = files.filter(f => f.table)
   const other = files.filter(f => !f.table)
   return (
@@ -329,12 +320,12 @@ function InputsDetail({ files }) {
         {files.length === 0 ? <p className="src-quiet">The folder is empty.</p> : (
           <>
             {data.length > 0
-              ? <ul className="src-files">{data.map(f => <InputFile key={f.path} f={f} home={home} />)}</ul>
+              ? <ul className="src-files">{data.map(f => <InputFile key={f.path} f={f} />)}</ul>
               : <p className="src-quiet">No file here reads as a table (CSV, Parquet or JSON).</p>}
             {other.length > 0 && (
               <details className="wb-details src-other">
                 <summary>{count(other.length, 'other file')}</summary>
-                <ul className="src-files">{other.map(f => <InputFile key={f.path} f={f} home={home} />)}</ul>
+                <ul className="src-files">{other.map(f => <InputFile key={f.path} f={f} />)}</ul>
               </details>
             )}
           </>
@@ -349,18 +340,17 @@ function InputsDetail({ files }) {
 }
 
 /**
- * Where the data comes from: every connection and the inputs/ folder
- * (/data/sources), or with a model only what its transform reads (?model=<m>,
- * or *model* on its own Sources tab). A warehouse is not a source: it is
- * under Warehouse, and one line here says so. The open source is in the
- * address (?source=<name>).
+ * Where the data comes from (/data/sources): every connection and the
+ * inputs/ folder, a list with the open one beside it. The open one is the
+ * address's (/data/sources/<name>, /data/sources/inputs); with none named the
+ * first opens. A warehouse is not a source: it is under Warehouse, and one
+ * line here says so.
  */
-export default function Connectors({ model: scoped }) {
-  const [params, setParams] = useSearchParams()
-  const model = scoped || params.get('model') || ''
+export default function Connectors() {
+  const { name: asked } = useParams()
+  const navigate = useNavigate()
   const { data, isLoading } = useConnectors()
   const { data: inputs } = useInputs()
-  const { data: pipelines } = usePipelines()
   const labelOf = useModelLabel()
   const [query, setQuery] = useState('')
   const write = useConnectionWrite()
@@ -369,19 +359,17 @@ export default function Connectors({ model: scoped }) {
   // The connection the sheet just saved, opened on its tables.
   const [justSaved, setJustSaved] = useState(null)
 
-  const up = upstreamOf({ model, pipelines, connectors: data, inputs })
-  const connectors = (data || []).filter(c => !c.warehouse && (!model || feedsModel(c, model, up)))
-  const files = model ? up.files : (inputs?.files || [])
-  const showInputs = !!inputs?.exists && (!model || files.length > 0)
+  const connectors = (data || []).filter(c => !c.warehouse)
+  const files = inputs?.files || []
+  const showInputs = !!inputs?.exists
   const q = query.toLowerCase()
   const filtered = connectors.filter(c =>
     [c.name, c.label || '', sourceKind(c)].some(x => x.toLowerCase().includes(q)))
   const inputsShown = showInputs && ('inputs files'.includes(q) || files.some(f => f.path.toLowerCase().includes(q)))
   // Open on the first source rather than a blank "select one" pane.
-  const asked = params.get('source')
   const current = asked === INPUTS && showInputs ? INPUTS
     : (connectors.find(c => c.name === asked) || filtered[0])?.name || (inputsShown ? INPUTS : null)
-  const select = name => setParams(p => { p.set('source', name); return p }, { replace: true })
+  const select = name => navigate(sourcePath(name))
 
   // Who reads it, each reader said as what it is: a transform, a pipeline, a model.
   const readers = c => {
@@ -400,13 +388,7 @@ export default function Connectors({ model: scoped }) {
   const saved = name => { setSheet(null); setJustSaved(name); select(name) }
   return (
     <>
-      {model && !scoped && (
-        <p className="scope-note">
-          What {labelOf(model)} is made from: what its transform reads.{' '}
-          <Link to={sourcesPath()}>Show every source</Link>
-        </p>
-      )}
-      {!model && (connectors.length > 0 || showInputs) && (
+      {(connectors.length > 0 || showInputs) && (
         <div className="conn-bar">
           {add || (
             <p className="src-quiet">
@@ -416,13 +398,10 @@ export default function Connectors({ model: scoped }) {
         </div>
       )}
       {!isLoading && connectors.length === 0 && !showInputs ? (
-        model
-          ? <Empty title="No sources for this model"
-                   body="Its transform reads no connection or input file. The tables it is built on are under Warehouse." />
-          : <Empty title="No sources yet"
-                   body="A source is where the data comes from: a database connection, or files under inputs/. Add a connection (its secret goes in the project's store), or drop a file in inputs/."
-                   command={add ? undefined : 'tracebi connect crm --kind postgres --store secret'}
-                   action={add} />
+        <Empty title="No sources yet"
+               body="A source is where the data comes from: a database connection, or files under inputs/. Add a connection (its secret goes in the project's store), or drop a file in inputs/."
+               command={add ? undefined : 'tracebi connect crm --kind postgres --store secret'}
+               action={add} />
       ) : (
         <SplitLayout
           left={
@@ -465,14 +444,14 @@ export default function Connectors({ model: scoped }) {
             : <ConnectorDetail key={current} c={connectors.find(c => c.name === current)} write={write}
                 justSaved={justSaved === current}
                 onEdit={() => setSheet(connectors.find(c => c.name === current))}
-                onDeleted={() => setParams(p => { p.delete('source'); return p }, { replace: true })} />}
+                onDeleted={() => navigate(sourcesPath(), { replace: true })} />}
         />
       )}
       {sheet && (
         <ConnectionSheet editing={sheet.name ? sheet : null} onClose={() => setSheet(null)} onSaved={saved} />
       )}
       <p className="wb-meta src-pointer">
-        The warehouse a transform writes is under <Link to={warehousePath(model)}>Warehouse</Link>.
+        The warehouse a transform writes is under <Link to={warehousePath()}>Warehouse</Link>.
       </p>
     </>
   )

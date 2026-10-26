@@ -19,6 +19,7 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 - The handbook is rewritten in a plain, task-first voice (Stripe's docs as the model); every address and command stays.
 - **Built reports use Geist**, the app's typeface, inlined as before (Latin subset, no font fetched): app and report read as one.
+- **Data is a directory, like the library**: the sidebar nests **Sources**, **Transforms**, **Warehouse** and **Models** under Data, every page under `/data` keeps that frame (a folder's name as its h1, or a breadcrumb), and each thing has its own address: `/data/sources/<name>`, `/data/sources/<name>/<table>`, `/data/transforms/<name>`, `/data/warehouse/<table>`, `/data/models/<m>`. The board is **Overview** (its legend is gone); the model page loses its tab row (its line is the way to its transform, sources and reports); no page is narrowed by `?model=`; the warehouse inspector is a short card with **Open table**; ⌘K finds connections, transforms and source tables. Every older address redirects.
 
 ### Changed — one type system (Geist); the home shows no figures; the welcome is one row; the schema ring
 
