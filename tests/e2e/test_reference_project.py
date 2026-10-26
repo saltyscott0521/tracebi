@@ -703,7 +703,7 @@ def test_sources_are_read_in_place_and_results_go_back_out(reference, monkeypatc
     code, out = run_cli("export", "plan_prices", "--to", "exports/")
     assert code == 0, out
     exported = duckdb.sql(f"SELECT count(*) FROM '{reference / 'exports' / 'plan_prices.parquet'}'")
-    assert exported.fetchone()[0] == 3
+    assert exported.fetchall()[0][0] == 3
     [run] = list_runs(kind="export", limit=1)
     assert (run["target"], run["status"], run["detail"]["kind"], run["detail"]["rows"]) == (
         "plan_prices", "ok", "object", 3)
