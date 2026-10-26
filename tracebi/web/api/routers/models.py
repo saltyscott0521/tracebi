@@ -61,6 +61,20 @@ def model_source(name: str):
     )
 
 
+@router.get("/{name}/context")
+def model_context(name: str, brief: bool = False):
+    """What an agent receives for this model: the ``model`` of
+    ``tracebi context --model <name>`` and of the gateway's ``get_context``,
+    from the one function behind all three, so the page that curates the
+    words shows the exact text."""
+    from tracebi.capabilities import describe_model
+
+    model = registry.get_model(name)
+    if model is None:
+        raise HTTPException(status_code=404, detail=f"Model '{name}' not found")
+    return describe_model(model, brief=brief)
+
+
 def _safe_filename(name: str) -> str:
     """Keep header-safe characters only (Content-Disposition filename)."""
     return "".join(c for c in name if c.isalnum() or c in "._- ") or "export"

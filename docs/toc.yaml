@@ -41,6 +41,7 @@ sections:
       - notebook-guide
       - styling-a-report
       - one-server
+      - connect-a-database
       - sign-in
       - push-from-a-laptop
       - connect-chatgpt-and-claude
@@ -76,6 +77,8 @@ sections:
     title: For agents
     blurb: Procedures for AI agents. An agent reads AGENTS.md first.
     pages:
+      - page: sop-onboarding
+        blurb: From a connection a person set up to a model and a report
       - page: sop-authoring
         blurb: Author a report through the gateway, step by step
       - page: sop-model-changes

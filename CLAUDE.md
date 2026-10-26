@@ -97,7 +97,7 @@ this catch?* — `design/test-suite-review.md`.
 **TraceBi** is a code-first, traceable BI framework for Python. Core ideas:
 
 - **DataSet**: immutable wrapper around a pandas DataFrame + lineage chain. Every operation returns a new DataSet; nothing mutates in place.
-- **DataModel**: the star-schema semantic contract — tables, relationships, facts, dimensions, named measures — with a query surface on the same class.
+- **DataModel**: the semantic layer: the star-schema contract (tables, relationships, facts, dimensions, named measures) with a query surface on the same class, and the words people and agents use for it: descriptions, synonyms, example questions. The model page's Semantic layer shows the same text an agent receives (`capabilities.describe_model`).
 - **Medallion ETL**: Landing (raw ingest) → Manipulation (declarative cleaning, compiled to DuckDB SQL; `transform(func)` is the marked pandas escape hatch) → Final (DataModel star-schema aggregation). `BronzeLayer` / `SilverLayer` / `GoldLayer` remain as aliases.
 - **PipelineRunner**: registers layers, schedules with APScheduler, persists run history to SQLite.
 - **Report engine**: builds structured reports (text, tables, charts) and renders to Excel, HTML, or PDF.
@@ -226,7 +226,8 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   / schedule / verify / migrate / serve / mcp / session (see `tracebi --help`)
   permissions.py       # the one check: may this person do this to this report path? (_folder.yaml)
   schedule.py          # report.json "schedule" block: build → verify → email → record
-  code_requests.py     # Python pushed from a laptop: stored, reviewed (diff), approved by an admin, run once
+  code_requests.py     # Python pushed from a laptop: stored, reviewed (diff), approved by an admin, run once;
+                       #   approval also runs, once, each transform no declarative pipeline runs (an agent's propose_transform lands here)
   _push.py             # `tracebi push` — packages/models → drafts, code → a code request
   transforms.py        # phase ① transforms: find one, its form (sql/python/notebook), run it + its .contract.yaml
   contracts.py         # sink contracts: closed checks + certificate + manifest join
@@ -237,7 +238,9 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   the row-count rule (sql_row_estimates) and is_framework_table
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 22 tools + 3 prompts (author_report, answer_question, address_pins)
+  mcp_server.py        # agent gateway over MCP — 27 tools + 3 prompts (author_report, answer_question, address_pins);
+                       #   the source tools read only a connection's agents: allowlist
+  exports.py           # saving back: a warehouse table/view → a connection (write) or a prefix (Parquet); one function, records an export run
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
   _dev_server.py       # the classic stdlib preview server (loopback), `tracebi dev --classic`; `tracebi dev` itself opens the app in dev mode (`/reports/<name>` with Build on; `/data` with no name)
@@ -296,7 +299,8 @@ CHANGELOG.md           # Keep-a-changelog format
 LICENSE                # MIT
 README.md              # The front door: what it is, install, the reference project, the app, deploy, agents
 NOTES.md               # The decision journal (dated entries), build status, open questions
-docs/                  # The handbook (Obsidian vault): start/, concepts/, guides/, reference/, agents/.
+docs/                  # The handbook (Obsidian vault): start/, concepts/, guides/, reference/, agents/ (sop-onboarding:
+                       #   connection → transform → model → report; sop-authoring; sop-model-changes).
                        #   docs/toc.yaml is the one order (sections, pages, blurbs, moved: old → new
                        #   address); /api/docs and site/build_docs.py read it. build_docs.py generates
                        #   docs/index.md and site/docs (commit both; test_docs_site guards them).
@@ -455,7 +459,7 @@ effect**, which is the question a security review actually asks:
 |---|---|
 | `viewer` | Read models, reports, lineage. Run Explore queries and spec validation — they compute but persist nothing. |
 | `analyst` | viewer + execute report and request code. |
-| `admin` | analyst + run pipeline layers, which write to the warehouse, `/api/_dev/reload`, and keeping a selection cut (it writes the published `report.json`), and approving code requests (pushed Python runs with the server's secrets). |
+| `admin` | analyst + run pipeline layers, which write to the warehouse, `/api/_dev/reload`, keeping a selection cut (it writes the published `report.json`), approving code requests (pushed Python runs with the server's secrets), and `export_table` over the gateway. |
 
 Three things to preserve when touching this:
 
@@ -529,7 +533,8 @@ Three things to preserve when touching this:
    source gave (`request.state.identified`). With no role source the no-lockout rule
    makes everyone admin, so these two writes are refused (403 naming
    `tracebi secret set NAME`); `CredentialWriteGuard` does it when no auth middleware
-   is installed. This is the one place invariant 1 is narrowed, because an open
+   is installed. The connection writes (`POST/PUT/DELETE /api/connections…`, `POST /api/inputs`;
+   `auth._credential_write`) follow the same rule; their 403 names `tracebi connect`. This is the one place invariant 1 is narrowed, because an open
    demo would otherwise let anyone repoint the server's connections.
 
 Enforcement lives in the middleware, not in the routers — one place, and it
@@ -690,7 +695,13 @@ effectively does not exist).
    tables). Nothing downstream imports this file.
 
 ### New connector
-Most sources need no code. **Declarative first:** `tracebi connect <name> --kind
+Most sources need no code. **In the app:** a signed-in admin's **Add a connection** on
+Sources writes `connections/<name>.yaml` (a secret to the store) and ticks the tables agents
+may read (`agents: {tables: [a, b] | "*"}`; absent = none;
+`tracebi.connections.agent_may_read(connection, table)` is the one check). **From the CLI:**
+`tracebi connect <name> --kind … [--agents a,b|all]`, `tracebi connect --list`. Types: postgres,
+mysql, sql, duckdb, snowflake, bigquery, csv, upload (a CSV/Parquet under inputs/).
+**Declarative, by hand:** `tracebi connect <name> --kind
 postgres|snowflake|bigquery|duckdb` writes `connections/<name>.yaml`
 (`docs/reference/connections-yaml.md`): a type and its fields, any value may be
 `${ENV_VAR}` (the whole value), and a password or credential-bearing URL MUST
@@ -839,7 +850,7 @@ POST /api/spec/render                                → build a spec and render
 GET  /api/connectors
 GET  /api/connectors/{name}
 GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}, warehouse (bool; Sources lists the rest), label, dialect (SQL)
-GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact}], hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
+GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact, agents}], agent_tables, hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read, said once per transform
 GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
@@ -856,7 +867,14 @@ GET  /api/credentials                                → every ${NAME} the proje
 PUT  /api/credentials/{name}                         → {value} → the status row; 201 new / 200 replaced (identified admin; audit row kind=credential)
 DELETE /api/credentials/{name}                       → 204, the store's value only (identified admin)
 POST /api/connectors/{name}/test                     → open, list, close: {ok: true, tables: n} | {ok: false, reason} with any secret scrubbed (admin)
+GET  /api/connections/types                          → each type and its fields (name, label, kind text|secret|url|path, required, help): the Add a connection form
+POST /api/connections                                → {name, type, fields, label?, agents?} → writes connections/<name>.yaml (a typed secret → the store, ${NAME} in the file); 201 as GET /api/connectors/{name}; 409 taken; 422 {errors} (identified admin)
+POST /api/connections/test                           → the same body, tested unsaved: {ok, tables} | {ok: false, reason} (identified admin)
+PUT  /api/connections/{name}                         → edit in place (comments kept); a secret sent empty is kept; agents when sent, null removes (identified admin)
+DELETE /api/connections/{name}                       → 204, or 409 {read_by} while a transform, pipeline step or model reads it (identified admin)
+POST /api/inputs?name=x.csv                          → the body is one CSV/Parquet file → inputs/<name>, ≤50 MB (identified admin)
 GET  /api/models/{name}/source                       → the model's file (read-only; the Code tab)
+GET  /api/models/{name}/context[?brief=true]         → what an agent receives for the model: capabilities.describe_model, the same object as `tracebi context --model` and the gateway's get_context / describe_model (brief drops synonyms)
 GET  /api/connectors/{name}/source                   → the model file(s) that declare it
 GET  /api/connectors/{name}/warehouse                → tables, row counts, column profiles, per-table sink-contract status (read-only, closed per request); each contract names the `file` that declares its checks and carries the transform's `note`
 GET  /api/pipelines/{name}/source                    → the pipeline file + the transform it runs
@@ -954,7 +972,7 @@ Don't add these unless asked.
 | Add or reorder a handbook page | `docs/toc.yaml`, then `python site/build_docs.py` |
 | Understand the three-phase workflow | `docs/concepts/the-three-phase-workflow.md` + `examples/portfolio_project/` |
 | Author a phase-① transform | `examples/portfolio_project/transforms/holdings_transform.sql` + `docs/reference/transform-sql.md` |
-| Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.yaml` |
+| Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.yaml` (its semantic words: `description`, `synonyms`, `questions`) + `docs/concepts/model.md` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/` |
 | Build an app dashboard (React lane) | `tracebi new-dashboard` → `examples/portfolio_project/reports/portfolio_model/portfolio_desk/` + `docs/reference/app-jsx.md` |
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `design/report-generator-architecture.md` |

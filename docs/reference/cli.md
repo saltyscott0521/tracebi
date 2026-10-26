@@ -48,6 +48,8 @@ tracebi connect wh --kind snowflake --account ACCT --user USER --password SECRET
 tracebi connect wh --kind bigquery --project PROJ --dataset ANALYTICS \
     [--credentials /path/service-account.json]
 tracebi connect wh --kind duckdb --database data/warehouse.duckdb
+tracebi connect crm --agents accounts,clients   # which tables agents may read
+tracebi connect --list
 ```
 
 Tests the connection, then writes `connections/<name>.yaml`
@@ -59,6 +61,8 @@ itself to `.env`.
 | `--no-test` | Skip the connection test. Nothing is written when the test fails. |
 | `--force` | Replace an existing `.env` key or connection file. |
 | `--store secret` | Put the secret in the encrypted store (`.tracebi/secrets.yml.enc`, [[credentials]]) instead of `.env`. |
+| `--agents a,b` | Which tables agents may read (`agents:` in the file; `all` for every table). With no `--kind`, changes only that on an existing connection. |
+| `--list` | Print each connection with its type and the tables agents may read. |
 | `--python` | Write the older module `models/_connections/<name>.py` instead. It calls `load_dotenv()` and always reads `.env`. |
 
 The secret is never printed, and other lines in `.env` stay as they are.

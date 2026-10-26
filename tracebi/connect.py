@@ -126,7 +126,12 @@ def connect_command(args) -> int:
     Files are written only after a successful test. An existing ``.env`` key
     or connection file is left untouched unless ``--force``.
     """
+    if getattr(args, "list", False):
+        return _list_connections(getattr(args, "connections_dir", None))
     name = args.name
+    if not name:
+        print("missing the connection's name (or --list)", file=sys.stderr)
+        return 2
     if not _NAME.fullmatch(name):
         print(
             f"connection name {name!r} must be a Python identifier "
@@ -135,7 +140,13 @@ def connect_command(args) -> int:
         )
         return 2
 
+    agents = getattr(args, "agents", None)
     kind = (args.kind or "").strip().lower()
+    # `tracebi connect <name> --agents a,b` on an existing connection changes
+    # only which tables agents may read, as ticking them in the app does.
+    existing = connection_yaml_path(name, getattr(args, "connections_dir", None))
+    if agents is not None and not kind and existing.is_file():
+        return _set_agents(existing, agents)
     tty = sys.stdin.isatty()
     if not kind:
         if not tty:
@@ -178,6 +189,9 @@ def connect_command(args) -> int:
     else:
         conn_path = connection_yaml_path(name, getattr(args, "connections_dir", None))
         text, updates = _declared_document(name, kind, values)
+        if agents is not None and (allow := _allowlist(agents)):
+            from tracebi.connections import _yaml_lines
+            text += _yaml_lines("agents", allow) + "\n"
     env_path = Path.cwd() / ".env"
     # --store secret puts the secret in the project's encrypted store instead
     # of .env. The legacy module reads os.environ, so it keeps .env.
@@ -234,6 +248,67 @@ def connect_command(args) -> int:
         print("wrote .env (" + ", ".join(updates) + ")")
         if added:
             print("added .env to .gitignore")
+    return 0
+
+
+def _allowlist(raw: str) -> "dict | None":
+    """``--agents a,b`` or ``--agents all`` as the file's ``agents`` value;
+    an empty one is none."""
+    from tracebi.connections import agents_allowlist
+
+    raw = raw.strip()
+    return agents_allowlist("*" if raw in ("all", "*") else [t.strip() for t in raw.split(",")])
+
+
+def _agents_said(tables) -> str:
+    if not tables:
+        return "none"
+    return "all" if tables == ["*"] else ", ".join(tables)
+
+
+def _set_agents(path: Path, raw: str) -> int:
+    """Rewrite only the ``agents`` key of an existing connection file."""
+    from tracebi.connections import (
+        agent_tables_of, read_connection_doc, rewrite_connection_text,
+        validate_connection_doc,
+    )
+
+    doc = read_connection_doc(path)
+    allow = _allowlist(raw)
+    doc = {k: v for k, v in doc.items() if k != "agents"} | ({"agents": allow} if allow else {})
+    errors = validate_connection_doc(doc)
+    if errors:
+        print("\n".join(errors), file=sys.stderr)
+        return 1
+    path.write_text(rewrite_connection_text(path.read_text(encoding="utf-8"), doc), encoding="utf-8")
+    print(f"wrote {path} (agents may read: {_agents_said(agent_tables_of(doc))})")
+    return 0
+
+
+def _list_connections(folder) -> int:
+    """``tracebi connect --list``: each connection file, its type, and the
+    tables agents may read."""
+    from tracebi.connections import (
+        SUFFIXES, agent_tables_of, connections_dir, read_connection_doc,
+        validate_connection_doc,
+    )
+
+    folder = Path(folder or connections_dir())
+    paths = sorted(p for p in folder.glob("*") if p.suffix in SUFFIXES
+                   and not p.name.startswith(("_", "."))) if folder.is_dir() else []
+    if not paths:
+        print(f"no connections in {folder}/ (tracebi connect <name> --kind ...)")
+        return 0
+    for path in paths:
+        try:
+            doc = read_connection_doc(path)
+            errors = validate_connection_doc(doc)
+        except Exception as exc:  # noqa: BLE001 — a broken file is listed as broken
+            errors, doc = [str(exc)], {}
+        if errors:
+            print(f"{path.stem}  (does not load: {errors[0]})")
+            continue
+        print(f"{path.stem}  {doc['type']}  agents may read: {_agents_said(agent_tables_of(doc))}")
     return 0
 
 

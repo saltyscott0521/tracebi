@@ -22,6 +22,12 @@ page shows) never resolve a credential: a referenced secret appears as
 credential store (``tracebi secret set``; :mod:`tracebi.project_credentials`,
 the one resolver). Only referenced names are read, and nothing is copied into
 ``os.environ``.
+
+``agents: {tables: [a, b] | "*"}`` says which tables an agent may read;
+:func:`agent_may_read` is the one check. The app writes these files too
+(:func:`plan_connection`, :func:`connection_text`,
+:func:`rewrite_connection_text`), a secret typed into its form going to the
+store, never into the file.
 """
 
 from __future__ import annotations
@@ -47,17 +53,86 @@ _TYPES: dict[str, tuple[str, tuple[str, ...], tuple[str, ...]]] = {
     "csv": ("CSVConnector", ("directory",), ("encoding",)),
     "sql": ("SQLConnector", ("url",), ()),
     "postgres": ("SQLConnector", ("url",), ()),
+    "mysql": ("SQLConnector", ("url",), ()),
     "snowflake": ("SnowflakeConnector",
                   ("account", "user", "password", "warehouse", "database"),
                   ("schema", "role")),
     "bigquery": ("BigQueryConnector", ("project", "dataset"), ("credentials",)),
+    "upload": ("UploadConnector", ("file",), ()),
 }
 # A literal value is never allowed: the field holds a credential.
 _MUST_REFERENCE = {"password"}
 # A literal is allowed only when it carries no credential (see _url_problem).
 _URL_FIELDS = {"url"}
 # Paths a literal may only name inside the project.
-_PATH_FIELDS = {"database": ("duckdb",), "directory": ("duckdb", "csv")}
+_PATH_FIELDS = {"database": ("duckdb",), "directory": ("duckdb", "csv"),
+                "file": ("upload",)}
+# An uploaded file is a CSV or Parquet file under inputs/, where the app's
+# upload puts it (POST /api/inputs), so it is reviewed with the project.
+UPLOAD_SUFFIXES = (".csv", ".parquet")
+
+# What the app's Add a connection form asks for, per type: a name for people,
+# one line, and each field's label, kind (text | secret | url | path)
+# and help. The form is drawn from this (GET /api/connections/types),
+# so a type added to _TYPES is offered once it is described here. A
+# ``secret`` field's value goes to the project's store, and a ``url`` one's
+# too when it carries a credential; the file holds ``${NAME}`` for either.
+_TYPE_INFO: dict[str, tuple[str, str]] = {
+    "postgres": ("Postgres", "A Postgres database, by its SQLAlchemy URL."),
+    "mysql": ("MySQL", "A MySQL or MariaDB database, by its SQLAlchemy URL."),
+    "sql": ("SQLite or another SQL database",
+            "Any SQLAlchemy URL: a SQLite file in the project, SQL Server, Oracle."),
+    "duckdb": ("DuckDB", "A DuckDB database file in the project."),
+    "snowflake": ("Snowflake", "A Snowflake warehouse, signed in with a user and password."),
+    "bigquery": ("BigQuery", "A BigQuery dataset, read with a service-account file."),
+    "csv": ("A folder of CSV files", "Every CSV or Excel file in one folder of the project."),
+    "upload": ("An uploaded file", "One CSV or Parquet file, uploaded into inputs/."),
+}
+_FIELD_INFO: dict[str, tuple[str, str, str]] = {
+    # field: (label, kind, help)
+    "url": ("URL", "url", "A SQLAlchemy URL. One that carries a password is kept "
+                          "in the project's encrypted store, not in the file."),
+    "database": ("Database", "text", ""),
+    "directory": ("Folder", "path", "A folder inside the project, e.g. inputs/."),
+    "encoding": ("Encoding", "text", "The files' text encoding; utf-8 when empty."),
+    "account": ("Account", "text", "The account identifier, e.g. xy12345.eu-west-1."),
+    "user": ("User", "text", ""),
+    "password": ("Password", "secret", "Kept in the project's encrypted store, never in the file."),
+    "warehouse": ("Warehouse", "text", ""),
+    "schema": ("Schema", "text", "PUBLIC when empty."),
+    "role": ("Role", "text", ""),
+    "project": ("Project", "text", "The Google Cloud project id."),
+    "dataset": ("Dataset", "text", ""),
+    "credentials": ("Service-account file", "path", "A path to the JSON key file on the server."),
+    "file": ("File", "path", "The uploaded file under inputs/ (.csv or .parquet)."),
+}
+# Where a field's words differ by type.
+_FIELD_BY_TYPE: dict[tuple[str, str], tuple[str, str, str]] = {
+    ("duckdb", "database"): ("Database file", "path",
+                             "A .duckdb file inside the project, e.g. inputs/sales.duckdb."),
+    ("postgres", "url"): ("URL", "url", "postgresql+psycopg://user:password@host:5432/db. "
+                                        "Kept in the encrypted store when it carries a password."),
+    ("mysql", "url"): ("URL", "url", "mysql+pymysql://user:password@host:3306/db. "
+                                     "Kept in the encrypted store when it carries a password."),
+    ("sql", "url"): ("URL", "url", "sqlite:///inputs/bank.sqlite for a file in the project, "
+                                   "or any SQLAlchemy URL."),
+}
+
+
+def connection_types() -> list[dict]:
+    """The types a connection may have, each with its fields, for the app's
+    form: ``[{type, label, line, fields: [{name, label, kind, required,
+    help}]}]``, in the order the form offers them."""
+    out = []
+    for ctype, (label, line) in _TYPE_INFO.items():
+        _cls, required, optional = _TYPES[ctype]
+        fields = []
+        for field in required + optional:
+            flabel, kind, help_ = _FIELD_BY_TYPE.get((ctype, field), _FIELD_INFO[field])
+            fields.append({"name": field, "label": flabel, "kind": kind,
+                           "required": field in required, "help": help_})
+        out.append({"type": ctype, "label": label, "line": line, "fields": fields})
+    return out
 
 
 class ConnectionConfigError(ValueError):
@@ -130,6 +205,49 @@ def _url_problem(url: str) -> Optional[str]:
     return None
 
 
+def _agents_problems(agents: Any) -> list[str]:
+    """``agents: {tables: [a, b] | "*"}``: which tables agents may read."""
+    shape = 'agents: {tables: [a, b]} or {tables: "*"}'
+    if not isinstance(agents, dict) or set(agents) != {"tables"}:
+        return [f"{shape}, got {agents!r}"]
+    tables = agents["tables"]
+    if tables == "*":
+        return []
+    if not isinstance(tables, list) or not all(isinstance(t, str) and t for t in tables):
+        return [f"{shape}: tables is a list of table names, or \"*\" for all"]
+    if len(set(tables)) != len(tables):
+        return ["agents: a table is named twice"]
+    return []
+
+
+def agent_tables_of(doc: dict) -> Optional[list[str]]:
+    """The allowlist a validated document states: its table names, ``["*"]``
+    for every table, None when it states none (agents read nothing)."""
+    agents = doc.get("agents")
+    if not agents:
+        return None
+    tables = agents["tables"]
+    return ["*"] if tables == "*" else list(tables)
+
+
+def agent_may_read(connection: Any, table: str) -> bool:
+    """Whether an agent may read *table* of *connection*: the one check the
+    gateway and a model's live read ask. *connection* is a connector (its
+    ``agent_tables``) or a connection's name (its ``connections/<name>.yaml``
+    is read). No allowlist means none; TraceBi's own tables never."""
+    from tracebi.sources import is_framework_table
+
+    if isinstance(connection, str):
+        path = connection_file(connection)
+        if path is None:
+            return False
+        connection = load_connection(path)
+    allowed = getattr(connection, "agent_tables", None)
+    if not allowed or is_framework_table(table):
+        return False
+    return allowed == ["*"] or table in allowed
+
+
 def validate_connection_doc(doc: Any) -> list[str]:
     """Structural errors in a connection document, each led by its field."""
     if not isinstance(doc, dict):
@@ -138,11 +256,18 @@ def validate_connection_doc(doc: Any) -> list[str]:
     if ctype not in _TYPES:
         return [f"type: required, one of {', '.join(_TYPES)}; got {ctype!r}"]
     _cls, required, optional = _TYPES[ctype]
-    errors = _unknown(doc, {"name", "type", "label", *required, *optional}, "connection")
+    errors = _unknown(doc, {"name", "type", "label", "agents", *required, *optional},
+                      "connection")
     if not isinstance(doc.get("name"), str) or not _NAME.fullmatch(doc.get("name") or ""):
         errors.append("name: required, letters, digits and underscores")
     if "label" in doc and (not isinstance(doc["label"], str) or not doc["label"].strip()):
         errors.append("label: a name for people, a non-empty string")
+    if "agents" in doc:
+        errors += _agents_problems(doc["agents"])
+    if ctype == "upload" and isinstance(doc.get("file"), str) and not _REF.fullmatch(doc["file"]):
+        path = doc["file"].replace("\\", "/")
+        if not path.startswith("inputs/") or not path.lower().endswith(UPLOAD_SUFFIXES):
+            errors.append(f"file: a .csv or .parquet file under inputs/, got {doc['file']!r}")
     for field in required + optional:
         if field not in doc:
             if field in required:
@@ -349,7 +474,7 @@ class Declaration:
         literal = self._literal_url()
         if literal is not None:
             return url_dialect(literal)
-        return "postgresql" if self.ctype == "postgres" else None
+        return {"postgres": "postgresql", "mysql": "mysql"}.get(self.ctype)
 
     def describe(self, connector) -> dict:
         out = {"name": self.name, "type": type(connector).__name__}
@@ -357,7 +482,13 @@ class Declaration:
             out["label"] = connector.label
         if self.source:
             out["declared_in"] = self.source
-        for field in ("database", "directory"):
+        # The file's own words, for the app's Edit form: a reference stays
+        # ${NAME}, and a literal is never a credential (the validator refuses
+        # one), so nothing here is a secret.
+        out["connection_type"] = self.ctype
+        out["fields"] = {k: v for k, v in self.fields.items() if k != "label"}
+        out["agent_tables"] = getattr(connector, "agent_tables", None)
+        for field in ("database", "directory", "file"):
             if field in self.fields and self.ctype in _PATH_FIELDS[field]:
                 try:
                     out[field] = self.value(field)
@@ -373,8 +504,75 @@ class Declaration:
         return out
 
 
+_UPLOAD_CLASS = None
+
+
+def _upload_connector_class():
+    """``UploadConnector``: one CSV or Parquet file as one table, named by
+    the file's stem. Built on first use, so reading connection files does not
+    import pandas."""
+    global _UPLOAD_CLASS
+    if _UPLOAD_CLASS is not None:
+        return _UPLOAD_CLASS
+    import pandas as pd
+
+    from tracebi.connectors.base import BaseConnector, _on_disk
+
+    class UploadConnector(BaseConnector):
+        def __init__(self, name: str, file: Optional[str] = None) -> None:
+            super().__init__(name)
+            self.file = file
+
+        def _table(self) -> str:
+            return Path(self.file).stem
+
+        def _check(self, source: str) -> str:
+            if source != self._table():
+                raise KeyError(f"connection '{self.name}' holds one table, "
+                               f"'{self._table()}', not {source!r}")
+            return self.file
+
+        def connect(self) -> None:
+            if not os.path.isfile(self.file):
+                raise FileNotFoundError(f"connection '{self.name}': file not found: {self.file}")
+
+        def describe(self) -> dict:
+            return {**super().describe(), "file": self.file}
+
+        def storage(self) -> dict:
+            return _on_disk("file", str(self.file))
+
+        def list_tables(self) -> list[str]:
+            self.connect()
+            return [self._table()]
+
+        def column_schema(self, source: str) -> list[dict[str, str]]:
+            path = self._check(source)
+            if path.lower().endswith(".parquet"):
+                import pyarrow.parquet as pq
+                schema = pq.read_schema(path)
+                return [{"name": f.name, "dtype": str(f.type)} for f in schema]
+            df = pd.read_csv(path, nrows=0)
+            return [{"name": str(c), "dtype": str(df.dtypes[c])} for c in df.columns]
+
+        def load(self, source: str, filter=None, columns=None) -> "pd.DataFrame":
+            path = self._check(source)
+            if path.lower().endswith(".parquet"):
+                df = pd.read_parquet(path, columns=columns or None)
+            else:
+                df = pd.read_csv(path, usecols=columns or None)
+            return self._apply_pandas_pushdown(df, filter, columns)
+
+    UploadConnector.__module__ = __name__
+    _UPLOAD_CLASS = UploadConnector
+    return UploadConnector
+
+
 def _connector_class(ctype: str):
     cls_name = _TYPES[ctype][0]
+    if cls_name == "UploadConnector":
+        base = _upload_connector_class()
+        return type(cls_name, (_Declared, base), {"__module__": base.__module__})
     import importlib
     mod = {"DuckDBConnector": "duckdb_connector", "CSVConnector": "csv_connector",
            "SQLConnector": "sql_connector", "SnowflakeConnector": "snowflake_connector",
@@ -389,21 +587,24 @@ def build_connection(doc: dict, root: "str | os.PathLike[str]",
                      source: Optional[str] = None):
     """The connector for a validated document. Resolves nothing."""
     ctype = doc["type"]
-    fields = {k: v for k, v in doc.items() if k not in ("name", "type")}
+    fields = {k: v for k, v in doc.items() if k not in ("name", "type", "agents")}
     decl = Declaration(doc["name"], ctype, fields, Path(root).resolve(), source)
     cls = _connector_class(ctype)
     # The real constructor stores its arguments and does no work; the
     # placeholders are never read, _Declared answers for them.
     args = {
         "bigquery": {"project": None, "dataset": None},
-        "sql": {"url": None}, "postgres": {"url": None},
+        "sql": {"url": None}, "postgres": {"url": None}, "mysql": {"url": None},
         "snowflake": {"account": None, "user": None, "password": None,
                       "warehouse": None, "database": None},
         "csv": {"directory": "."},
         "duckdb": {"database": ":memory:"},
+        "upload": {"file": None},
     }[ctype]
     connector = cls(doc["name"], **args)
     connector.label = doc.get("label")
+    # Which tables agents may read (agent_may_read): None reads nothing.
+    connector.agent_tables = agent_tables_of(doc)
     # Installed after construction, so the constructor above does not resolve.
     connector.__dict__["_decl"] = decl
     return connector
@@ -437,6 +638,121 @@ def validate_connection_file(path: "str | os.PathLike[str]") -> list[str]:
     except Exception as exc:  # noqa: BLE001 — the answer is the message
         return [str(exc)]
     return []
+
+
+# ── Writing a connection file (the app's Add a connection, and Edit) ───────
+
+def _yaml_lines(key: str, value: Any) -> str:
+    import yaml
+
+    return yaml.safe_dump({key: value}, allow_unicode=True, width=10**6,
+                          sort_keys=False, default_flow_style=False).rstrip()
+
+
+def secret_name(name: str, field: str) -> str:
+    """The ``${NAME}`` a connection's secret field is stored under:
+    ``TRACEBI_<CONNECTION>_<FIELD>``, as ``tracebi connect`` names it."""
+    return f"TRACEBI_{name.upper()}_{field.upper()}"
+
+
+def _goes_to_store(ctype: str, field: str, value: str) -> bool:
+    """Whether a value typed for *field* is a secret: a ``secret`` field
+    always, a ``url`` one when it carries a credential."""
+    kind = _FIELD_BY_TYPE.get((ctype, field), _FIELD_INFO.get(field, ("", "text", "")))[1]
+    if kind == "secret":
+        return True
+    return kind == "url" and (_url_problem(value) or "").startswith("carries a credential")
+
+
+def plan_connection(name: str, ctype: str, fields: dict[str, Optional[str]],
+                    label: Optional[str] = None, agents: Any = None,
+                    existing: Optional[dict] = None) -> tuple[dict, dict[str, str]]:
+    """``(document, {NAME: secret})`` for a connection the app saves.
+
+    *fields* are what the form sent. A value that is a whole ``${NAME}``
+    stays a reference (the person pointed at a variable); a secret typed in
+    is replaced by ``${TRACEBI_<CONNECTION>_<FIELD>}`` (or the name the file
+    already uses) and returned to be saved in the store, so the file never
+    holds it. On an edit (*existing*, the current document), a field not
+    sent keeps what the file says, and so does a secret or URL sent empty (a
+    masked field reads empty); any other field sent empty is removed. The
+    caller validates the document."""
+    if ctype not in _TYPES:
+        raise ModelSpecError(f"{name}.yaml", [f"type: one of {', '.join(_TYPES)}; got {ctype!r}"])
+    _cls, required, optional = _TYPES[ctype]
+    doc: dict[str, Any] = {"name": name, "type": ctype}
+    if label:
+        doc["label"] = label
+    secrets: dict[str, str] = {}
+    for field in required + optional:
+        value = fields.get(field)
+        value = value.strip() if isinstance(value, str) else value
+        before = (existing or {}).get(field)
+        if not value:
+            kind = _FIELD_BY_TYPE.get((ctype, field), _FIELD_INFO[field])[1]
+            if before and (field not in fields or kind in ("secret", "url")):
+                doc[field] = before
+            continue
+        if _REF.fullmatch(value) or not _goes_to_store(ctype, field, value):
+            doc[field] = value
+            continue
+        ref = _REF.fullmatch(before) if isinstance(before, str) else None
+        key = ref.group(1) if ref and ref.group(2) is None else secret_name(name, field)
+        secrets[key] = value
+        doc[field] = "${" + key + "}"
+    if agents:
+        doc["agents"] = agents
+    return doc, secrets
+
+
+def connection_text(doc: dict) -> str:
+    """A new ``connections/<name>.yaml``: a header that says where secrets
+    are, then one line per field."""
+    head = (f"# Connection {doc['name']!r} ({doc['type']}). Written by the app's "
+            "Add a connection.\n"
+            "# ${NAME} is read from the environment, .env or the project's store\n"
+            "# when the connection is used. No secret belongs in this file.\n")
+    return head + "\n".join(_yaml_lines(k, v) for k, v in doc.items()) + "\n"
+
+
+_TOP_KEY = re.compile(r"^([A-Za-z_]\w*)\s*:")
+
+
+def rewrite_connection_text(text: str, doc: dict) -> str:
+    """*text* (an existing file) changed to say *doc*: each top-level key's
+    block is replaced where it stands, a key *doc* drops is removed, a new one
+    is added at the end. Comments and the order a person chose are kept."""
+    lines = text.splitlines()
+    blocks: list[tuple[Optional[str], list[str]]] = []
+    for line in lines:
+        m = _TOP_KEY.match(line)
+        if m:
+            blocks.append((m.group(1), [line]))
+        elif blocks and blocks[-1][0] is not None and (line[:1] in (" ", "\t", "-") or not line.strip()):
+            blocks[-1][1].append(line)
+        else:
+            blocks.append((None, [line]))
+    out, seen = [], set()
+    for key, body in blocks:
+        if key is None:
+            out += body
+            continue
+        seen.add(key)
+        if key not in doc:
+            continue
+        trailing = [ln for ln in reversed(body) if not ln.strip()]
+        out += _yaml_lines(key, doc[key]).splitlines() + trailing
+    out += [ln for k, v in doc.items() if k not in seen for ln in _yaml_lines(k, v).splitlines()]
+    return "\n".join(out).rstrip("\n") + "\n"
+
+
+def agents_allowlist(tables: Any) -> Optional[dict]:
+    """The ``agents`` value for *tables*: ``"*"`` or ``"all"`` for every
+    table, a list for those, None (the key removed) for none."""
+    if tables in ("*", "all") or tables == ["*"]:
+        return {"tables": "*"}
+    tables = [t for t in (tables or []) if t]
+    return {"tables": list(dict.fromkeys(tables))} if tables else None
 
 
 # ── Migrating a connection module ──────────────────────────────────────────

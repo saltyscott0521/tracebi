@@ -21,6 +21,17 @@
 name: saas_model
 label: SaaS Subscriptions
 
+# The semantic layer's words: Ask offers the questions as starting chips and
+# an agent receives all of it (get_context --model); nothing computes from them.
+description: >-
+  Subscription accounts month by month: recurring revenue, active customers
+  and churn, by plan and by the month each account signed up.
+synonyms: [subscriptions, recurring revenue]
+questions:
+  - What is MRR by plan?
+  - Which cohorts have the most customers?
+  - How does logo churn compare across plans?
+
 # connectors: where the tables live: the project's warehouse (tracebi.yaml)
 connectors:
   - name: warehouse
@@ -46,15 +57,24 @@ dimensions:
   - name: dim_month
     table: dim_month
     key: month_id
+    description: The calendar month of the snapshot
+    synonyms: [period]
     attributes: [month]
   - name: dim_plan
     table: dim_plan
     key: plan_id
-    attributes: [plan]
+    description: The subscription plan the account is on
+    attributes:
+      - name: plan
+        synonyms: [tier, pricing plan]
   - name: dim_cohort
     table: dim_cohort
     key: cohort_id
-    attributes: [cohort]
+    description: The month the account signed up
+    attributes:
+      - name: cohort
+        description: Signup month
+        synonyms: [signup month, vintage]
 
 # facts: the event tables (numeric columns, key to each dimension)
 facts:
@@ -71,18 +91,23 @@ measures:
   - name: ending_mrr
     period_end: [mrr, dim_month.month]
     description: Ending MRR at the latest month in the query
+    synonyms: [MRR, monthly recurring revenue, recurring revenue]
     format: currency0
   - name: customers
     period_end: [active, dim_month.month]
     description: Logos active at the latest month in the query
+    synonyms: [logos, accounts, active customers]
     format: comma
   - name: churned_logos
     period_end: [churned, dim_month.month]
     description: Logos that churned in the latest month of the query
+    synonyms: [churned customers, lost logos]
   - name: starting_logos
     period_end: [starting, dim_month.month]
     description: Logos that were customers at the start of that month
+    synonyms: [starting customers]
   - name: logo_churn
     ratio: [churned_logos, starting_logos]
     description: 'Logo churn: logos lost / logos at the start of the month (ratio of totals)'
+    synonyms: [churn, churn rate, customer churn]
     format: percent

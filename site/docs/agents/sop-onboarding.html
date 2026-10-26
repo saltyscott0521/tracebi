@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SOP: Onboard a source, from a connection to a report — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="SOP: Onboard a source, from a connection to a report">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
+<a href="../start/quickstart.html">Get started</a>
+<a href="../start/your-first-report.html">Your first report</a>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/transform.html">Transforms</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/model.html">Models</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/report.html">Reports</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/connect-a-database.html">Connect a database</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/api-routes.html">API routes</a>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a class="on" href="../agents/sop-onboarding.html">SOP: Onboard a source, from a connection to a report</a>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
+  </details>
+  <main class="doc">
+<h1 id="sop-onboard-a-source-from-a-connection-to-a-report">SOP: Onboard a source, from a connection to a report</h1>
+<p>The procedure an AI agent follows over the gateway (<code>tracebi mcp</code>) when a
+person has connected a database and nothing has been built from it yet: no
+transform, no model. Follow the steps in order.</p>
+<p>Read <code>AGENTS.md</code> first. It is the brief every agent reads before working in a
+TraceBi project. This SOP ends where <a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a> begins.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ul>
+<li><strong>A person sets up the connection, not you.</strong> They add it in the app
+  (Data › Sources) or with <code>tracebi connect</code>, and its credential goes to the
+  project's encrypted store. You never see a password or a URL that carries
+  one.</li>
+<li><strong>A person decides what you may read.</strong> On the connection they tick the
+  tables agents may read: <code>agents: {tables: [orders, customers]}</code> in
+  <code>connections/&lt;name&gt;.yaml</code> (<code>"*"</code> for every table; no <code>agents:</code> means none).
+  A table outside that list answers "not found", exactly as a missing one
+  does. Do not look for it another way.</li>
+<li><strong>What you write is a proposal.</strong> A transform runs on the server with its
+  secrets, so you never run one. You propose it; an admin reads it in the app
+  and approves it, and approving runs it once.</li>
+<li><strong>The checks start at the model.</strong> The transform's contract records that
+  the sink satisfied its contract when it ran. Stamped queries and <code>verify</code>
+  cover the model onward; they say nothing about the transform's logic.</li>
+</ul>
+<h2 id="1-find-the-connection">1. Find the connection</h2>
+<pre><code class="language-json">{ &quot;tool&quot;: &quot;list_connections&quot;, &quot;arguments&quot;: {} }
+</code></pre>
+<p>Each connection has its <code>type</code> and <code>agent_tables</code>, the tables you may read
+(<code>"*"</code> for all, <code>[]</code> for none). If every list is empty, stop and tell the
+person: nothing has been opened to agents yet, and they tick the tables on
+the Sources page.</p>
+<h2 id="2-read-the-tables-you-may-read">2. Read the tables you may read</h2>
+<pre><code class="language-json">{ &quot;tool&quot;: &quot;list_source_tables&quot;, &quot;arguments&quot;: { &quot;connection&quot;: &quot;shop&quot; } }
+</code></pre>
+<p>Each table comes with its columns (<code>{name, type}</code>) and <code>rows</code>: exact for
+DuckDB, the database's own estimate (<code>rows_exact: false</code>) where it keeps one,
+else <code>null</code>. A connection that cannot be reached answers <code>ok: false</code> with a
+<code>reason</code>, and <code>variable</code> when an unset <code>${VAR}</code> is why: tell the person which
+one to set.</p>
+<p>Then look at each table you will use:</p>
+<pre><code class="language-json">{ &quot;tool&quot;: &quot;describe_source_table&quot;,
+  &quot;arguments&quot;: { &quot;connection&quot;: &quot;shop&quot;, &quot;table&quot;: &quot;orders&quot;, &quot;sample&quot;: 20 } }
+</code></pre>
+<p>It returns the columns, a profile of each (nulls, distinct values, range,
+mean, commonest values) and <code>sample</code> rows (at most 500) with the <code>total</code>.
+Find the grain (what one row is), the keys, and the columns that need
+cleaning before you write a line of SQL.</p>
+<h2 id="3-propose-the-transform">3. Propose the transform</h2>
+<p>Write one SQL transform: a <code>-- source:</code> header line per table it reads, then
+DuckDB statements that clean the data and sink star-schema tables with
+<code>CREATE OR REPLACE TABLE</code>. Name the tables by role (<code>fact_*</code>, <code>dim_*</code>).
+<a href="../reference/transform-sql.html">SQL transforms</a> is the reference.</p>
+<pre><code class="language-sql">-- source: shop.orders
+-- source: shop.customers
+CREATE OR REPLACE TABLE dim_customer AS
+SELECT customer_id, region FROM shop.customers;
+CREATE OR REPLACE TABLE fact_orders AS
+SELECT order_id, customer_id, amount FROM shop.orders;
+</code></pre>
+<p>Write its contract: checks on the tables it sinks, from the closed
+vocabulary (<code>rows</code>, <code>unique</code>, <code>not_null</code>, <code>foreign_key</code>, <code>values</code>,
+<code>reconcile</code>), at least one.</p>
+<pre><code class="language-yaml">note: Orders and customers from the shop database, as they are.
+checks:
+  - rows: fact_orders
+    at_least: 1
+  - unique: dim_customer
+    columns: [customer_id]
+  - foreign_key: fact_orders
+    column: customer_id
+    refers_to: [dim_customer, customer_id]
+</code></pre>
+<p>Then propose both, with a note that tells the reviewer why:</p>
+<pre><code class="language-json">{ &quot;tool&quot;: &quot;propose_transform&quot;,
+  &quot;arguments&quot;: { &quot;name&quot;: &quot;shop_orders&quot;, &quot;sql&quot;: &quot;…&quot;, &quot;contract_yaml&quot;: &quot;…&quot;,
+                 &quot;note&quot;: &quot;Orders by customer, for a sales model&quot; } }
+</code></pre>
+<p>The proposal is checked before it is stored: the name is new, the SQL parses
+in DuckDB, every <code>-- source:</code> is a table you may read, and the contract is
+valid. A refusal lists every reason; fix them and propose again. On success
+you get a <code>request_id</code> and a <code>review_url</code>.</p>
+<h2 id="4-wait-for-the-approval">4. Wait for the approval</h2>
+<p>Tell the person the request id and the <code>review_url</code> (the app's Review page),
+and that an admin approves it there. Nothing has run yet, and the tables do
+not exist until it does: do not draft a model or a report over them before
+then.</p>
+<p>When the admin approves, the files go into <code>transforms/</code> and the transform
+runs once. If it fails (its SQL, or a contract check), the request says so
+and the admin tells you; propose a corrected transform under a new name.</p>
+<h2 id="5-draft-the-model">5. Draft the model</h2>
+<p>Once the tables exist, <code>describe_table</code> gives their columns. Draft a
+declarative model over them:</p>
+<ol>
+<li><code>start_draft(kind="models", path="shop_model")</code>.</li>
+<li><code>write_draft_file(kind="models", path="shop_model", file="shop_model.yaml",
+   content=…)</code>: a <code>type: warehouse</code> connector, the tables, the relationships,
+   the facts, the dimensions and the named measures (<a href="../reference/model-json.html">Model files (YAML or JSON)</a>).</li>
+<li><code>preview_draft(kind="models", path="shop_model")</code> until it validates.</li>
+<li><code>publish_draft(kind="models", path="shop_model", note=…)</code> once the person
+   agrees.</li>
+</ol>
+<h2 id="6-build-the-report">6. Build the report</h2>
+<p>Follow <a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a> from step 1, against the model you just published.</p>
+<h2 id="when-something-goes-wrong">When something goes wrong</h2>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Every <code>agent_tables</code> is empty</td>
+<td>Stop. Ask the person to tick the tables agents may read on the Sources page.</td>
+</tr>
+<tr>
+<td>A table you need is "not found"</td>
+<td>It is not one you may read, or it is not there. Ask the person; do not look for it another way.</td>
+</tr>
+<tr>
+<td><code>list_source_tables</code> answers <code>ok: false</code> with <code>variable</code></td>
+<td>The connection's credential is not set. Tell the person which variable.</td>
+</tr>
+<tr>
+<td><code>propose_transform</code> refuses</td>
+<td>Read every error, fix each, and propose again.</td>
+</tr>
+<tr>
+<td>The approved run failed</td>
+<td>Read the error on the request, then propose a corrected transform under a new name.</td>
+</tr>
+<tr>
+<td>A number is wrong below the model</td>
+<td>It is the transform's logic. Propose a change; the checks from the model onward cannot see it.</td>
+</tr>
+</tbody>
+</table>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

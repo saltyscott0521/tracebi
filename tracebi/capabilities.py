@@ -1220,7 +1220,8 @@ def _conventions() -> dict:
                 "must_define": "a connections/<name>.yaml per source",
                 "type": "connection",
                 "note": "{name, type, ...fields}; type is duckdb, csv, sql, "
-                        "postgres, snowflake or bigquery. Any value may be "
+                        "postgres, mysql, snowflake, bigquery or upload (one "
+                        "CSV or Parquet file under inputs/: file). Any value may be "
                         "${ENV_VAR} (the whole value); password, and a url "
                         "that carries credentials, MUST be, or the file is "
                         "refused. ${ENV_VAR:-default} gives a default for "
@@ -1230,7 +1231,12 @@ def _conventions() -> dict:
                         "project's store: `tracebi secret set NAME`; an unset "
                         "one is an error naming it), never at discovery. A "
                         "model's connector says "
-                        "`connection: <name>`. Written by `tracebi connect`.",
+                        "`connection: <name>`. Written by `tracebi connect`, "
+                        "or by a signed-in admin's Add a connection on the "
+                        "Sources page. agents: {tables: [a, b] | \"*\"} names "
+                        "the tables an agent may read (absent: none); "
+                        "tracebi.connections.agent_may_read(connection, table) "
+                        "is the one check.",
             },
             {
                 "path": "tracebi.yaml",
@@ -1636,6 +1642,28 @@ def describe(brief: bool = False) -> dict:
                         "label never changes a number, and queries and "
                         "bindings still name the measure by its identifier.",
             },
+            "semantic_words": {
+                "declare": "YAML: description: and synonyms: [..] on the model, "
+                           "a dimension, an attribute ({name, label, "
+                           "description, synonyms} in place of the plain "
+                           "column name) and a measure; questions: [..] on the "
+                           "model. Python: DataModel(name, description=, "
+                           "synonyms=, questions=), add_dimension(..., "
+                           "description=, synonyms=), add_measure(..., "
+                           "description=, synonyms=)",
+                "example": "synonyms: [market value, FV] on fair_value; "
+                           "questions: ['Which sectors hold the most fair value?']",
+                "note": "The model is the semantic layer: description says what "
+                        "a thing means, synonyms the other words people use for "
+                        "it, questions example questions the model answers (Ask "
+                        "offers them as starting chips). They are words for "
+                        "people and agents: nothing computes from them, and a "
+                        "query still names a measure and an attribute by its "
+                        "identifier. Match a person's word to a synonym, then "
+                        "query the identifier. describe_model and get_context "
+                        "(model=) return them; the brief tier keeps descriptions "
+                        "and drops synonyms.",
+            },
             "aggregations": sorted(_AGG_FUNCS) + ["p<N> (percentile, e.g. p90)"],
             "aggregations_note": "median and stddev summarize a distribution's "
                                  "shape — a mean hides skew and tails, so use "
@@ -1734,7 +1762,9 @@ def describe(brief: bool = False) -> dict:
                     "`tracebi migrate connection <that .py> [--write]` "
                     "converts one.",
             "cli": "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb "
-                   "[kind flags] [--test/--no-test] [--force]",
+                   "[kind flags] [--test/--no-test] [--force] [--agents a,b|all]; "
+                   "tracebi connect <name> --agents a,b|all (only the allowlist); "
+                   "tracebi connect --list",
             "kinds": {
                 "postgres": "--url postgresql://...",
                 "snowflake": "--account --user --password --warehouse "
@@ -1769,6 +1799,32 @@ def describe(brief: bool = False) -> dict:
             "when": "Call describe_table before writing a model or an ad-hoc "
                     "measure, so column names come from the catalog instead "
                     "of from an error.",
+        },
+        "source_onboarding": {
+            "mcp": "list_connections(), list_source_tables(connection), "
+                   "describe_source_table(connection, table, sample=20), "
+                   "propose_transform(name, sql, contract_yaml, note), "
+                   "export_table(source, table, to)",
+            "sop": "docs/agents/sop-onboarding.md",
+            "what": "From a connection to a model, when none exists yet. A person "
+                    "sets up the connection in the app and ticks which tables "
+                    "agents may read (agents: {tables: [a, b] | '*'} in "
+                    "connections/<name>.yaml; absent means none). "
+                    "list_connections shows each connection's agent_tables; "
+                    "list_source_tables lists those tables with columns and row "
+                    "estimates; describe_source_table gives columns, a profile "
+                    "and a sample (at most 500 rows). A table agents may not "
+                    "read is 'not found', as a missing one is. "
+                    "propose_transform stores transforms/<name>.sql and "
+                    "<name>.contract.yaml as one code request (the same review "
+                    "as tracebi push): checked first (a new name, SQL that "
+                    "parses in DuckDB, every -- source: a table agents may "
+                    "read, a contract with at least one check); nothing runs "
+                    "until an admin approves it in the app (review_url), and "
+                    "approving runs it once. Then start_draft(kind='models') "
+                    "over the sunk tables. export_table (admin) writes a "
+                    "warehouse table or view to a connection or an object "
+                    "prefix (<prefix>/<table>.parquet) and records an export run.",
         },
         "pointing": {
             "mcp": "workbench_state(report) -> pointing",
@@ -1897,7 +1953,9 @@ def describe(brief: bool = False) -> dict:
                     "equal to the file name), label (optional: what people read "
                     "in lists, e.g. \"Direct Lending Portfolio\"; unset, the name "
                     "title-cased; DataModel(name, label=) in Python), owners (a list "
-                    "of sign-in names allowed to publish it; see drafts), connectors, "
+                    "of sign-in names allowed to publish it; see drafts), "
+                    "description, synonyms and questions (the semantic layer's "
+                    "words; see semantic_model.semantic_words), connectors, "
                     "tables, relationships, dimensions, facts, measures, "
                     "time_grains (dimension, name, source, grain) and value_bins "
                     "(dimension, name, source, edges, labels). Loading it reads "
@@ -1955,13 +2013,30 @@ def describe(brief: bool = False) -> dict:
     return out
 
 
-def describe_model(model) -> dict:
+def describe_model(model, brief: bool = False) -> dict:
     """
     Describe one model's own vocabulary — its tables, relationships,
-    facts, dimensions and declared measures. Thin wrapper over
-    ``DataModel.info()``, here so a consumer has a single entry point.
+    facts, dimensions and declared measures, with the semantic layer's words
+    (descriptions, synonyms, example questions). ``DataModel.info()``, here
+    so every consumer has one entry point: ``tracebi context --model``, the
+    gateway's ``get_context`` and ``describe_model``, and the app's
+    ``GET /api/models/{name}/context`` all return this, so the page shows the
+    exact text an agent receives.
+
+    ``brief=True`` (the token-lean tier) keeps descriptions and questions and
+    drops synonyms.
     """
-    return model.info()
+    info = model.info()
+    if not brief:
+        return info
+    info.pop("synonyms", None)
+    for d in info.get("dimensions", []):
+        d.pop("synonyms", None)
+        for about in d.get("attribute_info", {}).values():
+            about.pop("synonyms", None)
+    for m in info.get("measures", []):
+        m.pop("synonyms", None)
+    return info
 
 
 def to_json(indent: Optional[int] = 2) -> str:

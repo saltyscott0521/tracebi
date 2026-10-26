@@ -32,12 +32,14 @@ _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 SPEC_SUFFIXES = (".yaml", ".yml", ".json")
 
 _TOP = {"name", "label", "owners", "connectors", "tables", "relationships", "dimensions", "facts",
-        "measures", "time_grains", "value_bins"}
+        "measures", "time_grains", "value_bins", "description", "synonyms", "questions"}
 _CONNECTOR = {"name", "type", "database", "connection"}
 _TABLE = {"name", "connector", "source"}
 _RELATIONSHIP = {"name", "left_table", "right_table", "left_key", "right_key",
                  "how"}
-_DIMENSION = {"name", "table", "key", "attributes"}
+_DIMENSION = {"name", "table", "key", "attributes", "description", "synonyms"}
+# An attribute is a column name, or this object when it needs words.
+_ATTRIBUTE = {"name", "label", "description", "synonyms"}
 _FACT = {"name", "table", "measures", "foreign_keys"}
 # The keyword arguments of DataModel.add_time_grain / add_value_bins; `dim`
 # is spelled out as `dimension`, like the dimension's own `table` and `key`.
@@ -46,7 +48,8 @@ _VALUE_BINS = {"dimension", "name", "source", "edges", "labels"}
 # Every keyword DataModel.add_measure takes, plus the measure's name.
 _MEASURE = {"name", "column", "agg", "expr", "ratio", "share", "rank", "running",
             "partition_by", "period_end", "offset", "growth", "to_date", "measure_expr",
-            "label", "description", "format", "allow_rate_agg", "allow_additive", "filters"}
+            "label", "description", "format", "allow_rate_agg", "allow_additive", "filters",
+            "synonyms"}
 _PAIR = {"ratio", "period_end", "to_date"}
 _TRIPLE = {"offset", "growth"}
 _STR = {"column", "agg", "expr", "measure_expr", "share", "rank", "running", "label",
@@ -159,6 +162,19 @@ def owners_errors(owners: Any) -> list[str]:
     return []
 
 
+def _words_errors(item: dict, prefix: str, errors: list[str],
+                  description: bool = True) -> None:
+    """The semantic-layer words on *item*: ``description`` a string,
+    ``synonyms`` a list of non-empty strings. Words only; nothing computes
+    from them. *prefix* leads each path (``dimensions[0].``; empty at the top)."""
+    if description and "description" in item and not isinstance(item["description"], str):
+        errors.append(f"{prefix}description: must be a string")
+    syn = item.get("synonyms")
+    if syn is not None and not (isinstance(syn, list) and all(
+            isinstance(s, str) and s.strip() for s in syn)):
+        errors.append(f"{prefix}synonyms: must be a list of non-empty strings")
+
+
 def validate_model_spec(doc: Any) -> list[str]:
     """Structural errors in a model document, each led by its path
     (``measures[2].agg``). Empty means the shape is right; whether the builder
@@ -171,6 +187,12 @@ def validate_model_spec(doc: Any) -> list[str]:
         errors.append("label: must be a non-empty string (the name people read)")
     if "owners" in doc:
         errors.extend(owners_errors(doc["owners"]))
+    _words_errors(doc, "", errors)
+    qs = doc.get("questions")
+    if qs is not None and not (isinstance(qs, list) and all(
+            isinstance(q, str) and q.strip() for q in qs)):
+        errors.append("questions: must be a list of example questions "
+                      "(plain sentences)")
 
     for path, c in _items(doc, "connectors", _CONNECTOR, errors):
         _need(c, path, ("name",), errors)
@@ -214,9 +236,24 @@ def validate_model_spec(doc: Any) -> list[str]:
             errors.append(f"{path}.how: must be one of {', '.join(_HOWS)}")
     for path, d in _items(doc, "dimensions", _DIMENSION, errors):
         _need(d, path, ("name", "table", "key"), errors)
+        _words_errors(d, f"{path}.", errors)
         attrs = d.get("attributes", [])
-        if not (isinstance(attrs, list) and all(isinstance(a, str) for a in attrs)):
+        if not isinstance(attrs, list):
             errors.append(f"{path}.attributes: must be a list of column names")
+            attrs = []
+        for i, a in enumerate(attrs):
+            where = f"{path}.attributes[{i}]"
+            if isinstance(a, str):
+                continue
+            if not isinstance(a, dict):
+                errors.append(f"{where}: must be a column name or an object "
+                              "{name, label, description, synonyms}")
+                continue
+            errors.extend(_unknown(a, _ATTRIBUTE, where))
+            _need(a, where, ("name",), errors)
+            if "label" in a and not isinstance(a["label"], str):
+                errors.append(f"{where}.label: must be a string")
+            _words_errors(a, f"{where}.", errors)
     for path, f in _items(doc, "facts", _FACT, errors):
         _need(f, path, ("name", "table"), errors)
         ms = f.get("measures")
@@ -264,6 +301,7 @@ def validate_model_spec(doc: Any) -> list[str]:
         for k in ("allow_rate_agg", "allow_additive"):
             if k in m and not isinstance(m[k], bool):
                 errors.append(f"{path}.{k}: must be true or false")
+        _words_errors(m, f"{path}.", errors, description=False)  # in _STR
         if "filters" in m and not (isinstance(m["filters"], dict) and m["filters"]):
             errors.append(f"{path}.filters: must be a non-empty mapping of "
                           "conditions over the fact's columns, e.g. "
@@ -325,7 +363,9 @@ def load_model_spec(path: "str | os.PathLike[str]",
     if errors:
         raise ModelSpecError(path.name, errors)
 
-    model = DataModel(doc["name"], owners=doc.get("owners"), label=doc.get("label"))
+    model = DataModel(doc["name"], owners=doc.get("owners"), label=doc.get("label"),
+                      description=doc.get("description"), synonyms=doc.get("synonyms"),
+                      questions=doc.get("questions"))
     for c in doc.get("connectors", []):
         model.add_connector(_connector(c, root))
     for t in doc.get("tables", []):
@@ -338,7 +378,9 @@ def load_model_spec(path: "str | os.PathLike[str]",
                                how=r.get("how", "left"))
     for d in doc.get("dimensions", []):
         model.add_dimension(d["name"], table_name=d["table"], key_col=d["key"],
-                            attributes=d.get("attributes"))
+                            attributes=d.get("attributes"),
+                            description=d.get("description"),
+                            synonyms=d.get("synonyms"))
     for f in doc.get("facts", []):
         model.add_fact(f["name"], table_name=f["table"], measures=f["measures"],
                        foreign_keys=f.get("foreign_keys"))

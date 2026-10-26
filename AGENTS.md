@@ -735,6 +735,7 @@ freely, never re-source.
   A measure can carry a `label` (`label: Share of fair value` in the YAML, or
   `add_measure(..., label=...)`): the name people read in the app. Without one
   the app humanises the identifier; queries still name the measure by it.
+  The model is the semantic layer: `description`, `synonyms` and `questions` are its agent vocabulary (`describe_model` returns them; match a person's word to a synonym, then query the identifier).
   A report can also calculate its own measures: a `measures` block in its
   `report.json`, keyed by model, takes the model's measure keywords. They serve
   that report's bindings only, the model is not changed, and the trace labels
@@ -758,7 +759,8 @@ freely, never re-source.
 - **Access plane** (MCP): read-and-compute only, and only from the model
   boundary onward. Queries, validation, and spec rendering persist nothing
   beyond an output file. Phase ① never runs over the gateway — it writes the
-  warehouse, and the gateway has no write surface, on purpose. Pipeline
+  warehouse — so an agent only proposes a transform (`propose_transform`),
+  which runs once an admin approves it. Pipeline
   execution (the older warehouse-writing path) is likewise absent from this
   surface.
 
@@ -799,7 +801,7 @@ The http transport requires `TRACEBI_MCP_TOKEN` (send
 `Authorization: Bearer <token>`) — it refuses to start without it unless
 `--insecure` is passed explicitly.
 
-Nineteen tools (`tracebi/mcp_server.py`):
+Twenty-seven tools (`tracebi/mcp_server.py`):
 
 | Tool | Purpose |
 |---|---|
@@ -825,6 +827,11 @@ Nineteen tools (`tracebi/mcp_server.py`):
 | `publish_draft` | Validate and publish: a report must render against the published models, a model must compile. Keeps the version it replaces under `.tracebi/history/` and records a `publish` run. Changes what the app serves, so get the person's go-ahead first. A model that would move or break published reports is refused (`ok: false`, with `impact`) unless you pass `accept_impact=true`; a break needs accepting too, and the accepted impact is recorded in the run. A report goes to `folder` (a library path, created if needed; default its own path). With only Build on that folder the answer is `status: "requested"`: a request for someone with Publish there. A folder that `accepts: checkable` refuses a report whose numbers a query cannot re-run |
 | `list_publish_requests` | Requests to publish a draft into a folder: yours, and those into folders where you hold Publish. `status` filters (`pending`, `approved`, `rejected`) |
 | `decide_publish_request` | Approve (publishes what was requested, recording who approved and when) or reject (`note` required) a pending request. Needs Publish on the destination now; you cannot decide your own. Get the person's go-ahead first |
+| `list_connections` | The project's connections (`connections/<name>.yaml`), each with its `type` and `agent_tables`: the tables a person allowed agents to read (`agents: {tables: [a, b] \| "*"}`; none when absent). Credentials are never shown |
+| `list_source_tables` | One connection's allowed tables, with columns and row estimates. Other tables are not listed |
+| `describe_source_table` | One allowed table: columns, a profile, and `sample` rows (default 20, at most 500). A table agents may not read is "not found", as a missing one is |
+| `propose_transform` | `transforms/<name>.sql` + `<name>.contract.yaml` as one code request (`name`, `sql`, `contract_yaml`, `note`). Checked first: a new name, SQL that parses, every `-- source:` a table you may read, a contract with at least one check. Nothing runs until an admin approves it at `review_url`; approving runs it once. `docs/agents/sop-onboarding.md` walks connection → transform → model → report |
+| `export_table` | Admin: write a warehouse table or view (`source`, `table`) to `to`, a connection's name or an object prefix (`<prefix>/<table>.parquet`). Records an `export` run. Get the person's go-ahead first |
 
 Every tool returns **structured output** (a typed `outputSchema` and
 `structuredContent`, not JSON inside a text blob), so the stamp and the verdict

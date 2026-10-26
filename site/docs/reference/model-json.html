@@ -44,6 +44,7 @@
 <a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
 <a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/connect-a-database.html">Connect a database</a>
 <a href="../guides/sign-in.html">Sign in with your company login</a>
 <a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
@@ -68,6 +69,7 @@
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-onboarding.html">SOP: Onboard a source, from a connection to a report</a>
 <a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
 <a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
@@ -78,6 +80,9 @@ written as data that runs no code.</p>
 <pre><code class="language-yaml"># models/sales_model.yaml
 name: sales_model
 label: Sales Orders
+description: Every order, by the region it ships to.
+questions:
+  - Which regions bring in the most revenue?
 
 connectors:
   - name: warehouse
@@ -91,7 +96,9 @@ dimensions:
   - name: dim_region
     table: dim_region
     key: region_id
-    attributes: [region]
+    description: The sales region an order ships to
+    attributes:
+      - {name: region, synonyms: [territory]}
 
 facts:
   - name: fact_orders
@@ -113,6 +120,8 @@ measures:
     column: amount
     agg: sum
     format: currency0
+    description: Order amounts, summed
+    synonyms: [sales, turnover]
 </code></pre>
 <p>The same model as JSON:</p>
 <pre><code class="language-json">{
@@ -158,6 +167,21 @@ Errors start with their path, e.g. <code>measures[2].agg</code>.</p>
 <td>Optional. What people read where the model is listed (<code>Direct Lending Portfolio</code>). Unset: the name title-cased (<code>portfolio_model</code> → <code>Portfolio Model</code>). <code>GET /api/models</code>, <code>describe_model</code> and <code>tracebi list-models</code> carry it.</td>
 </tr>
 <tr>
+<td><code>description</code></td>
+<td><code>DataModel(name, description=)</code></td>
+<td>Optional. What the model is about, in a sentence or two. Words only: nothing computes from it. The model's Semantic layer page, <code>describe_model</code> and <code>get_context</code> carry it.</td>
+</tr>
+<tr>
+<td><code>synonyms</code></td>
+<td><code>DataModel(name, synonyms=)</code></td>
+<td>Optional list of other names for what the model covers (<code>loan book</code>).</td>
+</tr>
+<tr>
+<td><code>questions</code></td>
+<td><code>DataModel(name, questions=)</code></td>
+<td>Optional list of example questions the model answers, as plain sentences. Ask offers them as starting chips, filling its builder as far as their words name a measure and a dimension (by label, identifier or synonym); an agent receives them in its context.</td>
+</tr>
+<tr>
 <td><code>owners</code></td>
 <td><code>DataModel(name, owners=)</code></td>
 <td>Optional list of sign-in names. Only an owner or an admin may publish a change to this model; others can still draft it and run the impact check. Read from the published file, so a draft cannot grant itself ownership. No <code>owners</code>, or a new model: any analyst may publish. Names only, not groups.</td>
@@ -180,7 +204,7 @@ Errors start with their path, e.g. <code>measures[2].agg</code>.</p>
 <tr>
 <td><code>dimensions</code></td>
 <td><code>add_dimension</code></td>
-<td><code>name</code>, <code>table</code>, <code>key</code>, optional <code>attributes</code></td>
+<td><code>name</code>, <code>table</code>, <code>key</code>, optional <code>attributes</code>, <code>description</code>, <code>synonyms</code>. An attribute is a column name or <code>{name, label, description, synonyms}</code>; a query names it <code>dimension.name</code> either way.</td>
 </tr>
 <tr>
 <td><code>facts</code></td>
@@ -200,11 +224,13 @@ Errors start with their path, e.g. <code>measures[2].agg</code>.</p>
 <tr>
 <td><code>measures</code></td>
 <td><code>add_measure</code></td>
-<td><code>name</code> plus any keyword in <a href="../reference/measures.html">Measures</a>: <code>column</code>, <code>agg</code>, <code>expr</code>, <code>ratio</code>, <code>share</code>, <code>rank</code>, <code>running</code>, <code>partition_by</code>, <code>period_end</code>, <code>offset</code>, <code>growth</code>, <code>to_date</code>, <code>label</code>, <code>description</code>, <code>format</code>, <code>allow_rate_agg</code>, <code>allow_additive</code>. Pairs and triples are lists.</td>
+<td><code>name</code> plus any keyword in <a href="../reference/measures.html">Measures</a>: <code>column</code>, <code>agg</code>, <code>expr</code>, <code>ratio</code>, <code>share</code>, <code>rank</code>, <code>running</code>, <code>partition_by</code>, <code>period_end</code>, <code>offset</code>, <code>growth</code>, <code>to_date</code>, <code>label</code>, <code>description</code>, <code>synonyms</code>, <code>format</code>, <code>allow_rate_agg</code>, <code>allow_additive</code>. Pairs and triples are lists.</td>
 </tr>
 </tbody>
 </table>
-<p><code>time_grains</code> and <code>value_bins</code> call the dimension <code>dimension</code> (the builder's
+<p><code>description</code>, <code>synonyms</code> and <code>questions</code> are the semantic layer's words
+(<a href="../concepts/model.html">Models</a>): they change no query, and <code>tracebi migrate model</code> carries them.
+<code>time_grains</code> and <code>value_bins</code> call the dimension <code>dimension</code> (the builder's
 <code>dim</code>). A publish by someone who is not an owner is refused (HTTP 403, MCP
 <code>ok: false</code>), naming the owners. The model's page in the app shows them.</p>
 <h2 id="connectors">Connectors</h2>

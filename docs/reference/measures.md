@@ -22,6 +22,7 @@ model.add_measure(
     agg=None,               # required for column= and expr=; refused by the rest
     label=None, description="", format=None,
     allow_rate_agg=False, allow_additive=False,
+    synonyms=None,
 )
 ```
 
@@ -30,7 +31,8 @@ model.add_measure(
 | One kind argument | Exactly one of the ten kinds below. |
 | `format` | A name from [[number-formats]]. |
 | `label` | The name people read in the app ("Share of fair value" for `fv_share`). Changes no number; queries still use `name`. Without it the app makes one from the name. |
-| `description` | The shared meaning, shown in tooltips and the trace. |
+| `description` | The shared meaning, shown in tooltips, the trace and the model's Semantic layer page. |
+| `synonyms` | Other words people use for it (`[market value, FV]`). Ask matches them, and an agent receives them in its context, so it can map a person's word to this measure. Words only: a query still uses `name`. |
 
 It returns the model, so calls chain.
 

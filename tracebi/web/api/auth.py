@@ -99,6 +99,11 @@ def _required_role(method: str, path: str) -> str:
     if path.startswith("/api/credentials/") or (
             path.startswith("/api/connectors/") and path.endswith("/test")):
         return "admin"
+    # Adding, editing or deleting a connection decides which of the server's
+    # databases (and secrets) the project reads; an upload puts a file in it.
+    if path == "/api/connections" or path.startswith("/api/connections/") \
+            or path == "/api/inputs":
+        return "admin"
     # Explore and spec validation compute but persist nothing, so they sit
     # with the reads rather than behind an execute permission.
     if path.startswith("/api/models/") and path.endswith("/query"):
@@ -109,7 +114,14 @@ def _required_role(method: str, path: str) -> str:
 
 
 def _credential_write(method: str, path: str) -> bool:
-    return method in ("PUT", "DELETE") and path.startswith("/api/credentials/")
+    if method in ("PUT", "DELETE") and path.startswith("/api/credentials/"):
+        return True
+    # A connection written in the app points the server at a database and can
+    # carry a secret into the store, and an upload writes into the project:
+    # the same identified admin as a credential.
+    return method in ("POST", "PUT", "DELETE") and (
+        path == "/api/connections" or path.startswith("/api/connections/")
+        or path == "/api/inputs")
 
 
 def credential_write_refusal(request: Request) -> Response:
@@ -120,11 +132,20 @@ def credential_write_refusal(request: Request) -> Response:
     public demo, anyone could point the connections at a host of their
     choosing. So this one write needs a sign-in role of admin, and without
     sign-in the answer names the command that does it on the server."""
-    name = request.url.path.rsplit("/", 1)[-1] or "NAME"
-    reason = f"credentials are set on the server: tracebi secret set {name}"
+    path = request.url.path
+    if path.startswith("/api/connections") or path == "/api/inputs":
+        name = path.rsplit("/", 1)[-1] if path.startswith("/api/connections/") else "<name>"
+        what, command = "Connections", f"tracebi connect {name} --kind ..."
+        if path == "/api/inputs":
+            what, command = "Files", "put the file in inputs/, then tracebi connect"
+        reason = f"connections are set up on the server: {command}"
+    else:
+        name = path.rsplit("/", 1)[-1] or "NAME"
+        what, command = "Credentials", f"tracebi secret set {name}"
+        reason = f"credentials are set on the server: {command}"
     return JSONResponse(status_code=403, content={"detail": {
-        "message": (f"Credentials can be changed here only by a signed-in admin, and "
-                    f"this server has no sign-in. On the server: tracebi secret set {name}"),
+        "message": (f"{what} can be changed here only by a signed-in admin, and "
+                    f"this server has no sign-in. On the server: {command}"),
         "reason": reason, "required_role": "admin"}})
 
 

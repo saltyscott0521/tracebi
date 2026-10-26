@@ -808,7 +808,7 @@ def cmd_context(args: argparse.Namespace) -> int:
     tool or agent authoring a project; add --model to include a specific
     model's tables, dimensions and declared measures.
     """
-    from tracebi.capabilities import describe
+    from tracebi.capabilities import describe, describe_model
 
     payload = describe(brief=getattr(args, "brief", False))
     from tracebi.reports.stack import project_house_style
@@ -816,7 +816,8 @@ def cmd_context(args: argparse.Namespace) -> int:
     if args.model:
         from tracebi.model_registry import get_model
         try:
-            payload["model"] = get_model(args.model).info()
+            payload["model"] = describe_model(get_model(args.model),
+                                              brief=getattr(args, "brief", False))
         except (KeyError, AttributeError) as exc:
             print(f"Could not describe model '{args.model}': {exc}", file=sys.stderr)
             return 1
@@ -3972,7 +3973,19 @@ def build_parser() -> argparse.ArgumentParser:
              "bigquery, duckdb): test it, write the secret to .env, and "
              "write connections/<name>.yaml.",
     )
-    p_connect.add_argument("name", help="Connection name, letters, digits and underscore (e.g. wh).")
+    p_connect.add_argument("name", nargs="?",
+                           help="Connection name, letters, digits and underscore (e.g. wh).")
+    p_connect.add_argument(
+        "--list", action="store_true",
+        help="List the connections in connections/, each with its type and the "
+             "tables agents may read.",
+    )
+    p_connect.add_argument(
+        "--agents", metavar="TABLES",
+        help="Which tables agents may read: a,b or all (agents: in the file; "
+             "absent, none). With no --kind, changes only that on an existing "
+             "connection.",
+    )
     p_connect.add_argument(
         "--kind", choices=["postgres", "snowflake", "bigquery", "duckdb"],
         help="Warehouse kind. Prompted when stdin is a terminal.",

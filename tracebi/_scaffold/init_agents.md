@@ -238,6 +238,7 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
 - A measure can carry a `label` (YAML: `label: Total revenue` on the measure):
   the name people read in the app. Without one the app humanises the
   identifier; queries and bindings still name the measure by it.
+- The model is the semantic layer: `description`, `synonyms` and `questions` are its agent vocabulary (`describe_model` returns them; match a person's word to a synonym, then query the identifier).
 - A report can calculate its own measures: a `"measures"` block in its
   `report.json`, keyed by model (`{"sample_model": {"big_minus_small":
   {"measure_expr": "big_orders - small_orders"}}}`), takes the model's measure
@@ -507,6 +508,17 @@ pass `accept_impact=true`, a break included. A model that names `owners` is publ
 and nothing goes live until publish. `publish_draft(..., folder="finance/q3")` publishes a report into that folder; if you hold only Build there it returns `status: "requested"` and a person with Publish approves it (`list_publish_requests`, `decide_publish_request`), so tell the person it is waiting rather than publishing another way. A signed-in person also has `my-published/<their sign-in name>` (My published in the app), where they hold Publish, so `folder` there publishes directly; with no sign-in identity there is none. A folder whose `_folder.yaml` says `accepts: checkable` refuses a report whose numbers a query cannot re-run. Publish a model before a report that uses
 it. A declarative model, `models/<name>.yaml` or `.json`, can be drafted this
 way (writing the other form replaces the draft file); a Python model cannot.
+
+**No model yet? Start from a connection.** A person sets up the connection
+and ticks the tables agents may read (`agents: {tables: [a, b]}` in
+`connections/<name>.yaml`); five tools take it from there, in this order
+(`docs/agents/sop-onboarding.md` in the TraceBi handbook walks it):
+
+- `list_connections` — each connection's type and the tables agents may read.
+- `list_source_tables(connection)` — those tables, with columns and row estimates.
+- `describe_source_table(connection, table, sample=20)` — columns, a profile and sample rows; any other table is "not found".
+- `propose_transform(name, sql, contract_yaml, note)` — the SQL and its contract as a code request; an admin approves it and it runs once, so wait for that, then draft the model.
+- `export_table(source, table, to)` — admin only: a warehouse table out to a connection or an object prefix.
 
 **What a remote draft may hold.** A report draft takes `report.json`,
 `template.html`, `style.css` and `script.js`; a model draft takes its one

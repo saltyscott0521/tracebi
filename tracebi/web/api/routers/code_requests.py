@@ -81,14 +81,16 @@ def _run(names: list) -> list:
 
 @router.post("/{request_id}/approve")
 def approve_code_request(request_id: str, body: Optional[DecideBody] = None):
-    """Copy the files in, then run the pipelines they touch once, with this
-    server's secrets; the request records each run."""
+    """Copy the files in, then run the pipelines they touch once, and any
+    transform no pipeline runs, with this server's secrets; the request
+    records each run."""
     try:
         out = code_requests.decide(request_id, True, get_actor()[0],
                                    (body.note if body else "") or None)
     except (drafts.DraftError, PermissionError) as exc:
         raise _refused(exc)
     runs = _run(out.pop("pipelines", []))
+    runs += code_requests.run_transforms(out.pop("transforms", []))
     code_requests.record_runs(request_id, runs)
     return {**out, "runs": runs}
 

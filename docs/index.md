@@ -30,7 +30,7 @@ How data moves from raw files to a checked report.
 - [[the-three-phase-workflow]] — A TraceBi project moves data through three folders: a transform cleans it, a model defines it, and a report presents it
 - [[transform]] — A transform is a file in `transforms/` that reads raw data, cleans it, and writes star-schema tables into the warehouse
 - [[sink-contracts]] — A sink contract is a list of checks a transform's tables must pass before the data counts
-- [[model]] — A model is a YAML file in `models/` that names the warehouse tables a report may read, how they join, and the measures it can compute
+- [[model]] — A model is the semantic layer: the one place that says what the data means
 - [[models-and-connectors]] — A model says what the data means; a connector says where it is
 - [[report]] — A report is a folder in `reports/` whose every figure is a query against a model
 - [[trace]] — Every number a report draws from a model has a trace: a record of how it was made
@@ -45,6 +45,7 @@ Step-by-step instructions for common tasks.
 - [[notebook-guide]] — Explore data in Jupyter with rich previews, then turn the notebook into a transform that writes the warehouse
 - [[styling-a-report]] — Give a report your colours, fonts and layout by setting design tokens, using the shipped components, and adding your own CSS and JavaScript
 - [[one-server]] — Serve a project, its schedules and its email from one container on one virtual machine
+- [[connect-a-database]] — Add a database, or a file, as a source from the app, and choose which of its tables an agent may read
 - [[sign-in]] — Turn on single sign-on so people sign in to TraceBi with their company account and get a role from their groups
 - [[push-from-a-laptop]] — Build and preview on your own machine, then send the files to the server with `tracebi push`
 - [[connect-chatgpt-and-claude]] — Let people add TraceBi as a connector in ChatGPT or Claude and sign in with their company login
@@ -77,6 +78,7 @@ Every file, key, command and route.
 
 Procedures for AI agents. An agent reads AGENTS.md first.
 
+- [[sop-onboarding]] — From a connection a person set up to a model and a report
 - [[sop-authoring]] — Author a report through the gateway, step by step
 - [[sop-model-changes]] — Change a model's measures and keys safely
 

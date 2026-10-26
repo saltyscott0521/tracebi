@@ -168,6 +168,73 @@ def test_only_a_signed_in_admin_sets_a_credential_and_it_is_recorded(sso, idp, s
         ("set", "ad@example.com", "admin"), ("unset", "ad@example.com", "admin")}
 
 
+def test_an_admin_sets_up_a_connection_and_says_what_agents_may_read(
+        sso, idp, scaffolded, monkeypatch):
+    """Add a connection → test it → tick two tables for agents → delete it
+    once nothing reads it. Catches a form write that lands a secret in the
+    file, an allowlist the tables list does not show, a delete that strands a
+    transform, and a write open to an analyst."""
+    import sqlite3
+
+    from tests.e2e.conftest import run_cli
+    from tracebi.connections import agent_may_read
+    from tracebi.web import discovery
+
+    monkeypatch.setattr(discovery, "_live_connections", {})
+    db = sqlite3.connect(scaffolded / "inputs" / "bank.sqlite")
+    for table in ("accounts", "branches", "loans"):
+        db.execute(f"CREATE TABLE {table} (id INTEGER)")
+    db.commit()
+    db.close()
+    analyst, admin = sso(), sso()
+    sign_in_browser(analyst, idp, sub="u-a", email="a@example.com", groups=["bi-analysts"])
+    sign_in_browser(admin, idp, sub="u-ad", email="ad@example.com", groups=["bi-admins"])
+    bank = {"name": "bank", "type": "sql", "label": "Core banking",
+            "fields": {"url": "sqlite:///inputs/bank.sqlite"}}
+
+    refused = analyst.post("/api/connections", json=bank)
+    assert refused.status_code == 403 and refused.json()["detail"]["required_role"] == "admin"
+    assert admin.post("/api/connections/test", json=bank).json() == {"ok": True, "tables": 3}
+    made = admin.post("/api/connections", json=bank)
+    assert made.status_code == 201, made.text
+    assert made.json()["connection_type"] == "sql" and made.json()["agent_tables"] is None
+    assert admin.post("/api/connections", json=bank).status_code == 409
+    assert admin.post("/api/connectors/bank/test").json() == {"ok": True, "tables": 3}
+
+    # A URL with a password goes to the store; the file names it.
+    crm = admin.post("/api/connections", json={"name": "crm", "type": "postgres", "fields": {
+        "url": "postgresql+psycopg://u:throwaway@127.0.0.1:9/x"}})
+    assert crm.status_code == 201 and "throwaway" not in crm.text
+    text = (scaffolded / "connections" / "crm.yaml").read_text()
+    assert "url: ${TRACEBI_CRM_URL}" in text and "throwaway" not in text
+    rows = {r["name"]: r for r in admin.get("/api/credentials").json()["credentials"]}
+    assert rows["TRACEBI_CRM_URL"]["source"] == "store"
+
+    # Tick two tables: the file says so, the list marks them, the one check agrees.
+    ticked = admin.put("/api/connections/bank", json={"agents": {"tables": ["accounts", "loans"]}})
+    assert ticked.status_code == 200 and ticked.json()["agent_tables"] == ["accounts", "loans"]
+    assert ticked.json()["label"] == "Core banking"
+    marks = {t["name"]: t["agents"] for t in admin.get("/api/connectors/bank/tables").json()["tables"]}
+    assert marks == {"accounts": True, "branches": False, "loans": True}
+    assert agent_may_read("bank", "loans") and not agent_may_read("bank", "branches")
+    code, out = run_cli("connect", "--list")
+    assert code == 0 and "bank  sql  agents may read: accounts, loans" in out, out
+    code, out = run_cli("connect", "bank", "--agents", "all")
+    assert code == 0, out
+    assert agent_may_read("bank", "branches")
+
+    # Delete: refused while a transform reads it, then gone.
+    reader = scaffolded / "transforms" / "reads_bank.sql"
+    reader.write_text("-- source: bank.accounts\nCREATE OR REPLACE TABLE a AS SELECT * FROM bank.accounts;\n")
+    stuck = admin.delete("/api/connections/bank")
+    assert stuck.status_code == 409
+    assert stuck.json()["detail"]["read_by"]["transforms"] == [{"name": "reads_bank", "tables": ["accounts"]}]
+    reader.unlink()
+    assert admin.delete("/api/connections/bank").status_code == 204
+    assert not (scaffolded / "connections" / "bank.yaml").exists()
+    assert "bank" not in {c["name"] for c in admin.get("/api/connectors").json()}
+
+
 def test_what_a_person_does_is_recorded_under_their_name(sso, idp):
     """The actor ContextVar is set around the request, as in the other modes."""
     b = sso()

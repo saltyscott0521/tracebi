@@ -218,7 +218,7 @@ def mcp_session(c, token):
     return session
 
 
-def tool(c, token, session, name, **arguments):
+def tool(c, token, session, name, /, **arguments):   # a tool may take a `name` argument
     resp, got = _mcp_call(c, "tools/call", {"name": name, "arguments": arguments},
                           session=session, token=token)
     assert resp.status_code == 200, resp.text
@@ -358,12 +358,19 @@ def test_the_role_comes_from_the_groups_and_a_viewer_only_reads(signin, idp):
         "write_draft_file": {"kind": "reports", "path": "x", "file": "report.json", "content": ""},
         "preview_draft": {"kind": "reports", "path": "x"},
         "publish_draft": {"kind": "reports", "path": "x"},
-        "decide_publish_request": {"request_id": "r", "approve": True}}
+        "decide_publish_request": {"request_id": "r", "approve": True},
+        "propose_transform": {"name": "x", "sql": "", "contract_yaml": "", "note": "n"},
+        "export_table": {"source": "warehouse", "table": "t", "to": "crm"}}
     assert set(arguments) == _WRITE_TOOLS
     for name, args in arguments.items():
         refused = tool(c, token, session, name, **args)
         assert refused["isError"] is True, name
         assert "your role (viewer)" in refused["content"][0]["text"], (name, refused)
+    # Writing outside the project is an admin's: an analyst is refused too.
+    _, analyst = sign_in(c, idp, sub="u-a", email="ann@example.com", groups=["bi-analysts"])
+    refused = tool(c, analyst["access_token"], mcp_session(c, analyst["access_token"]),
+                   "export_table", **arguments["export_table"])
+    assert "your role (analyst) may not call export_table" in refused["content"][0]["text"]
 
     # The default role is configurable and an unmapped person is not an analyst.
     assert tool(c, token, session, "list_drafts")["structuredContent"]["drafts"] == []

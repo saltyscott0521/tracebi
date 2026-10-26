@@ -3,9 +3,9 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom'
 
 import { StorageLine, sourceKind } from '../components/Storage'
 import { measureDefinition, modelSchema } from '../components/modelGraph'
-import { dimensionLabel, encodeQuery, humanise, inSentence } from '../ask'
+import { dimensionLabel, encodeQuery, humanise, inSentence, questionQuery } from '../ask'
 import {
-  useModels, useModel, useDesk, useReports, usePipelines, useWarehouses,
+  useModels, useModel, useModelContext, useDesk, useReports, usePipelines, useWarehouses,
 } from '../api'
 import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
@@ -13,7 +13,7 @@ import DataBrowser, { InspectorSection } from '../components/DataBrowser'
 import { count } from '../format'
 import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 import {
-  Card, Badge, BtnLink, Chip, Empty, SkeletonList, SkeletonCard,
+  Card, Badge, BtnLink, Chip, Empty, ErrorDetail, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
 // ── Measures ──────────────────────────────────────────────────────────────────
@@ -29,10 +29,30 @@ const FORMAT_SAMPLES = {
 const askMeasure = (model, name) =>
   `${askPath(model)}&q=${encodeURIComponent(encodeQuery({ measures: [name], dimensions: [], filters: {} }))}`
 
+// A measure as it is declared, compactly, in the model file's own terms:
+// sum(fair_value), spread_x_par / par_amount, rank: fair_value.
+function declaredAs(m) {
+  const where = m.filters ? ` where ${JSON.stringify(m.filters)}` : ''
+  const per = (m.partition_by || []).length ? ` per ${m.partition_by.join(', ')}` : ''
+  if (m.ratio) return `${m.ratio[0]} / ${m.ratio[1]}`
+  if (m.share) return `share: ${m.share}`
+  if (m.rank) return `rank: ${m.rank}${per}`
+  if (m.running) return `running: ${m.running}${per}`
+  if (m.measure_expr) return m.measure_expr
+  if (m.period_end) return `period_end: ${m.period_end.join(', ')}`
+  if (m.offset) return `offset: ${m.offset.join(', ')}`
+  if (m.growth) return `growth: ${m.growth.join(', ')}`
+  if (m.to_date) return `to_date: ${m.to_date.join(', ')}`
+  if (m.expr) return `${m.agg}(${m.expr})${where}`
+  if (m.column) return `${m.agg}(${m.column})${where}`
+  return ''
+}
+
 // The model's named measures are its semantic contract: every report and
-// query asks for them by name, so they are defined once, here. A row the
-// address names (?measure=, as ⌘K links one) is scrolled to and marked.
-function MeasuresTable({ model, measures, target }) {
+// query asks for them by name, so they are defined once, here, with the words
+// people and agents use for them. A row the address names (?measure=, as ⌘K
+// links one) is scrolled to and marked; *onPick* selects its fact.
+function MeasuresTable({ model, measures, target, answers = {}, onPick }) {
   const targetRow = useRef(null)
   useEffect(() => { targetRow.current?.scrollIntoView({ block: 'center' }) }, [target])
   if (!measures.length) return <Empty message="This model declares no named measures." />
@@ -43,12 +63,22 @@ function MeasuresTable({ model, measures, target }) {
         {measures.map(m => {
           const label = m.label || m.description || humanise(m.name)
           const here = m.name === target
+          const about = m.description && m.description !== label ? m.description : null
           return (
             <tr key={m.name} ref={here ? targetRow : undefined} className={here ? 'mlist__target' : undefined}
                 data-measure={m.name}>
               <td>
-                <span className="mlist__label">{label}</span>
+                {onPick
+                  ? <button type="button" className="mlist__label mlist__pick" onClick={() => onPick(m.name)}
+                            title="Select the fact it runs on">{label}</button>
+                  : <span className="mlist__label">{label}</span>}
                 <code className="mlist__id">{m.name}</code>
+                <code className="mlist__expr">{declaredAs(m)}</code>
+                {about && <span className="mlist__about">{about}</span>}
+                {(m.synonyms || []).length > 0 && <span className="mlist__also">Also: {m.synonyms.join(', ')}</span>}
+                {(answers[m.name] || []).length > 0 && (
+                  <span className="mlist__also">Answers: {answers[m.name].map(q => `“${q}”`).join(' ')}</span>
+                )}
                 <span className="mlist__def-inline">{measureDefinition(m)}</span>
               </td>
               <td className="mlist__def">{measureDefinition(m)}</td>
@@ -122,9 +152,12 @@ const SINK_WORDS = { stale: 'changed since its checks last passed', no_contract:
 
 // The summary's folds, in the address as ?view= (one open at a time), so a
 // reload keeps the one you are on and the model page's older addresses
-// (?view=measures, relationships, storage, code) still open what they named.
-// ?view=diagram and ?view=tables are the browser itself.
-const FOLDS = [['measures', 'Measures'], ['relationships', 'Joins'], ['storage', 'Storage'], ['code', 'Code']]
+// (?view=relationships, storage, code) still open what they named.
+// ?view=measures names the Semantic layer's Measures, always open; the
+// address only brings it into view. ?view=diagram and ?view=tables are the
+// browser itself.
+const FOLDS = [['relationships', 'Joins'], ['storage', 'Storage'], ['code', 'Code'], ['agent', 'What an agent sees']]
+const VIEWS = ['measures', ...FOLDS.map(([k]) => k)]
 
 const shapeWords = e => (e.cardinality === 'many-to-one' ? 'Many to one'
   : e.how ? `${e.how[0].toUpperCase()}${e.how.slice(1)} join` : 'Join')
@@ -147,11 +180,84 @@ function JoinsTable({ edges }) {
   )
 }
 
-// The inspector with nothing selected: what the model is, in a few lines, its
-// two actions, and its measures, joins, storage and code folded under them.
-function ModelSummary({ name, data, schema, desk, action, view, setView }) {
-  const grainRefs = (data.dimensions || []).flatMap(d => (d.attributes || []).map(attr => `${d.name}.${attr}`))
-  const grain = grainRefs.map(ref => inSentence(dimensionLabel(data, ref))).join(' · ')
+// The grain in one sentence: each fact and the dimensions it is measured by
+// (its declared joins; the model declares no more than that).
+function grainSentence(data) {
+  const facts = (data.facts || []).map(f => {
+    const by = Object.keys(f.foreign_keys || {}).map(dim => {
+      const d = (data.dimensions || []).find(x => x.name === dim)
+      return inSentence(d?.attributes?.length ? dimensionLabel(data, `${dim}.${d.attributes[0]}`) : humanise(dim))
+    })
+    return `${inSentence(humanise(f.name))}${by.length ? ` by ${listWords(by)}` : ''}`
+  })
+  return facts.join('; ')
+}
+const listWords = items => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
+
+// Each dimension with its attributes, in the words the model gives them.
+function DimensionsList({ data }) {
+  const dims = data.dimensions || []
+  if (!dims.length) return <p className="dbx-quiet">This model declares no dimensions.</p>
+  return (
+    <ul className="sem-dims">
+      {dims.map(d => (
+        <li key={d.name} data-dimension={d.name}>
+          <span className="sem-dims__top"><strong>{humanise(d.name)}</strong> <code>{d.name}</code></span>
+          {d.description && <span className="sem-dims__about">{d.description}</span>}
+          {(d.synonyms || []).length > 0 && <span className="mlist__also">Also: {d.synonyms.join(', ')}</span>}
+          <ul className="sem-attrs">
+            {[...(d.attributes || []), ...Object.keys(d.derived || {})].map(attr => {
+              const about = d.attribute_info?.[attr] || {}
+              const derived = d.derived?.[attr]
+              return (
+                <li key={attr}>
+                  <code>{attr}</code>
+                  {about.label && <span> {about.label}</span>}
+                  {about.description && <span className="sem-dims__about"> · {about.description}</span>}
+                  {derived && <span className="sem-dims__about"> · {derived.grain ? `${derived.grain} of ${derived.of}` : `bands of ${derived.of}`}</span>}
+                  {(about.synonyms || []).length > 0 && <span className="mlist__also"> · also {about.synonyms.join(', ')}</span>}
+                </li>
+              )
+            })}
+          </ul>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// What `get_context --model` hands an agent for this model, read when shown:
+// the same function behind the CLI, the gateway and this route.
+function AgentContext({ name }) {
+  const { data, error, isLoading } = useModelContext(name)
+  if (isLoading) return <SkeletonList />
+  if (error) return <ErrorDetail error={error} />
+  return (
+    <>
+      <p className="dbx-quiet">
+        The <code>model</code> that <code>tracebi context --model {name}</code> and the agent&rsquo;s
+        <code> get_context</code> return: curating the words above curates this.
+      </p>
+      <pre className="sem-agent" tabIndex={0} aria-label="What an agent sees"><code>{JSON.stringify(data, null, 2)}</code></pre>
+    </>
+  )
+}
+
+// The inspector with nothing selected: the Semantic layer. What the model is
+// about, its grain, its measures, dimensions and example questions in the
+// words people and agents use, then its joins, storage, code and the exact
+// text an agent receives, folded under them.
+function ModelSummary({ name, data, schema, desk, action, view, setView, onPickMeasure }) {
+  const grain = grainSentence(data)
+  const questions = data.questions || []
+  // A question answers the measure its words name (the match Ask makes).
+  const answers = {}
+  for (const q of questions) {
+    const m = questionQuery(data, q)?.measures?.[0]
+    if (m) (answers[m] = answers[m] || []).push(q)
+  }
+  const measuresRef = useRef(null)
+  useEffect(() => { if (view === 'measures') measuresRef.current?.scrollIntoView({ block: 'start' }) }, [view])
   const sinks = desk?.sinks || []
   const where = (data.connector_details || []).filter(c => c.storage?.where).map(c => c.storage.where)
   const fold = (key, body) => {
@@ -166,8 +272,11 @@ function ModelSummary({ name, data, schema, desk, action, view, setView }) {
   return (
     <div className="dbx-insp__summary">
       <header className="dbx-insp__head">
+        <p className="sem-eyebrow">Semantic layer</p>
         <div className="dbx-insp__title"><h2 className="dbx-insp__name dbx-insp__name--sans">{data.label || name}</h2></div>
-        {grain && <p className="dbx-insp__sub" title={grainRefs.join(', ')}>Grain: {grain}</p>}
+        {data.description && <p className="sem-lede">{data.description}</p>}
+        {grain && <p className="dbx-insp__sub">Grain: {grain}</p>}
+        {(data.synonyms || []).length > 0 && <p className="dbx-insp__sub">Also called {data.synonyms.join(', ')}</p>}
         <p className="dbx-insp__sub">
           {count(schema.tables.length, 'table')} · {count(schema.edges.length, 'join')} · {count((data.measures || []).length, 'measure')}
         </p>
@@ -182,10 +291,27 @@ function ModelSummary({ name, data, schema, desk, action, view, setView }) {
           <BtnLink size="sm" to={askPath(name)}>Ask this model</BtnLink>
         </div>
       </header>
-      {fold('measures', <MeasuresTable model={name} measures={data.measures || []} target={null} />)}
+      <div ref={measuresRef}>
+        <InspectorSection id="measures" title="Measures" aside={count((data.measures || []).length, 'measure')}>
+          <MeasuresTable model={name} measures={data.measures || []} target={null} answers={answers} onPick={onPickMeasure} />
+        </InspectorSection>
+      </div>
+      <InspectorSection id="dimensions" title="Dimensions" aside={count((data.dimensions || []).length, 'dimension')}>
+        <DimensionsList data={data} />
+      </InspectorSection>
+      <InspectorSection id="questions" title="Questions">
+        {questions.length === 0 ? (
+          <p className="dbx-quiet">No example questions. List a few under <code>questions:</code> in the model file: Ask offers them, and an agent reads them.</p>
+        ) : (
+          <ul className="sem-questions">
+            {questions.map(q => <li key={q}><Link to={askPath(name)}>{q}</Link></li>)}
+          </ul>
+        )}
+      </InspectorSection>
       {fold('relationships', <JoinsTable edges={schema.edges} />)}
       {fold('storage', <ModelStorage details={data.connector_details || []} tables={data.tables} hidden={data.hidden_framework_tables} />)}
       {fold('code', <CodeView kind="models" name={name} />)}
+      {fold('agent', <AgentContext name={name} />)}
       <FrameworkHidden n={data.hidden_framework_tables} />
     </div>
   )
@@ -234,7 +360,7 @@ export function ModelDetail({ name, action }) {
   // The selected table, the open fold and the named measure are the
   // address's (?table=, ?view=, ?measure=): each change is a step Back undoes.
   const [params, setParams] = useSearchParams()
-  const view = FOLDS.some(([v]) => v === params.get('view')) ? params.get('view') : null
+  const view = VIEWS.includes(params.get('view')) ? params.get('view') : null
   const measure = params.get('measure')
   const schema = useMemo(() => (data ? modelSchema(data) : null), [data])
   // The tree's counts and checks: from the warehouse listing (one read) when
@@ -266,11 +392,24 @@ export function ModelDetail({ name, action }) {
     if (v) n.set('view', v); else n.delete('view')
     return n
   })
+  // A measure picked in the Semantic layer selects the fact it runs on (the
+  // address's ?measure=, as ⌘K links one).
+  const pickMeasure = m => {
+    const fact = (data.facts || []).find(f => (f.runnable_measures || []).includes(m))
+    setParams(p => {
+      const n = new URLSearchParams(p)
+      n.set('measure', m)
+      n.delete('view')
+      if (fact) n.set('table', fact.table); else n.delete('table')
+      return n
+    })
+  }
 
   return (
     <DataBrowser
       schema={schema} storeKey={`model-${name}`} label={`${data.label || name}: tables, joins and measures`}
-      summary={<ModelSummary name={name} data={data} schema={schema} desk={desk} action={action} view={view} setView={setView} />}
+      summary={<ModelSummary name={name} data={data} schema={schema} desk={desk} action={action} view={view} setView={setView}
+                             onPickMeasure={pickMeasure} />}
       summaryOpen={!!view} infoOf={infoOf}
       measuresOf={t => <FactMeasures model={name} data={data} table={t.id} target={measure} />}
       emptyNote={<>This model declares no relationships. Give a fact its <code>foreign_keys:</code>, or list one under <code>relationships:</code>.</>}

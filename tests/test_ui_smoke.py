@@ -780,19 +780,31 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             tops = {round(card.bounding_box()["y"]) for card in cards.all()}
             assert cards.count() == 3 and len(tops) == 1, tops
 
-            # The model's view is in the address. Measures (a fold of the data
-            # browser's summary): every measure says what it is in words (rank
-            # and running total too), and a reload stays on it.
+            # The model's summary is its Semantic layer, and ?view=measures (an
+            # older address) still opens it at Measures: every measure says
+            # what it is in words (rank and running total too), with its
+            # description and synonyms, and a reload stays on it.
             page.goto(base + "/data/portfolio_model?view=measures")
             measure_rows = page.locator("tr[data-measure]")
             measure_rows.first.wait_for()
-            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-expanded", "true")
+            expect(page.get_by_text("Semantic layer", exact=True)).to_be_visible()
             defs = page.locator("tr[data-measure] td.mlist__def").all_inner_texts()
             assert len(defs) == measure_rows.count() and all(d.strip() for d in defs), defs
             expect(page.locator('tr[data-measure="fv_rank"] td.mlist__def')).to_have_text("rank by fair value, largest first")
+            fv_row = page.locator('tr[data-measure="fair_value"]')
+            expect(fv_row).to_contain_text("Total fair value")
+            expect(fv_row).to_contain_text("market value")
+            expect(fv_row).to_contain_text("Which sectors hold the most fair value?")
             page.reload()
             measure_rows.first.wait_for()
-            expect(page.get_by_role("button", name="Measures", exact=True)).to_have_attribute("aria-expanded", "true")
+            # What an agent sees is the model the context route returns.
+            page.get_by_role("button", name="What an agent sees", exact=True).click()
+            expect(page.locator("pre.sem-agent")).to_contain_text('"questions"')
+            # A measure picked there selects the fact it runs on.
+            fv_row.get_by_role("button", name="Total fair value").click()
+            page.wait_for_url(re.compile(r"/data/portfolio_model\?.*table=fact_holdings"))
+            expect(page.get_by_role("complementary", name="Inspector").locator(
+                '[data-measure="fair_value"]')).to_have_class(re.compile(r"\bis-on\b"))
             # Tables: ?table= (with the old ?view=tables) selects that table:
             # its sample is read through the table API, its page one link away.
             with urllib.request.urlopen(base + "/api/tables/warehouse/fact_holdings") as resp:

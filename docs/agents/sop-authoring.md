@@ -22,10 +22,12 @@ from it.
   number is wrong or missing below the model, this SOP cannot fix it: escalate
   to a model change ([[sop-model-changes]]), or to a transform change if the
   data was never written.
+- **No model yet?** When the data sits in a connection and nothing has been
+  sunk or modelled, start with step 0 below, then come back to step 1.
 
 ### The tools
 
-The gateway has twenty-two tools and three prompts (`author_report`,
+The gateway has twenty-seven tools and three prompts (`author_report`,
 `answer_question`, `address_pins`) that run this procedure for you. The MCP
 `tools/list` call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with `build_report`. Over a
@@ -52,6 +54,11 @@ hosted connection, the draft tools are how a package reaches the server
 | `model_impact` | For a model draft: each published report that reads the model, unchanged, moves or breaks |
 | `publish_draft` | Publish a draft, or open a publish request where the folder asks for one |
 | `list_publish_requests` · `decide_publish_request` | Requests into folders where you hold Publish; approve or reject one |
+| `list_connections` | The project's connections, each with the tables a person allowed agents to read |
+| `list_source_tables` | One connection's allowed tables, with columns and row estimates |
+| `describe_source_table` | One allowed table's columns, profile and a sample of rows (`sample`, at most 500) |
+| `propose_transform` | Store `transforms/<name>.sql` and its `.contract.yaml` as a code request; an admin approves it and it runs once |
+| `export_table` | Admin: write a warehouse table or view to a connection or an object prefix |
 
 ### Assurance levels
 
@@ -65,6 +72,25 @@ hosted connection, the draft tools are how a package reaches the server
 Work at L2. Drop to L1 only when the six section types cannot express the
 page, and then step 6 is mandatory, because nothing checks your
 transcription.
+
+## 0. No model yet: start from the data
+
+Skip this step when a model already answers the question. Otherwise, in
+order ([[sop-onboarding]] walks it in full):
+
+1. **Explore what you may read.** `list_connections`, then
+   `list_source_tables(connection)` and
+   `describe_source_table(connection, table)`. Only the tables a person
+   allowed agents to read are there; any other answers "not found".
+2. **Propose a transform.** `propose_transform(name, sql, contract_yaml,
+   note)`: SQL that reads those tables through `-- source:` lines and sinks
+   clean star-schema tables, with a contract of checks on them.
+3. **Wait for the approval.** Give the person the request id and its
+   `review_url`. Nothing has run: an admin approves it and it runs once.
+   Until then its tables do not exist.
+4. **Draft the model.** `start_draft(kind="models", path=<name>)` over the
+   sunk tables (`describe_table` gives their columns), `preview_draft`, then
+   `publish_draft` once the person agrees. Then go on to step 1.
 
 ## 1. Load the contract with `get_context`
 

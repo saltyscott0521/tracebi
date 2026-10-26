@@ -44,6 +44,7 @@
 <a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
 <a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/connect-a-database.html">Connect a database</a>
 <a href="../guides/sign-in.html">Sign in with your company login</a>
 <a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
@@ -68,6 +69,7 @@
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-onboarding.html">SOP: Onboard a source, from a connection to a report</a>
 <a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
 <a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
@@ -90,6 +92,9 @@ connectors:
 <p>A SQL transform reads one of its tables with a header line
 <code>-- source: wh.&lt;table&gt;</code> (<a href="../reference/transform-sql.html">SQL transforms</a>).</p>
 <ul>
+<li><strong>Add a connection</strong> on the Sources page (<code>/data/sources</code>) writes the file
+  for a signed-in admin, with any secret in the encrypted store
+  (<a href="../guides/connect-a-database.html">Connect a database</a>).</li>
 <li><code>tracebi connect &lt;name&gt; --kind ...</code> tests a database, writes the file and
   puts any secret in <code>.env</code>.</li>
 <li><code>.yml</code> works too. <code>TRACEBI_CONNECTIONS_DIR</code> moves the folder.</li>
@@ -122,7 +127,7 @@ connectors:
 <td><code>encoding</code></td>
 </tr>
 <tr>
-<td><code>sql</code>, <code>postgres</code></td>
+<td><code>sql</code>, <code>postgres</code>, <code>mysql</code></td>
 <td><code>url</code></td>
 <td></td>
 </tr>
@@ -136,8 +141,19 @@ connectors:
 <td><code>project</code>, <code>dataset</code></td>
 <td><code>credentials</code> (path to a service-account file)</td>
 </tr>
+<tr>
+<td><code>upload</code></td>
+<td><code>file</code> (a <code>.csv</code> or <code>.parquet</code> file under <code>inputs/</code>)</td>
+<td></td>
+</tr>
 </tbody>
 </table>
+<p><code>sql</code> takes any SQLAlchemy URL (<code>sqlite:///inputs/bank.sqlite</code> for a file in
+the project). <code>postgres</code> and <code>mysql</code> are <code>sql</code> with the database said in the
+type (<code>postgresql+psycopg://…</code>, <code>mysql+pymysql://…</code>). An <code>upload</code> connection is
+one file read as one table, named after the file: <code>file: inputs/orders.csv</code> is
+the table <code>orders</code>. The app's upload puts the file there (<code>POST /api/inputs</code>, at
+most 50 MB).</p>
 <table>
 <thead>
 <tr>
@@ -152,6 +168,19 @@ connectors:
 </tr>
 </tbody>
 </table>
+<h2 id="agents"><code>agents</code></h2>
+<p>Which of the connection's tables an agent may read through the gateway.
+Absent, none.</p>
+<pre><code class="language-yaml">agents:
+  tables: [accounts, clients]   # or &quot;*&quot; for every table, now and later
+</code></pre>
+<p><code>tracebi connect &lt;name&gt; --agents accounts,clients</code> (or <code>all</code>) writes it, and
+so does ticking <strong>Agents may read</strong> on the connection's Tables list.
+<code>tracebi connect --list</code> prints each connection with its list. TraceBi's own
+tables (<code>tracebi_*</code>, <code>alembic_version</code>) are never readable, whatever it says.
+In code, <code>tracebi.connections.agent_may_read(connection, table)</code> is the one
+check; a loaded connector carries the list as <code>agent_tables</code> (<code>["*"]</code> for
+all, <code>None</code> for none).</p>
 <h2 id="env_var"><code>${ENV_VAR}</code></h2>
 <p>Any value may be a reference, written as the whole value and named
 <code>[A-Z_][A-Z0-9_]*</code>. <code>"x-${A}"</code> is an error.</p>
@@ -176,7 +205,7 @@ connectors:
 </tr>
 <tr>
 <td>Literal paths stay in the project</td>
-<td><code>database</code> and <code>directory</code> of a <code>duckdb</code> or <code>csv</code> connection, and the file of a <code>sqlite:///</code> url: no absolute path, no <code>..</code>. Use a reference to point elsewhere. Relative paths resolve against the project root.</td>
+<td><code>database</code> and <code>directory</code> of a <code>duckdb</code> or <code>csv</code> connection, an <code>upload</code>'s <code>file</code>, and the file of a <code>sqlite:///</code> url: no absolute path, no <code>..</code>. Use a reference to point elsewhere. Relative paths resolve against the project root.</td>
 </tr>
 <tr>
 <td>Resolved when used</td>
@@ -194,8 +223,12 @@ connectors:
 </table>
 <h2 id="discovery-and-precedence">Discovery and precedence</h2>
 <ul>
-<li>Files in <code>connections/</code> are registered at startup and when they change, so
-  the Sources page (<code>/data/sources</code>) lists them.</li>
+<li>Files in <code>connections/</code> are registered at startup and when they change, and
+  forgotten when deleted, so the Sources page (<code>/data/sources</code>) lists them.</li>
+<li>The app edits a file in place: the keys it changes are rewritten where they
+  stand, and comments and order stay. It deletes a file only when no
+  transform, pipeline step or model reads the connection, and otherwise says
+  which do.</li>
 <li>A model's <code>connection: &lt;x&gt;</code> reads <code>connections/&lt;x&gt;.yaml</code> first, then the
   older <code>models/_connections/&lt;x&gt;.py</code> that <code>tracebi connect --python</code> writes.</li>
 <li><code>tracebi migrate connection models/_connections/&lt;x&gt;.py [--write]</code> converts a

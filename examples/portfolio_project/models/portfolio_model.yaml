@@ -14,6 +14,19 @@
 name: portfolio_model
 label: Direct Lending Portfolio
 
+# The semantic layer's words: what the model is about, other names for it,
+# and questions it answers. Ask offers the questions as starting chips and an
+# agent receives all of it (get_context --model); nothing computes from them.
+description: >-
+  A direct-lending book: every loan position each fund holds in an issuer,
+  marked at fair value, with its credit rating and the cash that flowed in
+  and out of it.
+synonyms: [loan book, credit portfolio]
+questions:
+  - Which sectors hold the most fair value?
+  - What is the par-weighted spread by rating?
+  - Which issuers carry the largest unrealized gain?
+
 # connectors: where the tables live. `type: warehouse` is the project's
 # warehouse, wherever tracebi.yaml puts it (data/warehouse.duckdb by default;
 # Parquet on object storage, or a remote engine, by changing that one file).
@@ -49,25 +62,45 @@ tables:
 
 # dimensions: the descriptive tables (key column, attributes to slice by)
 dimensions:
+  # An attribute is a column name, or an object when it needs words for
+  # people and agents (a label, a description, synonyms); queries still name
+  # it dim.attribute either way.
   - name: dim_fund
     table: dim_fund
     key: fund_id
+    description: The fund that holds the position
+    synonyms: [vehicle]
     attributes: [fund]
   - name: dim_issuer
     table: dim_issuer
     key: issuer_id
-    attributes: [issuer, sector]
+    description: The borrower a loan is made to, and its industry
+    synonyms: [borrower, company, obligor]
+    attributes:
+      - issuer
+      - name: sector
+        description: The issuer's industry
+        synonyms: [industry]
   - name: dim_rating
     table: dim_rating
     key: rating_id
-    attributes: [rating, watch]
+    description: The issuer's rating in the CRM (Unrated when the CRM does not cover it) and its watch status
+    attributes:
+      - name: rating
+        description: The credit rating the CRM records
+        synonyms: [credit rating, grade]
+      - name: watch
+        description: Whether the credit team has it on watch (yes, no, or unknown)
+        synonyms: [watchlist]
   - name: dim_date
     table: dim_date
     key: flow_date
+    description: The date a cash flow settled
     attributes: [flow_date]
   - name: dim_flow_type
     table: dim_flow_type
     key: flow_type_id
+    description: What a cash flow was (a drawdown, interest, or a repayment)
     attributes: [flow_type]
 
 # time_grains: a date attribute rolled up to a period, groupable like any
@@ -105,25 +138,30 @@ measures:
     column: fair_value
     agg: sum
     description: Total fair value
+    synonyms: [market value, FV, mark-to-market value]
     format: currency0
   - name: cost_basis
     column: cost
     agg: sum
     description: Total cost basis
+    synonyms: [cost, book cost]
     format: currency0
   - name: par_amount
     column: par
     agg: sum
     description: Total par
+    synonyms: [par, face value, principal]
     format: currency0
   - name: positions
     column: holding_id
     agg: count
     description: Position count
+    synonyms: [holdings, loans]
   - name: unrealized
     agg: sum
     expr: fair_value - cost
     description: Unrealized gain / loss
+    synonyms: [unrealized gain, unrealized P&L]
     format: currency0
   # A par-weighted spread is a ratio of totals, not a plain mean: a $1M and a
   # $1k position must NOT count equally. See `tracebi knowledge
@@ -136,9 +174,11 @@ measures:
   - name: wtd_spread_bps
     ratio: [spread_x_par, par_amount]
     description: Par-weighted average spread (bps)
+    synonyms: [par-weighted spread, weighted spread, spread]
   - name: mark
     ratio: [fair_value, cost_basis]
     description: Fair value / cost
+    synonyms: [price, mark to cost]
     format: percent
   # Concentration window measures: rank, % of total, and cumulative %. These
   # used to live in reports/portfolio_model/portfolio_concentration/report.py
@@ -152,6 +192,7 @@ measures:
     share: fair_value
     label: Share of fair value
     description: Fair value as % of total
+    synonyms: [concentration, share of the book]
     format: percent
   - name: fv_cum_share
     running: fv_share
@@ -176,6 +217,7 @@ measures:
     column: amount
     agg: sum
     description: Net cash flow (received less lent out)
+    synonyms: [net cash flow, cash flow]
     format: currency0
   - name: flow_count
     column: cashflow_id

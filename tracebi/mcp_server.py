@@ -13,9 +13,13 @@ the page it appears on.
 Deliberately read-and-compute only. Queries, validation and spec rendering
 compute but persist nothing beyond an output file; pipeline execution
 writes to the warehouse and stays off this surface until per-agent scopes
-exist to gate it. The draft tools are the one other write: they write under
-``drafts/``, and ``publish_draft`` copies a validated draft into the library
-(report packages and declarative models only, never Python).
+exist to gate it. The draft tools write under ``drafts/``, and
+``publish_draft`` copies a validated draft into the library (report packages
+and declarative models only, never Python). The source tools read only the
+tables a person allowed agents to read; ``propose_transform`` stores SQL as a
+code request, which runs only once an admin approves it, and
+``export_table`` (admin) writes a warehouse table out to a connection or a
+prefix.
 
 Two layers, on purpose:
 
@@ -136,7 +140,12 @@ def _acting():
 _WRITE_TOOLS = frozenset({
     "render_report_spec", "resolve_pin", "build_report", "start_draft",
     "write_draft_file", "preview_draft", "publish_draft", "decide_publish_request",
+    "propose_transform", "export_table",
 })
+
+#: Write tools only an admin calls (or a caller with no sign-in role, who
+#: acts as admin everywhere): they write outside the project's own files.
+_ADMIN_TOOLS = frozenset({"export_table"})
 
 
 def _models_dir() -> Path:
@@ -563,6 +572,9 @@ class ModelInfoResult(TypedDict, total=False):
     error: Optional[str]
     name: Optional[str]
     label: Optional[str]
+    description: Optional[str]
+    synonyms: Optional[list[str]]
+    questions: Optional[list[str]]
     tables: Any
     relationships: Any
     facts: Any
@@ -705,7 +717,8 @@ def gateway_context(model: Optional[str] = None,
     payload = describe(brief=brief)
     payload["house_style"] = project_house_style()
     if model:
-        payload["model"] = _get_model(model).info()
+        from tracebi.capabilities import describe_model
+        payload["model"] = describe_model(_get_model(model), brief=brief)
     return payload
 
 
@@ -888,7 +901,8 @@ def gateway_model_info(model: str) -> ModelInfoResult:
     if failed and model not in loaded:
         return {"error": failed}
     m = _get_model(model)
-    return {**m.info(), **_draft_fields([model, getattr(m, "name", model)])}
+    from tracebi.capabilities import describe_model
+    return {**describe_model(m), **_draft_fields([model, getattr(m, "name", model)])}
 
 
 _BINDING_QUERY_KEYS = (
@@ -1610,6 +1624,268 @@ def gateway_decide_publish_request(request_id: str, approve: bool,
     return result
 
 
+# ── Sources an agent may read, and what it may propose ───────────────────
+#
+# A person sets up a connection in the app and ticks which of its tables
+# agents may read (``agents:`` in connections/<name>.yaml). These tools see
+# only those, and a table outside the list answers exactly as a missing one
+# does: the gateway never confirms what it may not show. Reads go through the
+# table API's own code (tracebi/web/api/routers/tables.py), never new SQL.
+# What an agent makes of them is a proposal: a transform stored as a code
+# request, which runs only once an admin approves it.
+
+class SourcesResult(TypedDict, total=False):
+    ok: Optional[bool]
+    error: Optional[str]
+    errors: Optional[list[str]]
+    reason: Optional[str]
+    variable: Optional[str]
+    note: Optional[str]
+    connections: Optional[list[dict]]
+    skipped: Optional[list[dict]]
+    connection: Optional[str]
+    table: Optional[str]
+    tables: Optional[list[dict]]
+    columns: Optional[list[dict]]
+    sample: Optional[list[dict]]
+    total: Optional[int]
+    total_exact: Optional[bool]
+    profile: Optional[dict]
+
+
+class ProposeResult(TypedDict, total=False):
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    request_id: Optional[str]
+    status: Optional[str]
+    files: Optional[list[str]]
+    review_url: Optional[str]
+    note: Optional[str]
+
+
+class ExportResult(TypedDict, total=False):
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    source: Optional[str]
+    table: Optional[str]
+    to: Optional[str]
+    rows: Optional[int]
+    written: Optional[str]
+    run_id: Optional[int]
+
+
+def _agent_may_read(connection, table: str) -> bool:
+    """The one allowlist check, :func:`tracebi.connections.agent_may_read`
+    (*connection* a connector or a connection's name). Imported at call time;
+    a build without it lets agents read nothing."""
+    try:
+        from tracebi.connections import agent_may_read
+    except ImportError:
+        return False
+    try:
+        return bool(agent_may_read(connection, table))
+    except Exception:  # noqa: BLE001 — a connection that will not load opens nothing
+        return False
+
+
+def _connections() -> "tuple[dict, list]":
+    """``({name: (type, connector)}, skipped)`` for every
+    ``connections/<name>.yaml``. Loading resolves no credential."""
+    from tracebi.connections import (
+        SUFFIXES, connections_dir, load_connection, read_connection_doc,
+    )
+
+    found: dict = {}
+    skipped: list = []
+    d = connections_dir()
+    for path in sorted(d.iterdir()) if d.is_dir() else []:
+        if path.suffix not in SUFFIXES:
+            continue
+        try:
+            found[path.stem] = (read_connection_doc(path)["type"], load_connection(path))
+        except Exception as exc:  # noqa: BLE001 — a broken file must not hide the others
+            skipped.append({"file": f"{d.name}/{path.name}", "error": _one_line_error(exc)})
+    return found, skipped
+
+
+def _allowlist(connector) -> Any:
+    """What a connection lets agents read: ``"*"``, a list of names, or []."""
+    tables = getattr(connector, "agent_tables", None) or []
+    return "*" if list(tables) == ["*"] else list(tables)
+
+
+def gateway_list_connections() -> SourcesResult:
+    """Every declared connection, its type, and the tables agents may read."""
+    found, skipped = _connections()
+    listed = []
+    for name, (ctype, connector) in found.items():
+        entry = {"name": name, "type": ctype, "agent_tables": _allowlist(connector)}
+        if getattr(connector, "label", None):
+            entry["label"] = connector.label
+        listed.append(entry)
+    out: SourcesResult = {"ok": True, "connections": listed, "skipped": skipped}
+    if not any(c["agent_tables"] for c in listed):
+        out["note"] = ("No connection lets agents read a table yet. A person ticks "
+                       "the tables agents may read on the Sources page of the app.")
+    return out
+
+
+def gateway_list_source_tables(connection: str) -> SourcesResult:
+    """The tables of *connection* agents may read, with row estimates and columns."""
+    from tracebi.sources import connection_tables
+
+    found, _ = _connections()
+    if connection not in found:
+        return {"ok": False, "error": f"Connection '{connection}' not found."}
+    connector = found[connection][1]
+    if not _allowlist(connector):
+        return {"ok": True, "connection": connection, "tables": [],
+                "note": "Agents may read none of this connection's tables."}
+    listing = connection_tables(connector)
+    if not listing.get("connected"):
+        return {"ok": False, "connection": connection,
+                **{k: listing[k] for k in ("reason", "variable") if listing.get(k)}}
+    return {"ok": True, "connection": connection,
+            "tables": [t for t in listing.get("tables") or []
+                       if _agent_may_read(connector, t["name"])]}
+
+
+def gateway_describe_source_table(connection: str, table: str,
+                                  sample: int = 20) -> SourcesResult:
+    """One allowlisted source table: columns, a profile, and *sample* rows."""
+    from tracebi.web.api.routers.tables import (
+        NotConnected, NotInCatalog, Unsupported, open_table, profile_table, read_rows,
+    )
+
+    missing: SourcesResult = {
+        "ok": False, "error": f"Table '{table}' not found in connection '{connection}'."}
+    found, _ = _connections()
+    if connection not in found or not _agent_may_read(found[connection][1], table):
+        return missing
+    limit = max(0, min(int(sample), _ROW_HARD_CAP))
+    try:
+        with open_table(found[connection][1], table) as reader:
+            page = read_rows(reader, limit=limit)
+            profile = profile_table(reader)
+    except NotInCatalog:
+        return missing
+    except NotConnected as exc:
+        return {"ok": False, "connection": connection, **exc.answer}
+    except Unsupported as exc:
+        return {"ok": False, "error": f"A {exc} source is not read here."}
+    names = [c["name"] for c in page["columns"]]
+    return {"ok": True, "connection": connection, "table": table,
+            "columns": page["columns"],
+            "sample": [dict(zip(names, row)) for row in page["rows"]],
+            "total": page["total"], "total_exact": page["total_exact"],
+            "profile": profile}
+
+
+def _proposal_errors(name: str, sql: str, contract_yaml: str) -> list[str]:
+    """Why a proposed transform cannot be stored, checked before anything is:
+    the name is a new stem, the SQL parses in DuckDB, every ``-- source:`` is
+    a table agents may read, and the contract file declares checks in the
+    closed vocabulary."""
+    import tempfile
+
+    import duckdb
+
+    from tracebi import code_requests, transforms
+    from tracebi.contracts import ContractSpecError, read_contract_file
+
+    if not isinstance(name, str) or not code_requests.is_code_path(f"transforms/{name}.sql"):
+        return [f"name: {name!r} is not a transform name (letters, digits, _ and -; "
+                f"no suffix)"]
+    errors = []
+    where = f"transforms/{name}.sql"
+    try:
+        exists = transforms.find_transform(name) is not None
+    except transforms.TransformError:
+        exists = True
+    if exists or (transforms.transforms_dir() / f"{name}.contract.yaml").exists():
+        errors.append(f"name: transforms/{name} already exists; propose a new name")
+    try:
+        directives = transforms.source_directives(sql, where)
+        text = transforms.render_sql(sql, os.getcwd(), where)
+    except transforms.TransformError as exc:
+        errors.append(str(exc))
+        directives, text = [], None
+    if text is not None:
+        con = duckdb.connect(":memory:")
+        try:
+            parsed = json.loads(con.execute("SELECT json_serialize_sql(?)", [text]).fetchone()[0])
+            statements = duckdb.extract_statements(text) if parsed.get("error_type") != "parser" else None
+        finally:
+            con.close()
+        if statements is None:
+            errors.append(f"{where}: does not parse: {parsed.get('error_message')}")
+        elif not statements:
+            errors.append(f"{where}: holds no statement; end by creating the tables it sinks")
+    for src in directives:
+        if not _agent_may_read(src["connection"], src["table"]):
+            errors.append(f"-- source: {src['ref']}: there is no table {src['ref']} among "
+                          f"those agents may read (list_source_tables("
+                          f"{src['connection']!r}) lists them)")
+    contract_where = f"transforms/{name}.contract.yaml"
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / f"{name}.contract.yaml"
+        path.write_text(contract_yaml if isinstance(contract_yaml, str) else "", encoding="utf-8")
+        try:
+            spec = read_contract_file(path, name)
+        except ContractSpecError as exc:
+            errors.append(str(exc).replace(str(path), contract_where))
+        else:
+            if not spec["checks"]:
+                errors.append(f"{contract_where}: declare at least one check (rows, unique, "
+                              f"not_null, foreign_key, values, reconcile) on a table it sinks")
+    return errors
+
+
+def gateway_propose_transform(name: str, sql: str, contract_yaml: str,
+                              note: str) -> ProposeResult:
+    """Store ``transforms/<name>.sql`` and its contract as a code request."""
+    from tracebi import code_requests
+    from tracebi.drafts import DraftError
+
+    errors = _proposal_errors(name, sql, contract_yaml)
+    if not errors:
+        files = {f"transforms/{name}.sql": sql,
+                 f"transforms/{name}.contract.yaml": contract_yaml}
+        try:
+            with _acting():
+                req = code_requests.create_request(files, note, _mcp_actor())
+        except DraftError as exc:
+            errors = [str(exc)]
+    if errors:
+        _show_action("propose_transform", f"Transform {name} not proposed: " + "; ".join(errors))
+        return {"ok": False, "errors": errors}
+    _show_action("propose_transform", f"Proposed transform {name} (waiting for an admin)")
+    return {"ok": True, "request_id": req["id"], "status": req["status"],
+            "files": sorted(files), "review_url": code_requests.review_url(),
+            "note": "Nothing has run. An admin reviews the files in the app and, on "
+                    "approval, they go into transforms/ and the transform runs once. "
+                    "Tell the person it waits for that; then draft the model over "
+                    "the tables it sinks (start_draft(kind='models'))."}
+
+
+def gateway_export_table(source: str, table: str, to: str) -> ExportResult:
+    """Write a warehouse table or view to a connection or an object prefix."""
+    from tracebi.exports import ExportError, export_table
+    from tracebi.sources import is_warehouse
+
+    connector = next((c for c in _warehouse_connectors()
+                      if c.name == source and is_warehouse(c.describe())), None)
+    if connector is None:
+        return {"ok": False, "errors": [f"No warehouse '{source}'."]}
+    try:
+        with _acting():
+            done = export_table(connector, table, to)
+    except ExportError as exc:
+        return {"ok": False, "errors": [str(exc)]}
+    _show_action("export_table", f"Exported {source}.{table} to {to} ({done['rows']} rows)")
+    return {"ok": True, **done}
+
+
 def build_server(token: Optional[str] = None, oauth=None):
     """
     Register the gateway operations as MCP tools.
@@ -1708,7 +1984,10 @@ def build_server(token: Optional[str] = None, oauth=None):
             "author_report, answer_question, address_pins. To author a "
             "report or declarative model remotely: start_draft, "
             "write_draft_file, preview_draft (give the person its url), "
-            "then publish_draft once they agree."
+            "then publish_draft once they agree. With no model yet, start "
+            "from the data: list_connections, list_source_tables, "
+            "describe_source_table, then propose_transform (an admin "
+            "approves it and it runs once) before drafting the model."
         ),
     )
 
@@ -1726,6 +2005,11 @@ def build_server(token: Optional[str] = None, oauth=None):
                         f"your role (viewer) may read and query but not call "
                         f"{kwargs['name']}, which writes. Ask an admin to map "
                         f"your group to analyst.")
+                role = _caller()[1]
+                if kwargs["name"] in _ADMIN_TOOLS and role not in (None, "admin"):
+                    raise PermissionError(
+                        f"your role ({role}) may not call {kwargs['name']}; "
+                        f"only an admin may. Ask one to do it in the app.")
                 # The person's name, role and groups, for the folder check in
                 # open_report and for everything the tool records.
                 with _acting():
@@ -1796,7 +2080,9 @@ def build_server(token: Optional[str] = None, oauth=None):
         structured_output=True,
         description=(
             "One model's full schema: tables, relationships, facts, dimensions, "
-            "named measures, and draftable (with draft_note when false: a "
+            "named measures, the semantic layer's words (description and "
+            "synonyms on the model, dimensions, attribute_info and measures; "
+            "questions: example questions it answers), and draftable (with draft_note when false: a "
             "Python model is edited from a laptop). A name that failed to load "
             "returns that error instead of not found."
         ),
@@ -2054,6 +2340,80 @@ def build_server(token: Optional[str] = None, oauth=None):
         ),
     )(gateway_decide_publish_request)
 
+    # Sources: what a person allowed agents to read, a transform proposed from
+    # it (a code request an admin approves), and saving a result back out.
+    _PROPOSE = ToolAnnotations(readOnlyHint=False, destructiveHint=False,
+                               idempotentHint=False, openWorldHint=False)
+    _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=True,
+                              idempotentHint=True, openWorldHint=True)
+    _tool(
+        name="list_connections", title="List connections", annotations=_READ,
+        structured_output=True,
+        description=(
+            "The project's connections (connections/<name>.yaml), each with "
+            "its type and agent_tables: the tables a person allowed agents to "
+            "read ('*' for all, [] for none). Only those can be listed, "
+            "described or named in a proposed transform's -- source: line. "
+            "A file that does not load is under skipped. Credentials are "
+            "never resolved or shown."
+        ),
+    )(gateway_list_connections)
+    _tool(
+        name="list_source_tables", title="List a connection's tables",
+        annotations=_READ_WAREHOUSE, structured_output=True,
+        description=(
+            "The tables of one connection that agents may read, each with "
+            "columns ({name, type}) and rows (exact for DuckDB, the catalog's "
+            "estimate with rows_exact=false for a database that keeps one, "
+            "else null). Other tables are not listed. A connection that "
+            "cannot be reached answers ok=false with reason (and variable "
+            "when an unset ${VAR} is why)."
+        ),
+    )(gateway_list_source_tables)
+    _tool(
+        name="describe_source_table", title="Describe a source table",
+        annotations=_READ_WAREHOUSE, structured_output=True,
+        description=(
+            "One table agents may read: columns, a profile of each (nulls, "
+            "distinct, min, max, mean, commonest values) and a sample of "
+            "rows (sample, default 20, at most 500), with total. A table "
+            "agents may not read is 'not found', as a missing one is. Use "
+            "this to write a transform's SQL from real column names."
+        ),
+    )(gateway_describe_source_table)
+    _tool(
+        name="propose_transform",
+        title="Propose a transform (a code request an admin approves)",
+        annotations=_PROPOSE, structured_output=True,
+        description=(
+            "Propose transforms/<name>.sql and transforms/<name>.contract.yaml "
+            "as one code request. sql is DuckDB statements, top to bottom: a "
+            "header line -- source: <connection>.<table> per table it reads "
+            "(only tables agents may read), then CREATE OR REPLACE TABLE for "
+            "each star-schema table it sinks. contract_yaml declares checks "
+            "(name, note, checks: - rows: fact_x / at_least: 1 …; the closed "
+            "vocabulary rows, unique, not_null, foreign_key, values, "
+            "reconcile), at least one. note says why, for the reviewer. "
+            "Checked before it is stored: a new name, SQL that parses, "
+            "allowed sources, a valid contract. Nothing runs: an admin "
+            "reviews it at review_url and approving runs it once; until then "
+            "its tables do not exist. Then draft the model over them."
+        ),
+    )(gateway_propose_transform)
+    _tool(
+        name="export_table",
+        title="Export a warehouse table (admin; writes outside the project)",
+        annotations=_EXPORT, structured_output=True,
+        description=(
+            "Write a warehouse table or view (source: the warehouse's name, "
+            "as describe_table lists it; table) to 'to': a connection's name "
+            "(the table, replaced there, through its connector) or an object "
+            "prefix (s3://bucket/path or a folder inside the project; "
+            "<prefix>/<table>.parquet). Admin only. Records an export run. "
+            "The person's go-ahead comes first."
+        ),
+    )(gateway_export_table)
+
     # Resources — reference material a client can pull into context. The guide
     # puts the authoring SOP on the surface itself (an MCP-only agent never
     # sees AGENTS.md); the schema makes the ReportSpec grammar obtainable
@@ -2107,7 +2467,9 @@ def build_server(token: Optional[str] = None, oauth=None):
     # templates.
     @server.prompt(
         name="author_report", title="Author a governed report",
-        description="Walk the full loop — context, query, package, build, verify — for a question.",
+        description=("Walk the full loop — context, query, package, build, verify — for a "
+                     "question; with no model yet, first explore the allowed sources and "
+                     "propose a transform."),
     )
     def _author_report_prompt(question: str) -> str:
         return (
@@ -2154,6 +2516,20 @@ def build_server(token: Optional[str] = None, oauth=None):
             "\"theme\". If get_context returns a house_style, it is the "
             "team's rules: follow them over these defaults. Read the lessons "
             "design-dashboard-feel and, for an app, design-app-dashboards.\n\n"
+            "If no model answers the question yet, start from the data, "
+            "in this order, before the loop below:\n"
+            "a. list_connections, then list_source_tables(connection) and "
+            "describe_source_table(connection, table) on the tables a person "
+            "allowed agents to read. Only those exist for you.\n"
+            "b. propose_transform(name, sql, contract_yaml, note): SQL that "
+            "reads them through -- source: lines and sinks clean star-schema "
+            "tables, with a contract of checks on those tables.\n"
+            "c. Wait for the approval. Tell the person the request id and "
+            "its review_url; an admin approves it and it runs once. Its "
+            "tables do not exist until then, so do not go on without it.\n"
+            "d. start_draft(kind='models', path=<name>): a declarative model "
+            "over the sunk tables (describe_table gives their columns), "
+            "preview_draft, then publish_draft once the person agrees.\n\n"
             "Follow the loop, and do not skip a step:\n"
             "1. Call get_context (start with brief=true; add the model= you'll "
             "use) to learn the exact facts, dimensions, named measures and "

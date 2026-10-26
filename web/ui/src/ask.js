@@ -45,11 +45,18 @@ export function measureLabel(model, q, name) {
   return declared(model, name)?.label || humanise(name)
 }
 
-/** A dimension attribute's label; the dimension's name joins it when two share one. */
+/** What the model says of one attribute: `{label?, description?, synonyms?}`. */
+export const attributeInfo = (model, ref) => {
+  const [dim, attr] = String(ref).split('.')
+  return (model?.dimensions || []).find(d => d.name === dim)?.attribute_info?.[attr] || {}
+}
+
+/** A dimension attribute's label (its declared one, else humanised); the dimension's name joins it when two share one. */
 export function dimensionLabel(model, ref) {
   const [dim, attr] = String(ref).split('.')
   const twins = (model?.dimensions || []).filter(d => d.name !== dim && (d.attributes || []).includes(attr))
-  return twins.length ? `${humanise(attr)} (${humanise(dim)})` : humanise(attr)
+  const label = attributeInfo(model, ref).label || humanise(attr)
+  return twins.length ? `${label} (${humanise(dim)})` : label
 }
 
 const columnLabel = (model, q, col) =>
@@ -216,7 +223,7 @@ export function tokens(model, q, values = {}) {
     const label = m.label || humanise(m.name)
     out.push({
       kind: 'measure', id: `m:${m.name}`, label, sub: m.description || '',
-      fields: [[label, 3], [m.name.replace(/_/g, ' '), 2], [m.description || '', 1]],
+      fields: [[label, 3], [m.name.replace(/_/g, ' '), 2], [(m.synonyms || []).join(' '), 2], [m.description || '', 1]],
       pick: cur => moveTo(model, { ...cur, measures: [...(Array.isArray(cur.measures) ? cur.measures : []), m.name] }, home),
     })
   }
@@ -228,7 +235,8 @@ export function tokens(model, q, values = {}) {
       if (!(q.dimensions || []).includes(ref)) {
         out.push({
           kind: 'dimension', id: `d:${ref}`, label, sub: humanise(d.name) === label ? '' : humanise(d.name),
-          fields: [[label, 3], [attr.replace(/_/g, ' '), 2], [d.name.replace(/_/g, ' '), 1]],
+          fields: [[label, 3], [attr.replace(/_/g, ' '), 2], [(attributeInfo(model, ref).synonyms || []).join(' '), 2],
+            [d.name.replace(/_/g, ' '), 1]],
           pick: cur => ({ ...cur, dimensions: [...(cur.dimensions || []), ref] }),
         })
       }
@@ -373,6 +381,61 @@ export function resolve(model, q, values, text, scope, chosen) {
     else left.push(seg.raw)
   })
   return { q: cur, left: left.join(' ').trim() }
+}
+
+// ── The model's example questions ────────────────────────────────────────────
+
+const wordsOf = text => String(text || '').toLowerCase().split(/[^a-z0-9%&]+/).filter(Boolean)
+
+// How many words of *phrase* the question holds in a row, each a question word
+// that starts with it ("sectors" holds "sector"); 0 when it does not hold all.
+function holds(words, phrase) {
+  const ph = wordsOf(phrase)
+  if (!ph.length) return 0
+  for (let i = 0; i + ph.length <= words.length; i++) {
+    if (ph.every((p, k) => words[i + k].startsWith(p))) return ph.length
+  }
+  return 0
+}
+
+// The longest phrase of *phrases* the question holds, in words.
+const best = (words, phrases) => Math.max(0, ...phrases.map(p => holds(words, p)))
+
+/**
+ * A model's example question (its `questions:`) as far as its words name a
+ * measure and a dimension, by label, identifier or synonym: a word match, no
+ * language model. The longest match wins, the first declared on a tie; "most",
+ * "largest" and the like order by the measure, largest first. Null when no
+ * measure matches: then the question picks only the model.
+ */
+export function questionQuery(model, question) {
+  const words = wordsOf(question)
+  let measure = null
+  let score = 0
+  for (const m of model?.measures || []) {
+    const s = best(words, [m.label, humanise(m.name), m.name.replace(/_/g, ' '), ...(m.synonyms || [])])
+    if (s > score) { measure = m; score = s }
+  }
+  const fact = measure && (model.facts || []).find(f => f.runnable_measures?.includes(measure.name))
+  if (!fact) return null
+  let dimension = null
+  score = 0
+  for (const d of model.dimensions || []) {
+    if (!(d.name in (fact.foreign_keys || {}))) continue
+    for (const [i, attr] of (d.attributes || []).entries()) {
+      const ref = `${d.name}.${attr}`
+      const about = attributeInfo(model, ref)
+      // The dimension's own synonyms ("borrower") name its first attribute.
+      const s = best(words, [about.label, humanise(attr), attr.replace(/_/g, ' '), ...(about.synonyms || []),
+        ...(i === 0 ? d.synonyms || [] : [])])
+      if (s > score) { dimension = ref; score = s }
+    }
+  }
+  const most = words.some(w => /^(most|largest|biggest|highest|top)$/.test(w))
+  return tidy({
+    fact: fact.name, measures: [measure.name], dimensions: dimension ? [dimension] : [], filters: {},
+    ...(most && dimension ? { order_by: [{ column: measure.name, desc: true }] } : {}),
+  })
 }
 
 // ── Keep this: the question as a one-figure draft ────────────────────────────

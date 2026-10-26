@@ -552,12 +552,15 @@ def register_models(models_dir: str) -> list[str]:
     return added
 
 
-def register_connections(connections_dir: str) -> list[str]:
+def register_connections(connections_dir: str, refresh: tuple = ()) -> list[str]:
     """Put each ``connections/<name>.yaml`` in the web registry, so the Sources
     page lists it. Nothing is resolved or opened: a missing environment
     variable surfaces when the connection is used, not here. A file that is
     new or changed since the last call is (re)registered; one that does not
-    validate is reported and left out. Returns the names added this call."""
+    validate is reported and left out; one that was deleted is forgotten.
+    *refresh* names connections to reload even if their file's time did not
+    move (the app just rewrote them, possibly within one clock tick). Returns
+    the names added this call."""
     from tracebi.connections import SUFFIXES, load_connection
     from tracebi.registry import registry
 
@@ -567,6 +570,12 @@ def register_connections(connections_dir: str) -> list[str]:
     entries = sorted(e for e in os.listdir(connections_dir)
                      if not e.startswith(("_", ".")) and e.endswith(SUFFIXES))
     stems = [os.path.splitext(e)[0] for e in entries]
+    for stem in [s for s in _live_connections if s not in stems or s in refresh]:
+        del _live_connections[stem]
+        # Only a connector a file declared: one an app module registered in
+        # code under the same name is not this scan's to forget.
+        if stem not in stems and getattr(registry.get_connector(stem), "declared_in", None):
+            registry.remove_connector(stem)
     for entry, stem in zip(entries, stems):
         full = os.path.join(connections_dir, entry)
         name = f"connections/{entry}"
