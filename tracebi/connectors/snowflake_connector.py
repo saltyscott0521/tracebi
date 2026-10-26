@@ -37,6 +37,10 @@ class SnowflakeConnector(BaseConnector):
         database:  Database name.
         schema:    Schema name (default ``PUBLIC``).
         role:      Optional role. Omitted from the driver call when unset.
+        authenticator: ``password`` (default), ``externalbrowser`` (the
+                   identity provider's sign-in page), or ``key_pair`` (reads
+                   *private_key_path*); the last two send no password.
+        private_key_path: The key pair's private key file, with ``key_pair``.
     """
 
     def __init__(
@@ -49,6 +53,8 @@ class SnowflakeConnector(BaseConnector):
         database: str,
         schema: str = "PUBLIC",
         role: Optional[str] = None,
+        authenticator: Optional[str] = None,
+        private_key_path: Optional[str] = None,
     ) -> None:
         super().__init__(name)
         self.account = account
@@ -58,6 +64,8 @@ class SnowflakeConnector(BaseConnector):
         self.database = database
         self.schema = schema
         self.role = role
+        self.authenticator = authenticator
+        self.private_key_path = private_key_path
         self._conn = None
 
     def storage(self) -> dict:
@@ -78,11 +86,17 @@ class SnowflakeConnector(BaseConnector):
         kwargs = {
             "account": self.account,
             "user": self.user,
-            "password": self.password,
             "warehouse": self.warehouse,
             "database": self.database,
             "schema": self.schema,
         }
+        if self.authenticator == "externalbrowser":
+            kwargs["authenticator"] = "externalbrowser"
+        elif self.authenticator == "key_pair":
+            kwargs["authenticator"] = "SNOWFLAKE_JWT"
+            kwargs["private_key_file"] = self.private_key_path
+        else:
+            kwargs["password"] = self.password
         if self.role:
             kwargs["role"] = self.role
         self._conn = snowflake.connector.connect(**kwargs)

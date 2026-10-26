@@ -194,21 +194,57 @@ def test_an_admin_sets_up_a_connection_and_says_what_agents_may_read(
 
     refused = analyst.post("/api/connections", json=bank)
     assert refused.status_code == 403 and refused.json()["detail"]["required_role"] == "admin"
-    assert admin.post("/api/connections/test", json=bank).json() == {"ok": True, "tables": 3}
+    tested = admin.post("/api/connections/test", json=bank).json()
+    assert tested["ok"] and tested["tables"] == 3 and tested["version"].startswith("SQLite 3.")
     made = admin.post("/api/connections", json=bank)
     assert made.status_code == 201, made.text
     assert made.json()["connection_type"] == "sql" and made.json()["agent_tables"] is None
     assert admin.post("/api/connections", json=bank).status_code == 409
     assert admin.post("/api/connectors/bank/test").json() == {"ok": True, "tables": 3}
 
-    # A URL with a password goes to the store; the file names it.
+    # Postgres from its fields: the file holds the fields and names the
+    # password, which is in the store. Pasting the URL that carries the same
+    # password writes the identical file, so the URL view and the fields view
+    # are one connection.
+    def credentials():
+        return {r["name"]: r for r in admin.get("/api/credentials").json()["credentials"]}
+
+    crm_path = scaffolded / "connections" / "crm.yaml"
+    by_fields = {"host": "127.0.0.1", "port": "9", "database": "x", "user": "u",
+                 "password": "thr@w:away", "ssl": "require"}
+    crm = admin.post("/api/connections", json={"name": "crm", "type": "postgres", "fields": by_fields})
+    assert crm.status_code == 201 and "thr@w" not in crm.text
+    from_fields = crm_path.read_text()
+    assert "password: ${TRACEBI_CRM_PASSWORD}" in from_fields and "thr@w" not in from_fields
+    assert "host: 127.0.0.1" in from_fields and "url:" not in from_fields
+    assert credentials()["TRACEBI_CRM_PASSWORD"]["source"] == "store"
+    # The URL view of a saved connection names the variable, never the value.
+    assert crm.json()["url"] == ("postgresql+psycopg://u:${TRACEBI_CRM_PASSWORD}"
+                                 "@127.0.0.1:9/x?sslmode=require")
+    assert "thr@w" not in admin.get("/api/connectors/crm").text
+    assert admin.delete("/api/connections/crm").status_code == 204
     crm = admin.post("/api/connections", json={"name": "crm", "type": "postgres", "fields": {
-        "url": "postgresql+psycopg://u:throwaway@127.0.0.1:9/x"}})
-    assert crm.status_code == 201 and "throwaway" not in crm.text
-    text = (scaffolded / "connections" / "crm.yaml").read_text()
-    assert "url: ${TRACEBI_CRM_URL}" in text and "throwaway" not in text
-    rows = {r["name"]: r for r in admin.get("/api/credentials").json()["credentials"]}
-    assert rows["TRACEBI_CRM_URL"]["source"] == "store"
+        "url": "postgresql+psycopg://u:thr%40w%3Aaway@127.0.0.1:9/x?sslmode=require"}})
+    assert crm.status_code == 201 and "thr@w" not in crm.text and "thr%40w" not in crm.text
+    assert crm_path.read_text() == from_fields
+
+    # Edit with the password left empty keeps it: the file and the store stay.
+    kept = admin.put("/api/connections/crm", json={"fields": {**by_fields, "password": "", "port": "6543"}})
+    assert kept.status_code == 200, kept.text
+    assert "password: ${TRACEBI_CRM_PASSWORD}" in crm_path.read_text() and "port: '6543'" in crm_path.read_text()
+    assert credentials()["TRACEBI_CRM_PASSWORD"]["source"] == "store"
+
+    # Save password off: the file names a variable, nothing is stored, the
+    # credential reads missing until the server sets it, and Test says why.
+    off = {"name": "crm_ro", "type": "postgres",
+           "fields": {**by_fields, "password": "${CRM_RO_PASSWORD}"}}
+    tested = admin.post("/api/connections/test", json=off).json()
+    assert tested["ok"] is False and tested["variable"] == "CRM_RO_PASSWORD"
+    assert tested["reason"].startswith("Save password is off and CRM_RO_PASSWORD is not set")
+    assert admin.post("/api/connections", json=off).status_code == 201
+    assert "password: ${CRM_RO_PASSWORD}" in (scaffolded / "connections" / "crm_ro.yaml").read_text()
+    row = credentials()["CRM_RO_PASSWORD"]
+    assert row["set"] is False and row["source"] is None and not row["stored"]   # "Missing"
 
     # Tick two tables: the file says so, the list marks them, the one check agrees.
     ticked = admin.put("/api/connections/bank", json={"agents": {"tables": ["accounts", "loans"]}})

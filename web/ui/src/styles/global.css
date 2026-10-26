@@ -2628,3 +2628,43 @@ code.fcard__nm, .fcard__t code { font-size: var(--text-caption); font-weight: 50
 .dbx-insp__summary .mlist__def { display: block; }
 .dbx-insp__summary .mlist__def-inline { display: none; }
 .dbx-insp__summary .mlist__expr { display: inline; margin-left: var(--space-2); }
+/* ── CONN-2 ── The Add a connection sheet as DBeaver's dialog: the steps, the
+   type cards grouped, Fields | URL, Save password, Advanced folded, and the
+   Test result. No new tokens. */
+.conn-steps { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0 0 var(--space-4); padding: 0; list-style: none; counter-reset: conn-step; font-size: var(--text-sm); color: var(--muted); }
+.conn-steps li { display: inline-flex; align-items: center; gap: 6px; counter-increment: conn-step; }
+.conn-steps li::before {
+  content: counter(conn-step); display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  font-family: var(--font-mono); font-size: var(--text-xs); border: 1px solid var(--border-strong); color: var(--text-2);
+}
+.conn-steps li[aria-current="step"] { color: var(--text); font-weight: 600; }
+.conn-steps li[aria-current="step"]::before { background: var(--ink); border-color: var(--ink); color: var(--card-solid); }
+.conn-group + .conn-group { margin-top: var(--space-4); }
+.conn-group__title {
+  margin: 0 0 var(--space-2); font-size: var(--text-eyebrow); font-weight: 600;
+  letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--muted);
+}
+.conn-view { margin: 0; align-self: flex-start; }
+.conn-form__panel { display: flex; flex-direction: column; gap: var(--space-4); }
+.conn-field select {
+  width: 100%; padding: 8px 10px; font: inherit; font-size: var(--text-caption); color: var(--text);
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+}
+.conn-field textarea.conn-url {
+  display: block; width: 100%; padding: 8px 10px; resize: vertical; word-break: break-all; color: var(--text);
+  font-family: var(--font-mono); font-size: var(--text-sm); line-height: 1.5;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+}
+.conn-url__actions { margin-top: var(--space-2); }
+.conn-kept { margin: 0; }
+.conn-advanced { border-top: 1px solid var(--border); padding-top: var(--space-3); }
+.conn-advanced > summary { cursor: pointer; font-size: var(--text-sm); font-weight: 600; color: var(--text-2); min-height: 24px; }
+.conn-advanced__body { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-3); }
+.conn-result { margin: 0; padding: 8px 10px; font-size: var(--text-caption); border-radius: var(--radius-sm); overflow-wrap: anywhere; }
+.conn-result[data-ok="true"] { color: var(--green-text); background: var(--green-lt); border: 1px solid var(--green-br); }
+.conn-result[data-ok="false"] { color: var(--red-text); background: var(--red-lt); border: 1px solid var(--red-br); }
+.conn-saved { margin: 0 0 var(--space-2); }
+@media (max-width: 720px) {
+  .conn-field select { min-height: 40px; }
+  .conn-advanced > summary { padding: 10px 0; }
+}

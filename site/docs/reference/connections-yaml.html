@@ -81,7 +81,17 @@ type and fields, with every secret kept out of the file as <code>${ENV_VAR}</cod
 name: wh                      # equals the file name
 label: Sales warehouse        # optional: the name the app shows
 type: postgres
-url: ${TRACEBI_WH_URL}        # the value lives in .env or the environment
+host: db.example.com
+port: '5432'
+database: sales
+user: reader
+password: ${TRACEBI_WH_PASSWORD}   # the value lives in the store, .env or the environment
+ssl: require
+</code></pre>
+<p>The same connection as one URL, which also works:</p>
+<pre><code class="language-yaml">name: wh
+type: postgres
+url: ${TRACEBI_WH_URL}        # postgresql+psycopg://reader:...@db.example.com:5432/sales?sslmode=require
 </code></pre>
 <p>A model uses it by name:</p>
 <pre><code class="language-yaml"># models/sales.yaml
@@ -96,7 +106,10 @@ connectors:
   for a signed-in admin, with any secret in the encrypted store
   (<a href="../guides/connect-a-database.html">Connect a database</a>).</li>
 <li><code>tracebi connect &lt;name&gt; --kind ...</code> tests a database, writes the file and
-  puts any secret in <code>.env</code>.</li>
+  puts any secret in <code>.env</code> (or the store, with <code>--store secret</code>):
+  <code>--host</code>, <code>--port</code>, <code>--database</code>, <code>--user</code>, <code>--password-stdin</code> or
+  <code>--password-var NAME</code>, <code>--ssl</code> write the fields; <code>--url</code> writes a URL.
+  <code>tracebi connect &lt;name&gt; --test</code> tests an existing connection.</li>
 <li><code>.yml</code> works too. <code>TRACEBI_CONNECTIONS_DIR</code> moves the folder.</li>
 <li>The project's own warehouse is not a connection file. It is the
   <code>warehouse:</code> block of <code>tracebi.yaml</code> (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>), and a model reads it
@@ -127,19 +140,24 @@ connectors:
 <td><code>encoding</code></td>
 </tr>
 <tr>
-<td><code>sql</code>, <code>postgres</code>, <code>mysql</code></td>
+<td><code>sql</code></td>
 <td><code>url</code></td>
 <td></td>
 </tr>
 <tr>
+<td><code>postgres</code>, <code>mysql</code></td>
+<td><code>url</code>, or <code>host</code> and <code>database</code></td>
+<td>with the fields: <code>port</code>, <code>user</code>, <code>password</code>, <code>ssl</code>, <code>options</code>, <code>connect_timeout</code></td>
+</tr>
+<tr>
 <td><code>snowflake</code></td>
-<td><code>account</code>, <code>user</code>, <code>password</code>, <code>warehouse</code>, <code>database</code></td>
-<td><code>schema</code> (default <code>PUBLIC</code>), <code>role</code></td>
+<td><code>account</code>, <code>user</code>, <code>warehouse</code>, <code>database</code>, and <code>password</code> with the password sign-in</td>
+<td><code>schema</code> (default <code>PUBLIC</code>), <code>role</code>, <code>authenticator</code>, <code>private_key_path</code></td>
 </tr>
 <tr>
 <td><code>bigquery</code></td>
 <td><code>project</code>, <code>dataset</code></td>
-<td><code>credentials</code> (path to a service-account file)</td>
+<td><code>credentials</code> (path to a service-account file), or <code>credentials_json</code></td>
 </tr>
 <tr>
 <td><code>upload</code></td>
@@ -150,7 +168,80 @@ connectors:
 </table>
 <p><code>sql</code> takes any SQLAlchemy URL (<code>sqlite:///inputs/bank.sqlite</code> for a file in
 the project). <code>postgres</code> and <code>mysql</code> are <code>sql</code> with the database said in the
-type (<code>postgresql+psycopg://…</code>, <code>mysql+pymysql://…</code>). An <code>upload</code> connection is
+type (<code>postgresql+psycopg://…</code>, <code>mysql+pymysql://…</code>).</p>
+<h3 id="url-or-fields">URL or fields</h3>
+<p>A <code>postgres</code> or <code>mysql</code> file says its connection one of two ways: one <code>url</code>,
+or its fields, from which the connection builds the URL. Never both: a file
+with <code>url</code> and <code>host</code> is refused. The app's form shows both as <strong>Fields</strong> and
+<strong>URL</strong> tabs of one connection, and writes the fields. A URL sent to it with a
+password in it is written as the fields, so the password gets its own
+<code>${NAME}</code>; a URL naming another driver (<code>postgresql+psycopg2://</code>) stays a URL.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th><code>postgres</code></th>
+<th><code>mysql</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>host</code></td>
+<td>The server's name or address. Required.</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>port</code></td>
+<td>A whole number. <code>5432</code> when unset.</td>
+<td><code>3306</code> when unset.</td>
+</tr>
+<tr>
+<td><code>database</code></td>
+<td>Required.</td>
+<td>Required.</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>The user it signs in as.</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>password</code></td>
+<td>Always <code>${NAME}</code>. The app and <code>tracebi connect --host</code> name it <code>TRACEBI_&lt;CONNECTION&gt;_PASSWORD</code>.</td>
+<td>Same.</td>
+</tr>
+<tr>
+<td><code>ssl</code></td>
+<td><code>disable</code>, <code>prefer</code>, <code>require</code> or <code>verify-full</code> (libpq's <code>sslmode</code>).</td>
+<td><code>on</code> or <code>off</code>.</td>
+</tr>
+<tr>
+<td><code>options</code></td>
+<td>More query parameters, <code>application_name=tracebi&amp;...</code>. No credential, and not <code>sslmode</code> or <code>connect_timeout</code>.</td>
+<td>Same (<code>charset=utf8mb4</code>).</td>
+</tr>
+<tr>
+<td><code>connect_timeout</code></td>
+<td>Seconds to wait for the server.</td>
+<td>Same.</td>
+</tr>
+</tbody>
+</table>
+<p>The URL is built with the type's driver, <code>postgresql+psycopg</code> (installed by
+the <code>postgres</code> extra) or <code>mysql+pymysql</code>, the user, password and database
+percent-encoded. In code, <code>tracebi.connections.build_url(type, fields)</code> and
+<code>parse_url(type, url)</code> are that mapping both ways. A password that is
+<code>${NAME}</code> stays <code>${NAME}</code> in a built URL, so the URL the app shows and copies
+names the variable, never the value.</p>
+<h3 id="snowflake-sign-in">Snowflake sign-in</h3>
+<p><code>authenticator</code> is <code>password</code> (the default), <code>externalbrowser</code> (the identity
+provider's page opens on the server) or <code>key_pair</code> (reads <code>private_key_path</code>,
+a <code>.p8</code> file on the server, relative to the project root). Only the password
+sign-in takes <code>password</code>.</p>
+<h3 id="bigquery-credentials">BigQuery credentials</h3>
+<p><code>credentials</code> is a path to a service account's JSON key file on the server.
+<code>credentials_json</code> is the key itself, pasted into the app's form: it goes to
+the encrypted store and the file names it as <code>${NAME}</code>. Give one or the other. An <code>upload</code> connection is
 one file read as one table, named after the file: <code>file: inputs/orders.csv</code> is
 the table <code>orders</code>. The app's upload puts the file there (<code>POST /api/inputs</code>, at
 most 50 MB).</p>
@@ -197,7 +288,7 @@ all, <code>None</code> for none).</p>
 <tbody>
 <tr>
 <td>Secrets must be references</td>
-<td><code>password</code> always. <code>url</code> may be literal only when it carries no credential (no password, no <code>password=</code>, <code>token=</code>, <code>key=</code> and the like in the query). <code>sqlite:///data/x.db</code> is fine.</td>
+<td><code>password</code> and <code>credentials_json</code> always. <code>url</code> may be literal only when it carries no credential (no password, no <code>password=</code>, <code>token=</code>, <code>key=</code> and the like in the query). <code>sqlite:///data/x.db</code> is fine.</td>
 </tr>
 <tr>
 <td>Defaults are checked like literals</td>

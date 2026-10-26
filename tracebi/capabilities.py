@@ -1252,7 +1252,21 @@ def _conventions() -> dict:
                         "Sources page. agents: {tables: [a, b] | \"*\"} names "
                         "the tables an agent may read (absent: none); "
                         "tracebi.connections.agent_may_read(connection, table) "
-                        "is the one check.",
+                        "is the one check. postgres and mysql say either "
+                        "url, or its fields (never both): host, database "
+                        "(required), port, user, password (${NAME}; the app and "
+                        "`tracebi connect --host` name it "
+                        "TRACEBI_<CONNECTION>_PASSWORD), ssl (postgres "
+                        "sslmode: disable|prefer|require|verify-full; mysql "
+                        "on|off), options (extra query parameters, no "
+                        "credential), connect_timeout (seconds); the loader "
+                        "builds the URL (tracebi.connections.build_url; "
+                        "parse_url is the inverse). snowflake adds "
+                        "authenticator: password|externalbrowser|key_pair "
+                        "(key_pair reads private_key_path; only password "
+                        "needs password). bigquery takes credentials (a "
+                        "service-account file path) or credentials_json "
+                        "(${NAME}: the key's JSON, kept in the store).",
             },
             {
                 "path": "tracebi.yaml",
@@ -1777,12 +1791,16 @@ def describe(brief: bool = False) -> dict:
                     "models/_connections/<name>.py instead. "
                     "`tracebi migrate connection <that .py> [--write]` "
                     "converts one.",
-            "cli": "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb "
+            "cli": "tracebi connect <name> --kind postgres|mysql|snowflake|bigquery|duckdb "
                    "[kind flags] [--test/--no-test] [--force] [--agents a,b|all]; "
                    "tracebi connect <name> --agents a,b|all (only the allowlist); "
+                   "tracebi connect <name> --test (test an existing one); "
                    "tracebi connect --list",
             "kinds": {
-                "postgres": "--url postgresql://...",
+                "postgres": "--url postgresql://..., or --host H --database D "
+                            "[--port] [--user] [--password-stdin | --password-var NAME] "
+                            "[--ssl require] (the file holds the fields)",
+                "mysql": "as postgres; --ssl on|off",
                 "snowflake": "--account --user --password --warehouse "
                              "--database --schema [--role]",
                 "bigquery": "--project --dataset [--credentials PATH]",
