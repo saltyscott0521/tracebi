@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connect a database — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Connect a database">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
+<a href="../start/quickstart.html">Get started</a>
+<a href="../start/your-first-report.html">Your first report</a>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/transform.html">Transforms</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/model.html">Models</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/report.html">Reports</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a class="on" href="../guides/connect-a-database.html">Connect a database</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/api-routes.html">API routes</a>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
+  </details>
+  <main class="doc">
+<h1 id="connect-a-database">Connect a database</h1>
+<p>Add a database, or a file, as a source from the app, and choose which of its
+tables an agent may read. The app writes <code>connections/&lt;name&gt;.yaml</code> as you
+would by hand, and keeps any secret in the project's encrypted store.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ul>
+<li>A server with sign-in turned on (<a href="../guides/sign-in.html">Sign in with your company login</a>) and the <code>admin</code> role. Without
+  sign-in, the app shows connections but does not change them: run
+  <code>tracebi connect</code> on the server instead (see the last section).</li>
+<li>The database's address and a user that can read it. A read-only user is
+  enough: TraceBi never writes to a source.</li>
+</ul>
+<h2 id="add-the-connection">Add the connection</h2>
+<ol>
+<li>Open <strong>Data › Sources</strong> and click <strong>Add a connection</strong>.</li>
+<li>Pick the type: Postgres, MySQL, SQLite or another SQL database, DuckDB,
+   Snowflake, BigQuery, a folder of CSV files, or an uploaded CSV or Parquet
+   file.</li>
+<li>Fill the form:
+   - <strong>Name</strong> is how a transform reads it: <code>-- source: &lt;name&gt;.&lt;table&gt;</code>.
+   - <strong>Label</strong> is the name people see. It is optional.
+   - A password, or a URL that carries one, is masked. To keep it out of the
+     app altogether, tick <strong>Read it from an environment variable instead</strong> and
+     type <code>${NAME}</code>; set the variable on the server.</li>
+<li>Click <strong>Test</strong>. The app opens the connection, counts its tables and closes
+   it. Nothing is saved yet.</li>
+<li>Click <strong>Save</strong>.</li>
+</ol>
+<h2 id="choose-what-agents-may-read">Choose what agents may read</h2>
+<ol>
+<li>On the connection's panel, under <strong>Tables</strong>, tick <strong>Agents may read</strong> beside
+   each table an agent may see, or tick <strong>Agents may read all its tables</strong> for
+   every table, including ones added later.</li>
+<li>Click <strong>Save</strong>.</li>
+</ol>
+<p>Until a table is ticked, an agent reads none of the connection.</p>
+<h2 id="what-happened">What happened</h2>
+<ul>
+<li><code>connections/&lt;name&gt;.yaml</code> holds the type and fields. A secret you typed is in
+  <code>.tracebi/secrets.yml.enc</code>, and the file names it as
+  <code>${TRACEBI_&lt;NAME&gt;_&lt;FIELD&gt;}</code> (<a href="../reference/credentials.html">Credentials</a>).</li>
+<li>The ticked tables are the file's <code>agents:</code> key (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>).</li>
+<li>The connection is on the Sources page at once, with where its data lives,
+  where each credential is set, and who reads it.</li>
+<li><strong>Edit</strong> changes the file in place and keeps its comments. <strong>Delete…</strong>
+  removes it only when no transform, pipeline step or model reads the
+  connection, and otherwise names them.</li>
+</ul>
+<h2 id="from-the-command-line">From the command line</h2>
+<p>The same file, on the server:</p>
+<pre><code class="language-bash">tracebi connect crm --kind postgres --url postgresql+psycopg://reader:...@db/crm --store secret
+tracebi connect crm --agents accounts,clients    # or: --agents all
+tracebi connect --list
+</code></pre>
+<h2 id="next">Next</h2>
+<ul>
+<li>Read a table in a transform: <a href="../reference/transform-sql.html">SQL transforms</a>.</li>
+<li>Let an agent explore the tables you ticked: <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>.</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

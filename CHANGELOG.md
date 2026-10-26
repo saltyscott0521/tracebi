@@ -9,6 +9,7 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 ### Added
 
 - Sink views: `CREATE OR REPLACE VIEW` in a SQL transform over warehouse tables; recorded in the certificate; refused over a source or a file.
+- **Add a connection** in the app: a signed-in admin picks a type (now also `mysql`, and `upload` for a CSV or Parquet file put under `inputs/`), tests it and saves `connections/<name>.yaml` with any secret in the encrypted store; edits it in place, and deletes it only when nothing reads it. Each table gets an **Agents may read** tick, saved as the file's `agents: {tables: [...] | "*"}` (`tracebi connect <name> --agents a,b|all`, `tracebi connect --list`; `connections.agent_may_read` is the one check). Routes: `/api/connections[/types|/test|/{name}]`, `POST /api/inputs`.
 
 ### Changed
 

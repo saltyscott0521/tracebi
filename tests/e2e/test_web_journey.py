@@ -212,6 +212,22 @@ def test_an_unknown_report_is_a_clean_404(served):
     assert served.get("/r/nope").status_code == 404
 
 
+def test_without_sign_in_a_connection_is_set_up_on_the_server(served, scaffolded):
+    """No sign-in makes every caller admin (no lockout), but a connection
+    written from the app points the server at a database: refused, naming the
+    command, and nothing lands. Catches the write left open on the demo."""
+    body = {"name": "bank", "type": "sql", "fields": {"url": "sqlite:///inputs/bank.sqlite"}}
+    refused = served.post("/api/connections", json=body)
+    assert refused.status_code == 403
+    assert "tracebi connect" in refused.json()["detail"]["message"]
+    assert not (scaffolded / "connections" / "bank.yaml").exists()
+    assert served.post("/api/inputs?name=x.csv", content=b"a\n1\n").status_code == 403
+    assert not (scaffolded / "inputs" / "x.csv").exists()
+    # The form is still drawn for everyone: reading the types writes nothing.
+    types = {t["type"] for t in served.get("/api/connections/types").json()}
+    assert {"postgres", "mysql", "sql", "upload"} <= types
+
+
 def test_an_app_modules_own_reports_survive_live_rescans(served, scaffolded):
     """An app module discovers its own reports folder (the demo app does);
     the live rescan watches the project's reports/ and must not forget them

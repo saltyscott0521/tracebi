@@ -81,6 +81,11 @@ class Registry:
             self._connectors[connector.name] = connector
         return self
 
+    def remove_connector(self, name: str) -> bool:
+        """Forget a registered connector (its connection file was deleted)."""
+        with self._lock:
+            return self._connectors.pop(name, None) is not None
+
     def _all_connectors(self) -> tuple[dict, dict]:
         """Every connector the project uses, by name, and which models use each.
 

@@ -197,6 +197,7 @@ if reports._writable_output_html("tracebi-startup-check") is None:
     )
 
 app.include_router(connectors.router, prefix="/api")
+app.include_router(connectors.connections_router, prefix="/api")   # /api/connections, POST /api/inputs
 app.include_router(desk.router,       prefix="/api")
 app.include_router(models.router,     prefix="/api")
 app.include_router(reports.router,    prefix="/api")

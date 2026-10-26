@@ -1,10 +1,14 @@
 import { Fragment, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useConnectors, useConnectorTables, useInputs, usePipelines } from '../api'
+import {
+  useConnectors, useConnectorTables, useCredentials, useInputs, useMe, usePipelines,
+  useSaveConnection, useTestConnection,
+} from '../api'
 import { StorageLine, sourceKind, fmtBytes } from '../components/Storage'
 import { useModelLabel } from '../components/Scope'
 import CodeView from '../components/CodeView'
 import Credentials from '../components/Credentials'
+import ConnectionSheet from '../components/ConnectionForm'
 import { stamp } from '../when'
 import { feedsModel, upstreamOf } from '../chain'
 import { count } from '../format'
@@ -86,11 +90,49 @@ function Reach({ name }) {
   )
 }
 
+// Whether this person may add, change or delete connections here: a signed-in
+// admin (the server's answer, can_change), and if not, why, in one sentence
+// that names the command that does it on the server.
+function useConnectionWrite() {
+  const { data } = useCredentials()
+  const { data: me } = useMe()
+  const can = !!data?.can_change
+  const why = can ? null
+    : !me || me.sign_in === 'none'
+      ? 'This server has no sign-in, so connections are set up on it'
+      : 'Only a signed-in admin adds or changes connections'
+  return { can, why }
+}
+
+// The tables agents may read: a tick per table, "All tables" above them. A
+// connection file's `agents:` says it; saving writes it there. Without a file
+// (a connector built in code) there is nothing to tick.
+function useAllowlist(name, data) {
+  const save = useSaveConnection()
+  const initial = data?.agent_tables || []
+  const [all, setAll] = useState(null)
+  const [picked, setPicked] = useState(null)
+  const isAll = all ?? initial[0] === '*'
+  const chosen = picked ?? new Set((data?.tables || []).filter(t => t.agents).map(t => t.name))
+  const dirty = all !== null || picked !== null
+  const toggle = t => {
+    const next = new Set(chosen)
+    next.has(t) ? next.delete(t) : next.add(t)
+    setPicked(next)
+  }
+  const commit = () => save.mutate(
+    { name, body: { agents: isAll ? { tables: '*' } : { tables: [...chosen] } } },
+    { onSuccess: () => { setAll(null); setPicked(null) } })
+  return { isAll, chosen, dirty, toggle, setAll, commit, save, reset: () => { setAll(null); setPicked(null) } }
+}
+
 // What the source holds, read when its detail opens: one row per table, its
 // name the link to the table page. A connection that is not reachable says so
-// once, in its Connection section above.
-function Tables({ name }) {
+// once, in its Connection section above. A connection file also says which
+// tables agents may read, ticked in the last column.
+function Tables({ name, declared, write }) {
   const { data, isLoading, error } = useConnectorTables(name)
+  const allow = useAllowlist(name, data)
   if (isLoading) return <p className="src-quiet"><Spinner size={12} /> Reading what it holds…</p>
   if (error) return <ErrorDetail error={error} />
   if (!data.connected) return <p className="src-quiet">Its tables are listed once it connects.</p>
@@ -99,12 +141,33 @@ function Tables({ name }) {
   const n = data.hidden_framework_tables || 0
   const hidden = n > 0 && <p className="src-quiet" title="TraceBi's own tables (tracebi_*, alembic_version) are not shown as data.">{count(n, 'framework table')} hidden</p>
   if (!data.tables.length) return <><p className="src-quiet">It holds no tables.</p>{hidden}</>
+  const locked = !write.can
+  const tick = locked ? `${write.why}.` : undefined
   return (
     <>
+      {declared && (
+        <div className="conn-allow">
+          <label className="conn-allow__all" title={tick}>
+            <input type="checkbox" checked={allow.isAll} disabled={locked}
+              onChange={e => allow.setAll(e.target.checked)} />
+            Agents may read all its tables, and any added later
+          </label>
+          {allow.dirty && (
+            <span className="conn-allow__save">
+              <Btn size="sm" onClick={allow.commit} disabled={allow.save.isPending}>
+                {allow.save.isPending ? <Spinner size={12} /> : 'Save'}
+              </Btn>
+              <Btn size="sm" variant="outline" onClick={allow.reset}>Cancel</Btn>
+            </span>
+          )}
+        </div>
+      )}
       <div className="whlist">
         <table className="tb-list">
           <thead>
             <tr>
+              {/* First, so it stays in view on a phone, where the list scrolls sideways. */}
+              {declared && <th scope="col" className="conn-allow__col">Agents may read</th>}
               <th scope="col">Table</th>
               <th scope="col" className="num">Rows</th>
               <th scope="col" className="num">Columns</th>
@@ -113,6 +176,13 @@ function Tables({ name }) {
           <tbody>
             {data.tables.map(t => (
               <tr key={t.name} data-table={t.name}>
+                {declared && (
+                  <td className="conn-allow__col">
+                    <input type="checkbox" aria-label={`Agents may read ${t.name}`} title={tick}
+                      checked={allow.isAll || allow.chosen.has(t.name)} disabled={locked || allow.isAll}
+                      onChange={() => allow.toggle(t.name)} />
+                  </td>
+                )}
                 <td><Link to={tablePath(name, t.name)}><code>{t.name}</code></Link></td>
                 <td className="num" title={t.rows != null && t.rows_exact === false ? "The catalog's estimate" : undefined}>{rowsText(t)}</td>
                 <td className="num">{t.columns.length}</td>
@@ -122,7 +192,59 @@ function Tables({ name }) {
         </table>
       </div>
       {hidden}
+      {declared && (
+        <p className="src-quiet src-note">
+          {allow.isAll || allow.chosen.size ? 'An agent reads only the ticked tables, through the gateway.'
+            : 'Agents read none of its tables until one is ticked.'}
+          {locked && <> {write.why}: <code>tracebi connect {name} --agents a,b</code></>}
+        </p>
+      )}
+      <ErrorDetail error={allow.save.error} />
     </>
+  )
+}
+
+// What a signed-in admin does to a connection file: test it, edit it, delete
+// it. Deleting asks once, and the server refuses while anything reads it,
+// naming what does.
+function ConnectionActions({ c, onEdit, onDeleted }) {
+  const test = useTestConnection(c.name)
+  const del = useSaveConnection()
+  const [asking, setAsking] = useState(false)
+  const res = test.data
+  return (
+    <div className="conn-actions">
+      <div className="conn-actions__row">
+        <Btn size="sm" variant="outline" onClick={() => test.mutate()} disabled={test.isPending}>
+          {test.isPending ? <Spinner size={12} /> : 'Test'}
+        </Btn>
+        <Btn size="sm" variant="outline" onClick={onEdit}>Edit</Btn>
+        {asking ? (
+          <>
+            <Btn size="sm" variant="red" disabled={del.isPending}
+              onClick={() => del.mutate({ name: c.name, method: 'DELETE' }, { onSuccess: onDeleted })}>
+              Delete {c.declared_in}
+            </Btn>
+            <Btn size="sm" variant="outline" onClick={() => { setAsking(false); del.reset() }}>Keep it</Btn>
+          </>
+        ) : <Btn size="sm" variant="outline" onClick={() => setAsking(true)}>Delete…</Btn>}
+      </div>
+      {res?.ok && <p className="src-quiet" role="status">Connected · {res.tables} {res.tables === 1 ? 'table' : 'tables'}</p>}
+      {res && !res.ok && <p className="src-quiet" role="status">Could not connect · {res.reason}</p>}
+      <ErrorDetail error={test.error || del.error} />
+    </div>
+  )
+}
+
+// The file's fields as it says them: a ${NAME} stays a name (where it is set
+// is under Connection), and a literal is never a secret.
+function Fields({ c }) {
+  const entries = Object.entries(c.fields || {})
+  if (!entries.length) return null
+  return (
+    <dl className="conn-fields">
+      {entries.map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd><code>{v}</code></dd></Fragment>)}
+    </dl>
   )
 }
 
@@ -133,13 +255,16 @@ function SourceName({ c }) {
     : <code className="src-id src-id--only">{c.name}</code>
 }
 
-function ConnectorDetail({ c }) {
+function ConnectorDetail({ c, write, onEdit, onDeleted }) {
   const [code, setCode] = useState(false)
   if (!c) return (
     <Card>
       <Empty message="Select a source to see where its data is kept." />
     </Card>
   )
+  // A connections/<name>.yaml, which the app may change; a connector built
+  // in code is shown, never edited.
+  const declared = !!c.connection_type
   return (
     <Card className="fade-in">
       <CardTitle action={(
@@ -148,10 +273,11 @@ function ConnectorDetail({ c }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
         <Badge variant="gray" title={c.type}>{sourceKind(c)}</Badge>
       </div>
+      {declared && write.can && <ConnectionActions c={c} onEdit={onEdit} onDeleted={onDeleted} />}
       <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
-      <Section label="Connection"><Reach name={c.name} /><Credentials connection={c} /></Section>
+      <Section label="Connection"><Fields c={c} /><Reach name={c.name} /><Credentials connection={c} /></Section>
       <Section label="Read by"><ReadBy c={c} /></Section>
-      <Section label="Tables"><Tables name={c.name} /></Section>
+      <Section label="Tables"><Tables name={c.name} declared={declared} write={write} /></Section>
       {code && <div style={{ marginBottom: 18 }}><CodeView kind="connectors" name={c.name} /></div>}
     </Card>
   )
@@ -226,6 +352,9 @@ export default function Connectors({ model: scoped }) {
   const { data: pipelines } = usePipelines()
   const labelOf = useModelLabel()
   const [query, setQuery] = useState('')
+  const write = useConnectionWrite()
+  // The Add / Edit sheet: null closed, {} adding, a connector row editing.
+  const [sheet, setSheet] = useState(null)
 
   const up = upstreamOf({ model, pipelines, connectors: data, inputs })
   const connectors = (data || []).filter(c => !c.warehouse && (!model || feedsModel(c, model, up)))
@@ -252,6 +381,10 @@ export default function Connectors({ model: scoped }) {
     return parts.length ? <span className="src-li__by">Read by {parts.join(', ')}</span> : null
   }
 
+  const add = write.can
+    ? <Btn onClick={() => setSheet({})}>Add a connection</Btn>
+    : null
+  const saved = name => { setSheet(null); select(name) }
   return (
     <>
       {model && !scoped && (
@@ -260,13 +393,23 @@ export default function Connectors({ model: scoped }) {
           <Link to={sourcesPath()}>Show every source</Link>
         </p>
       )}
+      {!model && (connectors.length > 0 || showInputs) && (
+        <div className="conn-bar">
+          {add || (
+            <p className="src-quiet">
+              {write.why}: <code>tracebi connect &lt;name&gt; --kind postgres --store secret</code>
+            </p>
+          )}
+        </div>
+      )}
       {!isLoading && connectors.length === 0 && !showInputs ? (
         model
           ? <Empty title="No sources for this model"
                    body="Its transform reads no connection or input file. The tables it is built on are under Warehouse." />
           : <Empty title="No sources yet"
-                   body="A source is where the data comes from: a database connection, or files under inputs/. Declare a connection (its secret goes in the project's store), or drop a file in inputs/."
-                   command="tracebi connect crm --kind postgres --store secret" />
+                   body="A source is where the data comes from: a database connection, or files under inputs/. Add a connection (its secret goes in the project's store), or drop a file in inputs/."
+                   command={add ? undefined : 'tracebi connect crm --kind postgres --store secret'}
+                   action={add} />
       ) : (
         <SplitLayout
           left={
@@ -306,8 +449,13 @@ export default function Connectors({ model: scoped }) {
           }
           right={isLoading ? <SkeletonCard />
             : current === INPUTS ? <InputsDetail files={files} />
-            : <ConnectorDetail key={current} c={connectors.find(c => c.name === current)} />}
+            : <ConnectorDetail key={current} c={connectors.find(c => c.name === current)} write={write}
+                onEdit={() => setSheet(connectors.find(c => c.name === current))}
+                onDeleted={() => setParams(p => { p.delete('source'); return p }, { replace: true })} />}
         />
+      )}
+      {sheet && (
+        <ConnectionSheet editing={sheet.name ? sheet : null} onClose={() => setSheet(null)} onSaved={saved} />
       )}
       <p className="wb-meta src-pointer">
         The warehouse a transform writes is under <Link to={warehousePath(model)}>Warehouse</Link>.

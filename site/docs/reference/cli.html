@@ -44,6 +44,7 @@
 <a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
 <a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/connect-a-database.html">Connect a database</a>
 <a href="../guides/sign-in.html">Sign in with your company login</a>
 <a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
@@ -120,6 +121,8 @@ tracebi connect wh --kind snowflake --account ACCT --user USER --password SECRET
 tracebi connect wh --kind bigquery --project PROJ --dataset ANALYTICS \
     [--credentials /path/service-account.json]
 tracebi connect wh --kind duckdb --database data/warehouse.duckdb
+tracebi connect crm --agents accounts,clients   # which tables agents may read
+tracebi connect --list
 </code></pre>
 <p>Tests the connection, then writes <code>connections/&lt;name&gt;.yaml</code>
 (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>) with the secret named as <code>${NAME}</code>, and the secret
@@ -143,6 +146,14 @@ itself to <code>.env</code>.</p>
 <tr>
 <td><code>--store secret</code></td>
 <td>Put the secret in the encrypted store (<code>.tracebi/secrets.yml.enc</code>, <a href="../reference/credentials.html">Credentials</a>) instead of <code>.env</code>.</td>
+</tr>
+<tr>
+<td><code>--agents a,b</code></td>
+<td>Which tables agents may read (<code>agents:</code> in the file; <code>all</code> for every table). With no <code>--kind</code>, changes only that on an existing connection.</td>
+</tr>
+<tr>
+<td><code>--list</code></td>
+<td>Print each connection with its type and the tables agents may read.</td>
 </tr>
 <tr>
 <td><code>--python</code></td>

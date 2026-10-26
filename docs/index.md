@@ -45,6 +45,7 @@ Step-by-step instructions for common tasks.
 - [[notebook-guide]] — Explore data in Jupyter with rich previews, then turn the notebook into a transform that writes the warehouse
 - [[styling-a-report]] — Give a report your colours, fonts and layout by setting design tokens, using the shipped components, and adding your own CSS and JavaScript
 - [[one-server]] — Serve a project, its schedules and its email from one container on one virtual machine
+- [[connect-a-database]] — Add a database, or a file, as a source from the app, and choose which of its tables an agent may read
 - [[sign-in]] — Turn on single sign-on so people sign in to TraceBi with their company account and get a role from their groups
 - [[push-from-a-laptop]] — Build and preview on your own machine, then send the files to the server with `tracebi push`
 - [[connect-chatgpt-and-claude]] — Let people add TraceBi as a connector in ChatGPT or Claude and sign in with their company login

@@ -41,6 +41,7 @@ sections:
       - notebook-guide
       - styling-a-report
       - one-server
+      - connect-a-database
       - sign-in
       - push-from-a-laptop
       - connect-chatgpt-and-claude

@@ -275,6 +275,56 @@ export const useTestConnection = (name) => {
   })
 }
 
+// The types a connection may have and each one's fields: the Add a
+// connection form is drawn from this.
+export const useConnectionTypes = (enabled = true) =>
+  useQuery({ queryKey: ['connection-types'], queryFn: () => get('/connections/types'), enabled, staleTime: Infinity })
+
+async function send(method, path, body) {
+  const r = await fetch(BASE + path, {
+    method,
+    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+  if (!r.ok) throw await toError(r)
+  return r.status === 204 ? null : r.json()
+}
+
+// Add (no *name* yet), edit (PUT) or delete a connections/<name>.yaml, and
+// test one before it is saved. Every answer refreshes the Sources list, the
+// credentials and the tables; a secret typed in is sent once and never kept.
+export const useSaveConnection = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ name, body, method }) => method === 'DELETE'
+      ? send('DELETE', `/connections/${encodeURIComponent(name)}`)
+      : name ? send('PUT', `/connections/${encodeURIComponent(name)}`, body)
+        : send('POST', '/connections', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['connectors'] })
+      qc.invalidateQueries({ queryKey: ['credentials'] })
+      qc.invalidateQueries({ queryKey: ['connector-tables'] })
+    },
+  })
+}
+
+export const useTestNewConnection = () =>
+  useMutation({ mutationFn: body => send('POST', '/connections/test', body) })
+
+// Upload one CSV or Parquet file into inputs/ (the body is the file itself).
+export const useUploadInput = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ file, replace }) => {
+      const r = await fetch(`${BASE}/inputs?name=${encodeURIComponent(file.name)}${replace ? '&replace=true' : ''}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file })
+      if (!r.ok) throw await toError(r)
+      return r.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['inputs'] }),
+  })
+}
+
 // The project's inputs/ folder: each file, and the transforms that name it.
 export const useInputs = () =>
   useQuery({ queryKey: ['inputs'], queryFn: () => get('/inputs') })

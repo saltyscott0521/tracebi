@@ -1220,7 +1220,8 @@ def _conventions() -> dict:
                 "must_define": "a connections/<name>.yaml per source",
                 "type": "connection",
                 "note": "{name, type, ...fields}; type is duckdb, csv, sql, "
-                        "postgres, snowflake or bigquery. Any value may be "
+                        "postgres, mysql, snowflake, bigquery or upload (one "
+                        "CSV or Parquet file under inputs/: file). Any value may be "
                         "${ENV_VAR} (the whole value); password, and a url "
                         "that carries credentials, MUST be, or the file is "
                         "refused. ${ENV_VAR:-default} gives a default for "
@@ -1230,7 +1231,12 @@ def _conventions() -> dict:
                         "project's store: `tracebi secret set NAME`; an unset "
                         "one is an error naming it), never at discovery. A "
                         "model's connector says "
-                        "`connection: <name>`. Written by `tracebi connect`.",
+                        "`connection: <name>`. Written by `tracebi connect`, "
+                        "or by a signed-in admin's Add a connection on the "
+                        "Sources page. agents: {tables: [a, b] | \"*\"} names "
+                        "the tables an agent may read (absent: none); "
+                        "tracebi.connections.agent_may_read(connection, table) "
+                        "is the one check.",
             },
             {
                 "path": "tracebi.yaml",
@@ -1734,7 +1740,9 @@ def describe(brief: bool = False) -> dict:
                     "`tracebi migrate connection <that .py> [--write]` "
                     "converts one.",
             "cli": "tracebi connect <name> --kind postgres|snowflake|bigquery|duckdb "
-                   "[kind flags] [--test/--no-test] [--force]",
+                   "[kind flags] [--test/--no-test] [--force] [--agents a,b|all]; "
+                   "tracebi connect <name> --agents a,b|all (only the allowlist); "
+                   "tracebi connect --list",
             "kinds": {
                 "postgres": "--url postgresql://...",
                 "snowflake": "--account --user --password --warehouse "

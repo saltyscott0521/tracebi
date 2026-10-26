@@ -44,6 +44,7 @@
 <a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
 <a href="../guides/styling-a-report.html">Style a report</a>
 <a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/connect-a-database.html">Connect a database</a>
 <a href="../guides/sign-in.html">Sign in with your company login</a>
 <a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
@@ -758,7 +759,7 @@ model needed (<a href="../concepts/trace.html">The trace</a>).</p>
 <td><code>GET</code></td>
 <td><code>/api/connectors/{name}/tables</code></td>
 <td>viewer</td>
-<td><code>{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact}], hidden_framework_tables}</code>, or <code>200 {connected: false, reason, variable?}</code> when its <code>${VAR}</code> is unset or it refuses. <code>rows</code> is exact for a DuckDB file or in-memory frames, the catalog estimate for a database that keeps one (Postgres <code>pg_class.reltuples</code>, <code>rows_exact: false</code>), else null. No table is counted row by row. The connection is opened for this request only.</td>
+<td><code>{connected: true, tables: [{name, columns: [{name, type}], rows, rows_exact, agents}], hidden_framework_tables, agent_tables}</code> (<code>agents</code>: whether the connection file lets an agent read it), or <code>200 {connected: false, reason, variable?}</code> when its <code>${VAR}</code> is unset or it refuses. <code>rows</code> is exact for a DuckDB file or in-memory frames, the catalog estimate for a database that keeps one (Postgres <code>pg_class.reltuples</code>, <code>rows_exact: false</code>), else null. No table is counted row by row. The connection is opened for this request only.</td>
 </tr>
 <tr>
 <td><code>POST</code></td>
@@ -771,6 +772,42 @@ model needed (<a href="../concepts/trace.html">The trace</a>).</p>
 <td><code>/api/connectors/{name}/warehouse</code></td>
 <td>viewer</td>
 <td>Tables, row counts, column profiles and sink-contract status of a DuckDB file source, plus <code>hidden_framework_tables</code>. Each contract names the <code>file</code> that declares it and the transform's <code>note</code>. Opened read-only and closed within the request.</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/connections/types</code></td>
+<td>viewer</td>
+<td>The connection types and each one's fields (<code>name, label, kind: text\|secret\|url\|path, required, help</code>); the Add a connection form is drawn from it.</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/connections</code></td>
+<td>admin, identified</td>
+<td><code>{name, type, fields: {…}, label?, agents?: {tables: [a, b] \| "*"}}</code> → writes <code>connections/&lt;name&gt;.yaml</code> (a secret typed in goes to the store; the file names it <code>${NAME}</code>) and answers 201 with the connection as <code>GET /api/connectors/{name}</code> describes it. 409 when the name is taken, 422 with the validator's <code>errors</code>. Without sign-in: 403 naming <code>tracebi connect</code>.</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/connections/test</code></td>
+<td>admin, identified</td>
+<td>The same body, tested before it is saved: <code>{ok, tables}</code> or <code>{ok: false, reason}</code>. Writes nothing.</td>
+</tr>
+<tr>
+<td><code>PUT</code></td>
+<td><code>/api/connections/{name}</code></td>
+<td>admin, identified</td>
+<td>Edits the file in place: the fields sent (a secret sent empty is kept), <code>label</code>, and <code>agents</code> when sent (null removes it). The type does not change.</td>
+</tr>
+<tr>
+<td><code>DELETE</code></td>
+<td><code>/api/connections/{name}</code></td>
+<td>admin, identified</td>
+<td>Removes the file: 204, or 409 with <code>read_by</code> while a transform, pipeline step or model reads it.</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/inputs?name=x.csv[&amp;replace=true]</code></td>
+<td>admin, identified</td>
+<td>The body is one CSV or Parquet file, saved as <code>inputs/&lt;name&gt;</code> (at most 50 MB; 409 when it exists).</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
