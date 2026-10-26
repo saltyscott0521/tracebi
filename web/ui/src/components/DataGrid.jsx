@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { tableExportUrl, useTableRows } from '../api'
+import { tableExportUrl, useConnectors, useExportTable, useRole, useTableRows, useWarehouses } from '../api'
 import { count } from '../format'
 import { Btn, ErrorDetail, ExportCsv, Skeleton, useToast } from './Shared'
 
@@ -285,6 +285,73 @@ function ColumnMenu({ column, at, sorted, onClose, onPick }) {
   )
 }
 
+// ── Export to… ────────────────────────────────────────────────────────────────
+
+// A warehouse table or view written out by the server: to a connection (the
+// table replaced there) or to the warehouse's object prefix as Parquet. An
+// admin's action, recorded as a run; anyone else sees why it is off.
+function ExportTo({ source, table }) {
+  const toast = useToast()
+  const role = useRole()
+  const { data: connectors } = useConnectors()
+  const { data: listing } = useWarehouses()
+  const send = useExportTable(source, table)
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    ref.current?.querySelector('[role=menuitem]')?.focus()
+    const away = e => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', away)
+    return () => document.removeEventListener('mousedown', away)
+  }, [open])
+
+  const [side, setSide] = useState('right')
+  const targets = (connectors || []).filter(c => !c.warehouse)
+    .map(c => ({ to: c.name, text: c.label || c.name }))
+  const prefix = (listing?.warehouses || []).find(w => w.name === source && w.tier === 'object')?.where
+  if (prefix) targets.push({ to: /^[a-z]+:\/\//.test(prefix) ? prefix : `${prefix.replace(/\/$/, '')}/`, text: `${prefix} (Parquet)` })
+
+  const admin = role === 'admin'
+  const go = to => {
+    setOpen(false)
+    send.mutate(to, {
+      onSuccess: r => toast?.(`Exported ${count(r.rows, 'row')} to ${r.path || r.to}`, 'success'),
+      onError: e => toast?.(e.message || 'Export failed', 'error'),
+    })
+  }
+  const keys = e => {
+    const items = [...ref.current.querySelectorAll('[role=menuitem]')]
+    const i = items.indexOf(document.activeElement)
+    if (e.key === 'Escape') { e.preventDefault(); setOpen(false); ref.current.querySelector('button')?.focus() }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length]?.focus() }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus() }
+    else if (e.key === 'Tab') setOpen(false)
+  }
+  return (
+    <span ref={ref} style={{ position: 'relative' }} onKeyDown={open ? keys : undefined}>
+      <Btn size="sm" variant="outline" aria-haspopup="menu" aria-expanded={open}
+           disabled={!admin || !targets.length || send.isPending}
+           title={!admin ? 'An admin exports a table (it writes with the server’s credentials)'
+             : !targets.length ? 'No connection to send it to' : 'Write this table to a connection or a bucket'}
+           onClick={e => {
+             // Open toward the side with room: a phone wraps the button to the left.
+             setSide(e.currentTarget.getBoundingClientRect().right < 260 ? 'left' : 'right')
+             setOpen(!open)
+           }}>{send.isPending ? 'Exporting…' : 'Export to…'}</Btn>
+      {open && (
+        <div className="grid__menu" role="menu" aria-label={`Export ${table} to`}
+             style={{ [side]: 0, top: 'calc(100% + 4px)', width: 'max-content', maxWidth: 'calc(100vw - 32px)' }}>
+          {targets.map(t => (
+            <button key={t.to} type="button" role="menuitem" tabIndex={-1} title={t.to}
+                    onClick={() => go(t.to)}>{t.text}</button>
+          ))}
+        </div>
+      )}
+    </span>
+  )
+}
+
 // ── The grid ──────────────────────────────────────────────────────────────────
 
 function Loading({ columns }) {
@@ -319,8 +386,10 @@ function Loading({ columns }) {
  * - *dense*: a sample of the first *limit* rows (default 20), small, with no
  *   search, filters or pages (the data browser's inspector; its table's page
  *   has the rest).
+ * - *exportTo*: offer Export to… (a warehouse table: written to a connection
+ *   or the warehouse's object prefix by the server).
  */
-export default function DataGrid({ source, table, columns: known, inAddress = false, label, dense = false, limit = 20 }) {
+export default function DataGrid({ source, table, columns: known, inAddress = false, label, dense = false, limit = 20, exportTo = false }) {
   const toast = useToast()
   const [cut, update] = useGridCut(inAddress)
   const { data, isLoading, isFetching, error } = useTableRows(source, table, { ...cut, limit: dense ? limit : PAGE_SIZE })
@@ -467,6 +536,7 @@ export default function DataGrid({ source, table, columns: known, inAddress = fa
                onClick={() => say(cutSql(source, table, columns, cut), 'the SQL')}>Copy SQL</Btn>
           <ExportCsv href={tableExportUrl(source, table, cut)}
                      title={filtered ? 'Every row that matches, not only this page' : 'Every row, not only this page'} />
+          {exportTo && <ExportTo source={source} table={table} />}
         </span>
       </div>}
 

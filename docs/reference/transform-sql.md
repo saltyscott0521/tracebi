@@ -26,16 +26,19 @@ every fingerprint equal, row order included.
 print `form: sql | python | notebook`. A pipeline run records the form, and
 `tracebi run-pipeline <name> --status` and the model's Transform tab show it.
 
-A SQL transform runs in five steps:
+A SQL transform runs in six steps:
 
 1. Its two placeholders are substituted.
-2. Each table its `-- source:` lines name is loaded through its connection.
+2. Each table its `-- source:` lines name is attached, read where it lives
+   when its connection allows (How a source is read, below).
 3. Its statements run in order in one fresh read-write DuckDB connection to
    the warehouse `tracebi.yaml` names, with the project's `engine` limits. A
    failing statement stops the run with its number and line:
    `transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …`.
-4. On the object tier, every table it created is written out.
-5. The connection closes, then `<name>.contract.yaml` runs if there is one.
+4. Each table a `-- sink:` line names is sent to its connection
+   (Saving back, below).
+5. On the object tier, every table it created is written out.
+6. The connection closes, then `<name>.contract.yaml` runs if there is one.
 
 `TEMP` tables and `TEMP MACRO`s vanish with the connection. Use
 `CREATE OR REPLACE` so a rerun replaces the tables.
@@ -85,30 +88,37 @@ contract check runs against it as against a table, and `tracebi verify
 Materialize the facts you aggregate. View the derivations. When the facts
 outgrow a file, move the warehouse to another tier, not the design.
 
-**What a view may read.** Only the warehouse's own tables and views, by their
-plain names. The run checks each view it created. A view that reads anything
-else fails the run and is dropped, and the message names the view, what it
-read and the fix:
+**What a view may read.** The warehouse's own tables and views, by their
+plain names, and a `-- source:` table that its connection's allowlist admits
+(`agents: {tables: [issuer_ratings]}` in `connections/crm.yaml`,
+[[connections-yaml]]). The run checks each view it created. A view that reads
+anything else fails the run and is dropped, and the message names the view,
+what it read and the fix:
 
 ```
-transforms/x.sql: view v_ratings reads crm.issuer_ratings, a -- source: table,
-which is attached for the run only and never lands in the warehouse. A sink
-view may read only the warehouse's own tables and views; materialize it:
-CREATE OR REPLACE TABLE v_ratings AS …, or move the read into a table the view
-selects from
+transforms/x.sql: view v_ratings reads crm.issuer_ratings, a -- source: table
+that is not on the allowlist of connections/crm.yaml (agents: tables), so a
+model cannot read it live. A sink view may read only the warehouse's own
+tables and views, and the tables of a -- source: connection its allowlist
+admits; materialize it: CREATE OR REPLACE TABLE v_ratings AS …, or move the
+read into a table the view selects from
 ```
 
 | Refused | Why |
 |---|---|
-| A `-- source:` table (`crm.issuer_ratings`) | It is attached for the run only. A model's query connection cannot reach it. |
+| A `-- source:` table the allowlist does not admit | A model's query connection attaches only allowlisted tables, so it could not read the view. |
 | A file or URL (`read_csv(…)`, `read_parquet(…)`, `'inputs/x.csv'`, `https://…`) | The query connection is locked: no files, no network. |
 | A `TEMP` table or a `TEMP MACRO` | It is gone when the connection closes. |
 | A table named with its database (`warehouse.main.x`) | The model attaches the warehouse under another name. |
 
-There is a second reason. A view runs its query each time it is read. A view
-over a source would read the source again at read time, so the certificate's
-claim that the sink satisfied its contract would describe data that has since
-changed, and `tracebi verify` would compare against something new.
+A view over an allowlisted source table reads the source again each time it
+is read: the data is live, the logic is locked. The model's query connection
+attaches that connection's allowlisted tables before it locks (READ_ONLY,
+through the scanner where there is one), so the view reads at query time what
+it read when the transform made it. Its `bases` name the source table as
+`crm.issuer_ratings`. A contract check over such a view checks the data as it
+was when the run wrote the certificate; `tracebi verify --contracts` re-reads
+the source and says whether it moved.
 
 **On each tier.**
 
@@ -128,7 +138,8 @@ certificate lists the views the run created under the transform's `views`:
 ]
 ```
 
-`bases` are the tables and views the definition names. A view a check
+`bases` are the tables and views the definition names, and any allowlisted
+source table as `<connection>.<table>`. A view a check
 touches also has a fingerprint under `tables`, read like a table. The app
 marks a view with its own glyph and says which transform defined it over
 which tables.
@@ -178,17 +189,47 @@ SELECT … FROM crm.issuer_ratings …;
 | `<table>` | A table that connection's connector loads. |
 | `fallback:` | A committed CSV snapshot inside the project, read only when the connection's `${VAR}` is unset (a fresh clone, CI). Any other failure (server down, table missing, wrong password) stops the run. With no fallback, an unset variable stops the run, naming it. |
 
-- Before the first statement, each table loads in full through the
-  connection's connector, with nothing pushed down. The SQL reads it as
-  `<connection>.<table>`, from an in-memory database attached for this run
-  only, so none of it lands in the warehouse.
-- The loaded rows are sorted by every column, because a database table has no
-  row order.
+- Before the first statement, each table becomes `<connection>.<table>` in
+  an in-memory catalog named after the connection and attached for this run
+  only, so none of it lands in the warehouse. Only the tables the lines name
+  are there.
 - Refused, naming the line: `-- source: crm` with no table, a table named
   twice, a `-- source:` line below the first statement, and anything after the
   table except `fallback: <path>`.
 
 A source is a name the SQL reads, not a placeholder.
+
+### How a source is read
+
+The fastest way its connection allows, in this order. The certificate's
+`method` says which way each load took.
+
+| `method` | Connections | How |
+|---|---|---|
+| `scanner` | Postgres, MySQL, SQLite (a `postgres`, `sql` or `mysql` connection whose URL names one) | DuckDB attaches the database READ_ONLY through its own `postgres`, `mysql` or `sqlite` extension and the table is a view over it. The SQL reads it in place: DuckDB pushes columns and filters down and moves rows as Arrow. |
+| `arrow` | Snowflake, BigQuery, and a SQLAlchemy URL whose ADBC driver is installed (`adbc-driver-postgresql`, `adbc-driver-sqlite`) | The whole table through the source's columnar result path (`fetch_arrow_all`, BigQuery's `to_arrow`, ADBC), registered as Arrow. |
+| `pandas` | Anything else, and every `fallback:` snapshot | The whole table through the connector's `load()`, as before. |
+
+The connection's credentials are resolved when it is attached, as they are
+for every other read ([[connections-yaml]]), and handed to DuckDB as a
+temporary secret held by that one connection. They are never written, and a
+driver's error that echoes them is redacted.
+
+A transform installs a missing extension once (`INSTALL postgres`). Where it
+cannot (no network), the load falls to the next way and the record says why
+under `scanner_unavailable`. To install one by hand:
+
+```bash
+python -c "import duckdb; duckdb.connect().execute('INSTALL postgres')"
+```
+
+The Docker image installs `postgres`, `mysql`, `sqlite` and `httpfs`.
+
+Whatever the way, the fingerprint is the same: the rows sorted by every
+column (a database table has no row order) and hashed as `load_source`
+hashes them, so a certificate written through the scanner is checked by
+`tracebi verify --contracts`, which re-reads through the connector, like
+with like.
 
 ### What the certificate records
 
@@ -200,7 +241,8 @@ With a `<name>.contract.yaml` beside the transform, the certificate
 "sources": {
   "crm.issuer_ratings": {
     "connection": "crm", "table": "issuer_ratings",
-    "rows": 12, "fingerprint": "5840…", "loaded_at": "2026-10-20T…Z"
+    "rows": 12, "fingerprint": "5840…", "loaded_at": "2026-10-20T…Z",
+    "method": "scanner"
   }
 }
 ```
@@ -226,6 +268,53 @@ snapshot load from the snapshot again) and compares fingerprints:
 returns `(frame, record)`, the same load and record. Pass the records to
 `contract(name, warehouse=..., sources={ref: record})` and the certificate
 says the same thing. `holdings_transform_pandas.py` does this.
+
+## Saving back
+
+A result may leave the warehouse.
+
+**To a database, from the transform.** A `-- sink: <connection>` line just
+above a `CREATE OR REPLACE TABLE` sends that table to the connection once
+every statement has run, through the connector's `write` (the table of the
+same name is replaced there). The warehouse keeps its copy too, unless the
+line ends `only`:
+
+```sql
+-- sink: billing
+CREATE OR REPLACE TABLE plan_prices AS SELECT plan_code, list_mrr FROM billing.plans;
+
+-- sink: crm only
+CREATE OR REPLACE TABLE issuer_watchlist AS SELECT issuer FROM dim_rating WHERE watch;
+```
+
+- A run that fails sends nothing.
+- Refused, naming the line: a `-- sink:` line that is not just above a
+  `CREATE TABLE` (blank lines between are fine), one above a view or a
+  `TEMP` table, a qualified table name, and a connection with no
+  `connections/<name>.yaml`.
+- A connection that cannot be written (a CSV folder, BigQuery) stops the run
+  with the connector's reason.
+
+**To a bucket, from the transform.** No directive: `COPY (…) TO
+'s3://bucket/prefix/x.parquet' (FORMAT PARQUET)`. On the object tier the
+warehouse's own credentials reach `{{ sink }}`.
+
+**From the command line, the app and the gateway.** An admin exports a
+warehouse table or view after the fact:
+
+```bash
+tracebi export fact_holdings --to crm          # a connection: the table replaced there
+tracebi export fact_holdings --to exports/     # a folder in the project: exports/fact_holdings.parquet
+tracebi export fact_holdings --to s3://bucket/exports
+```
+
+A table's page in the app has **Export to…** beside Export CSV, listing the
+project's connections and, on the object tier, the warehouse's own prefix.
+The route is `POST /api/tables/{source}/{table}/export` with `{"to": …}`
+(admin). Each export is recorded as a run (`kind: export`), with its rows and
+where it went, or why it failed. A local prefix stays inside the project; a
+remote one is reached through `httpfs`, with the warehouse's object
+credentials when the warehouse is on the object tier.
 
 ## Cells
 

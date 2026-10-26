@@ -401,6 +401,11 @@ export const useTableProfile = (source, table, enabled = true) =>
 export const tableExportUrl = (source, table, cut) =>
   BASE + tableUrl(source, table) + '/export.csv' + cutQuery(cut)
 
+// A warehouse table or view written by the server to *to*: a connection's
+// name, or an object prefix (admin; recorded as a run, kind export).
+export const useExportTable = (source, table) =>
+  useMutation({ mutationFn: (to) => postJson(tableUrl(source, table) + '/export', { to }) })
+
 export const useReportLineage =() =>
   useMutation({ mutationFn: (name) => get(`/reports/${reportPath(name)}/lineage`) })
 

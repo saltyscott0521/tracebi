@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    import pyarrow as pa
 
 
 class BaseConnector(ABC):
@@ -56,6 +59,15 @@ class BaseConnector(ABC):
     def supports_pushdown(self) -> bool:
         """Whether this connector applies filter/columns at source (vs. in pandas)."""
         return False
+
+    def load_arrow(self, source: str) -> "Optional[pa.Table]":
+        """
+        The whole of table *source* as an Arrow table, read through the
+        source's own columnar result path, or ``None`` when this connector has
+        none (the caller then reads it with :meth:`load`). A transform's
+        ``-- source:`` line uses it where DuckDB has no scanner for the source.
+        """
+        return None
 
     def describe(self) -> dict:
         """

@@ -1397,6 +1397,22 @@ def cmd_run_transform(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(args: argparse.Namespace) -> int:
+    """``tracebi export <table> --to <connection | prefix>``: a warehouse table
+    or view written out (:func:`tracebi.warehouse.export_table`)."""
+    from tracebi.connections import ConnectionConfigError
+    from tracebi.warehouse import ExportError, WarehouseConfigError, export_table
+
+    try:
+        done = export_table(args.table, args.to)
+    except (ExportError, ConnectionConfigError, WarehouseConfigError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    where = done.get("path") or f"connection {done['to']}"
+    print(f"exported {done['table']} ({done['rows']} rows) → {where}")
+    return 0
+
+
 def cmd_connect(args: argparse.Namespace) -> int:
     from tracebi.connect import connect_command
     return connect_command(args)
@@ -4144,6 +4160,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_run_transform.add_argument(
         "name", help="Transform name under transforms/ (suffix optional).")
     p_run_transform.set_defaults(func=cmd_run_transform)
+
+    p_export = sub.add_parser(
+        "export",
+        help="Write a warehouse table or view to a connection (through its "
+             "connector, the table replaced there) or to an object prefix "
+             "(s3://…, gs://… or a folder in the project) as <table>.parquet. "
+             "Recorded as a run (kind: export).",
+    )
+    p_export.add_argument("table", help="A table or view of the warehouse.")
+    p_export.add_argument("--to", required=True,
+                          help="A connection's name, or an object prefix.")
+    p_export.set_defaults(func=cmd_export)
 
     p_new_transform = sub.add_parser(
         "new-transform",

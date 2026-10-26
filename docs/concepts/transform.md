@@ -23,8 +23,16 @@ reads. See [[transform-sql]] for the placeholders `{{ sink }}` and `{{ root }}`
 and where tables land on each warehouse tier.
 
 A transform may also leave a view (`CREATE OR REPLACE VIEW`) over the tables
-it wrote, and a model reads it as a table. It may read only warehouse tables,
-never a source or a file: see [[transform-sql#Views]].
+it wrote, and a model reads it as a table. It may read warehouse tables and a
+source table its connection's allowlist admits, never a file: see
+[[transform-sql#Views]].
+
+A table of a database (`-- source: crm.issuer_ratings`) is read where it lives
+when DuckDB has a scanner for it (Postgres, MySQL, SQLite), else in bulk as
+Arrow. A result can go back out: `-- sink: <connection>` above a `CREATE TABLE`
+sends that table to a database, and `tracebi export` (or **Export to…** on a
+table's page) writes one to a connection or a bucket; see
+[[transform-sql#Saving back]].
 
 ## Create and run one
 

@@ -27,7 +27,9 @@ variable?}`` on every route, the shape ``/connectors/{name}/tables`` uses.
 Framework tables (:func:`tracebi.sources.is_framework_table`) answer 404, as a
 missing table does. Every route is a GET: a viewer may read, and folder
 permissions do not apply (a table is not a report), except that ``used_by``
-lists only the reports the caller may view.
+lists only the reports the caller may view. The one write is
+``POST …/export``: a warehouse table sent to a connection or an object
+prefix, for an admin (:func:`tracebi.warehouse.export_table`).
 """
 
 from __future__ import annotations
@@ -48,6 +50,7 @@ from typing import Any, Iterator, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from tracebi.web.api.errors import error_detail
 from tracebi.web.api.registry import registry
@@ -832,6 +835,38 @@ def table_export(source: str, table: str, sort: Optional[str] = None,
     if answer is not None:
         return answer           # not connected, or not a source read here
     return stream_csv(lambda: open_source(source, table), table.rsplit("/", 1)[-1], **cut)
+
+
+class ExportBody(BaseModel):
+    to: str
+
+
+@router.post("/{source}/{table:path}/export")
+def table_export_to(source: str, table: str, body: ExportBody):
+    """Write a warehouse table or view to ``to``: a connection's name (the
+    table replaced there, through its connector) or an object prefix
+    (``s3://…``, ``gs://…``, or a folder in the project) as
+    ``<table>.parquet``. Admin (``_required_role``); recorded as a run,
+    ``kind: export``. Answers ``{table, to, kind, rows, path?}``."""
+    from tracebi.connections import ConnectionConfigError
+    from tracebi.project_config import warehouse as project_warehouse
+    from tracebi.sources import is_warehouse
+    from tracebi.warehouse import ExportError, WarehouseConfigError, as_warehouse, export_table
+
+    connector = registry.get_connector(source)
+    if connector is None:
+        raise HTTPException(status_code=404, detail=f"No source '{source}'")
+    if not is_warehouse(connector.describe()) or (
+            as_warehouse(_warehouse_target(connector)).address != project_warehouse().address):
+        raise HTTPException(status_code=422, detail=(
+            f"'{source}' is not the project's warehouse; only its tables and views "
+            f"are exported from here"))
+    try:
+        return export_table(table, body.to)
+    except (ExportError, ConnectionConfigError, WarehouseConfigError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=error_detail("Export failed", exc))
 
 
 @router.get("/{source}/{table:path}")

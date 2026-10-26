@@ -459,6 +459,118 @@ class Warehouse:
             con.close()
 
 
+class ExportError(ValueError):
+    """An export that cannot run: no such table, or nowhere to send it. The
+    message carries no credential."""
+
+
+def export_table(table: str, to: str, root: Optional[str] = None) -> dict:
+    """Write the warehouse's table or view *table* to *to*, and record the
+    run (``kind: export``) in the state store.
+
+    *to* is a connection's name (``connections/<to>.yaml``): the rows go
+    through its connector's ``write``, the table of the same name replaced
+    there. Or it is an object prefix: ``s3://…``, ``gs://…``, or a folder
+    inside the project, where the rows land as ``<prefix>/<table>.parquet``;
+    a remote prefix is reached through httpfs with the project warehouse's
+    object credentials when the warehouse is on the object tier. The rows are
+    read through the locked query connection, so a view reads exactly what a
+    model would. Returns ``{table, to, kind: connection | object, rows, path?}``.
+    """
+    from datetime import datetime, timezone
+
+    from tracebi.connections import connection_file
+    from tracebi.model.engine import query_connection
+    from tracebi.project_config import warehouse as project_warehouse
+    from tracebi.sources import is_framework_table
+
+    root = os.path.abspath(root or os.getcwd())
+    started = datetime.now(timezone.utc).isoformat()
+    result: dict = {"table": table, "to": to}
+    try:
+        wh = project_warehouse(root)
+        with query_connection({"wh": wh}, default="wh") as con:
+            if "wh" not in con.attached:
+                raise ExportError(f"the warehouse cannot be read: {con.attach_errors.get('wh')}")
+            names = {r[0] for r in con.execute(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_catalog = 'wh' AND table_schema = 'main'").fetchall()}
+            if table not in names or is_framework_table(table):
+                raise ExportError(f"the warehouse has no table or view {table!r}")
+            rows = con.execute(f'SELECT * FROM "wh"."main".{_ident(table)}').to_arrow_table()
+        result["rows"] = rows.num_rows
+        declared = connection_file(to, root) if "/" not in to and ":" not in to else None
+        if declared is not None:
+            _export_to_connection(rows, table, declared, root)
+            result["kind"] = "connection"
+        elif urlsplit(to).scheme in OBJECT_SCHEMES or "/" in to or to.startswith("."):
+            result.update(kind="object", path=_export_to_prefix(rows, table, to, wh, root))
+        else:
+            raise ExportError(f"{to!r} is neither a connection (connections/{to}.yaml) "
+                              f"nor an object prefix (s3://…, gs://…, or a folder)")
+    except Exception as exc:
+        _record_export(table, "failed", started, {"to": to, "error": str(exc)})
+        raise
+    _record_export(table, "ok", started, {k: v for k, v in result.items() if k != "table"})
+    return result
+
+
+def _export_to_connection(rows, table: str, path, root: str) -> None:
+    from tracebi.connections import load_connection
+    from tracebi.connectors.scan import redacted
+
+    connector = load_connection(path, root=root)
+    try:
+        connector.write(rows.to_pandas(), table)
+    except NotImplementedError:
+        raise ExportError(f"connection '{connector.name}' cannot be written to "
+                          f"({type(connector).__name__} has no write)") from None
+    except Exception as exc:  # noqa: BLE001 — a driver's error, its secret redacted
+        raise ExportError(redacted(connector, f"writing {table} to connection "
+                                              f"'{connector.name}' failed: "
+                                              f"{' '.join(str(exc).split())}")) from None
+    finally:
+        engine = connector.__dict__.get("_engine")
+        if engine is not None:
+            engine.dispose()
+
+
+def _export_to_prefix(rows, table: str, prefix: str, wh: "Warehouse", root: str) -> str:
+    from tracebi.model.model_spec import _escapes
+
+    remote = urlsplit(prefix).scheme in OBJECT_SCHEMES
+    if not remote and _escapes(prefix.removeprefix("./")):
+        raise ExportError(f"a local prefix must be a folder inside the project (no "
+                          f"absolute path, no '..'), got {prefix!r}")
+    options = wh.options if wh.tier == "object" else ()
+    target = Warehouse("object", prefix, root, options=options if remote else ())
+    path = target.table_path(table)
+    con = target.connect(write=True)
+    try:
+        con.register("__tracebi_export", rows)
+        out = path if remote else f"{path}.tmp-{os.getpid()}"
+        con.execute(f"COPY (SELECT * FROM __tracebi_export) TO {_lit(out)} (FORMAT PARQUET)")
+        if not remote:
+            os.replace(out, path)
+    finally:
+        con.close()
+    return path if remote else os.path.relpath(path, root)
+
+
+def _record_export(table: str, status: str, started: str, detail: dict) -> None:
+    """One ``tracebi_runs`` row, ``kind: export``, attributed to the actor in
+    the audit context. A missing run store does not undo the export."""
+    from datetime import datetime, timezone
+
+    try:
+        from tracebi.state import record_run
+
+        record_run(kind="export", target=table, status=status, started=started,
+                   finished=datetime.now(timezone.utc).isoformat(), detail=detail)
+    except Exception:  # noqa: BLE001 — no run store here (a bare checkout)
+        pass
+
+
 def apply_limits(con, root: Optional[str] = None) -> None:
     """The project's ``engine`` limits (memory, threads, spill directory) on
     any DuckDB connection: the query connection and the transform's alike."""

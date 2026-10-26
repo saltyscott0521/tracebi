@@ -47,6 +47,10 @@ RUN cd examples/portfolio_project && python run_workflow.py
 # project at runtime), then drop root before serving.
 RUN chown -R appuser:appuser /app
 USER appuser
+# DuckDB's scanners read a transform's -- source: tables (and a model's live
+# allowlisted ones) where they live; httpfs reads an object-tier warehouse.
+# Installed into the serving user's ~/.duckdb, so no request downloads one.
+RUN python -c "import duckdb; c = duckdb.connect(); [c.execute(f'INSTALL {e}') for e in ('postgres', 'mysql', 'sqlite', 'httpfs')]"
 # Serve the example project, and only it — its models/ and reports/ are what
 # discovery finds. TRACEBI_APP is unset: the bundled demo app is opt-in
 # (TRACEBI_APP=tracebi.web.demo_app) and never served beside a project.

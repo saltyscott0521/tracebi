@@ -127,6 +127,30 @@ class SQLConnector(BaseConnector):
             query += " WHERE " + " AND ".join(clauses)
         return pd.read_sql(text(query), con=self._engine, params=params)
 
+    def load_arrow(self, source: str):
+        """Through ADBC when its driver for this database imports
+        (``adbc-driver-postgresql``, ``adbc-driver-sqlite``), else ``None``."""
+        import importlib
+
+        from sqlalchemy.engine import make_url
+
+        url = make_url(self.url)
+        driver = {"postgresql": "adbc_driver_postgresql",
+                  "sqlite": "adbc_driver_sqlite"}.get(url.get_backend_name())
+        if driver is None:
+            return None
+        try:
+            dbapi = importlib.import_module(f"{driver}.dbapi")
+        except ImportError:
+            return None
+        if driver == "adbc_driver_sqlite":
+            target = url.database or ":memory:"
+        else:
+            target = url.set(drivername="postgresql").render_as_string(hide_password=False)
+        with dbapi.connect(target) as conn, conn.cursor() as cur:
+            cur.execute(f"SELECT * FROM {self._quote_ident(source)}")
+            return cur.fetch_arrow_table()
+
     @staticmethod
     def _quote_ident(name: str) -> str:
         # Conservative double-quote; most dialects accept this. Reject anything
