@@ -2645,3 +2645,22 @@ code.fcard__nm, .fcard__t code { font-size: var(--text-caption); font-weight: 50
 .tree__sub[aria-current="page"] { background: var(--sidebar-active); color: var(--sidebar-text-active); font-weight: 500; }
 .fhero__data { color: inherit; text-decoration: none; }
 .fhero__data:hover { text-decoration: underline; }
+/* ── DATA-B ── */
+/* A transform's page: its name in mono, its sections one under the other,
+   its code beside its checks while the column is wide enough for both. */
+.tfpage__name { font-family: var(--font-mono); font-weight: 600; letter-spacing: 0; overflow-wrap: anywhere; }
+.tfpage__state { margin: 0 0 var(--space-5); font-size: var(--text-caption); color: var(--text-2); }
+.tfpage__alert { margin-bottom: var(--space-2); }
+.tfpage__error { max-height: 260px; overflow-y: auto; }
+.tfpage__section { margin-top: var(--space-6); }
+.tfpage__pipeline + .tfpage__pipeline { margin-top: var(--space-4); }
+.tfpage__note { margin: 0 0 var(--space-4); font-size: var(--text-caption); color: var(--text-2); max-width: 78ch; white-space: pre-line; }
+.tfpage__codewrap { container-type: inline-size; }
+.tfpage__code { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+@container (min-width: 900px) {
+  .tfpage__code--two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+.tfpage__reads { margin: 0; padding: 0; list-style: none; font-size: var(--text-caption); color: var(--text-2); }
+.tfpage__reads li { padding: 6px 0; overflow-wrap: anywhere; }
+.tfpage__reads li + li { border-top: 1px solid var(--border); }
+.tfpage__group + .tfpage__group { margin-top: var(--space-5); }

@@ -994,7 +994,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert "[transform] ✓" in text and "[build] ✓" in text, text
             assert len(page.request.get(base + "/api/pipelines/portfolio_model/runs").json()) == 1
             # …its page now says when it was refreshed…
-            page.get_by_text("Last refreshed").wait_for()
+            page.get_by_text(re.compile(r"^Refreshed ")).first.wait_for()
             # …and the run links the reports it rebuilt, each to its page in the app.
             page.get_by_role("link", name="portfolio_book", exact=True).click()
             page.wait_for_url("**/reports/portfolio_model/portfolio_book")

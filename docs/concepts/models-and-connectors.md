@@ -50,7 +50,8 @@ pipelines/portfolio_model.yaml         rebuild its data, then those reports
 The pipeline file is a few lines: `transform: holdings_transform`,
 `models: [portfolio_model]`, `reports: all`. It runs the transform, then
 builds every report in `reports/portfolio_model/` with its trace. It appears on
-the model's Transform tab, where **Refresh data** runs it, and from the
+the transform's page (Data › Transforms › `holdings_transform`), where
+**Refresh data** runs it, and from the
 terminal as `tracebi run-pipeline portfolio_model`. If the transform fails,
 the reports are not rebuilt.
 

@@ -134,7 +134,8 @@ pipelines/portfolio_model.yaml         rebuild its data, then those reports
 <p>The pipeline file is a few lines: <code>transform: holdings_transform</code>,
 <code>models: [portfolio_model]</code>, <code>reports: all</code>. It runs the transform, then
 builds every report in <code>reports/portfolio_model/</code> with its trace. It appears on
-the model's Transform tab, where <strong>Refresh data</strong> runs it, and from the
+the transform's page (Data › Transforms › <code>holdings_transform</code>), where
+<strong>Refresh data</strong> runs it, and from the
 terminal as <code>tracebi run-pipeline portfolio_model</code>. If the transform fails,
 the reports are not rebuilt.</p>
 <h2 id="not-built-yet">"Not built yet"</h2>

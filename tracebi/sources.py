@@ -379,7 +379,8 @@ def _writers(tables: list[dict], certs: dict, owners: dict[str, str]) -> list[di
     """Each certificate record that wrote tables here, in the order its first
     table is listed: the transform, when, the file declaring its checks, its
     note, its tables, and the outside inputs its run read (a connection with
-    its fingerprint, or the committed snapshot that stood in)."""
+    its fingerprint and how it was read, or the committed snapshot that
+    stood in)."""
     files = contract_files() if tables and any(t["written_by"] for t in tables) else {}
     out: dict[str, dict] = {}
     for t in tables:
@@ -400,6 +401,9 @@ def _writers(tables: list[dict], certs: dict, owners: dict[str, str]) -> list[di
                     "ref": ref, "connection": src.get("connection"), "table": src.get("table"),
                     "fingerprint": src.get("fingerprint"), "rows": src.get("rows"),
                     "loaded_at": src.get("loaded_at"),
+                    # How the run read it (scanner | arrow), when the certificate
+                    # says; a table read through the connector records none.
+                    "method": src.get("method"),
                     # The committed snapshot stood in for the connection on that run.
                     "snapshot": src.get("fallback") if src.get("source_fallback") else None,
                 } for ref, src in (rec.get("sources") or {}).items()],
