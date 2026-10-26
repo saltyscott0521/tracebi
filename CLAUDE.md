@@ -529,7 +529,8 @@ Three things to preserve when touching this:
    source gave (`request.state.identified`). With no role source the no-lockout rule
    makes everyone admin, so these two writes are refused (403 naming
    `tracebi secret set NAME`); `CredentialWriteGuard` does it when no auth middleware
-   is installed. This is the one place invariant 1 is narrowed, because an open
+   is installed. The connection writes (`POST/PUT/DELETE /api/connections…`, `POST /api/inputs`;
+   `auth._credential_write`) follow the same rule; their 403 names `tracebi connect`. This is the one place invariant 1 is narrowed, because an open
    demo would otherwise let anyone repoint the server's connections.
 
 Enforcement lives in the middleware, not in the routers — one place, and it
@@ -690,7 +691,13 @@ effectively does not exist).
    tables). Nothing downstream imports this file.
 
 ### New connector
-Most sources need no code. **Declarative first:** `tracebi connect <name> --kind
+Most sources need no code. **In the app:** a signed-in admin's **Add a connection** on
+Sources writes `connections/<name>.yaml` (a secret to the store) and ticks the tables agents
+may read (`agents: {tables: [a, b] | "*"}`; absent = none;
+`tracebi.connections.agent_may_read(connection, table)` is the one check). **From the CLI:**
+`tracebi connect <name> --kind … [--agents a,b|all]`, `tracebi connect --list`. Types: postgres,
+mysql, sql, duckdb, snowflake, bigquery, csv, upload (a CSV/Parquet under inputs/).
+**Declarative, by hand:** `tracebi connect <name> --kind
 postgres|snowflake|bigquery|duckdb` writes `connections/<name>.yaml`
 (`docs/reference/connections-yaml.md`): a type and its fields, any value may be
 `${ENV_VAR}` (the whole value), and a password or credential-bearing URL MUST
@@ -839,7 +846,7 @@ POST /api/spec/render                                → build a spec and render
 GET  /api/connectors
 GET  /api/connectors/{name}
 GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}, warehouse (bool; Sources lists the rest), label, dialect (SQL)
-GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact}], hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
+GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact, agents}], agent_tables, hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read, said once per transform
 GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
@@ -856,6 +863,12 @@ GET  /api/credentials                                → every ${NAME} the proje
 PUT  /api/credentials/{name}                         → {value} → the status row; 201 new / 200 replaced (identified admin; audit row kind=credential)
 DELETE /api/credentials/{name}                       → 204, the store's value only (identified admin)
 POST /api/connectors/{name}/test                     → open, list, close: {ok: true, tables: n} | {ok: false, reason} with any secret scrubbed (admin)
+GET  /api/connections/types                          → each type and its fields (name, label, kind text|secret|url|path, required, help): the Add a connection form
+POST /api/connections                                → {name, type, fields, label?, agents?} → writes connections/<name>.yaml (a typed secret → the store, ${NAME} in the file); 201 as GET /api/connectors/{name}; 409 taken; 422 {errors} (identified admin)
+POST /api/connections/test                           → the same body, tested unsaved: {ok, tables} | {ok: false, reason} (identified admin)
+PUT  /api/connections/{name}                         → edit in place (comments kept); a secret sent empty is kept; agents when sent, null removes (identified admin)
+DELETE /api/connections/{name}                       → 204, or 409 {read_by} while a transform, pipeline step or model reads it (identified admin)
+POST /api/inputs?name=x.csv                          → the body is one CSV/Parquet file → inputs/<name>, ≤50 MB (identified admin)
 GET  /api/models/{name}/source                       → the model's file (read-only; the Code tab)
 GET  /api/connectors/{name}/source                   → the model file(s) that declare it
 GET  /api/connectors/{name}/warehouse                → tables, row counts, column profiles, per-table sink-contract status (read-only, closed per request); each contract names the `file` that declares its checks and carries the transform's `note`
