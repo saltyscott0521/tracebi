@@ -877,7 +877,7 @@ GET  /api/connectors/{name}
 GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}, warehouse (bool; Sources lists the rest), label, dialect (SQL)
 GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact, agents}], agent_tables, hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
-GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read, said once per transform
+GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read (each with method scanner|arrow|pandas and snapshot), said once per transform; the transform page reads it with /api/transforms and /api/transforms/{name}/source
 GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
 GET  /api/transforms/{name}/source                   → the transform's file and its .contract.yaml (read-only; name is a stem in transforms/)
 GET  /api/models
@@ -950,18 +950,23 @@ DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the
 GET  /                                               → React SPA (tracebi/web/ui/dist): four places, Reports (/, the
                                                        library as a directory; /?folder=<path> one folder's page; the sidebar is
                                                        the folder tree, web/ui/src/folders.js; /ask is reached by Ask this model
-                                                       on a folder's or a model's page) · Data (/data: five tabs, Flow /data (the
-                                                       board: sources → transforms → warehouse → models → reports;
-                                                       ?model=<m> lights that model's path) · Sources /data/sources ·
-                                                       Transforms /data/transforms · Warehouse /data/warehouse · Models
-                                                       /data/models; ?model=<m> narrows Sources, Transforms and
-                                                       Warehouse; one table at /data/tables/<source>/<table>:
-                                                       Data · Columns · Used by, the grid's sort, search, filters and page in the
-                                                       address; a model's Model tab is the data browser (components/DataBrowser.jsx:
-                                                       tree, schema, inspector), its selection in the address: /data/<m>?table=<t> |
-                                                       ?measure=<name> | ?view=measures|relationships|storage|code (a fold of the
-                                                       summary); Warehouse is the same browser over every table, by writer:
-                                                       ?table=<t>, ?group=<writer>) · Review (/review) · Docs
+                                                       on a folder's or a model's page) · Data (/data: a directory like the library, its four folders
+                                                       nested under Data in the sidebar, every page in one frame (pages/Data.jsx
+                                                       DataFrame: a folder's name as its h1, or a breadcrumb Data › Warehouse ›
+                                                       fact_holdings). Overview /data (the board: sources → transforms → warehouse →
+                                                       models → reports; ?model=<m> lights that model's path) · Sources /data/sources
+                                                       (/data/sources/<name> one connection, /data/sources/inputs the folder,
+                                                       /data/sources/<name>/<table> and /data/sources/inputs/<path> one table) ·
+                                                       Transforms /data/transforms (/data/transforms/<name> one transform, pages/Transform.jsx:
+                                                       Run with Refresh data and Steps | Table | Code, its code beside its contract,
+                                                       Reads, Produces) · Warehouse /data/warehouse (the data browser over every table,
+                                                       by writer: ?table=<id>, ?group=<id>; /data/warehouse/<table> one table) · Models
+                                                       /data/models (/data/models/<m> one model: its line, then the data browser,
+                                                       components/DataBrowser.jsx: tree, schema, a short inspector; ?table=<t> |
+                                                       ?measure=<name> | ?view=measures|relationships|storage|code|agent). A table's
+                                                       page: Data · Columns · Used by, the grid's sort, search, filters and page in
+                                                       the address. Nothing under /data is narrowed by ?model=; the old /data/<m>…,
+                                                       /data/tables/… and ?source= addresses redirect (movedTo)) · Review (/review) · Docs
                                                        (a report's page /reports/<name>: breadcrumb Library › folder › report, one
                                                        command bar, and on a column 1240px or wider the trace beside the page: the
                                                        clicked figure in five steps, source, model, query, fingerprint, re-run;
@@ -1010,8 +1015,8 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Change the web app's pages | `web/ui/src/nav.js` (the four places; `DATA_TABS`; `movedTo` for old addresses) + `web/ui/src/App.jsx`; the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name); `web/ui/src/folders.js` (the library's folders, their order and hue) + `components/Directory.jsx` (cover tile, rows, folder tile, Today) |
-| Change the data browser (a model's schema, the Warehouse tab) | `web/ui/src/components/DataBrowser.jsx` + `components/modelGraph.js` (`modelSchema` / `warehouseSchema` / `layoutSchema`) |
+| Change the web app's pages | `web/ui/src/nav.js` (the four places; `DATA_FOLDERS` and Data's path helpers `modelPath`, `transformPath`, `warehouseTablePath`, …; `movedTo` for old addresses) + `web/ui/src/App.jsx` + `pages/Data.jsx` (`DataFrame`, the frame of every page under /data; a transform's page is `pages/Transform.jsx`); the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name); `web/ui/src/folders.js` (the library's folders, their order and hue) + `components/Directory.jsx` (cover tile, rows, folder tile, Today) |
+| Change the data browser (a model's schema, the Warehouse folder) | `web/ui/src/components/DataBrowser.jsx` + `components/modelGraph.js` (`modelSchema` / `warehouseSchema` / `layoutSchema`) |
 | Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
