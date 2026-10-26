@@ -10,7 +10,8 @@ import { fmtBytes } from '../components/Storage'
 import { TransformName } from './Connectors'
 import { transformOf } from '../chain'
 import { count } from '../format'
-import { modelPath, transformPath, transformsPath } from '../nav'
+import { tierWords } from '../words'
+import { modelPath, transformsPath } from '../nav'
 import { Empty, ErrorDetail, SkeletonCard, Time } from '../components/Shared'
 
 // Data's Warehouse folder (/data/warehouse): every warehouse table in the
@@ -20,8 +21,6 @@ import { Empty, ErrorDetail, SkeletonCard, Time } from '../components/Shared'
 // read from outside the warehouse and what its checks say; a table, selected,
 // has a short card in the inspector, and its own page one click away
 // (/data/warehouse/<table>).
-
-const TIER = { file: 'File', object: 'Object storage', remote: 'Remote database' }
 
 // What a transform's group says: who wrote these tables, what that run read,
 // its checks in their own words (never "verified"), then the tables.
@@ -77,7 +76,7 @@ function Summary({ warehouses, schema }) {
   return (
     <div className="dbx-insp__summary">
       {warehouses.map(w => {
-        const facts = [TIER[w.tier] || w.tier, w.size != null && fmtBytes(w.size), w.engine_version && `DuckDB ${w.engine_version}`]
+        const facts = [tierWords(w.tier), w.size != null && fmtBytes(w.size), w.engine_version && `DuckDB ${w.engine_version}`]
           .filter(Boolean)
         return (
           <header key={w.name} className="dbx-insp__head" id={`wh-${w.name}`}>
@@ -91,7 +90,7 @@ function Summary({ warehouses, schema }) {
             {!w.exists && (
               <p className="dbx-quiet">
                 Nothing is built here yet. {writerOf(w)
-                  ? <>Its transform, <Link to={transformPath(writerOf(w))}><code>{writerOf(w)}</code></Link>, writes it.</>
+                  ? <>Its transform, <TransformName name={writerOf(w)} />, writes it.</>
                   : <>A transform writes it: see <Link to={transformsPath()}>Transforms</Link>.</>}
               </p>
             )}

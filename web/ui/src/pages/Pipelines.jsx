@@ -9,8 +9,8 @@ import RunLog from '../components/RunLog'
 import CodeView from '../components/CodeView'
 import { SourceCredentials } from '../components/Credentials'
 import { useModelLabel } from '../components/Scope'
-import { ago } from '../when'
 import { count } from '../format'
+import { FORM_LABEL, refreshWords } from '../words'
 import { humanise } from '../ask'
 import { pipelineBelongsToModel } from '../nav'
 import {
@@ -35,8 +35,9 @@ const STATUS_CHIP = {
   running: ['warn', 'Running'],
 }
 
-function StepStatus({ status }) {
-  if (!status) return <Chip tone="none">Not run yet</Chip>
+// *outside*: what a step with no run here left anyway (its stepOutside).
+function StepStatus({ status, outside }) {
+  if (!status) return <Chip tone="none">{outside ? 'Not run here' : 'Not run yet'}</Chip>
   const [tone, words] = STATUS_CHIP[status.startsWith('error:') ? 'error' : status] || ['', status]
   return <Chip tone={tone} title={status.startsWith('error:') ? status : undefined}>{words}</Chip>
 }
@@ -57,14 +58,22 @@ const STEP_WORDS = {
   build: { what: 'Build', out: n => count(n, 'report') },
 }
 
-// Which form of transform the last run ran (the run records it).
-const FORM_LABEL = { sql: 'SQL', python: 'Python', notebook: 'Notebook' }
+// A step with no run here whose work exists anyway: the transform's tables
+// (*written*, the sink certificate's time) or the reports' last build
+// (*built*), done outside the app. Its age is refreshWords', so the step and
+// the transform page's state line agree. Null when nothing exists either way.
+function stepOutside(layer, { written, built } = {}) {
+  if (layer.last_run) return null
+  const [verb, at] = layer.name === 'transform' ? ['written', written] : layer.name === 'build' ? ['built', built] : []
+  const w = at && refreshWords({ writtenAt: at })
+  return w ? `not run here · ${verb} ${w.ago}` : null
+}
 
-function stepLine(layer) {
+function stepLine(layer, outside) {
   const words = STEP_WORDS[layer.name]
   const when = layer.last_status === 'running' ? 'running'
-    : !layer.last_run ? 'not run yet'
-      : `${layer.last_status === 'failed' ? 'failed' : 'ran'} ${ago(layer.last_run)}`
+    : !layer.last_run ? (stepOutside(layer, outside) || 'not run yet')
+      : `${layer.last_status === 'failed' ? 'failed' : 'ran'} ${refreshWords({ ranAt: layer.last_run }).ago}`
   const out = layer.last_rows_out != null && layer.last_status !== 'failed' ? words.out(layer.last_rows_out) : null
   return [words.what, FORM_LABEL[layer.last_detail?.form], when, out].filter(Boolean).join(' · ')
 }
@@ -95,7 +104,7 @@ function LayerNode({ data }) {
         }} />
         {step ? (
           <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-            <span style={{ fontWeight: 600, fontSize: 'var(--text-caption)', color: 'var(--text)' }}>{stepLine(data.layer)}</span>
+            <span style={{ fontWeight: 600, fontSize: 'var(--text-caption)', color: 'var(--text)' }}>{stepLine(data.layer, data.outside)}</span>
             <span style={{ fontSize: 'var(--text-eyebrow)', color: 'var(--muted)', fontFamily: 'var(--font-mono)' }}>{data.layer.name}</span>
           </span>
         ) : (
@@ -151,7 +160,7 @@ function layerDepth(name, byName, seen = new Set()) {
   return 1 + layerDepth(layer.depends_on, byName, seen)
 }
 
-function PipelineDag({ layers, onRun, running }) {
+function PipelineDag({ layers, onRun, running, outside }) {
   const { nodes, edges } = useMemo(() => {
     const byName = Object.fromEntries(layers.map(l => [l.name, l]))
     const depthCount = {}
@@ -163,7 +172,7 @@ function PipelineDag({ layers, onRun, running }) {
         id: l.name,
         type: 'layerNode',
         position: { x: depth * 340, y: row * 125 },
-        data: { layer: l, onRun, running },
+        data: { layer: l, onRun, running, outside },
       }
     })
     const edges = layers
@@ -177,7 +186,7 @@ function PipelineDag({ layers, onRun, running }) {
         markerEnd: { type: MarkerType.ArrowClosed, color: '#8a8a8a', width: 13, height: 13 },
       }))
     return { nodes, edges }
-  }, [layers, onRun, running])
+  }, [layers, onRun, running, outside])
 
   const maxRows = Math.max(...Object.values(
     nodes.reduce((acc, n) => { acc[n.position.x] = (acc[n.position.x] || 0) + 1; return acc }, {})
@@ -241,8 +250,10 @@ function LayerHistory({ pipeline, layer }) {
  * only an admin sees a run button; with no sign-in everyone is admin.
  * *primary*: this is the pipeline that refreshes the model, and its run is the
  * page's Refresh data. Every run is in History, not a second list here.
+ * *written* / *built*: when the transform's tables were written and the
+ * reports last built, for a step that has not run here (stepOutside).
  */
-export function PipelineDetail({ pipeline, layers, primary, label }) {
+export function PipelineDetail({ pipeline, layers, primary, label, written, built }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
@@ -259,11 +270,12 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
     views.length < 3 || window.matchMedia?.('(max-width: 768px)').matches ? 'Table' : 'Steps')
   // On a phone the table of steps drops Schedule and Runs after, so Status shows.
   const phone = useNarrow('(max-width: 640px)')
+  const outside = useMemo(() => ({ written, built }), [written, built])
 
   if (!pipeline) {
     return (
       <Card>
-        <Empty message="Select a pipeline to see its flow, layers, and runs." />
+        <Empty message="Select a pipeline to see its steps and runs." />
       </Card>
     )
   }
@@ -318,7 +330,7 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
 
       {tab === 'Steps' && (
         <div className="fade-in">
-          <PipelineDag layers={layers} onRun={admin ? handleRunLayer : undefined} running={busy} />
+          <PipelineDag layers={layers} onRun={admin ? handleRunLayer : undefined} running={busy} outside={outside} />
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 10 }}>
             Each step runs after the one it depends on. Status updates every 10 s{admin ? '; run any step from its node' : ''}.
           </p>
@@ -350,7 +362,7 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
                   )}
                   {!phone && <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>{l.schedule || '—'}</td>}
                   {!phone && <td style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>{l.depends_on || '—'}</td>}
-                  <td><StepStatus status={l.last_status} /></td>
+                  <td><StepStatus status={l.last_status} outside={stepOutside(l, outside)} /></td>
                   <td style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
                     {l.last_rows_out ?? '—'}
                   </td>
@@ -416,8 +428,8 @@ export function PipelineDetail({ pipeline, layers, primary, label }) {
 }
 
 /**
- * The pipeline that rebuilds a model's data, then the reports that read it:
- * the Transform tab of its Data page. The one made for the model (else the
+ * The pipeline that rebuilds a model's data, then the reports that read it
+ * (a transform's page shows its own with PipelineDetail). The one made for the model (else the
  * first) is its Refresh data.
  */
 export default function Pipelines({ model }) {

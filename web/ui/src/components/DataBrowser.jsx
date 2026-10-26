@@ -7,11 +7,12 @@ import {
 import '@xyflow/react/dist/style.css'
 
 import { useTable, useTables } from '../api'
-import { CONTRACT } from './Warehouse'
+import { checksWords, reachWords } from '../words'
 import { useModelLabel } from './Scope'
 import { MAX_COLUMNS, NODE_W, layoutSchema, nodeHeight, typeKind } from './modelGraph'
 import { count } from '../format'
-import { modelPath, reportPagePath, tablePath, transformPath, warehouseTablePath } from '../nav'
+import { modelPath, reportPagePath, tablePath, warehouseTablePath } from '../nav'
+import { TransformName } from '../pages/Connectors'
 import { Btn, BtnLink, Chip, ErrorDetail, Time } from './Shared'
 
 // The data browser: a tree of tables, the schema drawn as a diagram, and an
@@ -217,7 +218,7 @@ function Tree({ schema, infoOf, selected, onTable, onColumn, onGroup, query, set
           }
           if (it.kind === 'table') {
             const info = infoOf(it.t)
-            const c = info?.contract && (CONTRACT[info.contract.status] || CONTRACT.no_contract)
+            const c = info?.contract && checksWords(info.contract)
             const on = selected.table === it.t.id
             return (
               <li {...common} aria-expanded={it.expanded} aria-selected={on} data-table={it.t.id}
@@ -226,7 +227,7 @@ function Tree({ schema, infoOf, selected, onTable, onColumn, onGroup, query, set
                 <span className="dbx-tree__name" title={it.t.name}><Hit text={it.t.name} q={q} /></span>
                 <span className="dbx-tree__n">{rowsWords(info, true)}</span>
                 {c
-                  ? <span className={`dbx-dot dbx-dot--${info.contract.status}`} role="img" aria-label={c.label} title={c.title} />
+                  ? <span className={`dbx-dot dbx-dot--${info.contract.status}`} role="img" aria-label={c.text} title={c.title} />
                   : <span className="dbx-dot dbx-dot--blank" aria-hidden="true" />}
               </li>
             )
@@ -529,14 +530,17 @@ function JoinsSection({ id, edges, onSelect }) {
   )
 }
 
-function UsedBy({ info }) {
+// *model*: the model whose page this is, named as plain text: a link to it
+// would only clear the selection.
+function UsedBy({ info, model }) {
   const labelOf = useModelLabel()
   if (!info) return null
   return (
     <Section id="used" title="Used by">
       <p className="dbx-quiet">
         Read by {(info.read_by || []).length
-          ? info.read_by.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={modelPath(m)}>{labelOf(m)}</Link></Fragment>)
+          ? info.read_by.map((m, i) => (
+            <Fragment key={m}>{i > 0 && ', '}{m === model ? labelOf(m) : <Link to={modelPath(m)}>{labelOf(m)}</Link>}</Fragment>))
           : 'no model'}
       </p>
       {(info.used_by || []).length > 0
@@ -549,9 +553,9 @@ function UsedBy({ info }) {
 // A table, selected: a short card. What it is, its checks, its shape, who
 // wrote it, its joins and who uses it; its columns, rows and profile are on
 // its own page, which Open table opens.
-function TableInspector({ t, edges, measures, onSelect, onClose }) {
+function TableInspector({ t, edges, measures, onSelect, onClose, model }) {
   const { data: info, error } = useTable(t.connector, t.source)
-  const c = info?.contract && (CONTRACT[info.contract.status] || CONTRACT.no_contract)
+  const c = info?.contract && checksWords(info.contract)
   const connected = info && info.connected !== false
   const view = connected && info.table_kind === 'view'
   // A warehouse table's page is under Warehouse; it names its warehouse only
@@ -565,14 +569,14 @@ function TableInspector({ t, edges, measures, onSelect, onClose }) {
         <div className="dbx-insp__title">
           <KindGlyph role={t.role} view={view} />
           <h2 className="dbx-insp__name" title={t.name}>{t.name}</h2>
-          {c && <Chip tone={c.tone} title={c.title}>{c.label}</Chip>}
+          {c && <Chip tone={c.tone} title={c.title}>{c.text}</Chip>}
           <button type="button" className="dbx-close" onClick={onClose} aria-label="Close the table" title="Back to the summary">×</button>
         </div>
         <p className="dbx-insp__sub">
           {view ? 'View' : KIND_WORD[t.role]}
           {connected && <> · {info.rows == null ? 'rows not counted' : `${info.rows_exact === false ? '~' : ''}${count(info.rows, 'row')}`} × {count(info.columns.length, 'column')}</>}
           {view && (info.view?.transform || info.view?.bases?.length > 0) && <>
-            {' · '}defined by {info.view.transform ? <code>{info.view.transform}</code> : 'a transform'}
+            {' · '}defined by {info.view.transform ? <TransformName name={info.view.transform} /> : 'a transform'}
             {info.view.bases?.length > 0 && <> over {info.view.bases.map((b, i) => <Fragment key={b}>{i > 0 && ', '}<code>{b}</code></Fragment>)}</>}
           </>}
           {t.source !== t.name && <> · stored as <code>{t.source}</code></>}
@@ -580,12 +584,12 @@ function TableInspector({ t, edges, measures, onSelect, onClose }) {
         {connected && info.kind === 'warehouse' && (
           <p className="dbx-insp__sub">
             Written by {info.written_by?.transform
-              ? <Link to={transformPath(info.written_by.transform)}><code>{info.written_by.transform}</code></Link>
+              ? <TransformName name={info.written_by.transform} />
               : 'no recorded transform'}
             {info.written_by?.at && <> · <Time iso={info.written_by.at} /></>}
           </p>
         )}
-        {info?.connected === false && <p className="dbx-quiet">Not connected here · {info.variable ? <>set <code>{info.variable}</code></> : info.reason}</p>}
+        {info?.connected === false && <p className="dbx-quiet">{reachWords(info).text}</p>}
         {error && <ErrorDetail error={error} />}
         <div className="dbx-insp__acts">
           <BtnLink size="sm" to={page}>Open table</BtnLink>
@@ -593,7 +597,7 @@ function TableInspector({ t, edges, measures, onSelect, onClose }) {
       </header>
       <JoinsSection id={t.id} edges={edges} onSelect={onSelect} />
       {measures}
-      <UsedBy info={connected ? info : null} />
+      <UsedBy info={connected ? info : null} model={model} />
     </div>
   )
 }
@@ -616,8 +620,10 @@ const modeOf = w => (w >= 1040 ? 'wide' : w >= 640 ? 'mid' : 'phone')
  * - *emptyNote*: said on the canvas when there are no joins.
  * - *summaryOpen*: the address names a part of the summary (?view=), so it
  *   shows even where the inspector is a sheet.
+ * - *model*: the model whose page this is (a model's browser), so a table's
+ *   Used by names it without linking to itself.
  */
-export default function DataBrowser({ schema, storeKey, infoOf: given, summary, groupView, measuresOf, emptyNote, label, summaryOpen }) {
+export default function DataBrowser({ schema, storeKey, infoOf: given, summary, groupView, measuresOf, emptyNote, label, summaryOpen, model }) {
   const [params, setParams] = useSearchParams()
   const table = schema.tables.some(t => t.id === params.get('table')) ? params.get('table') : null
   const groupId = groupView && schema.groups.some(g => g.id === params.get('group')) ? params.get('group') : null
@@ -681,7 +687,7 @@ export default function DataBrowser({ schema, storeKey, infoOf: given, summary, 
   const inspecting = !!(t || group)
   const body = t
     ? <TableInspector key={t.id} t={t} edges={schema.edges} measures={measuresOf?.(t)}
-                      onSelect={selectTable} onClose={close} />
+                      onSelect={selectTable} onClose={close} model={model} />
     : group ? (
       <div className="dbx-insp__group">
         <button type="button" className="dbx-close dbx-close--float" onClick={close} aria-label="Close the group" title="Back to the summary">×</button>

@@ -14,7 +14,7 @@ together, and one pipeline runs the whole chain:
   each with its receipt.
 
 Both are ordinary pipeline steps (see ``PipelineRunner.register_step``), so they
-appear on the model's Transform tab and in ``tracebi run-pipeline`` with run history.
+appear on the transform's page in the app and in ``tracebi run-pipeline`` with run history.
 Run from the project root, like every other ``tracebi`` command.
 """
 
@@ -113,7 +113,7 @@ def model_pipeline(
         release()
         tables = sum(len(get_model(m).info()["tables"]) for m in models)   # tables now in place
         # The run records which form ran (sql | python | notebook), for
-        # `run-pipeline --status` and the model's Transform tab.
+        # `run-pipeline --status` and the transform's page.
         return tables, tables, {"form": transform_form(find_transform(transform))}
 
     def build_reports():
@@ -135,7 +135,7 @@ def model_pipeline(
         return len(names)                                       # reports rebuilt
 
     runner = PipelineRunner(db_url=db_url)
-    # The Transform tab (and the model filter) join a runner to its
+    # The transform's page (and the model filter) join a runner to its
     # model by this attribute — not by guessing from the pipeline's file name.
     runner.model = model
     runner.models = models

@@ -2,15 +2,15 @@ import { Fragment, useEffect, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
-import { useConnectors, useInputs, usePipelines, useSource, useTransforms, useWarehouses } from '../api'
+import { useConnectors, useDesk, useInputs, usePipelines, useReports, useSource, useTransforms, useWarehouses } from '../api'
 import { useLineFacts } from '../components/TheLine'
 import { useModelLabel } from '../components/Scope'
 import { CodeFiles } from '../components/CodeView'
 import { ContractLine, ReadInput, TableList, groupContract } from '../components/Warehouse'
 import { PipelineDetail } from './Pipelines'
-import { FORM_LABEL } from '../chain'
+import { FORM_LABEL, refreshWords } from '../words'
 import { humanise } from '../ask'
-import { ago, stamp } from '../when'
+import { stamp } from '../when'
 import * as nav from '../nav'
 import { DataFrame } from './Data'
 import {
@@ -33,16 +33,6 @@ const METHOD_TITLE = {
   scanner: 'Read in place through DuckDB’s scanner',
   arrow: 'Read as Arrow',
   pandas: 'Read through the connector',
-}
-
-// The refresh phrase: what the pipeline's runs say, else what the sink's
-// certificate says (a run outside the app leaves no run here).
-function refreshPhrase(t, written) {
-  if (t?.running) return { text: 'Running now' }
-  if (t?.failed) return { bad: true, text: `Refresh failed ${ago(t.lastAt)}` }
-  if (t?.lastAt) return { text: `Refreshed ${ago(t.lastAt)}` }
-  if (written) return { text: `Written ${ago(written)} · outside the app` }
-  return { text: 'Not refreshed yet' }
 }
 
 // The failing run, open: the checks that failed in their own words, or what
@@ -78,9 +68,10 @@ function WhyItFailed({ transform, lastCheck, stale }) {
   )
 }
 
-// The state line: the refresh phrase, and when the last run failed, why.
+// The state line: the refresh in the app's words (words.js refreshWords),
+// and when the last run failed, why.
 function StateLine({ phrase, transform, lastCheck, stale }) {
-  if (!phrase.bad) return <p className="tfpage__state">{phrase.text}.</p>
+  if (phrase.kind !== 'failed') return <p className="tfpage__state">{phrase.text}.</p>
   return (
     <Card>
       <p role="status" className="overview__alert tfpage__alert">
@@ -110,7 +101,11 @@ function RunState({ name, model, written, tables }) {
   if (!transform.known) return null
   const lastCheck = tables.map(t => t.contract?.checked_at).filter(Boolean).sort().pop()
   return (
-    <StateLine phrase={refreshPhrase(transform, written)} transform={transform} lastCheck={lastCheck}
+    <StateLine phrase={refreshWords({
+                 running: transform.running, failedAt: transform.failed ? transform.lastAt : null,
+                 ranAt: transform.lastAt, writtenAt: written,
+               })}
+               transform={transform} lastCheck={lastCheck}
                stale={tables.some(t => t.contract?.status === 'stale')} />
   )
 }
@@ -125,9 +120,18 @@ function Section({ id, title, children }) {
 }
 
 // The pipelines that run the transform, each with its Refresh data, steps,
-// code and latest run; none says how to run the file by hand.
-function Run({ name, pipelines }) {
+// code and latest run; none says how to run the file by hand. A step with no
+// run here says what was written (*written*, the certificate's time) or built
+// (the newest build of a report on the pipeline's models) outside the app.
+function Run({ name, pipelines, written }) {
   const labelOf = useModelLabel()
+  const { data: desk } = useDesk()
+  const { data: reports } = useReports()
+  const builtFor = p => {
+    const models = nav.pipelineModels(p)
+    const mine = new Set((reports || []).filter(r => nav.reportModels(r).some(m => models.includes(m))).map(r => r.name))
+    return (desk?.builds || []).filter(b => mine.has(b.report) && b.built_at).map(b => b.built_at).sort().pop()
+  }
   return (
     <Section id="tf-run" title="Run">
       {pipelines.length === 0 ? (
@@ -139,7 +143,8 @@ function Run({ name, pipelines }) {
         <div key={p.pipeline} className="tfpage__pipeline">
           {/* A pipeline has no label of its own: the model's is its name when it is the model's. */}
           <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary
-                          label={p.model ? labelOf(p.model) : humanise(p.pipeline)} />
+                          label={p.model ? labelOf(p.model) : humanise(p.pipeline)}
+                          written={written} built={builtFor(p)} />
         </div>
       ))}
     </Section>
@@ -269,15 +274,14 @@ export default function Transform() {
           {t.models.length
             ? <>Feeds {t.models.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={modelPath(m)}>{labelOf(m)}</Link></Fragment>)}</>
             : 'Feeds no model'}
-          {' · '}last wrote {t.written_at ? stamp(t.written_at) : 'never, here'}
         </p>
       </header>
 
       {model
         ? <RunState name={name} model={model} written={t.written_at} tables={tables} />
-        : (pipelines || !t.pipelines.length) && <StateLine phrase={refreshPhrase(null, t.written_at)} />}
+        : (pipelines || !t.pipelines.length) && <StateLine phrase={refreshWords({ pipeline: false, writtenAt: t.written_at })} />}
 
-      <Run name={name} pipelines={runs} />
+      <Run name={name} pipelines={runs} written={t.written_at} />
       <Code name={name} note={t.note} />
       <Reads name={name} writers={writers} files={files} />
       <Produces groups={groups} />

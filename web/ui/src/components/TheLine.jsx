@@ -1,16 +1,15 @@
-import { Fragment, useMemo } from 'react'
+import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 
 import {
   usePipelines, usePipelineRuns, useLayerHistory, useModel, useConnectors,
   useConnectorWarehouse, useReports, useDesk, useInputs,
 } from '../api'
-import { buildModelGraph } from './modelGraph'
 import { Verdict } from './Shared'
 import { verdictOf } from '../verdict'
-import { ago, stamp } from '../when'
 import { count } from '../format'
 import { upstreamOf } from '../chain'
+import { checksWords, refreshWords } from '../words'
 import { folderPath, useLibrary } from '../folders'
 import {
   libraryPath, modelPath, pipelineBelongsToModel, reportBelongsToModel, sourcesPath, transformPath,
@@ -106,9 +105,6 @@ export function useLineFacts(model) {
     lastAt: at(last), goodAt: at(good), actor: last?.actor,
   }
 
-  // ② Model
-  const graph = useMemo(() => (detail ? buildModelGraph(detail) : null), [detail])
-
   // ③ Reports: the model's, and what the desk found when it re-checked each last build
   const listed = (reports || []).filter(r => reportBelongsToModel(r, model))
   const builds = new Map((desk?.builds || []).map(b => [b.report, b]))
@@ -127,11 +123,13 @@ export function useLineFacts(model) {
   const line = {
     sources: sourcesStation(pipelines && connectors && inputs, upstream),
     transform: transformStation(pipelines, transform, lastCheck),
-    model: modelStation(detail, graph),
+    model: modelStation(detail),
     reports: reportsStation(reports, listed, desk, built, states),
   }
-  const pill1 = warehousePill(source, file, detail, warehouse, tables, transform)
-  const pill2 = detail ? { name: count(detail.measures?.length || 0, 'measure'), sans: true } : null
+  const pill1 = warehousePill(source, file, warehouse, tables, transform)
+  // What the model hands its reports: its measures (how many is said once, in
+  // the Semantic layer's line).
+  const pill2 = detail ? { name: 'measures', sans: true } : null
   line.hands = [
     { pill: null, tone: '' },
     { pill: pill1, tone: pill1?.kind === 'bad' || pill1?.kind === 'warn' ? 'warn' : '' },
@@ -185,29 +183,31 @@ function sourcesStation(known, up) {
   return s
 }
 
-// *written*: when the sink certificate says the tables were written. A run
-// outside the app (run_workflow.py, `tracebi run-transform`) leaves no run in
-// the run store, so with none recorded that is what the station says.
+// The refresh, in the words every page uses (words.js refreshWords): the
+// pipeline's runs, else the sink certificate's time (*written*), since a run
+// outside the app (run_workflow.py, `tracebi run-transform`) records none
+// here. A failed refresh is a flag, with the last good one as the fact.
 function transformStation(pipelines, t, written) {
   const s = { name: t.name, file: t.pipeline?.transform || null, flags: [] }
   if (!t.pipeline) {
-    if (pipelines) s.flags.push(mark('none', 'No pipeline'))
+    if (pipelines) s.flags.push(mark('none', refreshWords({ pipeline: false }).text))
     return s
   }
-  if (t.running) s.fact = 'Running now'
-  else if (t.failed) {
-    if (t.goodAt) s.fact = `Last good run ${stamp(t.goodAt)}`
-    s.flags.push(mark('bad', `Failed ${ago(t.lastAt)}`))
-  } else if (t.lastAt) s.fact = `Ran ${stamp(t.lastAt)}`
-  else if (t.known && written) s.fact = `Written ${stamp(written)} · outside the app`
-  else if (t.known) s.flags.push(mark('none', 'Not run yet'))
+  if (!t.known && !t.running) return s
+  const w = refreshWords({
+    running: t.running, failedAt: t.failed ? t.lastAt : null, ranAt: t.lastAt, writtenAt: written,
+  })
+  if (w.kind === 'failed') {
+    if (t.goodAt) s.fact = refreshWords({ ranAt: t.goodAt }).text
+    s.flags.push(mark('bad', w.text))
+  } else if (w.kind === 'never') s.flags.push(mark('none', w.text))
+  else s.fact = w.text
   return s
 }
 
-function modelStation(detail, graph) {
-  const s = { name: detail?.label || detail?.name, sans: true, flags: [] }
-  if (detail) s.fact = `${count(detail.tables.length, 'table')} · ${count(graph.edges.length, 'join')}`
-  return s
+// The model's counts are said once, in the Semantic layer's line under it.
+function modelStation(detail) {
+  return { name: detail?.label || detail?.name, sans: true, flags: [] }
 }
 
 function reportsStation(reports, listed, desk, built, states) {
@@ -218,25 +218,26 @@ function reportsStation(reports, listed, desk, built, states) {
   return s
 }
 
-// The first hand-off: the warehouse file, and what its checks say of the
-// tables in it. A failed check is the loudest word, then a table that no
-// longer matches its last check, then tables with no checks; all fine says
-// only how many tables.
-function warehousePill(source, file, detail, warehouse, tables, transform) {
+// The first hand-off: the warehouse file, by its name only (where it is kept
+// is said once, in the Semantic layer's "Reads"), and what its checks say of
+// the tables in it, in the chip's words (words.js checksWords). A failed check
+// is the loudest word, then a table that no longer matches its last check,
+// then tables with no checks; all fine says the checks passed.
+function warehousePill(source, file, warehouse, tables, transform) {
   if (!source) return null
   const where = file?.storage?.where
   const pill = { name: where ? where.split('/').pop() : source.name, mono: true }
   if (warehouse && warehouse.exists === false) return { ...pill, ...mark('none', 'not built yet') }
-  if (transform.failure) return { ...pill, ...mark('bad', `${count(transform.failure.failed, 'check')} failed`) }
+  if (transform.failure) return { ...pill, ...mark('bad', checksWords({ failed: transform.failure.failed }).text) }
   if (tables.some(t => t.contract?.status === 'stale')) {
-    return { ...pill, ...mark('warn', "doesn't match its last check") }
+    return { ...pill, ...mark('warn', checksWords({ status: 'stale' }).text) }
   }
   const unchecked = tables.filter(t => (t.contract?.status || 'no_contract') === 'no_contract').length
   if (tables.length && unchecked) {
-    return { ...pill, ...mark('none', unchecked === tables.length ? 'no checks declared' : `${count(unchecked, 'table')} without checks`) }
+    const none = checksWords({ status: 'no_contract' }).text
+    return { ...pill, ...mark('none', unchecked === tables.length ? none : `${none} on ${count(unchecked, 'table')}`) }
   }
-  const n = detail ? detail.tables.filter(t => t.connector === source.name).length : 0
-  return n ? { ...pill, sub: count(n, 'table') } : pill
+  return tables.length ? { ...pill, sub: checksWords({ status: 'satisfied' }).text } : pill
 }
 
 // ── The line ─────────────────────────────────────────────────────────────────

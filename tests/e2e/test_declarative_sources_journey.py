@@ -44,7 +44,7 @@ def test_a_scaffolded_project_runs_end_to_end_on_yaml_sources(scaffolded, monkey
     assert (scaffolded / "output" / "sample_model" / "sample_dashboard.html").is_file()
 
     c = serve(monkeypatch)
-    # Refresh data (the Transform tab) runs the YAML pipeline the way the command line did.
+    # Refresh data (the transform's page) runs the YAML pipeline the way the command line did.
     run = c.post("/api/pipelines/sample_model/runs").json()
     text, done = follow_run(c, "sample_model", run["run_id"])
     assert done["status"] == "succeeded", text

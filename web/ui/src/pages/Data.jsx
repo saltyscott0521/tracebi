@@ -6,28 +6,13 @@ import {
 } from '../api'
 import { Flag, VerdictSummary, reportStates, useModelFolder } from '../components/TheLine'
 import { ProjectFeedFold } from '../components/Workbench'
-import { ago } from '../when'
 import { count } from '../format'
-import { FORM_LABEL, pipelineFor, transformOf, upstreamOf } from '../chain'
+import { FORM_LABEL, pipelineFor, transformOf, upstreamOf, writtenFor } from '../chain'
+import { pipelineRefresh } from '../words'
 import {
   dataFolder, modelPath, movedTo, reportBelongsToModel, sourcesPath, transformPath, warehousePath,
 } from '../nav'
 import { Badge, Empty, PageSub, PageTitle, SkeletonCard, SkeletonList } from '../components/Shared'
-
-// When the model's data was last refreshed: its transform step's last run.
-// A transform run outside the app (run_workflow.py, `tracebi run-transform`)
-// leaves no run here, but its sink certificate records when it wrote the
-// tables (*written*), so that is said instead of "not refreshed".
-function refreshed(pipeline, written) {
-  if (!pipeline) return { text: 'No refresh pipeline' }
-  const layers = pipeline.layers || []
-  const step = layers.find(l => l.name === 'transform') || layers[0]
-  if (!step?.last_run) return { text: written ? `Written ${ago(written)} · outside the app` : 'Not refreshed yet' }
-  if (step.last_status === 'failed') {
-    return { flag: { kind: 'bad', glyph: '✕', text: `Refresh failed ${ago(step.last_run)}` } }
-  }
-  return { text: `Refreshed ${ago(step.last_run)}` }
-}
 
 /**
  * "Data › Warehouse › fact_holdings": where a thing's page sits under Data.
@@ -110,7 +95,7 @@ function Seg({ to, children }) {
 // chip, never the name of the stage.
 function ChainRow({ model, reports, pipeline, desk, up, written, form, group }) {
   const mine = reports.filter(r => reportBelongsToModel(r, model.name))
-  const when = refreshed(pipeline, written)
+  const when = pipelineRefresh(pipeline, written)
   const label = model.label || model.name
   const nSources = up.connections.length + up.files.length
   const folder = useModelFolder(model.name)
@@ -145,7 +130,9 @@ function ChainRow({ model, reports, pipeline, desk, up, written, form, group }) 
         </Link>
         <span className="dlist__side">
           {desk && mine.length > 0 && <span className="dlist__verdicts"><VerdictSummary states={reportStates(mine, desk)} /></span>}
-          <span className="dlist__when">{when.flag ? <Flag flag={when.flag} /> : when.text}</span>
+          <span className="dlist__when">
+            {when.kind === 'failed' ? <Flag flag={{ kind: 'bad', glyph: '✕', text: when.text }} /> : when.text}
+          </span>
         </span>
       </div>
       <ol className="chain__line" aria-label={`How ${label} is made`}>
@@ -158,13 +145,6 @@ function ChainRow({ model, reports, pipeline, desk, up, written, form, group }) 
       </ol>
     </li>
   )
-}
-
-// When the newest table *model* reads was written, by its certificate.
-function writtenFor(warehouses, model) {
-  return (warehouses?.warehouses || []).flatMap(w => w.tables)
-    .filter(t => t.read_by.includes(model) && t.written_by?.at)
-    .map(t => t.written_by.at).sort().pop()
 }
 
 // The warehouse browser's group for what *transform* wrote (its id in

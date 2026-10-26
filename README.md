@@ -162,16 +162,18 @@ Four places in the sidebar:
   ("Show fair value by sector, largest first, top 8"), answered with a chart,
   table or number, each measure's definition and the query behind it. **Keep
   this** starts a draft report.
-- **Data** (`/data`, analysts and admins) — opens on **Flow**, the board: five
-  lanes in the order the data moves (⓪ Sources, ① Transforms, the Warehouse
-  grouped by the transform that wrote each table, ② Models, ③ Reports), wires
-  between the cards, a model's whole path lit on hover. The tabs behind it list
-  the same things: **Sources** (every connection and the `inputs/` folder, what
-  each holds and what reads it, and its credentials), **Transforms**,
-  **Warehouse** (every table, who wrote it, who reads it, its checks) and
-  **Models**. Any table opens on a page of its own (rows with sort, search and
-  filters, a column profile, who uses it); a model's page draws its line and
-  its tabs (Model, Transform with **Refresh data**, Sources, Runs).
+- **Data** (`/data`, analysts and admins) — a directory, like the library:
+  it opens on **Overview**, the board: five lanes in the order the data moves
+  (⓪ Sources, ① Transforms, the Warehouse grouped by the transform that wrote
+  each table, ② Models, ③ Reports), wires between the cards, a model's whole
+  path lit on hover. The sidebar nests four folders under it: **Sources**
+  (every connection and the `inputs/` folder, what each holds and what reads
+  it, and its credentials), **Transforms**, **Warehouse** (every table, who
+  wrote it, who reads it, its checks) and **Models**. Each thing has a page of
+  its own: a table (rows with sort, search and filters, a column profile, who
+  uses it), a transform (its refresh, **Refresh data** and its steps, its code
+  beside its checks, the tables it wrote), and a model (its line to its
+  transform, sources and reports, then its tables, joins and semantic layer).
 - **Review** (`/review`, analysts and admins) — what needs attention (a failed
   refresh, a build that needs a look, a request to publish), then **Drafts**,
   **History** (what ran, when, for whom, whether it reproduced) and **Verify**

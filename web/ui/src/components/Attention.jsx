@@ -5,6 +5,7 @@ import { useReportRun, useStartReportRun } from '../api'
 import { useToast } from './Shared'
 import { VERDICT_LABEL, needsAction, verdictOf } from '../verdict'
 import { count } from '../format'
+import { checksWords } from '../words'
 import { pipelineModels, dataPath, folderOf, historyPath, reportPagePath, transformPath, warehouseTablePath } from '../nav'
 
 // What needs a person, from GET /api/desk, the pipelines list, the run store
@@ -104,7 +105,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
   }
   for (const s of desk?.sinks || []) {
     items.push({
-      key: `sink-${s.table}`, kind: s.status === 'stale' ? 'Checks stale' : 'No checks',
+      key: `sink-${s.table}`, kind: checksWords(s).text,
       variant: s.status === 'stale' ? 'amber' : 'gray',
       // A stale table names the transform whose checks it no longer matches;
       // a table with none is opened itself.

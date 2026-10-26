@@ -197,7 +197,7 @@ def test_the_refresh_page_follows_a_run_as_a_log(pipeline, monkeypatch):
 
 
 def test_a_run_from_the_command_line_is_in_the_same_list_as_one_from_the_app(pipeline, monkeypatch):
-    """`tracebi run-pipeline` used to leave nothing the Transform tab could show:
+    """`tracebi run-pipeline` used to leave nothing the transform's page could show:
     a cron job's run was invisible beside the ones started from a button."""
     code, out = run_cli("run-pipeline", "orders_etl")
     assert code == 0, out
@@ -244,7 +244,7 @@ runner.register_step("boom", _boom, depends_on="orders_silver")
 
 
 def test_a_command_line_run_that_is_interrupted_does_not_stay_running(pipeline, monkeypatch):
-    """A run stuck at 'running' would keep the Transform tab's Run all disabled for good."""
+    """A run stuck at 'running' would keep the transform page's Run all disabled for good."""
     path = pipeline / "pipelines" / "orders_etl.py"
     path.write_text(path.read_text() + '''
 def _interrupt():
@@ -307,7 +307,7 @@ runner.register_step("boom", _boom, depends_on="orders_silver")
 def test_a_model_pipelines_log_includes_what_its_transform_printed(scaffolded, monkeypatch):
     c = serve_app(monkeypatch)
 
-    # A fresh project's Transform tab has a pipeline for its model.
+    # A fresh project's transform page has a pipeline for its model.
     [pipeline] = c.get("/api/pipelines").json()
     assert (pipeline["pipeline"], pipeline["model"]) == ("sample_model", "sample_model")
     # What the model's Data page says about it: the transform it runs, and its description.

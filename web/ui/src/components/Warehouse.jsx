@@ -4,9 +4,10 @@ import { Link } from 'react-router-dom'
 import { useWarehouses } from '../api'
 import { useModelLabel } from './Scope'
 import { KindGlyph } from './DataBrowser'
-import { TransformName, useTransformHome } from '../pages/Connectors'
+import { TransformName } from '../pages/Connectors'
 import { Chip, ErrorDetail, Spinner, Time } from './Shared'
 import { count } from '../format'
+import { checksWords } from '../words'
 import { dataPath, tablePath } from '../nav'
 
 // What a warehouse holds, as a list of its tables grouped by the transform
@@ -14,13 +15,7 @@ import { dataPath, tablePath } from '../nav'
 // what its checks say; each row is a table (its name opens the table page)
 // with its rows, columns, readers and its checks' state. The contract line is
 // what the sink said about itself (never "verified") and it does not colour
-// anything else.
-
-export const CONTRACT = {
-  satisfied: { tone: '', label: 'Checks passed', title: 'The sink satisfied its contract, and the table is unchanged since.' },
-  stale: { tone: 'warn', label: 'Changed since checked', title: 'The table changed after its checks last passed: they no longer describe this data.' },
-  no_contract: { tone: 'none', label: 'No checks', title: 'No checks cover this table.' },
-}
+// anything else. The chip's words are words.js checksWords.
 
 // The contract's note is what the transform says it did, in its author's
 // words: shown as stated, never as a check.
@@ -92,7 +87,7 @@ export function TableList({ warehouse, tables, readBy = true }) {
         </thead>
         <tbody>
           {tables.map(t => {
-            const c = CONTRACT[t.contract?.status] || CONTRACT.no_contract
+            const c = checksWords(t.contract)
             return (
               <tr key={t.name} data-table={t.name}>
                 <td>
@@ -107,7 +102,7 @@ export function TableList({ warehouse, tables, readBy = true }) {
                     ? t.read_by.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={dataPath(m)}>{labelOf(m)}</Link></Fragment>)
                     : <span className="wb-meta">no model</span>}
                 </td>}
-                <td><Chip tone={c.tone} title={c.title}>{c.label}</Chip></td>
+                <td><Chip tone={c.tone} title={c.title}>{c.text}</Chip></td>
               </tr>
             )
           })}
@@ -131,7 +126,6 @@ export function groupContract(writer, tables) {
  * Tables no certificate covers come last, under a header that says so.
  */
 export function ByWriter({ w, tables }) {
-  const home = useTransformHome()
   const shown = new Set(tables.map(t => t.name))
   const groups = (w.writers || [])
     .map(wr => ({ wr, tables: tables.filter(t => t.written_by?.contract === wr.contract) }))
@@ -143,7 +137,7 @@ export function ByWriter({ w, tables }) {
         <section key={wr.contract} className="whgroup" data-writer={wr.transform || wr.contract}
                  aria-label={`Written by ${wr.transform || wr.contract}`}>
           <p className="whgroup__head">
-            {wr.transform ? <TransformName name={wr.transform} home={home} /> : <code>{wr.contract}</code>}
+            {wr.transform ? <TransformName name={wr.transform} /> : <code>{wr.contract}</code>}
             {' · '}wrote {count(wr.tables.length, 'table')}
             {wr.tables.length > own.length && ` (${own.length} shown)`}
             {wr.read.length > 0 && <> · read {wr.read.map((src, i) => (
@@ -169,8 +163,8 @@ export function ByWriter({ w, tables }) {
 }
 
 /**
- * The Transform tab's Produces: the warehouse *connector* writes, from the
- * Warehouse tab's own listing. *only*: the table names to list (a file can
+ * What the warehouse *connector* holds, grouped by writer, from the
+ * Warehouse folder's own listing. *only*: the table names to list (a file can
  * hold other models' tables); the rest are counted.
  */
 export default function Warehouse({ connector, only }) {

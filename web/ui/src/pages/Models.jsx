@@ -11,7 +11,9 @@ import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
 import DataBrowser, { InspectorSection } from '../components/DataBrowser'
 import { count } from '../format'
-import { askPath, modelPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import { pipelineFor, writtenFor } from '../chain'
+import { checksWords, pipelineRefresh } from '../words'
+import { askPath, modelPath, reportBelongsToModel } from '../nav'
 import {
   Card, Badge, Chip, Empty, ErrorDetail, SkeletonList, SkeletonCard,
 } from '../components/Shared'
@@ -147,15 +149,11 @@ function ModelStorage({ details, tables, hidden }) {
   )
 }
 
-// What the desk says of a warehouse table, in plain words.
-const SINK_WORDS = { stale: 'changed since its checks last passed', no_contract: 'no checks declared' }
-
 // The summary's folds, in the address as ?view= (one open at a time), so a
 // reload keeps the one you are on and the model page's older addresses
 // (?view=relationships, storage, code) still open what they named.
 // ?view=measures names the Semantic layer's Measures, always open; the
-// address only brings it into view. ?view=diagram and ?view=tables are the
-// browser itself.
+// address only brings it into view. ?view=agent opens What an agent sees.
 const FOLDS = [['relationships', 'Joins'], ['storage', 'Storage'], ['code', 'Code'], ['agent', 'What an agent sees']]
 const VIEWS = ['measures', ...FOLDS.map(([k]) => k)]
 
@@ -281,8 +279,10 @@ function ModelSummary({ name, data, schema, desk, action, view, setView, onPickM
           {count(schema.tables.length, 'table')} · {count(schema.edges.length, 'join')} · {count((data.measures || []).length, 'measure')}
         </p>
         {where.length > 0 && <p className="dbx-insp__sub">Reads {where.map((w, i) => <span key={w}>{i > 0 && ', '}<code>{w}</code></span>)}</p>}
-        {desk?.warehouse && sinks.length === 0 && <p className="dbx-insp__sub">Its tables satisfied their checks when they were last written.</p>}
-        {sinks.length > 0 && <p className="dbx-insp__sub">{sinks.map(s => `${s.table}: ${SINK_WORDS[s.status] || s.status}`).join(' · ')}</p>}
+        {desk?.warehouse && sinks.length === 0 && (
+          <p className="dbx-insp__sub">{checksWords({ status: 'satisfied' }).text} on its tables when they were last written.</p>
+        )}
+        {sinks.length > 0 && <p className="dbx-insp__sub">{sinks.map(s => `${s.table}: ${checksWords(s).text}`).join(' · ')}</p>}
         {(data.owners || []).length > 0 && (
           <p className="dbx-insp__sub">Owners: {data.owners.join(', ')} (only they or an admin publish changes to it)</p>
         )}
@@ -409,7 +409,7 @@ export function ModelDetail({ name, action }) {
       schema={schema} storeKey={`model-${name}`} label={`${data.label || name}: tables, joins and measures`}
       summary={<ModelSummary name={name} data={data} schema={schema} desk={desk} action={action} view={view} setView={setView}
                              onPickMeasure={pickMeasure} />}
-      summaryOpen={!!view} infoOf={infoOf}
+      summaryOpen={!!view} infoOf={infoOf} model={name}
       measuresOf={t => <FactMeasures model={name} data={data} table={t.id} target={measure} />}
       emptyNote={<>This model declares no relationships. Give a fact its <code>foreign_keys:</code>, or list one under <code>relationships:</code>.</>}
     />
@@ -426,6 +426,7 @@ export default function Models({ pageKey = 'data' }) {
   const { data, isLoading } = useModels()
   const { data: reports } = useReports()
   const { data: pipelines } = usePipelines()
+  const { data: warehouses } = useWarehouses()
   const [params] = useSearchParams()
   const open = pageKey === 'ask' ? askPath : modelPath
   // Old links: /models?m=<model>, /explore?model=<model>.
@@ -434,7 +435,8 @@ export default function Models({ pageKey = 'data' }) {
 
   const models = data || []
   const reportCount = name => (reports || []).filter(r => reportBelongsToModel(r, name)).length
-  const refreshes = name => (pipelines || []).some(p => pipelineBelongsToModel(p, name))
+  // When its data was refreshed, in the words the Models folder uses.
+  const refreshed = name => pipelineRefresh(pipelineFor(pipelines || [], name), writtenFor(warehouses, name)).text
 
   return (
     <>
@@ -456,7 +458,7 @@ export default function Models({ pageKey = 'data' }) {
                 </span>
                 <span className="model-card__facts">
                   <span>{n} report{n !== 1 ? 's' : ''}</span>
-                  <span>{refreshes(m.name) ? 'Has a refresh pipeline' : 'No refresh pipeline'}</span>
+                  <span>{refreshed(m.name)}</span>
                 </span>
               </Link>
             )

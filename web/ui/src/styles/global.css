@@ -684,7 +684,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .runlog-wrap { position: relative; }
 .runlog__bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .runlog__meta { font-size: var(--text-sm); color: var(--muted); }
-/* The Transform tab's latest run, folded under its views (the page's Runs tab lists every run). */
+/* A pipeline's latest run on a transform's page, folded under its views (History lists every run). */
 .pipe-run { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 .pipe-run > summary { cursor: pointer; margin-bottom: 12px; font-size: var(--text-caption); font-weight: 600; color: var(--text); }
 .runlog__reports {
@@ -1975,7 +1975,7 @@ a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
 .src-files__by { flex-basis: 100%; font-size: var(--text-sm); color: var(--text-2); }
 
 /* A warehouse's tables grouped by the transform that wrote them, a row per
-   table (the Transform tab's Produces). */
+   table (a transform page's Produces). */
 .whgroup { margin-bottom: 20px; }
 .whgroup__head { margin: 0 0 2px; font-size: var(--text-caption); color: var(--text-2); line-height: 1.6; overflow-wrap: anywhere; }
 .whgroup__head > a code, .whgroup__head > code:first-child { font-weight: 600; color: var(--text); }
@@ -2145,7 +2145,7 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
   .grid__bar-end { margin-left: 0; }
 }
 
-/* Data's Flow tab: the board. Five lanes left to right in the order the data
+/* Data's Overview: the board. Five lanes left to right in the order the data
    moves, each a column tinted with its stage's colour (the phase and role
    tokens the diagrams use); cards in the app's surface; wires an SVG over
    them, drawn from the cards' live positions (pages/Flow.jsx). Hovering a
