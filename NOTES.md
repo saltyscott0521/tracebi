@@ -4,6 +4,23 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-26 — Agent-driven data onboarding: locked logic, live data, a person sets up the connections
+
+Decided with the owner; the note is design/agent-data-onboarding.md. Six
+decisions: (1) what is locked is the logic and the queries, the data may be
+live, and a frozen copy becomes a choice ("a kept build": the Q3 numbers a
+person keeps); (2) data comes in the way the field does it: DuckDB's native
+scanners for Postgres/MySQL/SQLite, Arrow elsewhere, pandas as the floor, and
+the model may read an allowlisted source live; (3) a table or view may be saved
+back to a connection or a bucket (`-- sink:`, Export to…); (4) connections are
+set up by a person in the app, with a per-connection allowlist of the tables
+agents may read; (5) five gateway tools let the agent explore sources and
+propose a transform through the existing code-request approval; (6) the model
+page presents itself as the semantic layer and shows what an agent sees.
+Decisions 2–6 are built this round in four packages (CONN, PULL, TOOLS,
+SEMANTIC); decision 1's kept builds and the wording change follow once the
+owner has seen the round.
+
 ## 2026-10-25 — Decision: sink views; materialization is a per-table choice (VIEWS)
 
 The sink stays the freeze point. A SQL transform may now leave a **sink view**
