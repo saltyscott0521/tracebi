@@ -390,6 +390,8 @@ tracebi update [--check] [--yes]               # newer release? what's new + the
 tracebi secret set NAME [--from-stdin]          # a credential into the project store (encrypted); list | unset NAME
 tracebi export <table> --to <connection|prefix>  # a warehouse table or view out to a connection, or as Parquet under a prefix
 tracebi connect <name> --kind postgres --store secret   # write the secret to the store instead of .env
+tracebi connect <name> --kind postgres --host H --database D --user U --password-stdin   # the fields form
+tracebi connect <name> --test                   # test an existing connection
 
 # Tests
 pytest tests/                                  # Full suite (run it for the current count)
@@ -719,7 +721,17 @@ postgres|snowflake|bigquery|duckdb` writes `connections/<name>.yaml`
 (`docs/reference/connections-yaml.md`): a type and its fields, any value may be
 `${ENV_VAR}` (the whole value), and a password or credential-bearing URL MUST
 be. Variables resolve when the connection is used (lazily), from the environment
-then the project `.env`; an unset one is an error naming it. A model's connector
+then the project `.env`; an unset one is an error naming it.
+A postgres or mysql file says its connection as one `url` or as its fields, never
+both: `host`, `database` (required), `port`, `user`, `password:
+${TRACEBI_<CONNECTION>_PASSWORD}` (the name the app's Save password and `tracebi
+connect --host … --password-stdin` write; Save password off / `--password-var NAME`
+names a variable the server sets instead), `ssl`, `options`, `connect_timeout`. The
+loader builds the URL when the connection is used; `tracebi.connections.build_url(type,
+fields)` / `parse_url(type, url)` are that mapping (a `${NAME}` stays whole). The app's
+form shows both as Fields | URL tabs; a URL sent with a password is written as the
+fields. Snowflake takes `authenticator: password|externalbrowser|key_pair` (+
+`private_key_path`); BigQuery `credentials` (a path) or `credentials_json`. A model's connector
 says `connection: <name>`; discovery registers the file so the Sources list
 (`/data/sources`) shows it (credentials are never resolved to describe it);
 `label:` (optional) names a connection for people.
