@@ -508,6 +508,17 @@ and nothing goes live until publish. `publish_draft(..., folder="finance/q3")` p
 it. A declarative model, `models/<name>.yaml` or `.json`, can be drafted this
 way (writing the other form replaces the draft file); a Python model cannot.
 
+**No model yet? Start from a connection.** A person sets up the connection
+and ticks the tables agents may read (`agents: {tables: [a, b]}` in
+`connections/<name>.yaml`); five tools take it from there, in this order
+(`docs/agents/sop-onboarding.md` in the TraceBi handbook walks it):
+
+- `list_connections` — each connection's type and the tables agents may read.
+- `list_source_tables(connection)` — those tables, with columns and row estimates.
+- `describe_source_table(connection, table, sample=20)` — columns, a profile and sample rows; any other table is "not found".
+- `propose_transform(name, sql, contract_yaml, note)` — the SQL and its contract as a code request; an admin approves it and it runs once, so wait for that, then draft the model.
+- `export_table(source, table, to)` — admin only: a warehouse table out to a connection or an object prefix.
+
 **What a remote draft may hold.** A report draft takes `report.json`,
 `template.html`, `style.css` and `script.js`; a model draft takes its one
 `<name>.yaml` or `.json`. Nothing else is accepted: Python would run on the

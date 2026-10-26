@@ -78,6 +78,7 @@ Every file, key, command and route.
 
 Procedures for AI agents. An agent reads AGENTS.md first.
 
+- [[sop-onboarding]] — From a connection a person set up to a model and a report
 - [[sop-authoring]] — Author a report through the gateway, step by step
 - [[sop-model-changes]] — Change a model's measures and keys safely
 

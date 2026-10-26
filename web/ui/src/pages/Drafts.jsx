@@ -260,8 +260,9 @@ export function CodeReview({ id }) {
         <div style={{ fontSize: 'var(--text-sm)' }}>
           Runs after approval:{' '}
           {req.runs.map(run => (
-            <span key={run.pipeline} style={{ marginRight: 10 }}>
-              {run.pipeline}: <strong>{run.error ? 'did not start' : run.status || 'started'}</strong>
+            <span key={run.pipeline || run.transform} style={{ marginRight: 10 }}>
+              {/* A transform no pipeline runs ran by itself, at approval: its status is final. */}
+              {run.pipeline || `transforms/${run.transform}`}: <strong>{run.transform ? run.status : run.error ? 'did not start' : run.status || 'started'}</strong>
               {run.error && <> ({run.error})</>}
             </span>
           ))}

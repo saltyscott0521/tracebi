@@ -13,8 +13,8 @@ Paths are project paths under the canonical folders (``transforms/x.py``),
 mapped on the server to its configured directories. An admin reviews the
 files and their diff against what is published, then approves (the files are
 copied in, what they replace is kept under ``.tracebi/history/code/``, and the
-pipelines they touch run once, with the server's secrets) or rejects with a
-note. See ``design/strategy/remote-authoring.md``, step 4.
+pipelines they touch run once, with the server's secrets, as does a transform
+no pipeline runs) or rejects with a note. See ``design/strategy/remote-authoring.md``, step 4.
 """
 
 from __future__ import annotations
@@ -185,37 +185,84 @@ def _with_status(run: dict) -> dict:
     return {**run, "status": now["status"], "error": now.get("error")} if now else run
 
 
-def pipelines_touched(paths: list) -> list:
-    """The pipelines an approval runs: those in the request, and every
-    declarative pipeline whose transform the request changes."""
+def _stems(paths: list, folder: str) -> set:
+    """The names *paths* hold under *folder*; x.contract.yaml belongs to
+    transform x, as x.sql does."""
+    out = set()
+    for path in paths:
+        top, rest = path.split("/", 1)
+        if top == folder:
+            out.add(rest.split(".", 1)[0] if folder == "transforms" else rest.rsplit(".", 1)[0])
+    return out
+
+
+def _declared_pipelines() -> dict:
+    """``{pipeline name: the transform it runs}`` for every declarative pipeline."""
     import yaml
 
-    names, transforms = set(), set()
-    for path in paths:
-        folder, rest = path.split("/", 1)
-        # x.contract.yaml belongs to transform x, as x.sql does.
-        stem = rest.split(".", 1)[0] if folder == "transforms" else rest.rsplit(".", 1)[0]
-        if folder == "pipelines":
-            names.add(stem)
-        elif folder == "transforms":
-            transforms.add(stem)
+    out = {}
     pdir = Path(os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"))
     for f in sorted(pdir.glob("*.y*ml")) if pdir.is_dir() else []:
         try:
             doc = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
         except (OSError, yaml.YAMLError):
             continue
-        t = str(doc.get("transform") or "").rsplit(".", 1)[0] if isinstance(doc, dict) else ""
-        if t in transforms:
-            names.add(f.stem)
+        out[f.stem] = str(doc.get("transform") or "").rsplit(".", 1)[0] if isinstance(doc, dict) else ""
+    return out
+
+
+def pipelines_touched(paths: list) -> list:
+    """The pipelines an approval runs: those in the request, and every
+    declarative pipeline whose transform the request changes."""
+    transforms = _stems(paths, "transforms")
+    names = _stems(paths, "pipelines")
+    names |= {p for p, t in _declared_pipelines().items() if t in transforms}
     return sorted(names)
+
+
+def transforms_alone(paths: list) -> list:
+    """The transforms an approval runs by themselves: those the request
+    changes that no declarative pipeline runs (a transform an agent proposed
+    is one), so that every approved transform runs once."""
+    piped = set(_declared_pipelines().values())
+    return sorted(_stems(paths, "transforms") - piped)
+
+
+def run_transforms(names: list) -> list:
+    """Run each transform once, now, from its file as it is: ``[{transform,
+    status: ok|failed, error?}]``, for :func:`record_runs`. A failed run (its
+    SQL, or its sink contract) is recorded, not raised: the files are in."""
+    from tracebi.transforms import find_transform, run_transform
+
+    runs = []
+    for name in names:
+        try:
+            path = find_transform(name)
+            if path is None:
+                raise FileNotFoundError(f"transforms/{name} is not there")
+            run_transform(path)
+            runs.append({"transform": name, "status": "ok"})
+        except Exception as exc:  # noqa: BLE001 — the request records why it failed
+            first = (str(exc).splitlines() or [""])[0]
+            runs.append({"transform": name, "status": "failed",
+                         "error": f"{type(exc).__name__}: {first}"})
+    return runs
+
+
+def review_url() -> str:
+    """Where an admin reviews code requests in the app. A bare path when
+    ``TRACEBI_PUBLIC_URL`` is unset, as a draft's url is."""
+    base = (os.environ.get("TRACEBI_PUBLIC_URL") or "").strip().rstrip("/")
+    return f"{base}/review"
 
 
 def decide(request_id: str, approve: bool, actor: Optional[str],
            note: Optional[str] = None) -> dict:
     """Approve (copy the files in, keeping what they replace) or reject (with a
     note) a pending request. Only an admin decides. Returns the request; on
-    approval its ``pipelines`` are the ones to run now (:func:`record_runs`)."""
+    approval its ``pipelines`` are the ones to run now, and its
+    ``transforms`` the ones no pipeline runs (:func:`run_transforms`), each
+    recorded with :func:`record_runs`."""
     req = _load(request_id)
     if not _may_decide(_me()[1]):
         raise PermissionError("only an admin approves code")
@@ -250,11 +297,13 @@ def decide(request_id: str, approve: bool, actor: Optional[str],
     out = get_request(request_id)
     if approve:
         out["pipelines"] = pipelines_touched(req["files"])
+        out["transforms"] = transforms_alone(req["files"])
     return out
 
 
 def record_runs(request_id: str, runs: list) -> None:
-    """Record the pipeline runs an approval started (``[{pipeline, run_id}]``,
-    or ``{pipeline, error}`` when one could not start)."""
+    """Record the runs an approval started (``[{pipeline, run_id}]``, or
+    ``{pipeline, error}`` when one could not start, and ``{transform,
+    status, error?}`` for a transform run by itself)."""
     _exec("UPDATE tracebi_code_requests SET runs = :r WHERE id = :id",
           r=json.dumps(runs), id=request_id)

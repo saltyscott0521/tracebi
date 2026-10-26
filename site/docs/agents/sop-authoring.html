@@ -69,6 +69,7 @@
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-onboarding.html">SOP: Onboard a source, from a connection to a report</a>
 <a class="on" href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
 <a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
@@ -94,9 +95,11 @@ from it.</p>
   number is wrong or missing below the model, this SOP cannot fix it: escalate
   to a model change (<a href="../agents/sop-model-changes.html">SOP: Change a model's measures and keys</a>), or to a transform change if the
   data was never written.</li>
+<li><strong>No model yet?</strong> When the data sits in a connection and nothing has been
+  sunk or modelled, start with step 0 below, then come back to step 1.</li>
 </ul>
 <h3 id="the-tools">The tools</h3>
-<p>The gateway has twenty-two tools and three prompts (<code>author_report</code>,
+<p>The gateway has twenty-seven tools and three prompts (<code>author_report</code>,
 <code>answer_question</code>, <code>address_pins</code>) that run this procedure for you. The MCP
 <code>tools/list</code> call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with <code>build_report</code>. Over a
@@ -182,6 +185,26 @@ hosted connection, the draft tools are how a package reaches the server
 <td><code>list_publish_requests</code> · <code>decide_publish_request</code></td>
 <td>Requests into folders where you hold Publish; approve or reject one</td>
 </tr>
+<tr>
+<td><code>list_connections</code></td>
+<td>The project's connections, each with the tables a person allowed agents to read</td>
+</tr>
+<tr>
+<td><code>list_source_tables</code></td>
+<td>One connection's allowed tables, with columns and row estimates</td>
+</tr>
+<tr>
+<td><code>describe_source_table</code></td>
+<td>One allowed table's columns, profile and a sample of rows (<code>sample</code>, at most 500)</td>
+</tr>
+<tr>
+<td><code>propose_transform</code></td>
+<td>Store <code>transforms/&lt;name&gt;.sql</code> and its <code>.contract.yaml</code> as a code request; an admin approves it and it runs once</td>
+</tr>
+<tr>
+<td><code>export_table</code></td>
+<td>Admin: write a warehouse table or view to a connection or an object prefix</td>
+</tr>
 </tbody>
 </table>
 <h3 id="assurance-levels">Assurance levels</h3>
@@ -219,6 +242,24 @@ hosted connection, the draft tools are how a package reaches the server
 <p>Work at L2. Drop to L1 only when the six section types cannot express the
 page, and then step 6 is mandatory, because nothing checks your
 transcription.</p>
+<h2 id="0-no-model-yet-start-from-the-data">0. No model yet: start from the data</h2>
+<p>Skip this step when a model already answers the question. Otherwise, in
+order (<a href="../agents/sop-onboarding.html">SOP: Onboard a source, from a connection to a report</a> walks it in full):</p>
+<ol>
+<li><strong>Explore what you may read.</strong> <code>list_connections</code>, then
+   <code>list_source_tables(connection)</code> and
+   <code>describe_source_table(connection, table)</code>. Only the tables a person
+   allowed agents to read are there; any other answers "not found".</li>
+<li><strong>Propose a transform.</strong> <code>propose_transform(name, sql, contract_yaml,
+   note)</code>: SQL that reads those tables through <code>-- source:</code> lines and sinks
+   clean star-schema tables, with a contract of checks on them.</li>
+<li><strong>Wait for the approval.</strong> Give the person the request id and its
+   <code>review_url</code>. Nothing has run: an admin approves it and it runs once.
+   Until then its tables do not exist.</li>
+<li><strong>Draft the model.</strong> <code>start_draft(kind="models", path=&lt;name&gt;)</code> over the
+   sunk tables (<code>describe_table</code> gives their columns), <code>preview_draft</code>, then
+   <code>publish_draft</code> once the person agrees. Then go on to step 1.</li>
+</ol>
 <h2 id="1-load-the-contract-with-get_context">1. Load the contract with <code>get_context</code></h2>
 <p>Always the first call. Nothing outside what it returns will validate.</p>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;get_context&quot;, &quot;arguments&quot;: { &quot;model&quot;: &quot;wealth_model&quot; } }

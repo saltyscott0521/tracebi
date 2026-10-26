@@ -1778,6 +1778,32 @@ def describe(brief: bool = False) -> dict:
                     "measure, so column names come from the catalog instead "
                     "of from an error.",
         },
+        "source_onboarding": {
+            "mcp": "list_connections(), list_source_tables(connection), "
+                   "describe_source_table(connection, table, sample=20), "
+                   "propose_transform(name, sql, contract_yaml, note), "
+                   "export_table(source, table, to)",
+            "sop": "docs/agents/sop-onboarding.md",
+            "what": "From a connection to a model, when none exists yet. A person "
+                    "sets up the connection in the app and ticks which tables "
+                    "agents may read (agents: {tables: [a, b] | '*'} in "
+                    "connections/<name>.yaml; absent means none). "
+                    "list_connections shows each connection's agent_tables; "
+                    "list_source_tables lists those tables with columns and row "
+                    "estimates; describe_source_table gives columns, a profile "
+                    "and a sample (at most 500 rows). A table agents may not "
+                    "read is 'not found', as a missing one is. "
+                    "propose_transform stores transforms/<name>.sql and "
+                    "<name>.contract.yaml as one code request (the same review "
+                    "as tracebi push): checked first (a new name, SQL that "
+                    "parses in DuckDB, every -- source: a table agents may "
+                    "read, a contract with at least one check); nothing runs "
+                    "until an admin approves it in the app (review_url), and "
+                    "approving runs it once. Then start_draft(kind='models') "
+                    "over the sunk tables. export_table (admin) writes a "
+                    "warehouse table or view to a connection or an object "
+                    "prefix (<prefix>/<table>.parquet) and records an export run.",
+        },
         "pointing": {
             "mcp": "workbench_state(report) -> pointing",
             "http": "POST|GET|DELETE /api/reports/<name>/workbench/pointing "
