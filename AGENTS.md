@@ -735,6 +735,7 @@ freely, never re-source.
   A measure can carry a `label` (`label: Share of fair value` in the YAML, or
   `add_measure(..., label=...)`): the name people read in the app. Without one
   the app humanises the identifier; queries still name the measure by it.
+  The model is the semantic layer: `description`, `synonyms` and `questions` are its agent vocabulary (`describe_model` returns them; match a person's word to a synonym, then query the identifier).
   A report can also calculate its own measures: a `measures` block in its
   `report.json`, keyed by model, takes the model's measure keywords. They serve
   that report's bindings only, the model is not changed, and the trace labels

@@ -1642,6 +1642,28 @@ def describe(brief: bool = False) -> dict:
                         "label never changes a number, and queries and "
                         "bindings still name the measure by its identifier.",
             },
+            "semantic_words": {
+                "declare": "YAML: description: and synonyms: [..] on the model, "
+                           "a dimension, an attribute ({name, label, "
+                           "description, synonyms} in place of the plain "
+                           "column name) and a measure; questions: [..] on the "
+                           "model. Python: DataModel(name, description=, "
+                           "synonyms=, questions=), add_dimension(..., "
+                           "description=, synonyms=), add_measure(..., "
+                           "description=, synonyms=)",
+                "example": "synonyms: [market value, FV] on fair_value; "
+                           "questions: ['Which sectors hold the most fair value?']",
+                "note": "The model is the semantic layer: description says what "
+                        "a thing means, synonyms the other words people use for "
+                        "it, questions example questions the model answers (Ask "
+                        "offers them as starting chips). They are words for "
+                        "people and agents: nothing computes from them, and a "
+                        "query still names a measure and an attribute by its "
+                        "identifier. Match a person's word to a synonym, then "
+                        "query the identifier. describe_model and get_context "
+                        "(model=) return them; the brief tier keeps descriptions "
+                        "and drops synonyms.",
+            },
             "aggregations": sorted(_AGG_FUNCS) + ["p<N> (percentile, e.g. p90)"],
             "aggregations_note": "median and stddev summarize a distribution's "
                                  "shape — a mean hides skew and tails, so use "
@@ -1931,7 +1953,9 @@ def describe(brief: bool = False) -> dict:
                     "equal to the file name), label (optional: what people read "
                     "in lists, e.g. \"Direct Lending Portfolio\"; unset, the name "
                     "title-cased; DataModel(name, label=) in Python), owners (a list "
-                    "of sign-in names allowed to publish it; see drafts), connectors, "
+                    "of sign-in names allowed to publish it; see drafts), "
+                    "description, synonyms and questions (the semantic layer's "
+                    "words; see semantic_model.semantic_words), connectors, "
                     "tables, relationships, dimensions, facts, measures, "
                     "time_grains (dimension, name, source, grain) and value_bins "
                     "(dimension, name, source, edges, labels). Loading it reads "
@@ -1989,13 +2013,30 @@ def describe(brief: bool = False) -> dict:
     return out
 
 
-def describe_model(model) -> dict:
+def describe_model(model, brief: bool = False) -> dict:
     """
     Describe one model's own vocabulary — its tables, relationships,
-    facts, dimensions and declared measures. Thin wrapper over
-    ``DataModel.info()``, here so a consumer has a single entry point.
+    facts, dimensions and declared measures, with the semantic layer's words
+    (descriptions, synonyms, example questions). ``DataModel.info()``, here
+    so every consumer has one entry point: ``tracebi context --model``, the
+    gateway's ``get_context`` and ``describe_model``, and the app's
+    ``GET /api/models/{name}/context`` all return this, so the page shows the
+    exact text an agent receives.
+
+    ``brief=True`` (the token-lean tier) keeps descriptions and questions and
+    drops synonyms.
     """
-    return model.info()
+    info = model.info()
+    if not brief:
+        return info
+    info.pop("synonyms", None)
+    for d in info.get("dimensions", []):
+        d.pop("synonyms", None)
+        for about in d.get("attribute_info", {}).values():
+            about.pop("synonyms", None)
+    for m in info.get("measures", []):
+        m.pop("synonyms", None)
+    return info
 
 
 def to_json(indent: Optional[int] = 2) -> str:

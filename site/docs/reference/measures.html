@@ -91,6 +91,7 @@ model.add_measure(&quot;margin_pct&quot;, ratio=(&quot;gross_margin&quot;, &quot
     agg=None,               # required for column= and expr=; refused by the rest
     label=None, description=&quot;&quot;, format=None,
     allow_rate_agg=False, allow_additive=False,
+    synonyms=None,
 )
 </code></pre>
 <table>
@@ -115,7 +116,11 @@ model.add_measure(&quot;margin_pct&quot;, ratio=(&quot;gross_margin&quot;, &quot
 </tr>
 <tr>
 <td><code>description</code></td>
-<td>The shared meaning, shown in tooltips and the trace.</td>
+<td>The shared meaning, shown in tooltips, the trace and the model's Semantic layer page.</td>
+</tr>
+<tr>
+<td><code>synonyms</code></td>
+<td>Other words people use for it (<code>[market value, FV]</code>). Ask matches them, and an agent receives them in its context, so it can map a person's word to this measure. Words only: a query still uses <code>name</code>.</td>
 </tr>
 </tbody>
 </table>

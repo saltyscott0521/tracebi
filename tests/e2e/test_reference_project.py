@@ -1001,6 +1001,73 @@ def test_explore_speaks_the_models_language(built, monkeypatch):
         release_warehouses()
 
 
+def _ask_js(fn: str, *args):
+    """Call one of Ask's own functions (web/ui/src/ask.js) in node."""
+    import subprocess
+    from pathlib import Path
+
+    src = Path(__file__).resolve().parents[2] / "web" / "ui" / "src" / "ask.js"
+    script = ("import(process.argv[1]).then(A => { const args = JSON.parse(process.argv[2]);"
+              f" console.log(JSON.stringify(A.{fn}(...args))) }})")
+    done = subprocess.run(["node", "-e", script, src.as_uri(), json.dumps(args)],
+                          capture_output=True, text=True, check=True)
+    return json.loads(done.stdout)
+
+
+def test_the_model_is_the_semantic_layer_an_agent_reads(built, monkeypatch):
+    """The model's words (descriptions, synonyms, example questions) reach the
+    app, and the app's "What an agent sees" is the very text the CLI and the
+    gateway hand an agent: one function behind all three, the brief tier
+    keeping descriptions and dropping synonyms. Ask's example questions fill
+    its builder by those words, and every one names a query the model runs."""
+    from tests.e2e.conftest import release_warehouses, serve_app
+    from tracebi.mcp_server import gateway_context, gateway_model_info
+
+    c = serve_app(monkeypatch, models=True)
+    try:
+        detail = c.get("/api/models/portfolio_model").json()
+        assert detail["description"].startswith("A direct-lending book")
+        assert len(detail["questions"]) == 3
+        fv = next(m for m in detail["measures"] if m["name"] == "fair_value")
+        assert fv["description"] == "Total fair value"
+        assert {"market value", "FV"} <= set(fv["synonyms"])
+        issuer = next(d for d in detail["dimensions"] if d["name"] == "dim_issuer")
+        assert issuer["description"] and "borrower" in issuer["synonyms"]
+        assert issuer["attributes"] == ["issuer", "sector"]  # queries name it as before
+        assert issuer["attribute_info"]["sector"]["synonyms"] == ["industry"]
+
+        shown = c.get("/api/models/portfolio_model/context").json()
+        code, out = run_cli("context", "--model", "portfolio_model")
+        assert code == 0, out
+        assert shown == json.loads(out)["model"]
+        assert shown == {k: v for k, v in gateway_model_info("portfolio_model").items()
+                         if k not in ("draftable", "draft_note")}
+        brief = c.get("/api/models/portfolio_model/context", params={"brief": "true"}).json()
+        assert brief == json.loads(json.dumps(
+            gateway_context(model="portfolio_model", brief=True)["model"], default=str))
+        assert "synonyms" not in json.dumps(brief) and brief["questions"] == detail["questions"]
+        assert c.get("/api/models/no_such_model/context").status_code == 404
+
+        if shutil.which("node") is None:
+            return
+        for name in ("portfolio_model", "saas_model"):
+            info = c.get(f"/api/models/{name}").json()
+            for question in info["questions"]:
+                q = _ask_js("questionQuery", info, question)
+                assert q and q["measures"] and q["dimensions"], (name, question, q)
+                answer = c.post(f"/api/models/{name}/query", json=_ask_js("requestOf", info, q))
+                assert answer.status_code == 200, (question, answer.text)
+        # By synonym, not by identifier: "MRR" is ending_mrr, "plan" its dimension.
+        saas = c.get("/api/models/saas_model").json()
+        q = _ask_js("questionQuery", saas, "What is MRR by plan?")
+        assert (q["measures"], q["dimensions"]) == (["ending_mrr"], ["dim_plan.plan"])
+        q = _ask_js("questionQuery", detail, "Which sectors hold the most fair value?")
+        assert q["order_by"] == [{"column": "fair_value", "desc": True}]
+        assert _ask_js("questionQuery", detail, "How is the weather?") is None
+    finally:
+        release_warehouses()
+
+
 def test_every_reports_slice_answers_its_bindings_plans(built):
     """The slice is enough: in every reference report, each binding whose
     plan compiled, run by execute_plan over the slice embedded in the page

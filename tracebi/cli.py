@@ -808,7 +808,7 @@ def cmd_context(args: argparse.Namespace) -> int:
     tool or agent authoring a project; add --model to include a specific
     model's tables, dimensions and declared measures.
     """
-    from tracebi.capabilities import describe
+    from tracebi.capabilities import describe, describe_model
 
     payload = describe(brief=getattr(args, "brief", False))
     from tracebi.reports.stack import project_house_style
@@ -816,7 +816,8 @@ def cmd_context(args: argparse.Namespace) -> int:
     if args.model:
         from tracebi.model_registry import get_model
         try:
-            payload["model"] = get_model(args.model).info()
+            payload["model"] = describe_model(get_model(args.model),
+                                              brief=getattr(args, "brief", False))
         except (KeyError, AttributeError) as exc:
             print(f"Could not describe model '{args.model}': {exc}", file=sys.stderr)
             return 1

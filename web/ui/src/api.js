@@ -158,6 +158,9 @@ export const useModels = () =>
 
 export const useModel = (name) =>
   useQuery({ queryKey: ['model', name], queryFn: () => get(`/models/${name}`), enabled: !!name })
+/** What an agent receives for the model (get_context --model): read when shown. */
+export const useModelContext = (name, enabled = true) =>
+  useQuery({ queryKey: ['model-context', name], queryFn: () => get(`/models/${name}/context`), enabled: !!name && enabled })
 /** The same read for each model in *names*, in order. */
 export const useModelDetails = (names) =>
   useQueries({ queries: names.map(name => ({ queryKey: ['model', name], queryFn: () => get(`/models/${name}`) })) })

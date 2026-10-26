@@ -30,7 +30,7 @@ How data moves from raw files to a checked report.
 - [[the-three-phase-workflow]] — A TraceBi project moves data through three folders: a transform cleans it, a model defines it, and a report presents it
 - [[transform]] — A transform is a file in `transforms/` that reads raw data, cleans it, and writes star-schema tables into the warehouse
 - [[sink-contracts]] — A sink contract is a list of checks a transform's tables must pass before the data counts
-- [[model]] — A model is a YAML file in `models/` that names the warehouse tables a report may read, how they join, and the measures it can compute
+- [[model]] — A model is the semantic layer: the one place that says what the data means
 - [[models-and-connectors]] — A model says what the data means; a connector says where it is
 - [[report]] — A report is a folder in `reports/` whose every figure is a query against a model
 - [[trace]] — Every number a report draws from a model has a trace: a record of how it was made

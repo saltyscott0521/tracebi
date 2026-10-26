@@ -375,6 +375,7 @@ class MeasureDef:
     allow_rate_agg: bool = False               # author vouched: skip the value guard
     filters: Optional[dict] = None             # simple/expression only: WHERE of this measure
     measure_expr: Optional[str] = None         # combine: arithmetic over other measures
+    synonyms: tuple[str, ...] = ()             # other words people use for it ("market value")
 
     def to_dict(self) -> dict:
         d = {"name": self.name, "kind": self.kind}
@@ -382,6 +383,8 @@ class MeasureDef:
             val = getattr(self, key)
             if val:
                 d[key] = val
+        if self.synonyms:
+            d["synonyms"] = list(self.synonyms)
         if self.filters:
             d["filters"] = dict(self.filters)
         if self.measure_expr:
@@ -678,6 +681,12 @@ class _DimensionDef:
     # Referenced like any attribute (dim.name); the SQL builder emits the
     # transform instead of a raw column.
     derived: dict = field(default_factory=dict)
+    # Words only, for people and agents: nothing computes from them.
+    description: str = ""
+    synonyms: list[str] = field(default_factory=list)
+    # {attribute: {label?, description?, synonyms?}} for the attributes that
+    # were declared as objects rather than plain column names.
+    attribute_info: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -725,6 +734,26 @@ def default_label(identifier: str) -> str:
     last = str(identifier).rpartition("/")[2]
     words = re.sub(r"(?<=[a-z0-9])(?=[A-Z])|[_-]", " ", last).split()
     return " ".join(w[:1].upper() + w[1:] for w in words) or str(identifier)
+
+
+def _words(value: Any, what: str) -> list[str]:
+    """*value* as a list of non-empty strings (synonyms, example questions),
+    or a ValueError naming *what*. None is an empty list."""
+    if value is None:
+        return []
+    if not isinstance(value, (list, tuple)) or not all(
+            isinstance(v, str) and v.strip() for v in value):
+        raise ValueError(f"{what}: must be a list of non-empty strings")
+    return [v.strip() for v in value]
+
+
+def _text(value: Any, what: str) -> str:
+    """*value* as a description: a string (None is empty), else a ValueError."""
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        raise ValueError(f"{what}: must be a string")
+    return value.strip()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -785,13 +814,21 @@ class DataModel:
     """
 
     def __init__(self, name: str, owners: Optional[list] = None,
-                 label: Optional[str] = None) -> None:
+                 label: Optional[str] = None, description: Optional[str] = None,
+                 synonyms: Optional[list] = None,
+                 questions: Optional[list] = None) -> None:
         self.name = name
         #: What people read where the model is listed; ``name`` stays the
         #: identifier queries and commands use. Unset, it is ``default_label``.
         if label is not None and not (isinstance(label, str) and label.strip()):
             raise ValueError("label: must be a non-empty string")
         self.declared_label = label
+        #: The semantic layer's words: what the model is about, other names
+        #: for it, and example questions it answers (Ask's starting chips and
+        #: the agent's context). Nothing computes from them.
+        self.description = _text(description, "description")
+        self.synonyms = _words(synonyms, "synonyms")
+        self.questions = _words(questions, "questions")
         #: Sign-in names allowed to publish a change to this model (admins
         #: always may); empty means any analyst may.
         owners = [] if owners is None else owners
@@ -889,19 +926,53 @@ class DataModel:
         name: str,
         table_name: str,
         key_col: str,
-        attributes: Optional[list[str]] = None,
+        attributes: Optional[list] = None,
+        description: Optional[str] = None,
+        synonyms: Optional[list[str]] = None,
     ) -> "DataModel":
-        """Tag a registered table as a dimension with a key column and exposed attributes."""
+        """Tag a registered table as a dimension with a key column and exposed attributes.
+
+        An attribute is a column name, or ``{"name", "label", "description",
+        "synonyms"}`` when it needs words for people and agents; queries name
+        it by ``name`` either way. ``description`` and ``synonyms`` describe
+        the dimension itself. None of these words change a query.
+        """
         if table_name not in self._tables:
             raise ValueError(
                 f"Table '{table_name}' is not registered in model '{self.name}'. "
                 f"Call add_table() first."
             )
+        names, about = [], {}
+        for a in attributes or []:
+            if isinstance(a, str):
+                names.append(a)
+                continue
+            if not (isinstance(a, dict) and isinstance(a.get("name"), str) and a["name"]):
+                raise ValueError(f"dimension '{name}': an attribute is a column "
+                                 f"name or an object with a name, got {a!r}")
+            extra = set(a) - {"name", "label", "description", "synonyms"}
+            if extra:
+                raise ValueError(f"dimension '{name}' attribute '{a['name']}': "
+                                 f"unknown key(s) {', '.join(sorted(extra))}")
+            where = f"dimension '{name}' attribute '{a['name']}'"
+            info = {}
+            if a.get("label"):
+                info["label"] = _text(a["label"], f"{where} label")
+            if a.get("description"):
+                info["description"] = _text(a["description"], f"{where} description")
+            if a.get("synonyms"):
+                info["synonyms"] = _words(a["synonyms"], f"{where} synonyms")
+            names.append(a["name"])
+            if info:
+                about[a["name"]] = info
         self._dimensions[name] = _DimensionDef(
             name=name,
             table_name=table_name,
             key_col=key_col,
-            attributes=list(attributes) if attributes else [],
+            attributes=names,
+            description=_text(description, f"dimension '{name}' description"),
+            synonyms=_words(synonyms, f"dimension '{name}' synonyms"),
+            attribute_info=about,
         )
         return self
 
@@ -1068,6 +1139,7 @@ class DataModel:
         allow_additive: bool = False,
         filters: Optional[dict[str, Any]] = None,
         measure_expr: Optional[str] = None,
+        synonyms: Optional[list[str]] = None,
     ) -> "DataModel":
         """
         Declare a named measure on the model.
@@ -1127,6 +1199,10 @@ class DataModel:
         ``label`` is the name people read for the measure in the app ("Share
         of fair value" for ``fv_share``); without one the app humanises the
         name. It is presentation only: queries and bindings use the name.
+        ``description`` says what the number means and ``synonyms`` lists the
+        other words people use for it ("market value", "FV"); both are words
+        for people and agents (Ask matches them, ``get_context`` hands them
+        over) and never change a query.
 
         Everything here is declarative data — callables are rejected, since
         a lambda cannot be serialized, diffed, reviewed, or validated
@@ -1391,6 +1467,7 @@ class DataModel:
             description=description, format=format,
             allow_rate_agg=bool(allow_rate_agg), filters=filters,
             measure_expr=measure_expr,
+            synonyms=tuple(_words(synonyms, f"Measure '{name}': synonyms")),
         )
         return self
 
@@ -4049,6 +4126,11 @@ class DataModel:
         return {
             "name": self.name,
             "label": self.label,
+            # The semantic layer's words (empty when undeclared), so a reader
+            # or an agent learns what the model is about and how to ask it.
+            "description": self.description,
+            "synonyms": list(self.synonyms),
+            "questions": list(self.questions),
             "owners": list(self.owners),
             "connectors": list(self._connectors.keys()),
             # Where each connector's data lives, so a model file (code) can be
@@ -4088,6 +4170,11 @@ class DataModel:
                     "table": d.table_name,
                     "key": d.key_col,
                     "attributes": list(d.attributes),
+                    # Words for people and agents, present only when declared.
+                    **({"description": d.description} if d.description else {}),
+                    **({"synonyms": list(d.synonyms)} if d.synonyms else {}),
+                    **({"attribute_info": copy.deepcopy(d.attribute_info)}
+                       if d.attribute_info else {}),
                     # Derived groupable attributes (date grains, value bins):
                     # reference as dim.name like any attribute. Present only
                     # when declared; each carries its kind and source column.

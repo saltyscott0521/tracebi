@@ -75,12 +75,16 @@
   </details>
   <main class="doc">
 <h1 id="models">Models</h1>
-<p>A model is a YAML file in <code>models/</code> that names the warehouse tables a report
-may read, how they join, and the measures it can compute. Here is the one the
-reference project ships, shortened:</p>
+<p>A model is the semantic layer: the one place that says what the data means.
+It is a YAML file in <code>models/</code> that names the warehouse tables a report may
+read, how they join, the measures it can compute, and the words people use
+for them. Here is the one the reference project ships, shortened:</p>
 <pre><code class="language-yaml"># models/portfolio_model.yaml
 name: portfolio_model
 label: Direct Lending Portfolio
+description: A direct-lending book, marked at fair value.
+questions:
+  - Which sectors hold the most fair value?
 
 connectors:
   - name: warehouse
@@ -94,7 +98,10 @@ dimensions:
   - name: dim_issuer
     table: dim_issuer
     key: issuer_id
-    attributes: [issuer, sector]
+    description: The borrower a loan is made to, and its industry
+    attributes:
+      - issuer
+      - {name: sector, synonyms: [industry]}
 
 facts:
   - name: fact_holdings
@@ -103,11 +110,36 @@ facts:
     foreign_keys: {dim_issuer: issuer_id}
 
 measures:
-  - {name: fair_value, column: fair_value, agg: sum, format: currency0}
+  - name: fair_value
+    column: fair_value
+    agg: sum
+    format: currency0
+    description: Total fair value
+    synonyms: [market value, FV]
 </code></pre>
 <p>A model has five parts: connectors, tables, dimensions, facts and measures.
 The connector says where the data is kept; the rest says what it means. See
 <a href="../concepts/models-and-connectors.html">Models and connectors</a>.</p>
+<h2 id="the-words-are-part-of-the-model">The words are part of the model</h2>
+<p><code>description</code> and <code>synonyms</code> on the model, a dimension, an attribute and a
+measure, and <code>questions</code> on the model, are words for people and agents.
+Nothing computes from them: a query still names <code>fair_value</code>, never "market
+value". They are what makes the model a vocabulary rather than a list of
+columns.</p>
+<ul>
+<li>The model's page in the app opens on <strong>Semantic layer</strong>: the grain, every
+  measure with its definition, description, synonyms and the questions it
+  answers, every dimension's attributes, and the example questions.</li>
+<li><strong>Ask</strong> offers the questions as starting chips, and matches typed words to
+  synonyms as well as labels.</li>
+<li>An agent receives the same text: <code>tracebi context --model &lt;name&gt;</code>, the
+  gateway's <code>get_context</code> and <code>describe_model</code>, and the page's <strong>What an
+  agent sees</strong> all come from one function. Curating the words on the model
+  curates what an agent knows.</li>
+</ul>
+<p>An attribute is a column name, or an object when it needs words:
+<code>{name, label, description, synonyms}</code>. Either way a query names it
+<code>dim_issuer.sector</code>.</p>
 <h2 id="create-one">Create one</h2>
 <pre><code class="language-bash">tracebi new-model &quot;Sales Model&quot;            # models/sales_model.yaml
 tracebi validate                           # load every model, check its keys

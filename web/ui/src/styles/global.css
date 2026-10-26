@@ -2579,3 +2579,52 @@ code.fcard__nm, .fcard__t code { font-size: var(--text-caption); font-weight: 50
   .conn-bar { justify-content: stretch; }
   .conn-allow input[type="checkbox"], .conn-allow__col input[type="checkbox"], .conn-field__toggle input { width: 24px; height: 24px; }
 }
+/* ── SEMANTIC ── */
+/* The model's summary is its Semantic layer: the words people and agents use
+   for its measures and dimensions, beside the declarations, then the exact
+   text an agent receives. Names are Geist Mono; no new tokens. */
+.sem-eyebrow {
+  margin: 0 0 var(--space-1); font-size: var(--text-eyebrow); font-weight: 600;
+  letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--muted);
+}
+.sem-lede { margin: var(--space-2) 0 0; font-size: var(--text-sm); line-height: 1.55; color: var(--text); }
+.mlist__pick {
+  padding: 0; border: 0; background: none; font: inherit; font-weight: 500; text-align: left;
+  color: var(--accent-text); cursor: pointer;
+}
+.mlist__pick:hover { text-decoration: underline; }
+.mlist__expr { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--text-2); overflow-wrap: anywhere; }
+.mlist__about { display: block; margin-top: 4px; color: var(--text-2); line-height: 1.5; }
+.mlist__also { display: block; margin-top: 2px; font-size: var(--text-xs); color: var(--muted); line-height: 1.5; }
+.sem-dims, .sem-attrs, .sem-questions { list-style: none; margin: 0; padding: 0; }
+.sem-dims > li { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) 0; }
+.sem-dims > li + li { border-top: 1px solid var(--border); }
+.sem-dims__top code, .sem-attrs code { font-size: var(--text-xs); }
+.sem-dims__top code { color: var(--muted); }
+.sem-dims__about { color: var(--text-2); line-height: 1.5; }
+.sem-attrs { margin-top: var(--space-1); padding-left: var(--space-3); border-left: 2px solid var(--border); }
+.sem-attrs li { padding: 2px 0; line-height: 1.5; }
+.sem-attrs .mlist__also { display: inline; }
+.sem-questions li { padding: var(--space-1) 0; line-height: 1.5; }
+.sem-agent {
+  margin: 0; padding: var(--space-3); max-height: 420px; overflow: auto;
+  border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
+  font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.5; color: var(--text);
+}
+/* Ask: the model's example questions, one line of chips above the builder. */
+.ask-questions { display: flex; gap: 8px; margin: 12px 0 16px; overflow-x: auto; padding-bottom: 2px; }
+.ask-questions .ask-history__item { flex: none; }
+/* In the inspector's 360px the measures table reads as stacked rows: the
+   measure and its words across the top, then its definition, format and Ask. */
+.dbx-insp__summary .mlist { border: 0; background: none; }
+.dbx-insp__summary .mlist thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.dbx-insp__summary .mlist tr {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: var(--space-3); align-items: baseline;
+  padding: var(--space-2) 0; border-top: 1px solid var(--border);
+}
+.dbx-insp__summary .mlist tbody tr:first-child { border-top: 0; }
+.dbx-insp__summary .mlist td { display: block; padding: 0; border-top: 0; }
+.dbx-insp__summary .mlist td:first-child { grid-column: 1 / -1; padding-bottom: var(--space-1); }
+.dbx-insp__summary .mlist__def { display: block; }
+.dbx-insp__summary .mlist__def-inline { display: none; }
+.dbx-insp__summary .mlist__expr { display: inline; margin-left: var(--space-2); }

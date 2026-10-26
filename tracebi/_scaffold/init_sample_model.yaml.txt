@@ -13,6 +13,11 @@
 name: sample_model
 # What people read in lists; `name` stays the identifier commands take.
 label: Sample Orders
+# The semantic layer's words, for people and agents (nothing computes from
+# them): what the model is about, and example questions Ask offers as chips.
+description: Every order, by the region it ships to.
+questions:
+  - Which regions bring in the most revenue?
 
 # connectors: where the tables live. `connection: warehouse` is
 # connections/warehouse.yaml (a DuckDB file here). For a database you already
@@ -51,6 +56,7 @@ measures:
     column: revenue
     agg: sum
     description: Total revenue
+    synonyms: [sales, turnover]
     format: currency0
   - name: units
     column: qty

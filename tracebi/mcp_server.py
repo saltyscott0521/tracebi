@@ -572,6 +572,9 @@ class ModelInfoResult(TypedDict, total=False):
     error: Optional[str]
     name: Optional[str]
     label: Optional[str]
+    description: Optional[str]
+    synonyms: Optional[list[str]]
+    questions: Optional[list[str]]
     tables: Any
     relationships: Any
     facts: Any
@@ -714,7 +717,8 @@ def gateway_context(model: Optional[str] = None,
     payload = describe(brief=brief)
     payload["house_style"] = project_house_style()
     if model:
-        payload["model"] = _get_model(model).info()
+        from tracebi.capabilities import describe_model
+        payload["model"] = describe_model(_get_model(model), brief=brief)
     return payload
 
 
@@ -897,7 +901,8 @@ def gateway_model_info(model: str) -> ModelInfoResult:
     if failed and model not in loaded:
         return {"error": failed}
     m = _get_model(model)
-    return {**m.info(), **_draft_fields([model, getattr(m, "name", model)])}
+    from tracebi.capabilities import describe_model
+    return {**describe_model(m), **_draft_fields([model, getattr(m, "name", model)])}
 
 
 _BINDING_QUERY_KEYS = (
@@ -2075,7 +2080,9 @@ def build_server(token: Optional[str] = None, oauth=None):
         structured_output=True,
         description=(
             "One model's full schema: tables, relationships, facts, dimensions, "
-            "named measures, and draftable (with draft_note when false: a "
+            "named measures, the semantic layer's words (description and "
+            "synonyms on the model, dimensions, attribute_info and measures; "
+            "questions: example questions it answers), and draftable (with draft_note when false: a "
             "Python model is edited from a laptop). A name that failed to load "
             "returns that error instead of not found."
         ),

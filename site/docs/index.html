@@ -101,7 +101,7 @@ graph. The app serves it as <strong>Docs</strong> (<code>/docs</code>), and trac
 <li><a href="concepts/the-three-phase-workflow.html">The three-phase workflow</a> — A TraceBi project moves data through three folders: a transform cleans it, a model defines it, and a report presents it</li>
 <li><a href="concepts/transform.html">Transforms</a> — A transform is a file in <code>transforms/</code> that reads raw data, cleans it, and writes star-schema tables into the warehouse</li>
 <li><a href="concepts/sink-contracts.html">Sink contracts</a> — A sink contract is a list of checks a transform's tables must pass before the data counts</li>
-<li><a href="concepts/model.html">Models</a> — A model is a YAML file in <code>models/</code> that names the warehouse tables a report may read, how they join, and the measures it can compute</li>
+<li><a href="concepts/model.html">Models</a> — A model is the semantic layer: the one place that says what the data means</li>
 <li><a href="concepts/models-and-connectors.html">Models and connectors</a> — A model says what the data means; a connector says where it is</li>
 <li><a href="concepts/report.html">Reports</a> — A report is a folder in <code>reports/</code> whose every figure is a query against a model</li>
 <li><a href="concepts/trace.html">The trace</a> — Every number a report draws from a model has a trace: a record of how it was made</li>

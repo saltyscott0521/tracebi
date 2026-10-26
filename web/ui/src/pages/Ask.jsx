@@ -9,7 +9,7 @@ import {
 import {
   answerColumnLabel, answerColumns, answerShape, canAsk, decodeQuery, definitionOf, dimensionLabel,
   encodeQuery, factOf, keepFiles, keepPath, measureLabel, measureNames, nextSlot, orderWords,
-  requestOf, resolve, segments, sentenceOf, suggest, tidy,
+  questionQuery, requestOf, resolve, segments, sentenceOf, suggest, tidy,
 } from '../ask'
 import { CodeFiles } from '../components/CodeView'
 import { PageHeader } from '../components/Scope'
@@ -114,8 +114,21 @@ function AskModel({ name, label }) {
   if (!(detail.facts || []).length) {
     return <p className="ask-empty">This model declares no facts, so there is nothing to ask of it yet.</p>
   }
+  // The model's example questions: one fills the builder as far as its words
+  // name a measure and a dimension, and is asked only when you ask it.
+  const questions = detail.questions || []
   return (
     <div className="ask">
+      {questions.length > 0 && (
+        <nav className="ask-questions" aria-label="Example questions">
+          {questions.map(text => (
+            <button key={text} type="button" className="ask-history__item"
+                    onClick={() => change(questionQuery(detail, text) || { measures: [], dimensions: [], filters: {} })}>
+              {text}
+            </button>
+          ))}
+        </nav>
+      )}
       <Sentence detail={detail} q={draft} values={values} onChange={change}
                 onAsk={() => ask()} busy={answer.isFetching} />
       {agent && <p className="ask-agent">Or ask your agent: it answers from the same definitions.</p>}

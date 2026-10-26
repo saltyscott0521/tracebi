@@ -238,6 +238,7 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
 - A measure can carry a `label` (YAML: `label: Total revenue` on the measure):
   the name people read in the app. Without one the app humanises the
   identifier; queries and bindings still name the measure by it.
+- The model is the semantic layer: `description`, `synonyms` and `questions` are its agent vocabulary (`describe_model` returns them; match a person's word to a synonym, then query the identifier).
 - A report can calculate its own measures: a `"measures"` block in its
   `report.json`, keyed by model (`{"sample_model": {"big_minus_small":
   {"measure_expr": "big_orders - small_orders"}}}`), takes the model's measure

@@ -7,6 +7,9 @@ written as data that runs no code.
 # models/sales_model.yaml
 name: sales_model
 label: Sales Orders
+description: Every order, by the region it ships to.
+questions:
+  - Which regions bring in the most revenue?
 
 connectors:
   - name: warehouse
@@ -20,7 +23,9 @@ dimensions:
   - name: dim_region
     table: dim_region
     key: region_id
-    attributes: [region]
+    description: The sales region an order ships to
+    attributes:
+      - {name: region, synonyms: [territory]}
 
 facts:
   - name: fact_orders
@@ -42,6 +47,8 @@ measures:
     column: amount
     agg: sum
     format: currency0
+    description: Order amounts, summed
+    synonyms: [sales, turnover]
 ```
 
 The same model as JSON:
@@ -76,16 +83,21 @@ Errors start with their path, e.g. `measures[2].agg`.
 |---|---|---|
 | `name` | `DataModel(name)` | Required. Equals the file name without its extension. Queries, bindings and commands use it. |
 | `label` | `DataModel(name, label=)` | Optional. What people read where the model is listed (`Direct Lending Portfolio`). Unset: the name title-cased (`portfolio_model` → `Portfolio Model`). `GET /api/models`, `describe_model` and `tracebi list-models` carry it. |
+| `description` | `DataModel(name, description=)` | Optional. What the model is about, in a sentence or two. Words only: nothing computes from it. The model's Semantic layer page, `describe_model` and `get_context` carry it. |
+| `synonyms` | `DataModel(name, synonyms=)` | Optional list of other names for what the model covers (`loan book`). |
+| `questions` | `DataModel(name, questions=)` | Optional list of example questions the model answers, as plain sentences. Ask offers them as starting chips, filling its builder as far as their words name a measure and a dimension (by label, identifier or synonym); an agent receives them in its context. |
 | `owners` | `DataModel(name, owners=)` | Optional list of sign-in names. Only an owner or an admin may publish a change to this model; others can still draft it and run the impact check. Read from the published file, so a draft cannot grant itself ownership. No `owners`, or a new model: any analyst may publish. Names only, not groups. |
 | `connectors` | `add_connector` | `{name, type: warehouse}`, `{name, type: "duckdb", database}` or `{name, connection}` |
 | `tables` | `add_table` | `name`, `connector`, `source` |
 | `relationships` | `add_relationship` | `name`, `left_table`, `right_table`, `left_key`, optional `right_key`, `how` |
-| `dimensions` | `add_dimension` | `name`, `table`, `key`, optional `attributes` |
+| `dimensions` | `add_dimension` | `name`, `table`, `key`, optional `attributes`, `description`, `synonyms`. An attribute is a column name or `{name, label, description, synonyms}`; a query names it `dimension.name` either way. |
 | `facts` | `add_fact` | `name`, `table`, `measures`, optional `foreign_keys` |
 | `time_grains` | `add_time_grain` | `dimension`, `name`, `source`, `grain` (`month`, `quarter`, ...) |
 | `value_bins` | `add_value_bins` | `dimension`, `name`, `source`, `edges`, optional `labels` (one more than `edges`) |
-| `measures` | `add_measure` | `name` plus any keyword in [[measures]]: `column`, `agg`, `expr`, `ratio`, `share`, `rank`, `running`, `partition_by`, `period_end`, `offset`, `growth`, `to_date`, `label`, `description`, `format`, `allow_rate_agg`, `allow_additive`. Pairs and triples are lists. |
+| `measures` | `add_measure` | `name` plus any keyword in [[measures]]: `column`, `agg`, `expr`, `ratio`, `share`, `rank`, `running`, `partition_by`, `period_end`, `offset`, `growth`, `to_date`, `label`, `description`, `synonyms`, `format`, `allow_rate_agg`, `allow_additive`. Pairs and triples are lists. |
 
+`description`, `synonyms` and `questions` are the semantic layer's words
+([[model]]): they change no query, and `tracebi migrate model` carries them.
 `time_grains` and `value_bins` call the dimension `dimension` (the builder's
 `dim`). A publish by someone who is not an owner is refused (HTTP 403, MCP
 `ok: false`), naming the owners. The model's page in the app shows them.
