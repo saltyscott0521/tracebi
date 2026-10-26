@@ -13,14 +13,15 @@ one of three forms:
   itself. ``TEMP`` tables and ``TEMP MACRO``\\ s are scratch and vanish with
   the connection. A view the script creates (``CREATE OR REPLACE VIEW x AS
   …``) is a **sink view**: the choice to keep a derivation as a definition
-  rather than materialize it. It may read only the warehouse's own tables
-  and views, because the model reads it through a locked connection that can
-  reach nothing else (:mod:`tracebi.model.engine`), and because a view that
-  re-read a source or a file at read time would make the certificate's word
-  for what landed untrue. One that reads a ``-- source:`` table, a file, a
-  URL or a ``TEMP`` object fails the run and is dropped, and the message
-  names the reference and the fix. The object tier keeps no definitions, so
-  it refuses every view.
+  rather than materialize it. It may read the warehouse's own tables and
+  views, and a ``-- source:`` table its connection's allowlist admits
+  (``agents: {tables: …}`` in ``connections/<name>.yaml``), because the model
+  reads it through a locked connection that reaches exactly those
+  (:mod:`tracebi.model.engine`) and nothing else. One that reads any other
+  ``-- source:`` table, a file, a URL or a ``TEMP`` object fails the run and
+  is dropped, and the message names the reference and the fix (the
+  allowlist, when that is what is missing). The object tier keeps no
+  definitions, so it refuses every view.
 - **python** (``<name>.py``) and **notebook** (``<name>.ipynb``): the escape
   hatch, run top to bottom in a fresh namespace, ending by writing frames
   (pandas, or anything DuckDB reads as Arrow) with
@@ -38,16 +39,27 @@ set to it. A write names its destination with ``{{ sink }}`` or ``{{ root }}``.
 
 **Sources** (SQL only): a header line ``-- source: crm.issuer_ratings`` names
 one table of a declared connection (``connections/crm.yaml``). Before the
-statements run, the runner loads it through that connection's connector, as a
-model would (the whole table, nothing pushed down), and the SQL reads it as
-``crm.issuer_ratings``: an in-memory database named after the connection,
-attached for the run, so nothing of it lands in the warehouse. The line may
-end ``fallback: inputs/issuer_ratings.csv``, a committed snapshot read only
-when the connection's ``${VAR}`` is unset; any other failure to reach the
-source stops the run. Each load is recorded (:func:`load_source`) and, when a
-contract sits beside the transform, written into its certificate under
-``sources``, so the certificate says which inputs the sink satisfied its
-contract against, and whether the snapshot stood in for the connection.
+statements run, the runner makes it ``crm.issuer_ratings``, in an in-memory
+catalog named after the connection and attached for the run, so nothing of
+it lands in the warehouse. It is read the fastest way the connection allows
+(:func:`_attach_sources`, :mod:`tracebi.connectors.scan`): Postgres, MySQL and
+SQLite through DuckDB's own scanner, in place; Snowflake, BigQuery and an
+ADBC driver as Arrow; anything else through the connector into pandas. The
+line may end ``fallback: inputs/issuer_ratings.csv``, a committed snapshot
+read only when the connection's ``${VAR}`` is unset; any other failure to
+reach the source stops the run. Each load is recorded (``method`` says which
+way; the fingerprint is :func:`load_source`'s for the same rows, whichever
+way) and, when a contract sits beside the transform, written into its
+certificate under ``sources``, so the certificate says which inputs the sink
+satisfied its contract against, and whether the snapshot stood in for the
+connection.
+
+**Saving back** (SQL only): a line ``-- sink: <connection>`` just above a
+``CREATE OR REPLACE TABLE x AS …`` sends ``x`` to that connection, through its
+connector's ``write`` (the table replaced there), once every statement has
+run; the warehouse keeps its copy unless the line says ``-- sink:
+<connection> only``. A bucket needs no directive: ``COPY (…) TO
+'s3://…/x.parquet'``.
 
 **The contract beside it.** ``<name>.contract.yaml`` (:mod:`tracebi.contracts`,
 the same closed vocabulary as ``with contract(...)``) runs after the
@@ -82,6 +94,13 @@ _PLACEHOLDER = re.compile(r"\{\{(.*?)\}\}", re.S)
 _DIRECTIVE = re.compile(r"^\s*--\s*source:(.*)$")
 _SOURCE = re.compile(r"\s*(?P<connection>[A-Za-z_]\w*)(?:\.(?P<table>[A-Za-z_]\w*))?"
                      r"(?:\s+fallback:\s*(?P<fallback>\S+))?\s*")
+
+# ``-- sink: <connection> [only]``, on the line just above a CREATE TABLE.
+_SINK_LINE = re.compile(r"^\s*--\s*sink:(.*)$")
+_SINK = re.compile(r"\s*(?P<connection>[A-Za-z_]\w*)(?P<only>\s+only)?\s*")
+_CREATE_TABLE = re.compile(r'^\s*CREATE\s+(?:OR\s+REPLACE\s+)?(?P<temp>(?:TEMP|TEMPORARY)\s+)?'
+                           r'(?P<kind>TABLE|VIEW)\s+(?:IF\s+NOT\s+EXISTS\s+)?'
+                           r'(?P<name>"(?:[^"]|"")*"|[A-Za-z_][\w.]*)', re.I)
 
 
 #: Table functions a sink view may call: they make rows and read nothing.
@@ -208,17 +227,14 @@ def load_source(ref: str, root: Optional[str] = None,
     ``verify --contracts`` re-reads a load the snapshot served."""
     from datetime import datetime, timezone
 
-    from tracebi.connections import ConnectionConfigError, connection_file, load_connection
+    from tracebi.connections import ConnectionConfigError
     from tracebi.model.dataset import frame_fingerprint
 
     root = os.path.abspath(root or os.getcwd())
     connection, _, table = ref.partition(".")
     if not table:
         raise TransformError(f"source {ref!r}: name the table, as {connection}.<table>")
-    path = connection_file(connection, root)
-    if path is None:
-        raise TransformError(f"source {ref}: there is no connections/{connection}.yaml")
-    connector = load_connection(path, root=root)
+    connector = _source_connector(ref, connection, root)
     record: dict = {"connection": connection, "table": table}
     unset = "the snapshot is read again, as the certificate recorded it" if force_fallback else None
     if unset is None:
@@ -235,12 +251,29 @@ def load_source(ref: str, root: Optional[str] = None,
     if unset is not None:
         frame = _read_fallback(ref, fallback, root)
         record.update(source_fallback="csv", fallback=fallback, reason=unset)
-    frame = frame.sort_values(
+    frame = _sorted(frame)
+    record.update(rows=len(frame), fingerprint=frame_fingerprint(frame),
+                  loaded_at=datetime.now(timezone.utc).isoformat(), method="pandas")
+    return frame, record
+
+
+def _sorted(frame: "pd.DataFrame") -> "pd.DataFrame":
+    """The rows ordered by every column, so a fingerprint names the rows and
+    not the order a server returned them in. One rule for every way a source
+    is read, so each way records the same fingerprint for the same rows."""
+    return frame.sort_values(
         list(frame.columns), key=lambda col: col.astype(str) if col.dtype == object else col,
         kind="stable").reset_index(drop=True)
-    record.update(rows=len(frame), fingerprint=frame_fingerprint(frame),
-                  loaded_at=datetime.now(timezone.utc).isoformat())
-    return frame, record
+
+
+def _source_connector(ref: str, connection: str, root: str):
+    """The connector ``connections/<connection>.yaml`` builds (resolves nothing)."""
+    from tracebi.connections import connection_file, load_connection
+
+    path = connection_file(connection, root)
+    if path is None:
+        raise TransformError(f"source {ref}: there is no connections/{connection}.yaml")
+    return load_connection(path, root=root)
 
 
 def _read_fallback(ref: str, fallback: str, root: str) -> "pd.DataFrame":
@@ -259,26 +292,87 @@ def _read_fallback(ref: str, fallback: str, root: str) -> "pd.DataFrame":
 
 
 def _attach_sources(con, sources: list[dict], root: str, where: str) -> dict:
-    """Load each ``-- source:`` table and make it ``<connection>.<table>`` in
-    *con*: one in-memory database per connection, attached for this run only,
-    so a source never lands in the warehouse. Returns ``{ref: record}``."""
+    """Make each ``-- source:`` table ``<connection>.<table>`` in *con*, in an
+    in-memory catalog named after the connection and attached for this run
+    only, so a source never lands in the warehouse. Each is read the fastest
+    way its connection allows (:mod:`tracebi.connectors.scan`), and its
+    record says which (``method``):
+
+    - ``scanner``: Postgres, MySQL and SQLite are attached READ_ONLY through
+      DuckDB's own extension and the table is a view over it; the SQL reads
+      the database in place.
+    - ``arrow``: a connector with a columnar result path (Snowflake,
+      BigQuery, ADBC) hands over an Arrow table, registered as it is.
+    - ``pandas``: :func:`load_source`, the floor, and the only way a
+      ``fallback:`` snapshot is read.
+
+    Whatever the way, the fingerprint is :func:`load_source`'s over the same
+    rows (sorted by every column, hashed by ``frame_fingerprint``), so a
+    certificate written by one way is checked by another. Returns
+    ``{ref: record}``."""
+    from datetime import datetime, timezone
+
+    from tracebi.connections import ConnectionConfigError
+    from tracebi.connectors import scan
     from tracebi.model.data_model import _register_frame
+    from tracebi.model.dataset import frame_fingerprint
 
     records: dict = {}
     for src in sources:
-        try:
-            frame, records[src["ref"]] = load_source(src["ref"], root, src["fallback"])
-        except TransformError as exc:
-            raise TransformError(f"{where}: {exc}") from exc
         catalog, table = (f'"{src[k]}"' for k in ("connection", "table"))
-        attached = {r[0] for r in con.execute(
-            "SELECT database_name FROM duckdb_databases()").fetchall()}
-        if src["connection"] not in attached:
-            con.execute(f"ATTACH ':memory:' AS {catalog}")
-        _register_frame(con, "__tracebi_source", frame)
-        con.execute(f"CREATE TABLE {catalog}.main.{table} AS SELECT * FROM __tracebi_source")
-        con.unregister("__tracebi_source")
+        connector = _source_connector(src["ref"], src["connection"], root)
+        record = {"connection": src["connection"], "table": src["table"]}
+        method = None
+        try:
+            if scan.scanner(connector) is not None:
+                try:
+                    scan.attach_tables(con, connector, src["connection"], [src["table"]])
+                    method = "scanner"
+                except scan.ScannerUnavailable as exc:
+                    record["scanner_unavailable"] = str(exc)   # the next way, and say why
+            if method is None:
+                arrow = connector.load_arrow(src["table"])
+                if arrow is not None:
+                    _ensure_catalog(con, src["connection"])
+                    con.register("__tracebi_source", arrow)
+                    con.execute(f"CREATE TABLE {catalog}.main.{table} AS "
+                                f"SELECT * FROM __tracebi_source")
+                    con.unregister("__tracebi_source")
+                    method = "arrow"
+        except ConnectionConfigError:
+            method = None       # unset: load_source reads the snapshot, or says which variable
+        except scan.ScanError as exc:
+            raise TransformError(f"{where}: source {src['ref']}: {exc}") from None
+        finally:
+            engine = connector.__dict__.get("_engine")
+            if engine is not None:
+                engine.dispose()    # the source is read once; hold no connection to it
+        if method is None:
+            try:
+                frame, loaded = load_source(src["ref"], root, src["fallback"])
+            except TransformError as exc:
+                raise TransformError(f"{where}: {exc}") from exc
+            records[src["ref"]] = {**loaded, **record}
+            _ensure_catalog(con, src["connection"])
+            _register_frame(con, "__tracebi_source", frame)
+            con.execute(f"CREATE TABLE {catalog}.main.{table} AS SELECT * FROM __tracebi_source")
+            con.unregister("__tracebi_source")
+            continue
+        # Only the hash reads the rows into pandas: the transform reads them
+        # where they are.
+        frame = _sorted(scan.arrow_rows(con, f"{catalog}.main.{table}").to_pandas())
+        records[src["ref"]] = {**record, "rows": len(frame),
+                               "fingerprint": frame_fingerprint(frame),
+                               "loaded_at": datetime.now(timezone.utc).isoformat(),
+                               "method": method}
     return records
+
+
+def _ensure_catalog(con, name: str) -> None:
+    attached = {r[0] for r in con.execute(
+        "SELECT database_name FROM duckdb_databases()").fetchall()}
+    if name not in attached:
+        con.execute(f"ATTACH ':memory:' AS \"{name}\"")
 
 
 def _line_of(text: str, start: int, statement: str) -> int:
@@ -324,23 +418,117 @@ def run_sql(path: "str | os.PathLike[str]", root: Optional[str] = None,
         if sources is not None:
             sources.update(loaded)
         before = _view_oids(con)
+        marks = _sink_lines(text, where)
+        sends: list[dict] = []
         cursor = 0
         for i, statement in enumerate(statements, 1):
             start = text.find(statement.query, cursor)
             cursor = start + len(statement.query) if start >= 0 else cursor
+            line = _line_of(text, max(start, 0), statement.query)
+            mark = _previous_line(text, line, marks)
+            if mark is not None:
+                sends.append(_sink_of(mark, statement.query, where))
             try:
                 con.execute(statement)
             except duckdb.Error as exc:
-                line = _line_of(text, max(start, 0), statement.query)
                 raise TransformError(f"{where}: statement {i} (line {line}) failed: "
                                      f"{' '.join(str(exc).split())}") from exc
+        if marks:
+            raise TransformError(
+                f"{where}: line {min(marks)}: a -- sink: line belongs on the line just "
+                f"above the CREATE OR REPLACE TABLE whose table it sends")
         created = _sink_views(con, before, directives, where, sink.warehouse.tier)
+        _send(con, sends, root, where)
         if sink.warehouse.tier == "object":
             _land_tables(con, sink.warehouse)
     _check_views_read(sink, created, where)
     if views is not None:
         views.extend(created)
     return len(statements)
+
+
+def _sink_lines(text: str, where: str) -> dict[int, dict]:
+    """``{line: {connection, only, line}}`` for each ``-- sink:`` line of a
+    SQL transform; a malformed one is an error naming its line."""
+    found: dict[int, dict] = {}
+    for number, line in enumerate(text.splitlines(), 1):
+        directive = _SINK_LINE.match(line)
+        if directive is None:
+            continue
+        parsed = _SINK.fullmatch(directive.group(1))
+        if parsed is None:
+            raise TransformError(f"{where}: line {number}: expected -- sink: <connection> "
+                                 f"[only], got {line.strip()!r}")
+        found[number] = {"connection": parsed.group("connection"),
+                         "only": bool(parsed.group("only")), "line": number}
+    return found
+
+
+def _previous_line(text: str, line: int, marks: dict[int, dict]) -> Optional[dict]:
+    """The ``-- sink:`` line directly above *line* (blank lines between
+    allowed), taken out of *marks* so one left over is reported."""
+    lines = text.splitlines()
+    above = line - 1
+    while above >= 1 and not lines[above - 1].strip():
+        above -= 1
+    return marks.pop(above, None)
+
+
+def _sink_of(mark: dict, statement: str, where: str) -> dict:
+    """The table a ``-- sink:`` line sends: the one its CREATE TABLE makes in
+    the warehouse. A view, a TEMP table or a qualified name is refused."""
+    body = "\n".join(line for line in statement.splitlines()
+                     if not line.strip().startswith("--"))
+    created = _CREATE_TABLE.match(body)
+    shown = f"{where}: line {mark['line']}: -- sink: {mark['connection']}"
+    if created is None or created.group("kind").upper() != "TABLE" or created.group("temp"):
+        raise TransformError(
+            f"{shown} must sit just above a CREATE OR REPLACE TABLE (not a view or a "
+            f"TEMP table): it sends that table to the connection after the run")
+    name = created.group("name")
+    if name.startswith('"'):
+        name = name[1:-1].replace('""', '"')
+    elif "." in name:
+        raise TransformError(f"{shown}: the table it sends is a warehouse table; "
+                             f"name it unqualified, got {name!r}")
+    return {**mark, "table": name}
+
+
+def _send(con, sends: list[dict], root: str, where: str) -> None:
+    """Write each ``-- sink:`` table to its connection through the
+    connector's ``write`` (the table replaced there), after every statement
+    has run, so a run that fails sends nothing. ``only`` then drops the
+    warehouse's copy."""
+    from tracebi.connections import ConnectionConfigError, connection_file, load_connection
+    from tracebi.connectors import scan
+
+    if sends:
+        # Let go of every scanned source first: a write may go to the very
+        # database a -- source: line attached (SQLite locks the file).
+        for (name,) in con.execute("SELECT database_name FROM duckdb_databases()").fetchall():
+            if name.startswith(scan.HIDDEN):
+                con.execute('DETACH "' + name.replace('"', '""') + '"')
+    for send in sends:
+        shown = f"{where}: line {send['line']}: -- sink: {send['connection']}"
+        path = connection_file(send["connection"], root)
+        if path is None:
+            raise TransformError(f"{shown}: there is no connections/{send['connection']}.yaml")
+        connector = load_connection(path, root=root)
+        ident = '"' + send["table"].replace('"', '""') + '"'
+        try:
+            connector.write(con.execute(f"SELECT * FROM {ident}").df(), send["table"])
+        except (ConnectionConfigError, NotImplementedError) as exc:
+            raise TransformError(f"{shown}: {exc}") from None
+        except Exception as exc:  # noqa: BLE001 — a driver's error, its secret redacted
+            raise TransformError(scan.redacted(
+                connector, f"{shown}: writing {send['table']} failed: "
+                           f"{' '.join(str(exc).split())}")) from None
+        finally:
+            engine = connector.__dict__.get("_engine")
+            if engine is not None:
+                engine.dispose()
+        if send["only"]:
+            con.execute(f"DROP TABLE {ident}")
 
 
 def _view_oids(con) -> dict:
@@ -390,12 +578,16 @@ def _view_refs(con, definition: str) -> tuple[list[tuple[str, str, str]], list[s
 
 def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str) -> list[dict]:
     """The views the script created in the warehouse, each checked to read
-    only the warehouse's own tables and views: ``[{name, definition_sha256,
-    bases}]``, *bases* being what the view names directly. A view that reads
-    anything else (a ``-- source:`` table, a file, a URL, a ``TEMP`` table)
+    only the warehouse's own tables and views, and ``-- source:`` tables on
+    their connection's allowlist (named ``<connection>.<table>`` in *bases*):
+    ``[{name, definition_sha256, bases}]``, *bases* being what the view names
+    directly. A view that reads anything else (a ``-- source:`` table the
+    allowlist does not admit, a file, a URL, a ``TEMP`` table)
     is dropped and the run fails, naming the view, the reference and the fix.
     On the object tier, which keeps no definitions, every view does."""
     import hashlib
+
+    from tracebi.connectors.scan import agent_may_read
 
     rows = con.execute(
         "SELECT view_name, view_oid, sql FROM duckdb_views() WHERE database_name = current_database() "
@@ -414,7 +606,7 @@ def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str
         "AND schema_name = 'main' AND NOT temporary "
         "UNION SELECT view_name FROM duckdb_views() WHERE database_name = current_database() "
         "AND schema_name = 'main' AND NOT internal AND NOT temporary").fetchall()}
-    attached = {d["connection"].lower() for d in directives}
+    attached = {d["connection"].lower(): d["connection"] for d in directives}
     out: list[dict] = []
     for name, sql in created:
         try:
@@ -433,8 +625,17 @@ def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str
             qualifier = catalog or (schema if schema.lower() != "main" else "")
             shown = ".".join(p for p in (catalog, schema, table) if p)
             if qualifier.lower() in attached:
-                bad = (f"{shown}, a -- source: table, which is attached for the run only "
-                       f"and never lands in the warehouse")
+                # A model's query connection attaches an allowlisted source
+                # table live (tracebi.connectors.scan), so a view over one
+                # reads at query time what it read here. Any other source
+                # table was attached for this run only.
+                connection = attached[qualifier.lower()]
+                if not agent_may_read(connection, table):
+                    bad = (f"{shown}, a -- source: table that is not on the allowlist of "
+                           f"connections/{connection}.yaml (agents: tables), so a model "
+                           f"cannot read it live")
+                elif f"{connection}.{table}" not in bases:
+                    bases.append(f"{connection}.{table}")
             elif qualifier or table.lower() not in own:
                 bad = (f"{shown}, which is not a table or view of the warehouse "
                        f"(a file, a URL, another database or a TEMP table)")
@@ -444,7 +645,8 @@ def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str
             _drop_views(con, [name])
             raise TransformError(
                 f"{where}: view {name} reads {bad}. A sink view may read only the "
-                f"warehouse's own tables and views; materialize it: CREATE OR REPLACE "
+                f"warehouse's own tables and views, and the tables of a -- source: "
+                f"connection its allowlist admits; materialize it: CREATE OR REPLACE "
                 f"TABLE {name} AS …, or move the read into a table the view selects from")
         out.append({"name": name, "bases": sorted(bases),
                     "definition_sha256": hashlib.sha256(sql.encode("utf-8")).hexdigest()})

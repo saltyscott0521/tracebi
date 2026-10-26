@@ -118,16 +118,22 @@ phase to the next):
    escape hatch: pull the queries (a table of a declared connection is a header
    line `-- source: crm.issuer_ratings [fallback: inputs/x.csv]`, loaded through
    the connector before the first statement and read as `crm.issuer_ratings`;
-   the certificate records each load under `sources`), do the real analysis (window functions,
+   the certificate records each load under `sources`; read in place through DuckDB's
+   scanner for Postgres, MySQL and SQLite (`method: scanner`), else as Arrow (Snowflake,
+   BigQuery, ADBC; `arrow`), else through the connector (`pandas`), the fingerprint the
+   same whichever way; `-- sink: <connection> [only]` just above a `CREATE OR REPLACE
+   TABLE` sends that table through the connector's `write` after the run, `only` dropping
+   the warehouse copy), do the real analysis (window functions,
    prose parsing, cleaning, dedupe), then **sink** clean star-schema tables
    into the warehouse. A `transforms/<name>.sql` runs top to bottom in one
    fresh warehouse connection (`tracebi/transforms.py`; placeholders
    `{{ sink }}` and `{{ root }}` only; `-- source:` lines attach declared
    connections' tables in memory, never sunk; a created non-TEMP table is a sink
-   table on every tier; a created view over warehouse tables is a sink view on the
-   file and remote tiers, recorded with its bases (certificate `views: [{name,
-   definition_sha256, bases}]`), refused over a source, a file or a TEMP object,
-   and on the object tier); a `.py` / `.ipynb` ends with
+   table on every tier; a created view over warehouse tables, or over a `-- source:`
+   table its connection's allowlist (`agents:`) admits, is a sink view on the file and
+   remote tiers, recorded with its bases (certificate `views: [{name, definition_sha256,
+   bases}]`), refused over any other source, a file or a TEMP object, and on the object
+   tier); a `.py` / `.ipynb` ends with
    `DuckDBConnector("warehouse", database=sink_target(ROOT)).write(df, "table")`.
    `tracebi run-transform` reports `form: sql | python | notebook`. The
    framework does not constrain this phase. The contract is not
@@ -155,7 +161,12 @@ phase to the next):
    connection per query attaches the warehouse and reads the model's tables
    as views (`tracebi/model/engine.py`; nothing loaded into pandas, no file,
    URL, extension, ATTACH or COPY reachable, limits and the statement timeout
-   in `tracebi.yaml`). Reference: `examples/portfolio_project/models/portfolio_model.yaml`.
+   in `tracebi.yaml`). A model table on a declared SQL connection (`connectors: - {name:
+   crm, connection: crm}`) is read live: the query connection attaches that connection's
+   allowlisted tables READ_ONLY before the lock (through the scanner, else loaded), a table
+   not on the allowlist is refused by name, and a warehouse sink view over an allowlisted
+   source brings its connection in the same way (`tracebi/connectors/scan.py`).
+   Reference: `examples/portfolio_project/models/portfolio_model.yaml`.
 
    *— freeze: the model (the semantic contract) —*
 
@@ -188,7 +199,8 @@ does not assert a number is correct. Never claim it verifies the phase-① analy
 
 ```
 tracebi/               # Core Python package (~24,000 LOC)
-  connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory, DuckDB
+  connectors/          # BaseConnector + CSV, SQL, BigQuery, Snowflake, Memory, DuckDB; scan.py (DuckDB's
+                       #   scanners, Arrow, LiveSource: how a source is read in place and attached live)
   model/               # DataSet, DataModel (with star-schema query), engine.py (the
                        #   locked read-only query connection + statement timeout)
   etl/                 # LandingLayer / BronzeLayer, ManipulationLayer / SilverLayer, FinalLayer / GoldLayer;
@@ -240,7 +252,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
   mcp_server.py        # agent gateway over MCP — 27 tools + 3 prompts (author_report, answer_question, address_pins);
                        #   the source tools read only a connection's agents: allowlist
-  exports.py           # saving back: a warehouse table/view → a connection (write) or a prefix (Parquet); one function, records an export run
+  exports.py           # the gateway's export_table: a thin call over warehouse.export_table (the one implementation)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
   _dev_server.py       # the classic stdlib preview server (loopback), `tracebi dev --classic`; `tracebi dev` itself opens the app in dev mode (`/reports/<name>` with Build on; `/data` with no name)
@@ -291,7 +303,7 @@ examples/
 MANIFESTO.md           # What TraceBi is, the vocabulary canon, and what it refuses to build
 .env.example           # Documented env vars (auth, connector URLs, dev mode)
 .github/workflows/     # CI — pytest matrix + ruff lint
-Dockerfile             # Multi-stage build (React UI + Python app)
+Dockerfile             # Multi-stage build (React UI + Python app); installs DuckDB's postgres, mysql, sqlite and httpfs extensions
 docker-compose.yml     # Serves examples/portfolio_project only (TRACEBI_APP unset); Postgres holds
                        #   the standing mock CRM (`crm`) and `tracebi_state` (docker/postgres-init.sql)
 pyproject.toml         # Single source of truth for deps, build, and pytest config
@@ -376,6 +388,7 @@ tracebi push <paths> --server <url> --note why  # packages/models → your draft
 tracebi logout --server <url>                  # revoke and forget
 tracebi update [--check] [--yes]               # newer release? what's new + the command for this install
 tracebi secret set NAME [--from-stdin]          # a credential into the project store (encrypted); list | unset NAME
+tracebi export <table> --to <connection|prefix>  # a warehouse table or view out to a connection, or as Parquet under a prefix
 tracebi connect <name> --kind postgres --store secret   # write the secret to the store instead of .env
 
 # Tests
@@ -863,6 +876,7 @@ GET  /api/tables/{source}/{table}                    → one table wherever it l
 GET  /api/tables/{source}/{table}/rows               → ?offset&limit(≤500)&sort&desc&q&where=[{column,op,value}] (closed ops; refused 422 before any SQL) → {columns, rows, offset, limit, total, total_exact, elapsed_ms}
 GET  /api/tables/{source}/{table}/profile            → {rows, columns: {name: {type, nulls, null_share, distinct, min, max, mean?, top:[{value,count}]}}}
 GET  /api/tables/{source}/{table}/export.csv         → the same cut as CSV, streamed from the engine
+POST /api/tables/{source}/{table}/export             → {to: <connection> | s3://… | gs://… | folder/} → {table, to, kind: connection|object, rows, path?} (admin; run row kind=export; the gateway's export_table and `tracebi export` use the same function, warehouse.export_table)
 GET  /api/credentials                                → every ${NAME} the project references and where it is set (environment|dotenv|store|default|missing), never a value; can_change (viewer)
 PUT  /api/credentials/{name}                         → {value} → the status row; 201 new / 200 replaced (identified admin; audit row kind=credential)
 DELETE /api/credentials/{name}                       → 204, the store's value only (identified admin)

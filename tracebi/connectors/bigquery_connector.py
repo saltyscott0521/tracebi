@@ -100,6 +100,14 @@ class BigQueryConnector(BaseConnector):
         job_config = bigquery.QueryJobConfig(query_parameters=params) if params else None
         return self._client.query(query, job_config=job_config).to_dataframe()
 
+    def load_arrow(self, source: str):
+        """The table as Arrow, through the BigQuery Storage API where its
+        client is installed (``to_arrow`` falls back to the REST API)."""
+        if self._client is None:
+            self.connect()
+        table_ref = self._quote_ident(f"{self.project}.{self.dataset}.{source}", quote="`")
+        return self._client.query(f"SELECT * FROM {table_ref}").to_arrow()
+
     @staticmethod
     def _bq_param_type(val: Any) -> str:
         if isinstance(val, bool):

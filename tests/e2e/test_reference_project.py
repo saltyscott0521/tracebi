@@ -66,6 +66,19 @@ def _manifest(proj, name):
     return proj / "output" / f"{name}.html.manifest.json"
 
 
+def _scanner_here(extension):
+    """Whether DuckDB's *extension* loads (or installs) on this machine."""
+    import duckdb
+
+    from tracebi.connectors import scan
+
+    try:
+        scan.load_extension(duckdb.connect(), extension)
+    except scan.ScannerUnavailable:
+        return False
+    return True
+
+
 @pytest.mark.parametrize("name", sorted(REPORTS))
 def test_every_report_reproduces_and_its_file_is_intact(built, name):
     manifest = _manifest(built, name)
@@ -532,6 +545,16 @@ def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
     src = rec["sources"]["crm.issuer_ratings"]
     assert src["connection"] == "crm" and src["rows"] == 12
     assert re.fullmatch(r"[0-9a-f]{64}", src["fingerprint"]) and "source_fallback" not in src
+    # Read in place through DuckDB's postgres scanner where it loads (CI and
+    # the image install it), else the floor way, saying why; whichever way,
+    # the fingerprint is the connector path's for the same rows, which is
+    # what verify --contracts compares it against below.
+    from tracebi.transforms import load_source
+    if _scanner_here("postgres"):
+        assert src["method"] == "scanner", src
+    else:
+        assert src["method"] in ("arrow", "pandas") and "INSTALL postgres" in src["scanner_unavailable"]
+    assert src["fingerprint"] == load_source("crm.issuer_ratings", str(reference))[1]["fingerprint"]
 
     ratings = get_model("portfolio_model").query(
         "fact_holdings", ["fair_value"], dimensions=["dim_rating.rating"])
@@ -606,6 +629,84 @@ def test_a_table_sourced_from_postgres_carries_its_source_to_the_trace(
         assert issuers == sorted(issuers)
     finally:
         release_warehouses()
+
+
+def test_sources_are_read_in_place_and_results_go_back_out(reference, monkeypatch):
+    """The billing system (a SQLite file that ships) through its whole round
+    trip. The SaaS transform reads its two tables through DuckDB's sqlite
+    scanner (where the extension loads here), and the certificate's
+    fingerprint is the connector path's. A model reads the connection's
+    allowlisted table live and is refused the other by name; a sink view may
+    read the allowlisted table and not the other; `-- sink: billing` sends a
+    transform's table into the billing database; `tracebi export` writes a
+    warehouse table to a folder as Parquet and records the run."""
+    import sqlite3
+
+    import duckdb
+
+    from tracebi import connections
+    from tracebi.connectors import scan
+    from tracebi.model.model_spec import load_model_spec
+    from tracebi.state import list_runs
+    from tracebi.transforms import load_source
+
+    code, out = run_cli("run-transform", "saas_transform")
+    assert code == 0, out
+    rec = json.loads((reference / "data" / "warehouse.contracts.json").read_text())["transforms"]
+    scanner = _scanner_here("sqlite")
+    for ref in ("billing.subscriptions", "billing.plans"):
+        src = rec["saas_transform"]["sources"][ref]
+        assert src["method"] == ("scanner" if scanner else "pandas"), src
+        assert src["fingerprint"] == load_source(ref, str(reference))[1]["fingerprint"]
+
+    # Agents may read billing.plans and nothing else of billing.
+    if hasattr(connections, "agent_may_read"):
+        with open(reference / "connections" / "billing.yaml", "a") as fh:
+            fh.write("agents:\n  tables: [plans]\n")
+    else:   # the allowlist's own module is not here yet: the same answer, by hook
+        monkeypatch.setattr(scan, "agent_may_read_hook",
+                            lambda conn, table: (conn, table) == ("billing", "plans"))
+    (reference / "models" / "live_billing.yaml").write_text(
+        "name: live_billing\nconnectors:\n  - {name: billing, connection: billing}\n"
+        "tables:\n  - {name: plans, connector: billing, source: plans}\n"
+        "  - {name: subscriptions, connector: billing, source: subscriptions}\n"
+        "facts:\n  - {name: plans, table: plans, measures: [list_mrr]}\n"
+        "  - {name: subscriptions, table: subscriptions, measures: [subscription_id]}\n")
+    model = load_model_spec(reference / "models" / "live_billing.yaml")
+    db = sqlite3.connect(reference / "inputs" / "billing.sqlite")
+    total = db.execute("SELECT sum(list_mrr) FROM plans").fetchone()[0]
+    result = model.query("plans", {"list_mrr": "sum"})
+    assert result.to_pandas()["list_mrr"].tolist() == [total]
+    [load] = [n for n in result.lineage if n.operation == "load"]
+    assert load.metadata["input"]["fingerprint"] == model.load("plans").lineage[0].metadata["input"]["fingerprint"]
+    with pytest.raises(ValueError, match=r"billing\.subscriptions, which is not on the allowlist"):
+        model.query("subscriptions", {"subscription_id": "count"})
+
+    (reference / "transforms" / "plan_prices.sql").write_text(
+        "-- source: billing.plans\n\n"
+        "-- sink: billing\n"
+        "CREATE OR REPLACE TABLE plan_prices AS SELECT plan_code, list_mrr FROM billing.plans;\n"
+        "CREATE OR REPLACE VIEW plans_live AS SELECT plan_code, list_mrr FROM billing.plans;\n")
+    code, out = run_cli("run-transform", "plan_prices")
+    assert code == 0, out
+    assert db.execute("SELECT count(*) FROM plan_prices").fetchone()[0] == 3
+    from tracebi.model.engine import query_connection
+    from tracebi.project_config import warehouse
+    with query_connection({"wh": warehouse(str(reference))}, default="wh") as con:
+        assert con.execute("SELECT count(*) FROM plans_live").fetchone()[0] == 3
+    (reference / "transforms" / "subs_view.sql").write_text(
+        "-- source: billing.subscriptions\n\n"
+        "CREATE OR REPLACE VIEW subs_live AS SELECT * FROM billing.subscriptions;\n")
+    code, out = run_cli("run-transform", "subs_view")
+    assert code == 1 and "not on the allowlist of connections/billing.yaml" in out, out
+
+    code, out = run_cli("export", "plan_prices", "--to", "exports/")
+    assert code == 0, out
+    exported = duckdb.sql(f"SELECT count(*) FROM '{reference / 'exports' / 'plan_prices.parquet'}'")
+    assert exported.fetchall()[0][0] == 3
+    [run] = list_runs(kind="export", limit=1)
+    assert (run["target"], run["status"], run["detail"]["kind"], run["detail"]["rows"]) == (
+        "plan_prices", "ok", "object", 3)
 
 
 def test_the_working_preview_formats_numbers_like_the_build(built):

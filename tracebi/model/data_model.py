@@ -1646,6 +1646,20 @@ class DataModel:
             aliases[cname] = by_path[path]
         return files, aliases
 
+    def _live_sources(self) -> dict[str, Any]:
+        """``{connection: LiveSource}`` for each declared SQL connection
+        (``connections/<name>.yaml``) this model has tables on: the query
+        connection attaches its allowlisted tables, read where they live."""
+        from tracebi.connectors.scan import LiveSource, is_live
+
+        tables: dict[str, list[str]] = {}
+        for tdef in self._tables.values():
+            connector = self._connectors.get(tdef.connector_name)
+            if is_live(connector) and not tdef.source.strip().upper().startswith("SELECT"):
+                tables.setdefault(tdef.connector_name, []).append(tdef.source)
+        return {name: LiveSource(self._connectors[name], found)
+                for name, found in tables.items()}
+
     def _read_table(
         self,
         con,
@@ -1665,11 +1679,22 @@ class DataModel:
         DuckDB connector (``*.parquet``, ``*.csv``) is in the second group:
         the query connection cannot open files, the connector can.
         """
+        from tracebi.connectors.scan import agent_may_read, is_live
+
         tdef = self._tables[table_name]
         connector = self._connectors[tdef.connector_name]
         alias = aliases.get(tdef.connector_name)
         ref = None
-        if alias is not None and alias in con.attached:
+        live = is_live(connector)
+        if live and not agent_may_read(connector.name, tdef.source):
+            raise ValueError(
+                f"Table '{table_name}' reads {connector.name}.{tdef.source}, which is not "
+                f"on the allowlist of connections/{connector.name}.yaml (agents: tables). "
+                f"A model reads a connection's table live only when agents may read it: "
+                f"add it to the allowlist, or sink it into the warehouse with a transform.")
+        if live and connector.name in con.attached:
+            ref = f'{_ident(connector.name)}."main".{_ident(tdef.source)}'
+        elif alias is not None and alias in con.attached:
             ref = connector._resolve_source(tdef.source)
             if ref.startswith("("):
                 # An author's SELECT names its tables unqualified: it resolves
@@ -1700,7 +1725,15 @@ class DataModel:
                 replace.append(f"CAST({col} AS TIMESTAMP) AS {col}")
         select = f"* REPLACE ({', '.join(replace)})" if replace else "*"
         con.execute(f'CREATE TEMP VIEW "{rel}" AS SELECT {select} FROM {ref}')
-        fingerprint, rows = warehouse_table_fingerprint(connector, tdef.source, filter)
+        if live:
+            # Live rows have no file to key a cache on: hashed as read, the
+            # rows the connector's load would have returned.
+            where, params = self._pushdown_where(filter) if filter else ("", [])
+            df = con.execute(f"SELECT * FROM {ref}" + (f" WHERE {where}" if where else ""),
+                             params).to_arrow_table().to_pandas()
+            fingerprint, rows = frame_fingerprint(df), len(df)
+        else:
+            fingerprint, rows = warehouse_table_fingerprint(connector, tdef.source, filter)
         return self._load_lineage(table_name, filter, None, fingerprint, rows), True
 
     @staticmethod
@@ -2041,6 +2074,7 @@ class DataModel:
         with query_connection(
             warehouses,
             default=aliases.get(self._tables[fact_def.table_name].connector_name),
+            sources=self._live_sources(),
         ) as con:
             fact_nodes, in_place = self._read_table(
                 con, aliases, fact_def.table_name, "q_fact_base",

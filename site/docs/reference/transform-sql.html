@@ -93,14 +93,17 @@ every fingerprint equal, row order included.</p>
 <code>refresh</code> all find <code>transforms/&lt;name&gt;.sql</code>, <code>.py</code> or <code>.ipynb</code>, run it, and
 print <code>form: sql | python | notebook</code>. A pipeline run records the form, and
 <code>tracebi run-pipeline &lt;name&gt; --status</code> and the model's Transform tab show it.</p>
-<p>A SQL transform runs in five steps:</p>
+<p>A SQL transform runs in six steps:</p>
 <ol>
 <li>Its two placeholders are substituted.</li>
-<li>Each table its <code>-- source:</code> lines name is loaded through its connection.</li>
+<li>Each table its <code>-- source:</code> lines name is attached, read where it lives
+   when its connection allows (How a source is read, below).</li>
 <li>Its statements run in order in one fresh read-write DuckDB connection to
    the warehouse <code>tracebi.yaml</code> names, with the project's <code>engine</code> limits. A
    failing statement stops the run with its number and line:
    <code>transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …</code>.</li>
+<li>Each table a <code>-- sink:</code> line names is sent to its connection
+   (Saving back, below).</li>
 <li>On the object tier, every table it created is written out.</li>
 <li>The connection closes, then <code>&lt;name&gt;.contract.yaml</code> runs if there is one.</li>
 </ol>
@@ -159,15 +162,18 @@ contract check runs against it as against a table, and <code>tracebi verify
 --contracts</code> re-runs that check the same way.</p>
 <p>Materialize the facts you aggregate. View the derivations. When the facts
 outgrow a file, move the warehouse to another tier, not the design.</p>
-<p><strong>What a view may read.</strong> Only the warehouse's own tables and views, by their
-plain names. The run checks each view it created. A view that reads anything
-else fails the run and is dropped, and the message names the view, what it
-read and the fix:</p>
-<pre><code>transforms/x.sql: view v_ratings reads crm.issuer_ratings, a -- source: table,
-which is attached for the run only and never lands in the warehouse. A sink
-view may read only the warehouse's own tables and views; materialize it:
-CREATE OR REPLACE TABLE v_ratings AS …, or move the read into a table the view
-selects from
+<p><strong>What a view may read.</strong> The warehouse's own tables and views, by their
+plain names, and a <code>-- source:</code> table that its connection's allowlist admits
+(<code>agents: {tables: [issuer_ratings]}</code> in <code>connections/crm.yaml</code>,
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>). The run checks each view it created. A view that reads
+anything else fails the run and is dropped, and the message names the view,
+what it read and the fix:</p>
+<pre><code>transforms/x.sql: view v_ratings reads crm.issuer_ratings, a -- source: table
+that is not on the allowlist of connections/crm.yaml (agents: tables), so a
+model cannot read it live. A sink view may read only the warehouse's own
+tables and views, and the tables of a -- source: connection its allowlist
+admits; materialize it: CREATE OR REPLACE TABLE v_ratings AS …, or move the
+read into a table the view selects from
 </code></pre>
 <table>
 <thead>
@@ -178,8 +184,8 @@ selects from
 </thead>
 <tbody>
 <tr>
-<td>A <code>-- source:</code> table (<code>crm.issuer_ratings</code>)</td>
-<td>It is attached for the run only. A model's query connection cannot reach it.</td>
+<td>A <code>-- source:</code> table the allowlist does not admit</td>
+<td>A model's query connection attaches only allowlisted tables, so it could not read the view.</td>
 </tr>
 <tr>
 <td>A file or URL (<code>read_csv(…)</code>, <code>read_parquet(…)</code>, <code>'inputs/x.csv'</code>, <code>https://…</code>)</td>
@@ -195,10 +201,14 @@ selects from
 </tr>
 </tbody>
 </table>
-<p>There is a second reason. A view runs its query each time it is read. A view
-over a source would read the source again at read time, so the certificate's
-claim that the sink satisfied its contract would describe data that has since
-changed, and <code>tracebi verify</code> would compare against something new.</p>
+<p>A view over an allowlisted source table reads the source again each time it
+is read: the data is live, the logic is locked. The model's query connection
+attaches that connection's allowlisted tables before it locks (READ_ONLY,
+through the scanner where there is one), so the view reads at query time what
+it read when the transform made it. Its <code>bases</code> name the source table as
+<code>crm.issuer_ratings</code>. A contract check over such a view checks the data as it
+was when the run wrote the certificate; <code>tracebi verify --contracts</code> re-reads
+the source and says whether it moved.</p>
 <p><strong>On each tier.</strong></p>
 <table>
 <thead>
@@ -229,7 +239,8 @@ certificate lists the views the run created under the transform's <code>views</c
    &quot;definition_sha256&quot;: &quot;fc7a…&quot;}
 ]
 </code></pre>
-<p><code>bases</code> are the tables and views the definition names. A view a check
+<p><code>bases</code> are the tables and views the definition names, and any allowlisted
+source table as <code>&lt;connection&gt;.&lt;table&gt;</code>. A view a check
 touches also has a fingerprint under <code>tables</code>, read like a table. The app
 marks a view with its own glyph and says which transform defined it over
 which tables.</p>
@@ -296,17 +307,59 @@ SELECT … FROM crm.issuer_ratings …;
 </tbody>
 </table>
 <ul>
-<li>Before the first statement, each table loads in full through the
-  connection's connector, with nothing pushed down. The SQL reads it as
-  <code>&lt;connection&gt;.&lt;table&gt;</code>, from an in-memory database attached for this run
-  only, so none of it lands in the warehouse.</li>
-<li>The loaded rows are sorted by every column, because a database table has no
-  row order.</li>
+<li>Before the first statement, each table becomes <code>&lt;connection&gt;.&lt;table&gt;</code> in
+  an in-memory catalog named after the connection and attached for this run
+  only, so none of it lands in the warehouse. Only the tables the lines name
+  are there.</li>
 <li>Refused, naming the line: <code>-- source: crm</code> with no table, a table named
   twice, a <code>-- source:</code> line below the first statement, and anything after the
   table except <code>fallback: &lt;path&gt;</code>.</li>
 </ul>
 <p>A source is a name the SQL reads, not a placeholder.</p>
+<h3 id="how-a-source-is-read">How a source is read</h3>
+<p>The fastest way its connection allows, in this order. The certificate's
+<code>method</code> says which way each load took.</p>
+<table>
+<thead>
+<tr>
+<th><code>method</code></th>
+<th>Connections</th>
+<th>How</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scanner</code></td>
+<td>Postgres, MySQL, SQLite (a <code>postgres</code>, <code>sql</code> or <code>mysql</code> connection whose URL names one)</td>
+<td>DuckDB attaches the database READ_ONLY through its own <code>postgres</code>, <code>mysql</code> or <code>sqlite</code> extension and the table is a view over it. The SQL reads it in place: DuckDB pushes columns and filters down and moves rows as Arrow.</td>
+</tr>
+<tr>
+<td><code>arrow</code></td>
+<td>Snowflake, BigQuery, and a SQLAlchemy URL whose ADBC driver is installed (<code>adbc-driver-postgresql</code>, <code>adbc-driver-sqlite</code>)</td>
+<td>The whole table through the source's columnar result path (<code>fetch_arrow_all</code>, BigQuery's <code>to_arrow</code>, ADBC), registered as Arrow.</td>
+</tr>
+<tr>
+<td><code>pandas</code></td>
+<td>Anything else, and every <code>fallback:</code> snapshot</td>
+<td>The whole table through the connector's <code>load()</code>, as before.</td>
+</tr>
+</tbody>
+</table>
+<p>The connection's credentials are resolved when it is attached, as they are
+for every other read (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>), and handed to DuckDB as a
+temporary secret held by that one connection. They are never written, and a
+driver's error that echoes them is redacted.</p>
+<p>A transform installs a missing extension once (<code>INSTALL postgres</code>). Where it
+cannot (no network), the load falls to the next way and the record says why
+under <code>scanner_unavailable</code>. To install one by hand:</p>
+<pre><code class="language-bash">python -c &quot;import duckdb; duckdb.connect().execute('INSTALL postgres')&quot;
+</code></pre>
+<p>The Docker image installs <code>postgres</code>, <code>mysql</code>, <code>sqlite</code> and <code>httpfs</code>.</p>
+<p>Whatever the way, the fingerprint is the same: the rows sorted by every
+column (a database table has no row order) and hashed as <code>load_source</code>
+hashes them, so a certificate written through the scanner is checked by
+<code>tracebi verify --contracts</code>, which re-reads through the connector, like
+with like.</p>
 <h3 id="what-the-certificate-records">What the certificate records</h3>
 <p>With a <code>&lt;name&gt;.contract.yaml</code> beside the transform, the certificate
 (<code>data/warehouse.contracts.json</code>) records each load under the transform's
@@ -314,7 +367,8 @@ SELECT … FROM crm.issuer_ratings …;
 <pre><code class="language-json">&quot;sources&quot;: {
   &quot;crm.issuer_ratings&quot;: {
     &quot;connection&quot;: &quot;crm&quot;, &quot;table&quot;: &quot;issuer_ratings&quot;,
-    &quot;rows&quot;: 12, &quot;fingerprint&quot;: &quot;5840…&quot;, &quot;loaded_at&quot;: &quot;2026-10-20T…Z&quot;
+    &quot;rows&quot;: 12, &quot;fingerprint&quot;: &quot;5840…&quot;, &quot;loaded_at&quot;: &quot;2026-10-20T…Z&quot;,
+    &quot;method&quot;: &quot;scanner&quot;
   }
 }
 </code></pre>
@@ -353,6 +407,44 @@ snapshot load from the snapshot again) and compares fingerprints:</p>
 returns <code>(frame, record)</code>, the same load and record. Pass the records to
 <code>contract(name, warehouse=..., sources={ref: record})</code> and the certificate
 says the same thing. <code>holdings_transform_pandas.py</code> does this.</p>
+<h2 id="saving-back">Saving back</h2>
+<p>A result may leave the warehouse.</p>
+<p><strong>To a database, from the transform.</strong> A <code>-- sink: &lt;connection&gt;</code> line just
+above a <code>CREATE OR REPLACE TABLE</code> sends that table to the connection once
+every statement has run, through the connector's <code>write</code> (the table of the
+same name is replaced there). The warehouse keeps its copy too, unless the
+line ends <code>only</code>:</p>
+<pre><code class="language-sql">-- sink: billing
+CREATE OR REPLACE TABLE plan_prices AS SELECT plan_code, list_mrr FROM billing.plans;
+
+-- sink: crm only
+CREATE OR REPLACE TABLE issuer_watchlist AS SELECT issuer FROM dim_rating WHERE watch;
+</code></pre>
+<ul>
+<li>A run that fails sends nothing.</li>
+<li>Refused, naming the line: a <code>-- sink:</code> line that is not just above a
+  <code>CREATE TABLE</code> (blank lines between are fine), one above a view or a
+  <code>TEMP</code> table, a qualified table name, and a connection with no
+  <code>connections/&lt;name&gt;.yaml</code>.</li>
+<li>A connection that cannot be written (a CSV folder, BigQuery) stops the run
+  with the connector's reason.</li>
+</ul>
+<p><strong>To a bucket, from the transform.</strong> No directive: <code>COPY (…) TO
+'s3://bucket/prefix/x.parquet' (FORMAT PARQUET)</code>. On the object tier the
+warehouse's own credentials reach <code>{{ sink }}</code>.</p>
+<p><strong>From the command line, the app and the gateway.</strong> An admin exports a
+warehouse table or view after the fact:</p>
+<pre><code class="language-bash">tracebi export fact_holdings --to crm          # a connection: the table replaced there
+tracebi export fact_holdings --to exports/     # a folder in the project: exports/fact_holdings.parquet
+tracebi export fact_holdings --to s3://bucket/exports
+</code></pre>
+<p>A table's page in the app has <strong>Export to…</strong> beside Export CSV, listing the
+project's connections and, on the object tier, the warehouse's own prefix.
+The route is <code>POST /api/tables/{source}/{table}/export</code> with <code>{"to": …}</code>
+(admin). Each export is recorded as a run (<code>kind: export</code>), with its rows and
+where it went, or why it failed. A local prefix stays inside the project; a
+remote one is reached through <code>httpfs</code>, with the warehouse's object
+credentials when the warehouse is on the object tier.</p>
 <h2 id="cells">Cells</h2>
 <p><code>-- %% [markdown]</code> and <code>-- %%</code> lines mark cells, like <code># %%</code> in Python, so an
 editor that understands percent cells can fold them. The run ignores them.</p>

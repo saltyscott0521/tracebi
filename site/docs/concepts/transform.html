@@ -94,8 +94,15 @@ CREATE OR REPLACE TABLE fact_holdings AS SELECT …;
 reads. See <a href="../reference/transform-sql.html">SQL transforms</a> for the placeholders <code>{{ sink }}</code> and <code>{{ root }}</code>
 and where tables land on each warehouse tier.</p>
 <p>A transform may also leave a view (<code>CREATE OR REPLACE VIEW</code>) over the tables
-it wrote, and a model reads it as a table. It may read only warehouse tables,
-never a source or a file: see <a href="../reference/transform-sql.html">SQL transforms</a>.</p>
+it wrote, and a model reads it as a table. It may read warehouse tables and a
+source table its connection's allowlist admits, never a file: see
+<a href="../reference/transform-sql.html">SQL transforms</a>.</p>
+<p>A table of a database (<code>-- source: crm.issuer_ratings</code>) is read where it lives
+when DuckDB has a scanner for it (Postgres, MySQL, SQLite), else in bulk as
+Arrow. A result can go back out: <code>-- sink: &lt;connection&gt;</code> above a <code>CREATE TABLE</code>
+sends that table to a database, and <code>tracebi export</code> (or <strong>Export to…</strong> on a
+table's page) writes one to a connection or a bucket; see
+<a href="../reference/transform-sql.html">SQL transforms</a>.</p>
 <h2 id="create-and-run-one">Create and run one</h2>
 <pre><code class="language-bash">tracebi new-transform &quot;Holdings&quot;     # transforms/holdings.sql + holdings.contract.yaml
 tracebi run-transform holdings       # prints form: sql

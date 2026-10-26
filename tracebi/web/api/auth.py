@@ -104,6 +104,10 @@ def _required_role(method: str, path: str) -> str:
     if path == "/api/connections" or path.startswith("/api/connections/") \
             or path == "/api/inputs":
         return "admin"
+    # An export writes a warehouse table into a connection or a bucket, with
+    # the server's credentials.
+    if path.startswith("/api/tables/") and path.endswith("/export"):
+        return "admin"
     # Explore and spec validation compute but persist nothing, so they sit
     # with the reads rather than behind an execute permission.
     if path.startswith("/api/models/") and path.endswith("/query"):

@@ -87,6 +87,17 @@ class SnowflakeConnector(BaseConnector):
             kwargs["role"] = self.role
         self._conn = snowflake.connector.connect(**kwargs)
 
+    def load_arrow(self, source: str):
+        """The table through the driver's Arrow result path (``fetch_arrow_all``)."""
+        if self._conn is None:
+            self.connect()
+        cur = self._conn.cursor()
+        try:
+            cur.execute(f"SELECT * FROM {self._quote_ident(source)}")
+            return cur.fetch_arrow_all(force_return_table=True)
+        finally:
+            cur.close()
+
     def load(
         self,
         source: str,

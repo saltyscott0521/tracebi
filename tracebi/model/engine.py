@@ -61,7 +61,8 @@ def _sql_str(value: str) -> str:
 
 @contextlib.contextmanager
 def query_connection(warehouses: "Optional[dict[str, Any]]" = None,
-                     default: Optional[str] = None):
+                     default: Optional[str] = None,
+                     sources: "Optional[dict[str, Any]]" = None):
     """A locked in-memory DuckDB with each of *warehouses* (``{alias: path}``)
     attached READ_ONLY. *default* is the alias ``USE``d, so an unqualified
     table name in a model's ``SELECT`` source resolves in that warehouse.
@@ -70,6 +71,15 @@ def query_connection(warehouses: "Optional[dict[str, Any]]" = None,
     remote tier: its :meth:`~tracebi.warehouse.Warehouse.attach` runs before
     the lock (httpfs and the secret, then the attach, or one view per Parquet
     file), and the lock then allows exactly the files those views read.
+
+    *sources* (``{alias: LiveSource}``, :class:`tracebi.connectors.scan.LiveSource`)
+    are declared connections read live: each attaches its allowlisted tables
+    as the catalog *alias*, READ_ONLY, before the lock, and the lock then
+    allows exactly those catalogs (and a SQLite source's one file). A sink
+    view in an attached warehouse that reads a connection's table brings
+    that connection in the same way, so the view reads as it did when its
+    transform made it. The scanned database itself sits under a hidden name
+    no statement on this connection may name.
 
     A file that cannot be attached (missing, or held read-write by a writer)
     is left out rather than failing the connection; its tables then fail by
@@ -105,6 +115,21 @@ def query_connection(warehouses: "Optional[dict[str, Any]]" = None,
                 errors[alias] = str(exc)
                 continue
             attached.append(alias)
+        live = dict(sources or {})
+        if attached:
+            from tracebi.connectors.scan import follow_views
+            for alias, source in follow_views(con, attached).items():
+                if alias in live:
+                    source = type(source)(live[alias].connector,
+                                          live[alias].tables + source.tables)
+                live[alias] = source
+        for alias, source in live.items():
+            try:
+                allowed += source.attach(con, alias)
+            except Exception as exc:  # noqa: BLE001 — unreachable is an answer, by name
+                errors[alias] = " ".join(str(exc).split())
+                continue
+            attached.append(alias)
         if default in attached:
             con.execute(f'USE "{default}"')
         if allowed:
@@ -122,7 +147,8 @@ def query_connection(warehouses: "Optional[dict[str, Any]]" = None,
             timer = threading.Timer(limit, _stop)
             timer.daemon = True
             timer.start()
-        yield _Connection(con, attached, errors, guard=bool(allowed))
+        yield _Connection(con, attached, errors, guard=bool(allowed),
+                          hidden=bool(live))
         if fired.is_set():
             raise _timed_out(limit)
     except duckdb.InterruptException as exc:
@@ -177,13 +203,24 @@ class _Connection:
     any it could not)."""
 
     def __init__(self, con, attached: list[str], errors: dict[str, str],
-                 guard: bool = False) -> None:
+                 guard: bool = False, hidden: bool = False) -> None:
         self._con = con
         self.attached = attached
         self.attach_errors = errors
         self._guard = guard
+        self._hidden = hidden
 
     def _check(self, query) -> None:
+        if self._hidden and isinstance(query, str):
+            import duckdb
+
+            from tracebi.connectors.scan import HIDDEN
+
+            if HIDDEN in query.lower():
+                raise duckdb.PermissionException(
+                    "Permission Error: a live source is read by its connection's "
+                    "name and its allowlisted tables only, never by the database "
+                    "attached beneath it")
         if self._guard and isinstance(query, str):
             import duckdb
 

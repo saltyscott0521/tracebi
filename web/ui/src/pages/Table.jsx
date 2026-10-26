@@ -359,7 +359,7 @@ export default function TablePage() {
       <Segmented options={VIEWS} value={view} onChange={setView} label="Show" panel="table-view" />
       <div id="table-view" role="tabpanel" aria-labelledby={`table-view-${view}`}>
         {view === 'data' && (
-          <DataGrid source={source} table={table} columns={t.columns} inAddress />
+          <DataGrid source={source} table={table} columns={t.columns} inAddress exportTo={t.kind === 'warehouse'} />
         )}
         {view === 'columns' && <ColumnsView source={source} table={table} />}
         {view === 'used' && <UsedBy t={t} />}
