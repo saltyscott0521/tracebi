@@ -160,6 +160,6 @@ def test_an_agent_onboards_a_source_through_an_approved_transform(scaffolded, mo
     # Or to a prefix, as Parquet; a local one stays inside the project.
     out = gw.gateway_export_table("warehouse", "dim_shop_customer", "exports/shop")
     assert out["ok"] is True, out
-    assert duckdb.sql(f"SELECT count(*) FROM '{out['written']}'").fetchone()[0] == 2
+    assert duckdb.sql(f"SELECT count(*) FROM '{out['written']}'").fetchall()[0][0] == 2
     escaped = gw.gateway_export_table("warehouse", "dim_shop_customer", "../elsewhere")
     assert escaped["ok"] is False and "inside the project" in escaped["errors"][0]

@@ -233,7 +233,7 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         tables = c.get("/api/connectors/crm/tables")
         assert tables.status_code == 200
         assert tables.json() == {"connected": False, "variable": "TRACEBI_CRM_URL",
-                                 "reason": "TRACEBI_CRM_URL is not set"}
+                                 "reason": "TRACEBI_CRM_URL is not set", "agent_tables": None}
         # The inputs/ folder: the snapshot is read by the same transform.
         files = {f["path"]: f for f in c.get("/api/inputs").json()["files"]}
         assert "holdings_transform" in files["inputs/issuer_ratings.csv"]["read_by"]
