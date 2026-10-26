@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Connect a database — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Connect a database">
+<meta name="description" content="2. Connect.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,21 +87,34 @@ would by hand, and keeps any secret in the project's encrypted store.</p>
   enough: TraceBi never writes to a source.</li>
 </ul>
 <h2 id="add-the-connection">Add the connection</h2>
+<p>The sheet has three steps.</p>
+<p><strong>1. Choose a database.</strong> Open <strong>Data › Sources</strong> and click <strong>Add a
+connection</strong>. Pick the type from its group: <strong>Databases</strong> (Postgres, MySQL,
+SQLite or another SQL database, DuckDB), <strong>Warehouses</strong> (Snowflake,
+BigQuery) or <strong>Files</strong> (a folder of CSV files, an uploaded CSV or Parquet
+file).</p>
+<p><strong>2. Connect.</strong></p>
 <ol>
-<li>Open <strong>Data › Sources</strong> and click <strong>Add a connection</strong>.</li>
-<li>Pick the type: Postgres, MySQL, SQLite or another SQL database, DuckDB,
-   Snowflake, BigQuery, a folder of CSV files, or an uploaded CSV or Parquet
-   file.</li>
-<li>Fill the form:
-   - <strong>Name</strong> is how a transform reads it: <code>-- source: &lt;name&gt;.&lt;table&gt;</code>.
-   - <strong>Label</strong> is the name people see. It is optional.
-   - A password, or a URL that carries one, is masked. To keep it out of the
-     app altogether, tick <strong>Read it from an environment variable instead</strong> and
-     type <code>${NAME}</code>; set the variable on the server.</li>
-<li>Click <strong>Test</strong>. The app opens the connection, counts its tables and closes
-   it. Nothing is saved yet.</li>
+<li><strong>Name</strong> is how a transform reads it: <code>-- source: &lt;name&gt;.&lt;table&gt;</code>.
+   <strong>Label</strong> is the name people see, and is optional.</li>
+<li>For Postgres, MySQL and Snowflake, say the connection on the <strong>Fields</strong>
+   tab (host, port, database, user) or the <strong>URL</strong> tab. They are two views of
+   one connection: typing in either fills the other. A URL you paste with a
+   password in it moves the password to the password field.</li>
+<li>The password is hidden; <strong>Show</strong> reveals it. <strong>Save password</strong> is on by
+   default: the password goes to the project's encrypted store and the file
+   says <code>password: ${TRACEBI_&lt;NAME&gt;_PASSWORD}</code>. Turn it off to keep the
+   password out of the app: type the <strong>Variable name</strong> the server sets in its
+   environment or <code>.env</code>. Until it is set there, the connection's
+   credentials read <strong>Missing</strong>.</li>
+<li><strong>Advanced</strong> holds SSL, extra options and the connect timeout.</li>
+<li>Click <strong>Test</strong>. The app opens the connection, counts its tables, reads the
+   server's version and closes it. Nothing is saved yet. With Save password
+   off and the variable set nowhere, Test says exactly that.</li>
 <li>Click <strong>Save</strong>.</li>
 </ol>
+<p><strong>3. Tables.</strong> The connection's panel opens on its tables, ready for the next
+section.</p>
 <h2 id="choose-what-agents-may-read">Choose what agents may read</h2>
 <ol>
 <li>On the connection's panel, under <strong>Tables</strong>, tick <strong>Agents may read</strong> beside
@@ -112,22 +125,30 @@ would by hand, and keeps any secret in the project's encrypted store.</p>
 <p>Until a table is ticked, an agent reads none of the connection.</p>
 <h2 id="what-happened">What happened</h2>
 <ul>
-<li><code>connections/&lt;name&gt;.yaml</code> holds the type and fields. A secret you typed is in
-  <code>.tracebi/secrets.yml.enc</code>, and the file names it as
-  <code>${TRACEBI_&lt;NAME&gt;_&lt;FIELD&gt;}</code> (<a href="../reference/credentials.html">Credentials</a>).</li>
+<li><code>connections/&lt;name&gt;.yaml</code> holds the type and fields: <code>host</code>, <code>port</code>,
+  <code>database</code>, <code>user</code>, <code>password: ${TRACEBI_&lt;NAME&gt;_PASSWORD}</code>, <code>ssl</code>
+  (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>). A secret you typed is in
+  <code>.tracebi/secrets.yml.enc</code> (<a href="../reference/credentials.html">Credentials</a>).</li>
 <li>The ticked tables are the file's <code>agents:</code> key (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>).</li>
 <li>The connection is on the Sources page at once, with where its data lives,
   where each credential is set, and who reads it.</li>
-<li><strong>Edit</strong> changes the file in place and keeps its comments. <strong>Delete…</strong>
+<li><strong>Edit</strong> opens the Connect step with the file's values. A saved password
+  shows as <code>•••</code>; leave it empty to keep it. The file is changed in place and
+  keeps its comments. <strong>Delete…</strong>
   removes it only when no transform, pipeline step or model reads the
   connection, and otherwise names them.</li>
 </ul>
 <h2 id="from-the-command-line">From the command line</h2>
 <p>The same file, on the server:</p>
-<pre><code class="language-bash">tracebi connect crm --kind postgres --url postgresql+psycopg://reader:...@db/crm --store secret
+<pre><code class="language-bash">tracebi connect crm --kind postgres --host db.example.com --database crm \
+  --user reader --password-stdin --ssl require --store secret &lt; password.txt
+tracebi connect crm --kind postgres --url postgresql+psycopg://reader:...@db/crm --store secret
+tracebi connect crm --test                       # test the saved connection
 tracebi connect crm --agents accounts,clients    # or: --agents all
 tracebi connect --list
 </code></pre>
+<p><code>--password-var NAME</code> instead of <code>--password-stdin</code> saves nothing: the file
+names <code>${NAME}</code> and the server sets it.</p>
 <h2 id="next">Next</h2>
 <ul>
 <li>Read a table in a transform: <a href="../reference/transform-sql.html">SQL transforms</a>.</li>

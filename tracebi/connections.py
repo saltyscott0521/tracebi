@@ -23,6 +23,11 @@ credential store (``tracebi secret set``; :mod:`tracebi.project_credentials`,
 the one resolver). Only referenced names are read, and nothing is copied into
 ``os.environ``.
 
+A ``postgres`` or ``mysql`` connection is one ``url`` or its fields (``host``,
+``port``, ``database``, ``user``, ``password: ${NAME}``, ``ssl``, ...), never
+both; :func:`build_url` and :func:`parse_url` map one to the other, and the
+loader builds the URL from the fields when the connection is used.
+
 ``agents: {tables: [a, b] | "*"}`` says which tables an agent may read;
 :func:`agent_may_read` is the one check. The app writes these files too
 (:func:`plan_connection`, :func:`connection_text`,
@@ -37,7 +42,7 @@ import re
 import threading
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import parse_qsl, urlsplit
+from urllib.parse import parse_qsl, quote, unquote, urlsplit
 
 from tracebi.model.model_spec import (
     ModelSpecError, _escapes, _NAME, _unknown, _unique_key_loader,
@@ -55,13 +60,36 @@ _TYPES: dict[str, tuple[str, tuple[str, ...], tuple[str, ...]]] = {
     "postgres": ("SQLConnector", ("url",), ()),
     "mysql": ("SQLConnector", ("url",), ()),
     "snowflake": ("SnowflakeConnector",
-                  ("account", "user", "password", "warehouse", "database"),
-                  ("schema", "role")),
-    "bigquery": ("BigQueryConnector", ("project", "dataset"), ("credentials",)),
+                  ("account", "user", "warehouse", "database"),
+                  ("password", "schema", "role", "authenticator", "private_key_path")),
+    "bigquery": ("BigQueryConnector", ("project", "dataset"),
+                 ("credentials", "credentials_json")),
     "upload": ("UploadConnector", ("file",), ()),
 }
+# A Postgres or MySQL connection is said as one ``url``, or as these fields
+# (required, optional), from which the loader builds the URL
+# (:func:`build_url`); a file says one or the other, never a mix.
+_URL_PARTS: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    "postgres": (("host", "database"),
+                 ("port", "user", "password", "ssl", "options", "connect_timeout")),
+    "mysql": (("host", "database"),
+              ("port", "user", "password", "ssl", "options", "connect_timeout")),
+}
+# The driver a URL built from fields names, and the schemes a pasted URL may
+# use to be said as fields. psycopg 3 is what the postgres extra installs; a
+# URL naming another driver stays a URL.
+_SCHEME = {"postgres": "postgresql+psycopg", "mysql": "mysql+pymysql", "snowflake": "snowflake"}
+_SCHEMES = {"postgres": ("postgresql+psycopg", "postgresql", "postgres"),
+            "mysql": ("mysql+pymysql", "mysql"), "snowflake": ("snowflake",)}
+_DEFAULT_PORT = {"postgres": "5432", "mysql": "3306"}
+# ssl, as each type says it: postgres's sslmode; mysql on or off.
+_SSL = {"postgres": ("disable", "prefer", "require", "verify-full"), "mysql": ("on", "off")}
+# How a Snowflake user signs in. ``key_pair`` reads private_key_path.
+_AUTHENTICATORS = ("password", "externalbrowser", "key_pair")
+# Fields that are a whole number when literal.
+_NUMBER_FIELDS = {"port", "connect_timeout"}
 # A literal value is never allowed: the field holds a credential.
-_MUST_REFERENCE = {"password"}
+_MUST_REFERENCE = {"password", "credentials_json"}
 # A literal is allowed only when it carries no credential (see _url_problem).
 _URL_FIELDS = {"url"}
 # Paths a literal may only name inside the project.
@@ -72,67 +100,272 @@ _PATH_FIELDS = {"database": ("duckdb",), "directory": ("duckdb", "csv"),
 UPLOAD_SUFFIXES = (".csv", ".parquet")
 
 # What the app's Add a connection form asks for, per type: a name for people,
-# one line, and each field's label, kind (text | secret | url | path)
-# and help. The form is drawn from this (GET /api/connections/types),
-# so a type added to _TYPES is offered once it is described here. A
-# ``secret`` field's value goes to the project's store, and a ``url`` one's
-# too when it carries a credential; the file holds ``${NAME}`` for either.
-_TYPE_INFO: dict[str, tuple[str, str]] = {
-    "postgres": ("Postgres", "A Postgres database, by its SQLAlchemy URL."),
-    "mysql": ("MySQL", "A MySQL or MariaDB database, by its SQLAlchemy URL."),
+# one line, the group its card is under, and each field's label, kind (text |
+# number | secret | url | path | choice) and help. The form is drawn from this
+# (GET /api/connections/types), so a type added to _TYPES is offered once it
+# is described here. A ``secret`` field's value goes to the project's store,
+# and a ``url`` one's too when it carries a credential; the file holds
+# ``${NAME}`` for either.
+_TYPE_INFO: dict[str, tuple[str, str, str]] = {
+    "postgres": ("Postgres", "A Postgres database: its host, database and user, or one URL.",
+                 "Databases"),
+    "mysql": ("MySQL", "A MySQL or MariaDB database: its host, database and user, or one URL.",
+              "Databases"),
     "sql": ("SQLite or another SQL database",
-            "Any SQLAlchemy URL: a SQLite file in the project, SQL Server, Oracle."),
-    "duckdb": ("DuckDB", "A DuckDB database file in the project."),
-    "snowflake": ("Snowflake", "A Snowflake warehouse, signed in with a user and password."),
-    "bigquery": ("BigQuery", "A BigQuery dataset, read with a service-account file."),
-    "csv": ("A folder of CSV files", "Every CSV or Excel file in one folder of the project."),
-    "upload": ("An uploaded file", "One CSV or Parquet file, uploaded into inputs/."),
+            "Any SQLAlchemy URL: a SQLite file in the project, SQL Server, Oracle.", "Databases"),
+    "duckdb": ("DuckDB", "A DuckDB database file in the project.", "Databases"),
+    "snowflake": ("Snowflake", "A Snowflake warehouse: a password, a browser sign-in or a key pair.",
+                  "Warehouses"),
+    "bigquery": ("BigQuery", "A BigQuery dataset, read with a service account.", "Warehouses"),
+    "csv": ("A folder of CSV files", "Every CSV or Excel file in one folder of the project.", "Files"),
+    "upload": ("An uploaded file", "One CSV or Parquet file, uploaded into inputs/.", "Files"),
 }
 _FIELD_INFO: dict[str, tuple[str, str, str]] = {
     # field: (label, kind, help)
     "url": ("URL", "url", "A SQLAlchemy URL. One that carries a password is kept "
                           "in the project's encrypted store, not in the file."),
+    "host": ("Host", "text", "The server's name or address, e.g. db.example.com."),
+    "port": ("Port", "number", ""),
     "database": ("Database", "text", ""),
     "directory": ("Folder", "path", "A folder inside the project, e.g. inputs/."),
     "encoding": ("Encoding", "text", "The files' text encoding; utf-8 when empty."),
     "account": ("Account", "text", "The account identifier, e.g. xy12345.eu-west-1."),
     "user": ("User", "text", ""),
     "password": ("Password", "secret", "Kept in the project's encrypted store, never in the file."),
+    "ssl": ("SSL", "choice", ""),
+    "options": ("Extra options", "text", "More connection parameters as a query string, "
+                                         "e.g. application_name=tracebi. No credential."),
+    "connect_timeout": ("Connect timeout (s)", "number",
+                        "Seconds to wait for the server; the driver's default when empty."),
     "warehouse": ("Warehouse", "text", ""),
     "schema": ("Schema", "text", "PUBLIC when empty."),
     "role": ("Role", "text", ""),
+    "authenticator": ("Sign-in", "choice", "password when empty. externalbrowser opens the "
+                                           "identity provider's page on the server; key_pair "
+                                           "reads a private key file."),
+    "private_key_path": ("Private key file", "path",
+                         "The key pair's private key (.p8) on the server. Only with key_pair."),
     "project": ("Project", "text", "The Google Cloud project id."),
     "dataset": ("Dataset", "text", ""),
     "credentials": ("Service-account file", "path", "A path to the JSON key file on the server."),
+    "credentials_json": ("Service-account JSON", "secret",
+                         "Or paste the key file's JSON: it is kept in the encrypted store "
+                         "and the file names it."),
     "file": ("File", "path", "The uploaded file under inputs/ (.csv or .parquet)."),
 }
 # Where a field's words differ by type.
 _FIELD_BY_TYPE: dict[tuple[str, str], tuple[str, str, str]] = {
     ("duckdb", "database"): ("Database file", "path",
                              "A .duckdb file inside the project, e.g. inputs/sales.duckdb."),
-    ("postgres", "url"): ("URL", "url", "postgresql+psycopg://user:password@host:5432/db. "
-                                        "Kept in the encrypted store when it carries a password."),
-    ("mysql", "url"): ("URL", "url", "mysql+pymysql://user:password@host:3306/db. "
-                                     "Kept in the encrypted store when it carries a password."),
+    ("postgres", "url"): ("URL", "url", "postgresql+psycopg://user@host:5432/db. "
+                                        "A password in it is kept in the encrypted store."),
+    ("mysql", "url"): ("URL", "url", "mysql+pymysql://user@host:3306/db. "
+                                     "A password in it is kept in the encrypted store."),
     ("sql", "url"): ("URL", "url", "sqlite:///inputs/bank.sqlite for a file in the project, "
                                    "or any SQLAlchemy URL."),
+    ("postgres", "ssl"): ("SSL mode", "choice", "require encrypts the connection; verify-full "
+                                                "also checks the server's certificate."),
+    ("mysql", "ssl"): ("SSL", "choice", "on encrypts the connection."),
+    ("snowflake", "password"): ("Password", "secret",
+                                "Kept in the project's encrypted store, never in the file. "
+                                "Only with the password sign-in."),
 }
+# The fields under the form's Advanced disclosure.
+_ADVANCED = {"ssl", "options", "connect_timeout", "role", "encoding"}
+# The order the form asks in, where it is not required-then-optional.
+_FORM_ORDER = {
+    "postgres": ("host", "port", "database", "user", "password", "ssl", "options",
+                 "connect_timeout"),
+    "mysql": ("host", "port", "database", "user", "password", "ssl", "options",
+              "connect_timeout"),
+    "snowflake": ("account", "user", "authenticator", "password", "private_key_path",
+                  "warehouse", "database", "schema", "role"),
+}
+
+
+def _field_info(ctype: str, field: str) -> tuple[str, str, str]:
+    return _FIELD_BY_TYPE.get((ctype, field), _FIELD_INFO[field])
+
+
+def _choices(ctype: str, field: str) -> Optional[tuple[str, ...]]:
+    if field == "ssl":
+        return _SSL[ctype]
+    if field == "authenticator":
+        return _AUTHENTICATORS
+    return None
 
 
 def connection_types() -> list[dict]:
     """The types a connection may have, each with its fields, for the app's
-    form: ``[{type, label, line, fields: [{name, label, kind, required,
-    help}]}]``, in the order the form offers them."""
+    form: ``[{type, label, line, group, url_scheme, fields: [{name, label,
+    kind, required, help, advanced, choices?, default?}]}]``, in the order the
+    form offers them. A type with a ``url_scheme`` has two views of one
+    connection, its fields and one URL (:func:`build_url`, :func:`parse_url`);
+    a postgres or mysql file may store either, a snowflake one its fields."""
     out = []
-    for ctype, (label, line) in _TYPE_INFO.items():
+    for ctype, (label, line, group) in _TYPE_INFO.items():
         _cls, required, optional = _TYPES[ctype]
+        if ctype in _URL_PARTS:
+            required, optional = _URL_PARTS[ctype]
+        names = _FORM_ORDER.get(ctype, required + optional)
         fields = []
-        for field in required + optional:
-            flabel, kind, help_ = _FIELD_BY_TYPE.get((ctype, field), _FIELD_INFO[field])
-            fields.append({"name": field, "label": flabel, "kind": kind,
-                           "required": field in required, "help": help_})
-        out.append({"type": ctype, "label": label, "line": line, "fields": fields})
+        for field in names:
+            flabel, kind, help_ = _field_info(ctype, field)
+            row = {"name": field, "label": flabel, "kind": kind,
+                   "required": field in required, "help": help_,
+                   "advanced": field in _ADVANCED}
+            if choices := _choices(ctype, field):
+                row["choices"] = list(choices)
+            if field == "port" and ctype in _DEFAULT_PORT:
+                row["default"] = _DEFAULT_PORT[ctype]
+            fields.append(row)
+        out.append({"type": ctype, "label": label, "line": line, "group": group,
+                    "url_scheme": _SCHEME.get(ctype), "fields": fields})
     return out
+
+
+# ── A connection's URL, from its fields and back ───────────────────────────
+#
+# The app's form shows a SQL connection two ways, its fields and one URL, and
+# typing in either changes the other (DBeaver's Main and URL tabs). These two
+# are that mapping. A value that is a whole ${NAME} stays one, unencoded, so a
+# URL built from a connection file carries the reference, never the value; a
+# literal user, password or database is percent-encoded.
+
+def _query_pieces(query: str) -> list[tuple[str, str, str]]:
+    """``[(key, value, raw piece)]`` of a query string, in order."""
+    out = []
+    for piece in query.split("&"):
+        if piece:
+            key, _sep, value = piece.partition("=")
+            out.append((unquote(key), unquote(value), piece))
+    return out
+
+
+def _quoted(value: str) -> str:
+    return value if _REF.fullmatch(value) else quote(value, safe="")
+
+
+def build_url(ctype: str, fields: dict) -> str:
+    """The URL a ``postgres``, ``mysql`` or ``snowflake`` connection's fields
+    say: ``postgresql+psycopg://user:password@host:5432/db?sslmode=require``,
+    ``snowflake://user@account/db/schema?warehouse=wh&role=r``. Empty fields
+    are left out. Pure: resolves nothing."""
+    if ctype not in _SCHEME:
+        raise ValueError(f"a {ctype} connection has no URL form")
+    f = {k: v.strip() for k, v in fields.items() if isinstance(v, str) and v.strip()}
+    auth = ""
+    if f.get("user"):
+        auth = _quoted(f["user"])
+        if f.get("password"):
+            auth += ":" + _quoted(f["password"])
+        auth += "@"
+    query: list[str] = []
+    if ctype == "snowflake":
+        where = f.get("account", "")
+        path = "/".join(_quoted(f[k]) for k in ("database", "schema") if f.get(k))
+        for key in ("warehouse", "role"):
+            if f.get(key):
+                query.append(f"{key}={quote(f[key], safe='')}")
+        if f.get("authenticator") == "externalbrowser":
+            query.append("authenticator=externalbrowser")
+        elif f.get("authenticator") == "key_pair":
+            query.append("authenticator=snowflake_jwt")
+            if f.get("private_key_path"):
+                query.append(f"private_key_file={quote(f['private_key_path'], safe='/')}")
+    else:
+        where = f.get("host", "") + (f":{f['port']}" if f.get("port") else "")
+        path = _quoted(f["database"]) if f.get("database") else ""
+        ssl = f.get("ssl")
+        if ssl and ctype == "postgres":
+            query.append(f"sslmode={ssl}")
+        elif ssl == "on":
+            query.append("ssl_check_hostname=true")
+        if f.get("connect_timeout"):
+            query.append(f"connect_timeout={f['connect_timeout']}")
+        if f.get("options"):
+            query.append(f["options"].lstrip("?&"))
+    url = f"{_SCHEME[ctype]}://{auth}{where}" + (f"/{path}" if path else "")
+    return url + ("?" + "&".join(query) if query else "")
+
+
+def parse_url(ctype: str, url: str) -> dict:
+    """The fields a ``postgres``, ``mysql`` or ``snowflake`` URL says, the
+    inverse of :func:`build_url`: ``{host, port, database, user, password,
+    ssl, connect_timeout, options}`` (only those present; values decoded).
+    ``ValueError`` for a URL these fields cannot say: another database or
+    driver, or no host. Pure: resolves nothing."""
+    if ctype not in _SCHEMES:
+        raise ValueError(f"a {ctype} connection has no URL form")
+    scheme, sep, rest = url.strip().partition("://")
+    if not sep or scheme.lower() not in _SCHEMES[ctype]:
+        raise ValueError(f"a {ctype} URL starts {_SCHEME[ctype]}://, got {scheme or url!r}")
+    rest = rest.partition("#")[0]
+    rest, _q, query = rest.partition("?")
+    netloc, _slash, path = rest.partition("/")
+    userinfo, at, hostport = netloc.rpartition("@")
+    out: dict[str, str] = {}
+    if at:
+        user, colon, password = userinfo.partition(":")
+        if user:
+            out["user"] = unquote(user)
+        if colon and password:
+            out["password"] = unquote(password)
+    if ctype == "snowflake":
+        if not hostport:
+            raise ValueError("a snowflake URL names the account after the @")
+        out["account"] = hostport
+        for key, value in zip(("database", "schema"), [unquote(p) for p in path.split("/") if p]):
+            out[key] = value
+        for key, value, _raw in _query_pieces(query):
+            if key in ("warehouse", "role"):
+                out[key] = value
+            elif key == "authenticator":
+                out[key] = "key_pair" if value.lower() == "snowflake_jwt" else value.lower()
+            elif key == "private_key_file":
+                out["private_key_path"] = value
+        return out
+    host, colon, port = hostport.rpartition(":")
+    if not colon or not port.isdigit():
+        host, port = hostport, ""
+    if not host:
+        raise ValueError(f"a {ctype} URL names its host after the @")
+    out["host"] = host
+    if port:
+        out["port"] = port
+    if path:
+        out["database"] = unquote(path)
+    options = []
+    for key, value, raw in _query_pieces(query):
+        if ctype == "postgres" and key == "sslmode":
+            out["ssl"] = value
+        elif ctype == "mysql" and key == "ssl_check_hostname" and value.lower() == "true":
+            out["ssl"] = "on"
+        elif key == "connect_timeout":
+            out["connect_timeout"] = value
+        else:
+            options.append(raw)
+    if options:
+        out["options"] = "&".join(options)
+    return out
+
+
+def _said_as_fields(ctype: str, url: str) -> Optional[dict]:
+    """The fields a URL sent for a postgres or mysql connection becomes when
+    it carries a password, so the password can be its own ``${NAME}``: None
+    when it carries none, or says something the fields cannot (another
+    driver, a credential among its options)."""
+    if ctype not in _URL_PARTS:
+        return None
+    try:
+        fields = parse_url(ctype, url)
+    except ValueError:
+        return None
+    if not fields.get("password") or _REF.fullmatch(fields["password"]):
+        return None
+    if any(_SECRET_QUERY.search(k) for k, _v, _r in _query_pieces(fields.get("options", ""))):
+        return None
+    return fields
 
 
 class ConnectionConfigError(ValueError):
@@ -256,8 +489,19 @@ def validate_connection_doc(doc: Any) -> list[str]:
     if ctype not in _TYPES:
         return [f"type: required, one of {', '.join(_TYPES)}; got {ctype!r}"]
     _cls, required, optional = _TYPES[ctype]
-    errors = _unknown(doc, {"name", "type", "label", "agents", *required, *optional},
-                      "connection")
+    parts = _URL_PARTS.get(ctype, ((), ()))
+    errors = _unknown(doc, {"name", "type", "label", "agents", *required, *optional,
+                            *parts[0], *parts[1]}, "connection")
+    said = [f for f in (*parts[0], *parts[1]) if f in doc]
+    if "url" in doc and said:
+        errors.append(f"url: a {ctype} connection is one url or its fields "
+                      f"({', '.join(said)}), not both")
+    elif ctype in _URL_PARTS and "url" not in doc:
+        if not said:
+            return errors + [f"url: required for type '{ctype}', or its fields: "
+                             f"{', '.join(parts[0])}"]
+        required, optional = parts
+    errors += _form_problems(ctype, doc)
     if not isinstance(doc.get("name"), str) or not _NAME.fullmatch(doc.get("name") or ""):
         errors.append("name: required, letters, digits and underscores")
     if "label" in doc and (not isinstance(doc["label"], str) or not doc["label"].strip()):
@@ -304,7 +548,48 @@ def validate_connection_doc(doc: Any) -> list[str]:
             errors.append(f"{field}: a literal path must stay inside the project "
                           f"(no absolute path, no '..'), got {value!r}; use "
                           f"${{ENV_VAR}} to point elsewhere")
+        elif field in _NUMBER_FIELDS and not value.isdigit():
+            errors.append(f"{field}: a whole number, got {value!r}")
+        elif (choices := _choices(ctype, field)) and value not in choices:
+            errors.append(f"{field}: one of {', '.join(choices)}; got {value!r}")
+        elif field == "options" and (why := _options_problem(value)):
+            errors.append(f"options: {why}")
     return errors
+
+
+def _literal(doc: dict, field: str) -> Optional[str]:
+    """*field*'s literal value, or None when absent or a ``${NAME}``."""
+    value = doc.get(field)
+    return value if isinstance(value, str) and not _REF.fullmatch(value) else None
+
+
+def _form_problems(ctype: str, doc: dict) -> list[str]:
+    """What one field asks of another: a Snowflake sign-in and what it reads,
+    one BigQuery credential."""
+    errors = []
+    if ctype == "snowflake":
+        auth = _literal(doc, "authenticator") or "password"
+        if auth == "password" and "password" not in doc:
+            errors.append("password: required for the password sign-in "
+                          "(authenticator: externalbrowser or key_pair needs none)")
+        if auth == "key_pair" and "private_key_path" not in doc:
+            errors.append("private_key_path: required with authenticator: key_pair")
+        if auth != "key_pair" and "private_key_path" in doc and "authenticator" in doc:
+            errors.append("private_key_path: only with authenticator: key_pair")
+    if ctype == "bigquery" and "credentials" in doc and "credentials_json" in doc:
+        errors.append("credentials: a file path or credentials_json, not both")
+    return errors
+
+
+def _options_problem(options: str) -> Optional[str]:
+    """Extra query parameters carry no credential and do not restate a field."""
+    keys = [k for k, _v, _r in _query_pieces(options.lstrip("?&"))]
+    if any(_SECRET_QUERY.search(k) for k in keys):
+        return ("carries a credential; a password is its own field, "
+                "written as ${ENV_VAR}")
+    if said := [k for k in keys if k in ("sslmode", "ssl_check_hostname", "connect_timeout")]:
+        return f"{', '.join(said)} is its own field (ssl, connect_timeout)"
+    return None
 
 
 # ── Reading the environment ────────────────────────────────────────────────
@@ -348,7 +633,7 @@ class _Declared:
     def __getattribute__(self, item: str):
         if not item.startswith("_"):
             decl = object.__getattribute__(self, "__dict__").get("_decl")
-            if decl is not None and item in decl.fields:
+            if decl is not None and decl.provides(item):
                 return decl.value(item)
         return object.__getattribute__(self, item)
 
@@ -360,7 +645,7 @@ class _Declared:
         return self._decl.describe(self)
 
     def storage(self) -> dict:
-        if "url" in self._decl.fields:
+        if "url" in self._decl.fields or self._decl.structured:
             return self._decl.url_storage()
         try:
             return super().storage()
@@ -386,6 +671,15 @@ class Declaration:
         self.name, self.ctype, self.fields = name, ctype, fields
         self.root, self.source = root, source
         self._lock = threading.Lock()
+        # A postgres or mysql connection said as fields: its url is built.
+        self.structured = ctype in _URL_PARTS and "url" not in fields
+
+    def provides(self, item: str) -> bool:
+        """Whether the connector's attribute *item* reads from the file: a
+        field, the url its fields build, or BigQuery credentials from pasted
+        JSON."""
+        return item in self.fields or (item == "url" and self.structured) \
+            or (item == "credentials" and "credentials_json" in self.fields)
 
     def is_ref(self, field: str) -> bool:
         return bool(_REF.fullmatch(self.fields[field]))
@@ -411,6 +705,12 @@ class Declaration:
             raise ConnectionConfigError(f"connection '{self.name}': {exc}") from None
 
     def value(self, field: str) -> Any:
+        if field == "url" and self.structured:
+            # Each field resolves as it is read, so an unset password's
+            # variable is named here, when the connection is used.
+            return build_url(self.ctype, {f: self.value(f) for f in self.fields})
+        if field == "credentials" and "credentials_json" in self.fields:
+            return _bq_info_credentials(self.value("credentials_json"))
         raw = self.fields[field]
         value = self._env(raw, field) if _REF.fullmatch(raw) else raw
         if field in _PATH_FIELDS and self.ctype in _PATH_FIELDS[field] \
@@ -421,6 +721,8 @@ class Declaration:
         if field == "credentials" and self.ctype == "bigquery":
             from tracebi.connect import _bq_credentials
             return _bq_credentials(value)
+        if field == "private_key_path" and not os.path.isabs(value):
+            return str((self.root / value).resolve())
         return value
 
     def _rooted(self, url: str) -> str:
@@ -459,6 +761,11 @@ class Declaration:
         variable sets it."""
         from tracebi.connectors.sql_connector import url_storage
 
+        if self.structured:
+            # Host and database as the file says them; the password is left
+            # out, so nothing is resolved.
+            return url_storage(build_url(self.ctype, {
+                k: v for k, v in self.fields.items() if k not in ("user", "password")}))
         literal = self._literal_url()
         if literal is not None:
             return url_storage(self._rooted(literal))
@@ -471,7 +778,7 @@ class Declaration:
         file states, else from its type (``postgres``)."""
         from tracebi.connectors.sql_connector import url_dialect
 
-        literal = self._literal_url()
+        literal = None if self.structured else self._literal_url()
         if literal is not None:
             return url_dialect(literal)
         return {"postgres": "postgresql", "mysql": "mysql"}.get(self.ctype)
@@ -501,7 +808,30 @@ class Declaration:
                 out["url"] = connector._redacted_url()
             if dialect := self.dialect():
                 out["dialect"] = dialect
+        elif self.structured:
+            # The URL the fields build, as the file says them: the password
+            # stays ${NAME}, so the app's URL view never carries the value.
+            out["url"] = build_url(self.ctype, self.fields)
+            out["dialect"] = self.dialect()
         return out
+
+
+def _bq_info_credentials(text: str):
+    """BigQuery credentials from a service account's JSON, pasted into the
+    form and kept in the store (``credentials_json``)."""
+    import json
+
+    try:
+        from google.oauth2 import service_account
+    except ImportError as exc:
+        raise ImportError(
+            "google-cloud-bigquery is required to read a service account.\n"
+            "Install with: pip install 'tracebi[bigquery]'") from exc
+    try:
+        info = json.loads(text)
+    except ValueError:
+        raise ConnectionConfigError("credentials_json: not a service account's JSON") from None
+    return service_account.Credentials.from_service_account_info(info)
 
 
 _UPLOAD_CLASS = None
@@ -640,6 +970,35 @@ def validate_connection_file(path: "str | os.PathLike[str]") -> list[str]:
     return []
 
 
+def server_version(connector) -> Optional[str]:
+    """``PostgreSQL 16.4``: the database's own version, from a SQL
+    connection's dialect, read on one short-lived connection; None where the
+    driver does not say or it cannot be read."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+
+    from tracebi.connectors.sql_connector import SQLConnector
+
+    if not isinstance(connector, SQLConnector):
+        return None
+    try:
+        engine = create_engine(connector.url, poolclass=NullPool)
+        try:
+            with engine.connect():
+                info = engine.dialect.server_version_info
+            dialect = engine.dialect
+        finally:
+            engine.dispose()
+    except Exception:  # noqa: BLE001 — the test already answered; this is extra
+        return None
+    if not info:
+        return None
+    name = "MariaDB" if getattr(dialect, "is_mariadb", False) else {
+        "postgresql": "PostgreSQL", "mysql": "MySQL", "sqlite": "SQLite",
+        "mssql": "SQL Server", "oracle": "Oracle"}.get(dialect.name, dialect.name)
+    return f"{name} {'.'.join(str(p) for p in info if isinstance(p, int))}"
+
+
 # ── Writing a connection file (the app's Add a connection, and Edit) ───────
 
 def _yaml_lines(key: str, value: Any) -> str:
@@ -664,6 +1023,35 @@ def _goes_to_store(ctype: str, field: str, value: str) -> bool:
     return kind == "url" and (_url_problem(value) or "").startswith("carries a credential")
 
 
+def _url_or_fields(ctype: str, fields: dict, existing: Optional[dict]):
+    """``(fields, existing, (required, optional))`` for a postgres or mysql
+    connection, in the one form it is written in: its fields when any is
+    sent (or a URL sent carries a password), else its url when one is sent
+    or the file has one, else its fields."""
+    parts = _URL_PARTS[ctype]
+    structured = (*parts[0], *parts[1])
+    existing = existing or {}
+
+    def sent(field: str) -> bool:
+        return isinstance(fields.get(field), str) and bool(fields[field].strip())
+
+    url = (fields.get("url") or "").strip()
+    if url and not any(sent(f) for f in structured) and (split := _said_as_fields(ctype, url)):
+        fields = split
+    if any(sent(f) for f in structured):
+        form = "fields"
+    elif url or "url" in existing:
+        form = "url"
+    else:
+        form = "fields"
+    if form == "url":
+        return ({"url": fields.get("url")} if "url" in fields else {},
+                {k: v for k, v in existing.items() if k not in structured}, (("url",), ()))
+    # A file that was one url keeps none of it: the fields say it all now.
+    return ({k: v for k, v in fields.items() if k != "url"},
+            {k: v for k, v in existing.items() if k != "url"}, parts)
+
+
 def plan_connection(name: str, ctype: str, fields: dict[str, Optional[str]],
                     label: Optional[str] = None, agents: Any = None,
                     existing: Optional[dict] = None) -> tuple[dict, dict[str, str]]:
@@ -676,20 +1064,28 @@ def plan_connection(name: str, ctype: str, fields: dict[str, Optional[str]],
     holds it. On an edit (*existing*, the current document), a field not
     sent keeps what the file says, and so does a secret or URL sent empty (a
     masked field reads empty); any other field sent empty is removed. The
-    caller validates the document."""
+    caller validates the document.
+
+    A postgres or mysql connection is written the way the form said it: its
+    fields, or one ``url``. A URL whose password is in it is written as its
+    fields (:func:`parse_url`), so the file and the store come out the same
+    as had the fields been typed: the password its own ``${NAME}``."""
     if ctype not in _TYPES:
         raise ModelSpecError(f"{name}.yaml", [f"type: one of {', '.join(_TYPES)}; got {ctype!r}"])
     _cls, required, optional = _TYPES[ctype]
+    if ctype in _URL_PARTS:
+        fields, existing, (required, optional) = _url_or_fields(ctype, fields, existing)
     doc: dict[str, Any] = {"name": name, "type": ctype}
     if label:
         doc["label"] = label
     secrets: dict[str, str] = {}
-    for field in required + optional:
+    names = [f for f in _FORM_ORDER.get(ctype, ()) if f in required + optional]
+    for field in names or required + optional:
         value = fields.get(field)
         value = value.strip() if isinstance(value, str) else value
         before = (existing or {}).get(field)
         if not value:
-            kind = _FIELD_BY_TYPE.get((ctype, field), _FIELD_INFO[field])[1]
+            kind = _field_info(ctype, field)[1]
             if before and (field not in fields or kind in ("secret", "url")):
                 doc[field] = before
             continue

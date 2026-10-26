@@ -170,9 +170,10 @@ def _save(name: str, doc: dict, secrets: dict, text_for) -> None:
 
 @connections_router.get("/connections/types")
 def connection_types():
-    """The types a connection may have, each with its fields (``name, label,
-    kind: text|secret|url|path, required, help``): the app's Add a
-    connection form is drawn from this."""
+    """The types a connection may have, each with its group and fields
+    (``name, label, kind: text|number|secret|url|path|choice, required,
+    help, advanced, choices?, default?``) and ``url_scheme`` when its fields
+    are also one URL: the app's Add a connection form is drawn from this."""
     from tracebi.connections import connection_types as types
 
     return types()
@@ -207,10 +208,13 @@ def test_new_connection(body: _ConnectionBody):
     """Test what the form holds before it is saved: open it, list its tables,
     close it, as ``POST /api/connectors/{name}/test`` does for a saved one.
     A secret typed into the form stands in for its ``${NAME}`` for this test
-    only; nothing is written, and the reason is scrubbed of it."""
+    only; nothing is written, and the reason is scrubbed of it. ``{ok: true,
+    tables, version?}`` (the server's version where the driver says it), or
+    ``{ok: false, reason, variable?}``; a password the form says is not saved
+    (Save password off) and is set nowhere is said as exactly that."""
     from tracebi.connections import (
         build_connection, connection_file, plan_connection, read_connection_doc,
-        validate_connection_doc,
+        server_version, validate_connection_doc,
     )
     from tracebi.model.model_spec import _NAME, ModelSpecError
     from tracebi.project_credentials import REF, redact
@@ -236,11 +240,21 @@ def test_new_connection(body: _ConnectionBody):
         probe[key] = secrets[ref.group(1)] if ref and ref.group(1) in secrets else value
     got = connection_tables(build_connection(probe, Path.cwd()))
     if got.get("connected"):
-        return {"ok": True, "tables": len(got.get("tables") or [])}
+        out = {"ok": True, "tables": len(got.get("tables") or [])}
+        if version := server_version(build_connection(probe, Path.cwd())):
+            out["version"] = version
+        return out
+    variable = got.get("variable")
+    sent = body.fields.get("password") or ""
+    if variable and REF.fullmatch(sent) and REF.fullmatch(sent).group(1) == variable:
+        return {"ok": False, "variable": variable, "reason": (
+            f"Save password is off and {variable} is not set in the server's "
+            f"environment or .env.")}
     reason = redact(str(got.get("reason") or "It could not be reached."), Path.cwd())
     for value in secrets.values():
         reason = reason.replace(value, "***")
-    return {"ok": False, "reason": reason}
+    return {"ok": False, "reason": reason, **({"variable": variable} if variable else {})}
+
 
 
 def _declared(name: str):

@@ -22,13 +22,14 @@ from datetime import date
 from pathlib import Path
 
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-_KINDS = ("postgres", "snowflake", "bigquery", "duckdb")
+_KINDS = ("postgres", "mysql", "snowflake", "bigquery", "duckdb")
 
 # Fields the connector constructor requires. ``--dataset`` is required because
 # BigQueryConnector takes ``dataset`` with no default. ``--role`` and
 # ``--credentials`` are optional and are not prompted.
 _REQUIRED: dict[str, tuple[str, ...]] = {
     "postgres": ("url",),
+    "mysql": ("url",),
     "snowflake": ("account", "user", "password", "warehouse", "database", "schema"),
     "bigquery": ("project", "dataset"),
     "duckdb": ("database",),
@@ -39,6 +40,10 @@ _OPTIONAL: dict[str, tuple[str, ...]] = {
 }
 # Echoing these would put the secret on the screen.
 _SECRET = {"url", "password"}
+# A postgres or mysql connection given as --host ... instead of --url: these
+# fields go into the file and the URL is built from them
+# (tracebi.connections.build_url), as the app's form writes it.
+_PARTS = ("host", "port", "database", "user", "password", "ssl")
 
 
 def connection_path(models_dir: Path, name: str) -> Path:
@@ -92,7 +97,15 @@ def _declared_document(name: str, kind: str, values: dict) -> tuple[str, dict]:
         updates[key] = values[field]
         lines.append((field, "${" + key + "}"))
 
-    if kind == "postgres":
+    if kind in ("postgres", "mysql") and not values.get("url"):
+        for field in _PARTS:
+            if field == "password" and values.get("password_var"):
+                lines.append(("password", "${" + values["password_var"] + "}"))
+            elif field == "password" and values.get("password"):
+                secret("password")
+            else:
+                literal(field)
+    elif kind in ("postgres", "mysql"):
         secret("url")
     elif kind == "snowflake":
         for field in ("account", "user"):
@@ -147,12 +160,15 @@ def connect_command(args) -> int:
     existing = connection_yaml_path(name, getattr(args, "connections_dir", None))
     if agents is not None and not kind and existing.is_file():
         return _set_agents(existing, agents)
+    # `tracebi connect <name> --test` on an existing connection tests it.
+    if args.test and not kind and existing.is_file():
+        return _test_existing(existing)
     tty = sys.stdin.isatty()
     if not kind:
         if not tty:
             print("missing required flags: --kind", file=sys.stderr)
             return 2
-        kind = input("kind (postgres, snowflake, bigquery, duckdb): ").strip().lower()
+        kind = input("kind (postgres, mysql, snowflake, bigquery, duckdb): ").strip().lower()
     if kind not in _KINDS:
         print(
             f"unknown kind {kind!r}; expected one of: {', '.join(_KINDS)}",
@@ -160,13 +176,29 @@ def connect_command(args) -> int:
         )
         return 2
 
-    values = {field: getattr(args, field, None) for field in _REQUIRED[kind] + _OPTIONAL.get(kind, ())}
+    required = _REQUIRED[kind]
+    structured = kind in ("postgres", "mysql") and not args.url and bool(getattr(args, "host", None))
+    if structured:
+        required = ("host", "database")
+    if getattr(args, "python", False) and (structured or kind == "mysql"):
+        print("--python writes a postgres --url, snowflake, bigquery or duckdb "
+              "connection; drop it to write connections/<name>.yaml", file=sys.stderr)
+        return 2
+    fields = required + _OPTIONAL.get(kind, ()) + (_PARTS if structured else ())
+    values = {field: getattr(args, field, None) for field in dict.fromkeys(fields)}
     values = {k: (v.strip() if isinstance(v, str) else v) for k, v in values.items()}
-    missing = [field for field in _REQUIRED[kind] if not values.get(field)]
+    if structured:
+        try:
+            values.update(_password_flags(args))
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+    missing = [field for field in required if not values.get(field)]
     if missing:
         if not tty:
+            also = " (or --host and --database)" if missing == ["url"] else ""
             print(
-                "missing required flags: " + ", ".join(f"--{field}" for field in missing),
+                "missing required flags: " + ", ".join(f"--{field}" for field in missing) + also,
                 file=sys.stderr,
             )
             return 2
@@ -217,7 +249,7 @@ def connect_command(args) -> int:
         print("\n".join(problems), file=sys.stderr)
         return 1
 
-    if args.test:
+    if args.test is not False:
         try:
             summary = _probe(_build_connector(name, kind, values))
         except Exception as exc:  # noqa: BLE001 — the driver's first line is the result
@@ -327,9 +359,56 @@ def _one_line_error(exc: BaseException) -> str:
     return line.rstrip(": ") if not message else line
 
 
+def _password_flags(args) -> dict:
+    """``--password-stdin`` (the value, read from stdin and never echoed) or
+    ``--password-var NAME`` (the file says ``${NAME}``; nothing is stored)."""
+    from tracebi.project_credentials import NAME
+
+    var = getattr(args, "password_var", None)
+    if var and getattr(args, "password_stdin", False):
+        raise ValueError("--password-stdin or --password-var, not both")
+    if var:
+        if not NAME.fullmatch(var):
+            raise ValueError(f"--password-var: a variable name, [A-Z_][A-Z0-9_]*; got {var!r}")
+        return {"password_var": var, "password": None}
+    if getattr(args, "password_stdin", False):
+        return {"password": sys.stdin.read().rstrip("\r\n")}
+    return {}
+
+
+def _test_existing(path: Path) -> int:
+    """``tracebi connect <name> --test``: open a connection file's
+    connection, list its tables, close it."""
+    from tracebi.connections import load_connection, server_version
+    from tracebi.sources import connection_tables
+
+    try:
+        connector = load_connection(path)
+    except Exception as exc:  # noqa: BLE001 — a file that will not load is the answer
+        print(_one_line_error(exc), file=sys.stderr)
+        return 1
+    got = connection_tables(connector)
+    if not got.get("connected"):
+        print(f"{path.stem}: could not connect · {got.get('reason')}", file=sys.stderr)
+        return 1
+    n = len(got.get("tables") or [])
+    version = server_version(load_connection(path))
+    print(f"{path.stem}: {n} table{'' if n == 1 else 's'}" + (f" · {version}" if version else ""))
+    return 0
+
+
 def _build_connector(name: str, kind: str, values: dict):
     """Construct the connector from the flags just collected. Does not read ``.env``."""
-    if kind == "postgres":
+    if kind in ("postgres", "mysql") and not values.get("url"):
+        from tracebi.connections import build_url
+        from tracebi.connectors.sql_connector import SQLConnector
+
+        fields = {k: v for k, v in values.items() if k in _PARTS and v}
+        if values.get("password_var"):
+            from tracebi.project_credentials import resolve
+            fields["password"] = resolve(values["password_var"], Path.cwd())[0]
+        return SQLConnector(name, url=build_url(kind, fields))
+    if kind in ("postgres", "mysql"):
         from tracebi.connectors.sql_connector import SQLConnector
         return SQLConnector(name, url=values["url"])
     if kind == "duckdb":

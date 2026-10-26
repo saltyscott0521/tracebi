@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   useConnectors, useConnectorTables, useCredentials, useInputs, useMe, usePipelines,
@@ -21,8 +21,8 @@ import {
 // The inputs/ folder's entry in the list: files, not a connection.
 const INPUTS = 'inputs'
 
-function Section({ label, children }) {
-  return <div className="src-section"><div className="src-label">{label}</div>{children}</div>
+function Section({ label, children, sectionRef }) {
+  return <div className="src-section" ref={sectionRef}><div className="src-label">{label}</div>{children}</div>
 }
 
 /** transform name → the model page whose Transform tab runs it (the pipeline that names it). */
@@ -255,8 +255,14 @@ function SourceName({ c }) {
     : <code className="src-id src-id--only">{c.name}</code>
 }
 
-function ConnectorDetail({ c, write, onEdit, onDeleted }) {
+function ConnectorDetail({ c, write, onEdit, onDeleted, justSaved }) {
   const [code, setCode] = useState(false)
+  // The sheet's last step: a connection just saved opens on its tables, where
+  // the person ticks what agents may read.
+  const tables = useRef(null)
+  useEffect(() => {
+    if (justSaved) tables.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [justSaved])
   if (!c) return (
     <Card>
       <Empty message="Select a source to see where its data is kept." />
@@ -277,7 +283,12 @@ function ConnectorDetail({ c, write, onEdit, onDeleted }) {
       <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
       <Section label="Connection"><Fields c={c} /><Reach name={c.name} /><Credentials connection={c} /></Section>
       <Section label="Read by"><ReadBy c={c} /></Section>
-      <Section label="Tables"><Tables name={c.name} declared={declared} write={write} /></Section>
+      <Section label="Tables" sectionRef={tables}>
+        {justSaved && declared && (
+          <p className="src-quiet conn-saved" role="status">Saved. Tick the tables agents may read, then Save.</p>
+        )}
+        <Tables name={c.name} declared={declared} write={write} />
+      </Section>
       {code && <div style={{ marginBottom: 18 }}><CodeView kind="connectors" name={c.name} /></div>}
     </Card>
   )
@@ -355,6 +366,8 @@ export default function Connectors({ model: scoped }) {
   const write = useConnectionWrite()
   // The Add / Edit sheet: null closed, {} adding, a connector row editing.
   const [sheet, setSheet] = useState(null)
+  // The connection the sheet just saved, opened on its tables.
+  const [justSaved, setJustSaved] = useState(null)
 
   const up = upstreamOf({ model, pipelines, connectors: data, inputs })
   const connectors = (data || []).filter(c => !c.warehouse && (!model || feedsModel(c, model, up)))
@@ -384,7 +397,7 @@ export default function Connectors({ model: scoped }) {
   const add = write.can
     ? <Btn onClick={() => setSheet({})}>Add a connection</Btn>
     : null
-  const saved = name => { setSheet(null); select(name) }
+  const saved = name => { setSheet(null); setJustSaved(name); select(name) }
   return (
     <>
       {model && !scoped && (
@@ -450,6 +463,7 @@ export default function Connectors({ model: scoped }) {
           right={isLoading ? <SkeletonCard />
             : current === INPUTS ? <InputsDetail files={files} />
             : <ConnectorDetail key={current} c={connectors.find(c => c.name === current)} write={write}
+                justSaved={justSaved === current}
                 onEdit={() => setSheet(connectors.find(c => c.name === current))}
                 onDeleted={() => setParams(p => { p.delete('source'); return p }, { replace: true })} />}
         />

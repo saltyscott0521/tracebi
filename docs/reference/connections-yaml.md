@@ -8,7 +8,20 @@ type and fields, with every secret kept out of the file as `${ENV_VAR}`.
 name: wh                      # equals the file name
 label: Sales warehouse        # optional: the name the app shows
 type: postgres
-url: ${TRACEBI_WH_URL}        # the value lives in .env or the environment
+host: db.example.com
+port: '5432'
+database: sales
+user: reader
+password: ${TRACEBI_WH_PASSWORD}   # the value lives in the store, .env or the environment
+ssl: require
+```
+
+The same connection as one URL, which also works:
+
+```yaml
+name: wh
+type: postgres
+url: ${TRACEBI_WH_URL}        # postgresql+psycopg://reader:...@db.example.com:5432/sales?sslmode=require
 ```
 
 A model uses it by name:
@@ -27,7 +40,10 @@ A SQL transform reads one of its tables with a header line
   for a signed-in admin, with any secret in the encrypted store
   ([[connect-a-database]]).
 - `tracebi connect <name> --kind ...` tests a database, writes the file and
-  puts any secret in `.env`.
+  puts any secret in `.env` (or the store, with `--store secret`):
+  `--host`, `--port`, `--database`, `--user`, `--password-stdin` or
+  `--password-var NAME`, `--ssl` write the fields; `--url` writes a URL.
+  `tracebi connect <name> --test` tests an existing connection.
 - `.yml` works too. `TRACEBI_CONNECTIONS_DIR` moves the folder.
 - The project's own warehouse is not a connection file. It is the
   `warehouse:` block of `tracebi.yaml` ([[tracebi-yaml]]), and a model reads it
@@ -44,14 +60,55 @@ Every file has `name` and `type`. All values are strings.
 |---|---|---|
 | `duckdb` | `database` | `directory` |
 | `csv` | `directory` | `encoding` |
-| `sql`, `postgres`, `mysql` | `url` | |
-| `snowflake` | `account`, `user`, `password`, `warehouse`, `database` | `schema` (default `PUBLIC`), `role` |
-| `bigquery` | `project`, `dataset` | `credentials` (path to a service-account file) |
+| `sql` | `url` | |
+| `postgres`, `mysql` | `url`, or `host` and `database` | with the fields: `port`, `user`, `password`, `ssl`, `options`, `connect_timeout` |
+| `snowflake` | `account`, `user`, `warehouse`, `database`, and `password` with the password sign-in | `schema` (default `PUBLIC`), `role`, `authenticator`, `private_key_path` |
+| `bigquery` | `project`, `dataset` | `credentials` (path to a service-account file), or `credentials_json` |
 | `upload` | `file` (a `.csv` or `.parquet` file under `inputs/`) | |
 
 `sql` takes any SQLAlchemy URL (`sqlite:///inputs/bank.sqlite` for a file in
 the project). `postgres` and `mysql` are `sql` with the database said in the
-type (`postgresql+psycopg://…`, `mysql+pymysql://…`). An `upload` connection is
+type (`postgresql+psycopg://…`, `mysql+pymysql://…`).
+
+### URL or fields
+
+A `postgres` or `mysql` file says its connection one of two ways: one `url`,
+or its fields, from which the connection builds the URL. Never both: a file
+with `url` and `host` is refused. The app's form shows both as **Fields** and
+**URL** tabs of one connection, and writes the fields. A URL sent to it with a
+password in it is written as the fields, so the password gets its own
+`${NAME}`; a URL naming another driver (`postgresql+psycopg2://`) stays a URL.
+
+| Field | `postgres` | `mysql` |
+|---|---|---|
+| `host` | The server's name or address. Required. | Same. |
+| `port` | A whole number. `5432` when unset. | `3306` when unset. |
+| `database` | Required. | Required. |
+| `user` | The user it signs in as. | Same. |
+| `password` | Always `${NAME}`. The app and `tracebi connect --host` name it `TRACEBI_<CONNECTION>_PASSWORD`. | Same. |
+| `ssl` | `disable`, `prefer`, `require` or `verify-full` (libpq's `sslmode`). | `on` or `off`. |
+| `options` | More query parameters, `application_name=tracebi&...`. No credential, and not `sslmode` or `connect_timeout`. | Same (`charset=utf8mb4`). |
+| `connect_timeout` | Seconds to wait for the server. | Same. |
+
+The URL is built with the type's driver, `postgresql+psycopg` (installed by
+the `postgres` extra) or `mysql+pymysql`, the user, password and database
+percent-encoded. In code, `tracebi.connections.build_url(type, fields)` and
+`parse_url(type, url)` are that mapping both ways. A password that is
+`${NAME}` stays `${NAME}` in a built URL, so the URL the app shows and copies
+names the variable, never the value.
+
+### Snowflake sign-in
+
+`authenticator` is `password` (the default), `externalbrowser` (the identity
+provider's page opens on the server) or `key_pair` (reads `private_key_path`,
+a `.p8` file on the server, relative to the project root). Only the password
+sign-in takes `password`.
+
+### BigQuery credentials
+
+`credentials` is a path to a service account's JSON key file on the server.
+`credentials_json` is the key itself, pasted into the app's form: it goes to
+the encrypted store and the file names it as `${NAME}`. Give one or the other. An `upload` connection is
 one file read as one table, named after the file: `file: inputs/orders.csv` is
 the table `orders`. The app's upload puts the file there (`POST /api/inputs`, at
 most 50 MB).
@@ -91,7 +148,7 @@ url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}
 
 | Rule | Detail |
 |---|---|
-| Secrets must be references | `password` always. `url` may be literal only when it carries no credential (no password, no `password=`, `token=`, `key=` and the like in the query). `sqlite:///data/x.db` is fine. |
+| Secrets must be references | `password` and `credentials_json` always. `url` may be literal only when it carries no credential (no password, no `password=`, `token=`, `key=` and the like in the query). `sqlite:///data/x.db` is fine. |
 | Defaults are checked like literals | A SQLite path passes, a URL with a password is refused, and `password` takes no default. The Sources page shows such a name as `Set · default`. |
 | Literal paths stay in the project | `database` and `directory` of a `duckdb` or `csv` connection, an `upload`'s `file`, and the file of a `sqlite:///` url: no absolute path, no `..`. Use a reference to point elsewhere. Relative paths resolve against the project root. |
 | Resolved when used | Reading the file reads no environment. The variable is read when the connection is used; an unset one fails there, naming the variable. |

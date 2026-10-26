@@ -3985,9 +3985,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_connect = sub.add_parser(
         "connect",
-        help="Connect a warehouse you already have (postgres, snowflake, "
+        help="Connect a warehouse you already have (postgres, mysql, snowflake, "
              "bigquery, duckdb): test it, write the secret to .env, and "
-             "write connections/<name>.yaml.",
+             "write connections/<name>.yaml. `connect <name> --test` tests "
+             "an existing one.",
     )
     p_connect.add_argument("name", nargs="?",
                            help="Connection name, letters, digits and underscore (e.g. wh).")
@@ -4003,15 +4004,33 @@ def build_parser() -> argparse.ArgumentParser:
              "connection.",
     )
     p_connect.add_argument(
-        "--kind", choices=["postgres", "snowflake", "bigquery", "duckdb"],
+        "--kind", choices=["postgres", "mysql", "snowflake", "bigquery", "duckdb"],
         help="Warehouse kind. Prompted when stdin is a terminal.",
     )
-    p_connect.add_argument("--url", help="Postgres SQLAlchemy URL (postgresql://...).")
+    p_connect.add_argument("--url", help="Postgres or MySQL SQLAlchemy URL (postgresql://...). "
+                                         "Or give its fields: --host, --database, ...")
+    p_connect.add_argument("--host", help="Postgres or MySQL host: the file holds the fields "
+                                          "(host, port, database, user, password: ${NAME}, ssl) "
+                                          "and the URL is built from them.")
+    p_connect.add_argument("--port", help="Postgres or MySQL port (5432, 3306 when unset).")
+    p_connect.add_argument("--ssl", help="Postgres sslmode (disable, prefer, require, "
+                                         "verify-full), or MySQL on|off.")
+    p_connect.add_argument(
+        "--password-stdin", action="store_true",
+        help="With --host: read the password from stdin. It goes to .env or the store "
+             "(--store) as TRACEBI_<NAME>_PASSWORD, never into the file.",
+    )
+    p_connect.add_argument(
+        "--password-var", metavar="NAME",
+        help="With --host: the file says password: ${NAME} and nothing is saved; set "
+             "NAME in the environment or .env.",
+    )
     p_connect.add_argument("--account", help="Snowflake account identifier.")
-    p_connect.add_argument("--user", help="Snowflake user.")
+    p_connect.add_argument("--user", help="Snowflake, Postgres or MySQL user.")
     p_connect.add_argument("--password", help="Snowflake password. Never printed.")
     p_connect.add_argument("--warehouse", help="Snowflake warehouse.")
-    p_connect.add_argument("--database", help="Snowflake database, or DuckDB file path.")
+    p_connect.add_argument("--database", help="Snowflake, Postgres or MySQL database, or "
+                                              "DuckDB file path.")
     p_connect.add_argument("--schema", help="Snowflake schema.")
     p_connect.add_argument("--role", help="Snowflake role. Optional.")
     p_connect.add_argument("--project", help="BigQuery GCP project id.")
@@ -4021,9 +4040,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a BigQuery service-account JSON file. Optional.",
     )
     p_connect.add_argument(
-        "--test", action=argparse.BooleanOptionalAction, default=True,
+        "--test", action=argparse.BooleanOptionalAction, default=None,
         help="Connect and list tables before writing anything (default). "
-             "--no-test writes without connecting.",
+             "--no-test writes without connecting. With only a name, tests "
+             "that existing connection.",
     )
     p_connect.add_argument(
         "--force", action="store_true",
