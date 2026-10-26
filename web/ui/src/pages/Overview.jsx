@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import { useModel } from '../api'
 import TheLine, { useLineFacts } from '../components/TheLine'
-import { ago } from '../when'
+import { checksWords, refreshWords } from '../words'
 import EditAsDraft from '../components/EditAsDraft'
 import { ModelDetail } from './Models'
 import { DataFrame } from './Data'
@@ -55,8 +55,8 @@ function ModelPage({ model }) {
         {transform.failed && (
           <p role="status" className="overview__alert">
             <strong>
-              <span aria-hidden="true">✕</span> <span className="overview__name">{transform.name}</span> failed
-              {transform.failure ? ' its checks' : ''} {ago(transform.lastAt)}.
+              <span aria-hidden="true">✕</span> {refreshWords({ failedAt: transform.lastAt }).text}
+              {transform.failure && <>: {checksWords({ failed: transform.failure.failed }).text}</>}.
             </strong>
             {transform.failure && facts.builtCount > 0 && <span>The built reports were made from the tables it replaced.</span>}
             {file && <Link to={transformPath(file)}>See why</Link>}

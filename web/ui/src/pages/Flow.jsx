@@ -5,12 +5,12 @@ import {
   useConnectorTables, useConnectors, useInputs, useModels, usePipelines, useReports, useTransforms, useWarehouses,
 } from '../api'
 import { DataFrame } from './Data'
-import { FORM_LABEL } from '../chain'
+import { FORM_LABEL, checksWords, reachWords, tierWords } from '../words'
 import { KindGlyph } from '../components/DataBrowser'
 import { fmtBytes, sourceKind } from '../components/Storage'
 import { count } from '../format'
 import {
-  modelPath, reportModels, reportPagePath, sourcePath, sourceTablePath, transformPath, transformsPath,
+  modelPath, reportModels, reportPagePath, sourcePath, sourceTablePath, transformPath,
   warehousePath, warehouseTablePath, pipelineModels,
 } from '../nav'
 import { Badge, Chip, Empty, ErrorDetail, SkeletonCard } from '../components/Shared'
@@ -50,9 +50,6 @@ function connectionMark(c) {
 const extOf = path => (path.match(/\.([^./]+)$/)?.[1] || '').toLowerCase()
 const FILE_KIND = { csv: 'CSV file', tsv: 'TSV file', parquet: 'Parquet file', json: 'JSON file', xlsx: 'Excel file', sqlite: 'SQLite file' }
 const FILE_MARK = { parquet: 'PQ', sqlite: 'SQ', xlsx: 'XLS' }
-
-// A warehouse's tier, in the words of its chip.
-const TIER = { file: 'DuckDB file', object: 'Parquet', remote: 'Remote' }
 
 const byName = (a, b) => a.name.localeCompare(b.name)
 const LOOSE = '(none)'
@@ -162,9 +159,8 @@ function Lane({ n, title, total, tone, children, foot }) {
 function Reach({ name }) {
   const { data } = useConnectorTables(name)
   if (!data) return null
-  return data.connected
-    ? <Chip>Connected</Chip>
-    : <Chip tone="warn" title={data.variable ? `Set ${data.variable} to connect.` : data.reason}>Not connected here</Chip>
+  const w = reachWords(data)
+  return w.connected ? <Chip>{w.short}</Chip> : <Chip tone="warn" title={w.text}>{w.short}</Chip>
 }
 
 function SourceCard({ s, cardProps }) {
@@ -235,7 +231,7 @@ function WarehouseCard({ w, groups, lit, focus, cardProps, groupRef, many }) {
             <Link to={`${warehousePath()}#wh-${w.name}`} className="fcard__nm fcard__nm--link"><code>{w.name}</code></Link>
           </span>
           <span className="fcard__s">
-            <Badge>{TIER[w.tier] || w.tier}</Badge>
+            <Badge>{tierWords(w.tier)}</Badge>
             {w.where && <code className="fcard__where" title={w.where}>{w.where}</code>}
             <span>{facts}</span>
           </span>
@@ -256,7 +252,7 @@ function WarehouseCard({ w, groups, lit, focus, cardProps, groupRef, many }) {
                 return (
                   <li key={t.name}>
                     <Link to={warehouseTablePath(t.name, many ? w.name : '')} className={`fcard__tbl${ok ? ' fcard__tbl--ok' : ''}`}
-                          title={ok ? 'The sink satisfied its contract on the run that wrote it' : undefined}>
+                          title={checksWords(t.contract).text}>
                       {t.kind === 'view' && <KindGlyph view />}<span className="fcard__tbln">{t.name}</span>
                     </Link>
                   </li>
@@ -390,8 +386,9 @@ function Board({ board, pinned }) {
           </Lane>
           <Lane n="①" title="Transforms" total={board.trans.length} tone="transforms"
                 foot={board.others > 0 && (
+                  // Counted, not linked: the Transforms list shows every file, not only these.
                   <p className="flow-lane__foot">
-                    <Link to={transformsPath()}>{count(board.others, 'other transform file')}</Link>: no pipeline runs it and no certificate names it.
+                    {count(board.others, 'other transform file')}: no pipeline runs it and no certificate names it.
                   </p>
                 )}>
             {board.trans.map(x => <TransformCard key={x.id} x={x} cardProps={cardProps} />)}

@@ -46,7 +46,7 @@ runs them as one: `models/<model>.yaml`, `pipelines/<model>.yaml` (`transform:`,
 `reports/<model>/`. A source is `connections/<name>.yaml`.
 `tracebi run-pipeline <model>` runs the transform, then builds every report in
 `reports/<model>/`, each with its trace; the app's **Refresh data** (Data,
-the model's Transform tab) runs the same pipeline. A report is named by its path (`<model>/<name>`) in every
+the transform's page) runs the same pipeline. A report is named by its path (`<model>/<name>`) in every
 command, and builds to `output/<model>/<name>.html`. The sample is
 `sample_model` — `pipelines/sample_model.py`, `reports/sample_model/`.
 People read names, not identifiers: a model's `label` (optional; unset, the name

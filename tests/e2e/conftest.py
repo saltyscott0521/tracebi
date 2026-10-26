@@ -177,7 +177,7 @@ def env_off(monkeypatch, *names: str) -> None:
 
 
 def serve_app(monkeypatch, *, models: bool = False):
-    """The web app over the project's pipelines (and models), as a model's Transform tab sees it."""
+    """The web app over the project's pipelines (and models), as a transform's page sees it."""
     from fastapi.testclient import TestClient
 
     from tracebi.registry import registry

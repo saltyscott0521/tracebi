@@ -144,7 +144,7 @@ export default function Credentials({ connection }) {
 }
 
 /**
- * The Transform tab's line for what the transform reads: each connection it
+ * A transform page's line for what the transform reads: each connection it
  * names in a `-- source:` line, with its credentials' state, so "why did the
  * snapshot stand in?" has an answer where the question arises.
  */

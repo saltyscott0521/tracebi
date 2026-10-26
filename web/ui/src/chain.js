@@ -6,8 +6,9 @@
 
 import { pipelineBelongsToModel } from './nav'
 
-/** A transform's form (the API's sql | python | notebook) as its chip says it. */
-export const FORM_LABEL = { sql: 'SQL', python: 'Python', notebook: 'notebook' }
+// A transform's form in words lives with the app's other words; it is
+// re-exported here, where pages first found it.
+export { FORM_LABEL } from './words'
 
 /** The pipeline that refreshes a model: the one made for it, else any that touches it. */
 export const pipelineFor = (pipelines, model) =>
@@ -33,4 +34,11 @@ export function upstreamOf({ model, pipelines, connectors, inputs }) {
   })
   const files = (inputs?.files || []).filter(f => (f.read_by || []).includes(transform))
   return { transform, connections, files }
+}
+
+/** When the newest table *model* reads was written, by its certificate (GET /api/warehouse). */
+export function writtenFor(warehouses, model) {
+  return (warehouses?.warehouses || []).flatMap(w => w.tables)
+    .filter(t => t.read_by.includes(model) && t.written_by?.at)
+    .map(t => t.written_by.at).sort().pop()
 }

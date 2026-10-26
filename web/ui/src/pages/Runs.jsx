@@ -73,8 +73,8 @@ function duration(start, end) {
   return `${h}h ${m % 60}m`
 }
 
-// Where a row leads: a report's page, or the Transform tab of the model a
-// pipeline run refreshes.
+// Where a row leads: a report's page, or the page of the transform a pipeline
+// run refreshes.
 function rowLink(run, pipelineModelsOf) {
   if (!run.target) return null
   if (REPORT_KINDS.has(run.kind)) return reportPagePath(run.target)
@@ -194,7 +194,7 @@ function runModels(run, modelsOf, pipelineModelsOf) {
 
 /**
  * History: what ran. On its own page (/runs) a model is a filter; given
- * *model* it is that model's Runs tab on Data, with no heading of its own.
+ * *model* it lists only that model's runs, with no heading of its own.
  */
 export default function Runs({ model: only }) {
   // The owner alert links here as /runs?kind=schedule&target=<report>, and a

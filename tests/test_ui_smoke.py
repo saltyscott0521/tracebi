@@ -483,7 +483,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.wait_for_url("**/data/models/portfolio_model")
             expect(station("Transform")).to_contain_text("holdings_transform")
             expect(line).to_contain_text("warehouse.duckdb")
-            expect(station("Model")).to_contain_text(re.compile(r"\d+ tables · \d+ joins"))
+            # Its counts are said once, in the Semantic layer's line, not on the station.
+            expect(station("Model")).not_to_contain_text(re.compile(r"\d+ tables"))
             station("Transform").click()
             page.wait_for_url("**/data/transforms/holdings_transform")
             expect(data_tabs.get_by_role("link", name="Transforms")).to_have_attribute("aria-current", "page")

@@ -1346,7 +1346,7 @@ export default function Library() {
  * The library's two actions, right of its h1, as a folder's page has them:
  * New report (the command that scaffolds one; an analyst's or admin's) and
  * Refresh data (an admin's: it writes the warehouse). Refresh runs each
- * model's own pipeline once, the one its Transform tab calls Refresh data;
+ * model's own pipeline once, the one its transform's page calls Refresh data;
  * with no pipeline for any model there is nothing to refresh, so no button.
  */
 function LibraryActions({ models }) {

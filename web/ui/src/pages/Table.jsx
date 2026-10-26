@@ -5,7 +5,7 @@ import { useConnectors, useCredentials, useModel, useTable, useTableProfile, use
 import DataGrid, { cellText } from '../components/DataGrid'
 import { CredentialChip } from '../components/Credentials'
 import { useModelLabel } from '../components/Scope'
-import { CONTRACT } from '../components/Warehouse'
+import { checksWords, reachWords } from '../words'
 import { KindGlyph, TypeGlyph } from '../components/DataBrowser'
 import { buildModelGraph } from '../components/modelGraph'
 import { TransformName } from './Connectors'
@@ -50,26 +50,10 @@ function ReadOnRun({ items }) {
   })
 }
 
-// The reports that read a table, the first few by name, the rest counted.
-const REPORTS_SHOWN = 3
-function ReportNames({ reports }) {
-  const shown = reports.slice(0, REPORTS_SHOWN)
-  const rest = reports.slice(REPORTS_SHOWN)
-  return (
-    <>
-      {shown.map((r, i) => (
-        <Fragment key={r.report}>{i > 0 && ', '}<Link to={reportPagePath(r.report)}>{r.display_name || r.report}</Link></Fragment>
-      ))}
-      {rest.length > 0 && (
-        <span title={rest.map(r => r.display_name || r.report).join(', ')}> and {count(rest.length, 'other')}</span>
-      )}
-    </>
-  )
-}
-
-// One line of facts, each a link to where that fact lives.
+// One line of facts, each a link to where that fact lives: who wrote it,
+// who uses it (one link to the Used by view, which names them; they are said
+// once, there) and what the run that wrote it read.
 function Facts({ t }) {
-  const labelOf = useModelLabel()
   const facts = []
   if (t.kind === 'warehouse') {
     facts.push(
@@ -84,15 +68,8 @@ function Facts({ t }) {
     )
   }
   facts.push(
-    <span key="r">
-      Read by {t.read_by.length
-        ? t.read_by.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={modelPath(m)}>{labelOf(m)}</Link></Fragment>)
-        : 'no model'}
-    </span>,
-  )
-  facts.push(
     <span key="u">
-      Used by {t.used_by.length ? <ReportNames reports={t.used_by} /> : 'no report'}
+      <Link to="?view=used">Used by {count(t.read_by.length, 'model')} · {count(t.used_by.length, 'report')}</Link>
     </span>,
   )
   if (t.transform_read?.length) {
@@ -102,12 +79,13 @@ function Facts({ t }) {
 }
 
 // The sink contract's words, folded under the header: what the transform
-// said about the table it wrote (never "verified"), and its note.
+// said about the table it wrote (never "verified"), and its note. Its title
+// is the chip's words (checksWords), with what opening it shows.
 function ContractFold({ c }) {
   if (!c || c.status === 'no_contract') return null
   return (
     <details className="wb-details tpage__contract">
-      <summary>What its checks say</summary>
+      <summary>{checksWords(c).text}: the checks and the transform's note</summary>
       <p className="wb-meta">
         {c.status === 'satisfied'
           ? <>The sink satisfied its contract: {count(c.checks || 0, 'check')} in <code>{c.file}</code>
@@ -128,7 +106,7 @@ function NotConnected({ source, answer }) {
   return (
     <div className="tpage__off" data-connected="false">
       <p className="src-quiet">
-        Not connected here · {answer.variable ? <>set <code>{answer.variable}</code></> : answer.reason}
+        {reachWords(answer).text}
         {row && <CredentialChip row={row} />}
       </p>
       {source !== 'inputs' && (
@@ -358,7 +336,7 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
     )
   }
 
-  const c = t.contract && (CONTRACT[t.contract.status] || CONTRACT.no_contract)
+  const c = t.contract && checksWords(t.contract)
   // The data browser it sits in: Warehouse for a warehouse table (the
   // browser's id names the warehouse when there are two), else the model that
   // reads it, with the table selected.
@@ -376,7 +354,7 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
         </div>
         <p className="tpage__shape">
           <span>{rowsText(t)} · {count(t.columns.length, 'column')}</span>
-          {c && <Chip tone={c.tone} title={c.title}>{c.label}</Chip>}
+          {c && <Chip tone={c.tone} title={c.title}>{c.text}</Chip>}
         </p>
         <Facts t={t} />
         <ContractFold c={t.contract} />

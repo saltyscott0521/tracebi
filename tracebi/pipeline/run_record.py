@@ -2,7 +2,7 @@
 a log file under ``data/logs/pipelines/``.
 
 Every way of running a whole pipeline leaves the same two things (the app's Run
-button, in the background, and ``tracebi run-pipeline``), so the Transform tab
+button, in the background, and ``tracebi run-pipeline``), so the transform's page
 lists them together. The row holds the outcome; the file holds what the steps
 printed, as it was printed. Polling reads the row first and the file second: a
 terminal status is written only after the log is closed, so a poller that sees

@@ -194,8 +194,8 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
     TRACEBI_CRM_URL (a fresh clone, CI's default) the demo still builds: the
     committed snapshot stands in, the certificate and every report trace say
     the CRM was not reached, and verify --contracts re-reads the snapshot.
-    The app lists the connection without resolving it, and the model's
-    Transform tab shows the -- source: line it ran. Data's Sources says the
+    The app lists the connection without resolving it, and the transform's
+    page shows the -- source: line it ran. Data's Sources says the
     CRM is not connected here (200, no traceback) and which transform reads
     it, while the bank and billing databases that ship are, by their
     defaults; its Warehouse names who wrote dim_rating and what fed it."""

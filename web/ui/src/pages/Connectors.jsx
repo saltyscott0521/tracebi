@@ -11,6 +11,7 @@ import Credentials from '../components/Credentials'
 import ConnectionSheet from '../components/ConnectionForm'
 import { stamp } from '../when'
 import { count } from '../format'
+import { reachWords } from '../words'
 import { modelPath, sourcePath, sourceTablePath, sourcesPath, transformPath, warehousePath } from '../nav'
 import {
   Card, CardTitle, Badge, Btn, ErrorDetail, Spinner,
@@ -25,11 +26,9 @@ function Section({ label, children, sectionRef }) {
 }
 
 /**
- * transform name → its page. Every file in transforms/ has one, whether or
- * not a pipeline runs it, so a transform's name is always a link.
+ * A transform's name, wherever it appears: always a link to its page, which
+ * every file in transforms/ has, whether or not a pipeline runs it.
  */
-export const useTransformHome = () => transformPath
-
 export function TransformName({ name }) {
   return <Link to={transformPath(name)}><code>{name}</code></Link>
 }
@@ -37,7 +36,9 @@ export function TransformName({ name }) {
 // Who reads a source: the transforms that name its tables (in a `-- source:`
 // line or a load_source call), the pipelines whose steps take it as their
 // source (one line per pipeline, its steps named), and the models that read
-// it directly. Read from the files, so a source nothing names says so.
+// it directly. Read from the files, so a source nothing names says so. A
+// pipeline's steps run no transform file (a Python medallion runner), so the
+// pipeline is named plainly, its Python a chip, as the Models folder does.
 function ReadBy({ c }) {
   const labelOf = useModelLabel()
   const rb = c.read_by || { transforms: [], layers: [], models: c.used_by || [] }
@@ -51,7 +52,7 @@ function ReadBy({ c }) {
     )),
     ...Object.entries(pipelines).map(([p, steps]) => (
       <li key={`p-${p}`}>
-        The pipeline <code>{p}</code>: {count(steps.length, 'step')} ({steps.map((s, i) => <Fragment key={s}>{i > 0 && ', '}<code>{s}</code></Fragment>)})
+        The pipeline <code>{p}</code> <Badge>Python</Badge>: {count(steps.length, 'step')} ({steps.map((s, i) => <Fragment key={s}>{i > 0 && ', '}<code>{s}</code></Fragment>)})
       </li>
     )),
     ...rb.models.map(m => (
@@ -76,11 +77,7 @@ function Reach({ name }) {
   const { data, isLoading } = useConnectorTables(name)
   if (isLoading) return <p className="src-quiet"><Spinner size={12} /> Connecting…</p>
   if (!data || data.connected) return null
-  return (
-    <p className="src-quiet src-reach" data-connected="false">
-      Not connected here · {data.variable ? <>set <code>{data.variable}</code></> : data.reason}
-    </p>
-  )
+  return <p className="src-quiet src-reach" data-connected="false">{reachWords(data).text}</p>
 }
 
 // Whether this person may add, change or delete connections here: a signed-in

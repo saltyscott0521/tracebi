@@ -267,6 +267,8 @@ web/
                        # `web.py` distribution, which owns that same path in site-packages.
                        # `npm run build` writes its output into tracebi/web/ui/dist.
     src/when.js        # stamp / ago / day / isoTitle: every date in the app; format.js: count / plural
+    src/words.js       # the words for facts Data repeats: refreshWords / pipelineRefresh, checksWords (the CONTRACT chip),
+                       #   tierWords, reachWords, FORM_LABEL — every page that says one calls these
     src/styles/global.css      # tokens: Geist / Geist Mono (--font-sans, --font-mono); --font-display is the sans,
                        #   tight (--weight-display 600, --tracking-display); --hue-1..6 folder hues, a label
                        #   never a state; --shadow / --shadow-lg only on the library's tiles, covers, pills and hero

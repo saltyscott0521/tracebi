@@ -1,4 +1,5 @@
 import { stamp } from './when'
+import { checksWords } from './words'
 
 // One trust vocabulary. Every page that says whether a report's numbers still
 // hold derives it here, so the library row, the report header, History and
@@ -69,7 +70,7 @@ function sourceChangedSince(report, build) {
  *   files saved since the build                  → needs-a-look ("Source changed …")
  *   data changed, re-check could not run, or a
  *   verdict this page does not know              → needs-a-look
- *   a table it reads is past its sink checks     → needs-a-look ("Checks stale")
+ *   a table it reads is past its sink checks     → needs-a-look ("Changed since checked")
  *   python-derived, nothing recorded, newer build → not-checked
  *   re-check reproduces                          → reproduces
  */
@@ -83,7 +84,7 @@ export function verdictOf({ report, build, contracts, checkedAt }) {
   if (v.state !== 'reproduces') return v
   const stale = Object.entries(contracts || {}).filter(([, c]) => c?.status === 'stale').map(([t]) => t)
   if (stale.length) {
-    return { state: 'needs-a-look', detail: `Checks stale: ${stale.join(', ')} changed since the sink last satisfied its contract.` }
+    return { state: 'needs-a-look', detail: `${checksWords({ status: 'stale' }).text}: ${stale.join(', ')} changed after the sink last satisfied its contract.` }
   }
   return checkedAt ? { ...v, detail: `${v.detail} Checked ${stamp(checkedAt)}.` } : v
 }

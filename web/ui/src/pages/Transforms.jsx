@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 
 import { useMe, useStartPipelineRun, useTransforms } from '../api'
 import { useModelLabel } from '../components/Scope'
-import { FORM_LABEL } from '../chain'
+import { FORM_LABEL, refreshWords } from '../words'
 import { modelPath, transformPath, warehouseTablePath } from '../nav'
-import { Badge, Btn, Empty, ErrorDetail, SkeletonList, Time, useToast } from '../components/Shared'
+import { isoTitle } from '../when'
+import { Badge, Btn, Empty, ErrorDetail, SkeletonList, useToast } from '../components/Shared'
 
 // Data's Transforms folder (/data/transforms): every file in transforms/, one
 // row each: its form, the models it feeds (through the pipeline that runs it,
@@ -48,6 +49,15 @@ function TableNames({ tables }) {
       {rest > 0 && <span className="wb-meta" title={tables.slice(TABLES_SHOWN).join(', ')}> +{rest}</span>}
     </>
   )
+}
+
+// When it last wrote: the age alone, from refreshWords (the certificate's
+// time), else that phrase in full ("Not refreshed yet", "No refresh pipeline").
+function LastWrote({ t }) {
+  const w = refreshWords({ pipeline: t.pipelines.length > 0, writtenAt: t.written_at })
+  return w.ago
+    ? <time dateTime={isoTitle(w.at)} title={isoTitle(w.at)}>{w.ago}</time>
+    : <span className="wb-meta">{w.text}</span>
 }
 
 export default function Transforms() {
@@ -94,7 +104,7 @@ export default function Transforms() {
               <td title={t.note || undefined}>
                 {t.contract_file ? <code>{t.contract_file.split('/').pop()}</code> : <span className="wb-meta">no contract</span>}
               </td>
-              <td><Time iso={t.written_at} relative fallback={<span className="wb-meta">never, here</span>} /></td>
+              <td><LastWrote t={t} /></td>
               {admin && (
                 <td className="num">
                   {t.pipelines[0] && <RunButton pipeline={t.pipelines[0]} transform={t.name} model={t.models[0]} />}
