@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { useWarehouses } from '../api'
 import { useModelLabel } from './Scope'
+import { KindGlyph } from './DataBrowser'
 import { TransformName, useTransformHome } from '../pages/Connectors'
 import { Chip, ErrorDetail, Spinner, Time } from './Shared'
 import { count } from '../format'
@@ -72,8 +73,10 @@ export function ReadInput({ src }) {
     : <>{ref} <span title={src.fingerprint ? `fingerprint ${src.fingerprint}` : undefined}>(live)</span></>
 }
 
-// The dense list: one row per table, its name the link to its page.
-function TableList({ warehouse, tables }) {
+// The dense list: one row per table, its name the link to its page; a view
+// marked, and the tables it reads named after it. *readBy* false drops the
+// models column, for a page that names them once already.
+export function TableList({ warehouse, tables, readBy = true }) {
   const labelOf = useModelLabel()
   return (
     <div className="whlist">
@@ -83,7 +86,7 @@ function TableList({ warehouse, tables }) {
             <th scope="col">Table</th>
             <th scope="col" className="num">Rows</th>
             <th scope="col" className="num">Columns</th>
-            <th scope="col">Read by</th>
+            {readBy && <th scope="col">Read by</th>}
             <th scope="col">Checks</th>
           </tr>
         </thead>
@@ -92,14 +95,18 @@ function TableList({ warehouse, tables }) {
             const c = CONTRACT[t.contract?.status] || CONTRACT.no_contract
             return (
               <tr key={t.name} data-table={t.name}>
-                <td><Link to={tablePath(warehouse, t.name)}><code>{t.name}</code></Link></td>
+                <td>
+                  {t.kind === 'view' && <><KindGlyph view />{' '}</>}
+                  <Link to={tablePath(warehouse, t.name)}><code>{t.name}</code></Link>
+                  {t.bases?.length > 0 && <span className="wb-meta"> over {t.bases.join(', ')}</span>}
+                </td>
                 <td className="num">{t.rows == null ? '—' : Number(t.rows).toLocaleString('en-US')}</td>
                 <td className="num">{t.columns}</td>
-                <td>
+                {readBy && <td>
                   {t.read_by.length
                     ? t.read_by.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={dataPath(m)}>{labelOf(m)}</Link></Fragment>)
                     : <span className="wb-meta">no model</span>}
-                </td>
+                </td>}
                 <td><Chip tone={c.tone} title={c.title}>{c.label}</Chip></td>
               </tr>
             )

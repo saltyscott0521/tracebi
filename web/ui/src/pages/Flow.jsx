@@ -10,11 +10,12 @@ import { KindGlyph } from '../components/DataBrowser'
 import { fmtBytes, sourceKind } from '../components/Storage'
 import { count } from '../format'
 import {
-  dataPath, pipelineModels, reportModels, reportPagePath, sourcesPath, tablePath, transformsPath, warehousePath,
+  modelPath, reportModels, reportPagePath, sourcePath, sourceTablePath, transformPath, transformsPath,
+  warehousePath, warehouseTablePath, pipelineModels,
 } from '../nav'
 import { Badge, Chip, Empty, ErrorDetail, SkeletonCard } from '../components/Shared'
 
-// Data's Flow tab (/data): the board. One lane per stage, read left to right
+// Data's Overview (/data): the board. One lane per stage, read left to right
 // in the order the data moves:
 //
 //   ⓪ Sources  →  ① Transforms  →  Warehouse  →  ② Models  →  ③ Reports
@@ -157,7 +158,7 @@ function Lane({ n, title, total, tone, children, foot }) {
   )
 }
 
-// A connection's state here: what the Sources tab says when it opens it.
+// A connection's state here: what its page on Sources says when it opens.
 function Reach({ name }) {
   const { data } = useConnectorTables(name)
   if (!data) return null
@@ -173,7 +174,7 @@ function SourceCard({ s, cardProps }) {
     const where = c.storage?.where
     return (
       <li>
-        <Link {...cardProps(s.id)} to={`${sourcesPath()}?source=${encodeURIComponent(c.name)}`}>
+        <Link {...cardProps(s.id)} to={sourcePath(c.name)}>
           <span className="fcard__t">
             <span className={`fcard__mark fcard__mark--${mark.toLowerCase()}`} aria-hidden="true">{mark}</span>
             <span className="fcard__nm" title={c.name}>{c.label || c.name}</span>
@@ -189,7 +190,7 @@ function SourceCard({ s, cardProps }) {
   const { f } = s
   const ext = extOf(f.path)
   const mark = FILE_MARK[ext] || ext.toUpperCase().slice(0, 3) || 'FILE'
-  const to = f.table ? tablePath('inputs', f.path.replace(/^inputs\//, '')) : `${sourcesPath()}?source=inputs`
+  const to = f.table ? sourceTablePath('inputs', f.path.replace(/^inputs\//, '')) : sourcePath('inputs')
   return (
     <li>
       <Link {...cardProps(s.id)} to={to}>
@@ -210,7 +211,7 @@ function TransformCard({ x, cardProps }) {
   const { t } = x
   return (
     <li>
-      <Link {...cardProps(x.id)} to={x.model ? dataPath(x.model, 'transform') : transformsPath()}>
+      <Link {...cardProps(x.id)} to={transformPath(x.t.name)}>
         <span className="fcard__t"><code className="fcard__nm" title={t.file}>{t.name}</code></span>
         <span className="fcard__s">
           <Badge>{FORM_LABEL[t.form] || t.form}</Badge>
@@ -222,10 +223,10 @@ function TransformCard({ x, cardProps }) {
   )
 }
 
-function WarehouseCard({ w, groups, lit, focus, cardProps, groupRef }) {
+// *many*: more than one warehouse, so a table's page names which one holds it.
+function WarehouseCard({ w, groups, lit, focus, cardProps, groupRef, many }) {
   const n = w.tables.length
   const facts = [count(n, 'table'), w.size != null && fmtBytes(w.size)].filter(Boolean).join(' · ')
-  const modelFor = g => g.models[0] || ''
   return (
     <li>
       <div {...cardProps(`wh:${w.name}`, 'fcard--wh')} role="group" aria-label={`Warehouse ${w.name}`}>
@@ -245,7 +246,7 @@ function WarehouseCard({ w, groups, lit, focus, cardProps, groupRef }) {
                className={`fcard__grp${focus ? (lit.has(g.id) ? ' is-lit' : ' is-dim') : ''}`}>
             <p className="fcard__who">
               {g.transform
-                ? <Link to={warehousePath(modelFor(g))}>written by <code>{g.transform}</code></Link>
+                ? <Link to={transformPath(g.transform)}>written by <code>{g.transform}</code></Link>
                 : <span>written outside a transform</span>}
               <span>{g.tables.length}</span>
             </p>
@@ -254,7 +255,7 @@ function WarehouseCard({ w, groups, lit, focus, cardProps, groupRef }) {
                 const ok = t.contract?.status === 'satisfied'
                 return (
                   <li key={t.name}>
-                    <Link to={tablePath(w.name, t.name)} className={`fcard__tbl${ok ? ' fcard__tbl--ok' : ''}`}
+                    <Link to={warehouseTablePath(t.name, many ? w.name : '')} className={`fcard__tbl${ok ? ' fcard__tbl--ok' : ''}`}
                           title={ok ? 'The sink satisfied its contract on the run that wrote it' : undefined}>
                       {t.kind === 'view' && <KindGlyph view />}<span className="fcard__tbln">{t.name}</span>
                     </Link>
@@ -272,10 +273,10 @@ function WarehouseCard({ w, groups, lit, focus, cardProps, groupRef }) {
 function ModelCard({ m, cardProps, onLight }) {
   return (
     <li>
-      <Link {...cardProps(`m:${m.name}`)} to={dataPath(m.name)} data-model={m.name}
+      <Link {...cardProps(`m:${m.name}`)} to={modelPath(m.name)} data-model={m.name}
             onMouseEnter={() => onLight(m.name)} onMouseLeave={() => onLight('')}
             onFocus={() => onLight(m.name)} onBlur={() => onLight('')}>
-        <span className="fcard__t"><span className="fcard__nm">{m.label || m.name}</span></span>
+        <span className="fcard__t"><span className="fcard__nm" title={m.label || m.name}>{m.label || m.name}</span></span>
         <span className="fcard__s">
           <code>{m.name}</code>
           <span>{count(m.tables.length, 'table')}</span>
@@ -398,7 +399,7 @@ function Board({ board, pinned }) {
           <Lane title="Warehouse" total={board.whs.reduce((n, { w }) => n + w.tables.length, 0)} tone="warehouse">
             {board.whs.map(({ w, groups }) => (
               <WarehouseCard key={w.name} w={w} groups={groups} lit={lit} focus={focus}
-                             cardProps={cardProps} groupRef={groupRef} />
+                             cardProps={cardProps} groupRef={groupRef} many={board.whs.length > 1} />
             ))}
           </Lane>
           <Lane n="②" title="Models" total={board.models.length} tone="models">
@@ -409,16 +410,11 @@ function Board({ board, pinned }) {
           </Lane>
         </div>
       </div>
-      <p className="flow-legend">
-        <span><b>Lanes</b> are stages and never mix: a source is a thing you read, a warehouse table is a thing a transform wrote.</span>
-        <span><b>Chips</b> say the mechanism: SQL, Python, Postgres, SQLite file, CSV.</span>
-        <span><b>Green dots</b> are tables where the sink satisfied its contract on the run that wrote them.</span>
-      </p>
     </>
   )
 }
 
-/** Data's Flow tab (/data): the board. */
+/** Data's Overview (/data): the board. */
 export default function Flow() {
   const [params] = useSearchParams()
   const queries = [useConnectors(), useInputs(), useTransforms(), useWarehouses(), useModels(), useReports(), usePipelines()]
@@ -432,13 +428,13 @@ export default function Flow() {
   // Old links: /data?view=map was the Map (a model's map is its own page's
   // line now); /data?m=<model> was a model's page.
   if (params.get('view') === 'map') {
-    return <Navigate to={params.get('model') ? dataPath(params.get('model')) : '/data'} replace />
+    return <Navigate to={params.get('model') ? modelPath(params.get('model')) : '/data'} replace />
   }
-  if (params.get('m')) return <Navigate to={dataPath(params.get('m'))} replace />
+  if (params.get('m')) return <Navigate to={modelPath(params.get('m'))} replace />
 
   const failed = queries.find(q => q.error)
   return (
-    <DataFrame tab="flow">
+    <DataFrame folder="overview">
       {failed ? <ErrorDetail error={failed.error} />
         : !board ? <SkeletonCard />
         : !board.models.length && !board.sources.length && !board.trans.length

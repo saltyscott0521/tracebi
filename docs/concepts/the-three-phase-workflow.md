@@ -13,7 +13,7 @@ inputs/  →  transforms/  →  [ warehouse ]  →  models/  →  reports/
 |---|---|---|---|
 | Input | `inputs/` | Raw files: a CSV, an API export, a SQL dump | Data → Sources |
 | Transform | `transforms/` | DuckDB SQL (`.sql` with a `.contract.yaml` beside it), or pandas (`.py`, `.ipynb`) | Data → Transforms; run it with `tracebi run-transform` |
-| Model | `models/` | A YAML file: tables, joins, measures (`.py` for anything YAML cannot say) | Data → the model's page, Model tab |
+| Model | `models/` | A YAML file: tables, joins, measures (`.py` for anything YAML cannot say) | Data → Models → the model's page |
 | Report | `reports/` | A package: `report.json` plus an `app.jsx` dashboard or a `template.html` page | Reports, under its model |
 
 ## Transform
@@ -89,12 +89,13 @@ The app has four places in its sidebar.
 - **Reports** opens first. It is the library: a folder per model, each report
   with whether its numbers still reproduce. **Ask this model**, on a folder's
   or a model's page, puts a question to that model.
-- **Data** (analysts and admins) opens on **Flow**, a board with these stages
-  as lanes: sources, transforms, the warehouse, models, reports. Its other
-  tabs are **Sources**, **Transforms**, **Warehouse** and **Models**. A model's
-  page has a **Transform** tab (the pipeline that rebuilds its data, where an
-  admin clicks **Refresh data**), a **Model** tab (tables, joins and measures)
-  and a **Reports** tab.
+- **Data** (analysts and admins) opens on **Overview**, a board with these
+  stages as lanes: sources, transforms, the warehouse, models, reports. Its
+  four folders, nested under it in the sidebar, are **Sources**,
+  **Transforms**, **Warehouse** and **Models**, and each thing in them has a
+  page of its own: a connection, a table, a transform (the pipeline that
+  rebuilds its data, where an admin clicks **Refresh data**), a model (its
+  tables, joins and measures, and the line to its other stages).
 - **Review** holds what needs attention, drafts, **History** (what ran) and
   **Verify** (check a report file from anywhere).
 - **Docs** is this handbook.

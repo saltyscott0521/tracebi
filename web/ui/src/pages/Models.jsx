@@ -11,9 +11,9 @@ import { PageHeader } from '../components/Scope'
 import CodeView from '../components/CodeView'
 import DataBrowser, { InspectorSection } from '../components/DataBrowser'
 import { count } from '../format'
-import { askPath, dataPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
+import { askPath, modelPath, pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 import {
-  Card, Badge, BtnLink, Chip, Empty, ErrorDetail, SkeletonList, SkeletonCard,
+  Card, Badge, Chip, Empty, ErrorDetail, SkeletonList, SkeletonCard,
 } from '../components/Shared'
 
 // ── Measures ──────────────────────────────────────────────────────────────────
@@ -286,13 +286,12 @@ function ModelSummary({ name, data, schema, desk, action, view, setView, onPickM
         {(data.owners || []).length > 0 && (
           <p className="dbx-insp__sub">Owners: {data.owners.join(', ')} (only they or an admin publish changes to it)</p>
         )}
-        <div className="dbx-insp__acts">
-          {action}
-          <BtnLink size="sm" to={askPath(name)}>Ask this model</BtnLink>
-        </div>
+        {/* Ask this model is the page's, in its header: one per screen. */}
+        {action && <div className="dbx-insp__acts">{action}</div>}
       </header>
       <div ref={measuresRef}>
-        <InspectorSection id="measures" title="Measures" aside={count((data.measures || []).length, 'measure')}>
+        {/* Their count is said once, in the line above. */}
+        <InspectorSection id="measures" title="Measures">
           <MeasuresTable model={name} measures={data.measures || []} target={null} answers={answers} onPick={onPickMeasure} />
         </InspectorSection>
       </div>
@@ -428,7 +427,7 @@ export default function Models({ pageKey = 'data' }) {
   const { data: reports } = useReports()
   const { data: pipelines } = usePipelines()
   const [params] = useSearchParams()
-  const open = pageKey === 'ask' ? askPath : dataPath
+  const open = pageKey === 'ask' ? askPath : modelPath
   // Old links: /models?m=<model>, /explore?model=<model>.
   const legacy = params.get('m') || params.get('model')
   if (legacy) return <Navigate to={open(legacy)} replace />

@@ -135,7 +135,7 @@ and Recharts for charts. In `web/ui/src/`:
 
 ```
 api.js               one React Query hook per endpoint
-nav.js               the four places, Data's tabs, their addresses, movedTo for old addresses
+nav.js               the four places, Data's folders, their addresses, movedTo for old addresses
 folders.js           the library's folders: order and a hue per folder
 components/
   Layout.jsx         sidebar, theme toggle, ⌘K
@@ -154,23 +154,26 @@ components never hard-code colours. The brand gradient is `--brand`.
 
 **Add a page.** The sidebar has four places, `PAGES` in `nav.js`: Reports
 `/`, Data `/data`, Review `/review` and Docs `/docs` (Ask, `/ask`, is a page
-inside Reports). Data's tabs are `DATA_TABS`: Flow, Sources, Transforms,
-Warehouse, Models.
+inside Reports). Data's folders are `DATA_FOLDERS`: Overview (`/data`
+itself), then Sources, Transforms, Warehouse and Models, nested under Data in
+the sidebar.
 
 1. Give the page a route in `App.jsx` under its place's address.
 2. Teach `whereAmI` in `nav.js` which place it belongs to, so the sidebar
    marks it current.
-3. Pass a model as a filter (`?model=<name>`), or on Data as the path
-   (`/data/<model>/<tab>`).
+3. Pass a model as a filter (`?model=<name>`), or on Data as the path of
+   its page (`modelPath`: `/data/models/<model>`). Under Data, wrap the page
+   in `DataFrame` (`pages/Data.jsx`): a folder's name as its h1, or a
+   breadcrumb for one thing's page.
 4. When an address moves, add it to `movedTo` so old links keep working.
 5. Use the hooks in `api.js` for data and the parts in `Shared.jsx` for the
    look.
 
-A model's Data page is `pages/Overview.jsx`: the line from
-`components/TheLine.jsx`, then the tabs in `TABS` (`model`, `transform`,
-`sources`, `runs`). Its Model tab and Data's Warehouse tab are one component,
-`components/DataBrowser.jsx`, fed by `modelSchema` or `warehouseSchema` in
-`components/modelGraph.js`.
+A model's page is `pages/Overview.jsx`: the line from
+`components/TheLine.jsx` (its one way to the model's sources, transform and
+reports), then the data browser. The model page and Data's Warehouse are one
+component, `components/DataBrowser.jsx`, fed by `modelSchema` or
+`warehouseSchema` in `components/modelGraph.js`.
 
 ## 5. Add an API route
 

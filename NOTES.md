@@ -4,6 +4,31 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-26 — The Data tab is a directory: one frame, one page per thing (DATA-A, DATA-B)
+
+The owner: "The data tab needs some work… it clicks all around, it doesn't make
+sense… I feel like we have a bunch of repeated things." A crawl of 60 addresses
+under /data in the served reference project found two navigation systems
+stacked (Data's five tabs; a model page's strip plus its own four tabs), the
+same Sources list at three addresses, a table's column profile in three places,
+a model's Runs tab that was History filtered, and eleven links that landed where
+the reader already was or dropped the `?model=` narrowing silently.
+
+Decided and built: Data is nested folders in the sidebar like the library
+(Data › Sources · Transforms · Warehouse · Models); every page under /data keeps
+that frame with a breadcrumb; one real address per thing (`/data/sources/<name>`,
+`/data/sources/<conn>/<table>`, `/data/transforms/<name>`, `/data/warehouse/<t>`,
+`/data/models/<m>`), every old one redirecting; no tab rows; no `?model=`
+narrowing (the board's lit path and the model's strip do that job); the board is
+**Overview**; a transform has a page of its own (the pipeline's Refresh data,
+Steps | Table | Code, the file beside its contract, what it read and how, what
+it wrote), which the model page's Transform, Sources and Runs tabs gave way to;
+the warehouse inspector is a short card with Open table. Files on disk stay
+split by kind: the confusion was in the app's addresses, and a by-model layout
+would force an owner on transforms and sources that can be shared. Next round
+(DATA-C): one wording for refresh state, checks and tiers, and the remaining
+duplicates on one screen.
+
 ## 2026-10-26 — Agent-driven data onboarding: locked logic, live data, a person sets up the connections
 
 Decided with the owner; the note is design/agent-data-onboarding.md. Six

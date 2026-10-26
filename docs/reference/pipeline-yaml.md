@@ -27,7 +27,7 @@ schedule: null
 | Key | Meaning |
 |---|---|
 | `name` | Required. Letters, digits and underscores; equals the file name. |
-| `transform` | Required. The name of `transforms/<x>.sql`, `.py` or `.ipynb` (an extension is allowed, a folder is not). The step runs it, then the `<x>.contract.yaml` beside it, and records the form (`sql`, `python`, `notebook`), shown by `tracebi run-pipeline <name> --status` and the model's Transform tab. See [[transform-sql]]. |
+| `transform` | Required. The name of `transforms/<x>.sql`, `.py` or `.ipynb` (an extension is allowed, a folder is not). The step runs it, then the `<x>.contract.yaml` beside it, and records the form (`sql`, `python`, `notebook`), shown by `tracebi run-pipeline <name> --status` and the transform's page in the app (Data › Transforms). See [[transform-sql]]. |
 | `models` | Required. The models the transform feeds. |
 | `reports` | `all` (default): every report in `reports/<model>/` of each model. Or a list of names (`<model>/<report>`). |
 | `schedule` | A five-field cron expression, or `null` for on demand only. A scheduled run does the whole chain: transform, then reports. |

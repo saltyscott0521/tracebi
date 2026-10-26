@@ -31,7 +31,7 @@ import {
   Moved, useModelLabel, useOpenReport, useNavMenu,
 } from '../components/Scope'
 import {
-  dataPath, folderOf, mayUse, movedTo, pipelineBelongsToModel, reportBelongsToModel, reportModels,
+  folderOf, mayUse, modelPath, movedTo, pipelineBelongsToModel, reportBelongsToModel, reportModels,
   reportPagePath,
 } from '../nav'
 import { scheduleWords } from '../schedule'
@@ -414,8 +414,9 @@ function TraceSteps({ manifest, focus, verdict, checkedAt, selection }) {
         <Step n={2} k="Model">
           {model ? (
             <>
-              <code>{model}</code>
-              {mayUse(role, 'data') && labelOf(model) !== model && <> (<Link to={dataPath(model, 'model')}>{labelOf(model)}</Link>)</>}
+              {/* The model is a link to its page for whoever sees Data. */}
+              {mayUse(role, 'data') ? <Link to={modelPath(model)}><code>{model}</code></Link> : <code>{model}</code>}
+              {labelOf(model) !== model && <> ({labelOf(model)})</>}
               {spec?.fact && <> · {spec.fact}{joined.length > 0 && <> ⋈ {joined.join(', ')}</>}</>}
             </>
           ) : 'Not recorded'}

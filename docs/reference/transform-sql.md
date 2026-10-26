@@ -24,7 +24,8 @@ every fingerprint equal, row order included.
 `tracebi run-transform <name>`, a pipeline's `transform` step and a schedule's
 `refresh` all find `transforms/<name>.sql`, `.py` or `.ipynb`, run it, and
 print `form: sql | python | notebook`. A pipeline run records the form, and
-`tracebi run-pipeline <name> --status` and the model's Transform tab show it.
+`tracebi run-pipeline <name> --status` and the transform's page in the app
+(Data › Transforms › `<name>`) show it.
 
 A SQL transform runs in six steps:
 

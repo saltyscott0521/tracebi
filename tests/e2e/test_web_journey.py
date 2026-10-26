@@ -1157,3 +1157,51 @@ def test_only_a_models_owners_or_an_admin_publish_it_but_anyone_drafts_it(served
     model_file.write_text(plain, encoding="utf-8")
     again = draft("bob", plain + "# bob again\n")
     assert c.post(f"{again}/publish", json={}, headers=as_("bob")).status_code == 200
+
+
+def test_a_transform_has_a_page_with_its_code_reads_and_tables(reference, monkeypatch):
+    """The reads behind /data/transforms/<name>: the listing names the
+    transform, its form and the pipeline that runs it; /source gives the file
+    and its contract, to be shown side by side; the warehouse says what the
+    run read (and how) and what it wrote. A file no pipeline runs and no
+    certificate names still answers. The journey drives the API in-process,
+    so the page itself is not opened here."""
+    from fastapi.testclient import TestClient
+
+    from tracebi.registry import registry
+    from tracebi.web import discovery
+    from tracebi.web.api.main import app
+
+    for attr in ("_connectors", "_models", "_report_factories",
+                 "_scheduled_factories", "_pipelines"):
+        monkeypatch.setattr(registry, attr, {})
+    monkeypatch.setattr(registry, "_default_model_name", None)
+    for attr, empty in (("_discovered", {}), ("_live_reports", {}),
+                        ("_failed_sources", {}), ("_live_models", set()),
+                        ("_live_pipelines", set()), ("_outcomes", [])):
+        monkeypatch.setattr(discovery, attr, empty)
+    code, out = run_cli("run-transform", "holdings_transform")
+    assert code == 0, out
+    discovery.rescan("reports", "models", "pipelines")
+    c = TestClient(app)
+
+    listed = {t["name"]: t for t in c.get("/api/transforms").json()}
+    holdings = listed["holdings_transform"]
+    assert holdings["form"] == "sql" and holdings["pipelines"] == ["portfolio_model"]
+    assert "fact_holdings" in holdings["tables"] and holdings["written_at"]
+    twin = listed["holdings_transform_pandas"]
+    assert twin["pipelines"] == [] and twin["tables"] == [] and twin["written_at"] is None
+
+    files = c.get("/api/transforms/holdings_transform/source").json()["files"]
+    assert [f["path"].split("/")[-1] for f in files] == [
+        "holdings_transform.sql", "holdings_transform.contract.yaml"]
+    assert c.get("/api/transforms/holdings_transform_pandas/source").status_code == 200
+    assert c.get("/api/transforms/no_such_transform/source").status_code == 404
+
+    writer = next(wr for w in c.get("/api/warehouse").json()["warehouses"]
+                  for wr in w["writers"] if wr["transform"] == "holdings_transform")
+    assert sorted(writer["tables"]) == sorted(holdings["tables"])
+    # With no CRM configured the committed snapshot stood in, read through
+    # the connector: the page names both.
+    crm = next(r for r in writer["read"] if r["ref"] == "crm.issuer_ratings")
+    assert crm["snapshot"] == "inputs/issuer_ratings.csv" and crm["method"] == "pandas"

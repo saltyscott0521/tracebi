@@ -5,7 +5,7 @@ import { useReportRun, useStartReportRun } from '../api'
 import { useToast } from './Shared'
 import { VERDICT_LABEL, needsAction, verdictOf } from '../verdict'
 import { count } from '../format'
-import { pipelineModels, dataPath, folderOf, historyPath, reportPagePath } from '../nav'
+import { pipelineModels, dataPath, folderOf, historyPath, reportPagePath, transformPath, warehouseTablePath } from '../nav'
 
 // What needs a person, from GET /api/desk, the pipelines list, the run store
 // (GET /api/runs) and the publish and code requests: review notes, builds
@@ -106,8 +106,11 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
     items.push({
       key: `sink-${s.table}`, kind: s.status === 'stale' ? 'Checks stale' : 'No checks',
       variant: s.status === 'stale' ? 'amber' : 'gray',
-      models: [], title: s.table, detail: SINK[s.status] || s.status, href: '/data',
-      action: 'Open data',
+      // A stale table names the transform whose checks it no longer matches;
+      // a table with none is opened itself.
+      models: [], title: s.table, detail: SINK[s.status] || s.status,
+      href: s.transform ? transformPath(s.transform) : warehouseTablePath(s.table),
+      action: s.transform ? 'Open transform' : 'Open table',
     })
   }
   // The newest run of each other target, when it did not succeed. A step or

@@ -21,16 +21,18 @@ facts:                                                                  # what i
 
 ## Find where a model's data is
 
-**In the app:** open **Data**, then the model. The header names the file that
-defines it and the warehouse it reads. The **Model** tab shows the model's
-tables, its star schema, and an inspector for the table you select: columns
-with nulls and ranges, sample rows, joins and measures. With nothing selected,
-the **Storage** fold says whether the warehouse file exists, how big it is,
-and which tables each connector serves.
+**In the app:** open **Data › Models**, then the model
+(`/data/models/<model>`). The header names the file that defines it, and its
+Semantic layer the warehouse it reads. The page shows the model's tables, its
+star schema, and an inspector for the table you select: its rows, who wrote
+it, its joins and measures, and **Open table** for its columns and rows. With
+nothing selected, the **Storage** fold says whether the warehouse file
+exists, how big it is, and which tables each connector serves.
 
-Two Data tabs cover the whole project. **Warehouse** (`/data/warehouse`) shows
-every table, grouped by the transform that wrote it. **Sources**
-(`/data/sources`) lists every connection and input file, and what reads each.
+Two Data folders cover the whole project. **Warehouse** (`/data/warehouse`)
+shows every table, grouped by the transform that wrote it, each with a page
+at `/data/warehouse/<table>`. **Sources** (`/data/sources`) lists every
+connection and input file, and what reads each (`/data/sources/<name>`).
 
 **In code:** `model.info()["connector_details"]` gives the same answer.
 `connector.storage()` says where a connector's data lives, never a credential.
@@ -48,7 +50,8 @@ pipelines/portfolio_model.yaml         rebuild its data, then those reports
 The pipeline file is a few lines: `transform: holdings_transform`,
 `models: [portfolio_model]`, `reports: all`. It runs the transform, then
 builds every report in `reports/portfolio_model/` with its trace. It appears on
-the model's Transform tab, where **Refresh data** runs it, and from the
+the transform's page (Data › Transforms › `holdings_transform`), where
+**Refresh data** runs it, and from the
 terminal as `tracebi run-pipeline portfolio_model`. If the transform fails,
 the reports are not rebuilt.
 

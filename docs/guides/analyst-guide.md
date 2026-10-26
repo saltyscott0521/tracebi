@@ -113,8 +113,8 @@ tracebi dev
 
 With no report name, the app opens on the Data page with the project feed.
 Any script in the project can post to it with `tracebi.workbench.show(df,
-note=...)`. The warehouse tables are on Data's Warehouse tab, and each model's
-schema on its Model tab.
+note=...)`. The warehouse tables are under **Data › Warehouse**, and each
+model's schema on its page under **Data › Models**.
 
 To keep a record of the session:
 

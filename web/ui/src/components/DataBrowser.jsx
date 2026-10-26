@@ -6,26 +6,25 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { tableExportUrl, useTable, useTableProfile, useTables } from '../api'
-import DataGrid, { cellText, copyText } from './DataGrid'
+import { useTable, useTables } from '../api'
 import { CONTRACT } from './Warehouse'
 import { useModelLabel } from './Scope'
 import { MAX_COLUMNS, NODE_W, layoutSchema, nodeHeight, typeKind } from './modelGraph'
 import { count } from '../format'
-import { dataPath, reportPagePath, tablePath } from '../nav'
-import { Btn, BtnLink, Chip, ErrorDetail, ExportCsv, SkeletonList, Time, useToast } from './Shared'
+import { modelPath, reportPagePath, tablePath, transformPath, warehouseTablePath } from '../nav'
+import { Btn, BtnLink, Chip, ErrorDetail, Time } from './Shared'
 
 // The data browser: a tree of tables, the schema drawn as a diagram, and an
 // inspector for what is selected, side by side, as a database tool lays them
 // out. One component for two scopes: a model's page (its tables, joins and
-// measures) and the Warehouse tab (every table, grouped by the transform that
-// wrote it, with every model's joins over them).
+// measures) and the Warehouse folder (every table, grouped by the transform
+// that wrote it, with every model's joins over them).
 //
 // It draws what the API states and counts nothing itself: a table's rows and
-// checks come from the table API (or the warehouse listing), its columns'
-// nulls and ranges from the profile, its sample from the rows route, each read
-// only when that table is selected. The selection is the address's (?table=,
-// ?group=), so a link opens on it and Back steps back.
+// checks come from the table API (or the warehouse listing), read only when
+// that table is selected; its columns, rows and profile are on its own page.
+// The selection is the address's (?table=, ?group=), so a link opens on it and
+// Back steps back.
 
 // ── Glyphs ────────────────────────────────────────────────────────────────────
 
@@ -488,15 +487,6 @@ function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
 
 // ── The inspector ─────────────────────────────────────────────────────────────
 
-const share = s => (s ? `${(s * 100).toFixed(s < 0.001 ? 2 : 1)}%` : '0%')
-
-function valuesOf(name, p) {
-  const col = { name, type: p.type }
-  if (p.min != null || p.max != null) return `${cellText(p.min, col).text} – ${cellText(p.max, col).text}`
-  if (p.top?.length) return p.top.slice(0, 3).map(x => String(x.value)).join(', ')
-  return ''
-}
-
 /** One section of the inspector: a sticky heading, open until folded. */
 function Section({ id, title, aside, children, open = true, onToggle }) {
   return (
@@ -509,50 +499,6 @@ function Section({ id, title, aside, children, open = true, onToggle }) {
       </h3>
       {open && <div className="dbx-sec__body">{children}</div>}
     </section>
-  )
-}
-
-function ColumnsSection({ t, focusColumn }) {
-  const { data, isLoading, error } = useTableProfile(t.connector, t.source)
-  const target = useRef(null)
-  useEffect(() => { target.current?.scrollIntoView({ block: 'center' }) }, [focusColumn, data])
-  return (
-    <Section id="columns" title="Columns" aside={t.columns.length ? count(t.columns.length, 'column') : null}>
-      {isLoading ? <SkeletonList rows={5} /> : error ? <ErrorDetail error={error} /> : (
-        <table className="dbx-cols">
-          <colgroup><col className="dbx-cols__c1" /><col className="dbx-cols__c2" /><col /></colgroup>
-          <thead className="dbx-cols__head"><tr><th scope="col">Column and type</th><th scope="col">Filled</th><th scope="col">Values</th></tr></thead>
-          <tbody>
-            {(t.columns.length ? t.columns : Object.entries(data?.columns || {}).map(([name, p]) => ({ name, type: p.type, flag: '' }))).map(c => {
-              const p = data?.columns?.[c.name]
-              const here = c.name === focusColumn
-              return (
-                <tr key={c.name} data-col={c.name} ref={here ? target : undefined} className={here ? 'is-on' : undefined}>
-                  <td>
-                    <span className="dbx-cols__name"><ColMark c={c} /><code title={c.name}>{c.name}</code></span>
-                    <span className="dbx-cols__ty">{c.type || p?.type}{c.flag === 'PK' || c.flag === 'FK' ? ` · ${c.flag}` : ''}</span>
-                  </td>
-                  <td>
-                    {p && (
-                      <span className="dbx-fill" title={`${share(p.null_share)} empty (${p.nulls.toLocaleString('en-US')} of ${count(data.rows, 'row')})`}>
-                        <i style={{ width: `${(1 - (p.null_share || 0)) * 100}%` }} />
-                      </span>
-                    )}
-                  </td>
-                  <td className="dbx-cols__v">
-                    {p && <>
-                      <span>{count(p.distinct, 'distinct', 'distinct')}{p.nulls > 0 && ` · ${share(p.null_share)} empty`}</span>
-                      {valuesOf(c.name, p) && <span title={valuesOf(c.name, p)}>{valuesOf(c.name, p)}</span>}
-                    </>}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
-      {data?.connected === false && <p className="dbx-quiet">{data.reason}</p>}
-    </Section>
   )
 }
 
@@ -590,7 +536,7 @@ function UsedBy({ info }) {
     <Section id="used" title="Used by">
       <p className="dbx-quiet">
         Read by {(info.read_by || []).length
-          ? info.read_by.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={dataPath(m)}>{labelOf(m)}</Link></Fragment>)
+          ? info.read_by.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={modelPath(m)}>{labelOf(m)}</Link></Fragment>)
           : 'no model'}
       </p>
       {(info.used_by || []).length > 0
@@ -600,13 +546,19 @@ function UsedBy({ info }) {
   )
 }
 
-function TableInspector({ t, edges, measures, focusColumn, onSelect, onClose }) {
-  const toast = useToast()
+// A table, selected: a short card. What it is, its checks, its shape, who
+// wrote it, its joins and who uses it; its columns, rows and profile are on
+// its own page, which Open table opens.
+function TableInspector({ t, edges, measures, onSelect, onClose }) {
   const { data: info, error } = useTable(t.connector, t.source)
   const c = info?.contract && (CONTRACT[info.contract.status] || CONTRACT.no_contract)
   const connected = info && info.connected !== false
   const view = connected && info.table_kind === 'view'
-  const sql = `SELECT * FROM ${t.source} LIMIT 100`
+  // A warehouse table's page is under Warehouse; it names its warehouse only
+  // when the browser does (two warehouses: ids are <warehouse>.<table>).
+  const page = info?.kind === 'warehouse'
+    ? warehouseTablePath(t.source, t.id === `${t.connector}.${t.source}` ? t.connector : '')
+    : tablePath(t.connector, t.source)
   return (
     <div className="dbx-insp__table" data-inspecting={t.id}>
       <header className="dbx-insp__head">
@@ -627,34 +579,20 @@ function TableInspector({ t, edges, measures, focusColumn, onSelect, onClose }) 
         </p>
         {connected && info.kind === 'warehouse' && (
           <p className="dbx-insp__sub">
-            {/* A view's line above already names the transform that defined it. */}
-            {view && info.view?.transform ? 'Recorded'
-              : <>Written by {info.written_by?.transform ? <code>{info.written_by.transform}</code> : 'no recorded transform'}</>}
+            Written by {info.written_by?.transform
+              ? <Link to={transformPath(info.written_by.transform)}><code>{info.written_by.transform}</code></Link>
+              : 'no recorded transform'}
             {info.written_by?.at && <> · <Time iso={info.written_by.at} /></>}
-            {' · '}read by {count((info.used_by || []).length, 'report')}
           </p>
         )}
         {info?.connected === false && <p className="dbx-quiet">Not connected here · {info.variable ? <>set <code>{info.variable}</code></> : info.reason}</p>}
         {error && <ErrorDetail error={error} />}
         <div className="dbx-insp__acts">
-          <BtnLink size="sm" to={tablePath(t.connector, t.source)}>Open rows</BtnLink>
-          <Btn size="sm" variant="outline" title={sql}
-               onClick={async () => { const ok = await copyText(sql); toast?.(ok ? 'Copied the SQL' : 'Could not copy', ok ? 'success' : 'error') }}>Copy SQL</Btn>
-          <ExportCsv href={tableExportUrl(t.connector, t.source)} title="Every row of the table" />
+          <BtnLink size="sm" to={page}>Open table</BtnLink>
         </div>
       </header>
-      {connected !== false && <ColumnsSection key={`c-${t.id}`} t={t} focusColumn={focusColumn} />}
       <JoinsSection id={t.id} edges={edges} onSelect={onSelect} />
       {measures}
-      {connected && (
-        <Section id="sample" title="Sample" aside={info.rows != null ? `first ${Math.min(20, info.rows)}` : null}>
-          <DataGrid key={t.id} source={t.connector} table={t.source} dense limit={20}
-                    columns={info.columns} label={`Rows of ${t.name}`} />
-          {info.rows != null && (
-            <p className="dbx-more"><Link to={tablePath(t.connector, t.source)}>Open all {count(info.rows, 'row')} →</Link></p>
-          )}
-        </Section>
-      )}
       <UsedBy info={connected ? info : null} />
     </div>
   )
@@ -684,7 +622,6 @@ export default function DataBrowser({ schema, storeKey, infoOf: given, summary, 
   const table = schema.tables.some(t => t.id === params.get('table')) ? params.get('table') : null
   const groupId = groupView && schema.groups.some(g => g.id === params.get('group')) ? params.get('group') : null
   const group = schema.groups.find(g => g.id === groupId) || null
-  const [focusColumn, setFocusColumn] = useState(null)
   const [query, setQuery] = useState('')
   const filterRef = useRef(null)
   const root = useRef(null)
@@ -707,9 +644,10 @@ export default function DataBrowser({ schema, storeKey, infoOf: given, summary, 
     Object.entries(patch).forEach(([k, v]) => (v == null ? next.delete(k) : next.set(k, v)))
     return next
   }), [setParams])
-  const selectTable = useCallback(id => { setFocusColumn(null); go({ table: id, group: null }) }, [go])
-  const selectColumn = (id, col) => { go({ table: id, group: null }); setFocusColumn(col) }
-  const selectGroup = id => { setFocusColumn(null); go({ group: id, table: null }) }
+  const selectTable = useCallback(id => { go({ table: id, group: null }) }, [go])
+  // A column, picked in the tree, selects its table (its profile is on the table's page).
+  const selectColumn = id => selectTable(id)
+  const selectGroup = id => { go({ group: id, table: null }) }
   const close = () => { setSheet(false); go({ table: null, group: null }) }
 
   // The panes take what is left of the screen under the page's header; each
@@ -742,7 +680,7 @@ export default function DataBrowser({ schema, storeKey, infoOf: given, summary, 
   const t = schema.tables.find(x => x.id === table)
   const inspecting = !!(t || group)
   const body = t
-    ? <TableInspector key={t.id} t={t} edges={schema.edges} measures={measuresOf?.(t)} focusColumn={focusColumn}
+    ? <TableInspector key={t.id} t={t} edges={schema.edges} measures={measuresOf?.(t)}
                       onSelect={selectTable} onClose={close} />
     : group ? (
       <div className="dbx-insp__group">

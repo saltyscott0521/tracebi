@@ -904,11 +904,11 @@ the build command.</p>
 <tbody>
 <tr>
 <td>Reports</td>
-<td><code>/</code> the library (<code>?model=&lt;m&gt;</code> narrows it); <code>/?folder=&lt;path&gt;</code> one folder (one the caller may not see is not found); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on); <code>/ask</code> a question of one model (<code>?model=&lt;m&gt;</code>), reached by <strong>Ask this model</strong> on a folder's page or a model's Data page</td>
+<td><code>/</code> the library (<code>?model=&lt;m&gt;</code> narrows it); <code>/?folder=&lt;path&gt;</code> one folder (one the caller may not see is not found); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on); <code>/ask</code> a question of one model (<code>?model=&lt;m&gt;</code>), reached by <strong>Ask this model</strong> on a folder's page or a model's page under Data</td>
 </tr>
 <tr>
 <td>Data</td>
-<td><code>/data</code> Flow (the board: sources → transforms → warehouse → models → reports; <code>?model=&lt;m&gt;</code> lights that model's path), <code>/data/sources</code>, <code>/data/transforms</code>, <code>/data/warehouse</code> (<code>?table=&lt;t&gt;</code>, <code>?group=&lt;writer&gt;</code>), <code>/data/models</code>; <code>?model=&lt;m&gt;</code> narrows Sources, Transforms and Warehouse. <code>/data/&lt;m&gt;</code> one model: its Model tab (<code>?table=&lt;t&gt;</code>, <code>?measure=&lt;name&gt;</code>, <code>?view=measures\|relationships\|storage\|code</code>), then <code>/transform</code>, <code>/sources</code>, <code>/runs</code>. <code>/data/tables/&lt;source&gt;/&lt;table&gt;</code> one table.</td>
+<td><code>/data</code> Overview (the board: sources → transforms → warehouse → models → reports; <code>?model=&lt;m&gt;</code> lights that model's path), then four folders, each a page per thing: <code>/data/sources</code> (<code>/data/sources/&lt;name&gt;</code> one connection, <code>/data/sources/inputs</code> the folder, <code>/data/sources/&lt;name&gt;/&lt;table&gt;</code> one source table, <code>/data/sources/inputs/&lt;path&gt;</code> one input file); <code>/data/transforms</code> (<code>/data/transforms/&lt;name&gt;</code> one transform); <code>/data/warehouse</code> (<code>?table=&lt;id&gt;</code>, <code>?group=&lt;id&gt;</code> select in its browser; <code>/data/warehouse/&lt;table&gt;</code> one table); <code>/data/models</code> (<code>/data/models/&lt;m&gt;</code> one model: <code>?table=&lt;t&gt;</code>, <code>?measure=&lt;name&gt;</code>, <code>?view=measures\|relationships\|storage\|code\|agent</code>). Nothing under <code>/data</code> is narrowed to a model.</td>
 </tr>
 <tr>
 <td>Review</td>
@@ -929,9 +929,15 @@ the build command.</p>
   API enforces the roles.</li>
 <li>Older addresses redirect, keeping their query (<code>movedTo</code>): <code>/m/&lt;m&gt;/…</code> to the
   same thing under Data, Ask, History or the library; <code>/models</code> to
-  <code>/data/models</code> (<code>/models?m=&lt;m&gt;</code> to <code>/data/&lt;m&gt;</code>); <code>/explore</code> to <code>/ask</code>;
+  <code>/data/models</code> (<code>/models?m=&lt;m&gt;</code> to <code>/data/models/&lt;m&gt;</code>); <code>/explore</code> to <code>/ask</code>;
   <code>/sources</code> and <code>/connectors</code> to <code>/data/sources</code>; <code>/map</code>, <code>/data/map</code> and
-  <code>/data?view=map</code> to <code>/data</code> (with <code>model=&lt;m&gt;</code>, to <code>/data/&lt;m&gt;</code>); <code>/handbook</code>
+  <code>/data?view=map</code> to <code>/data</code> (with <code>model=&lt;m&gt;</code>, to <code>/data/models/&lt;m&gt;</code>);
+  <code>/data/&lt;m&gt;</code> and <code>/data/&lt;m&gt;/model</code> to <code>/data/models/&lt;m&gt;</code>,
+  <code>/data/&lt;m&gt;/transform</code> to the transform its pipeline runs, <code>/data/&lt;m&gt;/sources</code>
+  to <code>/data/sources</code>, <code>/data/&lt;m&gt;/runs</code> to <code>/runs?model=&lt;m&gt;</code>;
+  <code>/data/tables/&lt;source&gt;/&lt;table&gt;</code> to the table's page under Sources or
+  Warehouse; <code>/data/sources?source=&lt;name&gt;</code> to <code>/data/sources/&lt;name&gt;</code>, and a
+  <code>?model=</code> on a Data folder is dropped; <code>/handbook</code>
   and <code>/handbook/&lt;page&gt;</code> to <code>/docs</code>; <code>/getting-started</code> to
   <code>/docs/get-started</code>; <code>/workflow</code> to
   <code>/docs/concepts/the-three-phase-workflow</code>; <code>/drafts</code> and <code>/review#drafts</code>

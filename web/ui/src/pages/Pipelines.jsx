@@ -12,7 +12,7 @@ import { useModelLabel } from '../components/Scope'
 import { ago } from '../when'
 import { count } from '../format'
 import { humanise } from '../ask'
-import { dataPath, pipelineBelongsToModel } from '../nav'
+import { pipelineBelongsToModel } from '../nav'
 import {
   Card, CardTitle, Badge, Chip, Spinner,
   Empty, Btn, Segmented, SkeletonCard, Time, useNarrow, useToast,
@@ -236,13 +236,13 @@ function LayerHistory({ pipeline, layer }) {
 }
 
 /**
- * One pipeline: its steps as a flow and as a list, its code, and its latest
- * run's output. Only an admin may run it (it writes the warehouse), so only an
- * admin sees a run button; with no sign-in everyone is admin. *primary*: this
- * is the pipeline that refreshes the model, and its run is the page's Refresh
- * data. Every run is on the page's own Runs tab (*model*'s), not a second one here.
+ * One pipeline: its steps as a diagram and as a table, its code, and its
+ * latest run's output. Only an admin may run it (it writes the warehouse), so
+ * only an admin sees a run button; with no sign-in everyone is admin.
+ * *primary*: this is the pipeline that refreshes the model, and its run is the
+ * page's Refresh data. Every run is in History, not a second list here.
  */
-export function PipelineDetail({ pipeline, layers, primary, label, model }) {
+export function PipelineDetail({ pipeline, layers, primary, label }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
@@ -252,11 +252,12 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
   const [picked, setPicked] = useState(null)
   const [logOpen, setLogOpen] = useState(false)
   const [openStep, setOpenStep] = useState(null)
-  // A phone fits the flow into 350px and its run buttons shrink past tapping;
-  // the list of steps keeps them full size.
+  // A phone fits the diagram into 350px and its run buttons shrink past
+  // tapping; the table of steps keeps them full size. One step needs no diagram.
+  const views = layers.length > 1 ? ['Steps', 'Table', 'Code'] : ['Table', 'Code']
   const [tab, setTab] = useState(() =>
-    window.matchMedia?.('(max-width: 768px)').matches ? 'Steps' : 'Flow')
-  // On a phone the Steps table drops Schedule and Runs after, so Status shows.
+    views.length < 3 || window.matchMedia?.('(max-width: 768px)').matches ? 'Table' : 'Steps')
+  // On a phone the table of steps drops Schedule and Runs after, so Status shows.
   const phone = useNarrow('(max-width: 640px)')
 
   if (!pipeline) {
@@ -313,9 +314,9 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
         <span title={pipeline}>{label || pipeline}</span>
       </CardTitle>
 
-      <Segmented options={['Flow', 'Steps', 'Code']} value={tab} onChange={setTab} label="What to show of the pipeline" />
+      <Segmented options={views} value={tab} onChange={setTab} label="What to show of the pipeline" />
 
-      {tab === 'Flow' && (
+      {tab === 'Steps' && (
         <div className="fade-in">
           <PipelineDag layers={layers} onRun={admin ? handleRunLayer : undefined} running={busy} />
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', marginTop: 10 }}>
@@ -324,7 +325,7 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
         </div>
       )}
 
-      {tab === 'Steps' && (
+      {tab === 'Table' && (
         // relative: the sr-only "Actions" header is clipped by this scroller, not left to widen the page
         <div style={{ overflowX: 'auto', position: 'relative' }}>
           <table className="tb-list">
@@ -407,7 +408,7 @@ export function PipelineDetail({ pipeline, layers, primary, label, model }) {
             {shown && <span className="wb-meta"> · started <Time iso={shown.started_at} /></span>}
           </summary>
           <RunLog pipeline={pipeline} runs={runs} runId={shownRun} onDone={finished} />
-          {model && <p className="wb-meta">Every run of this model is on its <Link to={dataPath(model, 'runs')}>Runs</Link> tab.</p>}
+          <p className="wb-meta">Every run is in <Link to={`/runs?target=${encodeURIComponent(pipeline)}`}>History</Link>.</p>
         </details>
       )}
     </Card>
@@ -437,7 +438,7 @@ export default function Pipelines({ model }) {
   return pipelines.map(p => (
     <div key={p.pipeline} style={{ marginBottom: 16 }}>
       {/* A pipeline has no label of its own: the model's is its name when it is the model's. */}
-      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary={p === own} model={model}
+      <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary={p === own}
                       label={p.model ? labelOf(p.model) : humanise(p.pipeline)} />
     </div>
   ))
