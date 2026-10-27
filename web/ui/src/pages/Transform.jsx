@@ -130,7 +130,7 @@ function Section({ id, title, children }) {
 // code and latest run; none says how to run the file by hand. A step with no
 // run here says what was written (*written*, the certificate's time) or built
 // (the newest build of a report on the pipeline's models) outside the app.
-function Run({ name, pipelines, written, start }) {
+function Run({ name, pipelines, written, start, onStart }) {
   const labelOf = useModelLabel()
   const { data: desk } = useDesk()
   const { data: reports } = useReports()
@@ -151,7 +151,7 @@ function Run({ name, pipelines, written, start }) {
           {/* A pipeline has no label of its own: the model's is its name when it is the model's. */}
           <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary
                           label={p.model ? labelOf(p.model) : humanise(p.pipeline)}
-                          written={written} built={builtFor(p)} start={p === pipelines[0] ? start : undefined} />
+                          written={written} built={builtFor(p)} start={p === pipelines[0] ? start : undefined} onStart={onStart} />
         </div>
       ))}
     </Section>
@@ -331,7 +331,7 @@ export default function Transform() {
         { key: 'steps', label: 'Steps', render: () => (
           <div className="tfpage">
             {state}
-            <Run name={name} pipelines={ran} written={t.written_at} start={admin && ran.length ? start : undefined} />
+            <Run name={name} pipelines={ran} written={t.written_at} start={admin && ran.length ? start : undefined} onStart={() => setStart(0)} />
           </div>
         ) },
         { key: 'code', label: 'Code', render: () => <Code name={name} note={t.note} /> },

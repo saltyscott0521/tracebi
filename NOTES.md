@@ -19,8 +19,9 @@ verdict, read from the last builds' manifests, filtered to what the caller may v
 with links only. The words are never "impact" or "blast radius". The report page
 takes `?figure=<id>` to open the trace on one figure.
 
-Known, not fixed here: Refresh data on a transform page's Overview tab starts no run
-(`PipelineDetail` marks the start count seen on mount); it works from the Steps tab.
+Refresh data on a transform page's Overview tab started no run (`PipelineDetail`
+marked the start count seen on mount); fixed with SWEEP: nothing is seen until it is
+acted on, and the page clears the start after.
 
 ## 2026-10-27 — The app draws its own charts; Recharts leaves the app (CHARTS)
 

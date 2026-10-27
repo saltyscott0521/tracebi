@@ -1084,10 +1084,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 expect(dash.locator(f'[data-figure="{v["id"]}"]')).to_contain_text(f'{v["label"]} · {v["text"]} · ')
             fail_on_browser_errors()
 
-            # A refresh moves on the map, observed only: started on the
-            # transform's Steps, its Lineage tab shows the run on the transform
-            # node, and once the run ends nothing moves.
-            page.goto(base + "/data/transforms/holdings_transform?tab=steps")
+            # A refresh moves on the map, observed only: started from the
+            # transform's Overview (the button is top right on every tab; the
+            # run unfolds on Steps), its Lineage tab shows the run on the
+            # transform node, and once the run ends nothing moves.
+            page.goto(base + "/data/transforms/holdings_transform")
             page.wait_for_load_state("networkidle")
             page.get_by_role("button", name="Refresh data").click()
             page.get_by_role("tab", name="Lineage").click()
