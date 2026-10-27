@@ -4,6 +4,20 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-27 — Dashboards run on TanStack Redact (REDACT-DASH)
+
+The owner's intent was the dashboards, not the app: every built `app.jsx` page
+inlines the React lane's runtime, so the runtime's size is paid per report file. The
+kit's React is now Redact (`_react_src/build.mjs` aliases react, react-dom and the JSX
+runtime to `@tanstack/redact`): 359 kB → 290 kB inlined, and the three shipped
+dashboards render identically with no browser error. The one thing that does not
+survive is Recharts: a page that renders any Recharts chart, even a bare `<Bar>`,
+locks the browser under Redact (its store never settles under synchronous
+rendering), while a page that merely imports it is fine. So the build keeps React 18
+as a second runtime (`react18.min.js`) and `libs_for` picks it for a page whose
+imports include `recharts`. The kit's contract is unchanged; nothing an author
+writes changes. Should Recharts leave the kit one day, `react18.min.js` goes with it.
+
 ## 2026-10-27 — Control tower round two: runs move on the map; Depends on this (TOWER-2)
 
 Two things the console shows now, both observation only. A pipeline run going now

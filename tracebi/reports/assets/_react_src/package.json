@@ -3,9 +3,12 @@
   "private": true,
   "description": "Sources for the vendored React lane bundles (react.min.js, recharts.min.js, tailwind.min.js, lucide-icons.json). See REACT_NOTICE.md.",
   "type": "module",
-  "scripts": { "build": "node build.mjs" },
+  "scripts": {
+    "build": "node build.mjs"
+  },
   "devDependencies": {
     "@tailwindcss/browser": "4.1.11",
+    "@tanstack/redact": "^0.2.1",
     "esbuild": "0.24.2",
     "lucide": "0.468.0",
     "react": "18.3.1",

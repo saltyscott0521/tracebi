@@ -115,3 +115,11 @@ def test_a_style_css_token_gives_way_to_the_dark_ground(browser, tmp_path):
     assert light.evaluate(
         "() => getComputedStyle(document.documentElement).getPropertyValue('--tb-ink').trim()"
     ) == "#10201c"
+
+
+def test_a_recharts_page_ships_react_18_and_every_other_page_redact():
+    """A Recharts chart locks the page under Redact, so an app.jsx that imports
+    recharts must ship React 18, and no other page should pay for it."""
+    from tracebi.reports.app_lane import libs_for
+    assert libs_for({"react": ["useState"], "tracebi": ["Kpi"]}) == ["tailwind", "react"]
+    assert libs_for({"react": ["useState"], "recharts": ["BarChart"]}) == ["tailwind", "react18", "recharts"]

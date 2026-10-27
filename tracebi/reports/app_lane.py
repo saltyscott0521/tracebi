@@ -452,8 +452,13 @@ def app_blocks_html(source: str, icons: dict) -> str:
 
 
 def libs_for(imports: dict[str, list[str]]) -> list[str]:
-    """The vendored bundles a page needs, in load order."""
-    libs = ["tailwind", "react"]
+    """The vendored bundles a page needs, in load order.
+
+    The kit's runtime is TanStack Redact (``react``). A page that imports
+    ``recharts`` ships React 18 (``react18``) instead: a Recharts chart locks
+    the page under Redact (its store never settles), and Recharts shares the
+    one React the page loaded.
+    """
     if "recharts" in imports:
-        libs.append("recharts")
-    return libs
+        return ["tailwind", "react18", "recharts"]
+    return ["tailwind", "react"]

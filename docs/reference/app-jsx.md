@@ -39,7 +39,7 @@ tracebi report build sales_model/revenue_app
 
 | Module | What it is |
 |---|---|
-| `react` | React 18: hooks and components (`useState`, `useMemo`, …) |
+| `react` | React's hooks and components (`useState`, `useMemo`, …). The page runs on TanStack Redact, a drop-in React runtime with the same API; a page that imports `recharts` runs on React 18 instead |
 | `react-dom` | `createPortal`, `flushSync` |
 | `recharts` | Recharts 3, for charts of your own |
 | `lucide-react` | Lucide icons, imported by name (`import { TrendingUp } from "lucide-react"`); only those are embedded |
