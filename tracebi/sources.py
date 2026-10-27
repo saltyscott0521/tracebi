@@ -412,7 +412,7 @@ def _writers(tables: list[dict], certs: dict, owners: dict[str, str]) -> list[di
     return list(out.values())
 
 
-def transforms_listing(registry) -> list[dict]:
+def transforms_listing(registry, whs: Optional[list[dict]] = None) -> list[dict]:
     """Every transform file in ``transforms/``, as Data's Transforms tab lists
     it: its form, the file declaring its checks (the ``.contract.yaml`` beside
     it, or the file itself when it holds a ``with contract(...)`` block) and
@@ -420,7 +420,9 @@ def transforms_listing(registry) -> list[dict]:
     refresh, and what a certificate says it wrote: the tables, the models
     that read them, and when. A transform no certificate names (one that has
     not run here, or the pandas twin of a SQL transform) wrote nothing as far
-    as anything recorded knows: ``tables`` is empty, ``written_at`` null."""
+    as anything recorded knows: ``tables`` is empty, ``written_at`` null.
+    *whs* is :func:`warehouses` when the caller already read it (the project
+    graph does), so the warehouse is not opened twice."""
     from tracebi.contracts import read_contract_file
     from tracebi.transforms import FORMS, contract_file, transform_form, transforms_dir
 
@@ -441,7 +443,7 @@ def transforms_listing(registry) -> list[dict]:
             (name, named or ([model] if isinstance(model, str) and model else [])))
 
     wrote: dict[str, dict] = {}   # transform → {tables, models, at, note}
-    for w in warehouses(registry):
+    for w in warehouses(registry) if whs is None else whs:
         for writer in w["writers"]:
             if not writer["transform"]:
                 continue

@@ -25,7 +25,23 @@ TraceBi project. This SOP ends where [[sop-authoring]] begins.
   the sink satisfied its contract when it ran. Stamped queries and `verify`
   cover the model onward; they say nothing about the transform's logic.
 
-## 1. Find the connection
+## 1. See the project, then find the connection
+
+Your first call on a project you have not seen:
+
+```json
+{ "tool": "describe_project", "arguments": {} }
+```
+
+It returns the project as one graph, the same one the app's Data overview
+draws: every source (connections, the files under `inputs/`, a connection's
+tables), transform, warehouse table, model and report, with `edges` saying
+what feeds what. Each node's `passport.agents` says whether you may read it
+(`ok` for a source table on the allowlist), and `gap` marks what is wired on
+one side only, such as a file no transform reads or a table no model reads.
+It tells you what already exists, so you build only what is missing.
+
+Then the connections themselves:
 
 ```json
 { "tool": "list_connections", "arguments": {} }

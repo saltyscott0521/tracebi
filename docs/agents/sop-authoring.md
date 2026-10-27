@@ -27,7 +27,7 @@ from it.
 
 ### The tools
 
-The gateway has twenty-seven tools and three prompts (`author_report`,
+The gateway has twenty-eight tools and three prompts (`author_report`,
 `answer_question`, `address_pins`) that run this procedure for you. The MCP
 `tools/list` call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with `build_report`. Over a
@@ -54,6 +54,7 @@ hosted connection, the draft tools are how a package reaches the server
 | `model_impact` | For a model draft: each published report that reads the model, unchanged, moves or breaks |
 | `publish_draft` | Publish a draft, or open a publish request where the folder asks for one |
 | `list_publish_requests` · `decide_publish_request` | Requests into folders where you hold Publish; approve or reject one |
+| `describe_project` | The project as a graph: every source, transform, table, model and report, what feeds what, and what you may read |
 | `list_connections` | The project's connections, each with the tables a person allowed agents to read |
 | `list_source_tables` | One connection's allowed tables, with columns and row estimates |
 | `describe_source_table` | One allowed table's columns, profile and a sample of rows (`sample`, at most 500) |

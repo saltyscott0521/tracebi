@@ -47,7 +47,7 @@ from tracebi.web.api.errors import error_detail
 
 from tracebi.web.api.routers import (
     connectors, models, reports, pipelines, docs, verify, desk, status, runs, drafts, folders,
-    code_requests, library, sources, tables, credentials,
+    code_requests, library, sources, tables, credentials, graph,
 )
 from tracebi.web.api.auth import install_if_configured as _install_auth
 from tracebi.web.api.sso import SessionAuthMiddleware as _SessionAuthMiddleware
@@ -216,6 +216,7 @@ app.include_router(folders.router,     prefix="/api")
 app.include_router(sources.router,     prefix="/api")   # /api/inputs, /api/warehouse
 app.include_router(tables.router,      prefix="/api")   # /api/tables/{source}/{table}: one read-only table API
 app.include_router(credentials.router, prefix="/api")  # /api/credentials, /api/connectors/{name}/test
+app.include_router(graph.router,       prefix="/api")   # /api/graph: the project as one graph
 
 # The agent gateway, served by this app at /mcp when TRACEBI_MCP_TOKEN is set,
 # or when TRACEBI_OIDC_ISSUER is set (a sign-in per person, TraceBi's own OAuth

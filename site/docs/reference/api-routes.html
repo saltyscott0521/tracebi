@@ -852,8 +852,40 @@ model needed (<a href="../concepts/trace.html">The trace</a>).</p>
 <td>viewer</td>
 <td><code>{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}</code>, one per warehouse connector; <code>writers</code> lists what each transform's run read, once per transform. Read-only; framework tables are never listed.</td>
 </tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/graph</code></td>
+<td>viewer</td>
+<td>The project as one graph, what Data's overview draws and the gateway's <code>describe_project</code> answers: <code>{summary, nodes, edges}</code>. Reports in a folder the caller cannot view are left out with their edges.</td>
+</tr>
 </tbody>
 </table>
+<p><code>/api/graph</code> is composed from the routes above, nothing new: each node is
+<code>{id, kind, lane, parent, label, name, chip, sub, open, passport, gap}</code>.
+<code>id</code> is <code>kind:name</code> (<code>source:bank</code>, <code>file:inputs/holdings.csv</code>,
+<code>source_table:bank.accounts</code>, <code>transform:holdings_transform</code>,
+<code>group:holdings_transform</code>, <code>table:warehouse.fact_holdings</code>,
+<code>model:portfolio_model</code>, <code>report:portfolio_model/portfolio_book</code>); <code>lane</code> is
+0 sources, 1 transforms, 2 the warehouse, 3 models, 4 reports; <code>parent</code> puts a
+source table in its connection and a warehouse table in its writer's group;
+<code>open</code> is the app page that shows it. The <code>passport</code> says where it comes from
+(<code>origin</code>, never a credential: a connection set by a variable is named by the
+variable), who reads it (<code>readers</code>) and what wrote it (<code>writers</code>), when it last
+moved (<code>moved: {at, how: written|built|changed|defined|snapshot|never}</code>), what
+its checks or its last build's verdict say (<code>trust: {state: ok|warn|bad|none,
+text}</code>, in the app's words; a report's verdict is the one the desk last
+computed, never re-run here, else <code>Not checked</code>), and what an agent may read of
+it (<code>agents: {state: ok|none, text}</code>); a connection or file also carries
+<code>reach: {connected, variable}</code>. <code>rows</code> is present only when it is a number.
+<code>gap: {reason}</code> marks a node wired on one side only: a file no transform
+reads, a transform no pipeline runs and no certificate names, a warehouse
+table no model reads, a model no report reads. <code>edges</code> are <code>[from, to]</code> pairs
+from four facts only: a transform's file names the source (<code>read_by</code>), the
+sink certificate names the tables it wrote (to the writer's group), a model
+reads a group's tables, a report's bindings read the model. <code>summary</code> counts
+each kind in the flow (gaps apart, in <code>gaps</code>), stale tables, groups whose
+checks passed (<code>checks: {satisfied, of}</code>), and what agents may read
+(<code>agents: {source_tables, models, reports}</code>).</p>
 <h2 id="docs-dev-and-the-gateway">Docs, dev and the gateway</h2>
 <table>
 <thead>

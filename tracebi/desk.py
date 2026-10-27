@@ -408,6 +408,23 @@ def verdict(manifest_path: str, models: Mapping[str, Any],
     return {**entry, "cached": False}
 
 
+def cached_verdict(manifest_path: str, models: Mapping[str, Any]) -> Optional[dict]:
+    """The verdict :func:`verdict` keeps for *manifest_path*, while nothing it
+    was computed from has changed, or None. Never re-runs anything: a reader
+    that must stay fast (the project graph) says "not checked" instead."""
+    path = os.path.abspath(manifest_path)
+    try:
+        before = os.stat(path)
+        with open(path, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        key = verdict_key(path, before, manifest, models) if isinstance(manifest, dict) else None
+    except (OSError, ValueError):
+        return None
+    with _verdict_lock:
+        hit = _verdict_cache.get(path)
+    return {**hit[1], "cached": True} if key is not None and hit is not None and hit[0] == key else None
+
+
 def warm(manifest_path: str, models: Mapping[str, Any]) -> None:
     """Re-run and keep the verdict of a build just written, so the next desk
     read is instant. Never raises: a failure to warm never fails a build."""

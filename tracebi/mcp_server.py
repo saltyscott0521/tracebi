@@ -1634,6 +1634,33 @@ def gateway_decide_publish_request(request_id: str, approve: bool,
 # What an agent makes of them is a proposal: a transform stored as a code
 # request, which runs only once an admin approves it.
 
+class ProjectResult(TypedDict, total=False):
+    summary: Optional[dict]
+    nodes: Optional[list[dict]]
+    edges: Optional[list[list[str]]]
+
+
+def gateway_describe_project() -> ProjectResult:
+    """The project as one graph, as the app's map draws it (``GET
+    /api/graph``): every source, transform, warehouse table, model and
+    report, the facts that wire them, and what an agent may read of each."""
+    import sys
+
+    from tracebi.graph import project_graph
+    from tracebi.registry import registry
+
+    if "tracebi.web.api.main" not in sys.modules:
+        # No web app in this process (the stdio gateway), so no live
+        # discovery fills the registry: bring it in line with the project on
+        # disk, as the server's own scan does.
+        from tracebi.connections import connections_dir
+        from tracebi.web.discovery import rescan_library
+
+        rescan_library(str(_models_dir()), os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"),
+                       str(connections_dir()))
+    return project_graph(registry)
+
+
 class SourcesResult(TypedDict, total=False):
     ok: Optional[bool]
     error: Optional[str]
@@ -1985,7 +2012,8 @@ def build_server(token: Optional[str] = None, oauth=None):
             "report or declarative model remotely: start_draft, "
             "write_draft_file, preview_draft (give the person its url), "
             "then publish_draft once they agree. With no model yet, start "
-            "from the data: list_connections, list_source_tables, "
+            "from the data: describe_project (the whole project as a "
+            "graph), list_connections, list_source_tables, "
             "describe_source_table, then propose_transform (an admin "
             "approves it and it runs once) before drafting the model."
         ),
@@ -2346,6 +2374,23 @@ def build_server(token: Optional[str] = None, oauth=None):
                                idempotentHint=False, openWorldHint=False)
     _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=True,
                               idempotentHint=True, openWorldHint=True)
+    _tool(
+        name="describe_project", title="Describe the project", annotations=_READ_WAREHOUSE,
+        structured_output=True,
+        description=(
+            "The project as a graph: every source, transform, table, model "
+            "and report, what feeds what, and what you may read. Call it "
+            "first on a project you have not seen. nodes carry id (kind:name), "
+            "kind, lane (0 sources … 4 reports), label, sub, open (the app "
+            "page) and a passport: origin, readers, writers, moved {at, how}, "
+            "trust {state, text}, agents {state, text}; gap names a node "
+            "wired on one side only. edges are [from, to] ids, facts never "
+            "guesses: a transform's file names the source, the sink "
+            "certificate names the tables it wrote, a model reads them, a "
+            "report's bindings read the model. A source table you may read "
+            "has agents.state ok; read it with describe_source_table."
+        ),
+    )(gateway_describe_project)
     _tool(
         name="list_connections", title="List connections", annotations=_READ,
         structured_output=True,
