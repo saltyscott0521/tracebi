@@ -4,6 +4,28 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-27 — The Data workshop is a control tower: one graph, the map, a passport per piece (GRAPH, MAP)
+
+The owner, after the Data restructure: "still not where it needs to be… the
+details for sources not consistent… question why we have it set up this way;
+we got here by pivoting from human code to agent code." `design/control-tower.md`
+holds the first-principles pass. The root cause of every inconsistency: the
+workshop showed a human's repo layout (five folders, a source as its connection
+file) when a person running an agent-built project needs the project as a graph:
+what feeds what, how fresh, how trusted, what agents may touch, where the gaps are.
+
+Built: `tracebi/graph.py` (`project_graph`: nodes with a passport, the board's
+four facts as edges, gaps; `GET /api/graph`; the gateway's `describe_project`,
+the agent's first call: one graph, two readers). The map is Data's Overview,
+read through five lenses, Coverage first; a passport on every piece with its
+actions; sources are tables, the connection behind Setup…; a source table's
+page says who reads it and what it became.
+
+Decided by the owner the same day: **the pipeline stays the unit of work**. A
+graph edge is a dependency, never a trigger; nothing rebuilds because something
+upstream moved. The map's blast radius (next round) is read-only. Open: SQL
+column lineage in the certificate (amends the manifesto; round 3).
+
 ## 2026-10-26 — The Data tab is a directory: one frame, one page per thing (DATA-A, DATA-B)
 
 The owner: "The data tab needs some work… it clicks all around, it doesn't make
