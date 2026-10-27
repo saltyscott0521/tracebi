@@ -104,7 +104,7 @@ while it runs:</p>
 <tr>
 <td><code>connections/</code></td>
 <td><code>&lt;name&gt;.yaml</code>: a type and its fields, secrets as <code>${NAME}</code> (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>)</td>
-<td><strong>Data → Sources</strong>, and a card in the board's first lane. Secrets resolve only when used.</td>
+<td><strong>Data → Sources</strong>, and a card in the map's first lane. Secrets resolve only when used.</td>
 </tr>
 <tr>
 <td><code>transforms/</code></td>
@@ -253,8 +253,9 @@ components never hard-code colours. The brand gradient is <code>--brand</code>.<
 <p><strong>Add a page.</strong> The sidebar has four places, <code>PAGES</code> in <code>nav.js</code>: Reports
 <code>/</code>, Data <code>/data</code>, Review <code>/review</code> and Docs <code>/docs</code> (Ask, <code>/ask</code>, is a page
 inside Reports). Data's folders are <code>DATA_FOLDERS</code>: Overview (<code>/data</code>
-itself), then Sources, Transforms, Warehouse and Models, nested under Data in
-the sidebar.</p>
+itself, the map, <code>pages/Map.jsx</code> over <code>GET /api/graph</code>), then Sources,
+Transforms, Warehouse and Models, nested under Data in the sidebar as jump
+points (<code>jumpPath</code>: the map with that lane focused, then the list).</p>
 <ol>
 <li>Give the page a route in <code>App.jsx</code> under its place's address.</li>
 <li>Teach <code>whereAmI</code> in <code>nav.js</code> which place it belongs to, so the sidebar

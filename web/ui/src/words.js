@@ -84,5 +84,21 @@ export function reachWords(reach) {
   return { connected: false, short: 'Not connected here', text: why ? `Not connected here · ${why}` : 'Not connected here' }
 }
 
+const MOVED = { written: 'Written', built: 'Built', changed: 'Changed', defined: 'Defined', snapshot: 'Snapshot read' }
+
+/**
+ * When a piece of the project last moved (the graph's passport `moved`:
+ * `{at, how}`, how one of written · built · changed · defined · snapshot ·
+ * never), as the map's Last moved row says it: "Written 2 h ago", "Built Oct
+ * 23 · 11:48". *kind* is the node's: a report never built says so, anything
+ * else that never moved here is "Not refreshed yet".
+ */
+export function movedWords(moved, kind) {
+  if (!moved || moved.how === 'never') return kind === 'report' ? 'Never built' : 'Not refreshed yet'
+  const word = MOVED[moved.how] || moved.how
+  const when = ago(moved.at)
+  return when ? `${word} ${when}` : word
+}
+
 /** A transform's form (the API's sql | python | notebook) as its chip says it. */
 export const FORM_LABEL = { sql: 'SQL', python: 'Python', notebook: 'Notebook' }

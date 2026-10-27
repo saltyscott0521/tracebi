@@ -1,17 +1,19 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
-  useConnectors, useConnectorTables, useCredentials, useInputs, useMe,
-  useSaveConnection, useTestConnection,
+  useConnectors, useConnectorTables, useCredentials, useGraph, useInputs, useMe,
+  useSaveConnection, useTestConnection, useWarehouses,
 } from '../api'
 import { StorageLine, sourceKind, fmtBytes } from '../components/Storage'
 import { useModelLabel } from '../components/Scope'
 import CodeView from '../components/CodeView'
 import Credentials from '../components/Credentials'
 import ConnectionSheet from '../components/ConnectionForm'
+import { PassportRows, StateChip } from '../components/Passport'
 import { stamp } from '../when'
 import { count } from '../format'
-import { reachWords } from '../words'
+import { movedWords, reachWords } from '../words'
 import { modelPath, sourcePath, sourceTablePath, sourcesPath, transformPath, warehousePath } from '../nav'
 import {
   Card, CardTitle, Badge, Btn, ErrorDetail, Spinner,
@@ -65,9 +67,9 @@ function ReadBy({ c }) {
 }
 
 // A table's row count as the table API counts it: exact, the catalog's
-// estimate (~), or not counted where neither is cheap.
+// estimate (~), or blank where neither is cheap.
 function rowsText(t) {
-  if (t.rows == null) return 'not counted'
+  if (t.rows == null) return ''
   return `${t.rows_exact === false ? '~' : ''}${Number(t.rows).toLocaleString('en-US')}`
 }
 
@@ -244,8 +246,102 @@ function SourceName({ c }) {
     : <code className="src-id src-id--only">{c.name}</code>
 }
 
-function ConnectorDetail({ c, write, onEdit, onDeleted, justSaved }) {
+// Where a source comes from, when the graph has not said: its file, or its
+// kind and the variable that sets it (the name, never the value).
+function originOf(c) {
+  const st = c.storage || {}
+  if (st.kind === 'file' || st.kind === 'directory') return st.where
+  return st.variable ? `${sourceKind(c)} · set by ${st.variable}` : st.where || sourceKind(c)
+}
+
+// A source's passport rows: the graph's node when it is served, else the
+// same facts read from the listings the page already has.
+function SourceRows({ c, node }) {
+  const { data: inputs } = useInputs()
+  const { data: warehouses } = useWarehouses()
+  const { data: tables } = useConnectorTables(c.name)
+  const p = node?.passport
+  const file = (inputs?.files || []).find(f => f.path === c.storage?.where)
+  const snapshot = (warehouses?.warehouses || []).some(w => (w.writers || []).some(wr =>
+    wr.read.some(r => r.connection === c.name && r.snapshot)))
+  const listed = tables?.connected ? tables.tables || [] : null
+  const ticked = listed ? listed.filter(t => t.agents).length : (c.agent_tables || []).length
+  const agents = p?.agents || (listed
+    ? { state: ticked ? 'ok' : 'none', text: `${ticked} of ${count(listed.length, 'table')}` }
+    : { state: ticked ? 'ok' : 'none', text: ticked ? count(ticked, 'table') : 'No tables ticked' })
+  return (
+    <PassportRows rows={[
+      ['From', <code>{p?.origin || originOf(c)}</code>],
+      ['Read by', <ReadBy c={c} />],
+      ['Last moved', p ? movedWords(p.moved, 'source') : file ? movedWords({ how: 'changed', at: file.modified }) : null],
+      ['Trust', <StateChip state={p?.trust || (snapshot
+        ? { state: 'warn', text: 'Read from snapshot' } : { state: 'none', text: 'Not a sink' })} />],
+      ['Agents', <StateChip state={agents} />],
+    ]} />
+  )
+}
+
+/**
+ * A source's Setup sheet: everything about reaching it, and nothing about
+ * what it holds. Its fields (the url, the variable), whether it connects
+ * here, the credentials it names and where they are set, where its data
+ * lives; for a signed-in admin Test, Edit… (the connection sheet, where Save
+ * password lives) and Delete…; for anyone else, the command that does it on
+ * the server. The source's page and the map's passport open it.
+ */
+export function SetupSheet({ c, onClose, onSaved, onDeleted }) {
+  const write = useConnectionWrite()
+  const [editing, setEditing] = useState(false)
   const [code, setCode] = useState(false)
+  const panel = useRef(null)
+  const close = useRef(onClose)
+  close.current = onClose
+  const declared = !!c.connection_type
+  useEffect(() => {
+    if (editing) return undefined
+    const onKey = e => { if (e.key === 'Escape') close.current() }
+    window.addEventListener('keydown', onKey)
+    panel.current?.focus()
+    return () => window.removeEventListener('keydown', onKey)
+  }, [editing])
+  if (editing) {
+    return <ConnectionSheet editing={c} onClose={onClose} onSaved={name => (onSaved ? onSaved(name) : onClose())} />
+  }
+  return createPortal(
+    <div className="conn-sheet">
+      <div className="conn-sheet__scrim" onClick={onClose} aria-hidden="true" />
+      <div className="conn-sheet__panel fade-in" role="dialog" aria-modal="true" aria-labelledby="conn-setup-title"
+        tabIndex={-1} ref={panel}>
+        <header className="conn-sheet__head">
+          <h2 id="conn-setup-title">Setup · {c.label || c.name}</h2>
+          <button type="button" className="dbx-close" onClick={onClose} aria-label="Close">×</button>
+        </header>
+        <p className="conn-sheet__lede">
+          {declared ? <>Kept in <code>{c.declared_in}</code>.</> : 'Built in code: shown here, never edited.'}
+        </p>
+        <Section label="Connection"><Fields c={c} /><Reach name={c.name} /><Credentials connection={c} /></Section>
+        <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
+        {declared && write.can && (
+          <ConnectionActions c={c} onEdit={() => setEditing(true)} onDeleted={() => { onClose(); onDeleted?.() }} />
+        )}
+        {!write.can && (
+          <p className="src-quiet">
+            {write.why}: <code>tracebi connect {c.name} --kind {c.connection_type || 'postgres'} --store secret</code>
+          </p>
+        )}
+        <Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>
+        {code && <div style={{ marginTop: 12 }}><CodeView kind="connectors" name={c.name} /></div>}
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+// One source, as the map's passport says it: the rows first, then what it
+// holds (each table, and which agents may read), then Setup… for how it is
+// reached, which is an admin's concern once and not what the page is for.
+function ConnectorDetail({ c, write, onSetup, justSaved }) {
+  const { data: graph } = useGraph()
   // The sheet's last step: a connection just saved opens on its tables, where
   // the person ticks what agents may read.
   const tables = useRef(null)
@@ -254,75 +350,92 @@ function ConnectorDetail({ c, write, onEdit, onDeleted, justSaved }) {
   }, [justSaved])
   if (!c) return (
     <Card>
-      <Empty message="Select a source to see where its data is kept." />
+      <Empty message="Select a source to see what it holds." />
     </Card>
   )
-  // A connections/<name>.yaml, which the app may change; a connector built
-  // in code is shown, never edited.
   const declared = !!c.connection_type
+  const node = (graph?.nodes || []).find(n => n.id === `source:${c.name}`)
   return (
     <Card className="fade-in">
-      <CardTitle action={(
-        <Btn size="sm" variant="outline" onClick={() => setCode(v => !v)}>{code ? 'Hide code' : '</> View code'}</Btn>
-      )}><SourceName c={c} /></CardTitle>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+      <CardTitle action={<Btn size="sm" variant="outline" onClick={onSetup}>Setup…</Btn>}><SourceName c={c} /></CardTitle>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         <Badge variant="gray" title={c.type}>{sourceKind(c)}</Badge>
       </div>
-      {declared && write.can && <ConnectionActions c={c} onEdit={onEdit} onDeleted={onDeleted} />}
-      <Section label="Where the data lives"><StorageLine storage={c.storage} /></Section>
-      <Section label="Connection"><Fields c={c} /><Reach name={c.name} /><Credentials connection={c} /></Section>
-      <Section label="Read by"><ReadBy c={c} /></Section>
+      <SourceRows c={c} node={node} />
       <Section label="Tables" sectionRef={tables}>
         {justSaved && declared && (
           <p className="src-quiet conn-saved" role="status">Saved. Tick the tables agents may read, then Save.</p>
         )}
         <Tables name={c.name} declared={declared} write={write} />
       </Section>
-      {code && <div style={{ marginBottom: 18 }}><CodeView kind="connectors" name={c.name} /></div>}
     </Card>
   )
 }
 
-// One file under inputs/: its name (a data file's opens its table page), size,
-// when it changed and which transforms name it.
-function InputFile({ f }) {
+// One file under inputs/ as a row: its name (a data file's opens its table
+// page), which transforms name it, its size and when it changed.
+function InputRow({ f }) {
   const name = f.path.replace(/^inputs\//, '')
   return (
-    <li data-file={name}>
-      {f.table ? <Link to={sourceTablePath(INPUTS, name)}><code>{name}</code></Link> : <code>{name}</code>}
-      <span className="wb-meta">{fmtBytes(f.size)} · changed {stamp(f.modified)}</span>
-      <span className="src-files__by">
+    <tr data-file={name}>
+      <td>{f.table ? <Link to={sourceTablePath(INPUTS, name)}><code>{name}</code></Link> : <code>{name}</code>}</td>
+      <td className="src-files__by">
         {f.read_by.length
-          ? <>Read by {f.read_by.map((t, i) => <span key={t}>{i > 0 && ', '}<TransformName name={t} /></span>)}</>
+          ? f.read_by.map((t, i) => <span key={t}>{i > 0 && ', '}<TransformName name={t} /></span>)
           : 'No transform names it'}
-      </span>
-    </li>
+      </td>
+      <td className="num">{fmtBytes(f.size)}</td>
+      <td>{stamp(f.modified)}</td>
+    </tr>
   )
 }
 
-// The project's inputs/ folder: its data files first (the ones a transform
-// reads as a table), each with when it last changed and which transforms name
-// it; scripts, notes and database files folded under them.
+function InputTable({ files }) {
+  return (
+    <div className="whlist">
+      <table className="tb-list">
+        <thead>
+          <tr><th scope="col">File</th><th scope="col">Read by</th><th scope="col" className="num">Size</th><th scope="col">Changed</th></tr>
+        </thead>
+        <tbody>{files.map(f => <InputRow key={f.path} f={f} />)}</tbody>
+      </table>
+    </div>
+  )
+}
+
+// The project's inputs/ folder, as a source: the same rows, then its files as
+// the tables, data files first (the ones a transform reads as a table), the
+// scripts, notes and database files folded under them. Nothing to set up.
 function InputsDetail({ files }) {
   const data = files.filter(f => f.table)
   const other = files.filter(f => !f.table)
+  const readers = [...new Set(files.flatMap(f => f.read_by))].sort()
+  const newest = files.map(f => f.modified).filter(Boolean).sort().pop()
   return (
     <Card className="fade-in">
       <CardTitle><code className="src-id src-id--only">inputs/</code></CardTitle>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         <Badge variant="gray">Files</Badge>
       </div>
-      <Section label="Where the data lives"><code style={{ fontSize: 'var(--text-sm)' }}>inputs/</code></Section>
-      <Section label="Data files">
+      <PassportRows rows={[
+        ['From', <code>inputs/</code>],
+        ['Read by', readers.length
+          ? readers.map((t, i) => <span key={t}>{i > 0 && ', '}<TransformName name={t} /></span>)
+          : 'Nothing in this project reads it.'],
+        ['Last moved', newest ? movedWords({ how: 'changed', at: newest }) : null],
+        ['Trust', <StateChip state={{ state: 'none', text: 'Not a sink' }} />],
+        ['Agents', <StateChip state={{ state: 'none', text: 'Files are never read by agents' }} />],
+      ]} />
+      <Section label="Tables">
         {files.length === 0 ? <p className="src-quiet">The folder is empty.</p> : (
           <>
             {data.length > 0
-              ? <ul className="src-files">{data.map(f => <InputFile key={f.path} f={f} />)}</ul>
+              ? <InputTable files={data} />
               : <p className="src-quiet">No file here reads as a table (CSV, Parquet or JSON).</p>}
             {other.length > 0 && (
               <details className="wb-details src-other">
                 <summary>{count(other.length, 'other file')}</summary>
-                <ul className="src-files">{other.map(f => <InputFile key={f.path} f={f} />)}</ul>
+                <InputTable files={other} />
               </details>
             )}
           </>
@@ -351,8 +464,10 @@ export default function Connectors() {
   const labelOf = useModelLabel()
   const [query, setQuery] = useState('')
   const write = useConnectionWrite()
-  // The Add / Edit sheet: null closed, {} adding, a connector row editing.
+  // The Add sheet: null closed, {} adding. A source's Setup sheet is open
+  // while *setup* names it.
   const [sheet, setSheet] = useState(null)
+  const [setup, setSetup] = useState(null)
   // The connection the sheet just saved, opened on its tables.
   const [justSaved, setJustSaved] = useState(null)
 
@@ -385,15 +500,7 @@ export default function Connectors() {
   const saved = name => { setSheet(null); setJustSaved(name); select(name) }
   return (
     <>
-      {(connectors.length > 0 || showInputs) && (
-        <div className="conn-bar">
-          {add || (
-            <p className="src-quiet">
-              {write.why}: <code>tracebi connect &lt;name&gt; --kind postgres --store secret</code>
-            </p>
-          )}
-        </div>
-      )}
+      {add && (connectors.length > 0 || showInputs) && <div className="conn-bar">{add}</div>}
       {!isLoading && connectors.length === 0 && !showInputs ? (
         <Empty title="No sources yet"
                body="A source is where the data comes from: a database connection, or files under inputs/. Add a connection (its secret goes in the project's store), or drop a file in inputs/."
@@ -439,13 +546,14 @@ export default function Connectors() {
           right={isLoading ? <SkeletonCard />
             : current === INPUTS ? <InputsDetail files={files} />
             : <ConnectorDetail key={current} c={connectors.find(c => c.name === current)} write={write}
-                justSaved={justSaved === current}
-                onEdit={() => setSheet(connectors.find(c => c.name === current))}
-                onDeleted={() => navigate(sourcesPath(), { replace: true })} />}
+                justSaved={justSaved === current} onSetup={() => setSetup(current)} />}
         />
       )}
-      {sheet && (
-        <ConnectionSheet editing={sheet.name ? sheet : null} onClose={() => setSheet(null)} onSaved={saved} />
+      {sheet && <ConnectionSheet editing={null} onClose={() => setSheet(null)} onSaved={saved} />}
+      {setup && connectors.some(c => c.name === setup) && (
+        <SetupSheet c={connectors.find(c => c.name === setup)} onClose={() => setSetup(null)}
+                    onSaved={name => { setSetup(null); saved(name) }}
+                    onDeleted={() => navigate(sourcesPath(), { replace: true })} />
       )}
       <p className="wb-meta src-pointer">
         The warehouse a transform writes is under <Link to={warehousePath()}>Warehouse</Link>.

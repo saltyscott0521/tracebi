@@ -25,7 +25,7 @@ while it runs:
 
 | Folder | File | Appears in the app as |
 |---|---|---|
-| `connections/` | `<name>.yaml`: a type and its fields, secrets as `${NAME}` ([[connections-yaml]]) | **Data → Sources**, and a card in the board's first lane. Secrets resolve only when used. |
+| `connections/` | `<name>.yaml`: a type and its fields, secrets as `${NAME}` ([[connections-yaml]]) | **Data → Sources**, and a card in the map's first lane. Secrets resolve only when used. |
 | `transforms/` | `<name>.sql` (with its `.contract.yaml`), `.py` or `.ipynb` | **Data → Transforms**. Runs only when a pipeline or `tracebi run-transform` asks. |
 | `models/` | `<name>.yaml` or `.json`; a `.py` with a `model` variable | The model's **Data** page and **Ask** |
 | `pipelines/` | `<name>.yaml`; a `.py` with a `runner` variable | The model's **Transform** tab |
@@ -155,8 +155,9 @@ components never hard-code colours. The brand gradient is `--brand`.
 **Add a page.** The sidebar has four places, `PAGES` in `nav.js`: Reports
 `/`, Data `/data`, Review `/review` and Docs `/docs` (Ask, `/ask`, is a page
 inside Reports). Data's folders are `DATA_FOLDERS`: Overview (`/data`
-itself), then Sources, Transforms, Warehouse and Models, nested under Data in
-the sidebar.
+itself, the map, `pages/Map.jsx` over `GET /api/graph`), then Sources,
+Transforms, Warehouse and Models, nested under Data in the sidebar as jump
+points (`jumpPath`: the map with that lane focused, then the list).
 
 1. Give the page a route in `App.jsx` under its place's address.
 2. Teach `whereAmI` in `nav.js` which place it belongs to, so the sidebar

@@ -290,7 +290,7 @@ function ColumnMenu({ column, at, sorted, onClose, onPick }) {
 // A warehouse table or view written out by the server: to a connection (the
 // table replaced there) or to the warehouse's object prefix as Parquet. An
 // admin's action, recorded as a run; anyone else sees why it is off.
-function ExportTo({ source, table }) {
+export function ExportTo({ source, table }) {
   const toast = useToast()
   const role = useRole()
   const { data: connectors } = useConnectors()

@@ -170,13 +170,22 @@ pandas and declares its contract in a <code>with contract(...)</code> block.</p>
 <li><strong>Reports</strong> opens first. It is the library: a folder per model, each report
   with whether its numbers still reproduce. <strong>Ask this model</strong>, on a folder's
   or a model's page, puts a question to that model.</li>
-<li><strong>Data</strong> (analysts and admins) opens on <strong>Overview</strong>, a board with these
-  stages as lanes: sources, transforms, the warehouse, models, reports. Its
-  four folders, nested under it in the sidebar, are <strong>Sources</strong>,
-  <strong>Transforms</strong>, <strong>Warehouse</strong> and <strong>Models</strong>, and each thing in them has a
-  page of its own: a connection, a table, a transform (the pipeline that
-  rebuilds its data, where an admin clicks <strong>Refresh data</strong>), a model (its
-  tables, joins and measures, and the line to its other stages).</li>
+<li><strong>Data</strong> (analysts and admins) opens on <strong>Overview</strong>, a map of the
+  project with these stages as lanes: sources, transforms, the warehouse,
+  models, reports, wired by what reads what. A lens repaints it for one
+  question: <strong>Coverage</strong> (what is wired on both sides, and the gaps, dashed
+  and amber), <strong>Flow</strong>, <strong>Freshness</strong>, <strong>Trust</strong> and <strong>What agents see</strong>.
+  Every piece has the same passport beside the map: From, Read by (Writes
+  for a transform, Written by for a warehouse table), Last moved, Trust and
+  Agents, with its actions (Open, Zoom to schema, Setup…, Refresh data,
+  Export to…). Its four folders, nested under it in the sidebar, are
+  <strong>Sources</strong>, <strong>Transforms</strong>, <strong>Warehouse</strong> and <strong>Models</strong>: each opens the
+  map with its lane in focus, and a second click opens the folder's list.
+  Each thing in them has a page of its own: a source (its tables, which
+  agents may read, and <strong>Setup…</strong> for how it is reached), a table, a
+  transform (the pipeline that rebuilds its data, where an admin clicks
+  <strong>Refresh data</strong>), a model (its tables, joins and measures, and the line
+  to its other stages).</li>
 <li><strong>Review</strong> holds what needs attention, drafts, <strong>History</strong> (what ran) and
   <strong>Verify</strong> (check a report file from anywhere).</li>
 <li><strong>Docs</strong> is this handbook.</li>

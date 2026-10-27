@@ -89,13 +89,22 @@ The app has four places in its sidebar.
 - **Reports** opens first. It is the library: a folder per model, each report
   with whether its numbers still reproduce. **Ask this model**, on a folder's
   or a model's page, puts a question to that model.
-- **Data** (analysts and admins) opens on **Overview**, a board with these
-  stages as lanes: sources, transforms, the warehouse, models, reports. Its
-  four folders, nested under it in the sidebar, are **Sources**,
-  **Transforms**, **Warehouse** and **Models**, and each thing in them has a
-  page of its own: a connection, a table, a transform (the pipeline that
-  rebuilds its data, where an admin clicks **Refresh data**), a model (its
-  tables, joins and measures, and the line to its other stages).
+- **Data** (analysts and admins) opens on **Overview**, a map of the
+  project with these stages as lanes: sources, transforms, the warehouse,
+  models, reports, wired by what reads what. A lens repaints it for one
+  question: **Coverage** (what is wired on both sides, and the gaps, dashed
+  and amber), **Flow**, **Freshness**, **Trust** and **What agents see**.
+  Every piece has the same passport beside the map: From, Read by (Writes
+  for a transform, Written by for a warehouse table), Last moved, Trust and
+  Agents, with its actions (Open, Zoom to schema, Setup…, Refresh data,
+  Export to…). Its four folders, nested under it in the sidebar, are
+  **Sources**, **Transforms**, **Warehouse** and **Models**: each opens the
+  map with its lane in focus, and a second click opens the folder's list.
+  Each thing in them has a page of its own: a source (its tables, which
+  agents may read, and **Setup…** for how it is reached), a table, a
+  transform (the pipeline that rebuilds its data, where an admin clicks
+  **Refresh data**), a model (its tables, joins and measures, and the line
+  to its other stages).
 - **Review** holds what needs attention, drafts, **History** (what ran) and
   **Verify** (check a report file from anywhere).
 - **Docs** is this handbook.

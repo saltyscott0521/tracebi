@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 import { useHealth, useAppStatus, useMe, useRole, signOut } from '../api'
-import { page, placesFor, placeOf, mayUse, DATA_FOLDERS, dataFolder, folderOf } from '../nav'
+import { page, placesFor, placeOf, mayUse, DATA_FOLDERS, dataFolder, folderOf, jumpPath } from '../nav'
 import { KINDS, folderPath, hueStyle, useBuilds, useLibrary, newestBuild } from '../folders'
 import { count } from '../format'
 import { stamp } from '../when'
@@ -165,14 +165,19 @@ function FolderTree({ library, current, onNavigate }) {
   )
 }
 
-// Data in the workshop: its own row (Overview, the board), then its four
+// Data in the workshop: its own row (Overview, the map), then its four
 // folders nested under it in the library tree's styling, always shown (they
-// are Data's structure, not a filter). The folder an address sits in is the
-// current entry at any depth (/data/warehouse/fact_holdings marks Warehouse);
-// Data itself is current only on its own page. No hue: a hue labels a
-// library folder.
+// are Data's structure, not a filter). Each is a jump point: it opens the map
+// with its lane focused, and from there the folder's list (nav.js jumpPath).
+// The folder an address sits in is the current entry at any depth
+// (/data/warehouse/fact_holdings marks Warehouse), and so is the one whose
+// lane the map has focused; Data itself is current only on its own page. No
+// hue: a hue labels a library folder.
 function DataTree({ item, folder, onNavigate }) {
-  const inside = DATA_FOLDERS.some(f => f.key !== 'overview' && f.key === folder)
+  const { pathname, search } = useLocation()
+  const lane = item.active && folder === 'overview' ? new URLSearchParams(search).get('lane') : null
+  const current = lane || folder
+  const inside = DATA_FOLDERS.some(f => f.key !== 'overview' && f.key === current)
   return (
     <>
       <NavItem {...item} active={item.active && !inside} onNavigate={onNavigate} />
@@ -180,8 +185,8 @@ function DataTree({ item, folder, onNavigate }) {
         <ul className="tree__subs" aria-label="Data">
           {DATA_FOLDERS.filter(f => f.key !== 'overview').map(f => (
             <li key={f.key}>
-              <Link to={f.path} onClick={onNavigate} className="tree__sub"
-                    aria-current={f.key === folder ? 'page' : undefined}>{f.label}</Link>
+              <Link to={jumpPath(f, pathname, search)} onClick={onNavigate} className="tree__sub"
+                    aria-current={f.key === current ? 'page' : undefined}>{f.label}</Link>
             </li>
           ))}
         </ul>
