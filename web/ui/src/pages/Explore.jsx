@@ -1,11 +1,8 @@
-import { useState } from 'react'
-import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer,
-} from 'recharts'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { area, line, max, min, scalePoint, scaleLinear } from 'd3'
 
 import { useModel, useTablePreview } from '../api'
+import AnswerChart from '../components/AnswerChart'
 import { LineageGraph } from '../components/Lineage'
 import { count } from '../format'
 import {
@@ -110,22 +107,9 @@ function FilterRows({ columns, filters, setFilters }) {
   )
 }
 
-// ── Result chart (Recharts) ──────────────────────────────────────────────────
+// ── Result chart ─────────────────────────────────────────────────────────────
 
 const fmtTick = v => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : String(v)
-
-const tooltipStyle = {
-  background: 'var(--card)', border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-lg)', fontSize: 'var(--text-sm)', color: 'var(--text)',
-}
-
-// The tooltip shows the server's text for the number (the model's declared
-// format, as a built report writes it); the locale string is only a fallback.
-const fmtValue = (v, name, item) => [
-  item?.payload?._display?.[name]
-    ?? (typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v),
-  name,
-]
 
 function ChartTypeToggle({ type, onChange }) {
   const types = [
@@ -153,82 +137,99 @@ function ChartTypeToggle({ type, onChange }) {
   )
 }
 
-// Every series below sets isAnimationActive={false}, and it is load-bearing —
-// without it no series draws at all. ResponsiveContainer's first paint has zero
-// width, the enter animation runs against that geometry, and what settles is an
-// empty chart: axes, gridlines, ticks, no bars or lines. It reads as "the query
-// returned nothing" rather than as a rendering bug, which is how it survived.
+// A line or an area over the categories in the order the rows came, one
+// series per measure, drawn as the bar chart is: React draws the SVG, d3 gives
+// the scales and the paths. Each point's title is the server's text for it.
+function TrendChart({ rows, columns, area: filled }) {
+  const box = useRef(null)
+  const [width, setWidth] = useState(0)
+  useLayoutEffect(() => {
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width))
+    ro.observe(box.current)
+    return () => ro.disconnect()
+  }, [])
+  const height = 300
+  const m = { top: 8, right: 16, bottom: 24, left: 52 }
+  const x = scalePoint().domain(rows.map((_, i) => i)).range([m.left, Math.max(m.left, width - m.right)]).padding(0.3)
+  const all = columns.flatMap(c => rows.map(r => r[c])).filter(v => typeof v === 'number')
+  const y = scaleLinear().domain([Math.min(0, min(all) ?? 0), Math.max(0, max(all) ?? 0) || 1]).nice(5)
+    .range([height - m.bottom, m.top])
+  // Label every k-th category so the names never collide.
+  const every = Math.max(1, Math.ceil(rows.length / Math.max(1, Math.floor((width - m.left) / 90))))
+  const defined = (r, c) => typeof r[c] === 'number'
+  return (
+    <div ref={box} className="trend-chart">
+      {width > 0 && (
+        <svg width={width} height={height} role="img"
+             aria-label={`${columns.join(', ')} across ${rows.length} ${rows.length === 1 ? 'value' : 'values'}`}>
+          {y.ticks(5).map(t => (
+            <g key={t}>
+              <line x1={m.left} x2={width - m.right} y1={y(t)} y2={y(t)}
+                    className={t === 0 ? 'trend-chart__zero' : 'trend-chart__grid'} />
+              <text x={m.left - 8} y={y(t)} className="trend-chart__tick" textAnchor="end">{fmtTick(t)}</text>
+            </g>
+          ))}
+          {rows.map((r, i) => i % every === 0 && (
+            <text key={i} x={x(i)} y={height - 6} className="trend-chart__tick" textAnchor="middle">{r._label}</text>
+          ))}
+          {columns.map((col, ci) => {
+            const c = MEASURE_COLORS[ci % MEASURE_COLORS.length]
+            const pts = rows.map((r, i) => [i, r]).filter(([, r]) => defined(r, col))
+            const path = line().x(([i]) => x(i)).y(([, r]) => y(r[col]))(pts)
+            const fill = filled && area().x(([i]) => x(i)).y0(y(0)).y1(([, r]) => y(r[col]))(pts)
+            return (
+              <g key={col}>
+                {fill && <path d={fill} fill={c} fillOpacity={0.18} />}
+                <path d={path} fill="none" stroke={c} strokeWidth={2.2} />
+                {pts.map(([i, r]) => (
+                  <circle key={i} cx={x(i)} cy={y(r[col])} r={3} fill={c}>
+                    <title>{`${r._label}, ${col}: ${r._display[col]}`}</title>
+                  </circle>
+                ))}
+              </g>
+            )
+          })}
+        </svg>
+      )}
+    </div>
+  )
+}
+
 function ResultChart({ data, display, dimCol, measureCols, type = 'bar' }) {
   if (!data.length || !dimCol || !measureCols.length) return null
 
-  // Trim long dimension labels for the axis
-  const trimmed = data.map((row, i) => ({
-    ...row,
-    _label: String(row[dimCol]).slice(0, 20),
-    _display: display[i],
-  }))
-
-  const grid = <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={type !== 'bar'} vertical={type === 'bar'} />
-  const tooltip = <Tooltip contentStyle={tooltipStyle} formatter={fmtValue} labelFormatter={() => ''} />
-  const legend = measureCols.length > 1
-    ? <Legend wrapperStyle={{ fontSize: 'var(--text-xs)', color: 'var(--muted)', paddingTop: 8 }} />
-    : null
-
-  const height = type === 'bar'
-    ? Math.max(220, Math.min(400, data.length * 42))
-    : 300
-
-  let chart
+  // Bars: one chart per measure, each with its own scale and its own numbers.
   if (type === 'bar') {
-    chart = (
-      <BarChart data={trimmed} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}
-        layout="vertical" barCategoryGap="28%">
-        {grid}
-        <XAxis type="number" tick={{ fontSize: 'var(--text-xs)', fill: 'var(--muted)' }}
-          tickFormatter={fmtTick} axisLine={false} tickLine={false} />
-        <YAxis type="category" dataKey="_label" width={110}
-          tick={{ fontSize: 'var(--text-xs)', fill: 'var(--text-2)' }} axisLine={false} tickLine={false} />
-        {tooltip}{legend}
-        {measureCols.map((col, ci) => (
-          <Bar key={col} dataKey={col} fill={MEASURE_COLORS[ci % MEASURE_COLORS.length]}
-            radius={[0, 4, 4, 0]} maxBarSize={28} isAnimationActive={false} />
+    return (
+      <div style={{ marginTop: 8, marginBottom: 4 }}>
+        {measureCols.map(col => (
+          <div key={col}>
+            {measureCols.length > 1 && <div className="explore-note" style={{ margin: '8px 0 4px' }}>{col}</div>}
+            <AnswerChart label={col} rows={data.map((row, i) => ({
+              label: row[dimCol] == null ? '(none)' : String(row[dimCol]),
+              value: row[col],
+              display: display[i][col],
+            }))} />
+          </div>
         ))}
-      </BarChart>
-    )
-  } else {
-    const axes = (
-      <>
-        <XAxis dataKey="_label" tick={{ fontSize: 'var(--text-xs)', fill: 'var(--text-2)' }}
-          axisLine={false} tickLine={false} interval="preserveStartEnd" />
-        <YAxis tick={{ fontSize: 'var(--text-xs)', fill: 'var(--muted)' }}
-          tickFormatter={fmtTick} axisLine={false} tickLine={false} width={52} />
-      </>
-    )
-    chart = type === 'line' ? (
-      <LineChart data={trimmed} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-        {grid}{axes}{tooltip}{legend}
-        {measureCols.map((col, ci) => (
-          <Line key={col} dataKey={col} stroke={MEASURE_COLORS[ci % MEASURE_COLORS.length]}
-            strokeWidth={2.2} dot={{ r: 3 }} activeDot={{ r: 5 }} isAnimationActive={false} />
-        ))}
-      </LineChart>
-    ) : (
-      <AreaChart data={trimmed} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-        {grid}{axes}{tooltip}{legend}
-        {measureCols.map((col, ci) => {
-          const c = MEASURE_COLORS[ci % MEASURE_COLORS.length]
-          return <Area key={col} dataKey={col} stroke={c} fill={c} fillOpacity={0.18} strokeWidth={2}
-            isAnimationActive={false} />
-        })}
-      </AreaChart>
+      </div>
     )
   }
 
+  const rows = data.map((row, i) => ({ ...row, _label: String(row[dimCol]).slice(0, 20), _display: display[i] }))
   return (
     <div style={{ marginTop: 8, marginBottom: 4 }}>
-      <ResponsiveContainer width="100%" height={height}>
-        {chart}
-      </ResponsiveContainer>
+      {measureCols.length > 1 && (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 'var(--text-xs)', color: 'var(--muted)', marginBottom: 6 }}>
+          {measureCols.map((col, ci) => (
+            <span key={col} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 14, height: 3, borderRadius: 2, background: MEASURE_COLORS[ci % MEASURE_COLORS.length] }} />
+              {col}
+            </span>
+          ))}
+        </div>
+      )}
+      <TrendChart rows={rows} columns={measureCols} area={type === 'area'} />
     </div>
   )
 }

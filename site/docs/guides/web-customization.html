@@ -233,7 +233,8 @@ npm run dev      # Vite on :5173, proxies /api to the API server
 npm run build    # writes tracebi/web/ui/dist/, which FastAPI serves at /
 </code></pre>
 <p>The UI is React 18 and Vite, with React Query for data, React Flow for graphs
-and Recharts for charts. In <code>web/ui/src/</code>:</p>
+and its own SVG charts (<code>components/AnswerChart.jsx</code>, d3 for the scales). In
+<code>web/ui/src/</code>:</p>
 <pre><code>api.js               one React Query hook per endpoint
 nav.js               the four places, Data's folders, their addresses, movedTo for old addresses
 folders.js           the library's folders: order and a hue per folder

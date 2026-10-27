@@ -285,6 +285,8 @@ web/
                        #   — every page that says one calls these
     src/components/ResourceTable.jsx  # Data's one list shape (search ?q=, chips ?filter=, sort ?sort=, StatusPill, TypeChip, DropMenu row menu)
     src/components/ResourcePage.jsx   # Data's one page shape (title, type, status, actions top right, tabs at ?tab=; Details, ActivityList)
+    src/components/AnswerChart.jsx    # the app's own bar chart (Ask's answer, Explore's result): SVG by React, d3 for scales
+                       #   only, the report engine's bar; no chart library in the app (Recharts is only the app.jsx kit's)
     src/styles/global.css      # tokens: Geist / Geist Mono (--font-sans, --font-mono); --font-display is the sans,
                        #   tight (--weight-display 600, --tracking-display); --hue-1..6 folder hues, a label
                        #   never a state; --shadow / --shadow-lg only on the library's tiles, covers, pills and hero

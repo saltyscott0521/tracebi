@@ -4,6 +4,17 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-27 — The app draws its own charts; Recharts leaves the app (CHARTS)
+
+Ask's answer and Explore's result are drawn by `components/AnswerChart.jsx`: SVG by
+React, d3 only for scales and easing, the report engine's bar (55% band, rounded far
+end, a rule at zero, the server's display text at the bar's end). Explore's line and
+area views are one small SVG `TrendChart`. `recharts` is out of the app's
+dependencies; the app bundle drops from 1,438,981 to 1,077,603 bytes. The report
+kit's own Recharts (the `app.jsx` lane) is untouched. This is the prerequisite for any
+later move to TanStack Redact, whose spike broke on Recharts' internals; Redact itself
+stays parked until it carries a licence.
+
 ## 2026-10-27 — Data is a console; SQL transforms record column lineage (CONSOLE, LINEAGE)
 
 The owner, on the map as Data's home: "This should feel like a console like AWS,
