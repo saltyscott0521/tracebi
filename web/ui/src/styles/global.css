@@ -1326,8 +1326,6 @@ a.runs-card__body:hover { background: var(--card-hl); }
   .ask-list__item { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .ask-list__kind { display: none; }
 }
-.section-title { font-size: var(--text-lg); font-weight: 600; color: var(--text); margin: 0 0 4px; }
-.section-sub { font-size: var(--text-caption); color: var(--muted); line-height: 1.6; margin: 0 0 16px; max-width: 74ch; }
 
 /* ── Build mode: the workbench beside the report ────────────────────────── */
 .wb { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
@@ -1372,39 +1370,12 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .wb-version--on { border-left-color: var(--blue); }
 .wb-viewing { margin-bottom: 8px; padding: 8px 8px; border-radius: var(--radius-sm); background: var(--amber-lt); border: 1px solid var(--amber-br); font-size: var(--text-sm); color: var(--amber-text); }
 
-/* ── A model's Data page: its header, the line, then its tabs ───────────────
-   The line is compact: three stations (Transform → Model → Reports) joined by
-   two hand-offs, the warehouse file and the model's measures. The station of
-   the tab you are on has a blue border. Colour marks only an exception, and
-   always beside words and a glyph. */
-
-.overview {
-  --track: #8a8a86;
-  --track-warn: #b45309;
-  --flag-warn: #92400e;
-}
-[data-theme="dark"] .overview { --track: #7d7d79; --track-warn: #d97706; --flag-warn: var(--amber-text); }
-
-.overview__head { margin-bottom: 20px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; }
-.overview__head > :not(.overview__acts) { grid-column: 1; }
-.overview__acts { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
-@media (max-width: 640px) { .overview__head { grid-template-columns: minmax(0, 1fr); } .overview__acts { grid-column: 1; grid-row: auto; margin-top: 12px; } }
-.overview__title {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px;
-  margin: 8px 0 4px; font-family: var(--font-display); font-size: var(--text-2xl); font-weight: var(--weight-display);
-  letter-spacing: var(--tracking-display); line-height: 1.2; color: var(--text);
-}
-.overview__id { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; letter-spacing: 0; color: var(--muted); overflow-wrap: anywhere; }
-.overview__sub { margin: 0; font-size: var(--text-caption); color: var(--text-2); max-width: 78ch; overflow-wrap: anywhere; }
-.overview__sub code { font-size: var(--text-sm); }
-.overview__muted { color: var(--muted); }
 .overview__alert {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
   margin: 0 0 16px; font-size: var(--text-base); color: var(--text-2);
 }
 .overview__alert strong { color: var(--red-text); }
 .overview__alert a { font-weight: 600; }
-.overview__name { font-family: var(--font-mono); font-weight: 600; }
 
 .flag { display: inline-flex; align-items: baseline; gap: 8px; font-size: var(--text-caption); font-weight: 600; line-height: 1.3; }
 .flag--bad { color: var(--red-text); }
@@ -1435,78 +1406,12 @@ a.runs-card__body:hover { background: var(--card-hl); }
 button.verdict { cursor: pointer; min-height: 24px; }
 button.verdict:hover { border-color: currentColor; }
 
-.line {
-  display: grid; align-items: stretch; margin: 0; padding: 0; list-style: none;
-  grid-template-columns: minmax(0, .85fr) 40px minmax(0, 1.15fr) minmax(min-content, .7fr) minmax(0, 1fr) minmax(130px, .7fr) minmax(0, .7fr);
-}
-.line > li { display: flex; min-width: 0; }
-.line .node--card { flex: 1; justify-content: flex-start; }
-
-/* A node: on the line, and on the Map (positioned there by its layout). A card
-   is something you write; a pill is what gets handed on. */
-.node {
-  position: relative; box-sizing: border-box; min-width: 0;
-  display: flex; flex-direction: column; justify-content: center; gap: 4px;
-  margin: 0; padding: 12px 16px; text-align: left; font: inherit; color: var(--text);
-  background: var(--card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
-  text-decoration: none; transition: border-color .15s, background .15s;
-}
-a.node, button.node { cursor: pointer; }
-a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--text); }
-.node[aria-current="page"] { border: 2px solid var(--blue); padding: 8px 12px; }
-.node--pill {
-  align-items: center; gap: 1px; padding: 4px 12px; text-align: center;
-  border-radius: 999px; background: var(--surface-2); border-color: var(--border);
-}
-.node--hot { border: 2px solid var(--blue); background: var(--blue-lt); }
-.node--hot .node__name { font-weight: 600; }
-.node--unused { color: var(--muted); }
-.node__kind { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 600; color: var(--text-2); }
-.node[aria-current="page"] .node__kind { color: var(--accent-text); }
-.node__n {
-  flex: none; display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--border); color: var(--text); font-size: var(--text-xs); font-weight: 700; line-height: 1;
-}
-.node[aria-current="page"] .node__n { background: var(--blue); color: #fff; }
-.node__name { font-family: var(--font-mono); font-size: var(--text-caption); font-weight: 500; line-height: 1.45; overflow-wrap: anywhere; }
-.node__name--sans { font-family: var(--font-sans); font-size: var(--text-base); font-weight: 600; }
-/* On the line an identifier (a transform, a file) never breaks inside itself
-   ("warehouse. / duckdb"): it stays one word and, when the station is too
-   narrow, ends in "…" with the whole name in its title. A label breaks at its
-   spaces. (Chrome breaks at a <wbr> even under nowrap, so Breakable's go.) */
-.line .node__name:not(.node__name--sans) {
-  max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; overflow-wrap: normal;
-}
-.line .node__name wbr { display: none; }
-/* A transform or a file is as wide as its name, up to a cap; past it, "…". */
-.line .node__name:not(.node__name--sans) { max-width: min(100%, 24ch); }
-.node--pill .node__name--sans { font-size: var(--text-sm); }
-.node__fact { font-size: var(--text-sm); line-height: 1.35; color: var(--muted); }
-.node__marks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
-.node__marks .flag { font-size: var(--text-sm); }
-/* The note ("unused") sits at the right edge: the name wraps before it, not under it. */
-.node--noted { align-items: stretch; text-align: left; padding-left: 16px; }
-.node--noted .node__name { padding-right: 56px; }
-.node__note {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  font: italic 400 12px/1 var(--font-sans); color: var(--muted);
-}
-
-/* A hand-off: the pill on a track, from one station to the next. */
-.hand { --seg: var(--track); align-items: center; gap: 0; padding: 0 2px; }
-.hand--warn { --seg: var(--track-warn); }
-.hand__seg { flex: 1; height: 2px; min-width: 8px; background: var(--seg); }
-.hand__head { width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 7px solid var(--seg); }
-.hand .node--pill { max-width: 100%; min-width: 0; background: var(--bg); border-color: var(--border-strong); }
-
 @media (prefers-reduced-motion: no-preference) {
   .stage { animation: rise .16s ease-out; }
 }
 
 .stage { margin-top: 20px; }
 .stage__heading { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 12px; font-size: var(--text-base); font-weight: 600; }
-.stage__where { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--muted); }
 
 /* The model page's tabs: links (each has an address), a row that scrolls
    sideways on a phone rather than wrapping. */
@@ -1535,19 +1440,7 @@ a.node:hover, button.node:hover { border-color: var(--blue-br); color: var(--tex
 }
 .why__checks code { overflow-wrap: anywhere; }
 
-@media (max-width: 1200px) {
-  .line { grid-template-columns: minmax(0, .85fr) 32px minmax(0, 1fr) 120px minmax(0, 1fr) 120px minmax(0, 1fr); }
-}
-
-/* A phone: the line stands on end, and a hand-off reads "↓ what passes". */
 @media (max-width: 860px) {
-  .line { grid-template-columns: minmax(0, 1fr); }
-  .hand { justify-content: flex-start; padding: 8px 0 8px 24px; }
-  .hand::before { content: "\2193"; margin-right: 12px; font-size: var(--text-base); color: var(--track); }
-  .hand__seg, .hand__head { display: none; }
-  .hand .node--pill { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 2px 8px; padding: 0; background: transparent; border: 0; text-align: left; }
-  .line .node--card { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 12px 12px; }
-  .line .node--card[aria-current="page"] { padding: 8px 12px; }
   .dtabs { margin-top: 16px; }
   .stage { margin-top: 16px; }
 }
@@ -1932,7 +1825,6 @@ button.rp__item:disabled { opacity: .5; cursor: default; }
 .dlist__id { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
 .dlist__facts { font-size: var(--text-sm); color: var(--text-2); }
 .dlist__side { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 16px; }
-.dlist__verdicts { display: flex; flex-wrap: wrap; gap: 4px 8px; }
 .dlist__when { font-size: var(--text-sm); color: var(--muted); white-space: nowrap; }
 
 @media (max-width: 640px) {
@@ -1942,32 +1834,8 @@ button.rp__item:disabled { opacity: .5; cursor: default; }
   .dlist__side { justify-content: flex-start; }
 }
 
-/* Data's Models tab: a model per row, its name, then its chain left to right
-   (sources → transform → tables → measures → reports), each segment a link.
-   On a phone the chain wraps under the name. */
 .chain { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; }
-.chain__head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px 20px; }
-.chain__name {
-  display: flex; flex-wrap: wrap; align-items: baseline; align-self: start; gap: 2px 12px; min-width: 0; padding: 4px 0;
-  font-size: var(--text-base); font-weight: 600; color: var(--text); text-decoration: none;
-}
-.chain__name:hover { color: var(--accent-text); }
-.chain__line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; padding: 0; list-style: none; }
-.chain__seg {
-  display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px; border-radius: 999px;
-  font-size: var(--text-sm); color: var(--text-2); text-decoration: none;
-  background: var(--surface-2); border: 1px solid var(--border);
-}
-a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
-.chain__seg code, .whgroup__head code, .src-readby code, .src-files__by code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
-.chain__seg--none { color: var(--muted); border-style: dashed; }
-.chain__arrow { color: var(--track); font-size: var(--text-sm); }
-
-@media (max-width: 640px) {
-  .chains .chain { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 16px; }
-  .chain__head { grid-template-columns: minmax(0, 1fr); }
-  .chain__head .dlist__side { justify-content: flex-start; }
-}
+.whgroup__head code, .src-readby code, .src-files__by code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
 
 /* A tab narrowed to one model says so, with the way back to all of it. */
 
@@ -1981,10 +1849,6 @@ a.chain__seg:hover { border-color: var(--blue-br); color: var(--text); }
 .src-reach { margin-bottom: 8px; }
 .src-other { margin-top: 8px; }
 .src-pointer { margin-top: 16px; }
-/* A source's name for people, with its identifier small beside it. */
-.src-id { font-size: var(--text-sm); font-weight: 400; color: var(--muted); background: none; border: 0; padding: 0; }
-.src-id--only { font-size: inherit; font-weight: inherit; color: inherit; }
-.src-li__by { font-size: var(--text-xs); color: var(--text-2); overflow-wrap: anywhere; }
 .src-files { margin: 0; padding: 0; list-style: none; }
 .src-files li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: var(--text-caption); }
 .src-files li:first-child { border-top: 0; }
@@ -2055,12 +1919,7 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .tpage__crumb { flex-wrap: wrap; margin-bottom: 12px; }
 .tpage__crumb a { display: inline-flex; align-items: center; min-height: 24px; }
 .tpage__crumb-here { color: var(--text); font-family: var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
-.tpage__head { margin-bottom: 12px; }
-.tpage__name { margin: 0 0 8px; font-family: var(--font-mono); font-size: var(--text-2xl); font-weight: 600; line-height: 1.2; color: var(--text); overflow-wrap: anywhere; }
 .tpage__shape { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 8px; font-size: var(--text-caption); color: var(--text-2); font-variant-numeric: tabular-nums; }
-.tpage__facts { margin: 0 0 8px; font-size: var(--text-caption); color: var(--text-2); line-height: 1.7; max-width: 110ch; }
-.tpage__facts > span + span::before { content: '·'; margin: 0 8px; color: var(--muted); }
-.tpage__facts code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
 .tpage__contract { max-width: 90ch; }
 .tpage__contract p { margin: 4px 0 0; }
 .tpage__note { font-size: var(--text-caption); color: var(--text-2); line-height: 1.6; }
@@ -2278,7 +2137,6 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 [data-theme="dark"] .dbx-kind { color: #0a0a0a; }
 /* A view holds no rows of its own: an outline, not a filled square. */
 .dbx-kind--view, [data-theme="dark"] .dbx-kind--view { color: var(--text-2); background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
-.fcard__tbl .dbx-kind { width: 14px; height: 14px; vertical-align: 0; }
 .dbx-ty { flex: none; display: inline-flex; width: 14px; justify-content: center; color: var(--muted); }
 .dbx-mark { flex: none; display: inline-flex; width: 14px; justify-content: center; font-family: var(--font-sans); font-weight: 700; color: var(--accent-text); }
 .dbx-mark--m { color: var(--role-fact); font-weight: 600; }
@@ -2347,6 +2205,10 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
   font: inherit; font-size: var(--text-xs); color: var(--accent-text); background: none; border: 0; cursor: pointer;
 }
 .dbx-node__more:hover { text-decoration: underline; }
+/* On a phone the canvas fits the whole schema, so the node is drawn a fifth of
+   its size and "+N more" is a few pixels tall: no one can tap it. The tree and
+   the inspector list every column there instead. */
+.dbx--phone .dbx-node__more { display: none; }
 
 /* The inspector */
 .dbx-insp__head { padding: var(--space-4) var(--space-4) var(--space-3); border-bottom: 1px solid var(--border); }
@@ -2407,25 +2269,10 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .grid-wrap--dense .grid__sort { min-height: 32px; padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2); }
 
 /* The table page speaks the browser's glyphs, and links back to it. */
-.tpage__title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-2); }
-.tpage__title .tpage__name { margin: 0; min-width: 0; }
-.tpage__title .dbx-kind { width: 24px; height: 24px; font-size: var(--text-base); }
-.tpage__schema { display: inline-flex; align-items: center; min-height: 28px; margin-left: auto; font-size: var(--text-caption); font-weight: 600; }
 .tpage__col { display: inline-flex; align-items: center; gap: var(--space-2); }
-
-/* The model page's line, tightened above the browser: at most 92 px. */
-@media (min-width: 861px) {
-  .overview .line .node--card { padding: var(--space-2) var(--space-3); gap: 0; }
-  .overview .line .node--card[aria-current="page"] { padding: 7px 11px; }
-  .overview .line .node__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .overview .line .node__kind, .overview .line .node__fact { line-height: 1.3; }
-  .overview__head { margin-bottom: var(--space-4); }
-  .overview .stage { margin-top: var(--space-4); }
-}
 
 /* ── CONN ── Add a connection (a sheet from the right, full width on a phone),
    a connection's actions, and the tables agents may read. */
-.conn-bar { display: flex; justify-content: flex-end; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .conn-sheet { position: fixed; inset: 0; z-index: 1000; display: flex; justify-content: flex-end; }
 /* The same scrim as ⌘K's. */
 .conn-sheet__scrim { position: absolute; inset: 0; background: rgba(10, 18, 40, .45); }
@@ -2473,7 +2320,6 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .conn-allow input[type="checkbox"], .conn-allow__col input[type="checkbox"], .conn-field__toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
 @media (max-width: 720px) {
   .conn-sheet__panel { padding: var(--space-4); border-left: 0; }
-  .conn-bar { justify-content: stretch; }
   .conn-allow input[type="checkbox"], .conn-allow__col input[type="checkbox"], .conn-field__toggle input { width: 24px; height: 24px; }
 }
 /* ── SEMANTIC ── */
@@ -2575,7 +2421,6 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 /* ── DATA-B ── */
 /* A transform's page: its name in mono, its sections one under the other,
    its code beside its checks while the column is wide enough for both. */
-.tfpage__name { font-family: var(--font-mono); font-weight: 600; letter-spacing: 0; overflow-wrap: anywhere; }
 .tfpage__state { margin: 0 0 var(--space-5); font-size: var(--text-caption); color: var(--text-2); }
 .tfpage__alert { margin-bottom: var(--space-2); }
 .tfpage__error { max-height: 260px; overflow-y: auto; }
@@ -2629,7 +2474,12 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .map-lane--models { --lane: var(--phase-model); }
 .map-lane--reports { --lane: var(--phase-report); }
 [data-theme="dark"] .map-lane { background: color-mix(in srgb, var(--lane) 9%, var(--bg)); }
-.map-lane.is-away { opacity: .38; }
+/* A lane ?lane= is not on recedes without fading its words below the contrast
+   line: its tint, its cards' ground and its dots go, the text steps to --text-2. */
+.map-lane.is-away { background: transparent; }
+.map-lane.is-away .map-lane__head, .map-lane.is-away .mcard__main, .map-lane.is-away .mchip { color: var(--text-2); }
+.map-lane.is-away .mcard, .map-lane.is-away .mchip { background: transparent; }
+.map-lane.is-away .mdot { opacity: .38; }
 .map-lane.is-focus { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--lane) 45%, transparent); }
 .map-lane__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 10px; font-size: var(--text-caption); font-weight: 600; color: var(--text); }
 .map-lane__n {
@@ -2741,6 +2591,11 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .rlist-head > div:first-child { min-width: 0; flex: 1 1 320px; }
 .rpage__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .rlist-head .rpage__acts { margin-top: 6px; }
+/* The gap under the heading block belongs to the header, not to PageSub's
+   inline margin: when the actions wrap under the subtitle on a phone, the
+   button sits close under the words and the gap comes after it. */
+.rlist-head { margin-bottom: var(--space-7); }
+.rlist-head > div:first-child > p:last-child { margin-bottom: 0 !important; }
 
 .rtype {
   display: inline-block; padding: 1px 6px; border-radius: var(--radius-sm); white-space: nowrap;

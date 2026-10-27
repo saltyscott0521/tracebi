@@ -1,6 +1,6 @@
 {
- "base": "http://127.0.0.1:8047",
- "when": "2026-10-23 20:26:36",
+ "base": "http://127.0.0.1:8077",
+ "when": "2026-10-27 15:35:41",
  "pages": [
   {
    "path": "/",
@@ -12,10 +12,10 @@
     "phone-dark": "shots/root_42099b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1084,
-    "desktop-dark": 1134,
-    "phone-light": 1114,
-    "phone-dark": 1118
+    "desktop-light": 1548,
+    "desktop-dark": 1904,
+    "phone-light": 1933,
+    "phone-dark": 1729
    }
   },
   {
@@ -28,10 +28,10 @@
     "phone-dark": "shots/ask_8ae0d7__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1141,
-    "desktop-dark": 1089,
-    "phone-light": 1076,
-    "phone-dark": 1080
+    "desktop-light": 1735,
+    "desktop-dark": 1590,
+    "phone-light": 1832,
+    "phone-dark": 1915
    }
   },
   {
@@ -44,10 +44,10 @@
     "phone-dark": "shots/data_9112fb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1772,
-    "desktop-dark": 1836,
-    "phone-light": 1626,
-    "phone-dark": 1705
+    "desktop-light": 2712,
+    "desktop-dark": 1984,
+    "phone-light": 2032,
+    "phone-dark": 1716
    }
   },
   {
@@ -60,10 +60,10 @@
     "phone-dark": "shots/data_sources_b315ee__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1187,
-    "desktop-dark": 1224,
-    "phone-light": 1109,
-    "phone-dark": 1204
+    "desktop-light": 2768,
+    "desktop-dark": 1950,
+    "phone-light": 2100,
+    "phone-dark": 1969
    }
   },
   {
@@ -76,10 +76,10 @@
     "phone-dark": "shots/data_transforms_bdd93d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1499,
-    "desktop-dark": 1477,
-    "phone-light": 1463,
-    "phone-dark": 1488
+    "desktop-light": 1829,
+    "desktop-dark": 1933,
+    "phone-light": 1680,
+    "phone-dark": 2129
    }
   },
   {
@@ -92,10 +92,10 @@
     "phone-dark": "shots/data_warehouse_2676de__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1567,
-    "desktop-dark": 1605,
-    "phone-light": 1483,
-    "phone-dark": 1421
+    "desktop-light": 3789,
+    "desktop-dark": 3863,
+    "phone-light": 3033,
+    "phone-dark": 3738
    }
   },
   {
@@ -108,10 +108,10 @@
     "phone-dark": "shots/data_models_b4e8d1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1566,
-    "desktop-dark": 1989,
-    "phone-light": 1649,
-    "phone-dark": 1723
+    "desktop-light": 2316,
+    "desktop-dark": 2421,
+    "phone-light": 2093,
+    "phone-dark": 1976
    }
   },
   {
@@ -124,10 +124,10 @@
     "phone-dark": "shots/review_2a50c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1224,
-    "desktop-dark": 1083,
-    "phone-light": 1134,
-    "phone-dark": 1159
+    "desktop-light": 1521,
+    "desktop-dark": 1639,
+    "phone-light": 1715,
+    "phone-dark": 1841
    }
   },
   {
@@ -140,10 +140,10 @@
     "phone-dark": "shots/review_drafts_2541b2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1171,
-    "desktop-dark": 1076,
-    "phone-light": 1082,
-    "phone-dark": 1084
+    "desktop-light": 1630,
+    "desktop-dark": 1868,
+    "phone-light": 1725,
+    "phone-dark": 1976
    }
   },
   {
@@ -156,10 +156,10 @@
     "phone-dark": "shots/runs_6e4bd5__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1187,
-    "desktop-dark": 1119,
-    "phone-light": 1115,
-    "phone-dark": 1264
+    "desktop-light": 1754,
+    "desktop-dark": 2353,
+    "phone-light": 1738,
+    "phone-dark": 1801
    }
   },
   {
@@ -172,10 +172,10 @@
     "phone-dark": "shots/verify_c77e84__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1048,
-    "desktop-dark": 1087,
-    "phone-light": 1077,
-    "phone-dark": 1027
+    "desktop-light": 1685,
+    "desktop-dark": 1724,
+    "phone-light": 1686,
+    "phone-dark": 1525
    }
   },
   {
@@ -188,10 +188,10 @@
     "phone-dark": "shots/docs_1baff9__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1139,
-    "desktop-dark": 1140,
-    "phone-light": 1139,
-    "phone-dark": 1122
+    "desktop-light": 1603,
+    "desktop-dark": 1931,
+    "phone-light": 1453,
+    "phone-dark": 1495
    }
   },
   {
@@ -204,10 +204,10 @@
     "phone-dark": "shots/docs_get_started_703372__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1148,
-    "desktop-dark": 1130,
-    "phone-light": 1088,
-    "phone-dark": 1245
+    "desktop-light": 1617,
+    "desktop-dark": 1801,
+    "phone-light": 1557,
+    "phone-dark": 2014
    }
   },
   {
@@ -220,10 +220,10 @@
     "phone-dark": "shots/model_housing_model_5f65a0__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1119,
-    "desktop-dark": 1193,
-    "phone-light": 1186,
-    "phone-dark": 1125
+    "desktop-light": 1520,
+    "desktop-dark": 1941,
+    "phone-light": 1834,
+    "phone-dark": 1406
    }
   },
   {
@@ -236,90 +236,26 @@
     "phone-dark": "shots/ask_model_housing_model_2ace0d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1299,
-    "desktop-dark": 1274,
-    "phone-light": 1208,
-    "phone-dark": 1234
+    "desktop-light": 1688,
+    "desktop-dark": 1656,
+    "phone-light": 1509,
+    "phone-dark": 1642
    }
   },
   {
-   "path": "/data/housing_model",
+   "path": "/data/models/housing_model",
    "pattern": "/data/<m>",
    "shots": {
-    "desktop-light": "shots/data_housing_model_33bb86__desktop-light.png",
-    "desktop-dark": "shots/data_housing_model_33bb86__desktop-dark.png",
-    "phone-light": "shots/data_housing_model_33bb86__phone-light.png",
-    "phone-dark": "shots/data_housing_model_33bb86__phone-dark.png"
+    "desktop-light": "shots/data_models_housing_model_6c3254__desktop-light.png",
+    "desktop-dark": "shots/data_models_housing_model_6c3254__desktop-dark.png",
+    "phone-light": "shots/data_models_housing_model_6c3254__phone-light.png",
+    "phone-dark": "shots/data_models_housing_model_6c3254__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1765,
-    "desktop-dark": 1764,
-    "phone-light": 2067,
-    "phone-dark": 2145
-   }
-  },
-  {
-   "path": "/data/housing_model/model",
-   "pattern": "/data/<m>/model",
-   "shots": {
-    "desktop-light": "shots/data_housing_model_model_c731b6__desktop-light.png",
-    "desktop-dark": "shots/data_housing_model_model_c731b6__desktop-dark.png",
-    "phone-light": "shots/data_housing_model_model_c731b6__phone-light.png",
-    "phone-dark": "shots/data_housing_model_model_c731b6__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1690,
-    "desktop-dark": 1792,
-    "phone-light": 2238,
-    "phone-dark": 1941
-   }
-  },
-  {
-   "path": "/data/housing_model/transform",
-   "pattern": "/data/<m>/transform",
-   "shots": {
-    "desktop-light": "shots/data_housing_model_transform_59e0c3__desktop-light.png",
-    "desktop-dark": "shots/data_housing_model_transform_59e0c3__desktop-dark.png",
-    "phone-light": "shots/data_housing_model_transform_59e0c3__phone-light.png",
-    "phone-dark": "shots/data_housing_model_transform_59e0c3__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1906,
-    "desktop-dark": 1821,
-    "phone-light": 1765,
-    "phone-dark": 1781
-   }
-  },
-  {
-   "path": "/data/housing_model/sources",
-   "pattern": "/data/<m>/sources",
-   "shots": {
-    "desktop-light": "shots/data_housing_model_sources_683952__desktop-light.png",
-    "desktop-dark": "shots/data_housing_model_sources_683952__desktop-dark.png",
-    "phone-light": "shots/data_housing_model_sources_683952__phone-light.png",
-    "phone-dark": "shots/data_housing_model_sources_683952__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1645,
-    "desktop-dark": 1677,
-    "phone-light": 1684,
-    "phone-dark": 1634
-   }
-  },
-  {
-   "path": "/data/housing_model/runs",
-   "pattern": "/data/<m>/runs",
-   "shots": {
-    "desktop-light": "shots/data_housing_model_runs_a59cca__desktop-light.png",
-    "desktop-dark": "shots/data_housing_model_runs_a59cca__desktop-dark.png",
-    "phone-light": "shots/data_housing_model_runs_a59cca__phone-light.png",
-    "phone-dark": "shots/data_housing_model_runs_a59cca__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1718,
-    "desktop-dark": 1652,
-    "phone-light": 1605,
-    "phone-dark": 1585
+    "desktop-light": 2306,
+    "desktop-dark": 2313,
+    "phone-light": 2075,
+    "phone-dark": 2072
    }
   },
   {
@@ -332,10 +268,10 @@
     "phone-dark": "shots/model_portfolio_model_755db1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1087,
-    "desktop-dark": 1083,
-    "phone-light": 1078,
-    "phone-dark": 1093
+    "desktop-light": 1596,
+    "desktop-dark": 1416,
+    "phone-light": 1383,
+    "phone-dark": 1445
    }
   },
   {
@@ -348,90 +284,26 @@
     "phone-dark": "shots/ask_model_portfolio_model_3d4b30__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1210,
-    "desktop-dark": 1254,
-    "phone-light": 1334,
-    "phone-dark": 1399
+    "desktop-light": 1496,
+    "desktop-dark": 1500,
+    "phone-light": 1467,
+    "phone-dark": 1410
    }
   },
   {
-   "path": "/data/portfolio_model",
+   "path": "/data/models/portfolio_model",
    "pattern": "/data/<m>",
    "shots": {
-    "desktop-light": "shots/data_portfolio_model_2d3331__desktop-light.png",
-    "desktop-dark": "shots/data_portfolio_model_2d3331__desktop-dark.png",
-    "phone-light": "shots/data_portfolio_model_2d3331__phone-light.png",
-    "phone-dark": "shots/data_portfolio_model_2d3331__phone-dark.png"
+    "desktop-light": "shots/data_models_portfolio_model_aca766__desktop-light.png",
+    "desktop-dark": "shots/data_models_portfolio_model_aca766__desktop-dark.png",
+    "phone-light": "shots/data_models_portfolio_model_aca766__phone-light.png",
+    "phone-dark": "shots/data_models_portfolio_model_aca766__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1786,
-    "desktop-dark": 1698,
-    "phone-light": 2258,
-    "phone-dark": 2381
-   }
-  },
-  {
-   "path": "/data/portfolio_model/model",
-   "pattern": "/data/<m>/model",
-   "shots": {
-    "desktop-light": "shots/data_portfolio_model_model_0719d6__desktop-light.png",
-    "desktop-dark": "shots/data_portfolio_model_model_0719d6__desktop-dark.png",
-    "phone-light": "shots/data_portfolio_model_model_0719d6__phone-light.png",
-    "phone-dark": "shots/data_portfolio_model_model_0719d6__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1645,
-    "desktop-dark": 1689,
-    "phone-light": 2169,
-    "phone-dark": 2200
-   }
-  },
-  {
-   "path": "/data/portfolio_model/transform",
-   "pattern": "/data/<m>/transform",
-   "shots": {
-    "desktop-light": "shots/data_portfolio_model_transform_3a0dc2__desktop-light.png",
-    "desktop-dark": "shots/data_portfolio_model_transform_3a0dc2__desktop-dark.png",
-    "phone-light": "shots/data_portfolio_model_transform_3a0dc2__phone-light.png",
-    "phone-dark": "shots/data_portfolio_model_transform_3a0dc2__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1762,
-    "desktop-dark": 1875,
-    "phone-light": 1630,
-    "phone-dark": 1624
-   }
-  },
-  {
-   "path": "/data/portfolio_model/sources",
-   "pattern": "/data/<m>/sources",
-   "shots": {
-    "desktop-light": "shots/data_portfolio_model_sources_60a145__desktop-light.png",
-    "desktop-dark": "shots/data_portfolio_model_sources_60a145__desktop-dark.png",
-    "phone-light": "shots/data_portfolio_model_sources_60a145__phone-light.png",
-    "phone-dark": "shots/data_portfolio_model_sources_60a145__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1603,
-    "desktop-dark": 1528,
-    "phone-light": 1570,
-    "phone-dark": 1539
-   }
-  },
-  {
-   "path": "/data/portfolio_model/runs",
-   "pattern": "/data/<m>/runs",
-   "shots": {
-    "desktop-light": "shots/data_portfolio_model_runs_0288cf__desktop-light.png",
-    "desktop-dark": "shots/data_portfolio_model_runs_0288cf__desktop-dark.png",
-    "phone-light": "shots/data_portfolio_model_runs_0288cf__phone-light.png",
-    "phone-dark": "shots/data_portfolio_model_runs_0288cf__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1573,
-    "desktop-dark": 1537,
-    "phone-light": 1518,
-    "phone-dark": 1587
+    "desktop-light": 1925,
+    "desktop-dark": 1916,
+    "phone-light": 1980,
+    "phone-dark": 1707
    }
   },
   {
@@ -444,10 +316,10 @@
     "phone-dark": "shots/model_saas_model_14e7a4__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1116,
-    "desktop-dark": 1110,
-    "phone-light": 1084,
-    "phone-dark": 1097
+    "desktop-light": 1387,
+    "desktop-dark": 1490,
+    "phone-light": 1311,
+    "phone-dark": 1466
    }
   },
   {
@@ -460,202 +332,122 @@
     "phone-dark": "shots/ask_model_saas_model_e1362c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1148,
-    "desktop-dark": 1127,
-    "phone-light": 1211,
-    "phone-dark": 1199
+    "desktop-light": 1467,
+    "desktop-dark": 1390,
+    "phone-light": 1418,
+    "phone-dark": 1441
    }
   },
   {
-   "path": "/data/saas_model",
+   "path": "/data/models/saas_model",
    "pattern": "/data/<m>",
    "shots": {
-    "desktop-light": "shots/data_saas_model_553471__desktop-light.png",
-    "desktop-dark": "shots/data_saas_model_553471__desktop-dark.png",
-    "phone-light": "shots/data_saas_model_553471__phone-light.png",
-    "phone-dark": "shots/data_saas_model_553471__phone-dark.png"
+    "desktop-light": "shots/data_models_saas_model_3cce5f__desktop-light.png",
+    "desktop-dark": "shots/data_models_saas_model_3cce5f__desktop-dark.png",
+    "phone-light": "shots/data_models_saas_model_3cce5f__phone-light.png",
+    "phone-dark": "shots/data_models_saas_model_3cce5f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1572,
-    "desktop-dark": 1537,
-    "phone-light": 1869,
-    "phone-dark": 1814
+    "desktop-light": 1930,
+    "desktop-dark": 1879,
+    "phone-light": 1792,
+    "phone-dark": 1956
    }
   },
   {
-   "path": "/data/saas_model/model",
-   "pattern": "/data/<m>/model",
-   "shots": {
-    "desktop-light": "shots/data_saas_model_model_06392c__desktop-light.png",
-    "desktop-dark": "shots/data_saas_model_model_06392c__desktop-dark.png",
-    "phone-light": "shots/data_saas_model_model_06392c__phone-light.png",
-    "phone-dark": "shots/data_saas_model_model_06392c__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1645,
-    "desktop-dark": 1534,
-    "phone-light": 1784,
-    "phone-dark": 1897
-   }
-  },
-  {
-   "path": "/data/saas_model/transform",
-   "pattern": "/data/<m>/transform",
-   "shots": {
-    "desktop-light": "shots/data_saas_model_transform_00b675__desktop-light.png",
-    "desktop-dark": "shots/data_saas_model_transform_00b675__desktop-dark.png",
-    "phone-light": "shots/data_saas_model_transform_00b675__phone-light.png",
-    "phone-dark": "shots/data_saas_model_transform_00b675__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1683,
-    "desktop-dark": 1750,
-    "phone-light": 1816,
-    "phone-dark": 1772
-   }
-  },
-  {
-   "path": "/data/saas_model/sources",
-   "pattern": "/data/<m>/sources",
-   "shots": {
-    "desktop-light": "shots/data_saas_model_sources_540a9c__desktop-light.png",
-    "desktop-dark": "shots/data_saas_model_sources_540a9c__desktop-dark.png",
-    "phone-light": "shots/data_saas_model_sources_540a9c__phone-light.png",
-    "phone-dark": "shots/data_saas_model_sources_540a9c__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1592,
-    "desktop-dark": 1728,
-    "phone-light": 1666,
-    "phone-dark": 1601
-   }
-  },
-  {
-   "path": "/data/saas_model/runs",
-   "pattern": "/data/<m>/runs",
-   "shots": {
-    "desktop-light": "shots/data_saas_model_runs_5e19dc__desktop-light.png",
-    "desktop-dark": "shots/data_saas_model_runs_5e19dc__desktop-dark.png",
-    "phone-light": "shots/data_saas_model_runs_5e19dc__phone-light.png",
-    "phone-dark": "shots/data_saas_model_runs_5e19dc__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1624,
-    "desktop-dark": 1585,
-    "phone-light": 1602,
-    "phone-dark": 1573
-   }
-  },
-  {
-   "path": "/data/wealth_model",
+   "path": "/data/models/wealth_model",
    "pattern": "/data/<m>",
    "shots": {
-    "desktop-light": "shots/data_wealth_model_b85a8e__desktop-light.png",
-    "desktop-dark": "shots/data_wealth_model_b85a8e__desktop-dark.png",
-    "phone-light": "shots/data_wealth_model_b85a8e__phone-light.png",
-    "phone-dark": "shots/data_wealth_model_b85a8e__phone-dark.png"
+    "desktop-light": "shots/data_models_wealth_model_39ca7a__desktop-light.png",
+    "desktop-dark": "shots/data_models_wealth_model_39ca7a__desktop-dark.png",
+    "phone-light": "shots/data_models_wealth_model_39ca7a__phone-light.png",
+    "phone-dark": "shots/data_models_wealth_model_39ca7a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1583,
-    "desktop-dark": 1575,
-    "phone-light": 1983,
-    "phone-dark": 1954
+    "desktop-light": 2072,
+    "desktop-dark": 1902,
+    "phone-light": 1924,
+    "phone-dark": 1826
    }
   },
   {
-   "path": "/data/wealth_model/model",
-   "pattern": "/data/<m>/model",
+   "path": "/data/transforms/affordability_transform",
+   "pattern": "/data/transforms/<t>",
    "shots": {
-    "desktop-light": "shots/data_wealth_model_model_60456b__desktop-light.png",
-    "desktop-dark": "shots/data_wealth_model_model_60456b__desktop-dark.png",
-    "phone-light": "shots/data_wealth_model_model_60456b__phone-light.png",
-    "phone-dark": "shots/data_wealth_model_model_60456b__phone-dark.png"
+    "desktop-light": "shots/data_transforms_affordability_transform_d958ef__desktop-light.png",
+    "desktop-dark": "shots/data_transforms_affordability_transform_d958ef__desktop-dark.png",
+    "phone-light": "shots/data_transforms_affordability_transform_d958ef__phone-light.png",
+    "phone-dark": "shots/data_transforms_affordability_transform_d958ef__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1576,
-    "desktop-dark": 1632,
-    "phone-light": 2255,
-    "phone-dark": 2091
+    "desktop-light": 2209,
+    "desktop-dark": 2106,
+    "phone-light": 2361,
+    "phone-dark": 2463
    }
   },
   {
-   "path": "/data/wealth_model/transform",
-   "pattern": "/data/<m>/transform",
+   "path": "/data/transforms/holdings_transform",
+   "pattern": "/data/transforms/<t>",
    "shots": {
-    "desktop-light": "shots/data_wealth_model_transform_7b2d6e__desktop-light.png",
-    "desktop-dark": "shots/data_wealth_model_transform_7b2d6e__desktop-dark.png",
-    "phone-light": "shots/data_wealth_model_transform_7b2d6e__phone-light.png",
-    "phone-dark": "shots/data_wealth_model_transform_7b2d6e__phone-dark.png"
+    "desktop-light": "shots/data_transforms_holdings_transform_88824d__desktop-light.png",
+    "desktop-dark": "shots/data_transforms_holdings_transform_88824d__desktop-dark.png",
+    "phone-light": "shots/data_transforms_holdings_transform_88824d__phone-light.png",
+    "phone-dark": "shots/data_transforms_holdings_transform_88824d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1804,
-    "desktop-dark": 1789,
-    "phone-light": 1563,
-    "phone-dark": 1651
+    "desktop-light": 2488,
+    "desktop-dark": 2376,
+    "phone-light": 2481,
+    "phone-dark": 2394
    }
   },
   {
-   "path": "/data/wealth_model/sources",
-   "pattern": "/data/<m>/sources",
+   "path": "/data/transforms/holdings_transform_pandas",
+   "pattern": "/data/transforms/<t>",
    "shots": {
-    "desktop-light": "shots/data_wealth_model_sources_bdd819__desktop-light.png",
-    "desktop-dark": "shots/data_wealth_model_sources_bdd819__desktop-dark.png",
-    "phone-light": "shots/data_wealth_model_sources_bdd819__phone-light.png",
-    "phone-dark": "shots/data_wealth_model_sources_bdd819__phone-dark.png"
+    "desktop-light": "shots/data_transforms_holdings_transform_pandas_c63a84__desktop-light.png",
+    "desktop-dark": "shots/data_transforms_holdings_transform_pandas_c63a84__desktop-dark.png",
+    "phone-light": "shots/data_transforms_holdings_transform_pandas_c63a84__phone-light.png",
+    "phone-dark": "shots/data_transforms_holdings_transform_pandas_c63a84__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1607,
-    "desktop-dark": 1688,
-    "phone-light": 1583,
-    "phone-dark": 1581
+    "desktop-light": 1973,
+    "desktop-dark": 1939,
+    "phone-light": 1834,
+    "phone-dark": 1801
    }
   },
   {
-   "path": "/data/wealth_model/runs",
-   "pattern": "/data/<m>/runs",
-   "shots": {
-    "desktop-light": "shots/data_wealth_model_runs_6ec1ad__desktop-light.png",
-    "desktop-dark": "shots/data_wealth_model_runs_6ec1ad__desktop-dark.png",
-    "phone-light": "shots/data_wealth_model_runs_6ec1ad__phone-light.png",
-    "phone-dark": "shots/data_wealth_model_runs_6ec1ad__phone-dark.png"
-   },
-   "ms": {
-    "desktop-light": 1613,
-    "desktop-dark": 1624,
-    "phone-light": 1535,
-    "phone-dark": 1645
-   }
-  },
-  {
-   "path": "/data/tables/warehouse/dim_cohort",
+   "path": "/data/warehouse/dim_cohort",
    "pattern": "/data/tables/<source>/<table>",
    "shots": {
-    "desktop-light": "shots/data_tables_warehouse_dim_cohort_04c726__desktop-light.png",
-    "desktop-dark": "shots/data_tables_warehouse_dim_cohort_04c726__desktop-dark.png",
-    "phone-light": "shots/data_tables_warehouse_dim_cohort_04c726__phone-light.png",
-    "phone-dark": "shots/data_tables_warehouse_dim_cohort_04c726__phone-dark.png"
+    "desktop-light": "shots/data_warehouse_dim_cohort_65497b__desktop-light.png",
+    "desktop-dark": "shots/data_warehouse_dim_cohort_65497b__desktop-dark.png",
+    "phone-light": "shots/data_warehouse_dim_cohort_65497b__phone-light.png",
+    "phone-dark": "shots/data_warehouse_dim_cohort_65497b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1137,
-    "desktop-dark": 1345,
-    "phone-light": 1210,
-    "phone-dark": 1123
+    "desktop-light": 1921,
+    "desktop-dark": 1920,
+    "phone-light": 2001,
+    "phone-dark": 1817
    }
   },
   {
-   "path": "/data/tables/inputs/holdings.csv",
+   "path": "/data/sources/inputs/holdings.csv",
    "pattern": "/data/tables/<source>/<table>",
    "shots": {
-    "desktop-light": "shots/data_tables_inputs_holdings_csv_5b295f__desktop-light.png",
-    "desktop-dark": "shots/data_tables_inputs_holdings_csv_5b295f__desktop-dark.png",
-    "phone-light": "shots/data_tables_inputs_holdings_csv_5b295f__phone-light.png",
-    "phone-dark": "shots/data_tables_inputs_holdings_csv_5b295f__phone-dark.png"
+    "desktop-light": "shots/data_sources_inputs_holdings_csv_61522f__desktop-light.png",
+    "desktop-dark": "shots/data_sources_inputs_holdings_csv_61522f__desktop-dark.png",
+    "phone-light": "shots/data_sources_inputs_holdings_csv_61522f__phone-light.png",
+    "phone-dark": "shots/data_sources_inputs_holdings_csv_61522f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1083,
-    "desktop-dark": 1024,
-    "phone-light": 1113,
-    "phone-dark": 1052
+    "desktop-light": 1720,
+    "desktop-dark": 1796,
+    "phone-light": 1727,
+    "phone-dark": 1801
    }
   },
   {
@@ -668,10 +460,10 @@
     "phone-dark": "shots/reports_housing_model_affordability_1e6f5a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1675,
-    "desktop-dark": 1750,
-    "phone-light": 1680,
-    "phone-dark": 1650
+    "desktop-light": 1937,
+    "desktop-dark": 1973,
+    "phone-light": 2947,
+    "phone-dark": 2063
    }
   },
   {
@@ -684,10 +476,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_book_290cd8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1554,
-    "desktop-dark": 1502,
-    "phone-light": 1608,
-    "phone-dark": 1573
+    "desktop-light": 1753,
+    "desktop-dark": 2404,
+    "phone-light": 1788,
+    "phone-dark": 1748
    }
   },
   {
@@ -700,10 +492,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_concentration_f5b920__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1498,
-    "desktop-dark": 1717,
-    "phone-light": 1623,
-    "phone-dark": 1553
+    "desktop-light": 1810,
+    "desktop-dark": 1999,
+    "phone-light": 2408,
+    "phone-dark": 2284
    }
   },
   {
@@ -746,21 +538,21 @@
    "pattern": "/map",
    "shots": {},
    "ms": {},
-   "redirect": "/data"
+   "redirect": "/data/lineage"
   },
   {
    "path": "/data/map",
    "pattern": "/data/map",
    "shots": {},
    "ms": {},
-   "redirect": "/data"
+   "redirect": "/data/lineage"
   },
   {
    "path": "/data?view=map",
    "pattern": "/data?view",
    "shots": {},
    "ms": {},
-   "redirect": "/data"
+   "redirect": "/data/lineage"
   },
   {
    "path": "/connectors",
@@ -802,14 +594,14 @@
    "pattern": "/workflow",
    "shots": {},
    "ms": {},
-   "redirect": "/docs/get-started"
+   "redirect": "/docs/concepts/the-three-phase-workflow"
   },
   {
    "path": "/m/housing_model",
    "pattern": "/m/<m>",
    "shots": {},
    "ms": {},
-   "redirect": "/data/housing_model"
+   "redirect": "/data/models/housing_model"
   },
   {
    "path": "/m/housing_model/reports",
@@ -833,6 +625,22 @@
    "redirect": "/runs?model=housing_model"
   },
   {
+   "path": "/runs?model=housing_model",
+   "pattern": "/runs?model",
+   "shots": {
+    "desktop-light": "shots/runs_model_housing_model_a4c247__desktop-light.png",
+    "desktop-dark": "shots/runs_model_housing_model_a4c247__desktop-dark.png",
+    "phone-light": "shots/runs_model_housing_model_a4c247__phone-light.png",
+    "phone-dark": "shots/runs_model_housing_model_a4c247__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1590,
+    "desktop-dark": 1482,
+    "phone-light": 1379,
+    "phone-dark": 1598
+   }
+  },
+  {
    "path": "/models/housing_model?tab=explore",
    "pattern": "/models/<m>?tab=explore",
    "shots": {},
@@ -844,14 +652,14 @@
    "pattern": "/m/<m>/refresh",
    "shots": {},
    "ms": {},
-   "redirect": "/data/housing_model/transform"
+   "redirect": "/data/transforms/affordability_transform"
   },
   {
    "path": "/m/housing_model/sources",
    "pattern": "/m/<m>/sources",
    "shots": {},
    "ms": {},
-   "redirect": "/data/housing_model/sources"
+   "redirect": "/data/sources"
   },
   {
    "path": "/data/housing_model/reports",
@@ -859,6 +667,41 @@
    "shots": {},
    "ms": {},
    "redirect": "/?model=housing_model"
+  },
+  {
+   "path": "/data/housing_model",
+   "pattern": "/data/<m>",
+   "shots": {},
+   "ms": {},
+   "redirect": "/data/models/housing_model"
+  },
+  {
+   "path": "/data/housing_model/transform",
+   "pattern": "/data/<m>/transform",
+   "shots": {},
+   "ms": {},
+   "redirect": "/data/transforms/affordability_transform"
+  },
+  {
+   "path": "/data/housing_model/sources",
+   "pattern": "/data/<m>/sources",
+   "shots": {},
+   "ms": {},
+   "redirect": "/data/sources"
+  },
+  {
+   "path": "/data/housing_model/runs",
+   "pattern": "/data/<m>/runs",
+   "shots": {},
+   "ms": {},
+   "redirect": "/runs?model=housing_model"
+  },
+  {
+   "path": "/data/tables/warehouse/dim_cohort",
+   "pattern": "/data/tables/<source>/<table>",
+   "shots": {},
+   "ms": {},
+   "redirect": "/data/warehouse/dim_cohort"
   },
   {
    "path": "/reports?r=housing_model%2Faffordability",
@@ -877,266 +720,538 @@
     "phone-dark": "shots/no_such_page_01c67c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1008,
-    "desktop-dark": 1018,
-    "phone-light": 1015,
-    "phone-dark": 990
+    "desktop-light": 1558,
+    "desktop-dark": 1572,
+    "phone-light": 1637,
+    "phone-dark": 1570
    }
   },
   {
-   "path": "/data/sources?source=bank",
-   "pattern": "/data/sources?source",
+   "path": "/?folder=portfolio_model",
+   "pattern": "/?folder",
    "shots": {
-    "desktop-light": "shots/data_sources_source_bank_b171ff__desktop-light.png",
-    "desktop-dark": "shots/data_sources_source_bank_b171ff__desktop-dark.png",
-    "phone-light": "shots/data_sources_source_bank_b171ff__phone-light.png",
-    "phone-dark": "shots/data_sources_source_bank_b171ff__phone-dark.png"
+    "desktop-light": "shots/folder_portfolio_model_f00770__desktop-light.png",
+    "desktop-dark": "shots/folder_portfolio_model_f00770__desktop-dark.png",
+    "phone-light": "shots/folder_portfolio_model_f00770__phone-light.png",
+    "phone-dark": "shots/folder_portfolio_model_f00770__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1210,
-    "desktop-dark": 1024,
-    "phone-light": 1167,
-    "phone-dark": 1122
+    "desktop-light": 1527,
+    "desktop-dark": 1741,
+    "phone-light": 1702,
+    "phone-dark": 1582
    }
   },
   {
-   "path": "/data/sources?source=billing",
-   "pattern": "/data/sources?source",
+   "path": "/?folder=housing_model",
+   "pattern": "/?folder",
    "shots": {
-    "desktop-light": "shots/data_sources_source_billing_259634__desktop-light.png",
-    "desktop-dark": "shots/data_sources_source_billing_259634__desktop-dark.png",
-    "phone-light": "shots/data_sources_source_billing_259634__phone-light.png",
-    "phone-dark": "shots/data_sources_source_billing_259634__phone-dark.png"
+    "desktop-light": "shots/folder_housing_model_9e5a41__desktop-light.png",
+    "desktop-dark": "shots/folder_housing_model_9e5a41__desktop-dark.png",
+    "phone-light": "shots/folder_housing_model_9e5a41__phone-light.png",
+    "phone-dark": "shots/folder_housing_model_9e5a41__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1099,
-    "desktop-dark": 1146,
-    "phone-light": 1120,
-    "phone-dark": 1132
+    "desktop-light": 1671,
+    "desktop-dark": 1500,
+    "phone-light": 1444,
+    "phone-dark": 2082
    }
   },
   {
-   "path": "/data/sources?source=crm",
-   "pattern": "/data/sources?source",
+   "path": "/?folder=saas_model",
+   "pattern": "/?folder",
    "shots": {
-    "desktop-light": "shots/data_sources_source_crm_48162e__desktop-light.png",
-    "desktop-dark": "shots/data_sources_source_crm_48162e__desktop-dark.png",
-    "phone-light": "shots/data_sources_source_crm_48162e__phone-light.png",
-    "phone-dark": "shots/data_sources_source_crm_48162e__phone-dark.png"
+    "desktop-light": "shots/folder_saas_model_bf1040__desktop-light.png",
+    "desktop-dark": "shots/folder_saas_model_bf1040__desktop-dark.png",
+    "phone-light": "shots/folder_saas_model_bf1040__phone-light.png",
+    "phone-dark": "shots/folder_saas_model_bf1040__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1109,
-    "desktop-dark": 1150,
-    "phone-light": 1202,
-    "phone-dark": 1118
+    "desktop-light": 2090,
+    "desktop-dark": 1674,
+    "phone-light": 1847,
+    "phone-dark": 1707
    }
   },
   {
-   "path": "/data/tables/inputs/housing_history.csv",
-   "pattern": "/data/tables/<source>/<table>",
+   "path": "/data/lineage",
+   "pattern": "/data/<m>",
    "shots": {
-    "desktop-light": "shots/data_tables_inputs_housing_history_csv_4ae501__desktop-light.png",
-    "desktop-dark": "shots/data_tables_inputs_housing_history_csv_4ae501__desktop-dark.png",
-    "phone-light": "shots/data_tables_inputs_housing_history_csv_4ae501__phone-light.png",
-    "phone-dark": "shots/data_tables_inputs_housing_history_csv_4ae501__phone-dark.png"
+    "desktop-light": "shots/data_lineage_e56bf1__desktop-light.png",
+    "desktop-dark": "shots/data_lineage_e56bf1__desktop-dark.png",
+    "phone-light": "shots/data_lineage_e56bf1__phone-light.png",
+    "phone-dark": "shots/data_lineage_e56bf1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1109,
-    "desktop-dark": 1251,
-    "phone-light": 1186,
-    "phone-dark": 1119
+    "desktop-light": 1783,
+    "desktop-dark": 1738,
+    "phone-light": 1781,
+    "phone-dark": 1821
    }
   },
   {
-   "path": "/data/warehouse?model=housing_model",
-   "pattern": "/data/warehouse?model",
+   "path": "/data/sources?filter=files",
+   "pattern": "/data/sources?filter",
    "shots": {
-    "desktop-light": "shots/data_warehouse_model_housing_model_e65dfb__desktop-light.png",
-    "desktop-dark": "shots/data_warehouse_model_housing_model_e65dfb__desktop-dark.png",
-    "phone-light": "shots/data_warehouse_model_housing_model_e65dfb__phone-light.png",
-    "phone-dark": "shots/data_warehouse_model_housing_model_e65dfb__phone-dark.png"
+    "desktop-light": "shots/data_sources_filter_files_072bd4__desktop-light.png",
+    "desktop-dark": "shots/data_sources_filter_files_072bd4__desktop-dark.png",
+    "phone-light": "shots/data_sources_filter_files_072bd4__phone-light.png",
+    "phone-dark": "shots/data_sources_filter_files_072bd4__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1471,
-    "desktop-dark": 1395,
-    "phone-light": 1504,
-    "phone-dark": 1360
+    "desktop-light": 1796,
+    "desktop-dark": 1862,
+    "phone-light": 1883,
+    "phone-dark": 2114
    }
   },
   {
-   "path": "/data/warehouse?model=portfolio_model",
-   "pattern": "/data/warehouse?model",
+   "path": "/data/sources?filter=agents",
+   "pattern": "/data/sources?filter",
    "shots": {
-    "desktop-light": "shots/data_warehouse_model_portfolio_model_ae8340__desktop-light.png",
-    "desktop-dark": "shots/data_warehouse_model_portfolio_model_ae8340__desktop-dark.png",
-    "phone-light": "shots/data_warehouse_model_portfolio_model_ae8340__phone-light.png",
-    "phone-dark": "shots/data_warehouse_model_portfolio_model_ae8340__phone-dark.png"
+    "desktop-light": "shots/data_sources_filter_agents_39fe59__desktop-light.png",
+    "desktop-dark": "shots/data_sources_filter_agents_39fe59__desktop-dark.png",
+    "phone-light": "shots/data_sources_filter_agents_39fe59__phone-light.png",
+    "phone-dark": "shots/data_sources_filter_agents_39fe59__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1376,
-    "desktop-dark": 1355,
-    "phone-light": 1361,
-    "phone-dark": 1407
+    "desktop-light": 2249,
+    "desktop-dark": 2074,
+    "phone-light": 1844,
+    "phone-dark": 1912
    }
   },
   {
-   "path": "/data/warehouse?model=saas_model",
-   "pattern": "/data/warehouse?model",
+   "path": "/data/sources?filter=connections",
+   "pattern": "/data/sources?filter",
    "shots": {
-    "desktop-light": "shots/data_warehouse_model_saas_model_16a68f__desktop-light.png",
-    "desktop-dark": "shots/data_warehouse_model_saas_model_16a68f__desktop-dark.png",
-    "phone-light": "shots/data_warehouse_model_saas_model_16a68f__phone-light.png",
-    "phone-dark": "shots/data_warehouse_model_saas_model_16a68f__phone-dark.png"
+    "desktop-light": "shots/data_sources_filter_connections_fead7a__desktop-light.png",
+    "desktop-dark": "shots/data_sources_filter_connections_fead7a__desktop-dark.png",
+    "phone-light": "shots/data_sources_filter_connections_fead7a__phone-light.png",
+    "phone-dark": "shots/data_sources_filter_connections_fead7a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1404,
-    "desktop-dark": 1332,
-    "phone-light": 1357,
-    "phone-dark": 1419
+    "desktop-light": 1935,
+    "desktop-dark": 1972,
+    "phone-light": 1723,
+    "phone-dark": 1621
    }
   },
   {
-   "path": "/data/sources?model=portfolio_model",
-   "pattern": "/data/sources?model",
+   "path": "/data/sources/crm",
+   "pattern": "/data/sources/<s>",
    "shots": {
-    "desktop-light": "shots/data_sources_model_portfolio_model_c50093__desktop-light.png",
-    "desktop-dark": "shots/data_sources_model_portfolio_model_c50093__desktop-dark.png",
-    "phone-light": "shots/data_sources_model_portfolio_model_c50093__phone-light.png",
-    "phone-dark": "shots/data_sources_model_portfolio_model_c50093__phone-dark.png"
+    "desktop-light": "shots/data_sources_crm_9a0d01__desktop-light.png",
+    "desktop-dark": "shots/data_sources_crm_9a0d01__desktop-dark.png",
+    "phone-light": "shots/data_sources_crm_9a0d01__phone-light.png",
+    "phone-dark": "shots/data_sources_crm_9a0d01__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1133,
-    "desktop-dark": 1280,
-    "phone-light": 1128,
-    "phone-dark": 1119
+    "desktop-light": 1742,
+    "desktop-dark": 1717,
+    "phone-light": 1718,
+    "phone-dark": 1736
    }
   },
   {
-   "path": "/data/sources?model=housing_model",
-   "pattern": "/data/sources?model",
+   "path": "/runs?kind=schedule",
+   "pattern": "/runs?kind",
    "shots": {
-    "desktop-light": "shots/data_sources_model_housing_model_1d48b8__desktop-light.png",
-    "desktop-dark": "shots/data_sources_model_housing_model_1d48b8__desktop-dark.png",
-    "phone-light": "shots/data_sources_model_housing_model_1d48b8__phone-light.png",
-    "phone-dark": "shots/data_sources_model_housing_model_1d48b8__phone-dark.png"
+    "desktop-light": "shots/runs_kind_schedule_60394d__desktop-light.png",
+    "desktop-dark": "shots/runs_kind_schedule_60394d__desktop-dark.png",
+    "phone-light": "shots/runs_kind_schedule_60394d__phone-light.png",
+    "phone-dark": "shots/runs_kind_schedule_60394d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1078,
-    "desktop-dark": 1081,
-    "phone-light": 1149,
-    "phone-dark": 1032
+    "desktop-light": 1253,
+    "desktop-dark": 1302,
+    "phone-light": 1405,
+    "phone-dark": 1286
    }
   },
   {
-   "path": "/data/sources?model=saas_model",
-   "pattern": "/data/sources?model",
+   "path": "/data/sources/inputs",
+   "pattern": "/data/sources/<s>",
    "shots": {
-    "desktop-light": "shots/data_sources_model_saas_model_0b5a78__desktop-light.png",
-    "desktop-dark": "shots/data_sources_model_saas_model_0b5a78__desktop-dark.png",
-    "phone-light": "shots/data_sources_model_saas_model_0b5a78__phone-light.png",
-    "phone-dark": "shots/data_sources_model_saas_model_0b5a78__phone-dark.png"
+    "desktop-light": "shots/data_sources_inputs_c47474__desktop-light.png",
+    "desktop-dark": "shots/data_sources_inputs_c47474__desktop-dark.png",
+    "phone-light": "shots/data_sources_inputs_c47474__phone-light.png",
+    "phone-dark": "shots/data_sources_inputs_c47474__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1173,
-    "desktop-dark": 1169,
-    "phone-light": 1097,
-    "phone-dark": 1153
+    "desktop-light": 1360,
+    "desktop-dark": 1403,
+    "phone-light": 1333,
+    "phone-dark": 1347
    }
   },
   {
-   "path": "/docs/concepts/the-three-phase-workflow",
+   "path": "/data/sources/billing",
+   "pattern": "/data/sources/<s>",
+   "shots": {
+    "desktop-light": "shots/data_sources_billing_6f33f1__desktop-light.png",
+    "desktop-dark": "shots/data_sources_billing_6f33f1__desktop-dark.png",
+    "phone-light": "shots/data_sources_billing_6f33f1__phone-light.png",
+    "phone-dark": "shots/data_sources_billing_6f33f1__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1841,
+    "desktop-dark": 2053,
+    "phone-light": 1707,
+    "phone-dark": 1806
+   }
+  },
+  {
+   "path": "/data/models/portfolio_model?tab=measures",
+   "pattern": "/data/<m>?tab=measures",
+   "shots": {
+    "desktop-light": "shots/data_models_portfolio_model_tab_measures_4aeded__desktop-light.png",
+    "desktop-dark": "shots/data_models_portfolio_model_tab_measures_4aeded__desktop-dark.png",
+    "phone-light": "shots/data_models_portfolio_model_tab_measures_4aeded__phone-light.png",
+    "phone-dark": "shots/data_models_portfolio_model_tab_measures_4aeded__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 2005,
+    "desktop-dark": 2079,
+    "phone-light": 1916,
+    "phone-dark": 1887
+   }
+  },
+  {
+   "path": "/data/models/housing_model?tab=measures",
+   "pattern": "/data/<m>?tab=measures",
+   "shots": {
+    "desktop-light": "shots/data_models_housing_model_tab_measures_55ff6b__desktop-light.png",
+    "desktop-dark": "shots/data_models_housing_model_tab_measures_55ff6b__desktop-dark.png",
+    "phone-light": "shots/data_models_housing_model_tab_measures_55ff6b__phone-light.png",
+    "phone-dark": "shots/data_models_housing_model_tab_measures_55ff6b__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1856,
+    "desktop-dark": 2075,
+    "phone-light": 1975,
+    "phone-dark": 1919
+   }
+  },
+  {
+   "path": "/data/models/saas_model?tab=measures",
+   "pattern": "/data/<m>?tab=measures",
+   "shots": {
+    "desktop-light": "shots/data_models_saas_model_tab_measures_d84d4a__desktop-light.png",
+    "desktop-dark": "shots/data_models_saas_model_tab_measures_d84d4a__desktop-dark.png",
+    "phone-light": "shots/data_models_saas_model_tab_measures_d84d4a__phone-light.png",
+    "phone-dark": "shots/data_models_saas_model_tab_measures_d84d4a__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1980,
+    "desktop-dark": 2066,
+    "phone-light": 1943,
+    "phone-dark": 1859
+   }
+  },
+  {
+   "path": "/docs/start/plain-english",
    "pattern": "/docs/<page>",
    "shots": {
-    "desktop-light": "shots/docs_concepts_the_three_phase_workflow_6b5461__desktop-light.png",
-    "desktop-dark": "shots/docs_concepts_the_three_phase_workflow_6b5461__desktop-dark.png",
-    "phone-light": "shots/docs_concepts_the_three_phase_workflow_6b5461__phone-light.png",
-    "phone-dark": "shots/docs_concepts_the_three_phase_workflow_6b5461__phone-dark.png"
+    "desktop-light": "shots/docs_start_plain_english_23560c__desktop-light.png",
+    "desktop-dark": "shots/docs_start_plain_english_23560c__desktop-dark.png",
+    "phone-light": "shots/docs_start_plain_english_23560c__phone-light.png",
+    "phone-dark": "shots/docs_start_plain_english_23560c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1153,
-    "desktop-dark": 1228,
-    "phone-light": 1124,
-    "phone-dark": 1166
+    "desktop-light": 1339,
+    "desktop-dark": 1404,
+    "phone-light": 1416,
+    "phone-dark": 1397
    }
   },
   {
-   "path": "/docs/concepts/freeze-points",
+   "path": "/docs/start/your-first-report",
    "pattern": "/docs/<page>",
    "shots": {
-    "desktop-light": "shots/docs_concepts_freeze_points_6af13f__desktop-light.png",
-    "desktop-dark": "shots/docs_concepts_freeze_points_6af13f__desktop-dark.png",
-    "phone-light": "shots/docs_concepts_freeze_points_6af13f__phone-light.png",
-    "phone-dark": "shots/docs_concepts_freeze_points_6af13f__phone-dark.png"
+    "desktop-light": "shots/docs_start_your_first_report_a7460f__desktop-light.png",
+    "desktop-dark": "shots/docs_start_your_first_report_a7460f__desktop-dark.png",
+    "phone-light": "shots/docs_start_your_first_report_a7460f__phone-light.png",
+    "phone-dark": "shots/docs_start_your_first_report_a7460f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1144,
-    "desktop-dark": 1079,
-    "phone-light": 1094,
-    "phone-dark": 1056
+    "desktop-light": 1279,
+    "desktop-dark": 1433,
+    "phone-light": 1421,
+    "phone-dark": 1387
    }
   },
   {
-   "path": "/docs/concepts/lineage",
+   "path": "/docs/start/demo-script",
    "pattern": "/docs/<page>",
    "shots": {
-    "desktop-light": "shots/docs_concepts_lineage_13370c__desktop-light.png",
-    "desktop-dark": "shots/docs_concepts_lineage_13370c__desktop-dark.png",
-    "phone-light": "shots/docs_concepts_lineage_13370c__phone-light.png",
-    "phone-dark": "shots/docs_concepts_lineage_13370c__phone-dark.png"
+    "desktop-light": "shots/docs_start_demo_script_17cf76__desktop-light.png",
+    "desktop-dark": "shots/docs_start_demo_script_17cf76__desktop-dark.png",
+    "phone-light": "shots/docs_start_demo_script_17cf76__phone-light.png",
+    "phone-dark": "shots/docs_start_demo_script_17cf76__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1123,
-    "desktop-dark": 1038,
-    "phone-light": 1108,
-    "phone-dark": 1118
+    "desktop-light": 1470,
+    "desktop-dark": 1582,
+    "phone-light": 1555,
+    "phone-dark": 1553
    }
   },
   {
-   "path": "/runs?model=housing_model",
-   "pattern": "/runs?model",
+   "path": "/data/lineage?node=model%3Ahousing_model",
+   "pattern": "/data/<m>?node",
    "shots": {
-    "desktop-light": "shots/runs_model_housing_model_a4c247__desktop-light.png",
-    "desktop-dark": "shots/runs_model_housing_model_a4c247__desktop-dark.png",
-    "phone-light": "shots/runs_model_housing_model_a4c247__phone-light.png",
-    "phone-dark": "shots/runs_model_housing_model_a4c247__phone-dark.png"
+    "desktop-light": "shots/data_lineage_node_model_3Ahousing_model_8ce5e1__desktop-light.png",
+    "desktop-dark": "shots/data_lineage_node_model_3Ahousing_model_8ce5e1__desktop-dark.png",
+    "phone-light": "shots/data_lineage_node_model_3Ahousing_model_8ce5e1__phone-light.png",
+    "phone-dark": "shots/data_lineage_node_model_3Ahousing_model_8ce5e1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1145,
-    "desktop-dark": 1058,
-    "phone-light": 1058,
-    "phone-dark": 1090
+    "desktop-light": 2031,
+    "desktop-dark": 2073,
+    "phone-light": 2084,
+    "phone-dark": 2013
    }
   },
   {
-   "path": "/runs?model=portfolio_model",
-   "pattern": "/runs?model",
+   "path": "/data/lineage?node=model%3Aportfolio_model",
+   "pattern": "/data/<m>?node",
    "shots": {
-    "desktop-light": "shots/runs_model_portfolio_model_bb7ee3__desktop-light.png",
-    "desktop-dark": "shots/runs_model_portfolio_model_bb7ee3__desktop-dark.png",
-    "phone-light": "shots/runs_model_portfolio_model_bb7ee3__phone-light.png",
-    "phone-dark": "shots/runs_model_portfolio_model_bb7ee3__phone-dark.png"
+    "desktop-light": "shots/data_lineage_node_model_3Aportfolio_model_12e59c__desktop-light.png",
+    "desktop-dark": "shots/data_lineage_node_model_3Aportfolio_model_12e59c__desktop-dark.png",
+    "phone-light": "shots/data_lineage_node_model_3Aportfolio_model_12e59c__phone-light.png",
+    "phone-dark": "shots/data_lineage_node_model_3Aportfolio_model_12e59c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1106,
-    "desktop-dark": 1099,
-    "phone-light": 1111,
-    "phone-dark": 1096
+    "desktop-light": 2019,
+    "desktop-dark": 1906,
+    "phone-light": 1772,
+    "phone-dark": 1829
    }
   },
   {
-   "path": "/runs?model=saas_model",
-   "pattern": "/runs?model",
+   "path": "/data/lineage?node=model%3Asaas_model",
+   "pattern": "/data/<m>?node",
    "shots": {
-    "desktop-light": "shots/runs_model_saas_model_214de2__desktop-light.png",
-    "desktop-dark": "shots/runs_model_saas_model_214de2__desktop-dark.png",
-    "phone-light": "shots/runs_model_saas_model_214de2__phone-light.png",
-    "phone-dark": "shots/runs_model_saas_model_214de2__phone-dark.png"
+    "desktop-light": "shots/data_lineage_node_model_3Asaas_model_15421f__desktop-light.png",
+    "desktop-dark": "shots/data_lineage_node_model_3Asaas_model_15421f__desktop-dark.png",
+    "phone-light": "shots/data_lineage_node_model_3Asaas_model_15421f__phone-light.png",
+    "phone-dark": "shots/data_lineage_node_model_3Asaas_model_15421f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1093,
-    "desktop-dark": 1106,
-    "phone-light": 1115,
-    "phone-dark": 1140
+    "desktop-light": 2035,
+    "desktop-dark": 1793,
+    "phone-light": 1844,
+    "phone-dark": 2332
+   }
+  },
+  {
+   "path": "/data/lineage?lane=sources",
+   "pattern": "/data/<m>?lane",
+   "shots": {
+    "desktop-light": "shots/data_lineage_lane_sources_2ce704__desktop-light.png",
+    "desktop-dark": "shots/data_lineage_lane_sources_2ce704__desktop-dark.png",
+    "phone-light": "shots/data_lineage_lane_sources_2ce704__phone-light.png",
+    "phone-dark": "shots/data_lineage_lane_sources_2ce704__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1685,
+    "desktop-dark": 1689,
+    "phone-light": 1647,
+    "phone-dark": 1589
+   }
+  },
+  {
+   "path": "/data/lineage?lane=transforms",
+   "pattern": "/data/<m>?lane",
+   "shots": {
+    "desktop-light": "shots/data_lineage_lane_transforms_8bd861__desktop-light.png",
+    "desktop-dark": "shots/data_lineage_lane_transforms_8bd861__desktop-dark.png",
+    "phone-light": "shots/data_lineage_lane_transforms_8bd861__phone-light.png",
+    "phone-dark": "shots/data_lineage_lane_transforms_8bd861__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1637,
+    "desktop-dark": 1818,
+    "phone-light": 1757,
+    "phone-dark": 1697
+   }
+  },
+  {
+   "path": "/data/lineage?lane=warehouse",
+   "pattern": "/data/<m>?lane",
+   "shots": {
+    "desktop-light": "shots/data_lineage_lane_warehouse_f0c842__desktop-light.png",
+    "desktop-dark": "shots/data_lineage_lane_warehouse_f0c842__desktop-dark.png",
+    "phone-light": "shots/data_lineage_lane_warehouse_f0c842__phone-light.png",
+    "phone-dark": "shots/data_lineage_lane_warehouse_f0c842__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1682,
+    "desktop-dark": 1612,
+    "phone-light": 1477,
+    "phone-dark": 1624
+   }
+  },
+  {
+   "path": "/data/lineage?lens=coverage",
+   "pattern": "/data/<m>?lens",
+   "shots": {
+    "desktop-light": "shots/data_lineage_lens_coverage_16e6f1__desktop-light.png",
+    "desktop-dark": "shots/data_lineage_lens_coverage_16e6f1__desktop-dark.png",
+    "phone-light": "shots/data_lineage_lens_coverage_16e6f1__phone-light.png",
+    "phone-dark": "shots/data_lineage_lens_coverage_16e6f1__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1758,
+    "desktop-dark": 1586,
+    "phone-light": 1608,
+    "phone-dark": 1718
+   }
+  },
+  {
+   "path": "/ask?model=portfolio_model&q=%7B%22measures%22%3A%5B%22fair_value%22%5D%2C%22dimensions%22%3A%5B%5D%2C%22filters%22%3A%7B%7D%7D",
+   "pattern": "/ask?model&q",
+   "shots": {
+    "desktop-light": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22fair_va_c2424e__desktop-light.png",
+    "desktop-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22fair_va_c2424e__desktop-dark.png",
+    "phone-light": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22fair_va_c2424e__phone-light.png",
+    "phone-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22fair_va_c2424e__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1523,
+    "desktop-dark": 1505,
+    "phone-light": 1694,
+    "phone-dark": 1453
+   }
+  },
+  {
+   "path": "/ask?model=portfolio_model&q=%7B%22measures%22%3A%5B%22cost_basis%22%5D%2C%22dimensions%22%3A%5B%5D%2C%22filters%22%3A%7B%7D%7D",
+   "pattern": "/ask?model&q",
+   "shots": {
+    "desktop-light": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22cost_ba_cee1a3__desktop-light.png",
+    "desktop-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22cost_ba_cee1a3__desktop-dark.png",
+    "phone-light": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22cost_ba_cee1a3__phone-light.png",
+    "phone-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22cost_ba_cee1a3__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1371,
+    "desktop-dark": 1555,
+    "phone-light": 1674,
+    "phone-dark": 1550
+   }
+  },
+  {
+   "path": "/ask?model=portfolio_model&q=%7B%22measures%22%3A%5B%22par_amount%22%5D%2C%22dimensions%22%3A%5B%5D%2C%22filters%22%3A%7B%7D%7D",
+   "pattern": "/ask?model&q",
+   "shots": {
+    "desktop-light": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22par_amo_24a617__desktop-light.png",
+    "desktop-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22par_amo_24a617__desktop-dark.png",
+    "phone-light": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22par_amo_24a617__phone-light.png",
+    "phone-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22par_amo_24a617__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1492,
+    "desktop-dark": 1380,
+    "phone-light": 1515,
+    "phone-dark": 1603
+   }
+  },
+  {
+   "path": "/?node=report%3Ahousing_model%2Faffordability",
+   "pattern": "/?node",
+   "shots": {
+    "desktop-light": "shots/node_report_3Ahousing_model_2Faffordability_ce5a9c__desktop-light.png",
+    "desktop-dark": "shots/node_report_3Ahousing_model_2Faffordability_ce5a9c__desktop-dark.png",
+    "phone-light": "shots/node_report_3Ahousing_model_2Faffordability_ce5a9c__phone-light.png",
+    "phone-dark": "shots/node_report_3Ahousing_model_2Faffordability_ce5a9c__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1503,
+    "desktop-dark": 1433,
+    "phone-light": 1468,
+    "phone-dark": 1405
+   }
+  },
+  {
+   "path": "/data/models/housing_model?tab=schema",
+   "pattern": "/data/<m>?tab=schema",
+   "shots": {
+    "desktop-light": "shots/data_models_housing_model_tab_schema_0c3c45__desktop-light.png",
+    "desktop-dark": "shots/data_models_housing_model_tab_schema_0c3c45__desktop-dark.png",
+    "phone-light": "shots/data_models_housing_model_tab_schema_0c3c45__phone-light.png",
+    "phone-dark": "shots/data_models_housing_model_tab_schema_0c3c45__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 2226,
+    "desktop-dark": 2410,
+    "phone-light": 2048,
+    "phone-dark": 2174
+   }
+  },
+  {
+   "path": "/?node=report%3Aportfolio_model%2Fportfolio_book",
+   "pattern": "/?node",
+   "shots": {
+    "desktop-light": "shots/node_report_3Aportfolio_model_2Fportfolio_book_87277b__desktop-light.png",
+    "desktop-dark": "shots/node_report_3Aportfolio_model_2Fportfolio_book_87277b__desktop-dark.png",
+    "phone-light": "shots/node_report_3Aportfolio_model_2Fportfolio_book_87277b__phone-light.png",
+    "phone-dark": "shots/node_report_3Aportfolio_model_2Fportfolio_book_87277b__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1472,
+    "desktop-dark": 1478,
+    "phone-light": 1417,
+    "phone-dark": 1394
+   }
+  },
+  {
+   "path": "/?node=report%3Aportfolio_model%2Fportfolio_concentration",
+   "pattern": "/?node",
+   "shots": {
+    "desktop-light": "shots/node_report_3Aportfolio_model_2Fportfolio_concentration_26c95e__desktop-light.png",
+    "desktop-dark": "shots/node_report_3Aportfolio_model_2Fportfolio_concentration_26c95e__desktop-dark.png",
+    "phone-light": "shots/node_report_3Aportfolio_model_2Fportfolio_concentration_26c95e__phone-light.png",
+    "phone-dark": "shots/node_report_3Aportfolio_model_2Fportfolio_concentration_26c95e__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 1353,
+    "desktop-dark": 1446,
+    "phone-light": 1475,
+    "phone-dark": 1519
+   }
+  },
+  {
+   "path": "/data/models/portfolio_model?tab=schema",
+   "pattern": "/data/<m>?tab=schema",
+   "shots": {
+    "desktop-light": "shots/data_models_portfolio_model_tab_schema_66d2a8__desktop-light.png",
+    "desktop-dark": "shots/data_models_portfolio_model_tab_schema_66d2a8__desktop-dark.png",
+    "phone-light": "shots/data_models_portfolio_model_tab_schema_66d2a8__phone-light.png",
+    "phone-dark": "shots/data_models_portfolio_model_tab_schema_66d2a8__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 2209,
+    "desktop-dark": 2102,
+    "phone-light": 2162,
+    "phone-dark": 2495
+   }
+  },
+  {
+   "path": "/data/models/saas_model?tab=schema",
+   "pattern": "/data/<m>?tab=schema",
+   "shots": {
+    "desktop-light": "shots/data_models_saas_model_tab_schema_0c789f__desktop-light.png",
+    "desktop-dark": "shots/data_models_saas_model_tab_schema_0c789f__desktop-dark.png",
+    "phone-light": "shots/data_models_saas_model_tab_schema_0c789f__phone-light.png",
+    "phone-dark": "shots/data_models_saas_model_tab_schema_0c789f__phone-dark.png"
+   },
+   "ms": {
+    "desktop-light": 2105,
+    "desktop-dark": 2142,
+    "phone-light": 2195,
+    "phone-dark": 2290
    }
   }
  ],
@@ -1164,6 +1279,66 @@
     "desktop-dark",
     "phone-light",
     "phone-dark"
+   ]
+  },
+  {
+   "page": "/",
+   "pattern": "/",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "axe:link-in-text-block",
+   "severity": "serious",
+   "target": ".welcome__line > a:nth-child(3)",
+   "detail": "Links must be distinguishable without relying on color \u2014 .welcome__line > a:nth-child(3) ::   The link has insufficient color contrast of 1.36:1 with the surrounding text. (Minimum contrast is 3:1, link text: #2447c4, surrounding text: #404040)",
+   "key": "axe:link-in-text-block|/|.welcome__line > a:nth-child(#)",
+   "seen_in": [
+    "desktop-light",
+    "desktop-dark",
+    "phone-light"
+   ]
+  },
+  {
+   "page": "/?model=housing_model",
+   "pattern": "/?model",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "axe:link-in-text-block",
+   "severity": "serious",
+   "target": ".welcome__line > a:nth-child(3)",
+   "detail": "Links must be distinguishable without relying on color \u2014 .welcome__line > a:nth-child(3) ::   The link has insufficient color contrast of 1.36:1 with the surrounding text. (Minimum contrast is 3:1, link text: #2447c4, surrounding text: #404040)",
+   "key": "axe:link-in-text-block|/?model|.welcome__line > a:nth-child(#)",
+   "seen_in": [
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light"
+   ]
+  },
+  {
+   "page": "/?node=report%3Ahousing_model%2Faffordability",
+   "pattern": "/?node",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "axe:link-in-text-block",
+   "severity": "serious",
+   "target": ".welcome__line > a:nth-child(3)",
+   "detail": "Links must be distinguishable without relying on color \u2014 .welcome__line > a:nth-child(3) ::   The link has insufficient color contrast of 1.36:1 with the surrounding text. (Minimum contrast is 3:1, link text: #2447c4, surrounding text: #404040)",
+   "key": "axe:link-in-text-block|/?node|.welcome__line > a:nth-child(#)",
+   "seen_in": [
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light",
+    "desktop-light",
+    "desktop-dark",
+    "phone-light"
    ]
   },
   {
@@ -1226,6 +1401,22 @@
    ]
   },
   {
+   "page": "/ask?model=portfolio_model&q=%7B%22measures%22%3A%5B%22fair_value%22%5D%2C%22dimensions%22%3A%5B%5D%2C%22filters%22%3A%7B%7D%7D",
+   "pattern": "/ask?model&q",
+   "viewport": "desktop",
+   "theme": "light",
+   "rule": "no-focus-ring",
+   "severity": "serious",
+   "target": "input \"Your question\"",
+   "detail": "keyboard focus is invisible",
+   "key": "no-focus-ring|/ask?model&q|input",
+   "seen_in": [
+    "desktop-light",
+    "desktop-light",
+    "desktop-light"
+   ]
+  },
+  {
    "page": "/reports/housing_model/affordability",
    "pattern": "/reports/<r>",
    "viewport": "desktop",
@@ -1251,36 +1442,44 @@
    ]
   },
   {
-   "page": "/reports/housing_model/affordability",
-   "pattern": "/reports/<r>",
+   "page": "/data/warehouse",
+   "pattern": "/data/warehouse",
+   "viewport": "-",
+   "theme": "-",
+   "rule": "slow-page",
+   "severity": "moderate",
+   "target": "page",
+   "detail": "settles in a median 3789ms",
+   "key": "slow-page|/data/warehouse|page",
+   "seen_in": [
+    "---"
+   ]
+  },
+  {
+   "page": "/ask?model=portfolio_model&q=%7B%22measures%22%3A%5B%22fair_value%22%5D%2C%22dimensions%22%3A%5B%5D%2C%22filters%22%3A%7B%7D%7D",
+   "pattern": "/ask?model&q",
    "viewport": "phone",
    "theme": "light",
    "rule": "small-target",
    "severity": "moderate",
-   "target": "a \"Reports\"",
-   "detail": "46x20px tap target",
-   "key": "small-target|/reports/<r>|a",
+   "target": "button.ask-token__x \"\u00d7\"",
+   "detail": "19x30px tap target",
+   "key": "small-target|/ask?model&q|button.ask-token__x",
    "seen_in": [
     "phone-light",
-    "phone-light",
-    "phone-dark",
     "phone-dark",
     "phone-light",
-    "phone-light",
-    "phone-dark",
     "phone-dark",
     "phone-light",
-    "phone-light",
-    "phone-dark",
     "phone-dark"
    ]
   }
  ],
  "metrics": {
-  "hardcoded_colors_in_jsx": 11,
-  "inline_style_blocks": 399,
-  "bundle_js_kb": 1295,
-  "bundle_css_kb": 104,
+  "hardcoded_colors_in_jsx": 7,
+  "inline_style_blocks": 322,
+  "bundle_js_kb": 1405,
+  "bundle_css_kb": 143,
   "engine_gz_kb": 14.7,
   "report_font_families": 5,
   "report_accents": 5,
@@ -1288,25 +1487,25 @@
   "report_gradients": 58,
   "report_looks": 6,
   "report_html_kb": {
-   "housing_model/affordability": 799,
-   "portfolio_model/portfolio_book": 641,
-   "portfolio_model/portfolio_concentration": 1239,
-   "portfolio_model/portfolio_dashboard": 1235,
-   "portfolio_model/portfolio_desk": 1261,
-   "portfolio_model/portfolio_overview": 1234,
-   "portfolio_model/portfolio_showcase": 722,
-   "saas_model/cohort_brief": 624,
+   "housing_model/affordability": 800,
+   "portfolio_model/portfolio_book": 642,
+   "portfolio_model/portfolio_concentration": 1240,
+   "portfolio_model/portfolio_dashboard": 1236,
+   "portfolio_model/portfolio_desk": 1263,
+   "portfolio_model/portfolio_overview": 1235,
+   "portfolio_model/portfolio_showcase": 723,
+   "saas_model/cohort_brief": 625,
    "saas_model/mrr_dashboard": 1234,
    "wealth_model/aum_by_branch": 1341,
-   "wealth_model/aum_by_region": 1225
+   "wealth_model/aum_by_region": 1226
   },
-  "calc_ms_max": 2.5
+  "calc_ms_max": 7.5
  },
  "report_pass": {
   "sheet": "report-sheet.png",
   "families": [
    "Fraunces",
-   "Hanken Grotesk",
+   "Geist",
    "Inter",
    "Iowan Old Style",
    "ui-monospace"
@@ -1325,7 +1524,7 @@
    "Iowan Old Style + #1f4e79/#8bb4e0": [
     "portfolio_model/portfolio_book"
    ],
-   "Hanken Grotesk + #2f5bea/#7a9cff": [
+   "Geist + #2f5bea/#7a9cff": [
     "portfolio_model/portfolio_concentration",
     "portfolio_model/portfolio_dashboard",
     "portfolio_model/portfolio_desk",
@@ -1352,7 +1551,7 @@
      "phone-dark": "report-shots/housing_model_affordability_118bc4__phone-dark.png"
     },
     "families": {
-     "Inter": 986,
+     "Inter": 994,
      "ui-monospace": 12
     },
     "shadows": [
@@ -1433,8 +1632,8 @@
      "lineargradient (phone-dark)"
     ],
     "accent": "#1f7a4d/#1f7a4d",
-    "html_kb": 799,
-    "calc_ms": 1.6,
+    "html_kb": 800,
+    "calc_ms": 7.5,
     "display": "Inter"
    },
    "portfolio_model/portfolio_book": {
@@ -1445,14 +1644,14 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_book_baec1f__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 387,
-     "Iowan Old Style": 123
+     "Geist": 403,
+     "Iowan Old Style": 115
     },
     "shadows": [],
     "gradients": [],
     "accent": "#1f4e79/#8bb4e0",
-    "html_kb": 641,
-    "calc_ms": 1.6,
+    "html_kb": 642,
+    "calc_ms": 1.3,
     "display": "Iowan Old Style"
    },
    "portfolio_model/portfolio_concentration": {
@@ -1463,14 +1662,14 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_concentration_a93b0b__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 598
+     "Geist": 594
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1239,
-    "calc_ms": 2.0,
-    "display": "Hanken Grotesk"
+    "html_kb": 1240,
+    "calc_ms": 1.1,
+    "display": "Geist"
    },
    "portfolio_model/portfolio_dashboard": {
     "shots": {
@@ -1480,14 +1679,14 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_dashboard_a12461__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 595
+     "Geist": 603
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1235,
-    "calc_ms": 1.6,
-    "display": "Hanken Grotesk"
+    "html_kb": 1236,
+    "calc_ms": 1.5,
+    "display": "Geist"
    },
    "portfolio_model/portfolio_desk": {
     "shots": {
@@ -1497,14 +1696,14 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_desk_6cadf0__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 306
+     "Geist": 314
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1261,
-    "calc_ms": 1.4,
-    "display": "Hanken Grotesk"
+    "html_kb": 1263,
+    "calc_ms": 1.7,
+    "display": "Geist"
    },
    "portfolio_model/portfolio_overview": {
     "shots": {
@@ -1514,14 +1713,14 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_overview_3930b0__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 254
+     "Geist": 262
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1234,
-    "calc_ms": 1.0,
-    "display": "Hanken Grotesk"
+    "html_kb": 1235,
+    "calc_ms": 1.4,
+    "display": "Geist"
    },
    "portfolio_model/portfolio_showcase": {
     "shots": {
@@ -1531,15 +1730,15 @@
      "phone-dark": "report-shots/portfolio_model_portfolio_showcase_1de249__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 854,
+     "Geist": 838,
      "Fraunces": 20,
      "ui-monospace": 4
     },
     "shadows": [],
     "gradients": [],
     "accent": "#0d6b73/#5cc4bd",
-    "html_kb": 722,
-    "calc_ms": 1.5,
+    "html_kb": 723,
+    "calc_ms": 1.2,
     "display": "Fraunces"
    },
    "saas_model/cohort_brief": {
@@ -1550,14 +1749,14 @@
      "phone-dark": "report-shots/saas_model_cohort_brief_bcb608__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 326,
-     "Iowan Old Style": 106
+     "Geist": 346,
+     "Iowan Old Style": 94
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 624,
-    "calc_ms": 0.9,
+    "html_kb": 625,
+    "calc_ms": 0.8,
     "display": "Iowan Old Style"
    },
    "saas_model/mrr_dashboard": {
@@ -1568,14 +1767,14 @@
      "phone-dark": "report-shots/saas_model_mrr_dashboard_0048a3__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 256
+     "Geist": 258
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1234,
-    "calc_ms": 0.9,
-    "display": "Hanken Grotesk"
+    "calc_ms": 0.8,
+    "display": "Geist"
    },
    "wealth_model/aum_by_branch": {
     "shots": {
@@ -1585,14 +1784,14 @@
      "phone-dark": "report-shots/wealth_model_aum_by_branch_044cc8__phone-dark.png"
     },
     "families": {
-     "Inter": 479,
+     "Inter": 487,
      "Fraunces": 40
     },
     "shadows": [],
     "gradients": [],
     "accent": "#1f6f5c/#6cc3a8",
     "html_kb": 1341,
-    "calc_ms": 2.5,
+    "calc_ms": 1.3,
     "display": "Fraunces"
    },
    "wealth_model/aum_by_region": {
@@ -1603,16 +1802,16 @@
      "phone-dark": "report-shots/wealth_model_aum_by_region_e9c4ce__phone-dark.png"
     },
     "families": {
-     "Hanken Grotesk": 247
+     "Geist": 255
     },
     "shadows": [],
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
-    "html_kb": 1225,
-    "calc_ms": 1.3,
-    "display": "Hanken Grotesk"
+    "html_kb": 1226,
+    "calc_ms": 1.6,
+    "display": "Geist"
    }
   }
  },
- "score": 71
+ "score": 57
 }
