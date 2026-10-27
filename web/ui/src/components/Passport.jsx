@@ -119,9 +119,10 @@ function Actions({ n, onSetup }) {
 /**
  * One node's passport: *n* a graph node, *byId* every node by id, *onGo(id)*
  * selects another (a reader or a writer), *onSetup(name)* opens a source's
- * Setup sheet.
+ * Setup sheet. *from*, for a warehouse table, is the source tables and files
+ * its columns come from (the graph's proven edges): From lists them.
  */
-export function NodePassport({ n, byId, onGo, onSetup }) {
+export function NodePassport({ n, byId, onGo, onSetup, from }) {
   const p = n.passport || {}
   const linked = n.kind === 'group' || n.kind === 'table' ? p.writers || [] : p.readers || []
   return (
@@ -132,7 +133,8 @@ export function NodePassport({ n, byId, onGo, onSetup }) {
       <h2 className="pass__name" title={n.name}>{n.label}</h2>
       {(n.gap || n.sub) && <p className="pass__sub">{n.gap ? <Chip tone="warn">{n.gap.reason}</Chip> : n.sub}</p>}
       <PassportRows rows={[
-        ['From', p.origin ? <code>{p.origin}</code> : null],
+        ['From', from?.length ? <NodeLinks ids={from} byId={byId} onGo={onGo} />
+          : p.origin ? <code>{p.origin}</code> : null],
         [linksRow(n.kind), linked.length
           ? <NodeLinks ids={linked} byId={byId} onGo={onGo} />
           : n.kind === 'report' ? 'People, and the share link' : <Chip tone="warn">Nobody · a gap</Chip>],

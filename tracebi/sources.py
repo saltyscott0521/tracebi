@@ -349,7 +349,7 @@ def warehouses(registry) -> list[dict]:
 
 def _table_entry(t: dict, readers: dict[str, list[str]], owners: dict[str, str],
                  certs: Optional[dict] = None) -> dict:
-    from tracebi.contracts import view_record
+    from tracebi.contracts import columns_from, view_record
 
     contract = t.get("contract") or {"status": "no_contract"}
     record = contract.get("transform")
@@ -363,6 +363,10 @@ def _table_entry(t: dict, readers: dict[str, list[str]], owners: dict[str, str],
     if record:
         written_by = {"transform": owners.get(record), "contract": record, "at": at}
     extra = {"bases": defined["bases"]} if defined else {}
+    # A SQL transform's certificate says where each column came from.
+    lineage = columns_from({"transforms": certs or {}}, t["name"])
+    if lineage:
+        extra["columns_from"] = lineage
     return {
         "name": t["name"],
         "kind": t.get("kind", "table"),

@@ -1110,6 +1110,24 @@ def _transform_contracts() -> dict:
                          "the figure claims; it never colors a figure "
                          "status. `tracebi verify --contracts` re-runs the "
                          "recorded checks against the current warehouse.",
+        "lineage": "A SQL transform's certificate record also says form: sql "
+                   "and lineage: {table: {column: {from: [bases], via?: "
+                   "[TEMP tables]} | {from: null, reason}}}, where each sink "
+                   "column comes from, as DuckDB's parser proves it "
+                   "(json_serialize_sql of every statement, SELECT * expanded "
+                   "through the run's catalog). A base is "
+                   "<connection>.<table>.<column> for a -- source: table, "
+                   "<path>.<column> for a file read (inputs/holdings.csv.par), "
+                   "<table>.<column> for another warehouse table. from: [] "
+                   "means computed from no column (a constant, row_number()); "
+                   "null with a reason means the tree could not be followed "
+                   "(a table macro, COLUMNS(…), a recursive CTE, a table an "
+                   "INSERT or UPDATE changed after it was created). Only the "
+                   "value's expression counts, not a WHERE or a join "
+                   "condition. A Python or notebook transform records none: "
+                   "nothing is traced through pandas. Say 'from "
+                   "crm.issuer_ratings.rating', never that a number was "
+                   "verified.",
         "constraints": [
             "The vocabulary is closed and declarative — no callables — so "
             "every check is serializable, reviewable, and re-runnable.",
@@ -1829,6 +1847,11 @@ def describe(brief: bool = False) -> dict:
                     "(name, type, error: exception type plus the first "
                     "message line); the others still list.",
             "mcp": "describe_table(table='', connector='')",
+            "columns_from": "With a table, a match also carries columns_from "
+                            "when a SQL transform's certificate recorded "
+                            "where its columns come from: {column: {from, "
+                            "via?} | {from: null, reason}} (the contracts "
+                            "vocabulary's lineage).",
             "cli": "tracebi warehouse tables [--connector NAME] [--table T] [--json]",
             "when": "Call describe_table before writing a model or an ad-hoc "
                     "measure, so column names come from the catalog instead "
@@ -1848,8 +1871,13 @@ def describe(brief: bool = False) -> dict:
                     "reads, a model no report reads). edges are facts, never "
                     "guesses: a transform's file names the source, the sink "
                     "certificate names what it wrote, a model reads those "
-                    "tables, a report's bindings read the model. The app's "
-                    "Data overview draws the same graph.",
+                    "tables, a report's bindings read the model. edge_facts "
+                    "adds what DuckDB's parser proved of a SQL transform: "
+                    "{from, to, kind: lineage, columns}, a source table, file "
+                    "or warehouse table to the warehouse table that takes "
+                    "columns from it; such a table's passport carries "
+                    "columns_from. The app's Data overview draws the same "
+                    "graph.",
             "when": "First, on a project you have not seen: it shows what "
                     "exists before any other call.",
         },

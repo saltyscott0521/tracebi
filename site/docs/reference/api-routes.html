@@ -264,7 +264,7 @@ folder).</p>
 <tbody>
 <tr>
 <td><code>/{source}/{table}</code></td>
-<td><code>{source, table, kind: "warehouse" \| "connection" \| "file", rows, rows_exact, columns: [{name, type}], written_by: {transform, contract, at} \| null, contract: {status, file, checks, note, checked_at} \| null, read_by: [model], used_by: [{report, display_name}], transform_read: [{ref, snapshot, fingerprint}]}</code>. <code>type</code> is the engine's spelling. <code>written_by</code>, <code>contract</code> and <code>transform_read</code> (what the writing run read from outside the warehouse; <code>snapshot</code> when a committed file stood in) come from the certificate, for warehouse tables only. <code>used_by</code> lists reports the caller may view whose bindings read a model in <code>read_by</code>.</td>
+<td><code>{source, table, kind: "warehouse" \| "connection" \| "file", rows, rows_exact, columns: [{name, type}], written_by: {transform, contract, at} \| null, contract: {status, file, checks, note, checked_at} \| null, columns_from: {column: {from, via?} \| {from: null, reason}} \| null, read_by: [model], used_by: [{report, display_name}], transform_read: [{ref, snapshot, fingerprint}]}</code>. <code>type</code> is the engine's spelling. <code>written_by</code>, <code>contract</code> and <code>transform_read</code> (what the writing run read from outside the warehouse; <code>snapshot</code> when a committed file stood in) come from the certificate, for warehouse tables only; <code>columns_from</code> is a SQL transform's column lineage, as DuckDB's parser proved it (<a href="../reference/transform-sql.html">SQL transforms</a>), null for a table pandas wrote. <code>used_by</code> lists reports the caller may view whose bindings read a model in <code>read_by</code>.</td>
 </tr>
 <tr>
 <td><code>/rows</code></td>
@@ -856,7 +856,7 @@ model needed (<a href="../concepts/trace.html">The trace</a>).</p>
 <td><code>GET</code></td>
 <td><code>/api/graph</code></td>
 <td>viewer</td>
-<td>The project as one graph, what Data's overview draws and the gateway's <code>describe_project</code> answers: <code>{summary, nodes, edges}</code>. Reports in a folder the caller cannot view are left out with their edges.</td>
+<td>The project as one graph, what Data's overview draws and the gateway's <code>describe_project</code> answers: <code>{summary, nodes, edges, edge_facts}</code>. Reports in a folder the caller cannot view are left out with their edges.</td>
 </tr>
 </tbody>
 </table>
@@ -882,7 +882,12 @@ reads, a transform no pipeline runs and no certificate names, a warehouse
 table no model reads, a model no report reads. <code>edges</code> are <code>[from, to]</code> pairs
 from four facts only: a transform's file names the source (<code>read_by</code>), the
 sink certificate names the tables it wrote (to the writer's group), a model
-reads a group's tables, a report's bindings read the model. <code>summary</code> counts
+reads a group's tables, a report's bindings read the model. <code>edge_facts</code> are
+the edges DuckDB's parser proved, beside them: <code>{from, to, kind: "lineage",
+columns}</code>, a source table, input file or warehouse table to a warehouse table
+that a SQL transform computed <code>columns</code> of its columns from; such a table's
+passport carries <code>columns_from</code>, and a source table's <code>readers</code> list it.
+<code>summary</code> counts
 each kind in the flow (gaps apart, in <code>gaps</code>), stale tables, groups whose
 checks passed (<code>checks: {satisfied, of}</code>), and what agents may read
 (<code>agents: {source_tables, models, reports}</code>).</p>

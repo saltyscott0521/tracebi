@@ -773,6 +773,20 @@ def _connector_error(connector, exc: BaseException) -> dict:
     }
 
 
+def _columns_from(connector, table: str) -> Optional[dict]:
+    """Where each column of a warehouse table comes from, as the certificate
+    of the SQL transform that wrote it records DuckDB's parse
+    (``tracebi.contracts.columns_from``); None for anything else."""
+    from tracebi.contracts import columns_from, read_contracts
+
+    try:
+        wh = getattr(connector, "warehouse", None)
+        target = wh.sink if wh is not None else connector.describe().get("database")
+        return columns_from(read_contracts(target), table) if target else None
+    except Exception:  # noqa: BLE001 — no certificate to read is no lineage, never an error
+        return None
+
+
 def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTableResult:
     """Column names and types from connector metadata. Never returns rows.
 
@@ -821,11 +835,15 @@ def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTabl
             continue
         if schema is None:
             continue
-        matches.append({
+        match = {
             "connector": c.name,
             "table": table,
             "columns": schema,
-        })
+        }
+        lineage = _columns_from(c, table)
+        if lineage:
+            match["columns_from"] = lineage
+        matches.append(match)
     if not matches:
         out: DescribeTableResult = {
             "ok": False,
@@ -1638,6 +1656,7 @@ class ProjectResult(TypedDict, total=False):
     summary: Optional[dict]
     nodes: Optional[list[dict]]
     edges: Optional[list[list[str]]]
+    edge_facts: Optional[list[dict]]
 
 
 def gateway_describe_project() -> ProjectResult:

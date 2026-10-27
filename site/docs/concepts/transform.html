@@ -150,7 +150,9 @@ A failed check stops the run. See <a href="../concepts/sink-contracts.html">Sink
 <li><strong>Nothing downstream reads the transform file.</strong> Models read only the
   tables it wrote.</li>
 <li><strong>Lineage is traced from the sink, not through the transform.</strong> Review a
-  transform as you review any code in git.</li>
+  transform as you review any code in git. A SQL transform does record which
+  source columns each sink column comes from, as DuckDB's parser proves it
+  (<code>lineage</code> in the certificate); pandas records nothing.</li>
 </ul>
 <h2 id="why-it-works-this-way">Why it works this way</h2>
 <p>Cleaning real data takes whatever tools the data needs, so TraceBi leaves this

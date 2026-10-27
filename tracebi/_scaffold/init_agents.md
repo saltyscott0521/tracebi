@@ -514,7 +514,7 @@ and ticks the tables agents may read (`agents: {tables: [a, b]}` in
 `connections/<name>.yaml`); six tools take it from there, in this order
 (`docs/agents/sop-onboarding.md` in the TraceBi handbook walks it):
 
-- `describe_project` — the project as a graph: every source, transform, table, model and report, what feeds what, and what you may read. Call it first.
+- `describe_project` — the project as a graph: every source, transform, table, model and report, what feeds what, and what you may read. Call it first. A table a SQL transform wrote carries `columns_from` (also on `describe_table`): the source columns each column is computed from, as DuckDB's parser proved it; `null` with a reason where it could not follow, nothing for pandas.
 - `list_connections` — each connection's type and the tables agents may read.
 - `list_source_tables(connection)` — those tables, with columns and row estimates.
 - `describe_source_table(connection, table, sample=20)` — columns, a profile and sample rows; any other table is "not found".
