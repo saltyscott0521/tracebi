@@ -1,30 +1,38 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 
-import { useConnectors, useCredentials, useInputs, useModel, useTable, useTableProfile, useWarehouses } from '../api'
-import DataGrid, { cellText } from '../components/DataGrid'
+import {
+  useConnectors, useCredentials, useGraph, useInputs, useModel, useTable, useTableProfile, useWarehouses,
+} from '../api'
+import DataGrid, { ExportTo, cellText, copyText, cutSql } from '../components/DataGrid'
 import { CredentialChip } from '../components/Credentials'
 import { useModelLabel } from '../components/Scope'
-import { checksWords, reachWords } from '../words'
-import { KindGlyph, TypeGlyph } from '../components/DataBrowser'
+import { StateChip } from '../components/Passport'
+import ResourcePage, { ActivityList, Details, Links } from '../components/ResourcePage'
+import { checksWords, movedWords, reachWords, statusWords } from '../words'
+import { TypeGlyph } from '../components/DataBrowser'
 import { buildModelGraph } from '../components/modelGraph'
 import { TransformName } from './Connectors'
 import { DataFrame } from './Data'
 import { count } from '../format'
 import {
-  modelPath, reportPagePath, sourcePath, sourceTablePath, sourcesPath, warehousePath, warehouseTablePath,
+  modelPath, reportPagePath, sourcePath, sourceTablePath, sourcesPath, transformPath, warehousePath, warehouseTablePath,
 } from '../nav'
 import {
-  BtnLink, Chip, Empty, ErrorDetail, PageSub, PageTitle, Segmented, SkeletonCard, SkeletonList, Time,
+  Btn, BtnLink, Chip, Empty, ErrorDetail, PageSub, PageTitle, SkeletonCard, SkeletonList, Time, useToast,
 } from '../components/Shared'
 
 // One table's page, wherever it lives: a warehouse's (/data/warehouse/<table>),
 // a connection's (/data/sources/<connection>/<table>) or a file under inputs/
-// (/data/sources/inputs/<path>). What it is, who wrote it, who reads it, and
-// its rows. The view is in the address (?view=), and so is
-// the grid's cut, so a sorted, filtered page of rows can be linked.
+// (/data/sources/inputs/<path>), in the console's page shape: Overview (what
+// it is, who wrote it, who reads it), Data (its rows), Columns (its profile,
+// and From: where a SQL transform's column came from), Used by, Lineage,
+// Activity. The tab is in the address (?tab=; the older ?view= still opens
+// its tab), and so is the grid's cut, so a sorted, filtered page of rows can
+// be linked.
 
-const VIEWS = [['data', 'Data'], ['columns', 'Columns'], ['used', 'Used by']]
+// The older ?view= of this page, as the tab it is now.
+const VIEW_TAB = { data: 'data', columns: 'columns', used: 'used' }
 
 function rowsText(t) {
   if (t.rows == null) return 'Rows not counted'
@@ -70,57 +78,6 @@ export function sourceReads({ source, table, warehouses, connectors, inputs }) {
     ? (inputs?.files || []).find(f => f.path === `inputs/${table}`)?.read_by || []
     : ((connectors || []).find(c => c.name === source)?.read_by?.transforms || []).filter(t => t.tables.includes(table)).map(t => t.name)
   return named.map(transform => ({ transform, ref: source === 'inputs' ? `inputs/${table}` : `${source}.${table}`, named: true, became: [] }))
-}
-
-function SourceFacts({ source, reads }) {
-  const { data: connectors } = useConnectors()
-  const label = source === 'inputs' ? 'inputs/' : (connectors || []).find(c => c.name === source)?.label || source
-  const became = [...new Set(reads.flatMap(r => r.became))]
-  return (
-    <p className="tpage__facts">
-      <span>From <Link to={sourcePath(source)}>{label}</Link></span>
-      {reads.length === 0 && <span>No transform reads it</span>}
-      {reads.map(r => (
-        <span key={r.transform}>
-          Read by <TransformName name={r.transform} /> as <code>{r.ref}</code>
-          {r.method && <> · {r.method}</>}
-          {r.at && <> · last read <Time iso={r.at} /></>}
-          {r.named && <> · named in the file; no recorded run read it</>}
-        </span>
-      ))}
-      {became.length > 0 && (
-        <span>became {became.map((b, i) => <Fragment key={b}>{i > 0 && ', '}<Link to={warehouseTablePath(b)}><code>{b}</code></Link></Fragment>)}</span>
-      )}
-    </p>
-  )
-}
-
-// One line of facts, each a link to where that fact lives: who wrote it,
-// who uses it (one link to the Used by view, which names them; they are said
-// once, there) and what the run that wrote it read.
-function Facts({ t }) {
-  const facts = []
-  if (t.kind === 'warehouse') {
-    facts.push(
-      <span key="w">
-        Written by {t.written_by?.transform
-          ? <>
-              <TransformName name={t.written_by.transform} />
-              {t.written_by.at && <> · <Time iso={t.written_by.at} /></>}
-            </>
-          : 'no recorded transform'}
-      </span>,
-    )
-  }
-  facts.push(
-    <span key="u">
-      <Link to="?view=used">Used by {count(t.read_by.length, 'model')} · {count(t.used_by.length, 'report')}</Link>
-    </span>,
-  )
-  if (t.transform_read?.length) {
-    facts.push(<span key="f">The run that wrote it read <ReadOnRun items={t.transform_read} /></span>)
-  }
-  return <p className="tpage__facts">{facts}</p>
 }
 
 // The sink contract's words, folded under the header: what the transform
@@ -341,6 +298,18 @@ function NotATable({ source, table }) {
   )
 }
 
+// Copy SQL, top right: the table's whole SELECT, to take to a notebook.
+function CopySql({ source, table, columns }) {
+  const toast = useToast()
+  return (
+    <Btn size="sm" variant="outline"
+         onClick={() => copyText(cutSql(source, table, columns, { where: [], q: '', sort: '' }))
+           .then(ok => toast(ok ? 'Copied the SQL' : 'Could not copy', ok ? 'info' : 'error'))}>
+      Copy SQL
+    </Btn>
+  )
+}
+
 /**
  * One table's page. Under Warehouse (*warehouse*) the address names only the
  * table, and the warehouse that holds it is found from the listing (?warehouse=
@@ -351,9 +320,8 @@ function NotATable({ source, table }) {
 export default function TablePage({ warehouse: underWarehouse = false }) {
   const routed = useParams()
   const { search } = useLocation()
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
   const table = underWarehouse ? routed.table : routed['*']
-  const view = VIEWS.some(([v]) => v === params.get('view')) ? params.get('view') : 'data'
   // Which warehouse holds it, and whether an unreachable source is one (for
   // the crumb): the listing, asked only then.
   const [listed, setListed] = useState(underWarehouse)
@@ -365,6 +333,8 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
   useEffect(() => { if (t?.connected === false) setListed(true) }, [t?.connected])
   const { data: connectors } = useConnectors()
   const { data: inputs } = useInputs()
+  const { data: graph } = useGraph()
+  const labelOf = useModelLabel()
   const reads = underWarehouse ? [] : sourceReads({ source, table, warehouses, connectors, inputs })
   // The source table's last run read a committed file instead: its rows stand in
   // when the connection is not reachable here.
@@ -374,16 +344,10 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
   // (a connection nothing models) one its readers name.
   const conn = (connectors || []).find(c => c.name === source)
   const model = t?.read_by?.[0] || conn?.read_by?.models?.[0] || conn?.used_by?.[0] || ''
-  // What that model calls it and its kind there (fact, dimension), for the
-  // glyph the data browser draws.
+  // What that model calls it and its kind there (fact, dimension).
   const { data: modelData } = useModel(model)
   const modelTable = (modelData?.tables || []).find(x => x.connector === source && x.source === table)
   const role = modelTable && buildModelGraph(modelData).nodes.find(n => n.name === modelTable.name)?.role
-  const setView = v => setParams(p => {
-    const next = new URLSearchParams(p)
-    if (v === 'data') next.delete('view'); else next.set('view', v)
-    return next
-  }, { replace: true })
 
   if (underWarehouse && (whLoading || !source)) {
     return (
@@ -408,61 +372,108 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
   if (error?.status === 404) return frame(<NotATable source={source} table={table} />)
   if (error) return frame(<><PageTitle>{table}</PageTitle><ErrorDetail error={error} /></>)
 
-  if (t.connected === false) {
-    const file = snapshot?.replace(/^inputs\//, '')
-    return frame(
-      <>
-        <header className="tpage__head">
-          <h1 className="tpage__name">{table}</h1>
-          <SourceFacts source={source} reads={reads} />
-        </header>
-        <NotConnected source={source} answer={t} />
-        {file && (
-          <section className="tpage__snap" aria-label="Snapshot">
-            <p className="tpage__shape">
-              <Chip tone="warn" title="The committed file the last run read in place of the connection.">Read from snapshot · {snapshot}</Chip>
-            </p>
-            <DataGrid source="inputs" table={file} inAddress />
-          </section>
-        )}
-      </>,
-    )
-  }
+  // The table's graph node: a warehouse table, a source table or an input file.
+  const byId = Object.fromEntries((graph?.nodes || []).map(n => [n.id, n]))
+  const nodeId = t.kind === 'warehouse' ? `table:${source}.${table}`
+    : source === 'inputs' ? `file:inputs/${table}` : `source_table:${source}.${table}`
+  const node = byId[nodeId]
+  const p = node?.passport
+  const off = t.connected === false
+  const status = node ? statusWords(node, byId[node.parent])
+    : off ? { text: 'Unreachable', tone: 'warn', title: reachWords(t).text }
+      : t.contract ? { text: checksWords(t.contract).text, tone: checksWords(t.contract).tone || 'ok' } : null
+  const became = [...new Set(reads.flatMap(r => r.became))]
+  const kind = t.table_kind === 'view' ? 'view' : role === 'fact' ? 'fact' : role === 'dimension' ? 'dim'
+    : source === 'inputs' ? (table.split('.').pop() || '').toUpperCase() : node?.chip || 'table'
+  const file = snapshot?.replace(/^inputs\//, '')
+  const keep = ['warehouse']
+  const asked = params.get('tab') ? null : VIEW_TAB[params.get('view')]
 
-  const c = t.contract && checksWords(t.contract)
-  // A source table's readers are transforms (its facts line); Used by is for
-  // what models read, so it shows only when a model reads the table itself.
-  const views = t.kind === 'warehouse' || t.read_by.length ? VIEWS : VIEWS.filter(([v]) => v !== 'used')
-  // The data browser it sits in: Warehouse for a warehouse table (the
-  // browser's id names the warehouse when there are two), else the model that
-  // reads it, with the table selected.
-  const named = modelTable?.name
-  const schemaId = all.length > 1 ? `${source}.${table}` : table
-  const schemaLink = t.kind === 'warehouse' ? `${warehousePath()}?table=${encodeURIComponent(schemaId)}`
-    : named ? `${modelPath(model)}?table=${encodeURIComponent(named)}` : null
-  return frame(
+  const overview = () => (
     <>
-      <header className="tpage__head">
-        <div className="tpage__title">
-          {(role || t.table_kind === 'view') && <KindGlyph role={role} view={t.table_kind === 'view'} />}
-          <h1 className="tpage__name">{table}</h1>
-          {schemaLink && <Link to={schemaLink} className="tpage__schema">Show in schema</Link>}
-        </div>
-        <p className="tpage__shape">
-          <span>{rowsText(t)} · {count(t.columns.length, 'column')}</span>
-          {c && <Chip tone={c.tone} title={c.title}>{c.text}</Chip>}
-        </p>
-        {t.kind === 'warehouse' ? <Facts t={t} /> : <SourceFacts source={source} reads={reads} />}
-        <ContractFold c={t.contract} />
-      </header>
-      <Segmented options={views} value={view} onChange={setView} label="Show" panel="table-view" />
-      <div id="table-view" role="tabpanel" aria-labelledby={`table-view-${view}`}>
-        {view === 'data' && (
-          <DataGrid source={source} table={table} columns={t.columns} inAddress exportTo={t.kind === 'warehouse'} />
-        )}
-        {view === 'columns' && <ColumnsView source={source} table={table} from={t.columns_from} />}
-        {view === 'used' && <UsedBy t={t} />}
-      </div>
-    </>,
+      {off && <NotConnected source={source} answer={t} />}
+      <Details items={t.kind === 'warehouse' ? [
+        ['Kind', t.table_kind === 'view' ? `View${t.view?.bases?.length ? ` over ${t.view.bases.join(', ')}` : ''}` : role || 'Table'],
+        ['Shape', `${rowsText(t)} · ${count(t.columns.length, 'column')}`],
+        ['Written by', t.written_by?.transform
+          ? <><TransformName name={t.written_by.transform} />{t.written_by.at && <> · <Time iso={t.written_by.at} /></>}</>
+          : 'No recorded transform'],
+        ['From', t.transform_read?.length ? <ReadOnRun items={t.transform_read} /> : p?.origin ? <code>{p.origin}</code> : null],
+        ['Read by', <Links items={t.read_by.map(m => ({ key: m, to: modelPath(m), label: labelOf(m) }))}
+                           none={<Chip tone="warn">Nobody reads it</Chip>} />],
+        ['Used by', count(t.used_by.length, 'report')],
+        ['Last moved', p ? movedWords(p.moved, 'table') : null],
+        ['Trust', p ? <StateChip state={p.trust} /> : t.contract ? checksWords(t.contract).text : null],
+        ['Agents', <StateChip state={p?.agents} />],
+      ] : [
+        ['From', <Link to={sourcePath(source)}>{source === 'inputs' ? 'inputs/' : conn?.label || source}</Link>],
+        ['Shape', off ? 'Not reachable here' : `${rowsText(t)} · ${count(t.columns.length, 'column')}`],
+        ['Read by', reads.length
+          ? reads.map((r, i) => (
+            <Fragment key={r.transform}>
+              {i > 0 && '; '}<TransformName name={r.transform} /> as <code>{r.ref}</code>
+              {r.method && <> · {r.method}</>}{r.named && <> · named in the file; no recorded run read it</>}
+            </Fragment>))
+          : <Chip tone="warn">No transform reads it</Chip>],
+        ['Last read', reads.find(r => r.at) ? <Time iso={reads.find(r => r.at).at} /> : null],
+        ['Became', <Links items={became.map(b => ({ key: b, to: warehouseTablePath(b), label: b, code: true }))} />],
+        ['Last moved', p ? movedWords(p.moved, node.kind) : null],
+        ['Trust', p ? <StateChip state={p.trust} /> : null],
+        ['Agents', <StateChip state={p?.agents} />],
+        ['Snapshot', snapshot ? <code>{snapshot}</code> : null],
+      ]} />
+      <ContractFold c={t.contract} />
+    </>
+  )
+  const data = () => (off
+    ? (file
+      ? (
+        <section className="tpage__snap" aria-label="Snapshot">
+          <p className="tpage__shape">
+            <Chip tone="warn" title="The committed file the last run read in place of the connection.">Read from snapshot · {snapshot}</Chip>
+          </p>
+          <DataGrid source="inputs" table={file} inAddress />
+        </section>
+      )
+      : <NotConnected source={source} answer={t} />)
+    : <DataGrid source={source} table={table} columns={t.columns} inAddress />)
+  const activity = []
+  if (t.written_by?.at) {
+    activity.push({ key: 'written', status: { text: 'Written', tone: 'ok' }, what: t.written_by.transform || 'a run',
+      to: t.written_by.transform ? transformPath(t.written_by.transform) : null, at: t.written_by.at })
+  }
+  if (t.contract?.checked_at) {
+    const c = checksWords(t.contract)
+    activity.push({ key: 'checked', status: { text: c.text, tone: c.tone || 'ok', title: c.title }, what: t.contract.file, at: t.contract.checked_at })
+  }
+  reads.filter(r => r.at).forEach(r => activity.push({
+    key: `read-${r.transform}`, status: r.snapshot ? { text: 'Snapshot read', tone: 'warn' } : { text: 'Read', tone: 'ok' },
+    what: r.transform, to: transformPath(r.transform), sub: r.method, at: r.at,
+  }))
+  activity.sort((a, b) => String(b.at).localeCompare(String(a.at)))
+
+  return (
+    <ResourcePage
+      trail={trail} here={table} code
+      title={table} type={kind} status={status}
+      sub={<>
+        {off ? 'Not counted: its source is not reachable here' : `${rowsText(t)} · ${count(t.columns.length, 'column')}`}
+        {t.written_by?.transform && <> · written by {t.written_by.transform}</>}
+        {t.read_by?.length > 0 && <> · read by {t.read_by.map(labelOf).join(', ')}</>}
+        {t.used_by?.length > 0 && <> · used by {count(t.used_by.length, 'report')}</>}
+      </>}
+      node={nodeId} keep={keep} tab={asked}
+      actions={!off && <>
+        <CopySql source={source} table={table} columns={t.columns} />
+        {t.kind === 'warehouse' && <ExportTo source={source} table={table} />}
+      </>}
+      tabs={[
+        { key: 'overview', label: 'Overview', render: overview },
+        { key: 'data', label: 'Data', render: data },
+        !off && { key: 'columns', label: 'Columns', count: t.columns.length, render: () => <ColumnsView source={source} table={table} from={t.columns_from} /> },
+        (t.kind === 'warehouse' || t.read_by?.length > 0) && { key: 'used', label: 'Used by', count: t.read_by.length + t.used_by.length, render: () => <UsedBy t={t} /> },
+        activity.length > 0 && { key: 'activity', label: 'Activity', render: () => <ActivityList items={activity} /> },
+      ]}
+    />
   )
 }

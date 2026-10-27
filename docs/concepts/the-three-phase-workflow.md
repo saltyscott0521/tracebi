@@ -89,22 +89,27 @@ The app has four places in its sidebar.
 - **Reports** opens first. It is the library: a folder per model, each report
   with whether its numbers still reproduce. **Ask this model**, on a folder's
   or a model's page, puts a question to that model.
-- **Data** (analysts and admins) opens on **Overview**, a map of the
-  project with these stages as lanes: sources, transforms, the warehouse,
-  models, reports, wired by what reads what. A lens repaints it for one
-  question: **Coverage** (what is wired on both sides, and the gaps, dashed
-  and amber), **Flow**, **Freshness**, **Trust** and **What agents see**.
-  Every piece has the same passport beside the map: From, Read by (Writes
-  for a transform, Written by for a warehouse table), Last moved, Trust and
-  Agents, with its actions (Open, Zoom to schema, Setup…, Refresh data,
-  Export to…). Its four folders, nested under it in the sidebar, are
-  **Sources**, **Transforms**, **Warehouse** and **Models**: each opens the
-  map with its lane in focus, and a second click opens the folder's list.
-  Each thing in them has a page of its own: a source (its tables, which
-  agents may read, and **Setup…** for how it is reached), a table, a
-  transform (the pipeline that rebuilds its data, where an admin clicks
-  **Refresh data**), a model (its tables, joins and measures, and the line
-  to its other stages).
+- **Data** (analysts and admins) is a console. Its home is a status board:
+  a card each for Sources, Transforms, Warehouse, Models and Reports with
+  one health pill, **Needs attention** (a source not reachable here, a file
+  nobody reads, a transform no pipeline runs, a table no model reads, each
+  with its action), what agents may read, recent activity and schedules.
+  Its four lists, nested under it in the sidebar, are **Sources**,
+  **Transforms**, **Warehouse** and **Models**, one shape for all: search,
+  filter chips, a Status column in the app's words (Connected, Unreachable,
+  Checks passed, Changed since checked, Nobody reads it…) and a row menu.
+  Every thing in them has a page of the same shape: its name, type and
+  status, its actions top right (Test and Setup for a source, Refresh data
+  for a transform, Copy SQL and Export for a table, Ask this model for a
+  model), then tabs: **Overview** (its facts, among them From, Read by,
+  Last moved, Trust and Agents), its own (a source's **Tables**, where you
+  tick what agents may read; a table's **Data** and **Columns**; a
+  transform's **Steps** and **Code**; a model's **Schema** and
+  **Measures**), **Lineage**, **Activity**, **Agents** and **Settings**.
+  **View lineage**, on the home and every page, opens the map of the
+  project: these stages as lanes, wired by what reads what, read through a
+  lens (**Coverage**, **Flow**, **Freshness**, **Trust**, **What agents
+  see**).
 - **Review** holds what needs attention, drafts, **History** (what ran) and
   **Verify** (check a report file from anywhere).
 - **Docs** is this handbook.

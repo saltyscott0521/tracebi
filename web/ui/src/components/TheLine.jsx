@@ -1,19 +1,12 @@
-import { Fragment } from 'react'
-import { Link } from 'react-router-dom'
-
 import {
   usePipelines, usePipelineRuns, useLayerHistory, useModel, useConnectors,
   useConnectorWarehouse, useReports, useDesk, useInputs,
 } from '../api'
-import { Verdict } from './Shared'
 import { verdictOf } from '../verdict'
 import { count } from '../format'
 import { upstreamOf } from '../chain'
 import { checksWords, refreshWords } from '../words'
-import { folderPath, useLibrary } from '../folders'
-import {
-  libraryPath, modelPath, pipelineBelongsToModel, reportBelongsToModel, sourcesPath, transformPath,
-} from '../nav'
+import { pipelineBelongsToModel, reportBelongsToModel } from '../nav'
 
 // The line: how a model is made, as four stations and the hand-offs between
 // them. ⓪ the sources the transform reads (connections and input files);
@@ -25,19 +18,8 @@ import {
 // not match, "○" never built or not declared. A fine thing is a plain fact.
 // Reports say what they say everywhere else: the verdict chip, as counts.
 //
-// A station and a hand-off are drawn by LineNode: one look for "something you
-// write" (a card) and "what gets handed on" (a pill).
-
-/**
- * A name that may break after its underscores (and dots) when the screen is
- * narrow, so a long one wraps between its words, not inside one. The text
- * itself is unchanged.
- */
-export function Breakable({ name }) {
-  return ((name || '').match(/[^_.]+[_.]?|[_.]/g) || []).map((part, i) => (
-    <Fragment key={i}>{i > 0 && <wbr />}{part}</Fragment>
-  ))
-}
+// The model page drew it as a strip; the console's pages read its facts
+// (useLineFacts: the refresh, its failure, the builds) and the map draws the line.
 
 /**
  * What a failed transform said when its sink contract failed: how many checks
@@ -148,24 +130,6 @@ export function reportStates(reports, desk) {
   return reports.map(r => verdictOf({ report: r, build: builds.get(r.name) }).state)
 }
 
-// Worst first; each count in the chip's own words.
-const COUNTED = [
-  ['does-not-reproduce', n => `${n} ${n === 1 ? 'does' : 'do'} not reproduce`],
-  ['needs-a-look', n => `${n} ${n === 1 ? 'needs' : 'need'} a look`],
-  ['never-built', n => `${n} never built`],
-  ['not-checked', n => `${n} not checked`],
-  ['reproduces', n => `${n} ${n === 1 ? 'reproduces' : 'reproduce'}`],
-]
-
-/** Verdict chips counting *states* ("6 reproduce", "1 needs a look"), worst first. */
-export function VerdictSummary({ states }) {
-  const count = {}
-  states.forEach(st => { count[st] = (count[st] || 0) + 1 })
-  return COUNTED.filter(([st]) => count[st]).map(([st, words]) => (
-    <Verdict key={st} state={st} size="sm">{words(count[st])}</Verdict>
-  ))
-}
-
 // Stage ⓪: the connections (by name) and the input files (by file name) the
 // transform reads, as one card. Nothing is guessed: no transform, or one
 // that names nothing, says so.
@@ -238,129 +202,4 @@ function warehousePill(source, file, warehouse, tables, transform) {
     return { ...pill, ...mark('none', unchecked === tables.length ? none : `${none} on ${count(unchecked, 'table')}`) }
   }
   return tables.length ? { ...pill, sub: checksWords({ status: 'satisfied' }).text } : pill
-}
-
-// ── The line ─────────────────────────────────────────────────────────────────
-
-const STATIONS = [
-  { key: 'sources',   n: '0', title: 'Sources' },
-  { key: 'transform', n: 1, title: 'Transform' },
-  { key: 'model',     n: 2, title: 'Model' },
-  { key: 'reports',   n: 3, title: 'Reports' },
-]
-
-export function Flag({ flag }) {
-  return (
-    <span className={`flag flag--${flag.kind}`}>
-      <span aria-hidden="true">{flag.glyph}</span> {flag.text}
-    </span>
-  )
-}
-
-/**
- * One node on the line. A card (`shape="card"`) is something
- * you write: a transform, a model, a report. A pill is what gets handed on: a
- * file, its tables, a measure. It says what kind it is (*kind*, with the
- * phase's number *n*), its *name*, one plain *fact*, and *marks*: a verdict
- * chip or a flag, only when something is not fine. With *to* it is a link
- * (*current* when it is the page you are on), with *onClick* a button,
- * otherwise a labelled group. *tone* `hot` is a lit path; `unused` is quiet.
- * *title* is the name's hover text: the identifier, when the name is a label.
- */
-export function LineNode({
-  shape = 'card', kind, n, name, sans, fact, marks, note, to, onClick, pressed, current,
-  tone, label, className, style, title = name,
-}) {
-  const cls = ['node', `node--${shape}`, tone && `node--${tone}`, note && 'node--noted', className]
-    .filter(Boolean).join(' ')
-  const body = (
-    <>
-      {kind && (
-        <span className="node__kind">
-          {n && <span className="node__n" aria-hidden="true">{n}</span>}{kind}
-        </span>
-      )}
-      {name && (
-        <span className={`node__name${sans ? ' node__name--sans' : ''}`} title={title}><Breakable name={name} /></span>
-      )}
-      {fact && <span className="node__fact">{fact}</span>}
-      {marks?.length > 0 && <span className="node__marks">{marks}</span>}
-      {note && <span className="node__note">{note}</span>}
-    </>
-  )
-  if (to) {
-    return <Link to={to} className={cls} style={style} aria-label={label} aria-current={current ? 'page' : undefined}>{body}</Link>
-  }
-  if (onClick) {
-    return <button type="button" className={cls} style={style} aria-label={label} aria-pressed={pressed} onClick={onClick}>{body}</button>
-  }
-  return <div role="group" className={cls} style={style} aria-label={label}>{body}</div>
-}
-
-/**
- * The library folder *model*'s reports are in: the folder of its name, else
- * one whose reports read it; with neither, the library narrowed to it.
- */
-export function useModelFolder(model) {
-  const library = useLibrary()
-  const f = library.byPath[model] || library.folders.find(x => x.models.includes(model))
-  return f ? folderPath(f.path) : libraryPath(model)
-}
-
-function Station({ model, s, info, reports }) {
-  // Each station opens its own page: the sources, the transform the
-  // pipeline runs, this model (the page you are on) and the model's folder in
-  // the library. A model with no transform file has no transform page, so
-  // its station is plain.
-  const to = s.key === 'sources' ? sourcesPath()
-    : s.key === 'transform' ? (info.file ? transformPath(info.file) : null)
-      : s.key === 'model' ? modelPath(model) : reports
-  const marks = [
-    ...info.flags.map(f => <Flag key={f.text} flag={f} />),
-    ...(info.states?.length ? [<VerdictSummary key="v" states={info.states} />] : []),
-  ]
-  return (
-    <li>
-      <LineNode to={to} current={s.key === 'model'} kind={s.title} n={s.n}
-                name={info.name} sans={info.sans} fact={info.fact} marks={marks} />
-    </li>
-  )
-}
-
-// A hand-off: what passes from one station to the next, a pill on the track.
-function Hand({ hand }) {
-  const { pill } = hand
-  const marks = pill?.kind ? [<Flag key="f" flag={{ kind: pill.kind, glyph: pill.glyph, text: pill.text }} />] : []
-  return (
-    <li className={`hand${hand.tone ? ` hand--${hand.tone}` : ''}`}>
-      <span className="hand__seg" aria-hidden="true" />
-      {pill && (
-        <LineNode shape="pill" name={pill.name} sans={!pill.mono} fact={pill.sub} marks={marks}
-                  label={`Hand-off: ${[pill.name, pill.sub || pill.text].filter(Boolean).join(', ')}`} />
-      )}
-      <span className="hand__seg" aria-hidden="true" />
-      <span className="hand__head" aria-hidden="true" />
-    </li>
-  )
-}
-
-/**
- * The four stations as links (Model is the page you are on; Reports opens the
- * model's folder in the library), and the hand-offs between them: the model
- * page's one way to the other stages.
- */
-export default function TheLine({ model, line }) {
-  const reports = useModelFolder(model)
-  return (
-    <nav aria-label={`How ${model} is made`}>
-      <ol className="line">
-        {STATIONS.map((s, i) => (
-          <Fragment key={s.key}>
-            <Station model={model} s={s} info={line[s.key]} reports={reports} />
-            {i < STATIONS.length - 1 && <Hand hand={line.hands[i]} />}
-          </Fragment>
-        ))}
-      </ol>
-    </nav>
-  )
 }

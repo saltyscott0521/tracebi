@@ -19,7 +19,20 @@ assumptions we found, which ones still hold, and what replaces the rest.
 | A7 | **History is a table of runs under Review.** | As a list, fine. As the way to understand what happened to the project, no. | A run is something that happened to a node: runs move on the map (round 2); History stays as the list. (A time scrubber was considered and dropped: History and verify already answer it.) |
 | A8 | **The web app is an authoring surface.** The workbench, drafts, Build panels. | Partly. Authoring moved to agents and laptops. The person's jobs in the app are: set up, approve, read, and see what is covered and trusted. | **The Data workshop is the control tower**: every screen answers "what do I need to know to approve, trust or unblock an agent?" Authoring surfaces stay, but they are not what Data is for. |
 
-## What the map is
+## The form: a console (decided 2026-10-27, after the map shipped)
+
+The owner, on seeing the map as Data's home: "This should feel like a console like
+AWS, Tableau, Qlik." So the graph, the passport and the lenses stay as data, and the
+form is a console: the home is a status board (resource cards with a health pill,
+Needs attention from the graph's gaps and unreachable sources, agent access, recent
+activity, schedules); every resource list is one table shape (name · type · status
+pill · a count · readers · agents · last activity · a row menu, with search, filter
+chips and sort in the address); every resource page is one shape (name · type ·
+status · actions top right · tabs: Overview, its own, Lineage, Activity, Agents,
+Settings). Status is a column and a filter, not a lens. The map is the Lineage view
+(`/data/lineage`) and every page's Lineage tab.
+
+## What the map is (now the Lineage view)
 
 One map of the project, read through lenses, with one passport on every piece.
 

@@ -1,26 +1,89 @@
 import { useEffect, useMemo } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 
-import { useModelDetails, usePipelines, useTables, useWarehouses } from '../api'
+import { useGraph, useModelDetails, usePipelines, useTables, useWarehouses } from '../api'
 import { useModelLabel } from '../components/Scope'
 import { ContractLine, ReadInput, groupContract } from '../components/Warehouse'
 import DataBrowser, { InspectorSection, KindGlyph } from '../components/DataBrowser'
+import ResourceTable, { NameCell, StatusPill, TypeChip } from '../components/ResourceTable'
+import { Links } from '../components/ResourcePage'
 import { warehouseSchema } from '../components/modelGraph'
 import { fmtBytes } from '../components/Storage'
 import { TransformName } from './Connectors'
 import { transformOf } from '../chain'
 import { count } from '../format'
-import { tierWords } from '../words'
-import { modelPath, transformsPath } from '../nav'
-import { Empty, ErrorDetail, SkeletonCard, Time } from '../components/Shared'
+import { checksWords, statusWords, tierWords } from '../words'
+import { lineagePath, modelPath, transformPath, transformsPath, warehouseTablePath } from '../nav'
+import { Empty, ErrorDetail, Segmented, SkeletonCard, Time } from '../components/Shared'
 
-// Data's Warehouse folder (/data/warehouse): every warehouse table in the
-// data browser, the tree grouped by the transform that wrote it (its
-// certificate names it), the diagram drawn with the joins every model
-// declares over them. A transform's group, selected, says once what that run
-// read from outside the warehouse and what its checks say; a table, selected,
-// has a short card in the inspector, and its own page one click away
-// (/data/warehouse/<table>).
+// Data's Warehouse folder (/data/warehouse): every warehouse table, as the
+// console's list (?view=table, the default: kind, checks, rows, who wrote it,
+// who reads it, when) or in the data browser (?view=schema): the tree grouped
+// by the transform that wrote it (its certificate names it), the diagram
+// drawn with the joins every model declares over them. A transform's group,
+// selected, says once what that run read from outside the warehouse and what
+// its checks say; a table, selected, has a short card in the inspector. Every
+// table has its own page (/data/warehouse/<table>).
+
+const VIEWS = [['table', 'Table'], ['schema', 'Schema']]
+const KIND_WORD = { fact: 'fact', dimension: 'dim', bridge: 'bridge', table: 'table' }
+
+// The list: one row per table, in the console's columns.
+function TableView({ schema, warehouses }) {
+  const { data: graph } = useGraph()
+  const labelOf = useModelLabel()
+  const byId = Object.fromEntries((graph?.nodes || []).map(n => [n.id, n]))
+  const many = warehouses.length > 1
+  const rows = schema.tables.map(t => {
+    const node = byId[`table:${t.connector}.${t.name}`]
+    const kind = t.listed.kind === 'view' ? 'view' : KIND_WORD[t.role] || 'table'
+    const c = t.listed.contract
+    return {
+      key: t.id, label: t.name, t, node, kind,
+      status: node ? statusWords(node) : c ? { text: checksWords(c).text, tone: checksWords(c).tone || 'ok' } : { text: 'No checks', tone: 'none' },
+      to: warehouseTablePath(t.name, many ? t.connector : ''),
+    }
+  })
+  return (
+    <ResourceTable
+      label="Warehouse tables" placeholder="Find a table" rows={rows} defaultSort="name"
+      search={r => `${r.label} ${r.t.listed.written_by?.transform || ''}`}
+      filters={[
+        { key: 'all', label: 'All' },
+        { key: 'facts', label: 'Facts', test: r => r.kind === 'fact' },
+        { key: 'dims', label: 'Dimensions', test: r => r.kind === 'dim' },
+        { key: 'views', label: 'Views', test: r => r.kind === 'view' },
+        { key: 'unread', label: 'Nobody reads it', test: r => !r.t.listed.read_by?.length },
+        { key: 'changed', label: 'Changed since checked', test: r => r.t.listed.contract?.status === 'stale' },
+      ]}
+      count={(n, of) => `${n === of ? '' : `${n} of `}${count(of, 'table')}`}
+      rowProps={r => ({ 'data-table': r.label })}
+      columns={[
+        { key: 'name', label: 'Name', sort: r => r.label, render: r => <NameCell to={r.to} label={r.label} code /> },
+        { key: 'kind', label: 'Kind', sort: r => r.kind, render: r => <TypeChip>{r.kind}</TypeChip> },
+        { key: 'status', label: 'Status', sort: r => r.status.text, render: r => <StatusPill status={r.status} /> },
+        { key: 'rows', label: 'Rows', num: true, sort: r => r.t.listed.rows, render: r => (r.t.listed.rows == null ? '—' : r.t.listed.rows.toLocaleString('en-US')) },
+        { key: 'writer', label: 'Written by', sort: r => r.t.listed.written_by?.transform || '',
+          render: r => (r.t.listed.written_by?.transform
+            ? <Link to={transformPath(r.t.listed.written_by.transform)}><code>{r.t.listed.written_by.transform}</code></Link>
+            : <span className="pass__none">—</span>) },
+        { key: 'readers', label: 'Read by', wrap: true, render: r => (
+          <Links items={(r.t.listed.read_by || []).map(m => ({ key: m, to: modelPath(m), label: labelOf(m) }))}
+                 none={<StatusPill status={{ text: 'Nobody reads it', tone: 'warn' }} />} />
+        ) },
+        { key: 'at', label: 'Last written', sort: r => r.t.listed.written_by?.at || '',
+          render: r => <Time iso={r.t.listed.written_by?.at} relative fallback="—" /> },
+      ]}
+      menu={r => [
+        { label: 'Open', to: r.to },
+        { label: 'Columns', to: `${r.to}${r.to.includes('?') ? '&' : '?'}tab=columns` },
+        { label: 'Export…', to: `${r.to}${r.to.includes('?') ? '&' : '?'}tab=data` },
+        { label: 'Show in schema', to: `?view=schema&table=${encodeURIComponent(r.key)}` },
+        r.node && { label: 'View lineage', to: lineagePath(r.node.id) },
+      ]}
+    />
+  )
+}
 
 // What a transform's group says: who wrote these tables, what that run read,
 // its checks in their own words (never "verified"), then the tables.
@@ -120,6 +183,12 @@ function Summary({ warehouses, schema }) {
 
 export default function Warehouses() {
   const { hash } = useLocation()
+  const [params, setParams] = useSearchParams()
+  // A table or a group named alone (an older link, the passport's Zoom to
+  // schema) is the browser's selection: it opens Schema.
+  const view = params.get('view') === 'schema' || (!params.get('view') && (params.get('table') || params.get('group')))
+    ? 'schema' : 'table'
+  const setView = v => setParams(v === 'schema' ? { view: 'schema' } : {})
   const { data, isLoading, error } = useWarehouses()
   const warehouses = useMemo(() => data?.warehouses || [], [data])
   const readers = [...new Set(warehouses.flatMap(w => w.read_by))]
@@ -150,10 +219,13 @@ export default function Warehouses() {
   }
   return (
     <>
+      {schema.tables.length > 0 && (
+        <Segmented options={VIEWS} value={view} onChange={setView} label="Show the warehouse as" className="rview" />
+      )}
       {schema.tables.length === 0
         ? <Empty title="The warehouse holds no tables yet" body="A transform writes them when it runs."
                  action={<Link to={transformsPath()}>See the transforms</Link>} />
-        : (
+        : view === 'table' ? <TableView schema={schema} warehouses={warehouses} /> : (
           <DataBrowser
             schema={schema} storeKey="warehouse" label="The warehouse's tables"
             infoOf={infoOf}

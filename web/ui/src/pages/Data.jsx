@@ -1,18 +1,16 @@
 import { Fragment } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
-import {
-  useAppStatus, useConnectors, useDesk, useInputs, useModels, usePipelines, useReports, useTransforms, useWarehouses,
-} from '../api'
-import { Flag, VerdictSummary, reportStates, useModelFolder } from '../components/TheLine'
+import { useAppStatus, useGraph, useModels, usePipelines, useReports } from '../api'
 import { ProjectFeedFold } from '../components/Workbench'
+import ResourceTable, { NameCell, StatusPill } from '../components/ResourceTable'
 import { count } from '../format'
-import { FORM_LABEL, pipelineFor, transformOf, upstreamOf, writtenFor } from '../chain'
-import { pipelineRefresh } from '../words'
+import { transformOf } from '../chain'
+import { statusWords } from '../words'
 import {
-  dataFolder, modelPath, movedTo, reportBelongsToModel, sourcesPath, transformPath, warehousePath,
+  askPath, dataFolder, libraryPath, lineagePath, modelPath, movedTo, reportBelongsToModel, transformPath,
 } from '../nav'
-import { Badge, Empty, PageSub, PageTitle, SkeletonCard, SkeletonList } from '../components/Shared'
+import { PageSub, PageTitle, SkeletonCard, SkeletonList, Time } from '../components/Shared'
 
 /**
  * "Data › Warehouse › fact_holdings": where a thing's page sits under Data.
@@ -38,12 +36,13 @@ export function DataCrumbs({ trail = [], here, code = false }) {
 /**
  * Data's one frame, around every page under /data. A folder's page (*folder*,
  * a DATA_FOLDERS key) is headed by the folder's name and one line of what it
- * holds; a thing's page by its breadcrumb (*trail*, *here*, *code*: see
- * DataCrumbs), and its own h1 is the page's. The sidebar marks the folder.
- * An older address that only its query told apart (?source=, ?file=,
- * ?model=) moves to the page that replaced it.
+ * holds, its *actions* at the right; a thing's page by its breadcrumb
+ * (*trail*, *here*, *code*: see DataCrumbs), and its own h1 is the page's.
+ * The home (`overview`) draws its own title bar. The sidebar marks the
+ * folder. An older address that only its query told apart (?source=, ?file=,
+ * ?model=, the map's ?lens=) moves to the page that replaced it.
  */
-export function DataFrame({ folder, trail, here, code, children }) {
+export function DataFrame({ folder, trail, here, code, actions, children }) {
   const { pathname, search, hash } = useLocation()
   const { data: appStatus } = useAppStatus()
   const dev = !!appStatus?.build_mode
@@ -52,10 +51,13 @@ export function DataFrame({ folder, trail, here, code, children }) {
   const f = folder && dataFolder(folder)
   return (
     <div className="fade-in">
-      {f ? (
-        <header className="page-header">
-          <PageTitle>{f.label}</PageTitle>
-          <PageSub>{f.sub}</PageSub>
+      {folder === 'overview' ? null : f ? (
+        <header className="page-header rlist-head">
+          <div>
+            <PageTitle>{f.label}</PageTitle>
+            <PageSub>{f.sub}</PageSub>
+          </div>
+          {actions && <div className="rpage__acts">{actions}</div>}
         </header>
       ) : <DataCrumbs trail={trail} here={here} code={code} />}
       {children}
@@ -79,113 +81,56 @@ export function ModelTransform() {
   return <Navigate to={transform ? transformPath(transform) : modelPath(model)} replace />
 }
 
-// One link of a chain row: a count or a name, and where it leads.
-function Seg({ to, children }) {
-  return <li><Link to={to} className="chain__seg">{children}</Link></li>
-}
-
-// One model, one row: what people call it (its identifier beside it), then
-// its chain left to right, each segment a link to a different place: the
-// sources, the transform's page, the warehouse group that transform wrote,
-// the model's measures, and its folder in the library. On the right, whether
-// its built reports still reproduce, and when its data was last refreshed.
-// The transform goes by its file, its form a chip beside it; a pipeline that
-// runs no transform file (a Python medallion runner) reads "pipeline" in the
-// same slot, Python its chip, and has no page to link: the mechanism is the
-// chip, never the name of the stage.
-function ChainRow({ model, reports, pipeline, desk, up, written, form, group }) {
-  const mine = reports.filter(r => reportBelongsToModel(r, model.name))
-  const when = pipelineRefresh(pipeline, written)
-  const label = model.label || model.name
-  const nSources = up.connections.length + up.files.length
-  const folder = useModelFolder(model.name)
-  const segs = [
-    <Seg key="s" to={sourcesPath()}>
-      {count(nSources, 'source')}
-    </Seg>,
-    up.transform
-      ? <Seg key="t" to={transformPath(up.transform)}>
-          <code>{up.transform}</code>{form && <> <Badge>{FORM_LABEL[form] || form}</Badge></>}
-        </Seg>
-      : pipeline
-        ? <li key="t"><span className="chain__seg chain__seg--none">
-            <span title={pipeline.pipeline}>pipeline</span> <Badge>Python</Badge>
-          </span></li>
-        : <li key="t"><span className="chain__seg chain__seg--none">No transform</span></li>,
-    <Seg key="w" to={group ? `${warehousePath()}?group=${encodeURIComponent(group)}` : warehousePath()}>
-      {count(model.tables.length, 'table')}
-    </Seg>,
-    <Seg key="m" to={`${modelPath(model.name)}?view=measures`}>
-      {count(model.measures.length, 'measure')}
-    </Seg>,
-    <Seg key="r" to={folder}>
-      {count(mine.length, 'report')}
-    </Seg>,
-  ]
-  return (
-    <li className="chain" data-model={model.name}>
-      <div className="chain__head">
-        <Link to={modelPath(model.name)} className="chain__name">
-          {label}{label !== model.name && <span className="dlist__id">{model.name}</span>}
-        </Link>
-        <span className="dlist__side">
-          {desk && mine.length > 0 && <span className="dlist__verdicts"><VerdictSummary states={reportStates(mine, desk)} /></span>}
-          <span className="dlist__when">
-            {when.kind === 'failed' ? <Flag flag={{ kind: 'bad', glyph: '✕', text: when.text }} /> : when.text}
-          </span>
-        </span>
-      </div>
-      <ol className="chain__line" aria-label={`How ${label} is made`}>
-        {segs.map((s, i) => (
-          <Fragment key={i}>
-            {i > 0 && <li className="chain__arrow" aria-hidden="true">→</li>}
-            {s}
-          </Fragment>
-        ))}
-      </ol>
-    </li>
-  )
-}
-
-// The warehouse browser's group for what *transform* wrote (its id in
-// modelGraph.warehouseSchema: <warehouse>:<contract>), or null.
-function groupFor(warehouses, transform) {
-  for (const w of warehouses?.warehouses || []) {
-    const wr = (w.writers || []).find(x => x.transform === transform)
-    if (wr) return `${w.name}:${wr.contract}`
-  }
-  return null
-}
-
-/** Data's Models folder (/data/models): every model as a chain row. */
+/**
+ * Data's Models folder (/data/models): every model, one row each in the
+ * console's list: its status (the graph's words), its tables, measures and
+ * reports, when it was last defined, and Ask in its row menu.
+ */
 export default function ModelList() {
   const { data, isLoading } = useModels()
   const { data: reports } = useReports()
-  const { data: pipelines } = usePipelines()
-  const { data: connectors } = useConnectors()
-  const { data: inputs } = useInputs()
-  const { data: desk } = useDesk()
-  const { data: warehouses } = useWarehouses()
-  const { data: transforms } = useTransforms()
-  const formOf = name => (transforms || []).find(t => t.name === name)?.form
+  const { data: graph } = useGraph()
+  const byId = Object.fromEntries((graph?.nodes || []).map(n => [n.id, n]))
 
-  const models = data || []
+  const rows = (data || []).map(m => {
+    const node = byId[`model:${m.name}`]
+    const mine = (reports || []).filter(r => reportBelongsToModel(r, m.name))
+    return {
+      key: m.name, label: m.label || m.name, m, node, status: statusWords(node), reports: mine.length,
+      at: node?.passport?.moved?.at || null,
+    }
+  })
   return (
     <DataFrame folder="models">
-      {isLoading ? <SkeletonList /> : models.length === 0 ? (
-        <Empty message="No models yet. Create one with tracebi new-model, in models/." />
-      ) : (
-        <ul className="dlist chains">
-          {[...models].sort((a, b) => (a.label || a.name).localeCompare(b.label || b.name)).map(m => {
-            const up = upstreamOf({ model: m.name, pipelines, connectors, inputs })
-            return (
-              <ChainRow key={m.name} model={m} reports={reports || []} desk={desk}
-                        pipeline={pipelineFor(pipelines || [], m.name)} written={writtenFor(warehouses, m.name)}
-                        up={up} form={up.transform && formOf(up.transform)}
-                        group={up.transform && groupFor(warehouses, up.transform)} />
-            )
-          })}
-        </ul>
+      {isLoading ? <SkeletonList /> : (
+        <ResourceTable
+          label="Models" placeholder="Find a model or measure" rows={rows} defaultSort="name"
+          empty="No models yet. Create one with tracebi new-model, in models/."
+          search={r => [r.m.name, r.label, ...(r.m.measures || []).map(x => x.name)].join(' ')}
+          filters={[
+            { key: 'all', label: 'All' },
+            { key: 'unread', label: 'Nobody reads it', test: r => !!r.node?.gap },
+          ]}
+          count={(n, of) => `${n === of ? '' : `${n} of `}${count(of, 'model')}`}
+          rowProps={r => ({ 'data-model': r.key })}
+          columns={[
+            { key: 'name', label: 'Name', sort: r => r.label, render: r => <NameCell to={modelPath(r.key)} label={r.label} id={r.key} /> },
+            { key: 'status', label: 'Status', sort: r => r.status.text, render: r => <StatusPill status={r.status} /> },
+            { key: 'tables', label: 'Tables', num: true, sort: r => r.m.tables.length, render: r => r.m.tables.length },
+            { key: 'measures', label: 'Measures', num: true, sort: r => r.m.measures.length,
+              render: r => <Link to={`${modelPath(r.key)}?tab=measures`}>{r.m.measures.length}</Link> },
+            { key: 'reports', label: 'Reports', num: true, sort: r => r.reports,
+              render: r => (r.reports ? <Link to={libraryPath(r.key)}>{r.reports}</Link> : <StatusPill status={{ text: 'None', tone: 'warn' }} />) },
+            { key: 'agents', label: 'Agents', render: r => <span className="wb-meta">{r.node?.passport?.agents?.text || '—'}</span> },
+            { key: 'at', label: 'Last defined', sort: r => r.at, render: r => <Time iso={r.at} relative fallback="—" /> },
+          ]}
+          menu={r => [
+            { label: 'Ask this model', to: askPath(r.key) },
+            { label: 'Measures', to: `${modelPath(r.key)}?tab=measures` },
+            { label: 'Schema', to: `${modelPath(r.key)}?tab=schema` },
+            { label: 'View lineage', to: lineagePath(`model:${r.key}`) },
+          ]}
+        />
       )}
     </DataFrame>
   )

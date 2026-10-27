@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
-import { useConnectors, useGraph } from '../api'
+import { useGraph } from '../api'
 import { DataFrame } from './Data'
-import { SetupSheet } from './Connectors'
 import { NodePassport, ProjectPassport } from '../components/Passport'
 import { count } from '../format'
-import { modelPath, modelsPath, sourcesPath, transformsPath, warehousePath } from '../nav'
+import { modelsPath, sourcesPath, transformsPath, warehousePath } from '../nav'
 import { Empty, ErrorDetail, Segmented, SkeletonCard } from '../components/Shared'
 
-// Data's Overview (/data): the map. The project as one graph (GET /api/graph,
+// Lineage (/data/lineage), and every page's Lineage tab: the map. The project as one graph (GET /api/graph,
 // tracebi/graph.py, which the gateway serves agents as describe_project), one
 // lane per stage, read left to right in the order the data moves:
 //
@@ -25,8 +24,7 @@ import { Empty, ErrorDetail, Segmented, SkeletonCard } from '../components/Share
 // default), Flow, Freshness, Trust, What agents see. Clicking a piece selects
 // it (?node=<id>) and the passport beside the map answers the same rows for
 // it; with nothing selected, the passport is the project's. ?lane= focuses one
-// lane (the sidebar's Sources · Transforms · Warehouse · Models open the map
-// that way). Hovering or focusing a piece lights its whole path. When the map
+// lane. Hovering or focusing a piece lights its whole path. When the map
 // is narrower than its five lanes fit, they stack and no wire is drawn.
 //
 // The graph's edge_facts are the edges DuckDB's parse proved: a SQL
@@ -340,26 +338,41 @@ function Legend({ lens }) {
   )
 }
 
-function TheMap({ graph }) {
+// The map's own lenses inside a page's Lineage tab: the questions a single
+// piece is asked about (what feeds it, what its checks say, what agents see).
+const TAB_LENSES = LENSES.filter(([k]) => ['flow', 'trust', 'access'].includes(k))
+
+/**
+ * The map. On /data/lineage its lens, selection and lane are the address's;
+ * *focus* (a node id) embeds it in a page's Lineage tab instead, that node
+ * selected under Flow, the lens and selection its own, and no passport beside
+ * it: the page around it is that node's.
+ */
+export function TheMap({ graph, focus }) {
+  const embedded = !!focus
   const [params, setParams] = useSearchParams()
   const map = useMemo(() => mapOf(graph), [graph])
-  const lens = LENSES.some(([k]) => k === params.get('lens')) ? params.get('lens') : 'coverage'
-  const sel = map.byId[params.get('node')] ? params.get('node') : ''
-  const lane = LANE_KEYS.includes(params.get('lane')) ? params.get('lane') : ''
+  const [local, setLocal] = useState({ lens: 'flow', node: focus || '' })
+  const asked = embedded ? local : { lens: params.get('lens'), node: params.get('node'), lane: params.get('lane') }
+  const lenses = embedded ? TAB_LENSES : LENSES
+  const lens = lenses.some(([k]) => k === asked.lens) ? asked.lens : embedded ? 'flow' : 'coverage'
+  const sel = map.byId[asked.node] ? asked.node : ''
+  const lane = LANE_KEYS.includes(asked.lane) ? asked.lane : ''
   const [hover, setHover] = useState('')
-  const [setup, setSetup] = useState(null)
-  const { data: connectors } = useConnectors()
   const passRef = useRef(null)
 
-  const go = useCallback(patch => setParams(p => {
-    const next = new URLSearchParams(p)
-    Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)))
-    return next
-  }), [setParams])
+  const go = useCallback(patch => {
+    if (embedded) { setLocal(s => ({ ...s, ...patch })); return }
+    setParams(p => {
+      const next = new URLSearchParams(p)
+      Object.entries(patch).forEach(([k, v]) => (v ? next.set(k, v) : next.delete(k)))
+      return next
+    })
+  }, [setParams, embedded])
 
-  // Selecting a piece shows its passport. Where the passport sits under the
-  // map (a narrow column), it is brought into view, or the click seems to do
-  // nothing; a link in a passport brings the piece it names into view instead.
+  // Selecting a piece shows its rows. Where they sit under the map (a narrow
+  // column), they are brought into view, or the click seems to do nothing; a
+  // link in them brings the piece it names into view instead.
   const select = useCallback(id => {
     go({ node: id === sel ? '' : id, lane: '' })
     const pass = passRef.current
@@ -375,46 +388,46 @@ function TheMap({ graph }) {
   return (
     <>
       <div className="map-bar">
-        <Segmented options={LENSES} value={lens} onChange={v => go({ lens: v === 'coverage' ? '' : v })} label="Lens" className="map-lenses" />
+        <Segmented options={lenses} value={lens} onChange={v => go({ lens: !embedded && v === 'coverage' ? '' : v })} label="Lens" className="map-lenses" />
         <Summary summary={graph.summary} lens={lens} stale={stale} />
       </div>
-      <div className="map-frame"><div className="map-wrap">
+      <div className="map-frame"><div className={`map-wrap${embedded ? ' map-wrap--tab' : ''}`}>
         <div className="map">
           <Board graph={graph} map={map} lens={lens} sel={sel} lane={lane} select={select} light={setHover} hover={hover} />
           <Legend lens={lens} />
         </div>
-        <aside className="pass" aria-label="Passport" ref={passRef}>
-          {node
-            ? <NodePassport n={node} byId={map.byId} onGo={goTo} onSetup={name => setSetup(name)}
-                            from={node.kind === 'table' ? [...map.takesFrom(node.id)].filter(id => map.byId[id].lane === 0) : null} />
-            : <ProjectPassport summary={graph.summary || {}} focus={l => go({ lane: l, node: '' })} coverage={() => go({ lens: '', lane: '', node: '' })} />}
-        </aside>
+        {embedded ? (
+          node && node.id !== focus && node.open && (
+            <p className="map-picked">
+              <span>{node.label}</span> <Link to={node.open}>Open its page</Link>
+            </p>
+          )
+        ) : (
+          <aside className="pass" aria-label="Passport" ref={passRef}>
+            {node
+              ? <NodePassport n={node} byId={map.byId} onGo={goTo}
+                              from={node.kind === 'table' ? [...map.takesFrom(node.id)].filter(id => map.byId[id].lane === 0) : null} />
+              : <ProjectPassport summary={graph.summary || {}} focus={l => go({ lane: l, node: '' })} coverage={() => go({ lens: '', lane: '', node: '' })} />}
+          </aside>
+        )}
       </div></div>
-      {setup && (connectors || []).find(c => c.name === setup) && (
-        <SetupSheet c={connectors.find(c => c.name === setup)} onClose={() => setSetup(null)} />
-      )}
     </>
   )
 }
 
-/** Data's Overview (/data): the map. */
-export default function DataMap() {
-  const [params] = useSearchParams()
+/** A page's Lineage tab: the map focused on *node* (a graph id). */
+export function LineageTab({ node }) {
   const { data: graph, error, isLoading } = useGraph()
+  if (error) return <ErrorDetail error={error} />
+  if (isLoading || !graph) return <SkeletonCard />
+  return <TheMap graph={graph} focus={node} />
+}
 
-  // Old links: /data?view=map was the Map (a model's map is its own page's
-  // line now); /data?m=<model> was a model's page; /data?model=<m> lit that
-  // model's path, which is its node selected on Flow now.
-  if (params.get('view') === 'map') {
-    return <Navigate to={params.get('model') ? modelPath(params.get('model')) : '/data'} replace />
-  }
-  if (params.get('m')) return <Navigate to={modelPath(params.get('m'))} replace />
-  if (params.get('model')) {
-    return <Navigate to={`/data?lens=flow&node=${encodeURIComponent(`model:${params.get('model')}`)}`} replace />
-  }
-
+/** Lineage (/data/lineage): the map, the project as one graph. */
+export default function DataMap() {
+  const { data: graph, error, isLoading } = useGraph()
   return (
-    <DataFrame folder="overview">
+    <DataFrame folder="lineage">
       {error ? <ErrorDetail error={error} />
         : isLoading || !graph ? <SkeletonCard />
         : !graph.nodes.length

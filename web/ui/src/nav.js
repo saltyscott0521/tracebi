@@ -14,37 +14,48 @@
 //                               folder's page has the folder's name as its h1; a
 //                               thing's page has a breadcrumb (Data › Warehouse ›
 //                               fact_holdings) and its own name.
-//            /data              Overview: the map (GET /api/graph), one lane per stage,
+//            Data is a console: one list shape for every kind of resource
+//            (components/ResourceTable.jsx: search ?q=, filter chips ?filter=,
+//            sortable headers ?sort=, -name for descending) and one page shape
+//            for every resource (components/ResourcePage.jsx: its name, type
+//            and status, actions top right, then tabs at ?tab=, Overview when
+//            absent: Overview · its own · Lineage · Activity · Agents · Settings,
+//            a tab it has nothing for left out). Status is a column, in
+//            words.js statusWords' words.
+//            /data              the Data home, a status board (pages/DataHome.jsx):
+//                               a card per folder with one health pill, Needs
+//                               attention (the graph's gaps and unreachable
+//                               sources), Agent access, Recent activity, Schedules
+//            /data/lineage      the map (GET /api/graph), one lane per stage,
 //                               sources → transforms → warehouse → models → reports,
 //                               read through a lens (?lens=coverage|flow|freshness|
 //                               trust|access; Coverage when absent). ?node=<id> selects
-//                               a piece (the graph's id, kind:name) and the passport
-//                               beside the map is its; ?lane=sources|transforms|
-//                               warehouse|models|reports focuses a lane. ?model=<m>
-//                               lands on that model selected under Flow
-//            /data/sources      every connection and the inputs/ folder, the first
-//                               open; /data/sources/<name> one connection open,
-//                               /data/sources/inputs the folder
+//                               a piece (the graph's id, kind:name) and its passport
+//                               rows sit beside the map; ?lane=sources|transforms|
+//                               warehouse|models|reports focuses a lane. Every page's
+//                               View lineage opens it on that page's node; /data?lens=,
+//                               ?node= and ?lane= (the map was the home) land here
+//            /data/sources      every connection and every file under inputs/, one
+//                               list; /data/sources/<name> one connection's page,
+//                               /data/sources/inputs the folder's
 //            /data/sources/<connection>/<table>  one source table; under inputs
 //                               the table is a path that keeps its slashes
 //            /data/transforms   every file in transforms/; /data/transforms/<name>
 //                               one transform's page, whether or not a pipeline runs it
-//            /data/warehouse    the data browser over every warehouse table, grouped
-//                               by the transform that wrote it (?table=<id> selects a
-//                               table, ?group=<id> a transform's group: the canvas's
-//                               selection, not a page); /data/warehouse/<table> one
-//                               warehouse table's page
-//            /data/models       one row per model; /data/models/<m> one model: its
-//                               line, then the data browser (?table=<t> selects a
+//            /data/warehouse    every warehouse table, a list (?view=table) or the
+//                               data browser grouped by the transform that wrote it
+//                               (?view=schema; ?table=<id> selects a table, ?group=<id>
+//                               a transform's group, and either alone opens it);
+//                               /data/warehouse/<table> one warehouse table's page
+//            /data/models       one row per model; /data/models/<m> one model's page,
+//                               its Schema tab the data browser (?table=<t> selects a
 //                               table, ?measure= its fact, ?view=measures|
 //                               relationships|storage|code|agent opens that fold of
-//                               the summary). /data/models/<m>/transform is not a
-//                               page: it lands on the transform the model's pipeline
-//                               runs (else the model)
-//            Nothing under /data is narrowed to a model: the map's lit path and a
-//            model's line say what feeds it. The sidebar's four folders are jump
-//            points: each opens the map with its lane focused (lanePath), and a
-//            second click, from there, opens the folder's list (jumpPath); every
+//                               the summary; any of them alone opens Schema).
+//                               /data/models/<m>/transform is not a page: it lands on
+//                               the transform the model's pipeline runs (else the model)
+//            Nothing under /data is narrowed to a model: a page's Lineage tab says
+//            what feeds it. The sidebar's four folders open their lists; every
 //            list keeps its address, and ⌘K finds it.
 //   Review   /review            its tabs: Attention (/review), Drafts (/review/drafts),
 //                               History (/runs) and Verify (/verify), each at its own
@@ -90,12 +101,15 @@ export const PAGES = [
     sub: 'The handbook: concepts, guides and reference, versioned with the project.' },
 ]
 
-// Data's folders, in the order the data moves: the sidebar nests the last four
-// under Data, and each is the h1 of its own page. Overview (the map) is
-// Data's own page, /data.
+// Data's folders, in the order the data moves: the sidebar nests the four
+// lists under Data (SIDEBAR_FOLDERS), and each is the h1 of its own page. The
+// home is Data's own page, /data; Lineage, the map, is one click from every
+// page (View lineage).
 export const DATA_FOLDERS = [
-  { key: 'overview',   label: 'Overview',   path: '/data',
-    sub: 'The project as one map, left to right: what feeds what, read through a lens. Select any piece for its passport.' },
+  { key: 'overview',   label: 'Data',       path: '/data',
+    sub: 'What feeds what, and what needs a person: every source, transform, table and model, with its status.' },
+  { key: 'lineage',    label: 'Lineage',    path: '/data/lineage',
+    sub: 'The project as one map, left to right: what feeds what, read through a lens. Select any piece for its rows.' },
   { key: 'sources',    label: 'Sources',    path: '/data/sources',
     sub: 'Where the data comes from: database connections, and files under inputs/.' },
   { key: 'transforms', label: 'Transforms', path: '/data/transforms',
@@ -106,6 +120,9 @@ export const DATA_FOLDERS = [
     sub: 'The models over the warehouse: what each is made from, and what reads it.' },
 ]
 export const dataFolder = key => DATA_FOLDERS.find(f => f.key === key)
+
+/** The folders the sidebar nests under Data: the four lists. */
+export const SIDEBAR_FOLDERS = DATA_FOLDERS.filter(f => !['overview', 'lineage'].includes(f.key))
 
 // Review's tabs, in order: Attention is /review itself.
 export const REVIEW_TABS = [
@@ -148,20 +165,11 @@ const seg = s => encodeURIComponent(s)
 // A path under inputs/ keeps its slashes, each segment encoded.
 const segs = s => String(s).split('/').map(encodeURIComponent).join('/')
 
-/** Data's own page: Overview, the map. */
+/** Data's own page: the home, a status board. */
 export const overviewPath = () => '/data'
 
-/** The map with *lane* (sources, transforms, warehouse, models, reports) focused. */
-export const lanePath = lane => `/data?lane=${lane}`
-
-/**
- * Where a Data folder's sidebar entry goes from *pathname*?*search*: the map
- * with its lane focused, or, when that is where you are, the folder's list.
- */
-export function jumpPath(folder, pathname, search = '') {
-  const here = pathname.replace(/(.)\/+$/, '$1') === '/data' && new URLSearchParams(search).get('lane') === folder.key
-  return here ? folder.path : lanePath(folder.key)
-}
+/** The map, with the graph node *node* (kind:name) selected when one is given. */
+export const lineagePath = (node = '') => `/data/lineage${qs({ node })}`
 
 /** Every connection and the inputs/ folder. */
 export const sourcesPath = () => '/data/sources'
@@ -343,10 +351,17 @@ export function movedTo(pathname, search = '') {
   // A model's Reports stage is the library, narrowed to it (Step 3 retired the stage).
   const stage = path.match(/^\/data\/([^/]+)\/reports$/)
   if (stage) return r ? to(reportPagePath(r), {}, ['model']) : to('/', { model: decodeURIComponent(stage[1]) })
-  // The Map's picture is the board; a model's map is its own page's line.
-  if (path === '/map' || path === '/data/map') {
-    return q.get('model') ? to(dataPath(q.get('model')), {}, ['model']) : to(overviewPath())
+  // The Map is Lineage; a model's map is its own page's Lineage tab.
+  if (path === '/map' || path === '/data/map' || (path === '/data' && q.get('view') === 'map')) {
+    return q.get('model') ? to(dataPath(q.get('model')), {}, ['model', 'view']) : to(lineagePath(), {}, ['view'])
   }
+  // The map was Data's home: its lens, selection and lane are Lineage's now;
+  // /data?model=<m> lit that model's path, its node selected under Flow.
+  if (path === '/data' && q.get('model')) {
+    return to(lineagePath(), { lens: 'flow', node: `model:${q.get('model')}` }, ['model'])
+  }
+  if (path === '/data' && ['lens', 'node', 'lane'].some(k => q.has(k))) return to(lineagePath())
+  if (path === '/data' && q.get('m')) return to(modelPath(q.get('m')), {}, ['m'])
   // Data was five tabs, a model's page with four more (/data/<m>/model,
   // transform, sources, runs) and tables at /data/tables/…: each thing has a
   // page of its own now, and nothing under /data is narrowed to a model.

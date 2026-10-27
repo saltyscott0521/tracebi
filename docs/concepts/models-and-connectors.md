@@ -22,16 +22,17 @@ facts:                                                                  # what i
 ## Find where a model's data is
 
 **In the app:** open **Data › Models**, then the model
-(`/data/models/<model>`). The header names the file that defines it, and its
-Semantic layer the warehouse it reads. The page shows the model's tables, its
-star schema, and an inspector for the table you select: its rows, who wrote
-it, its joins and measures, and **Open table** for its columns and rows. With
-nothing selected, the **Storage** fold says whether the warehouse file
-exists, how big it is, and which tables each connector serves.
+(`/data/models/<model>`). Its Overview names the file that defines it and
+what it reads. Its **Schema** tab shows the model's tables, its star schema,
+and an inspector for the table you select: its rows, who wrote it, its joins
+and measures, and **Open table** for its columns and rows. With nothing
+selected, the **Storage** fold says whether the warehouse file exists, how
+big it is, and which tables each connector serves.
 
 Two Data folders cover the whole project. **Warehouse** (`/data/warehouse`)
-shows every table, grouped by the transform that wrote it, each with a page
-at `/data/warehouse/<table>`. **Sources** (`/data/sources`) lists every
+lists every table, with who wrote it and who reads it (its **Schema** view
+groups them by the transform that wrote them), each with a page at
+`/data/warehouse/<table>`. **Sources** (`/data/sources`) lists every
 connection and input file, and what reads each (`/data/sources/<name>`).
 
 **In code:** `model.info()["connector_details"]` gives the same answer.

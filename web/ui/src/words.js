@@ -102,3 +102,33 @@ export function movedWords(moved, kind) {
 
 /** A transform's form (the API's sql | python | notebook) as its chip says it. */
 export const FORM_LABEL = { sql: 'SQL', python: 'Python', notebook: 'Notebook' }
+
+const STATE_TONE = { ok: 'ok', warn: 'warn', bad: 'bad', none: 'none' }
+
+/**
+ * A piece of the project's state in one pill, from its graph node (GET
+ * /api/graph): `{text, tone, title}`, *tone* ok · warn · bad · none. Every
+ * list's Status column, every page's title and the Data home say it this way,
+ * so a source reads Connected or Unreachable everywhere, a transform no
+ * pipeline runs says so, and a sink's checks and a report's verdict keep their
+ * own words (the graph's trust text, its count left to the title). *parent*,
+ * for a source table, is its source: an unreachable source's tables are
+ * unreachable too.
+ */
+export function statusWords(node, parent) {
+  if (!node) return { text: '', tone: 'none', title: undefined }
+  const p = node.passport || {}
+  const reach = node.kind === 'source_table' ? parent?.passport?.reach : p.reach
+  if ((node.kind === 'source' || node.kind === 'source_table') && reach?.connected === false) {
+    return { text: 'Unreachable', tone: 'warn', title: reachWords(reach).text }
+  }
+  if (node.gap && ['source', 'file', 'source_table', 'model'].includes(node.kind)) {
+    return { text: 'Nobody reads it', tone: 'warn', title: node.gap.reason }
+  }
+  if (node.kind === 'source') return { text: 'Connected', tone: 'ok', title: undefined }
+  if (node.kind === 'file' || node.kind === 'source_table') return { text: 'Read', tone: 'ok', title: undefined }
+  if (node.kind === 'transform' && node.gap) return { text: 'No pipeline runs it', tone: 'warn', title: node.gap.reason }
+  const full = p.trust?.text || ''
+  const text = full.split(' · ')[0]
+  return { text, tone: STATE_TONE[p.trust?.state] || 'none', title: full !== text ? full : undefined }
+}

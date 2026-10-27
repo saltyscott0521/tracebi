@@ -1,29 +1,36 @@
-import { Fragment, useEffect, useRef } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 
-import { useConnectors, useDesk, useInputs, usePipelines, useReports, useSource, useTransforms, useWarehouses } from '../api'
+import {
+  useConnectors, useDesk, useGraph, useInputs, useMe, usePipelines, useReports, useRuns, useSource, useTransforms,
+  useWarehouses,
+} from '../api'
 import { useLineFacts } from '../components/TheLine'
 import { useModelLabel } from '../components/Scope'
 import { CodeFiles } from '../components/CodeView'
+import { StateChip } from '../components/Passport'
+import ResourcePage, { ActivityList, Details, Links } from '../components/ResourcePage'
 import { ContractLine, ReadInput, TableList, groupContract } from '../components/Warehouse'
 import { PipelineDetail } from './Pipelines'
-import { FORM_LABEL, refreshWords } from '../words'
+import { FORM_LABEL, movedWords, refreshWords, statusWords } from '../words'
 import { humanise } from '../ask'
 import { stamp } from '../when'
+import { count } from '../format'
 import * as nav from '../nav'
 import { DataFrame } from './Data'
 import {
-  Badge, Card, Chip, Empty, ErrorDetail, SkeletonCard, Spinner, useToast,
+  Btn, BtnLink, Card, Chip, Empty, ErrorDetail, SkeletonCard, Spinner, useToast,
 } from '../components/Shared'
 
-const { modelPath, sourceTablePath, transformsPath } = nav
+const { modelPath, sourceTablePath, transformPath, transformsPath, warehouseTablePath } = nav
 
 // One transform file's page (/data/transforms/<name>), whether or not a
-// pipeline runs it: when it last wrote and whether that failed, the pipeline
-// that runs it (Refresh data), its code beside its checks, what its run read
-// and the tables it wrote. Data's frame gives the breadcrumb; the page gives
-// its own h1.
+// pipeline runs it, in the console's shape: Overview (its facts as a grid,
+// when it last wrote and whether that failed, what its run read and the
+// tables it wrote), Steps (the pipeline that runs it), Code (its code beside
+// its checks), Lineage, Activity (its pipeline's runs), Agents, Settings.
+// Refresh data is top right; its run unfolds on Steps.
 
 // What a run's end changes: every page that says when the data was refreshed.
 const AFTER_A_RUN = ['pipelines', 'history', 'warehouse', 'warehouses', 'transforms', 'desk', 'reports', 'models', 'model']
@@ -113,7 +120,7 @@ function RunState({ name, model, written, tables }) {
 function Section({ id, title, children }) {
   return (
     <section aria-labelledby={id} className="tfpage__section">
-      <h2 id={id} className="stage__heading">{title}</h2>
+      {title && <h2 id={id} className="stage__heading">{title}</h2>}
       {children}
     </section>
   )
@@ -123,7 +130,7 @@ function Section({ id, title, children }) {
 // code and latest run; none says how to run the file by hand. A step with no
 // run here says what was written (*written*, the certificate's time) or built
 // (the newest build of a report on the pipeline's models) outside the app.
-function Run({ name, pipelines, written }) {
+function Run({ name, pipelines, written, start }) {
   const labelOf = useModelLabel()
   const { data: desk } = useDesk()
   const { data: reports } = useReports()
@@ -133,7 +140,7 @@ function Run({ name, pipelines, written }) {
     return (desk?.builds || []).filter(b => mine.has(b.report) && b.built_at).map(b => b.built_at).sort().pop()
   }
   return (
-    <Section id="tf-run" title="Run">
+    <Section id="tf-run">
       {pipelines.length === 0 ? (
         <Card>
           <Empty body="No pipeline runs this transform. Run it with:"
@@ -144,7 +151,7 @@ function Run({ name, pipelines, written }) {
           {/* A pipeline has no label of its own: the model's is its name when it is the model's. */}
           <PipelineDetail pipeline={p.pipeline} layers={p.layers || []} primary
                           label={p.model ? labelOf(p.model) : humanise(p.pipeline)}
-                          written={written} built={builtFor(p)} />
+                          written={written} built={builtFor(p)} start={p === pipelines[0] ? start : undefined} />
         </div>
       ))}
     </Section>
@@ -156,7 +163,7 @@ function Code({ name, note }) {
   const { data, isLoading, error } = useSource('transforms', name)
   const files = data?.files || []
   return (
-    <Section id="tf-code" title="Code">
+    <Section id="tf-code">
       <Card>
         {note && <p className="tfpage__note">{note}</p>}
         {isLoading ? <div className="codeview__hint"><Spinner /> Loading code…</div>
@@ -235,18 +242,38 @@ function Produces({ groups }) {
   )
 }
 
+// Agents and a transform: never read, only proposed.
+function AgentsTab() {
+  return (
+    <div className="rsection">
+      <p className="rsection__lede">
+        <StateChip state={{ state: 'none', text: 'May propose a change' }} />{' '}
+        An agent never reads a transform through the gateway and never writes the warehouse. It may propose a
+        change (propose_transform): a code request an admin reviews, approves and runs once.
+      </p>
+      <BtnLink size="sm" to="/review">Review</BtnLink>
+    </div>
+  )
+}
+
 export default function Transform() {
   const { name } = useParams()
+  const [, setParams] = useSearchParams()
   const { data: listing, isLoading, error } = useTransforms()
   const { data: pipelines } = usePipelines()
   const { data: warehouses } = useWarehouses()
   const { data: inputs } = useInputs()
+  const { data: graph } = useGraph()
+  const { data: me } = useMe()
+  const admin = !!me && (!me.role || me.role === 'admin')
   const labelOf = useModelLabel()
+  const [start, setStart] = useState(0)
+  const t = (listing || []).find(x => x.name === name)
+  const { data: runs } = useRuns('pipeline_run', t?.pipelines?.[0] || '__none__')
 
   const frame = children => <DataFrame trail={[[transformsPath(), 'Transforms']]} here={name} code>{children}</DataFrame>
   if (isLoading) return frame(<SkeletonCard />)
   if (error) return frame(<ErrorDetail error={error} />)
-  const t = (listing || []).find(x => x.name === name)
   if (!t) {
     return frame(
       <Empty title="No such transform"
@@ -254,8 +281,10 @@ export default function Transform() {
     )
   }
 
-  const runs = (pipelines || []).filter(p => t.pipelines.includes(p.pipeline))
-  const model = runs[0] && nav.pipelineModels(runs[0])[0]
+  const node = (graph?.nodes || []).find(n => n.id === `transform:${name}`)
+  const p = node?.passport
+  const ran = (pipelines || []).filter(x => t.pipelines.includes(x.pipeline))
+  const model = ran[0] && nav.pipelineModels(ran[0])[0]
   // What the certificate says it wrote, warehouse by warehouse.
   const groups = (warehouses?.warehouses || []).flatMap(w => (w.writers || [])
     .filter(wr => wr.transform === name)
@@ -263,28 +292,65 @@ export default function Transform() {
   const writers = groups.map(g => g.wr)
   const tables = groups.flatMap(g => g.tables)
   const files = (inputs?.files || []).filter(f => (f.read_by || []).includes(name))
+  const feeds = <Links items={t.models.map(m => ({ key: m, to: modelPath(m), label: labelOf(m) }))} none="No model" />
+  const refresh = () => { setParams({ tab: 'steps' }); setStart(n => n + 1) }
+  // When it last wrote and whether that failed: Overview's and Steps' first line.
+  const state = model
+    ? <RunState name={name} model={model} written={t.written_at} tables={tables} />
+    : (pipelines || !t.pipelines.length) && <StateLine phrase={refreshWords({ pipeline: false, writtenAt: t.written_at })} />
 
-  return frame(
-    <div className="tfpage">
-      <header className="overview__head">
-        <h1 className="overview__title">
-          <span className="tfpage__name">{name}</span> <Badge>{FORM_LABEL[t.form] || t.form}</Badge>
-        </h1>
-        <p className="overview__sub">
-          {t.models.length
-            ? <>Feeds {t.models.map((m, i) => <Fragment key={m}>{i > 0 && ', '}<Link to={modelPath(m)}>{labelOf(m)}</Link></Fragment>)}</>
-            : 'Feeds no model'}
-        </p>
-      </header>
-
-      {model
-        ? <RunState name={name} model={model} written={t.written_at} tables={tables} />
-        : (pipelines || !t.pipelines.length) && <StateLine phrase={refreshWords({ pipeline: false, writtenAt: t.written_at })} />}
-
-      <Run name={name} pipelines={runs} written={t.written_at} />
-      <Code name={name} note={t.note} />
-      <Reads name={name} writers={writers} files={files} />
-      <Produces groups={groups} />
-    </div>
+  return (
+    <ResourcePage
+      trail={[[transformsPath(), 'Transforms']]} here={name} code
+      title={name} type={FORM_LABEL[t.form] || t.form} status={node ? statusWords(node) : null}
+      sub={<>{t.tables.length ? `Writes ${count(t.tables.length, 'table')}` : 'Has written nothing here'} · feeds {t.models.length ? t.models.map(labelOf).join(', ') : 'no model'}{t.pipelines.length ? ` · run by ${t.pipelines.join(', ')}` : ' · no pipeline runs it'}</>}
+      node={`transform:${name}`}
+      actions={<>
+        {admin && ran.length > 0 && <Btn size="sm" onClick={refresh}>Refresh data</Btn>}
+        <Btn size="sm" variant="outline" onClick={() => setParams({ tab: 'code' })}>View code</Btn>
+      </>}
+      tabs={[
+        { key: 'overview', label: 'Overview', render: () => (
+          <div className="tfpage">
+            <Details items={[
+              ['Form', FORM_LABEL[t.form] || t.form],
+              ['From', p?.origin ? <code>{p.origin}</code> : null],
+              ['Writes', <Links items={t.tables.map(x => ({ key: x, to: warehouseTablePath(x), label: x, code: true }))} none="Nothing recorded" />],
+              ['Feeds', feeds],
+              ['Last moved', p ? movedWords(p.moved, 'transform') : refreshWords({ pipeline: t.pipelines.length > 0, writtenAt: t.written_at }).text],
+              ['Trust', <StateChip state={p?.trust} />],
+              ['Agents', <StateChip state={p?.agents || { state: 'none', text: 'May propose a change' }} />],
+              ['Run by', t.pipelines.length ? <code>{t.pipelines.join(', ')}</code> : <Chip tone="warn">No pipeline runs it</Chip>],
+              ['Checks in', t.contract_file ? <code>{t.contract_file}</code> : 'No contract'],
+            ]} />
+            {state}
+            <Reads name={name} writers={writers} files={files} />
+            <Produces groups={groups} />
+          </div>
+        ) },
+        { key: 'steps', label: 'Steps', render: () => (
+          <div className="tfpage">
+            {state}
+            <Run name={name} pipelines={ran} written={t.written_at} start={admin && ran.length ? start : undefined} />
+          </div>
+        ) },
+        { key: 'code', label: 'Code', render: () => <Code name={name} note={t.note} /> },
+        t.pipelines.length > 0 && { key: 'activity', label: 'Activity', render: () => (
+          <ActivityList empty="No run of its pipeline is recorded here." items={(runs || []).slice(0, 20).map(r => ({
+            key: r.id,
+            status: { text: r.status === 'succeeded' ? 'Refreshed' : r.status === 'running' ? 'Running' : 'Refresh failed', tone: r.status === 'failed' ? 'bad' : r.status === 'succeeded' ? 'ok' : 'none' },
+            what: r.target, to: `${transformPath(name)}?tab=steps`, sub: r.actor ? `by ${r.actor}` : null, at: r.started,
+          }))} />
+        ) },
+        { key: 'agents', label: 'Agents', render: () => <AgentsTab /> },
+        { key: 'settings', label: 'Settings', render: () => (
+          <Details items={[
+            ['Declared in', <code>{t.file}</code>],
+            ['Checks in', t.contract_file ? <code>{t.contract_file}</code> : 'No contract'],
+            ['Run by', t.pipelines.length ? <code>{t.pipelines.join(', ')}</code> : <>Nothing: <code>tracebi run-transform {name}</code></>],
+          ]} />
+        ) },
+      ]}
+    />
   )
 }

@@ -300,7 +300,7 @@ the build command.
 | Place | Addresses |
 | --- | --- |
 | Reports | `/` the library (`?model=<m>` narrows it); `/?folder=<path>` one folder (one the caller may not see is not found); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on); `/ask` a question of one model (`?model=<m>`), reached by **Ask this model** on a folder's page or a model's page under Data |
-| Data | `/data` Overview (the map: sources → transforms → warehouse → models → reports from `/api/graph`; `?lens=coverage\|flow\|freshness\|trust\|access`, `?node=<id>` selects a piece and its passport, `?lane=<lane>` focuses a lane), then four folders, each a page per thing: `/data/sources` (`/data/sources/<name>` one connection, `/data/sources/inputs` the folder, `/data/sources/<name>/<table>` one source table, `/data/sources/inputs/<path>` one input file); `/data/transforms` (`/data/transforms/<name>` one transform); `/data/warehouse` (`?table=<id>`, `?group=<id>` select in its browser; `/data/warehouse/<table>` one table); `/data/models` (`/data/models/<m>` one model: `?table=<t>`, `?measure=<name>`, `?view=measures\|relationships\|storage\|code\|agent`). Nothing under `/data` is narrowed to a model. |
+| Data | `/data` the home, a status board (cards, Needs attention, Agent access, Recent activity, Schedules); `/data/lineage` the map (sources → transforms → warehouse → models → reports from `/api/graph`; `?lens=coverage\|flow\|freshness\|trust\|access`, `?node=<id>` selects a piece and its passport, `?lane=<lane>` focuses a lane); then four lists (`?q=` search, `?filter=` chip, `?sort=` column, `-name` descending), each a page per thing with tabs at `?tab=` (Overview when absent): `/data/sources` (`/data/sources/<name>` one connection, `/data/sources/inputs` the folder, `/data/sources/<name>/<table>` one source table, `/data/sources/inputs/<path>` one input file); `/data/transforms` (`/data/transforms/<name>` one transform); `/data/warehouse` (`?view=table\|schema`; `?table=<id>`, `?group=<id>` select in its schema; `/data/warehouse/<table>` one table); `/data/models` (`/data/models/<m>` one model: `?table=<t>`, `?measure=<name>`, `?view=measures\|relationships\|storage\|code\|agent` open its Schema tab). Nothing under `/data` is narrowed to a model. |
 | Review | `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
 | Docs | `/docs` the handbook in `docs/toc.yaml`'s order; `/docs/<section>/<page>` per file; the quickstart at `/docs/get-started`. A page that moved keeps its old address (the toc's `moved:`). |
 
@@ -314,7 +314,9 @@ the build command.
   same thing under Data, Ask, History or the library; `/models` to
   `/data/models` (`/models?m=<m>` to `/data/models/<m>`); `/explore` to `/ask`;
   `/sources` and `/connectors` to `/data/sources`; `/map`, `/data/map` and
-  `/data?view=map` to `/data` (with `model=<m>`, to `/data/models/<m>`);
+  `/data?view=map` to `/data/lineage` (with `model=<m>`, to `/data/models/<m>`);
+  `/data?lens=`, `?node=` and `?lane=` to `/data/lineage` with the same query,
+  and `/data?model=<m>` to `/data/lineage?lens=flow&node=model:<m>`;
   `/data/<m>` and `/data/<m>/model` to `/data/models/<m>`,
   `/data/<m>/transform` to the transform its pipeline runs, `/data/<m>/sources`
   to `/data/sources`, `/data/<m>/runs` to `/runs?model=<m>`;
