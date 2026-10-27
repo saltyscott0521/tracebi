@@ -6,9 +6,10 @@ import { redact } from '@tanstack/redact/vite'
 const apiTarget = `http://localhost:${process.env.TRACEBI_API_PORT || 8000}`
 
 export default defineConfig({
-  // TanStack Redact compiles the React tree ahead of time. React Flow's store
-  // imports use-sync-external-store's selector shim as a default object, which
-  // the compiler cannot follow, so that one module is left as it is.
+  // TanStack Redact stands in for React: the same API, a smaller runtime,
+  // synchronous rendering. React Flow's store imports use-sync-external-store's
+  // selector shim as a default object, which the swap cannot follow, so that
+  // one module is left as it is.
   plugins: [
     redact({ skip: ['use-sync-external-store/shim/with-selector', 'use-sync-external-store/shim/with-selector.js', 'use-sync-external-store/with-selector', 'use-sync-external-store/with-selector.js'] }),
     react(),

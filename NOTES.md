@@ -4,7 +4,10 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
-## 2026-10-27 — The app on TanStack Redact (REDACT)
+## 2026-10-27 — The app runs on TanStack Redact (REDACT)
+
+Redact is not a compiler: it is a drop-in React runtime (the same API, a smaller
+footprint, synchronous rendering), aliased in by its Vite plugin.
 
 The owner's call from the 26th ("we should move to tanstack redact"), parked on two
 blockers that are both gone: Recharts broke under the compiled output (it left the
