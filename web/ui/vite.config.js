@@ -1,11 +1,18 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { redact } from '@tanstack/redact/vite'
 
 // Point the dev proxy at a non-default API port with TRACEBI_API_PORT.
 const apiTarget = `http://localhost:${process.env.TRACEBI_API_PORT || 8000}`
 
 export default defineConfig({
-  plugins: [react()],
+  // TanStack Redact compiles the React tree ahead of time. React Flow's store
+  // imports use-sync-external-store's selector shim as a default object, which
+  // the compiler cannot follow, so that one module is left as it is.
+  plugins: [
+    redact({ skip: ['use-sync-external-store/shim/with-selector', 'use-sync-external-store/shim/with-selector.js', 'use-sync-external-store/with-selector', 'use-sync-external-store/with-selector.js'] }),
+    react(),
+  ],
   // The bundle is built into the Python package, not next to this config.
   // tracebi/web/api/main.py resolves the UI as `<its own dir>/../ui/dist`, which is
   // tracebi/web/ui/dist now that the app lives at tracebi.web.api — so the

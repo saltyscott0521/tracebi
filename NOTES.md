@@ -4,6 +4,16 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-27 — The app on TanStack Redact (REDACT)
+
+The owner's call from the 26th ("we should move to tanstack redact"), parked on two
+blockers that are both gone: Recharts broke under the compiled output (it left the
+app with CHARTS), and the package carried no licence (0.2.1 declares MIT; 0.1.4
+through 0.2.0 declared none). Wired through its Vite plugin in `web/ui/vite.config.js`,
+with `use-sync-external-store`'s selector shim skipped because React Flow's store
+imports it as a default object. The app bundle goes 1,084 kB → 910 kB (gzip 335 →
+293). The smoke test walks every page clean. Nothing in the source changed.
+
 ## 2026-10-27 — Control tower round two: runs move on the map; Depends on this (TOWER-2)
 
 Two things the console shows now, both observation only. A pipeline run going now
