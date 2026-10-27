@@ -180,7 +180,7 @@ function JoinsTable({ edges }) {
 
 // The grain in one sentence: each fact and the dimensions it is measured by
 // (its declared joins; the model declares no more than that).
-function grainSentence(data) {
+export function grainSentence(data) {
   const facts = (data.facts || []).map(f => {
     const by = Object.keys(f.foreign_keys || {}).map(dim => {
       const d = (data.dimensions || []).find(x => x.name === dim)
@@ -225,8 +225,9 @@ function DimensionsList({ data }) {
 }
 
 // What `get_context --model` hands an agent for this model, read when shown:
-// the same function behind the CLI, the gateway and this route.
-function AgentContext({ name }) {
+// the same function behind the CLI, the gateway and this route. The model
+// page's Agents tab, and a fold of the Schema tab's summary.
+export function AgentContext({ name }) {
   const { data, error, isLoading } = useModelContext(name)
   if (isLoading) return <SkeletonList />
   if (error) return <ErrorDetail error={error} />
@@ -241,6 +242,34 @@ function AgentContext({ name }) {
   )
 }
 
+// The questions that answer each measure: a question answers the measure its
+// words name (the match Ask makes).
+function answersOf(data) {
+  const answers = {}
+  for (const q of data.questions || []) {
+    const m = questionQuery(data, q)?.measures?.[0]
+    if (m) (answers[m] = answers[m] || []).push(q)
+  }
+  return answers
+}
+
+/**
+ * The model page's Measures tab: every named measure, in the Semantic
+ * layer's words. Picking one opens the Schema tab with the fact it runs on
+ * selected (?measure=, as ⌘K links one).
+ */
+export function ModelMeasures({ name }) {
+  const { data, isLoading } = useModel(name)
+  const [, setParams] = useSearchParams()
+  if (isLoading) return <SkeletonList />
+  if (!data) return null
+  const pick = m => {
+    const fact = (data.facts || []).find(f => (f.runnable_measures || []).includes(m))
+    setParams(fact ? { tab: 'schema', measure: m, table: fact.table } : { tab: 'schema', measure: m })
+  }
+  return <MeasuresTable model={name} measures={data.measures || []} target={null} answers={answersOf(data)} onPick={pick} />
+}
+
 // The inspector with nothing selected: the Semantic layer. What the model is
 // about, its grain, its measures, dimensions and example questions in the
 // words people and agents use, then its joins, storage, code and the exact
@@ -248,12 +277,7 @@ function AgentContext({ name }) {
 function ModelSummary({ name, data, schema, desk, action, view, setView, onPickMeasure }) {
   const grain = grainSentence(data)
   const questions = data.questions || []
-  // A question answers the measure its words name (the match Ask makes).
-  const answers = {}
-  for (const q of questions) {
-    const m = questionQuery(data, q)?.measures?.[0]
-    if (m) (answers[m] = answers[m] || []).push(q)
-  }
+  const answers = answersOf(data)
   const measuresRef = useRef(null)
   useEffect(() => { if (view === 'measures') measuresRef.current?.scrollIntoView({ block: 'start' }) }, [view])
   const sinks = desk?.sinks || []

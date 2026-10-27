@@ -170,22 +170,27 @@ pandas and declares its contract in a <code>with contract(...)</code> block.</p>
 <li><strong>Reports</strong> opens first. It is the library: a folder per model, each report
   with whether its numbers still reproduce. <strong>Ask this model</strong>, on a folder's
   or a model's page, puts a question to that model.</li>
-<li><strong>Data</strong> (analysts and admins) opens on <strong>Overview</strong>, a map of the
-  project with these stages as lanes: sources, transforms, the warehouse,
-  models, reports, wired by what reads what. A lens repaints it for one
-  question: <strong>Coverage</strong> (what is wired on both sides, and the gaps, dashed
-  and amber), <strong>Flow</strong>, <strong>Freshness</strong>, <strong>Trust</strong> and <strong>What agents see</strong>.
-  Every piece has the same passport beside the map: From, Read by (Writes
-  for a transform, Written by for a warehouse table), Last moved, Trust and
-  Agents, with its actions (Open, Zoom to schema, Setup…, Refresh data,
-  Export to…). Its four folders, nested under it in the sidebar, are
-  <strong>Sources</strong>, <strong>Transforms</strong>, <strong>Warehouse</strong> and <strong>Models</strong>: each opens the
-  map with its lane in focus, and a second click opens the folder's list.
-  Each thing in them has a page of its own: a source (its tables, which
-  agents may read, and <strong>Setup…</strong> for how it is reached), a table, a
-  transform (the pipeline that rebuilds its data, where an admin clicks
-  <strong>Refresh data</strong>), a model (its tables, joins and measures, and the line
-  to its other stages).</li>
+<li><strong>Data</strong> (analysts and admins) is a console. Its home is a status board:
+  a card each for Sources, Transforms, Warehouse, Models and Reports with
+  one health pill, <strong>Needs attention</strong> (a source not reachable here, a file
+  nobody reads, a transform no pipeline runs, a table no model reads, each
+  with its action), what agents may read, recent activity and schedules.
+  Its four lists, nested under it in the sidebar, are <strong>Sources</strong>,
+  <strong>Transforms</strong>, <strong>Warehouse</strong> and <strong>Models</strong>, one shape for all: search,
+  filter chips, a Status column in the app's words (Connected, Unreachable,
+  Checks passed, Changed since checked, Nobody reads it…) and a row menu.
+  Every thing in them has a page of the same shape: its name, type and
+  status, its actions top right (Test and Setup for a source, Refresh data
+  for a transform, Copy SQL and Export for a table, Ask this model for a
+  model), then tabs: <strong>Overview</strong> (its facts, among them From, Read by,
+  Last moved, Trust and Agents), its own (a source's <strong>Tables</strong>, where you
+  tick what agents may read; a table's <strong>Data</strong> and <strong>Columns</strong>; a
+  transform's <strong>Steps</strong> and <strong>Code</strong>; a model's <strong>Schema</strong> and
+  <strong>Measures</strong>), <strong>Lineage</strong>, <strong>Activity</strong>, <strong>Agents</strong> and <strong>Settings</strong>.
+  <strong>View lineage</strong>, on the home and every page, opens the map of the
+  project: these stages as lanes, wired by what reads what, read through a
+  lens (<strong>Coverage</strong>, <strong>Flow</strong>, <strong>Freshness</strong>, <strong>Trust</strong>, <strong>What agents
+  see</strong>).</li>
 <li><strong>Review</strong> holds what needs attention, drafts, <strong>History</strong> (what ran) and
   <strong>Verify</strong> (check a report file from anywhere).</li>
 <li><strong>Docs</strong> is this handbook.</li>

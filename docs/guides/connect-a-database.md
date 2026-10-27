@@ -61,12 +61,13 @@ Until a table is ticked, an agent reads none of the connection.
   ([[connections-yaml]]). A secret you typed is in
   `.tracebi/secrets.yml.enc` ([[credentials]]).
 - The ticked tables are the file's `agents:` key ([[connections-yaml]]).
-- The connection is on the Sources page at once: its passport (where it
-  comes from, who reads it, last moved, trust, agents), then its tables.
-  **Setup…** holds how it is reached: its fields, whether it connects here,
-  where each credential is set, and for an admin **Test**, **Edit** and
-  **Delete…**.
-- **Edit** (in Setup…) opens the Connect step with the file's values. A saved password
+- The connection is in the Sources list at once, and its page opens on its
+  **Tables** tab, where you tick what agents may read. Its **Overview** says
+  where it comes from, who reads it, when it last moved, trust and agents;
+  its **Settings** tab holds how it is reached: its fields, whether it
+  connects here, where each credential is set, and for an admin **Test**,
+  **Edit** and **Delete…** (**Test** and **Setup ▾** are also top right).
+- **Edit** (in Settings, or Setup ▾) opens the Connect step with the file's values. A saved password
   shows as `•••`; leave it empty to keep it. The file is changed in place and
   keeps its comments. **Delete…**
   removes it only when no transform, pipeline step or model reads the

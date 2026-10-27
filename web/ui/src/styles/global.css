@@ -2712,3 +2712,191 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .tpage__fromcell { white-space: normal; min-width: 20ch; }
 .tpage__from a code { color: var(--accent-text); }
 .tpage__unresolved { color: var(--muted); }
+
+/* ── CONSOLE ── Data as a console (design/control-tower.md): one list shape
+   (ResourceTable), one page shape (ResourcePage), the home a status board.
+   AWS-dense in the app's own tokens: a --head row on every table, pills with a
+   dot (the verdict chip), no shadows, no new faces. On a phone a table scrolls
+   in its own box, the cards stack and the tabs scroll. */
+:root { --head: var(--surface-2); }
+
+.rlist-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
+.rlist-head > div:first-child { min-width: 0; flex: 1 1 320px; }
+.rpage__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rlist-head .rpage__acts { margin-top: 6px; }
+
+.rtype {
+  display: inline-block; padding: 1px 6px; border-radius: var(--radius-sm); white-space: nowrap;
+  font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.5;
+  background: var(--blue-lt); color: var(--accent-text);
+}
+
+/* The list: tools, then the table. */
+.rlist { min-width: 0; }
+.rlist__tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.rlist__tools .search-wrap { border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--card); }
+.rlist__tools .search-input { border: 0; background: transparent; min-height: 32px; }
+.rlist__filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.rfilt {
+  appearance: none; font: inherit; font-size: var(--text-sm); padding: 4px 10px; min-height: 28px; cursor: pointer;
+  border: 1px solid var(--border-strong); border-radius: 999px; background: var(--card); color: var(--text-2);
+}
+.rfilt[aria-pressed="true"] { background: var(--blue-lt); border-color: var(--blue); color: var(--accent-text); }
+.rfilt:focus-visible, .rtable__sort:focus-visible, .rtabs button:focus-visible, .rmenu__dots:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.rlist__count { margin-left: auto; font-size: var(--text-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.rlist__scroll { position: relative; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); }
+.rtable { width: 100%; border-collapse: collapse; font-size: var(--text-caption); }
+.rtable thead tr { background: var(--head); }
+.rtable th {
+  padding: 8px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--border);
+  font-size: var(--text-eyebrow); font-weight: 600; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--muted);
+}
+.rtable th.num, .rtable td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.rtable td { padding: 8px 12px; border-top: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+.rtable td.wrap { white-space: normal; min-width: 16ch; }
+.rtable tbody tr:first-child td { border-top: 0; }
+.rtable tbody tr:hover td { background: var(--head); }
+.rtable td a { color: var(--accent-text); }
+.rtable__sort {
+  appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+}
+.rtable th[aria-sort] .rtable__sort { color: var(--text); }
+.rtable__arrow { display: inline-block; width: 1em; text-align: center; }
+.rtable__menu { width: 1%; text-align: right; }
+.rname { display: inline-flex; align-items: baseline; gap: 8px; }
+.rname__link { font-weight: 500; }
+.rname__link code { font-size: var(--text-code); }
+.rname__id { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--muted); background: none; border: 0; padding: 0; }
+
+/* The row menu (⋯) and a page's ▾ menu. */
+.rmenu { position: relative; display: inline-flex; }
+.rmenu__dots {
+  appearance: none; border: 1px solid transparent; background: none; cursor: pointer; color: var(--muted);
+  min-width: 28px; min-height: 28px; border-radius: var(--radius-sm); font-size: var(--text-lg); line-height: 1;
+}
+.rmenu__dots:hover, .rmenu__dots[aria-expanded="true"] { border-color: var(--border-strong); color: var(--text); }
+.rmenu__btn {
+  appearance: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; cursor: pointer;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: transparent; color: var(--text);
+  font: inherit; font-size: 12px; font-weight: 600; line-height: 1;
+}
+.rmenu__list {
+  position: fixed; z-index: 80; min-width: 180px; margin: 0; padding: 4px; list-style: none;
+  background: var(--card); border: 1px solid var(--border-strong); border-radius: var(--radius-lg);
+}
+.rmenu__list a, .rmenu__list button {
+  display: block; width: 100%; padding: 7px 10px; border: 0; border-radius: var(--radius-sm); background: none;
+  font: inherit; font-size: var(--text-caption); text-align: left; color: var(--text); text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.rmenu__list a:hover, .rmenu__list button:hover, .rmenu__list a:focus-visible, .rmenu__list button:focus-visible { background: var(--blue-lt); outline: none; }
+
+/* The page: title bar, tabs, panel. */
+.rpage__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; margin-bottom: 4px; }
+.rpage__titles { min-width: 0; flex: 1 1 360px; }
+.rpage__title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.rpage__name {
+  margin: 0; min-width: 0; overflow-wrap: anywhere; font-family: var(--font-display); font-size: var(--text-2xl);
+  font-weight: var(--weight-display); letter-spacing: var(--tracking-display); line-height: 1.2;
+}
+.rpage__name--code { font-family: var(--font-mono); font-size: var(--text-xl); letter-spacing: 0; }
+.rpage__sub { margin: 4px 0 0; font-size: var(--text-caption); color: var(--text-2); overflow-wrap: anywhere; }
+.rpage__sub code { font-size: var(--text-sm); }
+.rtabs {
+  display: flex; gap: 2px; margin: 12px 0 16px; border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.rtabs::-webkit-scrollbar { display: none; }
+.rtabs button {
+  appearance: none; flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; margin-bottom: -1px;
+  border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer; white-space: nowrap;
+  font: inherit; font-size: var(--text-caption); font-weight: 600; color: var(--muted);
+}
+.rtabs button:hover { color: var(--text); }
+.rtabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--blue); }
+.rtabs__n { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rtabpanel { min-width: 0; }
+.rsection { display: grid; gap: 12px; }
+.rsection__lede { margin: 0; max-width: 78ch; font-size: var(--text-caption); color: var(--text-2); line-height: 1.6; }
+.rsection--setup { display: block; max-width: 760px; }
+
+/* Overview's grid: the passport's rows and the resource's own facts, three to a row. */
+.rdetails {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 24px; margin: 0 0 16px; padding: 4px 16px;
+  border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card);
+}
+.rdetails dl { margin: 0; padding: 10px 0; min-width: 0; border-bottom: 1px solid var(--border); }
+.rdetails dt { font-size: var(--text-sm); font-weight: 500; color: var(--muted); }
+.rdetails dd { margin: 2px 0 0; font-size: var(--text-caption); line-height: 1.5; overflow-wrap: anywhere; }
+.rdetails dd a { color: var(--accent-text); }
+.rdetails dd code { font-size: var(--text-sm); background: none; border: 0; padding: 0; }
+.rdetails dd .verdict { white-space: normal; max-width: 100%; }
+.rdetails dd .src-readby { margin: 0; padding: 0; list-style: none; }
+@media (max-width: 760px) { .rdetails { grid-template-columns: minmax(0, 1fr); } }
+
+/* Activity: a pill, what, when. */
+.ract { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); }
+.ract__row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--border); font-size: var(--text-caption); }
+.ract__row:first-child { border-top: 0; }
+.ract__what { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.ract__what a { color: var(--accent-text); font-weight: 500; text-decoration: none; }
+.ract__what a:hover, .rtable td a:hover, .rdetails dd a:hover { text-decoration: underline; }
+.rtable td a, .rdetails dd a, .rsec a { text-decoration: none; }
+.ract__what b { font-weight: 500; }
+.ract__sub { color: var(--muted); }
+.ract__at { margin-left: auto; white-space: nowrap; color: var(--muted); font-size: var(--text-sm); }
+
+/* The home: title bar, cards, two columns of panels. */
+.rhome__head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px; margin-bottom: 20px; }
+.rhome__title {
+  margin: 0; font-family: var(--font-display); font-size: var(--text-2xl); font-weight: var(--weight-display);
+  letter-spacing: var(--tracking-display); line-height: 1.2;
+}
+.rcards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
+@media (max-width: 1100px) { .rcards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .rcards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .rcards { grid-template-columns: minmax(0, 1fr); } }
+.rcard {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 12px 14px; text-decoration: none; color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); transition: border-color var(--t);
+}
+.rcard:hover { border-color: var(--border-hl); }
+.rcard:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.rcard__k { font-size: var(--text-sm); font-weight: 500; color: var(--muted); }
+.rcard__v { font-size: var(--text-2xl); font-weight: 600; letter-spacing: var(--tracking-display); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.rcard__unit { font-size: var(--text-caption); font-weight: 400; letter-spacing: 0; color: var(--muted); }
+.rcard__s { min-width: 0; }
+.rcard__s .verdict { white-space: normal; }
+.rhome__two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; }
+@media (max-width: 900px) { .rhome__two { grid-template-columns: minmax(0, 1fr); } }
+.rhome__sec { margin-bottom: 24px; min-width: 0; }
+.rsec {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 8px;
+  font-size: var(--text-eyebrow); font-weight: 600; letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--muted);
+}
+.rsec a { font-size: var(--text-sm); letter-spacing: 0; text-transform: none; color: var(--accent-text); font-weight: 500; }
+.rsec__n { margin-right: auto; color: var(--text-2); }
+.rrows { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); }
+.rrow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.rrow:first-child { border-top: 0; }
+.rrow__what { min-width: 0; font-size: var(--text-caption); overflow-wrap: anywhere; }
+.rrow__what b { font-weight: 500; }
+.rrow__what span { display: block; font-size: var(--text-sm); color: var(--muted); }
+.rrow__none { margin: 0; padding: 12px; font-size: var(--text-caption); color: var(--text-2); border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); }
+@media (max-width: 480px) {
+  .rrow { grid-template-columns: minmax(0, 1fr) auto; }
+  .rrow > :first-child { grid-column: 1 / -1; justify-self: start; }
+}
+
+/* Warehouse's Table | Schema switch, and the map inside a page's Lineage tab. */
+.rview { margin: 0 0 12px; }
+.map-wrap--tab { grid-template-columns: minmax(0, 1fr) !important; }
+.map-picked { margin: 0; font-size: var(--text-caption); color: var(--text-2); }
+.map-picked a { color: var(--accent-text); margin-left: 6px; }
+
+/* Every target a thumb can hit: 24px at least. */
+.rtable__sort, .rname__link, .rsec a, .rtabpanel .mlist__pick { display: inline-flex; align-items: center; min-height: 24px; }
+.rsec a { min-width: 24px; justify-content: center; }
+/* A page's actions stay one row: on a phone the row scrolls, as the tabs do. */
+.rpage__head .rpage__acts { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.rpage__head .rpage__acts > * { flex: none; }

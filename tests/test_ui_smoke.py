@@ -254,18 +254,43 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("heading", name="Page not found").wait_for()
             fail_on_browser_errors()
 
-            # Data opens on Overview, the map: five lanes in the order the
-            # data moves, read through Coverage, with the gaps drawn. Its four
-            # folders are nested under it in the sidebar as jump points; no page
-            # under Data has a tab row.
+            # Data opens on its home, a status board: a card per folder with one
+            # health pill, and Needs attention naming the gaps and the CRM that
+            # is not reachable here. Its four lists are nested under it in the
+            # sidebar, each a plain link to its list.
             sidebar.get_by_role("link", name="Data", exact=True).click()
             page.wait_for_url("**/data")
-            page.get_by_role("heading", level=1, name="Overview").wait_for()
+            page.get_by_role("heading", level=1, name="Data").wait_for()
             data_tabs = sidebar.get_by_role("list", name="Data")
             assert data_tabs.get_by_role("link").all_inner_texts() == [
                 "Sources", "Transforms", "Warehouse", "Models"]
             expect(sidebar.get_by_role("link", name="Data", exact=True)).to_have_attribute("aria-current", "page")
-            expect(page.locator("main .dtabs")).to_have_count(0)
+            cards = page.locator(".rcard")
+            expect(cards).to_have_count(5)
+            assert cards.locator(".rcard__k").all_inner_texts() == [
+                "Sources", "Transforms", "Warehouse", "Models", "Reports"]
+            expect(page.locator('[data-card="Sources"]')).to_contain_text("1 unreachable")
+            attention = {
+                "source:crm": "Not connected here · set TRACEBI_CRM_URL",
+                "transform:holdings_transform_pandas": "No pipeline runs it",
+                "table:warehouse.fact_holdings_by_sector": "No model reads it",
+                "files:unread": "nar_existing_median_1968_2012.csv",
+            }
+            for node, why in attention.items():
+                expect(page.locator(f'[data-attention="{node}"]')).to_contain_text(why)
+            # Setup on the unreachable source opens its sheet where you are.
+            page.locator('[data-attention="source:crm"]').get_by_role("button", name="Setup").click()
+            setup = page.get_by_role("dialog", name="Setup · CRM (Postgres)")
+            expect(setup.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()
+            expect(setup.get_by_text("Set by TRACEBI_CRM_URL")).to_be_visible()
+            setup.get_by_role("button", name="Close").click()
+            fail_on_browser_errors()
+
+            # The map is Lineage, one click away: five lanes in the order the
+            # data moves, read through Coverage, with the gaps drawn.
+            page.get_by_role("link", name="View lineage").click()
+            page.wait_for_url("**/data/lineage")
+            page.get_by_role("heading", level=1, name="Lineage").wait_for()
             board = page.locator(".map-board")
             board.locator('[data-node="model:portfolio_model"]').wait_for()
             assert board.locator(".map-lane__stage").all_inner_texts() == [
@@ -277,28 +302,23 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 "els => els.map(e => e.dataset.node)")) == [
                 "group:affordability_transform", "group:holdings_transform", "group:saas_transform",
                 "group:wealth_transform"]
-            # Two gaps, each with its reason: a transform no pipeline runs, a
-            # file no transform reads.
             gap = board.locator('[data-node="transform:holdings_transform_pandas"]')
             expect(gap).to_have_class(re.compile(r"\bmcard--gap\b"))
             expect(gap).to_contain_text("no pipeline runs it")
             unread = board.locator('[data-node="files:unread"]')
             expect(unread).to_contain_text("no transform reads it")
-            expect(unread.locator('[data-node="file:inputs/nar_existing_median_1968_2012.csv"]')).to_have_count(1)
             # Hovering a model lights its path: its reports, not another model.
             board.locator('[data-node="model:saas_model"]').hover()
             lit = re.compile(r"\bis-lit\b")
             expect(board.locator('[data-node="report:saas_model/mrr_dashboard"]')).to_have_class(lit)
             expect(board.locator('[data-node="report:portfolio_model/portfolio_book"]')).to_have_class(
                 re.compile(r"\bis-dim\b"))
-            expect(board.locator('[data-node="group:saas_transform"]')).to_have_class(lit)
             # What agents see: no CRM table is on the allowlist, so the CRM goes dark.
             lenses.get_by_role("button", name="What agents see").click()
-            page.wait_for_url("**/data?lens=access")
+            page.wait_for_url("**/data/lineage?lens=access")
             expect(board.locator('[data-node="source:crm"]')).to_have_class(re.compile(r"\bis-dark\b"))
-            expect(board.locator('[data-node="model:portfolio_model"]')).not_to_have_class(re.compile(r"\bis-dark\b"))
             # A group's passport: the same rows as every piece, and Zoom to
-            # schema lands on the warehouse browser with that group selected.
+            # schema lands on the warehouse's schema with that group selected.
             board.locator('[data-node="group:holdings_transform"] .mcard__main').click()
             page.wait_for_url(re.compile(r"node=group%3Aholdings_transform"))
             passport = page.get_by_role("complementary", name="Passport")
@@ -306,101 +326,114 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert passport.locator("dt").all_inner_texts() == [
                 "From", "Written by", "Last moved", "Trust", "Agents"]
             passport.get_by_role("link", name="Zoom to schema").click()
-            page.wait_for_url("**/data/warehouse?group=*")
+            page.wait_for_url(re.compile(r"/data/warehouse\?view=schema&group="))
             expect(page.get_by_role("complementary", name="Inspector").locator(
                 '[data-writer="holdings_transform"]')).to_be_visible()
-            page.go_back()
-            page.wait_for_url(re.compile(r"node=group%3Aholdings_transform"))
             fail_on_browser_errors()
 
-            def open_list(name: str, path: str) -> None:
-                # A jump point opens the map with its lane focused; a second
-                # click, from there, opens the folder's list.
-                data_tabs.get_by_role("link", name=name).click()
-                page.wait_for_url(f"**/data?lane={name.lower()}")
-                expect(data_tabs.get_by_role("link", name=name)).to_have_attribute("aria-current", "page")
-                expect(page.locator(f'[data-lane="{name.lower()}"]')).to_have_class(re.compile(r"\bis-focus\b"))
-                data_tabs.get_by_role("link", name=name).click()
-                page.wait_for_url(f"**{path}")
+            # Sources: connections and input files in one list, the console's:
+            # sorted by a header, filtered by a chip, both in the address.
+            data_tabs.get_by_role("link", name="Sources").click()
+            page.wait_for_url("**/data/sources")
+            expect(data_tabs.get_by_role("link", name="Sources")).to_have_attribute("aria-current", "page")
+            sources = page.get_by_role("table", name="Sources")
+            sources.locator('[data-source="inputs/holdings.csv"]').wait_for()
+            # The warehouse is not a source; nor is a file a connection stands for.
+            assert sorted(sources.locator("tr[data-source]").evaluate_all(
+                "els => els.map(e => e.dataset.source)")) == [
+                "bank", "billing", "crm", "inputs/holdings.csv", "inputs/housing_history.csv",
+                "inputs/issuer_ratings.csv", "inputs/nar_existing_median_1968_2012.csv",
+                "inputs/subscriptions.csv"]
+            crm = sources.locator('[data-source="crm"]')
+            expect(crm).to_contain_text("CRM (Postgres)")
+            expect(crm).to_contain_text("Unreachable")
+            expect(crm).to_contain_text("holdings_transform")
+            sources.get_by_role("button", name="Status").click()
+            page.wait_for_url("**/data/sources?sort=status")
+            expect(sources.get_by_role("columnheader", name=re.compile(r"^Status"))).to_have_attribute(
+                "aria-sort", "ascending")
+            statuses = sources.locator("tbody tr td:nth-child(3)").all_inner_texts()
+            assert statuses == sorted(statuses), statuses
+            page.get_by_role("group", name="Show").get_by_role("button", name="Unreachable").click()
+            page.wait_for_url(re.compile(r"/data/sources\?.*filter=unreachable"))
+            expect(sources.locator("tbody tr")).to_have_count(1)
+            expect(sources.locator("tbody tr")).to_have_attribute("data-source", "crm")
+            # A source's page opens on Overview: the passport's rows among its
+            # facts; Tables lists what it holds with a tick for agents; Settings
+            # is how it is reached.
+            crm.get_by_role("link", name="CRM (Postgres)").click()
+            page.wait_for_url("**/data/sources/crm")
+            page.goto(base + "/data/sources/bank")
+            page.get_by_role("heading", level=1, name="Core banking (SQLite file)").wait_for()
+            tabs = page.get_by_role("tablist", name="What to show")
+            expect(tabs.get_by_role("tab", name="Overview")).to_have_attribute("aria-selected", "true")
+            details = page.locator(".rdetails")
+            for row in ("From", "Read by", "Last moved", "Trust", "Agents"):
+                expect(details.locator(f'[data-row="{row}"]')).to_have_count(1)
+            expect(details.locator('[data-row="From"]')).to_contain_text("inputs/bank.sqlite")
+            tabs.get_by_role("tab", name=re.compile(r"^Tables")).click()
+            page.wait_for_url("**/data/sources/bank?tab=tables")
+            expect(page.get_by_role("link", name="accounts", exact=True)).to_have_attribute(
+                "href", "/data/sources/bank/accounts")
+            expect(page.get_by_role("checkbox", name="Agents may read accounts")).to_be_visible()
+            expect(page.locator('tr[data-table="accounts"]')).to_contain_text("wealth_dim_account")
+            tabs.get_by_role("tab", name="Settings").click()
+            page.wait_for_url("**/data/sources/bank?tab=settings")
+            expect(page.get_by_role("tabpanel")).to_contain_text("TRACEBI_BANK_URL")
+            expect(page.get_by_role("tabpanel")).to_contain_text("connections/bank.yaml")
+            # inputs/: a data file opens its table page; scripts are folded.
+            page.goto(base + "/data/sources/inputs?tab=tables")
+            expect(page.get_by_role("link", name="issuer_ratings.csv")).to_have_attribute(
+                "href", "/data/sources/inputs/issuer_ratings.csv")
+            expect(page.get_by_text(re.compile(r"^\d+ other files$"))).to_be_visible()
+            fail_on_browser_errors()
 
-            # Transforms: every file in transforms/, each with its form; its
-            # name opens its own page, and the tables it wrote theirs.
-            open_list("Transforms", "/data/transforms")
-            expect(data_tabs.get_by_role("link", name="Transforms")).to_have_attribute("aria-current", "page")
+            # Transforms: every file in transforms/, each with its form and its
+            # status; its name opens its own page.
+            data_tabs.get_by_role("link", name="Transforms").click()
+            page.wait_for_url("**/data/transforms")
             for name, form in [("holdings_transform", "SQL"), ("saas_transform", "SQL"),
                                ("wealth_transform", "SQL"), ("affordability_transform", "Python")]:
                 row = page.locator(f'[data-transform="{name}"]')
                 expect(row).to_contain_text(form)
+                expect(row).to_contain_text("Checks passed")
                 expect(row.get_by_role("link", name=name, exact=True)).to_have_attribute(
                     "href", f"/data/transforms/{name}")
-            expect(page.locator('[data-transform="holdings_transform"]').get_by_role(
-                "link", name="dim_date", exact=True)).to_have_attribute("href", "/data/warehouse/dim_date")
-            # Models lists each model as a chain row whose segments each link
-            # a different place; the transform carries its form.
-            open_list("Models", "/data/models")
-            chain = page.get_by_role("list", name="How Direct Lending Portfolio is made")
-            expect(chain).to_contain_text("holdings_transform SQL")
-            for text, href in [("sources", "/data/sources"),
-                               ("holdings_transform", "/data/transforms/holdings_transform"),
-                               ("tables", re.compile(r"^/data/warehouse\?group=warehouse%3A")),
-                               ("measures", "/data/models/portfolio_model?view=measures"),
-                               ("reports", "/?folder=portfolio_model")]:
-                expect(chain.get_by_role("link", name=re.compile(text))).to_have_attribute("href", href)
-            # Sources: a source's page is its passport rows, then its tables;
-            # how it is reached (the crm connection is not, here) is behind Setup….
-            open_list("Sources", "/data/sources")
-            # One of each kind and nothing else: the live Postgres, the two
-            # databases that ship, and inputs/. The warehouse is not a source.
-            page.locator('[data-source="inputs"]').wait_for()
-            assert sorted(page.locator("[data-source]").evaluate_all(
-                "els => els.map(e => e.dataset.source)")) == ["bank", "billing", "crm", "inputs"]
-            crm = page.locator('[data-source="crm"]')
-            expect(crm).to_contain_text("CRM (Postgres)")
-            expect(crm).to_contain_text("Read by transform holdings_transform")
-            crm.click()
-            page.wait_for_url("**/data/sources/crm")
-            expect(page.locator(".src-readby")).to_contain_text("holdings_transform (issuer_ratings)")
-            expect(page.get_by_text("Set by TRACEBI_CRM_URL", exact=True)).to_have_count(0)
-            page.locator('[data-source="bank"]').click()
-            page.wait_for_url("**/data/sources/bank")
-            rows = page.locator(".pass__rows dt")
-            expect(rows).to_have_count(5)
-            assert rows.all_inner_texts() == ["From", "Read by", "Last moved", "Trust", "Agents"]
-            expect(page.locator(".pass__rows")).to_contain_text("inputs/bank.sqlite")
-            expect(page.get_by_role("link", name="accounts", exact=True)).to_have_attribute(
-                "href", "/data/sources/bank/accounts")
-            page.get_by_role("button", name="Setup…").click()
-            setup = page.get_by_role("dialog", name="Setup · Core banking (SQLite file)")
-            expect(setup).to_contain_text("TRACEBI_BANK_URL")
+            expect(page.locator('[data-transform="holdings_transform_pandas"]')).to_contain_text("No pipeline runs it")
+            # Models: one row each; its row menu holds Ask.
+            data_tabs.get_by_role("link", name="Models").click()
+            page.wait_for_url("**/data/models")
+            model_row = page.locator('tr[data-model="portfolio_model"]')
+            expect(model_row).to_contain_text("Checks passed")
+            model_row.get_by_role("button", name="Actions for Direct Lending Portfolio").click()
+            expect(page.get_by_role("menuitem", name="Ask this model")).to_have_attribute(
+                "href", "/ask?model=portfolio_model")
             page.keyboard.press("Escape")
-            expect(setup).to_have_count(0)
-            page.locator('[data-source="crm"]').click()
-            page.wait_for_url("**/data/sources/crm")
-            page.get_by_role("button", name="Setup…").click()
-            setup = page.get_by_role("dialog", name="Setup · CRM (Postgres)")
-            expect(setup.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()
-            expect(setup.get_by_text("Set by TRACEBI_CRM_URL")).to_be_visible()
-            setup.get_by_role("button", name="Close").click()
-            # inputs/: a data file opens its table page; scripts are folded.
-            page.locator('[data-source="inputs"]').click()
-            page.wait_for_url("**/data/sources/inputs")
-            expect(page.get_by_role("link", name="issuer_ratings.csv")).to_have_attribute(
-                "href", "/data/sources/inputs/issuer_ratings.csv")
-            expect(page.get_by_text(re.compile(r"^\d+ other files$"))).to_be_visible()
-            # Warehouse: the data browser, its tree grouped by the transform
-            # that wrote each table; what a run read is said once, on its
-            # group, in the inspector when the group is selected.
-            open_list("Warehouse", "/data/warehouse")
+            expect(page.get_by_role("menu")).to_have_count(0)
+
+            # Warehouse: every table as a list by default, the data browser one
+            # switch away, its tree grouped by the transform that wrote each
+            # table; what a run read is said once, on its group.
+            data_tabs.get_by_role("link", name="Warehouse").click()
+            page.wait_for_url("**/data/warehouse")
             # The browser tab names the page, so tabs and bookmarks differ.
             expect(page).to_have_title("Warehouse · Data · TraceBi")
-            tree = page.get_by_role("tree", name="Tables")
             with urllib.request.urlopen(base + "/api/warehouse") as resp:
-                writers = [wr["transform"] for wr in json.load(resp)["warehouses"][0]["writers"]]
+                listing = json.load(resp)["warehouses"][0]
+            wh = page.get_by_role("table", name="Warehouse tables")
+            expect(wh.locator("tbody tr")).to_have_count(len(listing["tables"]))
+            view_row = wh.locator('[data-table="fact_holdings_by_sector"]')
+            expect(view_row).to_contain_text("view")
+            expect(view_row).to_contain_text("Nobody reads it")
+            page.get_by_role("group", name="Show the warehouse as").get_by_role("button", name="Schema").click()
+            page.wait_for_url("**/data/warehouse?view=schema")
+            tree = page.get_by_role("tree", name="Tables")
+            writers = [wr["transform"] for wr in listing["writers"]]
             tree.locator("[data-writer]").first.wait_for()
             assert sorted(tree.locator("[data-writer]").evaluate_all(
                 "els => els.map(e => e.dataset.writer)")) == sorted(writers)
             tree.locator('[data-writer="holdings_transform"]').click()
-            page.wait_for_url("**/data/warehouse?group=*")
+            page.wait_for_url(re.compile(r"group="))
             inspector = page.get_by_role("complementary", name="Inspector")
             group = inspector.locator('[data-writer="holdings_transform"]')
             expect(group).to_contain_text(
@@ -408,28 +441,24 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(page.get_by_text("read crm.issuer_ratings", exact=False)).to_have_count(1)
             # A sink view has its own glyph and says what defines it.
             tree.locator('[data-table="fact_holdings_by_sector"]').click()
-            page.wait_for_url("**/data/warehouse?table=fact_holdings_by_sector")
+            page.wait_for_url(re.compile(r"table=fact_holdings_by_sector"))
             expect(inspector.locator('.dbx-insp__title [aria-label="View"]')).to_be_visible()
             expect(inspector).to_contain_text("defined by holdings_transform over dim_issuer, fact_holdings")
             tree.locator('[data-table="dim_rating"]').click()
-            page.wait_for_url("**/data/warehouse?table=dim_rating")
+            page.wait_for_url(re.compile(r"table=dim_rating"))
             expect(inspector.get_by_role("link", name="Open table")).to_have_attribute(
                 "href", "/data/warehouse/dim_rating")
             expect(inspector.get_by_role("link", name="holdings_transform", exact=True)).to_have_attribute(
                 "href", "/data/transforms/holdings_transform")
-            page.get_by_role("searchbox", name="Find a table or column").fill("dim_rat")
-            expect(tree.locator("[data-table]")).to_have_count(1)
-            page.get_by_role("searchbox", name="Find a table or column").fill("")
-            # A table selected is a short card; its profile is on its own page,
-            # where each column's distinct count is the profile route's.
+            # A table's page: its Columns tab says each column's profile, the
+            # distinct counts the profile route's.
             tree.locator('[data-table="dim_cohort"]').click()
-            page.wait_for_url("**/data/warehouse?table=dim_cohort")
-            expect(inspector.locator('[data-section="columns"]')).to_have_count(0)
+            page.wait_for_url(re.compile(r"table=dim_cohort"))
             inspector.get_by_role("link", name="Open table").click()
             page.wait_for_url("**/data/warehouse/dim_cohort")
             expect(page.get_by_role("navigation", name="Breadcrumb")).to_have_text(re.compile(r"Data\s*›\s*Warehouse\s*›\s*dim_cohort"))
             expect(data_tabs.get_by_role("link", name="Warehouse")).to_have_attribute("aria-current", "page")
-            page.get_by_role("tab", name="Columns").click()
+            page.get_by_role("tab", name=re.compile(r"^Columns")).click()
             with urllib.request.urlopen(base + "/api/tables/warehouse/dim_cohort/profile") as resp:
                 profile = json.load(resp)["columns"]
             for col, p in profile.items():
@@ -444,7 +473,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 with urllib.request.urlopen(base + "/api" + path) as resp:
                     return json.load(resp)
 
-            page.goto(base + "/data/warehouse/fact_holdings")
+            page.goto(base + "/data/warehouse/fact_holdings?tab=data")
             grid = page.get_by_role("grid", name="Rows of fact_holdings")
             grid.wait_for()
             expect(page.get_by_role("heading", level=1)).to_have_text("fact_holdings")
@@ -467,14 +496,25 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(fair).to_have_attribute("aria-sort", "descending")
             page.go_back()
             expect(fair).to_have_attribute("aria-sort", "ascending")
+            # Its Columns tab says where a SQL transform's column came from, and
+            # View lineage opens the map with the table selected.
+            page.goto(base + "/data/warehouse/fact_holdings?tab=columns")
+            expect(page.locator("table.tpage__profile tr").filter(
+                has=page.get_by_text("par", exact=True))).to_contain_text("inputs/holdings.csv.par")
+            page.get_by_role("link", name="View lineage").click()
+            page.wait_for_url("**/data/lineage?node=table%3Awarehouse.fact_holdings")
+            expect(page.get_by_role("complementary", name="Passport").get_by_role("heading", level=2)).to_have_text(
+                "fact_holdings")
             # A connection that is not reachable here says which variable, and
             # links to its page on Sources; the rows its last run read from the
-            # committed snapshot stand in, said so.
+            # committed snapshot stand in on Data, said so.
             page.goto(base + "/data/sources/crm/issuer_ratings")
             expect(page.get_by_text("Not connected here · set TRACEBI_CRM_URL")).to_be_visible()
             expect(page.get_by_role("link", name="Open its connection")).to_have_attribute(
                 "href", "/data/sources/crm")
-            expect(page.locator(".tpage__facts")).to_contain_text("Read by holdings_transform as crm.issuer_ratings")
+            expect(page.locator('.rdetails [data-row="Read by"]')).to_contain_text(
+                "holdings_transform as crm.issuer_ratings")
+            page.get_by_role("tab", name="Data").click()
             expect(page.get_by_text("Read from snapshot · inputs/issuer_ratings.csv")).to_be_visible()
             snap = page.get_by_role("grid", name="Rows of issuer_ratings.csv")
             expect(snap.locator("tbody tr")).to_have_count(
@@ -501,55 +541,26 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("group", name="Transforms").get_by_text("holdings_transform", exact=True).wait_for()
             page.keyboard.press("Escape")
             fail_on_browser_errors()
-            page.goto(base + "/data/warehouse")
 
-            # Picking a model opens its page: a breadcrumb, the line as its
-            # header with stations that open the other stages' pages, and no
-            # tab row.
-            open_list("Models", "/data/models")
-            # Its row's own name link: the Warehouse's "Read by" links share the text.
-            page.locator('li.chain[data-model="portfolio_model"]').get_by_role(
+            # A model's page: a breadcrumb, its name, its actions top right
+            # (one Ask this model), then its tabs; Schema holds the canvas.
+            page.goto(base + "/data/models")
+            page.locator('tr[data-model="portfolio_model"]').get_by_role(
                 "link", name=re.compile(r"^Direct Lending Portfolio")).click()
             page.wait_for_url("**/data/models/portfolio_model")
-            line = page.get_by_role("navigation", name="How portfolio_model is made")
-
-            def station(name: str):
-                return line.get_by_role("link", name=re.compile(rf"^{name}\b"))
-
-            expect(station("Model")).to_have_attribute("aria-current", "page")
-            # Its facts are read from what exists: the sources the transform
-            # names, the transform the pipeline runs, the warehouse file it
-            # writes, the model's tables and joins.
-            expect(station("Sources")).to_contain_text("crm")
             expect(page.get_by_role("navigation", name="Breadcrumb")).to_have_text(
                 re.compile(r"Data\s*›\s*Models\s*›\s*Direct Lending Portfolio"))
-            expect(page.locator("main .dtabs")).to_have_count(0)
             expect(data_tabs.get_by_role("link", name="Models")).to_have_attribute("aria-current", "page")
             expect(sidebar.get_by_role("link", name="Data", exact=True)).not_to_have_attribute("aria-current", "page")
-            # One Ask this model on the page: the header's.
             expect(page.get_by_role("link", name="Ask this model")).to_have_count(1)
-            # Stage ⓪ opens Sources; the reader comes back with Back.
-            expect(station("Sources")).to_have_attribute("href", "/data/sources")
-            station("Sources").click()
-            page.wait_for_url("**/data/sources")
-            page.go_back()
-            page.wait_for_url("**/data/models/portfolio_model")
-            expect(station("Transform")).to_contain_text("holdings_transform")
-            expect(line).to_contain_text("warehouse.duckdb")
-            # Its counts are said once, in the Semantic layer's line, not on the station.
-            expect(station("Model")).not_to_contain_text(re.compile(r"\d+ tables"))
-            station("Transform").click()
-            page.wait_for_url("**/data/transforms/holdings_transform")
-            expect(data_tabs.get_by_role("link", name="Transforms")).to_have_attribute("aria-current", "page")
-            page.go_back()
-            page.wait_for_url("**/data/models/portfolio_model")
-            # The Reports station is the model's folder in the library.
-            station("Reports").click()
-            page.wait_for_url("**/?folder=portfolio_model")
-            # …whose page links back to the model under Data.
-            expect(page.get_by_role("link", name="Data › Direct Lending Portfolio")).to_have_attribute(
-                "href", "/data/models/portfolio_model")
-            page.go_back()
+            tabs = page.get_by_role("tablist", name="What to show")
+            assert [t.split()[0] for t in tabs.get_by_role("tab").all_inner_texts()][:4] == [
+                "Overview", "Schema", "Measures", "Lineage"]
+            expect(page.locator('.rdetails [data-row="Defined in"]')).to_contain_text("models/portfolio_model.yaml")
+            tabs.get_by_role("tab", name="Schema").click()
+            page.wait_for_url("**/data/models/portfolio_model?tab=schema")
+            page.get_by_role("tree", name="Tables").wait_for()
+            expect(page.locator(".react-flow")).to_be_visible()
             fail_on_browser_errors()
 
             # Ask is asked from a model: its Data page has the action, and so
@@ -592,9 +603,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 ("/explore", "/ask"),
                 ("/models", "/data/models"),
                 ("/models?m=portfolio_model", "/data/models/portfolio_model"),
-                ("/map", "/data"),
-                ("/data/map", "/data"),
-                ("/data?view=map", "/data"),
+                ("/map", "/data/lineage"),
+                ("/data/map", "/data/lineage"),
+                ("/data?view=map", "/data/lineage"),
+                # The map was Data's home: its lens, selection and lane are Lineage's.
+                ("/data?lens=trust", "/data/lineage?lens=trust"),
+                ("/data?node=model%3Asaas_model&lane=models", "/data/lineage?node=model%3Asaas_model&lane=models"),
+                ("/data?model=portfolio_model", "/data/lineage?lens=flow&node=model%3Aportfolio_model"),
                 ("/data?view=map&model=portfolio_model", "/data/models/portfolio_model"),
                 ("/data/map?model=portfolio_model", "/data/models/portfolio_model"),
                 # Data's own older addresses: a model and its tabs, a table,
@@ -803,12 +818,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(lib_row).not_to_contain_text("Reproduces")
             expect(glance).to_contain_text("1 needs a look")
             expect(glance).to_contain_text("0 reproduce")
-            # The model's line counts it the same way, in the chip's words.
-            page.goto(f"{base}/data/models/portfolio_model")
-            line = page.get_by_role("navigation", name="How portfolio_model is made")
-            expect(line.get_by_role("link", name=re.compile(r"^Reports\b"))).to_contain_text(
-                "1 needs a look", timeout=60_000)   # the desk re-checks again on this page
-            expect(line).not_to_contain_text("reproduce")
+            # The Data home's Reports card counts it the same way, in the chip's words.
+            page.goto(f"{base}/data")
+            reports_card = page.locator('[data-card="Reports"]')
+            expect(reports_card).to_contain_text("1 needs a look", timeout=60_000)   # the desk re-checks again
+            expect(reports_card).not_to_contain_text("reproduce")
             page.goto(f"{base}/reports/{_REPORT}")
             page.get_by_role("button", name="Needs a look", exact=True).wait_for()
             why = page.get_by_role("status").filter(has_text="The data changed since it was built")
@@ -875,14 +889,14 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             tops = {round(card.bounding_box()["y"]) for card in cards.all()}
             assert cards.count() == 3 and len(tops) == 1, tops
 
-            # The model's summary is its Semantic layer, and ?view=measures (an
-            # older address) still opens it at Measures: every measure says
-            # what it is in words (rank and running total too), with its
-            # description and synonyms, and a reload stays on it.
+            # A model's Measures tab, which ?view=measures (an older address)
+            # still opens: every measure says what it is in words (rank and
+            # running total too), with its description and synonyms, and a
+            # reload stays on it.
             page.goto(base + "/data/models/portfolio_model?view=measures")
             measure_rows = page.locator("tr[data-measure]")
             measure_rows.first.wait_for()
-            expect(page.get_by_text("Semantic layer", exact=True)).to_be_visible()
+            expect(page.get_by_role("tab", name=re.compile(r"^Measures"))).to_have_attribute("aria-selected", "true")
             defs = page.locator("tr[data-measure] td.mlist__def").all_inner_texts()
             assert len(defs) == measure_rows.count() and all(d.strip() for d in defs), defs
             expect(page.locator('tr[data-measure="fv_rank"] td.mlist__def')).to_have_text("rank by fair value, largest first")
@@ -892,10 +906,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(fv_row).to_contain_text("Which sectors hold the most fair value?")
             page.reload()
             measure_rows.first.wait_for()
-            # What an agent sees is the model the context route returns.
-            page.get_by_role("button", name="What an agent sees", exact=True).click()
-            expect(page.locator("pre.sem-agent")).to_contain_text('"questions"')
-            # A measure picked there selects the fact it runs on.
+            # A measure picked there opens Schema with the fact it runs on selected.
             fv_row.get_by_role("button", name="Total fair value").click()
             page.wait_for_url(re.compile(r"/data/models/portfolio_model\?.*table=fact_holdings"))
             expect(page.get_by_role("complementary", name="Inspector").locator(
@@ -919,9 +930,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # Selecting a table in the tree: the inspector is a short card, its
             # joins as sentences (no columns, no sample: those are on its
             # page); the address keeps it.
-            page.goto(base + "/data/models/portfolio_model")
+            page.goto(base + "/data/models/portfolio_model?tab=schema")
             tree.locator('[data-table="fact_holdings"]').click()
-            page.wait_for_url("**/data/models/portfolio_model?table=fact_holdings")
+            page.wait_for_url("**/data/models/portfolio_model?tab=schema&table=fact_holdings")
             inspector = page.get_by_role("complementary", name="Inspector")
             expect(inspector.locator('[data-section="columns"]')).to_have_count(0)
             expect(inspector.get_by_role("grid")).to_have_count(0)
@@ -930,20 +941,22 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # A measure is reachable from its fact.
             expect(inspector.locator('[data-measure="fair_value"]')).to_be_visible()
             join.click()
-            page.wait_for_url("**/data/models/portfolio_model?table=dim_fund")
+            page.wait_for_url("**/data/models/portfolio_model?tab=schema&table=dim_fund")
             fail_on_browser_errors()
 
-            # Each page can show the code behind what it shows (the model's is
-            # a fold of the browser's summary; at this width the summary is a
-            # sheet, opened by Details).
-            page.goto(base + "/data/models/portfolio_model")
-            page.get_by_role("button", name="Details", exact=True).click()
-            page.get_by_role("button", name="Code", exact=True).click()
+            # What an agent sees is the model the context route returns: the
+            # model page's Agents tab.
+            page.goto(base + "/data/models/portfolio_model?tab=agents")
+            expect(page.locator("pre.sem-agent")).to_contain_text('"questions"')
+            # Each page can show the code behind what it shows: a model's in its
+            # Settings tab, a transform's in its Code tab (View code, top right).
+            page.goto(base + "/data/models/portfolio_model?tab=settings")
             page.get_by_text("models/portfolio_model.yaml").first.wait_for()
             page.goto(base + "/data/transforms/holdings_transform")
-            page.get_by_role("button", name="Code", exact=True).click()
-            page.get_by_role("button", name="transform", exact=True).click()
+            page.get_by_role("button", name="View code", exact=True).click()
+            page.wait_for_url("**/data/transforms/holdings_transform?tab=code")
             page.get_by_text("transforms/holdings_transform.sql").first.wait_for()
+            page.goto(base + "/data/transforms/holdings_transform")
             # The transform's page says what it wrote, and that its checks
             # passed when it was last written, before any report is opened.
             table = page.locator('[data-writer="holdings_transform"] [data-table="fact_holdings"]')
@@ -1014,8 +1027,8 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(builder).to_contain_text("dim_cohort")
             fail_on_browser_errors()
 
-            # Transform: Refresh data, its one primary action, unfolds the run's
-            # output under the tab's views and follows it to its end…
+            # Transform: Refresh data, its one primary action (top right), unfolds
+            # the run's output on its Steps tab and follows it to its end…
             # A read of the warehouse does not hold Refresh data back (a write
             # waits for a read to let go): with the page's read still pending,
             # the button is enabled.
@@ -1028,7 +1041,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                     held.append(route)
 
             page.route("**/api/connectors/warehouse/warehouse", hold)
-            page.goto(base + "/data/transforms/holdings_transform")
+            page.goto(base + "/data/transforms/holdings_transform?tab=steps")
             for _ in range(100):
                 if held:
                     break
@@ -1327,7 +1340,7 @@ def test_the_sidebar_shows_what_the_role_uses(tmp_path: Path) -> None:
             # Data is the analyst's to read: a transform's page, with no
             # Refresh data (it writes the warehouse); the admin's has one.
             expect(sidebar.get_by_role("link", name="Data", exact=True)).to_have_count(1)
-            analyst.goto(base + "/data/transforms/holdings_transform")
+            analyst.goto(base + "/data/transforms/holdings_transform?tab=steps")
             analyst.get_by_role("group", name="What to show of the pipeline").wait_for()
             expect(analyst.get_by_role("button", name="Refresh data")).to_have_count(0)
             admin = as_role("admin")

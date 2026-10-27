@@ -1,18 +1,17 @@
 import { Link } from 'react-router-dom'
 
-import { useRole, useStartPipelineRun, useTransforms, useWarehouses } from '../api'
+import { useWarehouses } from '../api'
 import { count } from '../format'
 import { movedWords } from '../words'
 import { warehousePath } from '../nav'
-import { ExportTo } from './DataGrid'
-import { Btn, BtnLink, Chip, useToast } from './Shared'
+import { BtnLink, Chip } from './Shared'
 
 // The passport: the same rows on every piece of the project, so a CSV, a CRM
 // table, a transform, a warehouse table, a model and a report answer the same
 // questions in the same words (design/control-tower.md). What it is (the
 // head), then From · Read by (Writes for a transform, Written by for a
-// warehouse table or group) · Last moved · Trust · Agents. The map shows one
-// beside it; a source's page opens with the same rows.
+// warehouse table or group) · Last moved · Trust · Agents. Lineage shows one
+// beside the map; every resource page's Overview grid opens with the same rows.
 
 // What each kind of node is called, as the passport's eyebrow says it.
 export const KIND_WORD = {
@@ -73,56 +72,32 @@ function groupId(warehouses, transform) {
   return null
 }
 
-// Refresh data: the pipeline that runs the transform, started here; an
-// admin's action, as on the transform's own page.
-function Refresh({ pipeline, name }) {
-  const start = useStartPipelineRun()
-  const toast = useToast()
-  return (
-    <Btn size="sm" variant="outline" disabled={start.isPending}
-         onClick={() => start.mutate({ pipeline }, {
-           onSuccess: () => toast?.(`Refreshing ${name}: its page shows the run`, 'success'),
-           onError: e => toast?.(e.message || 'Refresh failed', 'error'),
-         })}>
-      {start.isPending ? 'Starting…' : 'Refresh data'}
-    </Btn>
-  )
-}
-
-// What can be done to the node from here, by kind: Open, Zoom to schema, and
-// an admin's Setup…, Refresh data and Export to….
-function Actions({ n, onSetup }) {
-  const role = useRole()
-  const admin = role === 'admin'
+// Where to go from the node: its page, and for a model or a warehouse group
+// its schema. The node's actions (Setup, Refresh data, Export) are its page's,
+// top right: a reading panel holds none (the console's rule).
+function Actions({ n }) {
   const { data: warehouses } = useWarehouses()
-  const { data: transforms } = useTransforms()
   let zoom = null
-  if (n.kind === 'model') zoom = n.open
+  if (n.kind === 'model') zoom = `${n.open}?tab=schema`
   if (n.kind === 'group') {
     const id = groupId(warehouses, n.name)
-    zoom = id ? `${warehousePath()}?group=${encodeURIComponent(id)}` : n.open
+    zoom = id ? `${warehousePath()}?view=schema&group=${encodeURIComponent(id)}` : n.open
   }
-  const pipeline = n.kind === 'transform' && (transforms || []).find(t => t.name === n.name)?.pipelines?.[0]
-  const holder = n.kind === 'table'
-    && (warehouses?.warehouses || []).find(w => w.tables.some(t => t.name === n.name))?.name
   return (
     <div className="pass__acts">
       {zoom && <BtnLink size="sm" variant="primary" to={zoom}>Zoom to schema</BtnLink>}
       {n.open && n.open !== zoom && <BtnLink size="sm" variant={zoom ? 'outline' : 'primary'} to={n.open}>Open</BtnLink>}
-      {n.kind === 'source' && admin && onSetup && <Btn size="sm" variant="outline" onClick={() => onSetup(n.name)}>Setup…</Btn>}
-      {pipeline && admin && <Refresh pipeline={pipeline} name={n.name} />}
-      {holder && <ExportTo source={holder} table={n.name} />}
     </div>
   )
 }
 
 /**
  * One node's passport: *n* a graph node, *byId* every node by id, *onGo(id)*
- * selects another (a reader or a writer), *onSetup(name)* opens a source's
- * Setup sheet. *from*, for a warehouse table, is the source tables and files
- * its columns come from (the graph's proven edges): From lists them.
+ * selects another (a reader or a writer). *from*, for a warehouse table, is
+ * the source tables and files its columns come from (the graph's proven
+ * edges): From lists them.
  */
-export function NodePassport({ n, byId, onGo, onSetup, from }) {
+export function NodePassport({ n, byId, onGo, from }) {
   const p = n.passport || {}
   const linked = n.kind === 'group' || n.kind === 'table' ? p.writers || [] : p.readers || []
   return (
@@ -142,7 +117,7 @@ export function NodePassport({ n, byId, onGo, onSetup, from }) {
         ['Trust', <StateChip state={p.trust} />],
         ['Agents', <StateChip state={p.agents} />],
       ]} />
-      <Actions n={n} onSetup={onSetup} />
+      <Actions n={n} />
       {n.gap && <p className="pass__hint">A gap: wired on one side only. It stays amber until something reads it or it is removed.</p>}
     </div>
   )

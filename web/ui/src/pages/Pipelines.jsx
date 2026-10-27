@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ReactFlow, Background, Handle, Position, MarkerType } from '@xyflow/react'
@@ -253,7 +253,10 @@ function LayerHistory({ pipeline, layer }) {
  * *written* / *built*: when the transform's tables were written and the
  * reports last built, for a step that has not run here (stepOutside).
  */
-export function PipelineDetail({ pipeline, layers, primary, label, written, built }) {
+// *start*: a count the page's own Refresh data (top right, a transform's
+// page) raises to begin a run here, where its output unfolds; with it the
+// card shows no Refresh data of its own, so a page has one.
+export function PipelineDetail({ pipeline, layers, primary, label, written, built, start: started }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
@@ -271,6 +274,11 @@ export function PipelineDetail({ pipeline, layers, primary, label, written, buil
   // On a phone the table of steps drops Schedule and Runs after, so Status shows.
   const phone = useNarrow('(max-width: 640px)')
   const outside = useMemo(() => ({ written, built }), [written, built])
+  const seen = useRef(started || 0)
+  useEffect(() => {
+    if (started && started !== seen.current) { seen.current = started; begin(undefined) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started])
 
   if (!pipeline) {
     return (
@@ -312,7 +320,7 @@ export function PipelineDetail({ pipeline, layers, primary, label, written, buil
 
   return (
     <Card className="fade-in">
-      <CardTitle action={admin && (
+      <CardTitle action={admin && started === undefined && (
         <Btn
           size="sm"
           variant={primary ? 'primary' : 'outline'}

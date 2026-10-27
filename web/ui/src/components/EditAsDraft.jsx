@@ -12,7 +12,7 @@ import { Btn, useToast } from './Shared'
 // (a Python model, a report with a report.py) is the server's own sentence: it
 // names why and where to edit it instead.
 
-export default function EditAsDraft({ kind, path, label = 'Edit as a draft', bare = false, className = 'cmd', role }) {
+export default function EditAsDraft({ kind, path, label = 'Edit as a draft', bare = false, className = 'cmd', role, size }) {
   const { data: me } = useMe()
   const start = useStartDraft()
   const navigate = useNavigate()
@@ -35,8 +35,9 @@ export default function EditAsDraft({ kind, path, label = 'Edit as a draft', bar
       </button>
     )
   }
+  // `size="sm"`: among a page's other actions, top right (a resource page's).
   return (
-    <Btn variant="outline" onClick={go} disabled={start.isPending} style={{ minHeight: 44 }}>
+    <Btn variant="outline" size={size} onClick={go} disabled={start.isPending} style={size ? undefined : { minHeight: 44 }}>
       {start.isPending ? 'Starting…' : label}
     </Btn>
   )

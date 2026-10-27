@@ -252,10 +252,13 @@ Edit the tokens (<code>--blue</code>, <code>--bg</code>, <code>--card</code>, th
 components never hard-code colours. The brand gradient is <code>--brand</code>.</p>
 <p><strong>Add a page.</strong> The sidebar has four places, <code>PAGES</code> in <code>nav.js</code>: Reports
 <code>/</code>, Data <code>/data</code>, Review <code>/review</code> and Docs <code>/docs</code> (Ask, <code>/ask</code>, is a page
-inside Reports). Data's folders are <code>DATA_FOLDERS</code>: Overview (<code>/data</code>
-itself, the map, <code>pages/Map.jsx</code> over <code>GET /api/graph</code>), then Sources,
-Transforms, Warehouse and Models, nested under Data in the sidebar as jump
-points (<code>jumpPath</code>: the map with that lane focused, then the list).</p>
+inside Reports). Data's folders are <code>DATA_FOLDERS</code>: its home (<code>/data</code>
+itself, a status board, <code>pages/DataHome.jsx</code>), Lineage (<code>/data/lineage</code>,
+the map, <code>pages/Map.jsx</code> over <code>GET /api/graph</code>), then Sources, Transforms,
+Warehouse and Models, nested under Data in the sidebar (<code>SIDEBAR_FOLDERS</code>).
+Every list under Data is a <code>ResourceTable</code> and every thing's page a
+<code>ResourcePage</code> (<code>components/</code>), so a new kind of resource gets the same
+columns, status pills (<code>statusWords</code> in <code>words.js</code>), actions and tabs.</p>
 <ol>
 <li>Give the page a route in <code>App.jsx</code> under its place's address.</li>
 <li>Teach <code>whereAmI</code> in <code>nav.js</code> which place it belongs to, so the sidebar
@@ -268,9 +271,8 @@ points (<code>jumpPath</code>: the map with that lane focused, then the list).</
 <li>Use the hooks in <code>api.js</code> for data and the parts in <code>Shared.jsx</code> for the
    look.</li>
 </ol>
-<p>A model's page is <code>pages/Overview.jsx</code>: the line from
-<code>components/TheLine.jsx</code> (its one way to the model's sources, transform and
-reports), then the data browser. The model page and Data's Warehouse are one
+<p>A model's page is <code>pages/Overview.jsx</code>, a <code>ResourcePage</code> whose Schema tab is
+the data browser. The model page and Data's Warehouse (its Schema view) are one
 component, <code>components/DataBrowser.jsx</code>, fed by <code>modelSchema</code> or
 <code>warehouseSchema</code> in <code>components/modelGraph.js</code>.</p>
 <h2 id="5-add-an-api-route">5. Add an API route</h2>

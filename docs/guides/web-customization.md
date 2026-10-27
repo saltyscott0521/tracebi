@@ -154,10 +154,13 @@ components never hard-code colours. The brand gradient is `--brand`.
 
 **Add a page.** The sidebar has four places, `PAGES` in `nav.js`: Reports
 `/`, Data `/data`, Review `/review` and Docs `/docs` (Ask, `/ask`, is a page
-inside Reports). Data's folders are `DATA_FOLDERS`: Overview (`/data`
-itself, the map, `pages/Map.jsx` over `GET /api/graph`), then Sources,
-Transforms, Warehouse and Models, nested under Data in the sidebar as jump
-points (`jumpPath`: the map with that lane focused, then the list).
+inside Reports). Data's folders are `DATA_FOLDERS`: its home (`/data`
+itself, a status board, `pages/DataHome.jsx`), Lineage (`/data/lineage`,
+the map, `pages/Map.jsx` over `GET /api/graph`), then Sources, Transforms,
+Warehouse and Models, nested under Data in the sidebar (`SIDEBAR_FOLDERS`).
+Every list under Data is a `ResourceTable` and every thing's page a
+`ResourcePage` (`components/`), so a new kind of resource gets the same
+columns, status pills (`statusWords` in `words.js`), actions and tabs.
 
 1. Give the page a route in `App.jsx` under its place's address.
 2. Teach `whereAmI` in `nav.js` which place it belongs to, so the sidebar
@@ -170,9 +173,8 @@ points (`jumpPath`: the map with that lane focused, then the list).
 5. Use the hooks in `api.js` for data and the parts in `Shared.jsx` for the
    look.
 
-A model's page is `pages/Overview.jsx`: the line from
-`components/TheLine.jsx` (its one way to the model's sources, transform and
-reports), then the data browser. The model page and Data's Warehouse are one
+A model's page is `pages/Overview.jsx`, a `ResourcePage` whose Schema tab is
+the data browser. The model page and Data's Warehouse (its Schema view) are one
 component, `components/DataBrowser.jsx`, fed by `modelSchema` or
 `warehouseSchema` in `components/modelGraph.js`.
 

@@ -5,7 +5,7 @@ import {
 } from '../api'
 import {
   PAGES, placesFor, askPath, docPath, GET_STARTED, reportPagePath, pipelineModels, modelPath, modelsPath,
-  sourcePath, sourceTablePath, sourcesPath, transformPath, transformsPath, warehousePath, warehouseTablePath,
+  lineagePath, sourcePath, sourceTablePath, sourcesPath, transformPath, transformsPath, warehousePath, warehouseTablePath,
 } from '../nav'
 import { count } from '../format'
 import { encodeQuery } from '../ask'
@@ -27,7 +27,8 @@ function pagesFor(role) {
       { label: 'Sources', path: sourcesPath(), kind: 'page', sub: 'Every connection and input file, and what reads each.' },
       { label: 'Transforms', path: transformsPath(), kind: 'page', sub: 'Every file in transforms/: its form, what it feeds, its checks.' },
       { label: 'Warehouse', path: warehousePath(), kind: 'page', sub: 'Every table: who wrote it, who reads it, its checks.' },
-      { label: 'Models', path: modelsPath(), kind: 'page', sub: 'Every model as a chain: sources, transform, tables, measures, reports.' },
+      { label: 'Models', path: modelsPath(), kind: 'page', sub: 'Every model: its status, tables, measures and reports.' },
+      { label: 'Lineage', path: lineagePath(), kind: 'page', sub: 'The project as one map: what feeds what, read through a lens.' },
     ] : []),
     { label: 'Get started', path: docPath(GET_STARTED), kind: 'doc', sub: 'Install, scaffold a project, and build one verified report.' },
   ]

@@ -1,54 +1,31 @@
-import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 
-import { useMe, useStartPipelineRun, useTransforms } from '../api'
+import { useGraph, useMe, useStartPipelineRun, useTransforms } from '../api'
 import { useModelLabel } from '../components/Scope'
-import { FORM_LABEL, refreshWords } from '../words'
-import { modelPath, transformPath, warehouseTablePath } from '../nav'
+import ResourceTable, { NameCell, StatusPill, TypeChip } from '../components/ResourceTable'
+import { Links } from '../components/ResourcePage'
+import { count } from '../format'
+import { FORM_LABEL, refreshWords, statusWords } from '../words'
+import { lineagePath, modelPath, transformPath } from '../nav'
 import { isoTitle } from '../when'
-import { Badge, Btn, Empty, ErrorDetail, SkeletonList, useToast } from '../components/Shared'
+import { Empty, ErrorDetail, SkeletonList, useToast } from '../components/Shared'
 
 // Data's Transforms folder (/data/transforms): every file in transforms/, one
-// row each: its form, the models it feeds (through the pipeline that runs it,
-// or the tables its certificate says it wrote), the tables it wrote, the
-// file its checks are declared in, and when it last wrote. Its name opens its
-// own page, which every transform has. An admin may run the pipeline that
-// runs it, the same run as Refresh data on its page.
+// row each in the console's list: its form, its status (its checks in their
+// own words, or that no pipeline runs it), how many tables it writes, the
+// models it feeds, what agents may do with it, and when it last wrote. Its
+// name opens its own page, which every transform has. An admin's row menu
+// runs the pipeline that runs it, the same run as Refresh data on its page.
 
-// A row names this many tables, then folds the rest into "+N".
-const TABLES_SHOWN = 4
-
-// Start the pipeline that runs a transform: Refresh data, from this list.
-function RunButton({ pipeline, transform, model }) {
+// Start the pipeline that runs a transform: Refresh data, from the row menu.
+function useRun() {
   const toast = useToast()
-  const { mutate: start, isPending } = useStartPipelineRun()
-  const page = <Link to={transformPath(transform)}>its page</Link>
-  const run = () => start({ pipeline }, {
-    onSuccess: res => toast(res.already_running
-      ? <>Already running. Its log is on {page}.</>
-      : <>Started. Its log is on {page}.</>, 'info'),
+  const { mutate: start } = useStartPipelineRun()
+  return (pipeline, transform) => start({ pipeline }, {
+    onSuccess: res => toast(<>{res.already_running ? 'Already running.' : 'Started.'} Its log is on{' '}
+      <Link to={`${transformPath(transform)}?tab=steps`}>its page</Link>.</>, 'info'),
     onError: err => toast(`Could not start: ${err.message}`, 'error'),
   })
-  return (
-    <Btn size="sm" variant="outline" disabled={isPending} onClick={run}
-         title={`Run pipeline ${pipeline}${model ? `, which refreshes ${model}` : ''}`}>
-      Run
-    </Btn>
-  )
-}
-
-// The tables a transform wrote, each a link to its page, the rest folded.
-function TableNames({ tables }) {
-  const shown = tables.slice(0, TABLES_SHOWN)
-  const rest = tables.length - shown.length
-  return (
-    <>
-      {shown.map((name, i) => (
-        <Fragment key={name}>{i > 0 && ', '}<Link to={warehouseTablePath(name)}><code>{name}</code></Link></Fragment>
-      ))}
-      {rest > 0 && <span className="wb-meta" title={tables.slice(TABLES_SHOWN).join(', ')}> +{rest}</span>}
-    </>
-  )
 }
 
 // When it last wrote: the age alone, from refreshWords (the certificate's
@@ -62,58 +39,57 @@ function LastWrote({ t }) {
 
 export default function Transforms() {
   const { data, isLoading, error } = useTransforms()
+  const { data: graph } = useGraph()
   const { data: me } = useMe()
   const admin = !!me && (!me.role || me.role === 'admin')
   const labelOf = useModelLabel()
+  const run = useRun()
 
   if (isLoading) return <SkeletonList />
   if (error) return <ErrorDetail error={error} />
-  const rows = data || []
+  const byId = Object.fromEntries((graph?.nodes || []).map(n => [n.id, n]))
+  const rows = (data || []).map(t => {
+    const node = byId[`transform:${t.name}`]
+    return { key: t.name, label: t.name, t, node, status: node ? statusWords(node) : { text: '', tone: 'none' } }
+  })
 
   return rows.length === 0 ? (
     <Empty title="No transforms yet"
            body="A transform reads the sources and writes clean tables into the warehouse, with a contract that checks what landed. Scaffold one in transforms/:"
            command={'tracebi new-transform "Holdings"'} />
   ) : (
-    <div className="whlist">
-      <table className="tb-list transforms">
-        <thead>
-          <tr>
-            <th scope="col">Transform</th>
-            <th scope="col">Form</th>
-            <th scope="col">Feeds</th>
-            <th scope="col">Tables</th>
-            <th scope="col">Checks</th>
-            <th scope="col">Last wrote</th>
-            {admin && <th scope="col"><span className="sr-only">Actions</span></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(t => (
-            <tr key={t.name} data-transform={t.name}>
-              <td><Link to={transformPath(t.name)}><code>{t.name}</code></Link></td>
-              <td><Badge>{FORM_LABEL[t.form] || t.form}</Badge></td>
-              <td>
-                {t.models.length
-                  ? t.models.map((m, i) => <span key={m}>{i > 0 && ', '}<Link to={modelPath(m)}>{labelOf(m)}</Link></span>)
-                  : <span className="wb-meta">no model</span>}
-              </td>
-              <td>
-                {t.tables.length ? <TableNames tables={t.tables} /> : <span className="wb-meta">none recorded</span>}
-              </td>
-              <td title={t.note || undefined}>
-                {t.contract_file ? <code>{t.contract_file.split('/').pop()}</code> : <span className="wb-meta">no contract</span>}
-              </td>
-              <td><LastWrote t={t} /></td>
-              {admin && (
-                <td className="num">
-                  {t.pipelines[0] && <RunButton pipeline={t.pipelines[0]} transform={t.name} model={t.models[0]} />}
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ResourceTable
+      label="Transforms" placeholder="Find a transform or table" rows={rows} defaultSort="name"
+      search={r => [r.t.name, ...r.t.tables, ...r.t.models].join(' ')}
+      filters={[
+        { key: 'all', label: 'All' },
+        { key: 'sql', label: 'SQL', test: r => r.t.form === 'sql' },
+        { key: 'python', label: 'Python', test: r => r.t.form !== 'sql' },
+        { key: 'unrun', label: 'No pipeline runs it', test: r => !r.t.pipelines.length },
+      ]}
+      count={(n, of) => `${n === of ? '' : `${n} of `}${count(of, 'transform')}`}
+      rowProps={r => ({ 'data-transform': r.key })}
+      columns={[
+        { key: 'name', label: 'Name', sort: r => r.key, render: r => <NameCell to={transformPath(r.key)} label={r.key} code /> },
+        { key: 'form', label: 'Form', sort: r => r.t.form, render: r => <TypeChip>{FORM_LABEL[r.t.form] || r.t.form}</TypeChip> },
+        { key: 'status', label: 'Status', sort: r => r.status.text, render: r => <StatusPill status={r.status} /> },
+        { key: 'writes', label: 'Writes', num: true, sort: r => r.t.tables.length,
+          render: r => (r.t.tables.length
+            ? <span title={r.t.tables.join(', ')}>{count(r.t.tables.length, 'table')}</span>
+            : <span className="wb-meta">none recorded</span>) },
+        { key: 'feeds', label: 'Feeds', wrap: true, render: r => (
+          <Links items={r.t.models.map(m => ({ key: m, to: modelPath(m), label: labelOf(m) }))}
+                 none={<span className="wb-meta">no model</span>} />
+        ) },
+        { key: 'agents', label: 'Agents', render: () => <span className="wb-meta">May propose a change</span> },
+        { key: 'wrote', label: 'Last wrote', sort: r => r.t.written_at || '', render: r => <LastWrote t={r.t} /> },
+      ]}
+      menu={r => [
+        { label: 'Open', to: transformPath(r.key) },
+        { label: 'View code', to: `${transformPath(r.key)}?tab=code` },
+        admin && r.t.pipelines[0] && { label: 'Refresh data', onClick: () => run(r.t.pipelines[0], r.key) },
+        { label: 'View lineage', to: lineagePath(`transform:${r.key}`) },
+      ]}
+    />
   )
 }

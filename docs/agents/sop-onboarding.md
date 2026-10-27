@@ -33,8 +33,8 @@ Your first call on a project you have not seen:
 { "tool": "describe_project", "arguments": {} }
 ```
 
-It returns the project as one graph, the same one the app's Data overview
-draws: every source (connections, the files under `inputs/`, a connection's
+It returns the project as one graph, the same one the app's Data › Lineage
+map draws: every source (connections, the files under `inputs/`, a connection's
 tables), transform, warehouse table, model and report, with `edges` saying
 what feeds what. Each node's `passport.agents` says whether you may read it
 (`ok` for a source table on the allowlist), and `gap` marks what is wired on

@@ -945,7 +945,7 @@ the build command.</p>
 </tr>
 <tr>
 <td>Data</td>
-<td><code>/data</code> Overview (the map: sources → transforms → warehouse → models → reports from <code>/api/graph</code>; <code>?lens=coverage\|flow\|freshness\|trust\|access</code>, <code>?node=&lt;id&gt;</code> selects a piece and its passport, <code>?lane=&lt;lane&gt;</code> focuses a lane), then four folders, each a page per thing: <code>/data/sources</code> (<code>/data/sources/&lt;name&gt;</code> one connection, <code>/data/sources/inputs</code> the folder, <code>/data/sources/&lt;name&gt;/&lt;table&gt;</code> one source table, <code>/data/sources/inputs/&lt;path&gt;</code> one input file); <code>/data/transforms</code> (<code>/data/transforms/&lt;name&gt;</code> one transform); <code>/data/warehouse</code> (<code>?table=&lt;id&gt;</code>, <code>?group=&lt;id&gt;</code> select in its browser; <code>/data/warehouse/&lt;table&gt;</code> one table); <code>/data/models</code> (<code>/data/models/&lt;m&gt;</code> one model: <code>?table=&lt;t&gt;</code>, <code>?measure=&lt;name&gt;</code>, <code>?view=measures\|relationships\|storage\|code\|agent</code>). Nothing under <code>/data</code> is narrowed to a model.</td>
+<td><code>/data</code> the home, a status board (cards, Needs attention, Agent access, Recent activity, Schedules); <code>/data/lineage</code> the map (sources → transforms → warehouse → models → reports from <code>/api/graph</code>; <code>?lens=coverage\|flow\|freshness\|trust\|access</code>, <code>?node=&lt;id&gt;</code> selects a piece and its passport, <code>?lane=&lt;lane&gt;</code> focuses a lane); then four lists (<code>?q=</code> search, <code>?filter=</code> chip, <code>?sort=</code> column, <code>-name</code> descending), each a page per thing with tabs at <code>?tab=</code> (Overview when absent): <code>/data/sources</code> (<code>/data/sources/&lt;name&gt;</code> one connection, <code>/data/sources/inputs</code> the folder, <code>/data/sources/&lt;name&gt;/&lt;table&gt;</code> one source table, <code>/data/sources/inputs/&lt;path&gt;</code> one input file); <code>/data/transforms</code> (<code>/data/transforms/&lt;name&gt;</code> one transform); <code>/data/warehouse</code> (<code>?view=table\|schema</code>; <code>?table=&lt;id&gt;</code>, <code>?group=&lt;id&gt;</code> select in its schema; <code>/data/warehouse/&lt;table&gt;</code> one table); <code>/data/models</code> (<code>/data/models/&lt;m&gt;</code> one model: <code>?table=&lt;t&gt;</code>, <code>?measure=&lt;name&gt;</code>, <code>?view=measures\|relationships\|storage\|code\|agent</code> open its Schema tab). Nothing under <code>/data</code> is narrowed to a model.</td>
 </tr>
 <tr>
 <td>Review</td>
@@ -968,7 +968,9 @@ the build command.</p>
   same thing under Data, Ask, History or the library; <code>/models</code> to
   <code>/data/models</code> (<code>/models?m=&lt;m&gt;</code> to <code>/data/models/&lt;m&gt;</code>); <code>/explore</code> to <code>/ask</code>;
   <code>/sources</code> and <code>/connectors</code> to <code>/data/sources</code>; <code>/map</code>, <code>/data/map</code> and
-  <code>/data?view=map</code> to <code>/data</code> (with <code>model=&lt;m&gt;</code>, to <code>/data/models/&lt;m&gt;</code>);
+  <code>/data?view=map</code> to <code>/data/lineage</code> (with <code>model=&lt;m&gt;</code>, to <code>/data/models/&lt;m&gt;</code>);
+  <code>/data?lens=</code>, <code>?node=</code> and <code>?lane=</code> to <code>/data/lineage</code> with the same query,
+  and <code>/data?model=&lt;m&gt;</code> to <code>/data/lineage?lens=flow&amp;node=model:&lt;m&gt;</code>;
   <code>/data/&lt;m&gt;</code> and <code>/data/&lt;m&gt;/model</code> to <code>/data/models/&lt;m&gt;</code>,
   <code>/data/&lt;m&gt;/transform</code> to the transform its pipeline runs, <code>/data/&lt;m&gt;/sources</code>
   to <code>/data/sources</code>, <code>/data/&lt;m&gt;/runs</code> to <code>/runs?model=&lt;m&gt;</code>;

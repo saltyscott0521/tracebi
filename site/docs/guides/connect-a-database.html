@@ -130,12 +130,13 @@ section.</p>
   (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>). A secret you typed is in
   <code>.tracebi/secrets.yml.enc</code> (<a href="../reference/credentials.html">Credentials</a>).</li>
 <li>The ticked tables are the file's <code>agents:</code> key (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>).</li>
-<li>The connection is on the Sources page at once: its passport (where it
-  comes from, who reads it, last moved, trust, agents), then its tables.
-  <strong>Setup…</strong> holds how it is reached: its fields, whether it connects here,
-  where each credential is set, and for an admin <strong>Test</strong>, <strong>Edit</strong> and
-  <strong>Delete…</strong>.</li>
-<li><strong>Edit</strong> (in Setup…) opens the Connect step with the file's values. A saved password
+<li>The connection is in the Sources list at once, and its page opens on its
+  <strong>Tables</strong> tab, where you tick what agents may read. Its <strong>Overview</strong> says
+  where it comes from, who reads it, when it last moved, trust and agents;
+  its <strong>Settings</strong> tab holds how it is reached: its fields, whether it
+  connects here, where each credential is set, and for an admin <strong>Test</strong>,
+  <strong>Edit</strong> and <strong>Delete…</strong> (<strong>Test</strong> and <strong>Setup ▾</strong> are also top right).</li>
+<li><strong>Edit</strong> (in Settings, or Setup ▾) opens the Connect step with the file's values. A saved password
   shows as <code>•••</code>; leave it empty to keep it. The file is changed in place and
   keeps its comments. <strong>Delete…</strong>
   removes it only when no transform, pipeline step or model reads the

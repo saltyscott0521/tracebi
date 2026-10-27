@@ -61,9 +61,11 @@ before the meeting.
    > value' means. This chip says the app re-ran every lookup and got the same
    > numbers. Nobody can quietly use a different formula on one page."
 
-3. Optional: click **Data** in the sidebar. The map shows where the numbers
-   come from, left to right. Click the Direct Lending Portfolio card: its
-   passport says where it comes from, who reads it and whether it is
+3. Optional: click **Data** in the sidebar. The status board says what the
+   project holds and what needs a person (the CRM is not reachable here, so
+   its last run read the committed snapshot). **View lineage** shows where
+   the numbers come from, left to right. Click the Direct Lending Portfolio
+   card: its rows say where it comes from, who reads it and whether it is
    trusted, and **Zoom to schema** shows the definitions on one screen. Go
    back to **Reports**.
 
