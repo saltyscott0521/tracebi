@@ -258,14 +258,16 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
                         else {"state": "none", "text": "Not ticked for agents"}),
                 rows=info.get("rows")))
 
-    # Every file under inputs/, but one a connection already stands for (a
-    # SQLite file): that connection is its node.
+    # Every data file under inputs/ (a CSV, Parquet, JSON, Excel: the kinds a
+    # transform reads), but one a connection already stands for (a SQLite
+    # file): that connection is its node. A seed script or a note beside the
+    # data is not a source, so it is never a gap.
     for f in list_inputs()["files"]:
         path = f["path"]
-        if path in stored:
+        ext = PurePosixPath(path).suffix.lower().lstrip(".")
+        if path in stored or ext not in _EXT:
             continue
         fid = f"file:{path}"
-        ext = PurePosixPath(path).suffix.lower().lstrip(".")
         readers = [f"transform:{t}" for t in f["read_by"]]
         rel = path.removeprefix("inputs/")
         nodes.append(_node(
