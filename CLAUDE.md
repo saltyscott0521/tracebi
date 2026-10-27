@@ -250,8 +250,12 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   the row-count rule (sql_row_estimates) and is_framework_table
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 27 tools + 3 prompts (author_report, answer_question, address_pins);
-                       #   the source tools read only a connection's agents: allowlist
+  mcp_server.py        # agent gateway over MCP — 28 tools + 3 prompts (author_report, answer_question, address_pins);
+                       #   the source tools read only a connection's agents: allowlist; describe_project = graph.py
+  graph.py             # the project as one graph ({summary, nodes, edges}): every source, transform, warehouse
+                       #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
+                       #   GET /api/graph and the gateway's describe_project serve it (design/control-tower.md);
+                       #   never re-runs a verdict (desk.cached_verdict)
   exports.py           # the gateway's export_table: a thin call over warehouse.export_table (the one implementation)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
@@ -267,7 +271,7 @@ web/
                        # `web.py` distribution, which owns that same path in site-packages.
                        # `npm run build` writes its output into tracebi/web/ui/dist.
     src/when.js        # stamp / ago / day / isoTitle: every date in the app; format.js: count / plural
-    src/words.js       # the words for facts Data repeats: refreshWords / pipelineRefresh, checksWords (the CONTRACT chip),
+    src/words.js       # the words for facts Data repeats: refreshWords / pipelineRefresh, movedWords, checksWords (the CONTRACT chip),
                        #   tierWords, reachWords, FORM_LABEL — every page that says one calls these
     src/styles/global.css      # tokens: Geist / Geist Mono (--font-sans, --font-mono); --font-display is the sans,
                        #   tight (--weight-display 600, --tracking-display); --hue-1..6 folder hues, a label
@@ -314,7 +318,7 @@ LICENSE                # MIT
 README.md              # The front door: what it is, install, the reference project, the app, deploy, agents
 NOTES.md               # The decision journal (dated entries), build status, open questions
 docs/                  # The handbook (Obsidian vault): start/, concepts/, guides/, reference/, agents/ (sop-onboarding:
-                       #   connection → transform → model → report; sop-authoring; sop-model-changes).
+                       #   describe_project first, then connection → transform → model → report; sop-authoring; sop-model-changes).
                        #   docs/toc.yaml is the one order (sections, pages, blurbs, moved: old → new
                        #   address); /api/docs and site/build_docs.py read it. build_docs.py generates
                        #   docs/index.md and site/docs (commit both; test_docs_site guards them).
@@ -880,6 +884,7 @@ GET  /api/connectors[/{name}]                        → each carries read_by {t
 GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact, agents}], agent_tables, hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read (each with method scanner|arrow|pandas and snapshot), said once per transform; the transform page reads it with /api/transforms and /api/transforms/{name}/source
+GET  /api/graph                                      → {summary, nodes, edges}: the project as one graph (tracebi/graph.py), the same dict as the gateway's describe_project; reports the caller cannot view left out with their edges
 GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
 GET  /api/transforms/{name}/source                   → the transform's file and its .contract.yaml (read-only; name is a stem in transforms/)
 GET  /api/models
@@ -955,9 +960,15 @@ GET  /                                               → React SPA (tracebi/web/
                                                        on a folder's or a model's page) · Data (/data: a directory like the library, its four folders
                                                        nested under Data in the sidebar, every page in one frame (pages/Data.jsx
                                                        DataFrame: a folder's name as its h1, or a breadcrumb Data › Warehouse ›
-                                                       fact_holdings). Overview /data (the board: sources → transforms → warehouse →
-                                                       models → reports; ?model=<m> lights that model's path) · Sources /data/sources
-                                                       (/data/sources/<name> one connection, /data/sources/inputs the folder,
+                                                       fact_holdings). Overview /data (the map, pages/Map.jsx over GET /api/graph: sources →
+                                                       transforms → warehouse → models → reports read through a lens,
+                                                       ?lens=coverage|flow|freshness|trust|access; ?node=<id> selects a piece and
+                                                       its passport, components/Passport.jsx: From · Read by · Last moved · Trust ·
+                                                       Agents, with the piece's actions; ?lane= focuses a lane; the sidebar's four
+                                                       folders are jump points, nav.js jumpPath: the map with that lane focused, a
+                                                       second click the list) · Sources /data/sources (/data/sources/<name> one
+                                                       source: its passport rows, then its tables; Setup… holds the connection,
+                                                       credentials, Test, Edit and Delete; /data/sources/inputs the folder,
                                                        /data/sources/<name>/<table> and /data/sources/inputs/<path> one table) ·
                                                        Transforms /data/transforms (/data/transforms/<name> one transform, pages/Transform.jsx:
                                                        Run with Refresh data and Steps | Table | Code, its code beside its contract,
@@ -1017,7 +1028,7 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Change the web app's pages | `web/ui/src/nav.js` (the four places; `DATA_FOLDERS` and Data's path helpers `modelPath`, `transformPath`, `warehouseTablePath`, …; `movedTo` for old addresses) + `web/ui/src/App.jsx` + `pages/Data.jsx` (`DataFrame`, the frame of every page under /data; a transform's page is `pages/Transform.jsx`); the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name); `web/ui/src/folders.js` (the library's folders, their order and hue) + `components/Directory.jsx` (cover tile, rows, folder tile, Today) |
+| Change the web app's pages | Data's Overview is `pages/Map.jsx` (the map over `/api/graph`) with `components/Passport.jsx`; `web/ui/src/nav.js` (the four places; `DATA_FOLDERS` and Data's path helpers `modelPath`, `transformPath`, `warehouseTablePath`, …; `movedTo` for old addresses) + `web/ui/src/App.jsx` + `pages/Data.jsx` (`DataFrame`, the frame of every page under /data; a transform's page is `pages/Transform.jsx`); the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name); `web/ui/src/folders.js` (the library's folders, their order and hue) + `components/Directory.jsx` (cover tile, rows, folder tile, Today) |
 | Change the data browser (a model's schema, the Warehouse folder) | `web/ui/src/components/DataBrowser.jsx` + `components/modelGraph.js` (`modelSchema` / `warehouseSchema` / `layoutSchema`) |
 | Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |

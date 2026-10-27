@@ -1834,6 +1834,25 @@ def describe(brief: bool = False) -> dict:
                     "measure, so column names come from the catalog instead "
                     "of from an error.",
         },
+        "project": {
+            "mcp": "describe_project()",
+            "http": "GET /api/graph",
+            "what": "The project as a graph: every source, transform, table, "
+                    "model and report, what feeds what, and what you may read. "
+                    "nodes carry id (kind:name), kind (source | file | "
+                    "source_table | transform | group | table | model | "
+                    "report), lane (0 sources … 4 reports) and a passport "
+                    "(origin, readers, writers, moved, trust, agents); gap "
+                    "names a node wired on one side only (a file no transform "
+                    "reads, a transform no pipeline runs, a table no model "
+                    "reads, a model no report reads). edges are facts, never "
+                    "guesses: a transform's file names the source, the sink "
+                    "certificate names what it wrote, a model reads those "
+                    "tables, a report's bindings read the model. The app's "
+                    "Data overview draws the same graph.",
+            "when": "First, on a project you have not seen: it shows what "
+                    "exists before any other call.",
+        },
         "source_onboarding": {
             "mcp": "list_connections(), list_source_tables(connection), "
                    "describe_source_table(connection, table, sample=20), "

@@ -346,6 +346,12 @@ export const useInputs = () =>
 export const useWarehouses = (enabled = true) =>
   useQuery({ queryKey: ['warehouses'], queryFn: () => get('/warehouse'), enabled })
 
+// The project as one graph (tracebi/graph.py): every source, transform,
+// warehouse group, model and report as a node with its passport, and the
+// edges between them, from facts the API already holds. The map draws it.
+export const useGraph = () =>
+  useQuery({ queryKey: ['graph'], queryFn: () => get('/graph') })
+
 // Every transform file: its form, contract file, the pipelines that run it,
 // the models it feeds, and what its certificate says it wrote, and when.
 export const useTransforms = () =>

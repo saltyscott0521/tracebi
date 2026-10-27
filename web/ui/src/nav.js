@@ -14,9 +14,14 @@
 //                               folder's page has the folder's name as its h1; a
 //                               thing's page has a breadcrumb (Data › Warehouse ›
 //                               fact_holdings) and its own name.
-//            /data              Overview: the board, one lane per stage, sources →
-//                               transforms → warehouse → models → reports; ?model=<m>
-//                               opens it with that model's path lit
+//            /data              Overview: the map (GET /api/graph), one lane per stage,
+//                               sources → transforms → warehouse → models → reports,
+//                               read through a lens (?lens=coverage|flow|freshness|
+//                               trust|access; Coverage when absent). ?node=<id> selects
+//                               a piece (the graph's id, kind:name) and the passport
+//                               beside the map is its; ?lane=sources|transforms|
+//                               warehouse|models|reports focuses a lane. ?model=<m>
+//                               lands on that model selected under Flow
 //            /data/sources      every connection and the inputs/ folder, the first
 //                               open; /data/sources/<name> one connection open,
 //                               /data/sources/inputs the folder
@@ -36,8 +41,11 @@
 //                               the summary). /data/models/<m>/transform is not a
 //                               page: it lands on the transform the model's pipeline
 //                               runs (else the model)
-//            Nothing under /data is narrowed to a model: the board's lit path and a
-//            model's line say what feeds it.
+//            Nothing under /data is narrowed to a model: the map's lit path and a
+//            model's line say what feeds it. The sidebar's four folders are jump
+//            points: each opens the map with its lane focused (lanePath), and a
+//            second click, from there, opens the folder's list (jumpPath); every
+//            list keeps its address, and ⌘K finds it.
 //   Review   /review            its tabs: Attention (/review), Drafts (/review/drafts),
 //                               History (/runs) and Verify (/verify), each at its own
 //                               address in Review's frame; /drafts/<owner>/<kind>/<path>
@@ -83,11 +91,11 @@ export const PAGES = [
 ]
 
 // Data's folders, in the order the data moves: the sidebar nests the last four
-// under Data, and each is the h1 of its own page. Overview (the board) is
+// under Data, and each is the h1 of its own page. Overview (the map) is
 // Data's own page, /data.
 export const DATA_FOLDERS = [
   { key: 'overview',   label: 'Overview',   path: '/data',
-    sub: 'Every stage, left to right: the sources, the transforms that read them, the warehouse, the models and the reports.' },
+    sub: 'The project as one map, left to right: what feeds what, read through a lens. Select any piece for its passport.' },
   { key: 'sources',    label: 'Sources',    path: '/data/sources',
     sub: 'Where the data comes from: database connections, and files under inputs/.' },
   { key: 'transforms', label: 'Transforms', path: '/data/transforms',
@@ -140,8 +148,20 @@ const seg = s => encodeURIComponent(s)
 // A path under inputs/ keeps its slashes, each segment encoded.
 const segs = s => String(s).split('/').map(encodeURIComponent).join('/')
 
-/** Data's own page: Overview, the board. */
+/** Data's own page: Overview, the map. */
 export const overviewPath = () => '/data'
+
+/** The map with *lane* (sources, transforms, warehouse, models, reports) focused. */
+export const lanePath = lane => `/data?lane=${lane}`
+
+/**
+ * Where a Data folder's sidebar entry goes from *pathname*?*search*: the map
+ * with its lane focused, or, when that is where you are, the folder's list.
+ */
+export function jumpPath(folder, pathname, search = '') {
+  const here = pathname.replace(/(.)\/+$/, '$1') === '/data' && new URLSearchParams(search).get('lane') === folder.key
+  return here ? folder.path : lanePath(folder.key)
+}
 
 /** Every connection and the inputs/ folder. */
 export const sourcesPath = () => '/data/sources'

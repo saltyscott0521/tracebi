@@ -5,7 +5,7 @@ import { OneModel, Moved } from './components/Scope'
 import Docs from './pages/Docs'
 import Connectors from './pages/Connectors'
 import ModelList, { DataFrame, ModelTransform } from './pages/Data'
-import Flow from './pages/Flow'
+import DataMap from './pages/Map'
 import Transforms from './pages/Transforms'
 import Warehouses from './pages/Warehouses'
 import Transform from './pages/Transform'
@@ -30,12 +30,12 @@ export default function App() {
 
           <Route path="/ask" element={<Ask />} />
 
-          {/* Data: Overview (the board) and its four folders, Sources,
+          {/* Data: Overview (the map) and its four folders, Sources,
               Transforms, Warehouse and Models, each with a page per thing in
               it, all in Data's frame. /data/models/<m>/transform lands on the
               model's transform. Data's older addresses (a model at /data/<m>
               and its tabs, /data/tables/…, the Map) are Moved. */}
-          <Route path="/data" element={<Flow />} />
+          <Route path="/data" element={<DataMap />} />
           <Route path="/data/sources" element={<DataFrame folder="sources"><Connectors /></DataFrame>} />
           <Route path="/data/sources/:name" element={<DataFrame folder="sources"><Connectors /></DataFrame>} />
           {/* One source table: a connection's, or a file under inputs/ (its

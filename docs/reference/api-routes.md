@@ -248,6 +248,34 @@ model needed ([[trace]]).
 | `GET` | `/api/transforms` | viewer | Every file in `transforms/`: `[{name, form: sql\|python\|notebook, file, contract_file, note, pipelines, models, tables, written_at}]`. `contract_file` is the `.contract.yaml` beside it, or the file itself when it holds a `with contract(...)` block. `models` are those its pipelines refresh, then those reading what it wrote. `tables` and `written_at` come from the certificate. |
 | `GET` | `/api/transforms/{name}/source` | viewer | The transform's file and its contract (`{files, hint}`). `name` is a stem in `transforms/`, never a path (404 otherwise). |
 | `GET` | `/api/warehouse` | viewer | `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}`, one per warehouse connector; `writers` lists what each transform's run read, once per transform. Read-only; framework tables are never listed. |
+| `GET` | `/api/graph` | viewer | The project as one graph, what Data's overview draws and the gateway's `describe_project` answers: `{summary, nodes, edges}`. Reports in a folder the caller cannot view are left out with their edges. |
+
+`/api/graph` is composed from the routes above, nothing new: each node is
+`{id, kind, lane, parent, label, name, chip, sub, open, passport, gap}`.
+`id` is `kind:name` (`source:bank`, `file:inputs/holdings.csv`,
+`source_table:bank.accounts`, `transform:holdings_transform`,
+`group:holdings_transform`, `table:warehouse.fact_holdings`,
+`model:portfolio_model`, `report:portfolio_model/portfolio_book`); `lane` is
+0 sources, 1 transforms, 2 the warehouse, 3 models, 4 reports; `parent` puts a
+source table in its connection and a warehouse table in its writer's group;
+`open` is the app page that shows it. The `passport` says where it comes from
+(`origin`, never a credential: a connection set by a variable is named by the
+variable), who reads it (`readers`) and what wrote it (`writers`), when it last
+moved (`moved: {at, how: written|built|changed|defined|snapshot|never}`), what
+its checks or its last build's verdict say (`trust: {state: ok|warn|bad|none,
+text}`, in the app's words; a report's verdict is the one the desk last
+computed, never re-run here, else `Not checked`), and what an agent may read of
+it (`agents: {state: ok|none, text}`); a connection or file also carries
+`reach: {connected, variable}`. `rows` is present only when it is a number.
+`gap: {reason}` marks a node wired on one side only: a file no transform
+reads, a transform no pipeline runs and no certificate names, a warehouse
+table no model reads, a model no report reads. `edges` are `[from, to]` pairs
+from four facts only: a transform's file names the source (`read_by`), the
+sink certificate names the tables it wrote (to the writer's group), a model
+reads a group's tables, a report's bindings read the model. `summary` counts
+each kind in the flow (gaps apart, in `gaps`), stale tables, groups whose
+checks passed (`checks: {satisfied, of}`), and what agents may read
+(`agents: {source_tables, models, reports}`).
 
 ## Docs, dev and the gateway
 
@@ -267,7 +295,7 @@ the build command.
 | Place | Addresses |
 | --- | --- |
 | Reports | `/` the library (`?model=<m>` narrows it); `/?folder=<path>` one folder (one the caller may not see is not found); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on); `/ask` a question of one model (`?model=<m>`), reached by **Ask this model** on a folder's page or a model's page under Data |
-| Data | `/data` Overview (the board: sources → transforms → warehouse → models → reports; `?model=<m>` lights that model's path), then four folders, each a page per thing: `/data/sources` (`/data/sources/<name>` one connection, `/data/sources/inputs` the folder, `/data/sources/<name>/<table>` one source table, `/data/sources/inputs/<path>` one input file); `/data/transforms` (`/data/transforms/<name>` one transform); `/data/warehouse` (`?table=<id>`, `?group=<id>` select in its browser; `/data/warehouse/<table>` one table); `/data/models` (`/data/models/<m>` one model: `?table=<t>`, `?measure=<name>`, `?view=measures\|relationships\|storage\|code\|agent`). Nothing under `/data` is narrowed to a model. |
+| Data | `/data` Overview (the map: sources → transforms → warehouse → models → reports from `/api/graph`; `?lens=coverage\|flow\|freshness\|trust\|access`, `?node=<id>` selects a piece and its passport, `?lane=<lane>` focuses a lane), then four folders, each a page per thing: `/data/sources` (`/data/sources/<name>` one connection, `/data/sources/inputs` the folder, `/data/sources/<name>/<table>` one source table, `/data/sources/inputs/<path>` one input file); `/data/transforms` (`/data/transforms/<name>` one transform); `/data/warehouse` (`?table=<id>`, `?group=<id>` select in its browser; `/data/warehouse/<table>` one table); `/data/models` (`/data/models/<m>` one model: `?table=<t>`, `?measure=<name>`, `?view=measures\|relationships\|storage\|code\|agent`). Nothing under `/data` is narrowed to a model. |
 | Review | `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
 | Docs | `/docs` the handbook in `docs/toc.yaml`'s order; `/docs/<section>/<page>` per file; the quickstart at `/docs/get-started`. A page that moved keeps its old address (the toc's `moved:`). |
 

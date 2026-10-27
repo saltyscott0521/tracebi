@@ -1205,3 +1205,105 @@ def test_a_transform_has_a_page_with_its_code_reads_and_tables(reference, monkey
     # the connector: the page names both.
     crm = next(r for r in writer["read"] if r["ref"] == "crm.issuer_ratings")
     assert crm["snapshot"] == "inputs/issuer_ratings.csv" and crm["method"] == "pandas"
+
+
+def test_the_project_graph_is_the_boards_four_facts_with_a_passport_each(reference, monkeypatch):
+    """GET /api/graph on the reference project, every transform run: the
+    sources (connections, the input files a transform reads, the files none
+    reads as gaps), five transforms (the pandas twin a gap), four writer
+    groups of 24 tables, four models and eleven reports. Its edges are the
+    board's four facts, computed here independently from the routes the board
+    reads; a wrong or invented edge, a gap the rules do not make, a
+    credential in a passport, or a hidden folder's report on the graph would
+    each fail it."""
+    import re
+
+    from fastapi.testclient import TestClient
+
+    from tracebi.audit import actor
+    from tracebi.graph import project_graph
+    from tracebi.registry import registry
+    from tracebi.web import discovery
+    from tracebi.web.api.main import app
+
+    for attr in ("_connectors", "_models", "_report_factories",
+                 "_scheduled_factories", "_pipelines"):
+        monkeypatch.setattr(registry, attr, {})
+    monkeypatch.setattr(registry, "_default_model_name", None)
+    for attr, empty in (("_discovered", {}), ("_live_reports", {}),
+                        ("_failed_sources", {}), ("_live_models", set()),
+                        ("_live_pipelines", set()), ("_live_connections", {}),
+                        ("_outcomes", [])):
+        monkeypatch.setattr(discovery, attr, empty)
+    for transform in ("holdings_transform", "saas_transform", "wealth_transform",
+                      "affordability_transform"):
+        code, out = run_cli("run-transform", transform)
+        assert code == 0, out
+    # The CRM's URL now carries a password (nothing listens there): the graph
+    # names the variable, never the value.
+    monkeypatch.setenv("TRACEBI_CRM_URL", "postgresql+psycopg://crm:s3cret-pw@127.0.0.1:9/crm")
+    discovery.rescan("reports", "models", "pipelines", "connections")
+    c = TestClient(app)
+
+    graph = c.get("/api/graph").json()
+    nodes = {n["id"]: n for n in graph["nodes"]}
+    gaps = {i for i, n in nodes.items() if n["gap"]}
+
+    def of(kind):
+        return {i for i, n in nodes.items() if n["kind"] == kind}
+
+    assert of("source") == {"source:bank", "source:billing", "source:crm"}
+    read_files = {"file:inputs/holdings.csv", "file:inputs/housing_history.csv",
+                  "file:inputs/issuer_ratings.csv"}
+    assert read_files <= of("file") and not read_files & gaps
+    # A SQLite file a connection stands for is that connection, not a file.
+    assert "file:inputs/bank.sqlite" not in nodes
+    assert of("file") - read_files and of("file") - read_files <= gaps
+    assert graph["summary"]["sources"] == 6
+    assert len(of("transform")) == 5
+    assert of("transform") & gaps == {"transform:holdings_transform_pandas"}
+    assert len(of("group")) == 4 and len(of("table")) == 24
+    assert {n["parent"] for n in nodes.values() if n["kind"] == "table"} == of("group")
+    assert len(of("model")) == 4 and len(of("report")) == 11
+    assert graph["summary"]["gaps"] == len(gaps)
+
+    # The four facts, as the board reads them from the routes.
+    connectors = c.get("/api/connectors").json()
+    stood_for = {(x.get("storage") or {}).get("where") for x in connectors}
+    facts = {(f"source:{x['name']}", f"transform:{t['name']}")
+             for x in connectors if not x["warehouse"] for t in x["read_by"]["transforms"]}
+    facts |= {(f"file:{f['path']}", f"transform:{t}") for f in c.get("/api/inputs").json()["files"]
+              if f["path"] not in stood_for for t in f["read_by"]}
+    for w in c.get("/api/warehouse").json()["warehouses"]:
+        for wr in w["writers"]:
+            group = f"group:{wr['transform'] or wr['contract']}"
+            facts.add((f"transform:{wr['transform']}", group))
+            facts |= {(group, f"model:{m}") for t in w["tables"] if t["name"] in wr["tables"]
+                      for m in t["read_by"]}
+    facts |= {(f"model:{m}", f"report:{r['name']}") for r in c.get("/api/reports").json()
+              for m in r["models"]}
+    assert {tuple(e) for e in graph["edges"]} == facts
+    # Every edge joins two nodes, and a gap is wired on one side only.
+    assert {i for e in graph["edges"] for i in e} <= set(nodes)
+    for i in gaps:
+        wired_in = any(e[1] == i for e in graph["edges"])
+        wired_out = any(e[0] == i for e in graph["edges"]) or nodes[i]["passport"]["readers"]
+        assert not (wired_in and wired_out), i
+
+    crm = nodes["source:crm"]["passport"]
+    assert crm["origin"] == "Postgres · set by TRACEBI_CRM_URL"
+    assert crm["trust"] == {"state": "warn", "text": "Read from snapshot"}
+    assert nodes["transform:holdings_transform"]["passport"]["trust"]["text"].startswith("Checks passed")
+    text = c.get("/api/graph").text
+    assert "s3cret-pw" not in text and not re.search(r"://[^\"\s]*@", text)
+
+    # A folder the caller cannot view: its reports leave the graph with every
+    # edge into them. The route and describe_project both call this function.
+    (reference / "reports" / "wealth_model" / "_folder.yaml").write_text(
+        "view: [finance]\n", encoding="utf-8")
+    with actor("bob", role="viewer", groups=("bi-analysts",)):
+        seen = project_graph(registry)
+    hidden = {"report:wealth_model/aum_by_branch", "report:wealth_model/aum_by_region"}
+    assert not hidden & {n["id"] for n in seen["nodes"]}
+    assert not hidden & {i for e in seen["edges"] for i in e}
+    assert seen["summary"]["reports"] == 9

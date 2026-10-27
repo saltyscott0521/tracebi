@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useParams, useSearchParams } from 'react-router-dom'
 
-import { useConnectors, useCredentials, useModel, useTable, useTableProfile, useWarehouses } from '../api'
+import { useConnectors, useCredentials, useInputs, useModel, useTable, useTableProfile, useWarehouses } from '../api'
 import DataGrid, { cellText } from '../components/DataGrid'
 import { CredentialChip } from '../components/Credentials'
 import { useModelLabel } from '../components/Scope'
@@ -48,6 +48,51 @@ function ReadOnRun({ items }) {
       </Fragment>
     )
   })
+}
+
+// What a source table became, as its passport says it: where it comes from,
+// each transform that read it (as what, how, when its last run read it, and
+// whether a committed snapshot stood in), and the warehouse tables that run
+// wrote. A source table is read by transforms; the models read what they wrote.
+// With no recorded run, the transforms whose text names it.
+export function sourceReads({ source, table, warehouses, connectors, inputs }) {
+  const reads = []
+  for (const w of warehouses?.warehouses || []) {
+    for (const wr of w.writers || []) {
+      const fileRead = source === 'inputs'
+        && (inputs?.files || []).some(f => f.path === `inputs/${table}` && f.read_by.includes(wr.transform))
+      const r = fileRead ? { ref: `inputs/${table}` } : wr.read.find(x => x.connection === source && x.table === table)
+      if (r) reads.push({ transform: wr.transform, ref: r.ref, method: r.method, at: r.loaded_at, snapshot: r.snapshot, became: wr.tables })
+    }
+  }
+  if (reads.length) return reads
+  const named = source === 'inputs'
+    ? (inputs?.files || []).find(f => f.path === `inputs/${table}`)?.read_by || []
+    : ((connectors || []).find(c => c.name === source)?.read_by?.transforms || []).filter(t => t.tables.includes(table)).map(t => t.name)
+  return named.map(transform => ({ transform, ref: source === 'inputs' ? `inputs/${table}` : `${source}.${table}`, named: true, became: [] }))
+}
+
+function SourceFacts({ source, reads }) {
+  const { data: connectors } = useConnectors()
+  const label = source === 'inputs' ? 'inputs/' : (connectors || []).find(c => c.name === source)?.label || source
+  const became = [...new Set(reads.flatMap(r => r.became))]
+  return (
+    <p className="tpage__facts">
+      <span>From <Link to={sourcePath(source)}>{label}</Link></span>
+      {reads.length === 0 && <span>No transform reads it</span>}
+      {reads.map(r => (
+        <span key={r.transform}>
+          Read by <TransformName name={r.transform} /> as <code>{r.ref}</code>
+          {r.method && <> · {r.method}</>}
+          {r.at && <> · last read <Time iso={r.at} /></>}
+          {r.named && <> · named in the file; no recorded run read it</>}
+        </span>
+      ))}
+      {became.length > 0 && (
+        <span>became {became.map((b, i) => <Fragment key={b}>{i > 0 && ', '}<Link to={warehouseTablePath(b)}><code>{b}</code></Link></Fragment>)}</span>
+      )}
+    </p>
+  )
 }
 
 // One line of facts, each a link to where that fact lives: who wrote it,
@@ -279,13 +324,18 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
   // Which warehouse holds it, and whether an unreachable source is one (for
   // the crumb): the listing, asked only then.
   const [listed, setListed] = useState(underWarehouse)
-  const { data: warehouses, isLoading: whLoading } = useWarehouses(listed)
+  const { data: warehouses, isLoading: whLoading } = useWarehouses(listed || !underWarehouse)
   const all = warehouses?.warehouses || []
   const holder = params.get('warehouse') || all.find(w => w.tables.some(x => x.name === table))?.name || all[0]?.name
   const source = underWarehouse ? holder : routed.source
   const { data: t, isLoading, error } = useTable(source, table)
   useEffect(() => { if (t?.connected === false) setListed(true) }, [t?.connected])
   const { data: connectors } = useConnectors()
+  const { data: inputs } = useInputs()
+  const reads = underWarehouse ? [] : sourceReads({ source, table, warehouses, connectors, inputs })
+  // The source table's last run read a committed file instead: its rows stand in
+  // when the connection is not reachable here.
+  const snapshot = reads.find(r => r.snapshot)?.snapshot
 
   // The model whose data browser holds it: one that reads the table, else
   // (a connection nothing models) one its readers name.
@@ -326,17 +376,30 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
   if (error) return frame(<><PageTitle>{table}</PageTitle><ErrorDetail error={error} /></>)
 
   if (t.connected === false) {
+    const file = snapshot?.replace(/^inputs\//, '')
     return frame(
       <>
         <header className="tpage__head">
           <h1 className="tpage__name">{table}</h1>
+          <SourceFacts source={source} reads={reads} />
         </header>
         <NotConnected source={source} answer={t} />
+        {file && (
+          <section className="tpage__snap" aria-label="Snapshot">
+            <p className="tpage__shape">
+              <Chip tone="warn" title="The committed file the last run read in place of the connection.">Read from snapshot · {snapshot}</Chip>
+            </p>
+            <DataGrid source="inputs" table={file} inAddress />
+          </section>
+        )}
       </>,
     )
   }
 
   const c = t.contract && checksWords(t.contract)
+  // A source table's readers are transforms (its facts line); Used by is for
+  // what models read, so it shows only when a model reads the table itself.
+  const views = t.kind === 'warehouse' || t.read_by.length ? VIEWS : VIEWS.filter(([v]) => v !== 'used')
   // The data browser it sits in: Warehouse for a warehouse table (the
   // browser's id names the warehouse when there are two), else the model that
   // reads it, with the table selected.
@@ -356,10 +419,10 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
           <span>{rowsText(t)} · {count(t.columns.length, 'column')}</span>
           {c && <Chip tone={c.tone} title={c.title}>{c.text}</Chip>}
         </p>
-        <Facts t={t} />
+        {t.kind === 'warehouse' ? <Facts t={t} /> : <SourceFacts source={source} reads={reads} />}
         <ContractFold c={t.contract} />
       </header>
-      <Segmented options={VIEWS} value={view} onChange={setView} label="Show" panel="table-view" />
+      <Segmented options={views} value={view} onChange={setView} label="Show" panel="table-view" />
       <div id="table-view" role="tabpanel" aria-labelledby={`table-view-${view}`}>
         {view === 'data' && (
           <DataGrid source={source} table={table} columns={t.columns} inAddress exportTo={t.kind === 'warehouse'} />

@@ -152,6 +152,22 @@ def test_an_agent_onboards_a_source_through_an_approved_transform(scaffolded, mo
     with duckdb.connect(str(scaffolded / "data" / "warehouse.duckdb"), read_only=True) as wh:
         assert wh.execute("SELECT sum(amount) FROM fact_shop_orders").fetchone()[0] == 14.75
 
+    # The project as a graph: the agent's describe_project is the app's
+    # /api/graph, and the person's allowlist is what it says agents may read.
+    from tracebi.web import discovery
+
+    app = serve_app(monkeypatch, models=True)
+    monkeypatch.setattr(discovery, "_live_connections", {})
+    discovery.register_connections("connections")
+    graph = app.get("/api/graph").json()
+    described = gw.gateway_describe_project()
+    assert described["summary"] == graph["summary"]
+    agents = {n["id"]: n["passport"]["agents"]["state"] for n in described["nodes"]
+              if n["id"].startswith("source_table:shop.")}
+    assert agents == {"source_table:shop.customers": "ok", "source_table:shop.orders": "ok",
+                      "source_table:shop.salaries": "none"}
+    assert ["source:shop", "transform:shop_orders"] in described["edges"]
+
     # Saving back: the sunk table goes out to the connection it came from.
     out = gw.gateway_export_table("warehouse", "fact_shop_orders", "shop")
     assert out["ok"] is True and out["rows"] == 3, out

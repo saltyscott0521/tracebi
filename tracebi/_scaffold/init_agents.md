@@ -511,9 +511,10 @@ way (writing the other form replaces the draft file); a Python model cannot.
 
 **No model yet? Start from a connection.** A person sets up the connection
 and ticks the tables agents may read (`agents: {tables: [a, b]}` in
-`connections/<name>.yaml`); five tools take it from there, in this order
+`connections/<name>.yaml`); six tools take it from there, in this order
 (`docs/agents/sop-onboarding.md` in the TraceBi handbook walks it):
 
+- `describe_project` — the project as a graph: every source, transform, table, model and report, what feeds what, and what you may read. Call it first.
 - `list_connections` — each connection's type and the tables agents may read.
 - `list_source_tables(connection)` — those tables, with columns and row estimates.
 - `describe_source_table(connection, table, sample=20)` — columns, a profile and sample rows; any other table is "not found".

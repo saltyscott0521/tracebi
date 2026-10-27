@@ -99,7 +99,7 @@ from it.</p>
   sunk or modelled, start with step 0 below, then come back to step 1.</li>
 </ul>
 <h3 id="the-tools">The tools</h3>
-<p>The gateway has twenty-seven tools and three prompts (<code>author_report</code>,
+<p>The gateway has twenty-eight tools and three prompts (<code>author_report</code>,
 <code>answer_question</code>, <code>address_pins</code>) that run this procedure for you. The MCP
 <code>tools/list</code> call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with <code>build_report</code>. Over a
@@ -184,6 +184,10 @@ hosted connection, the draft tools are how a package reaches the server
 <tr>
 <td><code>list_publish_requests</code> · <code>decide_publish_request</code></td>
 <td>Requests into folders where you hold Publish; approve or reject one</td>
+</tr>
+<tr>
+<td><code>describe_project</code></td>
+<td>The project as a graph: every source, transform, table, model and report, what feeds what, and what you may read</td>
 </tr>
 <tr>
 <td><code>list_connections</code></td>
