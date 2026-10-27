@@ -56,9 +56,9 @@ the manifesto's "both authors, one contract" applied to the project itself.
    the map as Data's home with the five lenses and the passport; sources as
    tables with Setup behind a button; the source table page's facts pointing
    the right way; gaps drawn. No manifesto change, no pipeline change.
-2. **Next:** the time scrubber (the map at any past run), runs that move on the
-   map, blast radius (select a table or measure; every figure that depends on
-   it lights, with its number). Blast radius is read-only: it never starts a run (A3).
+2. **Next:** runs that move on the map, blast radius (select a table or measure; every figure that depends on
+   it lights, with its number). Blast radius is read-only: it never starts a run (A3). The time scrubber was
+   dropped by the owner (2026-10-27): History and verify already answer it.
 3. **Then:** SQL column lineage in the certificate (A4) if approved, drawn on
    the map from source column to figure; the agent's proposals as dashed nodes
    with approval on the passport; build by dragging (drop a file, drag a source

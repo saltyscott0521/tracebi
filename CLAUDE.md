@@ -118,7 +118,7 @@ phase to the next):
    escape hatch: pull the queries (a table of a declared connection is a header
    line `-- source: crm.issuer_ratings [fallback: inputs/x.csv]`, loaded through
    the connector before the first statement and read as `crm.issuer_ratings`;
-   the certificate records each load under `sources`; read in place through DuckDB's
+   the certificate records each load under `sources`, and a SQL transform's certificate also records `lineage`, each sink column's bases as DuckDB's parse proves them; read in place through DuckDB's
    scanner for Postgres, MySQL and SQLite (`method: scanner`), else as Arrow (Snowflake,
    BigQuery, ADBC; `arrow`), else through the connector (`pandas`), the fingerprint the
    same whichever way; `-- sink: <connection> [only]` just above a `CREATE OR REPLACE
@@ -184,9 +184,15 @@ phase to the next):
 reporting (③) never block each other, because the model (②) is a frozen contract
 between them. Editing a report never re-runs the pandas.
 
-**Honest scope of lineage / trust.** Tracing lineage *through* the raw analysis
-(phase ①) is intentionally not done — the line is drawn at the **sink**, where
-the numbers become a contract you can report against. The trust machinery
+**Honest scope of lineage / trust.** Tracing lineage *through* free-form phase-①
+code (pandas, a notebook) is intentionally not done — the line is drawn at the
+**sink**, where the numbers become a contract you can report against. A SQL
+transform is the exception only as far as DuckDB's parser goes: `tracebi/lineage_sql.py`
+reads `json_serialize_sql` of every statement while it runs, and the certificate
+records, per sink column, the columns it is computed from (`lineage`, with `form:
+sql`; bases `conn.table.col`, `inputs/<path>.col`, `<table>.col`), with `from: null`
+and a reason wherever the tree cannot be followed — never inferred from names. It is
+a record of what the SQL reads, not a verdict, and never colors a status. The trust machinery
 (stamped queries with a resolved query + lineage + SHA-256 fingerprint;
 validate-before-execute on specs; `tracebi verify`) applies **from the model
 boundary onward** — phases ② and ③. `tracebi verify` re-runs a manifest's
@@ -243,6 +249,8 @@ tracebi/               # Core Python package (~24,000 LOC)
   _push.py             # `tracebi push` — packages/models → drafts, code → a code request
   transforms.py        # phase ① transforms: find one, its form (sql/python/notebook), run it + its .contract.yaml
   contracts.py         # sink contracts: closed checks + certificate + manifest join
+  lineage_sql.py       # SQL column lineage from DuckDB's parse (Tracer; column_lineage): the certificate's lineage,
+                       #   columns_from, the graph's edge_facts
   project_config.py    # tracebi.yaml reader (one reader, cached per path): engine limits + the warehouse block
   project_credentials.py # ${NAME} / ${NAME:-default}: one resolver (environment → .env → encrypted store .tracebi/secrets.yml.enc);
                        #   required/status for the Sources page and `tracebi secret`
@@ -255,7 +263,8 @@ tracebi/               # Core Python package (~24,000 LOC)
   graph.py             # the project as one graph ({summary, nodes, edges}): every source, transform, warehouse
                        #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
                        #   GET /api/graph and the gateway's describe_project serve it (design/control-tower.md);
-                       #   never re-runs a verdict (desk.cached_verdict)
+                       #   never re-runs a verdict (desk.cached_verdict); edge_facts: the parser-proven column lineage
+                       #   edges (source table / file / table → table)
   exports.py           # the gateway's export_table: a thin call over warehouse.export_table (the one implementation)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
@@ -884,14 +893,14 @@ GET  /api/connectors[/{name}]                        → each carries read_by {t
 GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact, agents}], agent_tables, hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read (each with method scanner|arrow|pandas and snapshot), said once per transform; the transform page reads it with /api/transforms and /api/transforms/{name}/source
-GET  /api/graph                                      → {summary, nodes, edges}: the project as one graph (tracebi/graph.py), the same dict as the gateway's describe_project; reports the caller cannot view left out with their edges
+GET  /api/graph                                      → {summary, nodes, edges, edge_facts}: the project as one graph (tracebi/graph.py), the same dict as the gateway's describe_project; reports the caller cannot view left out with their edges
 GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
 GET  /api/transforms/{name}/source                   → the transform's file and its .contract.yaml (read-only; name is a stem in transforms/)
 GET  /api/models
 GET  /api/models/{name}                              → tables, relationships, facts (each with its runnable_measures), dimensions
 GET  /api/models/{name}/tables/{t}/preview           → first N (≤500) rows + engine dtypes + total_rows, read through the table API
 GET  /api/models/{name}/tables/{t}/export.csv        → full table as CSV, streamed through the table API
-GET  /api/tables/{source}/{table}                    → one table wherever it lives (source: a connector, or `inputs` for a file under inputs/): kind, table_kind (table|view, warehouse only), view {transform, bases} for a sink view, rows, rows_exact, columns [{name,type}] in the engine's spelling, written_by, contract, read_by, used_by, transform_read; 200 {connected: false…} when unreachable; framework tables 404
+GET  /api/tables/{source}/{table}                    → one table wherever it lives (source: a connector, or `inputs` for a file under inputs/): kind, table_kind (table|view, warehouse only), view {transform, bases} for a sink view, rows, rows_exact, columns [{name,type}] in the engine's spelling, written_by, contract, read_by, used_by, transform_read, columns_from (a SQL transform's column lineage, else null); 200 {connected: false…} when unreachable; framework tables 404
 GET  /api/tables/{source}/{table}/rows               → ?offset&limit(≤500)&sort&desc&q&where=[{column,op,value}] (closed ops; refused 422 before any SQL) → {columns, rows, offset, limit, total, total_exact, elapsed_ms}
 GET  /api/tables/{source}/{table}/profile            → {rows, columns: {name: {type, nulls, null_share, distinct, min, max, mean?, top:[{value,count}]}}}
 GET  /api/tables/{source}/{table}/export.csv         → the same cut as CSV, streamed from the engine
