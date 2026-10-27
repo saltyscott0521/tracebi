@@ -222,6 +222,20 @@ says <code>null</code> and why; nothing is guessed. A pandas or notebook transfo
 records nothing. It is a record of what the SQL reads, not a check that a
 number is right. The map's Flow lens and a table's Columns tab show it; see
 <a href="../reference/transform-sql.html">SQL transforms</a>.</p>
+<h2 id="watching-a-refresh-and-what-depends-on-a-piece">Watching a refresh, and what depends on a piece</h2>
+<p>While a refresh runs, the map and every <strong>Lineage</strong> tab show it moving: the
+transform pulses while its step runs, then its warehouse tables and the models
+that read them light, and each report lights as the run rebuilds it. A step
+that fails stops there: its piece turns red and its <strong>Trust</strong> row says why
+(<code>1 check failed</code>). The map only watches. An edge says what depends on what,
+never what should run; a refresh is started by a person or a pipeline's
+schedule.</p>
+<p>Select a warehouse table or a source table, or a model and then one of its
+measures, and <strong>Depends on this</strong> lists every report figure downstream of it,
+by report: its label, the number the built page prints and the report's
+verdict, each a link to that figure's trace. It is read from the last builds'
+manifests (a figure counts only when its query read that table or measure), so
+a report never built here is named apart. It changes nothing.</p>
 <h2 id="why-it-works-this-way">Why it works this way</h2>
 <p>The slow analysis in the transform and the fast work on reports never block
 each other, because the model sits between them as a fixed contract. Editing

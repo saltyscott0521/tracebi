@@ -249,6 +249,7 @@ model needed ([[trace]]).
 | `GET` | `/api/transforms/{name}/source` | viewer | The transform's file and its contract (`{files, hint}`). `name` is a stem in `transforms/`, never a path (404 otherwise). |
 | `GET` | `/api/warehouse` | viewer | `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}`, one per warehouse connector; `writers` lists what each transform's run read, once per transform. Read-only; framework tables are never listed. |
 | `GET` | `/api/graph` | viewer | The project as one graph, what Data's overview draws and the gateway's `describe_project` answers: `{summary, nodes, edges, edge_facts}`. Reports in a folder the caller cannot view are left out with their edges. |
+| `GET` | `/api/graph/downstream?node=<id>` | viewer | Every report figure that depends on one piece, `table:<warehouse>.<table>`, `source_table:<connection>.<table>` or `measure:<model>:<measure>`, grouped by report: `{node, kind, measure, reads, summary: {figures, reports}, reports: [{id, name, label, open, built_at, trust, figures: [{id, kind, binding, label, text, open}]}], not_built}`. Read from the last builds' manifests; starts nothing. 404 for any other node. |
 
 `/api/graph` is composed from the routes above, nothing new: each node is
 `{id, kind, lane, parent, label, name, chip, sub, open, passport, gap}`.
@@ -277,6 +278,20 @@ the edges DuckDB's parser proved, beside them: `{from, to, kind: "lineage",
 columns}`, a source table, input file or warehouse table to a warehouse table
 that a SQL transform computed `columns` of its columns from; such a table's
 passport carries `columns_from`, and a source table's `readers` list it.
+`/api/graph/downstream` is what the map's **Depends on this** panel reads
+(`tracebi.graph.downstream`, so the gateway can offer it too). A figure counts
+only when its last build's manifest says its binding read the piece: the query
+loaded the table (its fact or a joined dimension) or a warehouse view over it;
+for a source table, loaded it live or loaded a table that a transform reading it
+wrote; for a measure, asked for it or for a measure defined from it, and a value
+figure only when its own cell is one of those. A binding derived in Python
+records no loads and never counts. `text` is what the built page prints for the
+figure (the desk's `values`, its KPIs; `null` for a chart or a table), `trust`
+the report's verdict in the graph's words, `open` the report page at that
+figure (`/reports/<name>?figure=<id>`, which opens its trace). `measure` is the
+measure's definition. `not_built` names the reports that read the piece through
+their model but have no build here. Reports the caller cannot view are left out.
+
 `summary` counts
 each kind in the flow (gaps apart, in `gaps`), stale tables, groups whose
 checks passed (`checks: {satisfied, of}`), and what agents may read
@@ -300,7 +315,7 @@ the build command.
 | Place | Addresses |
 | --- | --- |
 | Reports | `/` the library (`?model=<m>` narrows it); `/?folder=<path>` one folder (one the caller may not see is not found); `/reports/<folder>/<name>` one report (`?build=1` turns Build mode on); `/ask` a question of one model (`?model=<m>`), reached by **Ask this model** on a folder's page or a model's page under Data |
-| Data | `/data` the home, a status board (cards, Needs attention, Agent access, Recent activity, Schedules); `/data/lineage` the map (sources → transforms → warehouse → models → reports from `/api/graph`; `?lens=coverage\|flow\|freshness\|trust\|access`, `?node=<id>` selects a piece and its passport, `?lane=<lane>` focuses a lane); then four lists (`?q=` search, `?filter=` chip, `?sort=` column, `-name` descending), each a page per thing with tabs at `?tab=` (Overview when absent): `/data/sources` (`/data/sources/<name>` one connection, `/data/sources/inputs` the folder, `/data/sources/<name>/<table>` one source table, `/data/sources/inputs/<path>` one input file); `/data/transforms` (`/data/transforms/<name>` one transform); `/data/warehouse` (`?view=table\|schema`; `?table=<id>`, `?group=<id>` select in its schema; `/data/warehouse/<table>` one table); `/data/models` (`/data/models/<m>` one model: `?table=<t>`, `?measure=<name>`, `?view=measures\|relationships\|storage\|code\|agent` open its Schema tab). Nothing under `/data` is narrowed to a model. |
+| Data | `/data` the home, a status board (cards, Needs attention, Agent access, Recent activity, Schedules); `/data/lineage` the map (sources → transforms → warehouse → models → reports from `/api/graph`; `?lens=coverage\|flow\|freshness\|trust\|access`, `?node=<id>` selects a piece and its passport, `?measure=<model>:<measure>` a model's measure for Depends on this, `?lane=<lane>` focuses a lane); then four lists (`?q=` search, `?filter=` chip, `?sort=` column, `-name` descending), each a page per thing with tabs at `?tab=` (Overview when absent): `/data/sources` (`/data/sources/<name>` one connection, `/data/sources/inputs` the folder, `/data/sources/<name>/<table>` one source table, `/data/sources/inputs/<path>` one input file); `/data/transforms` (`/data/transforms/<name>` one transform); `/data/warehouse` (`?view=table\|schema`; `?table=<id>`, `?group=<id>` select in its schema; `/data/warehouse/<table>` one table); `/data/models` (`/data/models/<m>` one model: `?table=<t>`, `?measure=<name>`, `?view=measures\|relationships\|storage\|code\|agent` open its Schema tab). Nothing under `/data` is narrowed to a model. |
 | Review | `/review` Attention, `/review/drafts` Drafts, `/runs` History, `/verify` Verify; `/drafts/<owner>/<kind>/<path>` one draft |
 | Docs | `/docs` the handbook in `docs/toc.yaml`'s order; `/docs/<section>/<page>` per file; the quickstart at `/docs/get-started`. A page that moved keeps its old address (the toc's `moved:`). |
 

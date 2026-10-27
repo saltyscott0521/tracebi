@@ -509,3 +509,183 @@ def _summary(nodes: list[dict]) -> dict:
             "reports": sum(1 for x in nodes if x["kind"] == "report"),
         },
     }
+
+
+# ── What depends on a piece ─────────────────────────────────────────────────
+# Read-only: the figures downstream of one warehouse table, source table or
+# measure, for the person deciding whether to refresh. A graph edge says what
+# depends on what, never what should run (design/control-tower.md, A3), so
+# nothing here starts a run or rebuilds a report.
+
+def downstream(registry, node: str, *, root: Optional[str] = None) -> dict:
+    """Every report figure that depends on *node*, grouped by report.
+
+    *node* is a graph id, ``table:<warehouse>.<table>`` or
+    ``source_table:<connection>.<table>``, or a measure,
+    ``measure:<model>:<measure>``. The graph narrows nothing here: a figure
+    counts only when its last build's manifest says its binding read the
+    piece. A table counts when the binding's query loaded it (its fact or a
+    joined dimension) or a warehouse view over it; a source table, when the
+    query loaded it live or loaded a table written by a transform that reads
+    it. A measure counts when the query asked for it or for a measure defined
+    from it, and a value figure only when its own cell is one of those: the
+    count beside a sum in one query does not depend on the sum. A binding the
+    build derived in Python records no loads, so it never counts.
+
+    Each figure carries what the built page printed for it (the desk's
+    ``values``, its KPIs; absent for a chart or a table) and its report's
+    verdict in the graph's words. A report the caller may not view is left
+    out; one that reads the piece through its model but has no build here is
+    listed under ``not_built``. Raises :class:`LookupError` for any other
+    node, or one this project does not hold.
+    """
+    import json
+
+    # The KPIs a build printed, read from the page exactly as /api/desk reads them.
+    from tracebi.desk import _values as printed_values
+    from tracebi.desk import cached_verdict
+    from tracebi.model.data_model import measure_references
+    from tracebi.reports.derive import humanise, in_sentence
+    from tracebi.sources import warehouses
+    from tracebi.web.api.routers.connectors import list_connectors
+    from tracebi.web.api.routers.reports import list_reports
+
+    root = os.path.abspath(root or os.getcwd())
+    kind, _, rest = node.partition(":")
+    whs = warehouses(registry)
+
+    def with_views(reads: set) -> set:
+        """*reads* and every warehouse view over one of them, transitively."""
+        out = set(reads)
+        grew = True
+        while grew:
+            grew = False
+            for w in whs:
+                for tb in w["tables"]:
+                    key = (w["name"], tb["name"])
+                    if key not in out and any((w["name"], b) in out for b in tb.get("bases") or []):
+                        out.add(key)
+                        grew = True
+        return out
+
+    def declared(model_name: str) -> dict:
+        model = registry.get_model(model_name)
+        return {m["name"]: m for m in (model.info().get("measures") or [])} if model is not None else {}
+
+    reads: set = set()                  # (connector, table): what a binding's query may load
+    measure: Optional[tuple[str, str]] = None
+    definition = None
+    if kind == "table":
+        wh, _, table = rest.partition(".")
+        if not any(w["name"] == wh and any(t["name"] == table for t in w["tables"]) for w in whs):
+            raise LookupError(f"No warehouse table {rest!r}")
+        reads = with_views({(wh, table)})
+    elif kind == "source_table":
+        conn, _, table = rest.partition(".")
+        c = next((c for c in list_connectors() if c["name"] == conn and not c["warehouse"]), None)
+        if c is None or not table:
+            raise LookupError(f"No source table {rest!r}")
+        readers = {t["name"] for t in c["read_by"]["transforms"] if table in t["tables"]}
+        written = {(w["name"], tb) for w in whs for wr in w["writers"]
+                   if wr["transform"] in readers for tb in wr["tables"]}
+        reads = with_views({(conn, table)} | written)
+    elif kind == "measure":
+        model_name, _, name = rest.partition(":")
+        definition = declared(model_name).get(name)
+        if definition is None:
+            raise LookupError(f"No measure {rest!r}")
+        measure = (model_name, name)
+    else:
+        raise LookupError(f"{node!r} is not a table, a source table or a measure")
+
+    def uses(model_name: str, names: list) -> set:
+        """*names* and every measure they are defined from, in *model_name*."""
+        known = declared(model_name)
+        seen: set = set()
+        queue = [n for n in names if isinstance(n, str)]
+        while queue:
+            n = queue.pop()
+            if n in seen:
+                continue
+            seen.add(n)
+            try:
+                queue += measure_references(n, known.get(n) or {})
+            except ValueError:          # a definition that does not parse reads nothing more
+                pass
+        return seen
+
+    def asked(emb: dict) -> list:
+        spec = emb.get("query_spec") or {}
+        return [m for m in spec.get("measures") or [] if isinstance(m, str)] \
+            if isinstance(spec.get("measures"), list) else []
+
+    def binding_reads(section: dict, emb: dict) -> bool:
+        if measure is not None:
+            return emb.get("model") == measure[0] and measure[1] in uses(measure[0], asked(emb))
+        loaded = {((s.get("connector") or {}).get("connector_name"), s.get("source"))
+                  for s in section.get("dataset_lineage") or []
+                  if s.get("operation") == "load" and s.get("source")}
+        return bool(loaded & reads)
+
+    output = os.path.join(root, "output")
+    models = _loaded_models()
+    found: list[dict] = []
+    not_built: list[dict] = []
+    for r in sorted(list_reports(), key=lambda r: r["name"]):
+        name = r["name"]
+        html = os.path.join(output, *name.split("/")) + ".html"
+        entry = {"id": f"report:{name}", "name": name, "label": r.get("display_name") or name,
+                 "open": "/reports/" + _segs(name)}
+        try:
+            with open(html + ".manifest.json", encoding="utf-8") as fh:
+                manifest = json.load(fh)
+        except (OSError, ValueError):
+            manifest = None
+        if not isinstance(manifest, dict) or not os.path.isfile(html):
+            # No build to read: whether it reads the piece is its models' to say.
+            for m in r.get("models") or []:
+                model = registry.get_model(m)
+                tables = (model.info().get("tables") or []) if model is not None else []
+                if (measure and m == measure[0]) or (not measure and any(
+                        (t["connector"], t["source"]) in reads for t in tables)):
+                    not_built.append(entry)
+                    break
+            continue
+        sections = {s.get("id") or s.get("title"): s for s in manifest.get("sections") or []}
+        embedded = {e["name"]: e for e in manifest.get("embedded_data") or []}
+        hit = {b for b, emb in embedded.items() if binding_reads(sections.get(b) or {}, emb)}
+        if not hit:
+            continue
+        values = {v["id"]: v for v in printed_values(html)}
+        figures = []
+        for fig in manifest.get("figures") or []:
+            b = fig.get("binding")
+            if b not in hit or fig.get("unverified"):
+                continue
+            emb = embedded[b]
+            cell = fig.get("cell")
+            if measure is not None and fig.get("kind") == "value" and cell in asked(emb) \
+                    and measure[1] not in uses(measure[0], [cell]):
+                continue
+            printed = values.get(fig["id"]) or {}
+            spec = emb.get("query_spec") or {}
+            by = [d for d in spec.get("dimensions") or [] if isinstance(d, str)]
+            what = ", ".join(humanise(m) for m in asked(emb)[:2]) or humanise(b)
+            label = printed.get("label") or (humanise(cell) if isinstance(cell, str) else
+                                             what + (f" by {in_sentence(humanise(by[0]))}" if by else ""))
+            figures.append({"id": fig["id"], "kind": fig.get("kind"), "binding": b, "label": label,
+                            "text": printed.get("text") or None,
+                            "open": f"{entry['open']}?figure={_seg(fig['id'])}"})
+        if not figures:
+            continue
+        verdict = cached_verdict(html + ".manifest.json", models)
+        state, text = _VERDICT.get((verdict or {}).get("verdict"), _NOT_CHECKED)
+        found.append({**entry, "built_at": manifest.get("rendered_at"),
+                      "trust": {"state": state, "text": text}, "figures": figures})
+
+    return {
+        "node": node, "kind": kind, "measure": definition,
+        "reads": sorted(f"{c}.{t}" for c, t in reads),
+        "summary": {"figures": sum(len(r["figures"]) for r in found), "reports": len(found)},
+        "reports": found, "not_built": not_built,
+    }

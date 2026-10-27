@@ -2917,3 +2917,46 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 /* A page's actions stay one row: on a phone the row scrolls, as the tabs do. */
 .rpage__head .rpage__acts { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .rpage__head .rpage__acts > * { flex: none; }
+
+/* ── TOWER-2 ── A run moving on the map (Map.jsx runStates, observation only):
+   the piece whose step is running pulses in amber (a step running, as the
+   Steps diagram dots it), what its finished
+   steps moved is ringed in green, a failed step's piece is ringed in red and
+   still. With reduced motion nothing pulses: a running piece is ringed and
+   stays. Then Depends on this (components/DependsOn.jsx), under the passport:
+   the figures downstream of the selected piece, a report to a group. */
+@keyframes run-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--amber); }
+  50% { box-shadow: 0 0 0 5px var(--amber-br); }
+}
+.mcard.is-run-running, .mchip.is-run-running { border-color: var(--amber); box-shadow: 0 0 0 2px var(--amber); }
+.mcard.is-run-moved, .mchip.is-run-moved { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+.mcard.is-run-failed, .mchip.is-run-failed { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+@media (prefers-reduced-motion: no-preference) {
+  .mcard.is-run-running, .mchip.is-run-running { animation: run-pulse 1.4s ease-in-out infinite; }
+}
+
+.deps { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.pass--deps .deps { margin-top: 0; padding-top: 0; border-top: 0; }
+.pass--deps { margin-top: 12px; }
+.deps__h { margin: 0; font-size: var(--text-eyebrow); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.deps__what { text-transform: none; letter-spacing: 0; color: var(--text); }
+.deps__def { margin: 6px 0 0; font-size: var(--text-sm); color: var(--text-2); overflow-wrap: anywhere; }
+.deps__def code { font-size: var(--text-sm); background: none; border: 0; padding: 0; color: var(--text); }
+.deps__def a, .deps__unbuilt a, .deps__figs a, .deps__open { color: var(--accent-text); }
+.deps__sum { margin: 6px 0 0; font-size: var(--text-caption); color: var(--text); font-weight: 500; }
+.deps__rep { margin-top: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.deps__rep > summary {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-height: 32px; padding: 6px 8px;
+  cursor: pointer; font-size: var(--text-caption); font-weight: 600;
+}
+.deps__rname { min-width: 0; overflow-wrap: anywhere; }
+.deps__n { flex: none; font-size: var(--text-sm); font-weight: 400; color: var(--muted); }
+.deps__figs { margin: 0; padding: 0 8px 4px; list-style: none; }
+.deps__figs li { padding: 4px 0; border-top: 1px solid var(--border); font-size: var(--text-sm); line-height: 1.5; overflow-wrap: anywhere; }
+.deps__figs .verdict, .deps__figs .chip { vertical-align: baseline; }
+.deps__num { font-weight: 600; font-variant-numeric: tabular-nums; }
+.deps__open { display: inline-flex; align-items: center; min-height: 24px; margin: 0 8px 6px; font-size: var(--text-sm); }
+.deps__unbuilt { margin: 8px 0 0; font-size: var(--text-sm); color: var(--muted); }
+.deps__measures { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; }
+.deps__measures .mchip { text-decoration: none; }

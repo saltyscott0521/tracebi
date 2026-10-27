@@ -4,6 +4,24 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-27 — Control tower round two: runs move on the map; Depends on this (TOWER-2)
+
+Two things the console shows now, both observation only. A pipeline run going now
+moves on the Lineage view and every Lineage tab (`api.js` `useRunningRuns`, one
+shared poll): the transform pulses amber while its step runs, what it wrote and the
+models over it ring green as each step lands, each report turns green as it is
+rendered, a failed step leaves a red ring and its Trust row says so. Nothing on the
+map starts a run (A3 holds: the pipeline stays the unit of work). And "Depends on
+this" (`components/DependsOn.jsx` over `GET /api/graph/downstream`, `graph.downstream`):
+select a warehouse table, a source table or a model's measure and see every report
+figure that depends on it, with the number its built page prints and its report's
+verdict, read from the last builds' manifests, filtered to what the caller may view,
+with links only. The words are never "impact" or "blast radius". The report page
+takes `?figure=<id>` to open the trace on one figure.
+
+Known, not fixed here: Refresh data on a transform page's Overview tab starts no run
+(`PipelineDetail` marks the start count seen on mount); it works from the Steps tab.
+
 ## 2026-10-27 — The app draws its own charts; Recharts leaves the app (CHARTS)
 
 Ask's answer and Explore's result are drawn by `components/AnswerChart.jsx`: SVG by

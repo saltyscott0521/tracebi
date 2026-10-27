@@ -148,6 +148,23 @@ records nothing. It is a record of what the SQL reads, not a check that a
 number is right. The map's Flow lens and a table's Columns tab show it; see
 [[transform-sql]].
 
+## Watching a refresh, and what depends on a piece
+
+While a refresh runs, the map and every **Lineage** tab show it moving: the
+transform pulses while its step runs, then its warehouse tables and the models
+that read them light, and each report lights as the run rebuilds it. A step
+that fails stops there: its piece turns red and its **Trust** row says why
+(`1 check failed`). The map only watches. An edge says what depends on what,
+never what should run; a refresh is started by a person or a pipeline's
+schedule.
+
+Select a warehouse table or a source table, or a model and then one of its
+measures, and **Depends on this** lists every report figure downstream of it,
+by report: its label, the number the built page prints and the report's
+verdict, each a link to that figure's trace. It is read from the last builds'
+manifests (a figure counts only when its query read that table or measure), so
+a report never built here is named apart. It changes nothing.
+
 ## Why it works this way
 
 The slow analysis in the transform and the fast work on reports never block

@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { useGraph } from '../api'
+import { useGraph, useRunningRuns } from '../api'
 import { DataFrame } from './Data'
 import { NodePassport, ProjectPassport } from '../components/Passport'
+import DependsOn, { DEPENDS_KINDS } from '../components/DependsOn'
+import { contractFailure } from '../components/TheLine'
 import { count } from '../format'
+import { checksWords, refreshWords } from '../words'
 import { modelsPath, sourcesPath, transformsPath, warehousePath } from '../nav'
 import { Empty, ErrorDetail, Segmented, SkeletonCard } from '../components/Shared'
 
@@ -33,6 +36,18 @@ import { Empty, ErrorDetail, Segmented, SkeletonCard } from '../components/Share
 // wires. On Flow, a selected warehouse table lights the source tables and
 // files it takes columns from (through any warehouse table between) and draws
 // those wires solid green.
+//
+// A pipeline run going now moves on it (useRunningRuns; observation only, a
+// graph edge is a dependency, never a trigger): the transform pulses while its
+// step runs; when the step is done its warehouse group, the group's tables and
+// the models that read them light; while the build step runs those models
+// pulse and each report lights as the run's log says it was rendered. A failed
+// step stops the pulse on the node that failed, which then says why in its
+// Trust row. When no run is going nothing moves.
+//
+// Selecting a warehouse table, a source table or a model (then one of its
+// measures, ?measure=<model>:<measure>) adds Depends on this under the
+// passport: every report figure downstream of it, from the builds' manifests.
 
 export const LENSES = [
   ['coverage', 'Coverage'], ['flow', 'Flow'], ['freshness', 'Freshness'], ['trust', 'Trust'], ['access', 'What agents see'],
@@ -134,15 +149,59 @@ function toneOf(n, lens, map) {
 }
 const dark = (n, lens) => lens === 'access' && n.passport?.agents?.state !== 'ok'
 
+/**
+ * What the runs going now (and each pipeline's last run when it failed) say
+ * of each piece: `{state, trust}`, *state* an id → running · moved · failed,
+ * *trust* an id → the Trust row a failed step gives that piece. A failed run
+ * moves nothing: only the piece whose step failed is marked.
+ */
+function runStates(runs, map) {
+  const state = {}
+  const trust = {}
+  for (const r of runs || []) {
+    const tid = `transform:${r.transform}`
+    const t = map.byId[tid]
+    if (!t) continue
+    const step = r.steps.find(s => s.name === 'transform') || r.steps[0]
+    const rest = r.steps.filter(s => s !== step)
+    const groups = (t.passport?.readers || []).filter(id => map.byId[id])
+    const tables = groups.flatMap(g => (map.kids[g] || []).map(k => k.id))
+    const models = [...new Set(groups.flatMap(g => map.byId[g].passport?.readers || []))].filter(id => map.byId[id])
+    const failure = contractFailure(r.error?.message)
+    const said = failure ? checksWords({ failed: failure.failed }).text
+      : refreshWords({ failedAt: r.finished_at || r.started_at }).text
+    if (step?.state === 'failed') {
+      state[tid] = 'failed'
+      trust[tid] = { state: 'bad', text: said }
+      continue
+    }
+    if (rest.some(s => s.state === 'failed')) {
+      models.forEach(id => { state[id] = 'failed'; trust[id] = { state: 'bad', text: said } })
+      continue
+    }
+    if (r.status !== 'running') continue
+    if (step && step.state !== 'done') { state[tid] = 'running'; continue }
+    ;[tid, ...groups, ...tables].forEach(id => { state[id] = 'moved' })
+    const building = rest.some(s => s.state === 'running')
+    models.forEach(id => { state[id] = building ? 'running' : 'moved' })
+    r.reports.forEach(name => { if (map.byId[`report:${name}`]) state[`report:${name}`] = 'moved' })
+  }
+  return { state, trust }
+}
+const runClass = (id, run) => run?.state[id] && `is-run-${run.state[id]}`
+// Under Trust, a piece whose step failed is dotted as its Trust row says.
+const runTone = (n, lens, map, run) => (lens === 'trust' && run?.trust[n.id] ? 'bad' : toneOf(n, lens, map))
+
 // ── The cards ────────────────────────────────────────────────────────────────
 
-function Chips({ list, lens, map, sel, from, refOf, select, light, label }) {
+function Chips({ list, lens, map, sel, from, run, refOf, select, light, label }) {
   return (
     <ul className="mcard__kids" aria-label={label}>
       {list.map(k => (
         <li key={k.id}>
-          <button type="button" ref={refOf(k.id)} data-node={k.id} data-tone={toneOf(k, lens, map)}
-                  className={['mchip', k.gap && 'mchip--gap', sel === k.id && 'is-sel', from?.has(k.id) && 'is-from', dark(k, lens) && 'is-dark'].filter(Boolean).join(' ')}
+          <button type="button" ref={refOf(k.id)} data-node={k.id} data-tone={runTone(k, lens, map, run)}
+                  className={['mchip', k.gap && 'mchip--gap', sel === k.id && 'is-sel', from?.has(k.id) && 'is-from', dark(k, lens) && 'is-dark', runClass(k.id, run)].filter(Boolean).join(' ')}
+                  data-run={run?.state[k.id]}
                   aria-pressed={sel === k.id} title={k.gap ? k.gap.reason : k.sub || k.name}
                   onClick={() => select(k.id)} onMouseEnter={() => light(k.id)} onMouseLeave={() => light('')}>
             <i className="mdot" aria-hidden="true" />{k.chip === 'view' && <span className="mchip__view">view</span>}<span className="mchip__nm">{k.label}</span>
@@ -154,11 +213,12 @@ function Chips({ list, lens, map, sel, from, refOf, select, light, label }) {
 }
 
 function Card({ n, kids, state, refOf, select, light }) {
-  const { lens, map, sel, lit, from } = state
-  const cls = ['mcard', n.gap && 'mcard--gap', sel === n.id && 'is-sel', lit && (lit.has(n.id) ? 'is-lit' : 'is-dim'), from?.has(n.id) && 'is-from', dark(n, lens) && 'is-dark']
+  const { lens, map, sel, lit, from, run } = state
+  const cls = ['mcard', n.gap && 'mcard--gap', sel === n.id && 'is-sel', lit && (lit.has(n.id) ? 'is-lit' : 'is-dim'), from?.has(n.id) && 'is-from', dark(n, lens) && 'is-dark', runClass(n.id, run)]
   return (
     <li>
-      <div ref={refOf(n.id)} className={cls.filter(Boolean).join(' ')} data-node={n.id} data-tone={toneOf(n, lens, map)}
+      <div ref={refOf(n.id)} className={cls.filter(Boolean).join(' ')} data-node={n.id} data-tone={runTone(n, lens, map, run)}
+           data-run={run?.state[n.id]}
            onMouseEnter={() => light(n.id)} onMouseLeave={() => light('')}
            onFocus={() => light(n.id)} onBlur={() => light('')}>
         <button type="button" className="mcard__main" aria-pressed={sel === n.id} onClick={() => select(n.id)}>
@@ -171,7 +231,7 @@ function Card({ n, kids, state, refOf, select, light }) {
           </span>
         </button>
         {kids?.length > 0 && (
-          <Chips list={kids} lens={lens} map={map} sel={sel} from={from} refOf={refOf} select={select} light={light}
+          <Chips list={kids} lens={lens} map={map} sel={sel} from={from} run={run} refOf={refOf} select={select} light={light}
                  label={`Tables of ${n.label}`} />
         )}
       </div>
@@ -198,7 +258,7 @@ function Unread({ files, state, refOf, select, light }) {
 
 // ── The map ──────────────────────────────────────────────────────────────────
 
-function Board({ graph, map, lens, sel, lane, select, light, hover }) {
+function Board({ graph, map, lens, sel, lane, run, select, light, hover }) {
   const boardRef = useRef(null)
   const svgRef = useRef(null)
   const nodes = useRef({})
@@ -215,7 +275,7 @@ function Board({ graph, map, lens, sel, lane, select, light, hover }) {
     if (from && focus === sel) from.forEach(id => path.add(id))
     return path
   }, [map, focus, from, sel])
-  const state = { lens, map, sel, lit, from }
+  const state = { lens, map, sel, lit, from, run }
 
   const refOf = useCallback(id => el => { if (el) nodes.current[id] = el; else delete nodes.current[id] }, [])
 
@@ -352,11 +412,18 @@ export function TheMap({ graph, focus }) {
   const embedded = !!focus
   const [params, setParams] = useSearchParams()
   const map = useMemo(() => mapOf(graph), [graph])
-  const [local, setLocal] = useState({ lens: 'flow', node: focus || '' })
-  const asked = embedded ? local : { lens: params.get('lens'), node: params.get('node'), lane: params.get('lane') }
+  const { data: runs } = useRunningRuns()
+  const run = useMemo(() => runStates(runs, map), [runs, map])
+  const [local, setLocal] = useState({ lens: 'flow', node: focus || '', measure: '' })
+  const asked = embedded ? local
+    : { lens: params.get('lens'), node: params.get('node'), lane: params.get('lane'), measure: params.get('measure') }
   const lenses = embedded ? TAB_LENSES : LENSES
   const lens = lenses.some(([k]) => k === asked.lens) ? asked.lens : embedded ? 'flow' : 'coverage'
-  const sel = map.byId[asked.node] ? asked.node : ''
+  // A measure (<model>:<measure>) selects its model; Depends on this answers for the measure.
+  const [ofModel, measureName] = (asked.measure || '').split(/:(.*)/s)
+  const byMeasure = measureName && map.byId[`model:${ofModel}`] ? `model:${ofModel}` : ''
+  const sel = map.byId[asked.node] ? asked.node : byMeasure
+  const measure = byMeasure && sel === byMeasure ? measureName : ''
   const lane = LANE_KEYS.includes(asked.lane) ? asked.lane : ''
   const [hover, setHover] = useState('')
   const passRef = useRef(null)
@@ -374,17 +441,25 @@ export function TheMap({ graph, focus }) {
   // column), they are brought into view, or the click seems to do nothing; a
   // link in them brings the piece it names into view instead.
   const select = useCallback(id => {
-    go({ node: id === sel ? '' : id, lane: '' })
+    go({ node: id === sel ? '' : id, lane: '', measure: '' })
     const pass = passRef.current
     if (id !== sel && pass && pass.getBoundingClientRect().top > window.innerHeight) pass.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [go, sel])
   const goTo = useCallback(id => {
-    go({ node: id, lane: '' })
+    go({ node: id, lane: '', measure: '' })
     requestAnimationFrame(() => document.querySelector(`[data-node="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
   }, [go])
 
   const stale = Object.entries(map.fresh).filter(([id, t]) => t === 'warn' && !map.byId[id]?.gap).length
   const node = sel && map.byId[sel]
+  // A step that failed says so in its piece's Trust row.
+  const shown = node && run.trust[node.id] ? { ...node, passport: { ...node.passport, trust: run.trust[node.id] } } : node
+  // On a page's Lineage tab, the panel answers for the selection, else the page's own piece.
+  const about = node || (embedded ? map.byId[focus] : null)
+  // Picking a measure of that model, or none (back to the model).
+  const pickMeasure = useCallback(name => {
+    go(name ? { node: '', lane: '', measure: `${about.name}:${name}` } : { node: about.id, measure: '' })
+  }, [go, about])
   return (
     <>
       <div className="map-bar">
@@ -393,21 +468,27 @@ export function TheMap({ graph, focus }) {
       </div>
       <div className="map-frame"><div className={`map-wrap${embedded ? ' map-wrap--tab' : ''}`}>
         <div className="map">
-          <Board graph={graph} map={map} lens={lens} sel={sel} lane={lane} select={select} light={setHover} hover={hover} />
+          <Board graph={graph} map={map} lens={lens} sel={sel} lane={lane} run={run} select={select} light={setHover} hover={hover} />
           <Legend lens={lens} />
         </div>
         {embedded ? (
-          node && node.id !== focus && node.open && (
-            <p className="map-picked">
-              <span>{node.label}</span> <Link to={node.open}>Open its page</Link>
-            </p>
-          )
+          <>
+            {node && node.id !== focus && node.open && (
+              <p className="map-picked">
+                <span>{node.label}</span> <Link to={node.open}>Open its page</Link>
+              </p>
+            )}
+            {about && DEPENDS_KINDS.has(about.kind) && (
+              <div className="pass pass--deps"><DependsOn node={about} measure={measure} onMeasure={pickMeasure} /></div>
+            )}
+          </>
         ) : (
           <aside className="pass" aria-label="Passport" ref={passRef}>
-            {node
-              ? <NodePassport n={node} byId={map.byId} onGo={goTo}
+            {shown
+              ? <NodePassport n={shown} byId={map.byId} onGo={goTo}
                               from={node.kind === 'table' ? [...map.takesFrom(node.id)].filter(id => map.byId[id].lane === 0) : null} />
               : <ProjectPassport summary={graph.summary || {}} focus={l => go({ lane: l, node: '' })} coverage={() => go({ lens: '', lane: '', node: '' })} />}
+            {node && <DependsOn node={node} measure={measure} onMeasure={pickMeasure} />}
           </aside>
         )}
       </div></div>
