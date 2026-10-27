@@ -4,6 +4,24 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-27 — Data is a console; SQL transforms record column lineage (CONSOLE, LINEAGE)
+
+The owner, on the map as Data's home: "This should feel like a console like AWS,
+Tableau, Qlik." Built: the Data home is a status board (five resource cards with a
+health pill, Needs attention from the graph's gaps and the unreachable source with
+an action on each row, Agent access, Recent activity, Schedules); one ResourceTable
+for every list (name · type · status pill · count · readers · agents · last activity ·
+row menu; search, filter chips and sort in the address); one ResourcePage for every
+resource (actions top right; tabs Overview · its own · Lineage · Activity · Agents ·
+Settings). The map moved to /data/lineage and every page's Lineage tab. The graph,
+the passport (now the Overview grid) and the lenses stay as data.
+
+Also approved and merged: SQL column lineage, as DuckDB's parser proves it, in the
+certificate (`tracebi/lineage_sql.py`); the manifesto's first refusal is now "We
+will not guess lineage". DuckDB 2.0.0 changed the serialized tree the same week; the
+reader handles both shapes and names the node and version when it cannot. The
+time scrubber was dropped: History and verify already answer it.
+
 ## 2026-10-27 — The Data workshop is a control tower: one graph, the map, a passport per piece (GRAPH, MAP)
 
 The owner, after the Data restructure: "still not where it needs to be… the

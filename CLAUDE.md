@@ -281,7 +281,10 @@ web/
                        # `npm run build` writes its output into tracebi/web/ui/dist.
     src/when.js        # stamp / ago / day / isoTitle: every date in the app; format.js: count / plural
     src/words.js       # the words for facts Data repeats: refreshWords / pipelineRefresh, movedWords, checksWords (the CONTRACT chip),
-                       #   tierWords, reachWords, FORM_LABEL — every page that says one calls these
+                       #   tierWords, reachWords, FORM_LABEL, statusWords (a graph node → {text, tone}: every Status column and pill)
+                       #   — every page that says one calls these
+    src/components/ResourceTable.jsx  # Data's one list shape (search ?q=, chips ?filter=, sort ?sort=, StatusPill, TypeChip, DropMenu row menu)
+    src/components/ResourcePage.jsx   # Data's one page shape (title, type, status, actions top right, tabs at ?tab=; Details, ActivityList)
     src/styles/global.css      # tokens: Geist / Geist Mono (--font-sans, --font-mono); --font-display is the sans,
                        #   tight (--weight-display 600, --tracking-display); --hue-1..6 folder hues, a label
                        #   never a state; --shadow / --shadow-lg only on the library's tiles, covers, pills and hero
@@ -966,29 +969,34 @@ DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the
 GET  /                                               → React SPA (tracebi/web/ui/dist): four places, Reports (/, the
                                                        library as a directory; /?folder=<path> one folder's page; the sidebar is
                                                        the folder tree, web/ui/src/folders.js; /ask is reached by Ask this model
-                                                       on a folder's or a model's page) · Data (/data: a directory like the library, its four folders
-                                                       nested under Data in the sidebar, every page in one frame (pages/Data.jsx
-                                                       DataFrame: a folder's name as its h1, or a breadcrumb Data › Warehouse ›
-                                                       fact_holdings). Overview /data (the map, pages/Map.jsx over GET /api/graph: sources →
-                                                       transforms → warehouse → models → reports read through a lens,
-                                                       ?lens=coverage|flow|freshness|trust|access; ?node=<id> selects a piece and
-                                                       its passport, components/Passport.jsx: From · Read by · Last moved · Trust ·
-                                                       Agents, with the piece's actions; ?lane= focuses a lane; the sidebar's four
-                                                       folders are jump points, nav.js jumpPath: the map with that lane focused, a
-                                                       second click the list) · Sources /data/sources (/data/sources/<name> one
-                                                       source: its passport rows, then its tables; Setup… holds the connection,
-                                                       credentials, Test, Edit and Delete; /data/sources/inputs the folder,
-                                                       /data/sources/<name>/<table> and /data/sources/inputs/<path> one table) ·
-                                                       Transforms /data/transforms (/data/transforms/<name> one transform, pages/Transform.jsx:
-                                                       Run with Refresh data and Steps | Table | Code, its code beside its contract,
-                                                       Reads, Produces) · Warehouse /data/warehouse (the data browser over every table,
-                                                       by writer: ?table=<id>, ?group=<id>; /data/warehouse/<table> one table) · Models
-                                                       /data/models (/data/models/<m> one model: its line, then the data browser,
-                                                       components/DataBrowser.jsx: tree, schema, a short inspector; ?table=<t> |
-                                                       ?measure=<name> | ?view=measures|relationships|storage|code|agent). A table's
-                                                       page: Data · Columns · Used by, the grid's sort, search, filters and page in
-                                                       the address. Nothing under /data is narrowed by ?model=; the old /data/<m>…,
-                                                       /data/tables/… and ?source= addresses redirect (movedTo)) · Review (/review) · Docs
+                                                       on a folder's or a model's page) · Data (/data: a console, its four lists nested under Data in the sidebar
+                                                       (plain links), every page in one frame (pages/Data.jsx DataFrame: a folder's
+                                                       name as its h1, or a breadcrumb Data › Warehouse › fact_holdings). Home /data
+                                                       (pages/DataHome.jsx, a status board: five cards with a health pill, Needs
+                                                       attention from the graph's gaps and unreachable sources, Agent access, Recent
+                                                       activity, Schedules; View lineage · Add connection · Refresh data ▾). Lineage
+                                                       /data/lineage (the map, pages/Map.jsx over GET /api/graph, read through a lens
+                                                       ?lens=coverage|flow|freshness|trust|access; ?node=<id> selects a piece and its
+                                                       passport rows, components/Passport.jsx, no actions; ?lane=; /data?lens|node|lane
+                                                       redirect here). Every list is components/ResourceTable.jsx (?q=, ?filter=, ?sort=,
+                                                       a Status column in words.js statusWords' words, a ⋯ row menu); every thing's page
+                                                       components/ResourcePage.jsx (name · type chip · status pill · actions top right ·
+                                                       tabs at ?tab=: Overview (Details grid, the passport rows among the facts) · its own ·
+                                                       Lineage (the map focused on it) · Activity · Agents · Settings; empty tabs left out).
+                                                       Sources /data/sources (connections and input files in one list; /data/sources/<name>:
+                                                       Overview · Tables (agent ticks) · Lineage · Activity · Agents · Settings (the Setup
+                                                       sheet's content), Test and Setup ▾ top right; /data/sources/inputs the folder;
+                                                       /data/sources/<name>/<table> and /data/sources/inputs/<path> one table) · Transforms
+                                                       /data/transforms (/data/transforms/<name>, pages/Transform.jsx: Refresh data top
+                                                       right, its run on Steps; Code; Reads and Produces on Overview) · Warehouse
+                                                       /data/warehouse (?view=table, the list, default | schema, the data browser by
+                                                       writer: ?table=<id>, ?group=<id>; /data/warehouse/<table> one table: Overview ·
+                                                       Data · Columns (From) · Used by · Lineage · Activity, Copy SQL and Export top
+                                                       right) · Models /data/models (/data/models/<m>: Overview · Schema (DataBrowser:
+                                                       tree, canvas, inspector; ?table= | ?measure= | ?view=… open it) · Measures ·
+                                                       Lineage · Activity · Agents · Settings; Ask this model, Edit as a draft top
+                                                       right). Nothing under /data is narrowed by ?model=; the old /data/<m>…,
+                                                       /data/tables/…, /map and ?source= addresses redirect (movedTo)) · Review (/review) · Docs
                                                        (a report's page /reports/<name>: breadcrumb Library › folder › report, one
                                                        command bar, and on a column 1240px or wider the trace beside the page: the
                                                        clicked figure in five steps, source, model, query, fingerprint, re-run;
@@ -1037,8 +1045,8 @@ Don't add these unless asked.
 | See a complete working wiring | `tracebi/web/demo_app/` |
 | Understand data flow end-to-end | `examples/phase4_example.py` |
 | Add something to the web API | `tracebi/registry.py` (singleton) + `tracebi/web/api/routers/` |
-| Change the web app's pages | Data's Overview is `pages/Map.jsx` (the map over `/api/graph`) with `components/Passport.jsx`; `web/ui/src/nav.js` (the four places; `DATA_FOLDERS` and Data's path helpers `modelPath`, `transformPath`, `warehouseTablePath`, …; `movedTo` for old addresses) + `web/ui/src/App.jsx` + `pages/Data.jsx` (`DataFrame`, the frame of every page under /data; a transform's page is `pages/Transform.jsx`); the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name); `web/ui/src/folders.js` (the library's folders, their order and hue) + `components/Directory.jsx` (cover tile, rows, folder tile, Today) |
-| Change the data browser (a model's schema, the Warehouse folder) | `web/ui/src/components/DataBrowser.jsx` + `components/modelGraph.js` (`modelSchema` / `warehouseSchema` / `layoutSchema`) |
+| Change the web app's pages | Data's home is `pages/DataHome.jsx` (a status board over `/api/graph`); Lineage is `pages/Map.jsx` with `components/Passport.jsx`; every Data list is `components/ResourceTable.jsx` and every Data page `components/ResourcePage.jsx`; `web/ui/src/nav.js` (the four places; `DATA_FOLDERS`, `SIDEBAR_FOLDERS` and Data's path helpers `modelPath`, `transformPath`, `warehouseTablePath`, `lineagePath`, …; `movedTo` for old addresses) + `web/ui/src/App.jsx` + `pages/Data.jsx` (`DataFrame`, the frame of every page under /data; a transform's page is `pages/Transform.jsx`); the browser tab's title comes from `components/Layout.jsx` (the page's h1 after its tab; `useDocumentTitle(...parts)` for a page whose h1 is not its name); `web/ui/src/folders.js` (the library's folders, their order and hue) + `components/Directory.jsx` (cover tile, rows, folder tile, Today) |
+| Change the data browser (a model's Schema tab, the Warehouse folder's Schema view) | `web/ui/src/components/DataBrowser.jsx` + `components/modelGraph.js` (`modelSchema` / `warehouseSchema` / `layoutSchema`) |
 | Write an ad hoc report | `tracebi new-report` → `tracebi dev` (the artifact loop) |
 | Migrate a JSON spec to the artifact | `tracebi migrate spec reports/<name>.json` → `tracebi/reports/compile_spec.py` |
 | Define a reusable DataModel | `tracebi new-model` → `models/` → `tracebi/model_registry.py` |
