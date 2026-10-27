@@ -128,6 +128,62 @@ def _ident(name: str) -> str:
     return '"' + name.replace('"', '""') + '"'
 
 
+# DuckDB's serialized tree is not a stable format: 2.0 renamed parts of it.
+# Every read of a node goes through these, which accept the 1.5 and the 2.0
+# shape and, for anything else, raise _Unresolved naming the node and the part
+# that is missing, so an unknown shape is a reason, never a KeyError.
+
+def _what(node: Any) -> str:
+    if isinstance(node, dict):
+        kind = node.get("class") or node.get("type")
+        if kind:
+            return f"a {str(kind).lower().replace('_', ' ')} node"
+    return f"a {type(node).__name__}"
+
+
+def _part(node: Any, *keys: str) -> Any:
+    """``node[k1][k2]…``, or _Unresolved naming the node and the missing key."""
+    at = node
+    for key in keys:
+        if not isinstance(at, dict) or at.get(key) is None:
+            import duckdb
+
+            raise _Unresolved(f"{_what(node)} without {'.'.join(keys)} in DuckDB "
+                              f"{duckdb.__version__}'s parse tree")
+        at = at[key]
+    return at
+
+
+def _cte_query(value: dict) -> dict:
+    """A CTE's query node: ``query_node`` in 2.0, ``query.node`` in 1.5."""
+    if isinstance(value, dict) and isinstance(value.get("query_node"), dict):
+        return value["query_node"]
+    return _part(value, "query", "node")
+
+
+def _args(fn: dict) -> list:
+    """A function's arguments: ``arguments: [{name, expression}]`` in 2.0,
+    ``children`` in 1.5."""
+    if isinstance(fn.get("arguments"), list) and (fn["arguments"] or "children" not in fn):
+        return [_part(a, "expression") if isinstance(a, dict) and "expression" in a else a
+                for a in fn["arguments"]]
+    return list(fn.get("children") or [])
+
+
+def _string(expr: Any) -> Optional[str]:
+    """A string literal's text: ``literal: {kind: STRING, text}`` in 2.0,
+    ``value: {type: {id: VARCHAR}, value}`` in 1.5; None for anything else."""
+    if not isinstance(expr, dict) or expr.get("class") != "CONSTANT":
+        return None
+    literal = expr.get("literal")
+    if isinstance(literal, dict):
+        return literal.get("text") if literal.get("kind") == "STRING" else None
+    value = expr.get("value")
+    if isinstance(value, dict) and isinstance(value.get("value"), str):
+        return value["value"]
+    return None
+
+
 def _tree(con, sql: str) -> dict:
     tree = json.loads(con.execute("SELECT json_serialize_sql(?)", [sql]).fetchone()[0])
     if tree.get("error"):
@@ -176,12 +232,12 @@ class Tracer:
                 if body is None:
                     raise _Unresolved("it is created without a query and filled by "
                                       "statements the reader does not follow")
-                cols: Any = self._query(_tree(self.con, body)["node"], None, {})
+                cols: Any = self._query(_part(_tree(self.con, body), "node"), None, {})
             except _Unresolved as exc:
                 cols = f"statement {self._n} cannot be followed: {exc}"
             except Exception as exc:  # noqa: BLE001 — never guess, never fail the run
                 cols = (f"statement {self._n} has a shape the reader does not follow "
-                        f"({type(exc).__name__})")
+                        f"({type(exc).__name__}: {' '.join(str(exc).split())[:200]})")
             self._pending = (temp, name, cols)
         elif kind == "DROP":
             self._forget(name)
@@ -257,14 +313,18 @@ class Tracer:
         ctes = dict(ctes)
         for entry in entries:
             value = entry.get("value") or {}
-            cols = self._query(value["query"]["node"], outer, ctes)
+            cols = self._query(_cte_query(value), outer, ctes)
             cols = _renamed(cols, value.get("aliases") or [])
             ctes[str(entry.get("key")).lower()] = cols
         return ctes
 
     def _setop(self, node: dict, outer, ctes) -> list[tuple[str, _Col]]:
+        # 1.5 has left and right; 2.0 a list of children (left and right null).
         sides = [self._query(node[k], outer, ctes) for k in ("left", "right")] \
-            if "left" in node else [self._query(c, outer, ctes) for c in node.get("children") or []]
+            if node.get("left") is not None else [self._query(c, outer, ctes)
+                                                  for c in node.get("children") or []]
+        if len(sides) < 2:
+            raise _Unresolved(f"{_what(node)} with {len(sides)} side(s)")
         op = node.get("setop_type")
         if op in ("EXCEPT", "INTERSECT"):
             return sides[0]     # the right side only removes rows
@@ -294,7 +354,7 @@ class Tracer:
             col = self._expr(expr, scope)
             name = expr.get("alias") or None
             if name is None and expr.get("class") == "COLUMN_REF":
-                name = expr["column_names"][-1]
+                name = _part(expr, "column_names")[-1]
             if name:
                 scope.aliases.setdefault(name.lower(), col)
             out.append((name, col))
@@ -362,9 +422,9 @@ class Tracer:
             cols = self._table(ref, ctes)
             rel = _Rel(alias or name, cols)
         elif kind == "SUBQUERY":
-            rel = _Rel(alias, self._query(ref["subquery"]["node"], outer, ctes))
+            rel = _Rel(alias, self._query(_part(ref, "subquery", "node"), outer, ctes))
         elif kind == "TABLE_FUNCTION":
-            rel = _Rel(alias or str(ref["function"].get("function_name")),
+            rel = _Rel(alias or str(_part(ref, "function").get("function_name")),
                        self._function_table(ref, outer, ctes))
         elif kind == "EXPRESSION_LIST":
             scope = _Scope([], {}, outer, ctes)
@@ -421,23 +481,22 @@ class Tracer:
                           f"or a table of the warehouse")
 
     def _function_table(self, ref: dict, outer, ctes) -> list[tuple[str, _Col]]:
-        fn = ref["function"]
+        fn = _part(ref, "function")
         fname = str(fn.get("function_name") or "").lower()
         ordinal = ref.get("with_ordinality") == "WITH_ORDINALITY"
         bare = {**ref, "alias": "", "column_name_alias": [], "with_ordinality": "WITHOUT_ORDINALITY"}
         if fname in _FILE_READERS:
-            args = fn.get("children") or []
-            first = args[0] if args else {}
-            value = (first.get("value") or {}) if first.get("class") == "CONSTANT" else {}
-            if not isinstance(value.get("value"), str):
+            args = _args(fn)
+            literal = _string(args[0]) if args else None
+            if literal is None:
                 raise _Unresolved(f"{fname}(…) reads a path that is not one literal")
-            path = self._path(value["value"])
+            path = self._path(literal)
             # Asked without the statement's aliases, so a base is the file's own column.
             cols = self._describe(_select_star(self.con, bare))
             out = [(c, _Col({f"{path}.{c}"})) for c in cols]
         elif fname in _GENERATORS:
             scope = _Scope([], {}, outer, ctes)
-            made = _Col.union(self._expr(a, scope) for a in fn.get("children") or [])
+            made = _Col.union(self._expr(a, scope) for a in _args(fn))
             out = [(c, made) for c in self._describe(_select_star(self.con, bare))]
         else:
             raise _Unresolved(f"it reads the table function {fname}(…), which the reader "
@@ -455,7 +514,7 @@ class Tracer:
             return _NONE
         cls = expr.get("class")
         if cls == "COLUMN_REF":
-            return self._column(expr["column_names"], scope)
+            return self._column(_part(expr, "column_names"), scope)
         if cls == "STAR":
             raise _Unresolved("an expression over * or COLUMNS(…)")
         if cls == "SUBQUERY":
@@ -476,7 +535,7 @@ class Tracer:
     def _subquery(self, expr: dict, scope: _Scope) -> _Col:
         """Everything a scalar, ``IN`` or ``EXISTS`` subquery reads: its value
         is decided by its WHERE as much as by its select list (a lookup)."""
-        node = expr["subquery"]["node"]
+        node = _part(expr, "subquery", "node")
         parts = [self._expr(expr.get("child"), scope)]
         parts += [c for _, c in self._query(node, scope, scope.ctes)]
         parts.append(self._clauses(node, scope))
@@ -523,8 +582,8 @@ class Tracer:
         if row is not None and row[0]:
             try:
                 tree = _tree(self.con, f"SELECT {row[0]}")
-                reads = _reads_table(tree["node"]["select_list"]) or any(
-                    self._macro_reads(f) for f in _functions(tree["node"]["select_list"]))
+                listed = _part(tree, "node", "select_list")
+                reads = _reads_table(listed) or any(self._macro_reads(f) for f in _functions(listed))
             except _Unresolved:
                 reads = True
             if reads:
@@ -715,8 +774,8 @@ def _bind(names: list[str], scope: _Scope) -> Optional[_Col]:
 def _lambda_params(lhs: Any) -> list[str]:
     if isinstance(lhs, dict):
         if lhs.get("class") == "COLUMN_REF":
-            return [lhs["column_names"][-1]]
-        return [p for c in lhs.get("children") or [] for p in _lambda_params(c)]
+            return [_part(lhs, "column_names")[-1]]
+        return [p for c in _args(lhs) for p in _lambda_params(c)]
     return []
 
 
@@ -741,13 +800,9 @@ def _functions(node: Any) -> list[str]:
 
 def _select_star(con, ref: dict) -> str:
     """``SELECT * FROM <ref>`` as SQL, written back by DuckDB from the tree,
-    so its columns are asked of the catalog exactly as the statement names it."""
-    star = {"class": "STAR", "type": "STAR", "alias": "", "query_location": 0,
-            "relation_name": "", "exclude_list": [], "replace_list": [], "columns": False,
-            "expr": None, "qualified_exclude_list": [], "rename_list": []}
-    node = {"type": "SELECT_NODE", "modifiers": [], "cte_map": {"map": []},
-            "select_list": [star], "from_table": ref, "where_clause": None,
-            "group_expressions": [], "group_sets": [], "aggregate_handling": "STANDARD_HANDLING",
-            "having": None, "sample": None, "qualify": None}
-    doc = {"error": False, "statements": [{"node": node, "named_param_map": []}]}
+    so its columns are asked of the catalog exactly as the statement names it.
+    The SELECT around *ref* is DuckDB's own serialization of one, so it has
+    the shape this version of DuckDB reads back."""
+    doc = json.loads(con.execute("SELECT json_serialize_sql('SELECT * FROM __tracebi_ref')").fetchone()[0])
+    _part(doc["statements"][0], "node")["from_table"] = ref
     return con.execute("SELECT json_deserialize_sql(?::JSON)", [json.dumps(doc)]).fetchone()[0]
