@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { BarChart, Bar, XAxis, YAxis, LabelList, ResponsiveContainer } from 'recharts'
 
 import {
   reportPath, useAppStatus, useAskAnswer, useDimensionValues, useFolders, useKeepAnswer, useMe, useModel,
@@ -11,9 +10,10 @@ import {
   encodeQuery, factOf, keepFiles, keepPath, measureLabel, measureNames, nextSlot, orderWords,
   questionQuery, requestOf, resolve, segments, sentenceOf, suggest, tidy,
 } from '../ask'
+import AnswerChart from '../components/AnswerChart'
 import { CodeFiles } from '../components/CodeView'
 import { PageHeader } from '../components/Scope'
-import { Btn, ErrorDetail, SkeletonCard, Spinner, Verdict, useNarrow, useToast } from '../components/Shared'
+import { Btn, ErrorDetail, SkeletonCard, Spinner, Verdict, useToast } from '../components/Shared'
 import { askPath, rememberModel } from '../nav'
 import { count } from '../format'
 import { bindingOf, pythonOf, queryLineOf } from '../queryCode'
@@ -149,7 +149,8 @@ function AskModel({ name, label }) {
       {asked && answer.isPending && <div className="ask-answer ask-answer--wait"><Spinner size={16} /> Asking {label}…</div>}
       {asked && answer.data && (
         <Answer name={name} label={label} detail={detail} q={asked} body={body} result={answer.data}
-                canKeep={canKeep} />
+                canKeep={canKeep}
+                onNarrow={v => change({ ...asked, filters: { ...asked.filters, [asked.dimensions[0]]: v } })} />
       )}
 
       <details className="ask-advanced">
@@ -342,55 +343,22 @@ function Examples({ detail, label, onAsk }) {
 
 // ── The answer ───────────────────────────────────────────────────────────────
 
-// Category labels wrap rather than cut: words onto up to three lines.
-function wrapWords(text, chars) {
-  const lines = []
-  for (const word of String(text).split(' ')) {
-    const last = lines[lines.length - 1]
-    if (last && (last + ' ' + word).length <= chars) lines[lines.length - 1] = `${last} ${word}`
-    else lines.push(word)
-  }
-  return lines
-}
-
-function AnswerBars({ result, dim, measure, label }) {
-  const narrow = useNarrow()
-  const axis = narrow ? 112 : 200
-  const chars = Math.floor(axis / 7)
-  const data = result.data.map((r, i) => ({
-    name: r[dim] == null ? '(none)' : String(r[dim]),
-    lines: wrapWords(r[dim] == null ? '(none)' : r[dim], chars),
+// The answer's bars: one per row, the server's display text at the end of
+// each. A click on a bar narrows the question to that value (the sentence's
+// "for" slot); the next Ask asks it.
+function AnswerBars({ result, dim, measure, label, onPick }) {
+  const rows = result.data.map((r, i) => ({
+    label: r[dim] == null ? '(none)' : String(r[dim]),
     value: r[measure],
-    text: result.display[i][measure],
+    display: result.display[i][measure],
   }))
-  const tall = Math.max(...data.map(d => d.lines.length))
-  const band = Math.max(34, tall * 15 + 10)
-  const Tick = ({ x, y, payload, index }) => {
-    const lines = data[index]?.lines || [payload.value]
-    return (
-      <text x={x - 8} y={y - ((lines.length - 1) * 15) / 2} textAnchor="end" dominantBaseline="middle"
-            fontSize={12} fill="var(--text-2)">
-        {lines.map((l, i) => <tspan key={i} x={x - 8} dy={i ? 15 : 0}>{l}</tspan>)}
-      </text>
-    )
+  // The filter takes the row's own value (a year stays a number); a row with
+  // no value for the dimension has nothing to narrow to.
+  const pick = name => {
+    const row = result.data.find(r => r[dim] != null && String(r[dim]) === name)
+    if (row) onPick(row[dim])
   }
-  return (
-    <figure className="ask-bars" aria-label={label}>
-      <ResponsiveContainer width="100%" height={data.length * band + 8}>
-        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 104, left: 0, bottom: 4 }}>
-          <XAxis type="number" hide domain={[dataMin => Math.min(0, dataMin), 'auto']} />
-          <YAxis type="category" dataKey="name" width={axis} tick={<Tick />} interval={0}
-                 axisLine={false} tickLine={false} />
-          {/* The bar is 55% of its band (the report's chart style). */}
-          <Bar dataKey="value" fill="var(--chart-1)" radius={[0, 2, 2, 0]} barSize={Math.min(22, Math.round(band * 0.55))}
-               isAnimationActive={false}>
-            <LabelList dataKey="text" position="right" offset={8}
-                       style={{ fontSize: 'var(--text-sm)', fill: 'var(--text)', fontVariantNumeric: 'tabular-nums' }} />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </figure>
-  )
+  return <AnswerChart className="ask-bars" rows={rows} label={label} onPick={pick} />
 }
 
 function AnswerTable({ detail, q, result }) {
@@ -444,7 +412,7 @@ function keepFolders(data, model, labelOf) {
     .map(f => ({ path: f.path, label: f.mine ? 'My published' : labelOf(f.path) }))
 }
 
-function Answer({ name, label, detail, q, body, result, canKeep }) {
+function Answer({ name, label, detail, q, body, result, canKeep, onNarrow }) {
   const shape = answerShape(q, result)
   const [view, setView] = useState('chart')
   const sentence = sentenceOf(detail, q)
@@ -480,7 +448,8 @@ function Answer({ name, label, detail, q, body, result, canKeep }) {
       ) : shape === 'number' ? (
         <AnswerNumbers detail={detail} q={q} result={result} />
       ) : shape === 'chart' && view === 'chart' ? (
-        <AnswerBars result={result} dim={q.dimensions[0]} measure={measureNames(q)[0]} label={sentence} />
+        <AnswerBars result={result} dim={q.dimensions[0]} measure={measureNames(q)[0]} label={sentence}
+                    onPick={onNarrow} />
       ) : (
         <AnswerTable detail={detail} q={q} result={result} />
       )}

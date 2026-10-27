@@ -988,7 +988,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                                  "order_by": [{"column": "fair_value", "desc": True}]}).encode(),
             )).read())
             first = api["display"][0]["fair_value"]
-            expect(page.locator(".ask-bars .recharts-label").first).to_have_text(first)
+            expect(page.locator(".ask-bars .answer-chart__value").first).to_have_text(first)
             answer = page.get_by_role("region", name="The answer")
             expect(answer.locator(".verdict")).to_have_text("Not checked")
             assert "&q=" in page.url        # the link reproduces the question

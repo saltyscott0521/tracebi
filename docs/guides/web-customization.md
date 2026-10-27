@@ -131,7 +131,8 @@ npm run build    # writes tracebi/web/ui/dist/, which FastAPI serves at /
 ```
 
 The UI is React 18 and Vite, with React Query for data, React Flow for graphs
-and Recharts for charts. In `web/ui/src/`:
+and its own SVG charts (`components/AnswerChart.jsx`, d3 for the scales). In
+`web/ui/src/`:
 
 ```
 api.js               one React Query hook per endpoint

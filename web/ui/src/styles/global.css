@@ -1278,6 +1278,23 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .ask-answer__sentence { margin: 0; font-size: var(--text-xl); font-weight: 600; line-height: 1.3; color: var(--text); letter-spacing: var(--tracking-tight); }
 .ask-answer__rows { white-space: nowrap; font-weight: 400; color: var(--muted); font-size: var(--text-base); letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .ask-bars { margin: 0; }
+/* AnswerChart: the report engine's bar (tracebi.css), in the app's tokens. */
+.answer-chart { margin: 0; min-width: 0; }
+.answer-chart__svg { display: block; overflow: visible; }
+.answer-chart__label { fill: var(--text-2); font-size: 12px; text-anchor: end; dominant-baseline: middle; }
+.answer-chart__value { fill: var(--text); font-size: var(--text-sm); font-variant-numeric: tabular-nums; dominant-baseline: middle; }
+.answer-chart__mark { fill: var(--chart-1); }
+.answer-chart__zero { stroke: var(--border-strong); stroke-width: 1; }
+.answer-chart__band { fill: var(--text); opacity: 0; transition: opacity var(--t); }
+.answer-chart__bar:hover .answer-chart__band, .answer-chart__bar:focus-visible .answer-chart__band { opacity: .05; }
+.answer-chart__bar:focus { outline: none; }
+.answer-chart__bar:focus-visible .answer-chart__mark { stroke: var(--ink); stroke-width: 2; }
+.answer-chart__bar--pick { cursor: pointer; }
+.trend-chart { min-width: 0; }
+.trend-chart svg { display: block; overflow: visible; }
+.trend-chart__grid { stroke: var(--border); stroke-width: 1; }
+.trend-chart__zero { stroke: var(--border-strong); stroke-width: 1; }
+.trend-chart__tick { fill: var(--muted); font-size: var(--text-xs); dominant-baseline: middle; font-variant-numeric: tabular-nums; }
 .ask-view { margin: 8px 0 0; }
 .ask-table { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
 .ask-table th.num, .ask-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
