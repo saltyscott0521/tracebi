@@ -264,7 +264,8 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
                        #   GET /api/graph and the gateway's describe_project serve it (design/control-tower.md);
                        #   never re-runs a verdict (desk.cached_verdict); edge_facts: the parser-proven column lineage
-                       #   edges (source table / file / table → table)
+                       #   edges (source table / file / table → table); downstream(registry, node): every report figure that
+                       #   depends on a table, source table or measure, from the builds' manifests (GET /api/graph/downstream; read-only)
   exports.py           # the gateway's export_table: a thin call over warehouse.export_table (the one implementation)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
@@ -899,6 +900,7 @@ GET  /api/connectors/{name}/tables                   → {connected, tables: [{n
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read (each with method scanner|arrow|pandas and snapshot), said once per transform; the transform page reads it with /api/transforms and /api/transforms/{name}/source
 GET  /api/graph                                      → {summary, nodes, edges, edge_facts}: the project as one graph (tracebi/graph.py), the same dict as the gateway's describe_project; reports the caller cannot view left out with their edges
+GET  /api/graph/downstream?node=<id>                → {node, kind, measure, reads, summary: {figures, reports}, reports: [{id, name, label, open, built_at, trust, figures: [{id, kind, binding, label, text, open}]}], not_built}: every report figure that depends on a table:, source_table: or measure:<model>:<measure> node, the number its built page prints (the desk's values) and its report's verdict; read from the last builds' manifests (tracebi/graph.py downstream); starts nothing; 404 for any other node
 GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
 GET  /api/transforms/{name}/source                   → the transform's file and its .contract.yaml (read-only; name is a stem in transforms/)
 GET  /api/models
@@ -979,8 +981,12 @@ GET  /                                               → React SPA (tracebi/web/
                                                        activity, Schedules; View lineage · Add connection · Refresh data ▾). Lineage
                                                        /data/lineage (the map, pages/Map.jsx over GET /api/graph, read through a lens
                                                        ?lens=coverage|flow|freshness|trust|access; ?node=<id> selects a piece and its
-                                                       passport rows, components/Passport.jsx, no actions; ?lane=; /data?lens|node|lane
-                                                       redirect here). Every list is components/ResourceTable.jsx (?q=, ?filter=, ?sort=,
+                                                       passport rows, components/Passport.jsx, no actions; ?measure=<model>:<measure> a
+                                                       model's measure; under the passport Depends on this (components/DependsOn.jsx over
+                                                       GET /api/graph/downstream) for a table, source table or measure, links only; a
+                                                       pipeline run going now moves on it and on every Lineage tab (api.js
+                                                       useRunningRuns, one shared poll; observation only, never a trigger); ?lane=;
+                                                       /data?lens|node|lane redirect here). Every list is components/ResourceTable.jsx (?q=, ?filter=, ?sort=,
                                                        a Status column in words.js statusWords' words, a ⋯ row menu); every thing's page
                                                        components/ResourcePage.jsx (name · type chip · status pill · actions top right ·
                                                        tabs at ?tab=: Overview (Details grid, the passport rows among the facts) · its own ·
@@ -1001,7 +1007,7 @@ GET  /                                               → React SPA (tracebi/web/
                                                        /data/tables/…, /map and ?source= addresses redirect (movedTo)) · Review (/review) · Docs
                                                        (a report's page /reports/<name>: breadcrumb Library › folder › report, one
                                                        command bar, and on a column 1240px or wider the trace beside the page: the
-                                                       clicked figure in five steps, source, model, query, fingerprint, re-run;
+                                                       clicked figure (or ?figure=<id>) in five steps, source, model, query, fingerprint, re-run;
                                                        ⌘K groups Folders, Reports, Tables, Models and Places)
                                                        (/docs: the handbook in docs/toc.yaml's order; the quickstart at /docs/get-started), plus History
                                                        (/runs) and Verify (/verify); older addresses redirect (movedTo in
