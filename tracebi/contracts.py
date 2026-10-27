@@ -219,12 +219,14 @@ class _Contract:
     def __init__(self, name: str, warehouse: str,
                  note: Optional[str] = None,
                  sources: Optional[dict] = None,
-                 views: Optional[list] = None) -> None:
+                 views: Optional[list] = None,
+                 lineage: Optional[dict] = None) -> None:
         self.name = name
         self.warehouse = warehouse
         self.note = note
         self.sources = sources
         self.views = views
+        self.lineage = lineage
         self._checks: list[dict] = []
         self._tables: set[str] = set()
         self._con = None
@@ -420,6 +422,13 @@ class _Contract:
         # read through the same load path as a table.
         if self.views:
             record["views"] = self.views
+        # A SQL transform's column lineage, as DuckDB's parser proved it
+        # (tracebi.lineage_sql): per sink table and column, the columns it is
+        # computed from, or null and why. Only the SQL form has a tree to
+        # read, so only it says `form: sql` and carries `lineage`.
+        if self.lineage is not None:
+            record["form"] = "sql"
+            record["lineage"] = self.lineage
         existing =read_contracts(self.warehouse) or {
             "schema_version": CONTRACTS_SCHEMA_VERSION, "transforms": {}}
         existing.setdefault("transforms", {})[self.name] = record
@@ -443,13 +452,19 @@ class contract:
     *views* is ``[{name, definition_sha256, bases}]``, the sink views a SQL
     transform created (:func:`tracebi.transforms.run_sql`), recorded under
     ``views``. A check runs against a view as against a table.
+
+    *lineage* is a SQL transform's column lineage
+    (:mod:`tracebi.lineage_sql`), recorded under ``lineage`` with ``form:
+    sql``. A Python transform passes none: nothing is traced through pandas.
     """
 
     def __init__(self, name: str, warehouse: str,
                  note: Optional[str] = None,
                  sources: Optional[dict] = None,
-                 views: Optional[list] = None) -> None:
-        self._c = _Contract(name, warehouse, note=note, sources=sources, views=views)
+                 views: Optional[list] = None,
+                 lineage: Optional[dict] = None) -> None:
+        self._c = _Contract(name, warehouse, note=note, sources=sources, views=views,
+                            lineage=lineage)
 
     def __enter__(self) -> _Contract:
         self._c._con = _reader(self._c.warehouse)
@@ -533,17 +548,17 @@ def read_contract_file(path: "str | os.PathLike[str]", default_name: str) -> dic
 
 def run_contract_file(path: "str | os.PathLike[str]", warehouse: str,
                       default_name: str, sources: Optional[dict] = None,
-                      views: Optional[list] = None) -> dict:
+                      views: Optional[list] = None, lineage: Optional[dict] = None) -> dict:
     """Run a ``<transform>.contract.yaml`` against the sunk tables, exactly as
     the ``with contract(...)`` block it stands for: the same checks, the same
     raise on failure, the same certificate on success (with *sources*, the
-    SQL transform's ``-- source:`` loads, and *views*, its sink views).
-    Returns the parsed file."""
+    SQL transform's ``-- source:`` loads, *views*, its sink views, and
+    *lineage*, its column lineage). Returns the parsed file."""
     spec = read_contract_file(path, default_name)
     if not spec["checks"]:
         return spec     # declares nothing; writes nothing
     with contract(spec["name"], warehouse=warehouse, note=spec["note"],
-                  sources=sources, views=views) as c:
+                  sources=sources, views=views, lineage=lineage) as c:
         for decl in spec["checks"]:
             c.check(decl)
     return spec
@@ -908,6 +923,20 @@ def view_record(certs: Optional[dict], name: str) -> Optional[dict]:
     record, rec, v = max(hits, key=lambda h: str(h[1].get("checked_at") or ""))
     return {"contract": record, "checked_at": rec.get("checked_at"),
             "bases": list(v.get("bases") or []), "definition_sha256": v.get("definition_sha256")}
+
+
+def columns_from(certs: Optional[dict], name: str) -> Optional[dict]:
+    """Where each column of table *name* comes from, as the newest record
+    whose SQL transform wrote it recorded (``lineage``, DuckDB's parse:
+    :mod:`tracebi.lineage_sql`): ``{column: {"from": [...], "via"?: [...]} |
+    {"from": None, "reason": ...}}``, or None when no record has lineage for
+    it (a pandas transform, an older run, a table written outside one)."""
+    hits = [rec for rec in ((certs or {}).get("transforms") or {}).values()
+            if isinstance(rec, dict) and isinstance(rec.get("lineage"), dict)
+            and isinstance(rec["lineage"].get(name), dict)]
+    if not hits:
+        return None
+    return max(hits, key=lambda rec: str(rec.get("checked_at") or ""))["lineage"][name]
 
 
 def _check_touches(chk: dict, table: str) -> bool:

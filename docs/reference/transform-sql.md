@@ -270,6 +270,52 @@ returns `(frame, record)`, the same load and record. Pass the records to
 `contract(name, warehouse=..., sources={ref: record})` and the certificate
 says the same thing. `holdings_transform_pandas.py` does this.
 
+## Where each column comes from
+
+While a SQL transform runs, DuckDB parses each statement
+(`json_serialize_sql`), and the certificate records, for every table and view
+the script leaves in the warehouse, which columns each of its columns is
+computed from, under the transform's `lineage` (with `"form": "sql"`):
+
+```json
+"lineage": {
+  "fact_holdings": {
+    "par": {"from": ["inputs/holdings.csv.par"], "via": ["keyed", "parsed", "raw_holdings"]},
+    "rating_id": {"from": ["dim_rating.rating_id"]},
+    "holding_id": {"from": [], "via": ["keyed", "parsed", "raw_holdings"]}
+  },
+  "dim_rating": {
+    "rating": {"from": ["crm.issuer_ratings.rating"], "via": ["issuer_rating"]}
+  }
+}
+```
+
+- A base is `<connection>.<table>.<column>` for a `-- source:` table, the
+  file's path and column for a file read (`inputs/holdings.csv.par`), and
+  `<table>.<column>` for another warehouse table, so a column chains through
+  the warehouse. `TEMP` tables, CTEs and macros are followed through; `via`
+  names the `TEMP` tables a column passed.
+- `from` is every column the value's expression reads: arguments, `CASE`
+  branches, a window's `PARTITION BY` and `ORDER BY`, everything a scalar
+  subquery reads. A `WHERE`, a join condition or a `GROUP BY` picks rows and
+  is not counted. `SELECT *` expands through the run's own catalog.
+- `"from": []` means the column is computed from no column: a constant,
+  `row_number()`, `range`.
+- `"from": null` comes with a `reason`, and nothing is guessed. The shapes it
+  does not follow: a table macro or any other table function but the file
+  readers, `range`, `generate_series` and `unnest`; `COLUMNS(…)` and a `*`
+  inside an expression; a recursive CTE; a scalar macro whose body reads a
+  table; a read of something that is neither a `-- source:` table, a file
+  nor a warehouse table (another `ATTACH`); and a table an `INSERT`,
+  `UPDATE`, `ALTER`, `MERGE` or `COPY … FROM` changes after the `CREATE …
+  AS` that made it.
+
+It is recorded only beside a contract (the certificate is the contract's),
+and only for SQL: a Python or notebook transform records none. It says what
+the SQL reads, not that a number is right. The map's Flow lens draws it for a
+selected warehouse table, a table's Columns tab lists it, and the gateway's
+`describe_table` and `describe_project` carry it as `columns_from`.
+
 ## Saving back
 
 A result may leave the warehouse.

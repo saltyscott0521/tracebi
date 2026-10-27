@@ -119,6 +119,11 @@ it does not read a transform, and it never asserts a number is *correct*. It
 asserts something narrower and more durable: this number is still what this
 query against this model produces.
 
+A SQL transform is the one exception, and only as far as a parser goes:
+DuckDB's own parse of its statements records which source columns each sink
+column is computed from, in the certificate, with `null` and a reason where
+the tree cannot be followed; pandas records nothing.
+
 What phase ① *can* do is declare a **sink contract**: closed, re-runnable
 checks on the tables it lands — row counts, unique keys, referential
 integrity, reconciliation — checked at sink time and recorded beside the
@@ -152,8 +157,12 @@ The maturity frame is the **assurance ladder**:
 
 ## What we refuse to build
 
-- **We will not trace through the transform.** Fake lineage over free-form
-  pandas would trade honesty for a demo. The line stays at the sink.
+- **We will not guess lineage.** Through a SQL transform, DuckDB's parser
+  proves which source columns each sink column is computed from, and the
+  certificate records exactly that, column by column, with `null` and a
+  reason wherever the tree cannot be resolved. Through pandas or a notebook,
+  nothing is recorded, and the line stays at the sink: fake lineage over
+  free-form code would trade honesty for a demo.
 - **We will not let `verify` guess.** An undiagnosed mismatch exits nonzero.
   No heuristic ever rounds a discrepancy down to "probably fine."
 - **We will not let presentation change a number.** Derived labels and
@@ -187,6 +196,7 @@ One canon, used everywhere — code, docs, UI, agent context:
 | **Transform** (①) | Unconstrained pandas in `transforms/`; the contract is what lands, not how. (The medallion `ManipulationLayer` is orchestration vocabulary for tracked pipeline jobs — a different thing, not this phase.) |
 | **Sink** | Where transform output becomes named warehouse tables — where trust attaches |
 | **Sink contract** | Declared checks on the tables a transform lands, recorded beside the warehouse; the sink *satisfied its contract* — the transform was not *verified* |
+| **Column lineage** | Which source columns each sink column of a SQL transform is computed from, as DuckDB's parser proves it, recorded in the certificate (`lineage`); `null` and a reason where the tree cannot be followed; nothing for pandas or a notebook |
 | **Freeze point** | A materialized artifact handed from one phase to the next |
 | **Model** (②) / **Semantic contract** | The declarative star-schema contract: grain, keys, measures. The artifact carries a slice of it so the reader sees what the vocabulary meant |
 | **Report** (③) | Any rendered output of live queries; "dashboard" is a style of report |

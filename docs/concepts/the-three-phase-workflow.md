@@ -121,7 +121,7 @@ and `tracebi verify` refuses it.
 
 ## Where trust starts
 
-Lineage is traced from the sink, not through the transform. The trust
+The numbers' lineage is traced from the sink, not through the transform. The trust
 features (stamped queries, [[lineage]], fingerprints and `tracebi verify`)
 apply to the model and the report. `tracebi verify` re-runs a manifest's
 recorded queries and compares fingerprints; it does not assert a number is
@@ -130,6 +130,18 @@ correct.
 The transform is reviewed like any code in git. A sink contract adds
 checks its tables must pass before the data counts. See [[trace]] for what a
 trace proves and what it does not.
+
+## Where each column comes from
+
+A SQL transform also records where each column of its tables comes from.
+While it runs, DuckDB parses every statement, and the certificate keeps, per
+column, the source columns it is computed from: `fact_holdings.par` from
+`inputs/holdings.csv.par`, `dim_rating.rating` from
+`crm.issuer_ratings.rating`. Where the parse cannot be followed, the column
+says `null` and why; nothing is guessed. A pandas or notebook transform
+records nothing. It is a record of what the SQL reads, not a check that a
+number is right. The map's Flow lens and a table's Columns tab show it; see
+[[transform-sql]].
 
 ## Why it works this way
 

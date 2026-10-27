@@ -199,7 +199,7 @@ session export</code> saves the session to <code>explorations/</code> as a commi
 (<code>--format md</code> for a version that reads well in review). It carries no trace,
 and <code>tracebi verify</code> refuses it.</p>
 <h2 id="where-trust-starts">Where trust starts</h2>
-<p>Lineage is traced from the sink, not through the transform. The trust
+<p>The numbers' lineage is traced from the sink, not through the transform. The trust
 features (stamped queries, <a href="../concepts/lineage.html">Lineage</a>, fingerprints and <code>tracebi verify</code>)
 apply to the model and the report. <code>tracebi verify</code> re-runs a manifest's
 recorded queries and compares fingerprints; it does not assert a number is
@@ -207,6 +207,16 @@ correct.</p>
 <p>The transform is reviewed like any code in git. A sink contract adds
 checks its tables must pass before the data counts. See <a href="../concepts/trace.html">The trace</a> for what a
 trace proves and what it does not.</p>
+<h2 id="where-each-column-comes-from">Where each column comes from</h2>
+<p>A SQL transform also records where each column of its tables comes from.
+While it runs, DuckDB parses every statement, and the certificate keeps, per
+column, the source columns it is computed from: <code>fact_holdings.par</code> from
+<code>inputs/holdings.csv.par</code>, <code>dim_rating.rating</code> from
+<code>crm.issuer_ratings.rating</code>. Where the parse cannot be followed, the column
+says <code>null</code> and why; nothing is guessed. A pandas or notebook transform
+records nothing. It is a record of what the SQL reads, not a check that a
+number is right. The map's Flow lens and a table's Columns tab show it; see
+<a href="../reference/transform-sql.html">SQL transforms</a>.</p>
 <h2 id="why-it-works-this-way">Why it works this way</h2>
 <p>The slow analysis in the transform and the fast work on reports never block
 each other, because the model sits between them as a fixed contract. Editing

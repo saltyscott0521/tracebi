@@ -70,7 +70,7 @@ folder).
 
 | Route | Returns |
 | --- | --- |
-| `/{source}/{table}` | `{source, table, kind: "warehouse" \| "connection" \| "file", rows, rows_exact, columns: [{name, type}], written_by: {transform, contract, at} \| null, contract: {status, file, checks, note, checked_at} \| null, read_by: [model], used_by: [{report, display_name}], transform_read: [{ref, snapshot, fingerprint}]}`. `type` is the engine's spelling. `written_by`, `contract` and `transform_read` (what the writing run read from outside the warehouse; `snapshot` when a committed file stood in) come from the certificate, for warehouse tables only. `used_by` lists reports the caller may view whose bindings read a model in `read_by`. |
+| `/{source}/{table}` | `{source, table, kind: "warehouse" \| "connection" \| "file", rows, rows_exact, columns: [{name, type}], written_by: {transform, contract, at} \| null, contract: {status, file, checks, note, checked_at} \| null, columns_from: {column: {from, via?} \| {from: null, reason}} \| null, read_by: [model], used_by: [{report, display_name}], transform_read: [{ref, snapshot, fingerprint}]}`. `type` is the engine's spelling. `written_by`, `contract` and `transform_read` (what the writing run read from outside the warehouse; `snapshot` when a committed file stood in) come from the certificate, for warehouse tables only; `columns_from` is a SQL transform's column lineage, as DuckDB's parser proved it ([[transform-sql]]), null for a table pandas wrote. `used_by` lists reports the caller may view whose bindings read a model in `read_by`. |
 | `/rows` | `?offset=0&limit=100&sort=<col>&desc=1&q=<text>&where=<json>` → `{columns, rows, offset, limit, total, total_exact, elapsed_ms}`. `limit` at most 500 (more is 422). `q` matches text columns, ignoring case. `where` is a JSON list of `{column, op, value}`, `op` one of `eq ne lt le gt ge contains is_null not_null`, the value of the column's kind. Dates come back as ISO strings. `total` is exact, except an unfiltered SQL connection with a catalog estimate (`total_exact: false`). |
 | `/profile` | `{rows, columns: {name: {type, nulls, null_share, distinct, min, max, mean?, top: [{value, count}]}}}`. `min`/`max` for numbers and dates, `mean` for numbers, `top` (the five commonest) for text and booleans. Past 50 columns nothing is profiled and `note` says so. |
 | `/export.csv` | The same `sort`, `q` and `where`, streamed from the engine. |
@@ -248,7 +248,7 @@ model needed ([[trace]]).
 | `GET` | `/api/transforms` | viewer | Every file in `transforms/`: `[{name, form: sql\|python\|notebook, file, contract_file, note, pipelines, models, tables, written_at}]`. `contract_file` is the `.contract.yaml` beside it, or the file itself when it holds a `with contract(...)` block. `models` are those its pipelines refresh, then those reading what it wrote. `tables` and `written_at` come from the certificate. |
 | `GET` | `/api/transforms/{name}/source` | viewer | The transform's file and its contract (`{files, hint}`). `name` is a stem in `transforms/`, never a path (404 otherwise). |
 | `GET` | `/api/warehouse` | viewer | `{warehouses: [{name, tier, where, exists, size, engine_version, read_by, tables: [{name, rows, columns, written_by, read_by, contract: {status, checks, checked_at}, fed_from: [{ref, connection, table, fingerprint, rows, loaded_at, snapshot}]}], hidden_framework_tables}]}`, one per warehouse connector; `writers` lists what each transform's run read, once per transform. Read-only; framework tables are never listed. |
-| `GET` | `/api/graph` | viewer | The project as one graph, what Data's overview draws and the gateway's `describe_project` answers: `{summary, nodes, edges}`. Reports in a folder the caller cannot view are left out with their edges. |
+| `GET` | `/api/graph` | viewer | The project as one graph, what Data's overview draws and the gateway's `describe_project` answers: `{summary, nodes, edges, edge_facts}`. Reports in a folder the caller cannot view are left out with their edges. |
 
 `/api/graph` is composed from the routes above, nothing new: each node is
 `{id, kind, lane, parent, label, name, chip, sub, open, passport, gap}`.
@@ -272,7 +272,12 @@ reads, a transform no pipeline runs and no certificate names, a warehouse
 table no model reads, a model no report reads. `edges` are `[from, to]` pairs
 from four facts only: a transform's file names the source (`read_by`), the
 sink certificate names the tables it wrote (to the writer's group), a model
-reads a group's tables, a report's bindings read the model. `summary` counts
+reads a group's tables, a report's bindings read the model. `edge_facts` are
+the edges DuckDB's parser proved, beside them: `{from, to, kind: "lineage",
+columns}`, a source table, input file or warehouse table to a warehouse table
+that a SQL transform computed `columns` of its columns from; such a table's
+passport carries `columns_from`, and a source table's `readers` list it.
+`summary` counts
 each kind in the flow (gaps apart, in `gaps`), stale tables, groups whose
 checks passed (`checks: {satisfied, of}`), and what agents may read
 (`agents: {source_tables, models, reports}`).

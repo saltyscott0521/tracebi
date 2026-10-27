@@ -2703,3 +2703,12 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .pass__hint { margin: 10px 0 0; font-size: var(--text-sm); color: var(--muted); }
 .card .pass__rows, .surface .pass__rows { margin: 0 0 18px; }
 .tpage__snap { margin-top: var(--space-4); }
+
+/* ── LINEAGE ── Where a warehouse table's columns come from, as DuckDB's
+   parse of a SQL transform proved it: on the map's Flow lens (green wires and
+   rings, apart from the board's blue facts) and in the table page's Columns. */
+.map-wires path.is-proven { stroke: var(--green); stroke-width: 2.5; }
+.mchip.is-from, .mcard.is-from { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+.tpage__fromcell { white-space: normal; min-width: 20ch; }
+.tpage__from a code { color: var(--accent-text); }
+.tpage__unresolved { color: var(--muted); }

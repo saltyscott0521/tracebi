@@ -134,6 +134,9 @@ def test_the_sql_transform_and_its_pandas_escape_hatch_sink_identical_tables(bui
         assert src["source_fallback"] == "csv" and src["fallback"] == "inputs/issuer_ratings.csv"
         assert "TRACEBI_CRM_URL" in src["reason"] and src["rows"] == 12
     assert sql_src["fingerprint"] == pandas_src["fingerprint"]
+    # Only the SQL form has a tree to read: the pandas twin records no lineage.
+    assert sql_rec["form"] == "sql" and "fact_holdings" in sql_rec["lineage"]
+    assert "lineage" not in pandas_rec and "form" not in pandas_rec
 
 
 def test_a_sink_view_lands_as_a_definition_and_the_app_says_what_it_reads(built, monkeypatch):
@@ -185,6 +188,53 @@ def test_a_sink_view_lands_as_a_definition_and_the_app_says_what_it_reads(built,
         page = c.get("/api/tables/warehouse/fact_holdings_by_sector/rows",
                      params={"sort": "positions", "desc": 1}).json()
         assert page["total"] == sectors
+    finally:
+        release_warehouses()
+
+
+def test_the_sql_transform_records_where_each_column_comes_from(built, monkeypatch):
+    """holdings_transform.sql's certificate records, per sink column, the
+    columns DuckDB's parse says it is computed from: par from the raw
+    file's par column, through the TEMP tables it passed; rating_id from
+    dim_rating, whose rating_id is computed from the CRM's columns. The map
+    draws those as proven edges, and the table page lists each column's bases."""
+    from tests.e2e.conftest import release_warehouses, serve_app
+    from tracebi.web import discovery
+
+    lineage = json.loads((built / "data" / "warehouse.contracts.json").read_text())[
+        "transforms"]["holdings"]["lineage"]
+    fact = lineage["fact_holdings"]
+    assert fact["par"] == {"from": ["inputs/holdings.csv.par"],
+                           "via": ["keyed", "parsed", "raw_holdings"]}
+    assert fact["rating_id"] == {"from": ["dim_rating.rating_id"]}
+    assert lineage["dim_rating"]["rating"] == {"from": ["crm.issuer_ratings.rating"],
+                                               "via": ["issuer_rating"]}
+    assert set(lineage["dim_rating"]["rating_id"]["from"]) >= {
+        "crm.issuer_ratings.rating", "crm.issuer_ratings.watch"}
+    # Every column of every table the reference SQL sinks is followed.
+    assert all(col["from"] is not None for cols in lineage.values() for col in cols.values())
+
+    monkeypatch.delenv("TRACEBI_CRM_URL", raising=False)
+    c = serve_app(monkeypatch, models=True)
+    try:
+        # The connections from this project's own folder, as Sources lists them.
+        monkeypatch.setattr(discovery, "_live_connections", {})
+        discovery.register_connections("connections")
+        graph = c.get("/api/graph").json()
+        proven = {(e["from"], e["to"]): e for e in graph["edge_facts"]}
+        assert proven[("file:inputs/holdings.csv", "table:warehouse.fact_holdings")]["columns"] >= 6
+        assert ("source_table:crm.issuer_ratings", "table:warehouse.dim_rating") in proven
+        assert ("table:warehouse.dim_rating", "table:warehouse.fact_holdings") in proven
+        assert all(e["kind"] == "lineage" for e in graph["edge_facts"])
+        # The node-level edges stay the board's four facts.
+        assert not any(a.startswith("source_table:") for a, _ in graph["edges"])
+        nodes = {n["id"]: n for n in graph["nodes"]}
+        assert nodes["table:warehouse.fact_holdings"]["passport"]["columns_from"]["par"] == fact["par"]
+        assert "table:warehouse.dim_rating" in nodes[
+            "source_table:crm.issuer_ratings"]["passport"]["readers"]
+
+        table = c.get("/api/tables/warehouse/fact_holdings").json()
+        assert table["columns_from"] == fact
     finally:
         release_warehouses()
 

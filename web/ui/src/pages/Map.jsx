@@ -28,6 +28,13 @@ import { Empty, ErrorDetail, Segmented, SkeletonCard } from '../components/Share
 // lane (the sidebar's Sources · Transforms · Warehouse · Models open the map
 // that way). Hovering or focusing a piece lights its whole path. When the map
 // is narrower than its five lanes fit, they stack and no wire is drawn.
+//
+// The graph's edge_facts are the edges DuckDB's parse proved: a SQL
+// transform's certificate says which source tables, files and warehouse
+// tables each column of its tables comes from. They are not the board's
+// wires. On Flow, a selected warehouse table lights the source tables and
+// files it takes columns from (through any warehouse table between) and draws
+// those wires solid green.
 
 export const LENSES = [
   ['coverage', 'Coverage'], ['flow', 'Flow'], ['freshness', 'Freshness'], ['trust', 'Trust'], ['access', 'What agents see'],
@@ -46,7 +53,7 @@ export const LANE_KEYS = LANES.map(l => l.key)
 // What each lens says under the map.
 const LEGEND = {
   coverage: [['ok', 'wired on both sides'], ['warn', 'a gap: read by nobody, run by nothing, or built from nothing']],
-  flow: 'Hover or focus any piece to light its whole path. The selected piece stays lit.',
+  flow: 'Hover or focus any piece to light its whole path. The selected piece stays lit. Select a warehouse table a SQL transform wrote: green wires are the source tables and files its columns come from, as the parser read them.',
   freshness: [['ok', 'moved after everything upstream'], ['warn', 'older than what feeds it'], ['off', 'not moved here yet']],
   trust: [['ok', 'checks passed · reproduces'], ['warn', 'changed since checked · snapshot · drifted'], ['bad', 'checks failed · error'], ['off', 'not a sink, nothing to check']],
   access: 'Lit: what the gateway can read. Dark: not on any allowlist. Transforms are never read, only proposed.',
@@ -89,6 +96,21 @@ function mapOf(graph) {
   }
   const pathOf = id => { const s = walk(id, up); walk(id, down).forEach(x => s.add(x)); return s }
 
+  // What a warehouse table takes columns from, transitively: the proven
+  // edges, followed upstream through the warehouse tables between.
+  const proven = (graph.edge_facts || []).map(e => [at(e.from), at(e.to)])
+    .filter(([a, z]) => byId[a] && byId[z] && a !== z)
+  const takes = {}
+  proven.forEach(([a, z]) => { (takes[z] ||= []).push(a) })
+  const takesFrom = id => {
+    const seen = new Set()
+    const queue = [id]
+    while (queue.length) {
+      (takes[queue.shift()] || []).forEach(y => { if (!seen.has(y) && y !== id) { seen.add(y); queue.push(y) } })
+    }
+    return seen
+  }
+
   // Freshness: a piece that is made (written, built, read) is older than what
   // feeds it when anything upstream moved after it. A definition is not judged.
   const time = n => (n?.passport?.moved?.at ? Date.parse(n.passport.moved.at) : NaN)
@@ -100,7 +122,7 @@ function mapOf(graph) {
     const older = [...walk(n.id, up)].some(id => id !== n.id && id !== n.parent && time(byId[id]) > mine)
     fresh[n.id] = older ? 'warn' : 'ok'
   })
-  return { byId, kids, lanes, unread, edges, pathOf, fresh }
+  return { byId, kids, lanes, unread, edges, pathOf, fresh, proven, takesFrom }
 }
 
 // The dot's tone under a lens.
@@ -116,13 +138,13 @@ const dark = (n, lens) => lens === 'access' && n.passport?.agents?.state !== 'ok
 
 // ── The cards ────────────────────────────────────────────────────────────────
 
-function Chips({ list, lens, map, sel, refOf, select, light, label }) {
+function Chips({ list, lens, map, sel, from, refOf, select, light, label }) {
   return (
     <ul className="mcard__kids" aria-label={label}>
       {list.map(k => (
         <li key={k.id}>
           <button type="button" ref={refOf(k.id)} data-node={k.id} data-tone={toneOf(k, lens, map)}
-                  className={['mchip', k.gap && 'mchip--gap', sel === k.id && 'is-sel', dark(k, lens) && 'is-dark'].filter(Boolean).join(' ')}
+                  className={['mchip', k.gap && 'mchip--gap', sel === k.id && 'is-sel', from?.has(k.id) && 'is-from', dark(k, lens) && 'is-dark'].filter(Boolean).join(' ')}
                   aria-pressed={sel === k.id} title={k.gap ? k.gap.reason : k.sub || k.name}
                   onClick={() => select(k.id)} onMouseEnter={() => light(k.id)} onMouseLeave={() => light('')}>
             <i className="mdot" aria-hidden="true" />{k.chip === 'view' && <span className="mchip__view">view</span>}<span className="mchip__nm">{k.label}</span>
@@ -134,8 +156,8 @@ function Chips({ list, lens, map, sel, refOf, select, light, label }) {
 }
 
 function Card({ n, kids, state, refOf, select, light }) {
-  const { lens, map, sel, lit } = state
-  const cls = ['mcard', n.gap && 'mcard--gap', sel === n.id && 'is-sel', lit && (lit.has(n.id) ? 'is-lit' : 'is-dim'), dark(n, lens) && 'is-dark']
+  const { lens, map, sel, lit, from } = state
+  const cls = ['mcard', n.gap && 'mcard--gap', sel === n.id && 'is-sel', lit && (lit.has(n.id) ? 'is-lit' : 'is-dim'), from?.has(n.id) && 'is-from', dark(n, lens) && 'is-dark']
   return (
     <li>
       <div ref={refOf(n.id)} className={cls.filter(Boolean).join(' ')} data-node={n.id} data-tone={toneOf(n, lens, map)}
@@ -151,7 +173,7 @@ function Card({ n, kids, state, refOf, select, light }) {
           </span>
         </button>
         {kids?.length > 0 && (
-          <Chips list={kids} lens={lens} map={map} sel={sel} refOf={refOf} select={select} light={light}
+          <Chips list={kids} lens={lens} map={map} sel={sel} from={from} refOf={refOf} select={select} light={light}
                  label={`Tables of ${n.label}`} />
         )}
       </div>
@@ -162,7 +184,7 @@ function Card({ n, kids, state, refOf, select, light }) {
 // The files no transform reads: one dashed card, a chip each.
 function Unread({ files, state, refOf, select, light }) {
   if (!files.length) return null
-  const { lens, map, sel } = state
+  const { lens, map, sel, from } = state
   return (
     <li>
       <div className={`mcard mcard--gap${lens === 'access' ? ' is-dark' : ''}`} data-node="files:unread" data-tone="warn">
@@ -170,7 +192,7 @@ function Unread({ files, state, refOf, select, light }) {
           <span className="mcard__t"><i className="mdot" aria-hidden="true" /><span className="mcard__nm">{count(files.length, 'file')}</span></span>
           <span className="mcard__s">{files[0].gap.reason}</span>
         </p>
-        <Chips list={files} lens={lens} map={map} sel={sel} refOf={refOf} select={select} light={light} label="Files no transform reads" />
+        <Chips list={files} lens={lens} map={map} sel={sel} from={from} refOf={refOf} select={select} light={light} label="Files no transform reads" />
       </div>
     </li>
   )
@@ -186,8 +208,16 @@ function Board({ graph, map, lens, sel, lane, select, light, hover }) {
 
   // The lit path: the piece under the pointer, else (on Flow) the selected one.
   const focus = hover || (lens === 'flow' ? sel : '')
-  const lit = useMemo(() => (focus && map.byId[focus] ? map.pathOf(focus) : null), [map, focus])
-  const state = { lens, map, sel, lit }
+  // On Flow, a selected warehouse table: what it takes columns from.
+  const from = useMemo(() => (lens === 'flow' && map.byId[sel]?.kind === 'table' ? map.takesFrom(sel) : null),
+    [map, lens, sel])
+  const lit = useMemo(() => {
+    if (!focus || !map.byId[focus]) return null
+    const path = map.pathOf(focus)
+    if (from && focus === sel) from.forEach(id => path.add(id))
+    return path
+  }, [map, focus, from, sel])
+  const state = { lens, map, sel, lit, from }
 
   const refOf = useCallback(id => el => { if (el) nodes.current[id] = el; else delete nodes.current[id] }, [])
 
@@ -215,8 +245,23 @@ function Board({ graph, map, lens, sel, lane, select, light, hover }) {
       const dx = Math.max(24, (x2 - x1) / 2)
       next.push({ key: `${a}>${z}`, a, z, d: `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}` })
     }
+    // The proven edges into the selected table, and into the tables it takes from.
+    for (const [a, z] of from ? map.proven : []) {
+      if (!from.has(a) || !(z === sel || from.has(z))) continue
+      const A = el(a)
+      const Z = el(z)
+      if (!A || !Z || map.byId[a].lane >= map.byId[z].lane) continue
+      const ra = A.getBoundingClientRect()
+      const rz = Z.getBoundingClientRect()
+      const x1 = ra.right - b.left
+      const y1 = ra.top + ra.height / 2 - b.top
+      const x2 = rz.left - b.left
+      const y2 = rz.top + rz.height / 2 - b.top
+      const dx = Math.max(24, (x2 - x1) / 2)
+      next.push({ key: `proven:${a}>${z}`, a, z, proven: true, d: `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}` })
+    }
     setPaths(prev => (prev.map(p => p.key + p.d).join() === next.map(p => p.key + p.d).join() ? prev : next))
-  }, [map])
+  }, [map, from, sel])
 
   useLayoutEffect(() => { draw() }, [draw])
   useEffect(() => {
@@ -231,6 +276,7 @@ function Board({ graph, map, lens, sel, lane, select, light, hover }) {
   }, [draw])
 
   const wireClass = p => {
+    if (p.proven) return 'is-proven'
     const a = map.byId[p.a]
     const z = map.byId[p.z]
     if (lit) return lit.has(p.a) && lit.has(p.z) ? 'is-lit' : 'is-dim'
@@ -339,7 +385,8 @@ function TheMap({ graph }) {
         </div>
         <aside className="pass" aria-label="Passport" ref={passRef}>
           {node
-            ? <NodePassport n={node} byId={map.byId} onGo={goTo} onSetup={name => setSetup(name)} />
+            ? <NodePassport n={node} byId={map.byId} onGo={goTo} onSetup={name => setSetup(name)}
+                            from={node.kind === 'table' ? [...map.takesFrom(node.id)].filter(id => map.byId[id].lane === 0) : null} />
             : <ProjectPassport summary={graph.summary || {}} focus={l => go({ lane: l, node: '' })} coverage={() => go({ lens: '', lane: '', node: '' })} />}
         </aside>
       </div></div>

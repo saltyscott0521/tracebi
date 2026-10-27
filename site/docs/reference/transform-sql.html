@@ -408,6 +408,48 @@ snapshot load from the snapshot again) and compares fingerprints:</p>
 returns <code>(frame, record)</code>, the same load and record. Pass the records to
 <code>contract(name, warehouse=..., sources={ref: record})</code> and the certificate
 says the same thing. <code>holdings_transform_pandas.py</code> does this.</p>
+<h2 id="where-each-column-comes-from">Where each column comes from</h2>
+<p>While a SQL transform runs, DuckDB parses each statement
+(<code>json_serialize_sql</code>), and the certificate records, for every table and view
+the script leaves in the warehouse, which columns each of its columns is
+computed from, under the transform's <code>lineage</code> (with <code>"form": "sql"</code>):</p>
+<pre><code class="language-json">&quot;lineage&quot;: {
+  &quot;fact_holdings&quot;: {
+    &quot;par&quot;: {&quot;from&quot;: [&quot;inputs/holdings.csv.par&quot;], &quot;via&quot;: [&quot;keyed&quot;, &quot;parsed&quot;, &quot;raw_holdings&quot;]},
+    &quot;rating_id&quot;: {&quot;from&quot;: [&quot;dim_rating.rating_id&quot;]},
+    &quot;holding_id&quot;: {&quot;from&quot;: [], &quot;via&quot;: [&quot;keyed&quot;, &quot;parsed&quot;, &quot;raw_holdings&quot;]}
+  },
+  &quot;dim_rating&quot;: {
+    &quot;rating&quot;: {&quot;from&quot;: [&quot;crm.issuer_ratings.rating&quot;], &quot;via&quot;: [&quot;issuer_rating&quot;]}
+  }
+}
+</code></pre>
+<ul>
+<li>A base is <code>&lt;connection&gt;.&lt;table&gt;.&lt;column&gt;</code> for a <code>-- source:</code> table, the
+  file's path and column for a file read (<code>inputs/holdings.csv.par</code>), and
+  <code>&lt;table&gt;.&lt;column&gt;</code> for another warehouse table, so a column chains through
+  the warehouse. <code>TEMP</code> tables, CTEs and macros are followed through; <code>via</code>
+  names the <code>TEMP</code> tables a column passed.</li>
+<li><code>from</code> is every column the value's expression reads: arguments, <code>CASE</code>
+  branches, a window's <code>PARTITION BY</code> and <code>ORDER BY</code>, everything a scalar
+  subquery reads. A <code>WHERE</code>, a join condition or a <code>GROUP BY</code> picks rows and
+  is not counted. <code>SELECT *</code> expands through the run's own catalog.</li>
+<li><code>"from": []</code> means the column is computed from no column: a constant,
+  <code>row_number()</code>, <code>range</code>.</li>
+<li><code>"from": null</code> comes with a <code>reason</code>, and nothing is guessed. The shapes it
+  does not follow: a table macro or any other table function but the file
+  readers, <code>range</code>, <code>generate_series</code> and <code>unnest</code>; <code>COLUMNS(…)</code> and a <code>*</code>
+  inside an expression; a recursive CTE; a scalar macro whose body reads a
+  table; a read of something that is neither a <code>-- source:</code> table, a file
+  nor a warehouse table (another <code>ATTACH</code>); and a table an <code>INSERT</code>,
+  <code>UPDATE</code>, <code>ALTER</code>, <code>MERGE</code> or <code>COPY … FROM</code> changes after the <code>CREATE …
+  AS</code> that made it.</li>
+</ul>
+<p>It is recorded only beside a contract (the certificate is the contract's),
+and only for SQL: a Python or notebook transform records none. It says what
+the SQL reads, not that a number is right. The map's Flow lens draws it for a
+selected warehouse table, a table's Columns tab lists it, and the gateway's
+<code>describe_table</code> and <code>describe_project</code> carry it as <code>columns_from</code>.</p>
 <h2 id="saving-back">Saving back</h2>
 <p>A result may leave the warehouse.</p>
 <p><strong>To a database, from the transform.</strong> A <code>-- sink: &lt;connection&gt;</code> line just

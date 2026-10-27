@@ -176,17 +176,49 @@ function rangeOf(name, p) {
   return '—'
 }
 
-function ColumnsView({ source, table }) {
+// One base column a SQL transform's column came from, as the certificate
+// names it (tracebi/lineage_sql.py), linked to the page of the table it lives
+// in: <connection>.<table>.<column> a source table, inputs/<path>.<column> a
+// file, <table>.<column> another warehouse table.
+function BaseLink({ base, connections }) {
+  const cut = base.lastIndexOf('.')
+  const where = base.slice(0, cut)
+  const conn = connections.find(c => where.startsWith(`${c}.`))
+  const to = conn ? sourceTablePath(conn, where.slice(conn.length + 1))
+    : where.startsWith('inputs/') ? sourceTablePath('inputs', where.slice('inputs/'.length))
+    : cut > 0 && !where.includes('/') && !where.includes('.') ? warehouseTablePath(where)
+    : null
+  return to ? <Link to={to}><code>{base}</code></Link> : <code>{base}</code>
+}
+
+// Where a column comes from: its bases, "computed from no column", or the
+// reason the parse could not follow it.
+function ColumnFrom({ entry, connections }) {
+  if (!entry) return <span className="pass__none">—</span>
+  if (entry.from === null) return <span className="tpage__unresolved">{entry.reason}</span>
+  if (!entry.from.length) return <span className="tpage__unresolved">computed from no column</span>
+  return (
+    <span className="tpage__from" title={entry.via?.length ? `through ${entry.via.join(', ')}` : undefined}>
+      from {entry.from.map((b, i) => <Fragment key={b}>{i > 0 && ', '}<BaseLink base={b} connections={connections} /></Fragment>)}
+    </span>
+  )
+}
+
+function ColumnsView({ source, table, from }) {
   const { data, isLoading, error } = useTableProfile(source, table)
+  const { data: connectors } = useConnectors()
   if (isLoading) return <SkeletonList />
   if (error) return <ErrorDetail error={error} />
   if (data.connected === false) return <p className="src-quiet">{data.reason}</p>
   if (data.note) return <p className="src-quiet">{data.note}</p>
+  // Longest first, so a connection named like another's prefix matches whole.
+  const connections = (connectors || []).filter(c => !c.warehouse).map(c => c.name)
+    .sort((a, b) => b.length - a.length)
   return (
     <div className="tpage__scroll">
       <table className="tb-list tpage__profile">
         <thead>
-          <tr><th>Column</th><th>Type</th><th>Nulls</th><th>Distinct</th><th>Range or top values</th></tr>
+          <tr><th>Column</th><th>Type</th><th>Nulls</th><th>Distinct</th><th>Range or top values</th>{from && <th>From</th>}</tr>
         </thead>
         <tbody>
           {Object.entries(data.columns).map(([name, p]) => (
@@ -196,6 +228,7 @@ function ColumnsView({ source, table }) {
               <td className="grid__num" title={`${p.nulls.toLocaleString('en-US')} of ${count(data.rows, 'row')}`}>{share(p.null_share)}</td>
               <td className="grid__num">{p.distinct.toLocaleString('en-US')}</td>
               <td data-tb-data className="tpage__range">{rangeOf(name, p)}</td>
+              {from && <td className="tpage__fromcell"><ColumnFrom entry={from[name]} connections={connections} /></td>}
             </tr>
           ))}
         </tbody>
@@ -427,7 +460,7 @@ export default function TablePage({ warehouse: underWarehouse = false }) {
         {view === 'data' && (
           <DataGrid source={source} table={table} columns={t.columns} inAddress exportTo={t.kind === 'warehouse'} />
         )}
-        {view === 'columns' && <ColumnsView source={source} table={table} />}
+        {view === 'columns' && <ColumnsView source={source} table={table} from={t.columns_from} />}
         {view === 'used' && <UsedBy t={t} />}
       </div>
     </>,

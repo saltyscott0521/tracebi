@@ -729,7 +729,7 @@ def _warehouse_facts(connector, table: str, view: bool = False) -> dict:
     record, as the Warehouse page reads it. For a sink view (*view*), also
     the transform that defined it and the tables it reads, which the
     certificate records whether or not a check touches the view."""
-    from tracebi.contracts import read_contracts, table_statuses, view_record
+    from tracebi.contracts import columns_from, read_contracts, table_statuses, view_record
     from tracebi.sources import _contract_owners
     from tracebi.transforms import contract_file, find_transform
 
@@ -738,7 +738,8 @@ def _warehouse_facts(connector, table: str, view: bool = False) -> dict:
     record = status.get("transform")
     at = status.get("checked_at")
     owners = _contract_owners()
-    defined = view_record(read_contracts(target), table) if view else None
+    certs = read_contracts(target)
+    defined = view_record(certs, table) if view else None
     if not record and defined:
         record, at = defined["contract"], defined["checked_at"]
     transform = owners.get(record) if record else None
@@ -751,6 +752,9 @@ def _warehouse_facts(connector, table: str, view: bool = False) -> dict:
                          "bases": defined["bases"] if defined else []}
     return {
         **extra,
+        # Each column's bases, as DuckDB's parse of a SQL transform proved
+        # them; null for a pandas transform or a table written outside one.
+        "columns_from": columns_from(certs, table),
         "written_by": ({"transform": transform, "contract": record,
                         "at": at} if record else None),
         "contract": {"status": status["status"], "file": _shown(file),
@@ -872,12 +876,13 @@ def table_export_to(source: str, table: str, body: ExportBody):
 @router.get("/{source}/{table:path}")
 def table_detail(source: str, table: str):
     """What the table is: ``{source, table, kind, rows, rows_exact, columns,
-    written_by, contract, read_by, used_by, transform_read}``. ``rows`` is
+    written_by, contract, columns_from, read_by, used_by, transform_read}``. ``rows`` is
     exact for DuckDB and files, the catalog's estimate for a SQL connection
     that keeps one (``rows_exact: false``), else null. A warehouse table also
     says ``table_kind`` (``table`` or ``view``; ``kind`` names the kind of
     source), and a sink view ``view: {transform, bases}`` from the
-    certificate."""
+    certificate. ``columns_from`` is a SQL transform's column lineage
+    (``{column: {from, via} | {from: null, reason}}``), else null."""
     def describe(reader):
         rows, exact = reader.catalog_rows()
         out = {"kind": reader.kind, "rows": rows, "rows_exact": exact,
@@ -890,7 +895,8 @@ def table_detail(source: str, table: str):
     if "connected" in got:
         return got
     models = [] if source == "inputs" else _models_reading(source, table)
-    facts: dict = {"written_by": None, "contract": None, "transform_read": []}
+    facts: dict = {"written_by": None, "contract": None, "columns_from": None,
+                   "transform_read": []}
     if got["kind"] == "warehouse":
         # After the reader has closed: the contract join opens the file itself.
         facts = _warehouse_facts(registry.get_connector(source), table,

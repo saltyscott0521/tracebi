@@ -16,6 +16,13 @@ Overview has drawn since the board (``design/data-flow-board.md``):
 - group → model: the models that read the group's tables;
 - model → report: the models a report's bindings read.
 
+Beside them, ``edge_facts`` holds the edges DuckDB's parser proved: a SQL
+transform's certificate records where each column of its tables comes from
+(:mod:`tracebi.lineage_sql`), so a source table, a file or another warehouse
+table → the warehouse table that takes columns from it, each ``{from, to,
+kind: "lineage", columns}`` (how many of its columns). A table written by
+pandas has none: nothing is traced through free-form code.
+
 Edges are facts, never guesses. A *gap* is a node wired on one side only: a
 file under ``inputs/`` no transform names, a transform no pipeline runs and no
 certificate names, a warehouse table no model reads, a model no report reads.
@@ -324,6 +331,7 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
 
     # ── Lane 2: the warehouse, a group per writer ───────────────────────────
     many = len(whs) > 1
+    proven: list[tuple[dict, str]] = []           # tables with column lineage
     groups: dict[str, dict] = {}
     for w in whs:
         writers = {wr["contract"]: wr for wr in w["writers"]}
@@ -381,6 +389,9 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
                 trust=_checks_trust([contract], contract.get("checks")),
                 agents={"state": "ok", "text": "Through the model"},
                 gap=None if readers else "no model reads it", rows=tb.get("rows")))
+            if tb.get("columns_from"):
+                nodes[-1]["passport"]["columns_from"] = tb["columns_from"]
+                proven.append((nodes[-1], wh["name"]))
 
     # ── Lanes 3 and 4: models and the reports that read them ────────────────
     reports = list_reports()          # only those the caller may view
@@ -433,7 +444,42 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
             trust={"state": state, "text": text},
             agents={"state": "ok", "text": "Published"}))
 
-    return {"summary": _summary(nodes), "nodes": nodes, "edges": edges}
+    return {"summary": _summary(nodes), "nodes": nodes, "edges": edges,
+            "edge_facts": _lineage_edges(nodes, proven)}
+
+
+def _lineage_edges(nodes: list[dict], proven: list[tuple[dict, str]]) -> list[dict]:
+    """The edges a SQL transform's column lineage proves, from the bases its
+    certificate names: ``crm.issuer_ratings.rating`` is the source table
+    ``crm.issuer_ratings``, ``inputs/holdings.csv.par`` the file, and
+    ``dim_rating.rating_id`` the warehouse table beside it. A base that is no
+    node (a source no longer listed) draws nothing. A source table's readers
+    gain the warehouse tables that take columns from it."""
+    by_id = {n["id"]: n for n in nodes}
+    prefixes = sorted(
+        [(f"{n['parent'].split(':', 1)[1]}.{n['name']}.", n["id"])
+         for n in nodes if n["kind"] == "source_table"]
+        + [(f"{n['name']}.", n["id"]) for n in nodes if n["kind"] == "file"],
+        key=lambda p: -len(p[0]))
+    facts: list[dict] = []
+    for table, wh in proven:
+        counts: dict[str, int] = {}
+        for entry in table["passport"]["columns_from"].values():
+            hit: set[str] = set()
+            for base in (entry or {}).get("from") or []:
+                found = next((nid for prefix, nid in prefixes if base.startswith(prefix)), None)
+                if found is None and "." in base:
+                    found = f"table:{wh}.{base.rsplit('.', 1)[0]}"
+                if found in by_id and found != table["id"]:
+                    hit.add(found)
+            for nid in hit:
+                counts[nid] = counts.get(nid, 0) + 1
+        for nid, n in sorted(counts.items()):
+            facts.append({"from": nid, "to": table["id"], "kind": "lineage", "columns": n})
+            readers = by_id[nid]["passport"]["readers"]
+            if by_id[nid]["kind"] == "source_table" and table["id"] not in readers:
+                readers.append(table["id"])
+    return facts
 
 
 def _summary(nodes: list[dict]) -> dict:

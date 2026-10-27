@@ -388,16 +388,21 @@ def _line_of(text: str, start: int, statement: str) -> int:
 
 
 def run_sql(path: "str | os.PathLike[str]", root: Optional[str] = None,
-            sources: Optional[dict] = None, views: Optional[list] = None) -> int:
+            sources: Optional[dict] = None, views: Optional[list] = None,
+            lineage: Optional[dict] = None) -> int:
     """Run a SQL transform in one fresh write connection to the project's
     warehouse; on the object tier, land the tables it created as Parquet.
     Returns the number of statements run. Each ``-- source:`` load's record
     goes into *sources* (``{ref: record}``) when a dict is passed, and each
     sink view the script created into *views* (``{name, definition_sha256,
-    bases}``, :func:`_sink_views`) when a list is passed."""
+    bases}``, :func:`_sink_views`) when a list is passed, and where each
+    column of the tables and views it left comes from into *lineage*
+    (``{table: {column: {from, via} | {from: None, reason}}}``, DuckDB's parse
+    of each statement, :mod:`tracebi.lineage_sql`) when a dict is passed."""
     import duckdb
 
     from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.lineage_sql import Tracer
     from tracebi.project_config import sink_target
 
     root = os.path.abspath(root or os.getcwd())
@@ -418,6 +423,7 @@ def run_sql(path: "str | os.PathLike[str]", root: Optional[str] = None,
         if sources is not None:
             sources.update(loaded)
         before = _view_oids(con)
+        tracer = Tracer(con, [d["connection"] for d in directives], root)
         marks = _sink_lines(text, where)
         sends: list[dict] = []
         cursor = 0
@@ -428,17 +434,23 @@ def run_sql(path: "str | os.PathLike[str]", root: Optional[str] = None,
             mark = _previous_line(text, line, marks)
             if mark is not None:
                 sends.append(_sink_of(mark, statement.query, where))
+            # Read before it runs: a SELECT * expands through the catalog
+            # as this statement sees it.
+            tracer.before(statement.query)
             try:
                 con.execute(statement)
             except duckdb.Error as exc:
                 raise TransformError(f"{where}: statement {i} (line {line}) failed: "
                                      f"{' '.join(str(exc).split())}") from exc
+            tracer.after()
         if marks:
             raise TransformError(
                 f"{where}: line {min(marks)}: a -- sink: line belongs on the line just "
                 f"above the CREATE OR REPLACE TABLE whose table it sends")
         created = _sink_views(con, before, directives, where, sink.warehouse.tier)
         _send(con, sends, root, where)
+        if lineage is not None:
+            lineage.update(tracer.result())
         if sink.warehouse.tier == "object":
             _land_tables(con, sink.warehouse)
     _check_views_read(sink, created, where)
@@ -718,8 +730,9 @@ def run_transform(path: "str | os.PathLike[str]", root: Optional[str] = None) ->
     form = transform_form(path)
     sources: dict = {}
     views: list = []
+    lineage: dict = {}
     if form == "sql":
-        run_sql(path, root, sources, views)
+        run_sql(path, root, sources, views, lineage)
     elif form == "notebook":
         from tracebi._notebook import notebook_to_source
         source = notebook_to_source(path)
@@ -730,5 +743,6 @@ def run_transform(path: "str | os.PathLike[str]", root: Optional[str] = None) ->
     beside = contract_file(path)
     if beside is not None:
         run_contract_file(beside, sink_target(root), default_name=path.stem,
-                          sources=sources or None, views=views or None)
+                          sources=sources or None, views=views or None,
+                          lineage=lineage if form == "sql" else None)
     return form

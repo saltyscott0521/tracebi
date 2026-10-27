@@ -78,7 +78,9 @@ whether the sink satisfied its contract), **Model**, **Query**,
   query and the fingerprint come from the same author. It becomes evidence
   when the checker holds the warehouse too.
 - **It says nothing about the transform.** Lineage is traced from the sink,
-  not through the transform. See [[the-three-phase-workflow]].
+  not through the transform. A SQL transform's column lineage, which DuckDB's
+  parser proves, sits in the certificate, beside the trace, and is not a
+  verdict. See [[the-three-phase-workflow]].
 
 The question it does answer is useful: "these 40 overnight reports still
 reproduce, and this one doesn't."

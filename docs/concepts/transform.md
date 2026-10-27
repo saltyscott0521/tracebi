@@ -97,7 +97,9 @@ A failed check stops the run. See [[sink-contracts]].
 - **Nothing downstream reads the transform file.** Models read only the
   tables it wrote.
 - **Lineage is traced from the sink, not through the transform.** Review a
-  transform as you review any code in git.
+  transform as you review any code in git. A SQL transform does record which
+  source columns each sink column comes from, as DuckDB's parser proves it
+  (`lineage` in the certificate); pandas records nothing.
 
 ## Why it works this way
 

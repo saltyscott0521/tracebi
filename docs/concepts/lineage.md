@@ -22,7 +22,9 @@ reading the code that produced it.
 - **A node cannot be edited.** `LineageNode` is frozen: every field, including
   `metadata`, is set when it is created.
 - **Lineage starts at the sink.** It covers the model and the report. It is
-  not traced through the transform.
+  not traced through the transform. A SQL transform's certificate does
+  record which source columns each sink column is computed from, as DuckDB's
+  parser proves it ([[transform-sql]]); pandas records nothing.
 
 ## Where it shows up
 
