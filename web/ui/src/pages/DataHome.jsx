@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import {
-  useConnectors, useGraph, useModels, usePipelines, useReports, useRole, useRuns, useStartPipelineRun,
+  useConnectors, useGraph, useModels, usePipelines, useReports, useRole, useRunningRuns, useRuns, useStartPipelineRun,
 } from '../api'
 import { DataFrame } from './Data'
 import { SetupSheet, useConnectionWrite } from './Connectors'
@@ -13,7 +13,7 @@ import { useModelLabel } from '../components/Scope'
 import { count } from '../format'
 import { scheduleWords } from '../schedule'
 import { useBuilds } from '../folders'
-import { movedWords, reachWords } from '../words'
+import { movedWords, reachWords, refreshWords } from '../words'
 import {
   dataFolder, historyPath, libraryPath, lineagePath, modelsPath, reportPagePath, sourcePath, sourcesPath,
   transformPath, transformsPath, warehousePath,
@@ -66,9 +66,24 @@ function reportsPill(reports, verdictFor) {
 
 // What happened lately, newest first: the run store's rows (a run of builds
 // said once, "Built X and N others"), the transforms' writes and the snapshot
-// reads the certificates record.
-function recent(runs, nodes) {
+// reads the certificates record. A refresh going now leads, in its live state
+// (useRunningRuns: the step it is on, the reports it has rebuilt so far).
+function recent(runs, nodes, going = []) {
   const items = []
+  const live = going.filter(r => r.status === 'running').map(r => {
+    const at = Math.max(0, r.steps.findIndex(s => s.state === 'running'))
+    const step = r.steps[at]
+    return {
+      key: `live${r.run_id}`, status: { text: refreshWords({ running: true }).text, tone: 'none' },
+      what: runs.find(x => String(x.id) === r.run_id)?.display_name || r.pipeline,
+      to: r.transform ? `${transformPath(r.transform)}?tab=steps` : null,
+      sub: [step && `step ${at + 1} of ${r.steps.length}: ${step.name}`,
+        r.reports.length && `${count(r.reports.length, 'report')} rebuilt`].filter(Boolean).join(' · ') || null,
+      at: r.started_at,
+    }
+  })
+  const liveIds = new Set(live.map(it => it.key.slice(4)))
+  runs = runs.filter(r => !liveIds.has(String(r.id)))
   const builds = []
   const flush = () => {
     if (!builds.length) return
@@ -105,7 +120,7 @@ function recent(runs, nodes) {
       items.push({ key: n.id, status: { text: 'Snapshot read', tone: 'warn' }, what: n.label, to: n.open, sub: 'its last run read the committed snapshot', at: m.at })
     }
   }
-  return items.sort((a, b) => String(b.at || '').localeCompare(String(a.at || ''))).slice(0, 6)
+  return [...live, ...items.sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))].slice(0, 6 + live.length)
 }
 
 function Board({ graph }) {
@@ -119,6 +134,7 @@ function Board({ graph }) {
   const { data: reports } = useReports()
   const { data: pipelines } = usePipelines()
   const { data: runs } = useRuns()
+  const { data: going } = useRunningRuns()
   const { mutate: start } = useStartPipelineRun()
   const { verdictFor } = useBuilds()
   const [setup, setSetup] = useState(null)
@@ -229,7 +245,7 @@ function Board({ graph }) {
         <div>
           <section className="rhome__sec" aria-labelledby="recent">
             <h2 id="recent" className="rsec">Recent activity <Link to={historyPath()}>History</Link></h2>
-            <ActivityList items={recent(runs || [], nodes)} empty="Nothing has run here yet." />
+            <ActivityList items={recent(runs || [], nodes, going || [])} empty="Nothing has run here yet." />
           </section>
 
           <section className="rhome__sec" aria-labelledby="schedules">

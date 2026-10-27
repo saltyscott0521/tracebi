@@ -1307,3 +1307,75 @@ def test_the_project_graph_is_the_boards_four_facts_with_a_passport_each(referen
     assert not hidden & {n["id"] for n in seen["nodes"]}
     assert not hidden & {i for e in seen["edges"] for i in e}
     assert seen["summary"]["reports"] == 9
+
+
+def test_what_depends_on_a_table_or_a_measure_is_read_from_the_builds(reference, monkeypatch):
+    """GET /api/graph/downstream on the reference project, two portfolio
+    reports built: the figures it lists for fact_holdings are exactly those
+    whose binding's query loaded fact_holdings or the sink view over it,
+    computed here from the manifests directly, and each carries the number the
+    desk read off its page. A measure lists only the figures that read it (the
+    count beside a sum in one query does not), a report.py binding never
+    counts, an unknown piece is a 404, and reading it starts no run."""
+    from fastapi.testclient import TestClient
+
+    from tracebi.registry import registry
+    from tracebi.web import discovery
+    from tracebi.web.api.main import app
+
+    for attr in ("_connectors", "_models", "_report_factories",
+                 "_scheduled_factories", "_pipelines"):
+        monkeypatch.setattr(registry, attr, {})
+    monkeypatch.setattr(registry, "_default_model_name", None)
+    for attr, empty in (("_discovered", {}), ("_live_reports", {}),
+                        ("_failed_sources", {}), ("_live_models", set()),
+                        ("_live_pipelines", set()), ("_live_connections", {}),
+                        ("_outcomes", [])):
+        monkeypatch.setattr(discovery, attr, empty)
+    code, out = run_cli("run-transform", "holdings_transform")
+    assert code == 0, out
+    built = ["portfolio_model/portfolio_dashboard", "portfolio_model/portfolio_showcase"]
+    for name in built:
+        code, out = run_cli("report", "build", name)
+        assert code == 0, out
+    discovery.rescan("reports", "models", "pipelines", "connections")
+    c = TestClient(app)
+    runs_before = len(c.get("/api/runs").json())
+
+    # What each built binding loaded, from its manifest; the view over the table.
+    views = {t["name"] for w in c.get("/api/warehouse").json()["warehouses"] for t in w["tables"]
+             if "fact_holdings" in (t.get("bases") or [])}
+    assert views == {"fact_holdings_by_sector"}
+    reads = {("warehouse", "fact_holdings")} | {("warehouse", v) for v in views}
+    expected = set()
+    for name in built:
+        manifest = json.loads((reference / "output" / f"{name}.html.manifest.json").read_text(encoding="utf-8"))
+        loaded = {s["id"]: {((st.get("connector") or {}).get("connector_name"), st.get("source"))
+                            for st in s.get("dataset_lineage") or [] if st.get("operation") == "load"}
+                  for s in manifest["sections"]}
+        expected |= {(name, f["id"]) for f in manifest["figures"]
+                     if not f.get("unverified") and loaded.get(f.get("binding"), set()) & reads}
+    assert ("portfolio_model/portfolio_showcase", "chart-conc") not in expected   # report.py: no loads
+
+    got = c.get("/api/graph/downstream", params={"node": "table:warehouse.fact_holdings"}).json()
+    listed = {(r["name"], f["id"]) for r in got["reports"] for f in r["figures"]}
+    assert listed == expected
+    assert got["summary"] == {"figures": len(expected), "reports": len(built)}
+    # The number each figure carries is the one the desk read off the built page.
+    desk = {(b["report"], v["id"]): v["text"] for b in c.get("/api/desk").json()["builds"] for v in b["values"]}
+    printed = {(r["name"], f["id"]): f["text"] for r in got["reports"] for f in r["figures"] if f["text"]}
+    assert printed and printed == {k: v for k, v in desk.items() if k in listed}
+    # The reports that read it through their model but have no build here.
+    assert {r["name"] for r in got["not_built"]} == {
+        "portfolio_model/portfolio_book", "portfolio_model/portfolio_concentration",
+        "portfolio_model/portfolio_desk", "portfolio_model/portfolio_overview"}
+
+    # A measure: its own figures and those defined from it, never a sibling's.
+    fv = c.get("/api/graph/downstream", params={"node": "measure:portfolio_model:fair_value"}).json()
+    dash = {f["id"] for r in fv["reports"] if r["name"] == built[0] for f in r["figures"]}
+    assert {"kpi-fair-value", "kpi-mark"} <= dash and not {"kpi-positions", "kpi-unrealized"} & dash
+    assert fv["measure"]["column"] == "fair_value"
+
+    for node in ("table:warehouse.nope", "measure:portfolio_model:nope", "model:portfolio_model"):
+        assert c.get("/api/graph/downstream", params={"node": node}).status_code == 404
+    assert len(c.get("/api/runs").json()) == runs_before

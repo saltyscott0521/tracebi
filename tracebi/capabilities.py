@@ -1880,6 +1880,12 @@ def describe(brief: bool = False) -> dict:
                     "graph.",
             "when": "First, on a project you have not seen: it shows what "
                     "exists before any other call.",
+            "downstream": "GET /api/graph/downstream?node=<id> (HTTP only; no "
+                          "gateway tool yet): every report figure that depends "
+                          "on a table:, source_table: or measure:<model>:<measure> "
+                          "node, by report, each with the number its built page "
+                          "prints and the report's verdict, read from the last "
+                          "builds' manifests. Read-only: it never starts a run.",
         },
         "source_onboarding": {
             "mcp": "list_connections(), list_source_tables(connection), "

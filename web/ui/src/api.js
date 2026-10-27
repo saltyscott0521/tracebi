@@ -512,9 +512,84 @@ export const useStartPipelineRun = () => {
       const qs = q.toString()
       return post(`/pipelines/${encodeURIComponent(pipeline)}/runs${qs ? `?${qs}` : ''}`)
     },
-    onSuccess: (_, { pipeline }) => qc.invalidateQueries({ queryKey: ['pipeline-runs', pipeline] }),
+    onSuccess: (_, { pipeline }) => {
+      qc.invalidateQueries({ queryKey: ['pipeline-runs', pipeline] })
+      qc.invalidateQueries({ queryKey: ['running-runs'] })
+    },
   })
 }
+
+// A step of a run, from its pipeline's layers (GET /api/pipelines): running,
+// done or failed in this run when its last run began after the run did, else
+// still waiting.
+function stepState(layer, startedAt) {
+  if (layer.last_status === 'running') return 'running'
+  if (layer.last_run && startedAt && layer.last_run >= startedAt) {
+    return layer.last_status === 'failed' || String(layer.last_status || '').startsWith('error') ? 'failed' : 'done'
+  }
+  return 'waiting'
+}
+
+/**
+ * The pipeline runs going now, and each pipeline's latest run when it failed:
+ * what the map, every Lineage tab and the Data home show moving. One poll every
+ * consumer shares: every 10 s as Pipelines.jsx polls, every 2 s while a run is
+ * going, so its steps are seen as they finish. Each is `{pipeline, run_id,
+ * status, started_at, finished_at, transform, models, steps: [{name, state}],
+ * reports, error}`: *reports* the ones it has rebuilt so far (the log's
+ * "Rendered" lines while it runs; the run's own list once it ends; the log
+ * needs analyst, so a viewer sees them only at the end). Observation only:
+ * nothing here starts, stops or writes anything.
+ */
+export const useRunningRuns = () => {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: ['running-runs'],
+    queryFn: async () => {
+      const rows = await get('/runs?kind=pipeline_run&limit=30')
+      const latest = new Map()
+      rows.forEach(r => { if (!latest.has(r.target)) latest.set(r.target, r) })
+      const shown = [...latest.values()].filter(r => r.status === 'running' || r.status === 'failed')
+      // A run that was going and is not now has moved things: the graph and
+      // what depends on each piece are read again.
+      const before = (qc.getQueryData(['running-runs']) || []).filter(r => r.status === 'running')
+      if (before.some(r => latest.get(r.pipeline)?.status !== 'running')) {
+        ['graph', 'downstream', 'desk', 'runs'].forEach(key => qc.invalidateQueries({ queryKey: [key] }))
+      }
+      if (!shown.length) return []
+      const pipelines = await qc.fetchQuery({ queryKey: ['pipelines'], queryFn: () => get('/pipelines'), staleTime: 0 })
+      return Promise.all(shown.map(async row => {
+        const name = encodeURIComponent(row.target)
+        const run = await getOrNull(`/pipelines/${name}/runs/${row.id}`)
+        const p = (pipelines || []).find(x => x.pipeline === row.target) || {}
+        let reports = run?.reports || []
+        if (row.status === 'running') {
+          const log = await get(`/pipelines/${name}/runs/${row.id}/log?after=0`).catch(() => null)
+          reports = [...(log?.text || '').matchAll(/Rendered (\S+) \(/g)].map(m => m[1])
+        }
+        const started = run?.started_at || row.started
+        return {
+          pipeline: row.target, run_id: String(row.id), status: row.status, started_at: started,
+          finished_at: run?.finished_at || null, transform: p.transform || null, models: p.models || [],
+          steps: (p.layers || []).map(l => ({ name: l.name, state: stepState(l, started) })),
+          reports, error: run?.error || null,
+        }
+      }))
+    },
+    refetchInterval: q => ((q.state.data || []).some(r => r.status === 'running') ? 2000 : 10000),
+  })
+}
+
+// Every report figure that depends on one piece (a warehouse table, a source
+// table, or `measure:<model>:<measure>`), grouped by report, with what each
+// built page printed and its verdict (GET /api/graph/downstream). Read-only.
+export const useDownstream = node =>
+  useQuery({
+    queryKey: ['downstream', node],
+    queryFn: () => get(`/graph/downstream?node=${encodeURIComponent(node)}`),
+    enabled: !!node,
+    retry: false,
+  })
 
 export const usePipelineRuns = pipeline =>
   useQuery({

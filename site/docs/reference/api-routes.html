@@ -858,6 +858,12 @@ model needed (<a href="../concepts/trace.html">The trace</a>).</p>
 <td>viewer</td>
 <td>The project as one graph, what Data's overview draws and the gateway's <code>describe_project</code> answers: <code>{summary, nodes, edges, edge_facts}</code>. Reports in a folder the caller cannot view are left out with their edges.</td>
 </tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/graph/downstream?node=&lt;id&gt;</code></td>
+<td>viewer</td>
+<td>Every report figure that depends on one piece, <code>table:&lt;warehouse&gt;.&lt;table&gt;</code>, <code>source_table:&lt;connection&gt;.&lt;table&gt;</code> or <code>measure:&lt;model&gt;:&lt;measure&gt;</code>, grouped by report: <code>{node, kind, measure, reads, summary: {figures, reports}, reports: [{id, name, label, open, built_at, trust, figures: [{id, kind, binding, label, text, open}]}], not_built}</code>. Read from the last builds' manifests; starts nothing. 404 for any other node.</td>
+</tr>
 </tbody>
 </table>
 <p><code>/api/graph</code> is composed from the routes above, nothing new: each node is
@@ -887,7 +893,20 @@ the edges DuckDB's parser proved, beside them: <code>{from, to, kind: "lineage",
 columns}</code>, a source table, input file or warehouse table to a warehouse table
 that a SQL transform computed <code>columns</code> of its columns from; such a table's
 passport carries <code>columns_from</code>, and a source table's <code>readers</code> list it.
-<code>summary</code> counts
+<code>/api/graph/downstream</code> is what the map's <strong>Depends on this</strong> panel reads
+(<code>tracebi.graph.downstream</code>, so the gateway can offer it too). A figure counts
+only when its last build's manifest says its binding read the piece: the query
+loaded the table (its fact or a joined dimension) or a warehouse view over it;
+for a source table, loaded it live or loaded a table that a transform reading it
+wrote; for a measure, asked for it or for a measure defined from it, and a value
+figure only when its own cell is one of those. A binding derived in Python
+records no loads and never counts. <code>text</code> is what the built page prints for the
+figure (the desk's <code>values</code>, its KPIs; <code>null</code> for a chart or a table), <code>trust</code>
+the report's verdict in the graph's words, <code>open</code> the report page at that
+figure (<code>/reports/&lt;name&gt;?figure=&lt;id&gt;</code>, which opens its trace). <code>measure</code> is the
+measure's definition. <code>not_built</code> names the reports that read the piece through
+their model but have no build here. Reports the caller cannot view are left out.</p>
+<p><code>summary</code> counts
 each kind in the flow (gaps apart, in <code>gaps</code>), stale tables, groups whose
 checks passed (<code>checks: {satisfied, of}</code>), and what agents may read
 (<code>agents: {source_tables, models, reports}</code>).</p>
@@ -945,7 +964,7 @@ the build command.</p>
 </tr>
 <tr>
 <td>Data</td>
-<td><code>/data</code> the home, a status board (cards, Needs attention, Agent access, Recent activity, Schedules); <code>/data/lineage</code> the map (sources → transforms → warehouse → models → reports from <code>/api/graph</code>; <code>?lens=coverage\|flow\|freshness\|trust\|access</code>, <code>?node=&lt;id&gt;</code> selects a piece and its passport, <code>?lane=&lt;lane&gt;</code> focuses a lane); then four lists (<code>?q=</code> search, <code>?filter=</code> chip, <code>?sort=</code> column, <code>-name</code> descending), each a page per thing with tabs at <code>?tab=</code> (Overview when absent): <code>/data/sources</code> (<code>/data/sources/&lt;name&gt;</code> one connection, <code>/data/sources/inputs</code> the folder, <code>/data/sources/&lt;name&gt;/&lt;table&gt;</code> one source table, <code>/data/sources/inputs/&lt;path&gt;</code> one input file); <code>/data/transforms</code> (<code>/data/transforms/&lt;name&gt;</code> one transform); <code>/data/warehouse</code> (<code>?view=table\|schema</code>; <code>?table=&lt;id&gt;</code>, <code>?group=&lt;id&gt;</code> select in its schema; <code>/data/warehouse/&lt;table&gt;</code> one table); <code>/data/models</code> (<code>/data/models/&lt;m&gt;</code> one model: <code>?table=&lt;t&gt;</code>, <code>?measure=&lt;name&gt;</code>, <code>?view=measures\|relationships\|storage\|code\|agent</code> open its Schema tab). Nothing under <code>/data</code> is narrowed to a model.</td>
+<td><code>/data</code> the home, a status board (cards, Needs attention, Agent access, Recent activity, Schedules); <code>/data/lineage</code> the map (sources → transforms → warehouse → models → reports from <code>/api/graph</code>; <code>?lens=coverage\|flow\|freshness\|trust\|access</code>, <code>?node=&lt;id&gt;</code> selects a piece and its passport, <code>?measure=&lt;model&gt;:&lt;measure&gt;</code> a model's measure for Depends on this, <code>?lane=&lt;lane&gt;</code> focuses a lane); then four lists (<code>?q=</code> search, <code>?filter=</code> chip, <code>?sort=</code> column, <code>-name</code> descending), each a page per thing with tabs at <code>?tab=</code> (Overview when absent): <code>/data/sources</code> (<code>/data/sources/&lt;name&gt;</code> one connection, <code>/data/sources/inputs</code> the folder, <code>/data/sources/&lt;name&gt;/&lt;table&gt;</code> one source table, <code>/data/sources/inputs/&lt;path&gt;</code> one input file); <code>/data/transforms</code> (<code>/data/transforms/&lt;name&gt;</code> one transform); <code>/data/warehouse</code> (<code>?view=table\|schema</code>; <code>?table=&lt;id&gt;</code>, <code>?group=&lt;id&gt;</code> select in its schema; <code>/data/warehouse/&lt;table&gt;</code> one table); <code>/data/models</code> (<code>/data/models/&lt;m&gt;</code> one model: <code>?table=&lt;t&gt;</code>, <code>?measure=&lt;name&gt;</code>, <code>?view=measures\|relationships\|storage\|code\|agent</code> open its Schema tab). Nothing under <code>/data</code> is narrowed to a model.</td>
 </tr>
 <tr>
 <td>Review</td>

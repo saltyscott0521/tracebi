@@ -1067,6 +1067,34 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.wait_for_url("**/reports/portfolio_model/portfolio_book")
             fail_on_browser_errors()
 
+            # Depends on this (read-only): a warehouse table selected on the
+            # map lists the figures downstream of it by report, each with the
+            # number its built page prints, the one /api/desk reads off it.
+            page.goto(base + "/data/lineage?node=table:warehouse.fact_holdings")
+            deps = page.get_by_role("complementary", name="Passport").locator(".deps")
+            expect(deps.locator(".deps__sum")).to_have_text(re.compile(r"^\d+ figures in \d+ reports$"))
+            dash = deps.locator('[data-report="portfolio_model/portfolio_dashboard"]')
+            dash.locator("summary").click()
+            values = [v for b in page.request.get(base + "/api/desk").json()["builds"]
+                      if b["report"] == "portfolio_model/portfolio_dashboard"
+                      for v in b["values"]]
+            shown = [v for v in values if dash.locator(f'[data-figure="{v["id"]}"]').count()]
+            assert shown, values
+            for v in shown:
+                expect(dash.locator(f'[data-figure="{v["id"]}"]')).to_contain_text(f'{v["label"]} · {v["text"]} · ')
+            fail_on_browser_errors()
+
+            # A refresh moves on the map, observed only: started on the
+            # transform's Steps, its Lineage tab shows the run on the transform
+            # node, and once the run ends nothing moves.
+            page.goto(base + "/data/transforms/holdings_transform?tab=steps")
+            page.wait_for_load_state("networkidle")
+            page.get_by_role("button", name="Refresh data").click()
+            page.get_by_role("tab", name="Lineage").click()
+            page.locator('[data-node="transform:holdings_transform"][data-run]').wait_for()
+            page.wait_for_function("() => !document.querySelector('[data-run]')")
+            fail_on_browser_errors()
+
             # That refresh is a run of its model: the model page's old Runs
             # tab is History narrowed to it, where All models names the model
             # beside it.

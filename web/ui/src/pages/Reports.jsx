@@ -705,7 +705,9 @@ function NeverBuilt({ build, canBuild }) {
 
 function OpenReport({ report, model }) {
   const name = report.name
-  const [panel, setPanel] = useState(readPanel)
+  // ?figure=<id> (Depends on this links one) opens the page at that figure's trace.
+  const [panel, setPanel] = useState(() => (
+    new URLSearchParams(window.location.search).get('figure') ? { open: true, tab: 'receipt' } : readPanel()))
   const [disk, setDisk] = useState(null)
   const [checking, setChecking] = useState(false)
   const toast = useToast()
@@ -756,8 +758,10 @@ function OpenReport({ report, model }) {
   // field a chip that clears it. A new page starts as authored.
   const [selection, setSelection] = useState(null)
   // The figure the trace follows: the one the reader last clicked in the page
-  // (the frame says which, by its id), else the build's first value figure.
-  const [clicked, setClicked] = useState(null)
+  // (the frame says which, by its id), else the one the address names, else
+  // the build's first value figure.
+  const asked = searchParams.get('figure')
+  const [clicked, setClicked] = useState(asked)
   // A build is deterministic, so a rebuild on unchanged data gives the same
   // HTML string; the frame is keyed on the build's time as well, so a new
   // build is a new page (and starts as authored) even when its bytes match.
@@ -766,7 +770,7 @@ function OpenReport({ report, model }) {
   // frame, so nothing the page says is missed.
   useLayoutEffect(() => {
     setSelection(null)
-    setClicked(null)
+    setClicked(asked)
     const frame = frameRef.current
     if (!frame) return undefined
     // A new build starts as authored, so when the page says it is up it is
@@ -779,7 +783,7 @@ function OpenReport({ report, model }) {
     })
     const stopFollow = followSelection(frame, s => setSelection(s.local && !s.authored ? s.selection || {} : null))
     return () => { stopReady(); stopFollow() }
-  }, [frameHtml, buildKey])
+  }, [frameHtml, buildKey, asked])
   const clearField = field => {
     const rest = { ...selection }
     delete rest[field]
