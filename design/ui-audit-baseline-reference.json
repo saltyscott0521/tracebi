@@ -1,6 +1,6 @@
 {
  "base": "http://127.0.0.1:8077",
- "when": "2026-10-27 15:35:41",
+ "when": "2026-10-27 16:01:59",
  "pages": [
   {
    "path": "/",
@@ -12,10 +12,10 @@
     "phone-dark": "shots/root_42099b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1548,
-    "desktop-dark": 1904,
-    "phone-light": 1933,
-    "phone-dark": 1729
+    "desktop-light": 1409,
+    "desktop-dark": 1412,
+    "phone-light": 1421,
+    "phone-dark": 1367
    }
   },
   {
@@ -28,10 +28,10 @@
     "phone-dark": "shots/ask_8ae0d7__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1735,
-    "desktop-dark": 1590,
-    "phone-light": 1832,
-    "phone-dark": 1915
+    "desktop-light": 1492,
+    "desktop-dark": 1425,
+    "phone-light": 1477,
+    "phone-dark": 1515
    }
   },
   {
@@ -44,10 +44,10 @@
     "phone-dark": "shots/data_9112fb__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2712,
-    "desktop-dark": 1984,
-    "phone-light": 2032,
-    "phone-dark": 1716
+    "desktop-light": 1706,
+    "desktop-dark": 1689,
+    "phone-light": 1519,
+    "phone-dark": 1586
    }
   },
   {
@@ -60,10 +60,10 @@
     "phone-dark": "shots/data_sources_b315ee__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2768,
-    "desktop-dark": 1950,
-    "phone-light": 2100,
-    "phone-dark": 1969
+    "desktop-light": 1687,
+    "desktop-dark": 1695,
+    "phone-light": 1706,
+    "phone-dark": 1658
    }
   },
   {
@@ -76,10 +76,10 @@
     "phone-dark": "shots/data_transforms_bdd93d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1829,
-    "desktop-dark": 1933,
-    "phone-light": 1680,
-    "phone-dark": 2129
+    "desktop-light": 1568,
+    "desktop-dark": 1615,
+    "phone-light": 1703,
+    "phone-dark": 1522
    }
   },
   {
@@ -92,10 +92,10 @@
     "phone-dark": "shots/data_warehouse_2676de__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 3789,
-    "desktop-dark": 3863,
-    "phone-light": 3033,
-    "phone-dark": 3738
+    "desktop-light": 2081,
+    "desktop-dark": 2029,
+    "phone-light": 1877,
+    "phone-dark": 1917
    }
   },
   {
@@ -108,10 +108,10 @@
     "phone-dark": "shots/data_models_b4e8d1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2316,
-    "desktop-dark": 2421,
-    "phone-light": 2093,
-    "phone-dark": 1976
+    "desktop-light": 1648,
+    "desktop-dark": 1477,
+    "phone-light": 1585,
+    "phone-dark": 1519
    }
   },
   {
@@ -124,10 +124,10 @@
     "phone-dark": "shots/review_2a50c2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1521,
-    "desktop-dark": 1639,
-    "phone-light": 1715,
-    "phone-dark": 1841
+    "desktop-light": 1391,
+    "desktop-dark": 1371,
+    "phone-light": 1534,
+    "phone-dark": 1346
    }
   },
   {
@@ -140,10 +140,10 @@
     "phone-dark": "shots/review_drafts_2541b2__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1630,
-    "desktop-dark": 1868,
-    "phone-light": 1725,
-    "phone-dark": 1976
+    "desktop-light": 1371,
+    "desktop-dark": 1340,
+    "phone-light": 1359,
+    "phone-dark": 1385
    }
   },
   {
@@ -156,10 +156,10 @@
     "phone-dark": "shots/runs_6e4bd5__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1754,
-    "desktop-dark": 2353,
-    "phone-light": 1738,
-    "phone-dark": 1801
+    "desktop-light": 1497,
+    "desktop-dark": 1377,
+    "phone-light": 1417,
+    "phone-dark": 1489
    }
   },
   {
@@ -172,10 +172,10 @@
     "phone-dark": "shots/verify_c77e84__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1685,
-    "desktop-dark": 1724,
-    "phone-light": 1686,
-    "phone-dark": 1525
+    "desktop-light": 1893,
+    "desktop-dark": 1527,
+    "phone-light": 1539,
+    "phone-dark": 1693
    }
   },
   {
@@ -188,10 +188,10 @@
     "phone-dark": "shots/docs_1baff9__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1603,
-    "desktop-dark": 1931,
-    "phone-light": 1453,
-    "phone-dark": 1495
+    "desktop-light": 1519,
+    "desktop-dark": 1385,
+    "phone-light": 1513,
+    "phone-dark": 1494
    }
   },
   {
@@ -204,10 +204,10 @@
     "phone-dark": "shots/docs_get_started_703372__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1617,
-    "desktop-dark": 1801,
-    "phone-light": 1557,
-    "phone-dark": 2014
+    "desktop-light": 1738,
+    "desktop-dark": 1473,
+    "phone-light": 1433,
+    "phone-dark": 1485
    }
   },
   {
@@ -220,10 +220,10 @@
     "phone-dark": "shots/model_housing_model_5f65a0__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1520,
-    "desktop-dark": 1941,
-    "phone-light": 1834,
-    "phone-dark": 1406
+    "desktop-light": 1598,
+    "desktop-dark": 1531,
+    "phone-light": 1473,
+    "phone-dark": 1538
    }
   },
   {
@@ -236,10 +236,10 @@
     "phone-dark": "shots/ask_model_housing_model_2ace0d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1688,
-    "desktop-dark": 1656,
-    "phone-light": 1509,
-    "phone-dark": 1642
+    "desktop-light": 1526,
+    "desktop-dark": 1769,
+    "phone-light": 1534,
+    "phone-dark": 1616
    }
   },
   {
@@ -252,10 +252,10 @@
     "phone-dark": "shots/data_models_housing_model_6c3254__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2306,
-    "desktop-dark": 2313,
-    "phone-light": 2075,
-    "phone-dark": 2072
+    "desktop-light": 2031,
+    "desktop-dark": 2091,
+    "phone-light": 2038,
+    "phone-dark": 2131
    }
   },
   {
@@ -268,10 +268,10 @@
     "phone-dark": "shots/model_portfolio_model_755db1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1596,
-    "desktop-dark": 1416,
-    "phone-light": 1383,
-    "phone-dark": 1445
+    "desktop-light": 1604,
+    "desktop-dark": 1453,
+    "phone-light": 1606,
+    "phone-dark": 1512
    }
   },
   {
@@ -284,10 +284,10 @@
     "phone-dark": "shots/ask_model_portfolio_model_3d4b30__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1496,
-    "desktop-dark": 1500,
-    "phone-light": 1467,
-    "phone-dark": 1410
+    "desktop-light": 1649,
+    "desktop-dark": 1758,
+    "phone-light": 1543,
+    "phone-dark": 1636
    }
   },
   {
@@ -300,10 +300,10 @@
     "phone-dark": "shots/data_models_portfolio_model_aca766__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1925,
-    "desktop-dark": 1916,
-    "phone-light": 1980,
-    "phone-dark": 1707
+    "desktop-light": 2069,
+    "desktop-dark": 2151,
+    "phone-light": 2148,
+    "phone-dark": 2239
    }
   },
   {
@@ -316,10 +316,10 @@
     "phone-dark": "shots/model_saas_model_14e7a4__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1387,
-    "desktop-dark": 1490,
-    "phone-light": 1311,
-    "phone-dark": 1466
+    "desktop-light": 1448,
+    "desktop-dark": 1526,
+    "phone-light": 1361,
+    "phone-dark": 1550
    }
   },
   {
@@ -332,10 +332,10 @@
     "phone-dark": "shots/ask_model_saas_model_e1362c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1467,
-    "desktop-dark": 1390,
-    "phone-light": 1418,
-    "phone-dark": 1441
+    "desktop-light": 1447,
+    "desktop-dark": 1618,
+    "phone-light": 1701,
+    "phone-dark": 1535
    }
   },
   {
@@ -348,9 +348,9 @@
     "phone-dark": "shots/data_models_saas_model_3cce5f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1930,
-    "desktop-dark": 1879,
-    "phone-light": 1792,
+    "desktop-light": 2114,
+    "desktop-dark": 1971,
+    "phone-light": 1949,
     "phone-dark": 1956
    }
   },
@@ -364,10 +364,10 @@
     "phone-dark": "shots/data_models_wealth_model_39ca7a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2072,
-    "desktop-dark": 1902,
-    "phone-light": 1924,
-    "phone-dark": 1826
+    "desktop-light": 2110,
+    "desktop-dark": 1962,
+    "phone-light": 1892,
+    "phone-dark": 2557
    }
   },
   {
@@ -380,10 +380,10 @@
     "phone-dark": "shots/data_transforms_affordability_transform_d958ef__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2209,
-    "desktop-dark": 2106,
-    "phone-light": 2361,
-    "phone-dark": 2463
+    "desktop-light": 2833,
+    "desktop-dark": 2323,
+    "phone-light": 2275,
+    "phone-dark": 2305
    }
   },
   {
@@ -396,10 +396,10 @@
     "phone-dark": "shots/data_transforms_holdings_transform_88824d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2488,
-    "desktop-dark": 2376,
-    "phone-light": 2481,
-    "phone-dark": 2394
+    "desktop-light": 2402,
+    "desktop-dark": 2281,
+    "phone-light": 2261,
+    "phone-dark": 2134
    }
   },
   {
@@ -412,10 +412,10 @@
     "phone-dark": "shots/data_transforms_holdings_transform_pandas_c63a84__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1973,
-    "desktop-dark": 1939,
-    "phone-light": 1834,
-    "phone-dark": 1801
+    "desktop-light": 1794,
+    "desktop-dark": 1763,
+    "phone-light": 1772,
+    "phone-dark": 1784
    }
   },
   {
@@ -428,10 +428,10 @@
     "phone-dark": "shots/data_warehouse_dim_cohort_65497b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1921,
-    "desktop-dark": 1920,
-    "phone-light": 2001,
-    "phone-dark": 1817
+    "desktop-light": 1850,
+    "desktop-dark": 1950,
+    "phone-light": 1809,
+    "phone-dark": 1896
    }
   },
   {
@@ -444,10 +444,10 @@
     "phone-dark": "shots/data_sources_inputs_holdings_csv_61522f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1720,
-    "desktop-dark": 1796,
-    "phone-light": 1727,
-    "phone-dark": 1801
+    "desktop-light": 1783,
+    "desktop-dark": 1923,
+    "phone-light": 1746,
+    "phone-dark": 1784
    }
   },
   {
@@ -460,10 +460,10 @@
     "phone-dark": "shots/reports_housing_model_affordability_1e6f5a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1937,
-    "desktop-dark": 1973,
-    "phone-light": 2947,
-    "phone-dark": 2063
+    "desktop-light": 1764,
+    "desktop-dark": 1789,
+    "phone-light": 2444,
+    "phone-dark": 2435
    }
   },
   {
@@ -476,10 +476,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_book_290cd8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1753,
-    "desktop-dark": 2404,
-    "phone-light": 1788,
-    "phone-dark": 1748
+    "desktop-light": 1680,
+    "desktop-dark": 1736,
+    "phone-light": 1803,
+    "phone-dark": 1826
    }
   },
   {
@@ -492,10 +492,10 @@
     "phone-dark": "shots/reports_portfolio_model_portfolio_concentration_f5b920__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1810,
-    "desktop-dark": 1999,
-    "phone-light": 2408,
-    "phone-dark": 2284
+    "desktop-light": 1814,
+    "desktop-dark": 1808,
+    "phone-light": 2241,
+    "phone-dark": 2243
    }
   },
   {
@@ -634,10 +634,10 @@
     "phone-dark": "shots/runs_model_housing_model_a4c247__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1590,
-    "desktop-dark": 1482,
-    "phone-light": 1379,
-    "phone-dark": 1598
+    "desktop-light": 1344,
+    "desktop-dark": 1300,
+    "phone-light": 1372,
+    "phone-dark": 1386
    }
   },
   {
@@ -720,10 +720,10 @@
     "phone-dark": "shots/no_such_page_01c67c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1558,
-    "desktop-dark": 1572,
-    "phone-light": 1637,
-    "phone-dark": 1570
+    "desktop-light": 1710,
+    "desktop-dark": 1700,
+    "phone-light": 1512,
+    "phone-dark": 1569
    }
   },
   {
@@ -736,10 +736,10 @@
     "phone-dark": "shots/folder_portfolio_model_f00770__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1527,
-    "desktop-dark": 1741,
-    "phone-light": 1702,
-    "phone-dark": 1582
+    "desktop-light": 1749,
+    "desktop-dark": 1862,
+    "phone-light": 1524,
+    "phone-dark": 1426
    }
   },
   {
@@ -752,10 +752,10 @@
     "phone-dark": "shots/folder_housing_model_9e5a41__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1671,
-    "desktop-dark": 1500,
-    "phone-light": 1444,
-    "phone-dark": 2082
+    "desktop-light": 1458,
+    "desktop-dark": 1406,
+    "phone-light": 1353,
+    "phone-dark": 1361
    }
   },
   {
@@ -768,10 +768,10 @@
     "phone-dark": "shots/folder_saas_model_bf1040__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2090,
-    "desktop-dark": 1674,
-    "phone-light": 1847,
-    "phone-dark": 1707
+    "desktop-light": 1376,
+    "desktop-dark": 1445,
+    "phone-light": 1409,
+    "phone-dark": 1453
    }
   },
   {
@@ -784,10 +784,10 @@
     "phone-dark": "shots/data_lineage_e56bf1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1783,
-    "desktop-dark": 1738,
-    "phone-light": 1781,
-    "phone-dark": 1821
+    "desktop-light": 1587,
+    "desktop-dark": 1667,
+    "phone-light": 1571,
+    "phone-dark": 1574
    }
   },
   {
@@ -800,10 +800,10 @@
     "phone-dark": "shots/data_sources_filter_files_072bd4__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1796,
-    "desktop-dark": 1862,
-    "phone-light": 1883,
-    "phone-dark": 2114
+    "desktop-light": 1749,
+    "desktop-dark": 1968,
+    "phone-light": 1721,
+    "phone-dark": 1704
    }
   },
   {
@@ -816,10 +816,10 @@
     "phone-dark": "shots/data_sources_filter_agents_39fe59__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2249,
-    "desktop-dark": 2074,
-    "phone-light": 1844,
-    "phone-dark": 1912
+    "desktop-light": 1771,
+    "desktop-dark": 1626,
+    "phone-light": 1701,
+    "phone-dark": 1762
    }
   },
   {
@@ -832,10 +832,10 @@
     "phone-dark": "shots/data_sources_filter_connections_fead7a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1935,
-    "desktop-dark": 1972,
-    "phone-light": 1723,
-    "phone-dark": 1621
+    "desktop-light": 1640,
+    "desktop-dark": 1716,
+    "phone-light": 1609,
+    "phone-dark": 1708
    }
   },
   {
@@ -848,10 +848,10 @@
     "phone-dark": "shots/data_sources_crm_9a0d01__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1742,
-    "desktop-dark": 1717,
-    "phone-light": 1718,
-    "phone-dark": 1736
+    "desktop-light": 1752,
+    "desktop-dark": 1747,
+    "phone-light": 1750,
+    "phone-dark": 1683
    }
   },
   {
@@ -864,10 +864,10 @@
     "phone-dark": "shots/runs_kind_schedule_60394d__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1253,
-    "desktop-dark": 1302,
-    "phone-light": 1405,
-    "phone-dark": 1286
+    "desktop-light": 1396,
+    "desktop-dark": 1343,
+    "phone-light": 1410,
+    "phone-dark": 1371
    }
   },
   {
@@ -880,10 +880,10 @@
     "phone-dark": "shots/data_sources_inputs_c47474__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1360,
-    "desktop-dark": 1403,
-    "phone-light": 1333,
-    "phone-dark": 1347
+    "desktop-light": 1430,
+    "desktop-dark": 1575,
+    "phone-light": 1378,
+    "phone-dark": 1386
    }
   },
   {
@@ -896,10 +896,10 @@
     "phone-dark": "shots/data_sources_billing_6f33f1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1841,
-    "desktop-dark": 2053,
-    "phone-light": 1707,
-    "phone-dark": 1806
+    "desktop-light": 1937,
+    "desktop-dark": 1708,
+    "phone-light": 1804,
+    "phone-dark": 1908
    }
   },
   {
@@ -912,10 +912,10 @@
     "phone-dark": "shots/data_models_portfolio_model_tab_measures_4aeded__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2005,
-    "desktop-dark": 2079,
-    "phone-light": 1916,
-    "phone-dark": 1887
+    "desktop-light": 1993,
+    "desktop-dark": 1960,
+    "phone-light": 1928,
+    "phone-dark": 1968
    }
   },
   {
@@ -928,10 +928,10 @@
     "phone-dark": "shots/data_models_housing_model_tab_measures_55ff6b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1856,
+    "desktop-light": 1946,
     "desktop-dark": 2075,
-    "phone-light": 1975,
-    "phone-dark": 1919
+    "phone-light": 1980,
+    "phone-dark": 1927
    }
   },
   {
@@ -944,10 +944,10 @@
     "phone-dark": "shots/data_models_saas_model_tab_measures_d84d4a__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1980,
-    "desktop-dark": 2066,
-    "phone-light": 1943,
-    "phone-dark": 1859
+    "desktop-light": 2064,
+    "desktop-dark": 1921,
+    "phone-light": 1845,
+    "phone-dark": 1967
    }
   },
   {
@@ -960,10 +960,10 @@
     "phone-dark": "shots/docs_start_plain_english_23560c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1339,
-    "desktop-dark": 1404,
-    "phone-light": 1416,
-    "phone-dark": 1397
+    "desktop-light": 1406,
+    "desktop-dark": 1391,
+    "phone-light": 1443,
+    "phone-dark": 1396
    }
   },
   {
@@ -976,10 +976,10 @@
     "phone-dark": "shots/docs_start_your_first_report_a7460f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1279,
-    "desktop-dark": 1433,
-    "phone-light": 1421,
-    "phone-dark": 1387
+    "desktop-light": 1333,
+    "desktop-dark": 1339,
+    "phone-light": 1339,
+    "phone-dark": 1359
    }
   },
   {
@@ -992,10 +992,10 @@
     "phone-dark": "shots/docs_start_demo_script_17cf76__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1470,
-    "desktop-dark": 1582,
-    "phone-light": 1555,
-    "phone-dark": 1553
+    "desktop-light": 1371,
+    "desktop-dark": 1335,
+    "phone-light": 1433,
+    "phone-dark": 1361
    }
   },
   {
@@ -1008,10 +1008,10 @@
     "phone-dark": "shots/data_lineage_node_model_3Ahousing_model_8ce5e1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2031,
-    "desktop-dark": 2073,
-    "phone-light": 2084,
-    "phone-dark": 2013
+    "desktop-light": 2038,
+    "desktop-dark": 1936,
+    "phone-light": 1822,
+    "phone-dark": 1796
    }
   },
   {
@@ -1024,10 +1024,10 @@
     "phone-dark": "shots/data_lineage_node_model_3Aportfolio_model_12e59c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2019,
-    "desktop-dark": 1906,
-    "phone-light": 1772,
-    "phone-dark": 1829
+    "desktop-light": 1854,
+    "desktop-dark": 2038,
+    "phone-light": 1887,
+    "phone-dark": 1850
    }
   },
   {
@@ -1040,10 +1040,10 @@
     "phone-dark": "shots/data_lineage_node_model_3Asaas_model_15421f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2035,
-    "desktop-dark": 1793,
-    "phone-light": 1844,
-    "phone-dark": 2332
+    "desktop-light": 1976,
+    "desktop-dark": 1877,
+    "phone-light": 1856,
+    "phone-dark": 1887
    }
   },
   {
@@ -1056,10 +1056,10 @@
     "phone-dark": "shots/data_lineage_lane_sources_2ce704__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1685,
-    "desktop-dark": 1689,
-    "phone-light": 1647,
-    "phone-dark": 1589
+    "desktop-light": 1694,
+    "desktop-dark": 1652,
+    "phone-light": 1602,
+    "phone-dark": 1544
    }
   },
   {
@@ -1072,10 +1072,10 @@
     "phone-dark": "shots/data_lineage_lane_transforms_8bd861__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1637,
-    "desktop-dark": 1818,
-    "phone-light": 1757,
-    "phone-dark": 1697
+    "desktop-light": 1513,
+    "desktop-dark": 1610,
+    "phone-light": 1654,
+    "phone-dark": 1580
    }
   },
   {
@@ -1088,10 +1088,10 @@
     "phone-dark": "shots/data_lineage_lane_warehouse_f0c842__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1682,
-    "desktop-dark": 1612,
-    "phone-light": 1477,
-    "phone-dark": 1624
+    "desktop-light": 1542,
+    "desktop-dark": 1639,
+    "phone-light": 1551,
+    "phone-dark": 1535
    }
   },
   {
@@ -1104,10 +1104,10 @@
     "phone-dark": "shots/data_lineage_lens_coverage_16e6f1__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1758,
-    "desktop-dark": 1586,
-    "phone-light": 1608,
-    "phone-dark": 1718
+    "desktop-light": 1584,
+    "desktop-dark": 1619,
+    "phone-light": 1694,
+    "phone-dark": 1443
    }
   },
   {
@@ -1120,10 +1120,10 @@
     "phone-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22fair_va_c2424e__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1523,
-    "desktop-dark": 1505,
-    "phone-light": 1694,
-    "phone-dark": 1453
+    "desktop-light": 1425,
+    "desktop-dark": 1452,
+    "phone-light": 1406,
+    "phone-dark": 1503
    }
   },
   {
@@ -1136,10 +1136,10 @@
     "phone-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22cost_ba_cee1a3__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1371,
-    "desktop-dark": 1555,
-    "phone-light": 1674,
-    "phone-dark": 1550
+    "desktop-light": 1525,
+    "desktop-dark": 1491,
+    "phone-light": 1528,
+    "phone-dark": 1506
    }
   },
   {
@@ -1152,10 +1152,10 @@
     "phone-dark": "shots/ask_model_portfolio_model_q_7B_22measures_22_3A_5B_22par_amo_24a617__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1492,
-    "desktop-dark": 1380,
-    "phone-light": 1515,
-    "phone-dark": 1603
+    "desktop-light": 1510,
+    "desktop-dark": 1724,
+    "phone-light": 1511,
+    "phone-dark": 1557
    }
   },
   {
@@ -1168,10 +1168,10 @@
     "phone-dark": "shots/node_report_3Ahousing_model_2Faffordability_ce5a9c__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1503,
-    "desktop-dark": 1433,
-    "phone-light": 1468,
-    "phone-dark": 1405
+    "desktop-light": 1491,
+    "desktop-dark": 1468,
+    "phone-light": 1522,
+    "phone-dark": 1502
    }
   },
   {
@@ -1184,10 +1184,10 @@
     "phone-dark": "shots/data_models_housing_model_tab_schema_0c3c45__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2226,
-    "desktop-dark": 2410,
-    "phone-light": 2048,
-    "phone-dark": 2174
+    "desktop-light": 2066,
+    "desktop-dark": 2093,
+    "phone-light": 2230,
+    "phone-dark": 2199
    }
   },
   {
@@ -1200,10 +1200,10 @@
     "phone-dark": "shots/node_report_3Aportfolio_model_2Fportfolio_book_87277b__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1472,
-    "desktop-dark": 1478,
-    "phone-light": 1417,
-    "phone-dark": 1394
+    "desktop-light": 1553,
+    "desktop-dark": 1536,
+    "phone-light": 1551,
+    "phone-dark": 1576
    }
   },
   {
@@ -1216,10 +1216,10 @@
     "phone-dark": "shots/node_report_3Aportfolio_model_2Fportfolio_concentration_26c95e__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 1353,
-    "desktop-dark": 1446,
-    "phone-light": 1475,
-    "phone-dark": 1519
+    "desktop-light": 1455,
+    "desktop-dark": 1536,
+    "phone-light": 1446,
+    "phone-dark": 1414
    }
   },
   {
@@ -1232,10 +1232,10 @@
     "phone-dark": "shots/data_models_portfolio_model_tab_schema_66d2a8__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2209,
-    "desktop-dark": 2102,
-    "phone-light": 2162,
-    "phone-dark": 2495
+    "desktop-light": 2169,
+    "desktop-dark": 2057,
+    "phone-light": 2139,
+    "phone-dark": 2264
    }
   },
   {
@@ -1248,10 +1248,10 @@
     "phone-dark": "shots/data_models_saas_model_tab_schema_0c789f__phone-dark.png"
    },
    "ms": {
-    "desktop-light": 2105,
-    "desktop-dark": 2142,
-    "phone-light": 2195,
-    "phone-dark": 2290
+    "desktop-light": 2139,
+    "desktop-dark": 2187,
+    "phone-light": 2086,
+    "phone-dark": 2113
    }
   }
  ],
@@ -1279,82 +1279,6 @@
     "desktop-dark",
     "phone-light",
     "phone-dark"
-   ]
-  },
-  {
-   "page": "/",
-   "pattern": "/",
-   "viewport": "desktop",
-   "theme": "light",
-   "rule": "axe:link-in-text-block",
-   "severity": "serious",
-   "target": ".welcome__line > a:nth-child(3)",
-   "detail": "Links must be distinguishable without relying on color \u2014 .welcome__line > a:nth-child(3) ::   The link has insufficient color contrast of 1.36:1 with the surrounding text. (Minimum contrast is 3:1, link text: #2447c4, surrounding text: #404040)",
-   "key": "axe:link-in-text-block|/|.welcome__line > a:nth-child(#)",
-   "seen_in": [
-    "desktop-light",
-    "desktop-dark",
-    "phone-light"
-   ]
-  },
-  {
-   "page": "/?model=housing_model",
-   "pattern": "/?model",
-   "viewport": "desktop",
-   "theme": "light",
-   "rule": "axe:link-in-text-block",
-   "severity": "serious",
-   "target": ".welcome__line > a:nth-child(3)",
-   "detail": "Links must be distinguishable without relying on color \u2014 .welcome__line > a:nth-child(3) ::   The link has insufficient color contrast of 1.36:1 with the surrounding text. (Minimum contrast is 3:1, link text: #2447c4, surrounding text: #404040)",
-   "key": "axe:link-in-text-block|/?model|.welcome__line > a:nth-child(#)",
-   "seen_in": [
-    "desktop-light",
-    "desktop-dark",
-    "phone-light",
-    "desktop-light",
-    "desktop-dark",
-    "phone-light",
-    "desktop-light",
-    "desktop-dark",
-    "phone-light"
-   ]
-  },
-  {
-   "page": "/?node=report%3Ahousing_model%2Faffordability",
-   "pattern": "/?node",
-   "viewport": "desktop",
-   "theme": "light",
-   "rule": "axe:link-in-text-block",
-   "severity": "serious",
-   "target": ".welcome__line > a:nth-child(3)",
-   "detail": "Links must be distinguishable without relying on color \u2014 .welcome__line > a:nth-child(3) ::   The link has insufficient color contrast of 1.36:1 with the surrounding text. (Minimum contrast is 3:1, link text: #2447c4, surrounding text: #404040)",
-   "key": "axe:link-in-text-block|/?node|.welcome__line > a:nth-child(#)",
-   "seen_in": [
-    "desktop-light",
-    "desktop-dark",
-    "phone-light",
-    "desktop-light",
-    "desktop-dark",
-    "phone-light",
-    "desktop-light",
-    "desktop-dark",
-    "phone-light"
-   ]
-  },
-  {
-   "page": "/ask?model=housing_model",
-   "pattern": "/ask?model",
-   "viewport": "desktop",
-   "theme": "light",
-   "rule": "no-focus-ring",
-   "severity": "serious",
-   "target": "input \"Your question\"",
-   "detail": "keyboard focus is invisible",
-   "key": "no-focus-ring|/ask?model|input",
-   "seen_in": [
-    "desktop-light",
-    "desktop-light",
-    "desktop-light"
    ]
   },
   {
@@ -1401,22 +1325,6 @@
    ]
   },
   {
-   "page": "/ask?model=portfolio_model&q=%7B%22measures%22%3A%5B%22fair_value%22%5D%2C%22dimensions%22%3A%5B%5D%2C%22filters%22%3A%7B%7D%7D",
-   "pattern": "/ask?model&q",
-   "viewport": "desktop",
-   "theme": "light",
-   "rule": "no-focus-ring",
-   "severity": "serious",
-   "target": "input \"Your question\"",
-   "detail": "keyboard focus is invisible",
-   "key": "no-focus-ring|/ask?model&q|input",
-   "seen_in": [
-    "desktop-light",
-    "desktop-light",
-    "desktop-light"
-   ]
-  },
-  {
    "page": "/reports/housing_model/affordability",
    "pattern": "/reports/<r>",
    "viewport": "desktop",
@@ -1437,39 +1345,6 @@
     "phone-dark",
     "desktop-light",
     "desktop-dark",
-    "phone-light",
-    "phone-dark"
-   ]
-  },
-  {
-   "page": "/data/warehouse",
-   "pattern": "/data/warehouse",
-   "viewport": "-",
-   "theme": "-",
-   "rule": "slow-page",
-   "severity": "moderate",
-   "target": "page",
-   "detail": "settles in a median 3789ms",
-   "key": "slow-page|/data/warehouse|page",
-   "seen_in": [
-    "---"
-   ]
-  },
-  {
-   "page": "/ask?model=portfolio_model&q=%7B%22measures%22%3A%5B%22fair_value%22%5D%2C%22dimensions%22%3A%5B%5D%2C%22filters%22%3A%7B%7D%7D",
-   "pattern": "/ask?model&q",
-   "viewport": "phone",
-   "theme": "light",
-   "rule": "small-target",
-   "severity": "moderate",
-   "target": "button.ask-token__x \"\u00d7\"",
-   "detail": "19x30px tap target",
-   "key": "small-target|/ask?model&q|button.ask-token__x",
-   "seen_in": [
-    "phone-light",
-    "phone-dark",
-    "phone-light",
-    "phone-dark",
     "phone-light",
     "phone-dark"
    ]
@@ -1499,7 +1374,7 @@
    "wealth_model/aum_by_branch": 1341,
    "wealth_model/aum_by_region": 1226
   },
-  "calc_ms_max": 7.5
+  "calc_ms_max": 1.6
  },
  "report_pass": {
   "sheet": "report-sheet.png",
@@ -1633,7 +1508,7 @@
     ],
     "accent": "#1f7a4d/#1f7a4d",
     "html_kb": 800,
-    "calc_ms": 7.5,
+    "calc_ms": 1.1,
     "display": "Inter"
    },
    "portfolio_model/portfolio_book": {
@@ -1651,7 +1526,7 @@
     "gradients": [],
     "accent": "#1f4e79/#8bb4e0",
     "html_kb": 642,
-    "calc_ms": 1.3,
+    "calc_ms": 1.1,
     "display": "Iowan Old Style"
    },
    "portfolio_model/portfolio_concentration": {
@@ -1668,7 +1543,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1240,
-    "calc_ms": 1.1,
+    "calc_ms": 1.4,
     "display": "Geist"
    },
    "portfolio_model/portfolio_dashboard": {
@@ -1685,7 +1560,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1236,
-    "calc_ms": 1.5,
+    "calc_ms": 1.0,
     "display": "Geist"
    },
    "portfolio_model/portfolio_desk": {
@@ -1702,7 +1577,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1263,
-    "calc_ms": 1.7,
+    "calc_ms": 1.1,
     "display": "Geist"
    },
    "portfolio_model/portfolio_overview": {
@@ -1719,7 +1594,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1235,
-    "calc_ms": 1.4,
+    "calc_ms": 1.3,
     "display": "Geist"
    },
    "portfolio_model/portfolio_showcase": {
@@ -1738,7 +1613,7 @@
     "gradients": [],
     "accent": "#0d6b73/#5cc4bd",
     "html_kb": 723,
-    "calc_ms": 1.2,
+    "calc_ms": 1.6,
     "display": "Fraunces"
    },
    "saas_model/cohort_brief": {
@@ -1773,7 +1648,7 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1234,
-    "calc_ms": 0.8,
+    "calc_ms": 1.3,
     "display": "Geist"
    },
    "wealth_model/aum_by_branch": {
@@ -1791,7 +1666,7 @@
     "gradients": [],
     "accent": "#1f6f5c/#6cc3a8",
     "html_kb": 1341,
-    "calc_ms": 1.3,
+    "calc_ms": 1.0,
     "display": "Fraunces"
    },
    "wealth_model/aum_by_region": {
@@ -1808,10 +1683,10 @@
     "gradients": [],
     "accent": "#2f5bea/#7a9cff",
     "html_kb": 1226,
-    "calc_ms": 1.6,
+    "calc_ms": 1.0,
     "display": "Geist"
    }
   }
  },
- "score": 57
+ "score": 77
 }

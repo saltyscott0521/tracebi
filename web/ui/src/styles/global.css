@@ -1237,7 +1237,7 @@ a.runs-card__body:hover { background: var(--card-hl); }
 .ask-token { display: inline-flex; align-items: stretch; border: 1px solid var(--blue-br); border-radius: var(--radius); background: var(--blue-lt); }
 .ask-token button { appearance: none; border: 0; background: none; font: inherit; color: var(--accent-text); cursor: pointer; }
 .ask-token__pick { padding: 4px 4px 4px 8px; font-size: var(--text-base); font-weight: 600; min-height: 30px; }
-.ask-token__x { padding: 0 8px 0 4px; font-size: var(--text-base); line-height: 1; color: var(--muted) !important; }
+.ask-token__x { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; padding: 0 8px 0 4px; font-size: var(--text-base); line-height: 1; color: var(--muted) !important; }
 .ask-token__x:hover { color: var(--text) !important; }
 .ask-slot {
   appearance: none; min-height: 30px; padding: 4px 8px; font: inherit; font-size: var(--text-base); cursor: pointer;
@@ -1249,6 +1249,8 @@ a.runs-card__body:hover { background: var(--card-hl); }
   font: inherit; font-size: var(--text-base); color: var(--text);
 }
 .ask-input::placeholder { color: var(--muted); }
+/* The sentence's ring shows focus inside it; the input itself still says it has the keyboard. */
+.ask-input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .ask-list {
   position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; max-height: 320px; overflow-y: auto;
   margin: 0; padding: 4px; list-style: none; background: var(--surface);
@@ -2031,8 +2033,9 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 /* Under the tiles it sits closer to them than the tiles' own gap below. */
 .ftiles + .welcome { margin-top: calc(-1 * var(--space-4)); }
 .welcome__line { flex: 1; min-width: 0; margin: 0; font-size: var(--text-caption); color: var(--text-2); }
-.welcome__line a { color: var(--accent-text); text-decoration: none; }
-.welcome__line a:hover { text-decoration: underline; }
+/* Underlined at rest: in a line of text, colour alone does not mark a link. */
+.welcome__line a { color: var(--accent-text); text-decoration: underline; text-decoration-color: var(--muted); text-underline-offset: 2px; }
+.welcome__line a:hover { text-decoration-color: currentColor; }
 .welcome__line .welcome__go { font-weight: 600; }
 .welcome__kbd { color: var(--muted); }
 .welcome__kbd kbd {
