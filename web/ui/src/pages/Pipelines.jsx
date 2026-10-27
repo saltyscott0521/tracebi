@@ -256,7 +256,7 @@ function LayerHistory({ pipeline, layer }) {
 // *start*: a count the page's own Refresh data (top right, a transform's
 // page) raises to begin a run here, where its output unfolds; with it the
 // card shows no Refresh data of its own, so a page has one.
-export function PipelineDetail({ pipeline, layers, primary, label, written, built, start: started }) {
+export function PipelineDetail({ pipeline, layers, primary, label, written, built, start: started, onStart }) {
   const toast = useToast()
   const qc = useQueryClient()
   const { mutate: start, isPending: isStarting } = useStartPipelineRun()
@@ -274,9 +274,12 @@ export function PipelineDetail({ pipeline, layers, primary, label, written, buil
   // On a phone the table of steps drops Schedule and Runs after, so Status shows.
   const phone = useNarrow('(max-width: 640px)')
   const outside = useMemo(() => ({ written, built }), [written, built])
-  const seen = useRef(started || 0)
+  // A start handed in before this mounted (Refresh data on another tab) still
+  // counts: nothing is seen until it is acted on, and the owner clears it after.
+  const seen = useRef(0)
   useEffect(() => {
-    if (started && started !== seen.current) { seen.current = started; begin(undefined) }
+    if (!started) { seen.current = 0; return }
+    if (started !== seen.current) { seen.current = started; begin(undefined); onStart?.() }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started])
 
