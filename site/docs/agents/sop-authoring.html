@@ -101,7 +101,7 @@ from it.</p>
   sunk or modelled, start with step 0 below, then come back to step 1.</li>
 </ul>
 <h3 id="the-tools">The tools</h3>
-<p>The gateway has twenty-nine tools and three prompts (<code>author_report</code>,
+<p>The gateway has thirty tools and three prompts (<code>author_report</code>,
 <code>answer_question</code>, <code>address_pins</code>) that run this procedure for you. The MCP
 <code>tools/list</code> call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with <code>build_report</code>. Over a
@@ -204,8 +204,12 @@ hosted connection, the draft tools are how a package reaches the server
 <td>One allowed table's columns, profile and a sample of rows (<code>sample</code>, at most 500)</td>
 </tr>
 <tr>
+<td><code>read_transform</code></td>
+<td>One transform's SQL (or Python) and <code>.contract.yaml</code>, its form, the tables it writes, what its last run read and its column lineage; code, never rows</td>
+</tr>
+<tr>
 <td><code>propose_transform</code></td>
-<td>Store <code>transforms/&lt;name&gt;.sql</code> and its <code>.contract.yaml</code> as a code request; an admin approves it and it runs once</td>
+<td>Store <code>transforms/&lt;name&gt;.sql</code> and its <code>.contract.yaml</code> as a code request (<code>change=true</code> for a change to an existing SQL transform), dry-run at once against a throwaway copy (<code>dry_run</code>: tables, first rows, checks, lineage, error); an admin approves one that passed and it runs once</td>
 </tr>
 <tr>
 <td><code>export_table</code></td>
@@ -252,15 +256,21 @@ transcription.</p>
 <p>Skip this step when a model already answers the question. Otherwise, in
 order (<a href="../agents/sop-onboarding.html">SOP: Onboard a source, from a connection to a report</a> walks it in full):</p>
 <ol>
-<li><strong>Explore what you may read.</strong> <code>list_connections</code>, then
-   <code>list_source_tables(connection)</code> and
+<li><strong>Explore what you may read.</strong> <code>describe_workspace</code>, then
+   <code>read_transform(name)</code> on the transforms that exist, then
+   <code>list_connections</code>, <code>list_source_tables(connection)</code> and
    <code>describe_source_table(connection, table)</code>. Only the tables a person
    allowed agents to read are there; any other answers "not found".</li>
 <li><strong>Propose a transform.</strong> <code>propose_transform(name, sql, contract_yaml,
    note)</code>: SQL that reads those tables through <code>-- source:</code> lines and sinks
-   clean star-schema tables, with a contract of checks on them.</li>
+   clean star-schema tables, with a contract of checks on them
+   (<code>change=true</code> to change an existing SQL transform).</li>
+<li><strong>Read the dry run.</strong> The result's <code>dry_run</code> is the proposal run once
+   against a throwaway copy: the tables it made with their first rows, each
+   check, the lineage, any error. While <code>dry_run.ok</code> is false, fix it and
+   propose again; a failed proposal cannot be approved.</li>
 <li><strong>Wait for the approval.</strong> Give the person the request id and its
-   <code>review_url</code>. Nothing has run: an admin approves it and it runs once.
+   <code>review_url</code>. Nothing real has run: an admin approves it and it runs once.
    Until then its tables do not exist.</li>
 <li><strong>Draft the model.</strong> <code>start_draft(kind="models", path=&lt;name&gt;)</code> over the
    sunk tables (<code>describe_table</code> gives their columns), <code>preview_draft</code>, then

@@ -564,6 +564,29 @@ def run_contract_file(path: "str | os.PathLike[str]", warehouse: str,
     return spec
 
 
+def observe(con, checks: list[dict]) -> list[dict]:
+    """Run each declaration (:func:`declare`) on *con* and return what each
+    observed, as the certificate would record it, writing nothing: no
+    certificate, no raise on a failed check. A check DuckDB cannot run (a
+    table or column that is not there) is recorded failed, with ``error``.
+    A dry run (:mod:`tracebi.dryrun`) reads a proposal's contract this way."""
+    import duckdb
+
+    c = _Contract("observe", warehouse="")
+    c._con = con
+    out = []
+    for decl in checks:
+        try:
+            c.check(decl)
+            out.append(c._checks[-1])
+        except duckdb.Error as exc:
+            out.append({"check": decl["check"], "table": decl["table"], "params": decl["params"],
+                        "observed": None, "passed": False,
+                        "error": " ".join(str(exc).split()),
+                        **({"note": decl["note"]} if "note" in decl else {})})
+    return out
+
+
 def read_contracts(warehouse: str) -> Optional[dict]:
     """The certificate beside *warehouse*, or None."""
     path = contracts_path(warehouse)

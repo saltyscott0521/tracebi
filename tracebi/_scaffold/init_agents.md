@@ -559,14 +559,15 @@ way (writing the other form replaces the draft file); a Python model cannot.
 
 **No model yet? Start from a connection.** A person sets up the connection
 and ticks the tables agents may read (`agents: {tables: [a, b]}` in
-`connections/<name>.yaml`); six tools take it from there, in this order
+`connections/<name>.yaml`); seven tools take it from there, in this order
 (`docs/agents/sop-onboarding.md` in the TraceBi handbook walks it):
 
 - `describe_project` (or `describe_workspace`, the same tool) — the workspace as a graph: every source, transform, table, model and report, what feeds what, and what you may read. Call it first. A table a SQL transform wrote carries `columns_from` (also on `describe_table`): the source columns each column is computed from, as DuckDB's parser proved it; `null` with a reason where it could not follow, nothing for pandas.
+- `read_transform(name)` — a transform that exists: its SQL and `.contract.yaml`, its form, the tables it writes, what its last run read and its column lineage. Code, never rows.
 - `list_connections` — each connection's type and the tables agents may read.
 - `list_source_tables(connection)` — those tables, with columns and row estimates.
 - `describe_source_table(connection, table, sample=20)` — columns, a profile and sample rows; any other table is "not found".
-- `propose_transform(name, sql, contract_yaml, note)` — the SQL and its contract as a code request; an admin approves it and it runs once, so wait for that, then draft the model.
+- `propose_transform(name, sql, contract_yaml, note, change=false)` — the SQL and its contract as a code request (`change=true` changes an existing SQL transform; it must keep writing every table a model reads, and a Python transform is a person's, through `tracebi push`). It is dry-run at once against a throwaway copy — nothing real is written, a `-- sink:` line is not sent — and `dry_run` gives each table it made (columns, rows, first 20 rows), each check (`passed`, `failing_rows`), the column lineage and any error with its statement. While it fails, fix it and propose again: a failed one cannot be approved. An admin approves it and it runs once (and is committed, in a git workspace), so wait for that, then draft the model.
 - `export_table(source, table, to)` — admin only: a warehouse table out to a connection or an object prefix.
 
 **What a remote draft may hold.** A report draft takes `report.json`,

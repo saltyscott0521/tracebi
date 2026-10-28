@@ -94,12 +94,18 @@ TraceBi workspace. This SOP ends where <a href="../agents/sop-authoring.html">SO
   A table outside that list answers "not found", exactly as a missing one
   does. Do not look for it another way.</li>
 <li><strong>What you write is a proposal.</strong> A transform runs on the server with its
-  secrets, so you never run one. You propose it; an admin reads it in the app
-  and approves it, and approving runs it once.</li>
-<li><strong>The checks start at the model.</strong> The transform's contract records that
-  the sink satisfied its contract when it ran. Stamped queries and <code>verify</code>
-  cover the model onward; they say nothing about the transform's logic.</li>
+  secrets, so you never run one for real. You propose it, and it is dry-run
+  at once against a throwaway copy, so you and the reviewer see what it
+  would make; an admin reads it in the app and approves it, and approving
+  runs it once.</li>
 </ul>
+<p>The loop: <code>describe_workspace</code> → <code>read_transform</code> for what exists →
+<code>describe_source_table</code> → <code>propose_transform</code> (new or a change) → read the
+dry run, fix and propose again until it passes → an admin approves → draft
+the model.
+- <strong>The checks start at the model.</strong> The transform's contract records that
+  the sink satisfied its contract when it ran. Stamped queries and <code>verify</code>
+  cover the model onward; they say nothing about the transform's logic.</p>
 <h2 id="1-see-the-workspace-then-find-the-connection">1. See the workspace, then find the connection</h2>
 <p>Your first call on a workspace you have not seen:</p>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;describe_project&quot;, &quot;arguments&quot;: {} }
@@ -110,7 +116,19 @@ tables), transform, warehouse table, model and report, with <code>edges</code> s
 what feeds what. Each node's <code>passport.agents</code> says whether you may read it
 (<code>ok</code> for a source table on the allowlist), and <code>gap</code> marks what is wired on
 one side only, such as a file no transform reads or a table no model reads.
-It tells you what already exists, so you build only what is missing.</p>
+It tells you what already exists, so you build only what is missing.
+(<code>describe_workspace</code> is the same tool under the workspace's word.)</p>
+<p>Read each transform that exists before you write a new one; one may already
+sink what you need, or need only a change:</p>
+<pre><code class="language-json">{ &quot;tool&quot;: &quot;read_transform&quot;, &quot;arguments&quot;: { &quot;name&quot;: &quot;shop_orders&quot; } }
+</code></pre>
+<p>It returns the file's <code>text</code> and its <code>contract_yaml</code>, its <code>form</code> (<code>sql</code>,
+<code>python</code>, <code>notebook</code>), the <code>tables</code> it writes, <code>last_run</code> (when its sink last
+satisfied its contract, and the <code>sources</code> that run read, each with <code>method</code>
+and <code>snapshot</code> when a committed snapshot stood in) and <code>lineage</code>, per table
+and column the columns DuckDB's parse proves it is computed from. It reads
+code, never rows. A transform node's <code>passport.agents.tools</code> in the graph
+names the tools that take its name.</p>
 <p>Then the connections themselves:</p>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;list_connections&quot;, &quot;arguments&quot;: {} }
 </code></pre>
@@ -167,15 +185,42 @@ checks:
 <p>The proposal is checked before it is stored: the name is new, the SQL parses
 in DuckDB, every <code>-- source:</code> is a table you may read, and the contract is
 valid. A refusal lists every reason; fix them and propose again. On success
-you get a <code>request_id</code> and a <code>review_url</code>.</p>
-<h2 id="4-wait-for-the-approval">4. Wait for the approval</h2>
-<p>Tell the person the request id and the <code>review_url</code> (the app's Review page),
-and that an admin approves it there. Nothing has run yet, and the tables do
+you get a <code>request_id</code>, a <code>review_url</code> and a <code>dry_run</code>.</p>
+<p><strong>To change a transform that exists</strong>, read it (<code>read_transform</code>), edit its
+SQL and contract, and propose them under its name with <code>change: true</code>. The
+reviewer sees the diff against the published files. The change must keep
+writing every table a model reads today; one that drops such a table is
+refused, naming the model and the table: change the model first, as a draft
+(step 5), and propose the transform once that is published. Only a SQL
+transform is yours to change: a Python one is refused, and a person changes
+it from a laptop with <code>tracebi push</code>.</p>
+<h2 id="4-read-the-dry-run-then-wait-for-the-approval">4. Read the dry run, then wait for the approval</h2>
+<p>Every proposal, new or a change, runs once at once against a throwaway copy:
+a scratch DuckDB with the warehouse attached READ_ONLY, the <code>-- source:</code>
+tables loaded the way the real run loads them, and external access locked,
+so it reads only what you may read and writes nothing real. A <code>-- sink:</code>
+line is not sent and a <code>COPY</code> is not run; <code>not_executed</code> names each. The run
+is bounded by the workspace's statement timeout.</p>
+<p><code>dry_run</code> holds, per table the SQL created, its <code>columns</code>, <code>rows</code> and the
+first 20 rows (<code>sample</code>); per check, <code>passed</code> and <code>failing_rows</code>; the
+<code>lineage</code> DuckDB's parse proves; <code>elapsed_ms</code>; and any <code>error</code>, with the
+<code>statement</code> and <code>line</code> it failed on. <code>summary</code> says it in one line ("Dry run:
+2 tables, checks 3 of 3 passed").</p>
+<p>If <code>dry_run.ok</code> is false, the request is stored but cannot be approved. Read
+the error and the failed checks, fix the SQL or the contract, and propose
+again (with <code>change: true</code> for a change); the newer proposal is the one the
+admin approves.</p>
+<p>When it passes, tell the person the request id and the <code>review_url</code> (the
+app's Review page, where the admin sees the diff beside the dry run), and
+that an admin approves it there. Nothing real has run yet, and the tables do
 not exist until it does: do not draft a model or a report over them before
 then.</p>
 <p>When the admin approves, the files go into <code>transforms/</code> and the transform
-runs once. If it fails (its SQL, or a contract check), the request says so
-and the admin tells you; propose a corrected transform under a new name.</p>
+runs once. When the workspace is a git repository, the approval also commits
+exactly those files (you as author, the admin as committer, a
+<code>TraceBi-Request: &lt;id&gt;</code> trailer; it never pushes); otherwise the request says
+why it made no commit. If the run fails (its SQL, or a contract check), the
+request says so and the admin tells you; propose a corrected transform.</p>
 <h2 id="5-draft-the-model">5. Draft the model</h2>
 <p>Once the tables exist, <code>describe_table</code> gives their columns. Draft a
 declarative model over them:</p>
@@ -216,8 +261,20 @@ declarative model over them:</p>
 <td>Read every error, fix each, and propose again.</td>
 </tr>
 <tr>
+<td>A change is refused: a model reads a table it drops</td>
+<td>Keep writing the table, or change the model first as a draft and propose the transform after it is published.</td>
+</tr>
+<tr>
+<td>A change to a Python transform is refused</td>
+<td>It is a person's to change, with <code>tracebi push</code>. Tell them what you would change.</td>
+</tr>
+<tr>
+<td><code>dry_run.ok</code> is false</td>
+<td>Read <code>dry_run.error</code> and the checks that did not pass, fix the SQL or the contract, and propose again.</td>
+</tr>
+<tr>
 <td>The approved run failed</td>
-<td>Read the error on the request, then propose a corrected transform under a new name.</td>
+<td>Read the error on the request, then propose a corrected transform.</td>
 </tr>
 <tr>
 <td>A number is wrong below the model</td>

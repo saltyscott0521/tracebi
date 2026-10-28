@@ -230,6 +230,100 @@ function Diff({ text }) {
   )
 }
 
+const SAMPLE_SHOWN = 5
+
+const checkWords = c => {
+  const p = c.params || {}
+  const on = p.columns ? ` (${p.columns.join(', ')})` : p.column ? ` (${p.column})` : ''
+  const bound = c.check === 'rows'
+    ? [p.at_least != null && `at least ${p.at_least}`, p.at_most != null && `at most ${p.at_most}`,
+       p.exactly != null && `exactly ${p.exactly}`].filter(Boolean).join(', ')
+    : ''
+  return `${c.check.replace('_', ' ')} · ${c.table}${on}${bound ? ` · ${bound}` : ''}`
+}
+
+const observedWords = c => {
+  if (c.error) return c.error
+  if (c.check === 'rows') return `${Number(c.observed).toLocaleString()} rows`
+  if (c.failing_rows == null) return ''
+  return c.failing_rows === 0 ? 'no failing rows' : `${c.failing_rows.toLocaleString()} failing`
+}
+
+const cell = v => (v == null ? '' : typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: 6 }) : String(v))
+
+// A proposal's dry run (tracebi/dryrun.py): what it made against a throwaway
+// copy, which checks passed, and what it did not execute. A failure leads.
+function DryRun({ result }) {
+  const failed = !result.ok
+  const tables = result.tables || []
+  return (
+    <section className={`dryrun${failed ? ' dryrun--failed' : ''}`} aria-label="Dry run">
+      <div className="dryrun__head">
+        <Chip tone={failed ? 'bad' : ''}>{failed ? 'Dry run failed' : 'Dry run passed'}</Chip>
+        <strong>{result.error ? 'Dry run failed' : result.summary}</strong>
+        <span className="dryrun__quiet">
+          {Math.round(result.elapsed_ms || 0).toLocaleString()} ms against a throwaway copy · nothing real was written
+        </span>
+      </div>
+      {result.error && (
+        <div className="dryrun__error" role="alert">
+          <div>{result.error.message}</div>
+          {result.error.sql && <pre>{result.error.sql}</pre>}
+        </div>
+      )}
+      {(result.checks || []).length > 0 && (
+        <ul className="dryrun__checks" aria-label="Checks">
+          {[...result.checks].sort((a, b) => a.passed - b.passed).map((c, i) => (
+            <li key={i} className={c.passed ? '' : 'is-failed'}>
+              <span aria-hidden="true">{c.passed ? '✓' : '✗'}</span>
+              <span className="dryrun__check">{checkWords(c)}</span>
+              <span className="dryrun__quiet">{c.passed ? 'passed' : 'failed'}{observedWords(c) && ` · ${observedWords(c)}`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(result.not_executed || []).map((n, i) => (
+        <p key={i} className="dryrun__quiet dryrun__skip">
+          Not run here: <code>{n.what}</code>{n.table && <> ({n.table})</>}, line {n.line}. {n.reason}.
+        </p>
+      ))}
+      {(result.notes || []).map((n, i) => <p key={`n${i}`} className="dryrun__quiet dryrun__skip">{n}</p>)}
+      {tables.map(t => (
+        <div key={t.name} className="dryrun__table">
+          <div className="dryrun__tname">
+            <code>{t.name}</code>
+            <span className="dryrun__quiet">
+              {t.kind === 'view' ? 'view · ' : ''}{t.rows.toLocaleString()} {t.rows === 1 ? 'row' : 'rows'} · {t.columns.length} columns
+            </span>
+          </div>
+          <div className="dryrun__grid">
+            <table>
+              <thead>
+                <tr>{t.columns.map(c => (
+                  <th key={c.name} title={c.type}
+                      className={typeof (t.sample[0] || {})[c.name] === 'number' ? 'is-num' : ''}>{c.name}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {t.sample.slice(0, SAMPLE_SHOWN).map((row, i) => (
+                  <tr key={i}>
+                    {t.columns.map(c => (
+                      <td key={c.name} className={typeof row[c.name] === 'number' ? 'is-num' : ''}>{cell(row[c.name])}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {t.rows > SAMPLE_SHOWN && (
+            <div className="dryrun__quiet">First {Math.min(SAMPLE_SHOWN, t.sample.length)} of {t.rows.toLocaleString()} rows</div>
+          )}
+        </div>
+      ))}
+    </section>
+  )
+}
+
 export function CodeReview({ id }) {
   const { data: req, isLoading, error } = useCodeRequest(id, true)
   const decide = useDecideCodeRequest()
@@ -246,8 +340,10 @@ export function CodeReview({ id }) {
     },
     onError: err => setFailure(err),
   })
+  const blocked = !!req.dry_run && !req.dry_run.ok
   return (
     <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+      {req.dry_run && <DryRun result={req.dry_run} />}
       {req.files.map(f => (
         <div key={f.path}>
           <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, marginBottom: 4 }}>
@@ -269,11 +365,21 @@ export function CodeReview({ id }) {
           <Link to="/runs">See runs</Link>
         </div>
       )}
+      {req.status === 'approved' && (req.commit_sha || req.commit_note) && (
+        <div className="dryrun__quiet">
+          {req.commit_sha
+            ? <>Committed <code title={req.commit_sha}>{req.commit_sha.slice(0, 7)}</code> (not pushed)</>
+            : <>No commit: {req.commit_note}</>}
+        </div>
+      )}
       {failure && <div role="alert"><ErrorDetail error={failure} /></div>}
       {req.status === 'pending' && req.can_decide && !declining && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Btn size="sm" onClick={() => act(true)} disabled={decide.isPending}>Approve and run</Btn>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Btn size="sm" onClick={() => act(true)} disabled={decide.isPending || blocked}>Approve and run</Btn>
           <Btn size="sm" variant="outline" onClick={() => setDeclining(true)}>Decline</Btn>
+          {blocked && (
+            <span className="dryrun__quiet">Its dry run failed, so it cannot be approved; a newer proposal that passes can.</span>
+          )}
         </div>
       )}
       {req.status === 'pending' && !req.can_decide && (

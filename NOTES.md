@@ -4,6 +4,73 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — Agents read and change transforms; a dry run; approval commits (AGENT-TRANSFORMS)
+
+The owner's ask, four pieces. **`read_transform(name)`** is a new read-only
+gateway tool (30 tools now): the file, its `.contract.yaml`, its form, the
+tables it writes, what its last run read (the certificate's `sources`, with
+method and snapshot) and its lineage. It reads code, never rows, so the
+agents allowlist (which governs data) does not gate it. A transform node in
+`describe_project` gains `passport.agents.tools`, naming the tools that take
+its `name`.
+
+**A change is `propose_transform(..., change=true)`**, not a second tool: the
+checks, the storage and the review are the same, and one tool is one thing
+for the guides to teach. A change must keep writing every table a model reads
+today (the tables the current file creates, read statically by
+`transforms.sink_names`, plus its certificate's lineage keys); otherwise it
+is refused naming the model and the table, and the agent changes the model
+first as a draft. Only SQL is proposable; a Python transform is refused
+naming `tracebi push`.
+
+**The dry run** (`tracebi/dryrun.py`) runs every proposal once against a
+throwaway copy. The isolation, layer by layer: a scratch DuckDB file is the
+default catalog; the warehouse is attached READ_ONLY behind it in the search
+path (so a bare name resolves as in the real run, a `CREATE OR REPLACE` of a
+warehouse table's name shadows it in the scratch, and any write to the
+warehouse catalog fails); `-- source:` tables go through the real
+`_attach_sources` (same fallback rules), after a second allowlist check; a
+table read through a scanner is copied into its catalog and the scanned
+database detached and its secret dropped before anything runs (fail-closed
+if one is left); then `enable_external_access = false`, `allowed_paths` (the
+warehouse's own Parquet files on the object tier, and the files under
+`inputs/` that are not a database file and not an uploaded file whose
+connection's allowlist leaves it out), `allow_persistent_secrets = false`,
+`lock_configuration = true`. Per statement, `ATTACH`, `DETACH`, `EXPORT`,
+`LOAD`/`INSTALL`, a scanner's own functions (`sqlite_scan`, …) and
+`query()` / `query_table()` (SQL from a string, out of reach of these checks)
+are refused, and a `COPY` is not executed: an allowed path is writable, so a `COPY TO`
+into `inputs/` would otherwise land. `-- sink:` lines are parsed (same errors
+as the real run) and not sent. One timer bounds the whole run at
+`engine.query_timeout_s`. The checks run through `contracts.observe`, which
+writes no certificate. `tests/test_dryrun.py` proves each promise. Known
+limits, said in the result rather than hidden: a glob (`inputs/*.csv`) is
+refused (the lock allows named files), and a `COPY FROM` is skipped like a
+`COPY TO`. The scanner path (a `-- source:` read in place through DuckDB's
+Postgres, MySQL or SQLite extension) is sealed as above but was not exercised
+by the suite here, where those extensions are not installed: the reads fall
+to pandas. The Docker image, which installs them, takes the sealed path. A sink view's check runs with the warehouse's tables counted as
+its own (`_sink_views(also=)`).
+
+A failed dry run still stores the request (the agent fixes it and proposes
+again), but `decide` refuses to approve it, and Review disables Approve. An
+older failing request stays pending until someone declines it; superseding it
+automatically was not asked for.
+
+**Approval commits to git** in `code_requests.decide`, so `tracebi push`
+requests get it too: `git status --porcelain -- <paths>` must be empty before
+the files are copied; then `git add` and `git commit -- <paths>` (only those
+paths, whatever else is staged), author the requester (`<name>@tracebi.local`
+unless the name is an email), committer the approver (`tracebi` when there is
+no sign-in), `commit.gpgsign=false`, hooks left to run. It never pushes. A
+file whose content came back unchanged is not in the commit (git has nothing
+to record); the message still lists every file of the request. No git, no
+repository, dirty paths or a failing hook: approval proceeds and
+`commit_note` says why. `dry_run`, `commit_sha` and `commit_note` are new
+columns (Alembic 0007).
+
+---
+
 ## 2026-10-28 — A workspace per company, a project per area (WORKSPACE)
 
 The owner's decision, vocabulary only: nothing moved on disk. What TraceBi

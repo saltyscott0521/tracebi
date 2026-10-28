@@ -15,6 +15,17 @@ files and their diff against what is published, then approves (the files are
 copied in, what they replace is kept under ``.tracebi/history/code/``, and the
 pipelines they touch run once, with the server's secrets, as does a transform
 no pipeline runs) or rejects with a note. See ``design/strategy/remote-authoring.md``, step 4.
+
+A transform an agent proposes carries a **dry run** (:mod:`tracebi.dryrun`,
+stored with :func:`record_dry_run`): what it made against a throwaway copy.
+One whose dry run failed is never approved; a newer proposal replaces it.
+
+**Approval commits to git** when the workspace is inside a git work tree and
+the files it writes have no uncommitted changes: one commit of exactly those
+files, authored by the requester, committed by the approver, with a
+``TraceBi-Request: <id>`` trailer. It never pushes. When it cannot commit
+(no git, not a repository, those files changed by hand) approval goes ahead
+and the request records why (``commit_note``); the sha is ``commit_sha``.
 """
 
 from __future__ import annotations
@@ -24,6 +35,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -96,7 +108,13 @@ def _public(row: dict) -> dict:
     out = dict(row)
     for key in ("files", "runs"):
         out[key] = json.loads(out[key]) if out.get(key) else []
+    out["dry_run"] = json.loads(out["dry_run"]) if out.get("dry_run") else None
     return out
+
+
+def _dry_run_brief(dry_run: Optional[dict]) -> Optional[dict]:
+    """What a list shows of a dry run: whether it passed, in a sentence."""
+    return {"ok": dry_run.get("ok"), "summary": dry_run.get("summary")} if dry_run else None
 
 
 def _me() -> tuple:
@@ -138,7 +156,8 @@ def list_requests(status: Optional[str] = None) -> list:
     sign-in role) sees every one, anyone else their own."""
     who, role = _me()
     rows = _rows("SELECT * FROM tracebi_code_requests ORDER BY id DESC")
-    return [{**_public(r), "can_decide": _may_decide(role)} for r in rows
+    return [{**(p := _public(r)), "dry_run": _dry_run_brief(p["dry_run"]),
+             "can_decide": _may_decide(role)} for r in rows
             if (not status or r["status"] == status)
             and (_may_decide(role) or r["requested_by"] == who)]
 
@@ -249,6 +268,12 @@ def run_transforms(names: list) -> list:
     return runs
 
 
+def record_dry_run(request_id: str, result: dict) -> None:
+    """Store a proposal's dry run (:func:`tracebi.dryrun.run`) on its request."""
+    _exec("UPDATE tracebi_code_requests SET dry_run = :d WHERE id = :id",
+          d=json.dumps(result, default=str), id=request_id)
+
+
 def review_url() -> str:
     """Where an admin reviews code requests in the app. A bare path when
     ``TRACEBI_PUBLIC_URL`` is unset, as a draft's url is."""
@@ -270,9 +295,15 @@ def decide(request_id: str, approve: bool, actor: Optional[str],
         raise DraftError(f"request {request_id} is already {req['status']}")
     if not approve and not (note or "").strip():
         raise DraftError("a rejection needs a note saying why")
+    if approve and req["dry_run"] and not req["dry_run"].get("ok"):
+        raise DraftError(
+            f"request {request_id} cannot be approved: its dry run did not pass "
+            f"({req['dry_run'].get('summary')}). A newer proposal that passes replaces it")
     now = datetime.now(timezone.utc)
     version = None
+    committed: tuple = (None, None)
     if approve:
+        clean = _git_clean([library_path(p) for p in req["files"]])
         version = now.strftime("%Y%m%dT%H%M%S%fZ")
         for path in req["files"]:
             live = library_path(path)
@@ -282,16 +313,20 @@ def decide(request_id: str, approve: bool, actor: Optional[str],
                 shutil.copy2(live, keep)
             live.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(_root() / request_id / "files" / path, live)
+        committed = _commit(req, actor) if clean is None else (None, clean)
     status = "approved" if approve else "rejected"
     _exec("UPDATE tracebi_code_requests SET status = :s, decided_by = :by, decided_at = :at, "
-          "decision_note = :note, version = :v WHERE id = :id",
-          s=status, by=actor, at=now.isoformat(), note=note or "", v=version, id=request_id)
+          "decision_note = :note, version = :v, commit_sha = :sha, commit_note = :why "
+          "WHERE id = :id",
+          s=status, by=actor, at=now.isoformat(), note=note or "", v=version,
+          sha=committed[0], why=committed[1], id=request_id)
     from tracebi.state import record_run
     try:
         record_run(kind="code_request", target=request_id, status="ok", finished=now.isoformat(),
                    actor=actor, actor_role=_me()[1],
                    detail={"decision": status, "files": req["files"],
-                           "requested_by": req["requested_by"], "version": version})
+                           "requested_by": req["requested_by"], "version": version,
+                           "commit": committed[0]})
     except Exception:  # noqa: BLE001 — the decision stands; the row above records it
         pass
     out = get_request(request_id)
@@ -299,6 +334,89 @@ def decide(request_id: str, approve: bool, actor: Optional[str],
         out["pipelines"] = pipelines_touched(req["files"])
         out["transforms"] = transforms_alone(req["files"])
     return out
+
+
+# ── Approval commits to git ─────────────────────────────────────────────────
+
+
+def _git(*args: str, env: Optional[dict] = None, stdin: Optional[str] = None):
+    return subprocess.run(["git", *args], cwd=os.getcwd(), capture_output=True, text=True,
+                          input=stdin, env=env, timeout=60)
+
+
+def _first(text: Optional[str]) -> str:
+    lines = (text or "").strip().splitlines()
+    return lines[0] if lines else ""
+
+
+def _git_clean(paths: list) -> Optional[str]:
+    """None when an approval may commit *paths* (the workspace is in a git
+    work tree and they carry no uncommitted change), else why it may not."""
+    try:
+        inside = _git("rev-parse", "--is-inside-work-tree")
+    except (OSError, subprocess.SubprocessError):
+        return "git is not installed on the server, so the approval made no commit"
+    if inside.returncode != 0 or inside.stdout.strip() != "true":
+        return "the workspace is not inside a git work tree, so the approval made no commit"
+    dirty = _git("status", "--porcelain", "--", *[str(p) for p in paths])
+    if dirty.returncode != 0:
+        return f"git could not read those files' status ({_first(dirty.stderr)}), so no commit"
+    if dirty.stdout.strip():
+        changed = ", ".join(line[3:] for line in dirty.stdout.splitlines() if line.strip())
+        return (f"{changed} had uncommitted changes before the approval, so it made no "
+                f"commit; commit or discard them by hand")
+    return None
+
+
+def _identity(who: Optional[str]) -> tuple:
+    """``(name, email)`` for a git author or committer: an email-shaped name
+    is its own email; anyone else is ``<name>@tracebi.local``."""
+    name = (who or "").strip() or "tracebi"
+    if re.fullmatch(r"[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+", name):
+        return name, name
+    return name, re.sub(r"[^A-Za-z0-9._+:-]", "-", name) + "@tracebi.local"
+
+
+def _named(path: str) -> str:
+    """What a commit subject calls a file's thing: ``transforms/x.contract.yaml``
+    is ``x``, ``reports/a/b/report.py`` is ``a/b``."""
+    folder, rest = path.split("/", 1)
+    return rest.rsplit("/", 1)[0] if folder == "reports" else rest.split(".", 1)[0]
+
+
+def commit_message(req: dict) -> str:
+    """``transforms: <name> — <note>``, a line per file when there are
+    several, and the ``TraceBi-Request`` trailer."""
+    folders = sorted({p.split("/", 1)[0] for p in req["files"]})
+    names = sorted({_named(p) for p in req["files"]})
+    lines = [f"{', '.join(folders)}: {', '.join(names)} — {_first(req['note'])}"]
+    if len(req["files"]) > 1:
+        lines += [""] + list(req["files"])
+    lines += ["", f"TraceBi-Request: {req['id']}"]
+    return "\n".join(lines) + "\n"
+
+
+def _commit(req: dict, approver: Optional[str]) -> tuple:
+    """Commit exactly the request's files: ``(sha, None)``, or ``(None, why)``.
+    Author: the requester; committer: the approver; never pushed."""
+    paths = [str(library_path(p)) for p in req["files"]]
+    author = _identity(req.get("requested_by"))
+    committer = _identity(approver)
+    env = {**os.environ, "GIT_COMMITTER_NAME": committer[0],
+           "GIT_COMMITTER_EMAIL": committer[1], "GIT_TERMINAL_PROMPT": "0"}
+    try:
+        added = _git("add", "--", *paths, env=env)
+        if added.returncode != 0:
+            return None, f"git add failed ({_first(added.stderr)}), so the approval made no commit"
+        done = _git("-c", "commit.gpgsign=false", "commit", "--quiet", "-F", "-",
+                    f"--author={author[0]} <{author[1]}>", "--", *paths,
+                    env=env, stdin=commit_message(req))
+        if done.returncode != 0:
+            return None, (f"git commit failed ({_first(done.stderr) or _first(done.stdout)}), "
+                          f"so the approval made no commit")
+        return _git("rev-parse", "HEAD").stdout.strip(), None
+    except (OSError, subprocess.SubprocessError) as exc:
+        return None, f"git failed ({exc}), so the approval made no commit"
 
 
 def record_runs(request_id: str, runs: list) -> None:

@@ -151,6 +151,21 @@ the file in the app if it should go.</p>
 touches: the pipelines it contains, and each <code>pipelines/*.yaml</code> whose
 <code>transform</code> it changes. The run uses the server's secrets, the sink contract
 checks what landed, and the request records the run and its result.</p>
+<p><strong>Approval commits to git.</strong> When the workspace is inside a git work tree
+and the files the request writes have no uncommitted changes, approving makes
+one commit of exactly those files: <code>transforms: &lt;name&gt; — &lt;the request's
+note&gt;</code> (a line per file when there are several), the requester as author
+(<code>&lt;name&gt; &lt;name@tracebi.local&gt;</code> when the sign-in name is not an email), you as
+committer, and a <code>TraceBi-Request: &lt;id&gt;</code> trailer. It never pushes. With no
+git, no repository, or those files changed by hand, approval goes ahead and
+the request says why it made no commit.</p>
+<p><strong>A transform an agent proposed</strong> (<code>propose_transform</code>) arrives with a dry
+run: it ran once, when proposed, against a throwaway copy of the warehouse,
+and nothing real was written. The row shows its verdict ("Dry run: 3 tables,
+checks 4 of 4 passed"), each table it made as a small grid, each check, and
+any error with its statement. A proposal whose dry run failed shows the
+failure first, and <strong>Approve and run</strong> stays off: the agent proposes again,
+and the newer request is the one to approve.</p>
 <p>Only <code>admin</code> approves. An analyst sees their own requests; an admin sees all
 of them. The hosted MCP connector refuses Python: a chat cannot send code.</p>
 <p>The API: <code>POST /api/code-requests</code> (<code>{files: {path: text}, note}</code>),

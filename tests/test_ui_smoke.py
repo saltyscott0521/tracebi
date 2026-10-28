@@ -1255,6 +1255,51 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert (project / "models" / "portfolio_model.yaml").read_text(encoding="utf-8") == moved
             fail_on_browser_errors()
 
+            # An agent proposes a change to a SQL transform (the person let
+            # agents read the billing database): each proposal was dry-run
+            # against a throwaway copy, and Review shows the diff with the
+            # dry run, its tables as grids. One whose checks fail leads with
+            # the failure and cannot be approved.
+            billing = project / "connections" / "billing.yaml"
+            billing.write_text(billing.read_text(encoding="utf-8") + 'agents:\n  tables: "*"\n',
+                               encoding="utf-8")
+            proposed = subprocess.run([sys.executable, "-c", (
+                "import json\n"
+                "from tracebi import mcp_server as gw\n"
+                "t = gw.gateway_read_transform('saas_transform')\n"
+                "sql = t['text'].replace('AS plan_id, plan\\n', "
+                "'AS plan_id, plan, upper(plan) AS plan_code\\n')\n"
+                "good = gw.gateway_propose_transform('saas_transform', sql, t['contract_yaml'], "
+                "'Each plan carries its code', change=True)\n"
+                "bad = gw.gateway_propose_transform('saas_transform', sql, t['contract_yaml'] + "
+                "'  - rows: fact_account_month\\n    exactly: 1\\n', 'Plan codes, one row', change=True)\n"
+                "print(json.dumps([good['dry_run']['ok'], bad['dry_run']['ok']]))\n")],
+                cwd=project, env=env, capture_output=True, text=True, check=False)
+            assert proposed.returncode == 0, proposed.stderr
+            assert json.loads(proposed.stdout.strip().splitlines()[-1]) == [True, False]
+            page.set_viewport_size({"width": 1440, "height": 1000})
+            page.goto(base + "/review")
+            attention = page.get_by_role("list", name="Needs attention")
+            good = attention.locator("li", has_text="Each plan carries its code")
+            good.get_by_role("button", name="Review").click()
+            dry = good.get_by_role("region", name="Dry run")
+            expect(dry.get_by_text("Dry run: 4 tables, checks", exact=False)).to_be_visible()
+            expect(dry.locator("th", has_text="plan_code")).to_be_visible()
+            expect(good.get_by_text("+SELECT row_number() OVER (ORDER BY plan) - 1 AS plan_id, plan, upper(plan) AS plan_code")).to_be_visible()
+            expect(good.get_by_role("button", name="Approve and run")).to_be_enabled()
+            good.screenshot(path=str(tmp_path / "review-dry-run-passed.png"))
+            good.get_by_role("button", name="Close").click()
+            bad = attention.locator("li", has_text="Plan codes, one row")
+            bad.get_by_role("button", name="Review").click()
+            failed = bad.get_by_role("region", name="Dry run")
+            expect(failed.get_by_text("Dry run failed", exact=True).first).to_be_visible()
+            expect(failed.locator("li.is-failed", has_text="fact_account_month")).to_be_visible()
+            expect(bad.get_by_role("button", name="Approve and run")).to_be_disabled()
+            bad.screenshot(path=str(tmp_path / "review-dry-run-failed.png"))
+            bad.get_by_role("button", name="Close").click()
+            page.set_viewport_size({"width": 1280, "height": 720})
+            fail_on_browser_errors()
+
             # Review lists the reports nobody has built yet as one item, and
             # Build all builds them: the item goes once every build has landed.
             page.goto(base + "/review")

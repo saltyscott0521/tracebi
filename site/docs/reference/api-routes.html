@@ -607,7 +607,7 @@ naming the fix (<a href="../concepts/report.html">Reports</a>).</p>
 </tr>
 <tr>
 <td><code>/api/code-requests</code></td>
-<td>Python from <code>tracebi push</code>: <code>{"files": {path: text}, "note"}</code> (note required). An admin sees all; others their own. <code>GET /{id}</code> gives each file's diff and the runs an approval started. Approve copies the files in and runs the pipelines they touch once. Reject needs <code>{"note"}</code>.</td>
+<td>Python from <code>tracebi push</code>: <code>{"files": {path: text}, "note"}</code> (note required). An admin sees all; others their own. <code>GET /{id}</code> gives each file's diff, the runs an approval started, <code>dry_run</code> (a transform an agent proposed: its run against a throwaway copy; the list carries only <code>{ok, summary}</code>), and after approval <code>commit_sha</code> or <code>commit_note</code> (why it made no commit). Approve copies the files in, commits exactly them when the workspace is a git work tree with no uncommitted change to them (never pushed), and runs the pipelines they touch once; a request whose dry run failed is 422. Reject needs <code>{"note"}</code>.</td>
 </tr>
 <tr>
 <td><code>/api/library/sync</code></td>

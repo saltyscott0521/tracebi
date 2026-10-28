@@ -310,15 +310,17 @@ and [environment variables](docs/reference/environment-variables.md).
 
 An agent works against your semantic contract, not your warehouse.
 `tracebi mcp` serves the kernel over the
-[Model Context Protocol](https://modelcontextprotocol.io): 29 tools and three
+[Model Context Protocol](https://modelcontextprotocol.io): 30 tools and three
 prompts. The agent reads the vocabulary (`get_context`), queries the model
 (`query_model`: every answer is stamped with the resolved query, its lineage
 and a SHA-256 fingerprint of the full result), builds and verifies reports
 (`build_report`, `verify_manifest`), and writes drafts a person publishes
 (`start_draft`, `write_draft_file`, `preview_draft`, `publish_draft`). From
-the tables a person allowed agents to read, it proposes a transform an admin
-approves (`propose_transform`). It is read-and-compute only: nothing it can
-call writes to the warehouse.
+the tables a person allowed agents to read, it reads the transforms that exist
+(`read_transform`) and proposes a new one or a change an admin approves
+(`propose_transform`), dry-run at once against a throwaway copy so both see
+what it would make. It is read-and-compute only: nothing it can call writes
+to the warehouse.
 
 ```bash
 pip install -e ".[mcp]"
