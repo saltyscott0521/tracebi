@@ -325,9 +325,35 @@ class TestChartEnhancements:
     # The data is still embedded as the canonical triple so verify --file vouches
     # for it — the section options just flow into the SVG, not an ECharts config.
 
-    def test_two_charts_render_as_svg_with_csp_and_no_echarts(self):
-        # Two charts, one document: each is inline SVG, no ECharts bundle is
-        # inlined at all, and the §5 CSP holds (connect-src 'none', no unsafe-eval).
+    ECHARTS = "TraceBi-credit: Apache ECharts"
+
+    def _package_page(self, tmp_path, body):
+        """A template package over make_ds's rows, built; the page's HTML."""
+        from tracebi.reports.template_package import TemplatePackage
+        model = DataModel("m")
+        model.add_connector(MemoryConnector("mem", tables={"t": make_ds().to_pandas()}))
+        model.add_table("t", connector="mem", source="t")
+        model.add_dimension("dim_t", table_name="t", key_col="region", attributes=["region"])
+        model.add_fact("fact_t", table_name="t", measures=["revenue"], foreign_keys={})
+        model.add_measure("revenue", column="revenue", agg="sum")
+        model.connect()
+        pkg = tmp_path / "pkg"
+        pkg.mkdir()
+        (pkg / "report.json").write_text(json.dumps({"name": "P", "data": {"b": {
+            "model": "m", "query": {"fact": "fact_t", "measures": ["revenue"],
+                                    "dimensions": ["dim_t.region"]}}}}))
+        (pkg / "template.html").write_text(
+            "<!doctype html><html><head><title>P</title></head><body>" + body + "</body></html>")
+        out = tmp_path / "p.html"
+        TemplatePackage(str(pkg)).render({"m": model}, str(out))
+        return out.read_text(encoding="utf-8")
+
+    def test_two_charts_render_as_svg_with_csp_and_a_chart_page_inlines_echarts_once(
+            self, tmp_path):
+        # Two charts, one legacy document: each is inline SVG, no chart
+        # library is inlined at all, and the §5 CSP holds (connect-src 'none',
+        # no unsafe-eval). A report package with two charts inlines the one
+        # ECharts build (echarts-kit) once, and no D3.
         report = (Report("R")
                   .add(ChartSection(dataset=make_ds(), chart_type="bar",
                                     x="region", y="revenue"))
@@ -335,22 +361,32 @@ class TestChartEnhancements:
                                     x="region", y="orders")))
         html = HTMLRenderer().to_html(report)
         assert html.count('<svg class="tb-chart') == 2   # two SVG charts, no runtime
-        assert "!function(" not in html                  # no ECharts bundle inlined
+        assert self.ECHARTS not in html
         assert "connect-src 'none'" in html
+        chart = ('<div id="{}" data-tb-figure="chart" data-tb-binding="b" '
+                 'data-tb-x="dim_t.region" data-tb-y="revenue"></div>')
+        page = self._package_page(tmp_path, chart.format("c1") + chart.format("c2"))
+        assert page.count(self.ECHARTS) == 1             # the bundle's own banner
+        assert "TraceBi-credit: D3" not in page
+        assert "'unsafe-eval'" not in page.replace("'wasm-unsafe-eval'", "")
         # JS eval is never granted. 'wasm-unsafe-eval' IS (WebAssembly
         # compilation only, for the artifact's worker engine) — and since
         # it CONTAINS "'unsafe-eval'", drop it before checking.
         assert "'unsafe-eval'" not in html.replace("'wasm-unsafe-eval'", "")
 
-    def test_no_chart_report_gets_no_echarts_but_keeps_the_csp(self):
+    def test_no_chart_report_gets_no_echarts_but_keeps_the_csp(self, tmp_path):
         # The chart machinery is scoped to reports that actually have a chart,
         # but the self-contained-file contract (strict CSP) holds for every
         # governed render — a tables-only report is still a shipped artifact
-        # (MANIFESTO.md, Commitment 3).
+        # (MANIFESTO.md, Commitment 3). A chartless report package carries no
+        # ECharts either.
         report = Report("R").table(make_ds(), title="T")
         html = HTMLRenderer().to_html(report)
         assert "tracebi-chart-" not in html
-        assert "!function(" not in html
+        assert self.ECHARTS not in html
+        page = self._package_page(
+            tmp_path, '<table id="t" data-tb-figure="table" data-tb-binding="b"></table>')
+        assert self.ECHARTS not in page and "Content-Security-Policy" in page
         assert "Content-Security-Policy" in html
         assert "connect-src 'none'" in html
         # JS eval is never granted. 'wasm-unsafe-eval' IS (WebAssembly

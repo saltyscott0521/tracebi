@@ -426,10 +426,7 @@
     for (i = 0; i < _charts.length; i++) {
       entry = _charts[i];
       if (entry.binding === binding) {
-        try {
-          if (entry.d3) renderD3Chart(entry, entryRows(entry, rows), true);
-          else entry.chart.setOption(buildOption(entry.el, entry.plan, rows), true);
-        } catch (e) { /* defensive */ }
+        try { drawChart(entry, entryRows(entry, rows), true); } catch (e) { /* defensive */ }
       }
     }
     for (i = 0; i < _drawers.length; i++) {
@@ -441,10 +438,10 @@
     for (var i = 0; i < _charts.length; i++) {
       var c = _charts[i];
       try {
-        if (!c.d3) c.chart.resize();
-        else if (c.surface.clientWidth !== c.width) {
-          renderD3Chart(c, entryRows(c), false);
-        }
+        /* A chart first shown (a tab) is drawn now; one whose box changed
+         * width is drawn at the new width (small multiples lay out by it). */
+        if (!c.chart || c.surface.clientWidth !== c.width) drawChart(c, c.rows, false);
+        else c.chart.resize();
       } catch (e) { /* defensive */ }
     }
     redrawResized();
@@ -480,143 +477,6 @@
       }
     }
     return out;
-  }
-
-  /* ── ECharts option building (the interactive artifact runtime) ──────── */
-
-  function groupOf(v) {
-    return (v === null || v === undefined || v === "") ? "(none)" : String(v);
-  }
-
-  function categories(plan, rows) {
-    var cats = [];
-    rows.forEach(function (r) {
-      var c = String(r[plan.x]);
-      if (cats.indexOf(c) === -1) cats.push(c);
-    });
-    return cats;
-  }
-
-  function categoricalSeries(plan, rows, cats, kind) {
-    var type = (kind === "line" || kind === "area") ? "line" : "bar";
-    var mk = function (name, byCat) {
-      var s = {
-        name: name, type: type,
-        data: cats.map(function (c) { return (c in byCat) ? byCat[c] : null; }),
-        label: { show: false, position: kind === "barh" ? "right" : "top" }
-      };
-      if (kind === "area") s.areaStyle = {};
-      return s;
-    };
-    if (plan.color) {
-      var y0 = plan.y[0], groups = [], byGroup = {};
-      rows.forEach(function (r) {
-        var g = groupOf(r[plan.color]);
-        if (groups.indexOf(g) === -1) { groups.push(g); byGroup[g] = {}; }
-        byGroup[g][String(r[plan.x])] = toNum(r[y0]);
-      });
-      return groups.map(function (g) { return mk(g, byGroup[g]); });
-    }
-    return plan.y.map(function (col) {
-      var byCat = {};
-      rows.forEach(function (r) { byCat[String(r[plan.x])] = toNum(r[col]); });
-      return mk(col, byCat);
-    });
-  }
-
-  function scatterSeries(plan, rows) {
-    if (plan.color) {
-      var y0 = plan.y[0], groups = [], byGroup = {};
-      rows.forEach(function (r) {
-        var g = groupOf(r[plan.color]);
-        if (groups.indexOf(g) === -1) { groups.push(g); byGroup[g] = []; }
-        byGroup[g].push([toNum(r[plan.x]), toNum(r[y0])]);
-      });
-      return groups.map(function (g) {
-        return { name: g, type: "scatter", data: byGroup[g] };
-      });
-    }
-    return plan.y.map(function (col) {
-      return { name: col, type: "scatter",
-               data: rows.map(function (r) { return [toNum(r[plan.x]), toNum(r[col])]; }) };
-    });
-  }
-
-  /* Guarded valueFormat, shared by every chart type: a known mode renders
-   * the number; an unknown mode returns the raw value unchanged — an
-   * attribute may format or do nothing, never blank out a number. */
-  function formatChartValue(v, mode) {
-    var n = toNum(v);
-    if (n === null) return v;
-    var formatted = applyNamedFormat(n, mode);
-    return formatted === null ? v : formatted;
-  }
-
-  function optionFor(plan, rows) {
-    var kind = String(plan.type).toLowerCase();
-    var opt = { animation: false, color: plan.palette || [] };
-    if (kind === "pie") {
-      var y0 = plan.y[0];
-      opt.tooltip = { trigger: "item" };
-      opt.series = [{
-        type: "pie", radius: "62%",
-        data: rows.map(function (r) {
-          return { name: String(r[plan.x]), value: Math.abs(toNum(r[y0]) || 0) };
-        }),
-        label: { show: true }
-      }];
-      if (plan.valueFormat) {
-        opt.series[0].label.formatter = function (p) {
-          return p.name + ": " + formatChartValue(p.value, plan.valueFormat);
-        };
-        opt.tooltip.valueFormatter = function (v) {
-          return formatChartValue(v, plan.valueFormat);
-        };
-      }
-      return opt;
-    }
-    if (kind === "scatter") {
-      var ss = scatterSeries(plan, rows);
-      opt.tooltip = { trigger: "item" };
-      opt.xAxis = { type: "value" };
-      opt.yAxis = { type: "value" };
-      if (plan.valueFormat) {
-        var sf = function (v) { return formatChartValue(v, plan.valueFormat); };
-        opt.xAxis.axisLabel = { formatter: sf };
-        opt.yAxis.axisLabel = { formatter: sf };
-        opt.tooltip.valueFormatter = sf;
-      }
-      if (ss.length > 1) opt.legend = {};
-      opt.series = ss;
-      return opt;
-    }
-    var cats = categories(plan, rows);
-    var series = categoricalSeries(plan, rows, cats, kind);
-    opt.tooltip = { trigger: "axis" };
-    if (series.length > 1) opt.legend = {};
-    var catAxis = { type: "category", data: cats };
-    var valAxis = { type: "value" };
-    if (plan.valueFormat) {
-      valAxis.axisLabel = { formatter: function (v) {
-        return formatChartValue(v, plan.valueFormat);
-      } };
-    }
-    if (kind === "barh") { opt.xAxis = valAxis; opt.yAxis = catAxis; }
-    else { opt.xAxis = catAxis; opt.yAxis = valAxis; }
-    opt.series = series;
-    if (plan.valueFormat) {
-      opt.tooltip.valueFormatter = function (v) {
-        return formatChartValue(v, plan.valueFormat);
-      };
-      series.forEach(function (s) {
-        s.label.formatter = function (p) {
-          var v = p.value;
-          if (v && typeof v === "object" && v.length !== undefined) v = v[v.length - 1];
-          return formatChartValue(v, plan.valueFormat);
-        };
-      });
-    }
-    return opt;
   }
 
   /* ── Hydration ─────────────────────────────────────────────────────── */
@@ -1115,13 +975,7 @@
       for (var i = 0; i < _tables.length; i++) {
         try { renderBody(_tables[i], _tables[i].modelRows); } catch (e) {}
       }
-      for (var j = 0; j < _charts.length; j++) {
-        if (!_charts[j].d3) continue;
-        try {
-          if (_charts[j].svg) _charts[j].svg.interrupt().style("opacity", 1);
-          renderD3Chart(_charts[j], entryRows(_charts[j]), false);
-        } catch (e) {}
-      }
+      printCharts(on);
     };
     if (root.addEventListener) {
       root.addEventListener("beforeprint", function () { apply(true); });
@@ -1260,10 +1114,53 @@
     });
   }
 
-  function cssPalette() {
+  /* ── The chart engine — Apache ECharts ─────────────────────────────────
+   * Every chart on a page draws here: a template's {{ figure() }} chart, a
+   * hand-written data-tb-figure="chart", and the kit's <Chart>, <Spark> and
+   * <EChart binding x y> (the kit renders the element, this draws it), from
+   * the same plan (data-tb-type, -x, -y, -color, -value-format, -unit,
+   * -stack, -mark, -annotate, -facet, -x-title, -y-title, -palette,
+   * -renderer) and the same rows the rest of the page reads, through ONE
+   * option builder (optionFor) and one ECharts theme built from the page's
+   * tokens (chartTheme). The ECharts build is echarts-kit.min.js
+   * (root.__tbECharts), SVG by default; canvas per figure
+   * (data-tb-renderer="canvas", <Chart renderer>) or per report
+   * (report.json "charts": {"renderer": "canvas"}) for thousands of marks.
+   *
+   * What it never does: compute a number. Every bar, point and slice is one
+   * row's own value; there are no totals, shares or averages drawn. Colours
+   * are assigned from the UNFILTERED rows, so a filter that removes a series
+   * never repaints the ones that stay. A click on a mark writes the page's
+   * one selection (markAction), never a side channel.
+   * ──────────────────────────────────────────────────────────────────── */
+
+  /* Charts whose first motion has not settled: the page reports ready
+   * (data-tb-ready, what a printer waits for) once they have. */
+  var _introPending = 0;
+
+  function echartsLib() {
+    var lib = root.__tbECharts;
+    return lib && typeof lib.init === "function" ? lib : null;
+  }
+
+  function groupOf(v) {
+    return (v === null || v === undefined || v === "") ? "(none)" : String(v);
+  }
+
+  /* Category values in first-seen order over *rows*. */
+  function categories(plan, rows) {
+    var cats = [], seen = {};
+    rows.forEach(function (r) {
+      var c = String(r[plan.x]);
+      if (!seen.hasOwnProperty(c)) { seen[c] = 1; cats.push(c); }
+    });
+    return cats;
+  }
+
+  function cssPalette(el) {
     var out = [];
     if (typeof getComputedStyle === "undefined") return out;
-    var cs = getComputedStyle(document.documentElement);
+    var cs = getComputedStyle(el || document.documentElement);
     for (var i = 1; i <= 8; i++) {
       var v = cs.getPropertyValue("--tb-chart-" + i);
       if (v && trim(v)) out.push(trim(v));
@@ -1276,219 +1173,67 @@
     return (v && trim(v)) ? trim(v) : null;
   }
 
-  /* Derive ECharts text/line colours from the page's ink tokens, so axis
-   * labels, legends and grid lines follow the theme instead of ECharts'
-   * near-black default — which is invisible on any dark ground. Only fills a
-   * colour the option has not already set, so an author's configureChart patch
-   * (applied after this) still wins. A no-op without getComputedStyle (node). */
-  function applyThemeColors(option) {
-    if (typeof getComputedStyle === "undefined") return option;
-    var cs = getComputedStyle(document.documentElement);
-    var ink = cssVar(cs, "--tb-ink");
-    var muted = cssVar(cs, "--tb-muted");
-    var rule = cssVar(cs, "--tb-rule");
-    if (!ink && !muted && !rule) return option;
-    if (ink) {
-      option.textStyle = option.textStyle || {};
-      if (option.textStyle.color == null) option.textStyle.color = ink;
-    }
-    function styleAxis(ax) {
-      if (!ax || typeof ax !== "object") return;
-      if (ax.length !== undefined) {
-        for (var i = 0; i < ax.length; i++) styleAxis(ax[i]);
-        return;
+  /* ── Colours, from the page's tokens ── */
+
+  var _colorCtx = null;
+  /* A token as a colour ECharts can parse. A theme may write oklch() or
+   * color-mix(), which a canvas keeps in its own space: then the pixel it
+   * paints, as rgb() / rgba(). Unparseable (no canvas): the token as written. */
+  function plainColor(v) {
+    if (!v) return v;
+    try {
+      if (!_colorCtx) {
+        var c = document.createElement("canvas");
+        if (!c || !c.getContext) return v;
+        c.width = 1;
+        c.height = 1;
+        _colorCtx = c.getContext("2d", { willReadFrequently: true });
+        if (!_colorCtx) return v;
       }
-      if (muted) {
-        ax.axisLabel = ax.axisLabel || {};
-        if (ax.axisLabel.color == null) ax.axisLabel.color = muted;
-      }
-      if (rule) {
-        ax.axisLine = ax.axisLine || {};
-        ax.axisLine.lineStyle = ax.axisLine.lineStyle || {};
-        if (ax.axisLine.lineStyle.color == null) ax.axisLine.lineStyle.color = rule;
-        ax.splitLine = ax.splitLine || {};
-        ax.splitLine.lineStyle = ax.splitLine.lineStyle || {};
-        if (ax.splitLine.lineStyle.color == null) ax.splitLine.lineStyle.color = rule;
-      }
-    }
-    styleAxis(option.xAxis);
-    styleAxis(option.yAxis);
-    if (option.tooltip) {
-      var bg = cssVar(cs, "--tb-bg");
-      if (bg && option.tooltip.backgroundColor == null) option.tooltip.backgroundColor = bg;
-      if (rule && option.tooltip.borderColor == null) option.tooltip.borderColor = rule;
-      if (ink) {
-        option.tooltip.textStyle = option.tooltip.textStyle || {};
-        if (option.tooltip.textStyle.color == null) option.tooltip.textStyle.color = ink;
-      }
-    }
-    if (option.legend && ink) {
-      option.legend.textStyle = option.legend.textStyle || {};
-      if (option.legend.textStyle.color == null) option.legend.textStyle.color = ink;
-    }
-    return option;
+      _colorCtx.fillStyle = "#000";
+      _colorCtx.fillStyle = v;
+      var s = _colorCtx.fillStyle;
+      if (/^(#|rgb)/.test(s)) return s;
+      _colorCtx.clearRect(0, 0, 1, 1);
+      _colorCtx.fillRect(0, 0, 1, 1);
+      var d = _colorCtx.getImageData(0, 0, 1, 1).data;
+      return d[3] === 255 ? "rgb(" + d[0] + "," + d[1] + "," + d[2] + ")"
+        : "rgba(" + d[0] + "," + d[1] + "," + d[2] + "," + (+(d[3] / 255).toFixed(3)) + ")";
+    } catch (e) { return v; }
   }
 
-  /* House style for a built option: thin rounded bars, 2px lines, a donut
-   * for pie, recessive axes, compact value-axis ticks, readable category
-   * labels, and a quiet tooltip. Display only — it never touches series
-   * data — and it runs before the theme colours and the author's
-   * configureChart patch, so either can still override it. */
-  function polishOption(option, plan, width) {
-    var kind = String(plan.type).toLowerCase();
-    option.grid = option.grid || {
-      left: 8, right: 24, bottom: 8, top: option.legend ? 40 : 16,
-      containLabel: true
+  /* [r, g, b, a] of a #rgb / #rrggbb / rgb() / rgba() colour, or null. */
+  function rgbaOf(c) {
+    var s = trim(String(c || "")), m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
+    if (m) {
+      var h = m[1].length === 3 ? m[1].replace(/(.)/g, "$1$1") : m[1];
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16), 1];
+    }
+    m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:\s*[,\/]\s*([\d.]+))?/i.exec(s);
+    return m ? [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]] : null;
+  }
+
+  function withAlpha(c, a) {
+    var v = rgbaOf(c);
+    return v ? "rgba(" + v[0] + "," + v[1] + "," + v[2] + "," + a + ")" : c;
+  }
+
+  function contrast(a, b) {
+    var lum = function (c) {
+      var v = rgbaOf(c);
+      if (!v) return null;
+      var lin = function (x) { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); };
+      return 0.2126 * lin(v[0]) + 0.7152 * lin(v[1]) + 0.0722 * lin(v[2]);
     };
-    if (option.legend) {
-      option.legend.top = option.legend.top == null ? 0 : option.legend.top;
-      option.legend.icon = option.legend.icon || "roundRect";
-      option.legend.itemWidth = option.legend.itemWidth || 10;
-      option.legend.itemHeight = option.legend.itemHeight || 10;
-    }
-    option.tooltip = option.tooltip || {};
-    option.tooltip.borderWidth = 1;
-    option.tooltip.extraCssText =
-      "box-shadow:0 4px 16px rgba(16,24,40,.12);border-radius:8px;";
-    if (option.tooltip.trigger === "axis") {
-      option.tooltip.axisPointer = { type: kind === "line" || kind === "area"
-        ? "line" : "shadow" };
-    }
-    function valueAxis(ax) {
-      if (!ax) return;
-      ax.axisLine = ax.axisLine || { show: false };
-      ax.axisTick = ax.axisTick || { show: false };
-      ax.axisLabel = ax.axisLabel || {};
-      if (!ax.axisLabel.formatter) {
-        /* Ticks only: the plotted values and the tooltip keep full precision. */
-        ax.axisLabel.formatter = function (v) {
-          var f = applyNamedFormat(Number(v), "compact");
-          return f === null ? v : f;
-        };
-      }
-    }
-    function categoryAxis(ax, isXAxis) {
-      if (!ax) return;
-      var n = (ax.data || []).length;
-      ax.axisTick = ax.axisTick || { show: false };
-      ax.axisLabel = ax.axisLabel || {};
-      if (n && n <= 12 && ax.axisLabel.interval == null) {
-        ax.axisLabel.interval = 0;          /* every category gets its name */
-        /* rotate when names would collide: many categories, or little room */
-        if (isXAxis && (n > 6 || (width && width / n < 80))) ax.axisLabel.rotate = 30;
-      }
-    }
-    var horizontal = kind === "barh";
-    [[option.xAxis, true], [option.yAxis, false]].forEach(function (pair) {
-      var ax = pair[0];
-      if (!ax) return;
-      if (ax.type === "category") categoryAxis(ax, pair[1]);
-      else if (ax.type === "value" && kind !== "scatter") valueAxis(ax);
-    });
-    (option.series || []).forEach(function (s) {
-      if (s.type === "bar") {
-        s.barMaxWidth = s.barMaxWidth || 44;
-        s.itemStyle = s.itemStyle || {};
-        if (s.itemStyle.borderRadius == null) {
-          s.itemStyle.borderRadius = horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0];
-        }
-      } else if (s.type === "line") {
-        s.symbol = s.symbol || "circle";
-        s.symbolSize = s.symbolSize || 7;
-        s.lineStyle = s.lineStyle || { width: 2 };
-        if (s.areaStyle && s.areaStyle.opacity == null) s.areaStyle.opacity = 0.12;
-      } else if (s.type === "pie") {
-        s.radius = ["42%", "64%"];
-        s.itemStyle = s.itemStyle || { borderColor: "#fff", borderWidth: 2 };
-        s.avoidLabelOverlap = true;
-        /* Wrap long category names instead of truncating them. */
-        if (s.label && s.label.overflow == null) {
-          s.label.overflow = "break";
-          s.label.width = 110;
-        }
-        /* In a narrow container, outside labels run off the edge: name the
-         * slices in a legend below instead (hover still shows each value). */
-        if (width && width < 560) {
-          s.label = { show: false };
-          s.labelLine = { show: false };
-          s.center = ["50%", "44%"];
-          option.legend = option.legend || {
-            show: true, bottom: 0, icon: "circle", itemWidth: 10, itemHeight: 10
-          };
-        }
-      }
-    });
-    return option;
+    var la = lum(a), lb = lum(b);
+    if (la === null || lb === null) return 0;
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
   }
 
-  /* The built option for one chart, patch applied — shared by the first
-   * hydration and every control-driven re-render. */
-  function buildOption(el, plan, rows) {
-    var option = applyThemeColors(
-      polishOption(optionFor(plan, rows), plan, el && el.clientWidth));
-
-    var patch = el.id ? _patches[el.id] : null;
-    if (patch) {
-      var built = option.series || [];
-      var merged = deepMerge(option, patch);
-      /* Config can restyle, never re-source: dataset-style channels are
-       * dropped and every series keeps the data built from the stamped
-       * bytes. Extra patch series (which could only carry author data)
-       * are not drawn. */
-      delete merged.dataset;
-      var series = [], i, overlay, s;
-      var patchSeries = merged.series;
-      for (i = 0; i < built.length; i++) {
-        overlay = (patchSeries && isPlainObject(patchSeries[i]))
-          ? patchSeries[i] : null;
-        s = (overlay && overlay !== built[i]) ? deepMerge(built[i], overlay) : built[i];
-        s.data = built[i].data;
-        series.push(s);
-      }
-      merged.series = series;
-      option = merged;
-    }
-    return option;
+  /* The text colour that reads on a fill: the page's ink or its card. */
+  function labelOn(fill, k) {
+    return contrast(k.ink, fill) >= contrast(k.card, fill) ? k.ink : k.card;
   }
-
-  /* ── The D3 chart engine ───────────────────────────────────────────────
-   * Draws every declared chart type (bar, barh, line, area, pie, scatter)
-   * with the inlined d3, from the same plan and the same filtered stamped
-   * rows the ECharts path reads. SVG: every mark is an element, so it prints
-   * as vectors, takes the page's tokens and carries its own focus and hover.
-   *
-   * What it never does: compute a number. Every bar, point and slice is one
-   * row's own value; there are no totals, shares or averages drawn. Colours
-   * are assigned from the UNFILTERED rows, so a filter that removes a series
-   * never repaints the ones that stay. A click on a mark sets the page's own
-   * filter control for that column (when the page has one), so filtering
-   * goes through the one view layer, never a side channel.
-   * ──────────────────────────────────────────────────────────────────── */
-
-  /* The motion token (--tb-chart-motion, 450ms cubic-out): read at every
-   * draw by chartTokens, so a theme's value applies. */
-  var _MOTION_MS = 450;
-
-  /* The house chart tokens (tracebi.css, docs/reference/chart-style.md): the
-   * one source of a chart's look, read by this engine and by the kit's
-   * <EChart> alike, so a theme or a project's brand restyles both. */
-  function chartTokens() {
-    var cs = null;
-    try { cs = getComputedStyle(document.documentElement); } catch (e) {}
-    var get = function (n, d) {
-      var v = cs ? trim(cs.getPropertyValue("--tb-chart-" + n) || "") : "";
-      return v || d;
-    };
-    var num = function (n, d) { var v = parseFloat(get(n, "")); return isNaN(v) ? d : v; };
-    var motion = get("motion", "450ms");
-    var ms = parseFloat(motion);
-    if (!/ms\s*$/.test(motion)) ms *= 1000;
-    return { font: get("font", ""), num: get("num-font", ""), label: get("label", ""),
-             value: get("value", ""), radius: num("radius", 2), bar: num("bar", 55) / 100,
-             line: num("line", 2), area: num("area", 0.12), glow: num("glow", 0),
-             motion: isNaN(ms) ? 450 : ms };
-  }
-  var _introPending = 0;
 
   function motionOk() {
     if (_printing) return false;
@@ -1500,17 +1245,155 @@
     return true;
   }
 
-  function chartKind(plan) {
-    var k = String(plan.type || "bar").toLowerCase();
-    return (k === "barh" || k === "line" || k === "area" || k === "pie" ||
-            k === "scatter") ? k : "bar";
+  /* The house chart tokens (tracebi.css, docs/reference/chart-style.md), read
+   * from the figure at every draw: the page's, the house theme's, the
+   * brand's, and any the figure's own container restates (a lead KPI tile
+   * draws its sparkline in the tile's ink). */
+  function chartTokens(el) {
+    var cs = null;
+    try { cs = getComputedStyle(el || document.documentElement); } catch (e) {}
+    var raw = function (n) {
+      var v = cs ? cs.getPropertyValue("--tb-" + n) : "";
+      return v ? trim(v) : "";
+    };
+    var col = function (n, d) { var v = raw(n); return v ? plainColor(v) : d; };
+    var num = function (n, d) { var v = parseFloat(raw(n)); return isNaN(v) ? d : v; };
+    var motion = raw("chart-motion") || "450ms", ms = parseFloat(motion);
+    if (!/ms\s*$/.test(motion)) ms *= 1000;
+    var palette = [], i, c;
+    for (i = 1; i <= 8; i++) { c = col("chart-" + i); if (c) palette.push(c); }
+    var dash = raw("chart-grid-dash").split(/[\s,]+/).map(Number).filter(function (n) { return n > 0; });
+    var ink = col("ink", "#111111"), muted = col("muted", "#666666");
+    var font = raw("chart-font") || raw("font") || undefined;
+    return {
+      ink: ink, muted: muted, card: col("bg", "#ffffff"), accent: col("accent"),
+      onAccent: col("on-accent"),
+      font: font, num: raw("chart-num-font") || font,
+      grid: col("chart-grid", "rgba(17,17,17,0.11)"), gridDash: dash.length ? dash : "dashed",
+      axis: col("chart-axis", "#e5e5e5"), label: col("chart-label") || muted,
+      value: col("chart-value") || ink,
+      tipBg: col("chart-tooltip-bg") || col("bg", "#ffffff"),
+      tipBorder: col("chart-tooltip-border") || col("rule", "#e5e5e5"),
+      tipShadow: raw("chart-tooltip-shadow"), tipRadius: raw("chart-tooltip-radius") || "8px",
+      tipInk: col("chart-tooltip-ink") || muted, glow: num("chart-glow", 0),
+      radius: num("chart-radius", 2), bar: num("chart-bar", 55), line: num("chart-line", 2),
+      area: num("chart-area", 0.12), dim: num("chart-dim", 0.28),
+      motion: motionOk() ? (isNaN(ms) ? 450 : ms) : 0,
+      palette: palette
+    };
+  }
+
+  /* The TraceBi theme for ECharts, from the chart tokens: the house look
+   * (chart-style.md) as ECharts' defaults, so an option an author adds
+   * (configureChart, <EChart option>) and an option-only <EChart> (a sankey
+   * the page computes) take it too. */
+  function chartTheme(k) {
+    k = k || chartTokens();
+    var font = k.font;
+    var text = function (color, size, weight) {
+      return { color: color, fontSize: size, fontWeight: weight, fontFamily: font };
+    };
+    var axis = {
+      axisLine: { show: false, lineStyle: { color: k.axis } },
+      axisTick: { show: false },
+      axisLabel: { color: k.label, fontSize: 11, fontFamily: k.num, margin: 10, lineHeight: 15 },
+      splitLine: { show: true, lineStyle: { color: k.grid, type: k.gridDash, width: 1 } },
+      splitArea: { show: false },
+      nameTextStyle: text(k.label, 11, 600)
+    };
+    /* The category axis is the one solid rule: the baseline, at zero. Its
+     * names at 12px, the value ticks at 11. */
+    var categoryAxis = extend(extend({}, axis), {
+      axisLine: { show: true, lineStyle: { color: k.axis } },
+      axisLabel: { color: k.label, fontSize: 12, fontFamily: font, margin: 10, lineHeight: 15 },
+      splitLine: { show: false }
+    });
+    var cells = { itemStyle: { borderColor: k.card, borderWidth: 2, gapWidth: 2 },
+                  label: text(k.ink, 12, 500) };
+    return {
+      color: k.palette.length ? k.palette : undefined,
+      backgroundColor: "transparent",
+      textStyle: { color: k.ink, fontFamily: font },
+      animation: k.motion > 0, animationDuration: k.motion, animationEasing: "cubicOut",
+      animationDurationUpdate: k.motion, animationEasingUpdate: "cubicOut",
+      title: { textStyle: text(k.ink, 14, 600), subtextStyle: text(k.label, 12), itemGap: 4 },
+      legend: { icon: "circle", itemWidth: 8, itemHeight: 8, itemGap: 16,
+                textStyle: text(k.ink, 12), pageTextStyle: text(k.label, 11),
+                pageIconColor: k.ink, pageIconInactiveColor: k.grid, inactiveColor: k.grid },
+      tooltip: tooltipBase(k),
+      categoryAxis: categoryAxis, valueAxis: axis, logAxis: axis, timeAxis: axis,
+      line: { lineStyle: { width: k.line, cap: "round", join: "round" }, symbol: "circle",
+              symbolSize: 7, showSymbol: false, smooth: false },
+      bar: { barCategoryGap: (100 - k.bar) + "%", barMaxWidth: 36,
+             itemStyle: { borderRadius: [k.radius, k.radius, 0, 0] } },
+      scatter: { symbolSize: 10, itemStyle: { opacity: 0.85, borderColor: k.card, borderWidth: 2 } },
+      pie: { radius: ["54%", "90%"], padAngle: 0.7, label: { show: false }, labelLine: { show: false },
+             itemStyle: { borderColor: k.card, borderWidth: 2, borderRadius: 3 } },
+      treemap: extend(extend({}, cells), { breadcrumb: { show: false } }),
+      sunburst: cells,
+      sankey: { itemStyle: { borderWidth: 0 }, label: text(k.ink, 12), lineStyle: { opacity: 0.3 } },
+      radar: { axisName: { color: k.label }, axisLine: { lineStyle: { color: k.grid } },
+               splitLine: { lineStyle: { color: k.grid } }, splitArea: { show: false } },
+      visualMap: { textStyle: text(k.label, 11) },
+      dataZoom: { textStyle: text(k.label, 11), borderColor: k.grid },
+      toolbox: { iconStyle: { borderColor: k.label } },
+      markLine: { label: text(k.label, 11), lineStyle: { color: k.label, type: k.gridDash } },
+      label: { color: k.ink, fontFamily: font }
+    };
+  }
+
+  /* The readout as a card (.tb-echart-tip), drawn by ECharts' HTML tooltip. */
+  function tooltipBase(k) {
+    return {
+      className: "tb-echart-tip", backgroundColor: k.tipBg, borderColor: k.tipBorder,
+      borderWidth: 1, padding: [8, 10],
+      textStyle: { color: k.tipInk, fontFamily: k.font, fontSize: 13 },
+      extraCssText: "border-radius:" + k.tipRadius + ";box-shadow:" + (k.tipShadow || "none") +
+        ";min-width:140px;max-width:280px;white-space:normal;",
+      axisPointer: { lineStyle: { color: k.label, type: [3, 3], width: 1 },
+                     shadowStyle: { color: withAlpha(k.ink, 0.05) } }
+    };
+  }
+
+  function extend(a, b) {
+    for (var key in b) if (b.hasOwnProperty(key)) a[key] = b[key];
+    return a;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  /* The readout's content: the category, then a row per series of its
+   * swatch, its value as the page formats it and its name; the measures'
+   * own descriptions; and, when the trace holds this figure, the way to it. */
+  function tipHtml(title, rows, about, trace) {
+    var out = '<div class="tb-chart-tip-title">' + escHtml(title) + "</div>";
+    rows.forEach(function (r) {
+      out += '<div class="tb-chart-tip-row"><span class="tb-chart-tip-key" style="background:' +
+        escHtml(r.colour || "") + '"></span><strong>' + escHtml(r.value) + "</strong><span>" +
+        escHtml(r.name) + "</span></div>";
+    });
+    (about || []).forEach(function (text) {
+      out += '<div class="tb-chart-tip-about">' + escHtml(text) + "</div>";
+    });
+    if (trace) {
+      out += '<button type="button" class="tb-chart-tip-receipt" data-tb-receipt-for="' +
+        escHtml(trace) + '">Trace →</button>';
+    }
+    return out;
   }
 
   /* The format a value is shown in: the author's value format, then the
    * model's declared format for the column, then the shape default — the
-   * table's precedence, so a tooltip agrees with the table beside it. */
+   * table's precedence, so a tooltip agrees with the table beside it. An
+   * unknown format writes the value as it is: an attribute may format or do
+   * nothing, never blank out a number. data-tb-unit is a suffix only. */
   function chartFormatter(plan, rows, col) {
-    var mode = plan.valueFormat || declaredFormats()[col] || deriveFormat(rows, col);
+    var mode = plan.valueFormat ||
+      (declaredFormats()[plan.binding] || {})[col] || deriveFormat(rows, col);
     var unit = plan.unit || "";
     return function (v) {
       var n = toNum(v);
@@ -1521,9 +1404,8 @@
   }
 
   /* Axis ticks are short: compact digits, keeping a currency sign or a
-   * percent, so "$20M" rather than "$20,000,000". Tooltips and marks keep
-   * the full format. data-tb-unit is a suffix only ("%" on a rate stored
-   * as 6.81): it never rescales the number. */
+   * percent, so "$20M" rather than "$20,000,000". Marks and the readout keep
+   * the full format. */
   function tickFormatter(plan) {
     var mode = plan.valueFormat, unit = plan.unit || "";
     return function (v) {
@@ -1536,62 +1418,1283 @@
     };
   }
 
+  var _measureCtx = null;
+  /* How wide *text* sets at *size* px: room for labels the option reserves. */
+  function textWidth(text, size, font) {
+    try {
+      if (!_measureCtx) {
+        var c = document.createElement("canvas");
+        _measureCtx = c && c.getContext ? c.getContext("2d") : null;
+      }
+      if (_measureCtx) {
+        _measureCtx.font = (size || 12) + "px " + (font || "sans-serif");
+        return _measureCtx.measureText(String(text)).width;
+      }
+    } catch (e) {}
+    return String(text).length * (size || 12) * 0.56;
+  }
+
+  /* The plan a chart element declares. */
+  var KIT_TYPES = { bar: 1, barh: 1, line: 1, area: 1, pie: 1, scatter: 1 };
+  var AXIS_TYPES = { bar: 1, barh: 1, line: 1, area: 1, effectScatter: 1, pictorialBar: 1 };
+  /* Shares of a whole that the legend names (a treemap or sunburst labels its cells). */
+  var LEGEND_TYPES = { pie: 1, funnel: 1 };
+
+  function chartPlan(el) {
+    var own = attr(el, "data-tb-palette");
+    var type = attr(el, "data-tb-echart-type") || attr(el, "data-tb-type") || "bar";
+    if (KIT_TYPES.hasOwnProperty(String(type).toLowerCase())) type = String(type).toLowerCase();
+    return {
+      binding: attr(el, "data-tb-binding"),
+      type: type,
+      x: attr(el, "data-tb-x"),
+      y: splitList(attr(el, "data-tb-y") || ""),
+      color: attr(el, "data-tb-color"),
+      valueFormat: attr(el, "data-tb-value-format"),
+      palette: own ? splitList(own) : null,
+      xTitle: attr(el, "data-tb-x-title"),
+      yTitle: attr(el, "data-tb-y-title"),
+      stack: el.getAttribute("data-tb-stack") !== null,
+      mark: attr(el, "data-tb-mark"),
+      annotate: attr(el, "data-tb-annotate"),
+      facet: attr(el, "data-tb-facet"),
+      unit: attr(el, "data-tb-unit"),
+      renderer: attr(el, "data-tb-renderer"),
+      spark: (" " + (el.className || "") + " ").indexOf(" tb-spark ") !== -1
+    };
+  }
+
+  /* axis (bar, barh, line, area, …), scatter, or item (pie, funnel, treemap,
+   * sunburst: any ECharts series that takes name/value items). */
+  function chartKind(plan) {
+    var t = plan.type || "bar";
+    return t === "scatter" ? "scatter" : AXIS_TYPES.hasOwnProperty(t) ? "axis" : "item";
+  }
+
   /* Series keys in first-seen order over ALL stamped rows: the colour map.
-   * A key keeps its slot whatever the filters leave on screen. */
-  function seriesKeys(plan, rows, kind) {
-    var keys = [];
-    if (kind === "pie") {
-      rows.forEach(function (r) {
-        var c = String(r[plan.x]);
-        if (keys.indexOf(c) === -1) keys.push(c);
-      });
-      return keys;
-    }
+   * A key keeps its slot whatever the selection leaves on screen. */
+  function seriesKeys(plan, rows) {
+    if (chartKind(plan) === "item") return categories(plan, rows);
     if (plan.color) {
+      var keys = [], seen = {};
       rows.forEach(function (r) {
         var g = groupOf(r[plan.color]);
-        if (keys.indexOf(g) === -1) keys.push(g);
+        if (!seen.hasOwnProperty(g)) { seen[g] = 1; keys.push(g); }
       });
       return keys;
     }
     return plan.y.slice();
   }
 
-  function colourOf(entry, key) {
-    var pal = entry.plan.palette && entry.plan.palette.length
-      ? entry.plan.palette : ["#2f5bea"];
-    var i = entry.keys.indexOf(key);
+  function colourOf(plan, ctx, key) {
+    var pal = plan.palette && plan.palette.length ? plan.palette : ctx.k.palette;
+    if (!pal || !pal.length) return undefined;
+    var i = ctx.keys.indexOf(key);
     return pal[(i < 0 ? 0 : i) % pal.length];
   }
 
-  function seriesName(plan, key) {
-    return plan.color ? key : humanise(key);
+  /* "2020=Pandemic; 2022=Rates rise" → [{at: "2020", text: "Pandemic"}, …] */
+  function annotations(plan) {
+    if (!plan.annotate) return [];
+    return String(plan.annotate).split(";").map(function (part) {
+      var i = part.indexOf("=");
+      return i < 0 ? null : { at: trim(part.slice(0, i)), text: trim(part.slice(i + 1)) };
+    }).filter(function (a) { return a && a.at; });
   }
 
-  /* rows → [{key, name, points: [{cat, x, y, row}]}] for the visible keys. */
-  function chartSeries(entry, rows, kind) {
-    var plan = entry.plan, out = [], byKey = {};
-    var valueCol = function (key) { return plan.color ? plan.y[0] : key; };
-    entry.keys.forEach(function (key) {
-      if (entry.hidden[key]) return;
-      var s = { key: key, name: seriesName(plan, key), col: valueCol(key), points: [] };
-      byKey[key] = s;
-      out.push(s);
-    });
-    rows.forEach(function (r) {
-      var keys = plan.color ? [groupOf(r[plan.color])] : plan.y;
-      keys.forEach(function (key) {
-        var s = byKey[key];
-        if (!s) return;
-        var y = toNum(r[s.col]);
-        s.points.push({
-          key: key, cat: String(r[plan.x]), y: y, row: r,
-          x: kind === "scatter" ? toNum(r[plan.x]) : null
+  function marksWanted(plan) {
+    return plan.mark ? splitList(String(plan.mark)).map(function (m) {
+      return m.toLowerCase();
+    }) : [];
+  }
+
+  /* A line or area over whole numbers (years owned, a year) spaces them as
+   * numbers: the missing steps between them become empty slots, so a gap in
+   * the data reads as a gap, not as neighbours. */
+  function evenSteps(plan, cats) {
+    var t = plan.type;
+    if ((t !== "line" && t !== "area") || cats.length < 2) return cats;
+    var ns = [], i, step = Infinity;
+    for (i = 0; i < cats.length; i++) {
+      if (!/^-?\d+$/.test(cats[i])) return cats;
+      ns.push(Number(cats[i]));
+      if (i && ns[i] <= ns[i - 1]) return cats;
+      if (i) step = Math.min(step, ns[i] - ns[i - 1]);
+    }
+    var span = (ns[ns.length - 1] - ns[0]) / step;
+    if (span === cats.length - 1 || span > 400) return cats;
+    for (i = 1; i < ns.length; i++) if ((ns[i] - ns[0]) % step) return cats;
+    var out = [];
+    for (i = 0; i <= span; i++) out.push(String(ns[0] + i * step));
+    out.filled = true;
+    return out;
+  }
+
+  /* Bounds a shared value axis rounds out to (small multiples): drawing
+   * only, the extent of the rows' own values. */
+  function niceExtent(lo, hi) {
+    if (lo === hi) hi = lo + 1;
+    var step = Math.pow(10, Math.floor(Math.log(hi - lo) / Math.LN10));
+    var err = (hi - lo) / 5 / step;
+    step *= err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1;
+    return [Math.floor(lo / step) * step, Math.ceil(hi / step) * step];
+  }
+
+  /* An option for a figure: what a plan and its rows draw, in the house look.
+   * ctx: {k: tokens, stamped: the binding's stamped rows (the colour map),
+   * hidden: legend keys switched off, xSet / sSet: picked values of the x and
+   * series columns (they dim the rest), width, height, zoom, zoomX, trace:
+   * the figure id when the trace holds it, out: receives the keyboard stops
+   * and, for small multiples, the height they take}. */
+  function optionFor(plan, rows, ctx) {
+    ctx = ctx || {};
+    ctx.k = ctx.k || chartTokens();
+    ctx.hidden = ctx.hidden || {};
+    ctx.keys = ctx.keys || seriesKeys(plan, ctx.stamped || rows);
+    ctx.out = ctx.out || {};
+    ctx.width = ctx.width || 600;
+    ctx.height = ctx.height || 320;
+    var kind = chartKind(plan), opt;
+    if (kind === "item") opt = itemOption(plan, rows, ctx);
+    else if (kind === "scatter") opt = scatterOption(plan, rows, ctx);
+    else opt = axisOption(plan, rows, ctx);
+    opt.color = plan.palette && plan.palette.length ? plan.palette : ctx.k.palette;
+    opt.animation = ctx.k.motion > 0;
+    return opt;
+  }
+
+  function seriesDim(s, k) {
+    s.itemStyle = extend(s.itemStyle || {}, { opacity: k.dim });
+    s.lineStyle = extend(s.lineStyle || {}, { opacity: k.dim });
+    if (s.areaStyle) s.areaStyle = extend(s.areaStyle, { opacity: (s.areaStyle.opacity || 0.12) * k.dim });
+    if (s.label) s.label = extend(s.label, { opacity: k.dim });
+    if (s.endLabel) s.endLabel = extend(s.endLabel, { opacity: k.dim });
+  }
+
+  function axisOption(plan, rows, ctx) {
+    var k = ctx.k, out = ctx.out;
+    var horizontal = plan.type === "barh";
+    var type = horizontal ? "bar" : plan.type === "area" ? "line" : plan.type;
+    var isBar = type === "bar" || type === "pictorialBar";
+    var stacked = !!plan.stack && plan.type !== "line";
+    var marks = marksWanted(plan);
+    var tick = tickFormatter(plan);
+    var trace = ctx.trace || null;
+    var panels = [];
+    var allCats = evenSteps(plan, categories(plan, rows));
+    if (plan.facet) {
+      var order = [], byFacet = {};
+      (ctx.stamped || rows).forEach(function (r) {
+        var f = groupOf(r[plan.facet]);
+        if (order.indexOf(f) === -1) order.push(f);
+      });
+      rows.forEach(function (r) {
+        var f = groupOf(r[plan.facet]);
+        (byFacet[f] = byFacet[f] || []).push(r);
+      });
+      order.forEach(function (f) { if (byFacet[f]) panels.push({ title: f, rows: byFacet[f] }); });
+    } else {
+      panels.push({ title: null, rows: rows });
+    }
+    var cats = allCats;
+    if (ctx.zoom && !plan.facet) {
+      cats = allCats.slice(ctx.zoom[0], ctx.zoom[1] + 1);
+      if (cats.length < 2) cats = allCats;
+    }
+    var index = {};
+    cats.forEach(function (c, i) { index[c] = i; });
+
+    /* Each panel's series: one per visible key the rows hold. */
+    panels.forEach(function (p) {
+      p.series = [];
+      ctx.keys.forEach(function (key) {
+        if (ctx.hidden[key]) return;
+        var col = plan.color ? plan.y[0] : key, data = [], any = false, i;
+        for (i = 0; i < cats.length; i++) data.push(null);
+        p.rows.forEach(function (r) {
+          if (plan.color && groupOf(r[plan.color]) !== key) return;
+          var c = String(r[plan.x]);
+          if (!index.hasOwnProperty(c)) return;
+          data[index[c]] = toNum(r[col]);
+          any = true;
         });
+        if (!any) return;
+        p.series.push({ key: key, col: col, name: plan.color ? key : humanise(key), data: data,
+                        colour: colourOf(plan, ctx, key), fmt: chartFormatter(plan, rows, col) });
       });
     });
-    /* A series the filters emptied draws nothing (the legend still names it). */
-    return out.filter(function (s) { return s.points.length > 0; });
+
+    /* A pick none of this chart's marks carries (a year it does not draw)
+     * dims nothing: a chart all faint says nothing. */
+    var xSet = ctx.xSet, sSet = ctx.sSet;
+    var drawn = function (set, test) {
+      if (!set) return null;
+      for (var key in set) if (set.hasOwnProperty(key) && test(key)) return set;
+      return null;
+    };
+    xSet = drawn(xSet, function (c) {
+      return index.hasOwnProperty(c) && panels.some(function (p) {
+        return p.series.some(function (s) { return s.data[index[c]] !== null; });
+      });
+    });
+    sSet = drawn(sSet, function (key) {
+      return panels.some(function (p) {
+        return p.series.some(function (s) { return s.key === key; });
+      });
+    });
+
+    var nSeries = panels.length ? Math.max.apply(null, panels.map(function (p) { return p.series.length; })) : 0;
+    var labelled = isBar && !stacked && !plan.facet && !plan.spark && !marks.length &&
+      nSeries > 0 && nSeries <= 3 && cats.length * nSeries <= (horizontal ? 24 : 12);
+    var ends = !isBar && !plan.spark && !plan.facet && marks.indexOf("last") === -1 && nSeries <= 4;
+    var r = stacked ? 0 : k.radius;
+    /* The text that reads on a bar's fill: the accent's own text or the
+     * ink, at 4.5:1; null when neither does. */
+    var insideInk = function (fill) {
+      var c = [k.onAccent, k.ink].filter(function (x) { return x && contrast(x, fill) >= 4.5; });
+      return c.length ? c[0] : null;
+    };
+    /* Whether every bar's label fits inside its free end, 12px to spare,
+     * on the axis the values will be drawn against. */
+    var inside = false;
+    if (labelled) {
+      var lo0 = 0, hi0 = 0, widestLabel = 0;
+      panels.forEach(function (p) {
+        p.series.forEach(function (s) {
+          s.data.forEach(function (v) {
+            if (v === null) return;
+            lo0 = Math.min(lo0, v);
+            hi0 = Math.max(hi0, v);
+            widestLabel = Math.max(widestLabel, textWidth(s.fmt(v), 11, k.num));
+          });
+        });
+      });
+      var ext = niceExtent(lo0, hi0), span0 = (ext[1] - ext[0]) || 1;
+      var catW0 = 0;
+      cats.forEach(function (c) { catW0 = Math.max(catW0, textWidth(c, 12, k.font)); });
+      var plot = horizontal ? ctx.width - Math.min(catW0, ctx.width * 0.4) - 60 : ctx.height - 60;
+      var across = (horizontal ? ctx.height - 40 : ctx.width - 60) / Math.max(1, cats.length) *
+        (k.bar / 100) / Math.max(1, nSeries);
+      across = Math.min(36, across);
+      inside = across >= (horizontal ? 15 : widestLabel + 4);
+      panels.forEach(function (p) {
+        p.series.forEach(function (s) {
+          s.data.forEach(function (v) {
+            if (v === null) return;
+            var len = Math.abs(v) / span0 * plot;
+            if (len < (horizontal ? textWidth(s.fmt(v), 11, k.num) : 11) + 12) inside = false;
+          });
+        });
+      });
+    }
+
+    /* Room the labels at the free ends need. */
+    var endRoom = 0;
+    if (labelled || ends) {
+      panels.forEach(function (p) {
+        p.series.forEach(function (s) {
+          var vals = ends ? s.data.filter(function (v) { return v !== null; }).slice(-1) : s.data;
+          vals.forEach(function (v) {
+            if (v !== null) endRoom = Math.max(endRoom, textWidth(s.fmt(v), 11, k.num));
+          });
+        });
+      });
+    }
+
+    /* Category names: every name on a short axis, wrapped rather than
+     * skipped; a long run of numbers (years, months) shows every k-th. */
+    var W = ctx.width, H = ctx.height, cols = 1, rowsN = 1;
+    if (plan.facet && panels.length) {
+      cols = Math.max(1, Math.min(panels.length, Math.floor(W / 260)));
+      rowsN = Math.ceil(panels.length / cols);
+    }
+    var widest = 0;
+    cats.forEach(function (c) { widest = Math.max(widest, textWidth(c, 12, k.font)); });
+    var catLabel = {};
+    var valueTitle = horizontal ? plan.xTitle : plan.yTitle;
+    var catTitle = horizontal ? plan.yTitle : plan.xTitle;
+    if (horizontal) {
+      catLabel = { width: Math.round(Math.min(widest + 2, W * 0.4)), overflow: "break" };
+    } else {
+      var band = (W / cols - (plan.facet ? 2 * 8 + 8 : 0) - 60) / Math.max(1, cats.length);
+      var run = cats.length > 1 && cats.every(function (c) { return /^[\d\s.,:\/-]+$/.test(String(c)); });
+      /* A name wraps only between words: a single word wider than its band
+       * would be cut mid-word, so the names turn instead. */
+      var oneWord = cats.some(function (c) {
+        return String(c).split(/\s+/).some(function (w) { return textWidth(w, 12, k.font) + 6 > band; });
+      });
+      if (widest + 6 <= band) catLabel = { interval: 0 };
+      else if (cats.length > 16 || run) catLabel = { interval: "auto", hideOverlap: true };
+      else if (band >= 48 && !oneWord) catLabel = { interval: 0, width: Math.floor(band - 6), overflow: "break" };
+      /* Set smaller (to 9px) when that fits; turned 30° when not. */
+      else if (Math.floor(12 * (band - 6) / widest) >= 9) {
+        catLabel = { interval: 0, fontSize: Math.min(11, Math.floor(12 * (band - 6) / widest)) };
+      } else catLabel = { interval: 0, rotate: 30 };
+    }
+
+    var series = [], xAxis = [], yAxis = [], grid = [], titles = [], stops = [], meta = {};
+    var ph = rowsN > 1 ? Math.max(160, Math.floor((H + (rowsN - 1) * 40) / rowsN)) : H;
+    var domain = null;
+    if (plan.facet) {
+      var lo = 0, hi = 0;
+      panels.forEach(function (p) {
+        var up = {}, down = {};
+        p.series.forEach(function (s) {
+          s.data.forEach(function (v, i) {
+            if (v === null) return;
+            if (stacked) {
+              if (v >= 0) { up[i] = (up[i] || 0) + v; hi = Math.max(hi, up[i]); }
+              else { down[i] = (down[i] || 0) + v; lo = Math.min(lo, down[i]); }
+            } else { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+          });
+        });
+      });
+      domain = niceExtent(lo, hi);
+    }
+    var gap = 8;
+    panels.forEach(function (p, pi) {
+      var col = pi % cols, row = Math.floor(pi / cols);
+      var bare = !!plan.facet && !horizontal && pi + cols < panels.length;
+      var g = { id: "g" + pi, containLabel: true };
+      if (plan.spark) extend(g, { left: 3, right: 3, top: 3, bottom: 3, containLabel: false });
+      else if (plan.facet) {
+        var pw = W / cols;
+        extend(g, { left: col * pw + gap, width: pw - 2 * gap - 8,
+                    top: row * ph + 26, height: ph - 26 - (bare ? 12 : 40) });
+        titles.push({ id: "t" + pi, text: p.title, left: col * pw + gap, top: row * ph + 2,
+                      textStyle: { fontSize: 12, fontWeight: 600, color: k.ink, fontFamily: k.font } });
+      } else {
+        extend(g, { left: 8 + (valueTitle && !horizontal ? 18 : 0) + (catTitle && horizontal ? 18 : 0),
+                    right: (ends ? Math.ceil(endRoom) + 14 : 16) + (labelled && horizontal && !inside ? Math.ceil(endRoom) + 8 : 0) +
+                           (marks.length && horizontal ? 56 : 0),
+                    top: (labelled && !horizontal && !inside ? 24 : 12) + (marks.length && !horizontal ? 16 : 0),
+                    bottom: 8 + (catTitle && !horizontal ? 22 : 0) + (valueTitle && horizontal ? 22 : 0) });
+      }
+      grid.push(g);
+      var catAxis = { id: "c" + pi, gridIndex: pi, type: "category", data: cats, inverse: horizontal,
+                      boundaryGap: isBar || !plan.spark,
+                      axisLabel: extend({ show: !plan.spark && !bare }, catLabel),
+                      axisLine: { show: !plan.spark }, show: !plan.spark };
+      var valAxis = { id: "v" + pi, gridIndex: pi, type: "value", show: !plan.spark,
+                      axisLabel: { formatter: tick, hideOverlap: true },
+                      /* Value ticks thin to what fits: about one per 80px
+                       * across the plot, one per 50px up. */
+                      splitNumber: horizontal
+                        ? Math.max(2, Math.min(6, Math.floor((W / cols - Math.min(widest, W * 0.4) -
+                            (labelled ? endRoom : 0) - 40) / 80)))
+                        : Math.max(2, Math.min(5, Math.floor((ph - 40) / 50))) };
+      if (plan.spark) valAxis.splitLine = { show: false };
+      if (domain) { valAxis.min = domain[0]; valAxis.max = domain[1]; }
+      if (!plan.facet && catTitle) {
+        extend(catAxis, { name: catTitle, nameLocation: "middle",
+                          nameGap: horizontal ? Math.round(Math.min(widest, W * 0.4)) + 14 : 30 });
+      }
+      if (!plan.facet && valueTitle) {
+        extend(valAxis, { name: valueTitle, nameLocation: "middle", nameGap: horizontal ? 28 : 44 });
+      }
+      if (horizontal) { xAxis.push(valAxis); yAxis.push(catAxis); }
+      else { xAxis.push(catAxis); yAxis.push(valAxis); }
+
+      p.series.forEach(function (s, si) {
+        var id = pi + "|" + s.key;
+        var dimS = sSet && !sSet[s.key];
+        var on = labelled ? insideInk(s.colour) : null;
+        var e = { id: id, type: type, name: s.name, xAxisIndex: pi, yAxisIndex: pi,
+                  itemStyle: { color: s.colour }, emphasis: { disabled: true } };
+        if (stacked) {
+          e.stack = "total" + pi;
+          if (isBar) extend(e.itemStyle, { borderColor: k.card, borderWidth: 1 });
+        }
+        if (type === "line") {
+          e.showSymbol = false;
+          e.symbolSize = 7;
+          e.connectNulls = false;
+          if (plan.type === "area") e.areaStyle = { opacity: k.area };
+          if (plan.spark) e.symbol = "none";
+          e.lineStyle = { width: k.line };
+          /* --tb-chart-glow: a faint light under the line, in its own colour. */
+          if (k.glow > 0 && !plan.spark && s.colour) {
+            extend(e.lineStyle, { shadowBlur: k.glow, shadowColor: withAlpha(s.colour, 0.55) });
+          }
+          if (ends) {
+            e.endLabel = { show: true, distance: 6, color: k.value, fontSize: 11, fontWeight: 600,
+                           fontFamily: k.num, formatter: function (q) { return s.fmt(lastOf(q.value)); } };
+            e.labelLayout = { moveOverlap: "shiftY" };
+          }
+        }
+        var dimItem = function (v, c) {
+          var d = { value: v };
+          if (xSet && !xSet[c]) {
+            d.itemStyle = { opacity: k.dim };
+            d.label = { color: k.label };
+          }
+          return d;
+        };
+        e.data = s.data.map(function (v, i) {
+          var c = cats[i];
+          if (v === null) return null;
+          if (isBar) {
+            var item = (xSet && !xSet[c]) || v < 0 ? dimItem(v, c) : v;
+            /* A bar below zero rounds its own far end, and its label sits past it. */
+            if (v < 0) {
+              item.itemStyle = extend(item.itemStyle || {},
+                { borderRadius: horizontal ? [r, 0, 0, r] : [0, 0, r, r] });
+              if (labelled) item.label = extend(item.label || {}, { position: inside && on
+                ? (horizontal ? "insideLeft" : "insideBottom") : (horizontal ? "left" : "bottom") });
+            }
+            return item;
+          }
+          return v;
+        });
+        if (isBar) {
+          e.itemStyle.borderRadius = horizontal ? [0, r, r, 0] : [r, r, 0, 0];
+          if (labelled) {
+            /* Inside the free end when every label fits there and reads on
+             * the bar's colour; just past it otherwise. */
+
+            e.label = { show: true, distance: 5, fontSize: 11, fontWeight: 600, fontFamily: k.num,
+                        position: horizontal ? (inside && on ? "insideRight" : "right")
+                          : (inside && on ? "insideTop" : "top"),
+                        color: inside && on ? on : k.value,
+                        formatter: function (q) { return s.fmt(lastOf(q.value)); } };
+            e.labelLayout = { hideOverlap: true };
+          }
+        }
+        /* Points: the author's marks (the series' own high, low, first or
+         * last row, labelled with that row's value), a picked category's
+         * dot on a line, and the line's last point. */
+        var points = [];
+        var at = function (i, v) { return horizontal ? [v, i] : [i, v]; };
+        var defined = [];
+        s.data.forEach(function (v, i) { if (v !== null) defined.push(i); });
+        if (marks.length && defined.length) {
+          var pick = {};
+          marks.forEach(function (mk) {
+            var i = null;
+            if (mk === "max" || mk === "high" || mk === "min" || mk === "low") {
+              defined.forEach(function (j) {
+                var better = mk === "max" || mk === "high" ? s.data[j] > s.data[i] : s.data[j] < s.data[i];
+                if (i === null || better) i = j;
+              });
+            } else if (mk === "first") i = defined[0];
+            else if (mk === "last") i = defined[defined.length - 1];
+            if (i === null) return;
+            var word = mk === "max" || mk === "high" ? "High" : mk === "min" || mk === "low" ? "Low" : "";
+            if (pick[i]) { if (word && !pick[i].word) pick[i].word = word; return; }
+            pick[i] = { i: i, word: word, low: mk === "min" || mk === "low" };
+          });
+          Object.keys(pick).forEach(function (key) {
+            var m = pick[key], v = s.data[m.i], text = (m.word ? m.word + " " : "") + s.fmt(v);
+            points.push({ coord: at(m.i, v), value: v, symbol: "circle", symbolSize: isBar ? 0 : 10,
+                          itemStyle: { color: k.card, borderColor: s.colour, borderWidth: 2.5 },
+                          label: { show: true, color: k.ink, fontSize: 11, fontWeight: 600, fontFamily: k.num,
+                                   position: horizontal ? "right" : m.low ? "bottom" : "top",
+                                   formatter: (function (t) { return function () { return t; }; })(text) } });
+          });
+        }
+        if (type === "line" && !plan.spark) {
+          defined.forEach(function (i) {
+            var picked = xSet && xSet[cats[i]];
+            var last = i === defined[defined.length - 1] && !(marks.indexOf("last") !== -1);
+            if (!picked && !last) return;
+            points.push({ coord: at(i, s.data[i]), symbol: "circle", symbolSize: picked ? 8 : 6,
+                          itemStyle: { color: s.colour, borderColor: k.card, borderWidth: 1.5 },
+                          label: { show: false } });
+          });
+        }
+        if (points.length) {
+          e.markPoint = { silent: true, animation: false, data: points };
+        }
+        /* Annotations: the author's notes at a category, a dashed rule and a word. */
+        if (si === 0 && !plan.spark) {
+          var notes = annotations(plan).filter(function (a) { return index.hasOwnProperty(a.at); });
+          if (notes.length) {
+            e.markLine = { silent: true, animation: false, symbol: ["none", "none"],
+              lineStyle: { color: k.muted, type: [4, 3], opacity: 0.8, width: 1 },
+              data: notes.map(function (a) {
+                var d = horizontal ? { yAxis: a.at } : { xAxis: a.at };
+                d.label = { formatter: (function (t) { return function () { return t; }; })(a.text),
+                            position: "insideEndTop", color: k.muted, fontSize: 11,
+                            fontStyle: "italic", fontFamily: k.font };
+                return d;
+              }) };
+          }
+        }
+        if (dimS) seriesDim(e, k);
+        meta[id] = { s: s, panel: p.title };
+        series.push(e);
+      });
+
+      /* One keyboard stop per category, in reading order. */
+      cats.forEach(function (c, i) {
+        var rowsOut = [], about = [], first = -1;
+        p.series.forEach(function (s) {
+          var v = s.data[i];
+          if (v === null) return;
+          if (first < 0) first = series.length - p.series.length + p.series.indexOf(s);
+          rowsOut.push({ colour: s.colour, name: s.name, value: s.fmt(v) });
+          var said = measureAbout(s.col);
+          if (said && about.indexOf(said) === -1) about.push(said);
+        });
+        stops.push({ si: first < 0 ? series.length - p.series.length : first, di: i,
+                     title: (p.title ? p.title + " · " : "") + c, rows: rowsOut, about: about,
+                     pick: allCats.filled && first < 0 ? null : c, empty: first < 0 });
+      });
+    });
+    out.stops = stops;
+    out.cats = cats;
+    out.allCats = allCats;
+    out.height = plan.facet ? rowsN * ph : null;
+
+    var tip = extend(tooltipBase(k), {
+      trigger: "axis", enterable: !!trace, confine: true,
+      axisPointer: extend(tooltipBase(k).axisPointer, { type: isBar ? "shadow" : "line" }),
+      formatter: function (params) {
+        var list = isArray(params) ? params : [params];
+        if (!list.length) return "";
+        var title = list[0].axisValueLabel !== undefined ? list[0].axisValueLabel : list[0].name;
+        var rowsOut = [], about = [], panel = null;
+        list.forEach(function (q) {
+          var m = meta[q.seriesId];
+          if (!m) return;
+          panel = m.panel;
+          var v = m.s.data[q.dataIndex];
+          if (v === null || v === undefined) return;
+          rowsOut.push({ colour: m.s.colour, name: m.s.name, value: m.s.fmt(v) });
+          var said = measureAbout(m.s.col);
+          if (said && about.indexOf(said) === -1) about.push(said);
+        });
+        return tipHtml((panel ? panel + " · " : "") + title, rowsOut, about, trace);
+      }
+    });
+    if (plan.spark) tip.axisPointer = { type: "none" };
+    return { tooltip: tip, grid: grid, xAxis: xAxis, yAxis: yAxis, series: series, title: titles };
+  }
+
+  function lastOf(v) {
+    return v && typeof v === "object" && v.length !== undefined ? v[v.length - 1] : v;
+  }
+
+  function scatterOption(plan, rows, ctx) {
+    var k = ctx.k, trace = ctx.trace || null, tick = tickFormatter(plan);
+    var fx = chartFormatter(plan, rows, plan.x);
+    var block = readBlock(plan.binding), labelCol = null;
+    /* A point is named by its row's first text column (an issuer, a
+     * customer), when the binding has one beside the plotted columns. */
+    (block ? block.cols : []).forEach(function (c) {
+      if (labelCol || c === plan.x || c === plan.color || plan.y.indexOf(c) !== -1) return;
+      if (!isNumericColumn(rows, c)) labelCol = c;
+    });
+    var sSet = ctx.sSet, series = [], stops = [], meta = {};
+    var groups = [];
+    ctx.keys.forEach(function (key) {
+      if (ctx.hidden[key]) return;
+      var col = plan.color ? plan.y[0] : key, pts = [];
+      rows.forEach(function (r) {
+        if (plan.color && groupOf(r[plan.color]) !== key) return;
+        var x = toNum(r[plan.x]), y = toNum(r[col]);
+        if (x === null || y === null) return;
+        if (ctx.zoomX && (x < ctx.zoomX[0] || x > ctx.zoomX[1])) return;
+        pts.push({ x: x, y: y, label: labelCol && r[labelCol] !== undefined ? String(r[labelCol]) : null });
+      });
+      if (pts.length) groups.push({ key: key, col: col, pts: pts });
+    });
+    if (sSet && !groups.some(function (g) { return sSet[g.key]; })) sSet = null;
+    groups.forEach(function (g) {
+      var name = plan.color ? g.key : humanise(g.key), colour = colourOf(plan, ctx, g.key);
+      var fy = chartFormatter(plan, rows, g.col), id = "s|" + g.key, si = series.length;
+      var e = { id: id, type: "scatter", name: name, itemStyle: { color: colour },
+                emphasis: { scale: 1.4 },
+                data: g.pts.map(function (p) { return { value: [p.x, p.y], name: p.label || name }; }) };
+      if (sSet && !sSet[g.key]) seriesDim(e, k);
+      meta[id] = { g: g, name: name, colour: colour, fy: fy };
+      series.push(e);
+      g.pts.forEach(function (p, di) {
+        var title = p.label !== null ? p.label + (plan.color ? " · " + name : "") : name;
+        stops.push({ si: si, di: di, title: title,
+                     rows: [{ colour: colour, name: humanise(plan.x), value: fx(p.x) },
+                            { colour: colour, name: humanise(g.col), value: fy(p.y) }],
+                     about: [measureAbout(plan.x), measureAbout(g.col)].filter(Boolean),
+                     pick: plan.color ? g.key : null });
+      });
+    });
+    ctx.out.stops = stops;
+    var ticksW = 0;
+    groups.forEach(function (g) {
+      g.pts.forEach(function (p) { ticksW = Math.max(ticksW, textWidth(tick(p.y), 11, k.num)); });
+    });
+    var axisTitle = { color: k.ink, fontSize: 12, fontWeight: 600, fontFamily: k.font };
+    return {
+      tooltip: extend(tooltipBase(k), {
+        trigger: "item", enterable: !!trace, confine: true,
+        formatter: function (q) {
+          var m = meta[q.seriesId];
+          if (!m) return "";
+          var stop = null;
+          for (var i = 0; i < stops.length && !stop; i++) {
+            if (stops[i].si === q.seriesIndex && stops[i].di === q.dataIndex) stop = stops[i];
+          }
+          return stop ? tipHtml(stop.title, stop.rows, stop.about, trace) : "";
+        }
+      }),
+      /* Both axes are measures, so each is titled: nothing else says which is which. */
+      grid: { left: 8 + 22, right: 16, top: 12, bottom: 8 + 22, containLabel: true },
+      xAxis: { type: "value", scale: true, axisLabel: { formatter: tick },
+               name: plan.xTitle || humanise(plan.x), nameLocation: "middle", nameGap: 30,
+               nameTextStyle: axisTitle, splitLine: { show: false } },
+      yAxis: { type: "value", scale: true, axisLabel: { formatter: tick },
+               name: plan.yTitle || humanise(plan.y[0]), nameLocation: "middle",
+               nameGap: Math.ceil(ticksW) + 16, nameTextStyle: axisTitle },
+      series: series
+    };
+  }
+
+  function itemOption(plan, rows, ctx) {
+    var k = ctx.k, t = plan.type, y0 = plan.y[0], trace = ctx.trace || null;
+    var fmtV = chartFormatter(plan, rows, y0);
+    var cells = t === "treemap" || t === "sunburst";
+    var stops = [];
+    var data = rows.filter(function (r) { return !ctx.hidden[String(r[plan.x])]; }).map(function (r) {
+      var name = String(r[plan.x]), raw = toNum(r[y0]), fill = colourOf(plan, ctx, name);
+      /* |value|: a negative slice has no geometry; the readout shows the row's own value. */
+      var o = { name: name, value: t === "pie" ? Math.abs(raw || 0) : raw, raw: raw,
+                itemStyle: { color: fill } };
+      /* Each cell's label in whichever of ink and card reads on its fill. */
+      if (cells && fill) o.label = { color: labelOn(fill, k) };
+      stops.push({ si: 0, di: stops.length, title: name,
+                   rows: [{ colour: fill, name: humanise(y0), value: fmtV(raw) }],
+                   about: [measureAbout(y0)].filter(Boolean), pick: name });
+      return o;
+    });
+    /* What the selection did not pick recedes; a pick none of the items
+     * carries dims nothing. A cell keeps its label at full strength in the
+     * muted text colour, never white on a pale cell. */
+    var xSet = ctx.xSet;
+    if (xSet && !data.some(function (d) { return xSet[d.name]; })) xSet = null;
+    if (xSet) {
+      data.forEach(function (d) {
+        if (xSet[d.name]) return;
+        if (cells && d.itemStyle.color) {
+          d.itemStyle.color = withAlpha(d.itemStyle.color, k.dim);
+          d.label = { color: k.label };
+        } else d.itemStyle.opacity = k.dim;
+      });
+    }
+    var s = { id: "items", type: t, name: humanise(y0), data: data };
+    if (t === "pie") {
+      /* A donut: the inner radius 60% of the outer. The centre stays empty:
+       * no total is drawn, because a chart never computes a number. */
+      var R = Math.max(20, Math.min(ctx.width, ctx.height) / 2 - 8);
+      extend(s, { radius: [Math.round(R * 0.6), Math.round(R)], center: ["50%", "50%"],
+                  avoidLabelOverlap: true, emphasis: { scaleSize: 6 } });
+    }
+    if (t === "treemap") {
+      extend(s, { nodeClick: false, roam: false, left: 0, top: 0, width: "100%", height: "100%",
+        label: { position: "insideTopLeft", padding: [8, 10],
+                 formatter: function (q) { return "{n|" + q.name + "}\n{v|" + fmtV(q.data && q.data.raw) + "}"; },
+                 rich: { n: { fontSize: 12, fontWeight: 600, lineHeight: 17 },
+                         v: { fontSize: 11, lineHeight: 15 } } } });
+    }
+    if (t === "sunburst") s.nodeClick = false;
+    ctx.out.stops = stops;
+    return {
+      tooltip: extend(tooltipBase(k), {
+        trigger: "item", enterable: !!trace, confine: true,
+        formatter: function (q) {
+          var st = stops[q.dataIndex];
+          return st ? tipHtml(st.title, st.rows, st.about, trace) : "";
+        }
+      }),
+      series: [s]
+    };
+  }
+
+  /* `over` deep-merged onto `base`: objects key by key, arrays of objects item
+   * by item (series[0] onto series[0]), anything else replaced. */
+  function mergeOption(base, over) {
+    if (over === undefined) return base;
+    if (isArray(over)) {
+      if (!isArray(base) || !over.some(isPlainObject)) return over;
+      var n = Math.max(base.length, over.length), out = [], i;
+      for (i = 0; i < n; i++) out.push(i < over.length ? mergeOption(base[i], over[i]) : base[i]);
+      return out;
+    }
+    if (!isPlainObject(over)) return over;
+    var o = isPlainObject(base) ? extend({}, base) : {};
+    for (var key in over) if (over.hasOwnProperty(key)) o[key] = mergeOption(o[key], over[key]);
+    return o;
+  }
+
+  /* An override with its data taken out: on a receipted chart the numbers
+   * are the binding's, so a patch styles them and cannot replace them (series
+   * data, a dataset, category labels). */
+  function withoutData(over) {
+    if (!isPlainObject(over)) return over;
+    var o = extend({}, over);
+    delete o.dataset;
+    var strip = function (v, key) {
+      if (isArray(v)) return v.map(function (x) { return strip(x, key); });
+      if (isPlainObject(v)) { var c = extend({}, v); delete c[key]; return c; }
+      return v;
+    };
+    if (o.series !== undefined) o.series = strip(o.series, "data");
+    if (o.xAxis !== undefined) o.xAxis = strip(o.xAxis, "data");
+    if (o.yAxis !== undefined) o.yAxis = strip(o.yAxis, "data");
+    return o;
+  }
+
+  /* Restyle, never re-source: a patch (configureChart, the kit's option)
+   * merged onto the built option, every series keeping the data built from
+   * the rows. A patch series past the built ones (which could only carry
+   * the author's data) is not drawn. */
+  function restyle(option, patch) {
+    if (!isPlainObject(patch)) return option;
+    var built = option.series || [];
+    var merged = mergeOption(option, withoutData(patch));
+    delete merged.dataset;
+    var series = isArray(merged.series) ? merged.series : [merged.series];
+    merged.series = built.map(function (s, i) {
+      var o = isPlainObject(series[i]) ? series[i] : s;
+      o.data = s.data;
+      return o;
+    });
+    return merged;
+  }
+
+  /* An author's option (an option-only <EChart>, numbers the page computed)
+   * with the values its field did not pick receding to the house dim; a pick
+   * none of its marks carries dims nothing. A mark with its own colour (a
+   * treemap cell) fades that colour and its label takes the muted text
+   * colour; any other mark fades as a whole. */
+  function dimOption(opt, set, k) {
+    k = k || chartTokens();
+    if (!set || !isPlainObject(opt) || !opt.series) return opt;
+    var axisCats = function (a) {
+      var ax = isArray(a) ? a[0] : a;
+      return ax && isArray(ax.data) ? ax.data.map(function (d) {
+        return String(isPlainObject(d) ? d.value : d);
+      }) : null;
+    };
+    var cats = axisCats(opt.xAxis) || axisCats(opt.yAxis), hit = false;
+    var walk = function (data, byIndex) {
+      return data.map(function (d, i) {
+        var item = d;
+        if (isPlainObject(d) && isArray(d.children)) {
+          item = extend(extend({}, d), { children: walk(d.children, false) });
+        }
+        var name = isPlainObject(d) && d.name !== null && d.name !== undefined ? String(d.name)
+          : byIndex && cats ? cats[i] : null;
+        if (name === null || name === undefined) return item;
+        if (set[name]) { hit = true; return item; }
+        var o = isPlainObject(item) ? extend({}, item) : { value: item };
+        var own = isPlainObject(o.itemStyle) && typeof o.itemStyle.color === "string";
+        o.itemStyle = own
+          ? extend(extend({}, o.itemStyle), { color: withAlpha(plainColor(o.itemStyle.color), k.dim) })
+          : extend(extend({}, o.itemStyle || {}), { opacity: k.dim });
+        if (own) o.label = extend(extend({}, o.label || {}), { color: k.label });
+        return o;
+      });
+    };
+    var list = isArray(opt.series) ? opt.series : [opt.series];
+    var series = list.map(function (s) {
+      return isPlainObject(s) && isArray(s.data) ? extend(extend({}, s), { data: walk(s.data, true) }) : s;
+    });
+    return hit ? extend(extend({}, opt), { series: series }) : opt;
+  }
+
+  /* ── Drawing ── */
+
+  /* The renderer: the figure's own (data-tb-renderer, <Chart renderer>),
+   * then the report's (report.json "charts"), then SVG. */
+  var _chartsConfig = null;
+  function chartsConfig() {
+    if (_chartsConfig) return _chartsConfig;
+    _chartsConfig = {};
+    try {
+      var el = document.getElementById("tracebi-charts");
+      if (el) _chartsConfig = JSON.parse(el.textContent) || {};
+    } catch (e) { /* defensive */ }
+    return _chartsConfig;
+  }
+
+  function chartOpts(entry) { return entry.el.__tbChart || {}; }
+
+  function rendererOf(entry) {
+    var r = entry.plan.renderer || chartOpts(entry).renderer || chartsConfig().renderer;
+    return r === "canvas" ? "canvas" : "svg";
+  }
+
+  function chartLabel(entry) {
+    var o = chartOpts(entry), plan = entry.plan;
+    if (o.ariaLabel) return o.ariaLabel;
+    var kind = plan.type === "barh" ? "bar" : plan.type;
+    return kind + " chart of " + plan.y.map(humanise).join(", ") + " by " +
+      humanise(plan.x) + ". Use the arrow keys to read each value.";
+  }
+
+  function themeFor(entry, k) {
+    var own = chartOpts(entry).theme;
+    return own && own !== "auto" ? own : chartTheme(k);
+  }
+
+  /* What a click on a mark picks: the kit's onSelect(params) may name the
+   * value itself (or null for none). */
+  function chooseValue(entry, value, params, event) {
+    if (!entry.act) return;
+    var o = chartOpts(entry);
+    if (typeof o.onSelect === "function") {
+      try { value = o.onSelect(params || { name: value }); } catch (e) { return; }
+    }
+    if (value === null || value === undefined || value === "") return;
+    entry.act(String(value), event);
+  }
+
+  function initChart(entry, k) {
+    var lib = echartsLib();
+    entry.renderer = rendererOf(entry);
+    if (_printing && entry.renderer === "canvas") entry.renderer = "svg";
+    var chart = lib.init(entry.host, themeFor(entry, k), { renderer: entry.renderer });
+    entry.chart = chart;
+    entry.themeSig = null;
+    var zr = chart.getZr ? chart.getZr() : null;
+    var kind = chartKind(entry.plan);
+    if (zr && kind !== "item") bindPointer(entry, chart, zr, kind);
+    if (chart.on) {
+      chart.on("click", function (p) {
+        if (kind !== "item" || !p || p.componentType !== "series") return;
+        chooseValue(entry, p.name, p, p.event && p.event.event);
+      });
+      /* The first draw's motion: the page reports ready once it settles. */
+      if (k.motion > 0) {
+        _introPending++;
+        var done = false, settle = function () {
+          if (done) return;
+          done = true;
+          _introPending = Math.max(0, _introPending - 1);
+        };
+        chart.on("finished", settle);
+        setTimeout(settle, k.motion + 400);
+      }
+      var o = chartOpts(entry);
+      Object.keys(o.onEvents || {}).forEach(function (name) {
+        chart.on(name, function (p) {
+          var h = (chartOpts(entry).onEvents || {})[name];
+          if (typeof h === "function") h(p, chart);
+        });
+      });
+    }
+    bindKeyboard(entry);
+  }
+
+  /* A click on a category (its full band, not the 2px of a line) picks it;
+   * a drag across a long line or area, or a scatter, zooms to that range and
+   * a double-click returns. On a scatter the nearest point within 40px is
+   * the one meant. */
+  function bindPointer(entry, chart, zr, kind) {
+    var press = null;
+    var zoomable = function () {
+      return kind === "scatter" || (!entry.plan.facet && !entry.plan.spark &&
+        (entry.plan.type === "line" || entry.plan.type === "area") && entry.allCats &&
+        entry.allCats.length >= 8);
+    };
+    var inGrid = function (pt) {
+      var n = (chart.getOption().grid || []).length || 1;
+      for (var i = 0; i < n; i++) {
+        try { if (chart.containPixel({ gridIndex: i }, pt)) return i; } catch (e) {}
+      }
+      return -1;
+    };
+    var catAt = function (pt, gi) {
+      var v = chart.convertFromPixel({ gridIndex: gi }, pt);
+      var i = entry.plan.type === "barh" ? v[1] : v[0];
+      return Math.max(0, Math.min((entry.cats || []).length - 1, Math.round(i)));
+    };
+    var nearest = function (pt) {
+      var best = null, bd = 40 * 40;
+      (entry.stops || []).forEach(function (s) {
+        var opt = chart.getOption().series[s.si];
+        var d = opt && opt.data[s.di];
+        if (!d) return;
+        var px = chart.convertToPixel({ seriesIndex: s.si }, d.value);
+        var dx = px[0] - pt[0], dy = px[1] - pt[1];
+        if (dx * dx + dy * dy < bd) { bd = dx * dx + dy * dy; best = s; }
+      });
+      return best;
+    };
+    var box = null;
+    var brush = function (x0, x1) {
+      if (!box) {
+        box = document.createElement("div");
+        box.className = "tb-chart-brush";
+        entry.host.appendChild(box);
+      }
+      box.style.left = Math.min(x0, x1) + "px";
+      box.style.width = Math.abs(x1 - x0) + "px";
+    };
+    var unbrush = function () { if (box && box.parentNode) box.parentNode.removeChild(box); box = null; };
+    zr.on("mousedown", function (e) {
+      var pt = [e.offsetX, e.offsetY];
+      press = inGrid(pt) >= 0 ? { x: e.offsetX, y: e.offsetY } : null;
+    });
+    zr.on("mousemove", function (e) {
+      var pt = [e.offsetX, e.offsetY];
+      if (press && zoomable() && Math.abs(e.offsetX - press.x) > 4) brush(press.x, e.offsetX);
+      if (zr.setCursorStyle && inGrid(pt) >= 0) {
+        zr.setCursorStyle(zoomable() ? "crosshair" : entry.act ? "pointer" : "default");
+      }
+    });
+    zr.on("mouseup", function (e) {
+      var start = press;
+      press = null;
+      unbrush();
+      if (!start) return;
+      var pt = [e.offsetX, e.offsetY], gi = inGrid([start.x, start.y]);
+      if (Math.abs(e.offsetX - start.x) > 6 && zoomable() && gi >= 0) {
+        if (kind === "scatter") {
+          var a = chart.convertFromPixel({ gridIndex: gi }, [Math.min(start.x, e.offsetX), start.y])[0];
+          var b = chart.convertFromPixel({ gridIndex: gi }, [Math.max(start.x, e.offsetX), start.y])[0];
+          var inside = (entry.stops || []).filter(function (s) {
+            var d = chart.getOption().series[s.si].data[s.di];
+            return d && d.value[0] >= a && d.value[0] <= b;
+          });
+          if (inside.length >= 2) { entry.zoomX = [a, b]; drawChart(entry, null, true); }
+          return;
+        }
+        var c0 = catAt([Math.min(start.x, e.offsetX), start.y], gi);
+        var c1 = catAt([Math.max(start.x, e.offsetX), start.y], gi);
+        if (c1 - c0 < 1) return;
+        var base = entry.zoom ? entry.zoom[0] : 0;
+        entry.zoom = [base + c0, base + c1];
+        drawChart(entry, null, true);
+        return;
+      }
+      var ev = e.event;
+      if (kind === "scatter") {
+        var hit = nearest(pt);
+        if (hit && hit.pick !== null) {
+          chooseValue(entry, hit.pick, { name: hit.pick, seriesIndex: hit.si, dataIndex: hit.di,
+                                         event: { event: ev } }, ev);
+        }
+        return;
+      }
+      gi = inGrid(pt);
+      if (gi < 0 || !entry.act) return;
+      var i = catAt(pt, gi), cats = entry.cats || [];
+      var stop = (entry.stops || [])[gi * cats.length + i];
+      /* An empty step (evenSteps) has no value to pick. */
+      if (stop && stop.pick === null) return;
+      chooseValue(entry, cats[i], { name: cats[i], dataIndex: i, seriesIndex: stop ? stop.si : 0,
+                                    event: { event: ev } }, ev);
+    });
+    zr.on("dblclick", function () {
+      if (!entry.zoom && !entry.zoomX) return;
+      entry.zoom = null;
+      entry.zoomX = null;
+      drawChart(entry, null, true);
+    });
+  }
+
+  /* Arrow keys walk the marks, the readout follows and the value is
+   * announced; Enter selects the one focused, Escape hides the readout. */
+  function bindKeyboard(entry) {
+    var host = entry.host;
+    var show = function () {
+      var s = (entry.stops || [])[entry.focus];
+      if (!s) return;
+      try { entry.chart.dispatchAction({ type: "showTip", seriesIndex: s.si, dataIndex: s.di }); } catch (e) {}
+      entry.live.textContent = s.title + ": " + s.rows.map(function (r) {
+        return r.name + " " + r.value;
+      }).join(", ");
+    };
+    var hide = function () {
+      try { entry.chart.dispatchAction({ type: "hideTip" }); } catch (e) {}
+    };
+    host.addEventListener("keydown", function (e) {
+      var n = (entry.stops || []).length, key = e.key;
+      if (!n) return;
+      if (key === "ArrowRight" || key === "ArrowDown") entry.focus = (entry.focus + 1) % n;
+      else if (key === "ArrowLeft" || key === "ArrowUp") entry.focus = (entry.focus - 1 + n) % n;
+      else if (key === "Home") entry.focus = 0;
+      else if (key === "End") entry.focus = n - 1;
+      else if (key === "Enter" || key === " ") {
+        var s = entry.stops[entry.focus];
+        if (s && s.pick !== null) chooseValue(entry, s.pick, { name: s.pick, seriesIndex: s.si, dataIndex: s.di }, e);
+      } else if (key === "Escape") { hide(); return; }
+      else return;
+      e.preventDefault();
+      show();
+    });
+    host.addEventListener("focus", function () {
+      entry.focus = Math.min(entry.focus || 0, Math.max(0, (entry.stops || []).length - 1));
+      show();
+    });
+    host.addEventListener("blur", function (e) {
+      if (!(e.relatedTarget && host.contains(e.relatedTarget))) hide();
+    });
+    /* The readout's Trace link opens the trace at this figure. */
+    host.addEventListener("click", function (e) {
+      var t = e.target, btn = t && t.closest ? t.closest(".tb-chart-tip-receipt") : null;
+      if (!btn) return;
+      hide();
+      openReceipt(btn.getAttribute("data-tb-receipt-for"));
+    });
+  }
+
+  /* The legend: small round chips over the chart. On a live page a chip
+   * naming a value the selection can name (a pie's category, a chart's
+   * series) selects it, as a mark does; otherwise it shows or hides its
+   * series (never the last one). */
+  function legendFor(entry, k) {
+    var host = entry.legend, plan = entry.plan, kind = chartKind(plan);
+    while (host.firstChild) host.removeChild(host.firstChild);
+    var zoomed = !!(entry.zoom || entry.zoomX);
+    var named = kind === "item" ? LEGEND_TYPES.hasOwnProperty(plan.type) : entry.keys.length > 1;
+    var own = chartOpts(entry).option;
+    if (isPlainObject(own) && own.legend) named = false;
+    host.hidden = !(named || zoomed) || plan.spark;
+    if (zoomed) {
+      var reset = document.createElement("button");
+      reset.type = "button";
+      reset.className = "tb-legend-item tb-legend-reset";
+      reset.textContent = "Reset zoom";
+      reset.addEventListener("click", function () {
+        entry.zoom = null;
+        entry.zoomX = null;
+        drawChart(entry, null, true);
+      });
+      host.appendChild(reset);
+    }
+    if (!named) return;
+    var keyColumn = kind === "item" ? plan.x : plan.color;
+    var on = !highlightOff(entry.el);
+    var select = keyColumn && on && selectableField(keyColumn) ? markAction(keyColumn) : null;
+    var picked = keyColumn ? pickedSet(keyColumn) : null;
+    var swatch = plan.type === "line" || plan.type === "area" ? "line"
+      : plan.type === "scatter" ? "dot" : "box";
+    entry.keys.forEach(function (key) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tb-legend-item";
+      if (select) {
+        var is = !!(picked && picked[key]);
+        btn.className += " tb-legend-item--select";
+        btn.__tbKey = key;
+        btn.setAttribute("aria-pressed", is ? "true" : "false");
+        btn.setAttribute("aria-label", (is ? "clear " : "select ") + key);
+        if (picked && !is) addClass(btn, "tb-dimmed");
+        btn.addEventListener("click", function (event) { select(key, event); });
+      } else {
+        btn.setAttribute("aria-pressed", entry.hidden[key] ? "false" : "true");
+        btn.addEventListener("click", function () {
+          var visible = entry.keys.filter(function (x) { return !entry.hidden[x]; });
+          if (!entry.hidden[key] && visible.length === 1) return; /* keep one */
+          entry.hidden[key] = !entry.hidden[key];
+          drawChart(entry, null, true);
+        });
+      }
+      var sw = document.createElement("span");
+      sw.className = "tb-legend-swatch tb-legend-swatch--" + swatch;
+      sw.style.background = colourOf(plan, { k: k, keys: entry.keys }, key) || "";
+      var label = document.createElement("span");
+      label.textContent = kind === "item" || plan.color ? key : humanise(key);
+      btn.appendChild(sw);
+      btn.appendChild(label);
+      host.appendChild(btn);
+    });
+  }
+
+  /* Draw (or redraw) one chart from *rows* (default: what it draws now). */
+  function drawChart(entry, rows, animate) {
+    if (!echartsLib()) return;
+    if (!rows) rows = entryRows(entry);
+    entry.rows = rows;
+    var W = entry.surface.clientWidth;
+    entry.width = W;
+    if (!W) return; /* a hidden tab: drawn when shown */
+    var plan = entry.plan, o = chartOpts(entry);
+    var k = chartTokens(entry.el);
+    if (o.theme && o.theme !== "auto") k.palette = [];
+    legendFor(entry, k);
+    var H = o.height ? Number(o.height)
+      : plan.spark ? entry.height : Math.max(200, entry.height - entry.legend.offsetHeight - 8);
+    var on = !highlightOff(entry.el);
+    var kind = chartKind(plan);
+    var trace = entry.el.id && receiptRowFor(entry.el.id) ? entry.el.id : null;
+    var ctx = { k: k, stamped: (readBlock(entry.binding) || { rows: rows }).rows, hidden: entry.hidden,
+                keys: entry.keys, width: W, height: H, zoom: entry.zoom, zoomX: entry.zoomX,
+                trace: plan.spark ? null : trace,
+                xSet: on && kind !== "scatter" ? pickedSet(plan.x) : null,
+                sSet: on && plan.color ? pickedSet(plan.color) : null, out: {} };
+    var option = optionFor(plan, rows, ctx);
+    if (ctx.out.height) H = ctx.out.height;
+    entry.stops = ctx.out.stops || [];
+    entry.cats = ctx.out.cats;
+    entry.allCats = ctx.out.allCats;
+    if (entry.focus === undefined || entry.focus >= entry.stops.length) entry.focus = 0;
+    /* The kit's option (an object, or a function of the rows) and then the
+     * page's configureChart patch: restyle, never re-source. */
+    var own = typeof o.option === "function" ? o.option(copyRows(rows)) : o.option;
+    if (own) option = restyle(option, own);
+    var patch = entry.el.id ? _patches[entry.el.id] : null;
+    if (patch) option = restyle(option, patch);
+    option.aria = { enabled: true, decal: { show: false },
+                    label: { description: chartLabel(entry) } };
+    option.animation = !!animate && k.motion > 0;
+    entry.host.style.height = H + "px";
+    var sig = tokenSig(k);
+    if (!entry.chart) initChart(entry, k);
+    else {
+      if (sig !== entry.themeSig && entry.chart.setTheme && !(o.theme && o.theme !== "auto")) {
+        entry.chart.setTheme(chartTheme(k));
+      }
+      if (entry.chart.getWidth && (entry.chart.getWidth() !== W || entry.chart.getHeight() !== H)) {
+        entry.chart.resize();
+      }
+    }
+    entry.themeSig = sig;
+    /* The same series as before move to their new values (the motion of an
+     * update); a different set is drawn afresh, so no series index is left
+     * pointing at one that has gone. */
+    var ids = (option.series || []).map(function (s) { return s.id; }).join("\n") + "|" +
+      (option.grid || []).length;
+    entry.chart.setOption(option, ids === entry.ids
+      ? { replaceMerge: ["series", "xAxis", "yAxis", "grid", "title"] } : { notMerge: true });
+    entry.ids = ids;
+    entry.act = (kind === "axis" && !plan.spark) || kind === "item" ? markAction(plan.x)
+      : kind === "scatter" && plan.color ? markAction(plan.color) : null;
+    if (entry.act) addClass(entry.el, "tb-selectable"); else removeClass(entry.el, "tb-selectable");
+    entry.host.setAttribute("aria-label", chartLabel(entry));
+    /* The SVG states its own drawing box, so printed it scales to the page
+     * as vectors instead of overflowing it. */
+    var svg = entry.renderer === "svg" ? entry.host.querySelector("svg") : null;
+    if (svg) svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  }
+
+  function tokenSig(k) {
+    return JSON.stringify([k.palette, k.ink, k.card, k.grid, k.label, k.value, k.font, k.num,
+                           k.tipBg, k.tipInk, k.axis, k.glow, k.radius, k.bar, k.dim]);
+  }
+
+  function copyRows(rows) {
+    return rows.map(function (r) {
+      var o = {}, key;
+      for (key in r) if (r.hasOwnProperty(key)) o[key] = r[key];
+      return o;
+    });
+  }
+
+  function startChart(el, plan, block) {
+    var fb = el.querySelector(".tb-chart-fallback");
+    if (fb) el.removeChild(fb);
+    /* The figure's own height (CSS, else the 320px minimum), read once:
+     * reading it after drawing would measure the chart itself. */
+    var height = plan.spark ? (el.clientHeight || 44) : Math.max(320, el.clientHeight || 0);
+    var surface = document.createElement("div");
+    surface.className = "tb-chart";
+    var legend = document.createElement("div");
+    legend.className = "tb-legend-row";
+    legend.hidden = true;
+    var host = document.createElement("div");
+    host.className = "tb-chart-host";
+    host.setAttribute("role", "img");
+    host.setAttribute("aria-roledescription", "chart");
+    host.setAttribute("tabindex", "0");
+    var live = document.createElement("div");
+    live.className = "tb-sr-only";
+    live.setAttribute("aria-live", "polite");
+    surface.appendChild(legend);
+    surface.appendChild(host);
+    surface.appendChild(live);
+    el.appendChild(surface);
+    var entry = { el: el, binding: plan.binding, plan: plan, surface: surface, legend: legend,
+                  host: host, live: live, hidden: {}, height: height, focus: 0,
+                  keys: seriesKeys(plan, block.rows) };
+    _charts.push(entry);
+    el.__tbRedraw = function () { drawChart(entry, null, false); };
+    drawChart(entry, entryRows(entry), true);
+    watchCharts();
+    return entry;
+  }
+
+  function disposeChart(entry) {
+    try { if (entry.chart) entry.chart.dispose(); } catch (e) {}
+    entry.chart = null;
+  }
+
+  /* A redraw when the page's ground changes (data-tb-mode, the reader's
+   * system preference) and a resize when a chart's box does. */
+  var _chartWatch = false;
+  function watchCharts() {
+    if (_chartWatch || typeof document === "undefined") return;
+    _chartWatch = true;
+    var pending = false;
+    var redrawAll = function () {
+      if (pending) return;
+      pending = true;
+      setTimeout(function () {
+        pending = false;
+        for (var i = 0; i < _charts.length; i++) {
+          try {
+            if (tokenSig(chartTokens(_charts[i].el)) !== _charts[i].themeSig) {
+              drawChart(_charts[i], _charts[i].rows, false);
+            }
+          } catch (e) { /* defensive */ }
+        }
+      }, 0);
+    };
+    try {
+      if (typeof MutationObserver !== "undefined") {
+        new MutationObserver(redrawAll).observe(document.documentElement,
+          { attributes: true, attributeFilter: ["data-tb-mode", "class"] });
+      }
+      var mq = root.matchMedia ? root.matchMedia("(prefers-color-scheme: dark)") : null;
+      if (mq && mq.addEventListener) mq.addEventListener("change", redrawAll);
+      else if (mq && mq.addListener) mq.addListener(redrawAll);
+    } catch (e) {}
+    if (root.addEventListener) {
+      var later = false;
+      root.addEventListener("resize", function () {
+        if (later) return;
+        later = true;
+        setTimeout(function () { later = false; resizeCharts(); }, 120);
+      });
+    }
+    if (typeof ResizeObserver !== "undefined") {
+      _chartResize = new ResizeObserver(function () {
+        if (_resizeLater) return;
+        _resizeLater = true;
+        setTimeout(function () { _resizeLater = false; resizeCharts(); }, 60);
+      });
+    }
+  }
+  var _chartResize = null, _resizeLater = false;
+
+  /* Printed, every chart is drawn at its printed width with no motion, and
+   * a canvas chart prints as vectors: it is drawn by the SVG renderer while
+   * the page prints, and by canvas again after. */
+  function printCharts(on) {
+    for (var i = 0; i < _charts.length; i++) {
+      var entry = _charts[i];
+      try {
+        if (entry.chart && entry.renderer === "canvas" && on) disposeChart(entry);
+        else if (entry.chart && !on && entry.renderer !== rendererOf(entry)) disposeChart(entry);
+        drawChart(entry, entry.rows, false);
+      } catch (e) { /* defensive */ }
+    }
+  }
+
+  function hydrateCharts() {
+    fresh(figureEls("chart"), "chart").forEach(function (el) {
+      try {
+        if (!echartsLib()) return; /* no chart library: the no-JS picture stays */
+        var block = readBlock(attr(el, "data-tb-binding"));
+        if (!block || !block.rows.length) return;
+        var plan = chartPlan(el);
+        if (!plan.x || !plan.y.length) return;
+        var entry = startChart(el, plan, block);
+        if (_chartResize) _chartResize.observe(entry.surface);
+      } catch (e) { /* defensive */ }
+    });
   }
 
   /* The page's filter controls for *column*: a click on a mark sets them. */
@@ -1632,70 +2735,6 @@
     }
     if (filterControlsFor(column).length) return function (value) { filterTo(column, value); };
     return null;
-  }
-
-  function textWidth(svg, text, size) {
-    var t = svg.append("text").attr("font-size", size).text(text);
-    var w = 0;
-    try { w = t.node().getComputedTextLength(); } catch (e) {}
-    t.remove();
-    return w;
-  }
-
-  /* A category name in at most two lines, split at the space that balances
-   * them. A name is never shortened: what does not fit is set smaller. */
-  function wrapLines(svg, text, size) {
-    var words = String(text).split(/\s+/), best = [String(text)], bw = Infinity;
-    for (var i = 1; i < words.length; i++) {
-      var a = words.slice(0, i).join(" "), b = words.slice(i).join(" ");
-      var w = Math.max(textWidth(svg, a, size), textWidth(svg, b, size));
-      if (w < bw) { bw = w; best = [a, b]; }
-    }
-    return best;
-  }
-
-  function linesWidth(svg, lines, size) {
-    var w = 0;
-    lines.forEach(function (l) { w = Math.max(w, textWidth(svg, l, size)); });
-    return w;
-  }
-
-  /* Write *lines* into an axis label (one tspan each, centred on the tick)
-   * at *size*. */
-  function setLabel(node, lines, size, centred) {
-    var t = root.d3.select(node), x = t.attr("x") || 0;
-    t.text(null);
-    lines.forEach(function (l, i) {
-      t.append("tspan").attr("x", x)
-        .attr("dy", i ? "1.15em" : (lines.length > 1 && centred ? "-0.23em" : t.attr("dy")))
-        .text(l);
-    });
-    t.attr("font-size", size);
-  }
-
-  /* Contrast of two colours (#hex or rgb()), or 0 when either is unreadable. */
-  function rgbOf(c) {
-    var s = trim(String(c || "")), m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(s);
-    if (m) {
-      var h = m[1].length === 3 ? m[1].replace(/(.)/g, "$1$1") : m[1];
-      return [0, 2, 4].map(function (i) { return parseInt(h.slice(i, i + 2), 16); });
-    }
-    m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(s);
-    return m ? [+m[1], +m[2], +m[3]] : null;
-  }
-
-  function contrast(a, b) {
-    var lum = function (rgb) {
-      var c = rgb.map(function (v) {
-        v /= 255;
-        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-      });
-      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-    };
-    var x = rgbOf(a), y = rgbOf(b);
-    if (!x || !y) return 0;
-    var l1 = lum(x), l2 = lum(y);
-    return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
   }
 
   /* The measures' own descriptions, from the semantic contract the build
@@ -1746,1204 +2785,6 @@
     addClass(row, "tb-receipt-row--here");
     setTimeout(function () { removeClass(row, "tb-receipt-row--here"); }, 1600);
     return true;
-  }
-
-  /* The readout stays put while the pointer travels to its Receipt link. */
-  function tipLater(entry) {
-    clearTimeout(entry.hideTimer);
-    entry.hideTimer = setTimeout(function () { tipHide(entry); }, 220);
-  }
-
-  /* about: the measures' descriptions, one line each under the values. */
-  function tipShow(entry, x, y, title, rows, about) {
-    var tip = entry.tip, i, row, line;
-    clearTimeout(entry.hideTimer);
-    var same = !tip.hidden && entry.tipTitle === title;
-    entry.tipTitle = title;
-    while (tip.firstChild) tip.removeChild(tip.firstChild);
-    var head = document.createElement("div");
-    head.className = "tb-chart-tip-title";
-    head.textContent = title;
-    tip.appendChild(head);
-    for (i = 0; i < rows.length; i++) {
-      row = document.createElement("div");
-      row.className = "tb-chart-tip-row";
-      line = document.createElement("span");
-      line.className = "tb-chart-tip-key";
-      line.style.background = rows[i].colour;
-      var val = document.createElement("strong");
-      val.textContent = rows[i].value;
-      var name = document.createElement("span");
-      name.textContent = rows[i].name;
-      row.appendChild(line);
-      row.appendChild(val);
-      row.appendChild(name);
-      tip.appendChild(row);
-    }
-    (about || []).forEach(function (text) {
-      var d = document.createElement("div");
-      d.className = "tb-chart-tip-about";
-      d.textContent = text;
-      tip.appendChild(d);
-    });
-    var figId = entry.el && entry.el.id;
-    if (figId && receiptRowFor(figId)) {
-      var link = document.createElement("button");
-      link.type = "button";
-      link.className = "tb-chart-tip-receipt";
-      link.textContent = "Trace →";
-      link.addEventListener("click", function () { tipHide(entry); openReceipt(figId); });
-      link.addEventListener("pointerenter", function () { clearTimeout(entry.hideTimer); });
-      link.addEventListener("pointerleave", function () { tipLater(entry); });
-      link.addEventListener("blur", function (e) {
-        if (e.relatedTarget !== entry.svg.node()) tipHide(entry);
-      });
-      tip.appendChild(link);
-    }
-    tip.hidden = false;
-    /* The same readout again (the pointer moving within one category) stays
-     * where it is, so its link can be reached. */
-    if (same) return announce(entry, title, rows);
-    var w = entry.surface.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
-    var left = x + 10 + tw > w ? Math.max(0, x - 10 - tw) : x + 10;
-    var top = Math.max(0, y - th + 6);
-    tip.style.left = left + "px";
-    tip.style.top = top + "px";
-    announce(entry, title, rows);
-  }
-
-  function announce(entry, title, rows) {
-    if (entry.live && entry.keyboard) {
-      entry.live.textContent = title + ": " + rows.map(function (r) {
-        return r.name + " " + r.value;
-      }).join(", ");
-    }
-  }
-
-  /* Keyboard readouts are placed in svg coordinates; the legend sits above. */
-  function tipHide(entry) {
-    clearTimeout(entry.hideTimer);
-    if (entry.tip) entry.tip.hidden = true;
-    if (entry.svg) {
-      entry.svg.selectAll(".tb-hover").attr("opacity", 0);
-      entry.svg.selectAll(".tb-mark").classed("tb-dim", false);
-      entry.svg.selectAll("circle.tb-dot").classed("tb-dot-on", false);
-    }
-  }
-
-  function legendFor(entry, kind) {
-    var host = entry.legend;
-    while (host.firstChild) host.removeChild(host.firstChild);
-    var zoomed = !!(entry.zoom || entry.zoomX);
-    var show = kind === "pie" || entry.keys.length > 1 || zoomed;
-    host.hidden = !show;
-    if (zoomed) {
-      var reset = document.createElement("button");
-      reset.type = "button";
-      reset.className = "tb-legend-item tb-legend-reset";
-      reset.textContent = "Reset zoom";
-      reset.addEventListener("click", function () {
-        entry.zoom = null;
-        entry.zoomX = null;
-        renderD3Chart(entry, entryRows(entry), true);
-      });
-      host.appendChild(reset);
-    }
-    if (!show || (kind !== "pie" && entry.keys.length < 2)) return;
-    /* On a live page a legend entry names a value of a column the slice
-     * carries (a pie's category, a chart's series): a click selects it, as a
-     * mark does. Otherwise it shows or hides its series. */
-    var keyColumn = kind === "pie" ? entry.plan.x : entry.plan.color;
-    var select = selectableField(keyColumn) ? markAction(keyColumn) : null;
-    entry.keys.forEach(function (key) {
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "tb-legend-item";
-      if (select) {
-        btn.className += " tb-legend-item--select";
-        btn.__tbKey = key;
-        btn.addEventListener("click", function (event) { select(key, event); });
-        btn.setAttribute("aria-pressed", "false");
-      } else {
-        btn.setAttribute("aria-pressed", entry.hidden[key] ? "false" : "true");
-      }
-      var sw = document.createElement("span");
-      sw.className = "tb-legend-swatch tb-legend-swatch--" +
-        (kind === "line" ? "line" : kind === "scatter" ? "dot" : "box");
-      sw.style.background = colourOf(entry, key);
-      var label = document.createElement("span");
-      label.textContent = kind === "pie" ? key : seriesName(entry.plan, key);
-      btn.appendChild(sw);
-      btn.appendChild(label);
-      if (!select) btn.addEventListener("click", function () {
-        var visible = entry.keys.filter(function (k) { return !entry.hidden[k]; });
-        if (!entry.hidden[key] && visible.length === 1) return; /* keep one */
-        entry.hidden[key] = !entry.hidden[key];
-        renderD3Chart(entry, entryRows(entry), true);
-      });
-      host.appendChild(btn);
-    });
-  }
-
-  function hoverable(entry, sel, fn) {
-    sel.on("pointermove", function (event, d) {
-      var p = root.d3.pointer(event, entry.surface);
-      entry.keyboard = false;
-      fn(d, p[0], p[1]);
-    }).on("pointerleave", function () { tipLater(entry); });
-  }
-
-  /* Arrow keys walk the marks, Enter filters by the focused one, Escape
-   * hides the readout. The same readout a pointer gets, announced. */
-  function keyboardWalk(entry, count, show, choose) {
-    var svgNode = entry.svg.node();
-    entry.focusIndex = Math.min(entry.focusIndex || 0, Math.max(0, count - 1));
-    svgNode.onkeydown = function (e) {
-      var k = e.key;
-      if (!count) return;
-      if (k === "ArrowRight" || k === "ArrowDown") entry.focusIndex = (entry.focusIndex + 1) % count;
-      else if (k === "ArrowLeft" || k === "ArrowUp") entry.focusIndex = (entry.focusIndex - 1 + count) % count;
-      else if (k === "Home") entry.focusIndex = 0;
-      else if (k === "End") entry.focusIndex = count - 1;
-      else if (k === "Enter" || k === " ") { if (choose) choose(entry.focusIndex); }
-      else if (k === "Escape") { tipHide(entry); return; }
-      else return;
-      e.preventDefault();
-      entry.keyboard = true;
-      show(entry.focusIndex);
-    };
-    svgNode.onfocus = function () { entry.keyboard = true; show(entry.focusIndex); };
-    /* Tab from the chart reaches the readout's Receipt link. */
-    svgNode.onblur = function (e) {
-      if (!(e.relatedTarget && entry.tip.contains(e.relatedTarget))) tipHide(entry);
-    };
-  }
-
-  function transition(entry, sel) {
-    return entry.animate ? sel.transition().duration(_MOTION_MS).ease(root.d3.easeCubicOut) : sel;
-  }
-
-  /* Where *host* (the chart's svg, or one facet panel) sits in the surface:
-   * keyboard readouts are placed in its coordinates. */
-  function hostOffset(entry, host) {
-    var a = host.node().getBoundingClientRect(), b = entry.surface.getBoundingClientRect();
-    return { x: a.left - b.left, y: a.top - b.top };
-  }
-
-  /* "2020=Pandemic; 2022=Rates rise" → [{at: "2020", text: "Pandemic"}, …] */
-  function annotations(plan) {
-    if (!plan.annotate) return [];
-    return String(plan.annotate).split(";").map(function (part) {
-      var i = part.indexOf("=");
-      return i < 0 ? null : { at: trim(part.slice(0, i)), text: trim(part.slice(i + 1)) };
-    }).filter(function (a) { return a && a.at; });
-  }
-
-  function marksWanted(plan) {
-    return plan.mark ? splitList(String(plan.mark)).map(function (m) {
-      return m.toLowerCase();
-    }) : [];
-  }
-
-  /* Stacked series: each point gets the band it occupies, y0 → y1, positives
-   * up from zero and negatives down. Drawing only: the stack's height is the
-   * rows' own values laid end to end, and no total is written anywhere. */
-  function stackPoints(series, cats) {
-    var up = {}, down = {};
-    cats.forEach(function (c) { up[c] = 0; down[c] = 0; });
-    series.forEach(function (s) {
-      s.points.forEach(function (p) {
-        if (p.y === null || !(p.cat in up)) { p.y0 = p.y1 = null; return; }
-        if (p.y >= 0) { p.y0 = up[p.cat]; p.y1 = up[p.cat] += p.y; }
-        else { p.y0 = down[p.cat]; p.y1 = down[p.cat] += p.y; }
-      });
-    });
-  }
-
-  function valueExtent(series, stacked) {
-    var lo = 0, hi = 0;
-    series.forEach(function (s) {
-      s.points.forEach(function (p) {
-        var vs = stacked ? [p.y0, p.y1] : [p.y];
-        vs.forEach(function (v) {
-          if (v === null || v === undefined) return;
-          if (v < lo) lo = v;
-          if (v > hi) hi = v;
-        });
-      });
-    });
-    if (lo === hi) hi = lo + 1;
-    return [lo, hi];
-  }
-
-  function zoomable(kind, n) {
-    return (kind === "line" || kind === "area") && n >= 8;
-  }
-
-  /* One categorical panel (bar, barh, line, area) into *host*. Returns the
-   * readout the caller's keyboard walk drives. opt: {domain, title, zoom}. */
-  function renderCategorical(entry, host, rows, kind, W, H, t, opt) {
-    var d3 = root.d3, plan = entry.plan, svg = host;
-    opt = opt || {};
-    var series = chartSeries(entry, rows, kind);
-    var allCats = evenSteps(kind, opt.cats || categories(plan, rows));
-    var drawnCats = {};
-    series.forEach(function (sr) { sr.points.forEach(function (p) { drawnCats[p.cat] = true; }); });
-    var cats = allCats;
-    if (opt.zoom && zoomable(kind, allCats.length)) {
-      cats = allCats.slice(opt.zoom[0], opt.zoom[1] + 1);
-      series.forEach(function (s) {
-        s.points = s.points.filter(function (p) { return cats.indexOf(p.cat) !== -1; });
-      });
-    }
-    var horizontal = kind === "barh";
-    var stacked = !!plan.stack && kind !== "line";
-    if (stacked) stackPoints(series, cats);
-    var ticks = tickFormatter(plan);
-    var ext = opt.domain || valueExtent(series, stacked);
-    var lo = ext[0], hi = ext[1];
-    var titleH = opt.title ? 20 : 0;
-    var m = { top: 10 + titleH, right: 16, bottom: 28, left: 12 };
-    var catLabelW = 0, rotate = false, every = 1, lines = {}, wrapW = 0;
-    cats.forEach(function (c) { catLabelW = Math.max(catLabelW, textWidth(svg, c, 12)); });
-    /* Wrap every name, then keep on one line any that fits the widest
-     * wrapped one. */
-    var wrapAll = function () {
-      cats.forEach(function (c) {
-        lines[c] = wrapLines(svg, c, 12);
-        wrapW = Math.max(wrapW, linesWidth(svg, lines[c], 12));
-      });
-      cats.forEach(function (c) { if (textWidth(svg, c, 12) <= wrapW) delete lines[c]; });
-    };
-    /* Value ticks thin to what fits: about one per 80px across, one per
-     * 50px up. The same compact format whatever the count. */
-    var val = d3.scaleLinear().domain([lo, hi]).nice(5);
-    var tickVals = function (count, room) {
-      for (var n = count; ; n--) {
-        var vs = val.ticks(n), w = 0;
-        vs.forEach(function (v) { w = Math.max(w, textWidth(svg, ticks(v), 11)); });
-        if (n <= 2 || !room || vs.length * (w + 16) <= room) return { vs: vs, w: w };
-      }
-    };
-    var tv;
-    if (horizontal) {
-      /* Names never shorten: past 30% of the width they wrap to two lines
-       * (when a band holds two), and the margin grows to the longest line,
-       * up to 40% of the width; a line still wider is set smaller. */
-      var stepH = (H - m.top - 24) / Math.max(1, cats.length);
-      if (catLabelW > W * 0.3 && stepH >= 26) wrapAll();
-      m.left = Math.min(Math.ceil(wrapW || catLabelW) + 10, Math.round(W * 0.4));
-      m.bottom = 24;
-    } else {
-      tv = tickVals(Math.max(2, Math.min(5, Math.floor((H - 40) / 50))), 0);
-      m.left = Math.ceil(tv.w) + 10;
-      var room = (W - m.left - m.right) / Math.max(1, cats.length);
-      /* Names that collide wrap to two lines while a band is 48px or wider;
-       * narrower, up to 16 categories turn 30°; more than that, or a run of
-       * numbers (years, months, ranks: the reader fills in the ones between),
-       * label every k-th one, flat. */
-      var run = cats.length > 1 && cats.every(function (c) { return /^[\d\s.,:\/-]+$/.test(String(c)); });
-      if (cats.length && room < catLabelW + 6) {
-        if (cats.length > 16 || run) every = Math.ceil((catLabelW + 14) / room);
-        else if (room >= 48) wrapAll();
-        else rotate = true;
-      }
-      m.bottom = rotate ? Math.min(Math.ceil(catLabelW * 0.5) + 22, Math.round(H * 0.4))
-        : wrapW ? 42 : 28;
-    }
-    /* A small-multiples panel with another panel under it leaves the shared
-     * category names (and the x title) to the bottom one (renderFacets). */
-    var bare = !!opt.bareCats && !horizontal;
-    if (plan.yTitle) m.left += 18;
-    if (plan.xTitle && !bare) m.bottom += 18;
-    if (bare) m.bottom = 18;
-    var marks = marksWanted(plan);
-    if (marks.length && !horizontal) m.top += 14;
-    if (marks.length && horizontal) m.right += 56;
-    /* A sideways bar's own value written past its end needs room there: when
-     * a label could not sit inside its bar (its colour reads with neither the
-     * accent's text nor ink, or a bar is too short for it), the plot keeps
-     * the widest label's width free on the right. */
-    if (horizontal && !stacked && !opt.title && !plan.spark && !marks.length) {
-      var widest = 0, outside = false, room0 = W - m.left - m.right;
-      var span = (val.domain()[1] - val.domain()[0]) || 1;
-      series.forEach(function (s) {
-        var f = chartFormatter(plan, rows, s.col), fill = colourOf(entry, s.key);
-        var reads = [t.onAccent, t.ink].some(function (c) { return contrast(c, fill) >= 4.5; });
-        s.points.forEach(function (p) {
-          if (p.y === null) return;
-          var w = textWidth(svg, f(p.y), 11);
-          widest = Math.max(widest, w);
-          if (!reads || Math.abs(p.y) / span * room0 < w + 12) outside = true;
-        });
-      });
-      if (outside) m.right = Math.max(m.right, Math.ceil(widest) + 10);
-    }
-    /* A sparkline (.tb-spark) is the shape alone: no axes, no grid, no dots —
-     * the KPI beside it carries the number. Still zero-based. */
-    if (plan.spark) m = { top: 3, right: 3, bottom: 3, left: 3 };
-    var iw = Math.max(10, W - m.left - m.right), ih = Math.max(10, H - m.top - m.bottom);
-    if (opt.out) opt.out.bottom = m.bottom;
-    if (horizontal) tv = tickVals(Math.max(2, Math.floor(iw / 80)), iw);
-    /* Bars take 55% of their band. */
-    var isBar = kind === "bar" || kind === "barh";
-    var band = d3.scaleBand().domain(cats).range(horizontal ? [0, ih] : [0, iw])
-      .paddingInner(isBar ? 1 - t.chart.bar : 0).paddingOuter(isBar ? (1 - t.chart.bar) / 2 : 0.14);
-    val.range(horizontal ? [0, iw] : [ih, 0]);
-    /* A sparkline runs edge to edge: the first and last points on the sides. */
-    if (plan.spark && cats.length > 1) {
-      var half = iw / (2 * (cats.length - 1));
-      band.range([-half, iw + half]).paddingOuter(0);
-    }
-    var keys = series.map(function (s) { return s.key; });
-    var inner = d3.scaleBand().domain(stacked ? ["all"] : keys)
-      .range([0, band.bandwidth()]).paddingInner(0.12);
-    var slot = function (k) { return inner(stacked ? "all" : k); };
-    var centre = function (c) { return band(c) + band.bandwidth() / 2; };
-    var zero = val(Math.max(val.domain()[0], Math.min(0, val.domain()[1])));
-
-    var g = svg.selectAll("g.tb-plot").data([0]).join("g").attr("class", "tb-plot")
-      .attr("transform", "translate(" + m.left + "," + m.top + ")");
-    if (opt.title) {
-      svg.selectAll("text.tb-panel-title").data([opt.title]).join("text")
-        .attr("class", "tb-panel-title").attr("x", m.left).attr("y", 14)
-        .attr("fill", t.ink).attr("font-size", 12).attr("font-weight", 600)
-        .text(function (d) { return d; });
-    }
-
-    /* Grid: hairlines at 6% ink, no axis lines; the one baseline at zero is
-     * in the page's rule. */
-    var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
-    transition(entry, grid.selectAll("line").data(plan.spark ? [] : tv.vs, function (v) { return v; }).join(
-      function (en) { return en.append("line"); }))
-      .attr(horizontal ? "x1" : "y1", function (v) { return val(v); })
-      .attr(horizontal ? "x2" : "y2", function (v) { return val(v); })
-      .attr(horizontal ? "y1" : "x1", 0)
-      .attr(horizontal ? "y2" : "x2", horizontal ? ih : iw)
-      .attr("stroke-width", 1)
-      .style("stroke", function (v) { return v === 0 ? "var(--tb-chart-axis)" : "var(--tb-chart-grid)"; })
-      .style("stroke-dasharray", function (v) { return v === 0 ? null : "var(--tb-chart-grid-dash)"; });
-    var vAxis = horizontal ? d3.axisBottom(val) : d3.axisLeft(val);
-    vAxis.tickValues(tv.vs).tickSize(0).tickPadding(8).tickFormat(ticks);
-    var cAxis = horizontal ? d3.axisLeft(band) : d3.axisBottom(band);
-    cAxis.tickSize(0).tickPadding(8);
-    if (!horizontal && every > 1) {
-      cAxis.tickValues(cats.filter(function (c, i) { return (cats.length - 1 - i) % every === 0; }));
-    }
-    var va = g.selectAll("g.tb-axis-v").data([0]).join("g").attr("class", "tb-axis tb-axis-v")
-      .attr("transform", horizontal ? "translate(0," + ih + ")" : null);
-    transition(entry, va).call(vAxis);
-    var ca = g.selectAll("g.tb-axis-c").data([0]).join("g").attr("class", "tb-axis tb-axis-c")
-      .attr("transform", horizontal ? null : "translate(0," + ih + ")");
-    ca.call(cAxis);
-    g.selectAll(".tb-axis").style("display", plan.spark ? "none" : null);
-    g.selectAll(".tb-axis .domain").remove();
-    g.selectAll(".tb-axis text").attr("fill", t.chart.label).attr("font-size", 11)
-      .attr("font-family", t.chart.font);
-    va.selectAll("text").attr("font-family", t.chart.num);
-    var labelRoom = horizontal ? m.left - 10 - (plan.yTitle ? 18 : 0)
-      : rotate ? (m.bottom - 16) * 2 : band.step() * every - 6;
-    /* One size for every name on the axis: 12px, or smaller (to 9px) when
-     * the widest does not fit its room. */
-    var labelSize = 12;
-    cats.forEach(function (c) {
-      var w = linesWidth(svg, lines[c] || [String(c)], 12);
-      if (w > labelRoom && labelRoom > 0) {
-        labelSize = Math.min(labelSize, Math.max(9, Math.floor(12 * labelRoom / w)));
-      }
-    });
-    ca.selectAll("text").each(function (c) {
-      setLabel(this, lines[c] || [String(c)], labelSize, horizontal);
-    });
-    if (rotate) {
-      ca.selectAll("text").attr("text-anchor", "end").attr("dx", "-0.4em")
-        .attr("dy", "0.5em").attr("transform", "rotate(-30)");
-    }
-    ca.selectAll("text").attr("display", bare ? "none" : null);
-    var titles = [];
-    if (plan.xTitle && !bare) titles.push({ text: plan.xTitle, x: iw / 2, y: ih + m.bottom - 6, rot: 0 });
-    if (plan.yTitle) titles.push({ text: plan.yTitle, x: -ih / 2, y: -m.left + 12, rot: -90 });
-    g.selectAll("text.tb-axis-title").data(titles).join("text").attr("class", "tb-axis-title")
-      .attr("text-anchor", "middle").attr("fill", t.chart.label).attr("font-size", 11)
-      .attr("font-weight", 600).attr("x", function (d) { return d.x; })
-      .attr("y", function (d) { return d.y; })
-      .attr("transform", function (d) { return d.rot ? "rotate(" + d.rot + ")" : null; })
-      .text(function (d) { return d.text; });
-
-    /* Annotations: the author's notes at a category, a dashed rule and a word. */
-    var notes = annotations(plan).filter(function (a) { return band(a.at) !== undefined; });
-    var ng = g.selectAll("g.tb-annotations").data([0]).join("g").attr("class", "tb-annotations");
-    var na = ng.selectAll("g.tb-annotation").data(notes, function (a) { return a.at; }).join(function (en) {
-      var e = en.append("g").attr("class", "tb-annotation");
-      e.append("line");
-      e.append("text");
-      return e;
-    });
-    na.select("line").attr("stroke", t.muted).attr("stroke-dasharray", "4 3").attr("stroke-opacity", 0.8)
-      .attr("x1", function (a) { return horizontal ? 0 : centre(a.at); })
-      .attr("x2", function (a) { return horizontal ? iw : centre(a.at); })
-      .attr("y1", function (a) { return horizontal ? centre(a.at) : 0; })
-      .attr("y2", function (a) { return horizontal ? centre(a.at) : ih; });
-    na.select("text").attr("fill", t.muted).attr("font-size", 11).attr("font-style", "italic")
-      .attr("x", function (a) { return horizontal ? iw - 4 : centre(a.at) + 4; })
-      .attr("y", function (a) { return horizontal ? centre(a.at) - 4 : 10; })
-      .attr("text-anchor", horizontal ? "end" : "start")
-      .text(function (a) { return a.text; });
-
-    var hover = g.selectAll("rect.tb-hover").data([0]).join("rect").attr("class", "tb-hover")
-      .attr("fill", t.ink).attr("fill-opacity", 0.05).attr("opacity", 0).attr("rx", 4);
-    var cross = g.selectAll("line.tb-hover").data([0]).join("line").attr("class", "tb-hover")
-      .attr("stroke", t.muted).attr("stroke-dasharray", "3 3").attr("opacity", 0);
-
-    var colour = function (k) { return colourOf(entry, k); };
-    var groups = g.selectAll("g.tb-series").data(series, function (s) { return s.key; }).join(
-      function (en) { return en.append("g").attr("class", "tb-series"); },
-      function (up) { return up; },
-      function (ex) { return transition(entry, ex).attr("opacity", 0).remove(); });
-    var from = function (p) { return stacked ? p.y0 : 0; };
-    var to = function (p) { return stacked ? p.y1 : p.y; };
-
-    if (kind === "bar" || kind === "barh") {
-      var thick = Math.min(inner.bandwidth(), 36);
-      var off = (inner.bandwidth() - thick) / 2;
-      groups.each(function (s) {
-        var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
-        var r = d3.select(this).selectAll("path.tb-mark").data(pts, function (p) { return p.cat; });
-        var shape = function (p) {
-          var a = band(p.cat) + slot(s.key) + off, v = val(to(p)), b = val(from(p));
-          var lo2 = Math.min(v, b), len = Math.abs(v - b);
-          /* Round only the end that faces away from zero, and only the
-           * outermost segment of a stack. */
-          var outer = !stacked || p.y1 === (p.y >= 0 ? stackTop(series, p.cat, 1) : stackTop(series, p.cat, -1));
-          var rad = outer ? Math.min(t.chart.radius, len, thick / 2) : 0;
-          var pos = p.y >= 0;
-          if (horizontal) {
-            var x0 = lo2, x1 = lo2 + len, y0 = a, y1 = a + thick;
-            return pos
-              ? "M" + x0 + "," + y0 + "H" + (x1 - rad) + "Q" + x1 + "," + y0 + " " + x1 + "," + (y0 + rad) +
-                "V" + (y1 - rad) + "Q" + x1 + "," + y1 + " " + (x1 - rad) + "," + y1 + "H" + x0 + "Z"
-              : "M" + x1 + "," + y0 + "H" + (x0 + rad) + "Q" + x0 + "," + y0 + " " + x0 + "," + (y0 + rad) +
-                "V" + (y1 - rad) + "Q" + x0 + "," + y1 + " " + (x0 + rad) + "," + y1 + "H" + x1 + "Z";
-          }
-          var top = lo2, bot = lo2 + len, l = a, rr = a + thick;
-          return pos
-            ? "M" + l + "," + bot + "V" + (top + rad) + "Q" + l + "," + top + " " + (l + rad) + "," + top +
-              "H" + (rr - rad) + "Q" + rr + "," + top + " " + rr + "," + (top + rad) + "V" + bot + "Z"
-            : "M" + l + "," + top + "V" + (bot - rad) + "Q" + l + "," + bot + " " + (l + rad) + "," + bot +
-              "H" + (rr - rad) + "Q" + rr + "," + bot + " " + rr + "," + (bot - rad) + "V" + top + "Z";
-        };
-        var flat = function (p) {
-          var a = band(p.cat) + slot(s.key) + off, b = val(from(p));
-          return horizontal
-            ? "M" + b + "," + a + "H" + b + "V" + (a + thick) + "H" + b + "Z"
-            : "M" + a + "," + b + "H" + (a + thick) + "V" + b + "H" + a + "Z";
-        };
-        transition(entry, r.join(
-          function (en) { return en.append("path").attr("class", "tb-mark").attr("d", flat); },
-          function (up) { return up; },
-          /* A leaving bar's category is gone from the axis: it fades where it stood. */
-          function (ex) { return transition(entry, ex).attr("opacity", 0).remove(); }))
-          .attr("d", shape).attr("fill", colour(s.key))
-          .attr("stroke", stacked ? t.bg : null).attr("stroke-width", stacked ? 1 : null);
-      });
-      /* Each bar's own value, formatted as the tooltip and the table show it:
-       * inside the free end when the label fits with 12px to spare and reads
-       * on the bar's colour, otherwise just past it. None on bars thinner
-       * than 14px, on stacks, in small multiples, or beside marked points. */
-      var labelled = [];
-      if (thick >= 14 && !stacked && !opt.title && !plan.spark && !marks.length) {
-        series.forEach(function (s) {
-          var f = chartFormatter(plan, rows, s.col), fill = colour(s.key);
-          var on = [t.onAccent, t.ink].filter(function (c) { return contrast(c, fill) >= 4.5; })[0];
-          s.points.forEach(function (p) {
-            if (p.y === null || band(p.cat) === undefined) return;
-            var text = f(p.y), w = textWidth(svg, text, 11);
-            var len = Math.abs(val(p.y) - val(0)), along = horizontal ? w : 11;
-            var across = horizontal ? 11 : w;
-            labelled.push({ key: s.key + "|" + p.cat, p: p, s: s, text: text, w: w,
-                            inside: !!on && len >= along + 12 && across <= thick - 4,
-                            fill: on, room: horizontal ? thick : inner.step() });
-          });
-        });
-        /* One placement for the chart: inside only when every label fits. */
-        var allIn = labelled.every(function (d) { return d.inside; });
-        labelled.forEach(function (d) { d.inside = allIn; });
-        /* An upright label wider than its slot would sit on its neighbour's. */
-        if (!horizontal && labelled.some(function (d) { return !d.inside && d.w > d.room; })) labelled = [];
-      }
-      var vl = g.selectAll("g.tb-values").data([0]).join("g").attr("class", "tb-values")
-        .selectAll("text").data(labelled, function (d) { return d.key; }).join("text");
-      vl.attr("font-size", 11).attr("font-weight", 600).attr("pointer-events", "none")
-        .attr("font-family", t.chart.num)
-        .attr("fill", function (d) { return d.inside ? d.fill : t.chart.value; })
-        .attr("text-anchor", function (d) {
-          if (!horizontal) return "middle";
-          return (d.p.y >= 0) === d.inside ? "end" : "start";
-        })
-        .attr("dy", horizontal ? "0.32em" : null)
-        .attr("x", function (d) {
-          if (!horizontal) return band(d.p.cat) + slot(d.s.key) + off + thick / 2;
-          var end = val(d.p.y), out = d.p.y >= 0 ? 1 : -1;
-          return end + (d.inside ? -6 : 4) * out;
-        })
-        .attr("y", function (d) {
-          if (horizontal) return band(d.p.cat) + slot(d.s.key) + off + thick / 2;
-          var end = val(d.p.y), up = d.p.y >= 0 ? 1 : -1;
-          return d.inside ? end + (up > 0 ? 15 : -6) : end + (up > 0 ? -5 : 14);
-        })
-        .text(function (d) { return d.text; });
-    } else {
-      var lineGen = d3.line().defined(function (p) { return p.y !== null; })
-        .x(function (p) { return centre(p.cat); })
-        .y(function (p) { return val(to(p)); });
-      var areaGen = d3.area().defined(function (p) { return p.y !== null; })
-        .x(function (p) { return centre(p.cat); })
-        .y0(function (p) { return stacked ? val(p.y0) : zero; })
-        .y1(function (p) { return val(to(p)); });
-      groups.each(function (s) {
-        var pts = s.points.filter(function (p) { return band(p.cat) !== undefined; });
-        var sel = d3.select(this);
-        if (kind === "area") {
-          /* A flat wash of the series colour at 10%: no gradient. */
-          var ar = sel.selectAll("path.tb-area").data([pts]).join("path").attr("class", "tb-area")
-            .attr("fill", colour(s.key)).attr("fill-opacity", t.chart.area);
-          transition(entry, ar).attr("d", areaGen);
-        }
-        var ln = sel.selectAll("path.tb-line").data([pts]).join("path").attr("class", "tb-line tb-mark")
-          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", t.chart.line)
-          .attr("stroke-linejoin", "round").attr("stroke-linecap", "round")
-          /* --tb-chart-glow: a faint light under the line, in its own colour. */
-          .style("filter", t.chart.glow > 0 && !plan.spark ? "drop-shadow(0 0 " + t.chart.glow
-            + "px color-mix(in srgb, " + colour(s.key) + " 55%, transparent))" : null);
-        transition(entry, ln).attr("d", lineGen);
-        /* One dot per row, drawn only at the end of the line and under the
-         * pointer (.tb-dot-on), so the line reads as a line. */
-        var drawn = pts.filter(function (p) { return p.y !== null; });
-        var last = drawn.length ? drawn[drawn.length - 1].cat : null;
-        var dots = sel.selectAll("circle.tb-dot").data(drawn, function (p) { return p.cat; });
-        transition(entry, dots.join(
-          function (en) { return en.append("circle").attr("class", "tb-dot").attr("r", 0)
-            .attr("cx", function (p) { return centre(p.cat); }).attr("cy", function (p) { return val(to(p)); }); },
-          function (up) { return up; },
-          function (ex) { return ex.remove(); }))
-          .attr("cx", function (p) { return centre(p.cat); })
-          .attr("cy", function (p) { return val(to(p)); })
-          .attr("r", function (p) { return !plan.spark && p.cat === last ? 3 : 0; })
-          .attr("fill", colour(s.key)).attr("stroke", t.bg).attr("stroke-width", 1.5);
-      });
-    }
-
-    /* Lines end in a label: the last row's own value, formatted. Not on a
-     * sparkline, in small multiples, or where the author marked the last. */
-    var ends = [];
-    if (!isBar && !plan.spark && !opt.title && marks.indexOf("last") === -1) {
-      series.forEach(function (s) {
-        var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
-        if (!pts.length) return;
-        var p = pts[pts.length - 1];
-        ends.push({ key: s.key, p: p, y: Math.max(val(to(p)) - 9, 11 - m.top),
-                    text: chartFormatter(plan, rows, s.col)(p.y), colour: colour(s.key) });
-      });
-      /* Labels that would overlap step apart, top to bottom. */
-      ends.sort(function (a, b) { return a.y - b.y; });
-      for (var ei = 1; ei < ends.length; ei++) {
-        if (ends[ei].y - ends[ei - 1].y < 13) ends[ei].y = ends[ei - 1].y + 13;
-      }
-    }
-    g.selectAll("text.tb-end-label").data(ends, function (d) { return d.key; }).join("text")
-      .attr("class", "tb-end-label").attr("pointer-events", "none")
-      .attr("x", function (d) { return centre(d.p.cat); }).attr("y", function (d) { return d.y; })
-      .attr("text-anchor", "end").attr("font-size", 11).attr("font-weight", 600)
-      .attr("fill", t.chart.value).text(function (d) { return d.text; });
-
-    /* Marked points: the series' own high, low, first or last row, labelled
-     * with that row's value. Picking a row never makes a number. */
-    var marked = [];
-    if (marks.length) {
-      series.forEach(function (s) {
-        var pts = s.points.filter(function (p) { return p.y !== null && band(p.cat) !== undefined; });
-        if (!pts.length) return;
-        var pick = {};
-        marks.forEach(function (mk) {
-          var p = null;
-          if (mk === "max" || mk === "high") p = pts.reduce(function (a, b) { return b.y > a.y ? b : a; });
-          else if (mk === "min" || mk === "low") p = pts.reduce(function (a, b) { return b.y < a.y ? b : a; });
-          else if (mk === "first") p = pts[0];
-          else if (mk === "last") p = pts[pts.length - 1];
-          if (!p) return;
-          var word = mk === "max" || mk === "high" ? "High" : mk === "min" || mk === "low" ? "Low" : "";
-          if (pick[p.cat]) { if (word && !pick[p.cat].word) pick[p.cat].word = word; return; }
-          pick[p.cat] = { p: p, s: s, word: word, low: mk === "min" || mk === "low" };
-        });
-        for (var c in pick) if (pick.hasOwnProperty(c)) marked.push(pick[c]);
-      });
-    }
-    var mg = g.selectAll("g.tb-marked").data([0]).join("g").attr("class", "tb-marked");
-    var mm = mg.selectAll("g.tb-marked-point").data(marked, function (d) { return d.s.key + "|" + d.p.cat; })
-      .join(function (en) {
-        var e = en.append("g").attr("class", "tb-marked-point");
-        e.append("circle");
-        e.append("text");
-        return e;
-      });
-    var fmtCol = function (d) { return chartFormatter(plan, rows, d.s.col)(d.p.y); };
-    var bar = kind === "bar" || kind === "barh";
-    mm.select("circle")
-      .attr("cx", function (d) { return horizontal ? val(to(d.p)) : centre(d.p.cat); })
-      .attr("cy", function (d) { return horizontal ? centre(d.p.cat) : val(to(d.p)); })
-      .attr("r", bar ? 0 : 5).attr("fill", t.bg)
-      .attr("stroke", function (d) { return colour(d.s.key); }).attr("stroke-width", 2.5);
-    mm.select("text")
-      .attr("x", function (d) {
-        return horizontal ? val(to(d.p)) + 6 : centre(d.p.cat);
-      })
-      .attr("y", function (d) {
-        if (horizontal) return centre(d.p.cat) + 4;
-        return d.low ? val(to(d.p)) + 18 : val(to(d.p)) - 10;
-      })
-      .attr("text-anchor", horizontal ? "start" : "middle")
-      .attr("fill", t.ink).attr("font-size", 11).attr("font-weight", 600)
-      .text(function (d) { return (d.word ? d.word + " " : "") + fmtCol(d); });
-
-    /* One hit target per category, the full plot height: the reader aims at
-     * a category, never at a 2px line. */
-    /* A sparkline is a KPI's glyph: a click on it opens the KPI's trace. */
-    var act = (opt.noFilter || plan.spark) ? null : markAction(plan.x);
-    if (act) addClass(entry.el, "tb-selectable");
-    var showAt = function (i, px, py) {
-      var c = cats[i];
-      if (c === undefined) return;
-      var a = band(c);
-      if (bar) {
-        hover.attr(horizontal ? "y" : "x", a - band.step() * band.paddingInner() / 2)
-          .attr(horizontal ? "x" : "y", 0)
-          .attr(horizontal ? "height" : "width", band.step())
-          .attr(horizontal ? "width" : "height", horizontal ? iw : ih).attr("opacity", 1);
-      } else {
-        cross.attr("x1", centre(c)).attr("x2", centre(c)).attr("y1", 0).attr("y2", ih)
-          .attr("opacity", 1);
-        g.selectAll("circle.tb-dot").classed("tb-dot-on", function (p) { return p.cat === c; });
-      }
-      var rowsOut = [], about = [];
-      series.forEach(function (s) {
-        for (var j = 0; j < s.points.length; j++) {
-          if (s.points[j].cat === c) {
-            rowsOut.push({ colour: colour(s.key), name: s.name,
-                           value: chartFormatter(plan, rows, s.col)(s.points[j].y) });
-            var said = measureAbout(s.col);
-            if (said && about.indexOf(said) === -1) about.push(said);
-            break;
-          }
-        }
-      });
-      var o = px === undefined ? hostOffset(entry, svg) : { x: 0, y: 0 };
-      var x = px === undefined ? o.x + m.left + (horizontal ? iw / 2 : centre(c)) : px;
-      var y = py === undefined ? o.y + m.top + (horizontal ? centre(c) : ih / 3) : py;
-      tipShow(entry, x, y, (opt.title ? opt.title + " · " : "") + c, rowsOut, about);
-    };
-    var choose = act ? function (i, event) {
-      /* An empty step (evenSteps) has no value to pick. */
-      if (allCats.filled && !drawnCats[cats[i]]) return;
-      act(cats[i], event);
-    } : null;
-    var catAt = function (px) {
-      var best = 0, bd = Infinity;
-      cats.forEach(function (c, i) {
-        var d = Math.abs((horizontal ? centre(c) : centre(c)) - px);
-        if (d < bd) { bd = d; best = i; }
-      });
-      return best;
-    };
-
-    if (opt.brush && zoomable(kind, allCats.length)) {
-      /* Drag across the plot to zoom to those categories; double-click (or
-       * the Reset chip) returns to all of them. Hover reads as before. */
-      g.selectAll("rect.tb-hit").remove();
-      var bg = g.selectAll("g.tb-brush").data([0]).join("g").attr("class", "tb-brush");
-      var brush = d3.brushX().extent([[0, 0], [iw, ih]]).on("end", function (event) {
-        if (!event.selection) {
-          /* A click without a drag: the category under the pointer, as a
-           * hit target would take it. */
-          if (choose && event.sourceEvent) {
-            choose(catAt(d3.pointer(event.sourceEvent, g.node())[0]), event.sourceEvent);
-          }
-          return;
-        }
-        var a0 = catAt(event.selection[0]), a1 = catAt(event.selection[1]);
-        bg.call(brush.move, null);
-        if (a1 - a0 < 1) return;
-        var first = allCats.indexOf(cats[a0]), last = allCats.indexOf(cats[a1]);
-        opt.brush([first, last]);
-      });
-      bg.call(brush);
-      bg.selectAll(".selection").attr("fill", t.accent || t.ink).attr("fill-opacity", 0.12)
-        .attr("stroke", "none");
-      bg.selectAll(".overlay").style("cursor", "crosshair")
-        .on("pointermove.tb", function (event) {
-          var q = d3.pointer(event, g.node());
-          var p = d3.pointer(event, entry.surface);
-          entry.keyboard = false;
-          showAt(catAt(q[0]), p[0], p[1]);
-        })
-        .on("pointerleave.tb", function () { tipHide(entry); })
-        .on("dblclick.tb", function () { opt.brush(null); });
-    } else {
-      g.selectAll("g.tb-brush").remove();
-      var hits = g.selectAll("rect.tb-hit").data(cats.filter(function (c) {
-        return !allCats.filled || drawnCats[c];
-      }), function (c) { return c; }).join("rect")
-        .attr("class", "tb-hit").attr("fill", "transparent")
-        .style("cursor", choose ? "pointer" : null)
-        .attr(horizontal ? "y" : "x", function (c) { return band(c) - band.step() * band.paddingInner() / 2; })
-        .attr(horizontal ? "x" : "y", 0)
-        .attr(horizontal ? "height" : "width", band.step())
-        .attr(horizontal ? "width" : "height", horizontal ? iw : ih);
-      hoverable(entry, hits, function (c, px, py) { showAt(cats.indexOf(c), px, py); });
-      hits.on("click", function (event, c) { if (choose) choose(cats.indexOf(c), event); });
-      hits.raise();
-    }
-    return { count: cats.length, show: showAt, choose: choose };
-  }
-
-  /* A line or area over whole numbers (years owned, a year) spaces them as
-   * numbers: the missing steps between them become empty slots, so a gap in
-   * the data reads as a gap, not as neighbours. Labels that are not whole
-   * numbers, or not ascending, stay as they are; bars keep their bands. */
-  function evenSteps(kind, cats) {
-    if ((kind !== "line" && kind !== "area") || cats.length < 2) return cats;
-    var ns = [], i, step = Infinity;
-    for (i = 0; i < cats.length; i++) {
-      if (!/^-?\d+$/.test(cats[i])) return cats;
-      ns.push(Number(cats[i]));
-      if (i && ns[i] <= ns[i - 1]) return cats;
-      if (i) step = Math.min(step, ns[i] - ns[i - 1]);
-    }
-    var span = (ns[ns.length - 1] - ns[0]) / step;
-    if (span === cats.length - 1 || span > 400) return cats;
-    for (i = 1; i < ns.length; i++) if ((ns[i] - ns[0]) % step) return cats;
-    var out = [];
-    for (i = 0; i <= span; i++) out.push(String(ns[0] + i * step));
-    out.filled = true;
-    return out;
-  }
-
-  function stackTop(series, cat, sign) {
-    var edge = 0;
-    series.forEach(function (s) {
-      s.points.forEach(function (p) {
-        if (p.cat !== cat || p.y1 === null || p.y1 === undefined) return;
-        if (sign > 0 ? p.y1 > edge : p.y1 < edge) edge = p.y1;
-      });
-    });
-    return edge;
-  }
-
-  /* Small multiples: one panel per value of plan.facet, laid out in a grid,
-   * sharing one value scale so the panels compare at a glance. */
-  function renderFacets(entry, rows, kind, W, H, t) {
-    var d3 = root.d3, plan = entry.plan;
-    var block = readBlock(entry.binding);
-    var order = [];
-    (block ? block.rows : rows).forEach(function (r) {
-      var f = groupOf(r[plan.facet]);
-      if (order.indexOf(f) === -1) order.push(f);
-    });
-    var byFacet = {};
-    rows.forEach(function (r) {
-      var f = groupOf(r[plan.facet]);
-      (byFacet[f] = byFacet[f] || []).push(r);
-    });
-    var facets = order.filter(function (f) { return byFacet[f]; });
-    var all = [];
-    facets.forEach(function (f) {
-      var s = chartSeries(entry, byFacet[f], kind);
-      if (plan.stack && kind !== "line") stackPoints(s, categories(plan, byFacet[f]));
-      all = all.concat(s);
-    });
-    var domain = valueExtent(all, !!plan.stack && kind !== "line");
-    var shared = categories(plan, rows);
-    var cols = Math.max(1, Math.min(facets.length, Math.floor(W / 260)));
-    var rowsN = Math.ceil(facets.length / cols);
-    var pw = Math.floor(W / cols), ph = Math.max(160, Math.floor((H + (rowsN - 1) * 40) / rowsN));
-    var panels = entry.svg.selectAll("svg.tb-panel").data(facets, function (f) { return f; }).join("svg")
-      .attr("class", "tb-panel").attr("overflow", "visible").attr("width", pw);
-    /* The category names are shared, so only a panel with none under it
-     * carries them (on a phone the panels stack, and the names would repeat
-     * under every one). A bare panel is shorter by exactly what the names
-     * take, so every panel's plot keeps one height on the one scale: the
-     * last panel is drawn first to measure it. */
-    var bareOf = function (i) { return kind !== "barh" && i + cols < facets.length; };
-    var cut = 0, last = facets.length - 1;
-    if (facets.some(function (f, i) { return bareOf(i); })) {
-      var out = {};
-      renderCategorical(entry, d3.select(panels.nodes()[last]), byFacet[facets[last]], kind, pw, ph, t,
-        { domain: domain, title: facets[last], panel: last + 1, cats: shared, out: out });
-      cut = Math.max(0, (out.bottom || 0) - 18);
-    }
-    var tops = [], y = 0;
-    for (var r = 0; r < rowsN; r++) {
-      tops.push(y);
-      var rowBare = true;
-      for (var c = r * cols; c < Math.min(facets.length, (r + 1) * cols); c++) rowBare = rowBare && bareOf(c);
-      y += rowBare ? ph - cut : ph;
-    }
-    entry.svg.attr("height", y).attr("viewBox", "0 0 " + W + " " + y);
-    panels.attr("x", function (f, i) { return (i % cols) * pw; })
-      .attr("y", function (f, i) { return tops[Math.floor(i / cols)]; })
-      .attr("height", function (f, i) { return bareOf(i) ? ph - cut : ph; });
-    var readouts = [];
-    panels.each(function (f, i) {
-      readouts.push(renderCategorical(entry, d3.select(this), byFacet[f], kind, pw,
-        bareOf(i) ? ph - cut : ph, t,
-        { domain: domain, title: f, panel: i + 1, cats: shared, bareCats: bareOf(i) }));
-    });
-    return readouts;
-  }
-
-  function renderScatter(entry, rows, W, H, t) {
-    var d3 = root.d3, plan = entry.plan, svg = entry.svg;
-    var series = chartSeries(entry, rows, "scatter");
-    var pts = [];
-    series.forEach(function (s) {
-      s.points.forEach(function (p) { if (p.x !== null && p.y !== null) { p.series = s; pts.push(p); } });
-    });
-    var ticks = tickFormatter(plan);
-    var fx = chartFormatter(plan, rows, plan.x);
-    if (entry.zoomX) {
-      pts = pts.filter(function (p) { return p.x >= entry.zoomX[0] && p.x <= entry.zoomX[1]; });
-    }
-    var xs = d3.scaleLinear().domain(d3.extent(pts, function (p) { return p.x; })).nice(6);
-    var ys = d3.scaleLinear().domain(d3.extent(pts, function (p) { return p.y; })).nice(5);
-    if (!pts.length) { xs.domain([0, 1]); ys.domain([0, 1]); }
-    var tickW = 0;
-    ys.ticks(5).forEach(function (v) { tickW = Math.max(tickW, textWidth(svg, ticks(v), 11)); });
-    /* Both axes are measures, so each is titled: nothing else says which is which. */
-    var m = { top: 10, right: 16, bottom: 46, left: Math.ceil(tickW) + 28 };
-    var iw = Math.max(10, W - m.left - m.right), ih = Math.max(10, H - m.top - m.bottom);
-    xs.range([0, iw]);
-    ys.range([ih, 0]);
-    var g = svg.selectAll("g.tb-plot").data([0]).join("g").attr("class", "tb-plot")
-      .attr("transform", "translate(" + m.left + "," + m.top + ")");
-    var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
-    transition(entry, grid.selectAll("line").data(ys.ticks(5), function (v) { return v; }).join("line"))
-      .attr("x1", 0).attr("x2", iw).attr("y1", function (v) { return ys(v); })
-      .attr("y2", function (v) { return ys(v); }).style("stroke", "var(--tb-chart-grid)")
-      .style("stroke-dasharray", "var(--tb-chart-grid-dash)");
-    transition(entry, g.selectAll("g.tb-axis-y").data([0]).join("g").attr("class", "tb-axis tb-axis-y"))
-      .call(d3.axisLeft(ys).ticks(5).tickSize(0).tickPadding(8).tickFormat(ticks));
-    transition(entry, g.selectAll("g.tb-axis-x").data([0]).join("g").attr("class", "tb-axis tb-axis-x")
-      .attr("transform", "translate(0," + ih + ")"))
-      .call(d3.axisBottom(xs).ticks(Math.max(2, Math.floor(iw / 80))).tickSize(0).tickPadding(8)
-        .tickFormat(ticks));
-    g.selectAll(".tb-axis .domain").remove();
-    g.selectAll(".tb-axis text").attr("fill", t.chart.label).attr("font-size", 11).attr("font-family", t.chart.font);
-    g.selectAll("text.tb-axis-title").data([
-      { text: plan.xTitle || humanise(plan.x), x: iw / 2, y: ih + 38, rot: 0 },
-      { text: plan.yTitle || humanise(plan.y[0]), x: -ih / 2, y: -m.left + 12, rot: -90 }
-    ]).join("text").attr("class", "tb-axis-title")
-      .attr("text-anchor", "middle").attr("fill", t.ink).attr("font-size", 12)
-      .attr("font-weight", 600).attr("x", function (d) { return d.x; })
-      .attr("y", function (d) { return d.y; })
-      .attr("transform", function (d) { return d.rot ? "rotate(" + d.rot + ")" : null; })
-      .text(function (d) { return d.text; });
-    var dots = g.selectAll("circle.tb-mark").data(pts, function (p, i) { return p.key + "|" + i; });
-    transition(entry, dots.join(
-      function (en) { return en.append("circle").attr("class", "tb-mark").attr("r", 0)
-        .attr("cx", function (p) { return xs(p.x); }).attr("cy", function (p) { return ys(p.y); }); },
-      function (up) { return up; },
-      function (ex) { return transition(entry, ex).attr("r", 0).remove(); }))
-      .attr("cx", function (p) { return xs(p.x); }).attr("cy", function (p) { return ys(p.y); })
-      .attr("r", 5).attr("fill", function (p) { return colourOf(entry, p.key); })
-      .attr("fill-opacity", 0.85).attr("stroke", t.bg).attr("stroke-width", 2);
-    /* A point is named by its row's first text column (an issuer, a
-     * customer), when the binding has one beside the plotted columns. */
-    var block = readBlock(entry.binding), labelCol = null;
-    (block ? block.cols : []).forEach(function (c) {
-      if (labelCol || c === plan.x || c === plan.color || plan.y.indexOf(c) !== -1) return;
-      if (!isNumericColumn(rows, c)) labelCol = c;
-    });
-    var ring = g.selectAll("circle.tb-hover").data([0]).join("circle").attr("class", "tb-hover")
-      .attr("r", 9).attr("fill", "none").attr("stroke", t.ink).attr("stroke-width", 1.5).attr("opacity", 0);
-    var showAt = function (i, px, py) {
-      var p = pts[i];
-      if (!p) return;
-      ring.attr("cx", xs(p.x)).attr("cy", ys(p.y)).attr("opacity", 1);
-      tipShow(entry, px === undefined ? m.left + xs(p.x) : px,
-        py === undefined ? hostOffset(entry, entry.svg).y + m.top + ys(p.y) : py,
-        labelCol && p.row[labelCol] !== undefined
-          ? String(p.row[labelCol]) + (plan.color ? " \u00b7 " + p.series.name : "")
-          : p.series.name, [
-          { colour: colourOf(entry, p.key), name: humanise(plan.x), value: fx(p.x) },
-          { colour: colourOf(entry, p.key), name: humanise(p.series.col),
-            value: chartFormatter(plan, rows, p.series.col)(p.y) }
-        ], [measureAbout(plan.x), measureAbout(p.series.col)].filter(Boolean));
-    };
-    /* Nearest point wins: the reader only has to be closest, not dead on.
-     * Dragging across the plot zooms to that range of x; double-click or
-     * the Reset chip returns. */
-    g.selectAll("rect.tb-hit").remove();
-    var bg = g.selectAll("g.tb-brush").data([0]).join("g").attr("class", "tb-brush");
-    var nearest = function (q) {
-      var best = -1, bd = Infinity;
-      for (var i = 0; i < pts.length; i++) {
-        var dx = xs(pts[i].x) - q[0], dy = ys(pts[i].y) - q[1], dd = dx * dx + dy * dy;
-        if (dd < bd) { bd = dd; best = i; }
-      }
-      return bd < 40 * 40 ? best : -1;
-    };
-    /* A point's selectable category is its series (data-tb-color): both
-     * axes are measures, which no selection names. */
-    var act = plan.color ? markAction(plan.color) : null;
-    if (act) addClass(entry.el, "tb-selectable");
-    var brush = d3.brushX().extent([[0, 0], [iw, ih]]).on("end", function (event) {
-      if (!event.selection) {
-        if (act && event.sourceEvent) {
-          var hit = nearest(d3.pointer(event.sourceEvent, g.node()));
-          if (hit >= 0) act(pts[hit].key, event.sourceEvent);
-        }
-        return;
-      }
-      var x0 = xs.invert(event.selection[0]), x1 = xs.invert(event.selection[1]);
-      bg.call(brush.move, null);
-      var inside = pts.filter(function (p) { return p.x >= x0 && p.x <= x1; });
-      if (inside.length < 2) return;
-      entry.zoomX = [x0, x1];
-      renderD3Chart(entry, entryRows(entry), true);
-    });
-    bg.call(brush);
-    bg.selectAll(".selection").attr("fill", t.accent || t.ink).attr("fill-opacity", 0.12).attr("stroke", "none");
-    var overlay = bg.selectAll(".overlay").style("cursor", "crosshair");
-    overlay.on("dblclick.tb", function () {
-      entry.zoomX = null;
-      renderD3Chart(entry, entryRows(entry), true);
-    });
-    overlay.on("pointermove.tb", function (event) {
-      var best = nearest(d3.pointer(event, this));
-      entry.keyboard = false;
-      if (best >= 0) {
-        var p2 = d3.pointer(event, entry.surface);
-        showAt(best, p2[0], p2[1]);
-      } else tipHide(entry);
-    }).on("pointerleave.tb", function () { tipLater(entry); });
-    keyboardWalk(entry, pts.length, function (i) { showAt(i); },
-      act ? function (i) { act(pts[i].key); } : null);
-  }
-
-  function renderPie(entry, rows, W, H, t) {
-    var d3 = root.d3, plan = entry.plan, svg = entry.svg, y0 = plan.y[0];
-    var fmtV = chartFormatter(plan, rows, y0);
-    var slices = rows.filter(function (r) { return !entry.hidden[String(r[plan.x])]; })
-      .map(function (r) {
-        /* |value|: a negative slice has no geometry; the label shows the row's own value. */
-        return { key: String(r[plan.x]), raw: toNum(r[y0]), v: Math.abs(toNum(r[y0]) || 0) };
-      });
-    var R = Math.max(20, Math.min(W, H) / 2 - 8);
-    var arcs = d3.pie().sort(null).padAngle(0.012).value(function (s) { return s.v; })(slices);
-    var arc = d3.arc().innerRadius(R * 0.6).outerRadius(R).cornerRadius(3);
-    var big = d3.arc().innerRadius(R * 0.6).outerRadius(R + 6).cornerRadius(3);
-    var g = svg.selectAll("g.tb-plot").data([0]).join("g").attr("class", "tb-plot")
-      .attr("transform", "translate(" + W / 2 + "," + H / 2 + ")");
-    var paths = g.selectAll("path.tb-mark").data(arcs, function (a) { return a.data.key; });
-    var prev = entry.prevArcs || {};
-    var joined = paths.join(
-      function (en) { return en.append("path").attr("class", "tb-mark")
-        .each(function (a) { this._tbArc = { startAngle: a.startAngle, endAngle: a.startAngle }; }); },
-      function (up) { return up; },
-      function (ex) { return ex.remove(); })
-      .attr("fill", function (a) { return colourOf(entry, a.data.key); })
-      .attr("stroke", t.bg).attr("stroke-width", 2);
-    if (entry.animate) {
-      joined.transition().duration(_MOTION_MS).ease(d3.easeCubicOut).attrTween("d", function (a) {
-        var from = this._tbArc || prev[a.data.key] || { startAngle: a.startAngle, endAngle: a.startAngle };
-        var it = d3.interpolate(from, { startAngle: a.startAngle, endAngle: a.endAngle });
-        var node = this;
-        return function (k) { node._tbArc = it(k); return arc(node._tbArc); };
-      });
-    } else {
-      joined.attr("d", arc).each(function (a) { this._tbArc = { startAngle: a.startAngle, endAngle: a.endAngle }; });
-    }
-    entry.prevArcs = {};
-    arcs.forEach(function (a) { entry.prevArcs[a.data.key] = a; });
-    var act = markAction(plan.x);
-    if (act) addClass(entry.el, "tb-selectable");
-    var showAt = function (i, px, py) {
-      var a = arcs[i];
-      if (!a) return;
-      g.selectAll("path.tb-mark").attr("d", function (b) { return b === a ? big(b) : arc(b); });
-      var c = arc.centroid(a);
-      tipShow(entry, px === undefined ? W / 2 + c[0] : px,
-        py === undefined ? hostOffset(entry, entry.svg).y + H / 2 + c[1] : py,
-        a.data.key, [{ colour: colourOf(entry, a.data.key), name: humanise(y0), value: fmtV(a.data.raw) }],
-        [measureAbout(y0)].filter(Boolean));
-    };
-    joined.style("cursor", act ? "pointer" : null)
-      .on("pointermove", function (event, a) {
-        var p = d3.pointer(event, entry.surface);
-        entry.keyboard = false;
-        showAt(arcs.indexOf(a), p[0], p[1]);
-      })
-      .on("pointerleave", function () {
-        g.selectAll("path.tb-mark").attr("d", arc);
-        tipLater(entry);
-      })
-      .on("click", function (event, a) { if (act) act(a.data.key, event); });
-    keyboardWalk(entry, arcs.length, function (i) { showAt(i); },
-      act ? function (i) { act(arcs[i].data.key); } : null);
-  }
-
-  function renderD3Chart(entry, rows, animate) {
-    var d3 = root.d3, kind = chartKind(entry.plan);
-    var surface = entry.surface;
-    var W = surface.clientWidth;
-    entry.width = W;
-    if (!W) return; /* hidden tab: drawn when shown */
-    entry.animate = !!animate && motionOk() && !!entry.svg;
-    var t = theme();
-    t.rule = t.rule || "#e5e5e5";
-    t.muted = t.muted || "#666";
-    t.ink = t.ink || "#111";
-    t.bg = t.bg || "#fff";
-    t.chart = chartTokens();
-    t.chart.label = t.chart.label || t.muted;
-    t.chart.value = t.chart.value || t.ink;
-    t.chart.font = t.chart.font || t.font;
-    t.chart.num = t.chart.num || t.chart.font;
-    _MOTION_MS = t.chart.motion;
-    try { t.onAccent = cssVar(getComputedStyle(document.documentElement), "--tb-on-accent"); } catch (e) {}
-    legendFor(entry, kind);
-    var H = entry.plan.spark ? entry.height
-      : Math.max(200, entry.height - entry.legend.offsetHeight - 8);
-    if (!entry.svg) {
-      entry.svg = d3.select(surface).append("svg").attr("class", "tb-chart-svg")
-        .attr("tabindex", 0).attr("role", "img")
-        .attr("aria-roledescription", "chart")
-        .attr("aria-label", (kind === "barh" ? "bar" : kind) + " chart of " +
-          entry.plan.y.map(humanise).join(", ") + " by " + humanise(entry.plan.x) +
-          ". Use the arrow keys to read each value.");
-      /* The readout follows the chart in tab order: Tab reaches its link. */
-      surface.appendChild(entry.tip);
-    }
-    entry.svg.attr("width", W).attr("height", H).attr("viewBox", "0 0 " + W + " " + H)
-      .style("font-family", t.chart.font);
-    if (entry.kindDrawn && entry.kindDrawn !== kind) entry.svg.selectAll("*").remove();
-    entry.kindDrawn = kind;
-    tipHide(entry);
-    if (kind === "pie") { renderPie(entry, rows, W, H, t); paintHighlight(entry); return; }
-    if (kind === "scatter") { renderScatter(entry, rows, W, H, t); paintHighlight(entry); return; }
-    var readouts;
-    if (entry.plan.facet) {
-      entry.svg.selectAll("g.tb-plot").remove();
-      readouts = renderFacets(entry, rows, kind, W, H, t);
-    } else {
-      entry.svg.selectAll("svg.tb-panel").remove();
-      readouts = [renderCategorical(entry, entry.svg, rows, kind, W, H, t, {
-        zoom: entry.zoom,
-        brush: function (range) {
-          entry.zoom = range;
-          renderD3Chart(entry, entryRows(entry), true);
-        }
-      })];
-    }
-    /* One keyboard walk across every panel's categories, in reading order. */
-    var stops = [];
-    readouts.forEach(function (r) { for (var i = 0; i < r.count; i++) stops.push([r, i]); });
-    keyboardWalk(entry, stops.length,
-      function (n) { stops[n][0].show(stops[n][1]); },
-      function (n) { if (stops[n][0].choose) stops[n][0].choose(stops[n][1]); });
-    paintHighlight(entry);
-  }
-
-  function hydrateD3Chart(el, plan, binding, block) {
-    var fb = el.querySelector(".tb-chart-fallback");
-    if (fb) el.removeChild(fb);
-    /* The figure's own height (CSS, else the 320px minimum), read once:
-     * reading it after drawing would measure the chart itself. */
-    var height = plan.spark ? (el.clientHeight || 44) : Math.max(320, el.clientHeight);
-    var surface = document.createElement("div");
-    surface.className = "tb-chart";
-    var legend = document.createElement("div");
-    legend.className = "tb-legend-row";
-    var tip = document.createElement("div");
-    tip.className = "tb-chart-tip";
-    tip.hidden = true;
-    var live = document.createElement("div");
-    live.className = "tb-sr-only";
-    live.setAttribute("aria-live", "polite");
-    surface.appendChild(legend);
-    surface.appendChild(tip);
-    surface.appendChild(live);
-    el.appendChild(surface);
-    var entry = { el: el, binding: binding, plan: plan, surface: surface, legend: legend,
-                  tip: tip, live: live, hidden: {}, d3: true, height: height,
-                  uid: "tbc" + (_charts.length + 1),
-                  keys: seriesKeys(plan, block.rows, chartKind(plan)) };
-    _charts.push(entry);
-    renderD3Chart(entry, entryRows(entry), false);
-    /* A gentle first draw: bars rise and lines settle once, then the page
-     * reports ready (a printer waits for that). */
-    if (motionOk() && entry.svg) {
-      _introPending++;
-      entry.svg.style("opacity", 0).transition().duration(_MOTION_MS)
-        .ease(root.d3.easeCubicOut).style("opacity", 1)
-        .on("end interrupt", function () { _introPending = Math.max(0, _introPending - 1); });
-    }
-    return entry;
-  }
-
-  function hydrateCharts() {
-    if (!root.echarts && !root.d3) return; /* no charting lib on this page */
-    var palette = null;
-    fresh(figureEls("chart"), "chart").forEach(function (el) {
-      try {
-        /* An app's <EChart> draws itself (ECharts, in its own div): it is a
-         * figure for the receipt, the trace and the selection, never drawn
-         * here. */
-        if (el.getAttribute("data-tb-engine") === "app") return;
-        var binding = attr(el, "data-tb-binding");
-        var block = readBlock(binding);
-        if (!block || !block.rows.length) return;
-        var x = attr(el, "data-tb-x");
-        var y = attr(el, "data-tb-y");
-        if (!x || !y) return;
-        var own = attr(el, "data-tb-palette");
-        if (palette === null) palette = cssPalette();
-        var plan = {
-          type: attr(el, "data-tb-type") || "bar",
-          x: x,
-          y: splitList(y),
-          color: attr(el, "data-tb-color"),
-          valueFormat: attr(el, "data-tb-value-format"),
-          palette: own ? splitList(own) : palette,
-          xTitle: attr(el, "data-tb-x-title"),
-          yTitle: attr(el, "data-tb-y-title"),
-          stack: el.getAttribute("data-tb-stack") !== null,
-          mark: attr(el, "data-tb-mark"),
-          annotate: attr(el, "data-tb-annotate"),
-          facet: attr(el, "data-tb-facet"),
-          unit: attr(el, "data-tb-unit"),
-          spark: (" " + (el.className || "") + " ").indexOf(" tb-spark ") !== -1
-        };
-        /* Remove the server-rendered static SVG fallback (no-JS picture of the
-         * chart) before drawing — echarts.init appends its root without
-         * clearing, so a surviving <svg> would stack beside the live chart. */
-        /* D3 draws unless the report kept ECharts ("libs": ["echarts"]). */
-        if (!root.echarts) { hydrateD3Chart(el, plan, binding, block); return; }
-        var fb = el.querySelector(".tb-chart-fallback");
-        if (fb) el.removeChild(fb);
-        var chart = root.echarts.init(el);
-        chart.setOption(buildOption(el, plan, filteredRows(binding)));
-        _charts.push({ el: el, binding: binding, plan: plan, chart: chart });
-        root.addEventListener("resize", function () { chart.resize(); });
-      } catch (e) { /* defensive */ }
-    });
-    if (!root.echarts && _charts.length && root.addEventListener) {
-      var pending = false;
-      root.addEventListener("resize", function () {
-        if (pending) return;
-        pending = true;
-        setTimeout(function () { pending = false; resizeCharts(); }, 120);
-      });
-    }
   }
 
   /* ── Code-drawn figures — tracebi.draw ─────────────────────────────────
@@ -4066,67 +3907,6 @@
     return out;
   }
 
-  /* Marks of values not picked recede (.tb-dimmed); a picked point on a
-   * line shows its dot (.tb-picked). Each selectable mark and legend entry
-   * says what a click does. */
-  function paintHighlight(entry) {
-    if (!entry.svg) return;
-    var plan = entry.plan, kind = chartKind(plan), on = !highlightOff(entry.el);
-    var xs = on ? pickedSet(plan.x) : null;
-    var cs = on && plan.color ? pickedSet(plan.color) : null;
-    var svg = entry.svg;
-    /* A pick none of this chart's marks carries (a year it does not draw)
-     * dims nothing: a chart all faint says nothing. */
-    var drawn = function (set, cats) {
-      if (!set) return null;
-      for (var i = 0; i < cats.length; i++) if (set[cats[i]]) return set;
-      return null;
-    };
-    xs = drawn(xs, svg.selectAll(kind === "pie" ? "path.tb-mark" : "rect.tb-hit, circle.tb-dot, path.tb-mark")
-      .data().map(function (d) { return d && d.data ? d.data.key : (d && d.cat !== undefined ? d.cat : d); })
-      .map(String));
-    cs = drawn(cs, entry.keys.map(String));
-    var catOf = function (d) {
-      if (!d) return undefined;
-      return kind === "pie" ? (d.data ? d.data.key : undefined) : d.cat;
-    };
-    svg.selectAll("g.tb-series").classed("tb-dimmed", function (s) {
-      return !!(cs && s && s.key !== undefined && !cs[s.key]);
-    });
-    svg.selectAll("path.tb-mark, circle.tb-dot").classed("tb-dimmed", function (d) {
-      var cat = catOf(d);
-      if (kind === "pie") return !!(xs && cat !== undefined && !xs[cat]);
-      return !!(xs && kind !== "scatter" && cat !== undefined && !xs[cat]);
-    });
-    /* A bar's own value label recedes with its bar. */
-    svg.selectAll("g.tb-values text").classed("tb-dimmed", function (d) {
-      return !!(d && d.p && ((xs && !xs[d.p.cat]) || (cs && d.s && !cs[d.s.key])));
-    });
-    svg.selectAll("circle.tb-dot").classed("tb-picked", function (d) {
-      return !!(xs && d && xs[d.cat]);
-    });
-    svg.selectAll("circle.tb-mark").classed("tb-dimmed", function (d) {
-      return !!(cs && d && !cs[d.key]);
-    });
-    var hitCol = kind === "pie" ? plan.x : (kind === "scatter" ? null : plan.x);
-    if (hitCol && selectableField(hitCol)) {
-      var said = pickedSet(hitCol) || {};
-      svg.selectAll(kind === "pie" ? "path.tb-mark" : "rect.tb-hit").attr("aria-label", function (d) {
-        var c = catOf(d) === undefined ? d : catOf(d);
-        return (said[c] ? "clear " : "select ") + c;
-      });
-    }
-    var keyCol = kind === "pie" ? plan.x : plan.color;
-    var keys = keyCol ? pickedSet(keyCol) : null;
-    Array.prototype.forEach.call(entry.legend.querySelectorAll(".tb-legend-item"), function (btn) {
-      if (btn.__tbKey === undefined) return;
-      var picked = !!(keys && keys[btn.__tbKey]);
-      btn.setAttribute("aria-pressed", picked ? "true" : "false");
-      btn.setAttribute("aria-label", (picked ? "clear " : "select ") + btn.__tbKey);
-      if (keys && on && !picked) addClass(btn, "tb-dimmed"); else removeClass(btn, "tb-dimmed");
-    });
-  }
-
   /* ── Ranges (data-tb-range, decision 14) ──
    * A number column: two native range inputs over one track, the bounds as
    * text beside them. A grain-label column (2026-03, 2026-Q1): two pickers,
@@ -4664,10 +4444,12 @@
       if (el._tbCalcColumn) { try { fillCalcOptions(el); } catch (e) { /* defensive */ } }
     });
     try { paintRanges(); } catch (e) { /* defensive */ }
-    /* A chart whose binding is fixed at build is not redrawn, but its marks
-     * still show what the reader picked. */
+    /* A chart whose binding is fixed at build draws the same rows, but its
+     * marks and legend still show what the reader picked. */
     _charts.forEach(function (entry) {
-      if (entry.d3) { try { paintHighlight(entry); } catch (e) { /* defensive */ } }
+      var res = _calc.results[entry.binding];
+      if (res && !isFixed(res)) return;      /* redrawn with its binding */
+      try { drawChart(entry, null, true); } catch (e) { /* defensive */ }
     });
     try { paintSelectionBar(); } catch (e) { /* defensive */ }
     paintChips();
@@ -5861,7 +5643,12 @@
     if (!_dataReady || typeof document === "undefined") return;
     var on = function (e) { return document.documentElement.contains(e.el); };
     for (var i = _tables.length - 1; i >= 0; i--) if (!on(_tables[i])) _tables.splice(i, 1);
-    for (var j = _charts.length - 1; j >= 0; j--) if (!on(_charts[j])) _charts.splice(j, 1);
+    for (var j = _charts.length - 1; j >= 0; j--) {
+      if (on(_charts[j])) continue;
+      if (_chartResize) { try { _chartResize.unobserve(_charts[j].surface); } catch (e) {} }
+      disposeChart(_charts[j]);
+      _charts.splice(j, 1);
+    }
     try { hydrateValues(); } catch (e) {}
     try { hydrateTables(); } catch (e) {}
     try { hydrateCharts(); } catch (e) {}
@@ -6410,6 +6197,14 @@
      * selects it, or else shows and hides its series). */
     selectable: selectableField,
     refresh: refresh,
+    /* For the kit's option-only <EChart>: the chart engine's tokens, its
+     * ECharts theme and its dimming, so a chart of the page's own numbers
+     * looks like every other. */
+    _echarts: {
+      tokens: function () { return chartTokens(); },
+      theme: function () { return chartTheme(chartTokens()); },
+      dim: function (opt, set) { return dimOption(opt, set, chartTokens()); }
+    },
     /* The receipt certificate into any element (the web app's side panel
      * mounts it too); see renderReceipt. Display only. */
     renderReceipt: renderReceipt,

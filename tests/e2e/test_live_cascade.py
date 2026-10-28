@@ -313,12 +313,37 @@ _STEPS = """() => {
   });
   document.querySelectorAll('[data-tb-figure="chart"].tb-selectable[id]').forEach((el) => {
     if (!seen(el)) return;
-    if (el.querySelector('rect.tb-hit, path.tb-mark, g.tb-brush .overlay'))
+    if (el.querySelector('.tb-chart-host svg, .tb-chart-host canvas'))
       out.push({kind: 'mark', id: el.id, label: 'mark of ' + el.id});
     else if (el.querySelector('.tb-legend-item--select'))
       out.push({kind: 'legend', id: el.id, label: 'legend of ' + el.id});
   });
   return out;
+}"""
+
+
+# The page coordinates of a chart's first mark: a slice's middle, a bar's or
+# a cell's centre, a point; read from the chart's ECharts instance.
+_FIRST_MARK = """(id) => {
+  const host = document.querySelector('#' + id + ' .tb-chart-host');
+  const c = window.__tbECharts.getInstanceByDom(host), r = host.getBoundingClientRect();
+  const s = c.getModel().getSeriesByIndex(0), data = s.getData();
+  let x, y;
+  if (s.subType === 'pie') {
+    const l = data.getItemLayout(0), a = (l.startAngle + l.endAngle) / 2, m = (l.r + l.r0) / 2;
+    x = l.cx + m * Math.cos(a); y = l.cy + m * Math.sin(a);
+  } else {
+    const g = data.getItemGraphicEl(0);
+    if (g && g.getBoundingRect && s.subType !== 'line') {
+      const b = g.getBoundingRect().clone();
+      b.applyTransform(g.getComputedTransform());
+      x = b.x + b.width / 2; y = b.y + b.height / 2;
+    } else {
+      const p = c.convertToPixel({seriesIndex: 0}, [0, data.get(data.mapDimension('y'), 0)]);
+      x = p[0]; y = p[1];
+    }
+  }
+  return [r.left + x, r.top + y];
 }"""
 
 
@@ -344,16 +369,11 @@ def _act(page, step):
     elif kind == "row":
         page.locator(f'#{step["id"]} tbody tr.tb-row-select').first.click(force=True)
     elif kind == "mark":
-        chart = page.locator(f"#{step['id']}")
-        hit = chart.locator("rect.tb-hit, path.tb-mark[style*='pointer']")
-        if hit.count():
-            hit.first.dispatch_event("click")
-        else:
-            # A long line or area zooms on a drag; a click without one
-            # selects the category under the pointer: the first.
-            chart.scroll_into_view_if_needed()
-            box = chart.locator("g.tb-brush .overlay").first.bounding_box()
-            page.mouse.click(box["x"] + 2, box["y"] + box["height"] / 2)
+        # A click on the chart's first mark (the first category, slice, cell
+        # or point), where ECharts drew it.
+        page.locator(f"#{step['id']}").scroll_into_view_if_needed()
+        x, y = page.evaluate(_FIRST_MARK, step["id"])
+        page.mouse.click(x, y)
     elif kind == "legend":
         page.locator(f"#{step['id']} .tb-legend-item--select").first.click(force=True)
 

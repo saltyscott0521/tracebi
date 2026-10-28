@@ -1412,7 +1412,7 @@ def _slices(built, name):
 # Every figure the page draws, read the way a reader sees it: a value's text,
 # a table's rows, a chart's svg (and its text and mark count, which a reload
 # must reproduce exactly), with the live marks the runtime set.
-_READ = """() => Array.from(document.querySelectorAll('[data-tb-figure][data-tb-binding]'))
+_READ = """() => { return Array.from(document.querySelectorAll('[data-tb-figure][data-tb-binding]'))
   .filter(el => el.getAttribute('data-tb-figure') !== 'custom').map((el, i) => {
     const kind = el.getAttribute('data-tb-figure');
     const svg = el.querySelector('svg');
@@ -1423,17 +1423,21 @@ _READ = """() => Array.from(document.querySelectorAll('[data-tb-figure][data-tb-
       svg: svg ? svg.outerHTML : null,
       text: kind === 'chart' ? el.textContent : null,
       marks: svg ? svg.querySelectorAll('path, rect, circle').length : null,
+      drawn: drawn(el),
       fixed: el.getAttribute('data-tb-fixed'),
       note: el.__tbLiveNote ? el.__tbLiveNote.textContent : null};
-  })"""
-
-
-def _undimmed(svg):
-    """A chart's svg less what cross-highlighting adds (a class, a label)."""
-    if svg is None:
-        return None
-    svg = re.sub(r' aria-label="(select|clear) [^"]*"', '', svg)
-    return re.sub(r' (tb-dimmed|tb-picked)(?=[ "])', '', svg).replace(' class=""', '')
+  });
+  // What a chart plots, less what cross-highlighting adds (a mark's style):
+  // its categories and each series' values, from its ECharts instance.
+  function drawn(el) {
+    const host = el.querySelector('.tb-chart-host');
+    const c = host && window.__tbECharts && window.__tbECharts.getInstanceByDom(host);
+    if (!c) return null;
+    const o = c.getOption(), val = (d) => (d !== null && typeof d === 'object' ? d.value : d);
+    return JSON.stringify({axes: [].concat(o.xAxis || [], o.yAxis || []).map((a) => a.data || null),
+      series: o.series.map((s) => (s.data || []).map(val))});
+  }
+}"""
 
 
 def _settle(page):
@@ -1490,7 +1494,7 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
                 assert now["fixed"] == plans[binding]["fixed"] == "report.py"
                 # Its marks may recede for the sector picked (cross-highlighting,
                 # presentation only); what it draws is as built.
-                assert _undimmed(now["svg"]) == _undimmed(was["svg"])
+                assert now["drawn"] is not None and now["drawn"] == was["drawn"]
                 assert now["value"] == was["value"]
                 assert now["note"] == "Fixed at build · report.py"
                 continue

@@ -159,8 +159,9 @@ THEMES: dict[str, dict] = {
         },
         "tiles": True,
         # The lead tile is the accent: a sparkline on it is drawn in the tile's ink.
-        "rules": ".tb-kpi--lead .tb-spark :is(.tb-line, .tb-dot) { stroke: var(--tb-lead-ink); }\n"
-                 ".tb-kpi--lead .tb-spark :is(.tb-area, .tb-dot) { fill: var(--tb-lead-ink); }\n",
+        # The chart engine reads the tokens from the figure, so the tile's
+        # restated series colour is the sparkline's.
+        "rules": ".tb-kpi--lead .tb-spark { --tb-chart-1: var(--tb-lead-ink); }\n",
     },
 }
 

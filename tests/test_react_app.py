@@ -119,10 +119,11 @@ def test_a_style_css_token_gives_way_to_the_dark_ground(browser, tmp_path):
 
 def test_an_echart_page_ships_echarts_and_a_plain_page_nothing_extra():
     """One runtime (Redact) for every page; ECharts (~0.9 MB) only on a page
-    that draws an <EChart> or imports echarts, before the runtime that
-    registers it, and Recharts only on a page that imports it."""
+    that draws a chart (<Chart>, <Spark>, <EChart>) or imports echarts, before
+    the runtime that registers it, and Recharts only on a page that imports it."""
     from tracebi.reports.app_lane import libs_for
     assert libs_for({"react": ["useState"], "tracebi": ["Kpi"]}) == ["tailwind", "react"]
     assert libs_for({"tracebi": ["Kpi", "EChart"]}) == ["tailwind", "echarts-kit", "react"]
+    assert libs_for({"tracebi": ["Spark"]}) == ["tailwind", "echarts-kit", "react"]
     assert libs_for({"echarts": ["*"]}) == ["tailwind", "echarts-kit", "react"]
     assert libs_for({"recharts": ["BarChart"]}) == ["tailwind", "react", "recharts"]

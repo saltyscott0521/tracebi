@@ -1,9 +1,9 @@
-// Apache ECharts for the kit's <EChart> (echarts-kit.min.js): one tree-shaken
-// build of echarts/core with the series and components below, both renderers.
-// It never imports React (it draws into its own div), so it needs no globals
-// plugin; runtime.js registers it as the "echarts" module an app.jsx imports.
-// The template lane's echarts.min.js ("libs": ["echarts"]) is a different
-// build for a different consumer and stays as it is.
+// Apache ECharts (echarts-kit.min.js): one tree-shaken build of echarts/core
+// with the series and components below, both renderers. It draws every chart
+// on every page: tracebi.js's chart engine (a template's figures, the kit's
+// <Chart>, <Spark> and <EChart>) and an app's option-only <EChart>. It never
+// imports React (it draws into its own div), so it needs no globals plugin;
+// runtime.js registers it as the "echarts" module an app.jsx imports.
 import * as echarts from "echarts/core";
 import {
   BarChart, LineChart, PieChart, ScatterChart, EffectScatterChart, RadarChart,

@@ -87,8 +87,11 @@ def table_element(binding: str, *, fig_id: str, columns=None,
 
 def chart_element(binding: str, *, fig_id: str, chart_type: str = "bar",
                   x=None, y=None, color=None, palette=None,
-                  value_format=None) -> str:
-    """A ``data-tb-figure="chart"`` element the charting runtime draws into."""
+                  value_format=None, renderer=None) -> str:
+    """A ``data-tb-figure="chart"`` element the charting runtime draws into.
+
+    *renderer* (``"svg"``, the default, or ``"canvas"``) is the ECharts
+    renderer this one chart draws with."""
     y_list = y if isinstance(y, list) else ([y] if y else [])
     attrs = ['data-tb-figure="chart"', _attr("data-tb-binding", binding),
              _attr("data-tb-type", chart_type), _attr("id", fig_id)]
@@ -102,6 +105,8 @@ def chart_element(binding: str, *, fig_id: str, chart_type: str = "bar",
         attrs.append(_attr("data-tb-palette", ",".join(map(str, palette))))
     if value_format:
         attrs.append(_attr("data-tb-value-format", value_format))
+    if renderer:
+        attrs.append(_attr("data-tb-renderer", renderer))
     return f"<div {' '.join(attrs)}></div>"
 
 

@@ -144,6 +144,10 @@ def _validate_figure(name: str, fig, bindings: dict, where: str) -> dict:
             raise ValueError(
                 f"{where}: figure '{name}' '{key}' must map column names to "
                 f"strings, e.g. {{\"fair_value\": \"currency0\"}}.")
+    if fig.get("renderer") not in (None, "svg", "canvas"):
+        raise ValueError(
+            f"{where}: figure '{name}' 'renderer' is \"svg\" (the default) or "
+            f"\"canvas\", not {fig['renderer']!r}.")
     return dict(fig)
 
 
@@ -709,17 +713,33 @@ class TemplatePackage:
             STYLE_CSS)
         self.script_js = _read_optional(os.path.join(directory, SCRIPT_JS))
 
-        # Charting libraries the package names. Unknown names fail loudly.
-        # ``echarts`` is also inlined at inject time when the page the reader
-        # gets contains a chart figure and this list omitted it — see
-        # ``_libs_for_page``. A page with no chart figure stays without it.
+        # Libraries the package names (D3, for its own tracebi.draw figures).
+        # Unknown names fail loudly. ECharts is never named: it is inlined at
+        # inject time when the page the reader gets contains a chart figure
+        # (``_libs_for_page``); a page with no chart figure stays without it.
         libs = declaration.get("libs", [])
+        if isinstance(libs, list) and "echarts" in libs:
+            raise ValueError(
+                f"{report_json_path}: 'libs' names \"echarts\", which is no longer "
+                f"a choice: every chart draws with ECharts, and the build inlines it "
+                f"on any page with a chart. Remove it from 'libs' (a configureChart "
+                f"patch in script.js keeps working).")
         if not isinstance(libs, list) or any(lib not in KNOWN_LIBS for lib in libs):
             raise ValueError(
                 f"{report_json_path}: 'libs' must be a list drawn from "
                 f"{sorted(KNOWN_LIBS)}."
             )
         self.libs = libs
+        # report.json "charts": {"renderer": "svg" | "canvas"}, every chart's
+        # renderer unless a figure names its own. SVG when absent.
+        charts = declaration.get("charts")
+        if charts is not None and not (
+                isinstance(charts, dict) and set(charts) <= {"renderer"}
+                and charts.get("renderer", "svg") in ("svg", "canvas")):
+            raise ValueError(
+                f"{report_json_path}: 'charts' is {{\"renderer\": \"svg\"}} (the "
+                f"default) or {{\"renderer\": \"canvas\"}}, for thousands of marks.")
+        self.charts = dict(charts or {})
 
         # Declared figures the template places with ``{{ figure("name") }}``.
         # The framework builds the element; the analyst owns everything around
@@ -836,7 +856,8 @@ class TemplatePackage:
                                  x=fig.get("x"), y=fig.get("y"),
                                  color=fig.get("color"),
                                  palette=fig.get("palette"),
-                                 value_format=fig.get("value_format"))
+                                 value_format=fig.get("value_format"),
+                                 renderer=fig.get("renderer"))
         return value_element(binding, fig_id=fig_id, cell=fig["cell"],
                              label=fig.get("label", ""), fmt=fig.get("format"))
 
@@ -1833,14 +1854,15 @@ class TemplatePackage:
             calc_plans_payload(self, models, blocks, plans), CALC_PLANS_ID) + "\n"
 
     def _libs_for_page(self, page: str) -> list:
-        """Declared ``libs``, plus D3 when *page* contains a chart figure.
+        """Declared ``libs``, plus ECharts when *page* contains a chart figure.
 
         *page* is the one the reader gets: ``{{ figure() }}`` already
         expanded, and exploration already stripped on a final build. Dev
         and snapshot pass the page with exploration kept, so a chart there
-        draws too. A report that lists ``echarts`` keeps the ECharts engine
-        (its ``configureChart`` patches apply only there) and gets no D3
-        added; each lib is inlined once.
+        draws too. ECharts (``echarts-kit``) rides before an app's runtime,
+        which registers it as the ``echarts`` module; each lib is inlined
+        once. D3 is only ever the package's own choice (``"libs": ["d3"]``,
+        for its ``tracebi.draw`` figures).
         """
         from tracebi.reports.figures import FigureError, extract_figures
 
@@ -1855,14 +1877,13 @@ class TemplatePackage:
             if lib not in seen:
                 libs.append(lib)
                 seen.add(lib)
-        if "echarts" in seen:
-            return libs
         try:
             has_chart = any(fig.kind == "chart" for fig in extract_figures(page))
         except FigureError:
             has_chart = False
-        if has_chart and "d3" not in seen:
-            libs.append("d3")
+        if has_chart and "echarts-kit" not in seen:
+            at = libs.index("react") if "react" in libs else len(libs)
+            libs.insert(at, "echarts-kit")
         return libs
 
     def _inject(self, page: str, data_blocks: str, stage: Optional[str] = None,
@@ -1892,6 +1913,8 @@ class TemplatePackage:
         if self.app_source is not None:
             from tracebi.reports.app_lane import app_blocks_html
             extra_blocks_html += app_blocks_html(self.app_source, self.app_icons)
+        if self.charts:
+            extra_blocks_html += embed_json(self.charts, "tracebi-charts") + "\n"
         mark = brand()
         look, accent = house.resolve(self.theme, mark.get("theme"))
         self.theme_warning = house.deprecation(accent, look) if accent else None

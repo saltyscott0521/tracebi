@@ -551,12 +551,25 @@ tr.tb-window-pad td {
   position: relative; /* anchors a .tb-badge in the corner */
 }
 
-/* The live D3 chart: a legend row of toggle chips, the SVG, and one tooltip.
- * Every colour is a token, so a theme restyles charts with the rest. */
+/* The live chart (tracebi.js, drawn by Apache ECharts): a legend row of
+ * chips, the chart (SVG by default, or a canvas), and its readout. Every
+ * colour is a token, so a theme restyles charts with the rest. */
 .tb-chart { position: relative; }
-.tb-chart-svg { display: block; overflow: visible; }
-.tb-chart-svg:focus { outline: none; }
-.tb-chart-svg:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 4px; border-radius: 4px; }
+.tb-chart-host { position: relative; width: 100%; }
+.tb-chart-host:focus { outline: none; }
+.tb-chart-host:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 4px; border-radius: 4px; }
+/* A drag across a long line, an area or a scatter: the range it zooms to. */
+.tb-chart-brush {
+  position: absolute; top: 0; bottom: 0; pointer-events: none; z-index: 2;
+  background: color-mix(in srgb, var(--tb-accent) 12%, transparent);
+}
+/* Printed, a chart fits the page's width: the SVG scales as vectors. */
+@media print {
+  .tb-chart-host { height: auto !important; }
+  .tb-chart-host > div { width: 100% !important; height: auto !important; }
+  .tb-chart-host svg { display: block; position: static !important;
+                       width: 100% !important; height: auto !important; }
+}
 .tb-legend-row { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0 0 8px; }
 .tb-legend-row[hidden] { display: none; }
 .tb-legend-item {
@@ -579,12 +592,12 @@ tr.tb-window-pad td {
   border: 1px solid var(--tb-chart-tooltip-border); box-shadow: var(--tb-chart-tooltip-shadow);
   font-family: var(--tb-chart-font); font-size: var(--tb-text-sm); line-height: 1.45;
 }
-/* The kit's <EChart> draws the same card: ECharts' tooltip is an HTML box
- * in the page, given this class and the readout's own markup. */
+/* The readout: ECharts' tooltip is an HTML box in the page, given this
+ * class and the readout's own markup. */
 .tb-echart-tip { font-family: var(--tb-chart-font) !important; line-height: 1.45; }
 .tb-echart-tip .tb-chart-tip-title { white-space: nowrap; }
 /* Every number a chart writes in tabular figures, so values align. */
-.tb-chart-svg text, .tb-echart, .tb-chart-tip { font-variant-numeric: tabular-nums; }
+.tb-chart-host, .tb-echart, .tb-chart-tip, .tb-echart-tip { font-variant-numeric: tabular-nums; }
 .tb-chart-tip[hidden] { display: none; }
 .tb-chart-tip-title { color: var(--tb-chart-tooltip-title); font-weight: 600; margin-bottom: 2px; }
 .tb-chart-tip-row { display: flex; align-items: baseline; gap: 6px; }
@@ -599,7 +612,6 @@ tr.tb-window-pad td {
 }
 .tb-chart-tip-receipt:hover { text-decoration: underline; }
 .tb-chart-tip-receipt:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; border-radius: 2px; }
-.tb-chart-svg circle.tb-dot.tb-dot-on { r: 3px; }
 .tb-sr-only {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
@@ -778,15 +790,10 @@ span > .tb-badge.tb-verdict { display: inline-flex; }
 }
 
 /* The interaction grammar (tracebi.js): what the reader picked. A legend
- * entry that selects reads as a chip, never as "hidden"; marks of values not
- * picked recede, as a class, so the number is the stylesheet's alone. */
+ * entry that selects reads as a chip, never as "hidden". The marks of values
+ * not picked recede to --tb-chart-dim in the chart engine's option. */
 .tb-legend-item--select[aria-pressed="true"] { border-color: var(--tb-ink); }
 .tb-legend-item--select.tb-dimmed { opacity: .5; }
-.tb-chart-svg .tb-dimmed { opacity: var(--tb-chart-dim); transition: opacity .15s; }
-.tb-chart-svg g.tb-series.tb-dimmed .tb-dimmed { opacity: 1; }
-/* A receded bar's own value stays readable: muted ink, not faded white. */
-.tb-chart-svg g.tb-values text.tb-dimmed { opacity: 1; fill: var(--tb-muted); }
-.tb-chart-svg circle.tb-dot.tb-picked { r: 4px; }
 
 /* A row-select table (data-tb-select-rows): the row is the target. */
 .tb-table tr.tb-row-select, table[data-tb-select-rows] tr.tb-row-select { cursor: pointer; }
