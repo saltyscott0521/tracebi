@@ -263,7 +263,7 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     code, out = run_cli("verify", str(manifest_path))
     assert code == 0, out
 
-    # Opened, on the one runtime: both <EChart>s drew into their canvases and
+    # Opened, on the one runtime: both <EChart>s drew their SVGs (the default) and
     # filter live; a click on a mark writes the page's selection, which a kit
     # KPI follows; the Recharts chart on the other view renders.
     from tests.e2e.test_reference_project import _browser, _settle
@@ -276,8 +276,8 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
         page.goto((scaffolded / "output" / "regions_app.html").as_uri())
         _settle(page)
         for fid in ("ech-regions", "ech-share"):
-            size = page.evaluate("""(id) => { const c = document.querySelector('#' + id + ' canvas');
-                return c ? [c.width, c.height] : null; }""", fid)
+            size = page.evaluate("""(id) => { const c = document.querySelector('#' + id + ' [role=img] svg');
+                if (!c) return null; const r = c.getBoundingClientRect(); return [r.width, r.height]; }""", fid)
             assert size and size[0] > 0 and size[1] > 0, (fid, size)
         assert page.locator("#ech-regions[data-tb-figure='chart']").count() == 1
         assert page.locator("#ech-share[data-tb-computed]").count() == 1

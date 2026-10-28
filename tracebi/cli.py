@@ -3046,6 +3046,21 @@ def cmd_theme(args: argparse.Namespace) -> int:
         for name in named_themes():
             first = named_theme_css(name).splitlines()[0]
             print(f"{name:10} {first.strip('/* ').rstrip(' */').split(' — ', 1)[-1]}")
+        from tracebi.project_config import brand
+        try:
+            mark = brand()
+        except ValueError as exc:
+            print(f"\nbrand      {exc}", file=sys.stderr)
+            return 1
+        if mark:
+            said = [mark.get("name") or "(no name)"]
+            said += [f"accent {mark['accent']}"] if mark.get("accent") else []
+            said += [f"palette {' '.join(mark['palette'])}"] if mark.get("palette") else []
+            said += [f"{key} {os.path.relpath(mark[key])}" for key in ("logo", "font")
+                     if mark.get(key)]
+            said += [f"mode {mark['mode']}"] if mark.get("mode") else []
+            print(f"\nbrand      {' · '.join(said)}\n           (tracebi.yaml brand: "
+                  f"every report takes it, under reports/_theme.css and a report's theme)")
         return 0
     if not args.name:
         print("tracebi theme use <name>: name one of "

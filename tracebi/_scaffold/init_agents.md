@@ -158,7 +158,9 @@ the page's footer says so. Every chart is live: its rows are its binding's
 query re-run under the page's selection, and a click on a mark selects its
 `x` value (`selects="dim.col"` on an option-only chart; shift adds), its own
 field's other values kept and dimmed (`highlight="off"` narrows instead).
-`renderer="svg"` suits a small chart, the default canvas big data.
+Both chart engines draw the house look (`docs/reference/chart-style.md`)
+from the `--tb-chart-*` tokens; `renderer="svg"` is the default (vectors,
+tabular figures), `renderer="canvas"` for thousands of marks.
 `useBinding("name")` hands your own components the same live rows (the
 stamped rows on an `"embed": "none"` page) and `useSelection()` the
 selection: what you draw from them is live, not a checked figure, and a sum
@@ -368,6 +370,12 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `tracebi theme use <name>` makes one everyone's default (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
   returns it as `house_style` — follow its Rules over the defaults. Read
   `tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an app).
+- **Brand.** The project's brand lives in `tracebi.yaml` `brand:` (`name`, `logo`,
+  `accent`, `palette`, optional `font` and `mode`): every report and dashboard takes it,
+  its charts included (`tracebi theme list` shows it). Never hard-code a colour in an
+  `<EChart option>` or a style: a series takes the palette in order (`--tb-chart-1..8`),
+  and the house chart look (`docs/reference/chart-style.md`) comes from the
+  `--tb-chart-*` tokens the brand and the themes set.
 - Blocks marked `data-tb-stage="exploration"` are working scratch: they render
   in dev and are DELETED at the final build.
 - Styling: the shipped defaults render well with zero CSS. To restyle, set

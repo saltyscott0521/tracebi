@@ -66,6 +66,7 @@
 <a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/chart-style.html">Chart style</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
@@ -287,6 +288,67 @@ is the same as through the connector. Each <code>load</code> node records the ta
 fingerprint as <code>load()</code> returns it. That fingerprint is computed once per
 warehouse version (the file's size and modification time) and reused by every
 figure of a build.</p>
+<h2 id="brand"><code>brand</code></h2>
+<p>The project's brand: the look every report and dashboard of the project
+takes, its charts included. One block, and every page follows.</p>
+<pre><code class="language-yaml">brand:
+  name: Cedar Capital            # the masthead's kicker, in place of the model's label
+  logo: brand/logo.svg           # svg or png under the project, inlined
+  accent: &quot;#0f6b5c&quot;              # --tb-accent, and what each ground needs from it
+  palette: [&quot;#0f6b5c&quot;, &quot;#c8902e&quot;, &quot;#5b6ee1&quot;, &quot;#d1495b&quot;, &quot;#3c9d9b&quot;, &quot;#8a5a44&quot;]
+  font: brand/Inter.woff2        # optional; inlined @font-face, the pages' and charts' face
+  mode: auto                     # optional: light | dark | auto, for a page that names none
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>What it sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>The masthead's kicker (the small line over the title), in place of the model's label. A kicker the author wrote still wins. At most 60 characters.</td>
+</tr>
+<tr>
+<td><code>logo</code></td>
+<td>The masthead's mark (<code>.tb-masthead-mark</code>): above the kicker on a template page and in an app's <code>&lt;Masthead&gt;</code>, its sidebar included. An <code>.svg</code> or <code>.png</code> under the project, inlined as a <code>data:</code> URI. On a filled ground (the editorial hero, a banner title) it is drawn in the ground's ink.</td>
+</tr>
+<tr>
+<td><code>accent</code></td>
+<td><code>--tb-accent</code>. From it: <code>--tb-accent-text</code> (the same hue deepened to 4.5:1 for links and small text), <code>--tb-on-accent</code>, <code>--tb-surface-accent</code>, and the dark ground's <code>--tb-dark-accent</code> / <code>--tb-dark-accent-text</code> (lifted to read on the dark card).</td>
+</tr>
+<tr>
+<td><code>palette</code></td>
+<td><code>--tb-chart-1..8</code>, in the order a chart's series take them: 1 to 8 colours, cycled to eight. On the dark ground each is lifted only as far as it takes to read there. With no palette, <code>--tb-chart-1</code> is the accent.</td>
+</tr>
+<tr>
+<td><code>font</code></td>
+<td>A <code>.woff2</code>, <code>.woff</code>, <code>.ttf</code> or <code>.otf</code> under the project, inlined as an <code>@font-face</code> that <code>--tb-font</code> (and so <code>--tb-chart-font</code>) names first, Geist after it.</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td>The ground a page takes when it names none (a template's <code>&lt;html data-tb-mode&gt;</code>, an app's <code>report.json</code> <code>"look"</code>). Default <code>auto</code>: the reader's system.</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Colours are hex, <code>#rgb</code> or <code>#rrggbb</code>, and quoted: YAML reads an unquoted
+  <code>#</code> as the start of a comment.</li>
+<li>The build fails, naming the key and the fix, on a missing file, a colour
+  that is not hex, an accent below 3:1 on the white card (it names a deeper
+  shade of the same hue that passes), or a logo or font over 400 KB. A page
+  carries both inlined, and a page stays under its 16 MB budget.</li>
+<li>Where it sits: right after the shipped <code>tracebi.css</code>, before
+  <code>reports/_theme.css</code>. So the project's own theme, a report's <code>"theme"</code> and
+  its <code>style.css</code> still win, in that order. <code>tracebi theme list</code> shows it.</li>
+<li>A brand changes how a page looks, never a number. Agents never hard-code a
+  colour in a chart's <code>option</code>: a series takes the palette.</li>
+</ul>
+<p>The reference project carries one (<code>examples/portfolio_project/tracebi.yaml</code>,
+its logo in <code>brand/</code>). The chart look the palette and tokens feed is in
+<a href="../reference/chart-style.html">Chart style</a>.</p>
   </main>
 </div>
 <script>

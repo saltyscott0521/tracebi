@@ -161,53 +161,170 @@ export function Spark(props) {
 // reconciles its marks.
 
 let colorCtx = null;
-/** A token as a colour ECharts can parse (a theme may write oklch() or
- * color-mix()); the canvas normalises it, as the browser resolved it. */
+/** A token as a colour ECharts can parse. A theme may write oklch() or
+ * color-mix(), which the canvas keeps in its own space: then the pixel it
+ * paints, as rgb() / rgba(). */
 function plainColor(v) {
   if (!v) return v;
   try {
-    colorCtx = colorCtx || document.createElement("canvas").getContext("2d");
+    if (!colorCtx) {
+      const c = document.createElement("canvas");
+      c.width = 1; c.height = 1;
+      colorCtx = c.getContext("2d", { willReadFrequently: true });
+    }
     colorCtx.fillStyle = "#000";
     colorCtx.fillStyle = v;
-    return colorCtx.fillStyle;
+    const s = colorCtx.fillStyle;
+    if (/^(#|rgb)/.test(s)) return s;
+    colorCtx.clearRect(0, 0, 1, 1);
+    colorCtx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = colorCtx.getImageData(0, 0, 1, 1).data;
+    return a === 255 ? `rgb(${r},${g},${b})` : `rgba(${r},${g},${b},${+(a / 255).toFixed(3)})`;
   } catch (e) { return v; }
 }
 
-/** The TraceBi theme for ECharts, read from the page's tokens now: the same
- * ink, muted, rule and card colours, and the same series palette
- * (--tb-chart-1…8), that the D3 engine draws the kit's <Chart> with. */
-export function echartsTheme() {
+/** [r, g, b, a] of a #rrggbb / rgb() / rgba() colour, or null. */
+function rgbaOf(c) {
+  const hex = /^#([0-9a-f]{6})$/i.exec(c || "");
+  if (hex) { const n = parseInt(hex[1], 16); return [n >> 16, (n >> 8) & 255, n & 255, 1]; }
+  const m = /^rgba?\(([^,]+),([^,]+),([^,)]+)(?:,([^)]+))?\)/.exec((c || "").replace(/\s+/g, ""));
+  return m ? [+m[1], +m[2], +m[3], m[4] === undefined ? 1 : +m[4]] : null;
+}
+
+/** A colour at `a` of its strength. */
+function withAlpha(c, a) {
+  const v = rgbaOf(c);
+  return v ? `rgba(${v[0]},${v[1]},${v[2]},${a})` : c;
+}
+
+function luminance(c) {
+  const v = rgbaOf(c);
+  if (!v) return null;
+  const lin = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * lin(v[0]) + 0.7152 * lin(v[1]) + 0.0722 * lin(v[2]);
+}
+
+function contrast(a, b) {
+  const la = luminance(a), lb = luminance(b);
+  if (la === null || lb === null) return 0;
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+/** The text colour that reads on a fill: the page's ink or its card, which
+ * ever stands further from it. */
+function labelOn(fill, k) {
+  return contrast(k.ink, fill) >= contrast(k.card, fill) ? k.ink : k.card;
+}
+
+/** The house chart tokens (tracebi.css, docs/reference/chart-style.md), read
+ * from the page now: the same values the D3 engine draws the kit's <Chart>
+ * with, so the two read as one design and a brand restyles both. */
+export function chartTokens() {
   const cs = getComputedStyle(document.documentElement);
-  const tok = (n) => { const v = cs.getPropertyValue(`--tb-${n}`).trim(); return v ? plainColor(v) : undefined; };
-  const ink = tok("ink"), muted = tok("muted"), rule = tok("rule"), card = tok("bg");
-  const font = cs.getPropertyValue("--tb-font").trim() || undefined;
+  const raw = (n) => cs.getPropertyValue(`--tb-${n}`).trim();
+  const col = (n) => { const v = raw(n); return v ? plainColor(v) : undefined; };
+  const num = (n, d) => { const v = parseFloat(raw(n)); return Number.isFinite(v) ? v : d; };
+  const motion = raw("chart-motion") || "450ms";
+  let ms = parseFloat(motion);
+  if (!/ms$/.test(motion)) ms *= 1000;
+  const reduced = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const palette = [];
-  for (let i = 1; i <= 8; i++) { const c = tok(`chart-${i}`); if (c) palette.push(c); }
-  const axis = {
-    axisLine: { lineStyle: { color: rule } },
-    axisTick: { lineStyle: { color: rule } },
-    axisLabel: { color: muted },
-    splitLine: { lineStyle: { color: rule } },
-    splitArea: { areaStyle: { color: ["transparent"] } },
-    nameTextStyle: { color: muted },
-  };
+  for (let i = 1; i <= 8; i++) { const c = col(`chart-${i}`); if (c) palette.push(c); }
+  const dash = raw("chart-grid-dash").split(/[\s,]+/).map(Number).filter((n) => n > 0);
   return {
-    color: palette.length ? palette : undefined,
-    backgroundColor: "transparent",
-    textStyle: { color: ink, fontFamily: font },
-    title: { textStyle: { color: ink }, subtextStyle: { color: muted } },
-    legend: { textStyle: { color: ink }, pageTextStyle: { color: muted },
-              pageIconColor: ink, pageIconInactiveColor: rule },
-    tooltip: { backgroundColor: card, borderColor: rule, textStyle: { color: ink } },
-    categoryAxis: axis, valueAxis: axis, logAxis: axis, timeAxis: axis,
-    radar: { axisName: { color: muted }, axisLine: { lineStyle: { color: rule } },
-             splitLine: { lineStyle: { color: rule } }, splitArea: { show: false } },
-    visualMap: { textStyle: { color: muted } },
-    dataZoom: { textStyle: { color: muted }, borderColor: rule },
-    toolbox: { iconStyle: { borderColor: muted } },
-    markLine: { label: { color: muted } },
-    label: { color: ink },
+    ink: col("ink"), muted: col("muted"), card: col("bg"),
+    font: raw("chart-font") || raw("font") || undefined,
+    grid: col("chart-grid"), gridDash: dash.length ? dash : "dashed",
+    axis: col("chart-axis"), label: col("chart-label"), value: col("chart-value"),
+    tipBg: col("chart-tooltip-bg"), tipBorder: col("chart-tooltip-border"),
+    tipShadow: raw("chart-tooltip-shadow"), tipRadius: raw("chart-tooltip-radius") || "8px",
+    radius: num("chart-radius", 2), bar: num("chart-bar", 55), line: num("chart-line", 2),
+    area: num("chart-area", 0.12), dim: num("chart-dim", 0.28),
+    motion: reduced || printing ? 0 : (Number.isFinite(ms) ? ms : 450),
+    palette,
   };
+}
+
+/** The TraceBi theme for ECharts, from the chart tokens: the house look
+ * (chart-style.md) as ECharts' defaults, so an option-only chart (a sankey
+ * the page computes) takes it too. */
+export function echartsTheme() {
+  const k = chartTokens();
+  const font = k.font;
+  const text = (color, size, weight) => ({ color, fontSize: size, fontWeight: weight, fontFamily: font });
+  const axis = {
+    axisLine: { show: false, lineStyle: { color: k.axis } },
+    axisTick: { show: false },
+    axisLabel: { ...text(k.label, 11), margin: 10, lineHeight: 15 },
+    splitLine: { show: true, lineStyle: { color: k.grid, type: k.gridDash, width: 1 } },
+    splitArea: { show: false },
+    nameTextStyle: text(k.label, 11, 600),
+  };
+  // The category axis is the one solid rule: the baseline, at zero. Its
+  // names at 12px, the value ticks at 11, as the D3 engine sets them.
+  const categoryAxis = { ...axis, axisLine: { show: true, lineStyle: { color: k.axis } },
+                         axisLabel: { ...axis.axisLabel, fontSize: 12 },
+                         splitLine: { show: false } };
+  const cells = { itemStyle: { borderColor: k.card, borderWidth: 2, gapWidth: 2 },
+                  label: text(k.ink, 12, 500) };
+  return {
+    color: k.palette.length ? k.palette : undefined,
+    backgroundColor: "transparent",
+    textStyle: { color: k.ink, fontFamily: font },
+    animation: k.motion > 0, animationDuration: k.motion, animationEasing: "cubicOut",
+    animationDurationUpdate: k.motion, animationEasingUpdate: "cubicOut",
+    title: { textStyle: text(k.ink, 14, 600), subtextStyle: text(k.label, 12), itemGap: 4 },
+    legend: { icon: "circle", itemWidth: 8, itemHeight: 8, itemGap: 16,
+              textStyle: text(k.ink, 12), pageTextStyle: text(k.label, 11),
+              pageIconColor: k.ink, pageIconInactiveColor: k.grid, inactiveColor: k.grid },
+    tooltip: tooltipBase(k),
+    categoryAxis, valueAxis: axis, logAxis: axis, timeAxis: axis,
+    line: { lineStyle: { width: k.line, cap: "round", join: "round" }, symbol: "circle",
+            symbolSize: 7, showSymbol: false, smooth: false },
+    bar: { barCategoryGap: `${100 - k.bar}%`, barMaxWidth: 36,
+           itemStyle: { borderRadius: [k.radius, k.radius, 0, 0] } },
+    scatter: { symbolSize: 9, itemStyle: { opacity: 0.85, borderColor: k.card, borderWidth: 1.5 } },
+    pie: { radius: ["54%", "90%"], padAngle: 0.7, label: { show: false }, labelLine: { show: false },
+           itemStyle: { borderColor: k.card, borderWidth: 2, borderRadius: 3 } },
+    treemap: { ...cells, breadcrumb: { show: false } },
+    sunburst: cells,
+    sankey: { itemStyle: { borderWidth: 0 }, label: text(k.ink, 12), lineStyle: { opacity: 0.3 } },
+    radar: { axisName: { color: k.label }, axisLine: { lineStyle: { color: k.grid } },
+             splitLine: { lineStyle: { color: k.grid } }, splitArea: { show: false } },
+    visualMap: { textStyle: text(k.label, 11) },
+    dataZoom: { textStyle: text(k.label, 11), borderColor: k.grid },
+    toolbox: { iconStyle: { borderColor: k.label } },
+    markLine: { label: text(k.label, 11), lineStyle: { color: k.label, type: k.gridDash } },
+    label: { color: k.ink, fontFamily: font },
+  };
+}
+
+/** The readout as a card: the page's tooltip (.tb-chart-tip), drawn by
+ * ECharts' HTML tooltip. */
+function tooltipBase(k) {
+  return {
+    className: "tb-echart-tip", backgroundColor: k.tipBg, borderColor: k.tipBorder, borderWidth: 1,
+    padding: [8, 10], textStyle: { color: k.muted, fontFamily: k.font, fontSize: 13 },
+    extraCssText: `border-radius:${k.tipRadius};box-shadow:${k.tipShadow};`,
+    axisPointer: { lineStyle: { color: k.label, type: [3, 3], width: 1 },
+                   shadowStyle: { color: withAlpha(k.ink, 0.05) } },
+  };
+}
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/** The tooltip's content, the D3 readout's markup: the category, then a row
+ * per series of its swatch, its value as the page formats it, and its name. */
+function tipHtml(title, rows) {
+  return `<div class="tb-chart-tip-title">${esc(title)}</div>` + rows.map((r) =>
+    `<div class="tb-chart-tip-row"><span class="tb-chart-tip-key" style="background:${esc(r.colour)}"></span>` +
+    `<strong>${esc(r.value)}</strong><span>${esc(r.name)}</span></div>`).join("");
+}
+
+/** A column's name as a reader says it: fair_value → Fair value. */
+function humanise(col) {
+  const s = String(col).split(".").pop().replace(/_/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 /** Calls fn when the page's ground changes: its data-tb-mode, or the reader's
@@ -227,6 +344,8 @@ function onModeChange(fn) {
 const KIT_TYPES = { bar: 1, barh: 1, line: 1, area: 1, pie: 1, scatter: 1 };
 const NAMED_TYPES = { pie: 1, funnel: 1, treemap: 1, sunburst: 1 };
 const AXIS_TYPES = { bar: 1, barh: 1, line: 1, area: 1, effectScatter: 1, pictorialBar: 1 };
+// Shares of a whole that a legend names (a treemap or sunburst labels its cells).
+const LEGEND_TYPES = { pie: 1, funnel: 1 };
 
 /** The kit chart type the build's no-JavaScript picture draws for an ECharts
  * series type (app_lane.py mirrors it). */
@@ -274,20 +393,10 @@ function picked(selection, field) {
   return new Set(v.map((x) => (x === true ? "True" : x === false ? "False" : String(x))));
 }
 
-/** A colour at a quarter strength: #rrggbb or rgb() → rgba(). */
-function faded(c) {
-  const hex = /^#([0-9a-f]{6})$/i.exec(c);
-  if (hex) {
-    const n = parseInt(hex[1], 16);
-    return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},0.25)`;
-  }
-  const rgb = /^rgba?\(([^,]+),([^,]+),([^,)]+)/.exec(c);
-  return rgb ? `rgba(${rgb[1]},${rgb[2]},${rgb[3]},0.25)` : c;
-}
-
-/** The values a chart's own field did not pick recede, as the kit's chart
- * dims them; a pick none of its marks carries dims nothing. */
-function dimOption(opt, set) {
+/** The values a chart's own field did not pick recede to the house dim
+ * (--tb-chart-dim), as the kit's chart dims them; a pick none of its marks
+ * carries dims nothing. A cell's label takes the muted text colour. */
+function dimOption(opt, set, k) {
   if (!set || !isObj(opt) || !opt.series) return opt;
   const axisCats = (a) => {
     const ax = Array.isArray(a) ? a[0] : a;
@@ -302,9 +411,13 @@ function dimOption(opt, set) {
     if (name == null) return item;
     if (set.has(name)) { hit = true; return item; }
     const o = isObj(item) ? { ...item } : { value: item };
-    o.itemStyle = { ...(o.itemStyle || {}), opacity: 0.25 };
-    // A treemap or sunburst cell ignores opacity: its own colour fades.
-    if (typeof o.itemStyle.color === "string") o.itemStyle.color = faded(o.itemStyle.color);
+    // A mark with its own colour (a treemap or sunburst cell) fades that
+    // colour, so its label keeps full strength in the muted text colour;
+    // any other mark fades as a whole.
+    const own = isObj(o.itemStyle) && typeof o.itemStyle.color === "string";
+    o.itemStyle = own ? { ...o.itemStyle, color: withAlpha(o.itemStyle.color, k.dim) }
+      : { ...(o.itemStyle || {}), opacity: k.dim };
+    if (own) o.label = { ...(o.label || {}), color: k.label };
     return o;
   });
   const list = Array.isArray(opt.series) ? opt.series : [opt.series];
@@ -339,34 +452,53 @@ function firstSeen(rows, col) {
   return out;
 }
 
-/** The option for a binding's columns: x the category (a number on a
- * scatter), y one measure or several, `series` a column whose values split
- * the rows into series. Colours come from the binding's stamped rows, so a
- * category or a series keeps its colour whatever the selection leaves. */
-function optionFromRows({ type, rows, stamped, x, ys, series, format, unit, stack, palette, xSet, sSet }) {
+/** The option for a binding's columns, in the house look: x the category (a
+ * number on a scatter), y one measure or several, `series` a column whose
+ * values split the rows into series. Colours come from the binding's stamped
+ * rows, so a category or a series keeps its colour whatever the selection
+ * leaves. `hidden` holds the legend keys the reader switched off. */
+function optionFromRows({ type, rows, stamped, x, ys, series, format, unit, stack, k, xSet, sSet, hidden }) {
   const t = type || "bar";
   const value = formatter(format, unit);
   const tick = tickFormatter(format, unit);
-  const color = (keys, k) => (palette && palette.length ? palette[Math.max(0, keys.indexOf(k)) % palette.length] : undefined);
+  const palette = k.palette;
+  const color = (keys, key) => (palette.length ? palette[Math.max(0, keys.indexOf(key)) % palette.length] : undefined);
+  const off = hidden || new Set();
   if (t === "scatter") {
     return {
-      tooltip: { trigger: "item", valueFormatter: value },
+      tooltip: { trigger: "item", formatter: (p) => tipHtml(p.seriesName, [
+        { colour: p.color, name: humanise(x), value: value(p.value[0]) },
+        { colour: p.color, name: humanise(p.seriesName), value: value(p.value[1]) }]) },
+      grid: { left: 8, right: 16, top: 16, bottom: 8 },
       xAxis: { type: "value", axisLabel: { formatter: tick } },
       yAxis: { type: "value", axisLabel: { formatter: tick }, name: unit || undefined },
-      series: ys.map((y) => ({ type: "scatter", name: y,
+      series: ys.filter((y) => !off.has(String(y))).map((y) => ({ type: "scatter", name: y,
+        itemStyle: { color: color(ys, y) },
         data: rows.map((r) => [toNum(r[x]), toNum(r[y])]) })),
     };
   }
   if (!AXIS_TYPES[t]) {
     // A share of a whole (pie, funnel, treemap, sunburst, …): one item per row.
     const keys = firstSeen(stamped, x);
-    const item = (r) => ({ name: r[x], value: toNum(r[ys[0]]),
-      itemStyle: { color: color(keys, r[x]) } });
-    const s = { type: t, name: ys[0], data: rows.map(item) };
-    if (t === "pie") Object.assign(s, { radius: ["42%", "70%"], avoidLabelOverlap: true });
-    if (t === "treemap") Object.assign(s, { nodeClick: false, roam: false, breadcrumb: { show: false } });
+    const cells = t === "treemap" || t === "sunburst";
+    const item = (r) => {
+      const fill = color(keys, r[x]);
+      const o = { name: r[x], value: toNum(r[ys[0]]), itemStyle: { color: fill } };
+      // Each cell's label in whichever of ink and card reads on its fill.
+      if (cells && fill) o.label = { color: labelOn(fill, k) };
+      return o;
+    };
+    const s = { type: t, name: ys[0], data: rows.filter((r) => !off.has(String(r[x]))).map(item) };
+    if (t === "treemap") {
+      Object.assign(s, { nodeClick: false, roam: false, left: 0, top: 0, width: "100%", height: "100%",
+        label: { position: "insideTopLeft", padding: [8, 10],
+                 formatter: (p) => `{n|${p.name}}\n{v|${value(p.value)}}`,
+                 rich: { n: { fontSize: 12, fontWeight: 600, lineHeight: 17 },
+                         v: { fontSize: 11, lineHeight: 15 } } } });
+    }
     if (t === "sunburst") s.nodeClick = false;
-    return dimOption({ tooltip: { trigger: "item", valueFormatter: value }, series: [s] }, xSet);
+    const tip = (p) => tipHtml(p.name, [{ colour: p.color, name: humanise(ys[0]), value: value(p.value) }]);
+    return dimOption({ tooltip: { trigger: "item", formatter: tip }, series: [s] }, xSet, k);
   }
   const horizontal = t === "barh";
   const kind = t === "barh" ? "bar" : t === "area" ? "line" : t;
@@ -377,36 +509,93 @@ function optionFromRows({ type, rows, stamped, x, ys, series, format, unit, stac
     const keys = firstSeen(stamped, series);
     const present = new Set(rows.map((r) => r[series]));
     const y = ys[0];
-    out = keys.filter((k) => present.has(k)).map((k) => {
+    out = keys.filter((key) => present.has(key) && !off.has(String(key))).map((key) => {
       const data = cats.map(() => null);
-      for (const r of rows) if (r[series] === k) data[index.get(r[x])] = toNum(r[y]);
-      const dim = sSet && !sSet.has(String(k));
-      return { type: kind, name: String(k), data, itemStyle: { color: color(keys, k), opacity: dim ? 0.25 : undefined },
-               lineStyle: dim ? { opacity: 0.25 } : undefined };
+      for (const r of rows) if (r[series] === key) data[index.get(r[x])] = toNum(r[y]);
+      const dim = sSet && !sSet.has(String(key));
+      return { type: kind, name: String(key), data,
+               itemStyle: { color: color(keys, key), opacity: dim ? k.dim : undefined },
+               lineStyle: dim ? { opacity: k.dim } : undefined };
     });
   } else {
-    out = ys.map((y) => {
+    out = ys.filter((y) => !off.has(String(y))).map((y) => {
       const data = cats.map(() => null);
       for (const r of rows) data[index.get(r[x])] = toNum(r[y]);
-      return { type: kind, name: y, data, itemStyle: { color: color(ys, y) } };
+      return { type: kind, name: humanise(y), data, itemStyle: { color: color(ys, y) } };
     });
   }
+  // A bar's own value at its free end, as the D3 engine writes it: one
+  // series, unstacked, and few enough bars that the labels have room.
+  const labelled = kind === "bar" && out.length === 1 && !stack && cats.length <= (horizontal ? 16 : 8);
+  const r = stack ? 0 : k.radius;
+  const ends = kind === "line" && out.length <= 3;
   out.forEach((s) => {
-    if (t === "area") s.areaStyle = { opacity: 0.25 };
-    if (kind === "line") { s.showSymbol = cats.length <= 40; s.smooth = false; }
-    if (kind === "bar") { s.barMaxWidth = 48; s.itemStyle.borderRadius = horizontal ? [0, 3, 3, 0] : [3, 3, 0, 0]; }
+    if (t === "area") s.areaStyle = { opacity: k.area };
+    if (kind === "line") {
+      s.showSymbol = false;
+      // The line ends in its last value.
+      if (ends) s.endLabel = { show: true, distance: 6, color: k.value, fontSize: 11,
+                               fontWeight: 600, formatter: (p) => value(p.value) };
+    }
+    if (kind === "bar") {
+      s.itemStyle.borderRadius = horizontal ? [0, r, r, 0] : [r, r, 0, 0];
+      if (labelled) s.label = { show: true, position: horizontal ? "right" : "top", distance: 5,
+        color: k.value, fontSize: 11, fontWeight: 600, formatter: (p) => value(p.value) };
+      // A bar below zero rounds its own far end, and its label sits past it.
+      s.data = s.data.map((v) => (v === null || v >= 0 ? v : {
+        value: v, itemStyle: { borderRadius: horizontal ? [r, 0, 0, r] : [0, 0, r, r] },
+        label: labelled ? { position: horizontal ? "left" : "bottom" } : undefined }));
+    }
     if (stack) s.stack = "total";
   });
-  const catAxis = { type: "category", data: cats, inverse: horizontal };
+  // Every name on a short axis, wrapped rather than skipped.
+  const catAxis = { type: "category", data: cats, inverse: horizontal,
+    axisLabel: !horizontal && cats.length <= 8 ? { interval: 0, width: 120, overflow: "break" } : undefined };
   const valAxis = { type: "value", axisLabel: { formatter: tick }, name: unit || undefined };
+  const axisTip = (params) => {
+    const list = Array.isArray(params) ? params : [params];
+    const rowsOut = list.filter((p) => p.value !== null && p.value !== undefined && !(isObj(p.value)))
+      .map((p) => ({ colour: p.color, name: p.seriesName, value: value(isObj(p.data) ? p.data.value : p.value) }));
+    return tipHtml(list.length ? list[0].axisValueLabel ?? list[0].name : "", rowsOut);
+  };
   return dimOption({
-    tooltip: { trigger: "axis", axisPointer: { type: kind === "bar" ? "shadow" : "line" }, valueFormatter: value },
-    legend: out.length > 1 ? { type: "scroll", top: 0 } : undefined,
-    grid: { left: 8, right: 16, top: out.length > 1 ? 36 : 16, bottom: 8 },
+    tooltip: { trigger: "axis", axisPointer: { type: kind === "bar" ? "shadow" : "line" }, formatter: axisTip },
+    grid: { left: 8, right: ends ? 64 : 16, top: labelled && !horizontal ? 24 : 16, bottom: 18 },
     xAxis: horizontal ? valAxis : catAxis,
     yAxis: horizontal ? catAxis : valAxis,
     series: out,
-  }, xSet);
+  }, xSet, k);
+}
+
+/** The legend: small round chips under the chart's top edge, the D3
+ * engine's own (.tb-legend-item). On a live page a chip names a value of a
+ * column the page can select (a pie's category, a chart's series) and a
+ * click selects it, as a mark does; otherwise it shows or hides its series. */
+function Legend({ keys, colours, kind, column, selection, hidden, onToggle }) {
+  const set = picked(selection, column);
+  const swatch = kind === "line" || kind === "area" ? "line" : kind === "scatter" ? "dot" : "box";
+  return (
+    <div className="tb-legend-row">
+      {keys.map((key, i) => {
+        const name = String(key);
+        const on = !hidden.has(name);
+        const choose = (e) => {
+          if (column && tb() && tb().pick && tb().pick(column, name, e)) return;
+          onToggle(name);
+        };
+        return (
+          <button type="button" key={name} onClick={choose}
+            className={"tb-legend-item" + (column ? " tb-legend-item--select" : "")
+              + (set && !set.has(name) ? " tb-dimmed" : "")}
+            aria-pressed={column ? String(!!(set && set.has(name))) : String(on)}>
+            <span className={`tb-legend-swatch tb-legend-swatch--${swatch}`}
+              style={{ background: colours[i] }} />
+            <span>{column ? name : humanise(name)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 /** The chart. With `binding`, `x` and `y` (literal strings: they are its
@@ -424,13 +613,16 @@ function optionFromRows({ type, rows, stamped, x, ys, series, format, unit, stac
  * the value a click picks, or null for none; shift adds). Its own field's
  * other values stay and are dimmed, as on the kit's charts;
  * `highlight="off"` (or data-tb-highlight="off" on an ancestor) narrows
- * instead. `renderer` "canvas" (the default: large data) or "svg"; `theme`
- * "auto" follows the page's tokens and mode, or an ECharts theme object or
+ * instead. It draws in the house look (docs/reference/chart-style.md) from
+ * the page's chart tokens, so a theme or the project's brand restyles it;
+ * a series' legend is the kit's own chips. `renderer` "svg" (the default:
+ * vectors, tabular figures, the print) or "canvas" (thousands of marks);
+ * `theme` "auto" follows the page's tokens and mode, or an ECharts theme object or
  * name; `onEvents` maps an ECharts event name to a handler. ECharts' aria is
  * on unless the option sets its own; `ariaLabel` describes the chart. */
 export function EChart({ binding, x, y, series, type, format, valueFormat, unit, stack,
                          selects, onSelect, option, highlight, id,
-                         renderer = "canvas", height = 320, theme = "auto",
+                         renderer = "svg", height = 320, theme = "auto",
                          className, onEvents, ariaLabel, style }) {
   useHydrate();
   const outer = React.useRef(null);
@@ -453,17 +645,38 @@ export function EChart({ binding, x, y, series, type, format, valueFormat, unit,
   const rows = useBinding(binding, keep);
   const selection = useSelection();
   const stamped = React.useMemo(() => (binding && tb() ? tb().data(binding) : []), [binding]);
+  const [hidden, setHidden] = React.useState(() => new Set());
+  const toggle = (key) => setHidden((h) => {
+    const next = new Set(h);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    return next;
+  });
+  // The house tokens now (a theme object of the author's keeps its own colours).
+  const tokens = React.useMemo(() => {
+    const k = chartTokens();
+    if (theme !== "auto") k.palette = [];
+    return k;
+  }, [theme, modeTick]);
 
   const resolved = React.useMemo(() => {
     const over = typeof option === "function" ? option(rows) : option;
     const xSet = off ? null : picked(selection, field);
-    if (!claimed) return dimOption(over || {}, xSet);
-    const palette = theme === "auto" ? (echartsTheme().color || null) : null;
+    if (!claimed) return dimOption(over || {}, xSet, tokens);
     const base = optionFromRows({ type, rows, stamped, x, ys, series, format: fmtName, unit, stack,
-      palette, xSet, sSet: off ? null : picked(selection, series) });
+      k: tokens, xSet, sSet: off ? null : picked(selection, series), hidden });
     return over ? mergeOption(base, withoutData(over)) : base;
   }, [rows, stamped, selection, option, off, claimed, type, x, ys.join(","), series, fmtName, unit,
-      stack, field, theme, modeTick]);
+      stack, field, tokens, hidden]);
+
+  // The legend, when one is wanted: a share's categories, or the series.
+  const kind = type || "bar";
+  const legend = !claimed || (option && isObj(option) && option.legend) ? null
+    : LEGEND_TYPES[kind] ? { keys: firstSeen(stamped, x), column: x }
+    : series ? { keys: firstSeen(stamped, series), column: series }
+    : ys.length > 1 ? { keys: ys, column: null } : null;
+  const legendColumn = legend && legend.column && tb() && tb().selectable
+    && tb().selectable(legend.column) ? legend.column : null;
 
   const latest = React.useRef(resolved);
   latest.current = resolved;
@@ -531,8 +744,14 @@ export function EChart({ binding, x, y, series, type, format, valueFormat, unit,
     "data-tb-color": series, "data-tb-value-format": fmtName, "data-tb-unit": unit,
     "data-tb-stack": flag(stack), "data-tb-engine": "app",
   } : { id, "data-tb-computed": "" };
+  const colours = legend ? legend.keys.map((key, i) => (tokens.palette.length
+    ? tokens.palette[i % tokens.palette.length] : undefined)) : [];
   return (
-    <div ref={outer} className={className} style={style} data-tb-highlight={highlight} {...claim}>
+    <div ref={outer} className={["tb-echart", className || ""].join(" ").trim()} style={style}
+      data-tb-highlight={highlight} {...claim}>
+      {legend && legend.keys.length > 1 && (
+        <Legend keys={legend.keys} colours={colours} kind={kind} column={off ? null : legendColumn}
+          selection={selection} hidden={hidden} onToggle={toggle} />)}
       <div ref={host} role="img" aria-label={ariaLabel} style={{ height, width: "100%" }} />
     </div>
   );

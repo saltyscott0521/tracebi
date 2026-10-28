@@ -4,6 +4,57 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — A house chart look, and a project brand every page follows (BRAND)
+
+The owner's ask: the ECharts charts looked good but generic. Both a distinctive
+TraceBi look by default and a project's own brand that every chart and page
+picks up.
+
+The house look is written down once (`docs/reference/chart-style.md`) and held
+in tokens (`--tb-chart-font`, `-grid`, `-grid-dash`, `-axis`, `-label`, `-value`,
+`-tooltip-bg`, `-tooltip-border`, `-tooltip-shadow`, `-tooltip-radius`, `-radius`,
+`-bar`, `-line`, `-area`, `-dim`, `-motion`, plus `--tb-chart-1..8`). Both engines
+read only those: the D3 engine at every draw (`chartTokens` in `tracebi.js`), the
+kit's `<EChart>` through an ECharts theme it builds from them (`chartTokens` /
+`echartsTheme` in `kit.jsx`), so an option-only chart (the desk's sankey) takes
+the look too. Decisions: no value-axis line or ticks, faint dashed gridlines,
+the baseline at zero the one solid rule; bars at 55% of the band, the far end
+rounded at 2px (a bar below zero rounds its bottom and labels past it); 2px
+lines with round joins, no symbols until hover, ending in their last value; a
+flat 12% area wash; donuts with an empty centre (a chart never computes a
+total); treemap, sunburst and sankey cells bordered in the card colour, each
+cell's label in whichever of ink and card reads on its fill, a dimmed cell's in
+the muted text colour (the unreadable white-on-pale labels are gone); the
+tooltip the D3 readout's card, its value in the page's formatted text; the
+legend the D3 engine's round chips, which select on a live page
+(`tracebi.selectable` is new, `tracebi.pick` now says whether it picked); one
+dim strength (0.28) everywhere; 450ms cubic-out, none under reduced motion or
+in print. `<EChart>` now defaults to the SVG renderer: canvas cannot set tabular
+figures, and SVG prints as vectors and matches the D3 charts; canvas stays a prop
+for thousands of marks.
+
+The brand is one `tracebi.yaml` block read only through
+`project_config.brand()` and compiled by `tracebi/reports/brand.py`. It sits right
+after `tracebi.css` and before `reports/_theme.css`, so the project's own theme,
+a report's `theme` and its `style.css` still win (the book keeps its ink-blue
+accent from its `style.css`, and takes the brand's logo and name). The accent is
+the brand's; its text shade is deepened to 4.5:1 on the accent wash, the dark
+ground's pair lifted to 5:1 and 7:1 on the dark card, never chosen by hand. The
+palette is the brand's order, cycled to eight, and re-stated for the dark ground
+with each colour lifted only to 3.5:1 there (the dark blocks of `tracebi.css`
+name their own palette, so a brand must too). The build refuses, naming the
+fix, a missing file, a non-hex colour, a file over 400 KB, and an accent below
+3:1 on the white card (it names a deeper shade of the same hue). The logo is the
+masthead's existing `.tb-masthead-mark`, drawn by CSS from `--tb-brand-logo`: the
+kit's `<Masthead>` always renders the mark and a template's masthead is given one
+at build, so no markup changed; on a filled ground (the editorial hero, a banner)
+it is drawn in the ground's ink. `name` replaces the model's label as the
+masthead's kicker. `mode` is the default for any page that names none (template
+pages too, not only app.jsx: one rule, in `with_default_mode`). The reference
+project carries a fictional firm, Halyard Credit (a deep-teal accent and a
+six-colour palette, a two-pennant logo in mid-tones that read on both grounds),
+with no font, so Geist stays. The web app's own look is untouched.
+
 ## 2026-10-28 — One chart: ECharts in the kit, every chart live (ECHARTS-KIT)
 
 The owner's decision, locked: there is no separate "TraceBi chart" vs "author's

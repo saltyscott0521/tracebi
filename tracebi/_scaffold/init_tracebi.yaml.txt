@@ -26,3 +26,15 @@ engine:
   # threads: 4                       # default: min(4, CPUs)
   temp_directory: data/.duckdb-tmp   # relative to this file
   query_timeout_s: 30                # Ask, build and agent queries stop here
+#
+# brand: the look every report and dashboard of this project takes, charts
+# included. Colours are quoted hex (YAML reads # as a comment). The accent
+# must read at 3:1 on the white card; logo and font are files under the
+# project, at most 400 KB, inlined into each page.
+# brand:
+#   name: Cedar Capital              # the masthead's kicker, in place of the model's label
+#   logo: brand/logo.svg             # svg or png
+#   accent: "#0f6b5c"                # links, the focus ring, the first series
+#   palette: ["#0f6b5c", "#c8902e", "#5b6ee1", "#d1495b", "#3c9d9b", "#8a5a44"]
+#   font: brand/Inter.woff2          # optional; Geist otherwise
+#   mode: auto                       # optional: light | dark | auto

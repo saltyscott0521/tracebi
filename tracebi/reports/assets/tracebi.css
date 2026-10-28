@@ -97,6 +97,27 @@
   --tb-chart-7: #4a3aa7;
   --tb-chart-8: #e34948;
 
+  /* The house chart look (docs/reference/chart-style.md): the kit's <EChart>
+   * and the D3 engine read only these, so a theme or a brand restyles every
+   * chart of a page at once. Faint dashed gridlines and no axis line; the
+   * one solid rule is the baseline at zero. */
+  --tb-chart-font: var(--tb-font);
+  --tb-chart-grid: color-mix(in oklab, var(--tb-ink) 11%, transparent);
+  --tb-chart-grid-dash: 3 4;
+  --tb-chart-axis: var(--tb-rule);           /* the baseline at zero */
+  --tb-chart-label: var(--tb-muted);         /* axis and category labels */
+  --tb-chart-value: var(--tb-ink);           /* a mark's own value */
+  --tb-chart-tooltip-bg: var(--tb-bg);
+  --tb-chart-tooltip-border: var(--tb-rule);
+  --tb-chart-tooltip-shadow: 0 6px 20px rgba(16, 24, 40, .12), 0 1px 3px rgba(16, 24, 40, .06);
+  --tb-chart-tooltip-radius: 8px;
+  --tb-chart-radius: 2px;                    /* a bar's far end */
+  --tb-chart-bar: 55%;                       /* of its category's band */
+  --tb-chart-line: 2px;
+  --tb-chart-area: 0.12;                     /* an area's wash under its line */
+  --tb-chart-dim: 0.28;                      /* what a selection leaves out */
+  --tb-chart-motion: 450ms;                  /* cubic-out; none under reduced motion */
+
   /* Light until section 12b says otherwise; a page with no data-tb-mode is
    * given "auto" at build (template_package), so it follows the reader. */
   color-scheme: light;
@@ -513,20 +534,27 @@ tr.tb-window-pad td {
 .tb-legend-item:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
 .tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] { opacity: .45; }
 .tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; outline: 1.5px solid var(--tb-muted); outline-offset: -1.5px; }
-.tb-legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.tb-legend-swatch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .tb-legend-swatch--line { height: 3px; width: 14px; border-radius: 2px; }
 .tb-legend-swatch--dot { border-radius: 50%; }
 .tb-chart-tip {
   position: absolute; z-index: 3; pointer-events: none; min-width: 140px; max-width: 280px;
-  padding: 8px 10px; border-radius: 6px; background: var(--tb-bg); color: var(--tb-muted);
-  border: 1px solid var(--tb-rule); box-shadow: 0 4px 16px rgba(16, 24, 40, .12);
-  font-size: var(--tb-text-sm); line-height: 1.45;
+  padding: 8px 10px; border-radius: var(--tb-chart-tooltip-radius);
+  background: var(--tb-chart-tooltip-bg); color: var(--tb-muted);
+  border: 1px solid var(--tb-chart-tooltip-border); box-shadow: var(--tb-chart-tooltip-shadow);
+  font-family: var(--tb-chart-font); font-size: var(--tb-text-sm); line-height: 1.45;
 }
+/* The kit's <EChart> draws the same card: ECharts' tooltip is an HTML box
+ * in the page, given this class and the readout's own markup. */
+.tb-echart-tip { font-family: var(--tb-chart-font) !important; line-height: 1.45; }
+.tb-echart-tip .tb-chart-tip-title { white-space: nowrap; }
+/* Every number a chart writes in tabular figures, so values align. */
+.tb-chart-svg text, .tb-echart, .tb-chart-tip { font-variant-numeric: tabular-nums; }
 .tb-chart-tip[hidden] { display: none; }
 .tb-chart-tip-title { color: var(--tb-ink); font-weight: 600; margin-bottom: 2px; }
 .tb-chart-tip-row { display: flex; align-items: baseline; gap: 6px; }
 .tb-chart-tip-row strong { color: var(--tb-ink); font-variant-numeric: tabular-nums; }
-.tb-chart-tip-key { width: 10px; height: 3px; border-radius: 2px; flex: none; align-self: center; }
+.tb-chart-tip-key { width: 8px; height: 8px; border-radius: 50%; flex: none; align-self: center; }
 .tb-chart-tip-about { margin-top: 4px; max-width: 240px; font-size: var(--tb-text-xs); }
 /* The one part of the readout that takes the pointer: the way to its receipt. */
 .tb-chart-tip-receipt {
@@ -718,7 +746,7 @@ span > .tb-badge.tb-verdict { display: inline-flex; }
  * picked recede, as a class, so the number is the stylesheet's alone. */
 .tb-legend-item--select[aria-pressed="true"] { border-color: var(--tb-ink); }
 .tb-legend-item--select.tb-dimmed { opacity: .5; }
-.tb-chart-svg .tb-dimmed { opacity: .28; transition: opacity .15s; }
+.tb-chart-svg .tb-dimmed { opacity: var(--tb-chart-dim); transition: opacity .15s; }
 .tb-chart-svg g.tb-series.tb-dimmed .tb-dimmed { opacity: 1; }
 /* A receded bar's own value stays readable: muted ink, not faded white. */
 .tb-chart-svg g.tb-values text.tb-dimmed { opacity: 1; fill: var(--tb-muted); }
@@ -1153,6 +1181,8 @@ label > input[data-tb-search] { width: 11em; }
   --tb-chart-6: #7cc06a;
   --tb-chart-7: #8b5cf6;
   --tb-chart-8: #e66767;
+  --tb-chart-tooltip-bg: #1c1c21;
+  --tb-chart-tooltip-shadow: 0 8px 24px rgba(0, 0, 0, .5);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -1181,6 +1211,8 @@ label > input[data-tb-search] { width: 11em; }
     --tb-chart-6: #7cc06a;
     --tb-chart-7: #8b5cf6;
     --tb-chart-8: #e66767;
+    --tb-chart-tooltip-bg: #1c1c21;
+    --tb-chart-tooltip-shadow: 0 8px 24px rgba(0, 0, 0, .5);
     color-scheme: dark;
   }
 }

@@ -123,9 +123,11 @@ Every gesture on a live page writes the same selection:
 
 ## Charts
 
-`<EChart>` is the chart: Apache ECharts, drawn into its own canvas (or SVG),
+`<EChart>` is the chart: Apache ECharts, drawn into its own SVG (or canvas),
 for everything from a bar to a treemap, a sankey or 100,000 points. Whether a
-chart is a checked figure follows its data, not who wrote it.
+chart is a checked figure follows its data, not who wrote it. It draws in the
+house look, from the page's chart tokens ([[chart-style]]), so the project's
+brand reaches it; never hard-code a colour in its `option`.
 
 ```jsx
 <EChart binding="by_sector" type="treemap" x="dim_issuer.sector" y="fair_value"
@@ -139,8 +141,8 @@ chart is a checked figure follows its data, not who wrote it.
 | `series` | A column whose values split the rows into series (`<Chart color>`) |
 | `format`, `unit`, `stack` | The values' named format, a unit suffix, stacked series |
 | `option` | An ECharts option, or a function of the rows, deep-merged on top: the escape hatch for anything the props do not say |
-| `renderer` | `"canvas"` (default: large data, smooth hover) or `"svg"` (crisp text, small charts, prints sharp) |
-| `theme` | `"auto"` (default): the page's tokens and palette, following its mode; or an ECharts theme |
+| `renderer` | `"svg"` (default: vectors, tabular figures, prints sharp) or `"canvas"` (thousands of marks) |
+| `theme` | `"auto"` (default): the house look from the page's tokens and palette, following its mode; or an ECharts theme |
 | `selects`, `onSelect` | On an option-only chart, the column a click selects; `onSelect(params)` returns the value a click picks (null: none) |
 | `highlight` | `"off"`: a selection narrows the chart instead of dimming its own field's other values |
 | `onEvents`, `ariaLabel`, `height`, `id`, `className` | ECharts events (`{click: (p) => …}`), the description (ECharts' aria is on by default, so a canvas chart has one), size, id |

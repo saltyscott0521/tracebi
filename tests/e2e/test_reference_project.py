@@ -979,15 +979,17 @@ def test_the_showcase_carries_every_affordance(built):
                    'id="fig-treemap"', "D3 7.9.0 (ISC)"):
         assert marker in html, f"showcase lost its {marker} affordance"
     assert "Working notes" not in html, "exploration must die at build"
-    # The masthead's kicker and the footer name the model by its label; the
-    # template writes no kicker, the build adds it (an app's kit reads it
-    # from its mount point).
-    assert '<p class="tb-kicker">Direct Lending Portfolio</p>' in html
+    # The masthead's kicker names the project's brand (tracebi.yaml brand:
+    # name, in place of the model's label) and the footer the model by its
+    # label; the template writes no kicker, the build adds it with the
+    # brand's mark (an app's kit reads it from its mount point).
+    assert '<p class="tb-kicker">Halyard Credit</p>' in html
+    assert '<div class="tb-masthead-mark" role="img" aria-label="Halyard Credit">' in html
     foot = html[html.index('class="tb-footer-line"'):]
     foot = foot[:foot.index("</p>")]
     assert " · Direct Lending Portfolio. " in foot and "portfolio_model" not in foot
     app = (built / "output" / "portfolio_model" / "portfolio_dashboard.html").read_text()
-    assert 'data-tb-kicker="Direct Lending Portfolio"' in app
+    assert 'data-tb-kicker="Halyard Credit"' in app
     # A page with a selection block asks the app to run its cut; it connects nowhere.
     assert "connect-src 'none'" in html and "connect-src 'self'" not in html
     # ...and its runtime never calls the app itself: served on its own at
@@ -1624,6 +1626,68 @@ def test_the_desks_page_filters_recompute_every_view(built):
     finally:
         browser.close()
         pw.stop()
+
+
+def test_the_projects_brand_reaches_every_page_and_its_charts(built):
+    """tracebi.yaml's brand: one block, and every page follows. The desk's
+    tokens carry its accent and palette, an <EChart> draws in that palette,
+    the masthead names the firm with its logo, and a treemap cell a selection
+    leaves out labels itself in the muted text colour, never white on a pale
+    cell. A brand that would ship unreadable, or point at nothing, fails the
+    build naming the fix."""
+    import yaml
+
+    mark = yaml.safe_load((built / "tracebi.yaml").read_text())["brand"]
+    pw, browser = _browser()
+    try:
+        page = browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme="light")
+        page.goto((built / "output" / "portfolio_model" / "portfolio_desk.html").as_uri()
+                  + "#view=Funds")
+        _settle(page)
+        tokens = page.evaluate("""() => { const cs = getComputedStyle(document.documentElement);
+            return [1, 2, 3, 4, 5, 6].map((i) => cs.getPropertyValue('--tb-chart-' + i).trim())
+              .concat([cs.getPropertyValue('--tb-accent').trim()]); }""")
+        assert tokens == mark["palette"] + [mark["accent"]]
+        assert page.locator(".tb-masthead .tb-kicker").first.text_content() == mark["name"]
+        logo = page.evaluate("""() => getComputedStyle(
+            document.querySelector('.tb-masthead-mark')).backgroundImage""")
+        assert logo.startswith('url("data:image/svg+xml;base64,')
+        treemap = """() => { const el = document.querySelector('#ech-sector-treemap [role=img]');
+            const o = window.__tbModules.echarts.getInstanceByDom(el).getOption();
+            return {color: o.color, items: o.series[0].data.map((d) => ({name: d.name,
+              fill: d.itemStyle.color, label: (d.label || {}).color}))}; }"""
+        drawn = page.evaluate(treemap)
+        assert drawn["color"][:6] == mark["palette"]
+        sectors = page.evaluate("() => window.tracebi.data('by_sector').map((r) => r['dim_issuer.sector'])")
+        assert [d["fill"] for d in drawn["items"]] == [
+            mark["palette"][sectors.index(d["name"]) % 6] for d in drawn["items"]]
+
+        page.evaluate("(s) => window.tracebi.pick('dim_issuer.sector', s)", sectors[1])
+        _settle(page)
+        muted = page.evaluate("""() => { const d = document.createElement('div');
+            d.style.color = 'var(--tb-chart-label)'; document.body.appendChild(d);
+            const c = getComputedStyle(d).color; d.remove(); return c; }""")
+        to_hex = lambda c: "#%02x%02x%02x" % tuple(int(x) for x in re.findall(r"\d+", c)[:3])  # noqa: E731
+        for item in page.evaluate(treemap)["items"]:
+            if item["name"] == sectors[1]:
+                assert item["label"] != to_hex(muted), item
+            else:
+                assert item["label"] == to_hex(muted), item
+    finally:
+        browser.close()
+        pw.stop()
+
+    yaml_path = built / "tracebi.yaml"
+    kept = yaml_path.read_text()
+    try:
+        yaml_path.write_text(kept.replace(f'accent: "{mark["accent"]}"', 'accent: "#f2d24b"'))
+        code, out = run_cli("report", "build", "portfolio_model/portfolio_desk")
+        assert code != 0 and "brand.accent #f2d24b reads at" in out and "such as #" in out, out
+        yaml_path.write_text(kept.replace("logo: brand/logo.svg", "logo: brand/mark.svg"))
+        code, out = run_cli("report", "build", "portfolio_model/portfolio_dashboard")
+        assert code != 0 and "brand.logo 'brand/mark.svg': no such file" in out, out
+    finally:
+        yaml_path.write_text(kept)
 
 
 def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):

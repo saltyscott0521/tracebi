@@ -66,6 +66,7 @@
 <a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/chart-style.html">Chart style</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
@@ -319,9 +320,11 @@ totals.</p>
 </tbody>
 </table>
 <h2 id="charts">Charts</h2>
-<p><code>&lt;EChart&gt;</code> is the chart: Apache ECharts, drawn into its own canvas (or SVG),
+<p><code>&lt;EChart&gt;</code> is the chart: Apache ECharts, drawn into its own SVG (or canvas),
 for everything from a bar to a treemap, a sankey or 100,000 points. Whether a
-chart is a checked figure follows its data, not who wrote it.</p>
+chart is a checked figure follows its data, not who wrote it. It draws in the
+house look, from the page's chart tokens (<a href="../reference/chart-style.html">Chart style</a>), so the project's
+brand reaches it; never hard-code a colour in its <code>option</code>.</p>
 <pre><code class="language-jsx">&lt;EChart binding=&quot;by_sector&quot; type=&quot;treemap&quot; x=&quot;dim_issuer.sector&quot; y=&quot;fair_value&quot;
         format=&quot;currency_compact&quot; height={300} /&gt;
 </code></pre>
@@ -355,11 +358,11 @@ chart is a checked figure follows its data, not who wrote it.</p>
 </tr>
 <tr>
 <td><code>renderer</code></td>
-<td><code>"canvas"</code> (default: large data, smooth hover) or <code>"svg"</code> (crisp text, small charts, prints sharp)</td>
+<td><code>"svg"</code> (default: vectors, tabular figures, prints sharp) or <code>"canvas"</code> (thousands of marks)</td>
 </tr>
 <tr>
 <td><code>theme</code></td>
-<td><code>"auto"</code> (default): the page's tokens and palette, following its mode; or an ECharts theme</td>
+<td><code>"auto"</code> (default): the house look from the page's tokens and palette, following its mode; or an ECharts theme</td>
 </tr>
 <tr>
 <td><code>selects</code>, <code>onSelect</code></td>

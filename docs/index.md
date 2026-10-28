@@ -71,6 +71,7 @@ Every file, key, command and route.
 - [[template-html]] — Turn ordinary HTML into live figures with `data-tb-*` attributes
 - [[figure-helper]] — Declare a figure in [[report-json]] and place it in your page with one call
 - [[number-formats]] — The named formats you can give a figure, and the defaults TraceBi picks when you give none
+- [[chart-style]] — The house chart look, and the tokens a brand or a theme changes
 - [[folder-yaml]] — A `_folder.yaml` in a library folder says who may see, build in, publish into and manage that folder
 - [[api-routes]] — The HTTP API `tracebi serve` provides
 

@@ -1881,7 +1881,8 @@ class TemplatePackage:
         *extra_blocks_html* (the final build's semantic-contract blocks)
         rides in the same data-block slot, after the bindings.
         """
-        from tracebi.reports.stack import apply_stack, project_theme_css
+        from tracebi.project_config import brand
+        from tracebi.reports.stack import apply_stack, project_brand_css, project_theme_css
 
         if self.app_source is not None:
             from tracebi.reports.app_lane import app_blocks_html
@@ -1900,6 +1901,8 @@ class TemplatePackage:
             report_js=self.script_js,
             app=self.app_source is not None,
             theme_css=self.theme_css,
+            brand_css=project_brand_css(),
+            default_mode=brand().get("mode", "auto"),
         )
 
 
@@ -1931,16 +1934,25 @@ _MASTHEAD_OPEN = re.compile(
 
 
 def _with_kicker(page: str, kicker: str, *, app: bool) -> str:
-    """Give the masthead its default kicker, the model's label, when the
-    author wrote none; a kicker the author wrote always wins.
+    """Give the masthead its default kicker, the model's label (the project
+    brand's name when ``tracebi.yaml`` sets one), when the author wrote
+    none; a kicker the author wrote always wins.
 
     A template page gets a ``<p class="tb-kicker">`` before the masthead's
     ``<h1>``, so a reader without JavaScript sees it too. An app page's
     masthead is drawn by the kit, which reads the label from the app's
-    mount point, ``<div id="tb-app" data-tb-kicker>``.
+    mount point, ``<div id="tb-app" data-tb-kicker>``. With a brand logo, a
+    template's masthead that has no ``.tb-masthead-mark`` gets one (the kit's
+    always has one), which the brand's CSS draws the logo into.
     """
     import html as _html
 
+    from tracebi.project_config import brand as _brand
+
+    mark = _brand()
+    kicker = mark.get("name") or kicker
+    if mark.get("logo") and not app:
+        page = _with_mark(page, mark.get("name") or "")
     if not kicker:
         return page
     text = _html.escape(kicker)
@@ -1958,6 +1970,22 @@ def _with_kicker(page: str, kicker: str, *, app: bool) -> str:
         return page
     return (page[:h1.start()] + f'<p class="tb-kicker">{text}</p>\n'
             + page[h1.start():])
+
+
+def _with_mark(page: str, name: str) -> str:
+    """A ``.tb-masthead-mark`` first in a template's masthead, for the brand's
+    logo, unless the author placed one."""
+    import html as _html
+
+    head = _MASTHEAD_OPEN.search(page)
+    if head is None:
+        return page
+    close = page.lower().find(f"</{head.group(1).lower()}>", head.end())
+    if "tb-masthead-mark" in page[head.end():close if close >= 0 else None]:
+        return page
+    label = f' role="img" aria-label="{_html.escape(name)}"' if name else ' aria-hidden="true"'
+    return (page[:head.end()] + f'\n<div class="tb-masthead-mark"{label}></div>'
+            + page[head.end():])
 
 
 def _footer_html(manifest: ReportManifest, model_labels: list[str],

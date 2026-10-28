@@ -6,7 +6,8 @@ injection order IS the override chain — ``Theme.with_overrides``'s
 append-so-later-wins semantic, promoted to page scale:
 
     <head>:  CSP → stage meta → tracebi.css (shipped) →
-             reports/_theme.css (project) → style.css (report)
+             the brand (tracebi.yaml brand:) → reports/_theme.css (project) →
+             the report's named theme → style.css (report)
     </body>: charting libs → tracebi.js (shipped runtime) → data blocks →
              tracebi-figures config → script.js (report)
 
@@ -109,6 +110,14 @@ def project_house_style(root: Optional[str] = None) -> Optional[dict]:
     return {"file": f"{reports_dir}/{HOUSE_STYLE}", "text": text}
 
 
+def project_brand_css(root: Optional[str] = None) -> str:
+    """The project's brand (``tracebi.yaml`` ``brand:``) as CSS tokens, or
+    ``""``. A bad brand raises, naming the key and the fix: the build fails."""
+    from tracebi.project_config import brand
+    from tracebi.reports.brand import brand_css
+    return brand_css(brand(root))
+
+
 def project_theme_css(root: Optional[str] = None) -> str:
     """The project brand layer: ``reports/_theme.css`` when it exists.
 
@@ -206,7 +215,7 @@ def _lib_credit(lib: str) -> str:
     return f"D3 {m.group(1)} (ISC)" if m else lib
 
 
-def libraries_comment(libs) -> str:
+def libraries_comment(libs, brand: bool = False) -> str:
     """An HTML comment at the top of every report naming what is inlined in
     it, and under which licence — a reader who opens the source learns what
     the file contains without leaving it."""
@@ -219,6 +228,9 @@ def libraries_comment(libs) -> str:
         "  tracebi.js   TraceBi runtime (MIT): fills each figure from the "
         "embedded, fingerprinted data; tabs, filters, trace drawer",
     ]
+    if brand:
+        lines.append("  brand        the project's brand (tracebi.yaml brand:): its colours, "
+                     "and its logo and font when it names them")
     for lib in libs or ():
         lines.append(f"  {_lib_credit(lib)}: {_LIB_ROLE.get(lib, 'draws the charts')}")
     lines.append("  Report files: style.css and script.js when present; "
@@ -228,7 +240,8 @@ def libraries_comment(libs) -> str:
 
 def stack_head(stage: Optional[str] = None, project_css: str = "",
                report_css: str = "", include_csp: bool = True,
-               libs=None, app: bool = False, theme_css: str = "") -> str:
+               libs=None, app: bool = False, theme_css: str = "",
+               brand_css: str = "") -> str:
     """The head injection, in override order (later wins).
 
     On an app page (app.jsx) tracebi.css goes in a cascade layer between
@@ -237,9 +250,11 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
     figures. The project theme and style.css stay unlayered: they win. The
     dark-mode token blocks are repeated after the layer, unlayered, so a
     theme's or style.css's :root tokens still give way to the dark ground,
-    as they do on a template page (where specificity decides)."""
+    as they do on a template page (where specificity decides). The brand
+    comes right after tracebi.css, unlayered: it re-states the dark ground's
+    palette, so it wins over the repeated mode tokens by order."""
     head = csp_meta() if include_csp else ""
-    head += libraries_comment(libs)
+    head += libraries_comment(libs, brand=bool(brand_css.strip()))
     if stage:
         head += f'<meta name="tracebi-stage" content="{stage}">\n'
     css = read_asset("tracebi.css")
@@ -250,6 +265,9 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
                f"@layer tracebi {{\n{css}\n}}\n{modes}")
     head += ("<!-- tracebi.css: the TraceBi design system -->\n"
              f"<style>\n{font_face_css()}\n{css}\n</style>\n")
+    if brand_css.strip():
+        head += ("<!-- the project's brand (tracebi.yaml brand:) -->\n"
+                 f"<style>\n{brand_css}</style>\n")
     if project_css.strip():
         head += ("<!-- reports/_theme.css: the project theme -->\n"
                  f"<style>\n{project_css}\n</style>\n")
@@ -304,22 +322,24 @@ _HTML_OPEN = re.compile(r"<html\b[^>]*>", re.I)
 _VIEWPORT = re.compile(r"<meta\b[^>]*\bname=[\"']?viewport\b", re.I)
 
 
-def with_default_mode(page: str) -> str:
-    """Give a page that names no mode ``data-tb-mode="auto"``: it follows the
-    reader's system, as the app does. An explicit ``light`` / ``dark`` (on the
-    template's ``<html>``, or an app's ``look``) is left alone."""
+def with_default_mode(page: str, mode: str = "auto") -> str:
+    """Give a page that names no mode *mode*: ``auto`` (it follows the
+    reader's system, as the app does) unless the project's brand names
+    another. An explicit ``light`` / ``dark`` (on the template's ``<html>``,
+    or an app's ``look``) is left alone."""
     m = _HTML_OPEN.search(page)
     if m is None or "data-tb-mode" in m.group(0):
         return page
-    return page[:m.end() - 1] + ' data-tb-mode="auto"' + page[m.end() - 1:]
+    return page[:m.end() - 1] + f' data-tb-mode="{mode}"' + page[m.end() - 1:]
 
 
 def apply_stack(page: str, *, libs, data_blocks_html: str,
                 stage: Optional[str] = None, project_css: str = "",
                 report_css: str = "", figures_cfg: Optional[dict] = None,
-                report_js: str = "", app: bool = False, theme_css: str = "") -> str:
+                report_js: str = "", app: bool = False, theme_css: str = "",
+                brand_css: str = "", default_mode: str = "auto") -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
-    page = with_default_mode(page)
+    page = with_default_mode(page, default_mode)
     # A phone lays out a page that names no viewport 980px wide and shrinks
     # it to fit, so none of tracebi.css's narrow-screen rules would apply.
     viewport = ("" if _VIEWPORT.search(page) else
@@ -334,7 +354,7 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
         page, "</head>",
         viewport + stack_head(stage, project_css, report_css,
                               include_csp=csp_meta().strip() not in page, libs=libs,
-                              app=app, theme_css=theme_css))
+                              app=app, theme_css=theme_css, brand_css=brand_css))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))

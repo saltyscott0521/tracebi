@@ -225,7 +225,9 @@ the page's footer says so. Every chart is live: its rows are its binding's
 query re-run under the page's selection, and a click on a mark selects its
 `x` value (`selects="dim.col"` on an option-only chart; shift adds), its own
 field's other values kept and dimmed (`highlight="off"` narrows instead).
-`renderer="svg"` suits a small chart, the default canvas big data.
+Both chart engines draw the house look (`docs/reference/chart-style.md`)
+from the `--tb-chart-*` tokens; `renderer="svg"` is the default (vectors,
+tabular figures), `renderer="canvas"` for thousands of marks.
 `useBinding("name")` hands your own components the same live rows (the
 stamped rows on an `"embed": "none"` page) and `useSelection()` the
 selection: what you draw from them is live, not a checked figure, and a sum
@@ -364,6 +366,14 @@ already said. With nobody in the loop, use the defaults. Then:
 in `report.json` `"look"` (an `app.jsx` has no `<html>`) and whose sidebar and
 title are its own components; `new-report` and `new-dashboard --html` write
 it as the template attributes above. These change how a page looks, never a number or the trace's tones.
+
+**Brand.** A project's brand lives in `tracebi.yaml` `brand:` (`name`,
+`logo`, `accent`, `palette`, optional `font` and `mode`): every report and
+dashboard of the project takes it, its charts included (`tracebi theme list`
+shows it). Never hard-code a colour in an `<EChart option>` or a style: a
+series takes the palette in order (`--tb-chart-1..8`), and the house chart
+look (`docs/reference/chart-style.md`) comes from the `--tb-chart-*` tokens
+the brand and the themes set.
 
 **Themes and the house style.** A report can name a shipped theme in
 `report.json` `"theme"` (`tracebi theme list`: graphite, indigo, midnight,
