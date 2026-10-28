@@ -23,13 +23,15 @@ project. A report's own theme wins over the project's; no theme anywhere is
 Ledger. `tracebi theme list` shows the three, the default and the project's
 choice marked. `tracebi new-report` / `new-dashboard --theme <name>` and the
 gateway's `start_draft(theme=…)` write it into `report.json`. Any other name
-fails the build, naming the three. The reference project shows all three: its
-reports are Ledger, `portfolio_desk` is Nightdesk and `portfolio_dashboard` is
-Signal.
+fails the build, naming the three. Themes are set at these two levels
+only, never per folder. In the reference project the SaaS reports
+(`saas_model/mrr_dashboard`, `cohort_brief`) are Nightdesk and every other
+report is Ledger; it sets no brand.
 
 **A brand on top.** The project's brand ([[tracebi-yaml]] `brand:`) layers
-over whichever theme: its accent, palette, font, logo and name replace the
-theme's colours and face; the theme keeps its surfaces, depth, density,
+over whichever theme: its accent, palette, font and logo replace the
+theme's colours and face, and its logo and name are the firm mark in the
+masthead (the kicker stays the model's label); the theme keeps its surfaces, depth, density,
 radius and numerals. The accent is still checked at 3:1 on the white card, and
 on the dark ground the brand's accent and palette are lifted to read against
 that theme's own dark card. Signal's lead tile is the brand's accent, with

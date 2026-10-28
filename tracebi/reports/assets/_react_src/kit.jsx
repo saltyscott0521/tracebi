@@ -421,12 +421,28 @@ function modelKicker() {
   return host ? host.getAttribute("data-tb-kicker") : null;
 }
 
+/** The project's firm mark (tracebi.yaml brand: name and logo), which the
+ * build writes on the app's mount point: the logo, then the name beside it.
+ * null when the project sets neither. Never the kicker. */
+function brandMark() {
+  const host = typeof document === "undefined" ? null : document.getElementById("tb-app");
+  if (!host || !host.hasAttribute("data-tb-brand")) return null;
+  const name = host.getAttribute("data-tb-brand");
+  return (
+    <span className="tb-brand">
+      {host.hasAttribute("data-tb-brand-logo") && <span className="tb-brand-logo" aria-hidden="true" />}
+      {name && <span className="tb-brand-name">{name}</span>}
+    </span>
+  );
+}
+
 /** The masthead that opens the page: an optional mark, a kicker, the title
  * (a string, or text with <Value> figures in it), the standfirst (children),
  * and a meta line with the period the numbers cover, when the file was built
  * and the verdict chip, both filled by the runtime from the file itself.
  * The kicker defaults to the model's label; an explicit one wins, and
- * kicker={null} shows none.
+ * kicker={null} shows none. The mark defaults to the project's brand (its
+ * logo and name); an explicit one wins, and mark={null} shows none.
  * `period` is presentation ("Q3 2026"); the title's own numbers are figures.
  * Other props (data-tb-title="center|banner|nav") go on the <header>. */
 export function Masthead({ title, kicker, period, mark, className, children, ...rest }) {
@@ -434,7 +450,7 @@ export function Masthead({ title, kicker, period, mark, className, children, ...
   const shown = kicker === undefined ? modelKicker() : kicker;
   return (
     <header {...rest} className={["tb-masthead", className || ""].join(" ").trim()}>
-      <div className="tb-masthead-mark">{mark}</div>
+      <div className="tb-masthead-mark">{mark === undefined ? brandMark() : mark}</div>
       {shown != null && shown !== "" && <p className="tb-kicker">{shown}</p>}
       <h1>{title}</h1>
       {children != null && <div className="tb-standfirst">{children}</div>}

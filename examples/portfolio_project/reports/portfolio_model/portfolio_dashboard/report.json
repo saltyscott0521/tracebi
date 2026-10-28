@@ -1,7 +1,6 @@
 {
   "name": "Portfolio Dashboard",
   "author": "workflow",
-  "theme": "signal",
   "description": "Fair value, unrealized gain and the portfolio mark across the three funds, by sector, fund and issuer, with every holding listed.",
   "data": {
     "totals": {

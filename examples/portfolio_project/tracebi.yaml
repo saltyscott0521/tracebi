@@ -27,14 +27,3 @@ engine:
   # threads: 4                       # default: min(4, CPUs)
   temp_directory: data/.duckdb-tmp   # relative to this file
   query_timeout_s: 30                # Ask, build and agent queries stop here
-#
-# brand: the look every report and dashboard here takes. The accent (links,
-# the focus ring, the first series) and the chart palette, in the order a
-# chart's series take them; the logo and the name open each masthead. No
-# font: the pages keep Geist. reports/_theme.css, a report's "theme" and its
-# style.css still win over it, in that order.
-brand:
-  name: Halyard Credit
-  logo: brand/logo.svg
-  accent: "#1d5c63"
-  palette: ["#1d5c63", "#d4913a", "#6574c4", "#c25450", "#4aa3a0", "#8c6b52"]

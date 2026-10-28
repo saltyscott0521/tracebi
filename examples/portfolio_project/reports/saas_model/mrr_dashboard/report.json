@@ -1,6 +1,7 @@
 {
   "name": "SaaS MRR Dashboard",
   "author": "tracebi init --template saas-metrics",
+  "theme": "nightdesk",
   "description": "Ending MRR, customers and logo churn, month by month and by plan.",
   "data": {
     "kpis": {

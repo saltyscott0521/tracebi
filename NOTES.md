@@ -4,6 +4,27 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — The reference project carries no brand; a brand never hides the subject (UNBRAND)
+
+The owner's decisions. The reference project's four demos are unrelated
+businesses (a credit portfolio, a SaaS company, housing affordability, a wealth
+manager), so one firm's name, logo and colours on all of them was wrong: its
+`brand:` block and `brand/` folder are gone. Themes are set at two levels only,
+per report (`report.json` `"theme"`) or for the project (`brand: {theme}`), no
+folder level: the SaaS reports (mrr_dashboard, cohort_brief) name Nightdesk,
+everything else falls to Ledger (the desk and the dashboard no longer name
+Nightdesk and Signal). And a brand's `name` no longer replaces the masthead's
+kicker, which hid what a report is about: the logo and the name sit together as
+the firm mark in the masthead's mark slot (`.tb-brand`: the logo at its own
+aspect ratio, then the name in small type, in the masthead's ink), the name alone
+when there is no logo, and the kicker stays the model's label, on template and
+app.jsx pages alike (a template's empty `.tb-masthead-mark` is filled at build;
+the kit reads `data-tb-brand` / `data-tb-brand-logo` from the mount point; a mark
+the author drew wins). The BRAND and HOUSE-THEMES journey steps now write their
+own brand block and logo into a copy of the project.
+
+---
+
 ## 2026-10-28 — One chart: ECharts draws every chart, the D3 engine is retired (ECHARTS-ENGINE)
 
 The owner's decision, locked: there is no separate "TraceBi chart" and
@@ -107,8 +128,10 @@ chose one, in one locked sentence (`house.OFFER`) that the guides, the authoring
 SOP, the `author_report` prompt and `tracebi context` all carry;
 `start_draft(theme=)` seeds a new report draft's `report.json` with it.
 
-Reference project: the desk is Nightdesk, the dashboard Signal, everything else
-Ledger under the Halyard Credit brand. The web app is untouched.
+Reference project: the desk was Nightdesk and the dashboard Signal, everything
+else Ledger, under a fictional firm's brand; since UNBRAND (same day) the SaaS
+reports are Nightdesk, everything else Ledger, with no brand. The web app is
+untouched.
 
 ## 2026-10-28 — A house chart look, and a project brand every page follows (BRAND)
 
@@ -154,12 +177,11 @@ fix, a missing file, a non-hex colour, a file over 400 KB, and an accent below
 masthead's existing `.tb-masthead-mark`, drawn by CSS from `--tb-brand-logo`: the
 kit's `<Masthead>` always renders the mark and a template's masthead is given one
 at build, so no markup changed; on a filled ground (the editorial hero, a banner)
-it is drawn in the ground's ink. `name` replaces the model's label as the
-masthead's kicker. `mode` is the default for any page that names none (template
+it is drawn in the ground's ink. `name` replaced the model's label as the
+masthead's kicker (until UNBRAND: now it is the firm mark beside the logo). `mode` is the default for any page that names none (template
 pages too, not only app.jsx: one rule, in `with_default_mode`). The reference
-project carries a fictional firm, Halyard Credit (a deep-teal accent and a
-six-colour palette, a two-pennant logo in mid-tones that read on both grounds),
-with no font, so Geist stays. The web app's own look is untouched.
+project carried a fictional firm's brand (a deep-teal accent, a six-colour
+palette, a two-pennant logo) until UNBRAND removed it the same day. The web app's own look is untouched.
 
 ## 2026-10-28 — One chart: ECharts in the kit, every chart live (ECHARTS-KIT)
 

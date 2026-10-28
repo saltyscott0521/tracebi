@@ -24,7 +24,7 @@ and ``brand``, the look every report page of the project takes
 (:func:`brand`, :mod:`tracebi.reports.brand`)::
 
     brand:
-      name: Cedar Capital        # the masthead's kicker, in place of the model's label
+      name: Cedar Capital        # the firm mark beside the logo; never replaces the kicker
       logo: brand/logo.svg       # svg or png under the project, inlined (at most 400 KB)
       accent: "#0f6b5c"          # --tb-accent; its text and dark-ground shades derived
       palette: ["#0f6b5c", "#c8902e", "#5b6ee1"]   # --tb-chart-1..n

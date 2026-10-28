@@ -979,17 +979,15 @@ def test_the_showcase_carries_every_affordance(built):
                    'id="fig-treemap"', "D3 7.9.0 (ISC)"):
         assert marker in html, f"showcase lost its {marker} affordance"
     assert "Working notes" not in html, "exploration must die at build"
-    # The masthead's kicker names the project's brand (tracebi.yaml brand:
-    # name, in place of the model's label) and the footer the model by its
-    # label; the template writes no kicker, the build adds it with the
-    # brand's mark (an app's kit reads it from its mount point).
-    assert '<p class="tb-kicker">Halyard Credit</p>' in html
-    assert '<div class="tb-masthead-mark" role="img" aria-label="Halyard Credit">' in html
+    # The masthead's kicker and the footer name the model by its label; the
+    # template writes no kicker, the build adds it (an app's kit reads it from
+    # its mount point). The reference project sets no brand, so no firm mark.
+    assert '<p class="tb-kicker">Direct Lending Portfolio</p>' in html
     foot = html[html.index('class="tb-footer-line"'):]
     foot = foot[:foot.index("</p>")]
     assert " · Direct Lending Portfolio. " in foot and "portfolio_model" not in foot
     app = (built / "output" / "portfolio_model" / "portfolio_dashboard.html").read_text()
-    assert 'data-tb-kicker="Halyard Credit"' in app
+    assert '<div id="tb-app" data-tb-kicker="Direct Lending Portfolio">' in app
     # A page with a selection block asks the app to run its cut; it connects nowhere.
     assert "connect-src 'none'" in html and "connect-src 'self'" not in html
     # ...and its runtime never calls the app itself: served on its own at
@@ -1632,37 +1630,113 @@ def test_the_desks_page_filters_recompute_every_view(built):
         pw.stop()
 
 
-def test_the_projects_brand_reaches_every_page_and_its_charts(built):
+def test_the_reference_project_carries_no_brand_and_two_house_themes(built):
+    """The reference project's four demos are unrelated businesses, so it sets
+    no brand: no built page carries a firm's name or mark. Themes are set per
+    report: the SaaS reports name Nightdesk, every other report falls to the
+    default, Ledger (the desk and the dashboard included)."""
+    pages = sorted((built / "output").rglob("*.html"))
+    assert len(pages) >= len(REPORTS)
+    for path in pages:
+        html = path.read_text()
+        assert "Halyard" not in html and 'class="tb-brand' not in html, path
+        assert "the project's brand (tracebi.yaml brand:)" not in html, path
+
+    shape = ("--tb-page", "--tb-font-num", "--tb-radius")
+    pw, browser = _browser()
+    try:
+        def look(name, frag=""):
+            page = browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme="light")
+            page.goto((built / "output" / f"{name}.html").as_uri() + frag)
+            _settle(page)
+            got = (page.evaluate("document.documentElement.dataset.tbMode"),
+                   *_tokens(page, *shape))
+            page.close()
+            return got
+
+        mode, ground, num, radius = look("saas_model/mrr_dashboard")      # Nightdesk
+        assert (mode, ground, radius) == ("dark", "#090c11", "6px") and num.startswith('"Geist Mono"')
+        for name, frag in (("portfolio_model/portfolio_dashboard", ""),
+                           ("portfolio_model/portfolio_desk", "#view=Funds")):   # Ledger
+            mode, ground, num, radius = look(name, frag)
+            assert (ground, radius) == ("#f6f6f7", "12px") and num.startswith('"Geist",'), name
+            assert mode != "dark", name
+    finally:
+        browser.close()
+        pw.stop()
+
+
+#: A brand of the journey's own: the reference project carries none (its
+#: demos are unrelated businesses). A 3:2 logo, so its drawn ratio is checked.
+_BRAND = {"name": "Cedar Capital", "logo": "brand/logo.svg", "accent": "#1d5c63",
+          "palette": ["#1d5c63", "#d4913a", "#6574c4", "#c25450", "#4aa3a0", "#8c6b52"]}
+_LOGO = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 32">'
+         '<rect x="4" y="4" width="40" height="24" rx="4" fill="#2a8a8f"/></svg>')
+#: The themes the journey names: one report per house theme.
+_THEMED = {"portfolio_model/portfolio_desk": "nightdesk",
+           "portfolio_model/portfolio_dashboard": "signal"}
+
+
+def _branded(proj, built, *, build=("portfolio_desk", "portfolio_dashboard",
+                                    "portfolio_overview", "portfolio_showcase")):
+    """The journeys' fresh copy of the reference project (*proj*), given its
+    own brand (a tracebi.yaml brand: block and a logo written here), the desk
+    Nightdesk and the dashboard Signal, the warehouse *built* already sank,
+    and *build* built from portfolio_model."""
+    import yaml
+
+    shutil.copytree(built / "data", proj / "data",
+                    ignore=shutil.ignore_patterns(".duckdb-tmp"), dirs_exist_ok=True)
+    (proj / "brand").mkdir()
+    (proj / "brand" / "logo.svg").write_text(_LOGO)
+    yaml_path = proj / "tracebi.yaml"
+    assert "brand:" not in yaml_path.read_text()
+    yaml_path.write_text(yaml_path.read_text() + yaml.safe_dump({"brand": _BRAND}))
+    for name, theme in _THEMED.items():
+        spec = proj / "reports" / name / "report.json"
+        spec.write_text(json.dumps({**json.loads(spec.read_text()), "theme": theme}, indent=2))
+    for name in build:
+        code, out = run_cli("report", "build", f"portfolio_model/{name}")
+        assert code == 0, f"{name}: {out}"
+    return proj / "output" / "portfolio_model"
+
+
+def test_the_projects_brand_reaches_every_page_and_its_charts(built, reference):
     """tracebi.yaml's brand: one block, and every page follows. The desk
     (Nightdesk, so it opens dark) carries its accent and palette, lifted to
     read on that theme's dark card, an <EChart> draws in that palette, the
-    masthead names the firm with its logo, and a treemap cell a selection
-    leaves out labels itself in the muted text colour, never white on a pale
-    cell. A brand that would ship unreadable, or point at nothing, fails the
-    build naming the fix."""
-    import yaml
-
+    masthead keeps the model's label as its kicker and shows the firm mark
+    beside it (the logo at its own ratio, then the name), on an app page and a
+    template page alike, and a treemap cell a selection leaves out labels
+    itself in the muted text colour, never white on a pale cell. With no logo
+    the name alone is the mark. A brand that would ship unreadable, or point
+    at nothing, fails the build naming the fix."""
     from tracebi.reports.brand import accent_tokens, palette_tokens
     from tracebi.reports.house import THEMES
 
-    mark = yaml.safe_load((built / "tracebi.yaml").read_text())["brand"]
+    out = _branded(reference, built)
+    mark = dict(_BRAND)
     card = THEMES["nightdesk"]["dark_card"]
     lifted = list(palette_tokens(mark["palette"], card)[1].values())[:6]
     pw, browser = _browser()
     try:
         page = browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme="light")
-        page.goto((built / "output" / "portfolio_model" / "portfolio_desk.html").as_uri()
-                  + "#view=Funds")
+        page.goto((out / "portfolio_desk.html").as_uri() + "#view=Funds")
         _settle(page)
         tokens = page.evaluate("""() => { const cs = getComputedStyle(document.documentElement);
             return [1, 2, 3, 4, 5, 6].map((i) => cs.getPropertyValue('--tb-chart-' + i).trim())
               .concat([cs.getPropertyValue('--tb-accent').trim()]); }""")
         assert tokens == lifted + [accent_tokens(mark["accent"], card)["--tb-dark-accent"]]
         mark = {**mark, "palette": lifted}
-        assert page.locator(".tb-masthead .tb-kicker").first.text_content() == mark["name"]
-        logo = page.evaluate("""() => getComputedStyle(
-            document.querySelector('.tb-masthead-mark')).backgroundImage""")
-        assert logo.startswith('url("data:image/svg+xml;base64,')
+        kicker = page.locator(".tb-masthead .tb-kicker").first.text_content()
+        assert kicker == "Direct Lending Portfolio"
+        assert page.locator(".tb-masthead-mark .tb-brand-name").first.text_content() == mark["name"]
+        logo = page.evaluate("""() => { const el = document.querySelector(
+            '.tb-masthead-mark .tb-brand-logo'); const s = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return {image: s.backgroundImage, ratio: r.width / r.height}; }""")
+        assert logo["image"].startswith('url("data:image/svg+xml;base64,')
+        assert abs(logo["ratio"] - 1.5) < 0.05, logo
         treemap = """() => { const el = document.querySelector('#ech-sector-treemap [role=img]');
             const o = window.__tbModules.echarts.getInstanceByDom(el).getOption();
             return {color: o.color, items: o.series[0].data.map((d) => ({name: d.name,
@@ -1684,19 +1758,45 @@ def test_the_projects_brand_reaches_every_page_and_its_charts(built):
                 assert item["label"] != to_hex(muted), item
             else:
                 assert item["label"] == to_hex(muted), item
+        page.close()
+
+        # A template page: the build writes the same mark, and the kicker.
+        page = browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme="light")
+        page.goto((out / "portfolio_showcase.html").as_uri())
+        _settle(page)
+        head = page.evaluate("""() => { const m = document.querySelector('.tb-masthead');
+            const logo = m.querySelector('.tb-masthead-mark .tb-brand-logo');
+            return {kicker: m.querySelector('.tb-kicker').textContent,
+                    name: m.querySelector('.tb-masthead-mark .tb-brand-name').textContent,
+                    logo: getComputedStyle(logo).backgroundImage.slice(0, 24),
+                    beside: logo.getBoundingClientRect().right
+                      < m.querySelector('.tb-brand-name').getBoundingClientRect().left}; }""")
+        assert head == {"kicker": "Direct Lending Portfolio", "name": mark["name"],
+                        "logo": 'url("data:image/svg+xml;', "beside": True}, head
+        page.close()
     finally:
         browser.close()
         pw.stop()
 
-    yaml_path = built / "tracebi.yaml"
+    yaml_path = reference / "tracebi.yaml"
     kept = yaml_path.read_text()
     try:
-        yaml_path.write_text(kept.replace(f'accent: "{mark["accent"]}"', 'accent: "#f2d24b"'))
-        code, out = run_cli("report", "build", "portfolio_model/portfolio_desk")
-        assert code != 0 and "brand.accent #f2d24b reads at" in out and "such as #" in out, out
+        # No logo: the name alone is the mark, and the kicker is still the model's.
+        yaml_path.write_text(kept.replace("  logo: brand/logo.svg\n", ""))
+        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_showcase")
+        assert code == 0, out_
+        html = (out / "portfolio_showcase.html").read_text()
+        assert ('<div class="tb-masthead-mark"><span class="tb-brand"><span class="tb-brand-name">'
+                "Cedar Capital</span></span></div>") in html
+        assert '<p class="tb-kicker">Direct Lending Portfolio</p>' in html
+        assert "tb-brand-logo" not in html.split("</header>")[0]
+
+        yaml_path.write_text(kept.replace(f"accent: '{_BRAND['accent']}'", "accent: '#f2d24b'"))
+        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_desk")
+        assert code != 0 and "brand.accent #f2d24b reads at" in out_ and "such as #" in out_, out_
         yaml_path.write_text(kept.replace("logo: brand/logo.svg", "logo: brand/mark.svg"))
-        code, out = run_cli("report", "build", "portfolio_model/portfolio_dashboard")
-        assert code != 0 and "brand.logo 'brand/mark.svg': no such file" in out, out
+        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_dashboard")
+        assert code != 0 and "brand.logo 'brand/mark.svg': no such file" in out_, out_
     finally:
         yaml_path.write_text(kept)
 
@@ -1712,19 +1812,18 @@ def _echart(page, fid):
         return {color: o.color, tip: o.tooltip[0].backgroundColor}; }""", fid)
 
 
-def test_each_house_theme_is_a_whole_look_and_the_brand_layers_over_it(built):
-    """Three house themes, chosen in report.json: the reference dashboard is
-    Signal, the desk Nightdesk, the rest Ledger. Each page carries its theme's
-    ground, numerals and radius, and an <EChart> draws in its tokens; the
-    project's brand replaces each theme's accent; without the brand the theme's
-    own accent shows. A deprecated accent preset still builds and says so once;
-    a name that is no theme fails naming the three."""
-    import yaml
-
+def test_each_house_theme_is_a_whole_look_and_the_brand_layers_over_it(built, reference):
+    """Three house themes, chosen in report.json: in a branded copy of the
+    project the dashboard is Signal, the desk Nightdesk, the rest Ledger. Each
+    page carries its theme's ground, numerals and radius, and an <EChart> draws
+    in its tokens; the project's brand replaces each theme's accent; without
+    the brand the theme's own accent shows. A deprecated accent preset still
+    builds and says so once; a name that is no theme fails naming the three."""
     from tracebi.reports.house import THEMES
 
-    accent = yaml.safe_load((built / "tracebi.yaml").read_text())["brand"]["accent"]
-    out = built / "output" / "portfolio_model"
+    out = _branded(reference, built, build=("portfolio_desk", "portfolio_dashboard",
+                                            "portfolio_overview"))
+    accent = _BRAND["accent"]
     shape = ("--tb-page", "--tb-font-num", "--tb-radius", "--tb-accent")
     pw, browser = _browser()
 
@@ -1767,12 +1866,12 @@ def test_each_house_theme_is_a_whole_look_and_the_brand_layers_over_it(built):
         pw.stop()
 
     # Without the brand, each theme's own accent and palette show.
-    yaml_path = built / "tracebi.yaml"
+    yaml_path = reference / "tracebi.yaml"
     kept = yaml_path.read_text()
-    desk_json = built / "reports" / "portfolio_model" / "portfolio_desk" / "report.json"
+    desk_json = reference / "reports" / "portfolio_model" / "portfolio_desk" / "report.json"
     kept_desk = desk_json.read_text()
     try:
-        yaml_path.write_text(re.sub(r"\nbrand:\n(  .*\n)+", "\n", kept))
+        yaml_path.write_text(kept[:kept.index("brand:\n")])
         code, out_ = run_cli("report", "build", "portfolio_model/portfolio_desk")
         assert code == 0, out_
         pw, browser = _browser()
@@ -1789,6 +1888,7 @@ def test_each_house_theme_is_a_whole_look_and_the_brand_layers_over_it(built):
         yaml_path.write_text(kept)
 
         # A deprecated accent preset: still builds, in the house theme, and says so.
+        assert '"theme": "nightdesk"' in kept_desk
         desk_json.write_text(kept_desk.replace('"theme": "nightdesk"', '"theme": "ocean"'))
         code, out_ = run_cli("report", "build", "portfolio_model/portfolio_desk")
         assert code == 0, out_
@@ -1803,8 +1903,6 @@ def test_each_house_theme_is_a_whole_look_and_the_brand_layers_over_it(built):
     finally:
         yaml_path.write_text(kept)
         desk_json.write_text(kept_desk)
-        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_desk")
-        assert code == 0, out_
 
 
 def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):

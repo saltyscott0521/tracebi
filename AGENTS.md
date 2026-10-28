@@ -370,7 +370,8 @@ it as the template attributes above. These change how a page looks, never a numb
 **Brand.** A project's brand lives in `tracebi.yaml` `brand:` (`name`,
 `logo`, `accent`, `palette`, optional `font` and `mode`): every report and
 dashboard of the project takes it, its charts included (`tracebi theme list`
-shows it). Never hard-code a colour in an `<EChart option>` or a style: a
+shows it). The logo and the name sit together as the firm mark in the
+masthead; the kicker stays the model's label. Never hard-code a colour in an `<EChart option>` or a style: a
 series takes the palette in order (`--tb-chart-1..8`), and the house chart
 look (`docs/reference/chart-style.md`) comes from the `--tb-chart-*` tokens
 the brand and the themes set.

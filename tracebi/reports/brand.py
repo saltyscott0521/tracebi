@@ -18,8 +18,9 @@ What a brand sets, and nothing else:
   each colour lifted just enough to read there.
 - ``font``: an inlined ``@font-face`` that ``--tb-font`` (and so the charts,
   ``--tb-chart-font``) names first, Geist after it.
-- ``logo``: ``--tb-brand-logo``, which the masthead's ``.tb-masthead-mark``
-  draws.
+- ``logo`` and ``name``: the firm mark in the masthead's mark slot
+  (``.tb-masthead-mark``): the logo (``--tb-brand-logo``), then the name in
+  small type beside it. The kicker stays the model's label.
 
 A brand layers over the page's house theme (``tracebi/reports/house.py``):
 the dark ground's colours are lifted against that theme's own dark card.
@@ -158,6 +159,64 @@ def _block(selector: str, tokens: dict[str, str]) -> str:
     return f"{selector} {{\n{body}}}\n"
 
 
+#: The firm mark in the masthead's mark slot (``.tb-brand``, written by the
+#: build on a template page and by the kit's ``<Masthead>`` on an app page):
+#: the logo, then the name in small type beside it, in the masthead's own ink
+#: (so it reads on a banner and the editorial hero too). Never the kicker.
+_MARK_CSS = (
+    ".tb-brand { display: flex; width: fit-content; align-items: center; gap: var(--tb-space-2);"
+    " margin-bottom: var(--tb-space-2); }\n"
+    '.tb-masthead[data-tb-title="center"] .tb-brand { margin-inline: auto; }\n'
+    ".tb-brand-name { font-family: var(--tb-font); font-size: var(--tb-text-sm);"
+    " font-weight: 600; line-height: 1.2; letter-spacing: -0.005em; color: inherit; }\n"
+    '.tb-masthead[data-tb-title="nav"] .tb-brand-name { font-size: var(--tb-text-xs); }\n')
+
+#: The logo, drawn from ``--tb-brand-logo`` at its own aspect ratio; on a
+#: filled ground (the hero, a banner) in the ground's own ink.
+_LOGO_CSS = (
+    ".tb-brand-logo { flex: none; display: block; height: 32px; aspect-ratio: RATIO;"
+    " background: var(--tb-brand-logo) left center / contain no-repeat; }\n"
+    '.tb-masthead[data-tb-title="nav"] .tb-brand-logo { height: 28px; }\n'
+    ':root:not([data-tb-mode="dark"]) :where(.tb-article-head, '
+    '.tb-masthead[data-tb-title="banner"]) .tb-brand-logo'
+    " { filter: brightness(0) invert(1); }\n"
+    ':root[data-tb-mode="dark"] .tb-masthead[data-tb-title="banner"] '
+    ".tb-brand-logo { filter: brightness(0); }\n"
+    '@media (prefers-color-scheme: dark) {\n'
+    '  :root[data-tb-mode="auto"] .tb-article-head .tb-brand-logo { filter: none; }\n'
+    '  :root[data-tb-mode="auto"] .tb-masthead[data-tb-title="banner"] '
+    ".tb-brand-logo { filter: brightness(0); }\n}\n")
+
+
+def logo_ratio(path: str) -> str:
+    """The logo's width / height, as CSS ``aspect-ratio``: an SVG's
+    ``viewBox`` (else its ``width`` and ``height``), a PNG's header; ``1``
+    when the file does not say."""
+    import struct
+
+    with open(path, "rb") as f:
+        head = f.read(65536)
+    w = h = None
+    if head[:8] == b"\x89PNG\r\n\x1a\n" and len(head) >= 24:
+        w, h = struct.unpack(">II", head[16:24])
+    else:
+        text = head.decode("utf-8", "replace")
+        tag = re.search(r"<svg\b[^>]*>", text, re.S)
+        if tag:
+            box = re.search(r'viewBox\s*=\s*["\']\s*[-\d.e]+[\s,]+[-\d.e]+[\s,]+([\d.e]+)[\s,]+([\d.e]+)',
+                            tag.group(0))
+            if box:
+                w, h = float(box.group(1)), float(box.group(2))
+            else:
+                ww = re.search(r'\swidth\s*=\s*["\']([\d.]+)(?:px)?["\']', tag.group(0))
+                hh = re.search(r'\sheight\s*=\s*["\']([\d.]+)(?:px)?["\']', tag.group(0))
+                if ww and hh:
+                    w, h = float(ww.group(1)), float(hh.group(1))
+    if not w or not h:
+        return "1"
+    return f"{w:g} / {h:g}"
+
+
 def brand_css(brand: dict, dark_card: str = DARK_CARD) -> str:
     """The brand as CSS: tokens on ``:root``, the palette and the accent
     tile again for the dark ground (the dark blocks of tracebi.css and of a
@@ -194,22 +253,8 @@ def brand_css(brand: dict, dark_card: str = DARK_CARD) -> str:
         out.append(_block(':root[data-tb-mode="dark"]', dark))
         out.append("@media (prefers-color-scheme: dark) {\n"
                    + _block(':root[data-tb-mode="auto"]', dark) + "}\n")
+    if brand.get("name") or brand.get("logo"):
+        out.append(_MARK_CSS)
     if brand.get("logo"):
-        # The mark the masthead keeps for a logo: the brand's, unless the
-        # author drew their own into it. On a filled ground (the hero, a
-        # banner) it is drawn in the ground's own ink.
-        out.append(
-            ".tb-masthead-mark:empty { display: block; height: 32px;"
-            " margin-bottom: var(--tb-space-2); background: var(--tb-brand-logo) left center"
-            " / contain no-repeat; }\n"
-            '.tb-masthead[data-tb-title="nav"] .tb-masthead-mark:empty { height: 28px; }\n'
-            ':root:not([data-tb-mode="dark"]) :where(.tb-article-head, '
-            '.tb-masthead[data-tb-title="banner"]) .tb-masthead-mark:empty'
-            " { filter: brightness(0) invert(1); }\n"
-            ':root[data-tb-mode="dark"] .tb-masthead[data-tb-title="banner"] '
-            ".tb-masthead-mark:empty { filter: brightness(0); }\n"
-            '@media (prefers-color-scheme: dark) {\n'
-            '  :root[data-tb-mode="auto"] .tb-article-head .tb-masthead-mark:empty { filter: none; }\n'
-            '  :root[data-tb-mode="auto"] .tb-masthead[data-tb-title="banner"] '
-            ".tb-masthead-mark:empty { filter: brightness(0); }\n}\n")
+        out.append(_LOGO_CSS.replace("RATIO", logo_ratio(brand["logo"])))
     return "".join(out)

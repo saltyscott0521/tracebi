@@ -1,6 +1,7 @@
 {
   "name": "SaaS Cohort Brief",
   "author": "tracebi init --template saas-metrics",
+  "theme": "nightdesk",
   "description": "Which signup cohort holds the most ending MRR, where logo churn sits, and ending MRR, customers and churn month by month, for any cohorts and months you pick.",
   "data": {
     "kpis": {

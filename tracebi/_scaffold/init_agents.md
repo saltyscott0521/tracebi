@@ -384,7 +384,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an app).
 - **Brand.** The project's brand lives in `tracebi.yaml` `brand:` (`name`, `logo`,
   `accent`, `palette`, optional `font` and `mode`): every report and dashboard takes it,
-  its charts included (`tracebi theme list` shows it). Never hard-code a colour in an
+  its charts included (`tracebi theme list` shows it). The logo and the name sit together
+  as the firm mark in the masthead; the kicker stays the model's label. Never hard-code a colour in an
   `<EChart option>` or a style: a series takes the palette in order (`--tb-chart-1..8`),
   and the house chart look (`docs/reference/chart-style.md`) comes from the
   `--tb-chart-*` tokens the brand and the themes set.

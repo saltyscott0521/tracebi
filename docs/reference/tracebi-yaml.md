@@ -151,7 +151,7 @@ takes, its charts included. One block, and every page follows.
 ```yaml
 brand:
   theme: ledger                  # the house theme: ledger (default) | nightdesk | signal
-  name: Cedar Capital            # the masthead's kicker, in place of the model's label
+  name: Cedar Capital            # the firm mark, beside the logo; the kicker stays the model's label
   logo: brand/logo.svg           # svg or png under the project, inlined
   accent: "#0f6b5c"              # --tb-accent, and what each ground needs from it
   palette: ["#0f6b5c", "#c8902e", "#5b6ee1", "#d1495b", "#3c9d9b", "#8a5a44"]
@@ -162,8 +162,8 @@ brand:
 | Key | What it sets |
 |---|---|
 | `theme` | The project's house theme ([[chart-style]]): `ledger` (the default), `nightdesk` or `signal`. A report's own `report.json` `"theme"` wins over it. The rest of the brand layers on top: its accent, palette, font and logo replace the theme's colours and face, and the theme keeps its surfaces, depth, density, radius and numerals. |
-| `name` | The masthead's kicker (the small line over the title), in place of the model's label. A kicker the author wrote still wins. At most 60 characters. |
-| `logo` | The masthead's mark (`.tb-masthead-mark`): above the kicker on a template page and in an app's `<Masthead>`, its sidebar included. An `.svg` or `.png` under the project, inlined as a `data:` URI. On a filled ground (the editorial hero, a banner title) it is drawn in the ground's ink. |
+| `name` | The firm's name, in small type beside the logo in the masthead's mark slot (`.tb-masthead-mark`); with no logo, the name alone is the mark. It never replaces the kicker: the kicker (the small line over the title) stays the model's label, so a page still says what it is about. At most 60 characters. |
+| `logo` | The masthead's mark (`.tb-masthead-mark`), with the name beside it: above the kicker on a template page and in an app's `<Masthead>`, its sidebar included. A mark the author drew (a filled `.tb-masthead-mark`, `<Masthead mark>`) wins; `mark={null}` shows none. An `.svg` or `.png` under the project, inlined as a `data:` URI. On a filled ground (the editorial hero, a banner title) it is drawn in the ground's ink. |
 | `accent` | `--tb-accent`. From it: `--tb-accent-text` (the same hue deepened to 4.5:1 for links and small text), `--tb-on-accent`, `--tb-surface-accent`, and the dark ground's `--tb-dark-accent` / `--tb-dark-accent-text` (lifted to read on the dark card). |
 | `palette` | `--tb-chart-1..8`, in the order a chart's series take them: 1 to 8 colours, cycled to eight. On the dark ground each is lifted only as far as it takes to read there. With no palette, `--tb-chart-1` is the accent. |
 | `font` | A `.woff2`, `.woff`, `.ttf` or `.otf` under the project, inlined as an `@font-face` that `--tb-font` (and so `--tb-chart-font`) names first, Geist after it. |
@@ -182,6 +182,7 @@ brand:
 - A brand changes how a page looks, never a number. Agents never hard-code a
   colour in a chart's `option`: a series takes the palette.
 
-The reference project carries one (`examples/portfolio_project/tracebi.yaml`,
-its logo in `brand/`). The house themes, and the chart look the palette and
+The reference project carries no brand: its four demos are unrelated
+businesses, so each report keeps the house default (Ledger) and the SaaS
+reports name Nightdesk in their `report.json`. The house themes, and the chart look the palette and
 tokens feed, are in [[chart-style|House themes and chart style]].

@@ -1967,31 +1967,41 @@ _MASTHEAD_OPEN = re.compile(
 
 
 def _with_kicker(page: str, kicker: str, *, app: bool) -> str:
-    """Give the masthead its default kicker, the model's label (the project
-    brand's name when ``tracebi.yaml`` sets one), when the author wrote
-    none; a kicker the author wrote always wins.
+    """Give the masthead its default kicker, the model's label, when the
+    author wrote none; a kicker the author wrote always wins. A project
+    brand never replaces it: the kicker says what the report is about.
 
     A template page gets a ``<p class="tb-kicker">`` before the masthead's
     ``<h1>``, so a reader without JavaScript sees it too. An app page's
     masthead is drawn by the kit, which reads the label from the app's
-    mount point, ``<div id="tb-app" data-tb-kicker>``. With a brand logo, a
-    template's masthead that has no ``.tb-masthead-mark`` gets one (the kit's
-    always has one), which the brand's CSS draws the logo into.
+    mount point, ``<div id="tb-app" data-tb-kicker>``.
+
+    With a brand name or logo (``tracebi.yaml`` ``brand:``), the masthead's
+    mark slot carries the firm mark (:func:`_brand_mark_html`): a template's
+    gets it at build (an empty ``.tb-masthead-mark`` is filled, a masthead
+    with none gets one); an app's kit draws it from ``data-tb-brand`` (and
+    ``data-tb-brand-logo``) on the mount point.
     """
     import html as _html
 
     from tracebi.project_config import brand as _brand
 
     mark = _brand()
-    kicker = mark.get("name") or kicker
-    if mark.get("logo") and not app:
-        page = _with_mark(page, mark.get("name") or "")
+    name, logo = mark.get("name") or "", bool(mark.get("logo"))
+    attrs = ""
+    if name or logo:
+        if app:
+            attrs += f' data-tb-brand="{_html.escape(name)}"'
+            attrs += ' data-tb-brand-logo=""' if logo else ""
+        else:
+            page = _with_mark(page, _brand_mark_html(name, logo))
+    if kicker:
+        attrs += f' data-tb-kicker="{_html.escape(kicker)}"'
+    if app:
+        return page.replace('<div id="tb-app">', f'<div id="tb-app"{attrs}>', 1) if attrs else page
     if not kicker:
         return page
     text = _html.escape(kicker)
-    if app:
-        return page.replace('<div id="tb-app">',
-                            f'<div id="tb-app" data-tb-kicker="{text}">', 1)
     head = _MASTHEAD_OPEN.search(page)
     if head is None:
         return page
@@ -2005,20 +2015,37 @@ def _with_kicker(page: str, kicker: str, *, app: bool) -> str:
             + page[h1.start():])
 
 
-def _with_mark(page: str, name: str) -> str:
-    """A ``.tb-masthead-mark`` first in a template's masthead, for the brand's
-    logo, unless the author placed one."""
+def _brand_mark_html(name: str, logo: bool) -> str:
+    """The firm mark: the logo, then the name in small type beside it; the
+    name alone with no logo, the logo alone (decorative) with no name. The
+    kit's ``<Masthead>`` draws the same elements."""
     import html as _html
 
+    parts = '<span class="tb-brand-logo" aria-hidden="true"></span>' if logo else ""
+    if name:
+        parts += f'<span class="tb-brand-name">{_html.escape(name)}</span>'
+    return f'<span class="tb-brand">{parts}</span>'
+
+
+_MARK_OPEN = re.compile(r"<(div|span|a|p)\b[^>]*\bclass=\"[^\"]*\btb-masthead-mark\b[^\"]*\"[^>]*>",
+                        re.I)
+
+
+def _with_mark(page: str, inner: str) -> str:
+    """The firm mark (*inner*) in a template's masthead: into its empty
+    ``.tb-masthead-mark``, or a new one first in the masthead. A mark the
+    author filled is theirs and stays."""
     head = _MASTHEAD_OPEN.search(page)
     if head is None:
         return page
     close = page.lower().find(f"</{head.group(1).lower()}>", head.end())
-    if "tb-masthead-mark" in page[head.end():close if close >= 0 else None]:
-        return page
-    label = f' role="img" aria-label="{_html.escape(name)}"' if name else ' aria-hidden="true"'
-    return (page[:head.end()] + f'\n<div class="tb-masthead-mark"{label}></div>'
-            + page[head.end():])
+    found = _MARK_OPEN.search(page, head.end(), close if close >= 0 else len(page))
+    if found is None:
+        return (page[:head.end()] + f'\n<div class="tb-masthead-mark">{inner}</div>'
+                + page[head.end():])
+    if re.match(rf"\s*</{found.group(1)}>", page[found.end():], re.I):
+        return page[:found.end()] + inner + page[found.end():]
+    return page
 
 
 def _footer_html(manifest: ReportManifest, model_labels: list[str],
