@@ -279,7 +279,12 @@ tracebi/               # Core Python package (~24,000 LOC)
   permissions.py       # the one check: may this person do this to this report path? (_folder.yaml)
   schedule.py          # report.json "schedule" block: build → verify → email → record
   code_requests.py     # Python pushed from a laptop: stored, reviewed (diff), approved by an admin, run once;
-                       #   approval also runs, once, each transform no declarative pipeline runs (an agent's propose_transform lands here)
+                       #   approval also runs, once, each transform no declarative pipeline runs (an agent's propose_transform lands here);
+                       #   a request whose dry run failed is never approved; approval in a git work tree commits exactly its files
+                       #   (author the requester, committer the approver, TraceBi-Request trailer, never pushed; else commit_note says why)
+  dryrun.py            # an agent's proposed SQL transform run once against a throwaway copy: scratch DuckDB under .tracebi/dryrun/<id>/,
+                       #   warehouse READ_ONLY, -- source: via the real loader, external access locked, ATTACH/LOAD/scanner fns refused,
+                       #   -- sink: and COPY not run, statement timeout; tables + first 20 rows, checks (contracts.observe), lineage, error
   _push.py             # `tracebi push` — packages/models → drafts, code → a code request
   transforms.py        # phase ① transforms: find one, its form (sql/python/notebook), run it + its .contract.yaml
   contracts.py         # sink contracts: closed checks + certificate + manifest join
@@ -292,7 +297,7 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   the row-count rule (sql_row_estimates) and is_framework_table
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 29 tools + 3 prompts (author_report, answer_question, address_pins);
+  mcp_server.py        # agent gateway over MCP — 30 tools + 3 prompts (author_report, answer_question, address_pins);
                        #   the source tools read only a connection's agents: allowlist; describe_project = graph.py
   graph.py             # the workspace as one graph ({summary, nodes, edges}): every source, transform, warehouse
                        #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
@@ -1009,8 +1014,8 @@ GET  /api/drafts/{owner}/{kind}/{path}/destinations  → where a report draft ma
 GET  /api/reports now also carries `folder` and `owner` (last publisher, or the owner of a My published folder) and `made_from` (`app.jsx` | `template.html` | null: what a package draws its page from); /api/publish-requests rows carry `can_decide`
 POST /api/publish-requests/{id}/approve|reject       → publish the request's snapshot (records approver and time) / reject with a {note}; needs Publish on the destination at decision time (analyst)
 POST /api/code-requests                              → Python from `tracebi push`: {files: {path: text}, note}; stored under .tracebi/requests/<id>/ + tracebi_code_requests (analyst)
-GET  /api/code-requests[/{id}]                       → the caller's own (admin: all); one with each file's diff against what is published, and its runs
-POST /api/code-requests/{id}/approve|reject          → copy the files in (history under .tracebi/history/code/) and run the pipelines they touch once / reject with a {note} (admin)
+GET  /api/code-requests[/{id}]                       → the caller's own (admin: all); one with each file's diff against what is published, its runs, dry_run (an agent's proposal; the list carries {ok, summary}), commit_sha / commit_note
+POST /api/code-requests/{id}/approve|reject          → copy the files in (history under .tracebi/history/code/), commit them in a git work tree, and run the pipelines they touch once; 422 when its dry run failed / reject with a {note} (admin)
 POST /api/library/sync                               → git webhook: pull each library checkout, rescan; outside sign-in, needs TRACEBI_LIBRARY_SYNC_SECRET (X-Hub-Signature-256 or X-TraceBi-Sync-Token); 404 without it
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
 GET  /                                               → React SPA (tracebi/web/ui/dist): four places, Reports (/, the

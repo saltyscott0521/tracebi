@@ -4,7 +4,8 @@
 call to ``.tracebi/gateway_log.jsonl`` in the project. Nothing leaves the
 machine, and nothing in a line is customer data: the tool name, ok or
 error, the duration, the actor, the NAMES of the arguments passed, and on
-error the exception type plus its first line. Argument values, results,
+error the exception type plus its first line; for a proposal's dry run, the
+source tables it read (``reads``, ``connection.table`` names). Argument values, results,
 filter values and tokens are never written, and any argument value an
 error message echoes is masked before the line is written.
 
@@ -121,6 +122,11 @@ def logged(tool: str, fn: Callable, actor: Callable[[], str]) -> Callable:
                         error=_mask(_first_line(str(errors[0])), arguments))
         else:
             line["ok"] = True
+        # A proposal's dry run reads its -- source: tables: the line names
+        # them (connection.table), as a read, never what they hold.
+        dry = result.get("dry_run") if isinstance(result, dict) else None
+        if isinstance(dry, dict) and dry.get("sources"):
+            line["reads"] = sorted(dry["sources"])
         _write(line)
         return result
 

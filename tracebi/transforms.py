@@ -207,6 +207,38 @@ def source_directives(text: str, where: str = "the transform") -> list[dict]:
     return found
 
 
+_DROP = re.compile(r'^\s*DROP\s+(?:TABLE|VIEW)\s+(?:IF\s+EXISTS\s+)?'
+                   r'(?P<name>"(?:[^"]|"")*"|[A-Za-z_][\w.]*)', re.I)
+
+
+def sink_names(text: str) -> set[str]:
+    """The tables and views a SQL transform's text leaves in the warehouse,
+    read from its statements without running them: each non-``TEMP``
+    ``CREATE TABLE`` / ``CREATE VIEW`` of a bare (or ``main.``) name, less
+    any it drops again. Lower case. Text that does not split into
+    statements names none."""
+    import duckdb
+
+    try:
+        statements = duckdb.extract_statements(text)
+    except duckdb.Error:
+        return set()
+    names: set[str] = set()
+    for statement in statements:
+        body = "\n".join(line for line in statement.query.splitlines()
+                         if not line.strip().startswith("--"))
+        for pattern, add in ((_CREATE_TABLE, True), (_DROP, False)):
+            found = pattern.match(body)
+            if found is None or (add and found.group("temp")):
+                continue
+            name = found.group("name")
+            name = name[1:-1].replace('""', '"') if name.startswith('"') else name
+            qualifier, _, bare = name.rpartition(".")
+            if qualifier.lower() in ("", "main"):
+                (names.add if add else names.discard)(bare.lower())
+    return names
+
+
 def load_source(ref: str, root: Optional[str] = None,
                 fallback: Optional[str] = None,
                 force_fallback: bool = False) -> "tuple[pd.DataFrame, dict]":
@@ -588,7 +620,8 @@ def _view_refs(con, definition: str) -> tuple[list[tuple[str, str, str]], list[s
     return [t for t in tables if t[0] or t[1] or t[2].lower() not in ctes], functions
 
 
-def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str) -> list[dict]:
+def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str,
+                also: "frozenset[str] | set[str]" = frozenset()) -> list[dict]:
     """The views the script created in the warehouse, each checked to read
     only the warehouse's own tables and views, and ``-- source:`` tables on
     their connection's allowlist (named ``<connection>.<table>`` in *bases*):
@@ -596,7 +629,10 @@ def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str
     directly. A view that reads anything else (a ``-- source:`` table the
     allowlist does not admit, a file, a URL, a ``TEMP`` table)
     is dropped and the run fails, naming the view, the reference and the fix.
-    On the object tier, which keeps no definitions, every view does."""
+    On the object tier, which keeps no definitions, every view does. *also*
+    names (lower case) more of the warehouse's tables and views: a dry run's
+    (:mod:`tracebi.dryrun`), which sit in the attached warehouse, not the
+    connection's own catalog."""
     import hashlib
 
     from tracebi.connectors.scan import agent_may_read
@@ -617,7 +653,7 @@ def _sink_views(con, before: dict, directives: list[dict], where: str, tier: str
         "SELECT table_name FROM duckdb_tables() WHERE database_name = current_database() "
         "AND schema_name = 'main' AND NOT temporary "
         "UNION SELECT view_name FROM duckdb_views() WHERE database_name = current_database() "
-        "AND schema_name = 'main' AND NOT internal AND NOT temporary").fetchall()}
+        "AND schema_name = 'main' AND NOT internal AND NOT temporary").fetchall()} | set(also)
     attached = {d["connection"].lower(): d["connection"] for d in directives}
     out: list[dict] = []
     for name, sql in created:

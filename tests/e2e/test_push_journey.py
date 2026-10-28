@@ -153,8 +153,23 @@ def test_a_laptop_pushes_drafts_and_code_an_admin_approves(laptop):
     # pipeline that runs this transform runs once on the server.
     assert app.post(f"/api/code-requests/{req_id}/reject", headers=boss,
                     json={"note": ""}).status_code == 422
+    git = shutil.which("git") is not None
+    if git:     # the server's workspace is a git checkout: the approval commits the file
+        _git(server, "init", "-q", "-b", "main")
+        _git(server, "add", "-A")
+        _git(server, "commit", "-q", "-m", "workspace")
     done = app.post(f"/api/code-requests/{req_id}/approve", headers=boss).json()
     assert done["status"] == "approved" and done["decided_by"] == "boss@example.com"
+    if git:
+        assert done["commit_sha"] and done["commit_note"] is None, done
+        shown = subprocess.run(["git", "-C", str(server), "log", "-1",
+                                "--format=%an <%ae>|%cn <%ce>|%B", "--name-only"],
+                               capture_output=True, text=True, check=True).stdout
+        assert shown.startswith("alice@example.com <alice@example.com>|"
+                                "boss@example.com <boss@example.com>|"
+                                "transforms: sample_transform — Print when the transform runs")
+        assert f"TraceBi-Request: {req_id}" in shown
+        assert shown.strip().endswith("transforms/sample_transform.py")
     assert "from the laptop" in (server / "transforms/sample_transform.py").read_text()
     kept = server / ".tracebi/history/code" / done["version"] / "transforms/sample_transform.py"
     assert "from the laptop" not in kept.read_text()

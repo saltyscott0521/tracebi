@@ -61,6 +61,23 @@ touches: the pipelines it contains, and each `pipelines/*.yaml` whose
 `transform` it changes. The run uses the server's secrets, the sink contract
 checks what landed, and the request records the run and its result.
 
+**Approval commits to git.** When the workspace is inside a git work tree
+and the files the request writes have no uncommitted changes, approving makes
+one commit of exactly those files: `transforms: <name> — <the request's
+note>` (a line per file when there are several), the requester as author
+(`<name> <name@tracebi.local>` when the sign-in name is not an email), you as
+committer, and a `TraceBi-Request: <id>` trailer. It never pushes. With no
+git, no repository, or those files changed by hand, approval goes ahead and
+the request says why it made no commit.
+
+**A transform an agent proposed** (`propose_transform`) arrives with a dry
+run: it ran once, when proposed, against a throwaway copy of the warehouse,
+and nothing real was written. The row shows its verdict ("Dry run: 3 tables,
+checks 4 of 4 passed"), each table it made as a small grid, each check, and
+any error with its statement. A proposal whose dry run failed shows the
+failure first, and **Approve and run** stays off: the agent proposes again,
+and the newer request is the one to approve.
+
 Only `admin` approves. An analyst sees their own requests; an admin sees all
 of them. The hosted MCP connector refuses Python: a chat cannot send code.
 

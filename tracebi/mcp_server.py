@@ -1706,6 +1706,7 @@ class ProposeResult(TypedDict, total=False):
     status: Optional[str]
     files: Optional[list[str]]
     review_url: Optional[str]
+    dry_run: Optional[dict]
     note: Optional[str]
 
 
@@ -1827,11 +1828,142 @@ def gateway_describe_source_table(connection: str, table: str,
             "profile": profile}
 
 
-def _proposal_errors(name: str, sql: str, contract_yaml: str) -> list[str]:
+class TransformResult(TypedDict, total=False):
+    ok: Optional[bool]
+    error: Optional[str]
+    name: Optional[str]
+    form: Optional[str]
+    file: Optional[str]
+    text: Optional[str]
+    contract_file: Optional[str]
+    contract_yaml: Optional[str]
+    tables: Optional[list[str]]
+    last_run: Optional[dict]
+    lineage: Optional[dict]
+    change: Optional[str]
+
+
+def _certificate_record(name: str) -> Optional[dict]:
+    """The latest sink-certificate record a transform's checks wrote, or None."""
+    from tracebi.contracts import read_contracts
+    from tracebi.project_config import sink_target
+    from tracebi.sources import _contract_owners
+
+    try:
+        certs = (read_contracts(sink_target()) or {}).get("transforms") or {}
+    except Exception:  # noqa: BLE001 — an unreadable warehouse config records nothing
+        return None
+    records = [certs[r] for r, owner in _contract_owners().items() if owner == name and r in certs]
+    return max(records, key=lambda r: r.get("checked_at") or "", default=None)
+
+
+def gateway_read_transform(name: str) -> TransformResult:
+    """A transform's code and what its last run recorded; never a row."""
+    from tracebi import code_requests, transforms
+
+    missing: TransformResult = {"ok": False, "error": f"Transform '{name}' not found in transforms/."}
+    if not isinstance(name, str) or not code_requests.is_code_path(f"transforms/{name}.sql"):
+        return missing
+    try:
+        path = transforms.find_transform(name)
+    except transforms.TransformError as exc:
+        return {"ok": False, "error": str(exc)}
+    if path is None or path.stem != name or path.suffix not in transforms.FORMS:
+        return missing
+    form = transforms.transform_form(path)
+    beside = transforms.contract_file(path)
+    rec = _certificate_record(name) or {}
+    lineage = rec.get("lineage")
+    tables = (sorted(lineage) if lineage else
+              sorted({c["table"] for c in rec.get("checks") or []}
+                     | {v["name"] for v in rec.get("views") or []}))
+    last_run = None
+    if rec:
+        last_run = {"at": rec.get("checked_at"), "checks": len(rec.get("checks") or []),
+                    "sources": [{
+                        "ref": ref, "connection": src.get("connection"), "table": src.get("table"),
+                        "method": src.get("method"), "rows": src.get("rows"),
+                        "fingerprint": src.get("fingerprint"), "loaded_at": src.get("loaded_at"),
+                        "snapshot": src.get("fallback") if src.get("source_fallback") else None,
+                    } for ref, src in (rec.get("sources") or {}).items()]}
+    return {
+        "ok": True, "name": name, "form": form, "file": f"transforms/{path.name}",
+        "text": path.read_text(encoding="utf-8"),
+        "contract_file": f"transforms/{beside.name}" if beside else None,
+        "contract_yaml": beside.read_text(encoding="utf-8") if beside else None,
+        "tables": tables, "last_run": last_run, "lineage": lineage,
+        "change": (f"propose_transform(name={name!r}, sql, contract_yaml, note, change=true)"
+                   if form == "sql" else
+                   f"a {form} transform is changed by a person from a laptop with tracebi "
+                   f"push; an agent proposes SQL only"),
+    }
+
+
+def _models_reading(tables: set) -> list[tuple[str, str]]:
+    """``[(model, table)]`` for each loaded model that reads one of *tables*
+    (lower-case names) from a warehouse."""
+    from tracebi.sources import is_warehouse
+
+    found: list[tuple[str, str]] = []
+    seen: set[int] = set()
+    for model in _load_models().values():
+        if id(model) in seen:
+            continue
+        seen.add(id(model))
+        try:
+            connectors = {c.name: c for c in model.connectors()}
+        except Exception:  # noqa: BLE001 — a model that will not load is in skipped
+            continue
+        try:
+            declared = model.info().get("tables") or []
+        except Exception:  # noqa: BLE001 — a model that will not describe itself is in skipped
+            declared = []
+        finally:
+            # Describing opened the warehouse read-only; let go, or the
+            # approval's run (here or in the server) cannot write it.
+            for c in connectors.values():
+                if hasattr(c, "disconnect"):
+                    c.disconnect()
+        for t in declared:
+            conn = connectors.get(t.get("connector"))
+            if (conn is not None and is_warehouse(conn.describe())
+                    and str(t.get("source", "")).lower() in tables):
+                found.append((model.name, t["source"]))
+    return sorted(set(found))
+
+
+def _change_errors(name: str, sql: str) -> list[str]:
+    """Why *sql* cannot replace ``transforms/<name>``: it is not there, it is
+    not SQL, or it stops writing a table a model reads today."""
+    from tracebi import transforms
+
+    try:
+        path = transforms.find_transform(name)
+    except transforms.TransformError as exc:
+        return [str(exc)]
+    if path is None:
+        return [f"name: transforms/{name} does not exist; propose it as a new transform "
+                f"(change=false)"]
+    form = transforms.transform_form(path)
+    if form != "sql":
+        return [f"name: transforms/{path.name} is a {form} transform. An agent proposes SQL "
+                f"only; a person changes a {form} transform from a laptop with tracebi push"]
+    today = transforms.sink_names(path.read_text(encoding="utf-8"))
+    today |= {t.lower() for t in ((_certificate_record(name) or {}).get("lineage") or {})}
+    dropped = today - transforms.sink_names(sql)
+    return [f"transforms/{name}.sql: the change no longer writes {table}, which model "
+            f"{model} reads. Keep writing it, or change the model first as a draft "
+            f"(start_draft(kind='models', path={model!r})) and propose this once it is published"
+            for model, table in _models_reading(dropped)]
+
+
+def _proposal_errors(name: str, sql: str, contract_yaml: str,
+                     change: bool = False) -> list[str]:
     """Why a proposed transform cannot be stored, checked before anything is:
-    the name is a new stem, the SQL parses in DuckDB, every ``-- source:`` is
-    a table agents may read, and the contract file declares checks in the
-    closed vocabulary."""
+    the name is a new stem (or, for a change, an existing SQL transform whose
+    change keeps every table a model reads), the SQL parses in DuckDB, every
+    ``-- source:`` is a table agents may read, and the contract file declares
+    checks in the closed vocabulary."""
     import tempfile
 
     import duckdb
@@ -1844,12 +1976,19 @@ def _proposal_errors(name: str, sql: str, contract_yaml: str) -> list[str]:
                 f"no suffix)"]
     errors = []
     where = f"transforms/{name}.sql"
-    try:
-        exists = transforms.find_transform(name) is not None
-    except transforms.TransformError:
-        exists = True
-    if exists or (transforms.transforms_dir() / f"{name}.contract.yaml").exists():
-        errors.append(f"name: transforms/{name} already exists; propose a new name")
+    if change:
+        errors += _change_errors(name, sql if isinstance(sql, str) else "")
+        if errors and errors[0].startswith("name:"):
+            return errors
+    else:
+        try:
+            exists = transforms.find_transform(name) is not None
+        except transforms.TransformError:
+            exists = True
+        if exists or (transforms.transforms_dir() / f"{name}.contract.yaml").exists():
+            errors.append(f"name: transforms/{name} already exists; propose a new name, or "
+                          f"pass change=true to propose a change to it (read_transform "
+                          f"shows it)")
     try:
         directives = transforms.source_directives(sql, where)
         text = transforms.render_sql(sql, os.getcwd(), where)
@@ -1888,12 +2027,14 @@ def _proposal_errors(name: str, sql: str, contract_yaml: str) -> list[str]:
 
 
 def gateway_propose_transform(name: str, sql: str, contract_yaml: str,
-                              note: str) -> ProposeResult:
-    """Store ``transforms/<name>.sql`` and its contract as a code request."""
-    from tracebi import code_requests
+                              note: str, change: bool = False) -> ProposeResult:
+    """Store ``transforms/<name>.sql`` and its contract as a code request
+    (*change*: a change to the existing SQL transform of that name), then
+    dry-run it once against a throwaway copy (:mod:`tracebi.dryrun`)."""
+    from tracebi import code_requests, dryrun
     from tracebi.drafts import DraftError
 
-    errors = _proposal_errors(name, sql, contract_yaml)
+    errors = _proposal_errors(name, sql, contract_yaml, change=bool(change))
     if not errors:
         files = {f"transforms/{name}.sql": sql,
                  f"transforms/{name}.contract.yaml": contract_yaml}
@@ -1905,13 +2046,25 @@ def gateway_propose_transform(name: str, sql: str, contract_yaml: str,
     if errors:
         _show_action("propose_transform", f"Transform {name} not proposed: " + "; ".join(errors))
         return {"ok": False, "errors": errors}
-    _show_action("propose_transform", f"Proposed transform {name} (waiting for an admin)")
+    result = dryrun.run(sql, contract_yaml, name, dryrun.dryrun_dir(req["id"]))
+    code_requests.record_dry_run(req["id"], result)
+    what = "a change to transform" if change else "transform"
+    _show_action("propose_transform", f"Proposed {what} {name} (waiting for an admin). "
+                                      f"{result['summary']}")
+    if result["ok"]:
+        said = ("Its dry run passed against a throwaway copy; nothing real was written. An "
+                "admin reviews the diff and the dry run in the app and, on approval, the "
+                "files go into transforms/ and the transform runs once. Tell the person it "
+                "waits for that; then draft the model over the tables it sinks "
+                "(start_draft(kind='models')).")
+    else:
+        said = ("Stored, but its dry run did not pass, so it cannot be approved. Read "
+                "dry_run.error and dry_run.checks, fix the SQL or the contract, and propose "
+                "again" + (" with change=true" if change else "") + "; the newer proposal is "
+                "the one to approve.")
     return {"ok": True, "request_id": req["id"], "status": req["status"],
             "files": sorted(files), "review_url": code_requests.review_url(),
-            "note": "Nothing has run. An admin reviews the files in the app and, on "
-                    "approval, they go into transforms/ and the transform runs once. "
-                    "Tell the person it waits for that; then draft the model over "
-                    "the tables it sinks (start_draft(kind='models'))."}
+            "dry_run": result, "note": said}
 
 
 def gateway_export_table(source: str, table: str, to: str) -> ExportResult:
@@ -2032,9 +2185,12 @@ def build_server(token: Optional[str] = None, oauth=None):
             "write_draft_file, preview_draft (give the person its url), "
             "then publish_draft once they agree. With no model yet, start "
             "from the data: describe_project (the whole workspace as a "
-            "graph), list_connections, list_source_tables, "
-            "describe_source_table, then propose_transform (an admin "
-            "approves it and it runs once) before drafting the model."
+            "graph), read_transform for a transform that exists, "
+            "list_connections, list_source_tables, describe_source_table, "
+            "then propose_transform (new, or change=true for an existing SQL "
+            "transform): it is dry-run against a throwaway copy, so read "
+            "dry_run and re-propose until it passes; an admin approves it "
+            "and it runs once) before drafting the model."
         ),
     )
 
@@ -2412,7 +2568,9 @@ def build_server(token: Optional[str] = None, oauth=None):
             "guesses: a transform's file names the source, the sink "
             "certificate names the tables it wrote, a model reads them, a "
             "report's bindings read the model. A source table you may read "
-            "has agents.state ok; read it with describe_source_table."
+            "has agents.state ok; read it with describe_source_table. A "
+            "transform node's agents.tools names the tools that take its name "
+            "(read_transform, and propose_transform(change=true) for SQL)."
         ),
     )(gateway_describe_project)
     # The same tool under the workspace's own word: the graph describes the
@@ -2475,12 +2633,41 @@ def build_server(token: Optional[str] = None, oauth=None):
             "(name, note, checks: - rows: fact_x / at_least: 1 …; the closed "
             "vocabulary rows, unique, not_null, foreign_key, values, "
             "reconcile), at least one. note says why, for the reviewer. "
-            "Checked before it is stored: a new name, SQL that parses, "
-            "allowed sources, a valid contract. Nothing runs: an admin "
-            "reviews it at review_url and approving runs it once; until then "
+            "change=true proposes a change to the existing SQL transform of "
+            "that name (read_transform it first): the review diffs it against "
+            "the published files, and it must keep writing every table a "
+            "model reads (else refused, naming the model and table; change "
+            "the model first as a draft). A Python transform is not "
+            "proposable (a person uses tracebi push). Checked before it is "
+            "stored: the name, SQL that parses, allowed sources, a valid "
+            "contract. Then it is dry-run once against a throwaway copy: a "
+            "scratch DuckDB with the warehouse attached READ_ONLY and the "
+            "-- source: tables loaded as the real run loads them, nothing "
+            "written anywhere, a -- sink: line not sent. dry_run says per "
+            "created table its columns, rows and first 20 rows; per check "
+            "passed and failing_rows; the column lineage; elapsed_ms; and "
+            "any error with its statement. A proposal whose dry run fails is "
+            "stored but cannot be approved: fix it and propose again. An "
+            "admin reviews it at review_url and approving runs it once (and "
+            "commits it when the workspace is a git repository); until then "
             "its tables do not exist. Then draft the model over them."
         ),
     )(gateway_propose_transform)
+    _tool(
+        name="read_transform", title="Read a transform", annotations=_READ,
+        structured_output=True,
+        description=(
+            "One transform in transforms/: its file text and its "
+            ".contract.yaml (contract_yaml, null when it has none), form "
+            "(sql, python or notebook), the tables it writes, last_run (when "
+            "its sink last satisfied its contract, and the sources that run "
+            "read, each with method scanner|arrow|pandas and snapshot when a "
+            "committed snapshot stood in) and lineage (per table and column, "
+            "the columns DuckDB's parse proves it is computed from; SQL "
+            "only). change says how to change it. A name not in transforms/ "
+            "is 'not found'. It reads code, never rows."
+        ),
+    )(gateway_read_transform)
     _tool(
         name="export_table",
         title="Export a warehouse table (admin; writes outside the workspace)",
@@ -2603,12 +2790,16 @@ def build_server(token: Optional[str] = None, oauth=None):
             "design-dashboard-feel and, for an app, design-app-dashboards.\n\n"
             "If no model answers the question yet, start from the data, "
             "in this order, before the loop below:\n"
-            "a. list_connections, then list_source_tables(connection) and "
+            "a. describe_workspace, then read_transform(name) on the "
+            "transforms that exist (their SQL, contract and what their last "
+            "run read). list_connections, list_source_tables(connection) and "
             "describe_source_table(connection, table) on the tables a person "
             "allowed agents to read. Only those exist for you.\n"
             "b. propose_transform(name, sql, contract_yaml, note): SQL that "
             "reads them through -- source: lines and sinks clean star-schema "
-            "tables, with a contract of checks on those tables.\n"
+            "tables, with a contract of checks on those tables; change=true "
+            "to change an existing SQL transform. Read the dry_run it "
+            "returns; while it fails, fix it and propose again.\n"
             "c. Wait for the approval. Tell the person the request id and "
             "its review_url; an admin approves it and it runs once. Its "
             "tables do not exist until then, so do not go on without it.\n"

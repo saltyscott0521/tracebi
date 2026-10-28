@@ -154,7 +154,10 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
   }
   for (const r of Array.isArray(more.codeRequests) ? more.codeRequests : []) {
     if (r.status !== 'pending') continue
-    const files = r.files.length === 1 ? r.files[0] : `${r.files.length} files`
+    // A transform and its contract are one thing: transforms/<name>.
+    const stems = [...new Set(r.files.map(f => (f.match(/^transforms\/([^/.]+)\./) || [])[1]))]
+    const files = stems.length === 1 && stems[0] && r.files.length > 1 ? `transforms/${stems[0]}`
+      : r.files.length === 1 ? r.files[0] : `${r.files.length} files`
     if (!r.can_decide) {
       items.push({
         key: `code-${r.id}`, kind: 'Waiting', variant: 'gray', models: [],
@@ -165,7 +168,9 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
     items.push({
       key: `code-${r.id}`, kind: 'Code request', variant: 'amber', models: [],
       title: files,
-      detail: `Asked by ${r.requested_by || 'unknown'}: \u201c${r.note}\u201d`, at: r.requested_at, review: r,
+      detail: `Asked by ${r.requested_by || 'unknown'}: \u201c${r.note}\u201d`
+        + (r.dry_run ? ` \u00b7 ${r.dry_run.ok ? r.dry_run.summary : 'Dry run failed'}` : ''),
+      at: r.requested_at, review: r,
     })
   }
   // Newest first; what has no time keeps its place after.

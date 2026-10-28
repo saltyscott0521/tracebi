@@ -814,8 +814,9 @@ freely, never re-source.
 - **Access plane** (MCP): read-and-compute only, and only from the model
   boundary onward. Queries, validation, and spec rendering persist nothing
   beyond an output file. Phase ① never runs over the gateway — it writes the
-  warehouse — so an agent only proposes a transform (`propose_transform`),
-  which runs once an admin approves it. Pipeline
+  warehouse — so an agent reads one (`read_transform`) and proposes a new one
+  or a change (`propose_transform`): it is dry-run against a throwaway copy at
+  once, and runs for real once an admin approves it. Pipeline
   execution (the older warehouse-writing path) is likewise absent from this
   surface.
 
@@ -886,7 +887,8 @@ Twenty-seven tools (`tracebi/mcp_server.py`):
 | `list_connections` | The workspace's connections (`connections/<name>.yaml`), each with its `type` and `agent_tables`: the tables a person allowed agents to read (`agents: {tables: [a, b] \| "*"}`; none when absent). Credentials are never shown |
 | `list_source_tables` | One connection's allowed tables, with columns and row estimates. Other tables are not listed |
 | `describe_source_table` | One allowed table: columns, a profile, and `sample` rows (default 20, at most 500). A table agents may not read is "not found", as a missing one is |
-| `propose_transform` | `transforms/<name>.sql` + `<name>.contract.yaml` as one code request (`name`, `sql`, `contract_yaml`, `note`). Checked first: a new name, SQL that parses, every `-- source:` a table you may read, a contract with at least one check. Nothing runs until an admin approves it at `review_url`; approving runs it once. `docs/agents/sop-onboarding.md` walks connection → transform → model → report |
+| `read_transform` | One transform in `transforms/` (`name`): its file `text` and `contract_yaml`, its `form` (sql, python, notebook), the `tables` it writes, `last_run` (when its sink last satisfied its contract, and the `sources` that run read, each with `method` and `snapshot`) and its column `lineage` (SQL only). A name not in `transforms/` is "not found". Code, never rows |
+| `propose_transform` | `transforms/<name>.sql` + `<name>.contract.yaml` as one code request (`name`, `sql`, `contract_yaml`, `note`; `change=true` for a change to an existing SQL transform, diffed against the published files on review). Checked first: the name, SQL that parses, every `-- source:` a table you may read, a contract with at least one check; a change must keep writing every table a model reads (else refused naming the model and table: change the model first as a draft), and a Python transform is refused (a person changes it with `tracebi push`). Then it is **dry-run** once against a throwaway copy — a scratch DuckDB, the warehouse attached READ_ONLY, the `-- source:` tables loaded as the real run loads them, external access locked, a `-- sink:` line and `COPY` not run — and `dry_run` says per created table its columns, rows and first 20 rows, per check `passed` and `failing_rows`, the column lineage, `elapsed_ms` and any error with its statement. Nothing real is written. A proposal whose dry run fails is stored but cannot be approved: fix it and propose again. An admin approves it at `review_url`; approving runs it once and, in a git workspace, commits exactly its files (you as author, a `TraceBi-Request` trailer, never pushed). `docs/agents/sop-onboarding.md` walks connection → transform → model → report |
 | `export_table` | Admin: write a warehouse table or view (`source`, `table`) to `to`, a connection's name or an object prefix (`<prefix>/<table>.parquet`). Records an `export` run. Get the person's go-ahead first |
 
 Every tool returns **structured output** (a typed `outputSchema` and

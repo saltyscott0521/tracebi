@@ -326,7 +326,12 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
             readers=groups_of.get(name, []), writers=[],
             moved={"at": t["written_at"], "how": "written" if t["written_at"] else "never"},
             trust=_checks_trust(written, checks) if written else {"state": "none", "text": "No checks"},
-            agents={"state": "none", "text": "May propose a change"},
+            # The gateway tools that take this node's name: an agent reads any
+            # transform and proposes a change only to a SQL one.
+            agents={"state": "none", "text": "May propose a change", "tools": [
+                "read_transform", "propose_transform(change=true)"]}
+            if t["form"] == "sql" else
+            {"state": "none", "text": "May read it", "tools": ["read_transform"]},
             gap=None if in_flow else "no pipeline runs it"))
 
     # ── Lane 2: the warehouse, a group per writer ───────────────────────────
