@@ -65,20 +65,38 @@ trace. A bound one gets its own row:
 | `data-tb-y` | The value column; a comma list for several series |
 | `data-tb-color` | The series column |
 | `data-tb-value-format` | The format for labels, axes and tooltips |
+| `data-tb-renderer` | `svg` (the default) or `canvas`, for thousands of marks; a canvas chart prints as SVG |
 
-Every chart is drawn in one style:
+Every chart is drawn by Apache ECharts, in one style:
 
-- Bars carry their values in that format: inside the bar when it fits, past
-  its end when not, none on bars under 14px wide, on stacks or in small
-  multiples.
+- Bars carry their values in that format at their free end: one to three
+  series of few bars, none on stacks or in small multiples; a label that
+  would sit on another is left out.
 - A line or area ends with its last value, unless `data-tb-mark` already
   labels it.
 - Category names wrap to two lines or turn, and are never cut. Value ticks
-  thin to what fits.
+  are short (`$20M`).
 - The tooltip shows the category, the value, the measure's description and a
   "Trace →" link to that figure's row in the trace.
 
-The build inlines D3 automatically when the page has a chart.
+The build inlines ECharts automatically when the page has a chart.
+
+**More than the attributes say.** `tracebi.configureChart(id, patch)` in
+`script.js` deep-merges a raw ECharts option into the chart's own:
+`dataZoom` (a slider under a long series), `brush`, `visualMap`, `markArea`
+(a shaded period), a `toolbox`, a series' `smooth` or `symbol`. It restyles
+and never re-sources: every series keeps the data built from the stamped rows,
+a patch's own `series[i].data` or `dataset` is dropped, and a series past the
+chart's own is not drawn. The plan's `data-tb-type` may also name any ECharts
+series type that takes name/value items (`funnel`, `treemap`, `sunburst`),
+drawn from the binding's rows the same way.
+
+```js
+tracebi.configureChart("fig-flows", {
+  dataZoom: [{ type: "slider", height: 18, bottom: 0 }],
+  series: [{ smooth: true }],
+});
+```
 
 ## Table figures
 

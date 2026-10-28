@@ -1320,7 +1320,9 @@ def _workbench_page(name: str) -> str:
             .replace("__CSP__", csp_meta)
             .replace("__NAME__", json.dumps(name))
             .replace("__TRACEBI_CSS__", read_asset("tracebi.css"))
-            .replace("__ECHARTS__", read_lib("echarts")))
+            # The one ECharts build, under the global name this page reads.
+            .replace("__ECHARTS__", read_lib("echarts-kit")
+                     + "\nwindow.echarts = window.__tbECharts;"))
 
 
 # ── The server ──────────────────────────────────────────────────────────────

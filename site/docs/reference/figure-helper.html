@@ -156,9 +156,13 @@ table figure)."</em></p>
 <td><code>value_format</code></td>
 <td>Format for labels, axes and tooltips (<a href="../reference/number-formats.html">Number formats</a>).</td>
 </tr>
+<tr>
+<td><code>renderer</code></td>
+<td><code>svg</code> (the default) or <code>canvas</code>, for thousands of marks (<a href="../reference/report-json.html">report.json</a> <code>charts</code>).</td>
+</tr>
 </tbody>
 </table>
-<p>The build inlines D3 automatically when the page has a chart.</p>
+<p>The build inlines ECharts automatically when the page has a chart.</p>
 <h2 id="table"><code>table</code></h2>
 <pre><code class="language-json">{&quot;kind&quot;: &quot;table&quot;, &quot;binding&quot;: &quot;holdings&quot;, &quot;columns&quot;: [&quot;issuer&quot;, &quot;fair_value&quot;],
  &quot;style&quot;: &quot;striped&quot;}

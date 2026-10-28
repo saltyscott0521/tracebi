@@ -8,8 +8,8 @@
                              binding from report.json; the runtime fills it.
   report.json                The data bindings (model + query per name), the
                              declared figures placed with figure("…"), and
-                             "libs": ["d3"], which inlines D3: it
-                             draws every chart and the treemap.
+                             "libs": ["d3"], which inlines D3 for the
+                             treemap; Apache ECharts draws every chart.
   report.py                  The escape hatch: python-derived data, which the
                              trace marks as not query-reproducible.
   style.css                  A theme preset: the accent pair for each
@@ -275,10 +275,13 @@
           <!-- A range over a time grain's labels: from and to months. -->
           <span data-tb-range data-tb-column="dim_date.month"
                 data-tb-label="Months"></span></p>
+        <!-- Every chart is drawn by ECharts. data-tb-renderer says which
+             renderer: svg (the default, as here) or canvas, for thousands of
+             marks. script.js adds a zoom slider with tracebi.configureChart. -->
         <div data-tb-figure="chart" data-tb-binding="flows_by_month" data-tb-type="line"
              data-tb-x="dim_date.month" data-tb-y="net_flow"
              data-tb-value-format="currency_compact" data-tb-mark="last"
-             id="chart-flows-month"></div>
+             data-tb-renderer="svg" id="chart-flows-month"></div>
       </div>
       <div class="tb-card">
         <h2>By fund and flow type</h2>
@@ -300,7 +303,8 @@
       administrator-reported; no independent valuation was performed.</p>
     <p>One self-contained HTML file that works offline: the data behind every
       figure, fingerprinted, with its trace; TraceBi's design system and
-      runtime (MIT); D3 for the charts and the treemap (ISC License); the
+      runtime (MIT); Apache ECharts for the charts (Apache License) and D3 for the
+      treemap (ISC License); the
       Fraunces typeface (SIL Open Font License). Check it with
       <code>tracebi verify --file</code>.</p>
   </footer>

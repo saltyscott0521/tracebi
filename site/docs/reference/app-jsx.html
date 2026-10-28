@@ -192,7 +192,7 @@ it from the stamped rows: formatted, traced and filterable.</p>
 </tr>
 <tr>
 <td><code>&lt;Chart&gt;</code></td>
-<td><code>binding</code>, <code>type</code> (<code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>), <code>x</code>, <code>y</code> (a string or a list), <code>color</code>, <code>valueFormat</code>, <code>stack</code>, <code>mark</code>, <code>annotate</code>, <code>facet</code>, <code>unit</code>, <code>xTitle</code>, <code>yTitle</code>, <code>palette</code>, <code>height</code>, <code>id</code></td>
+<td><code>binding</code>, <code>type</code> (<code>bar</code>, <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>), <code>x</code>, <code>y</code> (a string or a list), <code>color</code>, <code>valueFormat</code>, <code>stack</code>, <code>mark</code>, <code>annotate</code>, <code>facet</code>, <code>unit</code>, <code>xTitle</code>, <code>yTitle</code>, <code>palette</code>, <code>renderer</code>, <code>height</code>, <code>id</code>: <code>&lt;EChart&gt;</code> with the kit's defaults (a bar; <code>color</code> is its <code>series</code>), the same chart and figure id</td>
 </tr>
 <tr>
 <td><code>&lt;Spark&gt;</code></td>
@@ -321,7 +321,10 @@ totals.</p>
 </table>
 <h2 id="charts">Charts</h2>
 <p><code>&lt;EChart&gt;</code> is the chart: Apache ECharts, drawn into its own SVG (or canvas),
-for everything from a bar to a treemap, a sankey or 100,000 points. Whether a
+for everything from a bar to a treemap, a sankey or 100,000 points. There is
+one chart: <code>&lt;Chart&gt;</code> and <code>&lt;Spark&gt;</code> are <code>&lt;EChart&gt;</code> with the kit's defaults,
+and a template's <code>{{ figure() }}</code> charts are drawn by the same option builder
+in the runtime. Whether a
 chart is a checked figure follows its data, not who wrote it. It draws in the
 house look, from the page's chart tokens (<a href="../reference/chart-style.html">House themes and chart style</a>), so the project's
 brand reaches it; never hard-code a colour in its <code>option</code>.</p>
@@ -358,7 +361,11 @@ brand reaches it; never hard-code a colour in its <code>option</code>.</p>
 </tr>
 <tr>
 <td><code>renderer</code></td>
-<td><code>"svg"</code> (default: vectors, tabular figures, prints sharp) or <code>"canvas"</code> (thousands of marks)</td>
+<td><code>"svg"</code> (default: vectors, tabular figures, prints sharp) or <code>"canvas"</code> (thousands of marks; printed, it draws as SVG). <code>report.json</code> <code>"charts": {"renderer": "canvas"}</code> sets every chart's (<a href="../reference/report-json.html">report.json</a>)</td>
+</tr>
+<tr>
+<td><code>mark</code>, <code>annotate</code>, <code>facet</code>, <code>xTitle</code>, <code>yTitle</code>, <code>palette</code></td>
+<td>As on <code>&lt;Chart&gt;</code> (the plan's <a href="../reference/template-html.html">template.html</a> chart attributes)</td>
 </tr>
 <tr>
 <td><code>theme</code></td>
@@ -383,7 +390,9 @@ brand reaches it; never hard-code a colour in its <code>option</code>.</p>
   literal, <code>&lt;EChart&gt;</code> renders the same <code>data-tb-figure="chart"</code> element as
   <code>&lt;Chart&gt;</code>, the build records it and refuses an unknown binding or column,
   and the trace names it. <code>option</code> styles it and cannot replace its numbers
-  (series data, a dataset or category labels in it are dropped).</li>
+  (series data, a dataset or category labels in it are dropped). It is how
+  ECharts' own tools reach a receipted chart: <code>dataZoom</code> (a slider under a long
+  series), <code>brush</code>, <code>visualMap</code>, <code>markArea</code>, a <code>toolbox</code>.</li>
 <li><strong>A chart of numbers the page computed is not.</strong> <code>&lt;EChart option={…}&gt;</code>
   alone (sankey links summed in the app, a ratio you work out) carries
   <code>data-tb-computed</code> and is the app's presentation, not a checked figure; the

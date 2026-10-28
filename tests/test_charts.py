@@ -1,16 +1,18 @@
-"""The D3 chart engine, in a real browser.
+"""The chart engine (Apache ECharts), in a real browser.
 
 Every declared chart type (bar, barh, line, area, pie, scatter) is drawn by
-the inlined D3 from the stamped rows. These pin what a reader relies on: one
-mark per row and no ECharts on the page, a tooltip that shows the row's own
-value in the page's format, a click that filters through the page's own
-control, colours that follow the series rather than its position, a legend
-that cannot hide the last series, and arrow keys that read every value.
+ECharts from the stamped rows, through tracebi.js's one option builder. These
+pin what a reader relies on: a tooltip that shows the row's own value in the
+page's format, a click that writes the page's selection, colours that follow
+the series rather than its position, a legend that cannot hide the last
+series, arrow keys that read every value, the author's marks and notes, a
+drag that zooms, short ticks with a unit that never rescales, bars that carry
+their own values, the readout's way to the trace, and a canvas chart that
+prints as vectors.
 
 Skipped unless Playwright can launch Chromium. The CI job ``ui-smoke``
 installs Chromium and runs this file.
 """
-
 from __future__ import annotations
 
 import json
@@ -86,6 +88,8 @@ _FIGURES = """
        data-tb-type="area" data-tb-x="dim_sale.quarter" data-tb-y="revenue"
        data-tb-value-format="currency0"></div>
 </div>
+<div id="canvas" data-tb-figure="chart" data-tb-binding="by_product" data-tb-type="bar"
+     data-tb-x="dim_sale.product" data-tb-y="revenue" data-tb-renderer="canvas"></div>
 """
 
 
@@ -115,7 +119,7 @@ def _build(tmp_path: Path) -> Path:
 @pytest.fixture(scope="module")
 def page(tmp_path_factory):
     sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
-    html = _build(tmp_path_factory.mktemp("d3"))
+    html = _build(tmp_path_factory.mktemp("charts"))
     pw = sync_playwright().start()
     try:
         browser = pw.chromium.launch(headless=True)
@@ -140,58 +144,106 @@ def _reset(page):
     for sel in ("#f-region", "#f-product"):
         if page.locator(sel).input_value() != "All":
             page.select_option(sel, "All")
+    page.mouse.move(0, 0)
+
+
+# The chart's ECharts instance, read in the page: what it draws is its option.
+_INST = ("window.__tbECharts.getInstanceByDom("
+         "document.querySelector('#' + id + ' .tb-chart-host'))")
+
+
+def _option(page, fid, expr):
+    return page.evaluate(f"(id) => {{ const c = {_INST}; const o = c.getOption(); return {expr}; }}", fid)
+
+
+def _point(page, fid, series, index):
+    """The page coordinates of one data item: the middle of a bar, a point."""
+    return page.evaluate(f"""([id, s, i]) => {{
+        const c = {_INST}, host = document.querySelector('#' + id + ' .tb-chart-host');
+        host.scrollIntoView({{block: 'center'}});
+        const o = c.getOption(), ser = o.series[s], d = ser.data[i];
+        const v = d !== null && typeof d === "object" ? d.value : d;
+        const r = host.getBoundingClientRect();
+        let x, y;
+        if (ser.type === "pie") {{
+          const l = c.getModel().getSeriesByIndex(s).getData().getItemLayout(i);
+          const a = (l.startAngle + l.endAngle) / 2, m = (l.r + l.r0) / 2;
+          x = l.cx + m * Math.cos(a); y = l.cy + m * Math.sin(a);
+        }} else {{
+          const flat = o.yAxis[0].type === "category";
+          [x, y] = c.convertToPixel({{seriesIndex: s}},
+            flat ? [v * 0.5, i] : [i, ser.type === "bar" ? v * 0.5 : v]);
+        }}
+        return [r.left + x, r.top + y]; }}""", [fid, series, index])
+
+
+def _hover(page, fid, series, index):
+    x, y = _point(page, fid, series, index)
+    page.mouse.move(x, y)
+    tip = page.locator(f"#{fid} .tb-echart-tip").first
+    page.wait_for_function(
+        "(id) => { const t = document.querySelector('#' + id + ' .tb-echart-tip');"
+        " return t && t.style.display !== 'none' && t.style.opacity !== '0'"
+        " && t.querySelector('.tb-chart-tip-title'); }", arg=fid)
+    return tip
 
 
 def test_the_tooltip_shows_the_rows_own_value_in_the_pages_format(page):
     _reset(page)
-    page.locator("#bar .tb-hit").first.hover()
-    tip = page.locator("#bar .tb-chart-tip")
-    tip.wait_for(state="visible")
+    tip = _hover(page, "bar", 0, 0)
     # East has the most revenue (the binding orders by -revenue): 1200+1500+1700+1600.
     assert tip.locator(".tb-chart-tip-title").inner_text() == "East"
     assert tip.locator("strong").inner_text() == "$6,000"
+    # The chart is a figure a reader reaches: labelled, a keyboard stop.
+    host = page.locator("#bar .tb-chart-host")
+    assert host.get_attribute("role") == "img" and host.get_attribute("tabindex") == "0"
+    assert "Revenue by Region" in host.get_attribute("aria-label")
+    assert page.errors == []
 
 
-def test_a_click_filters_through_the_pages_control_and_colour_follows_the_series(page):
+def test_a_click_selects_and_colour_follows_the_series(page):
     _reset(page)
-    colour_b = page.locator("#line path.tb-line").nth(1).get_attribute("stroke")
-    page.locator("#bar .tb-hit").nth(1).click()          # West
+    colours = _option(page, "line", "o.series.map((s) => [s.name, s.itemStyle.color])")
+    page.mouse.click(*_point(page, "bar", 0, 1))            # West
     assert page.locator("#f-region").input_value() == "West"
     # The clicked chart keeps every region and draws the others back
     # (cross-highlighting), so another can be shift-clicked in.
-    page.wait_for_function(
-        "() => document.querySelectorAll('#bar path.tb-mark.tb-dimmed').length === 3")
-    assert page.locator("#bar path.tb-mark").count() == 4
-    page.locator("#bar .tb-hit").nth(1).click()          # the same bar again clears it
+    page.wait_for_function(f"""() => {{ const id = 'bar'; const o = {_INST}.getOption();
+        return o.series[0].data.filter((d) => d && d.itemStyle && d.itemStyle.opacity < 1).length === 3; }}""")
+    assert _option(page, "bar", "o.xAxis[0].data.length") == 4
+    page.mouse.click(*_point(page, "bar", 0, 1))            # the same bar again clears it
     assert page.locator("#f-region").input_value() == "All"
-    page.wait_for_function("() => !document.querySelector('#bar path.tb-mark.tb-dimmed')")
-    # Product B picked, the B line stands out and keeps B's colour instead of
-    # taking the first slot's; the A line recedes.
+    page.wait_for_function(f"""() => {{ const id = 'bar'; const o = {_INST}.getOption();
+        return !o.series[0].data.some((d) => d && d.itemStyle && d.itemStyle.opacity < 1); }}""")
+    # Product B picked, the B line keeps B's colour instead of taking the
+    # first slot's, and the A line recedes.
     page.select_option("#f-product", "B")
-    page.wait_for_function(
-        "() => document.querySelectorAll('#line g.tb-series.tb-dimmed').length === 1")
-    assert page.locator("#line g.tb-series:not(.tb-dimmed) path.tb-line").get_attribute(
-        "stroke") == colour_b
+    page.wait_for_function(f"""() => {{ const id = 'line'; const o = {_INST}.getOption();
+        return o.series.some((s) => s.name === 'A' && s.lineStyle.opacity < 1); }}""")
+    now = _option(page, "line", "o.series.map((s) => [s.name, s.itemStyle.color, s.lineStyle.opacity])")
+    assert [[n, c] for n, c, _ in now] == colours
+    assert [n for n, _, op in now if op is not None and op < 1] == ["A"]
     _reset(page)
 
 
 def test_the_legend_toggles_series_but_never_hides_the_last(page):
     _reset(page)
     legend = page.locator("#barh .tb-legend-item")
-    assert legend.count() == 2
+    count = "o.series.length"
+    assert legend.count() == 2 and _option(page, "barh", count) == 2
     legend.nth(0).click()
-    page.wait_for_function("() => document.querySelectorAll('#barh .tb-mark').length === 4")
+    page.wait_for_function(f"() => {{ const id = 'barh'; return {_INST}.getOption().series.length === 1; }}")
     assert legend.nth(0).get_attribute("aria-pressed") == "false"
     legend.nth(1).click()                               # the last visible one stays
     assert legend.nth(1).get_attribute("aria-pressed") == "true"
-    assert page.locator("#barh .tb-mark").count() == 4
+    assert _option(page, "barh", count) == 1
     legend.nth(0).click()
-    page.wait_for_function("() => document.querySelectorAll('#barh .tb-mark').length === 8")
+    page.wait_for_function(f"() => {{ const id = 'barh'; return {_INST}.getOption().series.length === 2; }}")
 
 
 def test_arrow_keys_read_each_value_aloud(page):
     _reset(page)
-    page.locator("#pie svg").focus()
+    page.locator("#pie .tb-chart-host").focus()
     page.keyboard.press("ArrowRight")
     live = page.locator("#pie .tb-sr-only")
     first = live.inner_text()
@@ -199,81 +251,93 @@ def test_arrow_keys_read_each_value_aloud(page):
     second = live.inner_text()
     # Product A: every A row's revenue; B likewise. Each slice is one row.
     assert {first, second} == {"A: Revenue 7,870", "B: Revenue 5,000"}
+    # The readout follows the keys.
+    assert page.locator("#pie .tb-echart-tip .tb-chart-tip-title").inner_text() in ("A", "B")
+    page.keyboard.press("Escape")
 
 
-def _boxes(page, selector):
-    return page.eval_on_selector_all(
-        selector, "els => els.map(e => { const b = e.getBBox(); return [b.x, b.y, b.width, b.height]; })")
-
-
-def test_stacked_bars_share_one_slot_and_end_where_their_rows_end(page):
+def test_stacked_bars_list_each_rows_own_value_never_a_total(page):
     _reset(page)
-    boxes = _boxes(page, "#stack path.tb-mark")
-    assert len(boxes) == 8                                   # 4 quarters × 2 products
-    lefts = sorted({round(b[0], 1) for b in boxes})
-    assert len(lefts) == 4, "each quarter's two segments share one slot"
-    # Q1 holds A (1200+400) and B (900+300): the top segment sits on the bottom
-    # one, so the stack's top is 2,800 on the axis. Read the tooltip instead of
-    # pixels: it lists each row's own value, never a total.
-    page.locator("#stack .tb-hit").first.hover()
-    rows = page.locator("#stack .tb-chart-tip-row strong").all_inner_texts()
-    assert sorted(rows) == ["1,200", "1,600"]
-    assert "2,800" not in page.locator("#stack .tb-chart-tip").inner_text()
+    assert _option(page, "stack", "o.series.map((s) => s.stack)") == ["total0", "total0"]
+    # Q1 holds A (1200+400) and B (900+300): the readout lists each row's own
+    # value, never the 2,800 the stack reaches.
+    tip = _hover(page, "stack", 0, 0)
+    assert sorted(tip.locator(".tb-chart-tip-row strong").all_inner_texts()) == ["1,200", "1,600"]
+    assert "2,800" not in tip.inner_text()
+
+
+def _texts(page, fid):
+    return page.locator(f"#{fid} .tb-chart-host svg text").all_text_contents()
 
 
 def test_marks_and_annotations_label_the_rows_own_values(page):
     _reset(page)
-    labels = page.locator("#weekly .tb-marked-point text").all_text_contents()
+    texts = _texts(page, "weekly")
     # W09 has the most revenue (1,700) and W16 is the last week (380).
-    assert sorted(labels) == ["380", "High 1,700"]
-    assert page.locator("#weekly .tb-annotation text").text_content() == "Launch"
-    assert page.locator("#weekly .tb-axis-title").text_content() == "Week"
+    assert "High 1,700" in texts and "380" in texts
+    assert "Launch" in texts
+    assert "Week" in texts
 
 
 def test_drag_zooms_to_a_range_and_reset_returns(page):
     _reset(page)
-    overlay = page.locator("#weekly .tb-brush .overlay")
-    box = overlay.bounding_box()
-    y = box["y"] + box["height"] / 2
-    page.mouse.move(box["x"] + box["width"] * 0.05, y)
+    cats = "o.xAxis[0].data.length"
+    x0, y = _point(page, "weekly", 0, 1)
+    x1, _ = _point(page, "weekly", 0, 6)
+    page.mouse.move(x0, y)
     page.mouse.down()
-    page.mouse.move(box["x"] + box["width"] * 0.45, y, steps=6)
+    page.mouse.move(x1, y, steps=6)
     page.mouse.up()
-    page.wait_for_function("() => document.querySelectorAll('#weekly circle.tb-dot').length < 16")
-    zoomed = page.locator("#weekly circle.tb-dot").count()
-    assert 2 <= zoomed < 16
+    page.wait_for_function(f"() => {{ const id = 'weekly'; return {_INST}.getOption().xAxis[0].data.length < 16; }}")
+    assert 2 <= _option(page, "weekly", cats) < 16
     page.locator("#weekly .tb-legend-reset").click()
-    page.wait_for_function("() => document.querySelectorAll('#weekly circle.tb-dot').length === 16")
+    page.wait_for_function(f"() => {{ const id = 'weekly'; return {_INST}.getOption().xAxis[0].data.length === 16; }}")
     assert page.locator("#weekly .tb-legend-reset").count() == 0
 
 
 def test_currency_ticks_stay_short_and_a_unit_never_rescales(page):
     _reset(page)
-    ticks = page.locator("#bar .tb-axis-v text").all_text_contents()
-    assert ticks and all(t.startswith("$") and "," not in t for t in ticks), ticks
-    assert "$6K" in ticks                                    # East's 6,000 on the axis
-    page.locator("#area .tb-hit").first.hover()
+    ticks = [t for t in _texts(page, "bar") if t.startswith("$") and "," not in t]
+    assert "$6K" in ticks and "$0" in ticks, ticks
+    tip = _hover(page, "area", 0, 0)
     # Q1 revenue is 1200+900+400+300 = 2,800: the unit is a suffix, not a scale.
-    assert page.locator("#area .tb-chart-tip strong").inner_text() == "2,800 u"
-    assert all(t.endswith(" u") for t in page.locator("#area .tb-axis-v text").all_text_contents())
+    assert tip.locator("strong").inner_text() == "2,800 u"
+    assert "1K u" in _texts(page, "area")
 
 
 def test_bars_carry_their_own_values_in_the_pages_format(page):
     """A direct label is the row's stamped value through the figure's own
     format, never a rounded recomputation; small multiples carry none."""
     _reset(page)
-    labels = page.locator("#bar .tb-values text").all_text_contents()
+    labels = [t for t in _texts(page, "bar") if "," in t]
     # Revenue by region, ordered -revenue: East 6,000, West 3,650, North 1,870, South 1,350.
-    assert labels == ["$6,000", "$3,650", "$1,870", "$1,350"]
-    assert page.locator("#facet .tb-values text").count() == 0
+    assert sorted(labels) == sorted(["$6,000", "$3,650", "$1,870", "$1,350"])
+    assert _option(page, "facet", "o.series.some((s) => s.label && s.label.show)") is False
+    assert _option(page, "facet", "o.grid.length") == 2
 
 
 def test_the_tooltip_opens_the_receipt_at_its_figure(page):
     _reset(page)
-    page.locator("#bar .tb-hit").nth(2).hover()
+    _hover(page, "bar", 0, 2)
     link = page.locator("#bar .tb-chart-tip-receipt")
     link.wait_for(state="visible")
     link.click()
     assert page.locator(".tb-receipt-drawer.tb-receipt-open").count() == 1
     assert page.locator(".tb-receipt-row--here").get_attribute("data-tb-receipt-fig") == "bar"
     page.locator(".tb-receipt-btn").click()               # close it again
+
+
+def test_a_canvas_chart_prints_as_vectors(page):
+    """data-tb-renderer="canvas" draws a canvas; printed, the chart is drawn
+    by the SVG renderer, and by canvas again after."""
+    _reset(page)
+    host = "#canvas .tb-chart-host"
+    assert page.locator(f"{host} canvas").count() == 1
+    assert page.locator(f"{host} svg").count() == 0
+    page.evaluate("() => window.dispatchEvent(new Event('beforeprint'))")
+    page.wait_for_selector(f"{host} svg path", state="attached")
+    assert page.locator(f"{host} canvas").count() == 0
+    page.evaluate("() => window.dispatchEvent(new Event('afterprint'))")
+    page.wait_for_selector(f"{host} canvas", state="attached")
+    assert page.locator(f"{host} svg").count() == 0
+    assert page.errors == []

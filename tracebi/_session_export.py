@@ -261,7 +261,10 @@ def export_session(wb_dir: str, out_path: str,
     tail = ""
     if n_charts:
         from tracebi.reports.embed import read_lib
-        tail = (f"<script>\n{read_lib('echarts')}\n</script>\n"
+        # The one ECharts build (echarts-kit.min.js), under the global name
+        # this page's script reads.
+        tail = (f"<script>\n{read_lib('echarts-kit')}\n"
+                "window.echarts = window.__tbECharts;\n</script>\n"
                 f"<script>\n{_CHART_JS}\n</script>\n")
 
     page = (

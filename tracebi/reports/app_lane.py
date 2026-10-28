@@ -476,14 +476,16 @@ def libs_for(imports: dict[str, list[str]]) -> list[str]:
     """The vendored bundles a page needs, in load order.
 
     The kit's one runtime is TanStack Redact (``react``). ECharts
-    (``echarts-kit``) rides before it on a page that imports ``echarts`` or
-    the kit's ``EChart`` (or all of ``tracebi`` with ``*``): it never imports
-    React, and the runtime registers it as the ``echarts`` module. Recharts 2
+    (``echarts-kit``), which draws every chart, rides before it on a page
+    that imports ``echarts`` or a kit chart (``Chart``, ``Spark``,
+    ``EChart``, or all of ``tracebi`` with ``*``): it never imports React,
+    and the runtime registers it as the ``echarts`` module. Recharts 2
     (``recharts``) rides after it and shares the runtime's React.
     """
     tracebi = imports.get("tracebi") or []
     libs = ["tailwind"]
-    if "echarts" in imports or "EChart" in tracebi or "*" in tracebi:
+    if "echarts" in imports or "*" in tracebi or any(
+            name in tracebi for name in ("Chart", "Spark", "EChart")):
         libs.append("echarts-kit")
     libs.append("react")
     if "recharts" in imports:

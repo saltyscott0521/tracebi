@@ -407,7 +407,7 @@ FOCUS_JS = r"""
 REPORT_LOOK_JS = r"""
 () => {
   // Decoration a report may keep: the chart tooltip, a menu or popover, the receipt drawer.
-  const allowed = '.tb-chart-tip, .tb-receipt-drawer, [role=tooltip], [role=menu], [popover]';
+  const allowed = '.tb-chart-tip, .tb-echart-tip, .tb-receipt-drawer, [role=tooltip], [role=menu], [popover]';
   const visible = el => {
     const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);

@@ -140,7 +140,10 @@ class TestSsrValueFormatParity:
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 class TestChartValueFormat:
-    """optionFor honors data-tb-value-format on every chart type and mode."""
+    """optionFor (the chart engine's one option builder) honors
+    data-tb-value-format on every chart type: the readout and a mark's own
+    value in the full format, ticks compact, and an unknown format writes the
+    value as it is."""
 
     PIE_ROWS = [
         {"region": "US", "mv": "550696024575"},
@@ -150,10 +153,9 @@ class TestChartValueFormat:
     def _probe(self, plan, rows, expr):
         """Build optionFor(plan, rows) under node; JSON-print `expr` over opt.
 
-        optionFor is internal to the runtime's IIFE (the public global stays
-        data/fmt/configureChart), so the harness exposes it by rewriting the
-        export line of the source before executing it — the asset on disk is
-        untouched, and a failed rewrite fails loudly below.
+        optionFor is internal to the runtime's IIFE, so the harness exposes it
+        by rewriting the export line of the source before executing it — the
+        asset on disk is untouched, and a failed rewrite fails loudly below.
         """
         script = (
             "var fs = require('fs');"
@@ -179,52 +181,53 @@ class TestChartValueFormat:
             plan["valueFormat"] = value_format
         return plan
 
-    def test_pie_without_value_format_has_no_formatter(self):
+    def test_a_pie_draws_the_rows_own_values_and_no_ring_labels(self):
         out = self._probe(
             self._pie_plan(), self.PIE_ROWS,
-            "[typeof opt.series[0].label.formatter,"
-            " typeof opt.tooltip.valueFormatter,"
-            " opt.series[0].label.show]",
+            "[opt.series[0].data.map(function (d) { return d.value; }),"
+            " opt.series[0].label === undefined,"
+            " opt.tooltip.formatter({dataIndex: 0})]",
         )
-        assert out == ["undefined", "undefined", True]
+        assert out[0] == [550696024575, 1234.5]
+        assert out[1] is True          # the legend names the slices
+        # No format named: the shape default, as the table beside it writes it.
+        assert "<strong>550,696,024,575.00</strong>" in out[2]
 
-    def test_pie_label_and_tooltip_use_fmt(self):
+    def test_pie_readout_uses_fmt(self):
         expected = ChartSpec._fmt(550696024575, compact=True)
         out = self._probe(
             self._pie_plan("compact"), self.PIE_ROWS,
-            "[opt.series[0].label.formatter(opt.series[0].data[0]),"
-            " opt.tooltip.valueFormatter(opt.series[0].data[0].value),"
-            " opt.series[0].label.show]",
+            "opt.tooltip.formatter({dataIndex: 0})",
         )
-        assert out == [f"US: {expected}", expected, True]
+        assert f"<strong>{expected}</strong>" in out and "US" in out
 
     def test_categorical_honors_non_compact_mode(self):
         plan = {"type": "bar", "x": "region", "y": ["mv"],
                 "valueFormat": "currency", "palette": []}
         out = self._probe(
             plan, self.PIE_ROWS,
-            "[opt.yAxis.axisLabel.formatter(1234.5),"
+            "[opt.yAxis[0].axisLabel.formatter(1234.5),"
             " opt.series[0].label.formatter({value: 1234.5})]",
         )
-        assert out == ["$1,234.50", "$1,234.50"]
+        # The tick is short; the bar's own value keeps the full format.
+        assert out == ["$" + ChartSpec._fmt(1234.5, compact=True), "$1,234.50"]
 
     def test_unknown_mode_returns_raw_value(self):
         # The guard: an unknown mode never blanks a number.
         plan = {"type": "bar", "x": "region", "y": ["mv"],
                 "valueFormat": "bogus", "palette": []}
         out = self._probe(
-            plan, self.PIE_ROWS,
-            "[opt.yAxis.axisLabel.formatter(1234.5),"
-            " opt.series[0].label.formatter({value: 1234.5})]",
-        )
-        assert out == [1234.5, 1234.5]
+            plan, self.PIE_ROWS, "opt.series[0].label.formatter({value: 1234.5})")
+        assert out == "1234.5"
 
     def test_cartesian_tooltip_uses_value_format(self):
         plan = {"type": "bar", "x": "region", "y": ["mv"],
                 "valueFormat": "currency", "palette": []}
         out = self._probe(
-            plan, self.PIE_ROWS, "[opt.tooltip.valueFormatter(1234.5)]")
-        assert out == ["$1,234.50"]
+            plan, self.PIE_ROWS,
+            "opt.tooltip.formatter([{seriesId: opt.series[0].id, dataIndex: 1,"
+            " axisValueLabel: 'EU'}])")
+        assert "<strong>$1,234.50</strong>" in out and ">EU<" in out
 
     def test_scatter_axes_and_tooltip_use_value_format(self):
         plan = {"type": "scatter", "x": "mv", "y": ["mv"],
@@ -234,9 +237,10 @@ class TestChartValueFormat:
             plan, self.PIE_ROWS,
             "[opt.xAxis.axisLabel.formatter(550696024575),"
             " opt.yAxis.axisLabel.formatter(550696024575),"
-            " opt.tooltip.valueFormatter(550696024575)]",
+            " opt.tooltip.formatter({seriesId: opt.series[0].id, seriesIndex: 0, dataIndex: 0})]",
         )
-        assert out == [expected, expected, expected]
+        assert out[:2] == [expected, expected]
+        assert out[2].count(f"<strong>{expected}</strong>") == 2
 
 # ── The control-grammar harness ──────────────────────────────────────────
 # A DOM stub covering exactly the element surface the interactive runtime
@@ -387,12 +391,23 @@ globalThis.URL = {
   createObjectURL: function (b) { globalThis.__lastBlob = b; return 'blob:tb'; },
   revokeObjectURL: function () {}
 };
+// Every element lays out 600px wide, so a chart has room to draw.
+El.prototype.clientWidth = 600;
 globalThis.__charts = [];
-globalThis.echarts = {
-  init: function (target) {
-    var c = { el: target, options: [], resized: 0 };
+globalThis.__tbECharts = {
+  init: function (target, theme, opts) {
+    var c = { el: target, theme: theme, renderer: opts && opts.renderer, options: [],
+              resized: 0, handlers: {}, disposed: false };
     c.setOption = function (o) { c.options.push(o); };
+    c.getOption = function () { return c.options[c.options.length - 1]; };
     c.resize = function () { c.resized++; };
+    c.getWidth = function () { return target.clientWidth; };
+    c.getHeight = function () { return parseFloat(target.style.height) || 0; };
+    c.on = function (name, fn) { (c.handlers[name] = c.handlers[name] || []).push(fn); };
+    c.getZr = function () { return { on: function () {}, setCursorStyle: function () {} }; };
+    c.dispatchAction = function () {};
+    c.setTheme = function (t) { c.theme = t; };
+    c.dispose = function () { c.disposed = true; };
     globalThis.__charts.push(c);
     return c;
   }
@@ -478,7 +493,7 @@ var out = {
 fRegion.value = 'US';
 fRegion._fire('change');
 out.rows_after_region = tbody.children.length;
-out.chart_cats_after = __charts[0].options[1].xAxis.data;
+out.chart_cats_after = __charts[0].options[1].xAxis[0].data;
 out.kpi_after_filter = kpi.textContent;
 
 fCat.value = 'Equity';
@@ -1234,7 +1249,7 @@ process.stdout.write(JSON.stringify({
     return th.textContent; }),
   rows: tbl.querySelector('tbody').children.map(function (tr) {
     return tr.children.map(function (td) { return td.textContent; }); }),
-  data: opt.series[0].data
+  data: opt.series[0].data.map(function (d) { return d && typeof d === "object" ? d.value : d; })
 }));
 """
 
@@ -1297,7 +1312,7 @@ process.stdout.write(JSON.stringify([g.textContent, c.textContent,
 """)
         assert out == ["1,234.50", "$3,001", "3,001.15", "West"]
 
-    def test_a_narrow_pie_names_slices_in_a_legend_and_keeps_its_data(self):
+    def test_a_pie_names_slices_in_its_legend_and_keeps_its_data(self):
         out = _run_dom("""
 dataBlock('b', 'asset_class,aum\\nfixed income,2726364\\nmoney market,1688904\\n');
 var pie = el('div', { 'data-tb-figure': 'chart', 'data-tb-binding': 'b',
@@ -1307,11 +1322,13 @@ pie.clientWidth = 420;
 loadRuntime();
 var opt = __charts[0].options[0];
 process.stdout.write(JSON.stringify({
-  label: opt.series[0].label.show, legend: !!(opt.legend && opt.legend.show),
+  label: opt.series[0].label === undefined, legend: allText(pie.querySelector(".tb-legend-row")),
   data: opt.series[0].data.map(function (d) { return d.value; })
 }));
 """)
-        assert out == {"label": False, "legend": True, "data": [2726364, 1688904]}
+        assert out["label"] is True            # no names on the ring
+        assert "fixed income" in out["legend"] and "money market" in out["legend"]
+        assert out["data"] == [2726364, 1688904]
 
     _TOTALS = """
 dataBlock('b', 'region,revenue,margin_pct\\nUS,1000,0.2\\nEU,3000,0.4\\n');

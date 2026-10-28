@@ -9,12 +9,14 @@ page by Sucrase and run as an inline script: the report's CSP still refuses
 |---|---|---|
 | `react.min.js` | The runtime: TanStack Redact (a drop-in React runtime: the same API, smaller, synchronous rendering), Sucrase, the `tracebi` kit and the boot (`_react_src/runtime.js`, `kit.jsx`, `icons.js`) | every app.jsx page |
 | `tailwind.min.js` | Tailwind CSS's browser build: generates the utility classes the app uses, in the page | every app.jsx page |
-| `echarts-kit.min.js` | Apache ECharts for the kit's `<EChart>`, tree-shaken from `echarts/core` (`_react_src/echarts-entry.js`): bar, line, pie, scatter, effectScatter, radar, heatmap, treemap, sunburst, sankey, funnel, gauge, candlestick, boxplot, graph, parallel, themeRiver; dataset, grid, polar, tooltip, legend (scroll), title, dataZoom (slider, inside), brush, toolbox, visualMap, markLine / markPoint / markArea, axisPointer, aria; the canvas and SVG renderers. Loaded before the runtime, which registers it as the `echarts` module. | app.jsx imports `echarts`, or `EChart` (or `*`) from `tracebi` |
+| `echarts-kit.min.js` | Apache ECharts, which draws every chart (tracebi.js's chart engine, the kit's `<Chart>`, `<Spark>` and `<EChart>`, a template's `{{ figure() }}` charts), tree-shaken from `echarts/core` (`_react_src/echarts-entry.js`): bar, line, pie, scatter, effectScatter, radar, heatmap, treemap, sunburst, sankey, funnel, gauge, candlestick, boxplot, graph, parallel, themeRiver; dataset, grid, polar, tooltip, legend (scroll), title, dataZoom (slider, inside), brush, toolbox, visualMap, markLine / markPoint / markArea, axisPointer, aria; the canvas and SVG renderers. Loaded before the runtime, which registers it as the `echarts` module. | any page with a chart figure (a template's too); an app.jsx that imports `echarts`, or `Chart`, `Spark` or `EChart` (or `*`) from `tracebi` |
 | `recharts.min.js` | Recharts 2, sharing the runtime's React (`react`, `react-dom`, `react/jsx-runtime` and `react-dom/client` all resolve to the page's one runtime) | app.jsx imports `recharts` |
 | `lucide-icons.json` | Every lucide icon as data; the build embeds only the icons app.jsx imports | app.jsx imports `lucide-react` |
 
-The template lane's `echarts.min.js` (`"libs": ["echarts"]`) is a different
-build for a different consumer and is not used here.
+There is one ECharts build: a template page with a chart carries this same
+`echarts-kit.min.js` (the older `echarts.min.js` and `"libs": ["echarts"]`
+are gone). `d3.min.js` stays only for an author's own `tracebi.draw` figures
+(`"libs": ["d3"]`).
 
 ## Third-party components
 

@@ -71,7 +71,7 @@ it from the stamped rows: formatted, traced and filterable.
 |---|---|
 | `<Kpi>` | `binding`, `cell`, `format`, `label`, `context`, `lead` (a step larger), `id`. `deltaBinding`, `deltaCell`, `deltaFormat` and `deltaGood` (`"up"` or `"down"`) show a stamped change first on the context line, with arrow, sign and colour. Children (a `<Spark>`) sit on the card's bottom edge. |
 | `<Value>` | `binding`, `cell`, `format`, `id`: a number inside a sentence |
-| `<Chart>` | `binding`, `type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`), `x`, `y` (a string or a list), `color`, `valueFormat`, `stack`, `mark`, `annotate`, `facet`, `unit`, `xTitle`, `yTitle`, `palette`, `height`, `id` |
+| `<Chart>` | `binding`, `type` (`bar`, `barh`, `line`, `area`, `pie`, `scatter`), `x`, `y` (a string or a list), `color`, `valueFormat`, `stack`, `mark`, `annotate`, `facet`, `unit`, `xTitle`, `yTitle`, `palette`, `renderer`, `height`, `id`: `<EChart>` with the kit's defaults (a bar; `color` is its `series`), the same chart and figure id |
 | `<Spark>` | As `<Chart>` (default `type="area"`): the trend's shape alone, under a KPI |
 | `<Table>` | `binding`, `columns`, `labels`, `formats`, `sort`, `bars`, `totals`, `rows` (default 10; `"all"`), `selectRows` (or `selectRows="dim_issuer.issuer"`: the columns a row click writes), `id` |
 
@@ -124,7 +124,10 @@ Every gesture on a live page writes the same selection:
 ## Charts
 
 `<EChart>` is the chart: Apache ECharts, drawn into its own SVG (or canvas),
-for everything from a bar to a treemap, a sankey or 100,000 points. Whether a
+for everything from a bar to a treemap, a sankey or 100,000 points. There is
+one chart: `<Chart>` and `<Spark>` are `<EChart>` with the kit's defaults,
+and a template's `{{ figure() }}` charts are drawn by the same option builder
+in the runtime. Whether a
 chart is a checked figure follows its data, not who wrote it. It draws in the
 house look, from the page's chart tokens ([[chart-style]]), so the project's
 brand reaches it; never hard-code a colour in its `option`.
@@ -141,7 +144,8 @@ brand reaches it; never hard-code a colour in its `option`.
 | `series` | A column whose values split the rows into series (`<Chart color>`) |
 | `format`, `unit`, `stack` | The values' named format, a unit suffix, stacked series |
 | `option` | An ECharts option, or a function of the rows, deep-merged on top: the escape hatch for anything the props do not say |
-| `renderer` | `"svg"` (default: vectors, tabular figures, prints sharp) or `"canvas"` (thousands of marks) |
+| `renderer` | `"svg"` (default: vectors, tabular figures, prints sharp) or `"canvas"` (thousands of marks; printed, it draws as SVG). `report.json` `"charts": {"renderer": "canvas"}` sets every chart's ([[report-json]]) |
+| `mark`, `annotate`, `facet`, `xTitle`, `yTitle`, `palette` | As on `<Chart>` (the plan's [[template-html]] chart attributes) |
 | `theme` | `"auto"` (default): the house look from the page's tokens and palette, following its mode; or an ECharts theme |
 | `selects`, `onSelect` | On an option-only chart, the column a click selects; `onSelect(params)` returns the value a click picks (null: none) |
 | `highlight` | `"off"`: a selection narrows the chart instead of dimming its own field's other values |
@@ -151,7 +155,9 @@ brand reaches it; never hard-code a colour in its `option`.
   literal, `<EChart>` renders the same `data-tb-figure="chart"` element as
   `<Chart>`, the build records it and refuses an unknown binding or column,
   and the trace names it. `option` styles it and cannot replace its numbers
-  (series data, a dataset or category labels in it are dropped).
+  (series data, a dataset or category labels in it are dropped). It is how
+  ECharts' own tools reach a receipted chart: `dataZoom` (a slider under a long
+  series), `brush`, `visualMap`, `markArea`, a `toolbox`.
 - **A chart of numbers the page computed is not.** `<EChart option={…}>`
   alone (sankey links summed in the app, a ratio you work out) carries
   `data-tb-computed` and is the app's presentation, not a checked figure; the

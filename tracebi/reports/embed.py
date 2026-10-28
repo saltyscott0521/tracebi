@@ -48,9 +48,11 @@ from tracebi.model.dataset import DataSet, LineageNode, last_query_node
 
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
-#: Charting libraries the generator can inline. Their minified IIFE bundles live
-#: in ``tracebi/reports/assets/<name>.min.js`` and expose a global of the name.
-KNOWN_LIBS = {"echarts", "d3"}
+#: Libraries a report.json ``libs`` may name; the minified IIFE bundles live in
+#: ``tracebi/reports/assets/<name>.min.js``. Only D3, for an author's own
+#: ``tracebi.draw`` figures: every chart draws with ECharts
+#: (``echarts-kit.min.js``), which the build inlines on any page with a chart.
+KNOWN_LIBS = {"d3"}
 
 #: The strict CSP embedded in every generated page (architecture §5). Inline
 #: script/style are unavoidable in a static self-contained file; ``connect-src

@@ -54,8 +54,9 @@ table figure)."*
 | `color` | The series column. |
 | `palette` | A list of colours. |
 | `value_format` | Format for labels, axes and tooltips ([[number-formats]]). |
+| `renderer` | `svg` (the default) or `canvas`, for thousands of marks ([[report-json]] `charts`). |
 
-The build inlines D3 automatically when the page has a chart.
+The build inlines ECharts automatically when the page has a chart.
 
 ## `table`
 

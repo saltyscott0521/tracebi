@@ -339,14 +339,16 @@ def test_a_value_figure_is_taught_as_a_one_row_binding():
     assert "top sector" in guide
 
 
-def test_d3_is_taught_as_automatic_when_the_page_has_a_chart():
+def test_echarts_is_taught_as_automatic_when_the_page_has_a_chart():
     """A chart figure needs no ``libs``: both guides and the gateway guide
-    say the build adds D3, and how to keep ECharts."""
+    say every chart is drawn by ECharts, which the build adds, that
+    ``"echarts"`` is no longer a choice and D3 only for ``tracebi.draw``."""
     from tracebi.mcp_server import authoring_guide
 
     note = describe(brief=True)["presentation"]["report_json"]["libs"]
     assert "optional" in note and "automatically" in note
-    assert "inlines D3 automatically" in authoring_guide()
+    assert "Every chart is drawn by Apache ECharts" in authoring_guide()
     for name, text in _guides().items():
-        assert "inlines D3 automatically" in text, name
-        assert '"echarts"' in text, f"{name} does not say how to keep ECharts"
+        assert "Every chart is drawn by Apache ECharts" in text, name
+        assert '"echarts"` is no longer a choice' in text, name
+        assert "inlines D3" not in text, name

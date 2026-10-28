@@ -5,7 +5,8 @@ whole look: the ground, the cards and their depth, the radius, the type sizes
 and weights, the numerals' face, the spacing, the chart tokens, the lead KPI's
 tile, an accent and an eight-colour palette, each for the light ground and the
 dark one. Template pages and `app.jsx` pages take it alike, and so do the
-kit's `<EChart>` and the runtime's D3 charts, because both read only the
+kit's `<Chart>` and `<EChart>` and a template's charts, because all are drawn by one
+ECharts engine that reads only the
 tokens. A theme changes how a page looks, never a number.
 
 ## The three
@@ -22,13 +23,15 @@ project. A report's own theme wins over the project's; no theme anywhere is
 Ledger. `tracebi theme list` shows the three, the default and the project's
 choice marked. `tracebi new-report` / `new-dashboard --theme <name>` and the
 gateway's `start_draft(theme=…)` write it into `report.json`. Any other name
-fails the build, naming the three. The reference project shows all three: its
-reports are Ledger, `portfolio_desk` is Nightdesk and `portfolio_dashboard` is
-Signal.
+fails the build, naming the three. Themes are set at these two levels
+only, never per folder. In the reference project the SaaS reports
+(`saas_model/mrr_dashboard`, `cohort_brief`) are Nightdesk and every other
+report is Ledger; it sets no brand.
 
 **A brand on top.** The project's brand ([[tracebi-yaml]] `brand:`) layers
-over whichever theme: its accent, palette, font, logo and name replace the
-theme's colours and face; the theme keeps its surfaces, depth, density,
+over whichever theme: its accent, palette, font and logo replace the
+theme's colours and face, and its logo and name are the firm mark in the
+masthead (the kicker stays the model's label); the theme keeps its surfaces, depth, density,
 radius and numerals. The accent is still checked at 3:1 on the white card, and
 on the dark ground the brand's accent and palette are lifted to read against
 that theme's own dark card. Signal's lead tile is the brand's accent, with
@@ -117,11 +120,16 @@ theme; override them in `reports/_theme.css` or a report's `style.css`.
 | `--tb-chart-glow` | `0`: px of glow under a line, in the line's own colour |
 | `--tb-chart-1` … `--tb-chart-8` | the accent, then seven checked colours |
 
-## In an `<EChart>`
+## In ECharts
 
-The kit hands ECharts a theme built from these tokens, so an option-only chart
-(a sankey the page computes) takes the look too, and redraws when the page's
-mode changes. `renderer="svg"` is the default: vectors, tabular figures and a
-crisp print; `renderer="canvas"` for thousands of marks. An `option` may still
-style a chart. Never hard-code a colour in it: a series takes the palette, so
-the project's brand reaches it.
+Every chart is drawn by Apache ECharts, with one theme the runtime builds from
+these tokens at draw time (read from the figure, so a container that restates
+a token, such as Signal's lead tile, restyles its chart) and rebuilds when the
+page's mode changes. An option-only `<EChart>` (a sankey the page computes)
+takes the same theme. SVG is the default renderer: vectors, tabular figures
+and a crisp print; canvas (`data-tb-renderer="canvas"`, `<Chart
+renderer="canvas">`, or `report.json` `"charts": {"renderer": "canvas"}`) for
+thousands of marks, drawn as SVG while the page prints. A
+`tracebi.configureChart` patch or an `<EChart option>` may still style a chart.
+Never hard-code a colour in it: a series takes the palette, so the project's
+brand reaches it.

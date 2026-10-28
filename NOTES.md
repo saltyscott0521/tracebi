@@ -4,6 +4,79 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — The reference project carries no brand; a brand never hides the subject (UNBRAND)
+
+The owner's decisions. The reference project's four demos are unrelated
+businesses (a credit portfolio, a SaaS company, housing affordability, a wealth
+manager), so one firm's name, logo and colours on all of them was wrong: its
+`brand:` block and `brand/` folder are gone. Themes are set at two levels only,
+per report (`report.json` `"theme"`) or for the project (`brand: {theme}`), no
+folder level: the SaaS reports (mrr_dashboard, cohort_brief) name Nightdesk,
+everything else falls to Ledger (the desk and the dashboard no longer name
+Nightdesk and Signal). And a brand's `name` no longer replaces the masthead's
+kicker, which hid what a report is about: the logo and the name sit together as
+the firm mark in the masthead's mark slot (`.tb-brand`: the logo at its own
+aspect ratio, then the name in small type, in the masthead's ink), the name alone
+when there is no logo, and the kicker stays the model's label, on template and
+app.jsx pages alike (a template's empty `.tb-masthead-mark` is filled at build;
+the kit reads `data-tb-brand` / `data-tb-brand-logo` from the mount point; a mark
+the author drew wins). The BRAND and HOUSE-THEMES journey steps now write their
+own brand block and logo into a copy of the project.
+
+---
+
+## 2026-10-28 — One chart: ECharts draws every chart, the D3 engine is retired (ECHARTS-ENGINE)
+
+The owner's decision, locked: there is no separate "TraceBi chart" and
+"author's chart". Every chart is Apache ECharts, through ONE option builder
+and ONE theme in `tracebi.js` ("The chart engine"): a template's
+`{{ figure() }}` and hand-written `data-tb-figure="chart"` charts, the kit's
+`<Chart>` and `<Spark>` (now thin presets of `<EChart>`, same props and figure
+ids, so no shipped report changed), and a claimed `<EChart binding x y>` (the
+kit renders the element; the runtime draws it). An option-only `<EChart>`
+draws itself in the kit, in the same theme (`tracebi._echarts`). The receipt
+follows the data, not the author. Why ECharts: the best charting available
+with full flexibility (about 22 series types, zoom, brush, smooth at 100k
+points); the bench is the CHARTLIB scratch run.
+
+Where the shared code lives: the brief suggested a `window.tracebiEcharts`
+in `echarts-kit.min.js`; it went into `tracebi.js` instead, which every page
+already loads and whose node harness (`test_presentation_js.py`) can probe
+`optionFor` directly. `echarts-kit.min.js` stays pure ECharts
+(`window.__tbECharts`), the one build; `echarts.min.js` and
+`"libs": ["echarts"]` are gone (a report that lists it is refused, naming the
+fix). `d3.min.js` stays for `tracebi.draw`, only when a report lists `"d3"`.
+
+Kept locked: the engine draws the rows' own values (no total, share or
+average; a stack lays rows end to end), colours from the unfiltered rows,
+every gesture writes the one selection (a click on a category's whole band,
+not the 2px of a line; a slice; a scatter's nearest point within 40px; a
+legend chip; shift adds; Escape clears), the chart's own field dims instead of
+narrowing (`--tb-chart-dim`; `data-tb-highlight="off"`). Accessibility: the
+chart is `role="img"` with an `aria-label`, ECharts' `aria` description on
+(decal patterns off: they would change the house look; the palette is already
+checked for colour-blind separation), a keyboard stop whose arrow keys move
+ECharts' tooltip (`showTip`) and announce the value in a live region, Enter
+selects. Motion is off under reduced motion and in print. Fingerprints,
+verify and calc parity are untouched. `test_live_cascade.py` passes with only
+its mark selector and click changed (the click is a real mouse click on the
+first mark, found through the ECharts instance).
+
+Renderer: SVG by default; canvas per figure (`data-tb-renderer`, a declared
+figure's `renderer`, `<Chart renderer>`) or per report (`report.json`
+`"charts": {"renderer"}`). Print: a canvas chart is re-drawn by the SVG
+renderer on `beforeprint` (and canvas again after); every SVG gets a viewBox
+and print CSS lets it scale to the page, so a PDF keeps vectors (the showcase
+PDF holds no raster image).
+
+Measured: a chart page inlines ECharts (931 KB) instead of D3 (163 KB); built
+pages grow by about 725 KB (the desk, which carried both, shrinks by 185 KB).
+`tracebi.js` is about 200 lines shorter, the kit about 420. Every shipped report was built and
+screenshotted under all three house themes, with and without the brand, light
+and dark, before and after.
+
+---
+
 ## 2026-10-28 — Three house themes: Ledger, Nightdesk, Signal (HOUSE-THEMES)
 
 The owner chose three of four directions from a concept page (Atlas, the
@@ -55,8 +128,10 @@ chose one, in one locked sentence (`house.OFFER`) that the guides, the authoring
 SOP, the `author_report` prompt and `tracebi context` all carry;
 `start_draft(theme=)` seeds a new report draft's `report.json` with it.
 
-Reference project: the desk is Nightdesk, the dashboard Signal, everything else
-Ledger under the Halyard Credit brand. The web app is untouched.
+Reference project: the desk was Nightdesk and the dashboard Signal, everything
+else Ledger, under a fictional firm's brand; since UNBRAND (same day) the SaaS
+reports are Nightdesk, everything else Ledger, with no brand. The web app is
+untouched.
 
 ## 2026-10-28 — A house chart look, and a project brand every page follows (BRAND)
 
@@ -102,12 +177,11 @@ fix, a missing file, a non-hex colour, a file over 400 KB, and an accent below
 masthead's existing `.tb-masthead-mark`, drawn by CSS from `--tb-brand-logo`: the
 kit's `<Masthead>` always renders the mark and a template's masthead is given one
 at build, so no markup changed; on a filled ground (the editorial hero, a banner)
-it is drawn in the ground's ink. `name` replaces the model's label as the
-masthead's kicker. `mode` is the default for any page that names none (template
+it is drawn in the ground's ink. `name` replaced the model's label as the
+masthead's kicker (until UNBRAND: now it is the firm mark beside the logo). `mode` is the default for any page that names none (template
 pages too, not only app.jsx: one rule, in `with_default_mode`). The reference
-project carries a fictional firm, Halyard Credit (a deep-teal accent and a
-six-colour palette, a two-pennant logo in mid-tones that read on both grounds),
-with no font, so Geist stays. The web app's own look is untouched.
+project carried a fictional firm's brand (a deep-teal accent, a six-colour
+palette, a two-pennant logo) until UNBRAND removed it the same day. The web app's own look is untouched.
 
 ## 2026-10-28 — One chart: ECharts in the kit, every chart live (ECHARTS-KIT)
 
