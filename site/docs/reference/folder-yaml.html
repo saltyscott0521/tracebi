@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -77,8 +78,10 @@
   <main class="doc">
 <h1 id="folder-permissions-_folderyaml">Folder permissions (<code>_folder.yaml</code>)</h1>
 <p>A <code>_folder.yaml</code> in a library folder says who may see, build in, publish into
-and manage that folder.</p>
-<pre><code class="language-yaml"># reports/finance/_folder.yaml
+and manage that folder. A project (a top-level library folder, one area's
+reports: <a href="../concepts/workspace-and-projects.html">Workspace and projects</a>) keeps its permissions in its own
+<code>_folder.yaml</code>, and a folder inside it may have one of its own.</p>
+<pre><code class="language-yaml"># reports/finance/_folder.yaml: the finance project
 view:    [finance, ceo@example.com]    # see the folder; open its reports and their builds
 build:   [finance-analysts]            # + create and edit drafts in it
 publish: [finance-leads]               # + publish a draft into it; change its schedules
@@ -88,7 +91,9 @@ accepts: checkable                     # optional: only re-checkable numbers
 <ul>
 <li>A library folder is any directory under <code>reports/</code> (or a mount,
   <code>TRACEBI_LIBRARY_MOUNTS</code> in <a href="../reference/environment-variables.html">Environment variables</a>) that is not itself a
-  report package.</li>
+  report package. One directly under <code>reports/</code> is a project; the app lists it
+  as one. The file is still <code>_folder.yaml</code>, and the API still calls it a
+  folder (<code>/api/folders</code>, <code>folder</code>).</li>
 <li>The file is optional. With no <code>_folder.yaml</code> anywhere, the roles <code>viewer</code>,
   <code>analyst</code> and <code>admin</code> decide, and nobody is shut out.</li>
 </ul>

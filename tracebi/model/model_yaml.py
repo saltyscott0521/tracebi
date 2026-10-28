@@ -30,7 +30,7 @@ _HEADER = """\
 """
 
 _SECTIONS = (
-    ("connectors", "where the tables live (a DuckDB file inside the project)"),
+    ("connectors", "where the tables live (a DuckDB file inside the workspace)"),
     ("tables", "each table the phase-1 transform sank, by its warehouse name"),
     ("relationships", "named joins between tables"),
     ("dimensions", "the descriptive tables (key column, attributes to slice by)"),
@@ -92,7 +92,7 @@ def _connector(c, root: Path) -> dict:
     except ValueError:
         raise ModelMigrationError(
             f"connector '{c.name}' database {database!r} is outside the "
-            f"project ({root}); a YAML model keeps it inside") from None
+            f"workspace ({root}); a YAML model keeps it inside") from None
     return {"name": c.name, "type": "duckdb", "database": rel.as_posix()}
 
 

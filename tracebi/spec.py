@@ -707,7 +707,7 @@ def json_schema() -> dict:
                 "type": "string",
                 "description": "CSS filename resolved against the reports "
                                "directory; stacks over the default and "
-                               "project layers (later wins). Presentation "
+                               "workspace layers (later wins). Presentation "
                                "only — never changes a number.",
             },
             "script": {

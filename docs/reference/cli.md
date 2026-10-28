@@ -3,7 +3,7 @@
 Every `tracebi` command, grouped by task. Most days you use these five:
 
 ```bash
-tracebi dev                      # the app in dev mode (no name: the project feed)
+tracebi dev                      # the app in dev mode (no name: the workspace feed)
 tracebi run-transform holdings   # clean the inputs and write the warehouse (.sql, .py or .ipynb)
 tracebi report build my_report   # build one self-contained .html and its trace
 tracebi report status my_report  # what each figure has earned
@@ -18,15 +18,15 @@ tracebi [--models-dir DIR] [--pipelines-dir DIR] [--connections-dir DIR] <comman
 
 Their defaults come from the environment ([[environment-variables]]).
 
-## Create a project
+## Create a workspace
 
 ### `tracebi init`
 
 ```bash
-tracebi init <project> [--force] [--template NAME]
+tracebi init <workspace> [--force] [--template NAME]
 ```
 
-Creates a complete project: `tracebi.yaml`, `inputs/`, `connections/`,
+Creates a complete workspace: `tracebi.yaml`, `inputs/`, `connections/`,
 `transforms/`, `models/`, `pipelines/` and `reports/`, with a sample input,
 transform (pandas), model, pipeline and report
 (`reports/sample_model/sample_dashboard/`), plus `.gitignore`, `.env.example`,
@@ -97,7 +97,7 @@ tracebi import dbt ./jaffle_shop --connection wh --name jaffle
 tracebi import dbt target/manifest.json --connection wh
 ```
 
-Reads a dbt `manifest.json` (a project root containing
+Reads a dbt `manifest.json` (a dbt project root containing
 `target/manifest.json`, or the file itself) and drafts `models/<name>.py`. It
 does not run dbt or load `.env`.
 
@@ -193,8 +193,8 @@ tracebi theme list                 # the house themes, then the deprecated prese
 ```
 
 `list` shows the three house themes ([[chart-style]]), Ledger marked the
-default and the project's `tracebi.yaml` `brand.theme` marked as its choice,
-then the six deprecated accent presets, then the project's brand. A project
+default and the workspace's `tracebi.yaml` `brand.theme` marked as its choice,
+then the six deprecated accent presets, then the workspace's brand. A workspace
 picks its house theme with `brand: {theme: …}` ([[tracebi-yaml]]); one report
 with `report.json` `"theme"` ([[report-json]]). `tracebi theme use <preset>
 [--force]` still copies a deprecated accent preset to `reports/_theme.css`;
@@ -282,7 +282,7 @@ Verify is read-only. It refuses a review snapshot by name.
 tracebi validate
 ```
 
-Checks the project layout, reports discovery imports that failed, and runs
+Checks the workspace layout, reports discovery imports that failed, and runs
 `DataModel.validate()` on every model, chiefly that dimension keys are unique.
 Prints one line per credential a connection uses that is set nowhere. Exits 1
 on any problem.
@@ -338,8 +338,8 @@ reports without authentication).
 tracebi serve [--host 127.0.0.1] [--port 8000] [--reload]
 ```
 
-Serves the project's web app. Refuses, with what to do, when the current
-directory has no project or `uvicorn` is not installed.
+Serves the workspace's web app. Refuses, with what to do, when the current
+directory has no workspace or `uvicorn` is not installed.
 
 ### `tracebi warehouse tables`
 
@@ -362,7 +362,7 @@ tracebi session clear  [name]
 ```
 
 Saves or resets the workbench feed `tracebi dev` writes (under
-`.tracebi/workbench/<name>/`). Omit `name` for the project feed.
+`.tracebi/workbench/<name>/`). Omit `name` for the workspace feed.
 
 | Subcommand | Effect |
 |---|---|

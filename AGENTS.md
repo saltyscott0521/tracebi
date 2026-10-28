@@ -1,6 +1,6 @@
 # AGENTS.md — Working with TraceBi as an AI Agent
 
-Read this before touching a TraceBi project. Deeper references: `docs/concepts/the-three-phase-workflow.md`
+Read this before touching a TraceBi workspace. Deeper references: `docs/concepts/the-three-phase-workflow.md`
 (the three-phase workflow, end to end), `CLAUDE.md` (codebase rules), `NOTES.md`
 (design decisions), `examples/agent_gateway/` (a complete recorded agent
 session), `design/pitfalls.md` (bugs already hit here, and the rule that
@@ -11,7 +11,7 @@ prevents each: read it before changing the runtime, styles or compiler).
 TraceBi is **the trust layer for AI-generated analytics** — a code-first BI
 framework where every number has a trace (see `MANIFESTO.md` for the full
 identity and vocabulary canon). The mechanism is a **three-phase workflow**
-that carries data from messy to reportable. Each phase is a project-root folder
+that carries data from messy to reportable. Each phase is a workspace-root folder
 with its own cadence, decoupled from the next by a **freeze point** — a
 materialized artifact handed across the boundary:
 
@@ -19,9 +19,11 @@ materialized artifact handed across the boundary:
 |---|---|---|---|
 | ① **Transform** | `transforms/` | **SQL by default**: `transforms/<name>.sql`, DuckDB statements run top to bottom in one fresh warehouse connection — read, clean, parse (`regexp_extract`), key, dedupe (`QUALIFY row_number()`), then **sink** clean star-schema tables (`CREATE OR REPLACE TABLE`, or on the object tier `COPY (…) TO '{{ sink }}/<table>.parquet'`). A derivation may stay a **sink view** (`CREATE OR REPLACE VIEW`, file and remote tiers): it reads only warehouse tables and views, and one over a `-- source:` table or a file is refused. Two placeholders only: `{{ sink }}` and `{{ root }}`. The sink contract sits beside it as `<name>.contract.yaml`. The escape hatch is pandas or polars (`tracebi new-transform --python`: notebook-shaped `# %%` cells; literal `.ipynb` works too). `tracebi run-transform` executes any form top-to-bottom fresh and reports `form: sql \| python \| notebook` | `data/warehouse.duckdb` (materialized tables) |
 | ② **Model** | `models/` | a declarative `DataModel` over the warehouse — grain, keys, measures, in a few dozen lines a reviewer reads without opening the pandas above it | the model (the semantic contract) |
-| ③ **Report** | `reports/` | an **artifact package**, in a folder named for its model (`reports/<model>/<name>/`, named `<model>/<name>` in every command: free HTML whose figures each name a stamped binding or carry `data-tb-unverified`) — or a `ReportSpec` (JSON), which is a serialization of the same thing: `tracebi migrate spec reports/<name>.json` compiles it into the package form, and the package shadows the same-named spec at discovery | the rendered page + its lineage manifest |
+| ③ **Report** | `reports/` | an **artifact package**, in a project named for its model (`reports/<model>/<name>/`, named `<model>/<name>` in every command: free HTML whose figures each name a stamped binding or carry `data-tb-unverified`) — or a `ReportSpec` (JSON), which is a serialization of the same thing: `tracebi migrate spec reports/<name>.json` compiles it into the package form, and the package shadows the same-named spec at discovery | the rendered page + its lineage manifest |
 
-**Folder permissions.** A folder under `reports/` (a directory that is not a package) may hold a `_folder.yaml` granting `view`, `build`, `publish` and `manage` to sign-in groups or names (`docs/reference/folder-yaml.md`). With none, roles decide as before. A report in a folder you cannot view is not listed and every read of it answers as if it did not exist, so a "no such report" over the gateway can mean "not yours": do not look for it another way. A `build` or `publish` refusal names the permission it needs; ask a folder manager rather than working around it.
+**Workspace and projects.** The workspace is everything one `tracebi.yaml` covers: one warehouse, its sources, transforms and models, the brand and the default house theme (one per company). A project is one area's reports: a top-level folder under `reports/`, named for the model or models it reads (`reports/saas_model/` is the SaaS project). Models stay shared at the workspace, so two projects can read one model. Folders inside a project stay folders, and `my-published/<name>` is a person's own space, not a project. A theme is set on a report (`report.json` `"theme"`) or the workspace (`tracebi.yaml` `brand: {theme}`), never on a project. Nothing is renamed: the API and the files still say folder (`/api/folders`, `_folder.yaml`) and `describe_project` describes the workspace (`describe_workspace` is the same tool; `docs/concepts/workspace-and-projects.md`).
+
+**Project and folder permissions.** A project or a folder under `reports/` (a directory that is not a package) may hold a `_folder.yaml` granting `view`, `build`, `publish` and `manage` to sign-in groups or names (`docs/reference/folder-yaml.md`). With none, roles decide as before. A report in a folder you cannot view is not listed and every read of it answers as if it did not exist, so a "no such report" over the gateway can mean "not yours": do not look for it another way. A `build` or `publish` refusal names the permission it needs; ask a folder manager rather than working around it.
 
 Reference implementation, end to end, at `examples/portfolio_project/`:
 `transforms/holdings_transform.sql` (+ `holdings_transform.contract.yaml`; the
@@ -43,7 +45,7 @@ when the snapshot stood in), and `tracebi verify --contracts` re-reads it:
 `CHANGED` when the source moved since. In Python,
 `load_source("crm.issuer_ratings", ROOT, fallback=...)` from
 `tracebi.transforms` returns the same frame and record for
-`contract(..., sources=)`. The reference project's `dim_rating` comes from a
+`contract(..., sources=)`. The reference workspace's `dim_rating` comes from a
 Postgres CRM this way (`docs/reference/transform-sql.md`).
 
 A model is YAML by default: `models/<name>.yaml` (`tracebi new-model` writes a
@@ -89,7 +91,7 @@ tests the warehouse, writes the secret to `.env`, and writes
 MUST be (a literal secret is a validation error). `${ENV_VAR:-default}` adds a
 default for when the name is set nowhere; it is checked like a literal, so a
 password has none. The variable is read when the connection is used, never at
-discovery, from the environment, then `.env`, then the project's encrypted
+discovery, from the environment, then `.env`, then the workspace's encrypted
 store (`tracebi secret set NAME`; `tracebi secret list` shows what is missing);
 a model points at it with
 `connection: <name>` in its `connectors:`. (`--python` writes the older
@@ -99,7 +101,7 @@ first, then that.) `tracebi migrate connection models/_connections/<name>.py
 drafts a star schema from column metadata only. Edit every line marked
 `# DRAFT: review` before a report depends on it.
 
-The query engine's limits live in `tracebi.yaml` at the project root
+The query engine's limits live in `tracebi.yaml` at the workspace root
 (`tracebi init` writes a commented one): `engine: {memory_limit, threads,
 temp_directory, query_timeout_s}`. Every model query runs in one read-only
 DuckDB connection over the warehouse that cannot open a file, a URL, an
@@ -116,16 +118,16 @@ sink_target`), and both follow the tier without naming a path. Reference:
 `docs/reference/tracebi-yaml.md`.
 
 Already have dbt marts? `tracebi import dbt <path>` reads a `manifest.json`
-(a project root, or the file; it does not run dbt) and drafts `models/<name>.py`
+(a dbt project root, or the file; it does not run dbt) and drafts `models/<name>.py`
 the same way. `--connection <name>` wires the connection `tracebi connect`
 wrote. Relationships and measures stay `# DRAFT: review` comments — foreign
 keys are not invented.
 
-Starting from a question? `tracebi init <project> --template saas-metrics`
+Starting from a question? `tracebi init <workspace> --template saas-metrics`
 (also `saas_metrics`) scaffolds the SaaS metrics starter: ending MRR, logo
 churn, and a signup-cohort cut, plus the reports `saas_model/mrr_dashboard`
 and `saas_model/cohort_brief`, over a small sample that verifies.
-`tracebi init <project> --template sales-pipeline` (also `sales_pipeline`)
+`tracebi init <workspace> --template sales-pipeline` (also `sales_pipeline`)
 scaffolds the sales pipeline starter: open pipeline value and win rate
 (won deals over closed deals — a ratio of totals), cut by stage, rep, and
 region, plus `sales_pipeline_model/pipeline_dashboard` and
@@ -367,9 +369,9 @@ in `report.json` `"look"` (an `app.jsx` has no `<html>`) and whose sidebar and
 title are its own components; `new-report` and `new-dashboard --html` write
 it as the template attributes above. These change how a page looks, never a number or the trace's tones.
 
-**Brand.** A project's brand lives in `tracebi.yaml` `brand:` (`name`,
+**Brand.** A workspace's brand lives in `tracebi.yaml` `brand:` (`name`,
 `logo`, `accent`, `palette`, optional `font` and `mode`): every report and
-dashboard of the project takes it, its charts included (`tracebi theme list`
+dashboard of the workspace takes it, its charts included (`tracebi theme list`
 shows it). The logo and the name sit together as the firm mark in the
 masthead; the kicker stays the model's label. Never hard-code a colour in an `<EChart option>` or a style: a
 series takes the palette in order (`--tb-chart-1..8`), and the house chart
@@ -379,16 +381,16 @@ the brand and the themes set.
 **House themes.** A report or dashboard takes one of three house themes, each
 a whole look (surfaces, depth, density, numerals, the chart tokens): `ledger`
 (the default), `nightdesk` or `signal` (`docs/reference/chart-style.md`). The
-project picks one in `tracebi.yaml` `brand: {theme: …}`; one report in
+workspace picks one in `tracebi.yaml` `brand: {theme: …}`; one report in
 `report.json` `"theme"` (`--theme` on `new-report` / `new-dashboard`, `theme`
 on the gateway's `start_draft`); `tracebi theme list` shows them. Pick a theme
 or use the brand, never hard-coded colours. Offer the house theme once, for a
-new report or dashboard only: when the project sets no brand.theme and the
+new report or dashboard only: when the workspace sets no brand.theme and the
 person has not named a theme, offer the three in one short line each (Ledger:
 calm, institutional, the default; Nightdesk: dark, dense, monospaced numbers,
 for a desk or ops screen; Signal: bold, big numbers, for a board pack or a
 wall screen), recommend one for what the report is for, and use Ledger if the
-person does not choose. If the project sets a theme, use it and say so in one
+person does not choose. If the workspace sets a theme, use it and say so in one
 line instead of asking. Never ask again for an existing report. The six accent
 presets (graphite, indigo, midnight, ocean, plum, sand) are deprecated: a
 report that names one still builds, in the house theme with that accent, and
@@ -399,7 +401,7 @@ the accent pairs (`--tb-accent` / `--tb-accent-text`, `--tb-dark-accent` /
 system sets it on the `.tb-masthead h1`, the lead number and the trace's
 title): tokens only, no rule of its own, no gradient, hatch, glow or resting
 shadow, and no second set of components. Set the pairs where a report should
-differ from the project's accent; the reference project keeps a navy book, a
+differ from the workspace's accent; the reference workspace keeps a navy book, a
 teal showcase and the affordability editorial's own look on one system.
 `reports/_style.md` is the team's house style — `tracebi context` and
 `get_context` return it as `house_style`. Read it before you build and follow
@@ -479,7 +481,7 @@ The showcase's holdings treemap is the worked example.
 **Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
 (`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`) uses it for its
 one display face (Fraunces, with its licence beside it); the reference
-project's `reports/wealth_model/aum_by_branch` for its faces and its hero
+workspace's `reports/wealth_model/aum_by_branch` for its faces and its hero
 artwork.
 
 Three rules that keep pages honest:
@@ -692,7 +694,7 @@ does not verify is recorded `refused` and nothing is sent. When `TRACEBI_SLACK_B
 schedule until stopped; `tracebi schedule list` shows each one's last run.
 
 The workbench starts BEFORE the report exists. `tracebi dev` with **no
-name** opens the app's Data page, with the **project feed** — the live
+name** opens the app's Data page, with the **workspace feed** — the live
 surface for phase ① and ②: while this server is up,
 `tracebi.workbench.show(df, note=...)` from ANY script you run (a transform
 probe, a scratch analysis) posts the frame to the feed (the app's Data page, under
@@ -745,7 +747,7 @@ weight), **grain-and-fanout** (pick the grain first; the fanout guard refusing
 your query means your grain is wrong), and **verify-your-own-work** (close the
 loop yourself before claiming a number). Skill-aware agents can activate the
 same discipline as the **`tracebi-analyst`** skill. Silent-wrong output — a
-confident, well-formatted, wrong number — is this project's cardinal sin; the
+confident, well-formatted, wrong number — is TraceBi's cardinal sin; the
 knowledge base exists to help you catch it before a reader does.
 
 **The same knowledge base covers report design.** The lessons whose slugs start
@@ -838,7 +840,7 @@ Start it with `tracebi mcp` (stdio, local agent) or
 `tracebi mcp --transport http --port 8765` (remote). Needs
 `pip install 'tracebi[mcp]'`. `tracebi init` writes `.mcp.json` (Claude
 Code) and `.cursor/mcp.json` (Cursor), both running `tracebi mcp` over
-stdio from the project folder. `tracebi mcp config --client claude-code|cursor|claude-desktop`
+stdio from the workspace folder. `tracebi mcp config --client claude-code|cursor|claude-desktop`
 prints the snippet for another client; `--http URL` prints the
 streamable-HTTP form. The Authorization placeholder differs by client:
 `Bearer ${TRACEBI_MCP_TOKEN}` for Claude Code, `Bearer ${env:TRACEBI_MCP_TOKEN}`
@@ -859,7 +861,7 @@ Twenty-seven tools (`tracebi/mcp_server.py`):
 | Tool | Purpose |
 |---|---|
 | `get_context` | Full vocabulary: section/chart types, DataSet verbs, measure kinds, filter operators; `model=<name>` adds that model's schema. **Call first.** |
-| `list_models` | Project models with tables, facts, dimensions, measures. A model that failed to load is listed under `skipped` with its error; fix the file and call again (models reload when the file changes). |
+| `list_models` | Workspace models with tables, facts, dimensions, measures. A model that failed to load is listed under `skipped` with its error; fix the file and call again (models reload when the file changes). |
 | `describe_table` | Column names and types of a warehouse table, from connector metadata (`table`, optional `connector`). Omit `table` to list tables. Never returns rows. A connector that raises is reported in place (`error`: exception type plus the first message line); the others still list. Learn column names here before writing a model or an ad-hoc measure. The CLI is `tracebi warehouse tables`. |
 | `describe_model` | One model's full schema |
 | `query_model` | Star-schema query → stamped result. `measures` is declared measure names (ratios included) or `{column: agg}` (`sum, count, mean, min, max, nunique`); dimensions are `dim_name.attribute`; `filters` take equality, lists (IN), or operator dicts (`gte`, `between`, `contains`, …) and are **WHERE** — applied before aggregation, so a filter on a measure changes the group totals; `having` is **HAVING** — same spellings on aggregated result columns (measures, ratios), so `having={'revenue':{'gte':250}}` keeps groups whose *total* clears 250 with totals intact; `order_by` (`{column, desc}` or `'-col'`) + `limit` express "top N" (limit **requires** order_by); `preview_rows` caps transport only |
@@ -880,8 +882,8 @@ Twenty-seven tools (`tracebi/mcp_server.py`):
 | `publish_draft` | Validate and publish: a report must render against the published models, a model must compile. Keeps the version it replaces under `.tracebi/history/` and records a `publish` run. Changes what the app serves, so get the person's go-ahead first. A model that would move or break published reports is refused (`ok: false`, with `impact`) unless you pass `accept_impact=true`; a break needs accepting too, and the accepted impact is recorded in the run. A report goes to `folder` (a library path, created if needed; default its own path). With only Build on that folder the answer is `status: "requested"`: a request for someone with Publish there. A folder that `accepts: checkable` refuses a report whose numbers a query cannot re-run |
 | `list_publish_requests` | Requests to publish a draft into a folder: yours, and those into folders where you hold Publish. `status` filters (`pending`, `approved`, `rejected`) |
 | `decide_publish_request` | Approve (publishes what was requested, recording who approved and when) or reject (`note` required) a pending request. Needs Publish on the destination now; you cannot decide your own. Get the person's go-ahead first |
-| `describe_project` | The project as a graph: every source, transform, table, model and report, what feeds what, and what you may read. The same graph as `GET /api/graph` and the app's Data overview. Call it first on a project you have not seen. For a table a SQL transform wrote, `columns_from` (also on `describe_table`) says which source columns each column is computed from, as DuckDB's parser proved it (`edge_facts` draws them); `null` with a reason where it could not follow, nothing for pandas |
-| `list_connections` | The project's connections (`connections/<name>.yaml`), each with its `type` and `agent_tables`: the tables a person allowed agents to read (`agents: {tables: [a, b] \| "*"}`; none when absent). Credentials are never shown |
+| `describe_project` (or `describe_workspace`, the same tool) | The workspace as a graph: every source, transform, table, model and report, what feeds what, and what you may read. The same graph as `GET /api/graph` and the app's Data overview. Call it first on a workspace you have not seen. For a table a SQL transform wrote, `columns_from` (also on `describe_table`) says which source columns each column is computed from, as DuckDB's parser proved it (`edge_facts` draws them); `null` with a reason where it could not follow, nothing for pandas |
+| `list_connections` | The workspace's connections (`connections/<name>.yaml`), each with its `type` and `agent_tables`: the tables a person allowed agents to read (`agents: {tables: [a, b] \| "*"}`; none when absent). Credentials are never shown |
 | `list_source_tables` | One connection's allowed tables, with columns and row estimates. Other tables are not listed |
 | `describe_source_table` | One allowed table: columns, a profile, and `sample` rows (default 20, at most 500). A table agents may not read is "not found", as a missing one is |
 | `propose_transform` | `transforms/<name>.sql` + `<name>.contract.yaml` as one code request (`name`, `sql`, `contract_yaml`, `note`). Checked first: a new name, SQL that parses, every `-- source:` a table you may read, a contract with at least one check. Nothing runs until an admin approves it at `review_url`; approving runs it once. `docs/agents/sop-onboarding.md` walks connection → transform → model → report |

@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -101,7 +102,7 @@ print <code>form: sql | python | notebook</code>. A pipeline run records the for
 <li>Each table its <code>-- source:</code> lines name is attached, read where it lives
    when its connection allows (How a source is read, below).</li>
 <li>Its statements run in order in one fresh read-write DuckDB connection to
-   the warehouse <code>tracebi.yaml</code> names, with the project's <code>engine</code> limits. A
+   the warehouse <code>tracebi.yaml</code> names, with the workspace's <code>engine</code> limits. A
    failing statement stops the run with its number and line:
    <code>transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …</code>.</li>
 <li>Each table a <code>-- sink:</code> line names is sent to its connection
@@ -246,7 +247,7 @@ source table as <code>&lt;connection&gt;.&lt;table&gt;</code>. A view a check
 touches also has a fingerprint under <code>tables</code>, read like a table. The app
 marks a view with its own glyph and says which transform defined it over
 which tables.</p>
-<p>A Python transform's <code>write()</code> always materializes. The reference project's
+<p>A Python transform's <code>write()</code> always materializes. The reference workspace's
 <code>holdings_transform_pandas.py</code> writes the same rows as a table.</p>
 <h2 id="placeholders">Placeholders</h2>
 <p>There are two. Each is substituted as text with any single quote doubled, so
@@ -265,7 +266,7 @@ put it inside a <code>'…'</code> literal.</p>
 </tr>
 <tr>
 <td><code>{{ root }}</code></td>
-<td>The project root, absolute</td>
+<td>The workspace root, absolute</td>
 </tr>
 </tbody>
 </table>
@@ -274,7 +275,7 @@ put it inside a <code>'…'</code> literal.</p>
 two, {{ sink }} and {{ root }}</code>. There are no loops, conditionals or <code>ref()</code>s.</p>
 <h2 id="relative-paths">Relative paths</h2>
 <p>A relative read, <code>read_csv('inputs/holdings.csv')</code>, resolves against the
-project root (the connection's <code>file_search_path</code>), whatever directory the run
+workspace root (the connection's <code>file_search_path</code>), whatever directory the run
 started from. A write names its destination with <code>{{ sink }}</code> or <code>{{ root }}</code>.</p>
 <h2 id="read-a-table-from-a-database">Read a table from a database</h2>
 <p>Declare the database as a connection (<a href="../reference/connections-yaml.html">Connection files (YAML)</a>), then name each
@@ -304,7 +305,7 @@ SELECT … FROM crm.issuer_ratings …;
 </tr>
 <tr>
 <td><code>fallback:</code></td>
-<td>A committed CSV snapshot inside the project, read only when the connection's <code>${VAR}</code> is unset (a fresh clone, CI). Any other failure (server down, table missing, wrong password) stops the run. With no fallback, an unset variable stops the run, naming it.</td>
+<td>A committed CSV snapshot inside the workspace, read only when the connection's <code>${VAR}</code> is unset (a fresh clone, CI). Any other failure (server down, table missing, wrong password) stops the run. With no fallback, an unset variable stops the run, naming it.</td>
 </tr>
 </tbody>
 </table>
@@ -479,14 +480,14 @@ warehouse's own credentials reach <code>{{ sink }}</code>.</p>
 <p><strong>From the command line, the app and the gateway.</strong> An admin exports a
 warehouse table or view after the fact:</p>
 <pre><code class="language-bash">tracebi export fact_holdings --to crm          # a connection: the table replaced there
-tracebi export fact_holdings --to exports/     # a folder in the project: exports/fact_holdings.parquet
+tracebi export fact_holdings --to exports/     # a folder in the workspace: exports/fact_holdings.parquet
 tracebi export fact_holdings --to s3://bucket/exports
 </code></pre>
 <p>A table's page in the app has <strong>Export to…</strong> beside Export CSV, listing the
-project's connections and, on the object tier, the warehouse's own prefix.
+workspace's connections and, on the object tier, the warehouse's own prefix.
 The route is <code>POST /api/tables/{source}/{table}/export</code> with <code>{"to": …}</code>
 (admin). Each export is recorded as a run (<code>kind: export</code>), with its rows and
-where it went, or why it failed. A local prefix stays inside the project; a
+where it went, or why it failed. A local prefix stays inside the workspace; a
 remote one is reached through <code>httpfs</code>, with the warehouse's object
 credentials when the warehouse is on the object tier.</p>
 <h2 id="cells">Cells</h2>

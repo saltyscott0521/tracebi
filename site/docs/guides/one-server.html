@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -76,7 +77,7 @@
   </details>
   <main class="doc">
 <h1 id="run-tracebi-on-one-server">Run TraceBi on one server</h1>
-<p>Serve a project, its schedules and its email from one container on one
+<p>Serve a workspace, its schedules and its email from one container on one
 virtual machine. No Kubernetes needed.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
@@ -89,12 +90,12 @@ virtual machine. No Kubernetes needed.</p>
 </ul>
 <h2 id="for-admins-start-the-server">For admins: start the server</h2>
 <ol>
-<li>On your own machine, create a project, or use one you have:</li>
+<li>On your own machine, create a workspace, or use one you have:</li>
 </ol>
 <p><code>bash
    tracebi init my-project</code></p>
 <ol start="2">
-<li>Copy the project folder onto the server, or clone it. Git is optional for
+<li>Copy the workspace folder onto the server, or clone it. Git is optional for
    this folder. It holds everything: <code>tracebi.yaml</code>, <code>connections/</code>,
    <code>transforms/</code>, <code>models/</code>, <code>reports/</code>, <code>pipelines/</code> and <code>data/</code>.</li>
 <li>On the server, get the repository and make the settings file:</li>
@@ -104,7 +105,7 @@ virtual machine. No Kubernetes needed.</p>
    cd tracebi
    cp deploy/.env.example deploy/.env</code></p>
 <ol start="4">
-<li>In <code>deploy/.env</code>, set <code>TRACEBI_PROJECT_DIR</code> to the project folder.</li>
+<li>In <code>deploy/.env</code>, set <code>TRACEBI_PROJECT_DIR</code> to the workspace folder.</li>
 <li>Start it:</li>
 </ol>
 <p><code>bash
@@ -128,7 +129,7 @@ to load, whether SMTP is set, whether schedules are on, and the sign-in setup.</
 and OAuth tokens. Give it its own database or schema, and never point a
 connection at it, or the demo app's <code>TRACEBI_DEMO_DB_URL</code>: people browse
 connections. The repository's <code>docker-compose.yml</code> uses two databases on one
-Postgres server, <code>crm</code> for the reference project's CRM and <code>tracebi_state</code> for
+Postgres server, <code>crm</code> for the reference workspace's CRM and <code>tracebi_state</code> for
 the store. The app hides TraceBi's own tables (<code>tracebi_*</code>, <code>alembic_version</code>)
 from every source listing and says how many it hid.</p>
 <h2 id="add-or-change-a-report-while-it-runs">Add or change a report while it runs</h2>
@@ -169,7 +170,7 @@ the web server, run <code>tracebi schedule serve</code> as a separate worker ins
 two places:</p>
 <ul>
 <li><code>deploy/.env</code>. The environment wins over everything else.</li>
-<li>The project's encrypted store: run <code>tracebi secret set TRACEBI_CRM_URL</code>
+<li>The workspace's encrypted store: run <code>tracebi secret set TRACEBI_CRM_URL</code>
   inside the container, or click <strong>Set…</strong> on the connection under
   Data → Sources as a signed-in admin.</li>
 </ul>
@@ -189,7 +190,7 @@ only on a machine nothing else can reach.</p>
 <p>To serve the agent gateway on the same host, see <code>deploy/mcp/README.md</code>. The
 public demo uses <code>https://tracebi.com/mcp</code>.</p>
 <h2 id="back-it-up">Back it up</h2>
-<p>Copy the project folder (<code>TRACEBI_PROJECT_DIR</code>): the reports, the warehouse,
+<p>Copy the workspace folder (<code>TRACEBI_PROJECT_DIR</code>): the reports, the warehouse,
 the run log and the credential store in <code>.tracebi/</code>. Keep <code>TRACEBI_SECRET_KEY</code>
 with it, or the store cannot be read. With the Postgres profile, also copy
 <code>TRACEBI_PGDATA_DIR</code>.</p>
@@ -224,7 +225,7 @@ commit on the machine.</p>
 <ol>
 <li>Turn git <strong>auto-deploy</strong> off on the resource. The webhook redeploys it.</li>
 <li>Copy the variables from <code>deploy/.env</code> into Coolify's environment screen.</li>
-<li>To serve a live project folder, bind-mount it at <code>/project</code>. The compose
+<li>To serve a live workspace folder, bind-mount it at <code>/project</code>. The compose
    file's <code>output-perms</code> service mounts <code>output/</code> and <code>data/</code> from the same
    folder.</li>
 <li>Give the resource a domain if you have one. TLS ends at Coolify.</li>
@@ -233,10 +234,10 @@ commit on the machine.</p>
 </ol>
 <p>The image ships <code>curl</code>, so Coolify's health check against <code>/api/health</code> works.</p>
 <p>The demo image, like the repository's <code>docker-compose.yml</code>, serves one
-project: <code>examples/portfolio_project</code>, with its warehouse built into the image.
+workspace: <code>examples/portfolio_project</code>, with its warehouse built into the image.
 <code>TRACEBI_APP</code> is unset; the bundled demo app is opt-in
-(<code>TRACEBI_APP=tracebi.web.demo_app</code>) and never served beside a project. The
-reference project's CRM is a mock Postgres database: <code>docker-compose.yml</code>'s
+(<code>TRACEBI_APP=tracebi.web.demo_app</code>) and never served beside a workspace. The
+reference workspace's CRM is a mock Postgres database: <code>docker-compose.yml</code>'s
 Postgres creates <code>crm</code> from <code>examples/portfolio_project/inputs/seed_crm.sql</code>
 when its volume is empty (<code>docker/postgres-init.sql</code>), and <code>TRACEBI_CRM_URL</code>
 points at it. Nothing in the app writes to it. Without <code>TRACEBI_CRM_URL</code> the

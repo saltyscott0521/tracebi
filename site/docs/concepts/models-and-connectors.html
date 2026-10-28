@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -97,8 +98,8 @@ facts:                                                                  # what i
 <tbody>
 <tr>
 <td>Connector</td>
-<td>A handle to a place that stores data: the project's warehouse, a DuckDB file, a database, a cloud warehouse</td>
-<td>In the model file (<code>type: warehouse</code> for the project's warehouse), or once in <code>connections/&lt;name&gt;.yaml</code></td>
+<td>A handle to a place that stores data: the workspace's warehouse, a DuckDB file, a database, a cloud warehouse</td>
+<td>In the model file (<code>type: warehouse</code> for the workspace's warehouse), or once in <code>connections/&lt;name&gt;.yaml</code></td>
 </tr>
 <tr>
 <td>Table</td>
@@ -120,7 +121,7 @@ and an inspector for the table you select: its rows, who wrote it, its joins
 and measures, and <strong>Open table</strong> for its columns and rows. With nothing
 selected, the <strong>Storage</strong> fold says whether the warehouse file exists, how
 big it is, and which tables each connector serves.</p>
-<p>Two Data folders cover the whole project. <strong>Warehouse</strong> (<code>/data/warehouse</code>)
+<p>Two Data folders cover the whole workspace. <strong>Warehouse</strong> (<code>/data/warehouse</code>)
 lists every table, with who wrote it and who reads it (its <strong>Schema</strong> view
 groups them by the transform that wrote them), each with a page at
 <code>/data/warehouse/&lt;table&gt;</code>. <strong>Sources</strong> (<code>/data/sources</code>) lists every
@@ -128,7 +129,8 @@ connection and input file, and what reads each (<code>/data/sources/&lt;name&gt;
 <p><strong>In code:</strong> <code>model.info()["connector_details"]</code> gives the same answer.
 <code>connector.storage()</code> says where a connector's data lives, never a credential.</p>
 <h2 id="a-model-its-reports-and-its-pipeline">A model, its reports and its pipeline</h2>
-<p>Reports are grouped by model: the folder name is the model's name.</p>
+<p>Reports are grouped into projects by model: a project's folder is named for
+the model it reads (<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>).</p>
 <pre><code>models/portfolio_model.yaml            what the data means
 reports/portfolio_model/…              every report that reads it
 pipelines/portfolio_model.yaml         rebuild its data, then those reports

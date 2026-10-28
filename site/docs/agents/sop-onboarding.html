@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -80,12 +81,12 @@
 person has connected a database and nothing has been built from it yet: no
 transform, no model. Follow the steps in order.</p>
 <p>Read <code>AGENTS.md</code> first. It is the brief every agent reads before working in a
-TraceBi project. This SOP ends where <a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a> begins.</p>
+TraceBi workspace. This SOP ends where <a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a> begins.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
 <li><strong>A person sets up the connection, not you.</strong> They add it in the app
   (Data › Sources) or with <code>tracebi connect</code>, and its credential goes to the
-  project's encrypted store. You never see a password or a URL that carries
+  workspace's encrypted store. You never see a password or a URL that carries
   one.</li>
 <li><strong>A person decides what you may read.</strong> On the connection they tick the
   tables agents may read: <code>agents: {tables: [orders, customers]}</code> in
@@ -99,11 +100,11 @@ TraceBi project. This SOP ends where <a href="../agents/sop-authoring.html">SOP:
   the sink satisfied its contract when it ran. Stamped queries and <code>verify</code>
   cover the model onward; they say nothing about the transform's logic.</li>
 </ul>
-<h2 id="1-see-the-project-then-find-the-connection">1. See the project, then find the connection</h2>
-<p>Your first call on a project you have not seen:</p>
+<h2 id="1-see-the-workspace-then-find-the-connection">1. See the workspace, then find the connection</h2>
+<p>Your first call on a workspace you have not seen:</p>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;describe_project&quot;, &quot;arguments&quot;: {} }
 </code></pre>
-<p>It returns the project as one graph, the same one the app's Data › Lineage
+<p>It returns the workspace as one graph, the same one the app's Data › Lineage
 map draws: every source (connections, the files under <code>inputs/</code>, a connection's
 tables), transform, warehouse table, model and report, with <code>edges</code> saying
 what feeds what. Each node's <code>passport.agents</code> says whether you may read it

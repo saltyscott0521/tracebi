@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -76,8 +77,9 @@
   </details>
   <main class="doc">
 <h1 id="reports">Reports</h1>
-<p>A report is a folder in <code>reports/</code> whose every figure is a query against a
-model. One command builds it into a single HTML file and a <a href="../concepts/trace.html">The trace</a>:</p>
+<p>A report is a folder in <code>reports/</code>, usually inside a project
+(<code>reports/&lt;project&gt;/&lt;report&gt;/</code>, <a href="../concepts/workspace-and-projects.html">Workspace and projects</a>), whose every
+figure is a query against a model. One command builds it into a single HTML file and a <a href="../concepts/trace.html">The trace</a>:</p>
 <pre><code>reports/my_report/
   report.json      the data the report reads           → [report.json](../reference/report-json.html)
   app.jsx          a dashboard built from the kit       → [app.jsx](../reference/app-jsx.html)

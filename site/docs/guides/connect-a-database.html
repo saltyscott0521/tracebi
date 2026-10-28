@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -78,7 +79,7 @@
 <h1 id="connect-a-database">Connect a database</h1>
 <p>Add a database, or a file, as a source from the app, and choose which of its
 tables an agent may read. The app writes <code>connections/&lt;name&gt;.yaml</code> as you
-would by hand, and keeps any secret in the project's encrypted store.</p>
+would by hand, and keeps any secret in the workspace's encrypted store.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
 <li>A server with sign-in turned on (<a href="../guides/sign-in.html">Sign in with your company login</a>) and the <code>admin</code> role. Without
@@ -103,7 +104,7 @@ file).</p>
    one connection: typing in either fills the other. A URL you paste with a
    password in it moves the password to the password field.</li>
 <li>The password is hidden; <strong>Show</strong> reveals it. <strong>Save password</strong> is on by
-   default: the password goes to the project's encrypted store and the file
+   default: the password goes to the workspace's encrypted store and the file
    says <code>password: ${TRACEBI_&lt;NAME&gt;_PASSWORD}</code>. Turn it off to keep the
    password out of the app: type the <strong>Variable name</strong> the server sets in its
    environment or <code>.env</code>. Until it is set there, the connection's

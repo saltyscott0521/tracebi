@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -81,7 +82,7 @@
 admin, who reads the diff and approves it before it runs.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
-<li>A local TraceBi project (you may work in it with an agent such as Claude
+<li>A local TraceBi workspace (you may work in it with an agent such as Claude
   Code)</li>
 <li>A server with sign-in turned on, and <code>tracebi login</code> done (<a href="../guides/sign-in.html">Sign in with your company login</a>)</li>
 <li>The <code>analyst</code> role or higher</li>
@@ -135,7 +136,7 @@ transform reads.</p>
    id.</li>
 </ol>
 <p>Paths are files, package folders, or folders of them, inside the current
-project. Nothing is sent if a path is refused or a code request has no note.
+workspace. Nothing is sent if a path is refused or a code request has no note.
 If a draft already held a file you did not push, the command says so; delete
 the file in the app if it should go.</p>
 <h2 id="for-admins-approve-code">For admins: approve code</h2>
@@ -159,7 +160,7 @@ or <code>/reject</code> (<code>{note}</code>). Each request is stored under
 <h2 id="or-sync-from-git-with-a-webhook">Or sync from git with a webhook</h2>
 <p>When changes reach the library by pull request, review them there instead.</p>
 <ol>
-<li>Make the project, or a library folder, a git checkout on the server.</li>
+<li>Make the workspace, or a library folder, a git checkout on the server.</li>
 <li>Set <code>TRACEBI_LIBRARY_SYNC_SECRET</code>.</li>
 <li>Point the repository's push webhook at <code>POST /api/library/sync</code>. On GitHub,
    use content type <code>application/json</code> and the secret as the webhook secret

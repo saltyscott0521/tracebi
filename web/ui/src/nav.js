@@ -1,13 +1,15 @@
 // The app's frame: four places, each for one job.
 //
-//   Reports  /                  the library as a directory: its folders, then a row of
-//                               covers per folder; ?model=<m> filters it. The sidebar is
-//                               its folder tree (folders.js), then Data, Review and Docs
-//            /?folder=<path>    one folder's page: its reports by kind, its models
+//   Reports  /                  the library as a directory: its projects (top-level
+//                               folders), then a row of covers per project; ?model=<m>
+//                               filters it. The sidebar is its folder tree (folders.js),
+//                               then Data, Review and Docs
+//            /?folder=<path>    one project's (or folder's) page: its reports by kind, its
+//                               models; ?project=<path> is the same page (movedTo)
 //            /reports/<name>    one report as a page of its own (<name> is folder/slug)
 //            /ask               a question of one model; ?model=<m> picks it. Not a place
 //                               of its own: a question is about one model, so it is asked
-//                               from that model's folder or its Data page (Ask this model)
+//                               from that model's project or its Data page (Ask this model)
 //   Data     /data              a directory, like the library: the sidebar nests its
 //                               four folders under it, and every page under /data
 //                               keeps that frame (DataFrame in pages/Data.jsx). A
@@ -98,7 +100,7 @@ export const PAGES = [
     sub: 'What ran, when, for whom, and whether it reproduced.' },
   { key: 'verify',  label: 'Verify',  path: '/verify', parent: 'review', minRole: 'analyst' },
   { key: 'docs',    label: 'Docs',    path: '/docs', minRole: 'viewer',
-    sub: 'The handbook: concepts, guides and reference, versioned with the project.' },
+    sub: 'The handbook: concepts, guides and reference, versioned with the workspace.' },
 ]
 
 // Data's folders, in the order the data moves: the sidebar nests the four
@@ -109,7 +111,7 @@ export const DATA_FOLDERS = [
   { key: 'overview',   label: 'Data',       path: '/data',
     sub: 'What feeds what, and what needs a person: every source, transform, table and model, with its status.' },
   { key: 'lineage',    label: 'Lineage',    path: '/data/lineage',
-    sub: 'The project as one map, left to right: what feeds what, read through a lens. Select any piece for its rows.' },
+    sub: 'The workspace as one map, left to right: what feeds what, read through a lens. Select any piece for its rows.' },
   { key: 'sources',    label: 'Sources',    path: '/data/sources',
     sub: 'Where the data comes from: database connections, and files under inputs/.' },
   { key: 'transforms', label: 'Transforms', path: '/data/transforms',
@@ -329,6 +331,8 @@ export function movedTo(pathname, search = '') {
   if (r && (path === '/' || path === '/reports' || (scoped && [undefined, 'reports'].includes(scoped[2])))) {
     return to(reportPagePath(r), {}, ['model'])
   }
+  // A project's page keeps its address, /?folder=<path>; ?project=<path> is that page too.
+  if (path === '/' && q.get('project') && !q.has('folder')) return to('/', { folder: q.get('project') }, ['project'])
   if (scoped) {
     const model = decodeURIComponent(scoped[1])
     const sub = scoped[2] || ''

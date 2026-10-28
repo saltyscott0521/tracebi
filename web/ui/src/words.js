@@ -87,7 +87,7 @@ export function reachWords(reach) {
 const MOVED = { written: 'Written', built: 'Built', changed: 'Changed', defined: 'Defined', snapshot: 'Snapshot read' }
 
 /**
- * When a piece of the project last moved (the graph's passport `moved`:
+ * When a piece of the workspace last moved (the graph's passport `moved`:
  * `{at, how}`, how one of written · built · changed · defined · snapshot ·
  * never), as the map's Last moved row says it: "Written 2 h ago", "Built Oct
  * 23 · 11:48". *kind* is the node's: a report never built says so, anything
@@ -106,7 +106,7 @@ export const FORM_LABEL = { sql: 'SQL', python: 'Python', notebook: 'Notebook' }
 const STATE_TONE = { ok: 'ok', warn: 'warn', bad: 'bad', none: 'none' }
 
 /**
- * A piece of the project's state in one pill, from its graph node (GET
+ * A piece of the workspace's state in one pill, from its graph node (GET
  * /api/graph): `{text, tone, title}`, *tone* ok · warn · bad · none. Every
  * list's Status column, every page's title and the Data home say it this way,
  * so a source reads Connected or Unreachable everywhere, a transform no

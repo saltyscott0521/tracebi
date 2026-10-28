@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -453,7 +454,7 @@ to <code>.tb-masthead h1</code>, <code>.tb-kpi--lead .tb-kpi-value</code> and th
 title; unset, a dashboard keeps the sans and an editorial headline the serif.
 Tokens only: no rules of its own, no gradient, no shadow. The showcase's
 <code>style.css</code> does exactly this, with Fraunces from <code>assets/fonts/</code> and the
-project's accent. A look for every report goes in <code>reports/_theme.css</code>.</p>
+workspace's accent. A look for every report goes in <code>reports/_theme.css</code>.</p>
 <h2 id="the-masthead">The masthead</h2>
 <p>Every page opens with one:</p>
 <pre><code class="language-html">&lt;header class=&quot;tb-masthead&quot; data-tb-title=&quot;left&quot; data-tb-period=&quot;Q3 2026&quot;&gt;
@@ -600,7 +601,7 @@ texture, no shadow.</p>
 &lt;/article&gt;
 </code></pre>
 <ul>
-<li>The hero is the masthead in the project's accent, flat, with a serif
+<li>The hero is the masthead in the workspace's accent, flat, with a serif
   headline (on a dark ground, a deep band of the accent with the page's ink).</li>
 <li>A bound number in the prose is set in weight 600, in the prose's ink.</li>
 <li>Charts, tables, the KPI strip, the pull-stat and the footer use the sans

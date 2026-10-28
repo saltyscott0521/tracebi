@@ -213,17 +213,17 @@ def validate_model_spec(doc: Any) -> list[str]:
                               f"(tracebi.yaml says where the warehouse is), not "
                               f"{', '.join(sorted(extra))}")
         elif c.get("type") != "duckdb":
-            errors.append(f"{path}.type: must be 'warehouse' (the project's, from "
+            errors.append(f"{path}.type: must be 'warehouse' (the workspace's, from "
                           f"tracebi.yaml), 'duckdb' (or give 'connection' "
                           f"to reuse connections/<name>.yaml), got "
                           f"{c.get('type')!r}")
         else:
             db = c.get("database")
             if not isinstance(db, str) or not db:
-                errors.append(f"{path}.database: required, a project-relative "
+                errors.append(f"{path}.database: required, a workspace-relative "
                               "path to the .duckdb file")
             elif _escapes(db):
-                errors.append(f"{path}.database: must stay inside the project "
+                errors.append(f"{path}.database: must stay inside the workspace "
                               f"(no absolute path, no '..'), got {db!r}")
 
     for path, t in _items(doc, "tables", _TABLE, errors):
@@ -340,7 +340,7 @@ def _connector(c: dict, root: Path):
     database = (root / c["database"]).resolve()
     if root.resolve() not in database.parents:
         raise ValueError(f"connector '{c['name']}': database must stay inside "
-                         f"the project, got {c['database']!r}")
+                         f"the workspace, got {c['database']!r}")
     return DuckDBConnector(c["name"], database=str(database))
 
 

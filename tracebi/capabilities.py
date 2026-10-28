@@ -4,7 +4,7 @@ A machine-readable description of what TraceBi can build.
 ``describe()`` returns the framework's vocabulary as plain data: every
 report section with its fields, types, defaults and allowed values;
 the DataSet verbs; the measure kinds, filter operators and
-aggregations; and the file conventions that make a project discoverable.
+aggregations; and the file conventions that make a workspace discoverable.
 
 Everything here is **generated** from dataclass fields and type
 annotations rather than written by hand. That matters: the section
@@ -13,7 +13,7 @@ two hard-coded renderer dispatchers, so any hand-maintained copy would
 drift the first time a field was added.
 
 Intended consumers are tools rather than people — an agent authoring a
-TraceBi project, an editor completing a section constructor, or a UI
+TraceBi workspace, an editor completing a section constructor, or a UI
 building a form. Available as ``tracebi.capabilities.describe()``,
 ``tracebi context --json`` on the command line, and ``GET /api/schema``.
 
@@ -236,7 +236,7 @@ def _presentation() -> dict:
     return {
         "stack": [
             "tracebi.css (shipped design system)",
-            "reports/_theme.css (project brand layer — optional)",
+            "reports/_theme.css (workspace brand layer — optional)",
             "style.css / spec 'theme' file (per-report — optional)",
         ],
         "rule": "Later layers win. Override tokens, don't fork the sheet. "
@@ -950,15 +950,15 @@ def _presentation() -> dict:
                           "density, numerals, chart tokens): ledger (the default), "
                           "nightdesk, signal. A report names one in report.json \"theme\" "
                           "(new-report/new-dashboard --theme, start_draft theme=); the "
-                          "project default is tracebi.yaml brand: {theme: …}; tracebi theme "
+                          "workspace default is tracebi.yaml brand: {theme: …}; tracebi theme "
                           "list. Agents pick a theme or use the brand, never hard-coded "
                           "colours. " + _house_offer() + " Deprecated accent presets, still "
                           "accepted with a warning: " + ", ".join(_named_themes()) + ".",
                 "for_everyone": "reports/_theme.css restyles every report in "
-                                "the project (token overrides: accent, fonts, "
+                                "the workspace (token overrides: accent, fonts, "
                                 "spacing)",
                 "brand": "tracebi.yaml brand: {theme, name, logo, accent, palette, font, "
-                         "mode} is the project's brand: every report and dashboard takes "
+                         "mode} is the workspace's brand: every report and dashboard takes "
                          "it, its charts included (stacked after tracebi.css and the house "
                          "theme, before reports/_theme.css; its colours, font and logo win "
                          "over the theme's). logo (svg/png, at most 400 KB) and name are the firm "
@@ -983,7 +983,7 @@ def _presentation() -> dict:
                              "the system puts it on .tb-masthead h1 and "
                              ".tb-kpi--lead .tb-kpi-value). Tokens only: no rule "
                              "of its own. Set a pair where a report should "
-                             "differ from the project's accent. No gradient, hatch, "
+                             "differ from the workspace's accent. No gradient, hatch, "
                              "glow or resting shadow; the showcase's style.css "
                              "is the example",
                 "house_style": "reports/_style.md is the team's design rules, "
@@ -1228,9 +1228,9 @@ def _conventions() -> dict:
                         "tier refuses every view). "
                         "Exactly two placeholders: {{ sink }} (the "
                         "warehouse address from tracebi.yaml) and {{ root }} "
-                        "(the project root); any other {{ … }} is an error. "
+                        "(the workspace root); any other {{ … }} is an error. "
                         "Relative reads (read_csv('inputs/x.csv')) resolve "
-                        "against the project root. A table of a declared "
+                        "against the workspace root. A table of a declared "
                         "connection (connections/<name>.yaml, e.g. Postgres) "
                         "is read with a header line `-- source: "
                         "<connection>.<table>` (one per table; a bare "
@@ -1262,7 +1262,7 @@ def _conventions() -> dict:
                         "run (kind: export). The sink contract sits "
                         "beside it as <name>.contract.yaml (honoured beside a "
                         ".py too). `tracebi new-transform \"Name\"` scaffolds "
-                        "both in the idiom of the project's tier; --python "
+                        "both in the idiom of the workspace's tier; --python "
                         "scaffolds the escape hatch, notebook-shaped pandas "
                         "(# %% cells) ending in DuckDBConnector(...).write(df, "
                         "table); a literal .ipynb runs too. x.sql and x.py "
@@ -1312,7 +1312,7 @@ def _conventions() -> dict:
                         "when the name is set nowhere, checked like a literal "
                         "(a password has none). The variable is read when the "
                         "connection is used (environment, then .env, then the "
-                        "project's store: `tracebi secret set NAME`; an unset "
+                        "workspace's store: `tracebi secret set NAME`; an unset "
                         "one is an error naming it), never at discovery. A "
                         "model's connector says "
                         "`connection: <name>`. Written by `tracebi connect`, "
@@ -1339,8 +1339,8 @@ def _conventions() -> dict:
             {
                 "path": "tracebi.yaml",
                 "must_define": None,
-                "type": "project settings",
-                "note": "Optional, at the project root; `tracebi init` writes "
+                "type": "workspace settings",
+                "note": "Optional, at the workspace root; `tracebi init` writes "
                         "a commented one. engine: {memory_limit (default 1GB), "
                         "threads (min(4, CPUs)), temp_directory (default "
                         "data/.duckdb-tmp), query_timeout_s (default 30)}: the "
@@ -1366,14 +1366,20 @@ def _conventions() -> dict:
                 "path": "reports/",
                 "must_define": None,
                 "type": "report package",
-                "note": "A report is a PACKAGE, in a folder named for its model: "
+                "note": "A report is a PACKAGE, in a project (a top-level "
+                        "folder, one area's reports) named for its model: "
                         "reports/<model>/<name>/ (report.json + "
                         "template.html, plus optional style.css / script.js), "
                         "or a reports/<model>/<name>.json spec compiled into "
                         "one. Scaffold with `tracebi new-report "
                         "\"<model>/<name>\"`. There "
                         "is one renderer: a registered report with no package "
-                        "is refused, never served as a weaker page.",
+                        "is refused, never served as a weaker page. Models "
+                        "are shared at the workspace (everything one "
+                        "tracebi.yaml covers), so two projects may read one "
+                        "model; a project keeps its permissions in its "
+                        "_folder.yaml; a theme is set on a report or the "
+                        "workspace, never a project.",
             },
         ],
         "rules": [
@@ -1492,8 +1498,8 @@ def _init_templates() -> dict:
                 "two reports — that an agent re-points at real tables. "
                 "tracebi init with no --template scaffolds the sample "
                 "orders dashboard.",
-        "cli": "tracebi init <project> --template saas-metrics | "
-               "tracebi init <project> --template sales-pipeline",
+        "cli": "tracebi init <workspace> --template saas-metrics | "
+               "tracebi init <workspace> --template sales-pipeline",
         "aliases": "saas_metrics is accepted for saas-metrics; "
                    "sales_pipeline is accepted for sales-pipeline. Any other "
                    "name is refused and the error lists the known templates.",
@@ -1854,11 +1860,11 @@ def describe(brief: bool = False) -> dict:
         "schedule": _schedule(),
         "templates": _init_templates(),
         "connect": {
-            "what": "Point a project at a warehouse it did not sink. Tests "
+            "what": "Point a workspace at a warehouse it did not sink. Tests "
                     "the connection, writes the secret to .env (never "
                     "printed), and writes connections/<name>.yaml, where "
                     "the secret appears only as a ${ENV_VAR} reference "
-                    "(read from the environment, else the project's .env, "
+                    "(read from the environment, else the workspace's .env, "
                     "when the connection is used; .env is never loaded into "
                     "os.environ). --python writes the legacy "
                     "models/_connections/<name>.py instead. "
@@ -1913,9 +1919,9 @@ def describe(brief: bool = False) -> dict:
                     "of from an error.",
         },
         "project": {
-            "mcp": "describe_project()",
+            "mcp": "describe_project() (describe_workspace() is the same tool)",
             "http": "GET /api/graph",
-            "what": "The project as a graph: every source, transform, table, "
+            "what": "The workspace as a graph: every source, transform, table, "
                     "model and report, what feeds what, and what you may read. "
                     "nodes carry id (kind:name), kind (source | file | "
                     "source_table | transform | group | table | model | "
@@ -1933,7 +1939,7 @@ def describe(brief: bool = False) -> dict:
                     "columns from it; such a table's passport carries "
                     "columns_from. The app's Data overview draws the same "
                     "graph.",
-            "when": "First, on a project you have not seen: it shows what "
+            "when": "First, on a workspace you have not seen: it shows what "
                     "exists before any other call.",
             "downstream": "GET /api/graph/downstream?node=<id> (HTTP only; no "
                           "gateway tool yet): every report figure that depends "
@@ -1993,7 +1999,7 @@ def describe(brief: bool = False) -> dict:
             "what": "Before a report is open, `tracebi dev` opens the app on "
                     "Data and the human sees your show() exhibits there "
                     "(From your agent) and leaves notes. While it is up any "
-                    "script in the project can call tracebi.workbench.show() "
+                    "script in the workspace can call tracebi.workbench.show() "
                     "with no setup. Your gateway work posts there too: each "
                     "query_model result as a table, and each build_report / "
                     "render_report_spec as one line (refusals included). "

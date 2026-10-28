@@ -33,7 +33,7 @@ A SQL transform runs in six steps:
 2. Each table its `-- source:` lines name is attached, read where it lives
    when its connection allows (How a source is read, below).
 3. Its statements run in order in one fresh read-write DuckDB connection to
-   the warehouse `tracebi.yaml` names, with the project's `engine` limits. A
+   the warehouse `tracebi.yaml` names, with the workspace's `engine` limits. A
    failing statement stops the run with its number and line:
    `transforms/x.sql: statement 6 (line 60) failed: Catalog Error: …`.
 4. Each table a `-- sink:` line names is sent to its connection
@@ -145,7 +145,7 @@ touches also has a fingerprint under `tables`, read like a table. The app
 marks a view with its own glyph and says which transform defined it over
 which tables.
 
-A Python transform's `write()` always materializes. The reference project's
+A Python transform's `write()` always materializes. The reference workspace's
 `holdings_transform_pandas.py` writes the same rows as a table.
 
 ## Placeholders
@@ -156,7 +156,7 @@ put it inside a `'…'` literal.
 | Placeholder | Becomes |
 |---|---|
 | `{{ sink }}` | `str(sink_target(root))`: the warehouse address on its tier |
-| `{{ root }}` | The project root, absolute |
+| `{{ root }}` | The workspace root, absolute |
 
 Anything else between `{{` and `}}` is an error naming it:
 `transforms/x.sql: {{ warehouse }} is not a placeholder; a SQL transform has
@@ -165,7 +165,7 @@ two, {{ sink }} and {{ root }}`. There are no loops, conditionals or `ref()`s.
 ## Relative paths
 
 A relative read, `read_csv('inputs/holdings.csv')`, resolves against the
-project root (the connection's `file_search_path`), whatever directory the run
+workspace root (the connection's `file_search_path`), whatever directory the run
 started from. A write names its destination with `{{ sink }}` or `{{ root }}`.
 
 ## Read a table from a database
@@ -188,7 +188,7 @@ SELECT … FROM crm.issuer_ratings …;
 |---|---|
 | `<connection>` | `connections/<connection>.yaml`, any type (`tracebi connect crm --kind postgres` writes one). Letters, digits and underscores. |
 | `<table>` | A table that connection's connector loads. |
-| `fallback:` | A committed CSV snapshot inside the project, read only when the connection's `${VAR}` is unset (a fresh clone, CI). Any other failure (server down, table missing, wrong password) stops the run. With no fallback, an unset variable stops the run, naming it. |
+| `fallback:` | A committed CSV snapshot inside the workspace, read only when the connection's `${VAR}` is unset (a fresh clone, CI). Any other failure (server down, table missing, wrong password) stops the run. With no fallback, an unset variable stops the run, naming it. |
 
 - Before the first statement, each table becomes `<connection>.<table>` in
   an in-memory catalog named after the connection and attached for this run
@@ -351,15 +351,15 @@ warehouse table or view after the fact:
 
 ```bash
 tracebi export fact_holdings --to crm          # a connection: the table replaced there
-tracebi export fact_holdings --to exports/     # a folder in the project: exports/fact_holdings.parquet
+tracebi export fact_holdings --to exports/     # a folder in the workspace: exports/fact_holdings.parquet
 tracebi export fact_holdings --to s3://bucket/exports
 ```
 
 A table's page in the app has **Export to…** beside Export CSV, listing the
-project's connections and, on the object tier, the warehouse's own prefix.
+workspace's connections and, on the object tier, the warehouse's own prefix.
 The route is `POST /api/tables/{source}/{table}/export` with `{"to": …}`
 (admin). Each export is recorded as a run (`kind: export`), with its rows and
-where it went, or why it failed. A local prefix stays inside the project; a
+where it went, or why it failed. A local prefix stays inside the workspace; a
 remote one is reached through `httpfs`, with the warehouse's object
 credentials when the warehouse is on the object tier.
 

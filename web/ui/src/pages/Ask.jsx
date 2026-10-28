@@ -401,7 +401,7 @@ function AnswerNumbers({ detail, q, result }) {
 
 // Where a kept answer may go: the folders the person can build in (a publish
 // there is direct or a request), their own My published first, then the
-// model's folder, then the rest. The draft starts at that path, so Publish
+// model's project, then the rest. The draft starts at that path, so Publish
 // offers it as the destination.
 function keepFolders(data, model, labelOf) {
   const mayBuild = f => ['build', 'publish', 'manage'].includes(f.level)
@@ -420,7 +420,7 @@ function Answer({ name, label, detail, q, body, result, canKeep, onNarrow }) {
   const { data: folderData } = useFolders()
   const folders = keepFolders(folderData, name, f => (f === name ? label : f.split('/').join(' / ')))
   const [folder, setFolder] = useState('')
-  // The model's folder until the person picks another, as before there was a pick.
+  // The model's project until the person picks another, as before there was a pick.
   const into = folders.some(f => f.path === folder) ? folder : name
   const navigate = useNavigate()
   const toast = useToast()
@@ -499,7 +499,7 @@ function Answer({ name, label, detail, q, body, result, canKeep, onNarrow }) {
               </select>
             </label>
           )}
-          <span>Opens a draft report of this one figure{folders.length > 1 ? ', to publish into that folder' : ''}. The draft holds the question, not these numbers: it runs the query when built.</span>
+          <span>Opens a draft report of this one figure{folders.length > 1 ? ', to publish there' : ''}. The draft holds the question, not these numbers: it runs the query when built.</span>
         </div>
       )}
     </section>

@@ -208,8 +208,16 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(page.locator('[data-row="folder"] a.ctile .gcover')).to_have_count(listed)
             row = page.get_by_role("region", name="Direct Lending Portfolio")
             assert row.locator("a.ctile").first.get_attribute("data-report") == _REPORT
-            expect(row.get_by_role("link", name=re.compile("^Open folder"))).to_have_attribute(
+            expect(row.get_by_role("link", name=re.compile("^Open project"))).to_have_attribute(
                 "href", "/?folder=portfolio_model")
+            # The library names its top-level folders as projects: the tiles
+            # are the Projects, the SaaS project's tile says so over its name,
+            # and the old ?project= address opens the same page as ?folder=.
+            projects = page.get_by_role("list", name="Projects")
+            saas = projects.locator('a.ftile[data-folder="saas_model"]')
+            expect(saas.locator(".ftile__kind")).to_have_text("Project")
+            expect(saas.locator(".ftile__name")).to_have_text("SaaS Subscriptions")
+            expect(page.locator(".dir-head__lede")).to_contain_text(f"{len(folders)} projects")
             view = page.get_by_role("group", name="View")
             view.get_by_role("button", name="List").click()
             expect(page.locator(".lfolder__rows a.lrow[data-report]")).to_have_count(listed)
@@ -234,7 +242,10 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             sidebar.get_by_role("link", name=re.compile(r"^Direct Lending Portfolio \d+$")).click()
             page.wait_for_url("**/?folder=portfolio_model")
             page.get_by_role("heading", level=1, name="Direct Lending Portfolio").wait_for()
-            expect(page).to_have_title("Direct Lending Portfolio · Reports · TraceBi")
+            # A top-level folder's page is a project's: its title and its
+            # eyebrow say Project.
+            expect(page).to_have_title("Direct Lending Portfolio · Project · Reports · TraceBi")
+            expect(page.locator(".fhero__eyebrow")).to_contain_text(re.compile(r"^Project"))
             crumbs = page.get_by_role("navigation", name="Breadcrumb")
             expect(crumbs.get_by_role("link", name="Library")).to_have_attribute("href", "/")
             expect(folder_row).to_have_attribute("aria-current", "page")
@@ -249,6 +260,10 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 sum(r["made_from"] == "template.html" for r in ours))
             expect(page.get_by_role("link", name="Ask this model")).to_have_attribute(
                 "href", "/ask?model=portfolio_model")
+            # ?project= is the same page, at the address that stays ?folder=.
+            page.goto(base + "/?project=saas_model")
+            page.wait_for_url("**/?folder=saas_model")
+            page.get_by_role("heading", level=1, name="SaaS Subscriptions").wait_for()
             # A folder that does not exist (or is hidden) is a page that does not.
             page.goto(base + "/?folder=no_such_folder")
             page.get_by_role("heading", name="Page not found").wait_for()
@@ -539,6 +554,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             box.wait_for()
             box.fill("holdings_trans")
             page.get_by_role("group", name="Transforms").get_by_text("holdings_transform", exact=True).wait_for()
+            # A project is found under Projects.
+            box.fill("SaaS Sub")
+            page.get_by_role("group", name="Projects").get_by_text("SaaS Subscriptions", exact=True).wait_for()
             page.keyboard.press("Escape")
             fail_on_browser_errors()
 

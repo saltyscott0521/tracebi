@@ -13,7 +13,7 @@ None yet: the defaults apply. Add one rule per line here.
 ## Examples — not rules until you move them up
 
 - Theme: Nightdesk for desks (`"theme": "nightdesk"` in report.json); the
-  project default stays Ledger (`tracebi.yaml` `brand: {theme: …}` changes it).
+  workspace default stays Ledger (`tracebi.yaml` `brand: {theme: …}` changes it).
 - Dashboards are apps (`app.jsx`) with a left sidebar; briefs and anything
   emailed stay `template.html`.
 - Titles name the decision, not the data: "Is churn under 3%?", not "Churn".

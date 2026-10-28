@@ -11,7 +11,7 @@ import { checksWords, refreshWords } from '../words'
 import { modelsPath, sourcesPath, transformsPath, warehousePath } from '../nav'
 import { Empty, ErrorDetail, Segmented, SkeletonCard } from '../components/Shared'
 
-// Lineage (/data/lineage), and every page's Lineage tab: the map. The project as one graph (GET /api/graph,
+// Lineage (/data/lineage), and every page's Lineage tab: the map. The workspace as one graph (GET /api/graph,
 // tracebi/graph.py, which the gateway serves agents as describe_project), one
 // lane per stage, read left to right in the order the data moves:
 //
@@ -26,7 +26,7 @@ import { Empty, ErrorDetail, Segmented, SkeletonCard } from '../components/Share
 // A lens repaints the same map for one question (?lens=): Coverage (the
 // default), Flow, Freshness, Trust, What agents see. Clicking a piece selects
 // it (?node=<id>) and the passport beside the map answers the same rows for
-// it; with nothing selected, the passport is the project's. ?lane= focuses one
+// it; with nothing selected, the passport is the workspace's. ?lane= focuses one
 // lane. Hovering or focusing a piece lights its whole path. When the map
 // is narrower than its five lanes fit, they stack and no wire is drawn.
 //
@@ -504,7 +504,7 @@ export function LineageTab({ node }) {
   return <TheMap graph={graph} focus={node} />
 }
 
-/** Lineage (/data/lineage): the map, the project as one graph. */
+/** Lineage (/data/lineage): the map, the workspace as one graph. */
 export default function DataMap() {
   const { data: graph, error, isLoading } = useGraph()
   return (

@@ -2,7 +2,7 @@
 
 A transform is a file in `transforms/` that reads raw data, cleans it, and
 writes star-schema tables into the warehouse. Here is the shape of the
-reference project's transform:
+reference workspace's transform:
 
 ```sql
 -- transforms/holdings.sql: DuckDB, top to bottom, one fresh connection
@@ -64,7 +64,7 @@ wh.write(dim_issuer, "dim_issuer")
 wh.write(fact_holdings, "fact_holdings")
 ```
 
-A `.ipynb` notebook works too. The reference project keeps
+A `.ipynb` notebook works too. The reference workspace keeps
 `holdings_transform_pandas.py` beside `holdings_transform.sql`; both write
 identical tables.
 

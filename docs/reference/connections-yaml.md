@@ -45,7 +45,7 @@ A SQL transform reads one of its tables with a header line
   `--password-var NAME`, `--ssl` write the fields; `--url` writes a URL.
   `tracebi connect <name> --test` tests an existing connection.
 - `.yml` works too. `TRACEBI_CONNECTIONS_DIR` moves the folder.
-- The project's own warehouse is not a connection file. It is the
+- The workspace's own warehouse is not a connection file. It is the
   `warehouse:` block of `tracebi.yaml` ([[tracebi-yaml]]), and a model reads it
   with `type: warehouse`. That block resolves `${VAR}` the same way, and its
   remote tier may name a duckdb connection file here.
@@ -67,7 +67,7 @@ Every file has `name` and `type`. All values are strings.
 | `upload` | `file` (a `.csv` or `.parquet` file under `inputs/`) | |
 
 `sql` takes any SQLAlchemy URL (`sqlite:///inputs/bank.sqlite` for a file in
-the project). `postgres` and `mysql` are `sql` with the database said in the
+the workspace). `postgres` and `mysql` are `sql` with the database said in the
 type (`postgresql+psycopg://…`, `mysql+pymysql://…`).
 
 ### URL or fields
@@ -101,7 +101,7 @@ names the variable, never the value.
 
 `authenticator` is `password` (the default), `externalbrowser` (the identity
 provider's page opens on the server) or `key_pair` (reads `private_key_path`,
-a `.p8` file on the server, relative to the project root). Only the password
+a `.p8` file on the server, relative to the workspace root). Only the password
 sign-in takes `password`.
 
 ### BigQuery credentials
@@ -150,9 +150,9 @@ url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}
 |---|---|
 | Secrets must be references | `password` and `credentials_json` always. `url` may be literal only when it carries no credential (no password, no `password=`, `token=`, `key=` and the like in the query). `sqlite:///data/x.db` is fine. |
 | Defaults are checked like literals | A SQLite path passes, a URL with a password is refused, and `password` takes no default. The Sources page shows such a name as `Set · default`. |
-| Literal paths stay in the project | `database` and `directory` of a `duckdb` or `csv` connection, an `upload`'s `file`, and the file of a `sqlite:///` url: no absolute path, no `..`. Use a reference to point elsewhere. Relative paths resolve against the project root. |
+| Literal paths stay in the workspace | `database` and `directory` of a `duckdb` or `csv` connection, an `upload`'s `file`, and the file of a `sqlite:///` url: no absolute path, no `..`. Use a reference to point elsewhere. Relative paths resolve against the workspace root. |
 | Resolved when used | Reading the file reads no environment. The variable is read when the connection is used; an unset one fails there, naming the variable. |
-| Lookup order | The process environment, the project's `.env`, the project's encrypted store (`tracebi secret set NAME`, or **Set…** on the Sources page; [[credentials]]), then the default. Nothing is copied into `os.environ`. `tracebi secret list` shows which names are missing. |
+| Lookup order | The process environment, the workspace's `.env`, the workspace's encrypted store (`tracebi secret set NAME`, or **Set…** on the Sources page; [[credentials]]), then the default. Nothing is copied into `os.environ`. `tracebi secret list` shows which names are missing. |
 | Never shown | `/api/connectors` and the Sources page show a reference as `${NAME}` and a literal URL with its password hidden. A credential is never resolved to describe a connection. |
 
 ## Discovery and precedence

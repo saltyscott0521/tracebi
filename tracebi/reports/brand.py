@@ -226,7 +226,7 @@ def brand_css(brand: dict, dark_card: str = DARK_CARD) -> str:
     brand = {k: v for k, v in brand.items() if k != "theme"}
     if not brand:
         return ""
-    out = ["/* the project's brand (tracebi.yaml brand:) */\n"]
+    out = ["/* the workspace's brand (tracebi.yaml brand:) */\n"]
     root: dict[str, str] = {}
     if brand.get("font"):
         ext = os.path.splitext(brand["font"])[1].lower()

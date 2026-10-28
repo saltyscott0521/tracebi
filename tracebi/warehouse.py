@@ -540,7 +540,7 @@ def _export_to_prefix(rows, table: str, prefix: str, wh: "Warehouse", root: str)
 
     remote = urlsplit(prefix).scheme in OBJECT_SCHEMES
     if not remote and _escapes(prefix.removeprefix("./")):
-        raise ExportError(f"a local prefix must be a folder inside the project (no "
+        raise ExportError(f"a local prefix must be a folder inside the workspace (no "
                           f"absolute path, no '..'), got {prefix!r}")
     options = wh.options if wh.tier == "object" else ()
     target = Warehouse("object", prefix, root, options=options if remote else ())

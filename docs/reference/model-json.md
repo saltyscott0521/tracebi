@@ -106,8 +106,8 @@ Errors start with their path, e.g. `measures[2].agg`.
 
 | Form | Meaning |
 |---|---|
-| `type: warehouse` | The project's warehouse, wherever `tracebi.yaml` puts it ([[tracebi-yaml]]): a DuckDB file (default `data/warehouse.duckdb`), Parquet on object storage, or a remote engine. |
-| `type: duckdb`, `database: data/warehouse.duckdb` | A DuckDB file inside the project. An absolute path or `..` is refused. |
+| `type: warehouse` | The workspace's warehouse, wherever `tracebi.yaml` puts it ([[tracebi-yaml]]): a DuckDB file (default `data/warehouse.duckdb`), Parquet on object storage, or a remote engine. |
+| `type: duckdb`, `database: data/warehouse.duckdb` | A DuckDB file inside the workspace. An absolute path or `..` is refused. |
 | `{name: crm, connection: crm}` | A declared connection: `connections/crm.yaml` ([[connections-yaml]]), else the older `models/_connections/crm.py`. Its own `name` must match. |
 
 There is no key for a URL, password or token, so a model file cannot carry
@@ -142,7 +142,7 @@ tracebi migrate model models/sales.py --write    # write models/sales.yaml besid
 
 The YAML is built from the loaded model, compiled again and compared with the
 original. A model YAML cannot express is refused with the reason: a connector
-that is not a DuckDB file inside the project, a name that differs from the
+that is not a DuckDB file inside the workspace, a name that differs from the
 file name, or a measure that needed `allow_additive`. Comments are not
 carried over. Nothing is renamed or deleted: the `.py` wins until you delete
 it, and a query through the YAML fingerprints the same.

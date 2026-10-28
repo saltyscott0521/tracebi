@@ -863,7 +863,7 @@ def table_export_to(source: str, table: str, body: ExportBody):
     if not is_warehouse(connector.describe()) or (
             as_warehouse(_warehouse_target(connector)).address != project_warehouse().address):
         raise HTTPException(status_code=422, detail=(
-            f"'{source}' is not the project's warehouse; only its tables and views "
+            f"'{source}' is not the workspace's warehouse; only its tables and views "
             f"are exported from here"))
     try:
         return export_table(table, body.to)

@@ -30,6 +30,7 @@
 <a href="start/your-first-report.html">Your first report</a>
 <a href="start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="concepts/transform.html">Transforms</a>
 <a href="concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="reference/cli.html">CLI reference</a>
-<a href="reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="reference/credentials.html">Credentials</a>
 <a href="reference/environment-variables.html">Environment variables</a>
@@ -92,19 +93,20 @@ graph. The app serves it as <strong>Docs</strong> (<code>/docs</code>), and trac
 <p>Install TraceBi and build your first report.</p>
 <ul>
 <li><a href="start/plain-english.html">What is TraceBi</a> — TraceBi makes reports where every number carries a record of how it was made, so anyone can check later that the number still matches its source</li>
-<li><a href="start/quickstart.html">Get started</a> — In five minutes you will install TraceBi, create a project, build a report and open it in the app</li>
+<li><a href="start/quickstart.html">Get started</a> — In five minutes you will install TraceBi, create a workspace, build a report and open it in the app</li>
 <li><a href="start/your-first-report.html">Your first report</a> — Change the query behind one number in the sample report, rebuild it, and see the trace follow</li>
 <li><a href="start/demo-script.html">A ten-minute demo</a> — A click-by-click script for showing TraceBi to people who read and approve reports: finance, operations, compliance, leadership</li>
 </ul>
 <h2 id="concepts">Concepts</h2>
 <p>How data moves from raw files to a checked report.</p>
 <ul>
-<li><a href="concepts/the-three-phase-workflow.html">The three-phase workflow</a> — A TraceBi project moves data through three folders: a transform cleans it, a model defines it, and a report presents it</li>
+<li><a href="concepts/workspace-and-projects.html">Workspace and projects</a> — One workspace per company, a project for each area's reports, models shared</li>
+<li><a href="concepts/the-three-phase-workflow.html">The three-phase workflow</a> — A TraceBi workspace moves data through three folders: a transform cleans it, a model defines it, and a report presents it</li>
 <li><a href="concepts/transform.html">Transforms</a> — A transform is a file in <code>transforms/</code> that reads raw data, cleans it, and writes star-schema tables into the warehouse</li>
 <li><a href="concepts/sink-contracts.html">Sink contracts</a> — A sink contract is a list of checks a transform's tables must pass before the data counts</li>
 <li><a href="concepts/model.html">Models</a> — A model is the semantic layer: the one place that says what the data means</li>
 <li><a href="concepts/models-and-connectors.html">Models and connectors</a> — A model says what the data means; a connector says where it is</li>
-<li><a href="concepts/report.html">Reports</a> — A report is a folder in <code>reports/</code> whose every figure is a query against a model</li>
+<li><a href="concepts/report.html">Reports</a> — A report is a folder in <code>reports/</code>, usually inside a project (<code>reports/&lt;project&gt;/&lt;report&gt;/</code>, <a href="concepts/workspace-and-projects.html">Workspace and projects</a>), whose every figure is a query against a model</li>
 <li><a href="concepts/trace.html">The trace</a> — Every number a report draws from a model has a trace: a record of how it was made</li>
 <li><a href="concepts/lineage.html">Lineage</a> — Every data operation in TraceBi adds a node to a chain that records what happened</li>
 <li><a href="concepts/freeze-points.html">Freeze points</a> — A freeze point is a stored artifact one stage hands to the next</li>
@@ -115,21 +117,21 @@ graph. The app serves it as <strong>Docs</strong> (<code>/docs</code>), and trac
 <li><a href="guides/analyst-guide.html">TraceBi Analyst Guide</a> — Build a report, check it, send it, and work with a model in Python</li>
 <li><a href="guides/notebook-guide.html">Use TraceBi in a notebook</a> — Explore data in Jupyter with rich previews, then turn the notebook into a transform that writes the warehouse</li>
 <li><a href="guides/styling-a-report.html">Style a report</a> — Give a report your colours, fonts and layout by setting design tokens, using the shipped components, and adding your own CSS and JavaScript</li>
-<li><a href="guides/one-server.html">Run TraceBi on one server</a> — Serve a project, its schedules and its email from one container on one virtual machine</li>
+<li><a href="guides/one-server.html">Run TraceBi on one server</a> — Serve a workspace, its schedules and its email from one container on one virtual machine</li>
 <li><a href="guides/connect-a-database.html">Connect a database</a> — Add a database, or a file, as a source from the app, and choose which of its tables an agent may read</li>
 <li><a href="guides/sign-in.html">Sign in with your company login</a> — Turn on single sign-on so people sign in to TraceBi with their company account and get a role from their groups</li>
 <li><a href="guides/push-from-a-laptop.html">Push a report from your laptop</a> — Build and preview on your own machine, then send the files to the server with <code>tracebi push</code></li>
 <li><a href="guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a> — Let people add TraceBi as a connector in ChatGPT or Claude and sign in with their company login</li>
-<li><a href="guides/web-customization.html">Customize the web app</a> — Point the web server at your own project, add resources in code when files are not enough, restyle or extend the React UI, and deploy it</li>
+<li><a href="guides/web-customization.html">Customize the web app</a> — Point the web server at your own workspace, add resources in code when files are not enough, restyle or extend the React UI, and deploy it</li>
 <li><a href="guides/updating.html">Update TraceBi</a> — Check for a new release and update your install with <code>tracebi update</code></li>
 </ul>
 <h2 id="reference">Reference</h2>
 <p>Every file, key, command and route.</p>
 <ul>
 <li><a href="reference/cli.html">CLI reference</a> — Every <code>tracebi</code> command, grouped by task</li>
-<li><a href="reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a> — <code>tracebi.yaml</code> at the project root says where the warehouse lives and sets the limits of the engine that answers model queries</li>
+<li><a href="reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a> — <code>tracebi.yaml</code> at the workspace root says where the warehouse lives and sets the limits of the engine that answers model queries</li>
 <li><a href="reference/connections-yaml.html">Connection files (YAML)</a> — A file in <code>connections/</code> declares a database or folder that holds data: its type and fields, with every secret kept out of the file as <code>${ENV_VAR}</code></li>
-<li><a href="reference/credentials.html">Credentials</a> — The secrets a project's connections need: which names, where each is set, and an encrypted store on the server</li>
+<li><a href="reference/credentials.html">Credentials</a> — The secrets a workspace's connections need: which names, where each is set, and an encrypted store on the server</li>
 <li><a href="reference/environment-variables.html">Environment variables</a> — Every <code>TRACEBI_*</code> variable TraceBi reads</li>
 <li><a href="reference/transform-sql.html">SQL transforms</a> — A transform is a <code>.sql</code> file of DuckDB statements, run top to bottom in one fresh connection to the warehouse, with its sink contract beside it in a <code>.contract.yaml</code></li>
 <li><a href="reference/model-json.html">Model files (YAML or JSON)</a> — A model file declares a star schema: the same model as a Python <code>DataModel</code>, written as data that runs no code</li>

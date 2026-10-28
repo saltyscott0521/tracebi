@@ -21,7 +21,7 @@ tracebi report build sales_model/revenue_app
   compiles `app.jsx` when it opens. The strict CSP still refuses `eval`, and
   nothing is fetched.
 - Mode and density go in `report.json` `"look"`, a shipped theme in
-  `"theme"`. The project's house style is `reports/_style.md`, which agents
+  `"theme"`. The workspace's house style is `reports/_style.md`, which agents
   read before building.
 
 ## `template.html` or `app.jsx`
@@ -129,7 +129,7 @@ one chart: `<Chart>` and `<Spark>` are `<EChart>` with the kit's defaults,
 and a template's `{{ figure() }}` charts are drawn by the same option builder
 in the runtime. Whether a
 chart is a checked figure follows its data, not who wrote it. It draws in the
-house look, from the page's chart tokens ([[chart-style]]), so the project's
+house look, from the page's chart tokens ([[chart-style]]), so the workspace's
 brand reaches it; never hard-code a colour in its `option`.
 
 ```jsx

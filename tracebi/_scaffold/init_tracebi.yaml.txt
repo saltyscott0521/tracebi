@@ -1,4 +1,4 @@
-# tracebi.yaml: this project's settings. Every key is optional; a missing key
+# tracebi.yaml: this workspace's settings. Every key is optional; a missing key
 # is the default shown. Reference: docs/reference/tracebi-yaml.md
 #
 # warehouse: where transforms sink and models read. A model's connector
@@ -27,11 +27,11 @@ engine:
   temp_directory: data/.duckdb-tmp   # relative to this file
   query_timeout_s: 30                # Ask, build and agent queries stop here
 #
-# brand: the look every report and dashboard of this project takes, charts
+# brand: the look every report and dashboard of this workspace takes, charts
 # included. theme picks the house theme (a report's own "theme" wins); the
 # brand's colours, font and logo then layer over it. Colours are quoted hex (YAML reads # as a comment). The accent
 # must read at 3:1 on the white card; logo and font are files under the
-# project, at most 400 KB, inlined into each page.
+# workspace, at most 400 KB, inlined into each page.
 # brand:
 #   theme: ledger                    # the house theme: ledger (default) | nightdesk | signal
 #   name: Cedar Capital              # the masthead's kicker, in place of the model's label

@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -76,7 +77,7 @@
   </details>
   <main class="doc">
 <h1 id="get-started">Get started</h1>
-<p>In five minutes you will install TraceBi, create a project, build a report and
+<p>In five minutes you will install TraceBi, create a workspace, build a report and
 open it in the app.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
@@ -94,19 +95,19 @@ pip install -e &quot;.[all]&quot;
 <p>The last line builds the web app. A release wheel and the Docker image ship it
 already built. <code>pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"</code>
 installs without cloning, but has no web app.</p>
-<h2 id="2-create-a-project">2. Create a project</h2>
-<pre><code class="language-bash">tracebi init my_project &amp;&amp; cd my_project
+<h2 id="2-create-a-workspace">2. Create a workspace</h2>
+<pre><code class="language-bash">tracebi init my_workspace &amp;&amp; cd my_workspace
 git init &amp;&amp; git add . &amp;&amp; git commit -m &quot;init&quot;
 </code></pre>
 <p>Commit now. Each build records the commit it was made from. A build in a
 repository with no commits records <code>unknown</code> and warns.</p>
-<p>The project has one folder per stage:</p>
+<p>The workspace has one folder per stage:</p>
 <pre><code>tracebi.yaml  settings: where the warehouse is, and the query engine's limits
 inputs/       raw files
 connections/  the databases a transform reads, one YAML file each
 transforms/   the code that cleans the inputs and writes warehouse tables
 models/       the model: tables, joins and measures
-reports/      report packages, one folder per model
+reports/      report packages, one project (a folder) per model
 pipelines/    one per model: run its transform, then build its reports
 data/         the warehouse (created on the first run)
 output/       built reports and their traces (created on the first build)

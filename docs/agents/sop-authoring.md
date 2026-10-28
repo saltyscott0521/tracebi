@@ -4,7 +4,7 @@ The procedure an AI analyst agent follows to produce a report over TraceBi's
 MCP gateway (`tracebi mcp`). Follow the steps in order.
 
 Read `AGENTS.md` first. It is the brief every agent reads before working in a
-TraceBi project (`tracebi init` writes one into each). This SOP is one job
+TraceBi workspace (`tracebi init` writes one into each). This SOP is one job
 from it.
 
 ## Before you begin
@@ -27,7 +27,7 @@ from it.
 
 ### The tools
 
-The gateway has twenty-eight tools and three prompts (`author_report`,
+The gateway has twenty-nine tools and three prompts (`author_report`,
 `answer_question`, `address_pins`) that run this procedure for you. The MCP
 `tools/list` call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with `build_report`. Over a
@@ -37,7 +37,7 @@ hosted connection, the draft tools are how a package reaches the server
 | Tool | Purpose |
 |---|---|
 | `get_context` | The full vocabulary, optionally with one model's schema. Pass `brief` for the smaller version. |
-| `list_models` | The project's models, with facts, dimensions and measures |
+| `list_models` | The workspace's models, with facts, dimensions and measures |
 | `describe_model` | One model's full schema |
 | `describe_table` | Columns and types of a raw warehouse table, before a model exists |
 | `query_model` | Run a star-schema query; returns rows and a stamp |
@@ -45,7 +45,7 @@ hosted connection, the draft tools are how a package reaches the server
 | `render_report_spec` | Validate, build and render a spec to HTML and a manifest |
 | `build_report` | Build a report package under `reports/` to one HTML file and a manifest |
 | `fetch_artifact` | Read back a built HTML or manifest, so a remote agent can deliver it |
-| `list_reports` | Reports the project already has |
+| `list_reports` | Reports the workspace already has |
 | `workbench_state` | What the `tracebi dev` workbench shows, including a reviewer's pins |
 | `resolve_pin` | Mark a reviewer's pin as addressed, with a note |
 | `verify_manifest` | Re-run every recorded query in a manifest and classify each figure (`reproduces`, `source_drift`, `model_changed`, `unexplained`, `unverifiable`) |
@@ -54,8 +54,8 @@ hosted connection, the draft tools are how a package reaches the server
 | `model_impact` | For a model draft: each published report that reads the model, unchanged, moves or breaks |
 | `publish_draft` | Publish a draft, or open a publish request where the folder asks for one |
 | `list_publish_requests` · `decide_publish_request` | Requests into folders where you hold Publish; approve or reject one |
-| `describe_project` | The project as a graph: every source, transform, table, model and report, what feeds what, and what you may read |
-| `list_connections` | The project's connections, each with the tables a person allowed agents to read |
+| `describe_project` (or `describe_workspace`, the same tool) | The workspace as a graph: every source, transform, table, model and report, what feeds what, and what you may read |
+| `list_connections` | The workspace's connections, each with the tables a person allowed agents to read |
 | `list_source_tables` | One connection's allowed tables, with columns and row estimates |
 | `describe_source_table` | One allowed table's columns, profile and a sample of rows (`sample`, at most 500) |
 | `propose_transform` | Store `transforms/<name>.sql` and its `.contract.yaml` as a code request; an admin approves it and it runs once |
@@ -183,16 +183,16 @@ Handle the stamp this way, every time:
 ### First, the house theme
 
 Offer the house theme once, for a new report or dashboard only: when the
-project sets no brand.theme and the person has not named a theme, offer the
+workspace sets no brand.theme and the person has not named a theme, offer the
 three in one short line each (Ledger: calm, institutional, the default;
 Nightdesk: dark, dense, monospaced numbers, for a desk or ops screen; Signal:
 bold, big numbers, for a board pack or a wall screen), recommend one for what
 the report is for, and use Ledger if the person does not choose. If the
-project sets a theme, use it and say so in one line instead of asking. Never
+workspace sets a theme, use it and say so in one line instead of asking. Never
 ask again for an existing report. The person's choice goes in the package's
 `report.json` `"theme"` (`start_draft(kind="reports", path=…,
 theme="nightdesk")` starts the draft with it; keep that key when you write
-`report.json`). Pick a theme or use the project's brand; never hard-code a
+`report.json`). Pick a theme or use the workspace's brand; never hard-code a
 colour ([[chart-style]]).
 
 ### The spec

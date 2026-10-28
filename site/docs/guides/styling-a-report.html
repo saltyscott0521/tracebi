@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -87,15 +88,15 @@ the shipped components, and adding your own CSS and JavaScript.</p>
 <pre><code>1. tracebi.css            the shipped design system (Ledger)
 2. the house theme        report.json &quot;theme&quot;, else tracebi.yaml brand.theme
 3. the brand              tracebi.yaml brand: accent, palette, font, logo
-4. reports/_theme.css     your project's own tokens (optional)
+4. reports/_theme.css     your workspace's own tokens (optional)
 5. style.css              this report (optional)
 </code></pre>
 <h2 id="1-pick-a-house-theme">1. Pick a house theme</h2>
 <p>Three, each a whole look (<a href="../reference/chart-style.html">House themes and chart style</a>): <code>ledger</code> (calm, institutional, the
 default), <code>nightdesk</code> (dark, dense, monospaced numbers, for a desk or an
 operations screen) and <code>signal</code> (bold, big numbers, for a board pack or a wall
-screen). The project picks one in <code>tracebi.yaml</code> (<code>brand: {theme: signal}</code>,
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>); a single report in <code>report.json</code>: <code>"theme": "nightdesk"</code>
+screen). The workspace picks one in <code>tracebi.yaml</code> (<code>brand: {theme: signal}</code>,
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>); a single report in <code>report.json</code>: <code>"theme": "nightdesk"</code>
 (<a href="../reference/report-json.html">report.json</a>). Your colours go in the brand (<code>brand: {accent: …, palette:
 […]}</code>), which layers over whichever theme. <code>tracebi theme list</code> shows them.</p>
 <h2 id="2-set-your-own-tokens">2. Set your own tokens</h2>

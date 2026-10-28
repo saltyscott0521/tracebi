@@ -28,16 +28,16 @@ function pagesFor(role) {
       { label: 'Transforms', path: transformsPath(), kind: 'page', sub: 'Every file in transforms/: its form, what it feeds, its checks.' },
       { label: 'Warehouse', path: warehousePath(), kind: 'page', sub: 'Every table: who wrote it, who reads it, its checks.' },
       { label: 'Models', path: modelsPath(), kind: 'page', sub: 'Every model: its status, tables, measures and reports.' },
-      { label: 'Lineage', path: lineagePath(), kind: 'page', sub: 'The project as one map: what feeds what, read through a lens.' },
+      { label: 'Lineage', path: lineagePath(), kind: 'page', sub: 'The workspace as one map: what feeds what, read through a lens.' },
     ] : []),
-    { label: 'Get started', path: docPath(GET_STARTED), kind: 'doc', sub: 'Install, scaffold a project, and build one verified report.' },
+    { label: 'Get started', path: docPath(GET_STARTED), kind: 'doc', sub: 'Install, scaffold a workspace, and build one verified report.' },
   ]
 }
 
 // Each kind's word (a query that starts it lists that kind) and its group.
 // The groups, in order: what a person most often jumps to first.
 const KIND_META = {
-  folder:   { tag: 'Folder',   group: 'folder' },
+  folder:   { tag: 'Project',  group: 'folder' },
   report:   { tag: 'Report',   group: 'report' },
   table:    { tag: 'Table',    group: 'table' },
   source:   { tag: 'Source',   group: 'source', glyph: '◎' },
@@ -49,7 +49,7 @@ const KIND_META = {
   doc:      { tag: 'Doc',      group: 'place', glyph: '¶' },
 }
 const GROUPS = [
-  ['recent', 'Recent'], ['folder', 'Folders'], ['report', 'Reports'], ['table', 'Tables'],
+  ['recent', 'Recent'], ['folder', 'Projects'], ['report', 'Reports'], ['table', 'Tables'],
   ['source', 'Sources'], ['transform', 'Transforms'], ['model', 'Models'], ['place', 'Places'],
 ]
 // A table's glyph is what it is in the model that reads it.
@@ -72,7 +72,7 @@ function remember(item) {
   try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)) } catch { /* private window */ }
 }
 
-// What leads a row: a folder's hue, a report's cover (its picture, else the
+// What leads a row: a project's hue, a report's cover (its picture, else the
 // drawn one), a table's kind, else the kind's glyph.
 function Lead({ it }) {
   if (it.kind === 'folder') return <span className="cp__hue" style={hueStyle(it.hue)} aria-hidden="true" />
@@ -125,7 +125,7 @@ export default function CommandPalette() {
       r.models.push(m.label || m.name)
     }))
     return [
-      // A folder is found by its name or its path, not by its count ("6 reports").
+      // A project (or folder) is found by its name or its path, not by its count ("6 reports").
       ...library.folders.map(f => ({
         label: f.label, path: folderPath(f.path), kind: 'folder', hue: f.hue, sub: count(f.items.length, 'report'),
         find: `${f.label} ${f.path}`,
@@ -279,7 +279,7 @@ export default function CommandPalette() {
 
         <div className="cp__list" id="cp-list" role="listbox" aria-label="Results" ref={listRef}>
           {results.length === 0 && (
-            <div className="cp__none">{query.trim() ? `No matches for “${query}”.` : 'Type to find a report, a folder, a table or a page.'}</div>
+            <div className="cp__none">{query.trim() ? `No matches for “${query}”.` : 'Type to find a report, a project, a table or a page.'}</div>
           )}
           {groups.map(([g, list]) => (
             <div key={g} role="group" aria-label={title[g]}>

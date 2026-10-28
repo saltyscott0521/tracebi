@@ -1,7 +1,8 @@
 # Reports
 
-A report is a folder in `reports/` whose every figure is a query against a
-model. One command builds it into a single HTML file and a [[trace]]:
+A report is a folder in `reports/`, usually inside a project
+(`reports/<project>/<report>/`, [[workspace-and-projects]]), whose every
+figure is a query against a model. One command builds it into a single HTML file and a [[trace]]:
 
 ```
 reports/my_report/

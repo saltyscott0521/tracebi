@@ -1,17 +1,17 @@
 """
 TraceBi CLI.
 
-Scaffolds and drives a project through the three-phase workflow — TRANSFORM
+Scaffolds and drives a workspace through the three-phase workflow — TRANSFORM
 (``transforms/``) → MODEL (``models/``) → REPORT (``reports/``):
 
-    tracebi init my_project                 # scaffold a new project
+    tracebi init my_workspace               # scaffold a new workspace
     tracebi run-transform <name>            # ① run a transform → sink the warehouse
     tracebi connect wh --kind duckdb        # point at a warehouse you already have
     tracebi import dbt <path>               # draft a model from a dbt manifest.json
     tracebi new-model "Sales Model"         # ② scaffold a model over the warehouse
     tracebi report build <name>             # ③ render an artifact package + its trace
     tracebi verify <manifest>               # re-run recorded queries; classify drift
-    tracebi serve                           # browse the project
+    tracebi serve                           # browse the workspace
     tracebi mcp                             # agent gateway over MCP
     tracebi --version
 
@@ -38,9 +38,9 @@ from typing import Optional
 from tracebi._version import get_version as _tracebi_version
 
 
-# Resolve the project folders relative to the user's current working
+# Resolve the workspace folders relative to the user's current working
 # directory by default, honouring the same TRACEBI_*_DIR env vars the server
-# and gateway read (so the CLI and the server agree on where a project
+# and gateway read (so the CLI and the server agree on where a workspace
 # lives). Override per-invocation with the --*-dir flags.
 def _scaffold_text(name: str) -> str:
     """Read a bundled scaffold template from ``tracebi/_scaffold/``.
@@ -144,10 +144,10 @@ def _model_yaml_template_text(title: str) -> str:
 name: {slug}
 label: {json.dumps(title.strip())}
 
-# connectors: where the tables live. `type: warehouse` is the project's
+# connectors: where the tables live. `type: warehouse` is the workspace's
 # warehouse, wherever tracebi.yaml puts it (a DuckDB file by default, Parquet
 # on object storage, or a remote engine). `type: duckdb` with a `database`
-# path names one DuckDB file inside the project instead. No credentials
+# path names one DuckDB file inside the workspace instead. No credentials
 # belong here: for a database, run `tracebi connect` and use
 # `connection: <name>`.
 connectors:
@@ -326,7 +326,7 @@ runner = PipelineRunner(db_url=_DB_URL)
 # runner.register(_silver, name="orders_silver", schedule="15 * * * *",
 #                 depends_on="orders_bronze")
 
-# ── Publish to the project registry ──────────────────────────────────────────
+# ── Publish to the workspace registry ────────────────────────────────────────
 # Also discoverable without this line via `get_runner("{slug}")`, since files
 # in pipelines/ are auto-loaded. Registering makes it visible to the web UI too.
 from tracebi import register
@@ -419,11 +419,11 @@ print(f"sunk → {{WAREHOUSE}}")
 
 def _transform_sql_template_text(title: str, tier: str) -> str:
     """``tracebi new-transform``'s default: a SQL transform, its sink written
-    in the idiom of the project's warehouse tier (tracebi.yaml)."""
+    in the idiom of the workspace's warehouse tier (tracebi.yaml)."""
     today = date.today().isoformat()
     slug = _slugify(title)
     if tier == "object":
-        where = ("This project's warehouse is the OBJECT tier: a table lands as\n"
+        where = ("This workspace's warehouse is the OBJECT tier: a table lands as\n"
                  "-- Parquet under {{ sink }}. Write each one with COPY, as below; a\n"
                  "-- table you CREATE (not TEMP) also lands there, as <table>.parquet.\n"
                  "-- On the file or remote tier, CREATE OR REPLACE TABLE x AS … lands\n"
@@ -436,7 +436,7 @@ def _transform_sql_template_text(title: str, tier: str) -> str:
                 "-- (No CREATE VIEW here: the object tier keeps no definitions, so a\n"
                 "-- view is refused. Materialize the derivation as a table.)")
     else:
-        where = (f"This project's warehouse is the {tier.upper()} tier: a table you CREATE\n"
+        where = (f"This workspace's warehouse is the {tier.upper()} tier: a table you CREATE\n"
                  "-- (not TEMP) lands in it. On the object tier a table is a Parquet file\n"
                  "-- under {{ sink }} instead: CREATE still lands it there, as\n"
                  "-- <table>.parquet, or write it yourself:\n"
@@ -472,8 +472,8 @@ def _transform_sql_template_text(title: str, tier: str) -> str:
 --
 -- Two placeholders, and only two: {{{{ sink }}}} (where tracebi.yaml puts the
 -- warehouse: a .duckdb file, an object prefix, or an attach string) and
--- {{{{ root }}}} (the project root). Relative paths in reads (inputs/…) resolve
--- against the project root. TEMP tables and TEMP MACROs are scratch: they
+-- {{{{ root }}}} (the workspace root). Relative paths in reads (inputs/…) resolve
+-- against the workspace root. TEMP tables and TEMP MACROs are scratch: they
 -- vanish with the connection. The `-- %%` markers are cells for editors that
 -- fold them; they mean nothing to the run. Keep it idempotent (CREATE OR
 -- REPLACE): a rerun replaces the tables.
@@ -543,7 +543,7 @@ checks:
 '''
 
 
-# ── init project scaffolding ────────────────────────────────────────────────
+# ── init workspace scaffolding ──────────────────────────────────────────────
 
 _INIT_GITIGNORE = _scaffold_text("init_gitignore.txt")
 
@@ -557,7 +557,7 @@ _INIT_SAMPLE_MODEL = _scaffold_text("init_sample_model.yaml.txt")
 
 # The source the model reads (connections/warehouse.yaml): where phase ① sinks.
 _INIT_CONNECTION = _scaffold_text("init_connection_warehouse.yaml.txt")
-# tracebi.yaml: the project's settings, every key commented with its default.
+# tracebi.yaml: the workspace's settings, every key commented with its default.
 _INIT_TRACEBI_YAML = _scaffold_text("init_tracebi.yaml.txt")
 
 # The pipeline every model gets (tracebi.pipeline.model_pipeline): the
@@ -565,7 +565,7 @@ _INIT_TRACEBI_YAML = _scaffold_text("init_tracebi.yaml.txt")
 _INIT_SAMPLE_PIPELINE = _scaffold_text("init_sample_pipeline.yaml.txt")
 
 # The sample report is an ARTIFACT PACKAGE — the one report lane — so the
-# first page a new project renders demonstrates the real product: figure
+# first page a new workspace renders demonstrates the real product: figure
 # claims, the presentation stack, provenance badges, and a receipt that
 # joins the sink contract. (A JSON spec still renders and `tracebi migrate
 # spec` compiles one, but the scaffold must not teach the legacy form.)
@@ -574,7 +574,7 @@ _INIT_SAMPLE_REPORT_JSON = _scaffold_text("init_sample_report.json")
 _INIT_SAMPLE_APP_JSX = _scaffold_text("init_sample_app.jsx")
 
 # Claude Code and Cursor both read this shape. The command is `tracebi` on
-# PATH, run from the project folder — not an absolute path, so the file
+# PATH, run from the workspace folder — not an absolute path, so the file
 # stays the same on every machine.
 _INIT_MCP_JSON = json.dumps(
     {"mcpServers": {"tracebi": {"command": "tracebi", "args": ["mcp"]}}},
@@ -585,7 +585,7 @@ def _init_project_readme(project: str) -> str:
     return f"""\
 # {project}
 
-A TraceBi project. Scaffolded by `tracebi init`.
+A TraceBi workspace. Scaffolded by `tracebi init`.
 
 Ask it, build it, schedule it. Analysts and agents write every kind of
 report from one set of approved definitions, and the ones worth repeating
@@ -647,7 +647,7 @@ tracebi verify --file output/sample_model/sample_dashboard.html   # FILE INTACT,
 ├── inputs/           Phase ⓪ — raw pulls (orders.csv is the sample)
 ├── transforms/       Phase ① — pandas that reads inputs/, sinks star tables
 ├── models/           Phase ② — each .py exposes `model` (a DataModel)
-├── reports/          Phase ③ — one folder per model: reports/<model>/<report>/
+├── reports/          Phase ③ — one project per area, a folder named for its model: reports/<model>/<report>/
 ├── pipelines/        One per model: transform, then build its reports — each .py exposes `runner`
 ├── data/             The warehouse (gitignored)
 ├── output/           Rendered reports; *.manifest.json traces stay tracked
@@ -671,7 +671,7 @@ is half the audit story.
    phase; the contract is what lands.
 4. `tracebi new-model "Sales"` — declare the star schema over those tables.
    `tracebi validate` confirms it loads and its dimension keys are unique.
-5. Reports go in a folder named for their model: copy
+5. Reports go in a project, a folder named for their model: copy
    `reports/sample_model/sample_dashboard/` to `reports/sales/my_report/` (or
    `tracebi new-report "sales/My Report"`), point its `report.json` bindings
    at your model, and put figures in the template: `data-tb-figure` +
@@ -689,7 +689,7 @@ The same contracts drive the agent surface: `tracebi context` emits the
 vocabulary as JSON, `tracebi mcp` opens the gateway (validate a spec, query
 a model, render, verify — read-and-compute only). An agent and an analyst
 author against the same model and produce the same traces. **`AGENTS.md`
-in this project orients an AI agent working here** — point a fresh session at
+in this workspace orients an AI agent working here** — point a fresh session at
 it (most coding agents read it automatically).
 
 Your agent's TraceBi tools are already wired (`.mcp.json` for Claude Code,
@@ -758,13 +758,13 @@ def cmd_init(args: argparse.Namespace) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
-    print(f"Initialised TraceBi project at {target}")
+    print(f"Created a workspace in {target}")
     print(f"  cd {target.name}")
     print(f"  git init && git add . && git commit -m init   # manifests stamp the commit (git_sha)")
     print(f"  tracebi run-pipeline sample_model      # ① clean + sink, then ③ build the report + manifest")
     print(f"  tracebi verify output/sample_model/sample_dashboard.html.manifest.json   # re-run the queries")
     print(f"  tracebi serve                          # browse at http://127.0.0.1:8000")
-    print(f"AGENTS.md orients an AI agent working in this project.")
+    print(f"AGENTS.md orients an AI agent working in this workspace.")
     return 0
 
 
@@ -805,7 +805,7 @@ def cmd_context(args: argparse.Namespace) -> int:
     operators, and the discovery conventions.
 
     Generated from the code, so it cannot drift. Intended as context for a
-    tool or agent authoring a project; add --model to include a specific
+    tool or agent authoring in a workspace; add --model to include a specific
     model's tables, dimensions and declared measures.
     """
     from tracebi.capabilities import describe, describe_model
@@ -1047,11 +1047,11 @@ def _update_afterwards() -> None:
 
 def cmd_serve(args: argparse.Namespace) -> int:
     """
-    Serve the current project's web UI.
+    Serve the current workspace's web UI.
 
     The one CLI step between an installed package and a running app.
     Artifacts are discovered from the working directory, so this is run
-    from a project root — the layout ``tracebi init`` creates.
+    from a workspace root — the layout ``tracebi init`` creates.
     """
     cwd = Path.cwd()
     discovered = {
@@ -1064,9 +1064,9 @@ def cmd_serve(args: argparse.Namespace) -> int:
     }
     if not discovered:
         print(
-            f"No TraceBi project found in {cwd}.\n"
+            f"No TraceBi workspace found in {cwd}.\n"
             f"Expected at least one of: models/ pipelines/ reports/\n"
-            f"Run `tracebi init .` to scaffold one, or cd to a project root.",
+            f"Run `tracebi init .` to scaffold one, or cd to a workspace root.",
             file=sys.stderr,
         )
         return 1
@@ -1102,7 +1102,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
         )
         return 1
 
-    # Don't drag the bundled demo app into someone else's project — it
+    # Don't drag the bundled demo app into someone else's workspace — it
     # references demo data they do not have. An app module is only needed
     # for connectors; opt in by setting TRACEBI_APP.
     os.environ.setdefault("TRACEBI_APP", "")
@@ -1212,7 +1212,7 @@ def _dev_in_the_app(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """
-    Sanity-check the project: layout, then the models themselves.
+    Sanity-check the workspace: layout, then the models themselves.
 
     Layout checks are cheap file stats. The substantive part is loading each
     model in models/ and running ``DataModel.validate()``, which catches the
@@ -1333,12 +1333,12 @@ def cmd_validate(args: argparse.Namespace) -> int:
     if problems:
         print(f"\n{len(problems)} problem(s) found.", file=sys.stderr)
         return 1
-    print("\nProject looks good.")
+    print("\nWorkspace looks good.")
     return 0
 
 
 def _project_path(path) -> str:
-    """*path* as the person reads it: relative to the project when it is inside
+    """*path* as the person reads it: relative to the workspace when it is inside
     it (output/sales/q3.html), absolute otherwise."""
     try:
         return str(Path(path).resolve().relative_to(Path.cwd().resolve()))
@@ -1437,7 +1437,7 @@ def _record_secret(name: str, status: str) -> None:
 
 
 def cmd_secret(args: argparse.Namespace) -> int:
-    """``tracebi secret set|list|unset|edit``: the project's credential store
+    """``tracebi secret set|list|unset|edit``: the workspace's credential store
     (``.tracebi/secrets.yml.enc``, :mod:`tracebi.project_credentials`). A value is
     read from a prompt with no echo, or from stdin, and never printed; ``edit``
     opens the decrypted YAML in ``$VISUAL`` / ``$EDITOR`` and encrypts it back,
@@ -1456,7 +1456,7 @@ def cmd_secret(args: argparse.Namespace) -> int:
         if args.action == "list":
             rows = pc.status(root)
             if not rows:
-                print("No connection in this project references a ${NAME}.")
+                print("No connection in this workspace references a ${NAME}.")
             for r in rows:
                 where = _SECRET_SOURCE.get(r["source"], "MISSING")
                 print(f"{r['name']} · {where} · used by {_secret_uses(r)}")
@@ -1490,7 +1490,7 @@ def cmd_secret(args: argparse.Namespace) -> int:
         return 1
     print(f"saved {args.name} in {pc.STORE_FILE}")
     if args.name not in {r["name"] for r in pc.required(root)}:
-        print(f"note: nothing in this project references ${{{args.name}}} yet")
+        print(f"note: nothing in this workspace references ${{{args.name}}} yet")
     return 0
 
 
@@ -1600,7 +1600,7 @@ def cmd_new_transform(args: argparse.Namespace) -> int:
         print(f"    python {out_path}")
         return 0
 
-    # The sink is written in the idiom of the project's warehouse tier.
+    # The sink is written in the idiom of the workspace's warehouse tier.
     from tracebi.project_config import warehouse
     try:
         tier = warehouse().tier
@@ -1912,7 +1912,7 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     Serve the agent gateway over the Model Context Protocol.
 
     stdio by default, which is what a locally-configured agent speaks;
-    --transport http for a remote one. Models come from the same project
+    --transport http for a remote one. Models come from the same workspace
     conventions as every other command (./models, or TRACEBI_MODELS_DIR).
 
     The http transport refuses to start until an auth decision is made:
@@ -2042,7 +2042,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
     """
     Re-verify a rendered manifest: the other half of the stamp.
 
-    Every recorded query in the manifest is re-run against the project's
+    Every recorded query in the manifest is re-run against the workspace's
     models and classified — REPRODUCES, SOURCE DRIFT (result differs and
     an input fingerprint moved), MODEL CHANGED (a table now loads from a
     different source/connector — a governance event), UNEXPLAINED (result
@@ -3040,7 +3040,7 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
 
 def cmd_theme(args: argparse.Namespace) -> int:
     """List the house themes (then the deprecated accent presets), or copy an
-    accent preset to reports/_theme.css. A house theme is the project's
+    accent preset to reports/_theme.css. A house theme is the workspace's
     tracebi.yaml brand: {theme: …}, or a report's report.json "theme"."""
     from tracebi.reports import house
     from tracebi.reports.stack import named_theme_css, named_themes
@@ -3054,7 +3054,7 @@ def cmd_theme(args: argparse.Namespace) -> int:
         chosen = mark.get("theme")
         for name, theme in house.THEMES.items():
             tags = (["default"] if name == house.DEFAULT else []) + (
-                ["this project's"] if name == chosen else [])
+                ["this workspace's"] if name == chosen else [])
             tag = f" [{', '.join(tags)}]" if tags else ""
             print(f"{name:10} {theme['about']}; for {theme['for']}{tag}")
         print("\nDeprecated accent presets (a report that names one renders in the house "
@@ -3073,7 +3073,7 @@ def cmd_theme(args: argparse.Namespace) -> int:
                   f"every report takes it, over the house theme, under reports/_theme.css)")
         return 0
     if args.name in house.THEMES:
-        print(f"{args.name} is a house theme: set it for the project in tracebi.yaml "
+        print(f"{args.name} is a house theme: set it for the workspace in tracebi.yaml "
               f"(brand: {{theme: {args.name}}}), or for one report in its report.json "
               f"(\"theme\": \"{args.name}\").", file=sys.stderr)
         return 2
@@ -3093,7 +3093,7 @@ def cmd_theme(args: argparse.Namespace) -> int:
         return 1
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(css, encoding="utf-8")
-    print(f"Wrote {target}: every report in the project now uses '{args.name}' "
+    print(f"Wrote {target}: every report in the workspace now uses '{args.name}' "
           f"unless its report.json names another theme.")
     return 0
 
@@ -3325,7 +3325,7 @@ def _snapshot_report_target(kind: str, path: Path, output: Path) -> int:
 
 
 # Whether this process has said why a build took no cover. Building every
-# report of a project would otherwise repeat the same line for each one.
+# report of a workspace would otherwise repeat the same line for each one.
 _cover_note_said = False
 
 
@@ -3873,11 +3873,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_init = sub.add_parser(
         "init",
-        help="Scaffold a complete three-phase project (inputs/, transforms/, "
+        help="Scaffold a complete three-phase workspace (inputs/, transforms/, "
              "models/, reports/, …) whose sample loop ends in "
              "`tracebi verify` reading REPRODUCES.",
     )
-    p_init.add_argument("project", help="Target directory name.")
+    p_init.add_argument("project", metavar="workspace",
+                        help="The directory to create the workspace in.")
     p_init.add_argument("--force", action="store_true",
                         help="Overwrite existing files.")
     p_init.add_argument(
@@ -3933,7 +3934,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_serve = sub.add_parser(
         "serve",
-        help="Serve this project's web UI (models, reports, pipelines) "
+        help="Serve this workspace's web UI (models, reports, pipelines) "
              "at http://127.0.0.1:8000.",
     )
     p_serve.add_argument("--host", default="127.0.0.1")
@@ -4013,7 +4014,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_validate = sub.add_parser(
         "validate",
-        help="Sanity-check the project: layout, plus load every model in "
+        help="Sanity-check the workspace: layout, plus load every model in "
              "models/ and verify its dimension keys are unique.",
     )
     p_validate.set_defaults(func=cmd_validate)
@@ -4091,14 +4092,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_connect.add_argument(
         "--store", choices=["dotenv", "secret"], default="dotenv",
-        help="Where the secret goes: .env (default), or `secret`, the project's "
+        help="Where the secret goes: .env (default), or `secret`, the workspace's "
              "encrypted credential store (.tracebi/secrets.yml.enc, `tracebi secret`).",
     )
     p_connect.set_defaults(func=cmd_connect)
 
     p_secret = sub.add_parser(
         "secret",
-        help="The project's credential store (.tracebi/secrets.yml.enc: encrypted "
+        help="The workspace's credential store (.tracebi/secrets.yml.enc: encrypted "
              "YAML, NAME: value): `secret list` shows every ${NAME} the connections "
              "reference and where each is set; `secret set NAME` saves one (prompted, "
              "no echo); `secret unset NAME` removes it; `secret edit` opens the "
@@ -4220,7 +4221,7 @@ def build_parser() -> argparse.ArgumentParser:
         "export",
         help="Write a warehouse table or view to a connection (through its "
              "connector, the table replaced there) or to an object prefix "
-             "(s3://…, gs://… or a folder in the project) as <table>.parquet. "
+             "(s3://…, gs://… or a folder in the workspace) as <table>.parquet. "
              "Recorded as a run (kind: export).",
     )
     p_export.add_argument("table", help="A table or view of the warehouse.")
@@ -4279,7 +4280,7 @@ def build_parser() -> argparse.ArgumentParser:
             "--theme", choices=house.names() + house.deprecated_names(), default=None,
             metavar="{" + ",".join(house.names()) + "}",
             help="The house theme for this page (report.json \"theme\"): ledger "
-                 "(the default), nightdesk or signal; the project default is "
+                 "(the default), nightdesk or signal; the workspace default is "
                  "tracebi.yaml brand: {theme: …}. The six accent presets still "
                  "work, deprecated.")
 
@@ -4336,7 +4337,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_theme = sub.add_parser(
         "theme",
-        help="The shipped themes: list them, or make one the project default "
+        help="The shipped themes: list them, or make one the workspace default "
              "(writes reports/_theme.css).",
     )
     p_theme.add_argument("action", choices=["list", "use"])
@@ -4516,7 +4517,7 @@ def build_parser() -> argparse.ArgumentParser:
                                 "or models/<name>.yaml (model).")
     p_migrate.add_argument("--write", action="store_true",
                            help="model, connection, pipeline: write the .yaml "
-                                "beside the project's other files instead of "
+                                "beside the workspace's other files instead of "
                                 "printing it. The Python file is never deleted.")
     p_migrate.set_defaults(func=cmd_migrate)
 

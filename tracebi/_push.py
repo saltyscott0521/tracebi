@@ -33,7 +33,7 @@ def _rel(path: Path) -> str:
     try:
         return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
     except ValueError:
-        raise PushError(f"{path} is outside this project ({Path.cwd()})") from None
+        raise PushError(f"{path} is outside this workspace ({Path.cwd()})") from None
 
 
 def _reports_dir() -> Path:

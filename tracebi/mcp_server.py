@@ -144,7 +144,7 @@ _WRITE_TOOLS = frozenset({
 })
 
 #: Write tools only an admin calls (or a caller with no sign-in role, who
-#: acts as admin everywhere): they write outside the project's own files.
+#: acts as admin everywhere): they write outside the workspace's own files.
 _ADMIN_TOOLS = frozenset({"export_table"})
 
 
@@ -553,7 +553,7 @@ class ContextResult(TypedDict, total=False):
     connect: Any
     analyst_knowledge: Any
     brief: Any  # the omission note; null or absent when brief=false
-    house_style: Any  # reports/_style.md {file, text}; null when the project has none
+    house_style: Any  # reports/_style.md {file, text}; null when the workspace has none
 
 
 class ModelsResult(TypedDict, total=False):
@@ -872,7 +872,7 @@ def _draft_fields(names) -> dict:
 
 def gateway_models() -> ModelsResult:
     """
-    Models this project exposes, with table/fact/dimension counts.
+    Models this workspace exposes, with table/fact/dimension counts.
 
     The registry indexes each model under both its file stem and its
     ``.name``; listing both as separate models made an agent's world look
@@ -1107,7 +1107,7 @@ def _show_action(tool: str, text: str, frame: Optional[dict] = None) -> None:
 
 def gateway_validate_spec(spec: Any) -> ValidateResult:
     """
-    Check a report spec against the project's models without loading a row.
+    Check a report spec against the workspace's models without loading a row.
 
     Errors carry a path (``sections[0].data.query.fact``) so an agent can
     repair its own spec and retry.
@@ -1222,7 +1222,7 @@ gateway_render_spec.__doc__ = _render_spec.__doc__
 
 
 def gateway_reports() -> ReportsResult:
-    """Reports the project exposes, from the discovery report."""
+    """Reports the workspace exposes, from the discovery report."""
     from tracebi.permissions import can
     from tracebi.report_paths import report_name_error
     from tracebi.web.discovery import discovery_report
@@ -1660,7 +1660,7 @@ class ProjectResult(TypedDict, total=False):
 
 
 def gateway_describe_project() -> ProjectResult:
-    """The project as one graph, as the app's map draws it (``GET
+    """The workspace as one graph, as the app's map draws it (``GET
     /api/graph``): every source, transform, warehouse table, model and
     report, the facts that wire them, and what an agent may read of each."""
     import sys
@@ -2031,7 +2031,7 @@ def build_server(token: Optional[str] = None, oauth=None):
             "report or declarative model remotely: start_draft, "
             "write_draft_file, preview_draft (give the person its url), "
             "then publish_draft once they agree. With no model yet, start "
-            "from the data: describe_project (the whole project as a "
+            "from the data: describe_project (the whole workspace as a "
             "graph), list_connections, list_source_tables, "
             "describe_source_table, then propose_transform (an admin "
             "approves it and it runs once) before drafting the model."
@@ -2091,7 +2091,7 @@ def build_server(token: Optional[str] = None, oauth=None):
             "cheat_sheets, report_sections, and dataset_verbs null or "
             "absent — not requested in this tier; call "
             "get_context(brief=false) for them. On brief=false the brief "
-            "field itself is null or absent. house_style is the project's "
+            "field itself is null or absent. house_style is the workspace's "
             "reports/_style.md (null when there is none): the team's design "
             "rules — follow them over the defaults when you build a page."
         ),
@@ -2100,7 +2100,7 @@ def build_server(token: Optional[str] = None, oauth=None):
         name="list_models", title="List models", annotations=_READ,
         structured_output=True,
         description=(
-            "Models this project exposes, with facts, dimensions and measures. "
+            "Models this workspace exposes, with facts, dimensions and measures. "
             "draftable says whether start_draft can copy it remotely: a "
             "declarative .yaml/.yml/.json model can, a Python model cannot "
             "(draft_note gives the reason). A model that failed to load is "
@@ -2169,7 +2169,7 @@ def build_server(token: Optional[str] = None, oauth=None):
         name="validate_report_spec", title="Validate a report spec",
         annotations=_READ, structured_output=True,
         description=(
-            "Check a report spec (JSON) against the project's models without "
+            "Check a report spec (JSON) against the workspace's models without "
             "loading any data. Errors carry a path like "
             "sections[0].data.query.fact — fix and retry. Warnings marked "
             "'design —' flag layout mistakes (unsorted bars, too many KPIs or "
@@ -2189,7 +2189,9 @@ def build_server(token: Optional[str] = None, oauth=None):
     _tool(
         name="list_reports", title="List reports", annotations=_READ,
         structured_output=True,
-        description="Reports the project exposes, with registration status per file.",
+        description=("Reports the workspace exposes, with registration status per file. A "
+                     "report is named by its path; its first segment is its project (a "
+                     "top-level library folder, named for the model it reads)."),
     )(gateway_reports)
     _tool(
         name="workbench_state", title="Workbench state", annotations=_READ_WAREHOUSE,
@@ -2203,8 +2205,8 @@ def build_server(token: Optional[str] = None, oauth=None):
             "your next edit. It also "
             "serves the discovery session: call with no report while the "
             "human runs tracebi dev with no name, and it returns the "
-            "project-level state instead — warehouse tables, sink-contract "
-            "summaries, models, packages, and the project feed (your "
+            "workspace-level state instead — warehouse tables, sink-contract "
+            "summaries, models, packages, and the workspace feed (your "
             "show() exhibits) and the human's notes."
         ),
     )(gateway_workbench_state)
@@ -2325,7 +2327,7 @@ def build_server(token: Optional[str] = None, oauth=None):
         name="preview_draft", title="Preview a draft", annotations=_READ_WAREHOUSE,
         structured_output=True,
         description=(
-            "Render the draft in memory against the project's models (no "
+            "Render the draft in memory against the workspace's models (no "
             "file, no manifest) and return ok, errors, and the draft's url, "
             "where the person sees it. A model draft is validated, with no "
             "page."
@@ -2347,7 +2349,7 @@ def build_server(token: Optional[str] = None, oauth=None):
         ),
     )(gateway_model_impact)
     _tool(
-        name="publish_draft", title="Publish a draft (changes the project)",
+        name="publish_draft", title="Publish a draft (changes the workspace)",
         annotations=_PUBLISH, structured_output=True,
         description=(
             "Validate the draft (a report must render), keep the version it "
@@ -2358,8 +2360,9 @@ def build_server(token: Optional[str] = None, oauth=None):
             "break published reports is refused (ok=false, with impact) "
             "unless accept_impact=true; a break needs accepting too, and "
             "the accepted impact is recorded in the publish run. A report "
-            "goes to 'folder' (a library path, created if needed; default: "
-            "the draft's own path). With only Build on that folder the "
+            "goes to 'folder' (a library path: a project such as saas_model, "
+            "or a folder inside one; created if needed; default: the draft's "
+            "own path). With only Build on that folder the "
             "result is status='requested' with a request for someone with "
             "Publish there (decide_publish_request); a folder that "
             "accepts only checkable reports refuses one that is not."
@@ -2378,7 +2381,7 @@ def build_server(token: Optional[str] = None, oauth=None):
     )(gateway_list_publish_requests)
     _tool(
         name="decide_publish_request",
-        title="Approve or reject a publish request (changes the project)",
+        title="Approve or reject a publish request (changes the workspace)",
         annotations=_PUBLISH, structured_output=True,
         description=(
             "Approve (publishes exactly what was requested, recording who "
@@ -2396,12 +2399,12 @@ def build_server(token: Optional[str] = None, oauth=None):
     _EXPORT = ToolAnnotations(readOnlyHint=False, destructiveHint=True,
                               idempotentHint=True, openWorldHint=True)
     _tool(
-        name="describe_project", title="Describe the project", annotations=_READ_WAREHOUSE,
+        name="describe_project", title="Describe the workspace", annotations=_READ_WAREHOUSE,
         structured_output=True,
         description=(
-            "The project as a graph: every source, transform, table, model "
+            "The workspace as a graph: every source, transform, table, model "
             "and report, what feeds what, and what you may read. Call it "
-            "first on a project you have not seen. nodes carry id (kind:name), "
+            "first on a workspace you have not seen. nodes carry id (kind:name), "
             "kind, lane (0 sources … 4 reports), label, sub, open (the app "
             "page) and a passport: origin, readers, writers, moved {at, how}, "
             "trust {state, text}, agents {state, text}; gap names a node "
@@ -2412,11 +2415,23 @@ def build_server(token: Optional[str] = None, oauth=None):
             "has agents.state ok; read it with describe_source_table."
         ),
     )(gateway_describe_project)
+    # The same tool under the workspace's own word: the graph describes the
+    # workspace (one tracebi.yaml), and describe_project keeps its name.
+    _tool(
+        name="describe_workspace", title="Describe the workspace", annotations=_READ_WAREHOUSE,
+        structured_output=True,
+        description=(
+            "The same as describe_project, under the workspace's name: the "
+            "workspace as a graph, every source, transform, table, model and "
+            "report, what feeds what, and what you may read. Either name "
+            "returns the same result."
+        ),
+    )(gateway_describe_project)
     _tool(
         name="list_connections", title="List connections", annotations=_READ,
         structured_output=True,
         description=(
-            "The project's connections (connections/<name>.yaml), each with "
+            "The workspace's connections (connections/<name>.yaml), each with "
             "its type and agent_tables: the tables a person allowed agents to "
             "read ('*' for all, [] for none). Only those can be listed, "
             "described or named in a proposed transform's -- source: line. "
@@ -2468,13 +2483,13 @@ def build_server(token: Optional[str] = None, oauth=None):
     )(gateway_propose_transform)
     _tool(
         name="export_table",
-        title="Export a warehouse table (admin; writes outside the project)",
+        title="Export a warehouse table (admin; writes outside the workspace)",
         annotations=_EXPORT, structured_output=True,
         description=(
             "Write a warehouse table or view (source: the warehouse's name, "
             "as describe_table lists it; table) to 'to': a connection's name "
             "(the table, replaced there, through its connector) or an object "
-            "prefix (s3://bucket/path or a folder inside the project; "
+            "prefix (s3://bucket/path or a folder inside the workspace; "
             "<prefix>/<table>.parquet). Admin only. Records an export run. "
             "The person's go-ahead comes first."
         ),
@@ -2582,7 +2597,7 @@ def build_server(token: Optional[str] = None, oauth=None):
             "app's own navigation and title. The house theme is report.json "
             "\"theme\": ledger, nightdesk or signal (start_draft theme=, "
             "new-report --theme). " + OFFER + " Pick a theme or use the "
-            "project's brand; never hard-code a colour. "
+            "workspace's brand; never hard-code a colour. "
             "If get_context returns a house_style, it is the "
             "team's rules: follow them over these defaults. Read the lessons "
             "design-dashboard-feel and, for an app, design-app-dashboards.\n\n"

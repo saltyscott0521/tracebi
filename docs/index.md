@@ -19,7 +19,7 @@ person.
 Install TraceBi and build your first report.
 
 - [[plain-english]] — TraceBi makes reports where every number carries a record of how it was made, so anyone can check later that the number still matches its source
-- [[quickstart]] — In five minutes you will install TraceBi, create a project, build a report and open it in the app
+- [[quickstart]] — In five minutes you will install TraceBi, create a workspace, build a report and open it in the app
 - [[your-first-report]] — Change the query behind one number in the sample report, rebuild it, and see the trace follow
 - [[demo-script]] — A click-by-click script for showing TraceBi to people who read and approve reports: finance, operations, compliance, leadership
 
@@ -27,12 +27,13 @@ Install TraceBi and build your first report.
 
 How data moves from raw files to a checked report.
 
-- [[the-three-phase-workflow]] — A TraceBi project moves data through three folders: a transform cleans it, a model defines it, and a report presents it
+- [[workspace-and-projects]] — One workspace per company, a project for each area's reports, models shared
+- [[the-three-phase-workflow]] — A TraceBi workspace moves data through three folders: a transform cleans it, a model defines it, and a report presents it
 - [[transform]] — A transform is a file in `transforms/` that reads raw data, cleans it, and writes star-schema tables into the warehouse
 - [[sink-contracts]] — A sink contract is a list of checks a transform's tables must pass before the data counts
 - [[model]] — A model is the semantic layer: the one place that says what the data means
 - [[models-and-connectors]] — A model says what the data means; a connector says where it is
-- [[report]] — A report is a folder in `reports/` whose every figure is a query against a model
+- [[report]] — A report is a folder in `reports/`, usually inside a project (`reports/<project>/<report>/`, [[workspace-and-projects]]), whose every figure is a query against a model
 - [[trace]] — Every number a report draws from a model has a trace: a record of how it was made
 - [[lineage]] — Every data operation in TraceBi adds a node to a chain that records what happened
 - [[freeze-points]] — A freeze point is a stored artifact one stage hands to the next
@@ -44,12 +45,12 @@ Step-by-step instructions for common tasks.
 - [[analyst-guide]] — Build a report, check it, send it, and work with a model in Python
 - [[notebook-guide]] — Explore data in Jupyter with rich previews, then turn the notebook into a transform that writes the warehouse
 - [[styling-a-report]] — Give a report your colours, fonts and layout by setting design tokens, using the shipped components, and adding your own CSS and JavaScript
-- [[one-server]] — Serve a project, its schedules and its email from one container on one virtual machine
+- [[one-server]] — Serve a workspace, its schedules and its email from one container on one virtual machine
 - [[connect-a-database]] — Add a database, or a file, as a source from the app, and choose which of its tables an agent may read
 - [[sign-in]] — Turn on single sign-on so people sign in to TraceBi with their company account and get a role from their groups
 - [[push-from-a-laptop]] — Build and preview on your own machine, then send the files to the server with `tracebi push`
 - [[connect-chatgpt-and-claude]] — Let people add TraceBi as a connector in ChatGPT or Claude and sign in with their company login
-- [[web-customization]] — Point the web server at your own project, add resources in code when files are not enough, restyle or extend the React UI, and deploy it
+- [[web-customization]] — Point the web server at your own workspace, add resources in code when files are not enough, restyle or extend the React UI, and deploy it
 - [[updating]] — Check for a new release and update your install with `tracebi update`
 
 ## Reference
@@ -57,9 +58,9 @@ Step-by-step instructions for common tasks.
 Every file, key, command and route.
 
 - [[cli]] — Every `tracebi` command, grouped by task
-- [[tracebi-yaml]] — `tracebi.yaml` at the project root says where the warehouse lives and sets the limits of the engine that answers model queries
+- [[tracebi-yaml]] — `tracebi.yaml` at the workspace root says where the warehouse lives and sets the limits of the engine that answers model queries
 - [[connections-yaml]] — A file in `connections/` declares a database or folder that holds data: its type and fields, with every secret kept out of the file as `${ENV_VAR}`
-- [[credentials]] — The secrets a project's connections need: which names, where each is set, and an encrypted store on the server
+- [[credentials]] — The secrets a workspace's connections need: which names, where each is set, and an encrypted store on the server
 - [[environment-variables]] — Every `TRACEBI_*` variable TraceBi reads
 - [[transform-sql]] — A transform is a `.sql` file of DuckDB statements, run top to bottom in one fresh connection to the warehouse, with its sink contract beside it in a `.contract.yaml`
 - [[model-json]] — A model file declares a star schema: the same model as a Python `DataModel`, written as data that runs no code

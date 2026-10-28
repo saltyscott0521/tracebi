@@ -26,7 +26,7 @@ import { ReportArt } from '../components/Art'
 import { CoverRow, CoverTile, FolderTile, Health, builtLine, tagOf } from '../components/Directory'
 import { useDocumentTitle } from '../components/Layout'
 import FolderPage, { FolderNote } from './Folder'
-import { folderPath, hueStyle, newestBuild, useBuilds, useLibrary } from '../folders'
+import { folderPath, folderWord, hueStyle, newestBuild, useBuilds, useLibrary } from '../folders'
 import {
   Moved, useModelLabel, useOpenReport, useNavMenu,
 } from '../components/Scope'
@@ -888,7 +888,7 @@ function OpenReport({ report, model }) {
   const words = scheduleWords(report.schedule)
   const manifest = shown?.manifest
   const focus = focusOf(manifest, clicked, lastBuild?.values)
-  // The folder the report sits in, as the library names it, in its hue.
+  // The project (or folder) the report sits in, as the library names it, in its hue.
   const library = useLibrary()
   const folder = folderOf(name)
   const inFolder = folder ? library.byPath[folder] : null
@@ -1185,9 +1185,9 @@ function useLibraryView() {
 }
 
 /**
- * One quiet row under the library's folder tiles the first time a person
+ * One quiet row under the library's project tiles the first time a person
  * opens the app in this browser: Get started, a report that shows everything
- * a report can do when the project has one, and the jump key. Dismissed, it
+ * a report can do when the workspace has one, and the jump key. Dismissed, it
  * never comes back (a flag in this browser's storage; with no storage it is
  * not shown, since it could not stay dismissed).
  */
@@ -1207,7 +1207,7 @@ function Welcome({ role, showcase }) {
         {showcase && <><span aria-hidden="true"> · </span>
           <Link to={reportPagePath(showcase.name)}>Open {showcase.display_name || 'the showcase'}</Link></>}
         <span aria-hidden="true"> · </span>
-        <span className="welcome__kbd"><kbd>⌘K</kbd> jumps to any report, folder or table</span>
+        <span className="welcome__kbd"><kbd>⌘K</kbd> jumps to any report, project or table</span>
       </p>
       <button type="button" className="welcome__x" onClick={dismiss} aria-label="Dismiss the welcome">×</button>
     </section>
@@ -1215,7 +1215,7 @@ function Welcome({ role, showcase }) {
 }
 
 /**
- * The library (`/`): every report the person may see, by folder, filtered by
+ * The library (`/`): every report the person may see, by project, filtered by
  * model (?model=<name>) and a search. A row opens the report as a page of its
  * own. Nothing here builds or refreshes anything.
  */
@@ -1302,7 +1302,8 @@ export default function Library() {
             <h1 className="display-title">Reports</h1>
             {all.length > 0 && (
               <p className="dir-head__lede">
-                {count(library.folders.filter(f => f.items.length).length, 'folder')}, {count(all.length, 'report')},
+                {count(new Set(library.folders.filter(f => !f.mine && f.items.length)
+                  .map(f => f.path.split('/')[0])).size, 'project')}, {count(all.length, 'report')},
                 {' '}every cover its page as it was last built.
                 {newest && <> Last built <Time iso={newest.built_at} />.</>}
               </p>
@@ -1319,7 +1320,7 @@ export default function Library() {
                  action={<BtnLink to="/docs/get-started" size="sm">Get started</BtnLink>} />
         ) : (
           <Empty title="No reports yet"
-                 body="Reports appear here once an analyst publishes one into a folder you can see." />
+                 body="Reports appear here once an analyst publishes one into a project you can see." />
         )
       ) : (
         <>
@@ -1347,7 +1348,7 @@ export default function Library() {
 }
 
 /**
- * The library's two actions, right of its h1, as a folder's page has them:
+ * The library's two actions, right of its h1, as a project's page has them:
  * New report (the command that scaffolds one; an analyst's or admin's) and
  * Refresh data (an admin's: it writes the warehouse). Refresh runs each
  * model's own pipeline once, the one its transform's page calls Refresh data;
@@ -1362,7 +1363,7 @@ function LibraryActions({ models }) {
   const [starting, setStarting] = useState(false)
   const navigate = useNavigate()
   const toast = useToast()
-  // With no sign-in everyone is admin: the same gate as the folder page's.
+  // With no sign-in everyone is admin: the same gate as the project page's.
   const admin = !!me && (!me.role || me.role === 'admin')
   const canAuthor = role === 'analyst' || role === 'admin'
   const own = admin ? [...new Set(models.map(m => (
@@ -1401,9 +1402,9 @@ function LibraryActions({ models }) {
   )
 }
 
-// Grid: the library as a directory. Its folders as tiles (the first visit's
+// Grid: the library as a directory. Its projects as tiles (the first visit's
 // welcome under them), then a row of covers for the newest builds, then a row
-// per folder; a search or a model narrows every row and drops the empty ones
+// per project (or folder); a search or a model narrows every row and drops the empty ones
 // (their own My published stays, to say how it fills).
 function DirectoryView({ library, listed, mine, builds, verdictFor, find, welcome }) {
   const shown = new Set(listed.map(r => r.name))
@@ -1425,7 +1426,7 @@ function DirectoryView({ library, listed, mine, builds, verdictFor, find, welcom
   )
   return (
     <div className="dir">
-      <ul className="ftiles" aria-label="Folders">
+      <ul className="ftiles" aria-label="Projects">
         {rows.map(f => <li key={f.path}><FolderTile folder={f} builds={builds} /></li>)}
       </ul>
       {welcome}
@@ -1437,13 +1438,14 @@ function DirectoryView({ library, listed, mine, builds, verdictFor, find, welcom
       )}
       {rows.map(f => (
         <CoverRow key={f.path} title={f.label} hue={f.hue} row="folder" open={folderPath(f.path)}
+                  word={folderWord(f).toLowerCase()}
                   meta={`${count(f.items.length, 'report')}${f.models.length === 1 && f.models[0] !== f.path ? ` · ${f.models[0]}` : ''}`}
                   empty={f.mine ? 'Nothing here yet. Publish a draft to My published from Review to put a report here.' : null}>
           {[...f.items].sort((a, b) => isShowcase(b) - isShowcase(a)).map((r, i) => tile(r, i))}
         </CoverRow>
       ))}
       {top.length > 0 && (
-        <CoverRow title="Not in a folder" row="folder" meta={count(top.length, 'report')}>
+        <CoverRow title="Not in a project" row="folder" meta={count(top.length, 'report')}>
           {top.map((r, i) => tile(r, i))}
         </CoverRow>
       )}

@@ -181,7 +181,7 @@ function Board({ graph }) {
         </div>
       </header>
 
-      <div className="rcards" aria-label="What the project holds">
+      <div className="rcards" aria-label="What the workspace holds">
         <Card to={sourcesPath()} label="Sources" n={s.sources}
               status={unreachable.length ? { text: `${unreachable.length} unreachable`, tone: 'warn' } : { text: 'All connected', tone: 'ok' }} />
         <Card to={transformsPath()} label="Transforms" n={s.transforms}

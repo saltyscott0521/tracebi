@@ -1,6 +1,6 @@
 # Run TraceBi on one server
 
-Serve a project, its schedules and its email from one container on one
+Serve a workspace, its schedules and its email from one container on one
 virtual machine. No Kubernetes needed.
 
 ## Before you begin
@@ -14,13 +14,13 @@ virtual machine. No Kubernetes needed.
 
 ## For admins: start the server
 
-1. On your own machine, create a project, or use one you have:
+1. On your own machine, create a workspace, or use one you have:
 
    ```bash
    tracebi init my-project
    ```
 
-2. Copy the project folder onto the server, or clone it. Git is optional for
+2. Copy the workspace folder onto the server, or clone it. Git is optional for
    this folder. It holds everything: `tracebi.yaml`, `connections/`,
    `transforms/`, `models/`, `reports/`, `pipelines/` and `data/`.
 3. On the server, get the repository and make the settings file:
@@ -31,7 +31,7 @@ virtual machine. No Kubernetes needed.
    cp deploy/.env.example deploy/.env
    ```
 
-4. In `deploy/.env`, set `TRACEBI_PROJECT_DIR` to the project folder.
+4. In `deploy/.env`, set `TRACEBI_PROJECT_DIR` to the workspace folder.
 5. Start it:
 
    ```bash
@@ -63,7 +63,7 @@ SQLite is the default. For Postgres, add `--profile postgres` to the
 and OAuth tokens. Give it its own database or schema, and never point a
 connection at it, or the demo app's `TRACEBI_DEMO_DB_URL`: people browse
 connections. The repository's `docker-compose.yml` uses two databases on one
-Postgres server, `crm` for the reference project's CRM and `tracebi_state` for
+Postgres server, `crm` for the reference workspace's CRM and `tracebi_state` for
 the store. The app hides TraceBi's own tables (`tracebi_*`, `alembic_version`)
 from every source listing and says how many it hid.
 
@@ -114,7 +114,7 @@ A connection keeps its secret out of the file as `${NAME}`, for example
 two places:
 
 - `deploy/.env`. The environment wins over everything else.
-- The project's encrypted store: run `tracebi secret set TRACEBI_CRM_URL`
+- The workspace's encrypted store: run `tracebi secret set TRACEBI_CRM_URL`
   inside the container, or click **Set…** on the connection under
   Data → Sources as a signed-in admin.
 
@@ -138,7 +138,7 @@ public demo uses `https://tracebi.com/mcp`.
 
 ## Back it up
 
-Copy the project folder (`TRACEBI_PROJECT_DIR`): the reports, the warehouse,
+Copy the workspace folder (`TRACEBI_PROJECT_DIR`): the reports, the warehouse,
 the run log and the credential store in `.tracebi/`. Keep `TRACEBI_SECRET_KEY`
 with it, or the store cannot be read. With the Postgres profile, also copy
 `TRACEBI_PGDATA_DIR`.
@@ -161,7 +161,7 @@ commit on the machine.
 
 1. Turn git **auto-deploy** off on the resource. The webhook redeploys it.
 2. Copy the variables from `deploy/.env` into Coolify's environment screen.
-3. To serve a live project folder, bind-mount it at `/project`. The compose
+3. To serve a live workspace folder, bind-mount it at `/project`. The compose
    file's `output-perms` service mounts `output/` and `data/` from the same
    folder.
 4. Give the resource a domain if you have one. TLS ends at Coolify.
@@ -171,10 +171,10 @@ commit on the machine.
 The image ships `curl`, so Coolify's health check against `/api/health` works.
 
 The demo image, like the repository's `docker-compose.yml`, serves one
-project: `examples/portfolio_project`, with its warehouse built into the image.
+workspace: `examples/portfolio_project`, with its warehouse built into the image.
 `TRACEBI_APP` is unset; the bundled demo app is opt-in
-(`TRACEBI_APP=tracebi.web.demo_app`) and never served beside a project. The
-reference project's CRM is a mock Postgres database: `docker-compose.yml`'s
+(`TRACEBI_APP=tracebi.web.demo_app`) and never served beside a workspace. The
+reference workspace's CRM is a mock Postgres database: `docker-compose.yml`'s
 Postgres creates `crm` from `examples/portfolio_project/inputs/seed_crm.sql`
 when its volume is empty (`docker/postgres-init.sql`), and `TRACEBI_CRM_URL`
 points at it. Nothing in the app writes to it. Without `TRACEBI_CRM_URL` the

@@ -4,6 +4,42 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — A workspace per company, a project per area (WORKSPACE)
+
+The owner's decision, vocabulary only: nothing moved on disk. What TraceBi
+called a "project" (one `tracebi.yaml`, one warehouse, its sources, transforms
+and models, the brand and the default house theme) is now the **workspace**,
+one per company. A **project** is one area's reports: a top-level library
+folder named for the model or models it reads (`reports/saas_model/` is the
+SaaS project). Models stay shared at the workspace, so two projects can read
+one model; a project keeps its permissions in `_folder.yaml`; folders inside a
+project stay folders, and `my-published/<name>` stays "My published". Themes
+are set on a report or the workspace only, never a project.
+
+The words changed everywhere people and agents read them: the app (the
+library's tiles say Project, a project's page and tab title say Project, ⌘K
+groups Projects, Data's passport and copy say workspace; `folders.js`
+`isProject` / `folderWord` pick the word: a top-level path that is not My
+published), the CLI (`tracebi init` prints "Created a workspace in …", its
+positional is shown as `workspace`, `validate` says "Workspace looks good."),
+the handbook (a new concept page, `concepts/workspace-and-projects`), the
+vocabulary, the gateway's descriptions, both agent guides (the house-theme
+OFFER now says "the workspace sets no brand.theme"), README and MANIFESTO.
+
+Kept, so nothing breaks: every route, field and address (`/api/folders`,
+`?folder=`, `folder`, `_folder.yaml`; `?project=` is a new alias that
+redirects to `?folder=` through `movedTo`), `tracebi.yaml`, `project_config.py`,
+`TRACEBI_PROJECT_DIR`, `args.project`, and `describe_project`, whose
+description now says it describes the workspace. `describe_workspace` is the
+same tool registered a second time (29 tools now); no test pinned the count,
+only prose (README, sop-authoring, CLAUDE.md). The old word stays where it
+means something else: a BigQuery GCP project (`--project`, the `project`
+field), a dbt project root, `pyproject.toml`, the reference workspace's
+directory name `examples/portfolio_project/`, and comments inside its
+models and transforms (left as they are, so no committed trace can move).
+
+---
+
 ## 2026-10-28 — The reference project carries no brand; a brand never hides the subject (UNBRAND)
 
 The owner's decisions. The reference project's four demos are unrelated

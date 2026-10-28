@@ -133,10 +133,10 @@ function NavItem({ path, label, icon, active, onNavigate, n }) {
   )
 }
 
-// The sidebar's library: All reports, then a row per folder the person may
-// see (its hue, its count), and under the open one its Dashboards and Pages.
-// The folder you are in is the current entry: on its page, on one of its
-// reports, or asking its model.
+// The sidebar's library: All reports, then a row per project (or folder, or
+// My published) the person may see (its hue, its count), and under the open
+// one its Dashboards and Pages. The one you are in is the current entry: on
+// its page, on one of its reports, or asking its model.
 function FolderTree({ library, current, onNavigate }) {
   return (
     <ul className="tree" aria-labelledby="tree-library">
@@ -455,7 +455,7 @@ export default function Layout({ children }) {
 
         {/* The library as a folder tree (All reports, then each folder), then
             the workshop: Data and Review for the roles that use them, and Docs
-            (the handbook) for everyone, last. A model is a folder's, and a
+            (the handbook) for everyone, last. A model is a project's, and a
             filter inside a place, not the frame of the app. */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0 4px' }}>
           <p className="tree__sec" id="tree-library">Library</p>

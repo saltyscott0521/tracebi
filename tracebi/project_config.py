@@ -227,7 +227,7 @@ def _brand_file(root: str, where: str, key: str, value, kinds: tuple) -> str:
     small enough to ride in every page."""
     example = "brand/logo.svg" if key == "logo" else "brand/Inter.woff2"
     if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{where}: brand.{key} must be a path under the project, "
+        raise ValueError(f"{where}: brand.{key} must be a path under the workspace, "
                          f"such as {example}")
     if os.path.splitext(value)[1].lower() not in kinds:
         raise ValueError(f"{where}: brand.{key} {value!r} must be a {' / '.join(kinds)} "
@@ -235,7 +235,7 @@ def _brand_file(root: str, where: str, key: str, value, kinds: tuple) -> str:
     real_root = os.path.realpath(root)
     path = os.path.realpath(os.path.join(root, value))
     if os.path.commonpath([path, real_root]) != real_root:
-        raise ValueError(f"{where}: brand.{key} {value!r} is outside the project; put "
+        raise ValueError(f"{where}: brand.{key} {value!r} is outside the workspace; put "
                          f"the file under {root} and name it relative to it")
     if not os.path.isfile(path):
         raise ValueError(f"{where}: brand.{key} {value!r}: no such file under {root}. "

@@ -5,7 +5,7 @@ change what a model's numbers mean: the `models/<name>.yaml` files, or a
 `models/<name>.py` for anything YAML cannot say.
 
 Read `AGENTS.md` first. It is the brief every agent reads before working in a
-TraceBi project (`tracebi init` writes one into each). This SOP is one job
+TraceBi workspace (`tracebi init` writes one into each). This SOP is one job
 from it.
 
 ## Before you begin
@@ -117,7 +117,7 @@ be serialized, diffed, reviewed as data, checked before it runs or sent over
 the wire, so accepting one would make the model opaque code instead of a
 checkable contract. If a calculation does not fit `column`, `expr` or `ratio`,
 propose a richer declarative form; don't relax `_EXPR_ALLOWED` or `_EXPR_CALL`
-in `tracebi/model/data_model.py` for a project's need.
+in `tracebi/model/data_model.py` for a workspace's need.
 
 ### Declared formats reach every report
 
@@ -187,7 +187,7 @@ git.
   only in one process's memory is ungoverned.
 - **No lambdas or callables.** Don't wrap one, and don't compute a column in
   an ad-hoc transform and present it as governed.
-- **Don't edit `tracebi/` for a project's need.** New measure kinds, looser
+- **Don't edit `tracebi/` for a workspace's need.** New measure kinds, looser
   expression rules, new aggregations, or reaching into `_measures` are
   framework changes with their own review.
 - **Keep each fix in its place.** A label tweak for one report belongs in the

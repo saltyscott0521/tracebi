@@ -2,7 +2,7 @@
 
 Add a database, or a file, as a source from the app, and choose which of its
 tables an agent may read. The app writes `connections/<name>.yaml` as you
-would by hand, and keeps any secret in the project's encrypted store.
+would by hand, and keeps any secret in the workspace's encrypted store.
 
 ## Before you begin
 
@@ -31,7 +31,7 @@ file).
    one connection: typing in either fills the other. A URL you paste with a
    password in it moves the password to the password field.
 3. The password is hidden; **Show** reveals it. **Save password** is on by
-   default: the password goes to the project's encrypted store and the file
+   default: the password goes to the workspace's encrypted store and the file
    says `password: ${TRACEBI_<NAME>_PASSWORD}`. Turn it off to keep the
    password out of the app: type the **Variable name** the server sets in its
    environment or `.env`. Until it is set there, the connection's

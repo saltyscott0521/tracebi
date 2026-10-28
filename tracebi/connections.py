@@ -112,26 +112,26 @@ _TYPE_INFO: dict[str, tuple[str, str, str]] = {
     "mysql": ("MySQL", "A MySQL or MariaDB database: its host, database and user, or one URL.",
               "Databases"),
     "sql": ("SQLite or another SQL database",
-            "Any SQLAlchemy URL: a SQLite file in the project, SQL Server, Oracle.", "Databases"),
-    "duckdb": ("DuckDB", "A DuckDB database file in the project.", "Databases"),
+            "Any SQLAlchemy URL: a SQLite file in the workspace, SQL Server, Oracle.", "Databases"),
+    "duckdb": ("DuckDB", "A DuckDB database file in the workspace.", "Databases"),
     "snowflake": ("Snowflake", "A Snowflake warehouse: a password, a browser sign-in or a key pair.",
                   "Warehouses"),
     "bigquery": ("BigQuery", "A BigQuery dataset, read with a service account.", "Warehouses"),
-    "csv": ("A folder of CSV files", "Every CSV or Excel file in one folder of the project.", "Files"),
+    "csv": ("A folder of CSV files", "Every CSV or Excel file in one folder of the workspace.", "Files"),
     "upload": ("An uploaded file", "One CSV or Parquet file, uploaded into inputs/.", "Files"),
 }
 _FIELD_INFO: dict[str, tuple[str, str, str]] = {
     # field: (label, kind, help)
     "url": ("URL", "url", "A SQLAlchemy URL. One that carries a password is kept "
-                          "in the project's encrypted store, not in the file."),
+                          "in the workspace's encrypted store, not in the file."),
     "host": ("Host", "text", "The server's name or address, e.g. db.example.com."),
     "port": ("Port", "number", ""),
     "database": ("Database", "text", ""),
-    "directory": ("Folder", "path", "A folder inside the project, e.g. inputs/."),
+    "directory": ("Folder", "path", "A folder inside the workspace, e.g. inputs/."),
     "encoding": ("Encoding", "text", "The files' text encoding; utf-8 when empty."),
     "account": ("Account", "text", "The account identifier, e.g. xy12345.eu-west-1."),
     "user": ("User", "text", ""),
-    "password": ("Password", "secret", "Kept in the project's encrypted store, never in the file."),
+    "password": ("Password", "secret", "Kept in the workspace's encrypted store, never in the file."),
     "ssl": ("SSL", "choice", ""),
     "options": ("Extra options", "text", "More connection parameters as a query string, "
                                          "e.g. application_name=tracebi. No credential."),
@@ -156,18 +156,18 @@ _FIELD_INFO: dict[str, tuple[str, str, str]] = {
 # Where a field's words differ by type.
 _FIELD_BY_TYPE: dict[tuple[str, str], tuple[str, str, str]] = {
     ("duckdb", "database"): ("Database file", "path",
-                             "A .duckdb file inside the project, e.g. inputs/sales.duckdb."),
+                             "A .duckdb file inside the workspace, e.g. inputs/sales.duckdb."),
     ("postgres", "url"): ("URL", "url", "postgresql+psycopg://user@host:5432/db. "
                                         "A password in it is kept in the encrypted store."),
     ("mysql", "url"): ("URL", "url", "mysql+pymysql://user@host:3306/db. "
                                      "A password in it is kept in the encrypted store."),
-    ("sql", "url"): ("URL", "url", "sqlite:///inputs/bank.sqlite for a file in the project, "
+    ("sql", "url"): ("URL", "url", "sqlite:///inputs/bank.sqlite for a file in the workspace, "
                                    "or any SQLAlchemy URL."),
     ("postgres", "ssl"): ("SSL mode", "choice", "require encrypts the connection; verify-full "
                                                 "also checks the server's certificate."),
     ("mysql", "ssl"): ("SSL", "choice", "on encrypts the connection."),
     ("snowflake", "password"): ("Password", "secret",
-                                "Kept in the project's encrypted store, never in the file. "
+                                "Kept in the workspace's encrypted store, never in the file. "
                                 "Only with the password sign-in."),
 }
 # The fields under the form's Advanced disclosure.
@@ -424,7 +424,7 @@ def _sqlite_file(url: str) -> Optional[str]:
 def _url_problem(url: str) -> Optional[str]:
     path = _sqlite_file(url)
     if path is not None and _escapes(path):
-        return (f"a literal SQLite file must stay inside the project (no absolute "
+        return (f"a literal SQLite file must stay inside the workspace (no absolute "
                 f"path, no '..'), got {path!r}; use ${{ENV_VAR}} to point elsewhere")
     try:
         parts = urlsplit(url)
@@ -545,7 +545,7 @@ def validate_connection_doc(doc: Any) -> list[str]:
         elif field in _URL_FIELDS and (why := _url_problem(value)):
             errors.append(f"{field}: {why}")
         elif ctype in _PATH_FIELDS.get(field, ()) and value != ":memory:" and _escapes(value):
-            errors.append(f"{field}: a literal path must stay inside the project "
+            errors.append(f"{field}: a literal path must stay inside the workspace "
                           f"(no absolute path, no '..'), got {value!r}; use "
                           f"${{ENV_VAR}} to point elsewhere")
         elif field in _NUMBER_FIELDS and not value.isdigit():
@@ -1106,7 +1106,7 @@ def connection_text(doc: dict) -> str:
     are, then one line per field."""
     head = (f"# Connection {doc['name']!r} ({doc['type']}). Written by the app's "
             "Add a connection.\n"
-            "# ${NAME} is read from the environment, .env or the project's store\n"
+            "# ${NAME} is read from the environment, .env or the workspace's store\n"
             "# when the connection is used. No secret belongs in this file.\n")
     return head + "\n".join(_yaml_lines(k, v) for k, v in doc.items()) + "\n"
 
@@ -1286,7 +1286,7 @@ def connection_to_yaml(path: "str | os.PathLike[str]") -> str:
                 fields[key] = Path(value).resolve().relative_to(root).as_posix()
             except ValueError:
                 raise ConnectionMigrationError(
-                    f"{key} {value!r} is outside the project; put it in an "
+                    f"{key} {value!r} is outside the workspace; put it in an "
                     f"environment variable and read it as ${{ENV_VAR}}") from None
     doc = {"name": path.stem, **fields}
     errors = validate_connection_doc(doc)

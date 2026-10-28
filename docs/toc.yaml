@@ -21,6 +21,8 @@ sections:
     title: Concepts
     blurb: How data moves from raw files to a checked report.
     pages:
+      - page: workspace-and-projects
+        blurb: One workspace per company, a project for each area's reports, models shared
       - the-three-phase-workflow
       - transform
       - sink-contracts

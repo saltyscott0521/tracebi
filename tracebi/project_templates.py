@@ -144,7 +144,7 @@ def _readme(project: str, template: str) -> str:
     return f"""\
 # {project}
 
-A TraceBi project. Scaffolded by `tracebi init --template {template}`.
+A TraceBi workspace. Scaffolded by `tracebi init --template {template}`.
 
 {entry["summary"]}
 The file `{entry["sample"]}` is a small synthetic sample so the loop runs
@@ -233,7 +233,7 @@ def init_template_project(project: Path, template: str, *, force: bool) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
 
-    print(f"Initialised TraceBi project at {target} (template {canonical})")
+    print(f"Created a workspace in {target} (template {canonical})")
     print(f"  cd {target.name}")
     print(f"  tracebi run-pipeline {entry['model']}   # the transform, then the model's reports")
     first = entry["reports"][0]

@@ -5,7 +5,7 @@ transform that writes the warehouse.
 
 ## Before you begin
 
-- A TraceBi project (`tracebi init`)
+- A TraceBi workspace (`tracebi init`)
 - The data dependencies and IPython for previews:
 
   ```bash
@@ -46,7 +46,7 @@ model.describe()                 # the model as text
 In a terminal:
 
 ```bash
-tracebi dev            # the app's Data page, with the project feed
+tracebi dev            # the app's Data page, with the workspace feed
 ```
 
 Then, from any cell:

@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -80,14 +81,14 @@
 serves, then work with the model directly in Python.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
-<li>A TraceBi project with a warehouse and a model. The reference project in
-  <code>examples/portfolio_project/</code> has both, and so does a project from
+<li>A TraceBi workspace with a warehouse and a model. The reference workspace in
+  <code>examples/portfolio_project/</code> has both, and so does a workspace from
   <code>tracebi init</code> (<a href="../start/quickstart.html">Get started</a>).</li>
 <li>If your analyst is an AI agent, give it <code>AGENTS.md</code> and the SOPs in
   <code>docs/agents/</code> instead (<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>).</li>
 </ul>
 <h2 id="build-a-report">Build a report</h2>
-<h3 id="1-build-the-reference-project">1. Build the reference project</h3>
+<h3 id="1-build-the-reference-workspace">1. Build the reference workspace</h3>
 <pre><code class="language-bash">cd examples/portfolio_project
 python run_workflow.py       # runs the transforms, then builds every report
 python -m tracebi.web.run    # serves it at http://127.0.0.1:8000
@@ -154,8 +155,8 @@ verdict in the email. It needs <code>TRACEBI_SMTP_URL</code> and <code>TRACEBI_S
 <h2 id="explore-before-a-report-exists">Explore before a report exists</h2>
 <pre><code class="language-bash">tracebi dev
 </code></pre>
-<p>With no report name, the app opens on the Data page with the project feed.
-Any script in the project can post to it with <code>tracebi.workbench.show(df,
+<p>With no report name, the app opens on the Data page with the workspace feed.
+Any script in the workspace can post to it with <code>tracebi.workbench.show(df,
 note=...)</code>. The warehouse tables are under <strong>Data › Warehouse</strong>, and each
 model's schema on its page under <strong>Data › Models</strong>.</p>
 <p>To keep a record of the session:</p>

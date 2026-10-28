@@ -226,7 +226,7 @@ def libraries_comment(libs, brand: bool = False, mono: bool = False) -> str:
     if mono:
         lines.append("  Geist Mono  the numerals' typeface, Latin subset (SIL OFL 1.1): inlined")
     if brand:
-        lines.append("  brand        the project's brand (tracebi.yaml brand:): its colours, "
+        lines.append("  brand        the workspace's brand (tracebi.yaml brand:): its colours, "
                      "and its logo and font when it names them")
     for lib in libs or ():
         lines.append(f"  {_lib_credit(lib)}: {_LIB_ROLE.get(lib, 'draws the charts')}")
@@ -269,10 +269,10 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
         head += ("<!-- the house theme (report.json theme, tracebi.yaml brand.theme) -->\n"
                  f"<style>\n{house_css}</style>\n")
     if brand_css.strip():
-        head += ("<!-- the project's brand (tracebi.yaml brand:) -->\n"
+        head += ("<!-- the workspace's brand (tracebi.yaml brand:) -->\n"
                  f"<style>\n{brand_css}</style>\n")
     if project_css.strip():
-        head += ("<!-- reports/_theme.css: the project theme -->\n"
+        head += ("<!-- reports/_theme.css: the workspace theme -->\n"
                  f"<style>\n{project_css}\n</style>\n")
     if theme_css.strip():
         # A deprecated accent theme the report names: chosen for this

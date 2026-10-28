@@ -5,7 +5,7 @@ the trace follow. Then start a report of your own.
 
 ## Before you begin
 
-- The project from the [[quickstart]], with its transform run once
+- The workspace from the [[quickstart]], with its transform run once
 
 ## 1. Open the report's data
 

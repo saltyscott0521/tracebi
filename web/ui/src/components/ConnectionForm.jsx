@@ -72,7 +72,7 @@ function Field({ f, value, onChange, kept }) {
 }
 
 // A secret (a password, a pasted service-account key): hidden, with Show,
-// and **Save password**. On, the value goes to the project's encrypted store
+// and **Save password**. On, the value goes to the workspace's encrypted store
 // and the file names it; off, nothing is stored and the file names a
 // variable the server sets in its environment or .env. On an edit an empty
 // field keeps what is saved.
@@ -110,7 +110,7 @@ function Secret({ f, s, set, conn, kept }) {
       </label>
       <p id={`${id}-help`} className="conn-field__help">
         {s.save
-          ? <>{kept ? 'Left empty, the saved one is kept. ' : ''}Kept in the project&apos;s encrypted store; the file says <code>{`\${${kept || fallback}}`}</code>.</>
+          ? <>{kept ? 'Left empty, the saved one is kept. ' : ''}Kept in the workspace&apos;s encrypted store; the file says <code>{`\${${kept || fallback}}`}</code>.</>
           : <>Nothing is saved: the file says <code>{`\${${s.variable || fallback}}`}</code>, and the server reads it from its environment or <code>.env</code>. Until it is set there, the connection&apos;s credentials read missing.</>}
       </p>
     </div>
@@ -186,7 +186,7 @@ function UrlView({ type, fields, password, onFields, onPassword, raw, onRaw, ref
  * cards, grouped), then Connect: a SQL database as its fields or one URL, in
  * sync, a hidden password with Save password, Advanced folded, Test before
  * Save. A secret typed here is sent once: the server keeps it in the
- * project's encrypted store and the file holds ${NAME}. *onSaved(name)* opens
+ * workspace's encrypted store and the file holds ${NAME}. *onSaved(name)* opens
  * the saved connection on its tables.
  */
 export default function ConnectionSheet({ editing, onClose, onSaved }) {

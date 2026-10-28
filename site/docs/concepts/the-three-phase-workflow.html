@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a class="on" href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -76,7 +77,7 @@
   </details>
   <main class="doc">
 <h1 id="the-three-phase-workflow">The three-phase workflow</h1>
-<p>A TraceBi project moves data through three folders: a transform cleans it, a
+<p>A TraceBi workspace moves data through three folders: a transform cleans it, a
 model defines it, and a report presents it. Each stage hands the next a fixed
 artifact, called a <a href="../concepts/freeze-points.html">freeze point</a>.</p>
 <pre><code>inputs/  →  transforms/  →  [ warehouse ]  →  models/  →  reports/
@@ -147,20 +148,20 @@ when a source has changed since. See <a href="../reference/transform-sql.html">S
 <p>A report package where every figure is a query against the model. The model's
 tables already exist, so the page rebuilds in milliseconds without running
 the transform. See <a href="../concepts/report.html">Reports</a>.</p>
-<h2 id="one-warehouse-per-project">One warehouse per project</h2>
+<h2 id="one-warehouse-per-workspace">One warehouse per workspace</h2>
 <p><code>tracebi.yaml</code> declares the warehouse. Every transform writes to it and every
 model reads it (<code>type: warehouse</code>), so transforms and reports can run in
 separate processes. <code>output/</code> holds what <code>tracebi report build</code> writes. Both
 <code>data/</code> and <code>output/</code> are gitignored, except the <code>*.manifest.json</code> traces,
 which stay in git as the record behind every built number.</p>
-<h2 id="try-it-on-the-reference-project">Try it on the reference project</h2>
+<h2 id="try-it-on-the-reference-workspace">Try it on the reference workspace</h2>
 <pre><code class="language-bash">cd examples/portfolio_project
 python run_workflow.py          # build the warehouse, then every report
 tracebi serve                   # open portfolio_model, then portfolio_dashboard
 </code></pre>
 <p>The first run writes a messy Schedule of Investments into <code>inputs/</code>: position
 descriptions to parse into issuers, sectors spelled six ways, money stored as
-strings. The project has four models sharing one warehouse.
+strings. The workspace has four models sharing one warehouse.
 <code>holdings_transform.sql</code>, <code>saas_transform.sql</code> and <code>wealth_transform.sql</code> are
 SQL with a <code>.contract.yaml</code> beside each; the last two read SQLite databases
 in <code>inputs/</code> through <code>-- source:</code> lines. <code>affordability_transform.py</code> is
@@ -168,9 +169,10 @@ pandas and declares its contract in a <code>with contract(...)</code> block.</p>
 <h2 id="in-the-app">In the app</h2>
 <p>The app has four places in its sidebar.</p>
 <ul>
-<li><strong>Reports</strong> opens first. It is the library: a folder per model, each report
-  with whether its numbers still reproduce. <strong>Ask this model</strong>, on a folder's
-  or a model's page, puts a question to that model.</li>
+<li><strong>Reports</strong> opens first. It is the library: a project per area, named for
+  the model it reads (<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>), each report with whether
+  its numbers still reproduce. <strong>Ask this model</strong>, on a project's or a model's
+  page, puts a question to that model.</li>
 <li><strong>Data</strong> (analysts and admins) is a console. Its home is a status board:
   a card each for Sources, Transforms, Warehouse, Models and Reports with
   one health pill, <strong>Needs attention</strong> (a source not reachable here, a file
@@ -189,7 +191,7 @@ pandas and declares its contract in a <code>with contract(...)</code> block.</p>
   transform's <strong>Steps</strong> and <strong>Code</strong>; a model's <strong>Schema</strong> and
   <strong>Measures</strong>), <strong>Lineage</strong>, <strong>Activity</strong>, <strong>Agents</strong> and <strong>Settings</strong>.
   <strong>View lineage</strong>, on the home and every page, opens the map of the
-  project: these stages as lanes, wired by what reads what, read through a
+  workspace: these stages as lanes, wired by what reads what, read through a
   lens (<strong>Coverage</strong>, <strong>Flow</strong>, <strong>Freshness</strong>, <strong>Trust</strong>, <strong>What agents
   see</strong>).</li>
 <li><strong>Review</strong> holds what needs attention, drafts, <strong>History</strong> (what ran) and
@@ -197,7 +199,7 @@ pandas and declares its contract in a <code>with contract(...)</code> block.</p>
 <li><strong>Docs</strong> is this handbook.</li>
 </ul>
 <h2 id="before-a-report-exists">Before a report exists</h2>
-<p><code>tracebi dev</code> with no report name opens the app's Data page with a project
+<p><code>tracebi dev</code> with no report name opens the app's Data page with a workspace
 feed. Any script can post a table or a note to it with
 <code>tracebi.workbench.show(df, note=...)</code>. <code>tracebi dev --classic</code> lays the
 warehouse, models and packages out beside the feed on one page. <code>tracebi
