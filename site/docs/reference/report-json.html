@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -165,7 +166,7 @@ figures TraceBi builds for it.</p>
 <tr>
 <td><code>theme</code></td>
 <td>string</td>
-<td>The house theme (<a href="../reference/chart-style.html">House themes and chart style</a>): <code>ledger</code> (calm, institutional; the default), <code>nightdesk</code> (dark, dense, monospaced numerals) or <code>signal</code> (bold, big numbers, the lead KPI a solid accent tile). Over the project's <code>tracebi.yaml</code> <code>brand.theme</code>; the brand's colours, font and logo layer on top. Any other name fails the build naming the three. The six accent presets (<code>graphite</code>, <code>indigo</code>, <code>midnight</code>, <code>ocean</code>, <code>plum</code>, <code>sand</code>) are deprecated: the page renders in the house theme with that accent pair and the build says so once; set <code>brand: {accent: …}</code> instead. <code>tracebi theme list</code>.</td>
+<td>The house theme (<a href="../reference/chart-style.html">House themes and chart style</a>): <code>ledger</code> (calm, institutional; the default), <code>nightdesk</code> (dark, dense, monospaced numerals) or <code>signal</code> (bold, big numbers, the lead KPI a solid accent tile). Over the workspace's <code>tracebi.yaml</code> <code>brand.theme</code>; the brand's colours, font and logo layer on top. Any other name fails the build naming the three. The six accent presets (<code>graphite</code>, <code>indigo</code>, <code>midnight</code>, <code>ocean</code>, <code>plum</code>, <code>sand</code>) are deprecated: the page renders in the house theme with that accent pair and the build says so once; set <code>brand: {accent: …}</code> instead. <code>tracebi theme list</code>.</td>
 </tr>
 <tr>
 <td><code>look</code></td>

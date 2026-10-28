@@ -4,6 +4,9 @@
 // A folder is where a report sits (reports/<folder>/<name>), as the API names
 // it: every report the caller may see is in the list, so a folder they may not
 // see never is. Their own My published is listed even before it holds anything.
+// A top-level folder is a project (one area's reports, named for the model or
+// models it reads); a folder inside one stays a folder, and My published is a
+// person's own space, never a project. The address stays /?folder=<path>.
 //
 // The hue is a label, never a state: verdicts keep their own chip and colours.
 // Six hue tokens (--hue-1 … --hue-6, global.css) go to the folders in the
@@ -25,6 +28,12 @@ export function folderHue(path, folders = []) {
   const shared = [...new Set(folders.filter(f => !f.mine).map(f => f.path))].sort()
   return `--hue-${(Math.max(shared.indexOf(path), 0) % HUES) + 1}`
 }
+
+/** Whether a library folder ({path, mine}) is a project: a top-level folder, not My published. */
+export const isProject = f => !f.mine && !f.path.includes('/')
+
+/** What a library folder is called: a Project, or a Folder (one inside a project, or My published). */
+export const folderWord = f => (isProject(f) ? 'Project' : 'Folder')
 
 /** The style that hands a folder's hue to everything inside it, as --c. */
 export const hueStyle = hue => ({ '--c': `var(${hue})` })

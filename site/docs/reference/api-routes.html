@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -815,7 +816,7 @@ model needed (<a href="../concepts/trace.html">The trace</a>).</p>
 <td><code>GET</code></td>
 <td><code>/api/credentials</code></td>
 <td>viewer</td>
-<td>Every <code>${NAME}</code> the project references and where it is set, never a value (<a href="../reference/credentials.html">Credentials</a>).</td>
+<td>Every <code>${NAME}</code> the workspace references and where it is set, never a value (<a href="../reference/credentials.html">Credentials</a>).</td>
 </tr>
 <tr>
 <td><code>PUT</code></td>
@@ -857,7 +858,7 @@ model needed (<a href="../concepts/trace.html">The trace</a>).</p>
 <td><code>GET</code></td>
 <td><code>/api/graph</code></td>
 <td>viewer</td>
-<td>The project as one graph, what Data's overview draws and the gateway's <code>describe_project</code> answers: <code>{summary, nodes, edges, edge_facts}</code>. Reports in a folder the caller cannot view are left out with their edges.</td>
+<td>The workspace as one graph, what Data's overview draws and the gateway's <code>describe_project</code> answers: <code>{summary, nodes, edges, edge_facts}</code>. Reports in a folder the caller cannot view are left out with their edges.</td>
 </tr>
 <tr>
 <td><code>GET</code></td>
@@ -961,7 +962,7 @@ the build command.</p>
 <tbody>
 <tr>
 <td>Reports</td>
-<td><code>/</code> the library (<code>?model=&lt;m&gt;</code> narrows it); <code>/?folder=&lt;path&gt;</code> one folder (one the caller may not see is not found); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on); <code>/ask</code> a question of one model (<code>?model=&lt;m&gt;</code>), reached by <strong>Ask this model</strong> on a folder's page or a model's page under Data</td>
+<td><code>/</code> the library (<code>?model=&lt;m&gt;</code> narrows it); <code>/?folder=&lt;path&gt;</code> one project or folder (one the caller may not see is not found; <code>?project=&lt;path&gt;</code> redirects there); <code>/reports/&lt;folder&gt;/&lt;name&gt;</code> one report (<code>?build=1</code> turns Build mode on); <code>/ask</code> a question of one model (<code>?model=&lt;m&gt;</code>), reached by <strong>Ask this model</strong> on a folder's page or a model's page under Data</td>
 </tr>
 <tr>
 <td>Data</td>

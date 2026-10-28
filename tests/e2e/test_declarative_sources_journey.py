@@ -92,7 +92,7 @@ def test_a_literal_secret_in_a_connection_is_refused(scaffolded, monkeypatch):
     assert "dflt.yaml: url: carries a credential" in out
     assert "snowd.yaml: password: a credential has no default" in out
     assert "okd.yaml is well formed" in out
-    assert "far.yaml: url: a literal SQLite file must stay inside the project" in out
+    assert "far.yaml: url: a literal SQLite file must stay inside the workspace" in out
     assert SECRET not in out                       # even the refusal does not echo it
 
     c = serve(monkeypatch)

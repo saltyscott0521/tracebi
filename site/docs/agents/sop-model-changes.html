@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -80,7 +81,7 @@
 change what a model's numbers mean: the <code>models/&lt;name&gt;.yaml</code> files, or a
 <code>models/&lt;name&gt;.py</code> for anything YAML cannot say.</p>
 <p>Read <code>AGENTS.md</code> first. It is the brief every agent reads before working in a
-TraceBi project (<code>tracebi init</code> writes one into each). This SOP is one job
+TraceBi workspace (<code>tracebi init</code> writes one into each). This SOP is one job
 from it.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
@@ -228,7 +229,7 @@ be serialized, diffed, reviewed as data, checked before it runs or sent over
 the wire, so accepting one would make the model opaque code instead of a
 checkable contract. If a calculation does not fit <code>column</code>, <code>expr</code> or <code>ratio</code>,
 propose a richer declarative form; don't relax <code>_EXPR_ALLOWED</code> or <code>_EXPR_CALL</code>
-in <code>tracebi/model/data_model.py</code> for a project's need.</p>
+in <code>tracebi/model/data_model.py</code> for a workspace's need.</p>
 <h3 id="declared-formats-reach-every-report">Declared formats reach every report</h3>
 <p><code>format=</code> takes <code>currency</code> (<code>${:,.2f}</code>), <code>currency0</code>, <code>percent</code>, <code>comma</code>,
 <code>decimal</code>, or a Python format string. With <code>HTMLRenderer(derive_defaults=True)</code>
@@ -291,7 +292,7 @@ git.</p>
   only in one process's memory is ungoverned.</li>
 <li><strong>No lambdas or callables.</strong> Don't wrap one, and don't compute a column in
   an ad-hoc transform and present it as governed.</li>
-<li><strong>Don't edit <code>tracebi/</code> for a project's need.</strong> New measure kinds, looser
+<li><strong>Don't edit <code>tracebi/</code> for a workspace's need.</strong> New measure kinds, looser
   expression rules, new aggregations, or reaching into <code>_measures</code> are
   framework changes with their own review.</li>
 <li><strong>Keep each fix in its place.</strong> A label tweak for one report belongs in the

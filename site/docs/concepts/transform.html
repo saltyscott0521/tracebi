@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a class="on" href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -78,7 +79,7 @@
 <h1 id="transforms">Transforms</h1>
 <p>A transform is a file in <code>transforms/</code> that reads raw data, cleans it, and
 writes star-schema tables into the warehouse. Here is the shape of the
-reference project's transform:</p>
+reference workspace's transform:</p>
 <pre><code class="language-sql">-- transforms/holdings.sql: DuckDB, top to bottom, one fresh connection
 CREATE OR REPLACE TEMP TABLE raw AS
 SELECT * FROM read_csv('inputs/holdings.csv', all_varchar = true);
@@ -124,7 +125,7 @@ wh = DuckDBConnector(&quot;warehouse&quot;, database=sink_target(ROOT))
 wh.write(dim_issuer, &quot;dim_issuer&quot;)
 wh.write(fact_holdings, &quot;fact_holdings&quot;)
 </code></pre>
-<p>A <code>.ipynb</code> notebook works too. The reference project keeps
+<p>A <code>.ipynb</code> notebook works too. The reference workspace keeps
 <code>holdings_transform_pandas.py</code> beside <code>holdings_transform.sql</code>; both write
 identical tables.</p>
 <h2 id="add-a-sink-contract">Add a sink contract</h2>

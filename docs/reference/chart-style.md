@@ -19,16 +19,16 @@ tokens. A theme changes how a page looks, never a number.
 
 **Choosing one.** `report.json` `"theme": "signal"` ([[report-json]]) for one
 report; `tracebi.yaml` `brand: {theme: nightdesk}` ([[tracebi-yaml]]) for the
-project. A report's own theme wins over the project's; no theme anywhere is
-Ledger. `tracebi theme list` shows the three, the default and the project's
+workspace. A report's own theme wins over the workspace's; no theme anywhere is
+Ledger. `tracebi theme list` shows the three, the default and the workspace's
 choice marked. `tracebi new-report` / `new-dashboard --theme <name>` and the
 gateway's `start_draft(theme=…)` write it into `report.json`. Any other name
 fails the build, naming the three. Themes are set at these two levels
-only, never per folder. In the reference project the SaaS reports
+only, never per project or folder. In the reference workspace the SaaS project's reports
 (`saas_model/mrr_dashboard`, `cohort_brief`) are Nightdesk and every other
 report is Ledger; it sets no brand.
 
-**A brand on top.** The project's brand ([[tracebi-yaml]] `brand:`) layers
+**A brand on top.** The workspace's brand ([[tracebi-yaml]] `brand:`) layers
 over whichever theme: its accent, palette, font and logo replace the
 theme's colours and face, and its logo and name are the firm mark in the
 masthead (the kicker stays the model's label); the theme keeps its surfaces, depth, density,
@@ -131,5 +131,5 @@ and a crisp print; canvas (`data-tb-renderer="canvas"`, `<Chart
 renderer="canvas">`, or `report.json` `"charts": {"renderer": "canvas"}`) for
 thousands of marks, drawn as SVG while the page prints. A
 `tracebi.configureChart` patch or an `<EChart option>` may still style a chart.
-Never hard-code a colour in it: a series takes the palette, so the project's
+Never hard-code a colour in it: a series takes the palette, so the workspace's
 brand reaches it.

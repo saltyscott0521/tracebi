@@ -212,7 +212,7 @@ to `.tb-masthead h1`, `.tb-kpi--lead .tb-kpi-value` and the trace drawer's
 title; unset, a dashboard keeps the sans and an editorial headline the serif.
 Tokens only: no rules of its own, no gradient, no shadow. The showcase's
 `style.css` does exactly this, with Fraunces from `assets/fonts/` and the
-project's accent. A look for every report goes in `reports/_theme.css`.
+workspace's accent. A look for every report goes in `reports/_theme.css`.
 
 ## The masthead
 
@@ -331,7 +331,7 @@ texture, no shadow.
 </article>
 ```
 
-- The hero is the masthead in the project's accent, flat, with a serif
+- The hero is the masthead in the workspace's accent, flat, with a serif
   headline (on a dark ground, a deep band of the accent with the page's ink).
 - A bound number in the prose is set in weight 600, in the prose's ink.
 - Charts, tables, the KPI strip, the pull-stat and the footer use the sans

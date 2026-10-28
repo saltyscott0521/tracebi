@@ -36,7 +36,7 @@ def _build(proj):
     code, out = run_cli("run-transform", "sample_transform")
     assert code == 0, out
     code, out = run_cli("validate")
-    assert code == 0 and "Project looks good" in out, out
+    assert code == 0 and "Workspace looks good" in out, out
     code, out = run_cli("report", "build", "sample_model/sample_dashboard")
     assert code == 0, out
     [manifest] = manifests(proj)

@@ -1,6 +1,6 @@
 # The three-phase workflow
 
-A TraceBi project moves data through three folders: a transform cleans it, a
+A TraceBi workspace moves data through three folders: a transform cleans it, a
 model defines it, and a report presents it. Each stage hands the next a fixed
 artifact, called a [[freeze-points|freeze point]].
 
@@ -58,7 +58,7 @@ A report package where every figure is a query against the model. The model's
 tables already exist, so the page rebuilds in milliseconds without running
 the transform. See [[report]].
 
-## One warehouse per project
+## One warehouse per workspace
 
 `tracebi.yaml` declares the warehouse. Every transform writes to it and every
 model reads it (`type: warehouse`), so transforms and reports can run in
@@ -66,7 +66,7 @@ separate processes. `output/` holds what `tracebi report build` writes. Both
 `data/` and `output/` are gitignored, except the `*.manifest.json` traces,
 which stay in git as the record behind every built number.
 
-## Try it on the reference project
+## Try it on the reference workspace
 
 ```bash
 cd examples/portfolio_project
@@ -76,7 +76,7 @@ tracebi serve                   # open portfolio_model, then portfolio_dashboard
 
 The first run writes a messy Schedule of Investments into `inputs/`: position
 descriptions to parse into issuers, sectors spelled six ways, money stored as
-strings. The project has four models sharing one warehouse.
+strings. The workspace has four models sharing one warehouse.
 `holdings_transform.sql`, `saas_transform.sql` and `wealth_transform.sql` are
 SQL with a `.contract.yaml` beside each; the last two read SQLite databases
 in `inputs/` through `-- source:` lines. `affordability_transform.py` is
@@ -86,9 +86,10 @@ pandas and declares its contract in a `with contract(...)` block.
 
 The app has four places in its sidebar.
 
-- **Reports** opens first. It is the library: a folder per model, each report
-  with whether its numbers still reproduce. **Ask this model**, on a folder's
-  or a model's page, puts a question to that model.
+- **Reports** opens first. It is the library: a project per area, named for
+  the model it reads ([[workspace-and-projects]]), each report with whether
+  its numbers still reproduce. **Ask this model**, on a project's or a model's
+  page, puts a question to that model.
 - **Data** (analysts and admins) is a console. Its home is a status board:
   a card each for Sources, Transforms, Warehouse, Models and Reports with
   one health pill, **Needs attention** (a source not reachable here, a file
@@ -107,7 +108,7 @@ The app has four places in its sidebar.
   transform's **Steps** and **Code**; a model's **Schema** and
   **Measures**), **Lineage**, **Activity**, **Agents** and **Settings**.
   **View lineage**, on the home and every page, opens the map of the
-  project: these stages as lanes, wired by what reads what, read through a
+  workspace: these stages as lanes, wired by what reads what, read through a
   lens (**Coverage**, **Flow**, **Freshness**, **Trust**, **What agents
   see**).
 - **Review** holds what needs attention, drafts, **History** (what ran) and
@@ -116,7 +117,7 @@ The app has four places in its sidebar.
 
 ## Before a report exists
 
-`tracebi dev` with no report name opens the app's Data page with a project
+`tracebi dev` with no report name opens the app's Data page with a workspace
 feed. Any script can post a table or a note to it with
 `tracebi.workbench.show(df, note=...)`. `tracebi dev --classic` lays the
 warehouse, models and packages out beside the feed on one page. `tracebi

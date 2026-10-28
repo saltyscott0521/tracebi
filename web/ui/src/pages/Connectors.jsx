@@ -67,7 +67,7 @@ function ReadBy({ c }) {
   ]
   return lines.length
     ? <ul className="src-readby">{lines}</ul>
-    : <p className="src-quiet">Nothing in this project reads it.</p>
+    : <p className="src-quiet">Nothing in this workspace reads it.</p>
 }
 
 // A table's row count as the table API counts it: exact, the catalog's
@@ -395,7 +395,7 @@ function SourceList() {
     </>}>
       {isLoading ? <SkeletonList /> : !rows.length ? (
         <Empty title="No sources yet"
-               body="A source is where the data comes from: a database connection, or files under inputs/. Add a connection (its secret goes in the project's store), or drop a file in inputs/."
+               body="A source is where the data comes from: a database connection, or files under inputs/. Add a connection (its secret goes in the workspace's store), or drop a file in inputs/."
                command={add ? undefined : 'tracebi connect crm --kind postgres --store secret'}
                action={add} />
       ) : (
@@ -602,7 +602,7 @@ function InputTable({ files }) {
 }
 
 /**
- * The project's inputs/ folder as a source page: the same Overview rows, then
+ * The workspace's inputs/ folder as a source page: the same Overview rows, then
  * its files as the Tables tab, data files first (the ones a transform reads
  * as a table), the scripts, notes and database files folded under them.
  * Nothing to set up.
@@ -623,7 +623,7 @@ function InputsPage({ files }) {
         { key: 'overview', label: 'Overview', render: () => (
           <Details items={[
             ['From', <code>inputs/</code>],
-            ['Read by', <Links items={readers.map(t => ({ key: t, to: transformPath(t), label: t }))} none="Nothing in this project reads it." />],
+            ['Read by', <Links items={readers.map(t => ({ key: t, to: transformPath(t), label: t }))} none="Nothing in this workspace reads it." />],
             ['Last moved', newest ? movedWords({ how: 'changed', at: newest }) : null],
             ['Trust', <StateChip state={{ state: 'none', text: 'Not a sink' }} />],
             ['Agents', <StateChip state={{ state: 'none', text: 'Files are never read by agents' }} />],

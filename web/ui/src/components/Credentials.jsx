@@ -10,8 +10,8 @@ function stateOf(row) {
   if (!row.set) return { label: 'Missing', tone: 'warn', title: 'Set nowhere: not in the environment, .env or the store.' }
   return {
     environment: { label: 'Set · environment', title: "From the server's environment; it wins over anything saved here." },
-    dotenv: { label: 'Set · .env', title: "From the project's .env file." },
-    store: { label: 'Set here', title: "Saved in the project's encrypted store." },
+    dotenv: { label: 'Set · .env', title: "From the workspace's .env file." },
+    store: { label: 'Set here', title: "Saved in the workspace's encrypted store." },
     default: { label: 'Set · default', title: "Not set anywhere, so the file's own default is used." },
   }[row.source] || { label: 'Set' }
 }

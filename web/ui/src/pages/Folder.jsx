@@ -6,7 +6,7 @@ import { CoverFan, CoverTile, Health } from '../components/Directory'
 import { useDocumentTitle } from '../components/Layout'
 import { NotFound } from '../components/Scope'
 import { Btn, BtnLink, CopyCommand, Empty, SkeletonCard, Time, useToast } from '../components/Shared'
-import { KINDS, hueStyle, kindOf, newestBuild, reportLabel, useBuilds, useLibrary } from '../folders'
+import { KINDS, folderWord, hueStyle, isProject, kindOf, newestBuild, reportLabel, useBuilds, useLibrary } from '../folders'
 import { askPath, mayUse, modelPath, pipelineBelongsToModel, reportPagePath, transformPath } from '../nav'
 import { count, plural } from '../format'
 import { stamp } from '../when'
@@ -17,9 +17,9 @@ const YOU_CAN = {
 }
 
 /**
- * What the person may do in a folder, and (to a manager, or the owner of a
- * personal folder) who holds what there. Permissions are edited in the
- * folder's _folder.yaml: the app only shows them.
+ * What the person may do in a project or folder, and (to a manager, or the
+ * owner of a personal folder) who holds what there. Permissions are edited in
+ * its _folder.yaml: the app only shows them.
  */
 export function FolderNote({ info }) {
   const p = info.permissions
@@ -49,7 +49,7 @@ export function FolderNote({ info }) {
               )}
           <div style={{ color: 'var(--muted)' }}>
             {p.file ? <>From <code>{p.file}</code>. </> : null}
-            Permissions are changed in the folder&rsquo;s <code>_folder.yaml</code> file. Editing them here is not
+            Permissions are changed in its <code>_folder.yaml</code> file. Editing them here is not
             available yet.
           </div>
         </div>
@@ -60,7 +60,7 @@ export function FolderNote({ info }) {
 
 const MONTH = { month: 'long' }
 
-// The folder's builds, oldest to newest: one bar per recorded build of its
+// The project's (or folder's) builds, oldest to newest: one bar per recorded build of its
 // reports (the run store's last twelve), the newest marked, a failed one
 // marked as failed. A build row stores no verdict, so the caption counts
 // builds and failures and claims nothing about whether the older ones
@@ -90,10 +90,11 @@ function BuildTimeline({ items }) {
 }
 
 /**
- * One folder's page (/?folder=<path>): its hero (what it holds, its newest
- * covers, and what to do with it), its builds, its health, its
- * reports by kind and who may do what in it. A folder the person may not see
- * is a page that does not exist, as for one that does not.
+ * One project's page (/?folder=<path>; a folder inside a project, or My
+ * published, has the same page): its hero (what it holds, its newest covers,
+ * and what to do with it), its builds, its health, its reports by kind and who
+ * may do what in it. One the person may not see is a page that does not
+ * exist, as for one that does not.
  */
 export default function FolderPage({ path }) {
   const library = useLibrary()
@@ -108,7 +109,7 @@ export default function FolderPage({ path }) {
   const { mutate: start, isPending } = useStartPipelineRun()
   const [making, setMaking] = useState(false)
   const folder = library.byPath[path]
-  useDocumentTitle(folder?.label, 'Reports')
+  useDocumentTitle(folder?.label, folder && folderWord(folder), 'Reports')
 
   // The rail's Dashboards and Pages rows open the section of that name.
   useEffect(() => {
@@ -148,7 +149,7 @@ export default function FolderPage({ path }) {
       <section className="fhero" aria-label={folder.label}>
         <div className="fhero__text">
           <p className="fhero__eyebrow">
-            Folder
+            {folderWord(folder)}
             {/* The way back to how the numbers are made, for those who see Data. */}
             {models.map(m => (
               <span key={m.name}> · {mayUse(role, 'data')
@@ -159,7 +160,7 @@ export default function FolderPage({ path }) {
           <h1 className="display-title">{folder.label}</h1>
           <p className="fhero__lede">
             {folder.mine ? 'Your own folder: only you see it unless you share it by file. '
-              : items.length ? `${count(items.length, 'report')} ${plural(items.length, 'reads', 'read')} ${models.map(m => m.label || m.name).join(' and ') || 'this folder'}. `
+              : items.length ? `${count(items.length, 'report')} ${plural(items.length, 'reads', 'read')} ${models.map(m => m.label || m.name).join(' and ') || `this ${folderWord(folder).toLowerCase()}`}. `
                 : ''}
             {items.length ? 'Every cover is its page as it was last built.' : 'Nothing here yet.'}
           </p>
@@ -197,7 +198,7 @@ export default function FolderPage({ path }) {
       {!items.length && (
         <Empty title="Nothing here yet"
                body={folder.mine ? 'Publish a draft to My published from Review to put a report here.'
-                 : 'A report lands here when one is published into this folder.'} />
+                 : `A report lands here when one is published into this ${isProject(folder) ? 'project' : 'folder'}.`} />
       )}
       {byKind.map(([kind, label, list]) => (
         <section key={kind} id={kind} className="fkind" aria-labelledby={`fkind-${kind}`}>

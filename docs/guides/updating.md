@@ -16,7 +16,7 @@ Each release is a tagged GitHub release with two things:
 - a **Docker image** at `ghcr.io/saltyscott0521/tracebi`, tagged with the
   version and, for full releases, `latest`.
 
-An update changes only the TraceBi package or image. Your project folders
+An update changes only the TraceBi package or image. Your workspace folders
 (`transforms/`, `models/`, `reports/`) are never touched.
 
 ## 1. Check

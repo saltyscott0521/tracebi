@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -79,7 +80,7 @@
 <p>A model is the semantic layer: the one place that says what the data means.
 It is a YAML file in <code>models/</code> that names the warehouse tables a report may
 read, how they join, the measures it can compute, and the words people use
-for them. Here is the one the reference project ships, shortened:</p>
+for them. Here is the one the reference workspace ships, shortened:</p>
 <pre><code class="language-yaml"># models/portfolio_model.yaml
 name: portfolio_model
 label: Direct Lending Portfolio
@@ -89,7 +90,7 @@ questions:
 
 connectors:
   - name: warehouse
-    type: warehouse          # the project's warehouse, wherever tracebi.yaml puts it
+    type: warehouse          # the workspace's warehouse, wherever tracebi.yaml puts it
 
 tables:
   - {name: fact_holdings, connector: warehouse, source: fact_holdings}

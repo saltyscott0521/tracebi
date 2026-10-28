@@ -1,6 +1,6 @@
-# Project settings (`tracebi.yaml`)
+# Workspace settings (`tracebi.yaml`)
 
-`tracebi.yaml` at the project root says where the warehouse lives and sets the
+`tracebi.yaml` at the workspace root says where the warehouse lives and sets the
 limits of the engine that answers model queries.
 
 ```yaml
@@ -11,7 +11,7 @@ warehouse:
 engine:
   memory_limit: 1GB                  # past it, a query spills to temp_directory
   threads: 4                         # default: min(4, CPUs)
-  temp_directory: data/.duckdb-tmp   # relative to the project root
+  temp_directory: data/.duckdb-tmp   # relative to the workspace root
   query_timeout_s: 30                # Ask and agent queries stop here
 ```
 
@@ -19,7 +19,7 @@ engine:
 - Every key is optional. A missing file, block or key means the default.
 - An unknown key or a value of the wrong shape is an error naming the file
   and the key. A limit an operator wrote is the limit that applies.
-- The file is read from the working directory (the project root) and re-read
+- The file is read from the working directory (the workspace root) and re-read
   when it changes.
 
 ## `warehouse`
@@ -50,7 +50,7 @@ Models and transforms follow the tier without naming a path:
   `sink_target()` returns a string that remembers its warehouse, so the
   connector and the contract follow the tier. `write()` creates `data/` (or
   the local directory) on a fresh clone. A medallion layer that sinks into the
-  project's warehouse writes through the same `write()`.
+  workspace's warehouse writes through the same `write()`.
 
 ### Object-tier keys
 
@@ -63,7 +63,7 @@ Models and transforms follow the tier without naming a path:
 | `url_style` | `path` (MinIO, most endpoints) or `vhost` (AWS's default). |
 
 - `${VAR}` is the whole value, as in `connections/*.yaml`. It is looked up in
-  the environment, then the project's `.env`, when a connection is made. It is
+  the environment, then the workspace's `.env`, when a connection is made. It is
   never copied into `os.environ`.
 - An unset variable is an error naming it, the key and the file. A literal
   `key_id` or `secret` is refused.
@@ -114,7 +114,7 @@ a SQL database) is loaded through its connector and registered as Arrow.
 |---|---|---|
 | `memory_limit` | `1GB` | Memory limit for one query connection, as a size (`512MB`, `2GiB`). Past it a query spills to `temp_directory`. |
 | `threads` | `min(4, CPUs)` | Worker threads per query connection, at least 1. |
-| `temp_directory` | `data/.duckdb-tmp` | Where a query spills, relative to the project root. Created only when needed. |
+| `temp_directory` | `data/.duckdb-tmp` | Where a query spills, relative to the workspace root. Created only when needed. |
 | `query_timeout_s` | `30` | Seconds a reader's query may run: `POST /api/models/{name}/query` (Ask), `POST /api/reports/{name}/selection` and the gateway's `query_model`. Past it the query stops with an error naming the limit (HTTP 504 with `{message, exception_type, traceback}`; the gateway's `{ok: false, errors}`). Builds and `verify` have no timeout. |
 
 ### What a query connection cannot do
@@ -145,14 +145,14 @@ figure of a build.
 
 ## `brand`
 
-The project's brand: the look every report and dashboard of the project
+The workspace's brand: the look every report and dashboard of the workspace
 takes, its charts included. One block, and every page follows.
 
 ```yaml
 brand:
   theme: ledger                  # the house theme: ledger (default) | nightdesk | signal
   name: Cedar Capital            # the firm mark, beside the logo; the kicker stays the model's label
-  logo: brand/logo.svg           # svg or png under the project, inlined
+  logo: brand/logo.svg           # svg or png under the workspace, inlined
   accent: "#0f6b5c"              # --tb-accent, and what each ground needs from it
   palette: ["#0f6b5c", "#c8902e", "#5b6ee1", "#d1495b", "#3c9d9b", "#8a5a44"]
   font: brand/Inter.woff2        # optional; inlined @font-face, the pages' and charts' face
@@ -161,12 +161,12 @@ brand:
 
 | Key | What it sets |
 |---|---|
-| `theme` | The project's house theme ([[chart-style]]): `ledger` (the default), `nightdesk` or `signal`. A report's own `report.json` `"theme"` wins over it. The rest of the brand layers on top: its accent, palette, font and logo replace the theme's colours and face, and the theme keeps its surfaces, depth, density, radius and numerals. |
+| `theme` | The workspace's house theme ([[chart-style]]): `ledger` (the default), `nightdesk` or `signal`. A report's own `report.json` `"theme"` wins over it. The rest of the brand layers on top: its accent, palette, font and logo replace the theme's colours and face, and the theme keeps its surfaces, depth, density, radius and numerals. |
 | `name` | The firm's name, in small type beside the logo in the masthead's mark slot (`.tb-masthead-mark`); with no logo, the name alone is the mark. It never replaces the kicker: the kicker (the small line over the title) stays the model's label, so a page still says what it is about. At most 60 characters. |
-| `logo` | The masthead's mark (`.tb-masthead-mark`), with the name beside it: above the kicker on a template page and in an app's `<Masthead>`, its sidebar included. A mark the author drew (a filled `.tb-masthead-mark`, `<Masthead mark>`) wins; `mark={null}` shows none. An `.svg` or `.png` under the project, inlined as a `data:` URI. On a filled ground (the editorial hero, a banner title) it is drawn in the ground's ink. |
+| `logo` | The masthead's mark (`.tb-masthead-mark`), with the name beside it: above the kicker on a template page and in an app's `<Masthead>`, its sidebar included. A mark the author drew (a filled `.tb-masthead-mark`, `<Masthead mark>`) wins; `mark={null}` shows none. An `.svg` or `.png` under the workspace, inlined as a `data:` URI. On a filled ground (the editorial hero, a banner title) it is drawn in the ground's ink. |
 | `accent` | `--tb-accent`. From it: `--tb-accent-text` (the same hue deepened to 4.5:1 for links and small text), `--tb-on-accent`, `--tb-surface-accent`, and the dark ground's `--tb-dark-accent` / `--tb-dark-accent-text` (lifted to read on the dark card). |
 | `palette` | `--tb-chart-1..8`, in the order a chart's series take them: 1 to 8 colours, cycled to eight. On the dark ground each is lifted only as far as it takes to read there. With no palette, `--tb-chart-1` is the accent. |
-| `font` | A `.woff2`, `.woff`, `.ttf` or `.otf` under the project, inlined as an `@font-face` that `--tb-font` (and so `--tb-chart-font`) names first, Geist after it. |
+| `font` | A `.woff2`, `.woff`, `.ttf` or `.otf` under the workspace, inlined as an `@font-face` that `--tb-font` (and so `--tb-chart-font`) names first, Geist after it. |
 | `mode` | The ground a page takes when it names none (a template's `<html data-tb-mode>`, an app's `report.json` `"look"`). Default: the house theme's, `auto` (the reader's system) except Nightdesk, which opens `dark`. |
 
 - Colours are hex, `#rgb` or `#rrggbb`, and quoted: YAML reads an unquoted
@@ -176,13 +176,13 @@ brand:
   shade of the same hue that passes), or a logo or font over 400 KB. A page
   carries both inlined, and a page stays under its 16 MB budget.
 - Where it sits: right after the shipped `tracebi.css` and the house theme,
-  before `reports/_theme.css`. So the project's own theme and a report's
+  before `reports/_theme.css`. So the workspace's own theme and a report's
   `style.css` still win, in that order; on the dark ground its colours are
   lifted against the house theme's own card. `tracebi theme list` shows it.
 - A brand changes how a page looks, never a number. Agents never hard-code a
   colour in a chart's `option`: a series takes the palette.
 
-The reference project carries no brand: its four demos are unrelated
+The reference workspace carries no brand: its four demos are unrelated
 businesses, so each report keeps the house default (Ledger) and the SaaS
 reports name Nightdesk in their `report.json`. The house themes, and the chart look the palette and
 tokens feed, are in [[chart-style|House themes and chart style]].

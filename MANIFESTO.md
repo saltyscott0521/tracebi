@@ -193,6 +193,8 @@ One canon, used everywhere — code, docs, UI, agent context:
 
 | Term | Meaning |
 |---|---|
+| **Workspace** | Everything one `tracebi.yaml` covers: one warehouse, its sources, transforms and models, the brand and the default house theme. One per company. (Until 2026-10-28 this was called the "project"; that word now means the next row.) |
+| **Project** | One area's reports: a top-level library folder, named for the model or models it reads (`reports/saas_model/` is the SaaS project). Models stay shared at the workspace; a project keeps its permissions in `_folder.yaml`; folders inside it stay folders; a theme is set on a report or the workspace, never a project |
 | **Transform** (①) | Unconstrained pandas in `transforms/`; the contract is what lands, not how. (The medallion `ManipulationLayer` is orchestration vocabulary for tracked pipeline jobs — a different thing, not this phase.) |
 | **Sink** | Where transform output becomes named warehouse tables — where trust attaches |
 | **Sink contract** | Declared checks on the tables a transform lands, recorded beside the warehouse; the sink *satisfied its contract* — the transform was not *verified* |
@@ -210,7 +212,7 @@ One canon, used everywhere — code, docs, UI, agent context:
 | **Stated methodology** | `data-tb-methodology` — an author's prose appendix in the artifact; never a claim, never colors a status |
 | **Verify** | Re-run the recorded queries; classify: REPRODUCES / SOURCE DRIFT / MODEL CHANGED / MISMATCH (cause unknown) / UNEXPLAINED / UNVERIFIABLE / ERROR |
 | **`verifiable: false`** | The escape hatch's permanent mark; never green |
-| **Workbench** / **Discovery** | The live authoring surface (`tracebi dev` / `report status`): in the app, the Build panel beside the report (what changed, the data each binding reads, checks, human notes and pins). With no report named, it is the project feed over phases ① and ② (`tracebi dev --classic` keeps the older `/__workbench` page) |
+| **Workbench** / **Discovery** | The live authoring surface (`tracebi dev` / `report status`): in the app, the Build panel beside the report (what changed, the data each binding reads, checks, human notes and pins). With no report named, it is the workspace feed over phases ① and ② (`tracebi dev --classic` keeps the older `/__workbench` page) |
 | **Session record** | `tracebi session export` — the committed lab-notebook of a discovery session; no manifest is written, ever |
 | **Interactivity recomputes by query** | A figure's number is only ever a query result. A filter (`data-tb-filter`) recomputes every figure it reaches by re-running that figure's own query over the data the page carries (the page engine, the trace says Local); it never sums the rows on screen. Search (`data-tb-search`) only narrows the rows shown. Reader aids (`data-tb-sort`, `data-tb-bars`, `data-tb-direction`) reorder or decorate stamped values and never compute one |
 | **Assurance ladder** | L0 nothing → L1 traces → L2 reproducibility → L3 signed attestation (L3: not yet) |

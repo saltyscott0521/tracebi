@@ -6,7 +6,7 @@ import { movedWords } from '../words'
 import { warehousePath } from '../nav'
 import { BtnLink, Chip } from './Shared'
 
-// The passport: the same rows on every piece of the project, so a CSV, a CRM
+// The passport: the same rows on every piece of the workspace, so a CSV, a CRM
 // table, a transform, a warehouse table, a model and a report answer the same
 // questions in the same words (design/control-tower.md). What it is (the
 // head), then From · Read by (Writes for a transform, Written by for a
@@ -123,18 +123,18 @@ export function NodePassport({ n, byId, onGo, from }) {
   )
 }
 
-// The project's rows, when nothing is selected: a count per lane, each a link
+// The workspace's rows, when nothing is selected: a count per lane, each a link
 // that focuses that lane on the map, and the gaps, which open Coverage.
 const PROJECT_ROWS = [
   ['Sources', 'sources', 'source'], ['Transforms', 'transforms', 'transform'], ['Tables', 'warehouse', 'table'],
   ['Models', 'models', 'model'], ['Reports', 'reports', 'report'],
 ]
 
-/** The project's passport: *summary* from the graph, *focus(lane)* / *lens(name)* move the map. */
+/** The workspace's passport: *summary* from the graph, *focus(lane)* / *lens(name)* move the map. */
 export function ProjectPassport({ summary, focus, coverage }) {
   return (
     <div className="pass__body" data-passport="project">
-      <p className="pass__eyebrow">Project</p>
+      <p className="pass__eyebrow">Workspace</p>
       <h2 className="pass__name">Everything, wired</h2>
       <p className="pass__sub">Select any piece for its passport: the same rows on every one.</p>
       <dl className="pass__rows">

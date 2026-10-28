@@ -25,7 +25,7 @@ function reportHref(name) {
 
 const NOTE = 'Review note'
 
-// Each item carries `models`: the models it is about (none = the project).
+// Each item carries `models`: the models it is about (none = the workspace).
 // *modelsOf* maps a report name to the models it reads; *reports* is GET
 // /api/reports, so a build whose files changed since needs a look here too.
 // *more* holds the run store's rows (`runs`), the publish requests
@@ -41,7 +41,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
     items.push({
       key: `pin-${pin.report}-${pin.id}`, kind: NOTE, variant: 'blue',
       models: modelsOf(pin.report),
-      title: pin.report === '_discovery' ? 'Project workbench' : (pin.display_name || nameOf(pin.report)),
+      title: pin.report === '_discovery' ? 'Workspace workbench' : (pin.display_name || nameOf(pin.report)),
       detail: pin.note || `Pin ${pin.id}`, href: reportHref(pin.report), action: 'Open report',
     })
   }
@@ -61,7 +61,7 @@ export function attentionItems(desk, pipelines, modelsOf = () => [], reports = [
       href: reportHref(name), action: 'Open report',
     })
   }
-  // Reports with no build at all: on a fresh project, the first thing to do.
+  // Reports with no build at all: on a fresh workspace, the first thing to do.
   // One item for all of them, not one each, so it does not bury the rest.
   // Before the desk has answered nothing is known to be unbuilt.
   const unbuilt = desk ? reports.filter(r => !builds.has(r.name)) : []

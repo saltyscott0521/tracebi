@@ -3,7 +3,7 @@
 A model is the semantic layer: the one place that says what the data means.
 It is a YAML file in `models/` that names the warehouse tables a report may
 read, how they join, the measures it can compute, and the words people use
-for them. Here is the one the reference project ships, shortened:
+for them. Here is the one the reference workspace ships, shortened:
 
 ```yaml
 # models/portfolio_model.yaml
@@ -15,7 +15,7 @@ questions:
 
 connectors:
   - name: warehouse
-    type: warehouse          # the project's warehouse, wherever tracebi.yaml puts it
+    type: warehouse          # the workspace's warehouse, wherever tracebi.yaml puts it
 
 tables:
   - {name: fact_holdings, connector: warehouse, source: fact_holdings}

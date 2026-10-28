@@ -1,6 +1,6 @@
 # Credentials
 
-The secrets a project's connections need: which names, where each is set, and
+The secrets a workspace's connections need: which names, where each is set, and
 an encrypted store on the server.
 
 ```bash
@@ -18,8 +18,8 @@ A connection names its secret as `${NAME}` ([[connections-yaml]]; also
 order:
 
 1. the process environment,
-2. the project's `.env`,
-3. the project's credential store, `.tracebi/secrets.yml.enc`,
+2. the workspace's `.env`,
+3. the workspace's credential store, `.tracebi/secrets.yml.enc`,
 4. a default written as `${NAME:-default}`.
 
 The environment wins, so a vault or secrets manager that injects variables
@@ -46,7 +46,7 @@ tracebi connect crm --kind postgres --url ... --store secret   # the store inste
 
 | Property | Value |
 |---|---|
-| File | `.tracebi/secrets.yml.enc` in the project root, mode `0600`, created on the first write |
+| File | `.tracebi/secrets.yml.enc` in the workspace root, mode `0600`, created on the first write |
 | Format | Decrypted: plain YAML, one `NAME: value` per line. On disk: one [Fernet](https://cryptography.io/en/latest/fernet/) ciphertext. `pip install 'tracebi[web]'` brings `cryptography`. |
 | Key | `TRACEBI_SECRET_KEY` (a Fernet key) when set, else `.tracebi/secret.key`, generated `0600` on the first write |
 | Several workers | Must share `TRACEBI_SECRET_KEY`, as they share `TRACEBI_STATE_URL`. A store read with a different key fails naming the file, never as "not set". |
@@ -101,7 +101,7 @@ History. Never the value.
 
 - It is not a vault integration. A vault injects environment variables, which
   win.
-- It is not per person: one project, one set of connection secrets.
+- It is not per person: one workspace, one set of connection secrets.
 - It does not hold the app's own settings (`TRACEBI_OAUTH_SECRET`,
   `TRACEBI_STATE_URL`, `TRACEBI_SECRET_KEY`). Those stay in the process
   environment.

@@ -64,7 +64,7 @@ def put_credential(name: str, body: _Value, response: Response):
     if name not in {r["name"] for r in required(_root())}:
         raise HTTPException(
             status_code=422,
-            detail=f"Nothing in this project references ${{{name}}}: name it in a "
+            detail=f"Nothing in this workspace references ${{{name}}}: name it in a "
                    f"connections/<name>.yaml first.")
     try:
         new = set_secret(name, body.value, _root(), actor=get_actor()[0])

@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a class="on" href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -112,8 +113,8 @@ connectors:
   <code>--password-var NAME</code>, <code>--ssl</code> write the fields; <code>--url</code> writes a URL.
   <code>tracebi connect &lt;name&gt; --test</code> tests an existing connection.</li>
 <li><code>.yml</code> works too. <code>TRACEBI_CONNECTIONS_DIR</code> moves the folder.</li>
-<li>The project's own warehouse is not a connection file. It is the
-  <code>warehouse:</code> block of <code>tracebi.yaml</code> (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>), and a model reads it
+<li>The workspace's own warehouse is not a connection file. It is the
+  <code>warehouse:</code> block of <code>tracebi.yaml</code> (<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>), and a model reads it
   with <code>type: warehouse</code>. That block resolves <code>${VAR}</code> the same way, and its
   remote tier may name a duckdb connection file here.</li>
 <li>The file loads with <code>yaml.safe_load</code> rules. A repeated key is an error, and
@@ -168,7 +169,7 @@ connectors:
 </tbody>
 </table>
 <p><code>sql</code> takes any SQLAlchemy URL (<code>sqlite:///inputs/bank.sqlite</code> for a file in
-the project). <code>postgres</code> and <code>mysql</code> are <code>sql</code> with the database said in the
+the workspace). <code>postgres</code> and <code>mysql</code> are <code>sql</code> with the database said in the
 type (<code>postgresql+psycopg://…</code>, <code>mysql+pymysql://…</code>).</p>
 <h3 id="url-or-fields">URL or fields</h3>
 <p>A <code>postgres</code> or <code>mysql</code> file says its connection one of two ways: one <code>url</code>,
@@ -237,7 +238,7 @@ names the variable, never the value.</p>
 <h3 id="snowflake-sign-in">Snowflake sign-in</h3>
 <p><code>authenticator</code> is <code>password</code> (the default), <code>externalbrowser</code> (the identity
 provider's page opens on the server) or <code>key_pair</code> (reads <code>private_key_path</code>,
-a <code>.p8</code> file on the server, relative to the project root). Only the password
+a <code>.p8</code> file on the server, relative to the workspace root). Only the password
 sign-in takes <code>password</code>.</p>
 <h3 id="bigquery-credentials">BigQuery credentials</h3>
 <p><code>credentials</code> is a path to a service account's JSON key file on the server.
@@ -296,8 +297,8 @@ all, <code>None</code> for none).</p>
 <td>A SQLite path passes, a URL with a password is refused, and <code>password</code> takes no default. The Sources page shows such a name as <code>Set · default</code>.</td>
 </tr>
 <tr>
-<td>Literal paths stay in the project</td>
-<td><code>database</code> and <code>directory</code> of a <code>duckdb</code> or <code>csv</code> connection, an <code>upload</code>'s <code>file</code>, and the file of a <code>sqlite:///</code> url: no absolute path, no <code>..</code>. Use a reference to point elsewhere. Relative paths resolve against the project root.</td>
+<td>Literal paths stay in the workspace</td>
+<td><code>database</code> and <code>directory</code> of a <code>duckdb</code> or <code>csv</code> connection, an <code>upload</code>'s <code>file</code>, and the file of a <code>sqlite:///</code> url: no absolute path, no <code>..</code>. Use a reference to point elsewhere. Relative paths resolve against the workspace root.</td>
 </tr>
 <tr>
 <td>Resolved when used</td>
@@ -305,7 +306,7 @@ all, <code>None</code> for none).</p>
 </tr>
 <tr>
 <td>Lookup order</td>
-<td>The process environment, the project's <code>.env</code>, the project's encrypted store (<code>tracebi secret set NAME</code>, or <strong>Set…</strong> on the Sources page; <a href="../reference/credentials.html">Credentials</a>), then the default. Nothing is copied into <code>os.environ</code>. <code>tracebi secret list</code> shows which names are missing.</td>
+<td>The process environment, the workspace's <code>.env</code>, the workspace's encrypted store (<code>tracebi secret set NAME</code>, or <strong>Set…</strong> on the Sources page; <a href="../reference/credentials.html">Credentials</a>), then the default. Nothing is copied into <code>os.environ</code>. <code>tracebi secret list</code> shows which names are missing.</td>
 </tr>
 <tr>
 <td>Never shown</td>

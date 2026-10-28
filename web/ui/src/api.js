@@ -254,12 +254,12 @@ export const useConnectorsTables = (names, enabled = true) =>
     })),
   })
 
-// The credentials the project's connections reference: where each is set,
+// The credentials the workspace's connections reference: where each is set,
 // never a value, and whether this caller may change them here.
 export const useCredentials = () =>
   useQuery({ queryKey: ['credentials'], queryFn: () => get('/credentials') })
 
-// Save (value) or remove (value null) a credential in the project's store. The
+// Save (value) or remove (value null) a credential in the workspace's store. The
 // answer is a status row; the value typed is never sent back or kept.
 export const useSaveCredential = () => {
   const qc = useQueryClient()
@@ -337,7 +337,7 @@ export const useUploadInput = () => {
   })
 }
 
-// The project's inputs/ folder: each file, and the transforms that name it.
+// The workspace's inputs/ folder: each file, and the transforms that name it.
 export const useInputs = () =>
   useQuery({ queryKey: ['inputs'], queryFn: () => get('/inputs') })
 
@@ -346,7 +346,7 @@ export const useInputs = () =>
 export const useWarehouses = (enabled = true) =>
   useQuery({ queryKey: ['warehouses'], queryFn: () => get('/warehouse'), enabled })
 
-// The project as one graph (tracebi/graph.py): every source, transform,
+// The workspace as one graph (tracebi/graph.py): every source, transform,
 // warehouse group, model and report as a node with its passport, and the
 // edges between them, from facts the API already holds. The map draws it.
 export const useGraph = () =>
@@ -476,7 +476,7 @@ export const useWorkbenchPreview = (name, version, enabled) =>
   })
 
 // A note for the agent, left from the workbench: it reads it as an open pin.
-// `name` is the report whose workbench this is, or null for the project feed.
+// `name` is the report whose workbench this is, or null for the workspace feed.
 export const useLeaveNote = (name) => {
   const qc = useQueryClient()
   return useMutation({
@@ -485,7 +485,7 @@ export const useLeaveNote = (name) => {
   })
 }
 
-// The project feed (dev mode only): what the agent shows you, and your notes to
+// The workspace feed (dev mode only): what the agent shows you, and your notes to
 // it, before a report is open. The server rebuilds it only when it changed.
 export const useProjectFeed = (enabled) =>
   useQuery({

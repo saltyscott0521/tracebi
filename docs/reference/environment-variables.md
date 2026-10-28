@@ -13,7 +13,7 @@ TraceBi does not load `.env` on its own. `python-dotenv` ships with the
 The exception is a `${NAME}` in a connection file or the warehouse block,
 which is looked up in `.env` when the connection is used ([[credentials]]).
 
-## Project layout
+## Workspace layout
 
 | Variable | Default | Used by |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ which is looked up in `.env` when the connection is used ([[credentials]]).
 
 | Variable | Meaning |
 | --- | --- |
-| `TRACEBI_APP` | App module to import at startup. Default: none. `tracebi serve` sets it empty so the bundled demo never loads into your project; set it yourself to opt in. |
+| `TRACEBI_APP` | App module to import at startup. Default: none. `tracebi serve` sets it empty so the bundled demo never loads into your workspace; set it yourself to opt in. |
 | `TRACEBI_DEV_MODE` | Turns on `POST /api/_dev/reload` and puts tracebacks in API errors. Don't set it in production: a traceback shows file paths, the server's user name and package versions. |
 | `TRACEBI_DISCOVERY_INTERVAL` | Seconds between scans of `reports/`, `models/` and `pipelines/` for added or deleted files. Default `5`; `0` turns scanning off. Python report modules are found only at startup. |
 | `TRACEBI_SECRET_KEY` | The Fernet key for the credential store ([[credentials]]). Unset, `.tracebi/secret.key` is generated on the first write. Several workers must share one. |

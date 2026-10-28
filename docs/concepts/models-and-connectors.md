@@ -15,7 +15,7 @@ facts:                                                                  # what i
 
 | Part | What it is | Where it is declared |
 |---|---|---|
-| Connector | A handle to a place that stores data: the project's warehouse, a DuckDB file, a database, a cloud warehouse | In the model file (`type: warehouse` for the project's warehouse), or once in `connections/<name>.yaml` |
+| Connector | A handle to a place that stores data: the workspace's warehouse, a DuckDB file, a database, a cloud warehouse | In the model file (`type: warehouse` for the workspace's warehouse), or once in `connections/<name>.yaml` |
 | Table | A name the model uses for one source inside one connector | `{name: fact_holdings, connector: warehouse, source: fact_holdings}` |
 | Model | The tables, which are facts and which are dimensions, how they join, and what each measure means | `models/<name>.yaml` |
 
@@ -29,7 +29,7 @@ and measures, and **Open table** for its columns and rows. With nothing
 selected, the **Storage** fold says whether the warehouse file exists, how
 big it is, and which tables each connector serves.
 
-Two Data folders cover the whole project. **Warehouse** (`/data/warehouse`)
+Two Data folders cover the whole workspace. **Warehouse** (`/data/warehouse`)
 lists every table, with who wrote it and who reads it (its **Schema** view
 groups them by the transform that wrote them), each with a page at
 `/data/warehouse/<table>`. **Sources** (`/data/sources`) lists every
@@ -40,7 +40,8 @@ connection and input file, and what reads each (`/data/sources/<name>`).
 
 ## A model, its reports and its pipeline
 
-Reports are grouped by model: the folder name is the model's name.
+Reports are grouped into projects by model: a project's folder is named for
+the model it reads ([[workspace-and-projects]]).
 
 ```
 models/portfolio_model.yaml            what the data means

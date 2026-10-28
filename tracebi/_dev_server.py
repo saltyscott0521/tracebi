@@ -404,7 +404,7 @@ manifests, and no receipts are minted here.
 <nav id="wb-tabs" class="wb-tabs">
 <button type="button" data-tab="timeline">Timeline</button>
 <button type="button" data-tab="figures" data-mode="package">Figures &amp; data</button>
-<button type="button" data-tab="project" data-mode="discovery">Project</button>
+<button type="button" data-tab="project" data-mode="discovery">Workspace</button>
 <button type="button" data-tab="code" data-mode="package">Code</button>
 </nav>
 <section id="wb-sec-requests" data-tab="timeline" hidden>

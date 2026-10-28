@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a class="on" href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -77,7 +78,7 @@
   <main class="doc">
 <h1 id="cli-reference">CLI reference</h1>
 <p>Every <code>tracebi</code> command, grouped by task. Most days you use these five:</p>
-<pre><code class="language-bash">tracebi dev                      # the app in dev mode (no name: the project feed)
+<pre><code class="language-bash">tracebi dev                      # the app in dev mode (no name: the workspace feed)
 tracebi run-transform holdings   # clean the inputs and write the warehouse (.sql, .py or .ipynb)
 tracebi report build my_report   # build one self-contained .html and its trace
 tracebi report status my_report  # what each figure has earned
@@ -87,11 +88,11 @@ tracebi verify output/my_report.html.manifest.json
 <pre><code class="language-bash">tracebi [--models-dir DIR] [--pipelines-dir DIR] [--connections-dir DIR] &lt;command&gt; [...]
 </code></pre>
 <p>Their defaults come from the environment (<a href="../reference/environment-variables.html">Environment variables</a>).</p>
-<h2 id="create-a-project">Create a project</h2>
+<h2 id="create-a-workspace">Create a workspace</h2>
 <h3 id="tracebi-init"><code>tracebi init</code></h3>
-<pre><code class="language-bash">tracebi init &lt;project&gt; [--force] [--template NAME]
+<pre><code class="language-bash">tracebi init &lt;workspace&gt; [--force] [--template NAME]
 </code></pre>
-<p>Creates a complete project: <code>tracebi.yaml</code>, <code>inputs/</code>, <code>connections/</code>,
+<p>Creates a complete workspace: <code>tracebi.yaml</code>, <code>inputs/</code>, <code>connections/</code>,
 <code>transforms/</code>, <code>models/</code>, <code>pipelines/</code> and <code>reports/</code>, with a sample input,
 transform (pandas), model, pipeline and report
 (<code>reports/sample_model/sample_dashboard/</code>), plus <code>.gitignore</code>, <code>.env.example</code>,
@@ -206,7 +207,7 @@ tracebi secret edit
 tracebi import dbt ./jaffle_shop --connection wh --name jaffle
 tracebi import dbt target/manifest.json --connection wh
 </code></pre>
-<p>Reads a dbt <code>manifest.json</code> (a project root containing
+<p>Reads a dbt <code>manifest.json</code> (a dbt project root containing
 <code>target/manifest.json</code>, or the file itself) and drafts <code>models/&lt;name&gt;.py</code>. It
 does not run dbt or load <code>.env</code>.</p>
 <table>
@@ -371,9 +372,9 @@ with <code>--from</code>.</p>
 <pre><code class="language-bash">tracebi theme list                 # the house themes, then the deprecated presets
 </code></pre>
 <p><code>list</code> shows the three house themes (<a href="../reference/chart-style.html">House themes and chart style</a>), Ledger marked the
-default and the project's <code>tracebi.yaml</code> <code>brand.theme</code> marked as its choice,
-then the six deprecated accent presets, then the project's brand. A project
-picks its house theme with <code>brand: {theme: …}</code> (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>); one report
+default and the workspace's <code>tracebi.yaml</code> <code>brand.theme</code> marked as its choice,
+then the six deprecated accent presets, then the workspace's brand. A workspace
+picks its house theme with <code>brand: {theme: …}</code> (<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>); one report
 with <code>report.json</code> <code>"theme"</code> (<a href="../reference/report-json.html">report.json</a>). <code>tracebi theme use &lt;preset&gt;
 [--force]</code> still copies a deprecated accent preset to <code>reports/_theme.css</code>;
 named with a house theme, it says where that setting goes instead.</p>
@@ -486,7 +487,7 @@ the file.</p>
 <h3 id="tracebi-validate"><code>tracebi validate</code></h3>
 <pre><code class="language-bash">tracebi validate
 </code></pre>
-<p>Checks the project layout, reports discovery imports that failed, and runs
+<p>Checks the workspace layout, reports discovery imports that failed, and runs
 <code>DataModel.validate()</code> on every model, chiefly that dimension keys are unique.
 Prints one line per credential a connection uses that is set nowhere. Exits 1
 on any problem.</p>
@@ -526,8 +527,8 @@ reports without authentication).</p>
 <h3 id="tracebi-serve"><code>tracebi serve</code></h3>
 <pre><code class="language-bash">tracebi serve [--host 127.0.0.1] [--port 8000] [--reload]
 </code></pre>
-<p>Serves the project's web app. Refuses, with what to do, when the current
-directory has no project or <code>uvicorn</code> is not installed.</p>
+<p>Serves the workspace's web app. Refuses, with what to do, when the current
+directory has no workspace or <code>uvicorn</code> is not installed.</p>
 <h3 id="tracebi-warehouse-tables"><code>tracebi warehouse tables</code></h3>
 <pre><code class="language-bash">tracebi warehouse tables [--connector NAME] [--table T] [--json]
 </code></pre>
@@ -542,7 +543,7 @@ same lookup.</p>
 tracebi session clear  [name]
 </code></pre>
 <p>Saves or resets the workbench feed <code>tracebi dev</code> writes (under
-<code>.tracebi/workbench/&lt;name&gt;/</code>). Omit <code>name</code> for the project feed.</p>
+<code>.tracebi/workbench/&lt;name&gt;/</code>). Omit <code>name</code> for the workspace feed.</p>
 <table>
 <thead>
 <tr>

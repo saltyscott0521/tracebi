@@ -5,15 +5,15 @@ serves, then work with the model directly in Python.
 
 ## Before you begin
 
-- A TraceBi project with a warehouse and a model. The reference project in
-  `examples/portfolio_project/` has both, and so does a project from
+- A TraceBi workspace with a warehouse and a model. The reference workspace in
+  `examples/portfolio_project/` has both, and so does a workspace from
   `tracebi init` ([[quickstart]]).
 - If your analyst is an AI agent, give it `AGENTS.md` and the SOPs in
   `docs/agents/` instead ([[sop-authoring]]).
 
 ## Build a report
 
-### 1. Build the reference project
+### 1. Build the reference workspace
 
 ```bash
 cd examples/portfolio_project
@@ -111,8 +111,8 @@ verdict in the email. It needs `TRACEBI_SMTP_URL` and `TRACEBI_SMTP_FROM`;
 tracebi dev
 ```
 
-With no report name, the app opens on the Data page with the project feed.
-Any script in the project can post to it with `tracebi.workbench.show(df,
+With no report name, the app opens on the Data page with the workspace feed.
+Any script in the workspace can post to it with `tracebi.workbench.show(df,
 note=...)`. The warehouse tables are under **Data › Warehouse**, and each
 model's schema on its page under **Data › Models**.
 

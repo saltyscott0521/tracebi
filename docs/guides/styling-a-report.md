@@ -14,7 +14,7 @@ Styles stack in three layers, and the later one wins:
 1. tracebi.css            the shipped design system (Ledger)
 2. the house theme        report.json "theme", else tracebi.yaml brand.theme
 3. the brand              tracebi.yaml brand: accent, palette, font, logo
-4. reports/_theme.css     your project's own tokens (optional)
+4. reports/_theme.css     your workspace's own tokens (optional)
 5. style.css              this report (optional)
 ```
 
@@ -23,7 +23,7 @@ Styles stack in three layers, and the later one wins:
 Three, each a whole look ([[chart-style]]): `ledger` (calm, institutional, the
 default), `nightdesk` (dark, dense, monospaced numbers, for a desk or an
 operations screen) and `signal` (bold, big numbers, for a board pack or a wall
-screen). The project picks one in `tracebi.yaml` (`brand: {theme: signal}`,
+screen). The workspace picks one in `tracebi.yaml` (`brand: {theme: signal}`,
 [[tracebi-yaml]]); a single report in `report.json`: `"theme": "nightdesk"`
 ([[report-json]]). Your colours go in the brand (`brand: {accent: …, palette:
 […]}`), which layers over whichever theme. `tracebi theme list` shows them.

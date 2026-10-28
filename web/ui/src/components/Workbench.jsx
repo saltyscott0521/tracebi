@@ -275,7 +275,7 @@ export function ProjectFeed() {
   )
 }
 
-/** The project feed, folded under one line that says how much is in it. */
+/** The workspace feed, folded under one line that says how much is in it. */
 export function ProjectFeedFold() {
   const { data } = useProjectFeed(true)
   const shown = (data?.exhibits || []).length

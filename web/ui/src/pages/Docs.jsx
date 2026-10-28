@@ -234,7 +234,7 @@ export default function Docs() {
           overflowWrap: 'anywhere',
         }}>
           {!sections.length && !home
-            ? <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>No <code>docs/</code> directory found next to this project.</div>
+            ? <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>No <code>docs/</code> directory found next to this workspace.</div>
             : !known
               ? <div style={{ color: 'var(--muted)', fontSize: 'var(--text-caption)' }}>There is no page at this address. Pick one from the list.</div>
               : current

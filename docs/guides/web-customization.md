@@ -1,11 +1,11 @@
 # Customize the web app
 
-Point the web server at your own project, add resources in code when files
+Point the web server at your own workspace, add resources in code when files
 are not enough, restyle or extend the React UI, and deploy it.
 
 ## Before you begin
 
-- A TraceBi project (`tracebi init`), or the reference project
+- A TraceBi workspace (`tracebi init`), or the reference workspace
 - `pip install -e ".[all]"`, and Node.js 22 for UI work
 
 The server is a FastAPI app (`tracebi/web/api/main.py`). It serves a JSON API
@@ -14,13 +14,13 @@ route reads connectors, models, reports and pipelines from one shared registry
 (`tracebi/registry.py`), which is filled at startup:
 
 ```
-your project folders ──discovery──▶ registry ◀──reads── API routes ◀── React UI
+your workspace folders ──discovery──▶ registry ◀──reads── API routes ◀── React UI
 your app module      ──registers──▶ (shared)            (request time)
 ```
 
 ## 1. Add resources as files
 
-The server finds these folders at the project root, and picks up changes
+The server finds these folders at the workspace root, and picks up changes
 while it runs:
 
 | Folder | File | Appears in the app as |
@@ -60,7 +60,7 @@ naming the fix). The package is the only renderer.
 
 ## 2. Add resources in code (optional)
 
-Most projects need no code. Use an app module for wiring the files cannot
+Most workspaces need no code. Use an app module for wiring the files cannot
 express, such as a connector type of your own or medallion layers built in
 Python. The bundled demo app (`tracebi/web/demo_app/`) is the example:
 

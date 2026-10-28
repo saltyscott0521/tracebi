@@ -1,10 +1,12 @@
 # Folder permissions (`_folder.yaml`)
 
 A `_folder.yaml` in a library folder says who may see, build in, publish into
-and manage that folder.
+and manage that folder. A project (a top-level library folder, one area's
+reports: [[workspace-and-projects]]) keeps its permissions in its own
+`_folder.yaml`, and a folder inside it may have one of its own.
 
 ```yaml
-# reports/finance/_folder.yaml
+# reports/finance/_folder.yaml: the finance project
 view:    [finance, ceo@example.com]    # see the folder; open its reports and their builds
 build:   [finance-analysts]            # + create and edit drafts in it
 publish: [finance-leads]               # + publish a draft into it; change its schedules
@@ -14,7 +16,9 @@ accepts: checkable                     # optional: only re-checkable numbers
 
 - A library folder is any directory under `reports/` (or a mount,
   `TRACEBI_LIBRARY_MOUNTS` in [[environment-variables]]) that is not itself a
-  report package.
+  report package. One directly under `reports/` is a project; the app lists it
+  as one. The file is still `_folder.yaml`, and the API still calls it a
+  folder (`/api/folders`, `folder`).
 - The file is optional. With no `_folder.yaml` anywhere, the roles `viewer`,
   `analyst` and `admin` decide, and nobody is shut out.
 

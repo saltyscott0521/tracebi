@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -112,16 +113,16 @@ tokens. A theme changes how a page looks, never a number.</p>
 </tbody>
 </table>
 <p><strong>Choosing one.</strong> <code>report.json</code> <code>"theme": "signal"</code> (<a href="../reference/report-json.html">report.json</a>) for one
-report; <code>tracebi.yaml</code> <code>brand: {theme: nightdesk}</code> (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>) for the
-project. A report's own theme wins over the project's; no theme anywhere is
-Ledger. <code>tracebi theme list</code> shows the three, the default and the project's
+report; <code>tracebi.yaml</code> <code>brand: {theme: nightdesk}</code> (<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>) for the
+workspace. A report's own theme wins over the workspace's; no theme anywhere is
+Ledger. <code>tracebi theme list</code> shows the three, the default and the workspace's
 choice marked. <code>tracebi new-report</code> / <code>new-dashboard --theme &lt;name&gt;</code> and the
 gateway's <code>start_draft(theme=…)</code> write it into <code>report.json</code>. Any other name
 fails the build, naming the three. Themes are set at these two levels
-only, never per folder. In the reference project the SaaS reports
+only, never per project or folder. In the reference workspace the SaaS project's reports
 (<code>saas_model/mrr_dashboard</code>, <code>cohort_brief</code>) are Nightdesk and every other
 report is Ledger; it sets no brand.</p>
-<p><strong>A brand on top.</strong> The project's brand (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a> <code>brand:</code>) layers
+<p><strong>A brand on top.</strong> The workspace's brand (<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a> <code>brand:</code>) layers
 over whichever theme: its accent, palette, font and logo replace the
 theme's colours and face, and its logo and name are the firm mark in the
 masthead (the kicker stays the model's label); the theme keeps its surfaces, depth, density,
@@ -437,7 +438,7 @@ and a crisp print; canvas (<code>data-tb-renderer="canvas"</code>, <code>&lt;Cha
 renderer="canvas"&gt;</code>, or <code>report.json</code> <code>"charts": {"renderer": "canvas"}</code>) for
 thousands of marks, drawn as SVG while the page prints. A
 <code>tracebi.configureChart</code> patch or an <code>&lt;EChart option&gt;</code> may still style a chart.
-Never hard-code a colour in it: a series takes the palette, so the project's
+Never hard-code a colour in it: a series takes the palette, so the workspace's
 brand reaches it.</p>
   </main>
 </div>

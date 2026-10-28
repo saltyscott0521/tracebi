@@ -28,7 +28,7 @@ no account. The identity, vocabulary and refusals are in
 
 ## How it works — the three-phase workflow
 
-TraceBi takes data from messy to reportable in three project-root folders,
+TraceBi takes data from messy to reportable in three workspace-root folders,
 each with its own cadence, decoupled by **freeze points**: a materialized
 artifact handed from one phase to the next.
 
@@ -113,9 +113,9 @@ newer release exists and prints the command for your install
 
 ---
 
-## The reference project, in one command
+## The reference workspace, in one command
 
-`examples/portfolio_project/` is the working project every convention follows:
+`examples/portfolio_project/` is the reference workspace every convention follows:
 four models over one warehouse, each with its transform, contract, pipeline and
 reports, and one of each kind of source.
 
@@ -132,7 +132,7 @@ tracebi serve               # http://127.0.0.1:8000
 | SaaS Subscriptions | a billing SQLite that ships (`connections/billing.yaml`) | `saas_transform.sql` | `saas_model/`: MRR dashboard, cohort brief |
 | Housing Affordability | public data, `inputs/housing_history.csv` | `affordability_transform.py` (the pandas escape hatch, `with contract`) | `housing_model/`: affordability, with a reader's what-if |
 
-`docker compose up --build` serves the same project, with the CRM as a
+`docker compose up --build` serves the same workspace, with the CRM as a
 standing Postgres database (below). The public demo at tracebi.com is that
 stack.
 
@@ -140,15 +140,16 @@ stack.
 
 ## The app
 
-`tracebi serve` (or the Docker image) serves the web app over your project.
+`tracebi serve` (or the Docker image) serves the web app over your workspace.
 Four places in the sidebar:
 
 - **Reports** (`/`) — the library as a directory: a tile per folder (how many
   reports, when last built; no figures: a number appears only inside a
   report), then rows of covers (the newest
   builds, then each folder), every report with its verdict, when it was built
-  and its schedule, narrowed to a model by a chip. The sidebar is the folder
-  tree; each folder has a page (`/?folder=<path>`) with what it holds, its builds,
+  and its schedule, narrowed to a model by a chip. Its top-level folders are
+  projects, one area's reports each, named for the model they read; the
+  sidebar is that tree, and each project has a page (`/?folder=<path>`) with what it holds, its builds,
   its reports by kind and **Ask this model**; the library's head has **New
   report** (analysts) and **Refresh data** (admins). A report opens at
   `/reports/<name>` as delivered, under one command bar: **Open**, **Share**,
@@ -156,8 +157,8 @@ Four places in the sidebar:
   a draft** for an analyst, and **About this build** (the trace, lineage,
   history and files). On a wide window the trace sits beside the page: the
   figure you last clicked, in five steps from its source table to the re-run
-  that checked it. **⌘K** (Ctrl K) jumps to any folder, report, table or page.
-- **Ask** (`/ask`, from **Ask this model** on a folder's page or a model's) —
+  that checked it. **⌘K** (Ctrl K) jumps to any project, report, table or page.
+- **Ask** (`/ask`, from **Ask this model** on a project's page or a model's) —
   a question of one model as a sentence of its own tokens
   ("Show fair value by sector, largest first, top 8"), answered with a chart,
   table or number, each measure's definition and the query behind it. **Keep
@@ -224,8 +225,8 @@ The handbook: [your first report](docs/start/your-first-report.md),
 ## Models, transforms and sources
 
 ```bash
-tracebi init my_project                      # a complete three-phase project whose sample loop reads REPRODUCES
-cd my_project
+tracebi init my_workspace                    # a complete three-phase workspace whose sample loop reads REPRODUCES
+cd my_workspace
 tracebi run-pipeline sample_model            # the sample's transform, then its reports: what Refresh data runs
 tracebi connect crm --kind postgres          # → connections/crm.yaml, the secret as ${NAME} (--store secret: the encrypted store)
 tracebi new-transform "Holdings"             # → transforms/holdings.sql + holdings.contract.yaml (--python: pandas)
@@ -235,7 +236,7 @@ tracebi validate                             # every model loads; dimension keys
 tracebi new-pipeline "Holdings"              # → pipelines/holdings.yaml: the transform, then every report in reports/holdings/
 ```
 
-`tracebi.yaml` at the project root names the warehouse (a DuckDB file by
+`tracebi.yaml` at the workspace root names the warehouse (a DuckDB file by
 default; Parquet on object storage, or a remote engine) and the query engine's
 limits. The handbook: [transform](docs/concepts/transform.md),
 [SQL transforms](docs/reference/transform-sql.md),
@@ -249,12 +250,12 @@ limits. The handbook: [transform](docs/concepts/transform.md),
 
 A connection never holds a secret: a password, or a URL that carries one, is a
 `${NAME}`, resolved when the connection is used from the environment, then the
-project's `.env`, then the project's encrypted store
+workspace's `.env`, then the workspace's encrypted store
 (`.tracebi/secrets.yml.enc`), then a `${NAME:-default}` that must itself hold
 no credential.
 
 ```bash
-tracebi secret list                 # every ${NAME} the project references, and where each is set
+tracebi secret list                 # every ${NAME} the workspace references, and where each is set
 tracebi secret set TRACEBI_CRM_URL  # prompted, no echo; encrypted into the store
 tracebi secret edit                 # the decrypted YAML in $EDITOR, encrypted back
 tracebi secret unset TRACEBI_CRM_URL
@@ -269,12 +270,12 @@ connection there; a value never comes back to the browser. The key is
 
 ## Deploy
 
-**One server.** One VM, one container, one project folder: the app, the
-schedules and the email run in it. `deploy/compose.yml` mounts your project
+**One server.** One VM, one container, one workspace folder: the app, the
+schedules and the email run in it. `deploy/compose.yml` mounts your workspace
 (`TRACEBI_PROJECT_DIR`); SQLite is the default, `--profile postgres` adds
 Postgres. Step by step: [run TraceBi on one server](docs/guides/one-server.md).
 
-**Docker, the reference project.** The repository's `docker-compose.yml`
+**Docker, the reference workspace.** The repository's `docker-compose.yml`
 serves `examples/portfolio_project` and nothing beside it:
 
 ```bash
@@ -284,7 +285,7 @@ docker compose up --build           # http://localhost:8000
 | Service | Does |
 |---|---|
 | `db` | Postgres. On its first start it creates `crm`, a standing mock CRM loaded once from `inputs/seed_crm.sql`, and `tracebi_state`, the run store (`docker/postgres-init.sql`). Both persist on the `pgdata` volume; `docker compose down -v` starts over. |
-| `seed` | Runs the project's four pipelines once (each transform, then its reports) into the `warehouse` volume, then exits. It never writes the CRM. |
+| `seed` | Runs the workspace's four pipelines once (each transform, then its reports) into the `warehouse` volume, then exits. It never writes the CRM. |
 | `app` | The web app on `:8000`, over the warehouse `seed` wrote. |
 
 Re-run a model's pipeline with **Refresh data**, or
@@ -309,7 +310,7 @@ and [environment variables](docs/reference/environment-variables.md).
 
 An agent works against your semantic contract, not your warehouse.
 `tracebi mcp` serves the kernel over the
-[Model Context Protocol](https://modelcontextprotocol.io): 28 tools and three
+[Model Context Protocol](https://modelcontextprotocol.io): 29 tools and three
 prompts. The agent reads the vocabulary (`get_context`), queries the model
 (`query_model`: every answer is stamped with the resolved query, its lineage
 and a SHA-256 fingerprint of the full result), builds and verifies reports
@@ -321,7 +322,7 @@ call writes to the warehouse.
 
 ```bash
 pip install -e ".[mcp]"
-claude mcp add tracebi -- tracebi mcp          # a local agent, from the project folder (tracebi init writes .mcp.json)
+claude mcp add tracebi -- tracebi mcp          # a local agent, from the workspace folder (tracebi init writes .mcp.json)
 
 export TRACEBI_MCP_TOKEN=$(openssl rand -hex 32)
 tracebi mcp --transport http --host 0.0.0.0 --port 8765   # a remote agent; the token is required
@@ -389,7 +390,7 @@ python examples/phase4_example.py      # the full pipeline runner
 
 `tracebi/web/demo_app/` is the bundled example of wiring an app module in
 Python (medallion layers built in code, `registry.add_*`). It is opt-in
-(`TRACEBI_APP=tracebi.web.demo_app`) and never served beside a project; see
+(`TRACEBI_APP=tracebi.web.demo_app`) and never served beside a workspace; see
 [customizing the web app](docs/guides/web-customization.md).
 
 ---
@@ -407,7 +408,7 @@ Playwright's Chromium.
 
 ---
 
-## Project structure
+## Repository structure
 
 ```
 tracebi/                        ← the framework repo
@@ -421,7 +422,7 @@ tracebi/                        ← the framework repo
 │   ├── mcp_server.py           the agent gateway
 │   └── cli.py                  `tracebi …`
 ├── web/ui/                     the React UI source (Vite); `npm run build` writes tracebi/web/ui/dist
-├── examples/portfolio_project/ THE reference project: tracebi.yaml, inputs/, connections/,
+├── examples/portfolio_project/ THE reference workspace: tracebi.yaml, inputs/, connections/,
 │                               transforms/, models/, reports/, pipelines/, run_workflow.py
 ├── tests/                      the pytest suite; tests/e2e/ the journeys
 ├── docs/                       the handbook (an Obsidian vault): start, concepts, guides,
@@ -433,7 +434,7 @@ tracebi/                        ← the framework repo
 └── CHANGELOG.md
 ```
 
-`tracebi init` gives your own project the same shape as
+`tracebi init` gives your own workspace the same shape as
 `examples/portfolio_project/`.
 
 ---

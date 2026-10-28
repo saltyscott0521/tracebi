@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -76,22 +77,22 @@
   </details>
   <main class="doc">
 <h1 id="customize-the-web-app">Customize the web app</h1>
-<p>Point the web server at your own project, add resources in code when files
+<p>Point the web server at your own workspace, add resources in code when files
 are not enough, restyle or extend the React UI, and deploy it.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
-<li>A TraceBi project (<code>tracebi init</code>), or the reference project</li>
+<li>A TraceBi workspace (<code>tracebi init</code>), or the reference workspace</li>
 <li><code>pip install -e ".[all]"</code>, and Node.js 22 for UI work</li>
 </ul>
 <p>The server is a FastAPI app (<code>tracebi/web/api/main.py</code>). It serves a JSON API
 under <code>/api</code> and the built React app (<code>tracebi/web/ui/dist/</code>) at <code>/</code>. Every
 route reads connectors, models, reports and pipelines from one shared registry
 (<code>tracebi/registry.py</code>), which is filled at startup:</p>
-<pre><code>your project folders ──discovery──▶ registry ◀──reads── API routes ◀── React UI
+<pre><code>your workspace folders ──discovery──▶ registry ◀──reads── API routes ◀── React UI
 your app module      ──registers──▶ (shared)            (request time)
 </code></pre>
 <h2 id="1-add-resources-as-files">1. Add resources as files</h2>
-<p>The server finds these folders at the project root, and picks up changes
+<p>The server finds these folders at the workspace root, and picks up changes
 while it runs:</p>
 <table>
 <thead>
@@ -150,7 +151,7 @@ runner = get_runner(&quot;sales_etl&quot;)
 still imported at startup, but a report with no package is refused (HTTP 422
 naming the fix). The package is the only renderer.</p>
 <h2 id="2-add-resources-in-code-optional">2. Add resources in code (optional)</h2>
-<p>Most projects need no code. Use an app module for wiring the files cannot
+<p>Most workspaces need no code. Use an app module for wiring the files cannot
 express, such as a connector type of your own or medallion layers built in
 Python. The bundled demo app (<code>tracebi/web/demo_app/</code>) is the example:</p>
 <pre><code>myapp/

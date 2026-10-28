@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -80,7 +81,7 @@
 transform that writes the warehouse.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
-<li>A TraceBi project (<code>tracebi init</code>)</li>
+<li>A TraceBi workspace (<code>tracebi init</code>)</li>
 <li>The data dependencies and IPython for previews:</li>
 </ul>
 <p><code>bash
@@ -108,7 +109,7 @@ model.describe()                 # the model as text
 </code></pre>
 <h2 id="3-show-your-work-in-the-app-optional">3. Show your work in the app (optional)</h2>
 <p>In a terminal:</p>
-<pre><code class="language-bash">tracebi dev            # the app's Data page, with the project feed
+<pre><code class="language-bash">tracebi dev            # the app's Data page, with the workspace feed
 </code></pre>
 <p>Then, from any cell:</p>
 <pre><code class="language-python">import tracebi.workbench as workbench

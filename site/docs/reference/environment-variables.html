@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a class="on" href="../reference/environment-variables.html">Environment variables</a>
@@ -85,7 +86,7 @@ TRACEBI_SMTP_URL=smtp://user:password@host:587
 <code>analyst</code> and <code>all</code> extras; a transform script calls <code>load_dotenv()</code> itself.
 The exception is a <code>${NAME}</code> in a connection file or the warehouse block,
 which is looked up in <code>.env</code> when the connection is used (<a href="../reference/credentials.html">Credentials</a>).</p>
-<h2 id="project-layout">Project layout</h2>
+<h2 id="workspace-layout">Workspace layout</h2>
 <table>
 <thead>
 <tr>
@@ -163,7 +164,7 @@ which is looked up in <code>.env</code> when the connection is used (<a href="..
 <tbody>
 <tr>
 <td><code>TRACEBI_APP</code></td>
-<td>App module to import at startup. Default: none. <code>tracebi serve</code> sets it empty so the bundled demo never loads into your project; set it yourself to opt in.</td>
+<td>App module to import at startup. Default: none. <code>tracebi serve</code> sets it empty so the bundled demo never loads into your workspace; set it yourself to opt in.</td>
 </tr>
 <tr>
 <td><code>TRACEBI_DEV_MODE</code></td>

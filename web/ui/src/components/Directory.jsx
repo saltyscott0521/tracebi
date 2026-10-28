@@ -4,13 +4,14 @@ import { Link } from 'react-router-dom'
 import { ReportCover } from './Cover'
 import { Verdict, Time } from './Shared'
 import { reportPagePath } from '../nav'
-import { KIND_TAG, folderPath, hueStyle, kindOf, newestBuild, reportLabel } from '../folders'
+import { KIND_TAG, folderPath, folderWord, hueStyle, kindOf, newestBuild, reportLabel } from '../folders'
 import { scheduleWords } from '../schedule'
 import { count, plural } from '../format'
 import { stamp } from '../when'
 
 // The parts of the library as a directory (/ and /?folder=<path>): a report's
-// cover tile, a sideways row of them, a folder's tile and the health pills.
+// cover tile, a sideways row of them, a project's (or folder's) tile and the
+// health pills.
 // They draw no figure: a number appears only inside a report. The counts here
 // are of reports, and the times are of builds.
 
@@ -28,7 +29,7 @@ function CalendarIcon() {
  * never a blank), then its name, what it is, its verdict, when it was built
  * and when it is built again. The whole tile is the link. *wide* is the lead
  * tile of a row; *tag* a word on the picture (what kind of report it is);
- * *hue* its folder's (folders.js folderHue).
+ * *hue* its project's or folder's (folders.js folderHue).
  */
 export function CoverTile({ report, verdict, built, wide, tag, hue }) {
   const words = scheduleWords(report.schedule)
@@ -53,7 +54,7 @@ export function CoverTile({ report, verdict, built, wide, tag, hue }) {
   )
 }
 
-/** The covers of a folder's newest builds, fanned (a tile) or stacked (a hero). Pictures only. */
+/** The covers of a project's newest builds, fanned (a tile) or stacked (a hero). Pictures only. */
 export function CoverFan({ reports, builds, className = 'cfan' }) {
   const newest = [...reports]
     .sort((a, b) => (builds[b.name]?.built_at || '').localeCompare(builds[a.name]?.built_at || ''))
@@ -101,11 +102,11 @@ function Arrow({ dir, onClick, label }) {
 
 /**
  * A row of covers that scrolls sideways (snapping a tile at a time): its
- * title with the folder's hue, a line of what it holds, "Open folder" when it
- * is one, and two arrows. *children* are the tiles; *empty* is what a row
- * with none says (how it fills).
+ * title with its project's hue, a line of what it holds, "Open project" (or
+ * "Open folder", *word*) when it is one, and two arrows. *children* are the
+ * tiles; *empty* is what a row with none says (how it fills).
  */
-export function CoverRow({ title, hue, meta, open, row, empty, children }) {
+export function CoverRow({ title, hue, meta, open, word = 'folder', row, empty, children }) {
   const track = useRef(null)
   const more = useOverflow(track)
   const move = dir => track.current?.scrollBy({ left: dir * track.current.clientWidth * 0.8, behavior: 'smooth' })
@@ -114,7 +115,7 @@ export function CoverRow({ title, hue, meta, open, row, empty, children }) {
       <div className="crow__head">
         <h2 className="crow__title"><i aria-hidden="true" />{title}</h2>
         {meta && <span className="crow__meta">{meta}</span>}
-        {open && <Link to={open} className="crow__open">Open folder <span aria-hidden="true">→</span></Link>}
+        {open && <Link to={open} className="crow__open">Open {word} <span aria-hidden="true">→</span></Link>}
         {more && (
           <span className="crow__arrows">
             <Arrow dir={-1} onClick={() => move(-1)} label={`Scroll ${title} left`} />
@@ -129,12 +130,17 @@ export function CoverRow({ title, hue, meta, open, row, empty, children }) {
   )
 }
 
-/** A folder on the directory: its hue, a fan of its newest covers, its name, how many reports, when it was last built. */
+/**
+ * A project on the directory (or a folder, or My published): its hue, a fan of
+ * its newest covers, what it is (Project or Folder), its name, how many
+ * reports, when it was last built.
+ */
 export function FolderTile({ folder, builds }) {
   const newest = newestBuild(folder.items, builds)
   return (
     <Link to={folderPath(folder.path)} className="ftile" style={hueStyle(folder.hue)} data-folder={folder.path}>
       <CoverFan reports={folder.items} builds={builds} />
+      <span className="ftile__kind">{folderWord(folder)}</span>
       <span className="ftile__name">{folder.label}</span>
       <span className="ftile__meta">
         <span><b>{folder.items.length}</b> {plural(folder.items.length, 'report')}</span>

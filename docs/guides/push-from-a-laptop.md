@@ -6,7 +6,7 @@ admin, who reads the diff and approves it before it runs.
 
 ## Before you begin
 
-- A local TraceBi project (you may work in it with an agent such as Claude
+- A local TraceBi workspace (you may work in it with an agent such as Claude
   Code)
 - A server with sign-in turned on, and `tracebi login` done ([[sign-in]])
 - The `analyst` role or higher
@@ -44,7 +44,7 @@ transform reads.
    id.
 
 Paths are files, package folders, or folders of them, inside the current
-project. Nothing is sent if a path is refused or a code request has no note.
+workspace. Nothing is sent if a path is refused or a code request has no note.
 If a draft already held a file you did not push, the command says so; delete
 the file in the app if it should go.
 
@@ -73,7 +73,7 @@ or `/reject` (`{note}`). Each request is stored under
 
 When changes reach the library by pull request, review them there instead.
 
-1. Make the project, or a library folder, a git checkout on the server.
+1. Make the workspace, or a library folder, a git checkout on the server.
 2. Set `TRACEBI_LIBRARY_SYNC_SECRET`.
 3. Point the repository's push webhook at `POST /api/library/sync`. On GitHub,
    use content type `application/json` and the secret as the webhook secret

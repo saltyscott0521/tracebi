@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -245,11 +246,11 @@ Errors start with their path, e.g. <code>measures[2].agg</code>.</p>
 <tbody>
 <tr>
 <td><code>type: warehouse</code></td>
-<td>The project's warehouse, wherever <code>tracebi.yaml</code> puts it (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>): a DuckDB file (default <code>data/warehouse.duckdb</code>), Parquet on object storage, or a remote engine.</td>
+<td>The workspace's warehouse, wherever <code>tracebi.yaml</code> puts it (<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>): a DuckDB file (default <code>data/warehouse.duckdb</code>), Parquet on object storage, or a remote engine.</td>
 </tr>
 <tr>
 <td><code>type: duckdb</code>, <code>database: data/warehouse.duckdb</code></td>
-<td>A DuckDB file inside the project. An absolute path or <code>..</code> is refused.</td>
+<td>A DuckDB file inside the workspace. An absolute path or <code>..</code> is refused.</td>
 </tr>
 <tr>
 <td><code>{name: crm, connection: crm}</code></td>
@@ -296,7 +297,7 @@ tracebi migrate model models/sales.py --write    # write models/sales.yaml besid
 </code></pre>
 <p>The YAML is built from the loaded model, compiled again and compared with the
 original. A model YAML cannot express is refused with the reason: a connector
-that is not a DuckDB file inside the project, a name that differs from the
+that is not a DuckDB file inside the workspace, a name that differs from the
 file name, or a measure that needed <code>allow_additive</code>. Comments are not
 carried over. Nothing is renamed or deleted: the <code>.py</code> wins until you delete
 it, and a query through the YAML fingerprints the same.</p>

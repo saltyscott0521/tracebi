@@ -5,13 +5,13 @@ person has connected a database and nothing has been built from it yet: no
 transform, no model. Follow the steps in order.
 
 Read `AGENTS.md` first. It is the brief every agent reads before working in a
-TraceBi project. This SOP ends where [[sop-authoring]] begins.
+TraceBi workspace. This SOP ends where [[sop-authoring]] begins.
 
 ## Before you begin
 
 - **A person sets up the connection, not you.** They add it in the app
   (Data › Sources) or with `tracebi connect`, and its credential goes to the
-  project's encrypted store. You never see a password or a URL that carries
+  workspace's encrypted store. You never see a password or a URL that carries
   one.
 - **A person decides what you may read.** On the connection they tick the
   tables agents may read: `agents: {tables: [orders, customers]}` in
@@ -25,15 +25,15 @@ TraceBi project. This SOP ends where [[sop-authoring]] begins.
   the sink satisfied its contract when it ran. Stamped queries and `verify`
   cover the model onward; they say nothing about the transform's logic.
 
-## 1. See the project, then find the connection
+## 1. See the workspace, then find the connection
 
-Your first call on a project you have not seen:
+Your first call on a workspace you have not seen:
 
 ```json
 { "tool": "describe_project", "arguments": {} }
 ```
 
-It returns the project as one graph, the same one the app's Data › Lineage
+It returns the workspace as one graph, the same one the app's Data › Lineage
 map draws: every source (connections, the files under `inputs/`, a connection's
 tables), transform, warehouse table, model and report, with `edges` saying
 what feeds what. Each node's `passport.agents` says whether you may read it

@@ -284,7 +284,7 @@ def _read_fallback(ref: str, fallback: str, root: str) -> "pd.DataFrame":
 
     if not fallback.endswith(".csv") or _escapes(fallback):
         raise TransformError(f"source {ref}: fallback {fallback!r} must be a .csv "
-                             f"path inside the project (no absolute path, no '..')")
+                             f"path inside the workspace (no absolute path, no '..')")
     path = Path(root) / fallback
     if not path.is_file():
         raise TransformError(f"source {ref}: fallback {fallback} does not exist")

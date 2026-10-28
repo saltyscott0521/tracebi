@@ -1,6 +1,6 @@
 # portfolio_project
 
-The reference TraceBi project — the three-phase workflow run on a synthetic
+The reference TraceBi workspace — the three-phase workflow run on a synthetic
 fund Schedule-of-Investments export, from messy raw pull to a verified,
 served report. This directory has exactly the shape `tracebi init` scaffolds;
 it is the worked version of that scaffold with real cleaning to do.
@@ -121,7 +121,7 @@ now).
 
 ## Databases that ship
 
-Two models read a database that is committed with the project, so they build
+Two models read a database that is committed with the workspace, so they build
 anywhere with nothing to set up. `connections/bank.yaml` (the core-banking
 system behind Wealth Management) and `connections/billing.yaml` (the billing
 system behind SaaS Subscriptions) each give their URL a default:
@@ -131,7 +131,7 @@ url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}
 ```
 
 With the variable set nowhere, the connection is the SQLite file in
-`inputs/`, a relative path resolved against the project root. A deployment
+`inputs/`, a relative path resolved against the workspace root. A deployment
 that keeps the bank in another database sets `TRACEBI_BANK_URL` and nothing
 else changes. The files are small and generated: `python inputs/seed_bank.py`
 writes the bank's six tables (branches, clients, products, accounts,
@@ -146,11 +146,13 @@ the tables with `-- source: bank.<table>` and `-- source: billing.<table>`
 lines, and each certificate records every load (`connection`, `rows`,
 `fingerprint`), as it does the CRM's.
 
-Reports are organised **by model**: the folder is the model's name, so a model,
-the reports that read it and its pipeline sit together. A report in a folder is
-named by its path: `tracebi report build portfolio_model/portfolio_book`.
-`tracebi run-pipeline portfolio_model` rebuilds that model's warehouse, then
-every report in its folder.
+Reports are organised **by model**: each top-level folder is a project, named
+for the model it reads, so a model, the reports that read it and its pipeline
+sit together. The workspace holds four projects (`portfolio_model`,
+`saas_model`, `housing_model`, `wealth_model`); the models stay shared at the
+workspace. A report in a project is named by its path: `tracebi report build
+portfolio_model/portfolio_book`. `tracebi run-pipeline portfolio_model`
+rebuilds that model's warehouse, then every report in its project.
 
 Under `reports/portfolio_model/`:
 
@@ -180,7 +182,7 @@ Under `reports/housing_model/`:
   home took of ten years of income, for every buyer since 1979 (mortgage rate
   from Freddie Mac, existing-home price from NAR through HUD and FHFA, income
   from the Census, one earner's pay from BLS). `inputs/housing_history.csv` is
-  sunk by `transforms/affordability_transform.py` into the project's one
+  sunk by `transforms/affordability_transform.py` into the workspace's one
   warehouse and modelled by `models/housing_model.yaml`. Today's buyer
   is a labelled **scenario** (`data-tb-scenario`) whose assumptions the reader
   sets; it is computed in the browser and never part of the trace.

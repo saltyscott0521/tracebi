@@ -30,6 +30,7 @@
 <a href="../start/your-first-report.html">Your first report</a>
 <a href="../start/demo-script.html">A ten-minute demo</a>
 <div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
 <a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
 <a href="../concepts/transform.html">Transforms</a>
 <a href="../concepts/sink-contracts.html">Sink contracts</a>
@@ -52,7 +53,7 @@
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
 <a href="../reference/cli.html">CLI reference</a>
-<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
 <a href="../reference/connections-yaml.html">Connection files (YAML)</a>
 <a href="../reference/credentials.html">Credentials</a>
 <a href="../reference/environment-variables.html">Environment variables</a>
@@ -79,7 +80,7 @@
 <p>The procedure an AI analyst agent follows to produce a report over TraceBi's
 MCP gateway (<code>tracebi mcp</code>). Follow the steps in order.</p>
 <p>Read <code>AGENTS.md</code> first. It is the brief every agent reads before working in a
-TraceBi project (<code>tracebi init</code> writes one into each). This SOP is one job
+TraceBi workspace (<code>tracebi init</code> writes one into each). This SOP is one job
 from it.</p>
 <h2 id="before-you-begin">Before you begin</h2>
 <ul>
@@ -100,7 +101,7 @@ from it.</p>
   sunk or modelled, start with step 0 below, then come back to step 1.</li>
 </ul>
 <h3 id="the-tools">The tools</h3>
-<p>The gateway has twenty-eight tools and three prompts (<code>author_report</code>,
+<p>The gateway has twenty-nine tools and three prompts (<code>author_report</code>,
 <code>answer_question</code>, <code>address_pins</code>) that run this procedure for you. The MCP
 <code>tools/list</code> call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with <code>build_report</code>. Over a
@@ -120,7 +121,7 @@ hosted connection, the draft tools are how a package reaches the server
 </tr>
 <tr>
 <td><code>list_models</code></td>
-<td>The project's models, with facts, dimensions and measures</td>
+<td>The workspace's models, with facts, dimensions and measures</td>
 </tr>
 <tr>
 <td><code>describe_model</code></td>
@@ -152,7 +153,7 @@ hosted connection, the draft tools are how a package reaches the server
 </tr>
 <tr>
 <td><code>list_reports</code></td>
-<td>Reports the project already has</td>
+<td>Reports the workspace already has</td>
 </tr>
 <tr>
 <td><code>workbench_state</code></td>
@@ -187,12 +188,12 @@ hosted connection, the draft tools are how a package reaches the server
 <td>Requests into folders where you hold Publish; approve or reject one</td>
 </tr>
 <tr>
-<td><code>describe_project</code></td>
-<td>The project as a graph: every source, transform, table, model and report, what feeds what, and what you may read</td>
+<td><code>describe_project</code> (or <code>describe_workspace</code>, the same tool)</td>
+<td>The workspace as a graph: every source, transform, table, model and report, what feeds what, and what you may read</td>
 </tr>
 <tr>
 <td><code>list_connections</code></td>
-<td>The project's connections, each with the tables a person allowed agents to read</td>
+<td>The workspace's connections, each with the tables a person allowed agents to read</td>
 </tr>
 <tr>
 <td><code>list_source_tables</code></td>
@@ -357,16 +358,16 @@ measures, and dimension attributes as <code>dim_name.attribute</code>:</p>
 <h2 id="3-write-the-spec">3. Write the spec</h2>
 <h3 id="first-the-house-theme">First, the house theme</h3>
 <p>Offer the house theme once, for a new report or dashboard only: when the
-project sets no brand.theme and the person has not named a theme, offer the
+workspace sets no brand.theme and the person has not named a theme, offer the
 three in one short line each (Ledger: calm, institutional, the default;
 Nightdesk: dark, dense, monospaced numbers, for a desk or ops screen; Signal:
 bold, big numbers, for a board pack or a wall screen), recommend one for what
 the report is for, and use Ledger if the person does not choose. If the
-project sets a theme, use it and say so in one line instead of asking. Never
+workspace sets a theme, use it and say so in one line instead of asking. Never
 ask again for an existing report. The person's choice goes in the package's
 <code>report.json</code> <code>"theme"</code> (<code>start_draft(kind="reports", path=…,
 theme="nightdesk")</code> starts the draft with it; keep that key when you write
-<code>report.json</code>). Pick a theme or use the project's brand; never hard-code a
+<code>report.json</code>). Pick a theme or use the workspace's brand; never hard-code a
 colour (<a href="../reference/chart-style.html">House themes and chart style</a>).</p>
 <h3 id="the-spec">The spec</h3>
 <p>A spec is JSON: <code>name</code> (required), plus optional <code>sections</code>, <code>author</code>,

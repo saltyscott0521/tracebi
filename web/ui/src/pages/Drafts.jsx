@@ -430,11 +430,11 @@ export function DraftPage() {
               {chosen && (
                 <p role="status" style={{ fontSize: 'var(--text-sm)', color: 'var(--muted)', margin: '6px 0 0' }}>
                   {modeSentence[chosen.mode]} It will be {chosen.destination}.
-                  {chosen.accepts === 'checkable' && ' This folder accepts only reports whose every number a query can re-run.'}
+                  {chosen.accepts === 'checkable' && ' It accepts only reports whose every number a query can re-run.'}
                 </p>
               )}
               {!usable.length && (
-                <Alert variant="warn">You do not hold Build permission on any folder this report can go to.</Alert>
+                <Alert variant="warn">You do not hold Build permission on any project or folder this report can go to.</Alert>
               )}
             </div>
           )}

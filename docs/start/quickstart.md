@@ -1,6 +1,6 @@
 # Get started
 
-In five minutes you will install TraceBi, create a project, build a report and
+In five minutes you will install TraceBi, create a workspace, build a report and
 open it in the app.
 
 ## Before you begin
@@ -24,17 +24,17 @@ The last line builds the web app. A release wheel and the Docker image ship it
 already built. `pip install "tracebi[analyst] @ git+https://github.com/saltyscott0521/tracebi"`
 installs without cloning, but has no web app.
 
-## 2. Create a project
+## 2. Create a workspace
 
 ```bash
-tracebi init my_project && cd my_project
+tracebi init my_workspace && cd my_workspace
 git init && git add . && git commit -m "init"
 ```
 
 Commit now. Each build records the commit it was made from. A build in a
 repository with no commits records `unknown` and warns.
 
-The project has one folder per stage:
+The workspace has one folder per stage:
 
 ```
 tracebi.yaml  settings: where the warehouse is, and the query engine's limits
@@ -42,7 +42,7 @@ inputs/       raw files
 connections/  the databases a transform reads, one YAML file each
 transforms/   the code that cleans the inputs and writes warehouse tables
 models/       the model: tables, joins and measures
-reports/      report packages, one folder per model
+reports/      report packages, one project (a folder) per model
 pipelines/    one per model: run its transform, then build its reports
 data/         the warehouse (created on the first run)
 output/       built reports and their traces (created on the first build)

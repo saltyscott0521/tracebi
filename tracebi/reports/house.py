@@ -1,12 +1,12 @@
 """The house themes: a report's whole look, chosen by name.
 
 ``report.json`` ``"theme": "ledger" | "nightdesk" | "signal"``, else the
-project's ``tracebi.yaml`` ``brand: {theme: …}``, else Ledger. A house theme
+workspace's ``tracebi.yaml`` ``brand: {theme: …}``, else Ledger. A house theme
 is tokens (ground, card surface and border, the card's shadow stack, radius,
 type sizes and weights, the numeral face, the chart tokens, the lead KPI's
 tile, an accent and an eight-colour palette, each for the light ground and the
 dark one) plus a few rules, stacked right after ``tracebi.css`` and before the
-project's brand, so a brand's accent, palette, font and logo win over the
+workspace's brand, so a brand's accent, palette, font and logo win over the
 theme's colours while the theme keeps its surfaces, depth, density, radius
 and numerals.
 
@@ -33,12 +33,12 @@ DEFAULT = "ledger"
 #: and both agent guides (tests/test_agent_guides.py holds it there).
 OFFER = (
     "Offer the house theme once, for a new report or dashboard only: when the "
-    "project sets no brand.theme and the person has not named a theme, offer "
+    "workspace sets no brand.theme and the person has not named a theme, offer "
     "the three in one short line each (Ledger: calm, institutional, the "
     "default; Nightdesk: dark, dense, monospaced numbers, for a desk or ops "
     "screen; Signal: bold, big numbers, for a board pack or a wall screen), "
     "recommend one for what the report is for, and use Ledger if the person "
-    "does not choose. If the project sets a theme, use it and say so in one "
+    "does not choose. If the workspace sets a theme, use it and say so in one "
     "line instead of asking. Never ask again for an existing report."
 )
 
