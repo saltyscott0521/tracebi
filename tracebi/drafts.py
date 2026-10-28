@@ -265,9 +265,19 @@ def model_draft_status(path: str) -> "tuple[bool, Optional[str]]":
 
 
 def start_draft(owner: str, kind: str, path: str,
-                from_published: bool = False) -> dict:
-    """Create the draft, empty or as a copy of the published one."""
+                from_published: bool = False, theme: Optional[str] = None) -> dict:
+    """Create the draft, empty or as a copy of the published one. A new
+    report draft may start with its house *theme* (ledger, nightdesk,
+    signal): its report.json begins as ``{"theme": …}``."""
     kind = _kind(kind)
+    if theme is not None:
+        from tracebi.reports import house
+        if kind != "reports" or from_published:
+            raise DraftError("theme is for a new report draft: an existing report keeps "
+                             "its own report.json \"theme\"")
+        if theme not in house.THEMES:
+            raise DraftError(f"unknown theme {theme!r}; the house themes are "
+                             f"{', '.join(house.THEMES)}")
     where = draft_dir(owner, kind, path)
     if where.exists():
         raise DraftError(f"draft {kind}/{path} already exists: read_draft it, "
@@ -298,6 +308,8 @@ def start_draft(owner: str, kind: str, path: str,
         files = {where.name: _text(_read_text(source))}
     elif kind == "models":
         files = {where.name: f"name: {path}\n"}
+    elif theme is not None:
+        files = {"report.json": json.dumps({"theme": theme}, indent=2) + "\n"}
     if kind == "reports":
         where.mkdir(parents=True)
         for name, content in files.items():

@@ -11,13 +11,18 @@ What a brand sets, and nothing else:
 - ``accent``: ``--tb-accent``, and from it, for contrast on each ground,
   ``--tb-accent-text`` (small text on the card and the accent wash),
   ``--tb-on-accent`` (text on an accent fill), ``--tb-surface-accent``, and
-  the dark ground's pair ``--tb-dark-accent`` / ``--tb-dark-accent-text``.
+  the dark ground's pair ``--tb-dark-accent`` / ``--tb-dark-accent-text``,
+  and the accent as a tile that carries text on either ground
+  (``--tb-accent-fill`` / ``--tb-on-accent-fill``: Signal's lead KPI).
 - ``palette``: ``--tb-chart-1..8`` (cycled to eight), and on the dark ground
   each colour lifted just enough to read there.
 - ``font``: an inlined ``@font-face`` that ``--tb-font`` (and so the charts,
   ``--tb-chart-font``) names first, Geist after it.
 - ``logo``: ``--tb-brand-logo``, which the masthead's ``.tb-masthead-mark``
   draws.
+
+A brand layers over the page's house theme (``tracebi/reports/house.py``):
+the dark ground's colours are lifted against that theme's own dark card.
 
 Presentation only: a brand changes how a page looks, never a number.
 Reference: ``docs/reference/tracebi-yaml.md`` (``brand``).
@@ -104,26 +109,34 @@ def check_accent(accent: str, where: str) -> None:
             f"{ACCENT_MIN:.0f}:1. Use a deeper shade of it, such as {fix}.")
 
 
-def accent_tokens(accent: str) -> dict[str, str]:
+def accent_tokens(accent: str, dark_card: str = DARK_CARD) -> dict[str, str]:
     """The accent and what each ground needs from it."""
     accent = _hex(_rgb(accent))
     wash = mix(accent, "#ffffff", 0.92)
     text = toward(accent, "#000000", wash, _TEXT_MIN)
-    dark = toward(accent, "#ffffff", DARK_CARD, _DARK_ACCENT_MIN)
-    dark_text = toward(dark, "#ffffff", DARK_CARD, _DARK_TEXT_MIN)
+    dark = toward(accent, "#ffffff", dark_card, _DARK_ACCENT_MIN)
+    dark_text = toward(dark, "#ffffff", dark_card, _DARK_TEXT_MIN)
     on = "#ffffff" if contrast("#ffffff", accent) >= _TEXT_MIN else _INK
     return {"--tb-accent": accent, "--tb-accent-text": text, "--tb-on-accent": on,
             "--tb-surface-accent": wash, "--tb-dark-accent": dark,
-            "--tb-dark-accent-text": dark_text}
+            "--tb-dark-accent-text": dark_text, **fill_tokens(accent)}
 
 
-def palette_tokens(palette: list[str]) -> tuple[dict[str, str], dict[str, str]]:
+def fill_tokens(accent: str) -> dict[str, str]:
+    """The accent as a tile that carries text, the same on both grounds."""
+    accent = _hex(_rgb(accent))
+    on = "#ffffff" if contrast("#ffffff", accent) >= _TEXT_MIN else _INK
+    return {"--tb-accent-fill": accent, "--tb-on-accent-fill": on}
+
+
+def palette_tokens(palette: list[str],
+                   dark_card: str = DARK_CARD) -> tuple[dict[str, str], dict[str, str]]:
     """``--tb-chart-1..8`` for the light ground and the dark one: the brand's
     colours in its order, cycled to eight; on the dark card each is lifted
     only as far as it takes to read there."""
     light = [_hex(_rgb(c)) for c in palette]
     light = [light[i % len(light)] for i in range(8)]
-    dark = [toward(c, "#ffffff", DARK_CARD, _DARK_CHART_MIN) for c in light]
+    dark = [toward(c, "#ffffff", dark_card, _DARK_CHART_MIN) for c in light]
     name = "--tb-chart-{}".format
     return ({name(i + 1): c for i, c in enumerate(light)},
             {name(i + 1): c for i, c in enumerate(dark)})
@@ -145,10 +158,13 @@ def _block(selector: str, tokens: dict[str, str]) -> str:
     return f"{selector} {{\n{body}}}\n"
 
 
-def brand_css(brand: dict) -> str:
-    """The brand as CSS: tokens on ``:root``, the palette again for the dark
-    ground (the dark blocks of tracebi.css name their own), the font face,
-    and the masthead mark. ``""`` for no brand."""
+def brand_css(brand: dict, dark_card: str = DARK_CARD) -> str:
+    """The brand as CSS: tokens on ``:root``, the palette and the accent
+    tile again for the dark ground (the dark blocks of tracebi.css and of a
+    house theme name their own), the font face, and the masthead mark, its
+    dark-ground colours lifted against *dark_card* (the house theme's).
+    ``""`` for no brand."""
+    brand = {k: v for k, v in brand.items() if k != "theme"}
     if not brand:
         return ""
     out = ["/* the project's brand (tracebi.yaml brand:) */\n"]
@@ -161,12 +177,14 @@ def brand_css(brand: dict) -> str:
             f'format("{_FONT_FORMAT[ext]}")}}\n')
         root["--tb-font"] = (f'"{BRAND_FAMILY}", "Geist", system-ui, -apple-system, '
                              f'"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif')
-    if brand.get("accent"):
-        root.update(accent_tokens(brand["accent"]))
     dark: dict[str, str] = {}
+    if brand.get("accent"):
+        root.update(accent_tokens(brand["accent"], dark_card))
+        dark.update(fill_tokens(brand["accent"]))
     if brand.get("palette"):
-        light, dark = palette_tokens(brand["palette"])
+        light, dark_palette = palette_tokens(brand["palette"], dark_card)
         root.update(light)
+        dark.update(dark_palette)
     if brand.get("logo"):
         mime = _IMAGE_TYPE[os.path.splitext(brand["logo"])[1].lower()]
         root["--tb-brand-logo"] = f'url("{_data_uri(brand["logo"], mime)}")'

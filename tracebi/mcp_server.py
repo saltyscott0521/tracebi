@@ -1573,11 +1573,11 @@ def gateway_list_drafts() -> DraftResult:
 
 
 def gateway_start_draft(kind: str, path: str,
-                        from_published: bool = False) -> DraftResult:
+                        from_published: bool = False, theme: str = "") -> DraftResult:
     from tracebi import drafts
     owner = _draft_owner()
     return _draft_call(lambda: {
-        **drafts.start_draft(owner, kind, path, from_published),
+        **drafts.start_draft(owner, kind, path, from_published, theme or None),
         "url": drafts.draft_url(owner, kind, path)})
 
 
@@ -2298,8 +2298,10 @@ def build_server(token: Optional[str] = None, oauth=None):
             "YAML). path is a report path like finance/weekly, or a "
             "model name [a-z0-9_]+. from_published=true copies the published "
             "one; a published report with a report.py cannot be "
-            "drafted remotely. Returns the draft's url: give it to the person "
-            "once. Writes only under drafts/."
+            "drafted remotely. theme (a new report only): ledger, nightdesk or "
+            "signal, the house theme; its report.json starts as {\"theme\": …}, "
+            "so keep that key when you write report.json. Returns the draft's "
+            "url: give it to the person once. Writes only under drafts/."
         ),
     )(gateway_start_draft)
     _tool(
@@ -2536,6 +2538,7 @@ def build_server(token: Optional[str] = None, oauth=None):
                      "propose a transform."),
     )
     def _author_report_prompt(question: str) -> str:
+        from tracebi.reports.house import OFFER
         return (
             f"Author a governed TraceBi report that answers: {question}\n\n"
             "Pick the page structure that fits the question instead of "
@@ -2576,8 +2579,11 @@ def build_server(token: Optional[str] = None, oauth=None):
             "data-tb-density and data-tb-width on <html>, data-tb-nav=\"side\" "
             "on .tb-tabs, and the .tb-title header with data-tb-title and "
             "data-tb-built — or, for an app, report.json \"look\" plus the "
-            "app's own navigation and title. A shipped theme is report.json "
-            "\"theme\". If get_context returns a house_style, it is the "
+            "app's own navigation and title. The house theme is report.json "
+            "\"theme\": ledger, nightdesk or signal (start_draft theme=, "
+            "new-report --theme). " + OFFER + " Pick a theme or use the "
+            "project's brand; never hard-code a colour. "
+            "If get_context returns a house_style, it is the "
             "team's rules: follow them over these defaults. Read the lessons "
             "design-dashboard-feel and, for an app, design-app-dashboards.\n\n"
             "If no model answers the question yet, start from the data, "

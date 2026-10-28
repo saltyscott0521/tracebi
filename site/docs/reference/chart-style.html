@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Chart style — TraceBi docs</title>
+<title>House themes and chart style — TraceBi docs</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Chart style">
+<meta name="description" content="House themes and chart style">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -66,7 +66,7 @@
 <a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
-<a class="on" href="../reference/chart-style.html">Chart style</a>
+<a class="on" href="../reference/chart-style.html">House themes and chart style</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
@@ -75,14 +75,200 @@
 <a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
   </details>
   <main class="doc">
-<h1 id="chart-style">Chart style</h1>
-<p>Every chart a report draws, in the house look: the kit's <code>&lt;EChart&gt;</code> (Apache
-ECharts) and the runtime's D3 charts (a template's <code>data-tb-figure="chart"</code>,
-the kit's <code>&lt;Chart&gt;</code>) draw from the same tokens, so a dashboard that mixes them
-reads as one designed thing. Nothing below needs a setting. A theme
-(<a href="../reference/report-json.html">report.json</a> <code>"theme"</code>, <code>reports/_theme.css</code>) or the project's brand
-(<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a> <code>brand:</code>) changes the tokens, and every chart follows.</p>
-<h2 id="the-look">The look</h2>
+<h1 id="house-themes-and-chart-style">House themes and chart style</h1>
+<p>Every report and dashboard takes one of three house themes. A house theme is a
+whole look: the ground, the cards and their depth, the radius, the type sizes
+and weights, the numerals' face, the spacing, the chart tokens, the lead KPI's
+tile, an accent and an eight-colour palette, each for the light ground and the
+dark one. Template pages and <code>app.jsx</code> pages take it alike, and so do the
+kit's <code>&lt;EChart&gt;</code> and the runtime's D3 charts, because both read only the
+tokens. A theme changes how a page looks, never a number.</p>
+<h2 id="the-three">The three</h2>
+<table>
+<thead>
+<tr>
+<th>Theme</th>
+<th>What it is</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ledger</code> (the default)</td>
+<td>Calm, institutional. A paper ground, white cards that sit on three soft layers of shadow (a faint top highlight on the dark ground), the KPI strip as one panel, one ink-blue accent, flat marks and hairline grids.</td>
+<td>A report to read, a monthly pack, anything that should look well kept.</td>
+</tr>
+<tr>
+<td><code>nightdesk</code></td>
+<td>Dark first and dense. Opens dark (unless the report or the brand names a mode), compact spacing, numerals in Geist Mono, small radii, dotted grids, the KPIs as separate outlined tiles, the lead's number in the accent, lines that glow faintly.</td>
+<td>A desk or an operations screen read all day.</td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td>Bold and editorial. Larger numerals and title, the lead KPI a solid accent tile, borderless cards on large soft shadows, large radii, inverted tooltips, a saturated palette.</td>
+<td>A board pack or a screen on the wall.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Choosing one.</strong> <code>report.json</code> <code>"theme": "signal"</code> (<a href="../reference/report-json.html">report.json</a>) for one
+report; <code>tracebi.yaml</code> <code>brand: {theme: nightdesk}</code> (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>) for the
+project. A report's own theme wins over the project's; no theme anywhere is
+Ledger. <code>tracebi theme list</code> shows the three, the default and the project's
+choice marked. <code>tracebi new-report</code> / <code>new-dashboard --theme &lt;name&gt;</code> and the
+gateway's <code>start_draft(theme=…)</code> write it into <code>report.json</code>. Any other name
+fails the build, naming the three. The reference project shows all three: its
+reports are Ledger, <code>portfolio_desk</code> is Nightdesk and <code>portfolio_dashboard</code> is
+Signal.</p>
+<p><strong>A brand on top.</strong> The project's brand (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a> <code>brand:</code>) layers
+over whichever theme: its accent, palette, font, logo and name replace the
+theme's colours and face; the theme keeps its surfaces, depth, density,
+radius and numerals. The accent is still checked at 3:1 on the white card, and
+on the dark ground the brand's accent and palette are lifted to read against
+that theme's own dark card. Signal's lead tile is the brand's accent, with
+white or ink on it, whichever reads.</p>
+<p><strong>The six accent presets</strong> (<code>graphite</code>, <code>indigo</code>, <code>midnight</code>, <code>ocean</code>, <code>plum</code>,
+<code>sand</code>) are deprecated. A <code>report.json</code> that names one still builds: the page
+renders in the house theme with that accent pair, and the build prints one
+line naming <code>brand: {accent: …}</code> or a house theme instead.</p>
+<p><strong>What stacks where.</strong> <code>tracebi.css</code> (Ledger's values) → the house theme → the
+brand → <code>reports/_theme.css</code> → a deprecated accent preset → the report's
+<code>style.css</code>. Later wins.</p>
+<h2 id="the-tokens-per-theme">The tokens per theme</h2>
+<p>Ledger's values are <code>tracebi.css</code>'s own. Nightdesk and Signal restate these
+(<code>tracebi/reports/house.py</code>); a brand replaces the accent and palette rows.</p>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Ledger</th>
+<th>Nightdesk</th>
+<th>Signal</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--tb-page</code> (ground)</td>
+<td><code>#f6f6f7</code> · dark <code>#0b0b0d</code></td>
+<td><code>#eef1f4</code> · dark <code>#090c11</code></td>
+<td><code>#fafaf9</code> · dark <code>#0e0e10</code></td>
+</tr>
+<tr>
+<td><code>--tb-bg</code> (card)</td>
+<td><code>#ffffff</code> · dark <code>#141417</code></td>
+<td><code>#ffffff</code> · dark <code>#0f141b</code></td>
+<td><code>#ffffff</code> · dark <code>#19191c</code></td>
+</tr>
+<tr>
+<td><code>--tb-card-border</code></td>
+<td><code>--tb-rule</code></td>
+<td><code>--tb-rule</code> (<code>#d9dfe6</code> · dark <code>#1c242e</code>)</td>
+<td><code>transparent</code></td>
+</tr>
+<tr>
+<td><code>--tb-card-shadow</code></td>
+<td>three layers · dark an inset highlight and one deep layer</td>
+<td>none · dark a 1px hairline glow</td>
+<td>two large soft layers · dark one deep layer</td>
+</tr>
+<tr>
+<td><code>--tb-radius</code></td>
+<td><code>12px</code></td>
+<td><code>6px</code></td>
+<td><code>20px</code></td>
+</tr>
+<tr>
+<td><code>--tb-font-num</code> (numerals)</td>
+<td>Geist</td>
+<td>Geist Mono</td>
+<td>Geist</td>
+</tr>
+<tr>
+<td><code>--tb-num-weight</code></td>
+<td><code>600</code></td>
+<td><code>500</code></td>
+<td><code>700</code></td>
+</tr>
+<tr>
+<td><code>--tb-kpi-size</code> / <code>--tb-kpi-lead-size</code></td>
+<td><code>28px</code> / <code>40px</code></td>
+<td><code>26px</code> / <code>32px</code></td>
+<td><code>34px</code> / <code>46px</code></td>
+</tr>
+<tr>
+<td><code>--tb-title-size</code> / <code>--tb-title-weight</code></td>
+<td><code>28px</code> / <code>600</code></td>
+<td><code>24px</code> / <code>600</code></td>
+<td><code>36px</code> / <code>700</code></td>
+</tr>
+<tr>
+<td>Density</td>
+<td>comfortable</td>
+<td>compact (<code>look.density</code> <code>comfortable</code> keeps it roomy)</td>
+<td>comfortable</td>
+</tr>
+<tr>
+<td>Mode with none named</td>
+<td><code>auto</code></td>
+<td><code>dark</code></td>
+<td><code>auto</code></td>
+</tr>
+<tr>
+<td>KPI strip</td>
+<td>one panel</td>
+<td>separate tiles</td>
+<td>separate tiles</td>
+</tr>
+<tr>
+<td><code>--tb-lead-bg</code> / <code>--tb-lead-ink</code></td>
+<td>the card / ink</td>
+<td>the card / the accent's text</td>
+<td><code>--tb-accent-fill</code> / <code>--tb-on-accent-fill</code></td>
+</tr>
+<tr>
+<td><code>--tb-accent</code></td>
+<td><code>#2f5bea</code> · dark <code>#7a9cff</code></td>
+<td><code>#0e7490</code> · dark <code>#22d3ee</code></td>
+<td><code>#1f3fff</code> · dark <code>#5c74ff</code></td>
+</tr>
+<tr>
+<td><code>--tb-chart-2..8</code></td>
+<td><code>#eb6834 #1baf7a #eda100 #e87ba4 #008300 #4a3aa7 #e34948</code></td>
+<td><code>#d97706 #7c3aed #047857 #e11d48 #2563eb #a21caf #4d7c0f</code> · dark <code>#f59e0b #a78bfa #34d399 #fb7185 #60a5fa #e879f9 #a3e635</code></td>
+<td><code>#ff6b2b #00a676 #ffb000 #8b5cf6 #e2366b #0891b2 #65a30d</code> · dark <code>#ff7d45 #2ed3a0 #ffc233 #a78bfa #ff5c8a #22d3ee #a3e635</code></td>
+</tr>
+<tr>
+<td><code>--tb-chart-grid-dash</code></td>
+<td><code>3 4</code></td>
+<td><code>1 3</code></td>
+<td><code>3 4</code></td>
+</tr>
+<tr>
+<td><code>--tb-chart-tooltip-bg</code></td>
+<td>the card</td>
+<td>ink (inverted) · dark near-black, an accent rule and glow</td>
+<td>ink (inverted) · dark near-white (inverted)</td>
+</tr>
+<tr>
+<td><code>--tb-chart-tooltip-radius</code></td>
+<td><code>8px</code></td>
+<td><code>4px</code></td>
+<td><code>12px</code></td>
+</tr>
+<tr>
+<td><code>--tb-chart-dim</code></td>
+<td><code>0.28</code></td>
+<td><code>0.22</code></td>
+<td><code>0.28</code></td>
+</tr>
+<tr>
+<td><code>--tb-chart-glow</code></td>
+<td><code>0</code></td>
+<td><code>0</code> · dark <code>6</code></td>
+<td><code>0</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="the-chart-look">The chart look</h2>
 <table>
 <thead>
 <tr>
@@ -117,7 +303,7 @@ reads as one designed thing. Nothing below needs a setting. A theme
 </tr>
 <tr>
 <td>Tooltip</td>
-<td>A card: the card surface (<code>--tb-chart-tooltip-bg</code>), a rule border (<code>--tb-chart-tooltip-border</code>), 8px radius (<code>--tb-chart-tooltip-radius</code>) and a soft shadow (<code>--tb-chart-tooltip-shadow</code>). The category, then a row per series: its round swatch, its value in the formatted text the page uses, its name.</td>
+<td>A card: the card surface (<code>--tb-chart-tooltip-bg</code>), a rule border (<code>--tb-chart-tooltip-border</code>), 8px radius (<code>--tb-chart-tooltip-radius</code>) and a soft shadow (<code>--tb-chart-tooltip-shadow</code>); Signal and Nightdesk's light ground invert it (<code>--tb-chart-tooltip-ink</code>, <code>-title</code>). The category, then a row per series: its round swatch, its value in the formatted text the page uses, its name.</td>
 </tr>
 <tr>
 <td>Legend</td>
@@ -137,9 +323,9 @@ reads as one designed thing. Nothing below needs a setting. A theme
 </tr>
 </tbody>
 </table>
-<h2 id="the-tokens">The tokens</h2>
-<p>Set in <code>tracebi.css</code> for the light ground and the dark one; override them in
-<code>reports/_theme.css</code> or a report's <code>style.css</code>.</p>
+<h2 id="the-chart-tokens">The chart tokens</h2>
+<p>Set in <code>tracebi.css</code> for the light ground and the dark one, restated by a house
+theme; override them in <code>reports/_theme.css</code> or a report's <code>style.css</code>.</p>
 <table>
 <thead>
 <tr>
@@ -211,6 +397,26 @@ reads as one designed thing. Nothing below needs a setting. A theme
 <tr>
 <td><code>--tb-chart-motion</code></td>
 <td><code>450ms</code></td>
+</tr>
+<tr>
+<td><code>--tb-chart-num-font</code></td>
+<td><code>var(--tb-font-num)</code>: value ticks, a mark's value, the readout's numbers</td>
+</tr>
+<tr>
+<td><code>--tb-chart-tooltip-ink</code></td>
+<td><code>var(--tb-muted)</code>: the readout's text</td>
+</tr>
+<tr>
+<td><code>--tb-chart-tooltip-title</code></td>
+<td><code>var(--tb-ink)</code>: the readout's title and values</td>
+</tr>
+<tr>
+<td><code>--tb-chart-tooltip-link</code></td>
+<td><code>var(--tb-accent-text)</code>: the readout's way to its trace (an inverted readout takes a shade that reads on it)</td>
+</tr>
+<tr>
+<td><code>--tb-chart-glow</code></td>
+<td><code>0</code>: px of glow under a line, in the line's own colour</td>
 </tr>
 <tr>
 <td><code>--tb-chart-1</code> … <code>--tb-chart-8</code></td>

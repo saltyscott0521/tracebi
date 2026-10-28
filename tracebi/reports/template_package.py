@@ -583,16 +583,19 @@ class TemplatePackage:
             else self.name
         )
         self.author = declaration.get("author", "")
-        # A shipped theme by name ("theme": "ocean"): token overrides stacked
-        # over the project's reports/_theme.css.
+        # A house theme by name ("theme": "signal"), stacked right after
+        # tracebi.css and under the brand; over the project's brand.theme.
+        # A deprecated accent preset ("ocean") keeps its accent pair, stacked
+        # over the project's reports/_theme.css, and the build says so.
+        from tracebi.reports import house
         self.theme = declaration.get("theme")
         self.theme_css = ""
+        self.theme_warning: Optional[str] = None
         if self.theme is not None:
-            from tracebi.reports.stack import named_theme_css
-            try:
-                self.theme_css = named_theme_css(str(self.theme))
-            except ValueError as exc:
-                raise ValueError(f"{report_json_path}: {exc}") from None
+            house.check(self.theme, report_json_path)
+            if self.theme not in house.THEMES:
+                from tracebi.reports.stack import named_theme_css
+                self.theme_css = named_theme_css(self.theme)
         self.description = declaration.get("description", "")
 
         data = declaration.get("data")
@@ -1882,11 +1885,16 @@ class TemplatePackage:
         rides in the same data-block slot, after the bindings.
         """
         from tracebi.project_config import brand
-        from tracebi.reports.stack import apply_stack, project_brand_css, project_theme_css
+        from tracebi.reports import house
+        from tracebi.reports.brand import brand_css
+        from tracebi.reports.stack import apply_stack, project_theme_css
 
         if self.app_source is not None:
             from tracebi.reports.app_lane import app_blocks_html
             extra_blocks_html += app_blocks_html(self.app_source, self.app_icons)
+        mark = brand()
+        look, accent = house.resolve(self.theme, mark.get("theme"))
+        self.theme_warning = house.deprecation(accent, look) if accent else None
         return apply_stack(
             page,
             libs=self._libs_for_page(page),
@@ -1901,8 +1909,10 @@ class TemplatePackage:
             report_js=self.script_js,
             app=self.app_source is not None,
             theme_css=self.theme_css,
-            brand_css=project_brand_css(),
-            default_mode=brand().get("mode", "auto"),
+            house_css=house.css(look),
+            brand_css=brand_css(mark, house.THEMES[look]["dark_card"]),
+            default_mode=mark.get("mode") or house.THEMES[look]["mode"],
+            default_density=house.THEMES[look]["density"],
         )
 
 

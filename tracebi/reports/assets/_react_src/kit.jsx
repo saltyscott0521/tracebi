@@ -234,6 +234,8 @@ export function chartTokens() {
   return {
     ink: col("ink"), muted: col("muted"), card: col("bg"),
     font: raw("chart-font") || raw("font") || undefined,
+    num: raw("chart-num-font") || raw("chart-font") || raw("font") || undefined,
+    tipInk: col("chart-tooltip-ink") || col("muted"), glow: num("chart-glow", 0),
     grid: col("chart-grid"), gridDash: dash.length ? dash : "dashed",
     axis: col("chart-axis"), label: col("chart-label"), value: col("chart-value"),
     tipBg: col("chart-tooltip-bg"), tipBorder: col("chart-tooltip-border"),
@@ -255,7 +257,7 @@ export function echartsTheme() {
   const axis = {
     axisLine: { show: false, lineStyle: { color: k.axis } },
     axisTick: { show: false },
-    axisLabel: { ...text(k.label, 11), margin: 10, lineHeight: 15 },
+    axisLabel: { ...text(k.label, 11), fontFamily: k.num, margin: 10, lineHeight: 15 },
     splitLine: { show: true, lineStyle: { color: k.grid, type: k.gridDash, width: 1 } },
     splitArea: { show: false },
     nameTextStyle: text(k.label, 11, 600),
@@ -263,7 +265,7 @@ export function echartsTheme() {
   // The category axis is the one solid rule: the baseline, at zero. Its
   // names at 12px, the value ticks at 11, as the D3 engine sets them.
   const categoryAxis = { ...axis, axisLine: { show: true, lineStyle: { color: k.axis } },
-                         axisLabel: { ...axis.axisLabel, fontSize: 12 },
+                         axisLabel: { ...axis.axisLabel, fontSize: 12, fontFamily: font },
                          splitLine: { show: false } };
   const cells = { itemStyle: { borderColor: k.card, borderWidth: 2, gapWidth: 2 },
                   label: text(k.ink, 12, 500) };
@@ -304,7 +306,7 @@ export function echartsTheme() {
 function tooltipBase(k) {
   return {
     className: "tb-echart-tip", backgroundColor: k.tipBg, borderColor: k.tipBorder, borderWidth: 1,
-    padding: [8, 10], textStyle: { color: k.muted, fontFamily: k.font, fontSize: 13 },
+    padding: [8, 10], textStyle: { color: k.tipInk, fontFamily: k.font, fontSize: 13 },
     extraCssText: `border-radius:${k.tipRadius};box-shadow:${k.tipShadow};`,
     axisPointer: { lineStyle: { color: k.label, type: [3, 3], width: 1 },
                    shadowStyle: { color: withAlpha(k.ink, 0.05) } },
@@ -535,12 +537,17 @@ function optionFromRows({ type, rows, stamped, x, ys, series, format, unit, stac
       s.showSymbol = false;
       // The line ends in its last value.
       if (ends) s.endLabel = { show: true, distance: 6, color: k.value, fontSize: 11,
-                               fontWeight: 600, formatter: (p) => value(p.value) };
+                               fontWeight: 600, fontFamily: k.num, formatter: (p) => value(p.value) };
+      // --tb-chart-glow: a faint light under the line, in its own colour.
+      if (k.glow > 0 && s.itemStyle && s.itemStyle.color) {
+        s.lineStyle = { shadowBlur: k.glow, shadowColor: withAlpha(s.itemStyle.color, 0.55) };
+      }
     }
     if (kind === "bar") {
       s.itemStyle.borderRadius = horizontal ? [0, r, r, 0] : [r, r, 0, 0];
       if (labelled) s.label = { show: true, position: horizontal ? "right" : "top", distance: 5,
-        color: k.value, fontSize: 11, fontWeight: 600, formatter: (p) => value(p.value) };
+        color: k.value, fontSize: 11, fontWeight: 600, fontFamily: k.num,
+        formatter: (p) => value(p.value) };
       // A bar below zero rounds its own far end, and its label sits past it.
       s.data = s.data.map((v) => (v === null || v >= 0 ? v : {
         value: v, itemStyle: { borderRadius: horizontal ? [r, 0, 0, r] : [0, 0, r, r] },

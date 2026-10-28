@@ -940,18 +940,22 @@ def _presentation() -> dict:
                             "top|side --title-at left|center|banner|nav "
                             "--theme <name> (new-dashboard --html for a "
                             "template dashboard)",
-                "themes": "Shipped themes, contrast-checked token sets: "
-                          + ", ".join(_named_themes()) + ". A report names one in report.json "
-                          "\"theme\"; tracebi theme use <name> makes one the "
-                          "project default (writes reports/_theme.css); "
-                          "tracebi theme list",
+                "themes": "Three house themes, each a whole look (surfaces, depth, "
+                          "density, numerals, chart tokens): ledger (the default), "
+                          "nightdesk, signal. A report names one in report.json \"theme\" "
+                          "(new-report/new-dashboard --theme, start_draft theme=); the "
+                          "project default is tracebi.yaml brand: {theme: …}; tracebi theme "
+                          "list. Agents pick a theme or use the brand, never hard-coded "
+                          "colours. " + _house_offer() + " Deprecated accent presets, still "
+                          "accepted with a warning: " + ", ".join(_named_themes()) + ".",
                 "for_everyone": "reports/_theme.css restyles every report in "
                                 "the project (token overrides: accent, fonts, "
                                 "spacing)",
-                "brand": "tracebi.yaml brand: {name, logo, accent, palette, font, "
+                "brand": "tracebi.yaml brand: {theme, name, logo, accent, palette, font, "
                          "mode} is the project's brand: every report and dashboard takes "
-                         "it, its charts included (stacked after tracebi.css, before "
-                         "reports/_theme.css). name replaces the masthead's kicker, logo "
+                         "it, its charts included (stacked after tracebi.css and the house "
+                         "theme, before reports/_theme.css; its colours, font and logo win "
+                         "over the theme's). name replaces the masthead's kicker, logo "
                          "(svg/png, at most 400 KB) fills .tb-masthead-mark, accent sets "
                          "--tb-accent (its text and dark-ground shades derived; below 3:1 "
                          "on the card fails the build), palette sets --tb-chart-1..8. "
@@ -960,8 +964,9 @@ def _presentation() -> dict:
                 "chart_tokens": "The house chart look, as tokens both chart engines read: "
                                 "--tb-chart-font, -grid, -grid-dash, -axis, -label, -value, "
                                 "-tooltip-bg, -tooltip-border, -tooltip-shadow, "
-                                "-tooltip-radius, -radius, -bar, -line, -area, -dim, -motion "
-                                "and the palette --tb-chart-1..8 "
+                                "-tooltip-radius, -tooltip-ink, -tooltip-title, -tooltip-link, -radius, "
+                                "-bar, -line, -area, -dim, -motion, -num-font, -glow "
+                                "and the palette --tb-chart-1..8; a house theme sets them "
                                 "(docs/reference/chart-style.md).",
                 "style_css": "A report's own style.css is a theme preset at "
                              "most: the accent pairs (--tb-accent / "
@@ -1516,6 +1521,11 @@ def _analyst_knowledge() -> dict:
 def _named_themes() -> list[str]:
     from tracebi.reports.stack import named_themes
     return named_themes()
+
+
+def _house_offer() -> str:
+    from tracebi.reports.house import OFFER
+    return OFFER
 
 
 def describe(brief: bool = False) -> dict:

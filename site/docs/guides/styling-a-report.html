@@ -66,7 +66,7 @@
 <a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
-<a href="../reference/chart-style.html">Chart style</a>
+<a href="../reference/chart-style.html">House themes and chart style</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
@@ -84,17 +84,20 @@ the shipped components, and adding your own CSS and JavaScript.</p>
 <li><code>tracebi dev &lt;name&gt;</code> running, so you see each change</li>
 </ul>
 <p>Styles stack in three layers, and the later one wins:</p>
-<pre><code>1. tracebi.css            the shipped design system
-2. reports/_theme.css     your project's brand (optional)
-3. style.css              this report (optional)
+<pre><code>1. tracebi.css            the shipped design system (Ledger)
+2. the house theme        report.json &quot;theme&quot;, else tracebi.yaml brand.theme
+3. the brand              tracebi.yaml brand: accent, palette, font, logo
+4. reports/_theme.css     your project's own tokens (optional)
+5. style.css              this report (optional)
 </code></pre>
-<h2 id="1-pick-a-theme">1. Pick a theme</h2>
-<pre><code class="language-bash">tracebi theme list                 # the shipped themes
-tracebi theme use ocean            # writes reports/_theme.css for every report
-</code></pre>
-<p>A single report can pick one in <code>report.json</code>: <code>"theme": "ocean"</code>
-(<a href="../reference/report-json.html">report.json</a>). A theme sets the accent for the light and dark grounds and
-nothing else.</p>
+<h2 id="1-pick-a-house-theme">1. Pick a house theme</h2>
+<p>Three, each a whole look (<a href="../reference/chart-style.html">House themes and chart style</a>): <code>ledger</code> (calm, institutional, the
+default), <code>nightdesk</code> (dark, dense, monospaced numbers, for a desk or an
+operations screen) and <code>signal</code> (bold, big numbers, for a board pack or a wall
+screen). The project picks one in <code>tracebi.yaml</code> (<code>brand: {theme: signal}</code>,
+<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>); a single report in <code>report.json</code>: <code>"theme": "nightdesk"</code>
+(<a href="../reference/report-json.html">report.json</a>). Your colours go in the brand (<code>brand: {accent: …, palette:
+[…]}</code>), which layers over whichever theme. <code>tracebi theme list</code> shows them.</p>
 <h2 id="2-set-your-own-tokens">2. Set your own tokens</h2>
 <p>Override tokens in <code>reports/_theme.css</code> or a report's <code>style.css</code>. Don't copy
 the stylesheet: a copy misses every later fix.</p>

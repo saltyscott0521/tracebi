@@ -180,6 +180,23 @@ Handle the stamp this way, every time:
 
 ## 3. Write the spec
 
+### First, the house theme
+
+Offer the house theme once, for a new report or dashboard only: when the
+project sets no brand.theme and the person has not named a theme, offer the
+three in one short line each (Ledger: calm, institutional, the default;
+Nightdesk: dark, dense, monospaced numbers, for a desk or ops screen; Signal:
+bold, big numbers, for a board pack or a wall screen), recommend one for what
+the report is for, and use Ledger if the person does not choose. If the
+project sets a theme, use it and say so in one line instead of asking. Never
+ask again for an existing report. The person's choice goes in the package's
+`report.json` `"theme"` (`start_draft(kind="reports", path=…,
+theme="nightdesk")` starts the draft with it; keep that key when you write
+`report.json`). Pick a theme or use the project's brand; never hard-code a
+colour ([[chart-style]]).
+
+### The spec
+
 A spec is JSON: `name` (required), plus optional `sections`, `author`,
 `description` and `parameters`. Each `table` or `chart` section carries a
 `data` reference, `{"model": …, "query": …}`, where `query` has exactly

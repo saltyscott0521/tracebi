@@ -174,8 +174,9 @@ folders can each hold a report of the same name.
 `--title-at` (`nav` puts the title at the top of the sidebar). For an app they
 shape its navigation and title, and mode and density go in `report.json`
 `"look"`. For a template they set the `<html>` attributes and the title block
-(`--nav` implies the tabbed layout). `--theme` names a shipped theme in
-`report.json` `"theme"`.
+(`--nav` implies the tabbed layout). `--theme ledger|nightdesk|signal` writes
+the house theme into `report.json` `"theme"` ([[chart-style]]); a deprecated
+accent preset still works and says so.
 
 **`new-model --from <connection> --tables a,b,c`** drafts the model from the
 connection's column metadata, with no row scan. A table named `fact_*`, or one
@@ -188,15 +189,16 @@ with `--from`.
 ### `tracebi theme`
 
 ```bash
-tracebi theme list                 # the shipped themes, one line each
-tracebi theme use ocean [--force]  # make one the project default
+tracebi theme list                 # the house themes, then the deprecated presets
 ```
 
-Themes are contrast-checked token sets: an accent, and for `sand` and
-`midnight` the page and surfaces too. `use` writes `reports/_theme.css`, which
-every report stacks over `tracebi.css`; it refuses to replace that file
-without `--force`. One report picks a theme with `report.json` `"theme"`
-([[report-json]]).
+`list` shows the three house themes ([[chart-style]]), Ledger marked the
+default and the project's `tracebi.yaml` `brand.theme` marked as its choice,
+then the six deprecated accent presets, then the project's brand. A project
+picks its house theme with `brand: {theme: …}` ([[tracebi-yaml]]); one report
+with `report.json` `"theme"` ([[report-json]]). `tracebi theme use <preset>
+[--force]` still copies a deprecated accent preset to `reports/_theme.css`;
+named with a house theme, it says where that setting goes instead.
 
 ## Build and check
 

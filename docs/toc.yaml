@@ -71,7 +71,7 @@ sections:
       - figure-helper
       - number-formats
       - page: chart-style
-        blurb: The house chart look, and the tokens a brand or a theme changes
+        blurb: Ledger, Nightdesk and Signal, the house chart look, and the tokens a brand changes
       - folder-yaml
       - api-routes
 

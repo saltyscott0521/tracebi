@@ -362,12 +362,21 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   footer when the template has none). `tracebi new-dashboard "<Name>" --mode dark --density
   compact --nav side --title-at nav` writes it — for an app, mode and density go in
   `report.json` `"look"` and the sidebar and title are its own components. Looks never
-  change a number. A report may name a shipped theme in `report.json` `"theme"`
-  (`tracebi theme list`; each is an accent preset for both grounds, never a mode);
-  a report's own `style.css` is that at most — tokens only: the accent pairs and one
+  change a number.
+  A report takes a house theme, a whole look: `ledger` (the default), `nightdesk` or
+  `signal` (`report.json` `"theme"`, or the project's `tracebi.yaml` `brand: {theme:
+  …}`; `tracebi theme list`). Pick a theme or use the brand, never hard-coded colours.
+  Offer the house theme once, for a new report or dashboard only: when the project sets
+  no brand.theme and the person has not named a theme, offer the three in one short line
+  each (Ledger: calm, institutional, the default; Nightdesk: dark, dense, monospaced
+  numbers, for a desk or ops screen; Signal: bold, big numbers, for a board pack or a
+  wall screen), recommend one for what the report is for, and use Ledger if the person
+  does not choose. If the project sets a theme, use it and say so in one line instead of
+  asking. Never ask again for an existing report. The six accent presets (graphite,
+  indigo, …) are deprecated. A report's own `style.css` is tokens at most:
+  the accent pairs and one
   display face as `--tb-font-display` (the masthead `<h1>` and the lead number), no
-  gradient, hatch, glow or resting shadow;
-  `tracebi theme use <name>` makes one everyone's default (`reports/_theme.css`). `reports/_style.md` is the team's house style: `tracebi context`
+  gradient, hatch, glow or resting shadow. `reports/_style.md` is the team's house style: `tracebi context`
   returns it as `house_style` — follow its Rules over the defaults. Read
   `tracebi knowledge design-dashboard-feel` (and `design-app-dashboards` for an app).
 - **Brand.** The project's brand lives in `tracebi.yaml` `brand:` (`name`, `logo`,

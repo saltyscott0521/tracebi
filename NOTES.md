@@ -4,6 +4,60 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — Three house themes: Ledger, Nightdesk, Signal (HOUSE-THEMES)
+
+The owner chose three of four directions from a concept page (Atlas, the
+layered gradient one, was not chosen). A house theme is a whole look, not an
+accent: ground, card surface and border, the card's shadow stack, radius, type
+sizes and weights, the numerals' face, density, the chart tokens, the lead
+KPI's tile, an accent and an eight-colour palette, each for light and dark.
+
+Where it lives: `tracebi/reports/house.py` holds the three as token dicts and
+writes their CSS (a `:root` block, the dark ground twice, as `tracebi.css` does,
+and the KPI-tile rules), stacked right after `tracebi.css` and before the brand.
+Ledger is `tracebi.css` itself, so its CSS is empty and every page that names
+no theme changes only by the depth the concept added (new tokens
+`--tb-card-shadow` and `--tb-card-border` on `.tb-card`, `.tb-kpi` and the KPI
+panel; none in print). New tokens carry what differs: `--tb-font-num`,
+`--tb-num-weight`, `--tb-num-tracking`, `--tb-kpi-size`, `--tb-kpi-lead-size`,
+`--tb-title-size`, `--tb-title-weight`, `--tb-lead-bg/-ink/-muted/-border`,
+`--tb-accent-fill` / `--tb-on-accent-fill`, and for the charts
+`--tb-chart-num-font`, `-tooltip-ink`, `-tooltip-title`, `-tooltip-link` and
+`-glow`, which both engines read (the D3 engine's `chartTokens`, the kit's
+`chartTokens` / `echartsTheme`; a line glows in its own colour).
+
+A theme sets `--tb-dark-accent` / `-text` on `:root`, never `--tb-accent` in
+its dark block, so the dark ground still takes `var(--tb-dark-accent)` and a
+brand's dark pair wins. Order is the override chain: tracebi.css → house theme
+→ brand → `reports/_theme.css` → a deprecated preset → `style.css`. On an app
+page the theme is unlayered after the repeated mode tokens, so its dark blocks
+win by order. The brand's dark-ground lift is now computed against the theme's
+own dark card (`brand_css(brand, dark_card)`), and the brand also states
+`--tb-accent-fill` for both grounds, so Signal's lead tile is the brand's accent.
+
+Nightdesk opens dark when nothing names a mode: `look.mode` (or a template's
+`<html data-tb-mode>`) wins, then `brand.mode`, then the theme. It is compact
+unless `look.density` says `comfortable` (the app shell now writes either value,
+so the theme can tell an explicit comfortable from none). Its numerals are Geist
+Mono, inlined only on a Nightdesk page (from `@fontsource-variable/geist-mono`
+5.2.8, the web app's own copy; NOTICE now names Geist and Geist Mono, replacing
+a stale Hanken Grotesk entry). Nightdesk and Signal show the KPI strip as
+separate tiles rather than Ledger's joined panel; Signal's lead tile takes the
+tile's ink for its direction arrows.
+
+Theme names: `report.json` `"theme"` wins over `brand.theme`; any other name
+fails naming the three. The six accent presets stay readable and are
+deprecated: the page renders in the project's house theme with that accent pair
+(stacked where it always was), and `tracebi report build` prints one warning.
+`tracebi theme use <house theme>` says where the setting goes instead of
+copying CSS. Agents offer the three for a new report or dashboard when nothing
+chose one, in one locked sentence (`house.OFFER`) that the guides, the authoring
+SOP, the `author_report` prompt and `tracebi context` all carry;
+`start_draft(theme=)` seeds a new report draft's `report.json` with it.
+
+Reference project: the desk is Nightdesk, the dashboard Signal, everything else
+Ledger under the Halyard Credit brand. The web app is untouched.
+
 ## 2026-10-28 — A house chart look, and a project brand every page follows (BRAND)
 
 The owner's ask: the ECharts charts looked good but generic. Both a distinctive

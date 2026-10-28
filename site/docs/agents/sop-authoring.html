@@ -66,7 +66,7 @@
 <a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
-<a href="../reference/chart-style.html">Chart style</a>
+<a href="../reference/chart-style.html">House themes and chart style</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
@@ -355,6 +355,20 @@ measures, and dimension attributes as <code>dim_name.attribute</code>:</p>
    error in <code>examples/agent_gateway/verify_report.py</code> happened.</li>
 </ol>
 <h2 id="3-write-the-spec">3. Write the spec</h2>
+<h3 id="first-the-house-theme">First, the house theme</h3>
+<p>Offer the house theme once, for a new report or dashboard only: when the
+project sets no brand.theme and the person has not named a theme, offer the
+three in one short line each (Ledger: calm, institutional, the default;
+Nightdesk: dark, dense, monospaced numbers, for a desk or ops screen; Signal:
+bold, big numbers, for a board pack or a wall screen), recommend one for what
+the report is for, and use Ledger if the person does not choose. If the
+project sets a theme, use it and say so in one line instead of asking. Never
+ask again for an existing report. The person's choice goes in the package's
+<code>report.json</code> <code>"theme"</code> (<code>start_draft(kind="reports", path=…,
+theme="nightdesk")</code> starts the draft with it; keep that key when you write
+<code>report.json</code>). Pick a theme or use the project's brand; never hard-code a
+colour (<a href="../reference/chart-style.html">House themes and chart style</a>).</p>
+<h3 id="the-spec">The spec</h3>
 <p>A spec is JSON: <code>name</code> (required), plus optional <code>sections</code>, <code>author</code>,
 <code>description</code> and <code>parameters</code>. Each <code>table</code> or <code>chart</code> section carries a
 <code>data</code> reference, <code>{"model": …, "query": …}</code>, where <code>query</code> has exactly

@@ -375,12 +375,24 @@ series takes the palette in order (`--tb-chart-1..8`), and the house chart
 look (`docs/reference/chart-style.md`) comes from the `--tb-chart-*` tokens
 the brand and the themes set.
 
-**Themes and the house style.** A report can name a shipped theme in
-`report.json` `"theme"` (`tracebi theme list`: graphite, indigo, midnight,
-ocean, plum, sand; `--theme` on `new-report` / `new-dashboard`). `tracebi theme use <name>` makes
-one the project default (`reports/_theme.css`, which restyles every report).
-A theme is an accent preset (the accent for the light and the dark ground),
-never a mode or a layout. A report's own `style.css` is the same thing at most:
+**House themes.** A report or dashboard takes one of three house themes, each
+a whole look (surfaces, depth, density, numerals, the chart tokens): `ledger`
+(the default), `nightdesk` or `signal` (`docs/reference/chart-style.md`). The
+project picks one in `tracebi.yaml` `brand: {theme: …}`; one report in
+`report.json` `"theme"` (`--theme` on `new-report` / `new-dashboard`, `theme`
+on the gateway's `start_draft`); `tracebi theme list` shows them. Pick a theme
+or use the brand, never hard-coded colours. Offer the house theme once, for a
+new report or dashboard only: when the project sets no brand.theme and the
+person has not named a theme, offer the three in one short line each (Ledger:
+calm, institutional, the default; Nightdesk: dark, dense, monospaced numbers,
+for a desk or ops screen; Signal: bold, big numbers, for a board pack or a
+wall screen), recommend one for what the report is for, and use Ledger if the
+person does not choose. If the project sets a theme, use it and say so in one
+line instead of asking. Never ask again for an existing report. The six accent
+presets (graphite, indigo, midnight, ocean, plum, sand) are deprecated: a
+report that names one still builds, in the house theme with that accent, and
+the build says so. A theme is never a mode or a layout. A report's own
+`style.css` is tokens at most:
 the accent pairs (`--tb-accent` / `--tb-accent-text`, `--tb-dark-accent` /
 `--tb-dark-accent-text`) and one display face as `--tb-font-display` (the
 system sets it on the `.tb-masthead h1`, the lead number and the trace's

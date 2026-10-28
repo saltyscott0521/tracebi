@@ -1483,9 +1483,10 @@
     var motion = get("motion", "450ms");
     var ms = parseFloat(motion);
     if (!/ms\s*$/.test(motion)) ms *= 1000;
-    return { font: get("font", ""), label: get("label", ""), value: get("value", ""),
-             radius: num("radius", 2), bar: num("bar", 55) / 100, line: num("line", 2),
-             area: num("area", 0.12), motion: isNaN(ms) ? 450 : ms };
+    return { font: get("font", ""), num: get("num-font", ""), label: get("label", ""),
+             value: get("value", ""), radius: num("radius", 2), bar: num("bar", 55) / 100,
+             line: num("line", 2), area: num("area", 0.12), glow: num("glow", 0),
+             motion: isNaN(ms) ? 450 : ms };
   }
   var _introPending = 0;
 
@@ -2139,6 +2140,7 @@
     g.selectAll(".tb-axis .domain").remove();
     g.selectAll(".tb-axis text").attr("fill", t.chart.label).attr("font-size", 11)
       .attr("font-family", t.chart.font);
+    va.selectAll("text").attr("font-family", t.chart.num);
     var labelRoom = horizontal ? m.left - 10 - (plan.yTitle ? 18 : 0)
       : rotate ? (m.bottom - 16) * 2 : band.step() * every - 6;
     /* One size for every name on the axis: 12px, or smaller (to 9px) when
@@ -2272,6 +2274,7 @@
       var vl = g.selectAll("g.tb-values").data([0]).join("g").attr("class", "tb-values")
         .selectAll("text").data(labelled, function (d) { return d.key; }).join("text");
       vl.attr("font-size", 11).attr("font-weight", 600).attr("pointer-events", "none")
+        .attr("font-family", t.chart.num)
         .attr("fill", function (d) { return d.inside ? d.fill : t.chart.value; })
         .attr("text-anchor", function (d) {
           if (!horizontal) return "middle";
@@ -2308,7 +2311,10 @@
         }
         var ln = sel.selectAll("path.tb-line").data([pts]).join("path").attr("class", "tb-line tb-mark")
           .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", t.chart.line)
-          .attr("stroke-linejoin", "round").attr("stroke-linecap", "round");
+          .attr("stroke-linejoin", "round").attr("stroke-linecap", "round")
+          /* --tb-chart-glow: a faint light under the line, in its own colour. */
+          .style("filter", t.chart.glow > 0 && !plan.spark ? "drop-shadow(0 0 " + t.chart.glow
+            + "px color-mix(in srgb, " + colour(s.key) + " 55%, transparent))" : null);
         transition(entry, ln).attr("d", lineGen);
         /* One dot per row, drawn only at the end of the line and under the
          * pointer (.tb-dot-on), so the line reads as a line. */
@@ -2801,6 +2807,7 @@
     t.chart.label = t.chart.label || t.muted;
     t.chart.value = t.chart.value || t.ink;
     t.chart.font = t.chart.font || t.font;
+    t.chart.num = t.chart.num || t.chart.font;
     _MOTION_MS = t.chart.motion;
     try { t.onAccent = cssVar(getComputedStyle(document.documentElement), "--tb-on-accent"); } catch (e) {}
     legendFor(entry, kind);

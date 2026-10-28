@@ -452,7 +452,8 @@ def shell_html(title: str, figs: list[KitFigure], look: dict | None = None) -> s
     look = look or {}
     attrs = "".join(
         [f' data-tb-mode="{look["mode"]}"' if look.get("mode") else "",
-         ' data-tb-density="compact"' if look.get("density") == "compact" else ""])
+         # comfortable is written too, so a compact house theme leaves it be
+         f' data-tb-density="{look["density"]}"' if look.get("density") else ""])
     return (
         f"<!doctype html>\n<html lang=\"en\" data-tb-app{attrs}>\n<head><meta charset=\"utf-8\">"
         f"<title>{html.escape(title)}</title></head>\n<body>\n"

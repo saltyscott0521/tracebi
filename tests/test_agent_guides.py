@@ -66,6 +66,25 @@ class TestGuidesCoverTheVocabulary:
         # The control grammar's law is the vocabulary's too.
         assert "a figure's number is only ever a query result" in json.dumps(describe())
 
+    def test_the_house_theme_offer_travels_verbatim(self):
+        """Agents offer Ledger, Nightdesk and Signal for a new report, in one
+        wording everywhere they read it: both guides, the authoring SOP, the
+        gateway's author_report prompt and the vocabulary."""
+        import asyncio
+
+        from tracebi.mcp_server import build_server
+        from tracebi.reports.house import OFFER
+
+        sop = (_REPO / "docs" / "agents" / "sop-authoring.md").read_text(encoding="utf-8")
+        prompt = asyncio.run(build_server(token=None).get_prompt(
+            "author_report", {"question": "q"}))
+        surfaces = dict(_guides())
+        surfaces["sop-authoring.md"] = re.sub(r"\s+", " ", sop)
+        surfaces["author_report"] = json.dumps(prompt.model_dump())
+        surfaces["tracebi context"] = json.dumps(describe())
+        for name, text in surfaces.items():
+            assert OFFER in text, f"{name} lost the house-theme offer"
+
     def test_the_word_receipt_stays_retired(self):
         """What every number carries is its trace (2026-10-18). The old word
         survives only inside identifiers the artifact contract fixes; any

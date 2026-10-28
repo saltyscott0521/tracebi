@@ -217,7 +217,7 @@ def sink_target(project_root: Optional[str] = None) -> "SinkTarget":
     return warehouse(project_root).sink
 
 
-_BRAND_KEYS = ("name", "logo", "accent", "palette", "font", "mode")
+_BRAND_KEYS = ("theme", "name", "logo", "accent", "palette", "font", "mode")
 #: The most a brand's logo or font may weigh: it is inlined into every page.
 BRAND_FILE_MAX = 400 * 1024
 
@@ -272,6 +272,12 @@ def brand(project_root: Optional[str] = None) -> dict:
     if unknown:
         raise ValueError(f"{where}: unknown brand key(s) {unknown}; known: {list(_BRAND_KEYS)}")
     out: dict = {}
+    if raw.get("theme") is not None:
+        from tracebi.reports import house
+        if raw["theme"] not in house.THEMES:
+            raise ValueError(f"{where}: brand.theme is one of {', '.join(house.THEMES)} "
+                             f"(the house themes), not {raw['theme']!r}")
+        out["theme"] = raw["theme"]
     if raw.get("name") is not None:
         name = raw["name"]
         if not isinstance(name, str) or not name.strip() or len(name) > 60:
