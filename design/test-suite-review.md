@@ -201,7 +201,7 @@ product behaviour.
 | `test_api_status.py` | 8 → 4 | Trimmed to the three "never echoes a secret" tests; restored: the route's checks. |
 | `test_gateway_log.py` | 7 → 5 | Trimmed to argument names never values, masking, off by default; restored: the `agent log` summary. |
 | `test_connect.py` | 13 → 3 | Trimmed to the secret never reaching stdout or the module; restored: a failing test writes nothing, an existing `.env` key is not overwritten. |
-| `test_d3_charts.py` | 13 → 10 | Trimmed to tooltip, click → filter, legend toggle, arrow keys, brush, value labels, currency ticks, tooltip → trace. Every-type, small-multiples and sparkline geometry went. The stacked-bars test stays because the brush test silently depends on it (see below). |
+| `test_charts.py` | 13 → 10 | Trimmed to tooltip, click → filter, legend toggle, arrow keys, brush, value labels, currency ticks, tooltip → trace. Every-type, small-multiples and sparkline geometry went. The stacked-bars test stays because the brush test silently depends on it (see below). |
 | `test_validate_gaps.py` | 22 → 3 | Restored by coverage: three pathed filter errors in `check_query_spec`. The agent journey covers validate wrong-then-right. |
 | `test_live_discovery.py` | 8 → 2 | Restored by coverage: a deleted package is forgotten, a broken one retried only when it changes. |
 | `test_desk.py` | 3 → 2 | Restored by coverage: the review desk lists and its endpoint. |
@@ -267,7 +267,7 @@ themselves: the PDF network refusal waits out a 30-second print timeout
 format-parity browser tests 18 s (format parity). Getting under three minutes
 needs a faster journey harness or a separate slow lane, not more deletion.
 
-**A hidden order dependency.** `test_d3_charts.py` shares one browser page
+**A hidden order dependency.** `test_charts.py` shares one browser page
 across the module. `test_drag_zooms_to_a_range_and_reset_returns` passes only
 after `test_stacked_bars_share_one_slot_and_end_where_their_rows_end` has run;
 alone, the brush drag times out. The stacked test stays so the brush test keeps

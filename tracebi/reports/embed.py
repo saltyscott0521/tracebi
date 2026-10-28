@@ -76,13 +76,21 @@ def csp_meta() -> str:
     return f'<meta http-equiv="Content-Security-Policy" content="{CSP}">\n'
 
 
+#: How a vendored bundle is rebuilt: d3 from web/ui, every other ``.min.js``
+#: (echarts-kit, react, recharts, tailwind) from the kit's sources
+#: (REACT_NOTICE.md). The page engine, tracebi-calc.js, is _calc_src's.
+_REBUILD_D3 = "cd web/ui && npm ci && npm run build:d3"
+_REBUILD_KIT = "cd tracebi/reports/assets/_react_src && npm ci && npm run build"
+
+
 def read_lib(name: str) -> str:
     """The minified IIFE bundle for a charting library, to inline verbatim."""
     path = os.path.join(_ASSETS_DIR, f"{name}.min.js")
     if not os.path.isfile(path):
+        how = _REBUILD_D3 if name == "d3" else _REBUILD_KIT
         raise FileNotFoundError(
             f"Charting library '{name}' is declared but its bundle is missing "
-            f"at {path}. Rebuild it (see web/ui/{name}-bundle.js)."
+            f"at {path}. Rebuild it: {how}."
         )
     with open(path, encoding="utf-8") as f:
         return f.read()
