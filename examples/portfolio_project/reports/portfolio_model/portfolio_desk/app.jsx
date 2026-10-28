@@ -158,8 +158,9 @@ function Funds() {
 // and is presentation, not a claim. Its colours follow the chart engine's
 // rule: a category takes the palette slot of its first appearance in the
 // binding's stamped (unfiltered) rows, so each sector here wears the colour
-// the treemap gives it whatever the selection leaves, and the funds take the
-// slots after the sectors.
+// the treemap gives it whatever the selection leaves. The funds are the
+// sources, not categories the page colours: they take the muted ink, so no
+// fund can share a sector's colour however many sectors there are.
 function stampedOrder(binding, column) {
   const tb = window.tracebi;
   return [...new Set((tb ? tb.data(binding) : []).map((r) => String(r[column])))];
@@ -169,11 +170,11 @@ function FundSectorFlow() {
   const rows = useBinding("fund_sector");
   const funds = [...new Set(rows.map((r) => r["dim_fund.fund"]))];
   const sectors = [...new Set(rows.map((r) => r["dim_issuer.sector"]))];
-  const palette = chartTokens().palette || [];
+  const tokens = chartTokens();
+  const palette = tokens.palette || [];
   const sectorOrder = stampedOrder("by_sector", "dim_issuer.sector");
-  const fundOrder = stampedOrder("fund_sector", "dim_fund.fund");
   const colour = (slot) => (palette.length ? palette[Math.max(slot, 0) % palette.length] : undefined);
-  const node = (name, slot) => ({ name, itemStyle: { color: colour(slot) } });
+  const node = (name, color) => ({ name, itemStyle: { color } });
   return (
     <EChart height={300} id="ech-fund-sector" ariaLabel="Fair value from each fund to each sector"
       option={{
@@ -181,8 +182,8 @@ function FundSectorFlow() {
         series: [{
           type: "sankey", left: 8, right: 110, nodeGap: 10, emphasis: { focus: "adjacency" },
           lineStyle: { color: "gradient", opacity: 0.35 },
-          data: [...funds.map((f) => node(f, sectorOrder.length + fundOrder.indexOf(String(f)))),
-                 ...sectors.map((s) => node(s, sectorOrder.indexOf(String(s))))],
+          data: [...funds.map((f) => node(f, tokens.muted)),
+                 ...sectors.map((s) => node(s, colour(sectorOrder.indexOf(String(s)))))],
           links: rows.map((r) => ({ source: r["dim_fund.fund"], target: r["dim_issuer.sector"],
                                     value: Number(r.fair_value) })),
         }],
