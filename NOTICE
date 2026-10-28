@@ -4,9 +4,10 @@ Copyright (c) 2024 TraceBi contributors
 TraceBi itself is distributed under the MIT License (see LICENSE).
 
 This product bundles third-party software. In particular, the report engine
-vendors a minified Apache ECharts build (tracebi/reports/assets/echarts.min.js,
-Apache ECharts 6.1.0, built with esbuild from echarts + zrender + tslib) and
-INLINES it into every generated report .html. Each generated report is
+vendors a minified Apache ECharts build (tracebi/reports/assets/echarts-kit.min.js,
+Apache ECharts 6.1.0, built with esbuild from echarts + zrender + tslib; see
+tracebi/reports/assets/REACT_NOTICE.md) and INLINES it into every generated
+report .html that draws a chart. Each such generated report is
 therefore a redistribution of that bundle, and this NOTICE — with the
 attributions below — must travel with it.
 

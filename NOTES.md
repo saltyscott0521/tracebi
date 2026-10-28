@@ -4,6 +4,58 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — One chart: ECharts draws every chart, the D3 engine is retired (ECHARTS-ENGINE)
+
+The owner's decision, locked: there is no separate "TraceBi chart" and
+"author's chart". Every chart is Apache ECharts, through ONE option builder
+and ONE theme in `tracebi.js` ("The chart engine"): a template's
+`{{ figure() }}` and hand-written `data-tb-figure="chart"` charts, the kit's
+`<Chart>` and `<Spark>` (now thin presets of `<EChart>`, same props and figure
+ids, so no shipped report changed), and a claimed `<EChart binding x y>` (the
+kit renders the element; the runtime draws it). An option-only `<EChart>`
+draws itself in the kit, in the same theme (`tracebi._echarts`). The receipt
+follows the data, not the author. Why ECharts: the best charting available
+with full flexibility (about 22 series types, zoom, brush, smooth at 100k
+points); the bench is the CHARTLIB scratch run.
+
+Where the shared code lives: the brief suggested a `window.tracebiEcharts`
+in `echarts-kit.min.js`; it went into `tracebi.js` instead, which every page
+already loads and whose node harness (`test_presentation_js.py`) can probe
+`optionFor` directly. `echarts-kit.min.js` stays pure ECharts
+(`window.__tbECharts`), the one build; `echarts.min.js` and
+`"libs": ["echarts"]` are gone (a report that lists it is refused, naming the
+fix). `d3.min.js` stays for `tracebi.draw`, only when a report lists `"d3"`.
+
+Kept locked: the engine draws the rows' own values (no total, share or
+average; a stack lays rows end to end), colours from the unfiltered rows,
+every gesture writes the one selection (a click on a category's whole band,
+not the 2px of a line; a slice; a scatter's nearest point within 40px; a
+legend chip; shift adds; Escape clears), the chart's own field dims instead of
+narrowing (`--tb-chart-dim`; `data-tb-highlight="off"`). Accessibility: the
+chart is `role="img"` with an `aria-label`, ECharts' `aria` description on
+(decal patterns off: they would change the house look; the palette is already
+checked for colour-blind separation), a keyboard stop whose arrow keys move
+ECharts' tooltip (`showTip`) and announce the value in a live region, Enter
+selects. Motion is off under reduced motion and in print. Fingerprints,
+verify and calc parity are untouched. `test_live_cascade.py` passes with only
+its mark selector and click changed (the click is a real mouse click on the
+first mark, found through the ECharts instance).
+
+Renderer: SVG by default; canvas per figure (`data-tb-renderer`, a declared
+figure's `renderer`, `<Chart renderer>`) or per report (`report.json`
+`"charts": {"renderer"}`). Print: a canvas chart is re-drawn by the SVG
+renderer on `beforeprint` (and canvas again after); every SVG gets a viewBox
+and print CSS lets it scale to the page, so a PDF keeps vectors (the showcase
+PDF holds no raster image).
+
+Measured: a chart page inlines ECharts (931 KB) instead of D3 (163 KB); built
+pages grow by about 725 KB (the desk, which carried both, shrinks by 185 KB).
+`tracebi.js` is about 200 lines shorter, the kit about 420. Every shipped report was built and
+screenshotted under all three house themes, with and without the brand, light
+and dark, before and after.
+
+---
+
 ## 2026-10-28 — Three house themes: Ledger, Nightdesk, Signal (HOUSE-THEMES)
 
 The owner chose three of four directions from a concept page (Atlas, the
