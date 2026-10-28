@@ -33,9 +33,41 @@ export function figureId(kind, binding, key) {
     .join("-").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/-+$/, "");
 }
 
-/** The stamped rows of one report.json binding (copies; never re-queried). */
-export function useBinding(name) {
-  return React.useMemo(() => (tb() ? tb().data(name) : []), [name]);
+/** Re-renders the component on every change of the page's selection. */
+function useSelectionTick() {
+  const [tick, setTick] = React.useState(0);
+  React.useEffect(() => {
+    const t = tb();
+    if (!t || !t.onSelection) return undefined;
+    const off = t.onSelection(() => setTick((n) => n + 1));
+    setTick((n) => n + 1);     // a change between the render and this subscription
+    return off;
+  }, []);
+  return tick;
+}
+
+/** One report.json binding's rows, live: on a live page the binding's own
+ * query re-run under the current selection (the same answer the kit's
+ * figures show), re-rendering when the selection changes; with "embed":
+ * "none", or a binding the page engine cannot run (SQL, report.py), the
+ * stamped rows. Copies, never re-queried. `keep` ("dim.col" or a list)
+ * names fields whose other values stay, for a chart that dims them. What
+ * you draw from them is live, not receipted. */
+export function useBinding(name, keep) {
+  const tick = useSelectionTick();
+  const k = list(keep) || "";
+  return React.useMemo(() => {
+    const t = tb();
+    if (!t) return [];
+    return t.rows ? t.rows(name, k ? k.split(",") : undefined) : t.data(name);
+  }, [name, k, tick]);
+}
+
+/** The page's current selection ({"dim_region.region": ["East"], …}; {} when
+ * nothing is picked or the page is not live), re-rendering when it changes. */
+export function useSelection() {
+  const tick = useSelectionTick();
+  return React.useMemo(() => (tb() && tb().selection ? tb().selection() : {}), [tick]);
 }
 
 /** TraceBi's number formatting ("compact", "currency0", "percent", …). */
@@ -113,6 +145,397 @@ export function Spark(props) {
   useHydrate();
   return <div className={["tb-spark", props.className || ""].join(" ").trim()}
     style={props.style} {...chartProps("spark", props)} />;
+}
+
+// ── <EChart>: the chart, drawn by Apache ECharts ────────────────────────────
+//
+// One chart component for every chart of an app. Its receipt follows the
+// data, not the author: given a literal binding, x and y it plots that
+// binding's columns as they are, renders the same data-tb-figure="chart"
+// element the kit's <Chart> does, and the build records it as a claim (and
+// refuses an unknown binding or column). Given only an option, its numbers
+// were computed in the page: it carries data-tb-computed and is not a claim.
+// Either way it filters live (its rows are the binding's query re-run under
+// the page's selection) and a click on a mark writes the selection.
+// ECharts draws into its own div (canvas or SVG), so the React runtime never
+// reconciles its marks.
+
+let colorCtx = null;
+/** A token as a colour ECharts can parse (a theme may write oklch() or
+ * color-mix()); the canvas normalises it, as the browser resolved it. */
+function plainColor(v) {
+  if (!v) return v;
+  try {
+    colorCtx = colorCtx || document.createElement("canvas").getContext("2d");
+    colorCtx.fillStyle = "#000";
+    colorCtx.fillStyle = v;
+    return colorCtx.fillStyle;
+  } catch (e) { return v; }
+}
+
+/** The TraceBi theme for ECharts, read from the page's tokens now: the same
+ * ink, muted, rule and card colours, and the same series palette
+ * (--tb-chart-1…8), that the D3 engine draws the kit's <Chart> with. */
+export function echartsTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  const tok = (n) => { const v = cs.getPropertyValue(`--tb-${n}`).trim(); return v ? plainColor(v) : undefined; };
+  const ink = tok("ink"), muted = tok("muted"), rule = tok("rule"), card = tok("bg");
+  const font = cs.getPropertyValue("--tb-font").trim() || undefined;
+  const palette = [];
+  for (let i = 1; i <= 8; i++) { const c = tok(`chart-${i}`); if (c) palette.push(c); }
+  const axis = {
+    axisLine: { lineStyle: { color: rule } },
+    axisTick: { lineStyle: { color: rule } },
+    axisLabel: { color: muted },
+    splitLine: { lineStyle: { color: rule } },
+    splitArea: { areaStyle: { color: ["transparent"] } },
+    nameTextStyle: { color: muted },
+  };
+  return {
+    color: palette.length ? palette : undefined,
+    backgroundColor: "transparent",
+    textStyle: { color: ink, fontFamily: font },
+    title: { textStyle: { color: ink }, subtextStyle: { color: muted } },
+    legend: { textStyle: { color: ink }, pageTextStyle: { color: muted },
+              pageIconColor: ink, pageIconInactiveColor: rule },
+    tooltip: { backgroundColor: card, borderColor: rule, textStyle: { color: ink } },
+    categoryAxis: axis, valueAxis: axis, logAxis: axis, timeAxis: axis,
+    radar: { axisName: { color: muted }, axisLine: { lineStyle: { color: rule } },
+             splitLine: { lineStyle: { color: rule } }, splitArea: { show: false } },
+    visualMap: { textStyle: { color: muted } },
+    dataZoom: { textStyle: { color: muted }, borderColor: rule },
+    toolbox: { iconStyle: { borderColor: muted } },
+    markLine: { label: { color: muted } },
+    label: { color: ink },
+  };
+}
+
+/** Calls fn when the page's ground changes: its data-tb-mode, or the reader's
+ * system preference that data-tb-mode="auto" follows. */
+function onModeChange(fn) {
+  const root = document.documentElement;
+  const mo = new MutationObserver(fn);
+  mo.observe(root, { attributes: true, attributeFilter: ["data-tb-mode", "class", "style"] });
+  const mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  if (mq) mq.addEventListener ? mq.addEventListener("change", fn) : mq.addListener(fn);
+  return () => {
+    mo.disconnect();
+    if (mq) mq.removeEventListener ? mq.removeEventListener("change", fn) : mq.removeListener(fn);
+  };
+}
+
+const KIT_TYPES = { bar: 1, barh: 1, line: 1, area: 1, pie: 1, scatter: 1 };
+const NAMED_TYPES = { pie: 1, funnel: 1, treemap: 1, sunburst: 1 };
+const AXIS_TYPES = { bar: 1, barh: 1, line: 1, area: 1, effectScatter: 1, pictorialBar: 1 };
+
+/** The kit chart type the build's no-JavaScript picture draws for an ECharts
+ * series type (app_lane.py mirrors it). */
+export function kitChartType(type) {
+  const t = type || "bar";
+  return KIT_TYPES[t] ? t : NAMED_TYPES[t] ? "pie" : "bar";
+}
+
+const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const toNum = (v) => (v === null || v === undefined || v === "" ? null : Number(v));
+
+/** `over` deep-merged onto `base`: objects key by key, arrays of objects item
+ * by item (series[0] onto series[0]), anything else replaced. */
+function mergeOption(base, over) {
+  if (over === undefined) return base;
+  if (Array.isArray(over)) {
+    if (!Array.isArray(base) || !over.some(isObj)) return over;
+    const n = Math.max(base.length, over.length);
+    return Array.from({ length: n }, (_, i) => (i < over.length ? mergeOption(base[i], over[i]) : base[i]));
+  }
+  if (!isObj(over)) return over;
+  const out = isObj(base) ? { ...base } : {};
+  for (const k of Object.keys(over)) out[k] = mergeOption(out[k], over[k]);
+  return out;
+}
+
+/** An override with its data taken out: on a receipted chart the numbers
+ * are the binding's, so the escape hatch styles them and cannot replace
+ * them (series data, a dataset, category labels). */
+function withoutData(over) {
+  if (!isObj(over)) return over;
+  const o = { ...over };
+  delete o.dataset;
+  const strip = (v, key) => (Array.isArray(v) ? v.map((x) => strip(x, key))
+    : isObj(v) ? (() => { const c = { ...v }; delete c[key]; return c; })() : v);
+  if (o.series !== undefined) o.series = strip(o.series, "data");
+  if (o.xAxis !== undefined) o.xAxis = strip(o.xAxis, "data");
+  if (o.yAxis !== undefined) o.yAxis = strip(o.yAxis, "data");
+  return o;
+}
+
+function picked(selection, field) {
+  const v = field && selection ? selection[field] : null;
+  if (!Array.isArray(v) || !v.length) return null;
+  return new Set(v.map((x) => (x === true ? "True" : x === false ? "False" : String(x))));
+}
+
+/** A colour at a quarter strength: #rrggbb or rgb() → rgba(). */
+function faded(c) {
+  const hex = /^#([0-9a-f]{6})$/i.exec(c);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},0.25)`;
+  }
+  const rgb = /^rgba?\(([^,]+),([^,]+),([^,)]+)/.exec(c);
+  return rgb ? `rgba(${rgb[1]},${rgb[2]},${rgb[3]},0.25)` : c;
+}
+
+/** The values a chart's own field did not pick recede, as the kit's chart
+ * dims them; a pick none of its marks carries dims nothing. */
+function dimOption(opt, set) {
+  if (!set || !isObj(opt) || !opt.series) return opt;
+  const axisCats = (a) => {
+    const ax = Array.isArray(a) ? a[0] : a;
+    return ax && Array.isArray(ax.data) ? ax.data.map((d) => String(isObj(d) ? d.value : d)) : null;
+  };
+  const cats = axisCats(opt.xAxis) || axisCats(opt.yAxis);
+  let hit = false;
+  const walk = (data, byIndex) => data.map((d, i) => {
+    let item = d;
+    if (isObj(d) && Array.isArray(d.children)) item = { ...d, children: walk(d.children, false) };
+    const name = isObj(d) && d.name != null ? String(d.name) : byIndex && cats ? cats[i] : null;
+    if (name == null) return item;
+    if (set.has(name)) { hit = true; return item; }
+    const o = isObj(item) ? { ...item } : { value: item };
+    o.itemStyle = { ...(o.itemStyle || {}), opacity: 0.25 };
+    // A treemap or sunburst cell ignores opacity: its own colour fades.
+    if (typeof o.itemStyle.color === "string") o.itemStyle.color = faded(o.itemStyle.color);
+    return o;
+  });
+  const list = Array.isArray(opt.series) ? opt.series : [opt.series];
+  const series = list.map((s) => (isObj(s) && Array.isArray(s.data) ? { ...s, data: walk(s.data, true) } : s));
+  return hit ? { ...opt, series } : opt;
+}
+
+function formatter(format, unit) {
+  return (v) => {
+    const t = tb();
+    const out = t && t.format ? t.format(v, format) : String(v);
+    return out === "" ? out : out + (unit || "");
+  };
+}
+
+/** Axis ticks are short: compact digits, keeping a currency sign or a
+ * percent, as the kit's chart writes them. */
+function tickFormatter(format, unit) {
+  return (v) => {
+    const t = tb(), n = Number(v);
+    if (!t || !t.format) return String(v);
+    const out = format === "percent" ? t.format(n, "percent")
+      : /^currency/.test(format || "") ? (n < 0 ? "-$" : "$") + t.format(Math.abs(n), "compact")
+      : t.format(n, "compact");
+    return out + (unit || "");
+  };
+}
+
+function firstSeen(rows, col) {
+  const seen = new Set(), out = [];
+  for (const r of rows) { const v = r[col]; if (!seen.has(v)) { seen.add(v); out.push(v); } }
+  return out;
+}
+
+/** The option for a binding's columns: x the category (a number on a
+ * scatter), y one measure or several, `series` a column whose values split
+ * the rows into series. Colours come from the binding's stamped rows, so a
+ * category or a series keeps its colour whatever the selection leaves. */
+function optionFromRows({ type, rows, stamped, x, ys, series, format, unit, stack, palette, xSet, sSet }) {
+  const t = type || "bar";
+  const value = formatter(format, unit);
+  const tick = tickFormatter(format, unit);
+  const color = (keys, k) => (palette && palette.length ? palette[Math.max(0, keys.indexOf(k)) % palette.length] : undefined);
+  if (t === "scatter") {
+    return {
+      tooltip: { trigger: "item", valueFormatter: value },
+      xAxis: { type: "value", axisLabel: { formatter: tick } },
+      yAxis: { type: "value", axisLabel: { formatter: tick }, name: unit || undefined },
+      series: ys.map((y) => ({ type: "scatter", name: y,
+        data: rows.map((r) => [toNum(r[x]), toNum(r[y])]) })),
+    };
+  }
+  if (!AXIS_TYPES[t]) {
+    // A share of a whole (pie, funnel, treemap, sunburst, …): one item per row.
+    const keys = firstSeen(stamped, x);
+    const item = (r) => ({ name: r[x], value: toNum(r[ys[0]]),
+      itemStyle: { color: color(keys, r[x]) } });
+    const s = { type: t, name: ys[0], data: rows.map(item) };
+    if (t === "pie") Object.assign(s, { radius: ["42%", "70%"], avoidLabelOverlap: true });
+    if (t === "treemap") Object.assign(s, { nodeClick: false, roam: false, breadcrumb: { show: false } });
+    if (t === "sunburst") s.nodeClick = false;
+    return dimOption({ tooltip: { trigger: "item", valueFormatter: value }, series: [s] }, xSet);
+  }
+  const horizontal = t === "barh";
+  const kind = t === "barh" ? "bar" : t === "area" ? "line" : t;
+  const cats = firstSeen(rows, x);
+  const index = new Map(cats.map((c, i) => [c, i]));
+  let out;
+  if (series) {
+    const keys = firstSeen(stamped, series);
+    const present = new Set(rows.map((r) => r[series]));
+    const y = ys[0];
+    out = keys.filter((k) => present.has(k)).map((k) => {
+      const data = cats.map(() => null);
+      for (const r of rows) if (r[series] === k) data[index.get(r[x])] = toNum(r[y]);
+      const dim = sSet && !sSet.has(String(k));
+      return { type: kind, name: String(k), data, itemStyle: { color: color(keys, k), opacity: dim ? 0.25 : undefined },
+               lineStyle: dim ? { opacity: 0.25 } : undefined };
+    });
+  } else {
+    out = ys.map((y) => {
+      const data = cats.map(() => null);
+      for (const r of rows) data[index.get(r[x])] = toNum(r[y]);
+      return { type: kind, name: y, data, itemStyle: { color: color(ys, y) } };
+    });
+  }
+  out.forEach((s) => {
+    if (t === "area") s.areaStyle = { opacity: 0.25 };
+    if (kind === "line") { s.showSymbol = cats.length <= 40; s.smooth = false; }
+    if (kind === "bar") { s.barMaxWidth = 48; s.itemStyle.borderRadius = horizontal ? [0, 3, 3, 0] : [3, 3, 0, 0]; }
+    if (stack) s.stack = "total";
+  });
+  const catAxis = { type: "category", data: cats, inverse: horizontal };
+  const valAxis = { type: "value", axisLabel: { formatter: tick }, name: unit || undefined };
+  return dimOption({
+    tooltip: { trigger: "axis", axisPointer: { type: kind === "bar" ? "shadow" : "line" }, valueFormatter: value },
+    legend: out.length > 1 ? { type: "scroll", top: 0 } : undefined,
+    grid: { left: 8, right: 16, top: out.length > 1 ? 36 : 16, bottom: 8 },
+    xAxis: horizontal ? valAxis : catAxis,
+    yAxis: horizontal ? catAxis : valAxis,
+    series: out,
+  }, xSet);
+}
+
+/** The chart. With `binding`, `x` and `y` (literal strings: they are its
+ * claim) it plots that binding's columns as they are: `type` bar, barh,
+ * line, area, pie, scatter or any ECharts series type that takes name/value
+ * items (funnel, treemap, sunburst, …), `series` a column that splits the
+ * rows into series, `format` / `unit` for its values, `stack`. `option` (an
+ * ECharts option, or a function of the rows) deep-merges on top: the escape
+ * hatch for anything the props do not say, which styles the binding's
+ * numbers and never replaces them. With `option` alone (and `binding` to
+ * draw from, or none) the chart's numbers are the page's own: not a claim.
+ * Every chart is live: its rows are its binding's query re-run under the
+ * page's selection, and a click on a mark writes the selection for its `x`
+ * (`selects="dim.col"` on an option-only chart; `onSelect(params)` returns
+ * the value a click picks, or null for none; shift adds). Its own field's
+ * other values stay and are dimmed, as on the kit's charts;
+ * `highlight="off"` (or data-tb-highlight="off" on an ancestor) narrows
+ * instead. `renderer` "canvas" (the default: large data) or "svg"; `theme`
+ * "auto" follows the page's tokens and mode, or an ECharts theme object or
+ * name; `onEvents` maps an ECharts event name to a handler. ECharts' aria is
+ * on unless the option sets its own; `ariaLabel` describes the chart. */
+export function EChart({ binding, x, y, series, type, format, valueFormat, unit, stack,
+                         selects, onSelect, option, highlight, id,
+                         renderer = "canvas", height = 320, theme = "auto",
+                         className, onEvents, ariaLabel, style }) {
+  useHydrate();
+  const outer = React.useRef(null);
+  const host = React.useRef(null);
+  const chart = React.useRef(null);
+  const ys = (list(y) || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const claimed = typeof binding === "string" && binding !== "" && typeof x === "string" && x !== "" && ys.length > 0;
+  const field = claimed ? x : selects;
+  const fmtName = format || valueFormat;
+
+  const [off, setOff] = React.useState(highlight === "off");
+  React.useLayoutEffect(() => {
+    const el = outer.current;
+    setOff(highlight === "off" || !!(el && el.closest && el.closest('[data-tb-highlight="off"]')));
+  }, [highlight]);
+  const [modeTick, setModeTick] = React.useState(0);
+  React.useEffect(() => (theme === "auto" ? onModeChange(() => setModeTick((n) => n + 1)) : undefined), [theme]);
+
+  const keep = off ? [] : (claimed ? [x, series] : [selects]).filter(Boolean);
+  const rows = useBinding(binding, keep);
+  const selection = useSelection();
+  const stamped = React.useMemo(() => (binding && tb() ? tb().data(binding) : []), [binding]);
+
+  const resolved = React.useMemo(() => {
+    const over = typeof option === "function" ? option(rows) : option;
+    const xSet = off ? null : picked(selection, field);
+    if (!claimed) return dimOption(over || {}, xSet);
+    const palette = theme === "auto" ? (echartsTheme().color || null) : null;
+    const base = optionFromRows({ type, rows, stamped, x, ys, series, format: fmtName, unit, stack,
+      palette, xSet, sSet: off ? null : picked(selection, series) });
+    return over ? mergeOption(base, withoutData(over)) : base;
+  }, [rows, stamped, selection, option, off, claimed, type, x, ys.join(","), series, fmtName, unit,
+      stack, field, theme, modeTick]);
+
+  const latest = React.useRef(resolved);
+  latest.current = resolved;
+  const handlers = React.useRef(onEvents);
+  handlers.current = onEvents;
+  const select = React.useRef(null);
+  select.current = field ? (params) => {
+    const value = onSelect ? onSelect(params) : params && params.name;
+    if (value === null || value === undefined || value === "") return;
+    const ev = params && params.event && params.event.event;
+    if (tb() && tb().pick) tb().pick(field, String(value), ev);
+  } : null;
+
+  const full = (opt) => {
+    const o = opt || {};
+    if (o.aria !== undefined) return o;
+    return { ...o, aria: { enabled: true,
+      ...(ariaLabel ? { label: { description: ariaLabel } } : {}) } };
+  };
+
+  const [ready, setReady] = React.useState(0);
+  React.useEffect(() => {
+    const echarts = window.__tbModules && window.__tbModules.echarts;
+    if (!echarts) throw new Error("<EChart> needs ECharts, which this page did not load.");
+    const auto = theme === "auto";
+    let applied = auto ? echartsTheme() : theme;
+    const c = echarts.init(host.current, applied, { renderer });
+    chart.current = c;
+    c.setOption(full(latest.current), { notMerge: true });
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => c.resize()) : null;
+    if (ro) ro.observe(host.current);
+    const offMode = auto ? onModeChange(() => {
+      const next = echartsTheme();
+      if (JSON.stringify(next) === JSON.stringify(applied)) return;
+      applied = next;
+      c.setTheme(next);
+    }) : () => {};
+    c.on("click", (p) => { if (select.current) select.current(p); });
+    setReady((n) => n + 1);
+    return () => { offMode(); if (ro) ro.disconnect(); c.dispose(); chart.current = null; };
+  }, [renderer, typeof theme === "string" ? theme : JSON.stringify(theme)]);
+
+  React.useEffect(() => {
+    if (chart.current) chart.current.setOption(full(resolved), { notMerge: true });
+  }, [resolved, ariaLabel]);
+
+  const names = onEvents ? Object.keys(onEvents).sort().join(",") : "";
+  React.useEffect(() => {
+    const c = chart.current;
+    if (!c || !names) return undefined;
+    const bound = names.split(",").map((name) => {
+      const h = (p) => { const f = handlers.current && handlers.current[name]; if (f) f(p, c); };
+      c.on(name, h);
+      return [name, h];
+    });
+    return () => { if (!c.isDisposed()) bound.forEach(([name, h]) => c.off(name, h)); };
+  }, [ready, names]);
+
+  // The claim: the same element the kit's <Chart> renders (app_lane.py reads
+  // it from the source), drawn by ECharts instead of the runtime.
+  const claim = claimed ? {
+    id: id || figureId("chart", binding, ys.join(",")),
+    "data-tb-figure": "chart", "data-tb-binding": binding, "data-tb-type": kitChartType(type),
+    "data-tb-echart-type": type || "bar", "data-tb-x": x, "data-tb-y": ys.join(","),
+    "data-tb-color": series, "data-tb-value-format": fmtName, "data-tb-unit": unit,
+    "data-tb-stack": flag(stack), "data-tb-engine": "app",
+  } : { id, "data-tb-computed": "" };
+  return (
+    <div ref={outer} className={className} style={style} data-tb-highlight={highlight} {...claim}>
+      <div ref={host} role="img" aria-label={ariaLabel} style={{ height, width: "100%" }} />
+    </div>
+  );
 }
 
 /** A table. `selectRows`: on a live page a click on a row selects its values

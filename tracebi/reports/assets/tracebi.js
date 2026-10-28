@@ -2841,6 +2841,10 @@
     var palette = null;
     fresh(figureEls("chart"), "chart").forEach(function (el) {
       try {
+        /* An app's <EChart> draws itself (ECharts, in its own div): it is a
+         * figure for the receipt, the trace and the selection, never drawn
+         * here. */
+        if (el.getAttribute("data-tb-engine") === "app") return;
         var binding = attr(el, "data-tb-binding");
         var block = readBlock(binding);
         if (!block || !block.rows.length) return;
@@ -6283,6 +6287,52 @@
   }
   hostBridge();
 
+  /* ── For an author's own chart (app.jsx useBinding, <EChart>) ──
+   * rows(name, keep): copies of the binding's rows as the page has them
+   * now — on a live page the engine's answer under the selection, else the
+   * stamped rows (embed none, a SQL binding, report.py). keep lists fields
+   * whose other values stay (the chart's own field: it dims them instead of
+   * narrowing). The same answers the kit's figures draw; nothing new is
+   * computed, and an author's chart drawn from them still carries no
+   * receipt. pick(column, value, event) is a click on a kit chart's mark:
+   * the value, shift adds, again removes. */
+  function authorRows(name, keep) {
+    var block = readBlock(name), src;
+    if (!block) return [];
+    src = block.rows;
+    if (_calc && _calc.local) {
+      var own = (keep || []).filter(function (c, i, all) {
+        return c && all.indexOf(c) === i && isArray(_calc.state[c]) && selectableField(c);
+      });
+      var res = own.length ? variantResult(name, own) : null;
+      if (res && res.block) src = res.block.rows;
+      else if (_liveRows[name]) src = _liveRows[name];
+    }
+    return src.map(function (r) {
+      var o = {}, k;
+      for (k in r) if (r.hasOwnProperty(k)) o[k] = r[k];
+      return o;
+    });
+  }
+
+  /* A number in a named format ("currency0", "percent", …; the table's and
+   * the charts' formats), the raw value for an unknown one. */
+  function formatNamed(v, mode) {
+    var n = toNum(v), out;
+    if (n === null) return v === null || v === undefined ? "" : String(v);
+    out = mode ? applyNamedFormat(n, mode) : null;
+    return out === null ? fmt(n) : out;
+  }
+
+  function currentSelection() {
+    return _calc ? JSON.parse(JSON.stringify(_calc.state)) : {};
+  }
+
+  function authorPick(column, value, event) {
+    var act = markAction(column);
+    if (act && value !== null && value !== undefined) act(value, event);
+  }
+
   root.tracebi = {
     data: data,
     ready: ready,
@@ -6295,6 +6345,10 @@
      * state, from any control, mark, row, range, chip or setSelection. */
     onSelection: onSelection,
     result: result,
+    rows: authorRows,
+    selection: currentSelection,
+    format: formatNamed,
+    pick: authorPick,
     refresh: refresh,
     /* The receipt certificate into any element (the web app's side panel
      * mounts it too); see renderReceipt. Display only. */

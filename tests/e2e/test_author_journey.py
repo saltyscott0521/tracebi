@@ -190,24 +190,31 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
 _APP_JSX = """import { useState } from "react";
 import { BarChart, Bar } from "recharts";
 import { TrendingUp } from "lucide-react";
-import { Kpi, Chart, Table, useBinding } from "tracebi";
+import { Kpi, Chart, Table, Filter, EChart, useBinding } from "tracebi";
 
 export default function App() {
   const [view, setView] = useState("Overview");
   const regions = useBinding("by_region");
   return (
     <main className="flex gap-6 p-6">
-      <nav><button onClick={() => setView("Detail")}><TrendingUp size={16} /> Detail</button></nav>
+      <nav><button onClick={() => setView("Detail")}><TrendingUp size={16} /> Detail</button>
+        <Filter column="dim_region.region" label="Region" /></nav>
       {view === "Overview" ? (
         <div className="tb-grid">
           <Kpi lead binding="kpis" cell="revenue" format="currency0" label="Revenue"
                deltaBinding="kpis" deltaCell="units" deltaGood="up" />
           <Chart binding="by_region" x="dim_region.region" y="revenue" />
+          <EChart binding="by_region" x="dim_region.region" y="revenue" id="ech-regions"
+                  format="currency0" ariaLabel="Revenue by region" highlight="off" />
+          <EChart ariaLabel="Revenue share" id="ech-share" option={{
+            series: [{ type: "treemap", data: regions.map((r) =>
+              ({ name: r["dim_region.region"], value: Number(r.revenue) })) }] }} />
         </div>
       ) : (
         <>
           <Table binding="by_region" sort />
-          <BarChart width={400} height={200} data={regions}><Bar dataKey="revenue" /></BarChart>
+          <BarChart width={400} height={200} data={regions}><Bar dataKey="revenue"
+            onClick={(d, i, e) => window.tracebi.pick("dim_region.region", d.payload["dim_region.region"], e)} /></BarChart>
         </>
       )}
     </main>
@@ -238,19 +245,80 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     assert code == 0, out
     built = (scaffolded / "output" / "regions_app.html").read_text()
     assert 'id="tracebi-app"' in built and "TraceBi-credit: Recharts" in built
+    assert "TraceBi-credit: Apache ECharts" in built and "TanStack Redact" in built
     # Only the icons the app imports ride in the page.
     icons = json.loads(built.split('id="tracebi-icons">', 1)[1].split("</script>", 1)[0])
     assert list(icons) == ["TrendingUp"]
     manifest_path = scaffolded / "output" / "regions_app.html.manifest.json"
     claims = {f["id"]: f["binding"] for f in json.loads(manifest_path.read_text())["figures"]}
     # A KPI's delta is a claim of its own, under the same receipt.
+    # An <EChart> of a binding's columns is a claim like the kit's <Chart>;
+    # one drawn from an option the page computed is not.
     assert claims == {"fig-value-kpis-revenue": "kpis",
                       "fig-delta-kpis-units": "kpis",
                       "fig-chart-by_region-revenue": "by_region",
+                      "ech-regions": "by_region",
                       "fig-table-by_region": "by_region"}
     assert "This page is an app." in built
     code, out = run_cli("verify", str(manifest_path))
     assert code == 0, out
+
+    # Opened, on the one runtime: both <EChart>s drew into their canvases and
+    # filter live; a click on a mark writes the page's selection, which a kit
+    # KPI follows; the Recharts chart on the other view renders.
+    from tests.e2e.test_reference_project import _browser, _settle
+    pw, browser = _browser()
+    try:
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        errors = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.on("console", lambda m: m.type == "error" and errors.append(m.text))
+        page.goto((scaffolded / "output" / "regions_app.html").as_uri())
+        _settle(page)
+        for fid in ("ech-regions", "ech-share"):
+            size = page.evaluate("""(id) => { const c = document.querySelector('#' + id + ' canvas');
+                return c ? [c.width, c.height] : null; }""", fid)
+            assert size and size[0] > 0 and size[1] > 0, (fid, size)
+        assert page.locator("#ech-regions[data-tb-figure='chart']").count() == 1
+        assert page.locator("#ech-share[data-tb-computed]").count() == 1
+        n_points = """(id) => { const el = document.querySelector('#' + id + ' [role=img]');
+            const o = window.__tbModules.echarts.getInstanceByDom(el).getOption();
+            return o.series[0].data.filter((d) => d !== null).length; }"""
+        before = page.evaluate(n_points, "ech-regions")
+        before_share = page.evaluate(n_points, "ech-share")
+        assert before > 1
+        region = page.evaluate("() => window.tracebi.data('by_region')[0]['dim_region.region']")
+        page.locator('select[data-tb-filter][data-tb-column="dim_region.region"]').select_option(region)
+        _settle(page)
+        assert page.evaluate(n_points, "ech-regions") < before
+        assert page.evaluate(n_points, "ech-share") < before_share
+        page.locator('select[data-tb-filter][data-tb-column="dim_region.region"]').select_option("All")
+        _settle(page)
+        total = page.locator("#fig-value-kpis-revenue .tb-kpi-value").text_content()
+        # A click on the last bar picks its region, as a click on a kit chart's bar does.
+        last = page.evaluate("""() => { const el = document.querySelector('#ech-regions [role=img]');
+            const c = window.__tbModules.echarts.getInstanceByDom(el);
+            const o = c.getOption(), cats = o.xAxis[0].data, i = cats.length - 1;
+            const [px, py] = c.convertToPixel({ seriesIndex: 0 }, [i, o.series[0].data[i] / 2]);
+            const r = el.getBoundingClientRect();
+            return { name: cats[i], x: r.left + px, y: r.top + py }; }""")
+        page.mouse.click(last["x"], last["y"])
+        _settle(page)
+        assert last["name"] in page.locator(".tb-selection-bar").text_content()
+        assert page.locator("#fig-value-kpis-revenue .tb-kpi-value").text_content() != total
+        # The Recharts chart draws the same live rows (the one region picked),
+        # and its onClick selects through the same gesture: again, it clears.
+        page.get_by_role("button", name="Detail").click()
+        page.wait_for_selector(".recharts-bar-rectangle")
+        assert page.locator(".recharts-bar-rectangle").count() == 1
+        page.locator(".recharts-bar-rectangle path").first.click()
+        _settle(page)
+        assert page.evaluate("() => window.tracebi.selection()") == {}
+        assert page.locator(".recharts-bar-rectangle").count() == before
+        assert errors == []
+    finally:
+        browser.close()
+        pw.stop()
 
     (pkg / "app.jsx").write_text(_APP_JSX.replace('"recharts"', '"chart.js"'), encoding="utf-8")
     code, out = run_cli("report", "build", "regions_app")
@@ -266,6 +334,12 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
                                  encoding="utf-8")
     code, out = run_cli("report", "build", "regions_app")
     assert code != 0 and "'unit' is not a column" in out, out
+
+    # And an <EChart> plotting a column its binding does not return.
+    (pkg / "app.jsx").write_text(_APP_JSX.replace('y="revenue" id="ech-regions"',
+                                                  'y="revenu" id="ech-regions"'), encoding="utf-8")
+    code, out = run_cli("report", "build", "regions_app")
+    assert code != 0 and "revenu" in out, out
 
     # A number typed into the app's text is refused, as in a template.html.
     (pkg / "app.jsx").write_text(_APP_JSX.replace("</nav>", "<p>Up 1250 units.</p></nav>", 1),
@@ -442,7 +516,7 @@ def test_status_and_the_review_snapshot(scaffolded):
     assert code == 0, out
     code, out = run_cli("report", "status", "sample_model/sample_dashboard")
     assert code == 0, out
-    assert "10 figure(s) — 10 query-backed, 0 python-derived, 0 unverified" in out
+    assert "11 figure(s) — 11 query-backed, 0 python-derived, 0 unverified" in out
 
     code, out = run_cli("report", "snapshot", "sample_model/sample_dashboard")
     assert code == 0, out

@@ -22,6 +22,9 @@ Object.assign(modules, {
   tracebi: kit,
   "lucide-react": lucideModule(),
 });
+// ECharts (echarts-kit.min.js) is inlined before this bundle on a page that
+// imports "echarts" or the kit's <EChart>; it never imports React.
+if (window.__tbECharts) modules.echarts = window.__tbECharts;
 
 window.__tbRequire = function (name) {
   const m = modules[name];

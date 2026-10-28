@@ -5,10 +5,14 @@
 // and so does every other gesture: a click on a bar or a watch-list row, the
 // spread range. The filters and the range live in the sidebar, so what they
 // pick holds on every view. The selection bar says what is picked.
+// The Funds view's two <EChart>s are charts the kit's <Chart> cannot draw: a
+// treemap of a binding's columns as they are (a claim, like any kit figure)
+// and a sankey whose links the page computes from a binding's rows (not a
+// claim, and it says so). Both are live: they redraw under the selection.
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download, Range,
-         SelectionBar, useUrlState, usePrinting } from "tracebi";
+         SelectionBar, EChart, useBinding, useUrlState, usePrinting } from "tracebi";
 
 const TITLE = "Portfolio Desk";
 const VIEWS = { Overview: LayoutDashboard, Holdings: Table2, Funds: Landmark };
@@ -120,6 +124,23 @@ function Funds() {
                  valueFormat="currency_compact" id="chart-fund-unrealized" />
         </section>
       </div>
+      <div className="tb-grid">
+        <section className="tb-card tb-span-6">
+          <h2>Fair value by sector</h2>
+          <p className="tb-note">Each sector's share of the book. Click one to select it.</p>
+          {/* binding, x and y literal: the chart plots the binding's columns as
+              they are, so the build records it as a claim and checks them. */}
+          <EChart binding="by_sector" type="treemap" x="dim_issuer.sector" y="fair_value"
+                  format="currency_compact" id="ech-sector-treemap" height={300}
+                  ariaLabel="Fair value by sector, as a treemap" />
+        </section>
+        <section className="tb-card tb-span-6">
+          <h2>Where each fund's money sits</h2>
+          <p className="tb-note">Fund to sector, by fair value. Drawn by this page from
+            the fund-by-sector rows: live, not a checked figure.</p>
+          <FundSectorFlow />
+        </section>
+      </div>
       <section className="tb-card">
         <h2>The funds side by side</h2>
         <Table binding="by_fund" id="funds-table" sort
@@ -129,6 +150,28 @@ function Funds() {
                formats={{ "wtd_spread_bps": "comma" }} />
       </section>
     </>
+  );
+}
+
+// A chart of the page's own: the links are computed here from the rows of
+// fund_sector (re-run under the selection), so it carries data-tb-computed
+// and is presentation, not a claim.
+function FundSectorFlow() {
+  const rows = useBinding("fund_sector");
+  const funds = [...new Set(rows.map((r) => r["dim_fund.fund"]))];
+  const sectors = [...new Set(rows.map((r) => r["dim_issuer.sector"]))];
+  return (
+    <EChart height={300} id="ech-fund-sector" ariaLabel="Fair value from each fund to each sector"
+      option={{
+        tooltip: { trigger: "item" },
+        series: [{
+          type: "sankey", left: 8, right: 110, nodeGap: 10, emphasis: { focus: "adjacency" },
+          lineStyle: { color: "gradient", opacity: 0.35 },
+          data: [...funds, ...sectors].map((name) => ({ name })),
+          links: rows.map((r) => ({ source: r["dim_fund.fund"], target: r["dim_issuer.sector"],
+                                    value: Number(r.fair_value) })),
+        }],
+      }} />
   );
 }
 

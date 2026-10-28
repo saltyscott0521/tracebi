@@ -4,6 +4,48 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — One chart: ECharts in the kit, every chart live (ECHARTS-KIT)
+
+The owner's decision, locked: there is no separate "TraceBi chart" vs "author's
+chart". One chart component, ECharts underneath, for every chart. Every chart
+filters live and writes the selection on click. The receipt follows the DATA, not
+the author: a chart that plots a binding's columns as they are is receipted,
+whoever wrote it; a chart whose numbers were computed in the page says so, the
+same way on any chart.
+
+This package lands it for app.jsx as `<EChart>` (`_react_src/kit.jsx`), shaped to
+become the kit's `<Chart>` later (a follow-up moves `<Chart>` onto ECharts as a
+preset of it). With literal `binding`, `x` and `y` it builds its option from the
+binding's rows (`type`, `series`, `format`, `unit`, `stack`), renders the same
+`data-tb-figure="chart"` element as `<Chart>` (`data-tb-engine="app"`, so
+`tracebi.js` traces it but never draws it) and `app_lane` records it as a claim;
+`option` deep-merges on top and cannot replace the binding's numbers (its series
+data, dataset and axis labels are dropped). With only `option` it carries
+`data-tb-computed`. Its rows are `tracebi.rows(binding, keep)`: the live page's
+answer under the selection (the kit's highlight variant for its own `x`/`series`,
+which it dims), stamped rows otherwise; a click calls `tracebi.pick`, the same
+toggle a kit chart's mark makes. `useBinding` is now live the same way, and
+`useSelection()` is new; nothing new is computed, the rows are the answers the kit
+figures already show.
+
+Why ECharts, from the CHARTLIB bench (scratchpad, 2026-10-27, Chromium on the
+Redact runtime): every probe (bar, line, pie, a re-render) drew with no error on
+canvas and SVG; 100,000 points painted in 211-230 ms on canvas with no long task
+(Plotly SVG 8 s, Chart.js 13 s of hover long tasks, G2 7 s, Vega 1.5 s); 22
+series types; it draws into its own div, so the runtime cannot reach its marks.
+The tree-shaken build carries every series and component the owner listed and
+weighs 932 kB minified, 313 kB gzipped: just over the ~900 kB target, kept whole
+rather than dropping a listed component (toolbox, 22 kB, is the cheapest cut).
+
+Why Recharts 2: agents reach for Recharts' JSX, so it stays importable, but 3.1.2
+hangs on Redact (the page never commits: Redact re-renders children React 18
+would skip, and Recharts 3's per-series store registration loops), while 2.15.4
+rendered bar, line and pie with hover tooltips and a `useState` re-render. So the
+kit ships 2.15.4 (526 kB minified, 137 kB gzipped) on the one runtime, with
+`react/jsx-runtime` and `react-dom/client` mapped to the page's modules (else
+React 18's own jsx-runtime is bundled into it), and `react18.min.js` is gone. The
+guides present `<EChart>` as the chart and Recharts as "also works".
+
 ## 2026-10-27 — Dashboards run on TanStack Redact (REDACT-DASH)
 
 The owner's intent was the dashboards, not the app: every built `app.jsx` page

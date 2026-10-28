@@ -148,8 +148,8 @@ def figures_config(figures, output_names, badges: bool = True) -> list[dict]:
 
 _LIB_ROLE = {
     "react": "runs this page's app (app.jsx), compiled in the page",
-    "react18": "runs this page's app (app.jsx), compiled in the page; React 18 because it imports recharts",
-    "recharts": "the app's own charts",
+    "recharts": "the app's own charts (Recharts)",
+    "echarts-kit": "the app's own charts (<EChart>)",
     "tailwind": "the app's utility classes, generated in the page",
 }
 

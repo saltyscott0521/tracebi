@@ -134,15 +134,19 @@ tracebi report build sales_model/revenue_app
 <tbody>
 <tr>
 <td><code>react</code></td>
-<td>React's hooks and components (<code>useState</code>, <code>useMemo</code>, …). The page runs on TanStack Redact, a drop-in React runtime with the same API; a page that imports <code>recharts</code> runs on React 18 instead</td>
+<td>React's hooks and components (<code>useState</code>, <code>useMemo</code>, …). Every page runs on TanStack Redact, a drop-in React runtime with the same API</td>
 </tr>
 <tr>
 <td><code>react-dom</code></td>
 <td><code>createPortal</code>, <code>flushSync</code></td>
 </tr>
 <tr>
+<td><code>echarts</code></td>
+<td>Apache ECharts' module (<code>echarts.graphic</code>, <code>echarts.getInstanceByDom</code>), for what <code>&lt;EChart&gt;</code> hands you; the chart itself is <code>&lt;EChart&gt;</code> from <code>tracebi</code></td>
+</tr>
+<tr>
 <td><code>recharts</code></td>
-<td>Recharts 3, for charts of your own</td>
+<td>Recharts 2, which also works (Recharts 3 does not run on Redact)</td>
 </tr>
 <tr>
 <td><code>lucide-react</code></td>
@@ -164,8 +168,8 @@ are Tailwind colours, so an app follows the page's mode and
 <code>style.css</code> beside <code>app.jsx</code> is a theme preset, tokens only (the accent pair
 for each ground, a display face as <code>--tb-font-display</code>).</p>
 <h2 id="figures">Figures</h2>
-<pre><code class="language-jsx">import { Kpi, Value, Chart, Spark, Table, Filter, Search, Download,
-         useBinding, fmt } from &quot;tracebi&quot;;
+<pre><code class="language-jsx">import { Kpi, Value, Chart, Spark, Table, EChart, Filter, Search, Download,
+         useBinding, useSelection, fmt } from &quot;tracebi&quot;;
 </code></pre>
 <p>Each figure renders the element a template would hold, and the runtime fills
 it from the stamped rows: formatted, traced and filterable.</p>
@@ -314,9 +318,90 @@ totals.</p>
 </tr>
 </tbody>
 </table>
+<h2 id="charts">Charts</h2>
+<p><code>&lt;EChart&gt;</code> is the chart: Apache ECharts, drawn into its own canvas (or SVG),
+for everything from a bar to a treemap, a sankey or 100,000 points. Whether a
+chart is a checked figure follows its data, not who wrote it.</p>
+<pre><code class="language-jsx">&lt;EChart binding=&quot;by_sector&quot; type=&quot;treemap&quot; x=&quot;dim_issuer.sector&quot; y=&quot;fair_value&quot;
+        format=&quot;currency_compact&quot; height={300} /&gt;
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Prop</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>binding</code>, <code>x</code>, <code>y</code></td>
+<td>The binding and its columns: <code>x</code> the category (a number on a scatter), <code>y</code> one measure or a list. Literal strings make the chart a claim, as for <code>&lt;Chart&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td><code>bar</code> (default), <code>barh</code>, <code>line</code>, <code>area</code>, <code>pie</code>, <code>scatter</code>, or any ECharts series type that takes name/value items (<code>funnel</code>, <code>treemap</code>, <code>sunburst</code>, …)</td>
+</tr>
+<tr>
+<td><code>series</code></td>
+<td>A column whose values split the rows into series (<code>&lt;Chart color&gt;</code>)</td>
+</tr>
+<tr>
+<td><code>format</code>, <code>unit</code>, <code>stack</code></td>
+<td>The values' named format, a unit suffix, stacked series</td>
+</tr>
+<tr>
+<td><code>option</code></td>
+<td>An ECharts option, or a function of the rows, deep-merged on top: the escape hatch for anything the props do not say</td>
+</tr>
+<tr>
+<td><code>renderer</code></td>
+<td><code>"canvas"</code> (default: large data, smooth hover) or <code>"svg"</code> (crisp text, small charts, prints sharp)</td>
+</tr>
+<tr>
+<td><code>theme</code></td>
+<td><code>"auto"</code> (default): the page's tokens and palette, following its mode; or an ECharts theme</td>
+</tr>
+<tr>
+<td><code>selects</code>, <code>onSelect</code></td>
+<td>On an option-only chart, the column a click selects; <code>onSelect(params)</code> returns the value a click picks (null: none)</td>
+</tr>
+<tr>
+<td><code>highlight</code></td>
+<td><code>"off"</code>: a selection narrows the chart instead of dimming its own field's other values</td>
+</tr>
+<tr>
+<td><code>onEvents</code>, <code>ariaLabel</code>, <code>height</code>, <code>id</code>, <code>className</code></td>
+<td>ECharts events (<code>{click: (p) =&gt; …}</code>), the description (ECharts' aria is on by default, so a canvas chart has one), size, id</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>A chart of a binding's columns is a claim.</strong> With <code>binding</code>, <code>x</code> and <code>y</code>
+  literal, <code>&lt;EChart&gt;</code> renders the same <code>data-tb-figure="chart"</code> element as
+  <code>&lt;Chart&gt;</code>, the build records it and refuses an unknown binding or column,
+  and the trace names it. <code>option</code> styles it and cannot replace its numbers
+  (series data, a dataset or category labels in it are dropped).</li>
+<li><strong>A chart of numbers the page computed is not.</strong> <code>&lt;EChart option={…}&gt;</code>
+  alone (sankey links summed in the app, a ratio you work out) carries
+  <code>data-tb-computed</code> and is the app's presentation, not a checked figure; the
+  page's footer says so.</li>
+<li><strong>Every chart is live.</strong> Its rows are its binding's query re-run under the
+  page's selection, and a click on a mark selects that value of its <code>x</code> (shift
+  adds, again removes), as on <code>&lt;Chart&gt;</code>; the chart keeps its own field's other
+  values and dims them.</li>
+<li><strong>Recharts also works.</strong> <code>import { BarChart, Bar } from "recharts"</code> (Recharts
+  2) draws with <code>useBinding</code> rows; to select on click, <code>&lt;Bar onClick={(d, i, e) =&gt;
+  window.tracebi.pick("dim_region.region", d.payload["dim_region.region"], e)} /&gt;</code>.
+  A Recharts chart is presentation, like an option-only <code>&lt;EChart&gt;</code>.</li>
+</ul>
 <p><strong>Data for your own components.</strong> <code>useBinding("name")</code> returns copies of the
-binding's stamped rows. <code>fmt(value, "currency0")</code> formats a number with the
-named formats (<a href="../reference/number-formats.html">Number formats</a>).</p>
+binding's rows as the page has them now: on a live page its query re-run
+under the selection, re-rendering when the selection changes; on an <code>"embed":
+"none"</code> page, or for a binding the page cannot re-run (SQL, <code>report.py</code>), the
+stamped rows. What you draw from them is live, not a checked figure.
+<code>useSelection()</code> returns the selection (<code>{"dim_region.region": ["East"]}</code>).
+<code>fmt(value, "currency0")</code> formats a number with the named formats
+(<a href="../reference/number-formats.html">Number formats</a>).</p>
 <h2 id="what-the-trace-covers">What the trace covers</h2>
 <p>The build reads every kit figure's props from <code>app.jsx</code> without running it,
 records each as a claim in the manifest, and refuses a binding or column that
@@ -332,8 +417,9 @@ does not exist.</p>
 <li>A number typed into the app's text (<code>&lt;p&gt;Up 1250 units&lt;/p&gt;</code>) fails the build,
   as in a <code>template.html</code>. Bind it with <code>&lt;Value binding="…" cell="…" /&gt;</code>, or
   say it in words. A single digit ("Q3") is not a number here.</li>
-<li>Anything the app computes or draws itself (a Recharts chart, a sum, a number
-  in your own markup) is presentation, not a checked figure. The page's footer
+<li>Anything the app computes or draws itself (an <code>&lt;EChart option={…}&gt;</code>, a
+  Recharts chart, a sum, a number in your own markup) is presentation, not a
+  checked figure. The page's footer
   says so: <em>"This page is an app. The figures it shows through the TraceBi kit
   carry that trace; anything else it draws is the app's own presentation and
   is not checked."</em></li>

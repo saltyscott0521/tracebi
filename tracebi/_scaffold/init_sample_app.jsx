@@ -6,7 +6,7 @@
 // border-rule bg-accent follow the page's theme and mode.
 // The kit and patterns: docs/reference/app-jsx.md.
 import { useEffect, useState } from "react";
-import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download,
+import { Masthead, Footer, Kpi, Value, Chart, EChart, Table, Filter, Search, Download,
          SelectionBar, useBinding } from "tracebi";
 
 // One value in view: "Midwest led with $4,846 of the $4,846" compares a region
@@ -100,6 +100,17 @@ export default function App() {
                    formats={{ revenue: "currency0" }} />
           </section>
         </div>
+        {/* <EChart> is the chart (Apache ECharts): bar, line, pie, a treemap, a
+            sankey, 100k points. With binding, x and y literal it plots the
+            binding's columns as they are, so it is a checked figure like <Chart>;
+            an <EChart option={…}> alone draws numbers this page computed and is
+            the app's presentation, not a checked figure. Either way it is live:
+            it redraws under the selection, and a click selects its region. */}
+        <section className="tb-card">
+          <h2>Orders by region</h2>
+          <EChart binding="region_detail" type="pie" x="dim_region.region" y="orders"
+                  format="comma" height={260} id="ech-orders" ariaLabel="Orders by region" />
+        </section>
         {/* The footer the build writes: one line on how these numbers were made. */}
         <Footer />
       </main>

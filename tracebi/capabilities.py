@@ -332,8 +332,26 @@ def _presentation() -> dict:
             "what": "The React lane: app.jsx in place of template.html, for app-like "
                     "dashboards. One component (export default), compiled in the page from "
                     "a fixed kit; still one offline file with its trace.",
-            "imports": "react, react-dom, recharts, lucide-react (icons by name; only "
-                       "those are embedded), tracebi. Any other import fails the build.",
+            "imports": "react, react-dom, echarts (the ECharts module, for echarts.graphic "
+                       "and the like), recharts (Recharts 2: also works), lucide-react (icons "
+                       "by name; only those are embedded), tracebi. Any other import fails "
+                       "the build. The page runs on TanStack Redact, a drop-in React runtime.",
+            "chart": "<EChart> (Apache ECharts) is the chart: <EChart binding x y type "
+                     "series format unit stack> plots a binding's columns as they are (type "
+                     "bar, barh, line, area, pie, scatter or any ECharts series type that "
+                     "takes name/value items: funnel, treemap, sunburst); with binding, x "
+                     "and y literal it is a claim like <Chart> (data-tb-figure=\"chart\"; "
+                     "the build refuses an unknown binding or column). option={...} (an "
+                     "ECharts option, or a function of the rows) deep-merges on top and "
+                     "cannot replace the binding's numbers; an <EChart option={...}> alone "
+                     "draws numbers the page computed, carries data-tb-computed and is not "
+                     "a checked figure. Every chart is live: its rows are its binding's "
+                     "query re-run under the selection, and a click on a mark selects its "
+                     "x value (selects=\"dim.col\" on an option-only chart; shift adds), "
+                     "its own field's other values dimmed (highlight=\"off\" narrows). "
+                     "renderer=\"canvas\" (default, big data) or \"svg\"; theme follows the "
+                     "page's tokens and mode; onEvents, ariaLabel. Recharts also works; "
+                     "its onClick selects with window.tracebi.pick(column, value, event).",
             "kit": "<Masthead title kicker period mark> opens the page (children are the "
                    "standfirst; kicker defaults to the model's label; title is a string or text with <Value>s in it; period "
                    "is presentation, \"Q3 2026\"; it holds the build time and the "
@@ -359,8 +377,9 @@ def _presentation() -> dict:
                    "useUrlState(key, initial) keeps a view or period in the URL so a "
                    "shared link opens on it; usePrinting() is true while the page "
                    "prints (Ctrl+P and the PDF build), so an app with views renders "
-                   "all of them; useBinding(name) returns the stamped rows; "
-                   "fmt(value, format).",
+                   "all of them; useBinding(name) returns the binding's rows, live under "
+                   "the selection (stamped with embed none); useSelection() the "
+                   "selection; fmt(value, format).",
             "claims": "Kit figures are claims: binding, cell, x and y (and a Kpi's "
                       "deltaBinding / deltaCell) must be literal strings, and the "
                       "build refuses a binding or column that does not exist. A "

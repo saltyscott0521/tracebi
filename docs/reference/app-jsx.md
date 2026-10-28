@@ -39,9 +39,10 @@ tracebi report build sales_model/revenue_app
 
 | Module | What it is |
 |---|---|
-| `react` | React's hooks and components (`useState`, `useMemo`, …). The page runs on TanStack Redact, a drop-in React runtime with the same API; a page that imports `recharts` runs on React 18 instead |
+| `react` | React's hooks and components (`useState`, `useMemo`, …). Every page runs on TanStack Redact, a drop-in React runtime with the same API |
 | `react-dom` | `createPortal`, `flushSync` |
-| `recharts` | Recharts 3, for charts of your own |
+| `echarts` | Apache ECharts' module (`echarts.graphic`, `echarts.getInstanceByDom`), for what `<EChart>` hands you; the chart itself is `<EChart>` from `tracebi` |
+| `recharts` | Recharts 2, which also works (Recharts 3 does not run on Redact) |
 | `lucide-react` | Lucide icons, imported by name (`import { TrendingUp } from "lucide-react"`); only those are embedded |
 | `tracebi` | The figure components and data hooks below |
 
@@ -59,8 +60,8 @@ for each ground, a display face as `--tb-font-display`).
 ## Figures
 
 ```jsx
-import { Kpi, Value, Chart, Spark, Table, Filter, Search, Download,
-         useBinding, fmt } from "tracebi";
+import { Kpi, Value, Chart, Spark, Table, EChart, Filter, Search, Download,
+         useBinding, useSelection, fmt } from "tracebi";
 ```
 
 Each figure renders the element a template would hold, and the runtime fills
@@ -120,9 +121,56 @@ Every gesture on a live page writes the same selection:
 | `<Built>` | When the file was built, from its trace (`<Masthead>` already shows it). |
 | `tb-page`, `tb-grid` + `tb-span-4/6/8/12` | The page width (`<main className="tb-page space-y-8 px-6 py-8">`, 1,200px) and the 12-column grid (`<div className="tb-grid"><section className="tb-card tb-span-8">…`). |
 
+## Charts
+
+`<EChart>` is the chart: Apache ECharts, drawn into its own canvas (or SVG),
+for everything from a bar to a treemap, a sankey or 100,000 points. Whether a
+chart is a checked figure follows its data, not who wrote it.
+
+```jsx
+<EChart binding="by_sector" type="treemap" x="dim_issuer.sector" y="fair_value"
+        format="currency_compact" height={300} />
+```
+
+| Prop | What it does |
+|---|---|
+| `binding`, `x`, `y` | The binding and its columns: `x` the category (a number on a scatter), `y` one measure or a list. Literal strings make the chart a claim, as for `<Chart>`. |
+| `type` | `bar` (default), `barh`, `line`, `area`, `pie`, `scatter`, or any ECharts series type that takes name/value items (`funnel`, `treemap`, `sunburst`, …) |
+| `series` | A column whose values split the rows into series (`<Chart color>`) |
+| `format`, `unit`, `stack` | The values' named format, a unit suffix, stacked series |
+| `option` | An ECharts option, or a function of the rows, deep-merged on top: the escape hatch for anything the props do not say |
+| `renderer` | `"canvas"` (default: large data, smooth hover) or `"svg"` (crisp text, small charts, prints sharp) |
+| `theme` | `"auto"` (default): the page's tokens and palette, following its mode; or an ECharts theme |
+| `selects`, `onSelect` | On an option-only chart, the column a click selects; `onSelect(params)` returns the value a click picks (null: none) |
+| `highlight` | `"off"`: a selection narrows the chart instead of dimming its own field's other values |
+| `onEvents`, `ariaLabel`, `height`, `id`, `className` | ECharts events (`{click: (p) => …}`), the description (ECharts' aria is on by default, so a canvas chart has one), size, id |
+
+- **A chart of a binding's columns is a claim.** With `binding`, `x` and `y`
+  literal, `<EChart>` renders the same `data-tb-figure="chart"` element as
+  `<Chart>`, the build records it and refuses an unknown binding or column,
+  and the trace names it. `option` styles it and cannot replace its numbers
+  (series data, a dataset or category labels in it are dropped).
+- **A chart of numbers the page computed is not.** `<EChart option={…}>`
+  alone (sankey links summed in the app, a ratio you work out) carries
+  `data-tb-computed` and is the app's presentation, not a checked figure; the
+  page's footer says so.
+- **Every chart is live.** Its rows are its binding's query re-run under the
+  page's selection, and a click on a mark selects that value of its `x` (shift
+  adds, again removes), as on `<Chart>`; the chart keeps its own field's other
+  values and dims them.
+- **Recharts also works.** `import { BarChart, Bar } from "recharts"` (Recharts
+  2) draws with `useBinding` rows; to select on click, `<Bar onClick={(d, i, e) =>
+  window.tracebi.pick("dim_region.region", d.payload["dim_region.region"], e)} />`.
+  A Recharts chart is presentation, like an option-only `<EChart>`.
+
 **Data for your own components.** `useBinding("name")` returns copies of the
-binding's stamped rows. `fmt(value, "currency0")` formats a number with the
-named formats ([[number-formats]]).
+binding's rows as the page has them now: on a live page its query re-run
+under the selection, re-rendering when the selection changes; on an `"embed":
+"none"` page, or for a binding the page cannot re-run (SQL, `report.py`), the
+stamped rows. What you draw from them is live, not a checked figure.
+`useSelection()` returns the selection (`{"dim_region.region": ["East"]}`).
+`fmt(value, "currency0")` formats a number with the named formats
+([[number-formats]]).
 
 ## What the trace covers
 
@@ -140,8 +188,9 @@ does not exist.
 - A number typed into the app's text (`<p>Up 1250 units</p>`) fails the build,
   as in a `template.html`. Bind it with `<Value binding="…" cell="…" />`, or
   say it in words. A single digit ("Q3") is not a number here.
-- Anything the app computes or draws itself (a Recharts chart, a sum, a number
-  in your own markup) is presentation, not a checked figure. The page's footer
+- Anything the app computes or draws itself (an `<EChart option={…}>`, a
+  Recharts chart, a sum, a number in your own markup) is presentation, not a
+  checked figure. The page's footer
   says so: *"This page is an app. The figures it shows through the TraceBi kit
   carry that trace; anything else it draws is the app's own presentation and
   is not checked."*

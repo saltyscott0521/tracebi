@@ -117,9 +117,12 @@ def test_a_style_css_token_gives_way_to_the_dark_ground(browser, tmp_path):
     ) == "#10201c"
 
 
-def test_a_recharts_page_ships_react_18_and_every_other_page_redact():
-    """A Recharts chart locks the page under Redact, so an app.jsx that imports
-    recharts must ship React 18, and no other page should pay for it."""
+def test_an_echart_page_ships_echarts_and_a_plain_page_nothing_extra():
+    """One runtime (Redact) for every page; ECharts (~0.9 MB) only on a page
+    that draws an <EChart> or imports echarts, before the runtime that
+    registers it, and Recharts only on a page that imports it."""
     from tracebi.reports.app_lane import libs_for
     assert libs_for({"react": ["useState"], "tracebi": ["Kpi"]}) == ["tailwind", "react"]
-    assert libs_for({"react": ["useState"], "recharts": ["BarChart"]}) == ["tailwind", "react18", "recharts"]
+    assert libs_for({"tracebi": ["Kpi", "EChart"]}) == ["tailwind", "echarts-kit", "react"]
+    assert libs_for({"echarts": ["*"]}) == ["tailwind", "echarts-kit", "react"]
+    assert libs_for({"recharts": ["BarChart"]}) == ["tailwind", "react", "recharts"]

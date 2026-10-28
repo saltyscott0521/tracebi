@@ -2,7 +2,7 @@
 The React lane: a report package whose page is an ``app.jsx`` component.
 
 The page is a React app compiled in the browser from TraceBi's fixed kit
-(React, Recharts, lucide-react, Tailwind and the ``tracebi`` module); there is
+(React, Recharts, ECharts, lucide-react, Tailwind and the ``tracebi`` module); there is
 no Node and no server. The data is the same: ``report.json`` bindings stamped
 and fingerprinted at build. What changes is how the page is written.
 
@@ -12,7 +12,8 @@ the same ``data-tb-*`` element a template would hold and the runtime fills it
 from the stamped rows. This module reads those components' literal props out
 of the source so the build can record the claims — and refuse a binding or a
 column that does not exist — without running the app. A number the app's own
-code computes is not a claim; the page's footer says so.
+code computes or draws (a Recharts chart, an ``<EChart>``) is not a claim; the
+page's footer says so.
 
 The attribute names and figure ids here mirror ``assets/_react_src/kit.jsx``.
 """
@@ -29,11 +30,21 @@ APP_JSX = "app.jsx"
 
 #: What an app.jsx may import. Anything else fails the build.
 KIT_MODULES = ("react", "react-dom", "react-dom/client", "react/jsx-runtime",
-               "recharts", "lucide-react", "tracebi")
+               "recharts", "echarts", "lucide-react", "tracebi")
 
 #: Kit components that are figures, and the figure kind each renders.
 FIGURE_TAGS = {"Kpi": "value", "Value": "value", "Chart": "chart",
-               "Spark": "chart", "Table": "table"}
+               "Spark": "chart", "Table": "table", "EChart": "chart"}
+
+#: An <EChart> type the build's no-JavaScript picture cannot draw is pictured
+#: as the nearest kit chart (kit.jsx ``kitChartType``).
+_KIT_CHART_TYPES = ("bar", "barh", "line", "area", "pie", "scatter")
+_NAMED_CHART_TYPES = ("pie", "funnel", "treemap", "sunburst")
+
+
+def kit_chart_type(t) -> str:
+    t = t if isinstance(t, str) and t else "bar"
+    return t if t in _KIT_CHART_TYPES else "pie" if t in _NAMED_CHART_TYPES else "bar"
 
 
 class AppError(ValueError):
@@ -266,6 +277,11 @@ def scan_figures(src: str) -> list[KitFigure]:
                     f"Compute the choice outside the figure (one figure per "
                     f"binding), or show the value with your own markup — it "
                     f"will not be a checked figure.")
+        if tag == "EChart" and not all(isinstance(props.get(k), str) and props[k]
+                                       for k in ("binding", "x", "y")):
+            # Only an option: the chart's numbers were computed in the page.
+            # It carries data-tb-computed and is not a claim.
+            continue
         if "binding" not in props:
             raise AppError(f"{APP_JSX} line {line}: <{tag}> needs binding=\"…\" "
                            f"(a name under report.json \"data\").")
@@ -357,6 +373,10 @@ def _claim_element(f: KitFigure) -> str:
         label = _humanise(_join(p.get("cell")) or p["binding"])
         return (f'<li><span class="tb-kpi-label">{html.escape(label)}</span> '
                 f'<span id="{esc(fid)}" {attrs}></span></li>')
+    if f.tag == "EChart":
+        # The kit's chart element, pictured by the build like a <Chart>.
+        p = dict(p, type=kit_chart_type(p.get("type")),
+                 color=p.get("series"), valueFormat=p.get("format") or p.get("valueFormat"))
     if f.kind == "chart":
         kind = "spark" if f.tag == "Spark" else "chart"
         fid = p.get("id") or figure_id(kind, p["binding"], _join(p.get("y")))
@@ -454,11 +474,17 @@ def app_blocks_html(source: str, icons: dict) -> str:
 def libs_for(imports: dict[str, list[str]]) -> list[str]:
     """The vendored bundles a page needs, in load order.
 
-    The kit's runtime is TanStack Redact (``react``). A page that imports
-    ``recharts`` ships React 18 (``react18``) instead: a Recharts chart locks
-    the page under Redact (its store never settles), and Recharts shares the
-    one React the page loaded.
+    The kit's one runtime is TanStack Redact (``react``). ECharts
+    (``echarts-kit``) rides before it on a page that imports ``echarts`` or
+    the kit's ``EChart`` (or all of ``tracebi`` with ``*``): it never imports
+    React, and the runtime registers it as the ``echarts`` module. Recharts 2
+    (``recharts``) rides after it and shares the runtime's React.
     """
+    tracebi = imports.get("tracebi") or []
+    libs = ["tailwind"]
+    if "echarts" in imports or "EChart" in tracebi or "*" in tracebi:
+        libs.append("echarts-kit")
+    libs.append("react")
     if "recharts" in imports:
-        return ["tailwind", "react18", "recharts"]
-    return ["tailwind", "react"]
+        libs.append("recharts")
+    return libs
