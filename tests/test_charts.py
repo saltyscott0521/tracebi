@@ -317,10 +317,17 @@ def test_bars_carry_their_own_values_in_the_pages_format(page):
 
 
 def test_the_tooltip_opens_the_receipt_at_its_figure(page):
+    """The readout holds still while a pointer travels to its Trace link (in
+    small steps, as a hand does): a readout that follows the cursor or hides
+    on the way cannot be clicked."""
     _reset(page)
     _hover(page, "bar", 0, 2)
     link = page.locator("#bar .tb-chart-tip-receipt")
     link.wait_for(state="visible")
+    at = link.bounding_box()
+    page.mouse.move(at["x"] + at["width"] / 2, at["y"] + at["height"] / 2, steps=25)
+    now = link.bounding_box()
+    assert link.is_visible() and abs(now["x"] - at["x"]) < 2 and abs(now["y"] - at["y"]) < 2, (at, now)
     link.click()
     assert page.locator(".tb-receipt-drawer.tb-receipt-open").count() == 1
     assert page.locator(".tb-receipt-row--here").get_attribute("data-tb-receipt-fig") == "bar"
