@@ -217,12 +217,16 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   query as a closed plan; execute_plan is the oracle; parity fixtures
                        #   in tests/fixtures/calc_parity/ from scripts/gen_calc_parity.py),
                        #   assets/ (tracebi.js + tracebi.css + tracebi-calc.js, the page
-                       #   engine: pure JS, _calc_src/, CALC_NOTICE.md + vendored ECharts and D3; the
-                       #   React lane's react.min.js (TanStack Redact, the one runtime, with the kit),
-                       #   echarts-kit.min.js (<EChart>), recharts.min.js (Recharts 2), _react_src/,
-                       #   REACT_NOTICE.md; the house chart look: --tb-chart-* tokens in tracebi.css,
-                       #   read by the D3 engine (chartTokens) and <EChart> (echartsTheme), SVG by
-                       #   default (docs/reference/chart-style.md); house.py (the three house themes:
+                       #   engine: pure JS, _calc_src/, CALC_NOTICE.md; tracebi.js "The chart engine":
+                       #   ONE ECharts option builder (optionFor) + theme (chartTheme) for every chart,
+                       #   template figures and the kit's <Chart>/<Spark>/<EChart> alike; the one ECharts
+                       #   build echarts-kit.min.js (root.__tbECharts, inlined on any page with a chart);
+                       #   d3.min.js only for tracebi.draw ("libs": ["d3"]); the React lane's react.min.js
+                       #   (TanStack Redact, the one runtime, with the kit), recharts.min.js (Recharts 2),
+                       #   _react_src/, REACT_NOTICE.md; the house chart look: --tb-chart-* tokens in
+                       #   tracebi.css, read at draw time from the figure (chartTokens), SVG by default,
+                       #   canvas per figure (data-tb-renderer) or report.json "charts"
+                       #   (docs/reference/chart-style.md); house.py (the three house themes:
                        #   ledger, the default, is tracebi.css itself; nightdesk, signal; report.json
                        #   "theme" over tracebi.yaml brand.theme; stacked after tracebi.css, before the
                        #   brand; the six accent presets in themes/ are deprecated, still built);
@@ -818,9 +822,10 @@ removed is the fallback that rendered a factory with no package.
    (one screen) or `portfolio_desk/` (a sidebar of views).
 2. Every figure is a live query against the model — `<Kpi>`, `<Chart>`,
    `<Table>` with literal binding and cell, so the trace names each one.
-   `<EChart>` (Apache ECharts) is the chart for anything else: with literal
-   `binding`, `x`, `y` it plots the binding's columns as they are and is a claim
-   like `<Chart>`; an option-only `<EChart>` draws page-computed numbers and carries
+   `<EChart>` (Apache ECharts) is the chart, and `<Chart>` / `<Spark>` are its
+   presets (same props, same figure ids): with literal `binding`, `x`, `y` it
+   plots the binding's columns as they are, is a claim, and is drawn by
+   tracebi.js's chart engine; an option-only `<EChart>` draws page-computed numbers and carries
    `data-tb-computed`. Every chart filters live (`useBinding` returns rows re-run
    under the selection; `useSelection()`) and a click writes the selection
    (`tracebi.pick`). Recharts 2 also works; every page runs on Redact.
@@ -833,16 +838,18 @@ When the spec's section vocabulary is too rigid — a bespoke layout, your own
 CSS — scaffold a package instead: `tracebi new-report "My Report"` creates
 `reports/my_report/` (`report.json` data bindings + `template.html` / `style.css`
 / `script.js`). `tracebi report build my_report` renders ONE self-contained HTML
-(CSS, JS, and fingerprinted data inlined; strict CSP; D3 vendored, no CDN)
+(CSS, JS, and fingerprinted data inlined; strict CSP; ECharts vendored, no CDN)
 plus a manifest. `report.py` beside `report.json` is the escape hatch for pandas
 the model can't express — its output stamps `verifiable: false` and never reads
-green under `verify`. Charts render with D3 in the browser (SVG; `tracebi.js`
-"The D3 chart engine"): legend toggles, tooltips, arrow-key reading, animated
-updates, and a click on a mark sets the page's filter control for that column.
-It draws only the rows' own values and colours series from the unfiltered rows.
-A report that lists `"libs": ["echarts"]` keeps the older ECharts engine, the only
-place `tracebi.configureChart` applies. The server-side SVG path is kept only for
-the (unshipped) PDF renderer.
+green under `verify`. Charts render with Apache ECharts in the browser (SVG by
+default; `tracebi.js` "The chart engine", the same option builder the kit's
+charts use): legend toggles, tooltips, arrow-key reading, animated updates, and
+a click on a mark writes the page's selection. It draws only the rows' own
+values and colours series from the unfiltered rows. `tracebi.configureChart(id,
+patch)` deep-merges a raw ECharts option into any chart (restyle, never
+re-source). `"libs": ["echarts"]` is gone (refused at load); `"libs": ["d3"]`
+only for an author's `tracebi.draw` figures. The server-side SVG path is kept
+only for the (unshipped) PDF renderer.
 
 **A built page is live.** The locked rule: a figure's number is only ever a
 query result. The build embeds a slice per fact (`tracebi-slice-<fact>`,
@@ -1060,6 +1067,7 @@ Don't add these unless asked.
 | Define the model over the warehouse | `examples/portfolio_project/models/portfolio_model.yaml` (its semantic words: `description`, `synonyms`, `questions`) + `docs/concepts/model.md` |
 | Build a dashboard | `examples/portfolio_project/reports/portfolio_model/portfolio_dashboard/` |
 | Build an app dashboard (React lane) | `tracebi new-dashboard` → `examples/portfolio_project/reports/portfolio_model/portfolio_desk/` + `docs/reference/app-jsx.md` |
+| Change how charts draw | `tracebi/reports/assets/tracebi.js` "The chart engine" (`optionFor`, `chartTheme`, `drawChart`) + `docs/reference/chart-style.md`; browser tests `tests/test_charts.py` |
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `design/report-generator-architecture.md` |
 | See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing_model/affordability/` + `tracebi/reports/scenario.py` |
 | See every artifact feature at once | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/e2e/test_reference_project.py` and `tests/test_agent_guides.py`) |
