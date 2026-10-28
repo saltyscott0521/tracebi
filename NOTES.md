@@ -4,6 +4,27 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — Loose ends: eight defects found along the way (LOOSE-ENDS)
+
+Fixed minimally, no new tests (the owner's ask). Explore's filter picker lists
+the joined dimensions' attributes before the fact's columns, so Ask's carried
+filter shows on its own column. The kit's `fmt` goes through `tracebi.format`
+(every named format), not `tracebi.fmt` (compact only). **Charts print at their
+printed width:** Chromium fires `beforeprint` while the page still has its
+screen layout and only then turns the `print` media query true with the page
+laid out on paper (Ctrl+P and `page.pdf()` alike; a probe showed 1280px at
+beforeprint, 816px at the query), so `tracebi.js` redraws every chart again on
+that query change and the option-only `<EChart>` resizes and flushes then (a
+resize alone paints on the next frame, after the print); `pdf.py` needs no
+change. The desk's sankey colours sectors by the treemap's rule (first
+appearance in `by_sector`'s stamped rows, `chartTokens().palette`); with six
+sectors and three funds on an eight-colour palette the third fund wraps to the
+first sector's colour. The declarative-sources journey reset every discovery
+global but the outcome log (`discovery._outcomes`), so its bad connection and
+pipeline files reached the next journey's `tracebi validate`. `embed.read_lib`
+names the real rebuild commands; `web/ui` no longer lists `echarts`. Note:
+`web/ui`'s `build:d3` script calls `esbuild`, which `web/ui` does not depend on.
+
 ## 2026-10-28 — Agents read and change transforms; a dry run; approval commits (AGENT-TRANSFORMS)
 
 The owner's ask, four pieces. **`read_transform(name)`** is a new read-only

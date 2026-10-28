@@ -983,7 +983,14 @@
     }
     if (root.matchMedia) {
       var mq = root.matchMedia("print");
-      var onMq = function () { apply(mq.matches); };
+      /* beforeprint comes while the page still has its screen layout; the
+       * print query turns true once the page is laid out on paper (Chromium:
+       * Ctrl+P and the PDF build alike), so the charts are drawn again then,
+       * at their printed width, and their text prints at its true size. */
+      var onMq = function () {
+        if (mq.matches && _printing) printCharts(true);
+        else apply(mq.matches);
+      };
       if (mq.addEventListener) mq.addEventListener("change", onMq);
       else if (mq.addListener) mq.addListener(onMq);
       if (mq.matches) _printing = true;
@@ -2700,6 +2707,7 @@
         drawChart(entry, entry.rows, false);
       } catch (e) { /* defensive */ }
     }
+    try { redrawResized(); } catch (e) { /* defensive */ }
   }
 
   function hydrateCharts() {

@@ -27,6 +27,10 @@ def serve(monkeypatch):
     for attr in ("_live_pipelines", "_live_models"):
         monkeypatch.setattr(discovery, attr, set())
     monkeypatch.setattr(discovery, "_live_connections", {})
+    # What this journey's files did to discovery stays with it: the bad
+    # connection and pipeline files it registers must not reach a later
+    # journey's `tracebi validate` through the process-wide outcome log.
+    monkeypatch.setattr(discovery, "_outcomes", [])
     discovery.register_connections("connections")
     discovery.register_models("models")
     discovery.register_pipelines("pipelines")
