@@ -4,6 +4,153 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — Three house themes: Ledger, Nightdesk, Signal (HOUSE-THEMES)
+
+The owner chose three of four directions from a concept page (Atlas, the
+layered gradient one, was not chosen). A house theme is a whole look, not an
+accent: ground, card surface and border, the card's shadow stack, radius, type
+sizes and weights, the numerals' face, density, the chart tokens, the lead
+KPI's tile, an accent and an eight-colour palette, each for light and dark.
+
+Where it lives: `tracebi/reports/house.py` holds the three as token dicts and
+writes their CSS (a `:root` block, the dark ground twice, as `tracebi.css` does,
+and the KPI-tile rules), stacked right after `tracebi.css` and before the brand.
+Ledger is `tracebi.css` itself, so its CSS is empty and every page that names
+no theme changes only by the depth the concept added (new tokens
+`--tb-card-shadow` and `--tb-card-border` on `.tb-card`, `.tb-kpi` and the KPI
+panel; none in print). New tokens carry what differs: `--tb-font-num`,
+`--tb-num-weight`, `--tb-num-tracking`, `--tb-kpi-size`, `--tb-kpi-lead-size`,
+`--tb-title-size`, `--tb-title-weight`, `--tb-lead-bg/-ink/-muted/-border`,
+`--tb-accent-fill` / `--tb-on-accent-fill`, and for the charts
+`--tb-chart-num-font`, `-tooltip-ink`, `-tooltip-title`, `-tooltip-link` and
+`-glow`, which both engines read (the D3 engine's `chartTokens`, the kit's
+`chartTokens` / `echartsTheme`; a line glows in its own colour).
+
+A theme sets `--tb-dark-accent` / `-text` on `:root`, never `--tb-accent` in
+its dark block, so the dark ground still takes `var(--tb-dark-accent)` and a
+brand's dark pair wins. Order is the override chain: tracebi.css → house theme
+→ brand → `reports/_theme.css` → a deprecated preset → `style.css`. On an app
+page the theme is unlayered after the repeated mode tokens, so its dark blocks
+win by order. The brand's dark-ground lift is now computed against the theme's
+own dark card (`brand_css(brand, dark_card)`), and the brand also states
+`--tb-accent-fill` for both grounds, so Signal's lead tile is the brand's accent.
+
+Nightdesk opens dark when nothing names a mode: `look.mode` (or a template's
+`<html data-tb-mode>`) wins, then `brand.mode`, then the theme. It is compact
+unless `look.density` says `comfortable` (the app shell now writes either value,
+so the theme can tell an explicit comfortable from none). Its numerals are Geist
+Mono, inlined only on a Nightdesk page (from `@fontsource-variable/geist-mono`
+5.2.8, the web app's own copy; NOTICE now names Geist and Geist Mono, replacing
+a stale Hanken Grotesk entry). Nightdesk and Signal show the KPI strip as
+separate tiles rather than Ledger's joined panel; Signal's lead tile takes the
+tile's ink for its direction arrows.
+
+Theme names: `report.json` `"theme"` wins over `brand.theme`; any other name
+fails naming the three. The six accent presets stay readable and are
+deprecated: the page renders in the project's house theme with that accent pair
+(stacked where it always was), and `tracebi report build` prints one warning.
+`tracebi theme use <house theme>` says where the setting goes instead of
+copying CSS. Agents offer the three for a new report or dashboard when nothing
+chose one, in one locked sentence (`house.OFFER`) that the guides, the authoring
+SOP, the `author_report` prompt and `tracebi context` all carry;
+`start_draft(theme=)` seeds a new report draft's `report.json` with it.
+
+Reference project: the desk is Nightdesk, the dashboard Signal, everything else
+Ledger under the Halyard Credit brand. The web app is untouched.
+
+## 2026-10-28 — A house chart look, and a project brand every page follows (BRAND)
+
+The owner's ask: the ECharts charts looked good but generic. Both a distinctive
+TraceBi look by default and a project's own brand that every chart and page
+picks up.
+
+The house look is written down once (`docs/reference/chart-style.md`) and held
+in tokens (`--tb-chart-font`, `-grid`, `-grid-dash`, `-axis`, `-label`, `-value`,
+`-tooltip-bg`, `-tooltip-border`, `-tooltip-shadow`, `-tooltip-radius`, `-radius`,
+`-bar`, `-line`, `-area`, `-dim`, `-motion`, plus `--tb-chart-1..8`). Both engines
+read only those: the D3 engine at every draw (`chartTokens` in `tracebi.js`), the
+kit's `<EChart>` through an ECharts theme it builds from them (`chartTokens` /
+`echartsTheme` in `kit.jsx`), so an option-only chart (the desk's sankey) takes
+the look too. Decisions: no value-axis line or ticks, faint dashed gridlines,
+the baseline at zero the one solid rule; bars at 55% of the band, the far end
+rounded at 2px (a bar below zero rounds its bottom and labels past it); 2px
+lines with round joins, no symbols until hover, ending in their last value; a
+flat 12% area wash; donuts with an empty centre (a chart never computes a
+total); treemap, sunburst and sankey cells bordered in the card colour, each
+cell's label in whichever of ink and card reads on its fill, a dimmed cell's in
+the muted text colour (the unreadable white-on-pale labels are gone); the
+tooltip the D3 readout's card, its value in the page's formatted text; the
+legend the D3 engine's round chips, which select on a live page
+(`tracebi.selectable` is new, `tracebi.pick` now says whether it picked); one
+dim strength (0.28) everywhere; 450ms cubic-out, none under reduced motion or
+in print. `<EChart>` now defaults to the SVG renderer: canvas cannot set tabular
+figures, and SVG prints as vectors and matches the D3 charts; canvas stays a prop
+for thousands of marks.
+
+The brand is one `tracebi.yaml` block read only through
+`project_config.brand()` and compiled by `tracebi/reports/brand.py`. It sits right
+after `tracebi.css` and before `reports/_theme.css`, so the project's own theme,
+a report's `theme` and its `style.css` still win (the book keeps its ink-blue
+accent from its `style.css`, and takes the brand's logo and name). The accent is
+the brand's; its text shade is deepened to 4.5:1 on the accent wash, the dark
+ground's pair lifted to 5:1 and 7:1 on the dark card, never chosen by hand. The
+palette is the brand's order, cycled to eight, and re-stated for the dark ground
+with each colour lifted only to 3.5:1 there (the dark blocks of `tracebi.css`
+name their own palette, so a brand must too). The build refuses, naming the
+fix, a missing file, a non-hex colour, a file over 400 KB, and an accent below
+3:1 on the white card (it names a deeper shade of the same hue). The logo is the
+masthead's existing `.tb-masthead-mark`, drawn by CSS from `--tb-brand-logo`: the
+kit's `<Masthead>` always renders the mark and a template's masthead is given one
+at build, so no markup changed; on a filled ground (the editorial hero, a banner)
+it is drawn in the ground's ink. `name` replaces the model's label as the
+masthead's kicker. `mode` is the default for any page that names none (template
+pages too, not only app.jsx: one rule, in `with_default_mode`). The reference
+project carries a fictional firm, Halyard Credit (a deep-teal accent and a
+six-colour palette, a two-pennant logo in mid-tones that read on both grounds),
+with no font, so Geist stays. The web app's own look is untouched.
+
+## 2026-10-28 — One chart: ECharts in the kit, every chart live (ECHARTS-KIT)
+
+The owner's decision, locked: there is no separate "TraceBi chart" vs "author's
+chart". One chart component, ECharts underneath, for every chart. Every chart
+filters live and writes the selection on click. The receipt follows the DATA, not
+the author: a chart that plots a binding's columns as they are is receipted,
+whoever wrote it; a chart whose numbers were computed in the page says so, the
+same way on any chart.
+
+This package lands it for app.jsx as `<EChart>` (`_react_src/kit.jsx`), shaped to
+become the kit's `<Chart>` later (a follow-up moves `<Chart>` onto ECharts as a
+preset of it). With literal `binding`, `x` and `y` it builds its option from the
+binding's rows (`type`, `series`, `format`, `unit`, `stack`), renders the same
+`data-tb-figure="chart"` element as `<Chart>` (`data-tb-engine="app"`, so
+`tracebi.js` traces it but never draws it) and `app_lane` records it as a claim;
+`option` deep-merges on top and cannot replace the binding's numbers (its series
+data, dataset and axis labels are dropped). With only `option` it carries
+`data-tb-computed`. Its rows are `tracebi.rows(binding, keep)`: the live page's
+answer under the selection (the kit's highlight variant for its own `x`/`series`,
+which it dims), stamped rows otherwise; a click calls `tracebi.pick`, the same
+toggle a kit chart's mark makes. `useBinding` is now live the same way, and
+`useSelection()` is new; nothing new is computed, the rows are the answers the kit
+figures already show.
+
+Why ECharts, from the CHARTLIB bench (scratchpad, 2026-10-27, Chromium on the
+Redact runtime): every probe (bar, line, pie, a re-render) drew with no error on
+canvas and SVG; 100,000 points painted in 211-230 ms on canvas with no long task
+(Plotly SVG 8 s, Chart.js 13 s of hover long tasks, G2 7 s, Vega 1.5 s); 22
+series types; it draws into its own div, so the runtime cannot reach its marks.
+The tree-shaken build carries every series and component the owner listed and
+weighs 932 kB minified, 313 kB gzipped: just over the ~900 kB target, kept whole
+rather than dropping a listed component (toolbox, 22 kB, is the cheapest cut).
+
+Why Recharts 2: agents reach for Recharts' JSX, so it stays importable, but 3.1.2
+hangs on Redact (the page never commits: Redact re-renders children React 18
+would skip, and Recharts 3's per-series store registration loops), while 2.15.4
+rendered bar, line and pie with hover tooltips and a `useState` re-render. So the
+kit ships 2.15.4 (526 kB minified, 137 kB gzipped) on the one runtime, with
+`react/jsx-runtime` and `react-dom/client` mapped to the page's modules (else
+React 18's own jsx-runtime is bundled into it), and `react18.min.js` is gone. The
+guides present `<EChart>` as the chart and Recharts as "also works".
+
 ## 2026-10-27 — Dashboards run on TanStack Redact (REDACT-DASH)
 
 The owner's intent was the dashboards, not the app: every built `app.jsx` page

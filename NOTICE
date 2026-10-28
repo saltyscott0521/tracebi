@@ -164,14 +164,17 @@ Bundled into tracebi-engine.worker.js and inlined into a generated report that
 embeds its data as Parquet.
 
 ================================================================================
-Hanken Grotesk (Latin subset, variable)  —  https://github.com/marcologous/hanken-grotesk
-Copyright 2021 The Hanken Grotesk Project Authors
+Geist and Geist Mono (Latin subsets, variable)  —  https://github.com/vercel/geist-font
+Copyright 2024 The Geist Project Authors
 Licensed under the SIL Open Font License, Version 1.1 (full text below).
-Shipped as tracebi/reports/assets/hanken-grotesk-latin-wght-normal.woff2 and
+Geist is shipped as tracebi/reports/assets/geist-latin-wght-normal.woff2 and
 inlined (base64) into every generated report, so the report's text matches the
-web app and needs no font to be installed. Also self-hosted by the web UI.
+web app and needs no font to be installed; the web UI self-hosts it too.
+Geist Mono is shipped as tracebi/reports/assets/geist-mono-latin-wght-normal.woff2
+and inlined into a report in the Nightdesk house theme, for its numerals.
+Both from @fontsource-variable/geist and @fontsource-variable/geist-mono 5.2.8.
 
-    Copyright 2021 The Hanken Grotesk Project Authors (https://github.com/marcologous/hanken-grotesk) HankenGrotesk-Italic[wght].ttf: Copyright 2021 The Hanken Grotesk Project Authors (https://github.com/marcologous/hanken-grotesk)
+    Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font.git)
 
     This Font Software is licensed under the SIL Open Font License, Version 1.1.
     This license is copied below, and is also available with a FAQ at:

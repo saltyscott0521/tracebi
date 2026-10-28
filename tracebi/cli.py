@@ -3039,14 +3039,44 @@ def _report_template_html(title: str, measure: str, dim_ref: "str | None",
 
 
 def cmd_theme(args: argparse.Namespace) -> int:
-    """List the shipped themes, or copy one to reports/_theme.css — the
-    project default every report stacks over tracebi.css."""
+    """List the house themes (then the deprecated accent presets), or copy an
+    accent preset to reports/_theme.css. A house theme is the project's
+    tracebi.yaml brand: {theme: …}, or a report's report.json "theme"."""
+    from tracebi.reports import house
     from tracebi.reports.stack import named_theme_css, named_themes
     if args.action == "list":
+        from tracebi.project_config import brand
+        try:
+            mark = brand()
+        except ValueError as exc:
+            print(f"brand      {exc}", file=sys.stderr)
+            return 1
+        chosen = mark.get("theme")
+        for name, theme in house.THEMES.items():
+            tags = (["default"] if name == house.DEFAULT else []) + (
+                ["this project's"] if name == chosen else [])
+            tag = f" [{', '.join(tags)}]" if tags else ""
+            print(f"{name:10} {theme['about']}; for {theme['for']}{tag}")
+        print("\nDeprecated accent presets (a report that names one renders in the house "
+              "theme with that accent; set brand: {accent: …} or a house theme instead):")
         for name in named_themes():
             first = named_theme_css(name).splitlines()[0]
             print(f"{name:10} {first.strip('/* ').rstrip(' */').split(' — ', 1)[-1]}")
+        if mark:
+            said = [mark.get("name") or "(no name)"]
+            said += [f"accent {mark['accent']}"] if mark.get("accent") else []
+            said += [f"palette {' '.join(mark['palette'])}"] if mark.get("palette") else []
+            said += [f"{key} {os.path.relpath(mark[key])}" for key in ("logo", "font")
+                     if mark.get(key)]
+            said += [f"mode {mark['mode']}"] if mark.get("mode") else []
+            print(f"\nbrand      {' · '.join(said)}\n           (tracebi.yaml brand: "
+                  f"every report takes it, over the house theme, under reports/_theme.css)")
         return 0
+    if args.name in house.THEMES:
+        print(f"{args.name} is a house theme: set it for the project in tracebi.yaml "
+              f"(brand: {{theme: {args.name}}}), or for one report in its report.json "
+              f"(\"theme\": \"{args.name}\").", file=sys.stderr)
+        return 2
     if not args.name:
         print("tracebi theme use <name>: name one of "
               + ", ".join(named_themes()), file=sys.stderr)
@@ -3135,6 +3165,9 @@ def cmd_new_report(args: argparse.Namespace) -> int:
         _report_json_text(args.title, model, query, look=look if app else None,
                           theme=args.theme, job=job),
         encoding="utf-8")
+    from tracebi.reports import house
+    if args.theme and args.theme not in house.THEMES:
+        print(f"warning: {house.deprecation(args.theme, house.DEFAULT)}", file=sys.stderr)
     if app:
         from tracebi._app_scaffold import report_app_jsx
         page = "app.jsx"
@@ -3322,8 +3355,10 @@ def _build_report_target(kind: str, path: Path, output: Path,
     models = _load_project_models()
     if kind == "package":
         from tracebi.reports.template_package import TemplatePackage
-        manifest = TemplatePackage(str(path)).render(
-            models, str(output), badges=badges, filters=filters)
+        package = TemplatePackage(str(path))
+        manifest = package.render(models, str(output), badges=badges, filters=filters)
+        if package.theme_warning:
+            print(f"warning: {package.theme_warning}", file=sys.stderr)
     else:
         # A bare .json spec compiles to the artifact package, then renders like
         # a hand-authored one — the same one report form as a package.
@@ -4239,11 +4274,14 @@ def build_parser() -> argparse.ArgumentParser:
             "--title-at", choices=["left", "center", "banner", "nav"], default="left",
             help="Where the title sits: left (default), center, a banner, or at "
                  "the top of the sidebar (nav, with --nav side).")
-        from tracebi.reports.stack import named_themes
+        from tracebi.reports import house
         p.add_argument(
-            "--theme", choices=named_themes(), default=None,
-            help="A shipped theme for this page (report.json \"theme\"); the "
-                 "project default is reports/_theme.css (tracebi theme use).")
+            "--theme", choices=house.names() + house.deprecated_names(), default=None,
+            metavar="{" + ",".join(house.names()) + "}",
+            help="The house theme for this page (report.json \"theme\"): ledger "
+                 "(the default), nightdesk or signal; the project default is "
+                 "tracebi.yaml brand: {theme: …}. The six accent presets still "
+                 "work, deprecated.")
 
     p_new_report = sub.add_parser(
         "new-report",

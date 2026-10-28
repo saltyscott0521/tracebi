@@ -979,15 +979,17 @@ def test_the_showcase_carries_every_affordance(built):
                    'id="fig-treemap"', "D3 7.9.0 (ISC)"):
         assert marker in html, f"showcase lost its {marker} affordance"
     assert "Working notes" not in html, "exploration must die at build"
-    # The masthead's kicker and the footer name the model by its label; the
-    # template writes no kicker, the build adds it (an app's kit reads it
-    # from its mount point).
-    assert '<p class="tb-kicker">Direct Lending Portfolio</p>' in html
+    # The masthead's kicker names the project's brand (tracebi.yaml brand:
+    # name, in place of the model's label) and the footer the model by its
+    # label; the template writes no kicker, the build adds it with the
+    # brand's mark (an app's kit reads it from its mount point).
+    assert '<p class="tb-kicker">Halyard Credit</p>' in html
+    assert '<div class="tb-masthead-mark" role="img" aria-label="Halyard Credit">' in html
     foot = html[html.index('class="tb-footer-line"'):]
     foot = foot[:foot.index("</p>")]
     assert " · Direct Lending Portfolio. " in foot and "portfolio_model" not in foot
     app = (built / "output" / "portfolio_model" / "portfolio_dashboard.html").read_text()
-    assert 'data-tb-kicker="Direct Lending Portfolio"' in app
+    assert 'data-tb-kicker="Halyard Credit"' in app
     # A page with a selection block asks the app to run its cut; it connects nowhere.
     assert "connect-src 'none'" in html and "connect-src 'self'" not in html
     # ...and its runtime never calls the app itself: served on its own at
@@ -1624,6 +1626,181 @@ def test_the_desks_page_filters_recompute_every_view(built):
     finally:
         browser.close()
         pw.stop()
+
+
+def test_the_projects_brand_reaches_every_page_and_its_charts(built):
+    """tracebi.yaml's brand: one block, and every page follows. The desk
+    (Nightdesk, so it opens dark) carries its accent and palette, lifted to
+    read on that theme's dark card, an <EChart> draws in that palette, the
+    masthead names the firm with its logo, and a treemap cell a selection
+    leaves out labels itself in the muted text colour, never white on a pale
+    cell. A brand that would ship unreadable, or point at nothing, fails the
+    build naming the fix."""
+    import yaml
+
+    from tracebi.reports.brand import accent_tokens, palette_tokens
+    from tracebi.reports.house import THEMES
+
+    mark = yaml.safe_load((built / "tracebi.yaml").read_text())["brand"]
+    card = THEMES["nightdesk"]["dark_card"]
+    lifted = list(palette_tokens(mark["palette"], card)[1].values())[:6]
+    pw, browser = _browser()
+    try:
+        page = browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme="light")
+        page.goto((built / "output" / "portfolio_model" / "portfolio_desk.html").as_uri()
+                  + "#view=Funds")
+        _settle(page)
+        tokens = page.evaluate("""() => { const cs = getComputedStyle(document.documentElement);
+            return [1, 2, 3, 4, 5, 6].map((i) => cs.getPropertyValue('--tb-chart-' + i).trim())
+              .concat([cs.getPropertyValue('--tb-accent').trim()]); }""")
+        assert tokens == lifted + [accent_tokens(mark["accent"], card)["--tb-dark-accent"]]
+        mark = {**mark, "palette": lifted}
+        assert page.locator(".tb-masthead .tb-kicker").first.text_content() == mark["name"]
+        logo = page.evaluate("""() => getComputedStyle(
+            document.querySelector('.tb-masthead-mark')).backgroundImage""")
+        assert logo.startswith('url("data:image/svg+xml;base64,')
+        treemap = """() => { const el = document.querySelector('#ech-sector-treemap [role=img]');
+            const o = window.__tbModules.echarts.getInstanceByDom(el).getOption();
+            return {color: o.color, items: o.series[0].data.map((d) => ({name: d.name,
+              fill: d.itemStyle.color, label: (d.label || {}).color}))}; }"""
+        drawn = page.evaluate(treemap)
+        assert drawn["color"][:6] == mark["palette"]
+        sectors = page.evaluate("() => window.tracebi.data('by_sector').map((r) => r['dim_issuer.sector'])")
+        assert [d["fill"] for d in drawn["items"]] == [
+            mark["palette"][sectors.index(d["name"]) % 6] for d in drawn["items"]]
+
+        page.evaluate("(s) => window.tracebi.pick('dim_issuer.sector', s)", sectors[1])
+        _settle(page)
+        muted = page.evaluate("""() => { const d = document.createElement('div');
+            d.style.color = 'var(--tb-chart-label)'; document.body.appendChild(d);
+            const c = getComputedStyle(d).color; d.remove(); return c; }""")
+        to_hex = lambda c: "#%02x%02x%02x" % tuple(int(x) for x in re.findall(r"\d+", c)[:3])  # noqa: E731
+        for item in page.evaluate(treemap)["items"]:
+            if item["name"] == sectors[1]:
+                assert item["label"] != to_hex(muted), item
+            else:
+                assert item["label"] == to_hex(muted), item
+    finally:
+        browser.close()
+        pw.stop()
+
+    yaml_path = built / "tracebi.yaml"
+    kept = yaml_path.read_text()
+    try:
+        yaml_path.write_text(kept.replace(f'accent: "{mark["accent"]}"', 'accent: "#f2d24b"'))
+        code, out = run_cli("report", "build", "portfolio_model/portfolio_desk")
+        assert code != 0 and "brand.accent #f2d24b reads at" in out and "such as #" in out, out
+        yaml_path.write_text(kept.replace("logo: brand/logo.svg", "logo: brand/mark.svg"))
+        code, out = run_cli("report", "build", "portfolio_model/portfolio_dashboard")
+        assert code != 0 and "brand.logo 'brand/mark.svg': no such file" in out, out
+    finally:
+        yaml_path.write_text(kept)
+
+
+def _tokens(page, *names):
+    return page.evaluate("""(names) => { const cs = getComputedStyle(document.documentElement);
+        return names.map((n) => cs.getPropertyValue(n).trim()); }""", list(names))
+
+
+def _echart(page, fid):
+    return page.evaluate("""(id) => { const el = document.querySelector('#' + id + ' [role=img]');
+        const o = window.__tbModules.echarts.getInstanceByDom(el).getOption();
+        return {color: o.color, tip: o.tooltip[0].backgroundColor}; }""", fid)
+
+
+def test_each_house_theme_is_a_whole_look_and_the_brand_layers_over_it(built):
+    """Three house themes, chosen in report.json: the reference dashboard is
+    Signal, the desk Nightdesk, the rest Ledger. Each page carries its theme's
+    ground, numerals and radius, and an <EChart> draws in its tokens; the
+    project's brand replaces each theme's accent; without the brand the theme's
+    own accent shows. A deprecated accent preset still builds and says so once;
+    a name that is no theme fails naming the three."""
+    import yaml
+
+    from tracebi.reports.house import THEMES
+
+    accent = yaml.safe_load((built / "tracebi.yaml").read_text())["brand"]["accent"]
+    out = built / "output" / "portfolio_model"
+    shape = ("--tb-page", "--tb-font-num", "--tb-radius", "--tb-accent")
+    pw, browser = _browser()
+
+    def look(name, frag="", scheme="light"):
+        page = browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme=scheme)
+        page.goto((out / f"{name}.html").as_uri() + frag)
+        _settle(page)
+        return page
+
+    try:
+        page = look("portfolio_overview")              # Ledger: no theme named anywhere
+        ground, num, radius, ink = _tokens(page, *shape)
+        assert (ground, radius, ink) == ("#f6f6f7", "12px", accent) and num.startswith('"Geist",')
+        assert page.evaluate("""() => getComputedStyle(document.querySelector('.tb-grid:has(> .tb-kpi)'))
+            .boxShadow""").count("rgba") == 3          # the three-layer card depth
+        page.close()
+
+        page = look("portfolio_dashboard")             # Signal
+        ground, num, radius, ink = _tokens(page, *shape)
+        assert (ground, radius, ink) == ("#fafaf9", "20px", accent) and num.startswith('"Geist",')
+        lead = page.evaluate("""() => { const s = getComputedStyle(document.querySelector('.tb-kpi--lead'));
+            return [s.backgroundColor, s.borderTopColor]; }""")
+        assert lead[0] == "rgb(%d, %d, %d)" % tuple(int(accent[i:i + 2], 16) for i in (1, 3, 5))
+        page.close()
+
+        page = look("portfolio_desk", "#view=Funds")   # Nightdesk: opens dark, mono numerals
+        assert page.evaluate("document.documentElement.dataset.tbMode") == "dark"
+        page_, num, radius, desk_accent = _tokens(page, *shape)
+        assert (page_, radius) == ("#090c11", "6px") and num.startswith('"Geist Mono"')
+        assert page.evaluate("""() => getComputedStyle(document.querySelector('td.tb-num'))
+            .fontFamily""").startswith('"Geist Mono"')
+        assert desk_accent != THEMES["nightdesk"]["root"]["--tb-dark-accent"]  # the brand's
+        drawn = _echart(page, "ech-sector-treemap")
+        palette = _tokens(page, *[f"--tb-chart-{i}" for i in range(1, 9)])
+        assert drawn["color"][:8] == palette
+        assert drawn["tip"] == THEMES["nightdesk"]["dark"]["--tb-chart-tooltip-bg"]
+        page.close()
+    finally:
+        browser.close()
+        pw.stop()
+
+    # Without the brand, each theme's own accent and palette show.
+    yaml_path = built / "tracebi.yaml"
+    kept = yaml_path.read_text()
+    desk_json = built / "reports" / "portfolio_model" / "portfolio_desk" / "report.json"
+    kept_desk = desk_json.read_text()
+    try:
+        yaml_path.write_text(re.sub(r"\nbrand:\n(  .*\n)+", "\n", kept))
+        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_desk")
+        assert code == 0, out_
+        pw, browser = _browser()
+        try:
+            page = look("portfolio_desk", "#view=Funds")
+            own = THEMES["nightdesk"]["root"]["--tb-dark-accent"]
+            assert _tokens(page, "--tb-accent") == [own]
+            assert _echart(page, "ech-sector-treemap")["color"][:2] == [
+                own, THEMES["nightdesk"]["dark"]["--tb-chart-2"]]
+            page.close()
+        finally:
+            browser.close()
+            pw.stop()
+        yaml_path.write_text(kept)
+
+        # A deprecated accent preset: still builds, in the house theme, and says so.
+        desk_json.write_text(kept_desk.replace('"theme": "nightdesk"', '"theme": "ocean"'))
+        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_desk")
+        assert code == 0, out_
+        assert out_.count("theme 'ocean' is deprecated") == 1 and "brand: {accent" in out_, out_
+        assert "the report's accent theme (deprecated)" in (out / "portfolio_desk.html").read_text()
+
+        # A name that is no theme fails, naming the three.
+        desk_json.write_text(kept_desk.replace('"theme": "nightdesk"', '"theme": "atlas"'))
+        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_desk")
+        assert code != 0 and "unknown theme 'atlas'" in out_
+        assert "ledger, nightdesk, signal" in out_, out_
+    finally:
+        yaml_path.write_text(kept)
+        desk_json.write_text(kept_desk)
+        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_desk")
+        assert code == 0, out_
 
 
 def test_the_saas_dashboard_recomputes_every_figure_by_plan(built):

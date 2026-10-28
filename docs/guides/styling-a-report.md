@@ -11,21 +11,22 @@ the shipped components, and adding your own CSS and JavaScript.
 Styles stack in three layers, and the later one wins:
 
 ```
-1. tracebi.css            the shipped design system
-2. reports/_theme.css     your project's brand (optional)
-3. style.css              this report (optional)
+1. tracebi.css            the shipped design system (Ledger)
+2. the house theme        report.json "theme", else tracebi.yaml brand.theme
+3. the brand              tracebi.yaml brand: accent, palette, font, logo
+4. reports/_theme.css     your project's own tokens (optional)
+5. style.css              this report (optional)
 ```
 
-## 1. Pick a theme
+## 1. Pick a house theme
 
-```bash
-tracebi theme list                 # the shipped themes
-tracebi theme use ocean            # writes reports/_theme.css for every report
-```
-
-A single report can pick one in `report.json`: `"theme": "ocean"`
-([[report-json]]). A theme sets the accent for the light and dark grounds and
-nothing else.
+Three, each a whole look ([[chart-style]]): `ledger` (calm, institutional, the
+default), `nightdesk` (dark, dense, monospaced numbers, for a desk or an
+operations screen) and `signal` (bold, big numbers, for a board pack or a wall
+screen). The project picks one in `tracebi.yaml` (`brand: {theme: signal}`,
+[[tracebi-yaml]]); a single report in `report.json`: `"theme": "nightdesk"`
+([[report-json]]). Your colours go in the brand (`brand: {accent: …, palette:
+[…]}`), which layers over whichever theme. `tracebi theme list` shows them.
 
 ## 2. Set your own tokens
 

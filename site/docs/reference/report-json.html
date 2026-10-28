@@ -66,6 +66,7 @@
 <a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/chart-style.html">House themes and chart style</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
@@ -159,12 +160,12 @@ figures TraceBi builds for it.</p>
 <tr>
 <td><code>theme</code></td>
 <td>string</td>
-<td>A shipped theme: <code>graphite</code>, <code>indigo</code>, <code>midnight</code>, <code>ocean</code>, <code>plum</code> or <code>sand</code> (<code>tracebi theme list</code>). It sets the accent pair for each ground. Stacks over <code>reports/_theme.css</code> and under <code>style.css</code>.</td>
+<td>The house theme (<a href="../reference/chart-style.html">House themes and chart style</a>): <code>ledger</code> (calm, institutional; the default), <code>nightdesk</code> (dark, dense, monospaced numerals) or <code>signal</code> (bold, big numbers, the lead KPI a solid accent tile). Over the project's <code>tracebi.yaml</code> <code>brand.theme</code>; the brand's colours, font and logo layer on top. Any other name fails the build naming the three. The six accent presets (<code>graphite</code>, <code>indigo</code>, <code>midnight</code>, <code>ocean</code>, <code>plum</code>, <code>sand</code>) are deprecated: the page renders in the house theme with that accent pair and the build says so once; set <code>brand: {accent: …}</code> instead. <code>tracebi theme list</code>.</td>
 </tr>
 <tr>
 <td><code>look</code></td>
 <td>object</td>
-<td><code>app.jsx</code> only: <code>"mode"</code> (<code>light</code>, <code>dark</code>, or <code>auto</code>, the default) and <code>"density"</code> (<code>comfortable</code> or <code>compact</code>).</td>
+<td><code>app.jsx</code> only: <code>"mode"</code> (<code>light</code>, <code>dark</code>, or <code>auto</code>, the default; Nightdesk opens <code>dark</code> unless this or the brand says otherwise) and <code>"density"</code> (<code>comfortable</code> or <code>compact</code>; Nightdesk is <code>compact</code> unless this says <code>comfortable</code>).</td>
 </tr>
 <tr>
 <td><code>embed</code></td>

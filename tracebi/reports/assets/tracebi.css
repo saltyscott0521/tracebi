@@ -42,8 +42,8 @@
   --tb-dark-accent-text: #a5bcff;
   --tb-rule: #e4e4e8;
   --tb-grid: color-mix(in oklab, var(--tb-ink) 6%, transparent); /* chart gridlines */
-  /* Cards are a hairline, never a shadow. Kept as a token for a report's own
-   * style.css; nothing in this sheet draws a resting shadow. */
+  /* A raised surface's own shadow (the receipt drawer). Cards take theirs
+   * from --tb-card-shadow, below. */
   --tb-shadow: none;
   /* Subtle raised surfaces (striped rows, code blocks, callouts). Tokens, not
    * hard-coded hex, so overriding the palette for a dark ground carries them
@@ -97,6 +97,54 @@
   --tb-chart-7: #4a3aa7;
   --tb-chart-8: #e34948;
 
+  /* The house chart look (docs/reference/chart-style.md): the kit's <EChart>
+   * and the D3 engine read only these, so a theme or a brand restyles every
+   * chart of a page at once. Faint dashed gridlines and no axis line; the
+   * one solid rule is the baseline at zero. */
+  --tb-chart-font: var(--tb-font);
+  --tb-chart-grid: color-mix(in oklab, var(--tb-ink) 11%, transparent);
+  --tb-chart-grid-dash: 3 4;
+  --tb-chart-axis: var(--tb-rule);           /* the baseline at zero */
+  --tb-chart-label: var(--tb-muted);         /* axis and category labels */
+  --tb-chart-value: var(--tb-ink);           /* a mark's own value */
+  --tb-chart-tooltip-bg: var(--tb-bg);
+  --tb-chart-tooltip-border: var(--tb-rule);
+  --tb-chart-tooltip-shadow: 0 6px 20px rgba(16, 24, 40, .12), 0 1px 3px rgba(16, 24, 40, .06);
+  --tb-chart-tooltip-radius: 8px;
+  --tb-chart-radius: 2px;                    /* a bar's far end */
+  --tb-chart-bar: 55%;                       /* of its category's band */
+  --tb-chart-line: 2px;
+  --tb-chart-area: 0.12;                     /* an area's wash under its line */
+  --tb-chart-dim: 0.28;                      /* what a selection leaves out */
+  --tb-chart-motion: 450ms;                  /* cubic-out; none under reduced motion */
+  --tb-chart-num-font: var(--tb-font-num);   /* value ticks, a mark's value, the readout's numbers */
+  --tb-chart-tooltip-ink: var(--tb-muted);   /* the readout's text; its title and values: */
+  --tb-chart-tooltip-title: var(--tb-ink);
+  --tb-chart-tooltip-link: var(--tb-accent-text); /* the way to its trace */
+  --tb-chart-glow: 0;                        /* px of glow under a line, in its own colour */
+
+  /* The house theme (docs/reference/chart-style.md): Ledger's values here;
+   * Nightdesk and Signal (tracebi/reports/themes/house/) restate them. A
+   * card lifts off the page on three soft layers and keeps its hairline. */
+  --tb-card-border: var(--tb-rule);
+  --tb-card-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 2px 8px -2px rgba(16, 24, 40, .06),
+                    0 12px 28px -14px rgba(16, 24, 40, .12);
+  --tb-font-num: var(--tb-font);             /* a figure's numerals */
+  --tb-num-weight: 600;
+  --tb-num-tracking: var(--tb-tracking-tight);
+  --tb-kpi-size: var(--tb-text-2xl);
+  --tb-kpi-lead-size: var(--tb-text-3xl);
+  --tb-title-size: var(--tb-text-2xl);       /* the masthead's h1 */
+  --tb-title-weight: 600;
+  /* The lead KPI's tile: a card like the rest in Ledger; Signal fills it. */
+  --tb-lead-bg: var(--tb-bg);
+  --tb-lead-ink: var(--tb-ink);
+  --tb-lead-muted: var(--tb-muted);
+  --tb-lead-border: var(--tb-card-border);
+  /* The accent as a tile that carries text, the same on both grounds. */
+  --tb-accent-fill: var(--tb-accent);
+  --tb-on-accent-fill: var(--tb-on-accent);
+
   /* Light until section 12b says otherwise; a page with no data-tb-mode is
    * given "auto" at build (template_package), so it follows the reader. */
   color-scheme: light;
@@ -105,6 +153,7 @@
 /* Every figure in tabular numerals, so columns of numbers align and a value
  * does not shift width as it updates. */
 .tb-kpi-value, .tb-table td, [data-tb-figure="value"] { font-variant-numeric: tabular-nums; }
+.tb-num { font-family: var(--tb-font-num); }
 
 /* ── 2. Base — a page with no classes already looks like a report ──────── */
 
@@ -211,10 +260,11 @@ img, svg { max-width: 100%; }
 }
 
 .tb-card {
-  border: 1px solid var(--tb-rule);
+  border: 1px solid var(--tb-card-border);
   border-radius: var(--tb-radius);
   padding: var(--tb-card-pad-y) var(--tb-card-pad-x);
   background: var(--tb-bg);
+  box-shadow: var(--tb-card-shadow);
   min-width: 0;
 }
 /* Cards stacked in normal flow keep the grid's gap between them. */
@@ -263,9 +313,10 @@ img, svg { max-width: 100%; }
   flex-direction: column;
   gap: 4px;
   padding: 18px 20px;
-  border: 1px solid var(--tb-rule);
+  border: 1px solid var(--tb-card-border);
   border-radius: var(--tb-radius);
   background: var(--tb-bg);
+  box-shadow: var(--tb-card-shadow);
   position: relative; /* anchors a .tb-badge in the corner */
 }
 
@@ -277,10 +328,11 @@ img, svg { max-width: 100%; }
 }
 
 .tb-kpi-value {
-  font-size: var(--tb-text-2xl);
-  font-weight: 600;
+  font-family: var(--tb-font-num);
+  font-size: var(--tb-kpi-size);
+  font-weight: var(--tb-num-weight);
   line-height: 1.15;
-  letter-spacing: var(--tb-tracking-tight);
+  letter-spacing: var(--tb-num-tracking);
   font-variant-numeric: tabular-nums;
 }
 
@@ -290,18 +342,22 @@ img, svg { max-width: 100%; }
 .tb-grid:has(> .tb-kpi) {
   gap: 1px;
   background: var(--tb-rule);
-  border: 1px solid var(--tb-rule);
+  border: 1px solid var(--tb-card-border);
   border-radius: var(--tb-radius);
+  box-shadow: var(--tb-card-shadow);
   overflow: hidden;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
-.tb-grid > .tb-kpi { border: 0; border-radius: 0; }
+.tb-grid > .tb-kpi { border: 0; border-radius: 0; box-shadow: none; }
 /* The lead KPI: the one number the page is about. It is larger, not wider:
  * one step up the scale, so the row has an anchor and no empty half-cell. */
 .tb-kpi--lead .tb-kpi-value {
-  font-size: var(--tb-text-3xl);
-  font-family: var(--tb-font-display, inherit);
+  font-size: var(--tb-kpi-lead-size);
+  font-family: var(--tb-font-display, var(--tb-font-num));
 }
+.tb-kpi--lead { background: var(--tb-lead-bg); color: var(--tb-lead-ink); }
+.tb-kpi.tb-kpi--lead { border-color: var(--tb-lead-border); }
+.tb-kpi--lead :is(.tb-kpi-label, .tb-kpi-context) { color: var(--tb-lead-muted); }
 
 /* The comparison under the number — "+4.1% vs last month", "of total".
  * A KPI without one is a number, not a signal. */
@@ -513,25 +569,33 @@ tr.tb-window-pad td {
 .tb-legend-item:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; }
 .tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] { opacity: .45; }
 .tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; outline: 1.5px solid var(--tb-muted); outline-offset: -1.5px; }
-.tb-legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.tb-legend-swatch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .tb-legend-swatch--line { height: 3px; width: 14px; border-radius: 2px; }
 .tb-legend-swatch--dot { border-radius: 50%; }
 .tb-chart-tip {
   position: absolute; z-index: 3; pointer-events: none; min-width: 140px; max-width: 280px;
-  padding: 8px 10px; border-radius: 6px; background: var(--tb-bg); color: var(--tb-muted);
-  border: 1px solid var(--tb-rule); box-shadow: 0 4px 16px rgba(16, 24, 40, .12);
-  font-size: var(--tb-text-sm); line-height: 1.45;
+  padding: 8px 10px; border-radius: var(--tb-chart-tooltip-radius);
+  background: var(--tb-chart-tooltip-bg); color: var(--tb-chart-tooltip-ink);
+  border: 1px solid var(--tb-chart-tooltip-border); box-shadow: var(--tb-chart-tooltip-shadow);
+  font-family: var(--tb-chart-font); font-size: var(--tb-text-sm); line-height: 1.45;
 }
+/* The kit's <EChart> draws the same card: ECharts' tooltip is an HTML box
+ * in the page, given this class and the readout's own markup. */
+.tb-echart-tip { font-family: var(--tb-chart-font) !important; line-height: 1.45; }
+.tb-echart-tip .tb-chart-tip-title { white-space: nowrap; }
+/* Every number a chart writes in tabular figures, so values align. */
+.tb-chart-svg text, .tb-echart, .tb-chart-tip { font-variant-numeric: tabular-nums; }
 .tb-chart-tip[hidden] { display: none; }
-.tb-chart-tip-title { color: var(--tb-ink); font-weight: 600; margin-bottom: 2px; }
+.tb-chart-tip-title { color: var(--tb-chart-tooltip-title); font-weight: 600; margin-bottom: 2px; }
 .tb-chart-tip-row { display: flex; align-items: baseline; gap: 6px; }
-.tb-chart-tip-row strong { color: var(--tb-ink); font-variant-numeric: tabular-nums; }
-.tb-chart-tip-key { width: 10px; height: 3px; border-radius: 2px; flex: none; align-self: center; }
+.tb-chart-tip-row strong { color: var(--tb-chart-tooltip-title); font-family: var(--tb-chart-num-font);
+                           font-variant-numeric: tabular-nums; }
+.tb-chart-tip-key { width: 8px; height: 8px; border-radius: 50%; flex: none; align-self: center; }
 .tb-chart-tip-about { margin-top: 4px; max-width: 240px; font-size: var(--tb-text-xs); }
 /* The one part of the readout that takes the pointer: the way to its receipt. */
 .tb-chart-tip-receipt {
   display: block; margin-top: 6px; padding: 0; border: 0; background: none; pointer-events: auto;
-  color: var(--tb-accent-text); font: inherit; font-weight: 500; cursor: pointer;
+  color: var(--tb-chart-tooltip-link); font: inherit; font-weight: 500; cursor: pointer;
 }
 .tb-chart-tip-receipt:hover { text-decoration: underline; }
 .tb-chart-tip-receipt:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 2px; border-radius: 2px; }
@@ -718,7 +782,7 @@ span > .tb-badge.tb-verdict { display: inline-flex; }
  * picked recede, as a class, so the number is the stylesheet's alone. */
 .tb-legend-item--select[aria-pressed="true"] { border-color: var(--tb-ink); }
 .tb-legend-item--select.tb-dimmed { opacity: .5; }
-.tb-chart-svg .tb-dimmed { opacity: .28; transition: opacity .15s; }
+.tb-chart-svg .tb-dimmed { opacity: var(--tb-chart-dim); transition: opacity .15s; }
 .tb-chart-svg g.tb-series.tb-dimmed .tb-dimmed { opacity: 1; }
 /* A receded bar's own value stays readable: muted ink, not faded white. */
 .tb-chart-svg g.tb-values text.tb-dimmed { opacity: 1; fill: var(--tb-muted); }
@@ -1153,6 +1217,9 @@ label > input[data-tb-search] { width: 11em; }
   --tb-chart-6: #7cc06a;
   --tb-chart-7: #8b5cf6;
   --tb-chart-8: #e66767;
+  --tb-chart-tooltip-bg: #1c1c21;
+  --tb-chart-tooltip-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+  --tb-card-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), 0 10px 30px -12px rgba(0, 0, 0, .6);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -1181,6 +1248,9 @@ label > input[data-tb-search] { width: 11em; }
     --tb-chart-6: #7cc06a;
     --tb-chart-7: #8b5cf6;
     --tb-chart-8: #e66767;
+    --tb-chart-tooltip-bg: #1c1c21;
+    --tb-chart-tooltip-shadow: 0 8px 24px rgba(0, 0, 0, .5);
+    --tb-card-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), 0 10px 30px -12px rgba(0, 0, 0, .6);
     color-scheme: dark;
   }
 }
@@ -1303,8 +1373,8 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 }
 .tb-masthead h1 {
   font-family: var(--tb-font-display, var(--tb-font));
-  font-size: var(--tb-text-2xl);
-  font-weight: 600;
+  font-size: var(--tb-title-size);
+  font-weight: var(--tb-title-weight);
   line-height: 1.15;
   letter-spacing: var(--tb-tracking-tight);
   text-wrap: balance;
@@ -1961,6 +2031,8 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
     page-break-inside: avoid;
     break-inside: avoid;
   }
+  /* Depth is for the screen: paper keeps the hairline. */
+  .tb-card, .tb-kpi, .tb-grid:has(> .tb-kpi) { box-shadow: none !important; }
 
   /* Badges and exploration treatments must survive on paper. */
   .tb-badge, [data-tb-stage="exploration"] {

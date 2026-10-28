@@ -10,6 +10,7 @@ same plain functions the MCP server registers.
 """
 
 import json
+import re
 
 from tests.e2e.conftest import run_cli
 
@@ -63,6 +64,46 @@ def test_an_agent_authors_verifies_and_delivers_a_report(scaffolded):
     fetched = gw.gateway_fetch_artifact(built["output_path"])
     assert "tracebi-receipt" in json.dumps(fetched)
 
+
+def test_an_agent_starts_a_report_in_the_house_theme_the_person_chose(scaffolded):
+    """The person picked Nightdesk when offered the three: start_draft writes it
+    into report.json, the agent keeps it beside its binding, and the built page
+    opens dark in Nightdesk's tokens. A name that is no house theme is refused
+    naming the three."""
+    from tracebi import mcp_server as gw
+
+    code, out = run_cli("run-transform", "sample_transform")
+    assert code == 0, out
+    path = "sample_model/desk_brief"
+    refused = gw.gateway_start_draft("reports", path, theme="atlas")
+    assert refused["ok"] is False and "ledger, nightdesk, signal" in refused["errors"][0]
+    started = gw.gateway_start_draft("reports", path, theme="nightdesk")
+    assert started["ok"] is True, started
+    declared = json.loads(gw.gateway_read_draft("reports", path)["files"]["report.json"])
+    assert declared == {"theme": "nightdesk"}
+
+    fact = gw.gateway_model_info("sample_model")["facts"][0]["name"]
+    stamped = gw.gateway_query("sample_model", fact, ["revenue"])
+    declared.update(name="Desk Brief", data={"totals": stamped["binding"]})
+    page = ('<!doctype html><html><head><title>Desk Brief</title></head><body>'
+            '<div class="tb-grid"><div class="tb-kpi tb-kpi--lead" data-tb-figure="value" '
+            'data-tb-binding="totals" data-tb-cell="revenue"><span class="tb-kpi-label">'
+            'Revenue</span><span class="tb-kpi-value"></span></div></div></body></html>')
+    for name, text in (("report.json", json.dumps(declared)), ("template.html", page)):
+        wrote = gw.gateway_write_draft_file("reports", path, name, text)
+        assert wrote["ok"] is True, wrote
+    published = gw.gateway_publish_draft("reports", path, note="a desk brief")
+    assert published["ok"] is True, published
+    assert json.loads((scaffolded / "reports" / path / "report.json").read_text())[
+        "theme"] == "nightdesk"
+
+    built = gw.gateway_build_report(path)
+    assert built["ok"] is True, built
+    html = open(built["output_path"], encoding="utf-8").read()
+    assert re.search(r'<html[^>]*data-tb-mode="dark"', html)       # dark first
+    assert re.search(r'<html[^>]*data-tb-density="compact"', html)
+    assert "/* nightdesk: " in html and 'font-family:"Geist Mono"' in html
+    assert '--tb-font-num: "Geist Mono", var(--tb-mono);' in html
 
 def test_the_gateway_refuses_paths_outside_the_project(scaffolded):
     from tracebi import mcp_server as gw

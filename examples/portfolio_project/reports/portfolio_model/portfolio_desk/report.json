@@ -3,6 +3,7 @@
   "author": "workflow",
   "description": "Fair value, unrealized gain, mark and weighted spread for the book, with a watch list of the lowest marks, searchable holdings and the funds side by side.",
   "notes": "An app people work in: a sidebar with three views.",
+  "theme": "nightdesk",
   "look": {"density": "compact"},
   "data": {
     "totals": {
@@ -42,6 +43,12 @@
       "query": {"fact": "fact_holdings",
                 "measures": ["fair_value", "unrealized", "mark", "positions", "wtd_spread_bps"],
                 "dimensions": ["dim_fund.fund"], "order_by": ["-fair_value"]}
+    },
+    "fund_sector": {
+      "model": "portfolio_model",
+      "query": {"fact": "fact_holdings", "measures": ["fair_value"],
+                "dimensions": ["dim_fund.fund", "dim_issuer.sector"],
+                "order_by": ["dim_fund.fund", "dim_issuer.sector"]}
     }
   }
 }

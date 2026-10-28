@@ -1465,7 +1465,29 @@
    * goes through the one view layer, never a side channel.
    * ──────────────────────────────────────────────────────────────────── */
 
+  /* The motion token (--tb-chart-motion, 450ms cubic-out): read at every
+   * draw by chartTokens, so a theme's value applies. */
   var _MOTION_MS = 450;
+
+  /* The house chart tokens (tracebi.css, docs/reference/chart-style.md): the
+   * one source of a chart's look, read by this engine and by the kit's
+   * <EChart> alike, so a theme or a project's brand restyles both. */
+  function chartTokens() {
+    var cs = null;
+    try { cs = getComputedStyle(document.documentElement); } catch (e) {}
+    var get = function (n, d) {
+      var v = cs ? trim(cs.getPropertyValue("--tb-chart-" + n) || "") : "";
+      return v || d;
+    };
+    var num = function (n, d) { var v = parseFloat(get(n, "")); return isNaN(v) ? d : v; };
+    var motion = get("motion", "450ms");
+    var ms = parseFloat(motion);
+    if (!/ms\s*$/.test(motion)) ms *= 1000;
+    return { font: get("font", ""), num: get("num-font", ""), label: get("label", ""),
+             value: get("value", ""), radius: num("radius", 2), bar: num("bar", 55) / 100,
+             line: num("line", 2), area: num("area", 0.12), glow: num("glow", 0),
+             motion: isNaN(ms) ? 450 : ms };
+  }
   var _introPending = 0;
 
   function motionOk() {
@@ -2038,6 +2060,25 @@
     var marks = marksWanted(plan);
     if (marks.length && !horizontal) m.top += 14;
     if (marks.length && horizontal) m.right += 56;
+    /* A sideways bar's own value written past its end needs room there: when
+     * a label could not sit inside its bar (its colour reads with neither the
+     * accent's text nor ink, or a bar is too short for it), the plot keeps
+     * the widest label's width free on the right. */
+    if (horizontal && !stacked && !opt.title && !plan.spark && !marks.length) {
+      var widest = 0, outside = false, room0 = W - m.left - m.right;
+      var span = (val.domain()[1] - val.domain()[0]) || 1;
+      series.forEach(function (s) {
+        var f = chartFormatter(plan, rows, s.col), fill = colourOf(entry, s.key);
+        var reads = [t.onAccent, t.ink].some(function (c) { return contrast(c, fill) >= 4.5; });
+        s.points.forEach(function (p) {
+          if (p.y === null) return;
+          var w = textWidth(svg, f(p.y), 11);
+          widest = Math.max(widest, w);
+          if (!reads || Math.abs(p.y) / span * room0 < w + 12) outside = true;
+        });
+      });
+      if (outside) m.right = Math.max(m.right, Math.ceil(widest) + 10);
+    }
     /* A sparkline (.tb-spark) is the shape alone: no axes, no grid, no dots —
      * the KPI beside it carries the number. Still zero-based. */
     if (plan.spark) m = { top: 3, right: 3, bottom: 3, left: 3 };
@@ -2047,7 +2088,7 @@
     /* Bars take 55% of their band. */
     var isBar = kind === "bar" || kind === "barh";
     var band = d3.scaleBand().domain(cats).range(horizontal ? [0, ih] : [0, iw])
-      .paddingInner(isBar ? 0.45 : 0).paddingOuter(isBar ? 0.225 : 0.14);
+      .paddingInner(isBar ? 1 - t.chart.bar : 0).paddingOuter(isBar ? (1 - t.chart.bar) / 2 : 0.14);
     val.range(horizontal ? [0, iw] : [ih, 0]);
     /* A sparkline runs edge to edge: the first and last points on the sides. */
     if (plan.spark && cats.length > 1) {
@@ -2080,7 +2121,8 @@
       .attr(horizontal ? "y1" : "x1", 0)
       .attr(horizontal ? "y2" : "x2", horizontal ? ih : iw)
       .attr("stroke-width", 1)
-      .style("stroke", function (v) { return v === 0 ? "var(--tb-rule)" : "var(--tb-grid)"; });
+      .style("stroke", function (v) { return v === 0 ? "var(--tb-chart-axis)" : "var(--tb-chart-grid)"; })
+      .style("stroke-dasharray", function (v) { return v === 0 ? null : "var(--tb-chart-grid-dash)"; });
     var vAxis = horizontal ? d3.axisBottom(val) : d3.axisLeft(val);
     vAxis.tickValues(tv.vs).tickSize(0).tickPadding(8).tickFormat(ticks);
     var cAxis = horizontal ? d3.axisLeft(band) : d3.axisBottom(band);
@@ -2096,8 +2138,9 @@
     ca.call(cAxis);
     g.selectAll(".tb-axis").style("display", plan.spark ? "none" : null);
     g.selectAll(".tb-axis .domain").remove();
-    g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11)
-      .attr("font-family", t.font);
+    g.selectAll(".tb-axis text").attr("fill", t.chart.label).attr("font-size", 11)
+      .attr("font-family", t.chart.font);
+    va.selectAll("text").attr("font-family", t.chart.num);
     var labelRoom = horizontal ? m.left - 10 - (plan.yTitle ? 18 : 0)
       : rotate ? (m.bottom - 16) * 2 : band.step() * every - 6;
     /* One size for every name on the axis: 12px, or smaller (to 9px) when
@@ -2121,7 +2164,7 @@
     if (plan.xTitle && !bare) titles.push({ text: plan.xTitle, x: iw / 2, y: ih + m.bottom - 6, rot: 0 });
     if (plan.yTitle) titles.push({ text: plan.yTitle, x: -ih / 2, y: -m.left + 12, rot: -90 });
     g.selectAll("text.tb-axis-title").data(titles).join("text").attr("class", "tb-axis-title")
-      .attr("text-anchor", "middle").attr("fill", t.muted).attr("font-size", 11)
+      .attr("text-anchor", "middle").attr("fill", t.chart.label).attr("font-size", 11)
       .attr("font-weight", 600).attr("x", function (d) { return d.x; })
       .attr("y", function (d) { return d.y; })
       .attr("transform", function (d) { return d.rot ? "rotate(" + d.rot + ")" : null; })
@@ -2172,7 +2215,7 @@
           /* Round only the end that faces away from zero, and only the
            * outermost segment of a stack. */
           var outer = !stacked || p.y1 === (p.y >= 0 ? stackTop(series, p.cat, 1) : stackTop(series, p.cat, -1));
-          var rad = outer ? Math.min(2, len, thick / 2) : 0;
+          var rad = outer ? Math.min(t.chart.radius, len, thick / 2) : 0;
           var pos = p.y >= 0;
           if (horizontal) {
             var x0 = lo2, x1 = lo2 + len, y0 = a, y1 = a + thick;
@@ -2231,7 +2274,8 @@
       var vl = g.selectAll("g.tb-values").data([0]).join("g").attr("class", "tb-values")
         .selectAll("text").data(labelled, function (d) { return d.key; }).join("text");
       vl.attr("font-size", 11).attr("font-weight", 600).attr("pointer-events", "none")
-        .attr("fill", function (d) { return d.inside ? d.fill : t.ink; })
+        .attr("font-family", t.chart.num)
+        .attr("fill", function (d) { return d.inside ? d.fill : t.chart.value; })
         .attr("text-anchor", function (d) {
           if (!horizontal) return "middle";
           return (d.p.y >= 0) === d.inside ? "end" : "start";
@@ -2262,12 +2306,15 @@
         if (kind === "area") {
           /* A flat wash of the series colour at 10%: no gradient. */
           var ar = sel.selectAll("path.tb-area").data([pts]).join("path").attr("class", "tb-area")
-            .attr("fill", colour(s.key)).attr("fill-opacity", 0.1);
+            .attr("fill", colour(s.key)).attr("fill-opacity", t.chart.area);
           transition(entry, ar).attr("d", areaGen);
         }
         var ln = sel.selectAll("path.tb-line").data([pts]).join("path").attr("class", "tb-line tb-mark")
-          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", 1.5)
-          .attr("stroke-linejoin", "round").attr("stroke-linecap", "round");
+          .attr("fill", "none").attr("stroke", colour(s.key)).attr("stroke-width", t.chart.line)
+          .attr("stroke-linejoin", "round").attr("stroke-linecap", "round")
+          /* --tb-chart-glow: a faint light under the line, in its own colour. */
+          .style("filter", t.chart.glow > 0 && !plan.spark ? "drop-shadow(0 0 " + t.chart.glow
+            + "px color-mix(in srgb, " + colour(s.key) + " 55%, transparent))" : null);
         transition(entry, ln).attr("d", lineGen);
         /* One dot per row, drawn only at the end of the line and under the
          * pointer (.tb-dot-on), so the line reads as a line. */
@@ -2307,7 +2354,7 @@
       .attr("class", "tb-end-label").attr("pointer-events", "none")
       .attr("x", function (d) { return centre(d.p.cat); }).attr("y", function (d) { return d.y; })
       .attr("text-anchor", "end").attr("font-size", 11).attr("font-weight", 600)
-      .attr("fill", t.ink).text(function (d) { return d.text; });
+      .attr("fill", t.chart.value).text(function (d) { return d.text; });
 
     /* Marked points: the series' own high, low, first or last row, labelled
      * with that row's value. Picking a row never makes a number. */
@@ -2580,7 +2627,8 @@
     var grid = g.selectAll("g.tb-grid").data([0]).join("g").attr("class", "tb-grid");
     transition(entry, grid.selectAll("line").data(ys.ticks(5), function (v) { return v; }).join("line"))
       .attr("x1", 0).attr("x2", iw).attr("y1", function (v) { return ys(v); })
-      .attr("y2", function (v) { return ys(v); }).style("stroke", "var(--tb-grid)");
+      .attr("y2", function (v) { return ys(v); }).style("stroke", "var(--tb-chart-grid)")
+      .style("stroke-dasharray", "var(--tb-chart-grid-dash)");
     transition(entry, g.selectAll("g.tb-axis-y").data([0]).join("g").attr("class", "tb-axis tb-axis-y"))
       .call(d3.axisLeft(ys).ticks(5).tickSize(0).tickPadding(8).tickFormat(ticks));
     transition(entry, g.selectAll("g.tb-axis-x").data([0]).join("g").attr("class", "tb-axis tb-axis-x")
@@ -2588,7 +2636,7 @@
       .call(d3.axisBottom(xs).ticks(Math.max(2, Math.floor(iw / 80))).tickSize(0).tickPadding(8)
         .tickFormat(ticks));
     g.selectAll(".tb-axis .domain").remove();
-    g.selectAll(".tb-axis text").attr("fill", t.muted).attr("font-size", 11).attr("font-family", t.font);
+    g.selectAll(".tb-axis text").attr("fill", t.chart.label).attr("font-size", 11).attr("font-family", t.chart.font);
     g.selectAll("text.tb-axis-title").data([
       { text: plan.xTitle || humanise(plan.x), x: iw / 2, y: ih + 38, rot: 0 },
       { text: plan.yTitle || humanise(plan.y[0]), x: -ih / 2, y: -m.left + 12, rot: -90 }
@@ -2755,6 +2803,12 @@
     t.muted = t.muted || "#666";
     t.ink = t.ink || "#111";
     t.bg = t.bg || "#fff";
+    t.chart = chartTokens();
+    t.chart.label = t.chart.label || t.muted;
+    t.chart.value = t.chart.value || t.ink;
+    t.chart.font = t.chart.font || t.font;
+    t.chart.num = t.chart.num || t.chart.font;
+    _MOTION_MS = t.chart.motion;
     try { t.onAccent = cssVar(getComputedStyle(document.documentElement), "--tb-on-accent"); } catch (e) {}
     legendFor(entry, kind);
     var H = entry.plan.spark ? entry.height
@@ -2770,7 +2824,7 @@
       surface.appendChild(entry.tip);
     }
     entry.svg.attr("width", W).attr("height", H).attr("viewBox", "0 0 " + W + " " + H)
-      .style("font-family", t.font);
+      .style("font-family", t.chart.font);
     if (entry.kindDrawn && entry.kindDrawn !== kind) entry.svg.selectAll("*").remove();
     entry.kindDrawn = kind;
     tipHide(entry);
@@ -2841,6 +2895,10 @@
     var palette = null;
     fresh(figureEls("chart"), "chart").forEach(function (el) {
       try {
+        /* An app's <EChart> draws itself (ECharts, in its own div): it is a
+         * figure for the receipt, the trace and the selection, never drawn
+         * here. */
+        if (el.getAttribute("data-tb-engine") === "app") return;
         var binding = attr(el, "data-tb-binding");
         var block = readBlock(binding);
         if (!block || !block.rows.length) return;
@@ -6283,6 +6341,55 @@
   }
   hostBridge();
 
+  /* ── For an author's own chart (app.jsx useBinding, <EChart>) ──
+   * rows(name, keep): copies of the binding's rows as the page has them
+   * now — on a live page the engine's answer under the selection, else the
+   * stamped rows (embed none, a SQL binding, report.py). keep lists fields
+   * whose other values stay (the chart's own field: it dims them instead of
+   * narrowing). The same answers the kit's figures draw; nothing new is
+   * computed, and an author's chart drawn from them still carries no
+   * receipt. pick(column, value, event) is a click on a kit chart's mark:
+   * the value, shift adds, again removes. */
+  function authorRows(name, keep) {
+    var block = readBlock(name), src;
+    if (!block) return [];
+    src = block.rows;
+    if (_calc && _calc.local) {
+      var own = (keep || []).filter(function (c, i, all) {
+        return c && all.indexOf(c) === i && isArray(_calc.state[c]) && selectableField(c);
+      });
+      var res = own.length ? variantResult(name, own) : null;
+      if (res && res.block) src = res.block.rows;
+      else if (_liveRows[name]) src = _liveRows[name];
+    }
+    return src.map(function (r) {
+      var o = {}, k;
+      for (k in r) if (r.hasOwnProperty(k)) o[k] = r[k];
+      return o;
+    });
+  }
+
+  /* A number in a named format ("currency0", "percent", …; the table's and
+   * the charts' formats), the raw value for an unknown one. */
+  function formatNamed(v, mode) {
+    var n = toNum(v), out;
+    if (n === null) return v === null || v === undefined ? "" : String(v);
+    out = mode ? applyNamedFormat(n, mode) : null;
+    return out === null ? fmt(n) : out;
+  }
+
+  function currentSelection() {
+    return _calc ? JSON.parse(JSON.stringify(_calc.state)) : {};
+  }
+
+  /* true when the pick was made: a column the page can select. */
+  function authorPick(column, value, event) {
+    var act = markAction(column);
+    if (!act || value === null || value === undefined) return false;
+    act(value, event);
+    return true;
+  }
+
   root.tracebi = {
     data: data,
     ready: ready,
@@ -6295,6 +6402,13 @@
      * state, from any control, mark, row, range, chip or setSelection. */
     onSelection: onSelection,
     result: result,
+    rows: authorRows,
+    selection: currentSelection,
+    format: formatNamed,
+    pick: authorPick,
+    /* Whether a column is one the page's selection can name (a legend chip
+     * selects it, or else shows and hides its series). */
+    selectable: selectableField,
     refresh: refresh,
     /* The receipt certificate into any element (the web app's side panel
      * mounts it too); see renderReceipt. Display only. */

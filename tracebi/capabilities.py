@@ -332,8 +332,30 @@ def _presentation() -> dict:
             "what": "The React lane: app.jsx in place of template.html, for app-like "
                     "dashboards. One component (export default), compiled in the page from "
                     "a fixed kit; still one offline file with its trace.",
-            "imports": "react, react-dom, recharts, lucide-react (icons by name; only "
-                       "those are embedded), tracebi. Any other import fails the build.",
+            "imports": "react, react-dom, echarts (the ECharts module, for echarts.graphic "
+                       "and the like), recharts (Recharts 2: also works), lucide-react (icons "
+                       "by name; only those are embedded), tracebi. Any other import fails "
+                       "the build. The page runs on TanStack Redact, a drop-in React runtime.",
+            "chart": "<EChart> (Apache ECharts) is the chart: <EChart binding x y type "
+                     "series format unit stack> plots a binding's columns as they are (type "
+                     "bar, barh, line, area, pie, scatter or any ECharts series type that "
+                     "takes name/value items: funnel, treemap, sunburst); with binding, x "
+                     "and y literal it is a claim like <Chart> (data-tb-figure=\"chart\"; "
+                     "the build refuses an unknown binding or column). option={...} (an "
+                     "ECharts option, or a function of the rows) deep-merges on top and "
+                     "cannot replace the binding's numbers; an <EChart option={...}> alone "
+                     "draws numbers the page computed, carries data-tb-computed and is not "
+                     "a checked figure. Every chart is live: its rows are its binding's "
+                     "query re-run under the selection, and a click on a mark selects its "
+                     "x value (selects=\"dim.col\" on an option-only chart; shift adds), "
+                     "its own field's other values dimmed (highlight=\"off\" narrows). "
+                     "It draws in the house chart look (docs/reference/chart-style.md) "
+                     "from the page's --tb-chart-* tokens, its legend the kit's chips; "
+                     "renderer=\"svg\" (default: vectors, tabular figures) or \"canvas\" "
+                     "(thousands of marks); theme follows the page's tokens and mode; "
+                     "onEvents, ariaLabel. Never hard-code a colour in its option: a "
+                     "series takes the palette in order. Recharts also works; "
+                     "its onClick selects with window.tracebi.pick(column, value, event).",
             "kit": "<Masthead title kicker period mark> opens the page (children are the "
                    "standfirst; kicker defaults to the model's label; title is a string or text with <Value>s in it; period "
                    "is presentation, \"Q3 2026\"; it holds the build time and the "
@@ -359,8 +381,9 @@ def _presentation() -> dict:
                    "useUrlState(key, initial) keeps a view or period in the URL so a "
                    "shared link opens on it; usePrinting() is true while the page "
                    "prints (Ctrl+P and the PDF build), so an app with views renders "
-                   "all of them; useBinding(name) returns the stamped rows; "
-                   "fmt(value, format).",
+                   "all of them; useBinding(name) returns the binding's rows, live under "
+                   "the selection (stamped with embed none); useSelection() the "
+                   "selection; fmt(value, format).",
             "claims": "Kit figures are claims: binding, cell, x and y (and a Kpi's "
                       "deltaBinding / deltaCell) must be literal strings, and the "
                       "build refuses a binding or column that does not exist. A "
@@ -917,14 +940,34 @@ def _presentation() -> dict:
                             "top|side --title-at left|center|banner|nav "
                             "--theme <name> (new-dashboard --html for a "
                             "template dashboard)",
-                "themes": "Shipped themes, contrast-checked token sets: "
-                          + ", ".join(_named_themes()) + ". A report names one in report.json "
-                          "\"theme\"; tracebi theme use <name> makes one the "
-                          "project default (writes reports/_theme.css); "
-                          "tracebi theme list",
+                "themes": "Three house themes, each a whole look (surfaces, depth, "
+                          "density, numerals, chart tokens): ledger (the default), "
+                          "nightdesk, signal. A report names one in report.json \"theme\" "
+                          "(new-report/new-dashboard --theme, start_draft theme=); the "
+                          "project default is tracebi.yaml brand: {theme: …}; tracebi theme "
+                          "list. Agents pick a theme or use the brand, never hard-coded "
+                          "colours. " + _house_offer() + " Deprecated accent presets, still "
+                          "accepted with a warning: " + ", ".join(_named_themes()) + ".",
                 "for_everyone": "reports/_theme.css restyles every report in "
                                 "the project (token overrides: accent, fonts, "
                                 "spacing)",
+                "brand": "tracebi.yaml brand: {theme, name, logo, accent, palette, font, "
+                         "mode} is the project's brand: every report and dashboard takes "
+                         "it, its charts included (stacked after tracebi.css and the house "
+                         "theme, before reports/_theme.css; its colours, font and logo win "
+                         "over the theme's). name replaces the masthead's kicker, logo "
+                         "(svg/png, at most 400 KB) fills .tb-masthead-mark, accent sets "
+                         "--tb-accent (its text and dark-ground shades derived; below 3:1 "
+                         "on the card fails the build), palette sets --tb-chart-1..8. "
+                         "Agents never hard-code colours in an option; they use the palette. "
+                         "tracebi theme list shows it.",
+                "chart_tokens": "The house chart look, as tokens both chart engines read: "
+                                "--tb-chart-font, -grid, -grid-dash, -axis, -label, -value, "
+                                "-tooltip-bg, -tooltip-border, -tooltip-shadow, "
+                                "-tooltip-radius, -tooltip-ink, -tooltip-title, -tooltip-link, -radius, "
+                                "-bar, -line, -area, -dim, -motion, -num-font, -glow "
+                                "and the palette --tb-chart-1..8; a house theme sets them "
+                                "(docs/reference/chart-style.md).",
                 "style_css": "A report's own style.css is a theme preset at "
                              "most: the accent pairs (--tb-accent / "
                              "--tb-accent-text, --tb-dark-accent / "
@@ -1478,6 +1521,11 @@ def _analyst_knowledge() -> dict:
 def _named_themes() -> list[str]:
     from tracebi.reports.stack import named_themes
     return named_themes()
+
+
+def _house_offer() -> str:
+    from tracebi.reports.house import OFFER
+    return OFFER
 
 
 def describe(brief: bool = False) -> dict:

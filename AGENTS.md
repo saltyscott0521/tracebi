@@ -196,7 +196,8 @@ JavaScript off. Use it for briefs, long-form, emailed and printed reports,
 and anything written at volume without review. `app.jsx` instead of
 `template.html` is the React lane, for app-like dashboards (navigation,
 drawers, drill-downs, toggles): a component (`export default`) built from a
-fixed kit — `react`, `recharts`, `lucide-react` (import icons by name),
+fixed kit — `react`, `echarts`, `recharts` (Recharts 2, which also
+works), `lucide-react` (import icons by name),
 Tailwind classes (`bg-card text-ink border-rule` follow the page's tokens)
 and the `tracebi` module. No other import builds; it is still one offline
 file. Show numbers through the kit — `<Kpi binding cell format label lead>`,
@@ -207,9 +208,34 @@ column that does not exist. A KPI's change is a stamped figure too:
 `<Kpi … deltaBinding="kpis" deltaCell="unrealized" deltaFormat="currency_compact"
 deltaGood="up" context="vs cost">` shows it first on the context line with its
 arrow, sign and colour (`deltaGood="down"` for costs and churn). Only where
-the model measures a comparison; no comparison measure, no delta. `useBinding("name")` hands your own components
-the stamped rows; a number your code computes or draws (a Recharts chart, a
-sum) is the app's presentation, not a checked figure, and the page says so.
+the model measures a comparison; no comparison measure, no delta. 
+
+**Charts.** `<EChart>` (Apache ECharts) is the chart. `<EChart binding="by_sector"
+type="treemap" x="dim_issuer.sector" y="fair_value" format="currency_compact">`
+plots a binding's columns as they are: `type` bar, barh, line, area, pie,
+scatter or any ECharts series type that takes name/value items (funnel,
+treemap, sunburst), `series` a column that splits the rows into series,
+`unit`, `stack`. With `binding`, `x` and `y` literal it is a claim like
+`<Chart>` (`data-tb-figure="chart"`; the build refuses an unknown binding or
+column). `option={…}` (an ECharts option, or a function of the rows)
+deep-merges on top to style it; it cannot replace the binding's numbers.
+An `<EChart option={…}>` alone draws numbers the page computed: it carries
+`data-tb-computed` and is the app's presentation, not a checked figure, and
+the page's footer says so. Every chart is live: its rows are its binding's
+query re-run under the page's selection, and a click on a mark selects its
+`x` value (`selects="dim.col"` on an option-only chart; shift adds), its own
+field's other values kept and dimmed (`highlight="off"` narrows instead).
+Both chart engines draw the house look (`docs/reference/chart-style.md`)
+from the `--tb-chart-*` tokens; `renderer="svg"` is the default (vectors,
+tabular figures), `renderer="canvas"` for thousands of marks.
+`useBinding("name")` hands your own components the same live rows (the
+stamped rows on an `"embed": "none"` page) and `useSelection()` the
+selection: what you draw from them is live, not a checked figure, and a sum
+you compute is the app's presentation. Recharts also works (`import {
+BarChart, Bar } from "recharts"`); `<Bar onClick={(d, i, e) =>
+window.tracebi.pick("dim_region.region", d.payload["dim_region.region"], e)} />`
+selects as a kit chart's click does.
+
 For app behaviour: `<Filter column>` with no `binding` filters the whole page
 (every binding with that column; on a live page every figure it reaches
 recomputes, and `multiple` picks several values); `<Range column>` is a range
@@ -341,12 +367,32 @@ in `report.json` `"look"` (an `app.jsx` has no `<html>`) and whose sidebar and
 title are its own components; `new-report` and `new-dashboard --html` write
 it as the template attributes above. These change how a page looks, never a number or the trace's tones.
 
-**Themes and the house style.** A report can name a shipped theme in
-`report.json` `"theme"` (`tracebi theme list`: graphite, indigo, midnight,
-ocean, plum, sand; `--theme` on `new-report` / `new-dashboard`). `tracebi theme use <name>` makes
-one the project default (`reports/_theme.css`, which restyles every report).
-A theme is an accent preset (the accent for the light and the dark ground),
-never a mode or a layout. A report's own `style.css` is the same thing at most:
+**Brand.** A project's brand lives in `tracebi.yaml` `brand:` (`name`,
+`logo`, `accent`, `palette`, optional `font` and `mode`): every report and
+dashboard of the project takes it, its charts included (`tracebi theme list`
+shows it). Never hard-code a colour in an `<EChart option>` or a style: a
+series takes the palette in order (`--tb-chart-1..8`), and the house chart
+look (`docs/reference/chart-style.md`) comes from the `--tb-chart-*` tokens
+the brand and the themes set.
+
+**House themes.** A report or dashboard takes one of three house themes, each
+a whole look (surfaces, depth, density, numerals, the chart tokens): `ledger`
+(the default), `nightdesk` or `signal` (`docs/reference/chart-style.md`). The
+project picks one in `tracebi.yaml` `brand: {theme: …}`; one report in
+`report.json` `"theme"` (`--theme` on `new-report` / `new-dashboard`, `theme`
+on the gateway's `start_draft`); `tracebi theme list` shows them. Pick a theme
+or use the brand, never hard-coded colours. Offer the house theme once, for a
+new report or dashboard only: when the project sets no brand.theme and the
+person has not named a theme, offer the three in one short line each (Ledger:
+calm, institutional, the default; Nightdesk: dark, dense, monospaced numbers,
+for a desk or ops screen; Signal: bold, big numbers, for a board pack or a
+wall screen), recommend one for what the report is for, and use Ledger if the
+person does not choose. If the project sets a theme, use it and say so in one
+line instead of asking. Never ask again for an existing report. The six accent
+presets (graphite, indigo, midnight, ocean, plum, sand) are deprecated: a
+report that names one still builds, in the house theme with that accent, and
+the build says so. A theme is never a mode or a layout. A report's own
+`style.css` is tokens at most:
 the accent pairs (`--tb-accent` / `--tb-accent-text`, `--tb-dark-accent` /
 `--tb-dark-accent-text`) and one display face as `--tb-font-display` (the
 system sets it on the `.tb-masthead h1`, the lead number and the trace's

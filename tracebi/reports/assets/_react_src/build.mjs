@@ -6,8 +6,8 @@ import { icons } from "lucide";
 const pkg = (n) => JSON.parse(readFileSync(`node_modules/${n}/package.json`, "utf8")).version;
 const define = { "process.env.NODE_ENV": '"production"' };
 // The kit's React is TanStack Redact (react.min.js): the same API, a smaller
-// runtime, synchronous rendering. A page that imports recharts gets React 18
-// (react18.min.js) instead: a Recharts chart locks the page under Redact.
+// runtime, synchronous rendering. It is the one runtime: Recharts 2 renders on
+// it (Recharts 3 does not), and ECharts never imports React at all.
 const redact = {
   react: "@tanstack/redact",
   "react/jsx-runtime": "@tanstack/redact/jsx-runtime",
@@ -15,27 +15,26 @@ const redact = {
   "react-dom/client": "@tanstack/redact/dom-client",
 };
 const out = (f) => new URL(`../${f}`, import.meta.url).pathname;
+const here = (f) => new URL(f, import.meta.url).pathname;
 
-const runtime = {
+await build({
   entryPoints: ["runtime.js"], bundle: true, minify: true, format: "iife", define,
   jsx: "transform", jsxFactory: "React.createElement", jsxFragment: "React.Fragment",
-};
-await build({
-  ...runtime, alias: redact,
+  alias: redact,
   banner: { js: `/*! TraceBi-credit: TanStack Redact ${pkg("@tanstack/redact")} (MIT), Sucrase ${pkg("sucrase")} (MIT) */` },
   outfile: out("react.min.js"),
 });
-await build({
-  ...runtime,
-  banner: { js: `/*! TraceBi-credit: React ${pkg("react")} (MIT), ReactDOM ${pkg("react-dom")} (MIT), Sucrase ${pkg("sucrase")} (MIT) */` },
-  outfile: out("react18.min.js"),
-});
 
+// Recharts shares the page's one React: every React entry point it (or a
+// dependency) imports resolves to the module the runtime registered. Without
+// jsx-runtime and react-dom/client here, React 18's own copies get bundled.
 const globals = {
   name: "react-globals",
   setup(b) {
-    b.onResolve({ filter: /^react$/ }, () => ({ path: new URL("react-global.js", import.meta.url).pathname }));
-    b.onResolve({ filter: /^react-dom$/ }, () => ({ path: new URL("react-dom-global.js", import.meta.url).pathname }));
+    b.onResolve({ filter: /^react$/ }, () => ({ path: here("react-global.js") }));
+    b.onResolve({ filter: /^react-dom$/ }, () => ({ path: here("react-dom-global.js") }));
+    b.onResolve({ filter: /^react\/jsx-runtime$/ }, () => ({ path: here("jsx-runtime-global.js") }));
+    b.onResolve({ filter: /^react-dom\/client$/ }, () => ({ path: here("react-dom-client-global.js") }));
   },
 };
 await build({
@@ -43,6 +42,13 @@ await build({
   plugins: [globals],
   banner: { js: `/*! TraceBi-credit: Recharts ${pkg("recharts")} (MIT) */` },
   outfile: out("recharts.min.js"),
+});
+
+// ECharts for the kit's <EChart>: tree-shaken from echarts/core.
+await build({
+  entryPoints: ["echarts-entry.js"], bundle: true, minify: true, format: "iife", define,
+  banner: { js: `/*! TraceBi-credit: Apache ECharts ${pkg("echarts")} (Apache-2.0), zrender ${pkg("zrender")} (BSD-3-Clause), tslib ${pkg("tslib")} (0BSD) */` },
+  outfile: out("echarts-kit.min.js"),
 });
 
 writeFileSync(out("tailwind.min.js"),
@@ -53,4 +59,4 @@ writeFileSync(out("tailwind.min.js"),
 const nodes = {};
 for (const [name, node] of Object.entries(icons)) nodes[name] = node[2];  // children only
 writeFileSync(out("lucide-icons.json"), JSON.stringify({ version: pkg("lucide"), icons: nodes }));
-console.log("built react.min.js, react18.min.js, recharts.min.js, tailwind.min.js, lucide-icons.json");
+console.log("built react.min.js, recharts.min.js, echarts-kit.min.js, tailwind.min.js, lucide-icons.json");

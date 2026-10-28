@@ -70,6 +70,8 @@ sections:
         blurb: Turn ordinary HTML into live figures with `data-tb-*` attributes
       - figure-helper
       - number-formats
+      - page: chart-style
+        blurb: Ledger, Nightdesk and Signal, the house chart look, and the tokens a brand changes
       - folder-yaml
       - api-routes
 

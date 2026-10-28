@@ -142,3 +142,46 @@ is the same as through the connector. Each `load` node records the table's
 fingerprint as `load()` returns it. That fingerprint is computed once per
 warehouse version (the file's size and modification time) and reused by every
 figure of a build.
+
+## `brand`
+
+The project's brand: the look every report and dashboard of the project
+takes, its charts included. One block, and every page follows.
+
+```yaml
+brand:
+  theme: ledger                  # the house theme: ledger (default) | nightdesk | signal
+  name: Cedar Capital            # the masthead's kicker, in place of the model's label
+  logo: brand/logo.svg           # svg or png under the project, inlined
+  accent: "#0f6b5c"              # --tb-accent, and what each ground needs from it
+  palette: ["#0f6b5c", "#c8902e", "#5b6ee1", "#d1495b", "#3c9d9b", "#8a5a44"]
+  font: brand/Inter.woff2        # optional; inlined @font-face, the pages' and charts' face
+  mode: auto                     # optional: light | dark | auto, for a page that names none
+```
+
+| Key | What it sets |
+|---|---|
+| `theme` | The project's house theme ([[chart-style]]): `ledger` (the default), `nightdesk` or `signal`. A report's own `report.json` `"theme"` wins over it. The rest of the brand layers on top: its accent, palette, font and logo replace the theme's colours and face, and the theme keeps its surfaces, depth, density, radius and numerals. |
+| `name` | The masthead's kicker (the small line over the title), in place of the model's label. A kicker the author wrote still wins. At most 60 characters. |
+| `logo` | The masthead's mark (`.tb-masthead-mark`): above the kicker on a template page and in an app's `<Masthead>`, its sidebar included. An `.svg` or `.png` under the project, inlined as a `data:` URI. On a filled ground (the editorial hero, a banner title) it is drawn in the ground's ink. |
+| `accent` | `--tb-accent`. From it: `--tb-accent-text` (the same hue deepened to 4.5:1 for links and small text), `--tb-on-accent`, `--tb-surface-accent`, and the dark ground's `--tb-dark-accent` / `--tb-dark-accent-text` (lifted to read on the dark card). |
+| `palette` | `--tb-chart-1..8`, in the order a chart's series take them: 1 to 8 colours, cycled to eight. On the dark ground each is lifted only as far as it takes to read there. With no palette, `--tb-chart-1` is the accent. |
+| `font` | A `.woff2`, `.woff`, `.ttf` or `.otf` under the project, inlined as an `@font-face` that `--tb-font` (and so `--tb-chart-font`) names first, Geist after it. |
+| `mode` | The ground a page takes when it names none (a template's `<html data-tb-mode>`, an app's `report.json` `"look"`). Default: the house theme's, `auto` (the reader's system) except Nightdesk, which opens `dark`. |
+
+- Colours are hex, `#rgb` or `#rrggbb`, and quoted: YAML reads an unquoted
+  `#` as the start of a comment.
+- The build fails, naming the key and the fix, on a missing file, a colour
+  that is not hex, an accent below 3:1 on the white card (it names a deeper
+  shade of the same hue that passes), or a logo or font over 400 KB. A page
+  carries both inlined, and a page stays under its 16 MB budget.
+- Where it sits: right after the shipped `tracebi.css` and the house theme,
+  before `reports/_theme.css`. So the project's own theme and a report's
+  `style.css` still win, in that order; on the dark ground its colours are
+  lifted against the house theme's own card. `tracebi theme list` shows it.
+- A brand changes how a page looks, never a number. Agents never hard-code a
+  colour in a chart's `option`: a series takes the palette.
+
+The reference project carries one (`examples/portfolio_project/tracebi.yaml`,
+its logo in `brand/`). The house themes, and the chart look the palette and
+tokens feed, are in [[chart-style|House themes and chart style]].

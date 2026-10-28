@@ -583,16 +583,19 @@ class TemplatePackage:
             else self.name
         )
         self.author = declaration.get("author", "")
-        # A shipped theme by name ("theme": "ocean"): token overrides stacked
-        # over the project's reports/_theme.css.
+        # A house theme by name ("theme": "signal"), stacked right after
+        # tracebi.css and under the brand; over the project's brand.theme.
+        # A deprecated accent preset ("ocean") keeps its accent pair, stacked
+        # over the project's reports/_theme.css, and the build says so.
+        from tracebi.reports import house
         self.theme = declaration.get("theme")
         self.theme_css = ""
+        self.theme_warning: Optional[str] = None
         if self.theme is not None:
-            from tracebi.reports.stack import named_theme_css
-            try:
-                self.theme_css = named_theme_css(str(self.theme))
-            except ValueError as exc:
-                raise ValueError(f"{report_json_path}: {exc}") from None
+            house.check(self.theme, report_json_path)
+            if self.theme not in house.THEMES:
+                from tracebi.reports.stack import named_theme_css
+                self.theme_css = named_theme_css(self.theme)
         self.description = declaration.get("description", "")
 
         data = declaration.get("data")
@@ -1881,11 +1884,17 @@ class TemplatePackage:
         *extra_blocks_html* (the final build's semantic-contract blocks)
         rides in the same data-block slot, after the bindings.
         """
+        from tracebi.project_config import brand
+        from tracebi.reports import house
+        from tracebi.reports.brand import brand_css
         from tracebi.reports.stack import apply_stack, project_theme_css
 
         if self.app_source is not None:
             from tracebi.reports.app_lane import app_blocks_html
             extra_blocks_html += app_blocks_html(self.app_source, self.app_icons)
+        mark = brand()
+        look, accent = house.resolve(self.theme, mark.get("theme"))
+        self.theme_warning = house.deprecation(accent, look) if accent else None
         return apply_stack(
             page,
             libs=self._libs_for_page(page),
@@ -1900,6 +1909,10 @@ class TemplatePackage:
             report_js=self.script_js,
             app=self.app_source is not None,
             theme_css=self.theme_css,
+            house_css=house.css(look),
+            brand_css=brand_css(mark, house.THEMES[look]["dark_card"]),
+            default_mode=mark.get("mode") or house.THEMES[look]["mode"],
+            default_density=house.THEMES[look]["density"],
         )
 
 
@@ -1931,16 +1944,25 @@ _MASTHEAD_OPEN = re.compile(
 
 
 def _with_kicker(page: str, kicker: str, *, app: bool) -> str:
-    """Give the masthead its default kicker, the model's label, when the
-    author wrote none; a kicker the author wrote always wins.
+    """Give the masthead its default kicker, the model's label (the project
+    brand's name when ``tracebi.yaml`` sets one), when the author wrote
+    none; a kicker the author wrote always wins.
 
     A template page gets a ``<p class="tb-kicker">`` before the masthead's
     ``<h1>``, so a reader without JavaScript sees it too. An app page's
     masthead is drawn by the kit, which reads the label from the app's
-    mount point, ``<div id="tb-app" data-tb-kicker>``.
+    mount point, ``<div id="tb-app" data-tb-kicker>``. With a brand logo, a
+    template's masthead that has no ``.tb-masthead-mark`` gets one (the kit's
+    always has one), which the brand's CSS draws the logo into.
     """
     import html as _html
 
+    from tracebi.project_config import brand as _brand
+
+    mark = _brand()
+    kicker = mark.get("name") or kicker
+    if mark.get("logo") and not app:
+        page = _with_mark(page, mark.get("name") or "")
     if not kicker:
         return page
     text = _html.escape(kicker)
@@ -1958,6 +1980,22 @@ def _with_kicker(page: str, kicker: str, *, app: bool) -> str:
         return page
     return (page[:h1.start()] + f'<p class="tb-kicker">{text}</p>\n'
             + page[h1.start():])
+
+
+def _with_mark(page: str, name: str) -> str:
+    """A ``.tb-masthead-mark`` first in a template's masthead, for the brand's
+    logo, unless the author placed one."""
+    import html as _html
+
+    head = _MASTHEAD_OPEN.search(page)
+    if head is None:
+        return page
+    close = page.lower().find(f"</{head.group(1).lower()}>", head.end())
+    if "tb-masthead-mark" in page[head.end():close if close >= 0 else None]:
+        return page
+    label = f' role="img" aria-label="{_html.escape(name)}"' if name else ' aria-hidden="true"'
+    return (page[:head.end()] + f'\n<div class="tb-masthead-mark"{label}></div>'
+            + page[head.end():])
 
 
 def _footer_html(manifest: ReportManifest, model_labels: list[str],

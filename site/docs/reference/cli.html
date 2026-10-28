@@ -66,6 +66,7 @@
 <a href="../reference/template-html.html">template.html</a>
 <a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
 <a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/chart-style.html">House themes and chart style</a>
 <a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
 <a href="../reference/api-routes.html">API routes</a>
 <div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
@@ -356,8 +357,9 @@ folders can each hold a report of the same name.</p>
 <code>--title-at</code> (<code>nav</code> puts the title at the top of the sidebar). For an app they
 shape its navigation and title, and mode and density go in <code>report.json</code>
 <code>"look"</code>. For a template they set the <code>&lt;html&gt;</code> attributes and the title block
-(<code>--nav</code> implies the tabbed layout). <code>--theme</code> names a shipped theme in
-<code>report.json</code> <code>"theme"</code>.</p>
+(<code>--nav</code> implies the tabbed layout). <code>--theme ledger|nightdesk|signal</code> writes
+the house theme into <code>report.json</code> <code>"theme"</code> (<a href="../reference/chart-style.html">House themes and chart style</a>); a deprecated
+accent preset still works and says so.</p>
 <p><strong><code>new-model --from &lt;connection&gt; --tables a,b,c</code></strong> drafts the model from the
 connection's column metadata, with no row scan. A table named <code>fact_*</code>, or one
 with numeric non-key columns and <code>*_id</code>/<code>*_key</code> columns matching another
@@ -366,14 +368,15 @@ follow those key names, and each numeric non-key column on a fact becomes a
 <code>sum</code> measure. Every guess is marked <code># DRAFT: review</code>. <code>--tables</code> is required
 with <code>--from</code>.</p>
 <h3 id="tracebi-theme"><code>tracebi theme</code></h3>
-<pre><code class="language-bash">tracebi theme list                 # the shipped themes, one line each
-tracebi theme use ocean [--force]  # make one the project default
+<pre><code class="language-bash">tracebi theme list                 # the house themes, then the deprecated presets
 </code></pre>
-<p>Themes are contrast-checked token sets: an accent, and for <code>sand</code> and
-<code>midnight</code> the page and surfaces too. <code>use</code> writes <code>reports/_theme.css</code>, which
-every report stacks over <code>tracebi.css</code>; it refuses to replace that file
-without <code>--force</code>. One report picks a theme with <code>report.json</code> <code>"theme"</code>
-(<a href="../reference/report-json.html">report.json</a>).</p>
+<p><code>list</code> shows the three house themes (<a href="../reference/chart-style.html">House themes and chart style</a>), Ledger marked the
+default and the project's <code>tracebi.yaml</code> <code>brand.theme</code> marked as its choice,
+then the six deprecated accent presets, then the project's brand. A project
+picks its house theme with <code>brand: {theme: …}</code> (<a href="../reference/tracebi-yaml.html">Project settings (tracebi.yaml)</a>); one report
+with <code>report.json</code> <code>"theme"</code> (<a href="../reference/report-json.html">report.json</a>). <code>tracebi theme use &lt;preset&gt;
+[--force]</code> still copies a deprecated accent preset to <code>reports/_theme.css</code>;
+named with a house theme, it says where that setting goes instead.</p>
 <h2 id="build-and-check">Build and check</h2>
 <h3 id="tracebi-report-build"><code>tracebi report build</code></h3>
 <pre><code class="language-bash">tracebi report build &lt;name&gt; [--output PATH] [--format html|pdf] [--badges] [--reports-dir DIR]

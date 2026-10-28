@@ -20,6 +20,17 @@ and ``warehouse``, where phase ① sinks and phase ② reads (:func:`warehouse`,
       key_id: ${AWS_ACCESS_KEY_ID}
       secret: ${AWS_SECRET_ACCESS_KEY}
 
+and ``brand``, the look every report page of the project takes
+(:func:`brand`, :mod:`tracebi.reports.brand`)::
+
+    brand:
+      name: Cedar Capital        # the masthead's kicker, in place of the model's label
+      logo: brand/logo.svg       # svg or png under the project, inlined (at most 400 KB)
+      accent: "#0f6b5c"          # --tb-accent; its text and dark-ground shades derived
+      palette: ["#0f6b5c", "#c8902e", "#5b6ee1"]   # --tb-chart-1..n
+      font: brand/Inter.woff2    # optional, inlined (at most 400 KB)
+      mode: auto                 # optional: light | dark | auto, for a page that names none
+
 A missing file, or a missing key, means the default. A malformed file is an
 error naming the file, never a silent default: a limit an operator wrote must
 be the limit that applies.
@@ -204,3 +215,99 @@ def sink_target(project_root: Optional[str] = None) -> "SinkTarget":
     and write through ``sink_target().warehouse.connect(write=True)``.
     """
     return warehouse(project_root).sink
+
+
+_BRAND_KEYS = ("theme", "name", "logo", "accent", "palette", "font", "mode")
+#: The most a brand's logo or font may weigh: it is inlined into every page.
+BRAND_FILE_MAX = 400 * 1024
+
+
+def _brand_file(root: str, where: str, key: str, value, kinds: tuple) -> str:
+    """A brand file: a path under the project, of a kind a page can inline,
+    small enough to ride in every page."""
+    example = "brand/logo.svg" if key == "logo" else "brand/Inter.woff2"
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{where}: brand.{key} must be a path under the project, "
+                         f"such as {example}")
+    if os.path.splitext(value)[1].lower() not in kinds:
+        raise ValueError(f"{where}: brand.{key} {value!r} must be a {' / '.join(kinds)} "
+                         f"file, such as {example}")
+    real_root = os.path.realpath(root)
+    path = os.path.realpath(os.path.join(root, value))
+    if os.path.commonpath([path, real_root]) != real_root:
+        raise ValueError(f"{where}: brand.{key} {value!r} is outside the project; put "
+                         f"the file under {root} and name it relative to it")
+    if not os.path.isfile(path):
+        raise ValueError(f"{where}: brand.{key} {value!r}: no such file under {root}. "
+                         f"Put the file there, or remove brand.{key}")
+    size = os.path.getsize(path)
+    if size > BRAND_FILE_MAX:
+        raise ValueError(
+            f"{where}: brand.{key} {value!r} is {size // 1024} KB; it rides inside every "
+            f"page, so the most is {BRAND_FILE_MAX // 1024} KB. "
+            + ("Use an SVG, or a smaller PNG." if key == "logo"
+               else "Use a .woff2 subset to Latin."))
+    return path
+
+
+def brand(project_root: Optional[str] = None) -> dict:
+    """The ``brand`` block, checked: ``{}`` when there is none, else the keys
+    it sets, ``logo`` and ``font`` as absolute paths.
+
+    A missing file, a colour that is not ``#rgb`` / ``#rrggbb``, an accent
+    that does not read as a fill on the card (below 3:1), or a logo or font
+    over 400 KB is an error naming the key and the fix: a build fails rather
+    than ship a page in a brand nobody chose.
+    """
+    from tracebi.reports.brand import check_accent, is_hex
+
+    root = os.path.abspath(project_root or os.getcwd())
+    raw = read_config(root).get("brand")
+    where = config_path(root)
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise ValueError(f"{where}: 'brand' must be a mapping of {', '.join(_BRAND_KEYS)}")
+    unknown = sorted(set(raw) - set(_BRAND_KEYS))
+    if unknown:
+        raise ValueError(f"{where}: unknown brand key(s) {unknown}; known: {list(_BRAND_KEYS)}")
+    out: dict = {}
+    if raw.get("theme") is not None:
+        from tracebi.reports import house
+        if raw["theme"] not in house.THEMES:
+            raise ValueError(f"{where}: brand.theme is one of {', '.join(house.THEMES)} "
+                             f"(the house themes), not {raw['theme']!r}")
+        out["theme"] = raw["theme"]
+    if raw.get("name") is not None:
+        name = raw["name"]
+        if not isinstance(name, str) or not name.strip() or len(name) > 60:
+            raise ValueError(f"{where}: brand.name must be text of at most 60 characters")
+        out["name"] = name.strip()
+    if raw.get("accent") is not None:
+        accent = raw["accent"]
+        if not is_hex(accent):
+            raise ValueError(f"{where}: brand.accent must be a hex colour such as "
+                             f"\"#0f6b5c\" (quoted: YAML reads # as a comment), got {accent!r}")
+        check_accent(accent.strip(), where)
+        out["accent"] = accent.strip()
+    if raw.get("palette") is not None:
+        palette = raw["palette"]
+        if not isinstance(palette, list) or not 1 <= len(palette) <= 8:
+            raise ValueError(f"{where}: brand.palette must be a list of 1 to 8 hex colours, "
+                             f"in the order a chart's series take them")
+        for i, colour in enumerate(palette):
+            if not is_hex(colour):
+                raise ValueError(f"{where}: brand.palette[{i}] must be a hex colour such as "
+                                 f"\"#c8902e\" (quoted), got {colour!r}")
+        out["palette"] = [c.strip() for c in palette]
+    if raw.get("logo") is not None:
+        out["logo"] = _brand_file(root, where, "logo", raw["logo"], (".svg", ".png"))
+    if raw.get("font") is not None:
+        out["font"] = _brand_file(root, where, "font", raw["font"],
+                                  (".woff2", ".woff", ".ttf", ".otf"))
+    if raw.get("mode") is not None:
+        if raw["mode"] not in ("light", "dark", "auto"):
+            raise ValueError(f"{where}: brand.mode is one of light, dark, auto, "
+                             f"not {raw['mode']!r}")
+        out["mode"] = raw["mode"]
+    return out
