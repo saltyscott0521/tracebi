@@ -1270,9 +1270,9 @@ export default function Library() {
   const find = (
     <div className="library__find">
       {models.length > 1 && (
-        <div className="library__chips" role="group" aria-label="Model">
+        <div className="library__chips" role="group" aria-label="Project">
           <button type="button" className="rsplit__chip" aria-pressed={!model} onClick={() => pick('')}>
-            All models <span className="library__n">{all.length}</span>
+            All projects <span className="library__n">{all.length}</span>
           </button>
           {models.map(m => (
             <button key={m.name} type="button" className="rsplit__chip" aria-pressed={model === m.name}
@@ -1326,7 +1326,7 @@ export default function Library() {
         <>
           <Health reports={reports} verdictFor={verdictFor} builds={builds} known={!!desk} />
           {!listed.length && !mine
-            ? <>{welcome}{find}<p className="lfolder__none">No report matches. Clear the search or pick All models.</p></>
+            ? <>{welcome}{find}<p className="lfolder__none">No report matches. Clear the search or pick All projects.</p></>
             : view === 'grid' ? (
               <DirectoryView library={library} listed={listed} mine={mine} builds={builds} verdictFor={verdictFor}
                              find={find} welcome={welcome} />

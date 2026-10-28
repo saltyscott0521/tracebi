@@ -184,8 +184,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             # workflow left.
             expect(lib_row).to_contain_text("Never built", timeout=60_000)
             expect(lib_row).to_contain_text("Mondays 07:00")   # its schedule, in words
-            # A model is a filter chip on the list, not the frame of the app.
-            page.get_by_role("group", name="Model").get_by_role("button", name=re.compile(r"^Direct Lending Portfolio")).click()
+            # A project is a filter chip on the list, not the frame of the app;
+            # the chips say projects, as the tiles above them do.
+            chips = page.get_by_role("group", name="Project")
+            expect(chips.get_by_role("button", name=re.compile(r"^All projects"))).to_be_visible()
+            chips.get_by_role("button", name=re.compile(r"^Direct Lending Portfolio")).click()
             page.wait_for_url("**/?model=portfolio_model")
             expect(page.locator('[data-report="housing_model/affordability"]')).to_have_count(0)
             expect(lib_row).to_be_visible()

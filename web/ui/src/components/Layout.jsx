@@ -466,7 +466,7 @@ export default function Layout({ children }) {
             ))}
           </ul>
           <FolderTree library={library} current={current} onNavigate={close} />
-          {items.some(item => item.icon !== 'reports') && <p className="tree__sec" id="tree-workshop">Workshop</p>}
+          {items.some(item => item.icon !== 'reports') && <p className="tree__sec" id="tree-workshop">Workspace</p>}
           <ul style={{ listStyle: 'none' }} aria-labelledby="tree-workshop">
             {items.filter(item => item.icon !== 'reports').map(item => (item.icon === 'data'
               ? <DataTree key={item.path} item={item} folder={scope.page === 'data' ? scope.tab : null} onNavigate={close} />
