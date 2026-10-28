@@ -55,7 +55,7 @@ When your changes create orphans:
 
 The test: every changed line should trace directly to the user's request.
 
-TraceBi-specific: the test files are phase-scoped (`test_phase1.py`, `test_phase2.py`, `test_phase25.py`, `test_phase4.py`, `test_phase5.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies. End-to-end journeys live in `tests/e2e/` (their own `conftest.py` gives each journey a fresh project and registries) — see the testing rule below.
+TraceBi-specific: the test files are phase-scoped (`test_phase1.py`, `test_phase2.py`, `test_phase25.py`, `test_phase4.py`, `test_phase5.py`). Don't reorganize tests across files. Don't add shared fixtures that create cross-phase dependencies. End-to-end journeys live in `tests/e2e/` (their own `conftest.py` gives each journey a fresh workspace and registries) — see the testing rule below.
 
 ---
 
@@ -107,10 +107,30 @@ All six development phases are complete and tested.
 
 ---
 
+## Workspace and Projects
+
+The words people and agents read (2026-10-28; nothing moved on disk):
+
+- **Workspace**: what one `tracebi.yaml` covers: one warehouse, its sources,
+  transforms and models, the brand and the default house theme. One per
+  company. (It was called the "project" before; identifiers such as
+  `project_config.py`, `describe_project`, `TRACEBI_PROJECT_DIR` keep their names.)
+- **Project**: one area's reports, a top-level library folder named for the
+  model(s) it reads (`reports/saas_model/` is the SaaS project). Models stay
+  shared at the workspace; a project keeps its permissions in `_folder.yaml`.
+  Folders inside a project stay folders; `my-published/<name>` is "My
+  published", never a project. The API, files and addresses still say folder
+  (`/api/folders`, `?folder=`, `folder` fields); `?project=` redirects to
+  `?folder=` (`movedTo`). `folders.js` `isProject` / `folderWord` decide the word.
+- **Themes** are set on a report (`report.json` `"theme"`) or the workspace
+  (`tracebi.yaml` `brand: {theme}`), never a project.
+- The gateway's `describe_workspace` is `describe_project` under the new word.
+  `docs/concepts/workspace-and-projects.md` is the page.
+
 ## The Three-Phase Workflow
 
 This is the spine — the mental model to hold before anything else. TraceBi takes
-data from messy to reportable in three project-root folders, each with its own
+data from messy to reportable in three workspace-root folders, each with its own
 cadence, decoupled by **freeze points** (a materialized artifact handed from one
 phase to the next):
 
@@ -272,9 +292,9 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   the row-count rule (sql_row_estimates) and is_framework_table
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 28 tools + 3 prompts (author_report, answer_question, address_pins);
+  mcp_server.py        # agent gateway over MCP — 29 tools + 3 prompts (author_report, answer_question, address_pins);
                        #   the source tools read only a connection's agents: allowlist; describe_project = graph.py
-  graph.py             # the project as one graph ({summary, nodes, edges}): every source, transform, warehouse
+  graph.py             # the workspace as one graph ({summary, nodes, edges}): every source, transform, warehouse
                        #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
                        #   GET /api/graph and the gateway's describe_project serve it (design/control-tower.md);
                        #   never re-runs a verdict (desk.cached_verdict); edge_facts: the parser-proven column lineage
@@ -311,7 +331,7 @@ web/
 tests/                 # pytest suite (run `pytest tests/` for the current count), one file per area;
                        #   tests/e2e/ holds the end-to-end journeys (preferred for new coverage)
 examples/
-  portfolio_project/   # THE reference working project — a complete three-phase project
+  portfolio_project/   # THE reference working workspace — a complete three-phase workspace
                        #   with the same shape `tracebi init` scaffolds; every model follows it:
     tracebi.yaml       #   the ONE warehouse (data/warehouse.duckdb, file tier) + engine limits
     inputs/            #   ⓪ raw pulls (holdings.csv + generate_raw.py, the demo source)
@@ -332,7 +352,7 @@ examples/
                        #     portfolio_showcase), saas_model/ (mrr_dashboard, cohort_brief),
                        #     housing_model/ (affordability), wealth_model/ (aum_by_branch, aum_by_region)
     pipelines/         #   one per model (YAML): transform → build that model's reports
-    run_workflow.py    #   drives ①→③; data/ inside the project is gitignored
+    run_workflow.py    #   drives ①→③; data/ inside the workspace is gitignored
   seeds/               # Medallion demo DB seeding + Supabase deploy companions
   phase*.py            # Phase 1–4 + 2.5 runnable demos — read these to understand data flow
 MANIFESTO.md           # What TraceBi is, the vocabulary canon, and what it refuses to build
@@ -344,7 +364,7 @@ docker-compose.yml     # Serves examples/portfolio_project only (TRACEBI_APP uns
 pyproject.toml         # Single source of truth for deps, build, and pytest config
 CHANGELOG.md           # Keep-a-changelog format
 LICENSE                # MIT
-README.md              # The front door: what it is, install, the reference project, the app, deploy, agents
+README.md              # The front door: what it is, install, the reference workspace, the app, deploy, agents
 NOTES.md               # The decision journal (dated entries), build status, open questions
 docs/                  # The handbook (Obsidian vault): start/, concepts/, guides/, reference/, agents/ (sop-onboarding:
                        #   describe_project first, then connection → transform → model → report; sop-authoring; sop-model-changes).
@@ -394,8 +414,8 @@ tracebi run-pipeline sales_etl                 # run every layer, upstream first
 tracebi run-pipeline sales_etl --layer orders_silver [--refresh]
 tracebi run-pipeline sales_etl --status        # last run per layer, executes nothing
 
-# Project settings
-# tracebi.yaml at the project root (tracebi init writes a commented one):
+# Workspace settings
+# tracebi.yaml at the workspace root (tracebi init writes a commented one):
 #   engine: {memory_limit: 1GB, threads: min(4,CPUs), temp_directory: data/.duckdb-tmp, query_timeout_s: 30}
 
 # Agent / tooling context
@@ -417,12 +437,12 @@ tracebi verify output/report.manifest.json --local     # replay every calc plan 
 tracebi schedule list                          # packages with a report.json "schedule" block
 tracebi schedule run <name> [--no-send]        # build → verify → email → record, now
 tracebi schedule serve                         # run every schedule (needs [pipeline])
-tracebi serve                                  # browse the project
+tracebi serve                                  # browse the workspace
 tracebi login --server <url>                   # sign in (browser, OAuth + PKCE); ~/.config/tracebi/credentials.json
 tracebi push <paths> --server <url> --note why  # packages/models → your drafts; Python → a code request an admin approves
 tracebi logout --server <url>                  # revoke and forget
 tracebi update [--check] [--yes]               # newer release? what's new + the command for this install
-tracebi secret set NAME [--from-stdin]          # a credential into the project store (encrypted); list | unset NAME
+tracebi secret set NAME [--from-stdin]          # a credential into the workspace store (encrypted); list | unset NAME
 tracebi export <table> --to <connection|prefix>  # a warehouse table or view out to a connection, or as Parquet under a prefix
 tracebi connect <name> --kind postgres --store secret   # write the secret to the store instead of .env
 tracebi connect <name> --kind postgres --host H --database D --user U --password-stdin   # the fields form
@@ -676,7 +696,7 @@ their runs must filter the same way, and the e2e journey
 `tracebi.sources.is_framework_table` (`tracebi_*`, `alembic_version`): every listing of a source's, warehouse's or model's tables leaves them out and returns `hidden_framework_tables`; the model routes 404 them. `TRACEBI_STATE_URL` is its own database, never a connection; a runner writes its history to `tracebi.state.state_url()`, not to the data URL (the demo app's runners do; `examples/seeds/seed_db.py` seeds `data/seed.db`).
 
 **7. pyproject.toml is the only place for deps and config.**
-Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. A *project's* own settings (not secrets) live in `tracebi.yaml` at its root, read only through `tracebi/project_config.py` (`docs/reference/tracebi-yaml.md`): `engine: {memory_limit, threads, temp_directory, query_timeout_s}`, `warehouse: {tier: file|object|remote, location, endpoint, region, key_id, secret, url_style}` and `brand: {theme, name, logo, accent, palette, font, mode}` (every report page's look, charts included; `theme` is the house theme, `ledger` | `nightdesk` | `signal`, `tracebi/reports/house.py`; the rest compiled by `tracebi/reports/brand.py`; a missing file, non-hex colour, accent below 3:1 on the card or file over 400 KB fails the build). Object-tier `key_id`/`secret` MUST be `${VAR}` (environment, then project `.env`, resolved when a connection is made, never copied into `os.environ`); the conventional names are `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` and `TRACEBI_S3_ENDPOINT`, and the framework reads no fixed name. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. The one exception: a `${VAR}` in `connections/<name>.yaml` (and the warehouse block's `key_id`/`secret`) is looked up when the connection is used, in order: the environment, the project `.env`, the project credential store (`.tracebi/secrets.yml.enc`: Fernet ciphertext of a `NAME: value` YAML document; `tracebi secret set NAME`, `tracebi secret edit` or the Sources page), then a `${NAME:-default}` default, which must pass the same no-credential check as a literal — only that name, never copied into `os.environ` (`tracebi/project_credentials.py`). A relative `sqlite:///` url in a connection resolves against the project root, and a literal one stays inside the project. Framework-read env vars: `TRACEBI_SECRET_KEY` (the Fernet key for the project credential store; unset, `.tracebi/secret.key` is generated 0600; several workers must share one), `TRACEBI_STATE_URL` (the shared run store; default `sqlite:///data/tracebi.db`), `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_CONNECTIONS_DIR` (declarative sources, default `connections`), `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_DRAFTS_DIR` (remote drafts, default `drafts`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`; ignored when `TRACEBI_LIBRARY_MOUNTS` is set), `TRACEBI_LIBRARY_MOUNTS` (`label:/abs/path,…` — several library roots; identity is `label/relative_path`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; Postgres takes one advisory lock per report, SQLite is one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_COVERS` (`0` takes no cover at build — the gallery draws one; the test suite sets it), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_GROUPS_HEADER` (proxy mode: the person's groups, for `_folder.yaml`) / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`; set on the web app, it also serves the gateway at `/mcp`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_OIDC_ISSUER` (turns on per-person OAuth sign-in for `/mcp`) / `TRACEBI_OIDC_CLIENT_ID` / `TRACEBI_OIDC_CLIENT_SECRET` / `TRACEBI_OIDC_SCOPES` / `TRACEBI_OIDC_GROUPS_CLAIM` / `TRACEBI_OIDC_ROLE_MAP` (`group:role,…`) / `TRACEBI_OIDC_DEFAULT_ROLE` (default `viewer`) / `TRACEBI_DEMO_LOGIN` (a role: a one-click demo user on the gateway's own sign-in page; no identity provider, `/mcp` only) / `TRACEBI_LOCAL_USERS` (`name:role:password,…`, the same built-in sign-in) / `TRACEBI_OAUTH_SECRET` (signs it in flight; required with either) / `TRACEBI_PUBLIC_URL` / `TRACEBI_PUBLIC_MCP_URL` (the public MCP address, default `<TRACEBI_PUBLIC_URL origin>/mcp`) / `TRACEBI_OAUTH_REDIRECTS` (extra exact connector redirect URIs) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_LIBRARY_SYNC_SECRET` (turns on `POST /api/library/sync`, the git webhook that pulls library checkouts), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
+Do not add `setup.py`, `requirements.txt`, `tox.ini`, or `setup.cfg`. A *workspace's* own settings (not secrets) live in `tracebi.yaml` at its root, read only through `tracebi/project_config.py` (`docs/reference/tracebi-yaml.md`): `engine: {memory_limit, threads, temp_directory, query_timeout_s}`, `warehouse: {tier: file|object|remote, location, endpoint, region, key_id, secret, url_style}` and `brand: {theme, name, logo, accent, palette, font, mode}` (every report page's look, charts included; `theme` is the house theme, `ledger` | `nightdesk` | `signal`, `tracebi/reports/house.py`; the rest compiled by `tracebi/reports/brand.py`; a missing file, non-hex colour, accent below 3:1 on the card or file over 400 KB fails the build). Object-tier `key_id`/`secret` MUST be `${VAR}` (environment, then workspace `.env`, resolved when a connection is made, never copied into `os.environ`); the conventional names are `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` and `TRACEBI_S3_ENDPOINT`, and the framework reads no fixed name. The framework does not auto-load `.env` — `python-dotenv` is shipped via the `analyst`/`all` extras, but transform scripts must call `load_dotenv()` themselves. The one exception: a `${VAR}` in `connections/<name>.yaml` (and the warehouse block's `key_id`/`secret`) is looked up when the connection is used, in order: the environment, the workspace `.env`, the workspace credential store (`.tracebi/secrets.yml.enc`: Fernet ciphertext of a `NAME: value` YAML document; `tracebi secret set NAME`, `tracebi secret edit` or the Sources page), then a `${NAME:-default}` default, which must pass the same no-credential check as a literal — only that name, never copied into `os.environ` (`tracebi/project_credentials.py`). A relative `sqlite:///` url in a connection resolves against the workspace root, and a literal one stays inside the workspace. Framework-read env vars: `TRACEBI_SECRET_KEY` (the Fernet key for the workspace credential store; unset, `.tracebi/secret.key` is generated 0600; several workers must share one), `TRACEBI_STATE_URL` (the shared run store; default `sqlite:///data/tracebi.db`), `TRACEBI_APP`, `TRACEBI_MODELS_DIR`, `TRACEBI_PIPELINES_DIR`, `TRACEBI_CONNECTIONS_DIR` (declarative sources, default `connections`), `TRACEBI_TRANSFORMS_DIR` (phase ① scaffolds, default `transforms`), `TRACEBI_DRAFTS_DIR` (remote drafts, default `drafts`), `TRACEBI_REPORTS_DIR` (phase ③ — specs, packages, and factories, default `reports`; ignored when `TRACEBI_LIBRARY_MOUNTS` is set), `TRACEBI_LIBRARY_MOUNTS` (`label:/abs/path,…` — several library roots; identity is `label/relative_path`), `TRACEBI_SCHEDULED_DIR` (deprecated: still imported if the folder exists, never ran reports; use a `report.json` `"schedule"` block), `TRACEBI_SCHEDULES_IN_SERVER` (`1` runs report schedules inside the web server; off by default; Postgres takes one advisory lock per report, SQLite is one process only), `TRACEBI_DISCOVERY_INTERVAL` (seconds between live-discovery scans of `reports/`, `models/` and `pipelines/`; default 5; `0` turns it off), `TRACEBI_COVERS` (`0` takes no cover at build — the gallery draws one; the test suite sets it), `TRACEBI_DEV_MODE`, `TRACEBI_DOCS_DIR`, `TRACEBI_WORKBENCH_DIR`, `TRACEBI_AUTH_USER` / `TRACEBI_AUTH_PASS` / `TRACEBI_AUTH_PROXY_HEADER` / `TRACEBI_AUTH_PROXY_TRUSTED_IPS` / `TRACEBI_AUTH_GROUPS_HEADER` (proxy mode: the person's groups, for `_folder.yaml`) / `TRACEBI_AUTH_REALM`, `TRACEBI_MCP_TOKEN` (bearer auth for `tracebi mcp --transport http`; set on the web app, it also serves the gateway at `/mcp`) / `TRACEBI_MCP_ACTOR` (audit attribution for gateway work, default `agent`) / `TRACEBI_OIDC_ISSUER` (turns on per-person OAuth sign-in for `/mcp`) / `TRACEBI_OIDC_CLIENT_ID` / `TRACEBI_OIDC_CLIENT_SECRET` / `TRACEBI_OIDC_SCOPES` / `TRACEBI_OIDC_GROUPS_CLAIM` / `TRACEBI_OIDC_ROLE_MAP` (`group:role,…`) / `TRACEBI_OIDC_DEFAULT_ROLE` (default `viewer`) / `TRACEBI_DEMO_LOGIN` (a role: a one-click demo user on the gateway's own sign-in page; no identity provider, `/mcp` only) / `TRACEBI_LOCAL_USERS` (`name:role:password,…`, the same built-in sign-in) / `TRACEBI_OAUTH_SECRET` (signs it in flight; required with either) / `TRACEBI_PUBLIC_URL` / `TRACEBI_PUBLIC_MCP_URL` (the public MCP address, default `<TRACEBI_PUBLIC_URL origin>/mcp`) / `TRACEBI_OAUTH_REDIRECTS` (extra exact connector redirect URIs) / `TRACEBI_MCP_LOG` (`1` appends one line per gateway tool call to `.tracebi/gateway_log.jsonl` — argument names only, never values; off by default; read it with `tracebi agent log`), `TRACEBI_LIBRARY_SYNC_SECRET` (turns on `POST /api/library/sync`, the git webhook that pulls library checkouts), `TRACEBI_UPDATE_CHECK` (`0` turns off the release check behind `tracebi update` and the web app's "available" badge; on by default, one cached GET to GitHub's releases API, nothing sent) / `TRACEBI_UPDATE_URL` (a mirror answering like `releases/latest`) / `TRACEBI_IN_DOCKER` (set in the image: the update command pulls a new image instead of upgrading in place).
 
 ---
 
@@ -714,11 +734,11 @@ effectively does not exist).
 
 ### New transform (phase ①)
 1. `tracebi new-transform "Name"` writes `transforms/<name>.sql` and
-   `<name>.contract.yaml`, the sink in the idiom of the project's tier. The
+   `<name>.contract.yaml`, the sink in the idiom of the workspace's tier. The
    SQL is DuckDB statements run top to bottom in ONE fresh warehouse
    connection by `tracebi run-transform <name>` (`docs/reference/transform-sql.md`):
    exactly two placeholders, `{{ sink }}` and `{{ root }}`; relative reads
-   resolve against the project root; `TEMP` tables and macros are scratch.
+   resolve against the workspace root; `TEMP` tables and macros are scratch.
    `-- %%` cells fold in editors and mean nothing to the run. When the work
    outgrows SQL, `--python` scaffolds the escape hatch: notebook-shaped pandas
    (`# %%` percent cells, opened AS a notebook by VS Code, Cursor, PyCharm,
@@ -756,7 +776,7 @@ postgres|snowflake|bigquery|duckdb` writes `connections/<name>.yaml`
 (`docs/reference/connections-yaml.md`): a type and its fields, any value may be
 `${ENV_VAR}` (the whole value), and a password or credential-bearing URL MUST
 be. Variables resolve when the connection is used (lazily), from the environment
-then the project `.env`; an unset one is an error naming it.
+then the workspace `.env`; an unset one is an error naming it.
 A postgres or mysql file says its connection as one `url` or as its fields, never
 both: `host`, `database` (required), `port`, `user`, `password:
 ${TRACEBI_<CONNECTION>_PASSWORD}` (the name the app's Save password and `tracebi
@@ -776,13 +796,13 @@ legacy module. A new connector *type* is code:
 2. Implement `load(name) -> DataSet` — must append a `LineageNode`
 3. Register: `registry.add_connector(instance)` in your app module
 
-### New model definition (project-scope, no web server required)
+### New model definition (workspace-scope, no web server required)
 1. `tracebi new-model "My Model"` — creates `models/my_model.yaml`, a commented starter (`--python` writes `models/my_model.py` instead). A Python model converts with `tracebi migrate model models/x.py [--write]`, which writes the YAML beside it and leaves the `.py` (it wins until you delete it).
-2. Edit the file: wire connectors (`type: warehouse` reads the project's warehouse on any tier), tables, relationships, facts, dimensions, measures. The variable-must-be-named-`model` rule applies to the Python form only. A model is one file: `.yaml`/`.yml`/`.json` share one schema and validator (`tracebi/model/model_spec.py`), and two declarative forms of one name are both refused.
+2. Edit the file: wire connectors (`type: warehouse` reads the workspace's warehouse on any tier), tables, relationships, facts, dimensions, measures. The variable-must-be-named-`model` rule applies to the Python form only. A model is one file: `.yaml`/`.yml`/`.json` share one schema and validator (`tracebi/model/model_spec.py`), and two declarative forms of one name are both refused.
 3. Import anywhere: `from tracebi.model_registry import get_model; model = get_model("my_model")`
 4. The web server auto-discovers `models/` at startup (`TRACEBI_MODELS_DIR` to override).
 
-### New pipeline definition (project-scope, no web server required)
+### New pipeline definition (workspace-scope, no web server required)
 1. `tracebi new-pipeline "My ETL"` — creates `pipelines/my_etl.yaml`
    (`docs/reference/pipeline-yaml.md`): `transform` (the Python script it runs),
    `models`, `reports` (`all` or names), `schedule`. It compiles to the
@@ -818,7 +838,7 @@ removed is the fallback that rendered a factory with no package.
 ### New dashboard (phase ③)
 1. `tracebi new-dashboard "Name"` writes `reports/<name>/`: `report.json`
    bindings pointed at a model (grain + measures it declares) and an `app.jsx`.
-   Model this on the reference project's `reports/portfolio_model/portfolio_dashboard/`
+   Model this on the reference workspace's `reports/portfolio_model/portfolio_dashboard/`
    (one screen) or `portfolio_desk/` (a sidebar of views).
 2. Every figure is a live query against the model — `<Kpi>`, `<Chart>`,
    `<Table>` with literal binding and cell, so the trace names each one.
@@ -922,7 +942,7 @@ GET  /api/connectors[/{name}]                        → each carries read_by {t
 GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact, agents}], agent_tables, hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
 GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read (each with method scanner|arrow|pandas and snapshot), said once per transform; the transform page reads it with /api/transforms and /api/transforms/{name}/source
-GET  /api/graph                                      → {summary, nodes, edges, edge_facts}: the project as one graph (tracebi/graph.py), the same dict as the gateway's describe_project; reports the caller cannot view left out with their edges
+GET  /api/graph                                      → {summary, nodes, edges, edge_facts}: the workspace as one graph (tracebi/graph.py), the same dict as the gateway's describe_project; reports the caller cannot view left out with their edges
 GET  /api/graph/downstream?node=<id>                → {node, kind, measure, reads, summary: {figures, reports}, reports: [{id, name, label, open, built_at, trust, figures: [{id, kind, binding, label, text, open}]}], not_built}: every report figure that depends on a table:, source_table: or measure:<model>:<measure> node, the number its built page prints (the desk's values) and its report's verdict; read from the last builds' manifests (tracebi/graph.py downstream); starts nothing; 404 for any other node
 GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
 GET  /api/transforms/{name}/source                   → the transform's file and its .contract.yaml (read-only; name is a stem in transforms/)
@@ -935,7 +955,7 @@ GET  /api/tables/{source}/{table}/rows               → ?offset&limit(≤500)&s
 GET  /api/tables/{source}/{table}/profile            → {rows, columns: {name: {type, nulls, null_share, distinct, min, max, mean?, top:[{value,count}]}}}
 GET  /api/tables/{source}/{table}/export.csv         → the same cut as CSV, streamed from the engine
 POST /api/tables/{source}/{table}/export             → {to: <connection> | s3://… | gs://… | folder/} → {table, to, kind: connection|object, rows, path?} (admin; run row kind=export; the gateway's export_table and `tracebi export` use the same function, warehouse.export_table)
-GET  /api/credentials                                → every ${NAME} the project references and where it is set (environment|dotenv|store|default|missing), never a value; can_change (viewer)
+GET  /api/credentials                                → every ${NAME} the workspace references and where it is set (environment|dotenv|store|default|missing), never a value; can_change (viewer)
 PUT  /api/credentials/{name}                         → {value} → the status row; 201 new / 200 replaced (identified admin; audit row kind=credential)
 DELETE /api/credentials/{name}                       → 204, the store's value only (identified admin)
 POST /api/connectors/{name}/test                     → open, list, close: {ok: true, tables: n} | {ok: false, reason} with any secret scrubbed (admin)
@@ -994,7 +1014,7 @@ POST /api/code-requests/{id}/approve|reject          → copy the files in (hist
 POST /api/library/sync                               → git webhook: pull each library checkout, rescan; outside sign-in, needs TRACEBI_LIBRARY_SYNC_SECRET (X-Hub-Signature-256 or X-TraceBi-Sync-Token); 404 without it
 DELETE /api/drafts/{owner}/{kind}/{path}             → delete a draft, not the published copy (analyst; owner or admin)
 GET  /                                               → React SPA (tracebi/web/ui/dist): four places, Reports (/, the
-                                                       library as a directory; /?folder=<path> one folder's page; the sidebar is
+                                                       library as a directory, a tile per project; /?folder=<path> one project's page (?project= redirects); the sidebar is
                                                        the folder tree, web/ui/src/folders.js; /ask is reached by Ask this model
                                                        on a folder's or a model's page) · Data (/data: a console, its four lists nested under Data in the sidebar
                                                        (plain links), every page in one frame (pages/Data.jsx DataFrame: a folder's
@@ -1031,7 +1051,7 @@ GET  /                                               → React SPA (tracebi/web/
                                                        (a report's page /reports/<name>: breadcrumb Library › folder › report, one
                                                        command bar, and on a column 1240px or wider the trace beside the page: the
                                                        clicked figure (or ?figure=<id>) in five steps, source, model, query, fingerprint, re-run;
-                                                       ⌘K groups Folders, Reports, Tables, Models and Places)
+                                                       ⌘K groups Projects, Reports, Tables, Models and Places)
                                                        (/docs: the handbook in docs/toc.yaml's order; the quickstart at /docs/get-started), plus History
                                                        (/runs) and Verify (/verify); older addresses redirect (movedTo in
                                                        web/ui/src/nav.js; /handbook, /getting-started, /data?view=map,
