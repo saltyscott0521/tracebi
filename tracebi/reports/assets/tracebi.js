@@ -1347,12 +1347,31 @@
     return {
       className: "tb-echart-tip", backgroundColor: k.tipBg, borderColor: k.tipBorder,
       borderWidth: 1, padding: [8, 10],
+      // The readout holds "Trace →": it must hold still and wait for the
+      // pointer to reach it. ECharts' default follows the cursor, glides for
+      // 0.4s and hides 0.1s after the pointer leaves the mark, so the link
+      // runs away from a person reaching for it. Pin it where it opened for
+      // this mark or category; it moves only when another one is hovered.
+      transitionDuration: 0, hideDelay: 400, position: pinnedTip,
       textStyle: { color: k.tipInk, fontFamily: k.font, fontSize: 13 },
       extraCssText: "border-radius:" + k.tipRadius + ";box-shadow:" + (k.tipShadow || "none") +
         ";min-width:140px;max-width:280px;white-space:normal;",
       axisPointer: { lineStyle: { color: k.label, type: [3, 3], width: 1 },
                      shadowStyle: { color: withAlpha(k.ink, 0.05) } }
     };
+  }
+
+  function pinnedTip(point, params, dom, rect, size) {
+    var p = isArray(params) ? params[0] : params;
+    var key = p ? [p.seriesIndex, p.dataIndex, p.axisValue].join("|") : "";
+    if (dom._tbTipKey === key && dom._tbTipAt) return dom._tbTipAt;
+    var view = size.viewSize, box = size.contentSize, gap = 14;
+    var x = point[0] + gap, y = point[1] + gap;
+    if (x + box[0] > view[0]) x = Math.max(0, point[0] - gap - box[0]);
+    if (y + box[1] > view[1]) y = Math.max(0, point[1] - gap - box[1]);
+    dom._tbTipKey = key;
+    dom._tbTipAt = [x, y];
+    return dom._tbTipAt;
   }
 
   function extend(a, b) {
