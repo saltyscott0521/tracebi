@@ -218,6 +218,9 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   in tests/fixtures/calc_parity/ from scripts/gen_calc_parity.py),
                        #   assets/ (tracebi.js + tracebi.css + tracebi-calc.js, the page
                        #   engine: pure JS, _calc_src/, CALC_NOTICE.md + vendored ECharts and D3; the
+                       #   React lane's react.min.js (TanStack Redact, the one runtime, with the kit),
+                       #   echarts-kit.min.js (<EChart>), recharts.min.js (Recharts 2), _react_src/,
+                       #   REACT_NOTICE.md; the
                        #   interaction grammar in tracebi.js: mark/row/range clicks, the selection
                        #   bar, cross-highlighting, tracebi.onSelection/result; the host bridge's `figure`
                        #   message: a clicked figure's id, which the app's trace follows); cover.py (a
@@ -808,6 +811,12 @@ removed is the fallback that rendered a factory with no package.
    (one screen) or `portfolio_desk/` (a sidebar of views).
 2. Every figure is a live query against the model — `<Kpi>`, `<Chart>`,
    `<Table>` with literal binding and cell, so the trace names each one.
+   `<EChart>` (Apache ECharts) is the chart for anything else: with literal
+   `binding`, `x`, `y` it plots the binding's columns as they are and is a claim
+   like `<Chart>`; an option-only `<EChart>` draws page-computed numbers and carries
+   `data-tb-computed`. Every chart filters live (`useBinding` returns rows re-run
+   under the selection; `useSelection()`) and a click writes the selection
+   (`tracebi.pick`). Recharts 2 also works; every page runs on Redact.
 3. Build it: `tracebi report build <name>` (a JSON `ReportSpec` still works and
    compiles with `tracebi migrate spec`; no shipped report uses one). The
    folder is auto-discovered and served in the app, in the library under its model.
