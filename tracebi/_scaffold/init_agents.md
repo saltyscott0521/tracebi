@@ -244,13 +244,16 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   that one yourself. It refuses the silent failures — an undeclared binding
   fails at load, and a figure declared but never placed (or placed twice)
   fails the build. Hand-written figures still work; this is sugar. `libs`
-  is optional. The build inlines D3 automatically when the page
-  contains a chart figure and draws every chart type with it, in one style
-  (bars carry their own values, a line ends in its last value, names wrap
-  and are never cut, ticks thin to what fits; legend toggles, tooltips with
-  the measure's description and a "Trace →" link to that figure's record,
-  arrow-key reading, a click on a bar or slice sets the
-  page's filter control for that column). List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
+  is optional. Every chart is drawn by Apache ECharts: the build inlines
+  ECharts automatically when the page contains a chart figure, and draws
+  every chart type in one style (bars carry their own values, a line ends in
+  its last value, names wrap and are never cut, ticks are short; legend
+  toggles, tooltips with the measure's description and a "Trace →" link to
+  that figure's record, arrow-key reading, a click on a bar or slice writes
+  the page's selection). SVG by default; `data-tb-renderer="canvas"` on one
+  chart or `"charts": {"renderer": "canvas"}` in `report.json` for thousands
+  of marks. `"libs": ["d3"]` is only for your own `tracebi.draw` figures;
+  `"echarts"` is no longer a choice.
 - "Top N" is declarative: put `order_by` + `limit` in the binding's query.
   Never sort or slice in `script.js` — that moves ordering out of the trace.
 - `filters` is WHERE (before aggregation) — a filter on a measure changes the
@@ -389,9 +392,10 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   in dev and are DELETED at the final build.
 - Styling: the shipped defaults render well with zero CSS. To restyle, set
   tokens in `reports/_theme.css` (project-wide) or the package's `style.css`
-  (per report); later wins. `script.js` may restyle charts via
-  `tracebi.configureChart` — config can restyle, never re-source: series data
-  always comes from the stamped bytes.
+  (per report); later wins. `script.js` may restyle any chart via
+  `tracebi.configureChart(id, patch)`, a raw ECharts option deep-merged in
+  (dataZoom, brush, visualMap, markArea) — config can restyle, never
+  re-source: series data always comes from the stamped bytes.
 - Chart attributes: `data-tb-stack` (stack bar, barh or area series),
   `data-tb-x-title` / `data-tb-y-title`, `data-tb-unit="%"` (a suffix,
   never a rescale), `data-tb-mark="max,last"` (label a

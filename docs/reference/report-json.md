@@ -44,7 +44,8 @@ reports/my_report/
 | `figures` | object | Figures TraceBi builds for you, placed with `{{ figure("name") }}` ([[figure-helper]]). Leave it out if you write the markup yourself. |
 | `measures` | object | This report's own calculations: `{"<model>": {"<name>": {<add_measure keywords>}}}`, plus `filters` and `measure_expr`. A binding lists one by name. The model is unchanged, a name the model declares is refused, and the trace labels them "calculated in this report". |
 | `sql_calculations` | object | `{"<model>": {"<name>": "SELECT ..."}}`: one read-only `SELECT` or `WITH` over the warehouse's own tables. Writes, `ATTACH`, `COPY`, `PRAGMA`, `SET`, `INSTALL`, `LOAD` or a second statement are refused at discovery. `{{ measure('name') }}` expands a simple model measure. A selection cannot reach a SQL binding yet. |
-| `libs` | array | Charting libraries to inline: `"d3"`, `"echarts"`. Optional (see below). |
+| `libs` | array | Libraries to inline: `"d3"`, for your own `tracebi.draw` figures. Optional (see below). |
+| `charts` | object | `{"renderer": "svg"}` (the default) or `{"renderer": "canvas"}`: the renderer every chart on the page draws with, unless a figure names its own (see below). |
 | `theme` | string | The house theme ([[chart-style]]): `ledger` (calm, institutional; the default), `nightdesk` (dark, dense, monospaced numerals) or `signal` (bold, big numbers, the lead KPI a solid accent tile). Over the project's `tracebi.yaml` `brand.theme`; the brand's colours, font and logo layer on top. Any other name fails the build naming the three. The six accent presets (`graphite`, `indigo`, `midnight`, `ocean`, `plum`, `sand`) are deprecated: the page renders in the house theme with that accent pair and the build says so once; set `brand: {accent: …}` instead. `tracebi theme list`. |
 | `look` | object | `app.jsx` only: `"mode"` (`light`, `dark`, or `auto`, the default; Nightdesk opens `dark` unless this or the brand says otherwise) and `"density"` (`comfortable` or `compact`; Nightdesk is `compact` unless this says `comfortable`). |
 | `embed` | string | What the page carries to recompute under filters: `"required"` (default), `"model"` or `"none"` (see below). |
@@ -69,18 +70,32 @@ reports/my_report/
 
 ## `libs`
 
-The build inlines D3 automatically when the page contains a chart figure (a
-hand-written `data-tb-figure="chart"`, a `{{ figure("…") }}` chart, or a chart
-compiled from a spec), and leaves it out otherwise. A final build decides
-after exploration blocks are removed; `tracebi dev` and a snapshot decide from
-the page they render.
+Every chart is drawn by Apache ECharts. The build inlines it automatically
+when the page contains a chart figure (a hand-written `data-tb-figure="chart"`,
+a `{{ figure("…") }}` chart, a kit `<Chart>`, `<Spark>` or `<EChart>`, or a
+chart compiled from a spec), and leaves it out otherwise. A final build
+decides after exploration blocks are removed; `tracebi dev` and a snapshot
+decide from the page they render.
 
 | Value | When to list it |
 |---|---|
 | `"d3"` | For a `custom` figure drawn with `tracebi.draw`. |
-| `"echarts"` | To keep the older ECharts engine for the page's charts. `tracebi.configureChart` applies only there. |
 
-Each library is inlined once. An unknown value is refused at load.
+Each library is inlined once. An unknown value is refused at load, and so is
+`"echarts"`, which is no longer a choice: remove it (a `tracebi.configureChart`
+patch in `script.js` keeps working, on every chart).
+
+## `charts`
+
+The ECharts renderer. SVG, the default, draws every mark as a vector: tabular
+figures, the house look, a crisp print. Canvas draws thousands of marks
+faster; a canvas chart is drawn as SVG while the page prints, so a PDF keeps
+vectors. One chart can choose its own: `data-tb-renderer="canvas"` on the
+element, `"renderer": "canvas"` on a declared figure, `<Chart renderer="canvas">`.
+
+```json
+"charts": {"renderer": "canvas"}
+```
 
 ## `embed`
 

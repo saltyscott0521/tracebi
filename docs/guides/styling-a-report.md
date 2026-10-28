@@ -188,8 +188,8 @@ You get these without writing CSS:
 - **Nothing loads from outside the file.** The page has a strict content
   security policy and works offline: no CDN scripts, stylesheets, fonts or
   images, and no `fetch` or XHR (`connect-src 'none'`). The build inlines the
-  charting library when the page has a chart; `"libs": ["echarts"]` in
-  [[report-json]] keeps the older engine.
+  chart library (Apache ECharts) when the page has a chart ([[report-json]]
+  `libs` and `charts`).
 
 ## Design advice
 

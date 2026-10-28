@@ -278,8 +278,8 @@ works on every report.</p>
 <li><strong>Nothing loads from outside the file.</strong> The page has a strict content
   security policy and works offline: no CDN scripts, stylesheets, fonts or
   images, and no <code>fetch</code> or XHR (<code>connect-src 'none'</code>). The build inlines the
-  charting library when the page has a chart; <code>"libs": ["echarts"]</code> in
-  <a href="../reference/report-json.html">report.json</a> keeps the older engine.</li>
+  chart library (Apache ECharts) when the page has a chart (<a href="../reference/report-json.html">report.json</a>
+  <code>libs</code> and <code>charts</code>).</li>
 </ul>
 <h2 id="design-advice">Design advice</h2>
 <p><code>tracebi knowledge</code> lists TraceBi's lessons; the design ones start with

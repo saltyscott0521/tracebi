@@ -124,7 +124,7 @@ binding.
 }
 ```
 
-The build adds the D3 charting library when the page has a chart. See
+The build adds the chart library (Apache ECharts) when the page has a chart. See
 [[figure-helper]] for every key.
 
 ### 4. Place them on the page

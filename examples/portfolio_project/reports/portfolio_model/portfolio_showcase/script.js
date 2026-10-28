@@ -102,3 +102,14 @@
       .text(function (d) { return money(d.data.fair_value); });
   });
 })();
+
+// ─────────────────────────────────────────────────────────────────────────
+// Every chart is drawn by Apache ECharts. tracebi.configureChart(id, patch)
+// deep-merges a raw ECharts option into one: here a zoom slider under the
+// monthly flows. It restyles and never re-sources: the series keep the data
+// built from the stamped rows.
+// ─────────────────────────────────────────────────────────────────────────
+window.tracebi.configureChart("chart-flows-month", {
+  dataZoom: [{ type: "slider", height: 18, bottom: 6, brushSelect: false }],
+  grid: [{ bottom: 44 }]
+});

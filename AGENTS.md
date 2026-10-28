@@ -429,16 +429,22 @@ grammar. The declared name becomes the figure id (`fig-<name>`). Kinds:
 draw it in code with `tracebi.draw` (below). It refuses the silent failures: a figure
 naming an undeclared binding fails at load, and a figure declared but never
 placed — or placed twice — fails the build. Hand-written figures still work
-everywhere; this is sugar, not a replacement. `libs` is optional. The build
-inlines D3 automatically when the page contains a chart figure and draws every
-chart type with it, in one style: bars carry their own values (inside the
-bar when they fit, past its end when not; none on bars under 14px, stacks or
-small multiples), a line ends in its last value, category names wrap or turn
-but are never cut, and axis ticks thin to what fits. A legend that toggles
-series, a tooltip on every mark (the value, the measure's description from
-the model, and "Trace →", which opens the drawer at that figure),
-arrow-key reading, animated updates when a filter changes, and a click on a
-bar or slice that sets the page's filter control for that column. List `"echarts"` to keep the older ECharts engine; `tracebi.configureChart` patches apply only there.
+everywhere; this is sugar, not a replacement. `libs` is optional. Every
+chart is drawn by Apache ECharts: the build inlines ECharts automatically when
+the page contains a chart figure, and draws every chart type in one style:
+bars carry their own values at their free end (none on stacks or small
+multiples), a line ends in its last value, category names wrap or turn but
+are never cut, and axis ticks are short. A legend that toggles series, a
+tooltip on every mark (the value, the measure's description from the model,
+and "Trace →", which opens the drawer at that figure), arrow-key reading,
+animated updates when a filter changes, and a click on a bar or slice that
+writes the page's selection. SVG by default; `data-tb-renderer="canvas"` on
+one chart (`"renderer": "canvas"` on a declared figure) or
+`"charts": {"renderer": "canvas"}` in `report.json` for thousands of marks (a
+canvas chart prints as SVG). `tracebi.configureChart(id, patch)` in
+`script.js` deep-merges a raw ECharts option into any chart (dataZoom, brush,
+visualMap, markArea): it restyles and never re-sources. `"libs": ["d3"]` is
+only for your own `tracebi.draw` figures; `"echarts"` is no longer a choice.
 
 Chart attributes beyond the wiring: `data-tb-stack` (stack bar, barh or area
 series in one slot), `data-tb-x-title` / `data-tb-y-title` (axis titles),

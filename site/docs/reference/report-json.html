@@ -155,7 +155,12 @@ figures TraceBi builds for it.</p>
 <tr>
 <td><code>libs</code></td>
 <td>array</td>
-<td>Charting libraries to inline: <code>"d3"</code>, <code>"echarts"</code>. Optional (see below).</td>
+<td>Libraries to inline: <code>"d3"</code>, for your own <code>tracebi.draw</code> figures. Optional (see below).</td>
+</tr>
+<tr>
+<td><code>charts</code></td>
+<td>object</td>
+<td><code>{"renderer": "svg"}</code> (the default) or <code>{"renderer": "canvas"}</code>: the renderer every chart on the page draws with, unless a figure names its own (see below).</td>
 </tr>
 <tr>
 <td><code>theme</code></td>
@@ -197,11 +202,12 @@ figures TraceBi builds for it.</p>
 }}
 </code></pre>
 <h2 id="libs"><code>libs</code></h2>
-<p>The build inlines D3 automatically when the page contains a chart figure (a
-hand-written <code>data-tb-figure="chart"</code>, a <code>{{ figure("…") }}</code> chart, or a chart
-compiled from a spec), and leaves it out otherwise. A final build decides
-after exploration blocks are removed; <code>tracebi dev</code> and a snapshot decide from
-the page they render.</p>
+<p>Every chart is drawn by Apache ECharts. The build inlines it automatically
+when the page contains a chart figure (a hand-written <code>data-tb-figure="chart"</code>,
+a <code>{{ figure("…") }}</code> chart, a kit <code>&lt;Chart&gt;</code>, <code>&lt;Spark&gt;</code> or <code>&lt;EChart&gt;</code>, or a
+chart compiled from a spec), and leaves it out otherwise. A final build
+decides after exploration blocks are removed; <code>tracebi dev</code> and a snapshot
+decide from the page they render.</p>
 <table>
 <thead>
 <tr>
@@ -214,13 +220,19 @@ the page they render.</p>
 <td><code>"d3"</code></td>
 <td>For a <code>custom</code> figure drawn with <code>tracebi.draw</code>.</td>
 </tr>
-<tr>
-<td><code>"echarts"</code></td>
-<td>To keep the older ECharts engine for the page's charts. <code>tracebi.configureChart</code> applies only there.</td>
-</tr>
 </tbody>
 </table>
-<p>Each library is inlined once. An unknown value is refused at load.</p>
+<p>Each library is inlined once. An unknown value is refused at load, and so is
+<code>"echarts"</code>, which is no longer a choice: remove it (a <code>tracebi.configureChart</code>
+patch in <code>script.js</code> keeps working, on every chart).</p>
+<h2 id="charts"><code>charts</code></h2>
+<p>The ECharts renderer. SVG, the default, draws every mark as a vector: tabular
+figures, the house look, a crisp print. Canvas draws thousands of marks
+faster; a canvas chart is drawn as SVG while the page prints, so a PDF keeps
+vectors. One chart can choose its own: <code>data-tb-renderer="canvas"</code> on the
+element, <code>"renderer": "canvas"</code> on a declared figure, <code>&lt;Chart renderer="canvas"&gt;</code>.</p>
+<pre><code class="language-json">&quot;charts&quot;: {&quot;renderer&quot;: &quot;canvas&quot;}
+</code></pre>
 <h2 id="embed"><code>embed</code></h2>
 <p>Besides each binding's rows, a live page carries a <strong>slice</strong>: per fact, one
 Parquet block (<code>tracebi-slice-&lt;fact&gt;</code>) at the coarsest grain that answers

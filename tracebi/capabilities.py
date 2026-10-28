@@ -218,12 +218,11 @@ REPORT_JSON_EXAMPLE = {
 }
 
 REPORT_JSON_LIBS_NOTE = (
-    "libs is optional. The build inlines D3 automatically when the page "
-    "contains a chart figure and draws every chart type with it, and leaves "
-    "it out when the page has no chart figure. List \"d3\" for a custom "
-    "figure drawn in script.js with tracebi.draw. List \"echarts\" to keep "
-    "the older ECharts engine for the page's charts (configureChart patches "
-    "apply only there). Any other name is refused when the package loads."
+    "libs is optional. Every chart is drawn by Apache ECharts: the build "
+    "inlines it automatically when the page contains a chart figure, and "
+    "leaves it out when the page has none. List \"d3\" for a custom figure "
+    "drawn in script.js with tracebi.draw. \"echarts\" is no longer a choice "
+    "and is refused, as is any other name, when the package loads."
 )
 
 
@@ -340,8 +339,10 @@ def _presentation() -> dict:
                      "series format unit stack> plots a binding's columns as they are (type "
                      "bar, barh, line, area, pie, scatter or any ECharts series type that "
                      "takes name/value items: funnel, treemap, sunburst); with binding, x "
-                     "and y literal it is a claim like <Chart> (data-tb-figure=\"chart\"; "
-                     "the build refuses an unknown binding or column). option={...} (an "
+                     "and y literal it is a claim (data-tb-figure=\"chart\"; "
+                     "the build refuses an unknown binding or column), and <Chart> and "
+                     "<Spark> are it with the kit's defaults: one chart, drawn by the "
+                     "same engine as a template's charts. option={...} (an "
                      "ECharts option, or a function of the rows) deep-merges on top and "
                      "cannot replace the binding's numbers; an <EChart option={...}> alone "
                      "draws numbers the page computed, carries data-tb-computed and is not "
@@ -531,6 +532,11 @@ def _presentation() -> dict:
                              "category axis. Line and area charts with 8 or "
                              "more categories zoom by dragging across the "
                              "plot; double-click or Reset zoom returns",
+            "data-tb-renderer": "chart figures: svg (the default: vectors, "
+                                "tabular figures, a crisp print) | canvas (for "
+                                "thousands of marks; printed as SVG). report.json "
+                                "\"charts\": {\"renderer\": \"canvas\"} sets every "
+                                "chart's",
             "data-tb-columns": "table figures: column allowlist/order",
             "data-tb-labels": "table figures: header text per column, "
                               "\"col=Label; col2=Label\" (';' separates "
@@ -1026,10 +1032,10 @@ def _presentation() -> dict:
             "tracebi.data() call there returns [] on those reports and rows "
             "on small ones. ready(fn) behaves the same on both.",
             "tracebi.fmt(value, 'compact') → the one '550.7B' formatter",
-            "tracebi.configureChart(figureId, patch) → restyle an ECharts "
-            "option, on a report that lists \"echarts\" (the D3 engine "
-            "ignores it); series data is always re-sourced from the stamped "
-            "bytes",
+            "tracebi.configureChart(figureId, patch) → deep-merge a raw "
+            "ECharts option into any chart (dataZoom, brush, visualMap, "
+            "markArea, a toolbox): it restyles and never re-sources, series "
+            "data always comes from the stamped rows",
             "tracebi.draw(figureId, fn) → draw a data-tb-figure=\"custom\" "
             "element in code, usually d3 (report.json \"libs\": [\"d3\"]): "
             "fn(surface, rows, theme) runs once the data is loaded and again "

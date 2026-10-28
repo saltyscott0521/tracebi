@@ -81,7 +81,8 @@ whole look: the ground, the cards and their depth, the radius, the type sizes
 and weights, the numerals' face, the spacing, the chart tokens, the lead KPI's
 tile, an accent and an eight-colour palette, each for the light ground and the
 dark one. Template pages and <code>app.jsx</code> pages take it alike, and so do the
-kit's <code>&lt;EChart&gt;</code> and the runtime's D3 charts, because both read only the
+kit's <code>&lt;Chart&gt;</code> and <code>&lt;EChart&gt;</code> and a template's charts, because all are drawn by one
+ECharts engine that reads only the
 tokens. A theme changes how a page looks, never a number.</p>
 <h2 id="the-three">The three</h2>
 <table>
@@ -424,13 +425,18 @@ theme; override them in <code>reports/_theme.css</code> or a report's <code>styl
 </tr>
 </tbody>
 </table>
-<h2 id="in-an-echart">In an <code>&lt;EChart&gt;</code></h2>
-<p>The kit hands ECharts a theme built from these tokens, so an option-only chart
-(a sankey the page computes) takes the look too, and redraws when the page's
-mode changes. <code>renderer="svg"</code> is the default: vectors, tabular figures and a
-crisp print; <code>renderer="canvas"</code> for thousands of marks. An <code>option</code> may still
-style a chart. Never hard-code a colour in it: a series takes the palette, so
-the project's brand reaches it.</p>
+<h2 id="in-echarts">In ECharts</h2>
+<p>Every chart is drawn by Apache ECharts, with one theme the runtime builds from
+these tokens at draw time (read from the figure, so a container that restates
+a token, such as Signal's lead tile, restyles its chart) and rebuilds when the
+page's mode changes. An option-only <code>&lt;EChart&gt;</code> (a sankey the page computes)
+takes the same theme. SVG is the default renderer: vectors, tabular figures
+and a crisp print; canvas (<code>data-tb-renderer="canvas"</code>, <code>&lt;Chart
+renderer="canvas"&gt;</code>, or <code>report.json</code> <code>"charts": {"renderer": "canvas"}</code>) for
+thousands of marks, drawn as SVG while the page prints. A
+<code>tracebi.configureChart</code> patch or an <code>&lt;EChart option&gt;</code> may still style a chart.
+Never hard-code a colour in it: a series takes the palette, so the project's
+brand reaches it.</p>
   </main>
 </div>
 <script>
