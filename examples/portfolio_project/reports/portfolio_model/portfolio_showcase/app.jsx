@@ -48,6 +48,9 @@ function Panel({ title, note, span, children, aside }) {
 // ── Overview ────────────────────────────────────────────────────────────────
 
 function Overview() {
+  // Printed, the pie is shorter (a bar chart sizes itself by its bars), so
+  // the first row fits on the first page under the KPI strip.
+  const printing = usePrinting();
   return (
     <>
       <div className="tb-grid">
@@ -58,17 +61,22 @@ function Overview() {
         </Panel>
         <Panel span="tb-span-4" title="By fund" note="Each fund's share of the book. A slice selects its fund.">
           <Chart binding="by_fund" type="pie" x="dim_fund.fund" y="fair_value"
-                 valueFormat="currency_compact" id="chart-fund" height={300} />
+                 valueFormat="currency_compact" id="chart-fund" height={printing ? 220 : 300} />
         </Panel>
       </div>
       {/* Small multiples: one panel per fund on one shared scale, each fund's
           largest sector labelled with its own row's value. highlight="off":
-          a sector picked narrows these panels instead of dimming the rest. */}
+          a sector picked narrows these panels instead of dimming the rest.
+          Printed, the panels sit two across, too narrow for upright sector
+          names, and a column chart labels only the panels with none below:
+          as bars across, every panel carries its names, so all are one
+          height, and tall enough to name every sector. */}
       <Panel title="Each fund's book, sector by sector"
         note="One panel per fund, one scale, so the panels compare. Each fund's largest sector is labelled.">
-        <Chart binding="fund_sector" type="bar" x="dim_issuer.sector" y="fair_value"
+        <Chart binding="fund_sector" type={printing ? "barh" : "bar"} x="dim_issuer.sector" y="fair_value"
                facet="dim_fund.fund" mark="max" highlight="off" yTitle="Fair value"
-               valueFormat="compact" id="chart-fund-sector" />
+               valueFormat="compact" id="chart-fund-sector"
+               height={printing ? 440 : undefined} />
       </Panel>
       <div className="tb-grid">
         <Panel span="tb-span-6" title="Where each fund's money sits"
@@ -401,7 +409,7 @@ export default function App() {
           {/* The KPI strip is above every view, so every gesture moves it. */}
           <div className="tb-grid max-md:!grid-cols-2
                           md:![grid-template-columns:1.6fr_repeat(4,minmax(0,1fr))]
-                          print:![grid-template-columns:repeat(3,minmax(0,1fr))]">
+                          print:![grid-template-columns:1.3fr_repeat(4,minmax(0,1fr))]">
             <Kpi lead className="max-md:col-span-2" binding="kpis" cell="fair_value" format="currency_compact" label="Fair value"
                  deltaBinding="kpis" deltaCell="unrealized" deltaFormat="currency_compact"
                  deltaGood="up" context="vs cost" id="kpi-fv" />
@@ -425,7 +433,7 @@ export default function App() {
               const Each = PAGES[name];
               return (
                 <section key={name} className="space-y-4">
-                  <h2 className="text-xl font-semibold tracking-tight">{name}</h2>
+                  <h2 className="text-xl font-semibold tracking-tight print:break-after-avoid">{name}</h2>
                   <Each />
                 </section>
               );

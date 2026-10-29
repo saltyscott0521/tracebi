@@ -11,3 +11,11 @@
 :root {
   --tb-num-tracking: -0.04em;
 }
+
+/* Printed, the KPI strip stays one row across the page: the numerals one
+ * step smaller and the cells a little tighter, so the first view starts on
+ * the first page. */
+@media print {
+  :root { --tb-kpi-size: 24px; --tb-kpi-lead-size: 30px; }
+  .tb-kpi { padding: 14px 16px; }
+}
