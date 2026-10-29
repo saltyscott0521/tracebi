@@ -354,8 +354,9 @@ examples/
                        #     portfolio_model/ (portfolio_dashboard (app.jsx),
                        #     portfolio_desk (app.jsx), portfolio_book (editorial),
                        #     portfolio_overview, portfolio_concentration,
-                       #     portfolio_showcase), saas_model/ (mrr_dashboard, cohort_brief),
-                       #     housing_model/ (affordability), wealth_model/ (aum_by_branch, aum_by_region)
+                       #     portfolio_showcase (app.jsx, the app lane's kitchen sink)),
+                       #     saas_model/ (mrr_dashboard, cohort_brief), housing_model/
+                       #     (affordability, the editorial showcase), wealth_model/ (aum_by_branch, aum_by_region)
     pipelines/         #   one per model (YAML): transform → build that model's reports
     run_workflow.py    #   drives ①→③; data/ inside the workspace is gitignored
   seeds/               # Medallion demo DB seeding + Supabase deploy companions
@@ -1095,7 +1096,8 @@ Don't add these unless asked.
 | Change how charts draw | `tracebi/reports/assets/tracebi.js` "The chart engine" (`optionFor`, `chartTheme`, `drawChart`) + `docs/reference/chart-style.md`; browser tests `tests/test_charts.py` |
 | Build a freeform report package | `tracebi new-report` → `examples/portfolio_project/reports/portfolio_model/portfolio_book/` + `design/report-generator-architecture.md` |
 | See a scenario (reader what-if) on public data | `examples/portfolio_project/reports/housing_model/affordability/` + `tracebi/reports/scenario.py` |
-| See every artifact feature at once | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo (rot-proofed by `tests/e2e/test_reference_project.py` and `tests/test_agent_guides.py`) |
+| See every artifact feature at once (the app lane) | `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo, an `app.jsx` in Signal: every kit figure, control and gesture (rot-proofed by `tests/e2e/test_reference_project.py`, `tests/e2e/test_live_cascade.py` and `tests/test_agent_guides.py`) |
+| See the editorial lane at its best | `examples/portfolio_project/reports/housing_model/affordability/` — the reference long read (`template.html`): the whole template grammar, small multiples, annotated charts, a what-if, a print edition (`tracebi report build housing_model/affordability --format pdf`); `tests/test_agent_guides.py` holds its grammar |
 | Understand architecture decisions | `NOTES.md` (the journal) + `design/` (the design notes; internal, never published) |
 | Avoid bugs already hit in this repo | `design/pitfalls.md` |
 | Decide whether a test is worth writing | `design/test-suite-review.md` |
