@@ -79,7 +79,7 @@ function FilterRows({ columns, filters, setFilters }) {
       {entries.map(([col, val]) => (
         <div key={col} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
           <select value={col} onChange={e => setKey(col, e.target.value)} style={selectStyle}>
-            {columns.filter(c => c === col || !(c in filters)).map(c =>
+            {(columns.includes(col) ? columns : [col, ...columns]).filter(c => c === col || !(c in filters)).map(c =>
               <option key={c} value={c}>{c}</option>)}
           </select>
           <span style={{ color: 'var(--muted)', fontSize: 'var(--text-sm)' }}>=</span>
@@ -283,6 +283,8 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
   // the dimensions it joins (its foreign_keys): a query can group by only those.
   const offered = (model?.measures || []).filter(m => fact?.runnable_measures?.includes(m.name))
   const joined = dims.filter(d => d.name in (fact?.foreign_keys || {}))
+  // A filter names a joined dimension's attribute (as Ask's do) or a fact column.
+  const filterColumns = [...joined.flatMap(d => d.attributes.map(a => `${d.name}.${a}`)), ...factColumns]
   const toggleNamed = name =>
     set({ measures: named.includes(name) ? named.filter(n => n !== name) : [...named, name] })
   const toggleMeasure = col => {
@@ -408,8 +410,8 @@ export default function Explore({ model: activeModel, query, onChange, onRun, ra
                   </div>
                 ))}
 
-                <SectionLabel>Filters (on {fact.table})</SectionLabel>
-                <FilterRows columns={factColumns} filters={filters} setFilters={setFilters} />
+                <SectionLabel>Filters</SectionLabel>
+                <FilterRows columns={filterColumns} filters={filters} setFilters={setFilters} />
 
                 <div className="explore-run">
                   <Btn onClick={handleRun} disabled={!canRun || isPending} style={{ width: '100%', justifyContent: 'center' }}>

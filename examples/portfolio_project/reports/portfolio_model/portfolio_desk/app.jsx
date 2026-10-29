@@ -12,7 +12,7 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Table2, Landmark } from "lucide-react";
 import { Masthead, Footer, Kpi, Value, Chart, Table, Filter, Search, Download, Range,
-         SelectionBar, EChart, useBinding, useUrlState, usePrinting } from "tracebi";
+         SelectionBar, EChart, useBinding, useUrlState, usePrinting, chartTokens } from "tracebi";
 
 const TITLE = "Portfolio Desk";
 const VIEWS = { Overview: LayoutDashboard, Holdings: Table2, Funds: Landmark };
@@ -155,11 +155,26 @@ function Funds() {
 
 // A chart of the page's own: the links are computed here from the rows of
 // fund_sector (re-run under the selection), so it carries data-tb-computed
-// and is presentation, not a claim.
+// and is presentation, not a claim. Its colours follow the chart engine's
+// rule: a category takes the palette slot of its first appearance in the
+// binding's stamped (unfiltered) rows, so each sector here wears the colour
+// the treemap gives it whatever the selection leaves. The funds are the
+// sources, not categories the page colours: they take the muted ink, so no
+// fund can share a sector's colour however many sectors there are.
+function stampedOrder(binding, column) {
+  const tb = window.tracebi;
+  return [...new Set((tb ? tb.data(binding) : []).map((r) => String(r[column])))];
+}
+
 function FundSectorFlow() {
   const rows = useBinding("fund_sector");
   const funds = [...new Set(rows.map((r) => r["dim_fund.fund"]))];
   const sectors = [...new Set(rows.map((r) => r["dim_issuer.sector"]))];
+  const tokens = chartTokens();
+  const palette = tokens.palette || [];
+  const sectorOrder = stampedOrder("by_sector", "dim_issuer.sector");
+  const colour = (slot) => (palette.length ? palette[Math.max(slot, 0) % palette.length] : undefined);
+  const node = (name, color) => ({ name, itemStyle: { color } });
   return (
     <EChart height={300} id="ech-fund-sector" ariaLabel="Fair value from each fund to each sector"
       option={{
@@ -167,7 +182,8 @@ function FundSectorFlow() {
         series: [{
           type: "sankey", left: 8, right: 110, nodeGap: 10, emphasis: { focus: "adjacency" },
           lineStyle: { color: "gradient", opacity: 0.35 },
-          data: [...funds, ...sectors].map((name) => ({ name })),
+          data: [...funds.map((f) => node(f, tokens.muted)),
+                 ...sectors.map((s) => node(s, colour(sectorOrder.indexOf(String(s)))))],
           links: rows.map((r) => ({ source: r["dim_fund.fund"], target: r["dim_issuer.sector"],
                                     value: Number(r.fair_value) })),
         }],

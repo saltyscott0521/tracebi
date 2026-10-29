@@ -72,7 +72,7 @@ export function useSelection() {
 
 /** TraceBi's number formatting ("compact", "currency0", "percent", …). */
 export function fmt(value, mode) {
-  return tb() ? tb().fmt(value, mode) : String(value);
+  return tb() ? tb().format(value, mode) : String(value);
 }
 
 export function Value({ binding, cell, format, id, className, ...rest }) {
@@ -306,6 +306,12 @@ function ComputedChart({ binding, selects, onSelect, option, highlight, id, rend
     c.setOption(full(latest.current), { notMerge: true });
     const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => c.resize()) : null;
     if (ro) ro.observe(host.current);
+    // Laid out on paper (and back), drawn at that width at once: the observer
+    // would only report it after the page has printed. flush paints now; a
+    // resize alone paints on the next frame, after the print.
+    const paper = window.matchMedia ? window.matchMedia("print") : null;
+    const reprint = () => { c.resize(); if (c.getZr) c.getZr().flush(); };
+    if (paper) paper.addEventListener ? paper.addEventListener("change", reprint) : paper.addListener(reprint);
     const offMode = auto ? onModeChange(() => {
       const next = echartsTheme();
       if (JSON.stringify(next) === JSON.stringify(applied)) return;
@@ -314,7 +320,13 @@ function ComputedChart({ binding, selects, onSelect, option, highlight, id, rend
     }) : () => {};
     c.on("click", (p) => { if (select.current) select.current(p); });
     setReady((n) => n + 1);
-    return () => { offMode(); if (ro) ro.disconnect(); c.dispose(); chart.current = null; };
+    return () => {
+      offMode();
+      if (ro) ro.disconnect();
+      if (paper) paper.removeEventListener ? paper.removeEventListener("change", reprint) : paper.removeListener(reprint);
+      c.dispose();
+      chart.current = null;
+    };
   }, [renderer, typeof theme === "string" ? theme : JSON.stringify(theme)]);
 
   React.useEffect(() => {

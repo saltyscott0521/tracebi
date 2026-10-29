@@ -47,6 +47,13 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 - **The six accent themes** (`graphite`, `indigo`, `midnight`, `ocean`, `plum`, `sand`): a `report.json` that names one still builds, in the house theme with that accent pair, and the build prints one line naming `brand: {accent: …}` or a house theme. `tracebi theme list` shows them after the house themes.
 
+### Fixed
+
+- **Explore's filters list the dimensions.** On Ask's "Advanced: the query builder", the filter picker lists the joined dimensions' attributes (as Ask does) and then the fact's columns, so a carried filter such as "Sector: Consumer" shows as `dim_issuer.sector = Consumer`, not on the fact's first column.
+- **The kit's `fmt(value, mode)` takes every named format.** `fmt(v, "currency0")`, `"percent"`, `"comma"` and the rest format as the docs promise (through `tracebi.format`, the formatter `<EChart>` uses); before, only `"compact"` did anything.
+- **Charts print at their true size.** Printed (Ctrl+P, and `tracebi report build --format pdf`), every chart is drawn again once the page is laid out on paper, at its printed width, so its text prints at the page's own scale instead of about 0.6× (axis labels 4.9–5.6 pt before, 8.2 pt after, in the reference dashboard's PDF); an option-only `<EChart>` resizes then too. Each is drawn at screen width again after the print.
+- **The desk's sankey wears the treemap's colours.** In the reference Portfolio Desk's Funds view, each sector in the fund-to-sector sankey takes the colour the treemap beside it gives that sector (the chart engine's rule: a category's palette slot is its first appearance in the binding's unfiltered rows), and the funds the slots after the sectors.
+
 ### Changed — one type system (Geist); the home shows no figures; the welcome is one row; the schema ring
 
 - **One type system.** The app is set in Geist and Geist Mono (self-hosted,
