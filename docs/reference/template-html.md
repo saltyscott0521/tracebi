@@ -210,9 +210,10 @@ Beyond that, a look is a theme preset: `tracebi theme use <name>`, or in
 one display face as `--tb-font-display`. The system applies the display face
 to `.tb-masthead h1`, `.tb-kpi--lead .tb-kpi-value` and the trace drawer's
 title; unset, a dashboard keeps the sans and an editorial headline the serif.
-Tokens only: no rules of its own, no gradient, no shadow. The showcase's
-`style.css` does exactly this, with Fraunces from `assets/fonts/` and the
-workspace's accent. A look for every report goes in `reports/_theme.css`.
+Tokens only: no rules of its own, no gradient, no shadow. The app
+showcase's `style.css` does exactly this; the editorial showcase
+(`housing_model/affordability`) sets its accent pairs and Fraunces from
+`assets/fonts/` the same way, then adds an editorial look of its own. A look for every report goes in `reports/_theme.css`.
 
 ## The masthead
 
@@ -338,6 +339,14 @@ texture, no shadow.
   face, so numbers read as data.
 - To restyle it, set the accent pairs, not a colour of its own.
 - Writing advice: `tracebi knowledge design-editorial-report`.
+- The reference long read is `examples/portfolio_project/reports/housing_model/affordability/`: a
+  headline that states the finding, a dek whose every number is a figure, a
+  KPI strip with measured deltas, annotated charts (`data-tb-annotate`,
+  `data-tb-mark`), small multiples (`data-tb-facet`), a reader's what-if
+  (`data-tb-scenario`), the data in tabs, the transform's typed assumptions
+  marked `data-tb-unverified`, sources and a print edition
+  (`tracebi report build housing_model/affordability --format pdf`). It is the
+  maintained showcase of this page's grammar.
 
 ## Exploration blocks
 

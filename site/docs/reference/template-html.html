@@ -452,9 +452,10 @@ they didn't ask for (<code>tracebi context</code> → <code>presentation.layout.
 one display face as <code>--tb-font-display</code>. The system applies the display face
 to <code>.tb-masthead h1</code>, <code>.tb-kpi--lead .tb-kpi-value</code> and the trace drawer's
 title; unset, a dashboard keeps the sans and an editorial headline the serif.
-Tokens only: no rules of its own, no gradient, no shadow. The showcase's
-<code>style.css</code> does exactly this, with Fraunces from <code>assets/fonts/</code> and the
-workspace's accent. A look for every report goes in <code>reports/_theme.css</code>.</p>
+Tokens only: no rules of its own, no gradient, no shadow. The app
+showcase's <code>style.css</code> does exactly this; the editorial showcase
+(<code>housing_model/affordability</code>) sets its accent pairs and Fraunces from
+<code>assets/fonts/</code> the same way, then adds an editorial look of its own. A look for every report goes in <code>reports/_theme.css</code>.</p>
 <h2 id="the-masthead">The masthead</h2>
 <p>Every page opens with one:</p>
 <pre><code class="language-html">&lt;header class=&quot;tb-masthead&quot; data-tb-title=&quot;left&quot; data-tb-period=&quot;Q3 2026&quot;&gt;
@@ -608,6 +609,14 @@ texture, no shadow.</p>
   face, so numbers read as data.</li>
 <li>To restyle it, set the accent pairs, not a colour of its own.</li>
 <li>Writing advice: <code>tracebi knowledge design-editorial-report</code>.</li>
+<li>The reference long read is <code>examples/portfolio_project/reports/housing_model/affordability/</code>: a
+  headline that states the finding, a dek whose every number is a figure, a
+  KPI strip with measured deltas, annotated charts (<code>data-tb-annotate</code>,
+  <code>data-tb-mark</code>), small multiples (<code>data-tb-facet</code>), a reader's what-if
+  (<code>data-tb-scenario</code>), the data in tabs, the transform's typed assumptions
+  marked <code>data-tb-unverified</code>, sources and a print edition
+  (<code>tracebi report build housing_model/affordability --format pdf</code>). It is the
+  maintained showcase of this page's grammar.</li>
 </ul>
 <h2 id="exploration-blocks">Exploration blocks</h2>
 <pre><code class="language-html">&lt;section data-tb-stage=&quot;exploration&quot;&gt; … &lt;/section&gt;

@@ -1,36 +1,13 @@
 /* ─────────────────────────────────────────────────────────────────────────
  * Portfolio Showcase: a theme preset, and nothing structural.
  *
- * This file stacks AFTER tracebi.css (the design system), so it wins. It
- * does what a theme does and no more:
- *
- *   • The accent pair for each ground. Every accent in the system follows:
- *     the first chart series, links, the active tab, the data bars.
- *   • One display face for the headline and the lead number: Fraunces
- *     (SIL Open Font License 1.1, assets/fonts/). The build inlines it as a
- *     data: URI, so the file still works offline and fetches nothing.
- *
- * The masthead, the KPI strip, the grid, the charts, the tables, the footer
- * and dark mode are the system's own. Presentation only: nothing here can
- * change a number.
+ * Beside an app.jsx, style.css stacks after the house theme (report.json
+ * "theme": "signal") and the workspace's brand, so it wins; it sets tokens
+ * and no layout. Here, one: the lead KPI's number and the masthead's title
+ * set a touch tighter than Signal's default. Presentation only: nothing here
+ * can change a number.
  * ───────────────────────────────────────────────────────────────────────── */
 
-@font-face {
-  font-family: "Fraunces";
-  font-weight: 600;
-  font-display: swap;
-  src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
-}
-
 :root {
-  --tb-accent: #0d6b73;
-  --tb-accent-text: #0b5c63;
-  --tb-surface-accent: #e8f3f3;
-  --tb-dark-accent: #5cc4bd;
-  --tb-dark-accent-text: #8fdcd6;
-}
-
-.tb-masthead h1, .tb-kpi--lead .tb-kpi-value {
-  font-family: "Fraunces", var(--tb-font-serif);
-  letter-spacing: -0.01em;
+  --tb-num-tracking: -0.04em;
 }

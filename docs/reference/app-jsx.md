@@ -205,6 +205,17 @@ does not exist.
 
 `tracebi verify` re-runs the bindings as for any report.
 
+## The showcase
+
+`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` is the maintained
+kitchen-sink of this lane: a sidebar of views (`useUrlState`), the KPI strip
+above every view (a lead with a measured delta, a `<Spark>`), every `<Chart>`
+type, small multiples (`facet`), a stack, an annotated `<EChart>` with a
+`dataZoom` (a claim), a treemap `<EChart>` (a claim), a heatmap the page lays
+out itself (`data-tb-computed`), `<Filter multiple>`, `<Range>`, row-select
+tables, `<Segmented>`, `usePrinting`, and one `report.py` chart that is fixed
+at build and says so. Its theme is Signal.
+
 ## Example
 
 ```jsx

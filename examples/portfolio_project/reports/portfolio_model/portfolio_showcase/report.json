@@ -1,22 +1,16 @@
 {
   "name": "Portfolio Showcase",
   "author": "tracebi reference",
-  "description": "Fair value, mark and unrealized gain by sector, fund and issuer, with how concentrated the book is and every holding.",
-  "notes": "The maintained kitchen-sink demo: every figure kind, control, layout and trust affordance the artifact offers, on the reference data.",
-  "libs": ["d3"],
+  "description": "Fair value, unrealized gain, mark and spread for the book, by sector, fund, rating and issuer, with how concentrated it is, every holding, and the cash that moved.",
+  "notes": "The maintained kitchen-sink demo of the app lane: every kit figure, control, gesture and trust affordance, on the reference data, as a product.",
+  "theme": "signal",
   "embed": "required",
   "embed_budget_mb": 25,
   "data": {
     "kpis": {
       "model": "portfolio_model",
-      "query": { "fact": "fact_holdings", "measures": ["fair_value", "positions", "mark"] }
-    },
-    "by_sector": {
-      "model": "portfolio_model",
-      "query": {
-        "fact": "fact_holdings", "measures": ["fair_value"],
-        "dimensions": ["dim_issuer.sector"], "order_by": ["-fair_value"]
-      }
+      "query": { "fact": "fact_holdings",
+                 "measures": ["fair_value", "unrealized", "mark", "positions", "wtd_spread_bps", "spread_p90"] }
     },
     "top_sector": {
       "model": "portfolio_model",
@@ -25,22 +19,25 @@
         "dimensions": ["dim_issuer.sector"], "order_by": ["-fair_value"], "limit": 1
       }
     },
-    "gain": {
+    "top_issuer": {
       "model": "portfolio_model",
-      "query": { "fact": "fact_holdings", "measures": ["unrealized"] }
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value", "fv_share"],
+        "dimensions": ["dim_issuer.issuer"], "order_by": ["-fair_value"], "limit": 1
+      }
+    },
+    "by_sector": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value", "unrealized", "mark", "positions"],
+        "dimensions": ["dim_issuer.sector"], "order_by": ["-fair_value"]
+      }
     },
     "by_fund": {
       "model": "portfolio_model",
       "query": {
-        "fact": "fact_holdings", "measures": ["fair_value"],
+        "fact": "fact_holdings", "measures": ["fair_value", "unrealized", "mark", "positions"],
         "dimensions": ["dim_fund.fund"], "order_by": ["-fair_value"]
-      }
-    },
-    "by_rating": {
-      "model": "portfolio_model",
-      "query": {
-        "fact": "fact_holdings", "measures": ["fair_value"],
-        "dimensions": ["dim_rating.rating"], "order_by": ["-fair_value"]
       }
     },
     "fund_sector": {
@@ -48,21 +45,49 @@
       "query": {
         "fact": "fact_holdings", "measures": ["fair_value"],
         "dimensions": ["dim_fund.fund", "dim_issuer.sector"],
-        "order_by": ["dim_issuer.sector"]
+        "order_by": ["dim_fund.fund", "dim_issuer.sector"]
       }
+    },
+    "by_rating": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value", "positions", "wtd_spread_bps", "mark"],
+        "dimensions": ["dim_rating.rating"], "order_by": ["dim_rating.rating"]
+      }
+    },
+    "rating_watch": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value"],
+        "dimensions": ["dim_rating.rating", "dim_rating.watch"],
+        "order_by": ["dim_rating.rating", "dim_rating.watch"]
+      }
+    },
+    "watched": {
+      "model": "portfolio_model",
+      "query": { "fact": "fact_holdings", "measures": ["fair_value", "positions"],
+                 "filters": {"dim_rating.watch": "yes"} }
     },
     "holdings_detail": {
       "model": "portfolio_model",
       "query": {
         "fact": "fact_holdings",
-        "measures": ["fair_value", "cost_basis", "mark"],
-        "dimensions": ["dim_issuer.issuer", "dim_issuer.sector"],
+        "measures": ["fair_value", "cost_basis", "unrealized", "mark", "wtd_spread_bps"],
+        "dimensions": ["dim_issuer.issuer", "dim_issuer.sector", "dim_rating.rating"],
         "order_by": ["-fair_value"]
       }
     },
     "holdings_total": {
       "model": "portfolio_model",
-      "query": { "fact": "fact_holdings", "measures": ["fair_value", "cost_basis", "mark"] }
+      "query": { "fact": "fact_holdings",
+                 "measures": ["fair_value", "cost_basis", "unrealized", "mark", "wtd_spread_bps"] }
+    },
+    "issuer_fv": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_holdings", "measures": ["fair_value", "mark", "wtd_spread_bps"],
+        "dimensions": ["dim_issuer.issuer"], "order_by": ["-fair_value"]
+      }
     },
     "issuer_curve": {
       "model": "portfolio_model",
@@ -75,7 +100,7 @@
     "top_issuers": {
       "model": "portfolio_model",
       "query": {
-        "fact": "fact_holdings", "measures": ["fair_value", "mark"],
+        "fact": "fact_holdings", "measures": ["fair_value", "fv_share", "mark"],
         "dimensions": ["dim_issuer.issuer"],
         "order_by": ["-fair_value"], "limit": 8
       }
@@ -87,8 +112,15 @@
     "flows_by_month": {
       "model": "portfolio_model",
       "query": {
-        "fact": "fact_cashflows", "measures": ["net_flow"],
+        "fact": "fact_cashflows", "measures": ["net_flow", "flow_count"],
         "dimensions": ["dim_date.month"], "order_by": ["dim_date.month"]
+      }
+    },
+    "flows_by_type": {
+      "model": "portfolio_model",
+      "query": {
+        "fact": "fact_cashflows", "measures": ["net_flow", "flow_count"],
+        "dimensions": ["dim_flow_type.flow_type"], "order_by": ["-net_flow"]
       }
     },
     "flows_by_fund": {
@@ -108,11 +140,5 @@
     "cron": "0 7 * * MON",
     "timezone": "America/New_York",
     "refresh": {"transforms": ["holdings_transform"]}
-  },
-  "figures": {
-    "chart_fund": {
-      "kind": "chart", "binding": "by_fund", "chart_type": "pie",
-      "x": "dim_fund.fund", "y": "fair_value", "value_format": "compact"
-    }
   }
 }

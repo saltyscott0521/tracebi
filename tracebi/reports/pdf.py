@@ -32,6 +32,10 @@ _DRAWN = """() => {
 }"""
 
 
+# CSS pixels across a US letter page inside 12mm margins (8.5in less 24mm).
+_PRINT_WIDTH = 725
+
+
 def _local_only(route) -> None:
     """Let the page load nothing from the network.
 
@@ -88,7 +92,11 @@ def print_pdf(html_path, pdf_path) -> None:
                     "to PDF.\n" + _INSTALL + f"\n({type(exc).__name__}: {exc})"
                 ) from exc
             try:
-                page = browser.new_page()
+                # Lay the page out at a letter page's printed width, in print
+                # media, before it draws: a chart drawn for a wide screen and
+                # shrunk onto the page prints small in a box left half empty.
+                page = browser.new_page(viewport={"width": _PRINT_WIDTH, "height": 1000})
+                page.emulate_media(media="print")
                 page.route("**/*", _local_only)
                 page.goto(html.resolve().as_uri(), wait_until="load")
                 try:

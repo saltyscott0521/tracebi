@@ -165,6 +165,9 @@ def run() -> dict:
         "year_id": df["year"],
         "year": df["year"],
         "decade": (df["year"] // 10 * 10).astype(str) + "s",
+        # The year as a date, so the model can declare it a time grain and
+        # measure a change on the year before (housing_model.yaml).
+        "year_start": pd.to_datetime(df["year"].astype(str) + "-01-01"),
     })
     fact = df[["year", "mortgage_rate", "existing_price", "new_home_price",
                "median_income", "earner_income", "monthly_income", "loan_amount",

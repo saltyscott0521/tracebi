@@ -402,7 +402,7 @@ system sets it on the `.tb-masthead h1`, the lead number and the trace's
 title): tokens only, no rule of its own, no gradient, hatch, glow or resting
 shadow, and no second set of components. Set the pairs where a report should
 differ from the workspace's accent; the reference workspace keeps a navy book, a
-teal showcase and the affordability editorial's own look on one system.
+Signal app showcase and the affordability editorial's green on one system.
 `reports/_style.md` is the team's house style — `tracebi context` and
 `get_context` return it as `house_style`. Read it before you build and follow
 its Rules over these defaults. Before you build, read
@@ -476,10 +476,10 @@ tracebi.draw("fig-flows", function (surface, rows, theme) {
 (a filter, the search, a selection) or its width does, so the figure follows
 the theme and the page's controls with no wiring of its own. Draw from `rows`
 only; `tracebi.setSelection({column: value})` filters the page from a click.
-The showcase's holdings treemap is the worked example.
+The portfolio book's issuer table (`portfolio_book/script.js`) is the worked example.
 
-**Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The showcase
-(`examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`) uses it for its
+**Custom fonts and images.** Fonts and images go in the package's `assets/` folder: `url(assets/…)` in `style.css` and `src="assets/…"` in `template.html` are inlined as `data:` URIs at load, so the file stays self-contained (woff2/woff/ttf/otf, svg/png/jpg/webp/gif/avif; a missing file, another type, or a path outside `assets/` fails the load). The editorial showcase
+(`examples/portfolio_project/reports/housing_model/affordability/`) uses it for its
 one display face (Fraunces, with its licence beside it); the reference
 workspace's `reports/wealth_model/aum_by_branch` for its faces and its hero
 artwork.
@@ -615,8 +615,9 @@ Three rules that keep pages honest:
   via ONE `<footer class="tb-footer" data-tb-methodology>` — the build
   appends the pipeline's stated methodology after your own prose, behind
   "How these numbers were made".
-  `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/` is the
-  maintained kitchen-sink demo of all of it.
+  `examples/portfolio_project/reports/housing_model/affordability/` is the
+  maintained editorial showcase of all of it (the template lane);
+  `portfolio_model/portfolio_showcase/` is the app lane's (`app.jsx`).
 - **Explore inside the artifact.** Blocks marked
   `data-tb-stage="exploration"` render under `tracebi dev` and are deleted
   at the final build; the app's Build panel shows the data each binding reads,

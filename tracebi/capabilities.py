@@ -1054,7 +1054,7 @@ def _presentation() -> dict:
             "on every change of a live page's selection, from any control, "
             "mark, row, range, chip, Escape or setSelection; returns a "
             "function that stops it. Keep a drawn figure's own picking in "
-            "step with the page (the showcase treemap)",
+            "step with the page (portfolio_book's script.js)",
             "tracebi.result(figureId) → a live figure's current answer as "
             "the page engine gave it: {cols, rows, selection, "
             "unfiltered_by, highlights}, {fixed} for a build value, null "

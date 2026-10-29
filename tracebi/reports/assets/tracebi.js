@@ -5680,6 +5680,9 @@
      * a selection they take the current result, and every figure its mark. */
     if (_calc) {
       try { if (_calc.local) paintLocal(); else paintLiveMarks(); } catch (e) {}
+      /* The trace's local rows and count follow the figures now on the
+       * page: an app's view mounted since names its figures there too. */
+      try { if (_calc.local || _calc.error) paintLocalTrace(); } catch (e) {}
       try { paintChips(); } catch (e) {}
       try { paintRanges(); } catch (e) {}
       try { paintSelectionBar(); } catch (e) {}

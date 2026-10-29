@@ -438,6 +438,15 @@ does not exist.</p>
   is not checked."</em></li>
 </ul>
 <p><code>tracebi verify</code> re-runs the bindings as for any report.</p>
+<h2 id="the-showcase">The showcase</h2>
+<p><code>examples/portfolio_project/reports/portfolio_model/portfolio_showcase/</code> is the maintained
+kitchen-sink of this lane: a sidebar of views (<code>useUrlState</code>), the KPI strip
+above every view (a lead with a measured delta, a <code>&lt;Spark&gt;</code>), every <code>&lt;Chart&gt;</code>
+type, small multiples (<code>facet</code>), a stack, an annotated <code>&lt;EChart&gt;</code> with a
+<code>dataZoom</code> (a claim), a treemap <code>&lt;EChart&gt;</code> (a claim), a heatmap the page lays
+out itself (<code>data-tb-computed</code>), <code>&lt;Filter multiple&gt;</code>, <code>&lt;Range&gt;</code>, row-select
+tables, <code>&lt;Segmented&gt;</code>, <code>usePrinting</code>, and one <code>report.py</code> chart that is fixed
+at build and says so. Its theme is Signal.</p>
 <h2 id="example">Example</h2>
 <pre><code class="language-jsx">import { useState } from &quot;react&quot;;
 import { LayoutDashboard, CreditCard } from &quot;lucide-react&quot;;

@@ -25,8 +25,9 @@ choice marked. `tracebi new-report` / `new-dashboard --theme <name>` and the
 gateway's `start_draft(theme=…)` write it into `report.json`. Any other name
 fails the build, naming the three. Themes are set at these two levels
 only, never per project or folder. In the reference workspace the SaaS project's reports
-(`saas_model/mrr_dashboard`, `cohort_brief`) are Nightdesk and every other
-report is Ledger; it sets no brand.
+(`saas_model/mrr_dashboard`, `cohort_brief`) are Nightdesk, the app showcase
+(`portfolio_model/portfolio_showcase`) is Signal, and every other report is
+Ledger; it sets no brand.
 
 **A brand on top.** The workspace's brand ([[tracebi-yaml]] `brand:`) layers
 over whichever theme: its accent, palette, font and logo replace the

@@ -4,6 +4,75 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-28 — Two showcases: the app lane and the editorial lane (SHOWCASES)
+
+The owner asked for "a sick app.jsx one and a sick editorial": the portfolio
+showcase becomes the app, the affordability report the editorial.
+
+**`portfolio_showcase` is an `app.jsx`**, kept at its name and address. A
+sidebar of five views (Overview, Holdings, Concentration, Credit, Cash flows;
+`useUrlState`), the page filters in the sidebar (sector; fund and rating
+`multiple`), and the masthead and KPI strip above every view, so every gesture
+visibly moves the same five numbers. Theme: **Signal**. Its lead tile in the
+accent and its large numerals make the strip read as the product's headline,
+it works on both grounds (Nightdesk opens dark and would have to be forced
+light; Ledger is the default every other report already shows), and a
+board-pack look is what a showcase is for. Every number is a kit figure; the
+one page-drawn chart (the fund-by-sector heatmap) is an option-only `<EChart>`
+reading `useBinding` rows and the house tokens (`chartTokens`), so it carries
+`data-tb-computed` and says so in its note. `report.py` stays: app.jsx can
+carry it (a kit `<Chart>` of its output binding renders, fixed at build,
+"Fixed at build · report.py"), so the escape hatch keeps its demonstration
+here, id `chart-conc` as before. `"libs": ["d3"]` and the `{{ figure() }}`
+declaration are gone with the template; `tracebi.draw`'s worked example is now
+`portfolio_book/script.js`. Fraunces moved to affordability.
+
+**`affordability` is the editorial showcase**, still `template.html`, in the
+system's editorial register (`.tb-article`, the hero band, the serif column)
+with Fraunces as the display face and a banknote green accent restated for the
+dark ground (it was pinned light). The arc: the finding as headline, the dek's
+numbers as figures, where a buyer stands now (KPI deltas), the one number,
+why (then the rate, now the price: the side-by-side cards and a scatter of
+every year), what happened after buying (small multiples by buyer), the long
+view (three annotated trends), decade by decade, the reader's what-if, the
+data in tabs, sources, method. Every number is a figure; the transform's four
+constants (down payment, closing costs, tax and insurance) are typed in the
+method note and marked `data-tb-unverified`, which is what that attribute is
+for. Each sentence that compares still has its one-year form (script.js).
+
+**One model change, at the transform.** The deltas needed a change on the year
+before, and the model had no time grain: `dim_year` gains `year_start` (the
+transform writes it) and `housing_model.yaml` declares
+`dim_year.calendar_year`. The growth measures themselves are report-level
+(`report.json` `measures`), not on the shared model: a period-over-period
+measure needs a time grain in every query, and the Explore journey asserts
+that every measure a fact offers answers a bare query.
+
+**The tests.** `test_agent_guides`' template-grammar check could not stay on
+the showcase's page source: the app lane has no `data-tb-stage`,
+`data-tb-scenario`, `data-tb-unverified` or `tb-tabs` (the build neither
+strips, validates nor records them in app.jsx). The full marker list, word for
+word, now reads the editorial showcase's `template.html`, which carries every
+one; the same test reads the app showcase's `app.jsx` for the kit's spelling
+of each (and the app-only parts). The live cascade walks an app's nav views as
+it walks a template's tabs (before, it walked only an app's first view, so the
+desk's later views were never worked). The reference
+journey's showcase checks follow the form: its live test reads every view, the
+brand test's template page is `portfolio_book`, and the desk's KPI check reads
+an app's card.
+
+**What the screenshots found.** A scatter's value format formats both axes
+(`test_presentation_js` pins it, for parity with the server's chart), so a
+`valueFormat="percent"` scatter of fair value against mark read
+"1000000000.0%" across: the showcase's two scatters take no value format (the
+tooltip reads each column in its declared format) and set their tick labels
+through `option`, a restyle. And a PDF drew its charts for a 1280px screen
+and shrank them onto the page, leaving each chart's box half empty: `pdf.py`
+now lays the page out at a letter page's printed width, in print media,
+before it draws.
+
+---
+
 ## 2026-10-28 — Agents read and change transforms; a dry run; approval commits (AGENT-TRANSFORMS)
 
 The owner's ask, four pieces. **`read_transform(name)`** is a new read-only

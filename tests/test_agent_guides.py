@@ -161,13 +161,16 @@ class TestScaffoldDemonstratesTheProduct:
                 f"the scaffold sample no longer demonstrates {marker}"
             )
 
-    def test_the_showcase_carries_the_template_grammar(self):
-        """The HTML grammar (template.html) is taught by the showcase now that
-        the scaffold sample is an app."""
+    def test_the_showcases_carry_the_template_and_kit_grammar(self):
+        """The HTML grammar (template.html) is taught by the editorial
+        showcase (affordability), the app grammar (app.jsx) by the portfolio
+        showcase, now that the scaffold sample is an app. Each package's page
+        source is read: the template's markers as written, the app's as the
+        kit component or prop that renders each one."""
         from pathlib import Path
 
-        showcase = (Path(__file__).parents[1] / "examples" / "portfolio_project" / "reports"
-                    / "portfolio_model" / "portfolio_showcase" / "template.html").read_text()
+        reports = Path(__file__).parents[1] / "examples" / "portfolio_project" / "reports"
+        editorial = (reports / "housing_model" / "affordability" / "template.html").read_text()
         for marker in ("data-tb-filter", "data-tb-search",
                        "data-tb-download", "data-tb-figure",
                        "data-tb-stage", "data-tb-methodology",
@@ -179,7 +182,22 @@ class TestScaffoldDemonstratesTheProduct:
                        "data-tb-scenario", "data-tb-unverified", "tb-tabs",
                        *(f'data-tb-type="{t}"' for t in ("bar", "barh", "line",
                                                           "area", "scatter"))):
-            assert marker in showcase, f"the showcase no longer demonstrates {marker}"
+            assert marker in editorial, f"the editorial showcase no longer demonstrates {marker}"
+
+        app = (reports / "portfolio_model" / "portfolio_showcase" / "app.jsx").read_text()
+        # Each data-tb-* attribute above that the kit renders, in the kit's
+        # spelling, plus what only the app lane has.
+        for marker in ("<Filter", " multiple", "<Search", "<Download", "<Kpi", "<Value",
+                       "<Masthead", "period=", "<Footer", "deltaBinding=", "deltaGood=",
+                       "<Kpi lead", "tb-span-8", "tb-span-4", "tb-span-6",
+                       "bars=", " sort", "totals=", "facet=", "mark=", "annotate=",
+                       "selectRows", "<Range", "<SelectionBar", "<Spark", " stack",
+                       'highlight="off"', "<Segmented", "useUrlState", "usePrinting",
+                       "useBinding", "useSelection", "chartTokens", "selects=",
+                       *(f'type="{t}"' for t in ("bar", "barh", "line", "area", "pie",
+                                                  "scatter", "treemap"))):
+            assert marker in app, f"the app showcase no longer demonstrates {marker}"
+        assert "<EChart option=" in app and '<EChart binding="' in app
 
 
 class TestTheDesignSystemIsTaught:

@@ -64,6 +64,15 @@ dimensions:
     key: held_id
     attributes: [years_owned]
 
+# time_grains: the year as a period (dim_year.year_start is its first day),
+# so a query can compare a year with the one before it (a growth or offset
+# measure; the affordability report declares its own).
+time_grains:
+  - dimension: dim_year
+    name: calendar_year
+    source: year_start
+    grain: year
+
 # facts: the event tables (numeric columns, key to each dimension)
 facts:
   - name: fact_housing

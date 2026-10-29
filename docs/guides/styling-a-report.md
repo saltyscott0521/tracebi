@@ -204,9 +204,10 @@ cards.
 
 ## Next
 
-- See it all in one report: `examples/portfolio_project/reports/portfolio_model/portfolio_showcase/`
-  uses a tokens-only `style.css` (one inlined display face, its own teal
-  accent) with every chart type, a KPI delta, data bars, sortable columns,
-  filters, a scenario and a custom D3 figure. `reports/wealth_model/aum_by_branch`
+- See it all in two reports: `examples/portfolio_project/reports/housing_model/affordability/`
+  (the editorial lane: an inlined display face, its own green accent, every
+  chart type, KPI deltas, small multiples, data bars, sortable columns, tabs,
+  filters and a scenario) and `portfolio_model/portfolio_showcase/` (the app
+  lane, in Signal, with a tokens-only `style.css`). `reports/wealth_model/aum_by_branch`
   has its own fonts, palette and hero artwork on the same frame.
 - Restyle the web app itself: [[web-customization]]
