@@ -195,7 +195,8 @@ body { background: var(--af-paper); }
   .af-figure, .tb-kpi, .af-scenario, .af-vs-grid, .tb-grid { break-inside: avoid; }
   .tb-article h2 { break-after: avoid; }
   .af-results { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .af-chart--tall { height: 300px; }
+  /* No chart height here: a chart keeps the height it read when it first
+     drew, and print redraws it at the page's width inside that box. */
   .af-strip { grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr)) !important; }
   .af-strip .tb-kpi--lead { grid-column: auto; }
   .af-strip .tb-kpi { padding: 12px 14px; }

@@ -66,10 +66,15 @@ an app's card.
 `valueFormat="percent"` scatter of fair value against mark read
 "1000000000.0%" across: the showcase's two scatters take no value format (the
 tooltip reads each column in its declared format) and set their tick labels
-through `option`, a restyle. And a PDF drew its charts for a 1280px screen
-and shrank them onto the page, leaving each chart's box half empty: `pdf.py`
-now lays the page out at a letter page's printed width, in print media,
-before it draws.
+through `option`, a restyle. A PDF drew its charts for a 1280px screen and
+shrank them onto the page; the print redraw at the printed width (below,
+merged from main) fixes that in the runtime, so `pdf.py` stays as it was (a
+viewport and print media set before load left the page never ready). With
+the redraw in, the affordability print stylesheet's `.af-chart--tall` height
+(300px, against the 340px the chart read, once, when it first drew) made
+that chart draw taller than its card: print sets no chart height now. In print
+the showcase's KPI strip is three across and the heatmap writes no labels in
+its cells.
 
 ---
 ## 2026-10-28 — Loose ends: eight defects found along the way (LOOSE-ENDS)

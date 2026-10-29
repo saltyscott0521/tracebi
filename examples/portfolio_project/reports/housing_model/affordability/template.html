@@ -94,8 +94,10 @@
        changes on the year before (report.json's growth measures), so their
        arrows and colours come from the stamped value: a rising price is bad
        for a buyer (down-good), a rising income good (up-good). ──────────── -->
-  <h2>Where a buyer stands in <span data-tb-figure="value" data-tb-binding="today"
-      data-tb-cell="dim_year.calendar_year" id="today-year"></span></h2>
+  <!-- One span: the heading is a flex row, so a bare text node and a figure
+       would sit a flex gap apart. -->
+  <h2><span>Where a buyer stands in <span data-tb-figure="value" data-tb-binding="today"
+      data-tb-cell="dim_year.calendar_year" id="today-year"></span></span></h2>
   <div class="tb-grid af-strip">
     <div class="tb-kpi tb-kpi--lead">
       <span class="tb-kpi-label">Ten years of housing, share of ten years' income</span>

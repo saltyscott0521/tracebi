@@ -91,6 +91,7 @@ function Overview() {
 // the page's chart tokens, so a theme or the workspace's brand restyles it.
 function FundSectorHeatmap() {
   const rows = useBinding("fund_sector", "dim_issuer.sector");
+  const printing = usePrinting();
   const option = useMemo(() => {
     const k = chartTokens();
     const sectors = [...new Set(rows.map((r) => r["dim_issuer.sector"]))].sort();
@@ -108,9 +109,9 @@ function FundSectorHeatmap() {
       series: [{
         type: "heatmap",
         itemStyle: { borderColor: k.card, borderWidth: 3, borderRadius: 4 },
-        // Each cell's value written in it where there is room; on a phone the
-        // cells are too narrow and the tooltip reads it instead.
-        label: { show: window.innerWidth >= 640, formatter: (p) => window.tracebi.fmt(p.value[2], "compact"),
+        // Each cell's value written in it where there is room; on a phone or
+        // a printed page the cells are too narrow and the tooltip reads it.
+        label: { show: !printing && window.innerWidth >= 640, formatter: (p) => window.tracebi.fmt(p.value[2], "compact"),
                  fontSize: 11, fontFamily: k.num },
         data: rows.map((r) => ({
           name: r["dim_issuer.sector"],
@@ -119,7 +120,7 @@ function FundSectorHeatmap() {
         })),
       }],
     };
-  }, [rows]);
+  }, [rows, printing]);
   return (
     <EChart option={option} selects="dim_issuer.sector" height={280} id="ech-fund-sector"
             ariaLabel="Fair value by fund and sector, as a heatmap" />
@@ -399,7 +400,8 @@ export default function App() {
 
           {/* The KPI strip is above every view, so every gesture moves it. */}
           <div className="tb-grid max-md:!grid-cols-2
-                          md:![grid-template-columns:1.6fr_repeat(4,minmax(0,1fr))]">
+                          md:![grid-template-columns:1.6fr_repeat(4,minmax(0,1fr))]
+                          print:![grid-template-columns:repeat(3,minmax(0,1fr))]">
             <Kpi lead className="max-md:col-span-2" binding="kpis" cell="fair_value" format="currency_compact" label="Fair value"
                  deltaBinding="kpis" deltaCell="unrealized" deltaFormat="currency_compact"
                  deltaGood="up" context="vs cost" id="kpi-fv" />
