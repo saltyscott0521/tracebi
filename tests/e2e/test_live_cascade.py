@@ -3,7 +3,7 @@ of the live-reports plan): the reference project's reports, the scaffold's
 sample dashboard, both ``init --template`` bundles and the demo app's wealth
 reports, each built and opened from disk.
 
-For each report the journey shows every tab, and on what it finds there
+For each report the journey shows every tab (or every view of an app's nav), and on what it finds there
 picks each filter's first present value, narrows each range, clicks each
 row-select table's first row and each chart's first selectable mark. After
 every step: the address carries the state; the selection bar shows it; every
@@ -379,7 +379,14 @@ def _act(page, step):
 
 
 def _tabs(page) -> list:
-    return page.locator(".tb-tab-bar button").all_text_contents() or [None]
+    """What to show in turn: a template's tabs, or an app's views (the
+    buttons of its nav), each as the locator that opens it; [None] for a page
+    of one view."""
+    for selector in (".tb-tab-bar button", "#tb-app nav button"):
+        found = page.locator(selector)
+        if found.count():
+            return [found.nth(i) for i in range(found.count())]
+    return [None]
 
 
 @pytest.mark.parametrize("group,name", REPORTS, ids=[f"{g}:{n}" for g, n in REPORTS])
@@ -405,10 +412,10 @@ def test_every_gesture_recomputes_every_figure(projects, browser, group, name):
         assert page.locator(".tb-selection-bar:visible").count() == 0, f"{name}: bar as built"
         built_view = {f["id"]: f for f in page.evaluate(_FIGURES)}
 
-        walked = []
+        walked, last = [], {}
         for tab in _tabs(page):
             if tab is not None:
-                page.locator(".tb-tab-bar button", has_text=tab).first.click()
+                tab.click()
                 _settle(page)
             # The page's gestures, read as built.
             page.evaluate("(s) => window.tracebi.setSelection(s)", authored)
@@ -422,8 +429,9 @@ def test_every_gesture_recomputes_every_figure(projects, browser, group, name):
                 _act(page, step)
                 _settle(page)
                 assert _state(page) != authored, f"{name} · {step['label']}: changed nothing"
-                _check(page, name, (tab or "page") + " · " + step["label"],
+                _check(page, name, (tab.text_content() if tab else "page") + " · " + step["label"],
                        plans, frames, built_view)
+                last = _state(page)
                 if name == "portfolio_model/portfolio_desk" and step["label"] == "range spread_bps":
                     # The field is named as its control names it, not as the column.
                     chip = page.locator(".tb-selection-chip").first.text_content()
@@ -431,7 +439,11 @@ def test_every_gesture_recomputes_every_figure(projects, browser, group, name):
         assert walked, f"{name}: the page offers no gesture"
 
         # Printed (under the last step's selection), the selection is one
-        # line, and the footer says so.
+        # line, and the footer says so. A last tab or view with no step of its
+        # own left the authored selection: put the last step's back.
+        if _state(page) != last:
+            page.evaluate("(s) => window.tracebi.setSelection(s)", last)
+            _settle(page)
         state = _state(page)
         page.emulate_media(media="print")
         line = page.locator(".tb-selection-print")

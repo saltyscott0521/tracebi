@@ -1,12 +1,32 @@
 {
   "name": "Then vs Now: Buying the Median Home",
   "author": "tracebi reference",
-  "description": "What buying the median home took of a household's income over ten years \u2014 the cash to get in plus every payment \u2014 for every buyer since 1979, today's projected, with the worst of the eighties set against today.",
+  "description": "What buying the median home took of a household's income over ten years, the cash to get in plus every payment, for every buyer since the rate peak of the early eighties, today's projected: why the eighties burden was the rate and today's is the price.",
   "measures": {
     "housing_model": {
       "years_in_view": {
-        "column": "mortgage_rate", "agg": "count", "format": "comma",
+        "column": "mortgage_rate",
+        "agg": "count",
+        "format": "comma",
         "description": "Years in view: fact_housing has one row per year"
+      },
+      "price_growth": {
+        "growth": [
+          "existing_price",
+          "year",
+          1
+        ],
+        "format": "percent",
+        "description": "Median existing-home price, change on the year before"
+      },
+      "income_growth": {
+        "growth": [
+          "median_income",
+          "year",
+          1
+        ],
+        "format": "percent",
+        "description": "Median household income, change on the year before"
       }
     }
   },
@@ -26,6 +46,7 @@
         "fact": "fact_housing",
         "measures": [
           "mortgage_rate",
+          "price_to_income",
           "existing_price",
           "median_income",
           "entry_cost",
@@ -101,7 +122,7 @@
             "in": [
               1981,
               2006,
-              2023
+              2021
             ]
           }
         },
@@ -221,6 +242,110 @@
         ],
         "limit": 1
       }
+    },
+    "today": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": [
+          "existing_price",
+          "price_growth",
+          "median_income",
+          "income_growth",
+          "mortgage_rate",
+          "price_to_income"
+        ],
+        "dimensions": [
+          "dim_year.calendar_year"
+        ],
+        "order_by": [
+          "-dim_year.calendar_year"
+        ],
+        "limit": 1
+      }
+    },
+    "by_decade": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_ten_year",
+        "measures": [
+          "housing_share"
+        ],
+        "dimensions": [
+          "dim_year.decade"
+        ],
+        "order_by": [
+          "dim_year.decade"
+        ]
+      }
+    },
+    "rate_vs_price": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": [
+          "price_to_income",
+          "mortgage_rate"
+        ],
+        "dimensions": [
+          "dim_year.year",
+          "dim_year.decade"
+        ],
+        "order_by": [
+          "dim_year.year"
+        ]
+      }
+    },
+    "every_year": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_housing",
+        "measures": [
+          "mortgage_rate",
+          "existing_price",
+          "median_income",
+          "payment",
+          "payment_share",
+          "entry_share",
+          "price_to_income"
+        ],
+        "dimensions": [
+          "dim_year.year"
+        ],
+        "order_by": [
+          "-dim_year.year"
+        ]
+      }
+    },
+    "every_buyer": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_ten_year",
+        "measures": [
+          "housing_share",
+          "rate_at_purchase",
+          "price_at_purchase",
+          "income_at_purchase",
+          "years_measured"
+        ],
+        "dimensions": [
+          "dim_cohort.purchase_year",
+          "dim_cohort.basis"
+        ],
+        "order_by": [
+          "-dim_cohort.purchase_year"
+        ]
+      }
+    },
+    "every_buyer_total": {
+      "model": "housing_model",
+      "query": {
+        "fact": "fact_ten_year",
+        "measures": [
+          "housing_share"
+        ]
+      }
     }
-  }
+  },
+  "notes": "The maintained editorial showcase: the template lane's long read, every number a figure, with a reader's what-if, small multiples, annotated charts and a print edition."
 }

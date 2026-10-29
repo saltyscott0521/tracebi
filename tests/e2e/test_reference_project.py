@@ -893,7 +893,10 @@ def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, m
                           if v["id"] == "kpi-fv")
         assert (fair_value["label"], fair_value["delta"] != "") == ("Fair value", True)
         showcase = (reference / "output" / "portfolio_model" / "portfolio_showcase.html").read_text()
-        assert f'id="kpi-fv">{fair_value["text"]}<' in showcase
+        # An app's KPI card, as its no-JavaScript view prints it: the number
+        # in the card's own value cell.
+        assert re.search(r'id="kpi-fv"[^>]*>(?:(?!</div>).)*?<span class="tb-kpi-value">'
+                         + re.escape(fair_value["text"]) + "<", showcase), fair_value
 
         # Covers (tracebi/reports/cover.py). Catches a workflow that ships the
         # library with no pictures, a cover served stale or uncached, and one
@@ -968,21 +971,26 @@ def test_the_showcase_carries_every_affordance(built):
     from tests.test_presentation_js import assert_built_receipt_rows
     assert_built_receipt_rows(html)
     for marker in ("data-tb-filter", "data-tb-search", "data-tb-download",
-                   "tb-tabs", "tb-span-8", "tb-kpi--lead", 'id="tracebi-receipt"',
-                   "tb-methodology", "data-tb-unverified",
+                   "tb-span-8", "tb-kpi--lead", 'id="tracebi-receipt"',
+                   "tb-methodology",
                    "tb-semantic-contract-portfolio_model",
                    'id="tracebi-selection"',
-                   'class="tb-total"',
                    "data-tb-sort", "data-tb-bars", "data-tb-direction",
-                   "tb-table--freeze", "tb-footer-line", "tb-masthead",
-                   "data-tb-period",
-                   'id="fig-treemap"', "D3 7.9.0 (ISC)"):
+                   "tb-footer-line", "tb-masthead",
+                   "data-tb-period"):
         assert marker in html, f"showcase lost its {marker} affordance"
-    assert "Working notes" not in html, "exploration must die at build"
-    # The masthead's kicker and the footer name the model by its label; the
-    # template writes no kicker, the build adds it (an app's kit reads it from
-    # its mount point). The reference project sets no brand, so no firm mark.
-    assert '<p class="tb-kicker">Direct Lending Portfolio</p>' in html
+    # The template lane's own: typed figures marked unverified, a totals row
+    # written at build, exploration that dies at build. The editorial
+    # showcase carries them.
+    editorial = (built / "output" / "housing_model" / "affordability.html").read_text()
+    for marker in ("data-tb-unverified", 'class="tb-total"', "tb-tabs", "data-tb-period",
+                   "tb-table--freeze", 'data-tb-scenario="today"'):
+        assert marker in editorial, f"the editorial showcase lost its {marker} affordance"
+    assert "Working notes" not in editorial, "exploration must die at build"
+    # The masthead's kicker and the footer name the model by its label; an
+    # app's kit reads the kicker from its mount point, which the build writes.
+    # The reference project sets no brand, so no firm mark.
+    assert '<div id="tb-app" data-tb-kicker="Direct Lending Portfolio">' in html
     foot = html[html.index('class="tb-footer-line"'):]
     foot = foot[:foot.index("</p>")]
     assert " · Direct Lending Portfolio. " in foot and "portfolio_model" not in foot
@@ -1017,12 +1025,16 @@ def test_the_showcase_lineage_traces_each_query_to_only_what_it_used(built):
     assert set(node["binding:by_fund"]["detail"]["tables"]) == {"fact_holdings", "dim_fund"}
     assert node["binding:concentration"]["status"] == "derived"
     assert node["binding:concentration"]["detail"]["verifiable"] is False
-    assert "figures:unverified" in node and flow["notes"][-1].startswith("A query marked python-derived")
+    assert flow["notes"][-1].startswith("A query marked python-derived")
     assert node["transform:holdings"]["status"] == "ok"      # the sink satisfied its contract
     # Every figure is on the graph exactly once.
     listed = [f["id"] for n in flow["nodes"] if n["kind"] in ("figures", "unverified")
               for f in n["detail"]["figures"]]
     assert sorted(listed) == sorted(f["id"] for f in manifest["figures"])
+    # Figures with no query behind them (the editorial's typed assumptions)
+    # are shown apart.
+    editorial = report_flow(json.loads(_manifest(built, "housing_model/affordability").read_text()))
+    assert "figures:unverified" in {n["id"] for n in editorial["nodes"]}
 
 
 def test_a_showcase_control_recomputes_on_the_model(built):
@@ -1040,12 +1052,17 @@ def test_a_showcase_control_recomputes_on_the_model(built):
         models = {"portfolio_model": registry.get("portfolio_model")}
         package = TemplatePackage(str(built / "reports" / "portfolio_model" / "portfolio_showcase"))
         base = evaluate_selection(package, models, {})
-        control = next(c for c in base["controls"] if c["column"] == "dim_issuer.sector")
-        assert len(control["included"]) > 1
-        sector = control["included"][0]
+        # An app's controls are its kit <Filter>s, read from app.jsx.
+        from tracebi.reports.app_lane import scan_controls
+        assert ("*", "dim_issuer.sector") in scan_controls(package.app_source)
+        sectors = sorted(models["portfolio_model"].query(
+            "fact_holdings", ["fair_value"], dimensions=["dim_issuer.sector"]
+        ).to_pandas()["dim_issuer.sector"])
+        assert len(sectors) > 1
+        sector = sectors[0]
         cut = evaluate_selection(package, models, {"dim_issuer.sector": sector})
         model = models["portfolio_model"]
-        expected = model.query("fact_holdings", ["fair_value", "positions", "mark"],
+        expected = model.query("fact_holdings", list(package.bindings["kpis"].query.measures),
                                filters={"dim_issuer.sector": sector})
     finally:
         os.chdir(previous)
@@ -1423,6 +1440,7 @@ _READ = """() => { return Array.from(document.querySelectorAll('[data-tb-figure]
       marks: svg ? svg.querySelectorAll('path, rect, circle').length : null,
       drawn: drawn(el),
       fixed: el.getAttribute('data-tb-fixed'),
+      unfiltered: el.getAttribute('data-tb-unfiltered-by'),
       note: el.__tbLiveNote ? el.__tbLiveNote.textContent : null};
   });
   // What a chart plots, less what cross-highlighting adds (a mark's style):
@@ -1469,20 +1487,25 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         url = (built / "output" / f"{name}.html").as_uri()
+        def every_view(p):
+            """Every figure of every view the app's nav opens (a view the app
+            mounts after a pick opens already recomputed), back on the first."""
+            seen = {f["key"]: f for f in p.evaluate(_READ)}
+            views = p.locator("#tb-app nav button")
+            for i in list(range(1, views.count())) + [0]:
+                views.nth(i).click()
+                _settle(p)
+                seen.update({f["key"]: f for f in p.evaluate(_READ)})
+            return seen
+
         page.goto(url)
         _settle(page)
-        before = {f["key"]: f for f in page.evaluate(_READ)}
+        before = every_view(page)
         assert page.locator(".tb-masthead .tb-verdict").first.text_content() == "Not checked"
         page.locator('select[data-tb-filter][data-tb-column="dim_issuer.sector"]').select_option(
             sector, force=True)
         _settle(page)
-        after = {f["key"]: f for f in page.evaluate(_READ)}
-        # A chart in a hidden tab redraws when its tab is shown.
-        page.locator(".tb-tab-bar button", has_text="Cash flows").click()
-        _settle(page)
-        after.update({f["key"]: f for f in page.evaluate(_READ)
-                      if f["binding"].startswith("flows")})
-        page.locator(".tb-tab-bar button", has_text="Overview").click()
+        after = every_view(page)
 
         kinds = set()
         for key, now in after.items():
@@ -1515,7 +1538,10 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
         assert chip.text_content() == "Local"
         assert chip.get_attribute("title") == "Recomputed on this page from the embedded data"
         assert "sel=" in page.evaluate("location.hash")
-        # The trace counts its own figure rows: one, the report.py chart, is fixed.
+        # The trace counts the figure rows on the page: on the view that
+        # holds it, one, the report.py chart, is fixed.
+        page.locator("#tb-app nav button", has_text="Concentration").click()
+        _settle(page)
         summary = page.locator(".tb-receipt-local-summary").text_content()
         assert re.fullmatch(r"\d+ recomputed on this page · 1 fixed at build · 0 unchanged",
                             summary), summary
@@ -1523,11 +1549,7 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
         again = browser.new_page(viewport={"width": 1440, "height": 900})
         again.goto(page.evaluate("location.href"))
         _settle(again)
-        reread = {f["key"]: f for f in again.evaluate(_READ)}
-        again.locator(".tb-tab-bar button", has_text="Cash flows").click()
-        _settle(again)
-        reread.update({f["key"]: f for f in again.evaluate(_READ)
-                       if f["binding"].startswith("flows")})
+        reread = every_view(again)
         for key, now in after.items():
             for part in ("value", "rows", "text", "marks", "fixed"):
                 assert reread[key][part] == now[part], (key, part)
@@ -1540,27 +1562,28 @@ def test_a_sector_recomputes_every_showcase_figure_in_the_file(built):
         typed = {"dim_flow_type.flow_type": [flow_type]}
         page.goto(url)
         _settle(page)
-        built_view = {f["key"]: f for f in page.evaluate(_READ)}
+        built_view = every_view(page)
+        # The flow type is the Cash flows view's own filter.
+        page.locator("#tb-app nav button", has_text="Cash flows").click()
+        _settle(page)
         page.locator('select[data-tb-filter][data-tb-column="dim_flow_type.flow_type"]'
                      ).select_option(flow_type, force=True)
         _settle(page)
         reached = set()
-        for key, now in {f["key"]: f for f in page.evaluate(_READ)}.items():
+        for key, now in every_view(page).items():
             plan = plans[now["binding"]]
             if "fixed" in plan:
                 continue
             if plan["fact"] == "fact_holdings":
                 assert now["value"] == built_view[key]["value"], key
                 assert now["rows"] == built_view[key]["rows"], key
-                assert page.locator(f'[data-tb-binding="{now["binding"]}"]'
-                                    '[data-tb-unfiltered-by="dim_flow_type.flow_type"]'
-                                    ).count() >= 1, key
+                assert now["unfiltered"] == "dim_flow_type.flow_type", key
             else:
                 reached.add(now["binding"])
                 cut = execute_plan(plan, flows, typed)
                 if now["kind"] == "table":
                     assert len(now["rows"]) == len(cut), key
-        assert reached == {"flows", "flows_by_month", "flows_by_fund"}
+        assert reached == {"flows", "flows_by_month", "flows_by_type", "flows_by_fund"}
         assert page.get_by_text("Not filtered by Flow type").count() >= 1
         assert errors == []
     finally:
@@ -1678,7 +1701,7 @@ _THEMED = {"portfolio_model/portfolio_desk": "nightdesk",
 
 
 def _branded(proj, built, *, build=("portfolio_desk", "portfolio_dashboard",
-                                    "portfolio_overview", "portfolio_showcase")):
+                                    "portfolio_overview", "portfolio_book")):
     """The journeys' fresh copy of the reference project (*proj*), given its
     own brand (a tracebi.yaml brand: block and a logo written here), the desk
     Nightdesk and the dashboard Signal, the warehouse *built* already sank,
@@ -1762,7 +1785,7 @@ def test_the_projects_brand_reaches_every_page_and_its_charts(built, reference):
 
         # A template page: the build writes the same mark, and the kicker.
         page = browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme="light")
-        page.goto((out / "portfolio_showcase.html").as_uri())
+        page.goto((out / "portfolio_book.html").as_uri())
         _settle(page)
         head = page.evaluate("""() => { const m = document.querySelector('.tb-masthead');
             const logo = m.querySelector('.tb-masthead-mark .tb-brand-logo');
@@ -1783,9 +1806,9 @@ def test_the_projects_brand_reaches_every_page_and_its_charts(built, reference):
     try:
         # No logo: the name alone is the mark, and the kicker is still the model's.
         yaml_path.write_text(kept.replace("  logo: brand/logo.svg\n", ""))
-        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_showcase")
+        code, out_ = run_cli("report", "build", "portfolio_model/portfolio_book")
         assert code == 0, out_
-        html = (out / "portfolio_showcase.html").read_text()
+        html = (out / "portfolio_book.html").read_text()
         assert ('<div class="tb-masthead-mark"><span class="tb-brand"><span class="tb-brand-name">'
                 "Cedar Capital</span></span></div>") in html
         assert '<p class="tb-kicker">Direct Lending Portfolio</p>' in html

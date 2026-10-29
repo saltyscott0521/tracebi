@@ -1,36 +1,46 @@
 /* ─────────────────────────────────────────────────────────────────────────
  * Portfolio Showcase: a theme preset, and nothing structural.
  *
- * This file stacks AFTER tracebi.css (the design system), so it wins. It
- * does what a theme does and no more:
- *
- *   • The accent pair for each ground. Every accent in the system follows:
- *     the first chart series, links, the active tab, the data bars.
- *   • One display face for the headline and the lead number: Fraunces
- *     (SIL Open Font License 1.1, assets/fonts/). The build inlines it as a
- *     data: URI, so the file still works offline and fetches nothing.
- *
- * The masthead, the KPI strip, the grid, the charts, the tables, the footer
- * and dark mode are the system's own. Presentation only: nothing here can
- * change a number.
+ * Beside an app.jsx, style.css stacks after the house theme (report.json
+ * "theme": "signal") and the workspace's brand, so it wins; it sets tokens
+ * and no layout. Here, one: the lead KPI's number and the masthead's title
+ * set a touch tighter than Signal's default. Presentation only: nothing here
+ * can change a number.
  * ───────────────────────────────────────────────────────────────────────── */
 
-@font-face {
-  font-family: "Fraunces";
-  font-weight: 600;
-  font-display: swap;
-  src: url(assets/fonts/fraunces-latin-600-normal.woff2) format("woff2");
-}
-
 :root {
-  --tb-accent: #0d6b73;
-  --tb-accent-text: #0b5c63;
-  --tb-surface-accent: #e8f3f3;
-  --tb-dark-accent: #5cc4bd;
-  --tb-dark-accent-text: #8fdcd6;
+  --tb-num-tracking: -0.04em;
 }
 
-.tb-masthead h1, .tb-kpi--lead .tb-kpi-value {
-  font-family: "Fraunces", var(--tb-font-serif);
-  letter-spacing: -0.01em;
+/* Printed, the KPI strip stays one row across the page: the numerals one
+ * step smaller and the cells a little tighter, so the first view starts on
+ * the first page. */
+@media print {
+  :root { --tb-kpi-size: 24px; --tb-kpi-lead-size: 30px; }
+  .tb-kpi { padding: 14px 16px; }
+}
+
+/* Printed, "Every holding" is taller than what a page has left under its
+ * heading, and a card printed whole would leave that page blank: this one
+ * card and its table break across pages instead (the shared rule keeps
+ * every other card whole), the header repeats on each page and no row
+ * splits. */
+@media print {
+  .tb-card:has(#tbl-detail), #tbl-detail { break-inside: auto; page-break-inside: auto; }
+  /* Its title, note and controls stay with the table's first rows. */
+  .tb-card:has(#tbl-detail) > :not(.tb-scroll) { break-inside: avoid; break-after: avoid; }
+  /* A page is narrower than the 720px where a table turns into a phone's
+     sideways-scrolling strip, and a box that scrolls prints clipped and
+     repeats its header as an empty band: on paper this one fits its card. */
+  .tb-card:has(#tbl-detail) { overflow: visible; }
+  .tb-scroll > #tbl-detail { width: 100%; min-width: 0; }
+  #tbl-detail :is(th, td:first-child) { white-space: normal; }
+  #tbl-detail thead { display: table-header-group; }
+  /* Chromium repeats the header's cells but not the sort buttons inside
+     them, so a repeated header is an empty band: on paper the names are the
+     cells' own text. */
+  #tbl-detail thead button { display: contents; }
+  /* The total prints once, at the end, never as a footer on every page. */
+  #tbl-detail tfoot { display: table-row-group; }
+  #tbl-detail tr { break-inside: avoid; page-break-inside: avoid; }
 }

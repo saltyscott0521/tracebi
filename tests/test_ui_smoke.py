@@ -701,24 +701,31 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 arg=_TITLE,
             )
 
-            # The d3 figure (tracebi.draw) follows the page: drawn in the
-            # theme's accent, and redrawn from the server's selection when the
-            # sector filter changes, as the declared figures are.
+            # The app's treemap (an <EChart> of a binding's columns) follows
+            # the page: drawn in the theme's accent, one cell per issuer, and
+            # redrawn from the page's own recompute when the sector filter
+            # changes, as every other figure is.
             report = page.frame_locator("iframe")
-            report.get_by_role("button", name="Detail", exact=True).click()
-            cells = report.locator("#fig-treemap g.cell rect")
-            cells.first.wait_for()
-            assert cells.count() == 13
-            accent = report.locator("html").evaluate(
-                "el => getComputedStyle(el).getPropertyValue('--tb-accent').trim()")
-            assert cells.first.get_attribute("fill") == accent
+            report.locator("#tb-app nav button", has_text="Concentration").click()
+            report.locator("#ech-issuer-treemap .tb-chart-host svg").first.wait_for()
+            drawn = """el => { const c = window.__tbECharts.getInstanceByDom(
+                el.querySelector('.tb-chart-host')); const o = c.getOption();
+                return {cells: o.series[0].data.length, first: o.color[0],
+                        accent: getComputedStyle(document.documentElement)
+                          .getPropertyValue('--tb-accent').trim()}; }"""
+            treemap = report.locator("#ech-issuer-treemap")
+            got = treemap.evaluate(drawn)
+            assert got["cells"] == 13 and got["first"].lower() == got["accent"].lower(), got
             # The report frame has no network and needs none: the page carries
             # its slice and recomputes the cut itself, so it never asks the app.
             asked = []
             page.on("request", lambda r: asked.append(r.url) if r.url.endswith("/selection") else None)
             report.locator("select[data-tb-column='dim_issuer.sector']").select_option("Software")
-            report.locator("#fig-treemap g.sector").first.wait_for()
-            expect(report.locator("#fig-treemap g.cell")).to_have_count(2)
+            for _ in range(40):
+                if treemap.evaluate(drawn)["cells"] == 2:
+                    break
+                page.wait_for_timeout(100)
+            assert treemap.evaluate(drawn)["cells"] == 2
             assert asked == []
             fail_on_browser_errors()
 

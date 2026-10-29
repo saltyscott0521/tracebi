@@ -28,8 +28,8 @@ it is the worked version of that scaffold with real cleaning to do.
                reports/portfolio_model/portfolio_book/            an editorial report, its own CSS
                reports/portfolio_model/portfolio_overview/        an app with top tabs
                reports/portfolio_model/portfolio_concentration/   an app over governed window measures
-               reports/portfolio_model/portfolio_showcase/        kitchen-sink demo, every figure kind
-               reports/housing_model/affordability/               public data, a one-number answer
+               reports/portfolio_model/portfolio_showcase/        the app lane's kitchen sink (app.jsx)
+               reports/housing_model/affordability/               the editorial long read, with a what-if
                reports/wealth_model/aum_by_branch/, aum_by_region/  a bank's book, by branch and region
                pipelines/<model>.yaml                             one per model: transform → build
 ```
@@ -200,8 +200,8 @@ Under `reports/wealth_model/`:
 
 Back under `portfolio_model/`:
 
-- `portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo: every
-  figure kind, controls, layouts, and trust affordance the artifact offers,
+- `portfolio_model/portfolio_showcase/` — the maintained kitchen-sink demo of the
+  app lane (`app.jsx`): every kit figure, control, gesture and trust affordance,
   including a `report.py` escape hatch whose output stamps `verifiable: false`
   and never reads green.
 
