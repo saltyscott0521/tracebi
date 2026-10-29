@@ -19,3 +19,28 @@
   :root { --tb-kpi-size: 24px; --tb-kpi-lead-size: 30px; }
   .tb-kpi { padding: 14px 16px; }
 }
+
+/* Printed, "Every holding" is taller than what a page has left under its
+ * heading, and a card printed whole would leave that page blank: this one
+ * card and its table break across pages instead (the shared rule keeps
+ * every other card whole), the header repeats on each page and no row
+ * splits. */
+@media print {
+  .tb-card:has(#tbl-detail), #tbl-detail { break-inside: auto; page-break-inside: auto; }
+  /* Its title, note and controls stay with the table's first rows. */
+  .tb-card:has(#tbl-detail) > :not(.tb-scroll) { break-inside: avoid; break-after: avoid; }
+  /* A page is narrower than the 720px where a table turns into a phone's
+     sideways-scrolling strip, and a box that scrolls prints clipped and
+     repeats its header as an empty band: on paper this one fits its card. */
+  .tb-card:has(#tbl-detail) { overflow: visible; }
+  .tb-scroll > #tbl-detail { width: 100%; min-width: 0; }
+  #tbl-detail :is(th, td:first-child) { white-space: normal; }
+  #tbl-detail thead { display: table-header-group; }
+  /* Chromium repeats the header's cells but not the sort buttons inside
+     them, so a repeated header is an empty band: on paper the names are the
+     cells' own text. */
+  #tbl-detail thead button { display: contents; }
+  /* The total prints once, at the end, never as a footer on every page. */
+  #tbl-detail tfoot { display: table-row-group; }
+  #tbl-detail tr { break-inside: avoid; page-break-inside: avoid; }
+}
