@@ -40,6 +40,7 @@ import threading
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from tracebi.permissions import NotPermitted as _NotPermitted
@@ -172,6 +173,9 @@ _auth_mode = _install_auth(app)
 # App sign-in (OIDC): always in the stack, inert until serve_sso() turns it on,
 # so a late start (tests, an app module) needs no middleware rebuild.
 app.add_middleware(_SessionAuthMiddleware)
+# Outermost, added last: the app's bundle and a built page (~2 MB of inlined
+# data and engine) are text that compresses several times over.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 if _auth_mode:
     print(f"[tracebi] auth mode: {_auth_mode}")
 else:
@@ -565,7 +569,7 @@ if os.path.isfile(os.path.join(_ui_dist, "index.html")):
     class _SPAFiles(StaticFiles):
         async def get_response(self, path: str, scope):
             try:
-                return await super().get_response(path, scope)
+                response = await super().get_response(path, scope)
             except _StarletteHTTPException as exc:
                 # A missing hashed asset (a deploy swapped the bundle) is a
                 # 404 no cache keeps: index.html at 200 under a .js URL got
@@ -576,6 +580,11 @@ if os.path.isfile(os.path.join(_ui_dist, "index.html")):
                 if exc.status_code == 404:
                     return await super().get_response("index.html", scope)
                 raise
+            # vite names every file under assets/ by its content hash, so a
+            # URL there never changes meaning; index.html is not cached.
+            if path.startswith("assets/") and response.status_code in (200, 304):
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return response
 
     app.mount("/", _SPAFiles(directory=_ui_dist, html=True), name="ui")
 else:

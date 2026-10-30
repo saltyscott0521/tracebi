@@ -73,6 +73,119 @@ the report draft that reads its new measure: `publish_draft` validates a
 report against the published models only.
 
 ---
+## 2026-10-30 — The print edition and the trace are a product (PRINT-TRACE)
+
+The audit's swing C, approved by the owner.
+
+**The trace says what was read, in one wording.** A certificate record names
+itself by its contract's `name` ("holdings"), which is not the file a person
+opens (`holdings_transform.sql`), and the trace said only the connection's
+name even when the committed snapshot stood in. The manifest join
+(`contracts.transform_contracts_block`) now adds per table `writer` (the
+transform file, through `sources._contract_owners`, the same map the
+Warehouse page uses) and `read`, words from `sources.run_reads`: each `--
+source:` load as `read_words` says it ("crm.issuer_ratings — snapshot
+inputs/issuer_ratings.csv" when the snapshot stood in), then the files under
+`inputs/`. For a SQL transform the files come from the certificate's column
+lineage (the parse proves them; the `-- source:` fallback file is not a
+base, so it is not listed twice); for pandas and notebooks from the
+transform's text (`transform_reads`, the Sources page's pointer), less the
+snapshots already named. The app's trace step 1, the drawer's sink-contract
+lines (one per writer and status now, not one per table) and the graph's
+transform passport (what `describe_project` returns) all print those words;
+an older manifest falls back to the record name and the connection names.
+The stated methodology's per-check notes name the transform file too. The
+Warehouse inspector keeps its own "(snapshot …)" phrasing (a ui-smoke
+expectation pins it; out of this brief's three places).
+
+**The printed trace is an appendix, not every disclosure opened.** The
+runtime opened every `<details>` in the drawer for print, so each figure's
+Raw JSON printed: affordability was 130 pages, 117 of them JSON. Now only
+About this build opens; Raw and the measure definitions do not print; each
+figure is one grid row (label and value | the query in one line | 8
+characters of fingerprint); the header reads "How these numbers were made"
+under the report's name (the drawer's own aria-label and footer link already
+said that; the screen sub-heading now matches); the build's stamps share one
+line and the selection section, a control, is left out (the page prints its
+own "Filtered to" line). The stated methodology stays: it is how the numbers
+were made, in the transform's words. The drawer's slide-in transition is off
+in print: its `visibility` delay could leave it hidden when a print starts.
+
+**Paper rules.** `@page { margin: 14mm 12mm }` for every page (Chromium's
+PDF had none; a report's own `@page`, affordability's, still wins); a
+heading never ends a page; a table figure may break between rows (the card
+stays whole when it fits; a box that scrolls cannot fragment, so a table's
+card does not clip in print) with its header repeated and its total once; a
+KPI strip keeps four to a row within the margins (cells from 150px, the lead
+at 32px). The phone's table rules are now `screen` only: an A4 page within
+its margins is under 720px and printed a sideways strip clipped. Page
+counts, before → after: portfolio_dashboard 10 → 4, portfolio_book 22 → 5,
+portfolio_showcase 41 → 10, affordability 130 → 18, mrr_dashboard 13 → 3.
+
+**portfolio_book's page 1 still ends early, deliberately.** It ends after
+"Consumer is the largest sector" because the sector chart that section
+introduces is taller than what is left and a figure prints whole; that is
+the rule working, not the JSON rules. Left.
+
+**Narrow horizontal bars.** The By fund chart sits in a third of the grid:
+about 260px in the app's report column, 215px in print. The category names
+now take at most 30% of the width and truncate (the readout carries the full
+name); a narrow chart (under 320px) whose names would be cut and whose bands
+have a line's room puts each name above its bar, so the bars take the whole
+width; each bar decides for itself whether its value label fits inside (the
+plot is judged again once a label outside takes room); the value axis asks
+for a tick per 56px, at least two. The PDF CLI line and `pdf_note` now say
+what the PDF carries instead of "carries no trace"; it is still not
+verifiable, and the HTML and manifest are what `verify` checks.
+## 2026-10-30 — Four small defects from the audit (QUICK-FIXES)
+
+**Compression and caching.** `GZipMiddleware` (minimum 1 KB) is outermost in
+the stack; `_SPAFiles` adds `Cache-Control: public, max-age=31536000,
+immutable` to a 200 or 304 under `assets/` only, because vite names every file
+there by its content hash. HTML, `/api`, `/r/` and `/built` keep no cache
+header. Measured on the reference workspace (curl, `Accept-Encoding: gzip`):
+the app JS 1,088,900 → 332,492 bytes; `/r/portfolio_model/portfolio_dashboard`
+1,970,551 → 617,950; `/api/reports` 6,170 → 1,515.
+
+**The measures list's "Shown as"** was a sample ("$1,234") right-aligned where
+a value would be; read as the measure's number. It is now the format in words,
+muted ("currency, whole"), its token in the title. A figure on that page is
+only ever a query result.
+
+**Scaffolds land where the reference says.** `new-model --from` writes the
+YAML form (`--python` keeps the old `.py`): `type: warehouse` when the
+connection is a DuckDB file that is the workspace's file-tier warehouse (what
+`tracebi init`'s `connections/warehouse.yaml` declares), else `connection:
+<name>`. `new-dashboard` binds one model and writes into its project folder,
+`reports/<model>/<name>/`; `--model` names it, a title `"<model>/<Name>"`
+names it too (the init AGENTS.md already taught that form), and with several
+models and neither it refuses naming them. A title with an explicit folder
+other than a model's is kept as given, and under `TRACEBI_LIBRARY_MOUNTS` the
+path is the author's. `new-report` is unchanged (the brief named the
+dashboard); it still writes `reports/<name>/` from the first model.
+
+**The reference's Data home shows no gaps of its own.** Per item:
+- `holdings_transform_pandas` is the pandas twin on purpose. It declares the
+  contract `holdings`, which `holdings_transform.contract.yaml` owns, the
+  existing rule `_contract_owners` already applied. `transforms_listing` now
+  names that `twin_of`; the graph reads a twin as in the flow ("the Python
+  form of holdings_transform").
+- `fact_holdings_by_sector` is wired: the portfolio model reads the sink view
+  as a fact with its own grain (`dim_book`, key `sector`) and one new measure,
+  `sector_issuers`. This reverses the 2026-10-25 VIEWS note ("No model reads it"): the
+  transform's own comment already said the model reads it, and now the
+  reference shows a model reading a sink view, with a journey step that the
+  view's fair value by sector equals the table's. Cost: two dimensions have a
+  `sector`, so Ask says "sector (issuer)".
+- The two "unread" files are a seed's raw material (`seed_billing.py` loads
+  `subscriptions.csv` into `billing.sqlite`; `fetch_housing.py` reads the NAR
+  history). `inputs_listing` adds `named_by_scripts` (a script in `inputs/`
+  that names the file, read as text like the transforms); the graph's rule
+  that a seed script is not a source now extends to its material. Not a
+  suppression flag: the files are read, by the scripts beside them.
+- The summary counted only nodes wired on both sides, so the Data home said 4
+  transforms while Lineage drew 5 (and 6 sources while Sources listed 8). It
+  now counts every node of a kind; `gaps` is beside.
 
 ## 2026-10-28 — Two showcases: the app lane and the editorial lane (SHOWCASES)
 

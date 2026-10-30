@@ -167,7 +167,10 @@ phase to the next):
    against the tables just sunk. A failed check raises at sink time; success
    records `data/warehouse.contracts.json` with connector-load-path
    fingerprints. Report manifests join against it (`transform_contracts`:
-   `satisfied` / `stale` / `no_contract` — stale never reads green) and
+   `satisfied` / `stale` / `no_contract` — stale never reads green; each
+   entry also carries `writer`, the transform file, and `read`, what that run
+   read as every trace words it: `crm.issuer_ratings — snapshot
+   inputs/issuer_ratings.csv`, then the input files; `sources.run_reads`) and
    `tracebi verify --contracts` re-runs it. Locked language: **"the sink
    satisfied its contract"** — never "the transform was verified"; contract
    status never colors figure statuses.
@@ -299,7 +302,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
   mcp_server.py        # agent gateway over MCP — 30 tools + 3 prompts (author_report, answer_question, address_pins);
                        #   the source tools read only a connection's agents: allowlist; describe_project = graph.py less the map-only node fields (lane, chip, sub, open)
-  graph.py             # the workspace as one graph ({summary, nodes, edges}): every source, transform, warehouse
+  graph.py             # the workspace as one graph ({summary, nodes, edges}; summary counts every node, gaps beside): every source, transform, warehouse
                        #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
                        #   GET /api/graph and the gateway's describe_project serve it (design/control-tower.md);
                        #   never re-runs a verdict (desk.cached_verdict); edge_facts: the parser-proven column lineage
@@ -397,7 +400,7 @@ python -m tracebi.web.run                       # serves it; auto-discovers mode
                                                 #   → the library at / (TRACEBI_REPORTS_DIR, default reports)
 
 # Run (dev)
-python -m tracebi.web.run                              # http://127.0.0.1:8000
+python -m tracebi.web.run                              # http://127.0.0.1:8000 (gzip; hashed /assets/* cached immutable)
 TRACEBI_APP=mymodule.config python -m tracebi.web.run  # Custom app module
 TRACEBI_DEV_MODE=1 python -m tracebi.web.run           # Enables POST /api/_dev/reload
 
@@ -410,7 +413,7 @@ docker compose up --build                      # Or the docker-compose path
 python examples/seeds/seed_db.py               # Create + seed data/seed.db (connector seed_db; runs go to the state store)
 
 # Model and pipeline scaffolding
-tracebi new-model "Sales Model"                # → models/sales_model.py
+tracebi new-model "Sales Model"                # → models/sales_model.yaml (--from <conn> --tables a,b: drafted; type: warehouse from the warehouse)
 tracebi new-transform "Holdings"               # → transforms/holdings.sql + .contract.yaml (--python: .py)
 tracebi run-transform holdings                 # run a .sql, .py or .ipynb transform, top-to-bottom fresh; prints its form
 tracebi list-models
@@ -843,7 +846,9 @@ registration seam (discovery uses it for packages and specs alike); what was
 removed is the fallback that rendered a factory with no package.
 
 ### New dashboard (phase ③)
-1. `tracebi new-dashboard "Name"` writes `reports/<name>/`: `report.json`
+1. `tracebi new-dashboard "Name" [--model <m>]` writes `reports/<m>/<name>/` (the model's
+   project folder; `--model`, or a `"<m>/Name"` title, is required with more than one
+   model, else it refuses naming them): `report.json`
    bindings pointed at a model (grain + measures it declares) and an `app.jsx`.
    Model this on the reference workspace's `reports/portfolio_model/portfolio_dashboard/`
    (one screen) or `portfolio_desk/` (a sidebar of views).
@@ -947,11 +952,11 @@ GET  /api/connectors
 GET  /api/connectors/{name}
 GET  /api/connectors[/{name}]                        → each carries read_by {transforms: [{name, tables}], layers: [{pipeline, layer}], models}, warehouse (bool; Sources lists the rest), label, dialect (SQL)
 GET  /api/connectors/{name}/tables                   → {connected, tables: [{name, columns, rows, rows_exact, agents}], agent_tables, hidden_framework_tables} or {connected: false, reason, variable?} (200); rows exact for DuckDB/memory, the Postgres catalog estimate, else null — never count(*) per table
-GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), table (the table API reads it)
+GET  /api/inputs                                     → the inputs/ folder: files with size, modified, read_by (transforms), named_by_scripts (a script in inputs/ that names it: a seed's raw material, never a gap), table (the table API reads it)
 GET  /api/warehouse                                  → every warehouse: tier, where, size, engine_version, tables with kind (table|view; a view with bases), rows, columns, written_by, read_by, contract, hidden_framework_tables; writers [{transform, file, note, checks, tables, read}]: what each transform's run read (each with method scanner|arrow|pandas and snapshot), said once per transform; the transform page reads it with /api/transforms and /api/transforms/{name}/source
 GET  /api/graph                                      → {summary, nodes, edges, edge_facts}: the workspace as one graph (tracebi/graph.py), the same dict as the gateway's describe_project; reports the caller cannot view left out with their edges
 GET  /api/graph/downstream?node=<id>                → {node, kind, measure, reads, summary: {figures, reports}, reports: [{id, name, label, open, built_at, trust, figures: [{id, kind, binding, label, text, open}]}], not_built}: every report figure that depends on a table:, source_table: or measure:<model>:<measure> node, the number its built page prints (the desk's values) and its report's verdict; read from the last builds' manifests (tracebi/graph.py downstream); starts nothing; 404 for any other node
-GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at
+GET  /api/transforms                                 → every file in transforms/: name, form (sql|python|notebook), file, contract_file, note, pipelines, models, tables (per the certificate), written_at, twin_of (a Python file declaring a contract another transform owns: its other form, never a gap)
 GET  /api/transforms/{name}/source                   → the transform's file and its .contract.yaml (read-only; name is a stem in transforms/)
 GET  /api/models
 GET  /api/models/{name}                              → tables, relationships, facts (each with its runnable_measures), dimensions
@@ -1077,7 +1082,7 @@ Failed report/query runs return a structured ``detail``:
 - No migration framework for warehouse tables (layers are idempotent; the state store uses Alembic — `tracebi/migrations`)
 - No pre-commit hooks
 - No PyPI release (install is `pip install -e .` or from git)
-- No `PDFRenderer` class. A package PDF is a print of the built HTML via Playwright (`tracebi report build <name> --format pdf`, `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`). `HTMLRenderer.render_pdf()` remains the WeasyPrint path for the legacy renderer; it runs no JavaScript, so a package's charts would print blank, and it is untested without weasyprint/libgobject.
+- No `PDFRenderer` class. A package PDF is a print of the built HTML via Playwright (`tracebi report build <name> --format pdf`, `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`); its last pages are the trace printed as an appendix, "How these numbers were made" (one row per figure, the sink contracts, the build, the verify command; tracebi.css's print rules, `@page` margins on every page). `HTMLRenderer.render_pdf()` remains the WeasyPrint path for the legacy renderer; it runs no JavaScript, so a package's charts would print blank, and it is untested without weasyprint/libgobject.
 
 Don't add these unless asked.
 

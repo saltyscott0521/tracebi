@@ -1462,7 +1462,7 @@ button.verdict:hover { border-color: currentColor; }
   .mlist__def { display: none; }
   .mlist__def-inline { display: block; margin-top: 4px; color: var(--text-2); }
 }
-.mlist__fmt { color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mlist__fmt { color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
 .mlist__target td { background: var(--blue-lt); }
 .mlist__target td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
 

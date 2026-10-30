@@ -2453,15 +2453,17 @@ def cmd_migrate(args: argparse.Namespace) -> int:
 _TIME_WORDS = re.compile(r"(date|day|week|month|quarter|year|period|time)", re.I)
 
 
-def _scaffold_binding(job: str = "overview") -> tuple[str, dict, str]:
+def _scaffold_binding(job: str = "overview", models: Optional[dict] = None
+                      ) -> tuple[str, dict, str]:
     """A concrete ``(model_name, query_dict, note)`` for a starter package.
 
     So ``tracebi new-report`` renders out of the box, the query is derived from
-    the first model in ``models/``: its first fact, first measure, and — when
-    the model has one — a dimension attribute to slice by. With no model yet,
-    a placeholder is emitted and the note tells the author to point it at one.
+    the first model in *models* (default: every model in ``models/``): its
+    first fact, first measure, and — when the model has one — a dimension
+    attribute to slice by. With no model yet, a placeholder is emitted and the
+    note tells the author to point it at one.
     """
-    models = _load_project_models()
+    models = _load_project_models() if models is None else models
     for name, model in sorted(models.items()):
         try:
             info = model.info()
@@ -3127,6 +3129,37 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     args.title = title or args.title
     from tracebi.report_paths import parse_library_mounts
     mounts = parse_library_mounts()
+
+    # new-dashboard writes an app (the React lane) unless --html asks for the
+    # template page; new-report always writes a template page.
+    dashboard = getattr(args, "kind", "report") == "dashboard"
+    app = dashboard and not args.html
+    job = getattr(args, "job", "overview") if app else "overview"
+    loaded = _load_project_models()
+    candidates = loaded
+    if dashboard:
+        # A dashboard reads one model and lives in its project folder
+        # (reports/<model>/<name>/), as the reference workspace's do; with
+        # several models, which one is the author's to say.
+        names = sorted({m.name for m in loaded.values()})
+        wanted = getattr(args, "model", None)
+        if not wanted and folders and _slugify(folders[0]) in loaded:
+            wanted = _slugify(folders[0])       # "<model>/<Name>" names it
+        if wanted and wanted not in loaded:
+            print(f"refusing: no model {wanted!r} in models/ "
+                  f"(models: {', '.join(names) or 'none'})", file=sys.stderr)
+            return 1
+        if not wanted and len(names) > 1:
+            print(f"refusing: this workspace has {len(names)} models "
+                  f"({', '.join(names)}); name the one this dashboard reads "
+                  f"with --model <name>", file=sys.stderr)
+            return 1
+        if wanted:
+            candidates = {wanted: loaded[wanted]}
+    model, query, note = _scaffold_binding(job, candidates)
+    in_project = dashboard and not folders and mounts is None and model in loaded
+    if in_project:
+        slug = f"{model}/{slug}"
     if mounts is not None:
         # First segment must be a mount label; the rest is under that root.
         parts = slug.split("/", 1)
@@ -3156,11 +3189,6 @@ def cmd_new_report(args: argparse.Namespace) -> int:
         return 1
     pkg_dir.mkdir(parents=True, exist_ok=True)
 
-    # new-dashboard writes an app (the React lane) unless --html asks for the
-    # template page; new-report always writes a template page.
-    app = getattr(args, "kind", "report") == "dashboard" and not args.html
-    job = getattr(args, "job", "overview") if app else "overview"
-    model, query, note = _scaffold_binding(job)
     measure = query["measures"][0]
     dims = query.get("dimensions")
     dim_ref = dims[0] if dims else None
@@ -3201,7 +3229,8 @@ def cmd_new_report(args: argparse.Namespace) -> int:
     if note:
         print(f"  {note}")
     else:
-        print(f"  Bound to model '{model}'. Build it with:")
+        where = f", in its project folder {pkg_dir.parent}/" if in_project else ""
+        print(f"  Bound to model '{model}'{where}. Build it with:")
         print(f"    tracebi report build {slug}")
     return 0
 
@@ -3563,7 +3592,9 @@ def cmd_report(args: argparse.Namespace) -> int:
             print(f"failed to print '{args.name}' to PDF: {exc}", file=sys.stderr)
             return 1
         print(f"  pdf → {pdf_path}")
-        print("  a print of the HTML; it carries no trace")
+        print("  a print of the HTML; its last pages say how each number was made (each figure's\n"
+              "  query and fingerprint, the sink contracts, the build); the HTML and manifest\n"
+              "  stay what tracebi verify checks")
 
     if args.action == "send":
         return _report_send(args, output, manifest)
@@ -4326,6 +4357,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _page_args(p_new_dashboard, dashboard=True)
     p_new_dashboard.add_argument(
+        "--model", default=None, metavar="NAME",
+        help="The model the dashboard reads; it is written to that model's "
+             "project folder, reports/<model>/<name>/. Required when the "
+             "workspace has more than one model.")
+    p_new_dashboard.add_argument(
         "--html", action="store_true",
         help="Write the dashboard as template.html (reads with JavaScript off) "
              "instead of an app.jsx React app.")
@@ -4396,8 +4432,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument(
         "--format", choices=["html", "pdf"], default="html",
         help="With `build`: html (default), or pdf to also write a sibling "
-             ".pdf — a print of the built HTML. The PDF carries no trace; "
-             "the HTML and manifest stay the checkable artifact. Needs "
+             ".pdf — a print of the built HTML whose last pages say how each "
+             "number was made (each figure's query and fingerprint, the sink "
+             "contracts, the build); the HTML and manifest stay the checkable "
+             "artifact. Needs "
              "pip install 'tracebi[pdf]' and "
              "python -m playwright install chromium.",
     )

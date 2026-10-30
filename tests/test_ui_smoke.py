@@ -288,14 +288,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert cards.locator(".rcard__k").all_inner_texts() == [
                 "Sources", "Transforms", "Warehouse", "Models", "Reports"]
             expect(page.locator('[data-card="Sources"]')).to_contain_text("1 unreachable")
-            attention = {
-                "source:crm": "Not connected here · set TRACEBI_CRM_URL",
-                "transform:holdings_transform_pandas": "No pipeline runs it",
-                "table:warehouse.fact_holdings_by_sector": "No model reads it",
-                "files:unread": "nar_existing_median_1968_2012.csv",
-            }
-            for node, why in attention.items():
-                expect(page.locator(f'[data-attention="{node}"]')).to_contain_text(why)
+            # The reference has no gaps of its own: only the CRM, which is
+            # not reachable from here, needs attention. The cards count what
+            # the lists and the map show (the pandas twin among the transforms).
+            expect(page.locator("[data-attention]")).to_have_count(1)
+            expect(page.locator('[data-attention="source:crm"]')).to_contain_text(
+                "Not connected here · set TRACEBI_CRM_URL")
+            expect(page.locator('[data-card="Transforms"]')).to_contain_text("5")
             # Setup on the unreachable source opens its sheet where you are.
             page.locator('[data-attention="source:crm"]').get_by_role("button", name="Setup").click()
             setup = page.get_by_role("dialog", name="Setup · CRM (Postgres)")
@@ -320,11 +319,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 "els => els.map(e => e.dataset.node)")) == [
                 "group:affordability_transform", "group:holdings_transform", "group:saas_transform",
                 "group:wealth_transform"]
-            gap = board.locator('[data-node="transform:holdings_transform_pandas"]')
-            expect(gap).to_have_class(re.compile(r"\bmcard--gap\b"))
-            expect(gap).to_contain_text("no pipeline runs it")
-            unread = board.locator('[data-node="files:unread"]')
-            expect(unread).to_contain_text("no transform reads it")
+            # The pandas twin is the other form of holdings_transform, not a
+            # gap; a seed script's raw material is named by the script.
+            twin = board.locator('[data-node="transform:holdings_transform_pandas"]')
+            expect(twin).to_contain_text("the Python form of holdings_transform")
+            expect(board.locator(".mcard--gap")).to_have_count(0)
+            expect(board.locator('[data-node="file:inputs/subscriptions.csv"]')).to_contain_text(
+                "named by seed_billing.py")
             # Hovering a model lights its path: its reports, not another model.
             board.locator('[data-node="model:saas_model"]').hover()
             lit = re.compile(r"\bis-lit\b")
@@ -420,7 +421,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                 expect(row).to_contain_text("Checks passed")
                 expect(row.get_by_role("link", name=name, exact=True)).to_have_attribute(
                     "href", f"/data/transforms/{name}")
-            expect(page.locator('[data-transform="holdings_transform_pandas"]')).to_contain_text("No pipeline runs it")
+            twin_row = page.locator('[data-transform="holdings_transform_pandas"]')
+            expect(twin_row).to_contain_text("Python")
+            expect(twin_row).not_to_contain_text("No pipeline runs it")
             # Models: one row each; its row menu holds Ask.
             data_tabs.get_by_role("link", name="Models").click()
             page.wait_for_url("**/data/models")
@@ -445,7 +448,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(wh.locator("tbody tr")).to_have_count(len(listing["tables"]))
             view_row = wh.locator('[data-table="fact_holdings_by_sector"]')
             expect(view_row).to_contain_text("view")
-            expect(view_row).to_contain_text("Nobody reads it")
+            expect(view_row).to_contain_text("Direct Lending Portfolio")   # the model reads the view
             page.get_by_role("group", name="Show the warehouse as").get_by_role("button", name="Schema").click()
             page.wait_for_url("**/data/warehouse?view=schema")
             tree = page.get_by_role("tree", name="Tables")
@@ -762,7 +765,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("tab", name="Trace").click()
             page.get_by_role("button", name="Check again").wait_for()
             receipt = page.frame_locator("iframe.rpanel__receipt")
-            receipt.get_by_text("How each number was made").wait_for()
+            receipt.get_by_text("How these numbers were made").wait_for()
             receipt.get_by_text("This page does not claim the numbers are right", exact=False).wait_for()
             receipt.locator("summary", has_text="About this build").click()
             receipt.get_by_text("fact_holdings: the sink satisfied its contract").wait_for()
@@ -1010,7 +1013,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("option", name=re.compile(r"Largest first")).click()
             page.get_by_role("button", name="Ask", exact=True).click()
             expect(page.locator(".ask-answer__sentence")).to_have_text(
-                "Fair value by sector, largest first — 6 rows")
+                "Fair value by sector (issuer), largest first — 6 rows")   # dim_book has a sector too
             api = json.loads(urllib.request.urlopen(urllib.request.Request(
                 f"{base}/api/models/portfolio_model/query", method="POST",
                 headers={"Content-Type": "application/json"},

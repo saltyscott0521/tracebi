@@ -331,7 +331,8 @@ a page of ordinary HTML whose figures each name a binding from `report.json`:
   `.tb-footer`; the register is the default, so its `style.css` stays empty or sets only the
   accent pairs; read `tracebi knowledge design-editorial-report`). `--layout brief` is one
   finding — `.tb-lede`, a few `.tb-kpi` cards, one chart in one `.tb-card`. A page someone
-  *works in* is a dashboard: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with a KPI
+  *works in* is a dashboard: `tracebi new-dashboard "<Name>" --model <model>` writes
+  `reports/<model>/<name>/` (`--model` is required with more than one model) with an `app.jsx` with a KPI
   strip, a chart beside its ranking and a filterable detail; `--html` writes it as
   `template.html` (`brief` plus a `.tb-span-8` chart beside a `.tb-span-4` detail); `tracebi init`'s sample is an `app.jsx`. A `.tb-grid` of `.tb-kpi` cells is one KPI strip: mark the page's
   number `.tb-kpi--lead` (larger, not wider), give a number its signal with a
@@ -687,8 +688,11 @@ body, the same text as `tracebi knowledge <slug>`).
    and `manifest_path` — pass `manifest_path` as
    `verify_manifest(manifest=...)`. A PDF
    (`tracebi report build <name> --format pdf`, or
-   `build_report(..., format="pdf")`) is a print of that built HTML and
-   carries no trace. A pdf build returns `pdf_path`; pass that as
+   `build_report(..., format="pdf")`) is a print of that built HTML: its
+   last pages, "How these numbers were made", print each figure's query
+   and a short fingerprint, the sink contracts, the build and the
+   `tracebi verify` command, but the PDF itself is not verifiable. A pdf
+   build returns `pdf_path`; pass that as
    `fetch_artifact(path=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it

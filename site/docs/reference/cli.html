@@ -248,7 +248,7 @@ tracebi new-report    &quot;Portfolio Book&quot;[--force] [--reports-dir DIR]
                       [--layout editorial|brief|tabbed|dashboard]
                       [--mode light|dark|auto] [--density comfortable|compact]
                       [--nav top|side] [--title-at left|center|banner|nav] [--theme NAME]
-tracebi new-dashboard &quot;Ops Board&quot;     [--force] [--reports-dir DIR] [--html]
+tracebi new-dashboard &quot;Ops Board&quot;     [--model NAME] [--force] [--reports-dir DIR] [--html]
                       [--job overview|trend|leaderboard|scorecard|monitor|funnel]
                       [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
 tracebi new-pipeline  &quot;Sales ETL&quot;     [--force] [--python]
@@ -277,7 +277,7 @@ refuses to overwrite without <code>--force</code>.</p>
 </tr>
 <tr>
 <td><code>new-dashboard</code></td>
-<td><code>reports/&lt;name&gt;/</code> with <code>report.json</code> and <code>app.jsx</code>, a dashboard from the kit (<a href="../reference/app-jsx.html">app.jsx</a>). <code>--html</code>: a <code>template.html</code> dashboard instead.</td>
+<td><code>reports/&lt;model&gt;/&lt;name&gt;/</code> with <code>report.json</code> and <code>app.jsx</code>, a dashboard from the kit (<a href="../reference/app-jsx.html">app.jsx</a>), in the project folder of the model it reads. <code>--model NAME</code> names it, and with more than one model it must (or put the title in the model's folder, <code>"&lt;model&gt;/&lt;Name&gt;"</code>); otherwise it refuses, naming the models. <code>--html</code>: a <code>template.html</code> dashboard instead.</td>
 </tr>
 <tr>
 <td><code>new-pipeline</code></td>
@@ -361,8 +361,11 @@ shape its navigation and title, and mode and density go in <code>report.json</co
 (<code>--nav</code> implies the tabbed layout). <code>--theme ledger|nightdesk|signal</code> writes
 the house theme into <code>report.json</code> <code>"theme"</code> (<a href="../reference/chart-style.html">House themes and chart style</a>); a deprecated
 accent preset still works and says so.</p>
-<p><strong><code>new-model --from &lt;connection&gt; --tables a,b,c</code></strong> drafts the model from the
-connection's column metadata, with no row scan. A table named <code>fact_*</code>, or one
+<p><strong><code>new-model --from &lt;connection&gt; --tables a,b,c</code></strong> drafts <code>models/&lt;name&gt;.yaml</code>
+(<code>--python</code>: a <code>.py</code>) from the connection's column metadata, with no row scan.
+The workspace's own warehouse (<code>connections/warehouse.yaml</code>, which <code>tracebi
+init</code> writes) is written <code>type: warehouse</code>, as the reference models are; any
+other connection <code>connection: &lt;name&gt;</code>. A table named <code>fact_*</code>, or one
 with numeric non-key columns and <code>*_id</code>/<code>*_key</code> columns matching another
 listed table's key, becomes a fact; the rest become dimensions. Relationships
 follow those key names, and each numeric non-key column on a fact becomes a
@@ -399,7 +402,7 @@ spec is compiled to a package first.</p>
 </tr>
 <tr>
 <td><code>--format pdf</code></td>
-<td>Also write a <code>.pdf</code>, printed from the built HTML by headless Chromium. It carries no trace. Needs <code>pip install 'tracebi[pdf]'</code> and <code>python -m playwright install chromium</code>.</td>
+<td>Also write a <code>.pdf</code>, printed from the built HTML by headless Chromium. Its last pages, "How these numbers were made", print each figure's query in one line and a short fingerprint, the sink contracts, the build time and git SHA, and the <code>tracebi verify</code> command; the PDF itself is not verifiable, the HTML and manifest are. Needs <code>pip install 'tracebi[pdf]'</code> and <code>python -m playwright install chromium</code>.</td>
 </tr>
 <tr>
 <td><code>--badges</code></td>

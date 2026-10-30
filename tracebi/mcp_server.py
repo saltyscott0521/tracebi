@@ -301,9 +301,11 @@ _XLSX_NOTE = (
     "at manifest_path."
 )
 _PDF_NOTE = (
-    "The PDF is a print of the built HTML. It carries no trace and is "
-    "not verifiable. The checkable artifact is the HTML at output_path "
-    "and its manifest at manifest_path."
+    "The PDF is a print of the built HTML. Its last pages, \"How these "
+    "numbers were made\", print each figure's query in one line and a short "
+    "fingerprint, the sink contracts, the build time and git SHA, and the "
+    "tracebi verify command; the PDF itself is not verifiable. The checkable "
+    "artifact is the HTML at output_path and its manifest at manifest_path."
 )
 
 
@@ -1386,8 +1388,8 @@ def _build_report(
     the checkable artifact.
 
     ``format="pdf"`` also writes ``<name>.pdf``: a print of the built HTML
-    (headless Chromium). The PDF carries no trace; ``pdf_note`` points
-    at the HTML and manifest.
+    (headless Chromium) whose appendix says how each number was made; it
+    is not verifiable, and ``pdf_note`` points at the HTML and manifest.
     """
     from tracebi.reports.template_package import TemplatePackage
 
@@ -2425,7 +2427,8 @@ def build_server(token: Optional[str] = None, oauth=None):
             "and manifest are the checkable artifact (see spreadsheet_note). "
             "format='pdf' also writes <name>.pdf and returns pdf_path; pass "
             "that as fetch_artifact(path=...). The PDF is a print of the "
-            "built HTML and carries no trace (see pdf_note)."
+            "built HTML; its appendix prints each figure's query and fingerprint, "
+            "but it is not verifiable (see pdf_note)."
         ),
     )(gateway_build_report)
     _tool(

@@ -20,12 +20,13 @@ import {
 
 // ── Measures ──────────────────────────────────────────────────────────────────
 
-// A format as what it does to a number (the artifact's own named formats,
-// tracebi.js applyNamedFormat), its token in the title. Anything else is shown
-// as written.
-const FORMAT_SAMPLES = {
-  currency: '$1,234.00', currency0: '$1,234', currency_compact: '$1.2K', compact: '1.2K',
-  comma: '1,234', decimal: '1,234.00', percent: '12.3%',
+// A format in words (the artifact's own named formats, tracebi.js
+// applyNamedFormat), its token in the title. Never a sample number: one beside
+// a measure reads as its value, and a figure here is only a query result.
+// Anything else is shown as written.
+const FORMAT_WORDS = {
+  currency: 'currency, 2 decimals', currency0: 'currency, whole', currency_compact: 'currency, compact',
+  compact: 'compact', comma: 'whole, grouped', decimal: '2 decimals', percent: 'percent',
 }
 
 const askMeasure = (model, name) =>
@@ -85,7 +86,7 @@ function MeasuresTable({ model, measures, target, answers = {}, onPick }) {
               </td>
               <td className="mlist__def">{measureDefinition(m)}</td>
               <td className="mlist__fmt" title={m.format || undefined}>
-                {m.format && (FORMAT_SAMPLES[m.format] || <code>{m.format}</code>)}
+                {m.format && (FORMAT_WORDS[m.format] || <code>{m.format}</code>)}
               </td>
               <td><Link to={askMeasure(model, m.name)} aria-label={`Ask about ${label}`}>Ask</Link></td>
             </tr>
@@ -365,7 +366,7 @@ function FactMeasures({ model, data, table, target }) {
                 </span>
                 <span className="dbx-measures__def">
                   {measureDefinition(m)}
-                  {m.format && <span title={m.format}> · {FORMAT_SAMPLES[m.format] || m.format}</span>}
+                  {m.format && <span title={m.format}> · shown as {FORMAT_WORDS[m.format] || m.format}</span>}
                 </span>
               </li>
             )

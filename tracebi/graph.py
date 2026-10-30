@@ -24,8 +24,10 @@ kind: "lineage", columns}`` (how many of its columns). A table written by
 pandas has none: nothing is traced through free-form code.
 
 Edges are facts, never guesses. A *gap* is a node wired on one side only: a
-file under ``inputs/`` no transform names, a transform no pipeline runs and no
-certificate names, a warehouse table no model reads, a model no report reads.
+file under ``inputs/`` no transform or script beside it names, a transform no
+pipeline runs and no certificate names (unless it is the other form of one
+that is: a Python file declaring a contract another transform owns), a
+warehouse table no model reads, a model no report reads.
 TraceBi's own tables are never nodes, and nothing in the graph is a
 credential's value: a connection set by a variable is named by the variable.
 
@@ -201,7 +203,7 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
     from tracebi.connections import agent_may_read
     from tracebi.desk import cached_verdict
     from tracebi.model_registry import model_path
-    from tracebi.sources import connection_tables, transforms_listing, warehouses
+    from tracebi.sources import connection_tables, read_words, transforms_listing, warehouses
     from tracebi.web.api.routers.connectors import list_connectors
     from tracebi.web.api.routers.reports import list_reports
     from tracebi.web.api.routers.sources import list_inputs
@@ -297,17 +299,22 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
             continue
         fid = f"file:{path}"
         readers = [f"transform:{t}" for t in f["read_by"]]
+        # A seed script's raw material (the CSV it loads into a SQLite file)
+        # is named by the script beside it: not a transform's input, not a gap.
+        scripts = [PurePosixPath(s).name for s in f.get("named_by_scripts") or []]
         rel = path.removeprefix("inputs/")
         nodes.append(_node(
             fid, "file", SOURCES, name=path, label=PurePosixPath(path).name,
             chip=_EXT.get(ext, ext.upper() or "File"),
-            sub=f"read by {_names(readers)}" if readers else "no transform reads it",
+            sub=(f"read by {_names(readers)}" if readers
+                 else f"named by {', '.join(scripts)} in inputs/, not a transform" if scripts
+                 else "no transform reads it"),
             open_=(f"/data/sources/inputs/{_segs(rel)}" if f.get("table") else "/data/sources/inputs"),
             origin=path, readers=readers, writers=[],
             moved={"at": f.get("modified"), "how": "changed"}, trust=dict(_NOT_A_SINK),
             agents={"state": "none", "text": "Files are never read by agents"},
             reach={"connected": None, "variable": None},
-            gap=None if readers else "no transform reads it"))
+            gap=None if readers or scripts else "no transform reads it"))
         edges += [[fid, r] for r in readers]
 
     # ── Lane 1: transforms ──────────────────────────────────────────────────
@@ -321,7 +328,7 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
     for t in transforms:
         name = t["name"]
         tid = f"transform:{name}"
-        in_flow = bool(t["pipelines"] or t["tables"])
+        in_flow = bool(t["pipelines"] or t["tables"] or t.get("twin_of"))
         # Where it comes from: what its last run read (the certificate), else
         # what its file names; and the input files it names.
         reads: dict[str, list[dict]] = {}
@@ -329,11 +336,13 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
             reads.setdefault(r.get("connection"), []).append(r)
         said = []
         for conn, rs in reads.items():
-            snap = " (snapshot)" if any(r.get("snapshot") for r in rs) else ""
-            said.append(f"{conn}.{rs[0]['table']}{snap}" if len(rs) == 1
+            said.append(read_words(rs[0]["ref"], rs[0].get("snapshot")) if len(rs) == 1
                         else f"{conn} · {_plural(len(rs), 'table')}")
+        # A snapshot the run read in a connection's place is named once, with it.
+        snaps = {r.get("snapshot") for rs in reads.values() for r in rs}
         said += [a.split(":", 1)[1] for a, z in edges if z == tid
-                 and (a.startswith("file:") or (not reads and a.startswith("source:")))]
+                 and (a.startswith("file:") or (not reads and a.startswith("source:")))
+                 and a.split(":", 1)[1] not in snaps]
         written = [c for w in whs for tb in w["tables"]
                    if (tb.get("written_by") or {}).get("transform") == name
                    for c in [tb.get("contract")]]
@@ -342,6 +351,8 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
             tid, "transform", TRANSFORMS, name=name, label=name,
             chip=_FORM.get(t["form"], t["form"]),
             sub=(f"writes {_plural(len(t['tables']), 'table')}" if t["tables"]
+                 else f"the {_FORM.get(t['form'], t['form'])} form of {t['twin_of']}"
+                 if t.get("twin_of") and not t["pipelines"]
                  else "no pipeline runs it" if not in_flow else "has not written here yet"),
             open_=f"/data/transforms/{_seg(name)}", origin=" · ".join(said) or t["file"],
             readers=groups_of.get(name, []), writers=[],
@@ -507,10 +518,11 @@ def _lineage_edges(nodes: list[dict], proven: list[tuple[dict, str]]) -> list[di
 
 
 def _summary(nodes: list[dict]) -> dict:
-    """The bar's counts, from the nodes: each kind counts the nodes in the
-    flow (wired on both sides), and ``gaps`` the rest."""
+    """The bar's counts, from the nodes: each kind counts every node of it,
+    as the lists and the map show them, and ``gaps`` those wired on one side
+    only."""
     def n(*kinds: str) -> int:
-        return sum(1 for x in nodes if x["kind"] in kinds and not x["gap"])
+        return sum(1 for x in nodes if x["kind"] in kinds)
 
     groups = [x for x in nodes if x["kind"] == "group"]
     return {

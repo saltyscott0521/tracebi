@@ -1243,6 +1243,9 @@ def test_the_project_graph_is_the_boards_four_facts_with_a_passport_each(referen
     # names the variable, never the value.
     monkeypatch.setenv("TRACEBI_CRM_URL", "postgresql+psycopg://crm:s3cret-pw@127.0.0.1:9/crm")
     discovery.rescan("reports", "models", "pipelines", "connections")
+    # The reference itself has no gaps; a file dropped into inputs/ that no
+    # transform or script names is one.
+    Path("inputs", "stray.csv").write_text("a\n1\n", encoding="utf-8")
     c = TestClient(app)
 
     graph = c.get("/api/graph").json()
@@ -1258,10 +1261,18 @@ def test_the_project_graph_is_the_boards_four_facts_with_a_passport_each(referen
     assert read_files <= of("file") and not read_files & gaps
     # A SQLite file a connection stands for is that connection, not a file.
     assert "file:inputs/bank.sqlite" not in nodes
-    assert of("file") - read_files and of("file") - read_files <= gaps
-    assert graph["summary"]["sources"] == 6
-    assert len(of("transform")) == 5
-    assert of("transform") & gaps == {"transform:holdings_transform_pandas"}
+    # A seed script's raw material is named by the script beside it, not a gap.
+    seeded = {"file:inputs/nar_existing_median_1968_2012.csv": "fetch_housing.py",
+              "file:inputs/subscriptions.csv": "seed_billing.py"}
+    for fid, script in seeded.items():
+        assert fid not in gaps and script in nodes[fid]["sub"]
+    assert gaps == {"file:inputs/stray.csv"}
+    # The summary counts every node, as the lists and the map show them.
+    assert graph["summary"]["sources"] == len(of("source") | of("file")) == 9
+    assert graph["summary"]["transforms"] == len(of("transform")) == 5
+    # The pandas twin declares holdings_transform's contract: its other form.
+    assert nodes["transform:holdings_transform_pandas"]["sub"] == (
+        "the Python form of holdings_transform")
     assert len(of("group")) == 4 and len(of("table")) == 24
     assert {n["parent"] for n in nodes.values() if n["kind"] == "table"} == of("group")
     assert len(of("model")) == 4 and len(of("report")) == 11

@@ -195,7 +195,7 @@ model's folder (`tracebi new-report "Portfolio Model/Book"` creates
 `reports/portfolio_model/book/`, named by that path). Two forms, one renderer:
 
 ```bash
-tracebi new-dashboard "Ops Board"     # report.json + app.jsx: a dashboard from the TraceBi kit
+tracebi new-dashboard "Ops Board"     # reports/<model>/ops_board/: report.json + app.jsx from the TraceBi kit (--model NAME)
 tracebi new-report "Portfolio Book"   # report.json + template.html: a page that reads with JavaScript off
 tracebi dev portfolio_book            # the app in dev mode, Build mode on: re-renders as you (or your agent) save
 tracebi report build portfolio_book   # → output/portfolio_book.html + .manifest.json (the trace)

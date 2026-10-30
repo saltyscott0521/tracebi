@@ -1109,6 +1109,11 @@ label > input[data-tb-search] { width: 11em; }
 :is(.tb-cols-2, .tb-cols-3, .tb-cols-2-1, .tb-cols-1-2) > .tb-card { margin-top: 0; }
 @media (max-width: 720px) {
   .tb-cols-2, .tb-cols-3, .tb-cols-2-1, .tb-cols-1-2 { grid-template-columns: 1fr; }
+}
+/* A phone's tables, on a screen only: a printed page narrower than 720px
+   (A4 within its margins) keeps tables that fit the page, since a strip
+   that scrolls sideways prints clipped. */
+@media screen and (max-width: 720px) {
   /* A table wider than the phone scrolls inside its card instead of
      widening the whole page. */
   .tb-table, [data-tb-figure="table"] { display: block; overflow-x: auto; }
@@ -2031,6 +2036,10 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 
 /* ── 14. Print — honesty survives printing ─────────────────────────────── */
 
+/* Every printed page keeps a margin, not only the first (the body's padding
+   is the screen's and drops in print). A report's own @page wins. */
+@page { margin: 14mm 12mm; }
+
 @media print {
   body { max-width: none; padding: 0; background: #fff; }
 
@@ -2038,8 +2047,27 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
     page-break-inside: avoid;
     break-inside: avoid;
   }
+  /* A heading never ends a page: it stays with what it heads. */
+  :is(h1, h2, h3, h4, h5, h6) { break-after: avoid; page-break-after: avoid; }
+  /* A table taller than what a page has left still keeps its card whole
+     where it can; where it cannot, the table breaks between rows instead of
+     leaving a page empty under its card's heading: the header repeats on
+     every page, no row splits, the total prints once at the end, and the
+     card does not clip (a box that scrolls cannot break across pages). */
+  table[data-tb-figure="table"] { break-inside: auto; page-break-inside: auto; }
+  .tb-card:has(table[data-tb-figure="table"]) { overflow: visible; }
+  .tb-card:has(table[data-tb-figure="table"]) > :not(.tb-scroll):not(table) { break-after: avoid; }
+  table[data-tb-figure="table"] thead { display: table-header-group; }
+  table[data-tb-figure="table"] tfoot { display: table-row-group; }
+  table[data-tb-figure="table"] tr { break-inside: avoid; page-break-inside: avoid; }
+  /* Chromium repeats a header's cells but not a sort button inside one: on
+     paper the column's name is the cell's own text. */
+  table[data-tb-figure="table"] thead button { display: contents; }
   /* Depth is for the screen: paper keeps the hairline. */
   .tb-card, .tb-kpi, .tb-grid:has(> .tb-kpi) { box-shadow: none !important; }
+  /* A strip of four KPIs stays one row within the page's margins. */
+  .tb-grid:has(> .tb-kpi) { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                            --tb-kpi-lead-size: 32px; }
 
   /* Badges and exploration treatments must survive on paper. */
   .tb-badge, [data-tb-stage="exploration"] {
@@ -2070,20 +2098,26 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
   .tb-tab-bar { display: none; }
   .tb-tab-bar ~ [data-tb-tab] { display: block !important; }
 
-  /* A closed disclosure would hide the fingerprint on paper (the runtime
-     also opens them for print). */
-  .tb-receipt-drawer details > * { display: block !important; }
-  .tb-receipt-drawer details::details-content { content-visibility: visible; display: block; }
+  /* A closed disclosure would hide the build's facts on paper: About this
+     build prints open (the runtime opens it too). Each figure's Raw record,
+     the query as JSON, is for the screen; the row prints the query in one
+     line and a short fingerprint. */
+  .tb-receipt-about > * { display: block !important; }
+  .tb-receipt-about::details-content { content-visibility: visible; display: block; }
+  .tb-receipt-about > summary, .tb-receipt-details, .tb-receipt-def { display: none !important; }
 
   /* The receipt IS the point of the document. Un-pin the drawer from its
-     fixed overlay into a static appendix so the fingerprints, contract status
-     and git SHA that back the numbers print with them, not screen-only. */
+     fixed overlay into a static appendix, "How these numbers were made":
+     per figure one compact row (its label and value, the query in one line,
+     a short fingerprint), the sink contracts, when and from which commit it
+     was built, and the command that checks it — on as few pages as it takes. */
   .tb-receipt-drawer {
     display: block;
     position: static;
     inset: auto;
     transform: none;
     visibility: visible;
+    transition: none;          /* the screen's slide-in would delay it on paper */
     width: auto;
     max-width: none;
     box-shadow: none;
@@ -2092,9 +2126,47 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
     padding: 0;
     page-break-before: always;
     color: inherit;
+    font-size: 9pt;
+    line-height: 1.35;
   }
   .tb-receipt-scroll { overflow: visible; padding: 0; }
-  .tb-receipt-row { break-inside: avoid; }
+  .tb-receipt { font-size: 9pt; }
+  /* The heading is what the appendix is; the report's name sits above it. */
+  .tb-receipt-header { display: flex; flex-direction: column; }
+  .tb-receipt-head { order: -1; font-size: 9pt; font-weight: 500; color: var(--tb-muted); letter-spacing: 0; }
+  .tb-receipt-sub { order: 0; margin: 0; font-family: var(--tb-font-display, inherit);
+                    font-size: 15pt; font-weight: 600; color: var(--tb-ink); }
+  .tb-receipt-header > :not(.tb-receipt-head):not(.tb-receipt-sub) { order: 1; }
+  .tb-receipt-verdict { margin-top: var(--tb-space-1); }
+  .tb-receipt-honesty { max-width: none; margin-top: var(--tb-space-1); }
+  .tb-receipt-check, .tb-receipt-figures, .tb-receipt-selection, .tb-receipt-about {
+    margin-top: var(--tb-space-2); padding-top: var(--tb-space-2);
+  }
+  .tb-receipt-cmd { padding: 2px 8px; }
+  .tb-receipt-label { margin-bottom: var(--tb-space-1); }
+  .tb-receipt-row {
+    display: grid;
+    grid-template-columns: minmax(0, 15em) minmax(0, 1fr) max-content;
+    gap: 0 var(--tb-space-3);
+    align-items: baseline;
+    margin: 0;
+    padding: 3px 0;
+    border-radius: 0;
+    break-inside: avoid;
+  }
+  .tb-receipt-title { grid-column: 1; }
+  .tb-receipt-value { font-size: inherit; }
+  .tb-receipt-facts { display: contents; }
+  .tb-receipt-facts dt { display: none; }
+  .tb-receipt-facts dd { grid-column: 2; }
+  .tb-receipt-facts dd:has(.tb-receipt-fp-short) { grid-column: 3; }
+  .tb-receipt-row > :not(.tb-receipt-title):not(.tb-receipt-facts) { grid-column: 1 / -1; }
+  .tb-receipt-about .tb-receipt-label { margin-top: var(--tb-space-2); }
+  .tb-receipt-line, .tb-receipt-about .tb-receipt-note { margin: 1px 0; }
+  /* The build's stamps on one line; the selection section is a control
+     (the page itself prints what it is filtered to). */
+  .tb-receipt-about .tb-receipt-meta { display: inline-block !important; margin-right: var(--tb-space-3); }
+  .tb-receipt-selection { display: none; }
 
   /* A scrolling region would truncate rows on paper — unclip it. */
   .tb-scroll { overflow-y: visible; max-height: none !important; }

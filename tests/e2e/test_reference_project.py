@@ -188,6 +188,18 @@ def test_a_sink_view_lands_as_a_definition_and_the_app_says_what_it_reads(built,
         page = c.get("/api/tables/warehouse/fact_holdings_by_sector/rows",
                      params={"sort": "positions", "desc": 1}).json()
         assert page["total"] == sectors
+        # The model reads the view as it reads a table, and the view's book
+        # by sector is the table's, sector for sector.
+        assert by_sector["read_by"] == ["portfolio_model"]
+        q = "/api/models/portfolio_model/query"
+        view_rows = c.post(q, json={"fact": "fact_holdings_by_sector", "measures": ["fair_value"],
+                                    "dimensions": ["dim_book.sector"]}).json()["data"]
+        table_rows = c.post(q, json={"fact": "fact_holdings", "measures": ["fair_value"],
+                                     "dimensions": ["dim_issuer.sector"]}).json()["data"]
+        assert len(view_rows) == sectors
+        assert ({r["dim_book.sector"]: r["fair_value"] for r in view_rows}
+                == pytest.approx({r["dim_issuer.sector"]: round(r["fair_value"], 2)
+                                  for r in table_rows}))
     finally:
         release_warehouses()
 

@@ -124,7 +124,7 @@ tracebi new-report    "Portfolio Book"[--force] [--reports-dir DIR]
                       [--layout editorial|brief|tabbed|dashboard]
                       [--mode light|dark|auto] [--density comfortable|compact]
                       [--nav top|side] [--title-at left|center|banner|nav] [--theme NAME]
-tracebi new-dashboard "Ops Board"     [--force] [--reports-dir DIR] [--html]
+tracebi new-dashboard "Ops Board"     [--model NAME] [--force] [--reports-dir DIR] [--html]
                       [--job overview|trend|leaderboard|scorecard|monitor|funnel]
                       [--mode …] [--density …] [--nav top|side] [--title-at …] [--theme NAME]
 tracebi new-pipeline  "Sales ETL"     [--force] [--python]
@@ -138,7 +138,7 @@ refuses to overwrite without `--force`.
 | `new-transform` | `transforms/<name>.sql` and `<name>.contract.yaml`. `--python`: a notebook-shaped pandas `.py`. |
 | `new-model` | `models/<name>.yaml`. `--python`: `models/<name>.py`. |
 | `new-report` | `reports/<name>/` with `report.json` and `template.html`: by default an editorial page ([[template-html]]). |
-| `new-dashboard` | `reports/<name>/` with `report.json` and `app.jsx`, a dashboard from the kit ([[app-jsx]]). `--html`: a `template.html` dashboard instead. |
+| `new-dashboard` | `reports/<model>/<name>/` with `report.json` and `app.jsx`, a dashboard from the kit ([[app-jsx]]), in the project folder of the model it reads. `--model NAME` names it, and with more than one model it must (or put the title in the model's folder, `"<model>/<Name>"`); otherwise it refuses, naming the models. `--html`: a `template.html` dashboard instead. |
 | `new-pipeline` | `pipelines/<name>.yaml`. `--python`: `pipelines/<name>.py`. |
 
 `new-report` and `new-dashboard` write no `script.js` or `style.css`. The
@@ -178,8 +178,11 @@ shape its navigation and title, and mode and density go in `report.json`
 the house theme into `report.json` `"theme"` ([[chart-style]]); a deprecated
 accent preset still works and says so.
 
-**`new-model --from <connection> --tables a,b,c`** drafts the model from the
-connection's column metadata, with no row scan. A table named `fact_*`, or one
+**`new-model --from <connection> --tables a,b,c`** drafts `models/<name>.yaml`
+(`--python`: a `.py`) from the connection's column metadata, with no row scan.
+The workspace's own warehouse (`connections/warehouse.yaml`, which `tracebi
+init` writes) is written `type: warehouse`, as the reference models are; any
+other connection `connection: <name>`. A table named `fact_*`, or one
 with numeric non-key columns and `*_id`/`*_key` columns matching another
 listed table's key, becomes a fact; the rest become dimensions. Relationships
 follow those key names, and each numeric non-key column on a fact becomes a
@@ -215,7 +218,7 @@ spec is compiled to a package first.
 | Flag | Effect |
 |---|---|
 | `--output` | Where to write the HTML. |
-| `--format pdf` | Also write a `.pdf`, printed from the built HTML by headless Chromium. It carries no trace. Needs `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`. |
+| `--format pdf` | Also write a `.pdf`, printed from the built HTML by headless Chromium. Its last pages, "How these numbers were made", print each figure's query in one line and a short fingerprint, the sink contracts, the build time and git SHA, and the `tracebi verify` command; the PDF itself is not verifiable, the HTML and manifest are. Needs `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`. |
 | `--badges` | Draw a provenance badge on each figure. The manifest is the same either way. |
 
 With the `pdf` extra installed, every build also writes

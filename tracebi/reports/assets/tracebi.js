@@ -963,8 +963,9 @@
       on = !!on;
       if (_printing === on) return;
       _printing = on;
-      /* The receipt prints as an appendix with every disclosure open. */
-      var boxes = document.querySelectorAll(".tb-receipt-drawer details"), k;
+      /* The receipt prints as a compact appendix: About this build opens;
+       * each figure's Raw record (the query as JSON) stays shut. */
+      var boxes = document.querySelectorAll(".tb-receipt-drawer details.tb-receipt-about"), k;
       if (on) {
         for (k = 0; k < boxes.length; k++) {
           if (!boxes[k].open) { boxes[k].open = true; opened.push(boxes[k]); }
@@ -1680,9 +1681,24 @@
       var c = [k.onAccent, k.ink].filter(function (x) { return x && contrast(x, fill) >= 4.5; });
       return c.length ? c[0] : null;
     };
+    /* A horizontal bar's names take at most 30% of the width, and never the
+     * plot's least (120px): a longer name is cut short on the axis and
+     * read whole in the readout. In a narrow chart (under 320px) whose
+     * names would be cut, and whose bands leave a line's room, each name
+     * sits above its bar instead and the bars take the whole width. */
+    var catW0 = 0;
+    cats.forEach(function (c) { catW0 = Math.max(catW0, textWidth(c, 12, k.font)); });
+    var bandH = (ctx.height - 40) / Math.max(1, cats.length);
+    var thickH = Math.min(36, bandH * (k.bar / 100) / Math.max(1, nSeries));
+    var above = horizontal && !plan.facet && !plan.spark && ctx.width < 320 &&
+      catW0 + 2 > ctx.width * 0.3 && bandH - thickH >= 32;
+    var hLabelW = above ? 0
+      : Math.round(Math.max(40, Math.min(catW0 + 2, ctx.width * 0.3, ctx.width - 60 - 120)));
     /* Whether every bar's label fits inside its free end, 12px to spare,
-     * on the axis the values will be drawn against. */
-    var inside = false;
+     * on the axis the values will be drawn against. Horizontal, each bar
+     * decides for itself (fitsIn): a long bar holds its label, a short one
+     * has it just past its end. */
+    var inside = false, fitsIn = null, outside = false;
     if (labelled) {
       var lo0 = 0, hi0 = 0, widestLabel = 0;
       panels.forEach(function (p) {
@@ -1696,22 +1712,31 @@
         });
       });
       var ext = niceExtent(lo0, hi0), span0 = (ext[1] - ext[0]) || 1;
-      var catW0 = 0;
-      cats.forEach(function (c) { catW0 = Math.max(catW0, textWidth(c, 12, k.font)); });
-      var plot = horizontal ? ctx.width - Math.min(catW0, ctx.width * 0.4) - 60 : ctx.height - 60;
+      var plot = horizontal ? ctx.width - hLabelW - 32 : ctx.height - 60;
       var across = (horizontal ? ctx.height - 40 : ctx.width - 60) / Math.max(1, cats.length) *
         (k.bar / 100) / Math.max(1, nSeries);
       across = Math.min(36, across);
       inside = across >= (horizontal ? 15 : widestLabel + 4);
-      panels.forEach(function (p) {
-        p.series.forEach(function (s) {
-          s.data.forEach(function (v) {
-            if (v === null) return;
-            var len = Math.abs(v) / span0 * plot;
-            if (len < (horizontal ? textWidth(s.fmt(v), 11, k.num) : 11) + 12) inside = false;
+      var thick = inside;
+      fitsIn = function (s, v) {
+        return thick && Math.abs(v) / span0 * plot >=
+          (horizontal ? textWidth(s.fmt(v), 11, k.num) : 11) + 12;
+      };
+      var check = function () {
+        panels.forEach(function (p) {
+          p.series.forEach(function (s) {
+            s.data.forEach(function (v) {
+              if (v === null) return;
+              if (!fitsIn(s, v)) { inside = false; outside = true; }
+            });
           });
         });
-      });
+      };
+      check();
+      /* A label past its bar's end takes room from the plot: every bar is
+       * judged again against the plot that is left. */
+      if (outside && horizontal) { plot -= widestLabel + 8; check(); }
+      if (!horizontal) fitsIn = null;
     }
 
     /* Room the labels at the free ends need. */
@@ -1740,7 +1765,10 @@
     var valueTitle = horizontal ? plan.xTitle : plan.yTitle;
     var catTitle = horizontal ? plan.yTitle : plan.xTitle;
     if (horizontal) {
-      catLabel = { width: Math.round(Math.min(widest + 2, W * 0.4)), overflow: "break" };
+      catLabel = above
+        ? { inside: true, align: "left", verticalAlign: "bottom", padding: [0, 0, Math.ceil(thickH / 2) + 4, 0],
+            width: Math.max(40, W - 32), overflow: "truncate", ellipsis: "…" }
+        : { width: hLabelW, overflow: "truncate", ellipsis: "…" };
     } else {
       var band = (W / cols - (plan.facet ? 2 * 8 + 8 : 0) - 60) / Math.max(1, cats.length);
       var run = cats.length > 1 && cats.every(function (c) { return /^[\d\s.,:\/-]+$/.test(String(c)); });
@@ -1791,7 +1819,7 @@
                       textStyle: { fontSize: 12, fontWeight: 600, color: k.ink, fontFamily: k.font } });
       } else {
         extend(g, { left: 8 + (valueTitle && !horizontal ? 18 : 0) + (catTitle && horizontal ? 18 : 0),
-                    right: (ends ? Math.ceil(endRoom) + 14 : 16) + (labelled && horizontal && !inside ? Math.ceil(endRoom) + 8 : 0) +
+                    right: (ends ? Math.ceil(endRoom) + 14 : 16) + (labelled && horizontal && outside ? Math.ceil(endRoom) + 8 : 0) +
                            (marks.length && horizontal ? 56 : 0),
                     top: (labelled && !horizontal && !inside ? 24 : 12) + (marks.length && !horizontal ? 16 : 0),
                     bottom: 8 + (catTitle && !horizontal ? 22 : 0) + (valueTitle && horizontal ? 22 : 0) });
@@ -1803,17 +1831,18 @@
                       axisLine: { show: !plan.spark }, show: !plan.spark };
       var valAxis = { id: "v" + pi, gridIndex: pi, type: "value", show: !plan.spark,
                       axisLabel: { formatter: tick, hideOverlap: true },
-                      /* Value ticks thin to what fits: about one per 80px
-                       * across the plot, one per 50px up. */
+                      /* Value ticks thin to what fits: about one per 56px
+                       * across the plot (at least two), one per
+                       * 50px up. */
                       splitNumber: horizontal
-                        ? Math.max(2, Math.min(6, Math.floor((W / cols - Math.min(widest, W * 0.4) -
-                            (labelled ? endRoom : 0) - 40) / 80)))
+                        ? Math.max(2, Math.min(6, Math.floor((W / cols - hLabelW -
+                            (outside ? endRoom + 8 : 0) - 32) / 56)))
                         : Math.max(2, Math.min(5, Math.floor((ph - 40) / 50))) };
       if (plan.spark) valAxis.splitLine = { show: false };
       if (domain) { valAxis.min = domain[0]; valAxis.max = domain[1]; }
       if (!plan.facet && catTitle) {
         extend(catAxis, { name: catTitle, nameLocation: "middle",
-                          nameGap: horizontal ? Math.round(Math.min(widest, W * 0.4)) + 14 : 30 });
+                          nameGap: horizontal ? hLabelW + 12 : 30 });
       }
       if (!plan.facet && valueTitle) {
         extend(valAxis, { name: valueTitle, nameLocation: "middle", nameGap: horizontal ? 28 : 44 });
@@ -1860,13 +1889,19 @@
           var c = cats[i];
           if (v === null) return null;
           if (isBar) {
-            var item = (xSet && !xSet[c]) || v < 0 ? dimItem(v, c) : v;
+            /* Horizontal, a bar long enough for its label holds it. */
+            var holds = labelled && on && (fitsIn ? fitsIn(s, v) : inside);
+            var item = (xSet && !xSet[c]) || v < 0 || (fitsIn && holds) ? dimItem(v, c) : v;
+            if (fitsIn && holds && v >= 0) {
+              item.label = extend({ position: "insideRight", color: on }, item.label || {});
+            }
             /* A bar below zero rounds its own far end, and its label sits past it. */
             if (v < 0) {
               item.itemStyle = extend(item.itemStyle || {},
                 { borderRadius: horizontal ? [r, 0, 0, r] : [0, 0, r, r] });
-              if (labelled) item.label = extend(item.label || {}, { position: inside && on
-                ? (horizontal ? "insideLeft" : "insideBottom") : (horizontal ? "left" : "bottom") });
+              if (labelled) item.label = extend(item.label || {}, holds
+                ? { position: horizontal ? "insideLeft" : "insideBottom", color: on }
+                : { position: horizontal ? "left" : "bottom" });
             }
             return item;
           }
@@ -5216,7 +5251,7 @@
 
     var head = receiptEl(mount, "header", "tb-receipt-header");
     receiptEl(head, "h2", "tb-receipt-head", receipt.report || "This report");
-    receiptEl(head, "p", "tb-receipt-sub", "How each number was made");
+    receiptEl(head, "p", "tb-receipt-sub", "How these numbers were made");
     var models = receipt.semantic_contract_models || [], stampLine = [];
     if (!models.length) {
       (receipt.figures || []).forEach(function (f) {
@@ -5258,22 +5293,36 @@
 
     var aboutBox = receiptEl(mount, "details", "tb-receipt-about");
     receiptEl(aboutBox, "summary", null, "About this build");
-    var contracts = receipt.transform_contracts, table, rec, status;
+    var contracts = receipt.transform_contracts, table, rec, status, said, wrote, key;
     if (contracts && typeof contracts === "object") {
       receiptEl(aboutBox, "h4", "tb-receipt-label", "Sink contracts");
+      /* Tables one run wrote with one status share a line: "dim_fund,
+       * fact_holdings: the sink satisfied its contract · <what the run
+       * read> → <the transform that wrote them>", as the build worded it. */
+      var lines = [], byKey = {};
       for (table in contracts) {
         if (!contracts.hasOwnProperty(table)) continue;
         rec = contracts[table];
         status = (rec && typeof rec === "object") ? rec.status : rec;
         if (status === "satisfied") {
-          receiptLine(aboutBox, table + ": the sink satisfied its contract");
+          said = "the sink satisfied its contract";
         } else if (status === "stale") {
-          receiptLine(aboutBox, table + ": contract stale — the warehouse "
-                      + "has moved since the certificate");
+          said = "contract stale — the warehouse has moved since the certificate";
         } else {
-          receiptLine(aboutBox, table + ": no contract");
+          said = "no contract";
         }
+        wrote = (receipt.written_by || {})[table];
+        if (wrote && wrote.writer) {
+          said += " · " + (wrote.read && wrote.read.length ? wrote.read.join(" + ") + " → " : "")
+                  + wrote.writer;
+        }
+        key = wrote && wrote.writer ? said : table + "\u0000" + said;
+        if (!byKey.hasOwnProperty(key)) { byKey[key] = { tables: [], said: said }; lines.push(byKey[key]); }
+        byKey[key].tables.push(table);
       }
+      lines.forEach(function (l) {
+        receiptLine(aboutBox, l.tables.join(", ") + ": " + l.said, "tb-receipt-line tb-receipt-sink");
+      });
     }
     var stated = receipt.stated_methodology;
     if (stated && typeof stated === "object") {
