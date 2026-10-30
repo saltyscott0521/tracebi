@@ -777,10 +777,13 @@ def transform_contracts_block(models: dict,
     """
     from tracebi.model.dataset import frame_fingerprint
 
+    from tracebi.sources import _contract_owners, run_reads
+
     loads = _loaded_tables(lineages)
     if not loads:
         return {}
     connectors = _model_connectors(models)
+    owners = _contract_owners()
 
     block: dict[str, dict] = {}
     for cname, tables in loads.items():
@@ -796,6 +799,14 @@ def transform_contracts_block(models: dict,
             block[table] = _status_entry(
                 rec, table, frame_fingerprint(conn.load(table)),
                 _object_moved(rec, table, wh))
+            # Who wrote it, by its transform file, and what that run read
+            # (each connection, the snapshot that stood in, the input
+            # files), in the words every trace uses. Context, never status.
+            said = run_reads(rec, owners)
+            if said["writer"]:
+                block[table]["writer"] = said["writer"]
+            if said["read"]:
+                block[table]["read"] = said["read"]
     return block
 
 
@@ -864,10 +875,13 @@ def stated_methodology_block(models: dict,
     [{transform, check, table, note}, ...]}`` with empty keys omitted, so
     an empty result is falsy.
     """
+    from tracebi.sources import _contract_owners
+
     transform_notes: dict[str, str] = {}
     check_notes: list[dict] = []
     seen: set[tuple] = set()
     connectors = _model_connectors(models)
+    owners = _contract_owners()
     for cname, tables in _loaded_tables(lineages).items():
         conn = connectors.get(cname)
         wh = getattr(conn, "database", None)
@@ -882,7 +896,9 @@ def stated_methodology_block(models: dict,
             for chk in rec.get("checks", []):
                 if not chk.get("note"):
                     continue
-                entry = {"transform": rec.get("transform"),
+                # Named by its transform file where one writes it, as every
+                # trace names the writer; else by the record's own name.
+                entry = {"transform": owners.get(rec.get("transform") or "") or rec.get("transform"),
                          "check": chk.get("check"),
                          "table": chk.get("table"),
                          "note": chk["note"]}

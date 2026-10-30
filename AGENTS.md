@@ -607,11 +607,16 @@ Three rules that keep pages honest:
   **Local** and a chip per selected field ("Sector: Technology ×") that
   clears it. Download buttons take `data-tb-label` for their text.
   Every artifact also carries the trace drawer, headed with the report's name
-  and "How each number was made" (opened from the masthead's Trace link or
+  and "How these numbers were made" (opened from the masthead's Trace link or
   verdict chip, a click on a value figure, a chart tooltip's "Trace →", or
   the footer's "How these numbers were made"): per figure its value,
   definition, query in one line and fingerprint, raw detail behind "Raw";
-  the manifest remains the trace of record. Methodology ships
+  the sink contracts name who wrote each table (its transform) and what
+  that run read ("crm.issuer_ratings — snapshot inputs/issuer_ratings.csv",
+  the input files). Printed (and in a PDF) it is a compact appendix: one
+  row per figure (label, query in one line, short fingerprint), the sink
+  contracts, the build time and git SHA, the `tracebi verify` command, no
+  raw JSON. The manifest remains the trace of record. Methodology ships
   via ONE `<footer class="tb-footer" data-tb-methodology>` — the build
   appends the pipeline's stated methodology after your own prose, behind
   "How these numbers were made".
@@ -872,7 +877,7 @@ Twenty-seven tools (`tracebi/mcp_server.py`):
 | `list_reports` | Per-file discovery status, without the reports in folders you cannot view (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
 | `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, the exhibit feed, and `pointing` (what the human is pointing at right now: "this") — read it to see what the human flagged in the app before your next edit. Open pins only; `resolved_count` is how many have been resolved |
 | `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`). Writes only that file — never the report or the warehouse. A write, like `build_report` |
-| `build_report` | The **publish step for the package lane**: `build_report(report=...)` builds `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns `output_path` (the HTML) and `manifest_path` — pass `manifest_path` as `verify_manifest(manifest=...)` and `output_path` as `fetch_artifact(path=...)`. Also returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and manifest. `format="xlsx"` also writes `<name>.xlsx` and returns `xlsx_path` (pass that as `fetch_artifact(path=...)`). The spreadsheet carries no trace and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf` and returns `pdf_path` (pass that as `fetch_artifact(path=...)`). The PDF is a print of that built HTML and carries no trace; `pdf_note` points at the HTML and manifest |
+| `build_report` | The **publish step for the package lane**: `build_report(report=...)` builds `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns `output_path` (the HTML) and `manifest_path` — pass `manifest_path` as `verify_manifest(manifest=...)` and `output_path` as `fetch_artifact(path=...)`. Also returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and manifest. `format="xlsx"` also writes `<name>.xlsx` and returns `xlsx_path` (pass that as `fetch_artifact(path=...)`). The spreadsheet carries no trace and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf` and returns `pdf_path` (pass that as `fetch_artifact(path=...)`). The PDF is a print of that built HTML; its last pages, "How these numbers were made", print each figure's query in one line and a short fingerprint, the sink contracts, the build time and git SHA, and the `tracebi verify` command, but the PDF itself is not verifiable; `pdf_note` points at the HTML and manifest |
 | `fetch_artifact` | Read back an artifact a render or build tool wrote. The argument is `path`: `build_report`'s `output_path` or `manifest_path`, `render_report_spec`'s `html_path` or `manifest_path`, `build_report`'s `xlsx_path`, or `build_report`'s `pdf_path`. HTML and JSON come back as text. An `.xlsx` or a `.pdf` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest. The argument is `manifest`: pass `build_report`'s `manifest_path` (or `render_report_spec`'s `manifest_path`). Classifies `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the report-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken manifest) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
 | `list_drafts` | Your drafts under `drafts/<owner>/`: kind, path, url, and whether each differs from what is published |

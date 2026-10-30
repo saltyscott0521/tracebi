@@ -265,6 +265,39 @@ def _contract_owners() -> dict[str, str]:
     return owners
 
 
+def read_words(ref: str, snapshot: Optional[str] = None) -> str:
+    """One outside input a transform's run read, as every trace says it: the
+    connection's table, and the committed file that stood in for it when one
+    did ("crm.issuer_ratings — snapshot inputs/issuer_ratings.csv"). The
+    app's trace, the built page's receipt and the gateway's graph use it."""
+    return f"{ref} — snapshot {snapshot}" if snapshot else ref
+
+
+def run_reads(rec: dict, owners: Optional[dict[str, str]] = None) -> dict:
+    """What the run a certificate record describes read and who wrote it:
+    ``{"writer": <transform file name or None>, "read": [words]}``. The
+    connections come from the record's ``sources`` (each load, with the
+    snapshot that stood in, :func:`read_words`); the files under ``inputs/``
+    from a SQL transform's column lineage (DuckDB's parse) when the record
+    has it, else from the transform's text (:func:`transform_reads`), less
+    the snapshots already named."""
+    owners = _contract_owners() if owners is None else owners
+    writer = owners.get(rec.get("transform") or "")
+    sources = rec.get("sources") or {}
+    read = [read_words(ref, src.get("fallback") if src.get("source_fallback") else None)
+            for ref, src in sources.items()]
+    lineage = rec.get("lineage")
+    if isinstance(lineage, dict):
+        files = sorted({base.rsplit(".", 1)[0]
+                        for cols in lineage.values() if isinstance(cols, dict)
+                        for col in cols.values() if isinstance(col, dict)
+                        for base in col.get("from") or [] if str(base).startswith("inputs/")})
+    else:
+        snaps = {src.get("fallback") for src in sources.values()}
+        files = [p for p in (transform_reads().get(writer) or {}).get("inputs", []) if p not in snaps]
+    return {"writer": writer, "read": read + files}
+
+
 def contract_files() -> dict[str, str]:
     """Certificate record name → the file its checks are declared in, as the
     project names it: the ``<transform>.contract.yaml`` beside the transform

@@ -919,7 +919,7 @@ process.stdout.write(JSON.stringify(out));
         assert out["btn_text"] == "Trace"
         assert out["closed_on_load"] is True
         assert out["head_text"] == "portfolio_book"
-        assert "How each number was made" in out["drawer_text"]
+        assert "How these numbers were made" in out["drawer_text"]
         # First line names the binding and the kind. The id, kind and full
         # fingerprint sit in the Raw disclosure.
         assert out["a_name"] == "Holdings" and out["a_kind"] == "table"

@@ -2,7 +2,8 @@
 
 The PDF is the self-contained HTML (``output/<name>.html``) opened in
 headless Chromium, so the page runtime draws every figure — charts included —
-before ``page.pdf()``. It carries no receipt. ``HTMLRenderer.render_pdf``
+before ``page.pdf()``. The page's trace prints as its appendix, "How these
+numbers were made" (tracebi.css's print rules). ``HTMLRenderer.render_pdf``
 (WeasyPrint) is a separate path and is not used here.
 """
 

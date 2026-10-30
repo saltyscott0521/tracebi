@@ -2174,6 +2174,8 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
     the payload is byte-stable across renders (the ``rendered_at`` stamp
     aside). ``transform_contracts`` is compacted to ``{table: status}`` —
     the drawer names the status; the full record stays in the manifest.
+    ``written_by`` is per table its writer (the transform file) and what
+    that run read (``read``), as the manifest words them.
     ``bindings`` is per binding the query as run (the manifest's
     ``query_spec``), its row count, and how many of its ``order_by`` keys
     the author wrote (the rest is the engine's tie-break), so the drawer
@@ -2209,6 +2211,14 @@ def _receipt_payload(manifest: ReportManifest, figs: list[Figure],
         payload["transform_contracts"] = {
             table: contracts[table]["status"] for table in sorted(contracts)
         }
+        # Who wrote each table (its transform) and what that run read, in
+        # the manifest's words, so the drawer names them as the app does.
+        written = {table: {k: contracts[table][k] for k in ("writer", "read")
+                           if contracts[table].get(k)}
+                   for table in sorted(contracts)}
+        written = {t: w for t, w in written.items() if w}
+        if written:
+            payload["written_by"] = written
     if manifest.semantic_contract:
         payload["semantic_contract_models"] = sorted(manifest.semantic_contract)
     payload["methodology"] = manifest.methodology is not None
