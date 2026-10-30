@@ -1723,6 +1723,13 @@ def describe(brief: bool = False, topic: Optional[str] = None) -> dict:
             ],
             "time_grains": {
                 "declare": "model.add_time_grain(dim, name, source, grain)",
+                "yaml": "time_grains: - {dimension: dim_date, name: month, source: "
+                        "order_date, grain: month} (a top-level list in "
+                        "models/<name>.yaml)",
+                "requires": "source must be a DATE or TIMESTAMP column in the "
+                            "warehouse: a text month such as '2025-07' is "
+                            "grouped by as the attribute it is. preview_draft "
+                            "refuses a grain over any other type.",
                 "grains": sorted(_TIME_GRAINS),
                 "note": "Group by a date rolled up to a grain (month/quarter/…) "
                         "— a governed date_trunc, returned as the period's "
@@ -1810,6 +1817,9 @@ def describe(brief: bool = False, topic: Optional[str] = None) -> dict:
                 {"form": "{'status': 'shipped'}", "means": "equality"},
                 {"form": "{'region': ['NE', 'SE']}", "means": "in"},
                 {"form": "{'revenue': {'gte': 1000}}", "means": "explicit operator"},
+                {"form": "{'dim_issuer.watch_reason': {'not_null': True}}",
+                 "means": "is_null / not_null take no operand: the value is ignored, "
+                          "so pass True"},
                 {"form": "{'dim_customer.region': 'West'}",
                  "means": "filter on a dimension attribute"},
                 {"form": "{'or': [{'sector': 'Tech'}, {'rating': 'AAA'}]}",
@@ -1937,6 +1947,14 @@ def describe(brief: bool = False, topic: Optional[str] = None) -> dict:
                             "where its columns come from: {column: {from, "
                             "via?} | {from: null, reason}} (the contracts "
                             "vocabulary's lineage).",
+            "contract": "With a table, a match also carries contract: {status: "
+                        "satisfied | stale | no_contract, writer (the transform, "
+                        "as read_transform takes it), transform (its contract's "
+                        "name), checks, checked_at}, the same join a report manifest records, "
+                        "judged against the table as it is now (its fingerprint "
+                        "is re-read for that; still no row is returned). "
+                        "satisfied says the sink satisfied its contract, never "
+                        "that a number was verified.",
             "cli": "tracebi warehouse tables [--connector NAME] [--table T] [--json]",
             "when": "Call describe_table before writing a model or an ad-hoc "
                     "measure, so column names come from the catalog instead "
@@ -1965,12 +1983,16 @@ def describe(brief: bool = False, topic: Optional[str] = None) -> dict:
                     "graph.",
             "when": "First, on a workspace you have not seen: it shows what "
                     "exists before any other call.",
-            "downstream": "GET /api/graph/downstream?node=<id> (HTTP only; no "
-                          "gateway tool yet): every report figure that depends "
-                          "on a table:, source_table: or measure:<model>:<measure> "
-                          "node, by report, each with the number its built page "
-                          "prints and the report's verdict, read from the last "
-                          "builds' manifests. Read-only: it never starts a run.",
+            "downstream": "downstream(node) over the gateway, GET "
+                          "/api/graph/downstream?node=<id> over HTTP: every report "
+                          "figure that depends on a table:, source_table: or "
+                          "measure:<model>:<measure> node, by report, each with the "
+                          "number its built page prints and the report's verdict, "
+                          "read from the last builds' manifests (the gateway's adds "
+                          "each report's manifest_path, and re-runs a verdict it "
+                          "does not hold). It answers 'what breaks if this goes' "
+                          "and 'which report shows this measure'. Read-only: it "
+                          "never starts a build.",
         },
         "source_onboarding": {
             "mcp": "list_connections(), list_source_tables(connection), "
@@ -2082,7 +2104,7 @@ def describe(brief: bool = False, topic: Optional[str] = None) -> dict:
             "mcp": "list_drafts(), start_draft(kind, path, from_published=<a copy when "
                    "path is published>), "
                    "read_draft(kind, path), write_draft_file(kind, path, file, content), "
-                   "preview_draft(kind, path), model_impact(path), "
+                   "preview_draft(kind, path), model_impact(path), delete_draft(kind, path), "
                    "publish_draft(kind, path, note='', accept_impact=False, folder=''), "
                    "list_publish_requests(status=''), "
                    "decide_publish_request(request_id, approve, note='')",

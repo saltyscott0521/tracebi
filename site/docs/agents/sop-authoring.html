@@ -101,7 +101,7 @@ from it.</p>
   sunk or modelled, start with step 0 below, then come back to step 1.</li>
 </ul>
 <h3 id="the-tools">The tools</h3>
-<p>The gateway has thirty tools and three prompts (<code>author_report</code>,
+<p>The gateway has thirty-two tools and three prompts (<code>author_report</code>,
 <code>answer_question</code>, <code>address_pins</code>) that run this procedure for you. The MCP
 <code>tools/list</code> call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with <code>build_report</code>. Over a
@@ -122,7 +122,7 @@ no file access at all (step 3, "With only the gateway"; and
 </tr>
 <tr>
 <td><code>list_models</code></td>
-<td>The workspace's models, with facts, dimensions and measures</td>
+<td>The workspace's models, each with its description, facts, dimensions and measures</td>
 </tr>
 <tr>
 <td><code>describe_model</code></td>
@@ -130,7 +130,7 @@ no file access at all (step 3, "With only the gateway"; and
 </tr>
 <tr>
 <td><code>describe_table</code></td>
-<td>Columns and types of a raw warehouse table, before a model exists</td>
+<td>Columns and types of a raw warehouse table, before a model exists; with a table, its sink-contract status (<code>contract</code>)</td>
 </tr>
 <tr>
 <td><code>query_model</code></td>
@@ -154,7 +154,7 @@ no file access at all (step 3, "With only the gateway"; and
 </tr>
 <tr>
 <td><code>list_reports</code></td>
-<td>Reports the workspace already has</td>
+<td>Reports the workspace already has, each built one with its last build's <code>manifest_path</code></td>
 </tr>
 <tr>
 <td><code>workbench_state</code></td>
@@ -179,6 +179,14 @@ no file access at all (step 3, "With only the gateway"; and
 <tr>
 <td><code>model_impact</code></td>
 <td>For a model draft: each published report that reads the model, unchanged, moves or breaks</td>
+</tr>
+<tr>
+<td><code>delete_draft</code></td>
+<td>Delete one of your drafts; the published copy is unchanged</td>
+</tr>
+<tr>
+<td><code>downstream</code></td>
+<td>Every built report figure that reads a table, a source table or a measure, each report with its verdict and <code>manifest_path</code>: what breaks if it goes, and which report shows a number</td>
 </tr>
 <tr>
 <td><code>publish_draft</code></td>

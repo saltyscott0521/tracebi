@@ -310,7 +310,7 @@ and [environment variables](docs/reference/environment-variables.md).
 
 An agent works against your semantic contract, not your warehouse.
 `tracebi mcp` serves the kernel over the
-[Model Context Protocol](https://modelcontextprotocol.io): 30 tools and three
+[Model Context Protocol](https://modelcontextprotocol.io): 32 tools and three
 prompts. The agent reads the vocabulary (`get_context`), queries the model
 (`query_model`: every answer is stamped with the resolved query, its lineage
 and a SHA-256 fingerprint of the full result), builds and verifies reports

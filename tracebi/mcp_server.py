@@ -139,7 +139,7 @@ def _acting():
 #: against the tools' own readOnlyHint, so a new write tool cannot be forgotten.
 _WRITE_TOOLS = frozenset({
     "render_report_spec", "resolve_pin", "build_report", "start_draft",
-    "write_draft_file", "preview_draft", "publish_draft", "decide_publish_request",
+    "write_draft_file", "preview_draft", "delete_draft", "publish_draft", "decide_publish_request",
     "propose_transform", "export_table",
 })
 
@@ -796,6 +796,27 @@ def _columns_from(connector, table: str) -> Optional[dict]:
         return None
 
 
+def _contract_status(connector, table: str) -> Optional[dict]:
+    """The table's sink-contract status as a report manifest records it
+    (``satisfied`` / ``stale`` / ``no_contract``, with the transform, its
+    checks on this table and when), judged against the table as it is now;
+    None for a warehouse that is not a file (the certificate join reads one)."""
+    from tracebi.contracts import table_statuses
+    from tracebi.sources import _contract_owners
+
+    try:
+        wh = getattr(connector, "warehouse", None)
+        target = wh.sink if wh is not None else connector.describe().get("database")
+        if not (isinstance(target, str) and os.path.isfile(target)):
+            return None
+        entry = table_statuses(target, [table])[table]
+    except Exception:  # noqa: BLE001 — a status that cannot be read is left out, never guessed
+        return None
+    if entry.get("transform"):
+        entry["writer"] = _contract_owners().get(entry["transform"])
+    return {k: entry[k] for k in _CONTRACT_KEYS if entry.get(k) is not None}
+
+
 def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTableResult:
     """Column names and types from connector metadata. Never returns rows.
 
@@ -852,6 +873,9 @@ def gateway_describe_table(table: str = "", connector: str = "") -> DescribeTabl
         lineage = _columns_from(c, table)
         if lineage:
             match["columns_from"] = lineage
+        contract = _contract_status(c, table)
+        if contract:
+            match["contract"] = contract
         matches.append(match)
     if not matches:
         out: DescribeTableResult = {
@@ -903,6 +927,9 @@ def gateway_models() -> ModelsResult:
             continue
         out[primary] = {
             "label": info.get("label"),
+            # The model's own words, so the one that answers a question can
+            # be chosen here rather than by reading every schema.
+            "description": info.get("description") or None,
             "aliases": sorted(n for n in names if n != primary),
             "tables": sorted(info.get("tables", {}))
             if isinstance(info.get("tables"), dict)
@@ -1231,17 +1258,38 @@ gateway_render_spec.__doc__ = _render_spec.__doc__
 
 
 def gateway_reports() -> ReportsResult:
-    """Reports the workspace exposes, from the discovery report."""
+    """Reports the workspace exposes, from the discovery report, each with its
+    last build (``built``) when there is one."""
     from tracebi.permissions import can
     from tracebi.report_paths import report_name_error
     from tracebi.web.discovery import discovery_report
 
-    # A folder the caller cannot see is not listed (hidden reads as absent).
-    return {"reports": [
-        e for e in discovery_report()
-        if not (isinstance(e.get("module"), str)
-                and report_name_error(e["module"]) is None
-                and not can("view", e["module"]))]}
+    _sync_registry()
+    out = []
+    for e in discovery_report():
+        name = e.get("module")
+        named = isinstance(name, str) and report_name_error(name) is None
+        # A folder the caller cannot see is not listed (hidden reads as absent).
+        if named and not can("view", name):
+            continue
+        built = _last_build(name) if named else None
+        out.append({**e, "built": built} if built else e)
+    return {"reports": out}
+
+
+def _last_build(report: str) -> Optional[dict]:
+    """Where ``build_report(report)`` last wrote, when both files are there:
+    ``{output_path, manifest_path, built_at}``, the paths build_report
+    returns (verify_manifest and fetch_artifact take them)."""
+    html = Path(os.getcwd(), "output", f"{report}.html")      # as build_report writes it
+    manifest = Path(str(html) + ".manifest.json")
+    if not (html.is_file() and manifest.is_file()):
+        return None
+    try:
+        built_at = json.loads(manifest.read_text(encoding="utf-8")).get("rendered_at")
+    except (OSError, ValueError, AttributeError):
+        built_at = None
+    return {"output_path": str(html), "manifest_path": str(manifest), "built_at": built_at}
 
 
 def gateway_verify_manifest(manifest: Any) -> VerifyResult:
@@ -1444,7 +1492,12 @@ def _build_report(
         "embedded_fingerprints": [
             e.get("embedded_sha256") for e in m.get("embedded_data", [])
         ],
-        "transform_contracts": m.get("transform_contracts") or {},
+        # The status of each table, not the whole join: the manifest keeps
+        # what each run read (fetch_artifact(manifest_path) has it).
+        "transform_contracts": {
+            table: {k: entry[k] for k in _CONTRACT_KEYS if k in entry}
+            for table, entry in (m.get("transform_contracts") or {}).items()
+            if isinstance(entry, dict)},
     }
     if format == "xlsx":
         result["xlsx_path"] = str(xlsx)
@@ -1461,6 +1514,12 @@ def _build_report(
     if note:
         result["note"] = f"report build was not recorded: {note}"
     return result
+
+
+#: What build_report and describe_table say of each table's sink contract:
+#: transform is the contract's record name, writer the transform file's
+#: (read_transform takes it).
+_CONTRACT_KEYS = ("status", "writer", "transform", "checks", "checked_at")
 
 
 def gateway_build_report(
@@ -1602,6 +1661,17 @@ def gateway_write_draft_file(kind: str, path: str, file: str,
                        file, content)
 
 
+def gateway_delete_draft(kind: str, path: str) -> DraftResult:
+    from tracebi import drafts
+
+    def delete():
+        if not drafts.delete_draft(_draft_owner(), kind, path):
+            raise drafts.DraftError(f"no draft {kind}/{path} to delete (list_drafts lists yours)")
+        return {"kind": kind, "path": path, "note": "Deleted the draft; the published copy is "
+                                                    "unchanged."}
+    return _draft_call(delete)
+
+
 def gateway_preview_draft(kind: str, path: str) -> DraftResult:
     from tracebi import drafts
 
@@ -1668,30 +1738,86 @@ class ProjectResult(TypedDict, total=False):
     edge_facts: Optional[list[dict]]
 
 
+def _sync_registry() -> None:
+    """With no web app in this process (the stdio gateway), no live discovery
+    fills the registry: bring it in line with the project on disk, as the
+    server's own scan does. Inside the app, its scan already has."""
+    import sys
+
+    if "tracebi.web.api.main" in sys.modules:
+        return
+    from tracebi.connections import connections_dir
+    from tracebi.web.discovery import rescan_library
+
+    rescan_library(str(_models_dir()), os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"),
+                   str(connections_dir()))
+
+
 def gateway_describe_project() -> ProjectResult:
     """The workspace as one graph, as the app's map draws it (``GET
     /api/graph``): every source, transform, warehouse table, model and
     report, the facts that wire them, and what an agent may read of each."""
-    import sys
-
     from tracebi.graph import project_graph
     from tracebi.registry import registry
 
-    if "tracebi.web.api.main" not in sys.modules:
-        # No web app in this process (the stdio gateway), so no live
-        # discovery fills the registry: bring it in line with the project on
-        # disk, as the server's own scan does.
-        from tracebi.connections import connections_dir
-        from tracebi.web.discovery import rescan_library
-
-        rescan_library(str(_models_dir()), os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"),
-                       str(connections_dir()))
+    _sync_registry()
     graph = project_graph(registry)
     # What only the app's map draws (its lane, chip, subtitle, page) is left
     # out; every fact the map shows is in the rest.
     graph["nodes"] = [{k: v for k, v in n.items() if k not in _MAP_ONLY}
                       for n in graph["nodes"]]
     return graph
+
+
+class DownstreamResult(TypedDict, total=False):
+    ok: Optional[bool]
+    errors: Optional[list[str]]
+    node: Optional[str]
+    kind: Optional[str]
+    measure: Any
+    reads: Optional[list[str]]
+    summary: Optional[dict]
+    reports: Optional[list[dict]]
+    not_built: Optional[list[dict]]
+
+
+def gateway_downstream(node: str) -> DownstreamResult:
+    """Every built report figure that depends on *node* (a warehouse table, a
+    source table or a model's measure), as the app's Depends on this lists
+    them (``GET /api/graph/downstream``): read from each build's manifest,
+    never guessed. Each report carries its ``manifest_path`` and its
+    verdict, re-run here unless one is kept for that build."""
+    from tracebi.desk import verdict
+    from tracebi.graph import downstream
+    from tracebi.registry import registry
+
+    _sync_registry()
+    built = {r["module"]: r["built"] for r in gateway_reports()["reports"] if r.get("built")}
+    try:
+        with _acting():
+            found = downstream(registry, node)
+            # The graph says a verdict only when one is kept. Re-run the
+            # verdict of each report found that has none, as the desk would,
+            # then read again, so trust is a verdict, not "Not checked".
+            stale = [built[r["name"]]["manifest_path"] for r in found["reports"]
+                     if r["name"] in built and r["trust"]["state"] == "none"]
+            if stale:
+                models = _load_models()
+                for manifest in stale:
+                    verdict(manifest, models)
+                found = downstream(registry, node)
+    except LookupError as exc:
+        return {"ok": False, "errors": [
+            f"{exc}. node is table:<warehouse>.<table> or source_table:<connection>.<table> "
+            f"(describe_project's node ids) or measure:<model>:<measure>"]}
+    for r in found["reports"]:
+        r["manifest_path"] = (built.get(r["name"]) or {}).get("manifest_path")
+        r.pop("open", None)
+        for f in r["figures"]:
+            f.pop("open", None)
+    for r in found["not_built"]:
+        r.pop("open", None)
+    return {"ok": True, **found}
 
 
 #: Node fields only the app's map uses; ``describe_project`` leaves them out.
@@ -1705,6 +1831,8 @@ class SourcesResult(TypedDict, total=False):
     reason: Optional[str]
     variable: Optional[str]
     note: Optional[str]
+    snapshots: Optional[dict[str, str]]
+    unread_inputs: Optional[list[str]]
     connections: Optional[list[dict]]
     skipped: Optional[list[dict]]
     connection: Optional[str]
@@ -1795,6 +1923,40 @@ def gateway_list_connections() -> SourcesResult:
     return out
 
 
+def _unreachable_note(connection: str) -> dict:
+    """What an agent can still do while *connection* cannot be reached: the
+    committed snapshots the transforms' ``-- source:`` lines name for its
+    tables (what a dry run and a run read in its place), and the files in
+    inputs/ no transform reads yet. Read from the files, never a guess."""
+    from tracebi.sources import inputs_listing
+    from tracebi.transforms import TransformError, source_directives, transforms_dir
+
+    snapshots: dict[str, str] = {}
+    tdir = transforms_dir()
+    for path in sorted(tdir.glob("*.sql")) if tdir.is_dir() else []:
+        try:
+            for d in source_directives(path.read_text(encoding="utf-8"), path.name):
+                if d["connection"] == connection and d["fallback"]:
+                    snapshots.setdefault(d["table"], d["fallback"])
+        except (OSError, UnicodeDecodeError, TransformError):
+            continue
+    # A file a seed script in inputs/ names is that script's raw material.
+    unread = [f["path"] for f in inputs_listing()["files"]
+              if not f["read_by"] and not f["named_by_scripts"]
+              and f["path"].endswith((".csv", ".parquet"))]
+    return {
+        "snapshots": snapshots, "unread_inputs": unread,
+        "note": (f"Once {connection} can be reached (a person sets its credential on the "
+                 f"Sources page, or with tracebi secret set), you read its tables. Until then "
+                 f"a transform "
+                 f"reads a table through a committed snapshot its line names: -- source: "
+                 f"{connection}.<table> fallback: inputs/<file>.csv (snapshots lists those "
+                 f"the transforms name; unread_inputs, the files no transform reads yet); a "
+                 f"dry run reads the snapshot as the run does. Its columns are not shown "
+                 f"here: ask the person, or propose and read dry_run."),
+    }
+
+
 def gateway_list_source_tables(connection: str) -> SourcesResult:
     """The tables of *connection* agents may read, with row estimates and columns."""
     from tracebi.sources import connection_tables
@@ -1809,7 +1971,8 @@ def gateway_list_source_tables(connection: str) -> SourcesResult:
     listing = connection_tables(connector)
     if not listing.get("connected"):
         return {"ok": False, "connection": connection,
-                **{k: listing[k] for k in ("reason", "variable") if listing.get(k)}}
+                **{k: listing[k] for k in ("reason", "variable") if listing.get(k)},
+                **_unreachable_note(connection)}
     return {"ok": True, "connection": connection,
             "tables": [t for t in listing.get("tables") or []
                        if _agent_may_read(connector, t["name"])]}
@@ -1835,7 +1998,8 @@ def gateway_describe_source_table(connection: str, table: str,
     except NotInCatalog:
         return missing
     except NotConnected as exc:
-        return {"ok": False, "connection": connection, **exc.answer}
+        return {"ok": False, "connection": connection, **exc.answer,
+                **_unreachable_note(connection)}
     except Unsupported as exc:
         return {"ok": False, "error": f"A {exc} source is not read here."}
     names = [c["name"] for c in page["columns"]]
@@ -1858,6 +2022,7 @@ class TransformResult(TypedDict, total=False):
     tables: Optional[list[str]]
     last_run: Optional[dict]
     lineage: Optional[dict]
+    other_forms: Optional[list[str]]
     change: Optional[str]
 
 
@@ -1878,6 +2043,7 @@ def _certificate_record(name: str) -> Optional[dict]:
 def gateway_read_transform(name: str) -> TransformResult:
     """A transform's code and what its last run recorded; never a row."""
     from tracebi import code_requests, transforms
+    from tracebi.sources import other_forms
 
     missing: TransformResult = {"ok": False, "error": f"Transform '{name}' not found in transforms/."}
     if not isinstance(name, str) or not code_requests.is_code_path(f"transforms/{name}.sql"):
@@ -1912,6 +2078,7 @@ def gateway_read_transform(name: str) -> TransformResult:
         "contract_file": f"transforms/{beside.name}" if beside else None,
         "contract_yaml": beside.read_text(encoding="utf-8") if beside else None,
         "tables": tables, "last_run": last_run, "lineage": lineage,
+        "other_forms": other_forms(name),
         "change": (f"propose_transform(name={name!r}, sql, contract_yaml, note, change=true)"
                    if form == "sql" and not blocked else
                    f"not proposable while it reads a table agents may not read "
@@ -2059,6 +2226,7 @@ def gateway_propose_transform(name: str, sql: str, contract_yaml: str,
     dry-run it once against a throwaway copy (:mod:`tracebi.dryrun`)."""
     from tracebi import code_requests, dryrun
     from tracebi.drafts import DraftError
+    from tracebi.sources import other_forms
 
     errors = _proposal_errors(name, sql, contract_yaml, change=bool(change))
     if not errors:
@@ -2087,6 +2255,12 @@ def gateway_propose_transform(name: str, sql: str, contract_yaml: str,
                 "files go into transforms/ and the transform runs once. Tell the person it "
                 "waits for that; then draft the model over the tables it sinks "
                 f"({draft}).")
+        twins = other_forms(name) if change else []
+        if twins:
+            said += (f" {', '.join(twins)} is another form of this transform (it declares "
+                     f"the same contract) and does not carry this change: tell the person, "
+                     f"who changes it with tracebi push, or it no longer writes what this "
+                     f"one does.")
     else:
         said = ("Stored, but its dry run did not pass, so it cannot be approved. Read "
                 "dry_run.error and dry_run.checks, fix the SQL or the contract, and propose "
@@ -2202,7 +2376,11 @@ def build_server(token: Optional[str] = None, oauth=None):
             "come from describe_table. Lessons are get_context's "
             "analyst_knowledge.lessons; a lesson body is the "
             "tracebi://knowledge/{slug} resource. A file that failed to load is under "
-            "list_models (skipped) or list_reports. Under "
+            "list_models (skipped) or list_reports. Is a number checked? "
+            "downstream(node='measure:<model>:<measure>') names the built "
+            "figures that show it, each report with its verdict and "
+            "manifest_path; what breaks if a table goes is "
+            "downstream(node='table:<warehouse>.<table>'). Under "
             "tracebi dev, read workbench_state first — the "
             "person's pins come before anything else — and resolve_pin each "
             "one you act on. Without file access, or for a fixed layout, a "
@@ -2286,8 +2464,9 @@ def build_server(token: Optional[str] = None, oauth=None):
         name="list_models", title="List models", annotations=_READ,
         structured_output=True,
         description=(
-            "Models this workspace exposes, with facts, dimensions and measures. "
-            "draftable says whether start_draft can copy it remotely: a "
+            "Models this workspace exposes, each with its description (what it "
+            "is about: pick the model a question needs here), facts, dimensions "
+            "and measures. draftable says whether start_draft can copy it remotely: a "
             "declarative .yaml/.yml/.json model can, a Python model cannot "
             "(draft_note gives the reason). A model that failed to load is "
             "listed under skipped with its error; fix the file and call again "
@@ -2305,7 +2484,10 @@ def build_server(token: Optional[str] = None, oauth=None):
             "place (name, type, error: exception type plus the first "
             "message line); the others still list. Use this before writing "
             "a model or an ad-hoc measure, instead of learning column "
-            "names from errors."
+            "names from errors. With a table, contract is its sink-contract "
+            "status now (satisfied, stale or no_contract, with writer, the "
+            "transform that wrote it, its checks and when): 'the sink satisfied its contract', never "
+            "'the number was verified'."
         ),
     )(gateway_describe_table)
     _tool(
@@ -2377,7 +2559,10 @@ def build_server(token: Optional[str] = None, oauth=None):
         structured_output=True,
         description=("Reports the workspace exposes, with registration status per file. A "
                      "report is named by its path; its first segment is its project (a "
-                     "top-level library folder, named for the model it reads)."),
+                     "top-level library folder, named for the model it reads). A report "
+                     "that has been built carries built: {output_path, manifest_path, "
+                     "built_at}, its last build; pass manifest_path to "
+                     "verify_manifest(manifest=...)."),
     )(gateway_reports)
     _tool(
         name="workbench_state", title="Workbench state", annotations=_READ_WAREHOUSE,
@@ -2420,7 +2605,9 @@ def build_server(token: Optional[str] = None, oauth=None):
             "fetch_artifact(path=...). Strips exploration blocks, validates "
             "every figure claim against the embedded bindings, and returns "
             "the figure records, embedded fingerprints, and the "
-            "transform_contracts join. Writes only its own artifact and "
+            "transform_contracts join (per table its status, writer, "
+            "transform, checks and checked_at; the manifest holds the rest, what each "
+            "run read). Writes only its own artifact and "
             "manifest. format='xlsx' also writes <name>.xlsx and returns "
             "xlsx_path; pass that as fetch_artifact(path=...). The "
             "spreadsheet carries no trace and is not verifiable; the HTML "
@@ -2522,6 +2709,17 @@ def build_server(token: Optional[str] = None, oauth=None):
         ),
     )(gateway_preview_draft)
     _tool(
+        name="delete_draft", title="Delete a draft (writes drafts/)",
+        annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True,
+                                    idempotentHint=False, openWorldHint=False),
+        structured_output=True,
+        description=(
+            "Delete one of your drafts (kind, path): its files under drafts/ only; the "
+            "published copy is unchanged. Use it to start over, or to drop a what-if "
+            "draft once model_impact has answered."
+        ),
+    )(gateway_delete_draft)
+    _tool(
         name="model_impact", title="Impact of a model draft on reports",
         annotations=_READ_WAREHOUSE, structured_output=True,
         description=(
@@ -2618,6 +2816,23 @@ def build_server(token: Optional[str] = None, oauth=None):
         ),
     )(gateway_describe_project)
     _tool(
+        name="downstream", title="What depends on a table or measure",
+        annotations=_READ_WAREHOUSE, structured_output=True,
+        description=(
+            "Every built report figure that depends on node: table:<warehouse>.<table> or "
+            "source_table:<connection>.<table> (describe_project's node ids), or "
+            "measure:<model>:<measure>. Read from each report's last build (its manifest: "
+            "a figure counts only when its binding's query loaded the table, or asked for "
+            "the measure or one defined from it), never guessed. reports: each with its "
+            "figures (id, kind, binding, label, text: what the built page printed), "
+            "manifest_path (pass it to verify_manifest) and trust, its verdict (Reproduces "
+            "means re-run and matched); not_built: reports that read it through their model "
+            "with no build to read. Writes nothing. For what breaks if a table or measure "
+            "goes, this is the answer from the builds; model_impact on a model draft without "
+            "it re-runs those queries to prove it."
+        ),
+    )(gateway_downstream)
+    _tool(
         name="list_connections", title="List connections", annotations=_READ,
         structured_output=True,
         description=(
@@ -2638,7 +2853,10 @@ def build_server(token: Optional[str] = None, oauth=None):
             "estimate with rows_exact=false for a database that keeps one, "
             "else null). Other tables are not listed. A connection that "
             "cannot be reached answers ok=false with reason (and variable "
-            "when an unset ${VAR} is why)."
+            "when an unset ${VAR} is why), snapshots (the committed files the "
+            "transforms' -- source: lines read in a table's place, fallback: "
+            "inputs/<file>.csv), unread_inputs (files in inputs/ no transform "
+            "reads yet) and a note on what you can do meanwhile."
         ),
     )(gateway_list_source_tables)
     _tool(
@@ -2696,8 +2914,10 @@ def build_server(token: Optional[str] = None, oauth=None):
             "read, each with method scanner|arrow|pandas and snapshot when a "
             "committed snapshot stood in) and lineage (per table and column, "
             "the columns DuckDB's parse proves it is computed from; SQL "
-            "only). change says how to change it. A name not in transforms/ "
-            "is 'not found'. It reads code, never rows."
+            "only). change says how to change it. other_forms lists any "
+            "other file of the same transform (a pandas twin declaring the "
+            "same contract): a proposed change does not reach it. A name not "
+            "in transforms/ is 'not found'. It reads code, never rows."
         ),
     )(gateway_read_transform)
     _tool(
@@ -2892,17 +3112,30 @@ def build_server(token: Optional[str] = None, oauth=None):
         description="Answer in plain words, each number beside its fingerprint and measure; never estimate.",
     )
     def _answer_question_prompt(question: str, model: str = "") -> str:
-        ctx = f"get_context (brief=true, model={model!r})" if model else \
-            "get_context (brief=true)"
+        ctx = (f"describe_model(model={model!r})" if model else
+               "list_models (each model's description and measures; pick the one the "
+               "question is about), then describe_model(model=<that model>)")
         return (
             f"Answer this question from the TraceBi model: {question}\n\n"
             f"1. Call {ctx} to learn which facts, dimensions and named "
-            "measures exist.\n"
+            "measures exist, and the words (descriptions, synonyms) they go by.\n"
             "2. Call query_model with the measures and dimensions that answer "
             "it. Prefer a declared measure over an ad-hoc one.\n"
             "3. Answer in plain words. Quote each number beside its "
             "fingerprint and the measure it came from, for example "
-            "\"revenue (measure: revenue) was 1,250 — fingerprint 3f9a…\".\n\n"
+            "\"revenue (measure: revenue) was 1,250 — fingerprint 3f9a…\".\n"
+            "4. If you are asked whether a number is checked, answer with two "
+            "claims and never blend them. Re-run and matched: downstream(node="
+            "'measure:<model>:<measure>') lists the built report figures that "
+            "show the measure, each report with its trust (its verify verdict) "
+            "and manifest_path; verify_manifest(manifest=<that manifest_path>) "
+            "re-runs it, and a section whose expected_fingerprint is your "
+            "fingerprint is your number. Only 'reproduces' means re-run and "
+            "matched; a number no built report shows has not been checked, so "
+            "say so. The sink: describe_table(table=<each table the query "
+            "read>) gives contract.status — satisfied means the sink satisfied "
+            "its contract (its checks passed on the data as it is now), never "
+            "that the number or the transform was verified.\n\n"
             "Rules:\n"
             "- Never estimate. Every number you state comes from a "
             "query_model result in this conversation.\n"
@@ -2923,15 +3156,26 @@ def build_server(token: Optional[str] = None, oauth=None):
             "person's requests, oldest first; they come before any other "
             "change.\n"
             "2. Act on each open pin in order by editing the package "
-            f"reports/{report}/:\n"
+            f"reports/{report}/ — with the workspace's files, in place; with "
+            f"only the gateway, as a draft: start_draft(kind='reports', "
+            f"path={report!r}) (it starts from the published copy), "
+            "write_draft_file, preview_draft until ok:true, then "
+            "publish_draft(kind='reports', path, note) once the person agrees:\n"
             "   - kind \"promote\" (Keep this): the request field names the "
             "exhibit and the code behind it. Re-express it as a report.json "
             "binding plus a figure in template.html when the model can, "
-            "else compute it in report.py (marked python-derived).\n"
+            "else compute it in report.py (marked python-derived; a laptop "
+            "only, a draft cannot hold one).\n"
             "   - kind \"message\": the person's note — treat it as an "
             "instruction.\n"
-            "   - a pin on a figure: its note says what to change about that "
-            "figure.\n"
+            "   - a pin on a figure: its id is the figure's (workbench_state's "
+            "figures give its binding and cell); its note says what to change "
+            "about that figure. A note that doubts a number (\"looks off\") "
+            "asks you to check it before changing anything: re-run its "
+            "binding's query with query_model, and a breakdown that should "
+            "add up to it, and answer with fingerprints. Change the figure "
+            "only where it misleads (a label, a context line); never to make "
+            "a number look right.\n"
             f"3. build_report(report={report!r}). If it refuses, fix the "
             "package and build again.\n"
             "4. verify_manifest(manifest=<the manifest_path build_report "
@@ -2939,7 +3183,8 @@ def build_server(token: Optional[str] = None, oauth=None):
             "re-run and matched. If it does not reproduce, fix the package "
             "and build again before resolving pins.\n"
             "5. resolve_pin each pin you acted on, with a one-line note of "
-            "what you did. If you could not act on one, leave it open and "
+            "what you did (for a doubted number: what you found, with its "
+            "fingerprint). If you could not act on one, leave it open and "
             "say why."
         )
 

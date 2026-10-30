@@ -130,8 +130,11 @@ and column the columns DuckDB's parse proves it is computed from. It reads
 code, never rows. Its <code>change</code> is the call that proposes a change, or, when
 a <code>-- source:</code> line names a table you may not read, says so and names each
 such line: a change would have to read it too, so ask the person to tick it
-first. A transform node's <code>passport.agents.tools</code> in the graph names the
-tools that take its name, and <code>passport.agents.blocked</code> the same lines.</p>
+first. <code>other_forms</code> lists any other file of the same transform (a pandas
+twin that declares the same contract): a change you propose does not reach
+it, and the proposal's <code>note</code> says so; tell the person. A transform node's
+<code>passport.agents.tools</code> in the graph names the tools that take its name, and
+<code>passport.agents.blocked</code> the same lines.</p>
 <p>Then the connections themselves:</p>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;list_connections&quot;, &quot;arguments&quot;: {} }
 </code></pre>
@@ -146,7 +149,14 @@ the Sources page.</p>
 DuckDB, the database's own estimate (<code>rows_exact: false</code>) where it keeps one,
 else <code>null</code>. A connection that cannot be reached answers <code>ok: false</code> with a
 <code>reason</code>, and <code>variable</code> when an unset <code>${VAR}</code> is why: tell the person which
-one to set.</p>
+one to set. It also gives <code>snapshots</code>, the committed files the transforms'
+<code>-- source:</code> lines read in a table's place
+(<code>-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv</code>), and
+<code>unread_inputs</code>, the files in <code>inputs/</code> no transform reads yet: a new table's
+snapshot a person committed is there. A dry run reads a <code>fallback:</code> file as
+the run does, so you can propose against it and read the result in
+<code>dry_run</code>; you cannot see its columns before that, so ask the person when
+it matters.</p>
 <p>Then look at each table you will use:</p>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;describe_source_table&quot;,
   &quot;arguments&quot;: { &quot;connection&quot;: &quot;shop&quot;, &quot;table&quot;: &quot;orders&quot;, &quot;sample&quot;: 20 } }

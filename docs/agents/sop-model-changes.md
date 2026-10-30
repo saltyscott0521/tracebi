@@ -76,6 +76,10 @@ Defined once in the model, every report, query and agent gets the same
   publish.
   Publishing re-runs every published report that reads the model against the
   draft (the impact check) and asks for `accept_impact` when numbers move.
+  `preview_draft` also refuses a `time_grains` entry whose `source` the
+  warehouse holds as anything but a DATE or TIMESTAMP (a text month such as
+  `2025-07` is grouped by as the attribute it is), since every query grouping
+  by it would fail.
 - A gateway process started per call (stdio) sees a committed change on its
   next start. A long-running gateway caches imported model modules and must be
   restarted. Either way agents see the change on their next call.
@@ -150,7 +154,14 @@ with no formatting in the spec.
 4. For a demo-model change, re-render the affected specs and compare
    fingerprints. Sections your change touches should change; every other
    section's fingerprint must stay identical.
-5. **Renaming or removing a measure breaks the contract.** Search `reports/`
+5. **Renaming or removing a measure breaks the contract.** Over MCP,
+   `downstream(node='measure:<model>:<measure>')` (or
+   `node='table:<warehouse>.<table>'` for a table the model would stop
+   reading) names every built report figure that reads it, from the builds'
+   manifests, each report with its verdict. To prove it, write the removal
+   into a model draft and run `model_impact(path)`: the reports it lists as
+   `breaks` are the ones that would. `delete_draft(kind="models", path=<name>)`
+   drops a what-if draft once it has answered. On a laptop, search `reports/`
    and `examples/` for it, and `tracebi report build` each package that binds
    it (a binding to a missing measure fails the build). A published model's
    impact check lists the reports that break.
