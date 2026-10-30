@@ -153,6 +153,27 @@ def _checks_trust(contracts: list[dict], checks: Optional[int] = None) -> dict:
     return {"state": state, "text": text}
 
 
+def _transform_agents(t: dict) -> dict:
+    """What an agent may do with transform *t*: read any; propose a change
+    to a SQL one, unless a ``-- source:`` line names a table agents may not
+    read, which the text names line by line."""
+    from tracebi.transforms import sources_agents_may_not_read, transforms_dir
+
+    if t["form"] != "sql":
+        return {"state": "none", "text": "May read it", "tools": ["read_transform"]}
+    try:
+        text = (transforms_dir() / f"{t['name']}.sql").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        text = ""
+    blocked = sources_agents_may_not_read(text)
+    if blocked:
+        return {"state": "none", "tools": ["read_transform"], "blocked": blocked,
+                "text": "May read it; a change is blocked by "
+                        + ", ".join(b.replace(": -- source: ", " (") + ")" for b in blocked)}
+    return {"state": "none", "text": "May propose a change", "tools": [
+        "read_transform", "propose_transform(change=true)"]}
+
+
 def _loaded_models() -> dict:
     """The project's models keyed as ``GET /api/desk`` keys them (file stem
     and declared name), so a verdict the desk cached is found here."""
@@ -338,11 +359,9 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
             moved={"at": t["written_at"], "how": "written" if t["written_at"] else "never"},
             trust=_checks_trust(written, checks) if written else {"state": "none", "text": "No checks"},
             # The gateway tools that take this node's name: an agent reads any
-            # transform and proposes a change only to a SQL one.
-            agents={"state": "none", "text": "May propose a change", "tools": [
-                "read_transform", "propose_transform(change=true)"]}
-            if t["form"] == "sql" else
-            {"state": "none", "text": "May read it", "tools": ["read_transform"]},
+            # transform and proposes a change only to a SQL one that reads no
+            # table agents may not read.
+            agents=_transform_agents(t),
             gap=None if in_flow else "no pipeline runs it"))
 
     # ── Lane 2: the warehouse, a group per writer ───────────────────────────

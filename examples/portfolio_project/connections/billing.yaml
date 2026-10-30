@@ -12,3 +12,7 @@ name: billing
 label: Billing (SQLite file)
 type: sql
 url: ${TRACEBI_BILLING_URL:-sqlite:///inputs/billing.sqlite}
+# Agents may read the two tables saas_transform.sql reads, so an agent can
+# propose a change to it (propose_transform).
+agents:
+  tables: [subscriptions, plans]

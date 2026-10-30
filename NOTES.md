@@ -4,6 +4,75 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-30 — The agent path works end to end on the shipped workspace, on a lean payload (AGENT-LOOP)
+
+The third audit walked an agent over the reference workspace and found the
+loop broken at its first change: no connection let agents read a table, so
+`propose_transform` could not change `holdings_transform`, yet `read_transform`
+and the passport offered one. The owner approved swing B, including letting
+agents read the reference demo tables.
+
+**The allowlist.** Each reference connection lists exactly the tables its
+transform reads (`crm: [issuer_ratings]`, `billing: [subscriptions, plans]`,
+`bank`: its six). Not `"*"`: a later table in those databases stays closed
+until a person ticks it. With `TRACEBI_CRM_URL` unset a dry run reads the
+committed snapshot, as the run does. One consequence: a sink view over an
+allowlisted source table is admitted (the rule since live sources), so the
+pipeline journey's "a view over a source table is refused" case now takes the
+CRM off the allowlist in its copy first. Where a `-- source:` line names a table
+agents may not read, `transforms.sources_agents_may_not_read` names each line
+(`line 22: -- source: crm.issuer_ratings`; `source_directives` now carries
+`line`), and both `read_transform`'s `change` and the passport say so instead
+of offering a change: a change would have to read it too.
+
+**Errors in order.** The SQL is checked first; text that does not parse
+returns that one error, because what it "no longer writes" was read from text
+the parser could not split.
+
+**Drafts from published.** The gateway's `start_draft` takes `from_published`
+None by default, meaning a copy when the path is published (and no `theme` is
+given); the web route keeps its own explicit default. Done in
+`drafts.start_draft` so the rule lives with the drafts, not the tool. The
+hints that name `start_draft` pass `from_published=true` and the model's name.
+
+**The brief tier.** `presentation` (43 KB of 109 KB) went behind a topic. Why
+a `topic=` argument on `get_context` rather than a `get_context_topic` tool:
+it is the same vocabulary from the same function, any top-level section is a
+topic with no list to keep in step, the CLI gets the same flag (`tracebi
+context --topic`), and the gateway keeps 30 tools. `schedule`, `connect`,
+`templates`, `spreadsheet` and `pdf` followed it out of brief: none is needed
+to discover, query or draft, and without them the brief tier is 42.8% of the
+full one (presentation alone left it at ~50%). `analyst_knowledge` stays in
+both tiers, as designed. The journey pins the 45% bound.
+
+Measured on a fresh copy of the reference workspace (bytes of JSON):
+
+| Payload | Before | After |
+|---|---|---|
+| `get_context(brief=true)` | 97,624 (89.4% of full) | 46,727 (42.8%) |
+| `get_context(model=portfolio_model, brief=true)` | 104,268 | 53,371 |
+| `get_context()` full | 109,160 | 109,160 |
+| `get_context(topic='presentation')` | — | 43,129 |
+| `describe_project` | 32,057 | 26,616 |
+| `read_transform('holdings_transform')` | 17,359 | 17,359 |
+| `propose_transform` adding a column (its `dry_run`) | 19,073 (18,544) | 14,254 (13,680) |
+
+**Dry-run states.** A created table is `new` (no warehouse table of its
+name), `changed` (other columns, or other rows by `EXCEPT ALL` both ways) or
+`unchanged`; only new and changed carry `sample`. A comparison that errors
+reads `changed`: never called the same without being checked. It runs inside
+the dry run's statement timeout.
+
+**The journey** (`tests/e2e/test_agent_reference_journey.py`) walks the
+`author_report` prompt's steps against a copy of the reference workspace,
+from a change to `holdings_transform` that adds `gain` through approval (the
+`portfolio_model` pipeline runs once), a model draft from the published copy
+adding `total_gain`, `model_impact`, publish, a report draft, preview,
+publish, build and a `reproduces` verdict. The model must be published before
+the report draft that reads its new measure: `publish_draft` validates a
+report against the published models only.
+
+---
 ## 2026-10-30 — The print edition and the trace are a product (PRINT-TRACE)
 
 The audit's swing C, approved by the owner.

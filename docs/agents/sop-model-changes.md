@@ -71,7 +71,9 @@ Defined once in the model, every report, query and agent gets the same
   file wins. A file that fails to load is a failed entry in `/api/discovery`,
   not a startup error: run `tracebi validate` if something disappears.
 - Through the server, a model change is a draft: edit it as a draft in the
-  app, or with `start_draft` and `write_draft_file` over MCP, then publish.
+  app, or with `start_draft(kind="models", path=<name>)` (it starts from the
+  published copy) and `write_draft_file` over MCP, then `model_impact` and
+  publish.
   Publishing re-runs every published report that reads the model against the
   draft (the impact check) and asks for `accept_impact` when numbers move.
 - A gateway process started per call (stdio) sees a committed change on its

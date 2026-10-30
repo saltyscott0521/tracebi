@@ -61,8 +61,11 @@ It returns the file's `text` and its `contract_yaml`, its `form` (`sql`,
 satisfied its contract, and the `sources` that run read, each with `method`
 and `snapshot` when a committed snapshot stood in) and `lineage`, per table
 and column the columns DuckDB's parse proves it is computed from. It reads
-code, never rows. A transform node's `passport.agents.tools` in the graph
-names the tools that take its name.
+code, never rows. Its `change` is the call that proposes a change, or, when
+a `-- source:` line names a table you may not read, says so and names each
+such line: a change would have to read it too, so ask the person to tick it
+first. A transform node's `passport.agents.tools` in the graph names the
+tools that take its name, and `passport.agents.blocked` the same lines.
 
 Then the connections themselves:
 
@@ -141,7 +144,9 @@ Then propose both, with a note that tells the reviewer why:
 
 The proposal is checked before it is stored: the name is new, the SQL parses
 in DuckDB, every `-- source:` is a table you may read, and the contract is
-valid. A refusal lists every reason; fix them and propose again. On success
+valid. SQL that does not parse is refused with that one error, since nothing
+else read from it would be true; any other refusal lists every reason. Fix
+them and propose again. On success
 you get a `request_id`, a `review_url` and a `dry_run`.
 
 **To change a transform that exists**, read it (`read_transform`), edit its
@@ -162,8 +167,10 @@ so it reads only what you may read and writes nothing real. A `-- sink:`
 line is not sent and a `COPY` is not run; `not_executed` names each. The run
 is bounded by the workspace's statement timeout.
 
-`dry_run` holds, per table the SQL created, its `columns`, `rows` and the
-first 20 rows (`sample`); per check, `passed` and `failing_rows`; the
+`dry_run` holds, per table the SQL created, its `columns`, `rows`, its
+`state` against the warehouse's table of that name (`new`, `changed`, or
+`unchanged`: the same columns and rows) and, for a new or changed one only,
+the first 20 rows (`sample`); per check, `passed` and `failing_rows`; the
 `lineage` DuckDB's parse proves; `elapsed_ms`; and any `error`, with the
 `statement` and `line` it failed on. `summary` says it in one line ("Dry run:
 2 tables, checks 3 of 3 passed").
@@ -191,7 +198,10 @@ request says so and the admin tells you; propose a corrected transform.
 Once the tables exist, `describe_table` gives their columns. Draft a
 declarative model over them:
 
-1. `start_draft(kind="models", path="shop_model")`.
+1. `start_draft(kind="models", path="shop_model")`. For a model that is
+   already published (a change that added a column a measure now reads), the
+   draft starts from the published copy: add to it, then run
+   `model_impact(path)` before you publish and show the person what moves.
 2. `write_draft_file(kind="models", path="shop_model", file="shop_model.yaml",
    content=…)`: a `type: warehouse` connector, the tables, the relationships,
    the facts, the dimensions and the named measures ([[model-json]]).

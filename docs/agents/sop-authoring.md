@@ -31,12 +31,13 @@ The gateway has thirty tools and three prompts (`author_report`,
 `answer_question`, `address_pins`) that run this procedure for you. The MCP
 `tools/list` call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with `build_report`. Over a
-hosted connection, the draft tools are how a package reaches the server
-([[push-from-a-laptop]], [[connect-chatgpt-and-claude]]).
+hosted connection, the draft tools are how a package reaches the server, with
+no file access at all (step 3, "With only the gateway"; and
+[[push-from-a-laptop]], [[connect-chatgpt-and-claude]]).
 
 | Tool | Purpose |
 |---|---|
-| `get_context` | The full vocabulary, optionally with one model's schema. Pass `brief` for the smaller version. |
+| `get_context` | The full vocabulary, optionally with one model's schema. Pass `brief` for the smaller version; it names what it left out, and `topic=<name>` returns one of those sections (`topic="presentation"`, the page grammar, before you write a page). |
 | `list_models` | The workspace's models, with facts, dimensions and measures |
 | `describe_model` | One model's full schema |
 | `describe_table` | Columns and types of a raw warehouse table, before a model exists |
@@ -49,7 +50,7 @@ hosted connection, the draft tools are how a package reaches the server
 | `workbench_state` | What the `tracebi dev` workbench shows, including a reviewer's pins |
 | `resolve_pin` | Mark a reviewer's pin as addressed, with a note |
 | `verify_manifest` | Re-run every recorded query in a manifest and classify each figure (`reproduces`, `source_drift`, `model_changed`, `unexplained`, `unverifiable`) |
-| `list_drafts` · `start_draft` · `read_draft` · `write_draft_file` | Your drafts on the server: start one (empty, or a copy of a published report or model), read it, write one allowed file |
+| `list_drafts` · `start_draft` · `read_draft` · `write_draft_file` | Your drafts on the server: start one (a copy of the published report or model when its path is published, else empty), read it, write one allowed file |
 | `preview_draft` | Validate and render a draft in memory; returns errors, warnings and its address in the app |
 | `model_impact` | For a model draft: each published report that reads the model, unchanged, moves or breaks |
 | `publish_draft` | Publish a draft, or open a publish request where the folder asks for one |
@@ -58,8 +59,8 @@ hosted connection, the draft tools are how a package reaches the server
 | `list_connections` | The workspace's connections, each with the tables a person allowed agents to read |
 | `list_source_tables` | One connection's allowed tables, with columns and row estimates |
 | `describe_source_table` | One allowed table's columns, profile and a sample of rows (`sample`, at most 500) |
-| `read_transform` | One transform's SQL (or Python) and `.contract.yaml`, its form, the tables it writes, what its last run read and its column lineage; code, never rows |
-| `propose_transform` | Store `transforms/<name>.sql` and its `.contract.yaml` as a code request (`change=true` for a change to an existing SQL transform), dry-run at once against a throwaway copy (`dry_run`: tables, first rows, checks, lineage, error); an admin approves one that passed and it runs once |
+| `read_transform` | One transform's SQL (or Python) and `.contract.yaml`, its form, the tables it writes, what its last run read and its column lineage; code, never rows. `change` is the call to make, or names each `-- source:` line that blocks one |
+| `propose_transform` | Store `transforms/<name>.sql` and its `.contract.yaml` as a code request (`change=true` for a change to an existing SQL transform), dry-run at once against a throwaway copy (`dry_run`: each table `new`, `changed` or `unchanged`, first rows of the new and changed, checks, lineage, error); SQL that does not parse is the one error returned; an admin approves one that passed and it runs once |
 | `export_table` | Admin: write a warehouse table or view to a connection or an object prefix |
 
 ### Assurance levels
@@ -97,8 +98,12 @@ order ([[sop-onboarding]] walks it in full):
    `review_url`. Nothing real has run: an admin approves it and it runs once.
    Until then its tables do not exist.
 5. **Draft the model.** `start_draft(kind="models", path=<name>)` over the
-   sunk tables (`describe_table` gives their columns), `preview_draft`, then
-   `publish_draft` once the person agrees. Then go on to step 1.
+   sunk tables (`describe_table` gives their columns): a model that is
+   published starts from its published copy, so add to it rather than
+   rewrite it. `write_draft_file`, `preview_draft`, `model_impact(path)` for
+   a model that exists, then `publish_draft` once the person agrees (with
+   `accept_impact=true` only after they have seen the impact). Publish the
+   model before a report that uses it. Then go on to step 1.
 
 ## 1. Load the contract with `get_context`
 
@@ -231,6 +236,27 @@ A spec is JSON: `name` (required), plus optional `sections`, `author`,
 - **Leave `allow_fanout` false.** An error about a non-unique dimension key is
   TraceBi refusing to inflate sums. Investigate or escalate; don't flip the
   flag.
+
+### With only the gateway: a package through drafts
+
+With no file access (a hosted connection), a report package reaches the
+library as a draft. It is the route the `author_report` prompt names:
+
+1. `get_context(topic="presentation")` for the page grammar: `data-tb-*`
+   figures, the kit, `report.json`.
+2. `start_draft(kind="reports", path="<project>/<name>")`. A new path starts
+   empty; a published one starts from its published copy.
+3. `write_draft_file(kind="reports", path, file="report.json", content)` with
+   each `query_model` result's `binding` object under `data.<name>`, then
+   `template.html` (or `app.jsx`) with every number a figure bound to it.
+4. `preview_draft(kind="reports", path)` until `ok` is `true`; give the
+   person its `url`.
+5. `publish_draft(kind="reports", path, note)` once they agree.
+6. `build_report(report=path)`, then `verify_manifest(manifest=<its
+   manifest_path>)`, as steps 5 and 6 below do for a spec.
+
+A measure the question needs and the model lacks is a model draft first
+(step 0.5's route), published before the report that uses it.
 
 ## 4. Validate and repair
 

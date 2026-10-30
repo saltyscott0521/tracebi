@@ -308,7 +308,8 @@ def test_without_the_crm_the_snapshot_feeds_the_ratings_and_the_trace_says_so(bu
         tables = c.get("/api/connectors/crm/tables")
         assert tables.status_code == 200
         assert tables.json() == {"connected": False, "variable": "TRACEBI_CRM_URL",
-                                 "reason": "TRACEBI_CRM_URL is not set", "agent_tables": None}
+                                 "reason": "TRACEBI_CRM_URL is not set",
+                                 "agent_tables": ["issuer_ratings"]}
         # The inputs/ folder: the snapshot is read by the same transform.
         files = {f["path"]: f for f in c.get("/api/inputs").json()["files"]}
         assert "holdings_transform" in files["inputs/issuer_ratings.csv"]["read_by"]
@@ -723,8 +724,8 @@ def test_sources_are_read_in_place_and_results_go_back_out(reference, monkeypatc
 
     # Agents may read billing.plans and nothing else of billing.
     if hasattr(connections, "agent_may_read"):
-        with open(reference / "connections" / "billing.yaml", "a") as fh:
-            fh.write("agents:\n  tables: [plans]\n")
+        billing = reference / "connections" / "billing.yaml"   # it ships with both tables
+        billing.write_text(billing.read_text().split("agents:")[0] + "agents:\n  tables: [plans]\n")
     else:   # the allowlist's own module is not here yet: the same answer, by hook
         monkeypatch.setattr(scan, "agent_may_read_hook",
                             lambda conn, table: (conn, table) == ("billing", "plans"))

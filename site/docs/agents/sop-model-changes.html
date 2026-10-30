@@ -170,7 +170,9 @@ fix was a small, reviewed change to the wealth model. In
   file wins. A file that fails to load is a failed entry in <code>/api/discovery</code>,
   not a startup error: run <code>tracebi validate</code> if something disappears.</li>
 <li>Through the server, a model change is a draft: edit it as a draft in the
-  app, or with <code>start_draft</code> and <code>write_draft_file</code> over MCP, then publish.
+  app, or with <code>start_draft(kind="models", path=&lt;name&gt;)</code> (it starts from the
+  published copy) and <code>write_draft_file</code> over MCP, then <code>model_impact</code> and
+  publish.
   Publishing re-runs every published report that reads the model against the
   draft (the impact check) and asks for <code>accept_impact</code> when numbers move.</li>
 <li>A gateway process started per call (stdio) sees a committed change on its

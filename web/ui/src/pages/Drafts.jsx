@@ -232,6 +232,10 @@ function Diff({ text }) {
 
 const SAMPLE_SHOWN = 5
 
+// A created table against the warehouse's table of that name (tracebi/dryrun.py
+// _created): an unchanged one carries no rows, because the warehouse holds them.
+const STATE_WORDS = { new: 'New', changed: 'Changed', unchanged: 'Unchanged, as the warehouse holds it' }
+
 const checkWords = c => {
   const p = c.params || {}
   const on = p.columns ? ` (${p.columns.join(', ')})` : p.column ? ` (${p.column})` : ''
@@ -293,9 +297,10 @@ function DryRun({ result }) {
           <div className="dryrun__tname">
             <code>{t.name}</code>
             <span className="dryrun__quiet">
-              {t.kind === 'view' ? 'view · ' : ''}{t.rows.toLocaleString()} {t.rows === 1 ? 'row' : 'rows'} · {t.columns.length} columns
+              {STATE_WORDS[t.state] ? `${STATE_WORDS[t.state]} · ` : ''}{t.kind === 'view' ? 'view · ' : ''}{t.rows.toLocaleString()} {t.rows === 1 ? 'row' : 'rows'} · {t.columns.length} columns
             </span>
           </div>
+          {t.sample && <>
           <div className="dryrun__grid">
             <table>
               <thead>
@@ -318,6 +323,7 @@ function DryRun({ result }) {
           {t.rows > SAMPLE_SHOWN && (
             <div className="dryrun__quiet">First {Math.min(SAMPLE_SHOWN, t.sample.length)} of {t.rows.toLocaleString()} rows</div>
           )}
+          </>}
         </div>
       ))}
     </section>

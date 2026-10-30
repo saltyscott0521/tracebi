@@ -541,7 +541,9 @@ connector under Settings → Connectors).
 
 The gateway also ships three prompts: `author_report(question)` walks the
 package loop (query, paste each `binding` object under `data.<name>`,
-`build_report`, `verify_manifest`);
+`build_report`, `verify_manifest`), with files or, without them, through
+drafts (`start_draft(kind='reports')`, `write_draft_file`, `preview_draft`,
+`publish_draft`);
 `answer_question(question, model="")` answers in plain words with each
 number beside its fingerprint and measure, never estimates, and builds no
 report unless asked; `address_pins(report)` reads `workbench_state`, acts
@@ -550,7 +552,8 @@ on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
 
 If you cannot reach the workspace's files, draft over the gateway instead:
 `start_draft`, `write_draft_file`, `preview_draft` (give the person the url it
-returns), then `publish_draft` once they agree. For a model, `model_impact(path)`
+returns), then `publish_draft` once they agree. `start_draft` of a path that is
+published starts from the published copy (`from_published=false` starts empty). For a model, `model_impact(path)`
 first: it re-runs the published reports that read it against the draft and lists
 which move or break (or are `not_built`); `publish_draft` is refused until you
 pass `accept_impact=true`, a break included. A model that names `owners` is published only by one of them or an admin: otherwise `publish_draft` is refused naming them, so draft it, show `model_impact` and ask an owner (a draft cannot add you to `owners`). Drafts live under `drafts/`
@@ -563,16 +566,16 @@ and ticks the tables agents may read (`agents: {tables: [a, b]}` in
 `connections/<name>.yaml`); seven tools take it from there, in this order
 (`docs/agents/sop-onboarding.md` in the TraceBi handbook walks it):
 
-- `describe_project` (or `describe_workspace`, the same tool) — the workspace as a graph: every source, transform, table, model and report, what feeds what, and what you may read. Call it first. A table a SQL transform wrote carries `columns_from` (also on `describe_table`): the source columns each column is computed from, as DuckDB's parser proved it; `null` with a reason where it could not follow, nothing for pandas.
-- `read_transform(name)` — a transform that exists: its SQL and `.contract.yaml`, its form, the tables it writes, what its last run read and its column lineage. Code, never rows.
+- `describe_project` (or `describe_workspace`, the same tool) — the workspace as a graph: every source, transform, table, model and report, what feeds what, and what you may read (a transform's `passport.agents.blocked` lists each `-- source:` line naming a table you may not read: no change is offered while one is there). Call it first. A table a SQL transform wrote carries `columns_from` (also on `describe_table`): the source columns each column is computed from, as DuckDB's parser proved it; `null` with a reason where it could not follow, nothing for pandas.
+- `read_transform(name)` — a transform that exists: its SQL and `.contract.yaml`, its form, the tables it writes, what its last run read and its column lineage, and `change`: the call to make, or why not, naming each blocking `-- source:` line. Code, never rows.
 - `list_connections` — each connection's type and the tables agents may read.
 - `list_source_tables(connection)` — those tables, with columns and row estimates.
 - `describe_source_table(connection, table, sample=20)` — columns, a profile and sample rows; any other table is "not found".
-- `propose_transform(name, sql, contract_yaml, note, change=false)` — the SQL and its contract as a code request (`change=true` changes an existing SQL transform; it must keep writing every table a model reads, and a Python transform is a person's, through `tracebi push`). It is dry-run at once against a throwaway copy — nothing real is written, a `-- sink:` line is not sent — and `dry_run` gives each table it made (columns, rows, first 20 rows), each check (`passed`, `failing_rows`), the column lineage and any error with its statement. While it fails, fix it and propose again: a failed one cannot be approved. An admin approves it and it runs once (and is committed, in a git workspace), so wait for that, then draft the model.
+- `propose_transform(name, sql, contract_yaml, note, change=false)` — the SQL and its contract as a code request (`change=true` changes an existing SQL transform; it must keep writing every table a model reads, and a Python transform is a person's, through `tracebi push`). It is dry-run at once against a throwaway copy — nothing real is written, a `-- sink:` line is not sent — and `dry_run` gives each table it made (columns, rows, `state` — `new`, `changed` or `unchanged` against the warehouse — and the first 20 rows of a new or changed one), each check (`passed`, `failing_rows`), the column lineage and any error with its statement. SQL that does not parse comes back as that one error. While it fails, fix it and propose again: a failed one cannot be approved. An admin approves it and it runs once (and is committed, in a git workspace), so wait for that, then draft the model.
 - `export_table(source, table, to)` — admin only: a warehouse table out to a connection or an object prefix.
 
 **What a remote draft may hold.** A report draft takes `report.json`,
-`template.html`, `style.css` and `script.js`; a model draft takes its one
+`template.html`, `app.jsx`, `style.css` and `script.js`; a model draft takes its one
 `<name>.yaml` or `.json`. Nothing else is accepted: Python would run on the
 server with its secrets, so it comes only through a laptop and review:
 `tracebi push <paths> --server <url> --note "why"` sends report packages and
@@ -723,9 +726,11 @@ you tell a human a report is done.
 
 ## First moves
 
-1. Run `tracebi context --brief` — the token-lean vocabulary tier (~2.3k
-   tokens): the semantic model, the figure grammar, contracts, and
-   conventions — everything this loop needs; it names what it omitted.
+1. Run `tracebi context --brief` — the token-lean vocabulary tier (at most
+   45% of the full payload): the semantic model, contracts, conventions and
+   drafts; it names what it omitted as topics. Before you write a page, run
+   `tracebi context --topic presentation` (the figure grammar, the kit,
+   `report.json`; over the gateway, `get_context(topic='presentation')`).
    Nothing outside the vocabulary validates. Add `--model <name>` for one
    model's schema; drop `--brief` only when writing Python against the
    library directly.

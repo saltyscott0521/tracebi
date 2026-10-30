@@ -386,6 +386,11 @@ def test_a_schema_checking_client_accepts_every_tool(gateway_model, tmp_path,
 
             ctx = await call("get_context", {"brief": True})
             assert ctx.structured_content.get("tracebi_version")
+            topic = await call("get_context", {"topic": "presentation"})
+            assert topic.structured_content["topic"] == "presentation"
+            assert topic.structured_content["presentation"]
+            unknown = await call("get_context", {"topic": "nope"})
+            assert "unknown topic" in unknown.structured_content["errors"][0]
 
             listed = await call("list_models")
             assert "gw_demo" in listed.structured_content["models"]
