@@ -283,8 +283,8 @@ def start_draft(owner: str, kind: str, path: str,
     where = draft_dir(owner, kind, path)
     if where.exists():
         raise DraftError(f"draft {kind}/{path} already exists: read_draft(kind={kind!r}, "
-                         f"path={path!r}) it and write_draft_file over it, or delete it "
-                         f"to start over")
+                         f"path={path!r}) it and write_draft_file over it, or "
+                         f"delete_draft(kind={kind!r}, path={path!r}) to start over")
     if kind == "models" and (blocker := model_python_blocker(path)):
         raise DraftError(blocker)
     if from_published is None:
@@ -429,6 +429,48 @@ def _validate_model_draft(path: Path) -> None:
     errors = validate_model_file(path, root=Path.cwd())
     if errors:
         raise DraftError(f"{path.name} does not compile: {'; '.join(errors)}")
+    errors = _time_grain_errors(path)
+    if errors:
+        raise DraftError(f"{path.name}: {'; '.join(errors)}")
+
+
+#: Column types a time grain can roll up (DuckDB's names, as the catalog says them).
+_DATE_TYPES = ("DATE", "TIMESTAMP")
+
+
+def _time_grain_errors(path: Path) -> list:
+    """A time grain over a column the warehouse does not hold as a date or
+    timestamp: it compiles, and every query that groups by it then fails.
+    Judged against the columns the catalog reports; a table it cannot read
+    is left to the query."""
+    from tracebi.model.model_spec import load_model_spec
+
+    model = None
+    try:
+        model = load_model_spec(path, root=Path.cwd())
+        info = model.info()
+    except Exception:  # noqa: BLE001 — a model that cannot describe its tables is not judged here
+        return []
+    finally:
+        # Describing opened the warehouse; let go, or a transform cannot write it.
+        for c in (model.connectors() if model is not None else []):
+            if hasattr(c, "disconnect"):
+                c.disconnect()
+    columns = {t["name"]: {c["name"]: str(c.get("dtype") or "") for c in t.get("columns") or []}
+               for t in info.get("tables") or [] if isinstance(t, dict)}
+    errors = []
+    for dim in info.get("dimensions") or []:
+        for name, grain in (dim.get("derived") or {}).items():
+            if grain.get("kind") != "date_trunc":
+                continue
+            dtype = columns.get(dim.get("table"), {}).get(grain.get("of"))
+            if dtype and not dtype.upper().startswith(_DATE_TYPES):
+                errors.append(
+                    f"time grain {dim['name']}.{name} rolls up {dim.get('table')}."
+                    f"{grain.get('of')}, which the warehouse holds as {dtype}, not a date: "
+                    f"every query grouping by it would fail. Cast it to DATE in the "
+                    f"transform, or group by the column itself")
+    return errors
 
 
 def _load_models() -> dict:
