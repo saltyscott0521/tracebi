@@ -62,6 +62,81 @@ switches only to a declared mode, which is what Expand asks for) and reports
 `ui/notifications/size-changed` as its content grows. Claude Code is not on the
 list and gets `workbench_url` / the draft's `url`, which the desktop app's
 preview pane can open while `tracebi dev` serves it.
+## 2026-10-30 — An agent's first day on the shipped workspace (AGENT-FIELD)
+
+A field run: an agent with nothing but the gateway (tool list, descriptions,
+prompts, `get_context`) did five tasks on a fresh git copy of the reference
+workspace, through one `build_server()` process as `tracebi mcp` runs, each
+next call decided from tool output: the largest exposure by sector and
+whether it is checked; a wealth dashboard with a trend; the CRM's new
+`issuer_watchlist` into the portfolio and onto the desk; a reviewer's pin
+doubting the fair-value KPI; what breaks if `dim_rating` goes. Every call was
+logged (tool, argument names, bytes, each guess or retry).
+
+| Task | Before: calls, bytes, guesses | After |
+|---|---|---|
+| 1. Exposure by sector, checked? | 9, 175,325, 6 | 8, 60,641, 0 |
+| 2. Wealth dashboard with a trend | 37, 199,043, 8 | 30, 163,217, 3 |
+| 3. CRM watchlist to the desk | 23, 91,788, 4 | 21, 88,309, 0 |
+| 4. A pin doubting a KPI | 13, 51,972, 1 | 12, 33,979, 0 |
+| 5. What breaks if dim_rating goes | 7, 71,990, 2 | 5, 13,816, 0 |
+
+**What the agent had to guess, and the fix.** `answer_question` sent it to
+`get_context(brief, model)` (47 KB, the vocabulary again) and the brief tier
+names no model: now `describe_model`, after `list_models`, which carries each
+model's description. "Is it checked" had no route: the stamp says nothing,
+`list_reports` was empty in a fresh stdio process (it read discovery outcomes
+only `describe_project` had produced) and no tool named a build's manifest.
+Now `list_reports` scans and gives `built.manifest_path`; `downstream` (the
+app's Depends on this, over the gateway) names the built figures that show a
+measure with their verdict; `describe_table` gives the table's sink-contract
+status. The prompt keeps the two claims apart, in the locked words. What
+breaks if a table goes had only `model_impact` on a mutated draft, which then
+stayed behind (`start_draft` said "delete it", with no tool): `downstream`
+answers from the builds, `delete_draft` drops the what-if. A time grain over a
+VARCHAR month compiled, previewed, published and then failed every query with
+a binder error: `preview_draft` now refuses it naming the type. An unreachable
+CRM answered only "TRACEBI_CRM_URL is not set": it now names the snapshots
+the transforms read in a table's place and the inputs no transform reads (a
+new table's committed snapshot is there). Changing `holdings_transform`
+silently left its pandas twin behind: `read_transform.other_forms` and the
+proposal's note say so. `address_pins` only knew file edits and assumed every
+pin asks for a change: it names the drafts route, and a doubted number is
+checked before anything changes. `build_report`'s `transform_contracts`
+(13 of 15 KB) is per table its status, writer, transform, checks and when.
+
+**A defect the run found.** In one server process, a model replaced by a
+publish kept the warehouse open when a build had read through it
+(`DuckDBConnector.load` for the fingerprint), and `release_all` only reaches
+the models the registry holds now, so the next approval's transform could not
+write the file. `ModelRegistry._publish` now disconnects the object it
+replaces. The journey's second approval fails without it.
+
+**Decisions where the brief was silent.** The CRM table is test data in the
+journey's copy (seed SQL, a committed snapshot, the allowlist), not in
+`examples/`: an `inputs/` file no transform reads would be a gap on the
+shipped map. The journey reads it through `fallback:`, so it needs no
+Postgres; the field run used a throwaway Postgres for the agent to describe
+the table. `downstream` re-runs the verdict of a report it found that has none
+kept, as the desk does, so its trust is a verdict rather than "Not checked";
+the app's route still never re-runs (the map must stay fast). `describe_table`
+re-reads a table's fingerprint to judge its contract (no rows returned), so its
+vocabulary line says "never returns rows" rather than "never a row scan".
+Holdings are one snapshot: the wealth trend is monthly activity, and the page
+says so; AUM history needs dated holdings in the source.
+
+**Not fixed, proposed.** A model draft cannot be queried before it is
+published (`preview_draft` only validates one), so a new dimension is first
+tried on the live model; proposal: `query_model(..., draft=true)` reading the
+caller's draft through `drafts.preview_models`. The kit `<Table totals=…>`
+prop is not carried into the app lane's static claim (`app_lane._claim_element`
+writes no `data-tb-totals`), so the totals row is not a recorded figure and
+`workbench_state` lists its binding as unused; proposal: carry the prop, as
+`figure_markup.table_element` does, and let the build validate it.
+
+**The journey** (`tests/e2e/test_agent_reference_journey.py`, the second
+test) walks the five tasks; `serve_app` now also forgets discovery's live
+reports, since it empties the registry's.
 
 ---
 

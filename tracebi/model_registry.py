@@ -191,6 +191,15 @@ class ModelRegistry:
         self._publish(stem, path, module.model)
 
     def _publish(self, stem: str, path: str, loaded: Any) -> None:
+        # The object this load replaces may hold its warehouse open (a build
+        # or a describe read through it); let go, or nothing releases it and
+        # the next transform in this process cannot write the file.
+        previous = self._models.get(stem)
+        if previous is not None and previous is not loaded and hasattr(previous, "disconnect"):
+            try:
+                previous.disconnect()
+            except RuntimeError:        # an in-memory warehouse keeps its handle
+                pass
         # Drop aliases from the previous good load of this file before
         # publishing the new object, so a renamed model does not linger.
         for key, origin in list(self._origin.items()):

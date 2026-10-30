@@ -27,7 +27,7 @@ from it.
 
 ### The tools
 
-The gateway has thirty tools for you and three prompts (`author_report`,
+The gateway has thirty-two tools for you and three prompts (`author_report`,
 `answer_question`, `address_pins`) that run this procedure for you, plus two
 the workbench panel calls (`workbench_view`, `workbench_pin`; a host keeps
 them from you, and a client without MCP Apps is not shown them). The MCP
@@ -40,21 +40,23 @@ no file access at all (step 3, "With only the gateway"; and
 | Tool | Purpose |
 |---|---|
 | `get_context` | The full vocabulary, optionally with one model's schema. Pass `brief` for the smaller version; it names what it left out, and `topic=<name>` returns one of those sections (`topic="presentation"`, the page grammar, before you write a page). |
-| `list_models` | The workspace's models, with facts, dimensions and measures |
+| `list_models` | The workspace's models, each with its description, facts, dimensions and measures |
 | `describe_model` | One model's full schema |
-| `describe_table` | Columns and types of a raw warehouse table, before a model exists |
+| `describe_table` | Columns and types of a raw warehouse table, before a model exists; with a table, its sink-contract status (`contract`) |
 | `query_model` | Run a star-schema query; returns rows and a stamp |
 | `validate_report_spec` | Check a spec against the models without loading a row; also returns `design` warnings |
 | `render_report_spec` | Validate, build and render a spec to HTML and a manifest |
 | `build_report` | Build a report package under `reports/` to one HTML file and a manifest |
 | `fetch_artifact` | Read back a built HTML or manifest, so a remote agent can deliver it |
-| `list_reports` | Reports the workspace already has |
+| `list_reports` | Reports the workspace already has, each built one with its last build's `manifest_path` |
 | `workbench_state` | What the workbench shows, including a reviewer's pins (`draft=true`: your report draft at that path). Opens the workbench panel in a host with MCP Apps; `workbench_url` is the link otherwise |
 | `resolve_pin` | Mark a reviewer's pin as addressed, with a note (`draft=true` for a draft's pin) |
 | `verify_manifest` | Re-run every recorded query in a manifest and classify each figure (`reproduces`, `source_drift`, `model_changed`, `unexplained`, `unverifiable`) |
 | `list_drafts` · `start_draft` · `read_draft` · `write_draft_file` | Your drafts on the server: start one (a copy of the published report or model when its path is published, else empty), read it, write one allowed file |
 | `preview_draft` | Validate and render a draft in memory; returns errors, warnings and its address in the app. Opens the workbench panel beside the chat in a host with MCP Apps ([[workbench-in-your-agent]]) |
 | `model_impact` | For a model draft: each published report that reads the model, unchanged, moves or breaks |
+| `delete_draft` | Delete one of your drafts; the published copy is unchanged |
+| `downstream` | Every built report figure that reads a table, a source table or a measure, each report with its verdict and `manifest_path`: what breaks if it goes, and which report shows a number |
 | `publish_draft` | Publish a draft, or open a publish request where the folder asks for one |
 | `list_publish_requests` · `decide_publish_request` | Requests into folders where you hold Publish; approve or reject one |
 | `describe_project` (or `describe_workspace`, the same tool) | The workspace as a graph: every source, transform, table, model and report, what feeds what, and what you may read |
