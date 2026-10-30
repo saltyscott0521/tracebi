@@ -93,7 +93,9 @@ def _engine(url: str):
         raise _missing("SQLAlchemy") from None
     kwargs: dict[str, Any] = {}
     if url.startswith("sqlite"):
-        kwargs["connect_args"] = {"check_same_thread": False}
+        # Several build threads write their rows at once; wait for the file
+        # lock rather than fail after sqlite3's default 5 s.
+        kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
         if url in ("sqlite://", "sqlite:///:memory:"):
             from sqlalchemy.pool import StaticPool
             kwargs["poolclass"] = StaticPool

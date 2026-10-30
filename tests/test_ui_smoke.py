@@ -1318,7 +1318,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.goto(base + "/review")
             unbuilt = page.get_by_role("list", name="Needs attention").locator("li", has_text="never been built")
             unbuilt.get_by_role("button", name="Build all").click()
-            expect(unbuilt).to_have_count(0, timeout=180_000)
+            try:
+                expect(unbuilt).to_have_count(0, timeout=180_000)
+            except AssertionError as exc:
+                runs = page.request.get(base + "/api/runs?kind=background_run&limit=20").text()
+                raise AssertionError(
+                    f"{exc}\n--- runs ---\n{runs[:3000]}\n--- server log ---\n{_tail(log_path, 60)}"
+                ) from exc
             fail_on_browser_errors()
             browser.close()
         assert not errors, "\n".join(errors)
