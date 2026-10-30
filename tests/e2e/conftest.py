@@ -189,6 +189,8 @@ def serve_app(monkeypatch, *, models: bool = False):
         monkeypatch.setattr(registry, attr, {})
     monkeypatch.setattr(discovery, "_live_pipelines", set())
     monkeypatch.setattr(discovery, "_live_models", set())
+    # The reports were just emptied too: a scan must register them again.
+    monkeypatch.setattr(discovery, "_live_reports", {})
     discovery.register_pipelines("pipelines")
     if models:
         discovery.register_models("models")

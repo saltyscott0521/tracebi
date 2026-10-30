@@ -305,14 +305,14 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   the row-count rule (sql_row_estimates) and is_framework_table
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 30 tools + 3 prompts (author_report, answer_question, address_pins);
+  mcp_server.py        # agent gateway over MCP — 32 tools + 3 prompts (author_report, answer_question, address_pins);
                        #   the source tools read only a connection's agents: allowlist; describe_project = graph.py less the map-only node fields (lane, chip, sub, open)
   graph.py             # the workspace as one graph ({summary, nodes, edges}; summary counts every node, gaps beside): every source, transform, warehouse
                        #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
                        #   GET /api/graph and the gateway's describe_project serve it (design/control-tower.md);
                        #   never re-runs a verdict (desk.cached_verdict); edge_facts: the parser-proven column lineage
                        #   edges (source table / file / table → table); downstream(registry, node): every report figure that
-                       #   depends on a table, source table or measure, from the builds' manifests (GET /api/graph/downstream; read-only)
+                       #   depends on a table, source table or measure, from the builds' manifests (GET /api/graph/downstream, and the gateway's downstream tool; read-only)
   exports.py           # the gateway's export_table: a thin call over warehouse.export_table (the one implementation)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)

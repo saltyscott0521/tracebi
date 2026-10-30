@@ -9,6 +9,7 @@ The response shape the UI already polls is unchanged.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -16,6 +17,8 @@ from datetime import datetime, timezone
 from typing import Callable, Optional
 
 from tracebi.web.api.errors import error_detail
+
+logger = logging.getLogger(__name__)
 
 
 def _now() -> str:
@@ -108,6 +111,18 @@ class RunStore:
             self._pending.discard(future)
 
     def _execute(self, run_id: int, fn: Callable[[], dict]) -> None:
+        from tracebi.state import install_extra, update_run
+
+        try:
+            self._finish(run_id, fn)
+        except Exception as exc:  # noqa: BLE001 — a row left "running" is never polled to an end
+            from tracebi.state import install_extra, update_run
+            logger.exception("background run %s could not record its end", run_id)
+            with install_extra("web"):
+                update_run(None, run_id, status="failed", finished=_now(), completed_at=_now(),
+                           detail={"error": error_detail("Run could not record its end", exc)})
+
+    def _finish(self, run_id: int, fn: Callable[[], dict]) -> None:
         from tracebi.state import install_extra, update_run
 
         output_path = None
