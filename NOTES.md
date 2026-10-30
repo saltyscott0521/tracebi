@@ -55,10 +55,13 @@ tracebi.js). A page whose mode is `auto` takes the host's theme. The panel draws
 no number: figure status is words (model query, python-derived, marked
 unverified, no data behind it, plus the page's Local or Fixed).
 
-**Hosts.** Claude on the web and desktop render MCP Apps (inline in the
-conversation, with a fullscreen mode the panel asks for with Expand); Claude
-Code in the terminal does not, and gets `workbench_url` / the draft's `url`,
-which the desktop app's preview pane can open while `tracebi dev` serves it.
+**Hosts.** The spec (ext-apps `specification/draft/apps.mdx`) lists ChatGPT,
+Claude, VS Code, Goose, Postman and MCPJam among the hosts. The panel declares
+`availableDisplayModes: ["inline", "fullscreen"]` at `ui/initialize` (a host
+switches only to a declared mode, which is what Expand asks for) and reports
+`ui/notifications/size-changed` as its content grows. Claude Code is not on the
+list and gets `workbench_url` / the draft's `url`, which the desktop app's
+preview pane can open while `tracebi dev` serves it.
 
 ---
 

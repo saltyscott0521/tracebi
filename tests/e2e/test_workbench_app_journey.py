@@ -36,18 +36,26 @@ def page(label: str, extra: str = "") -> str:
 HOST = """<!doctype html><html><head><meta charset="utf-8"><style>
 html,body{margin:0;height:100%%} iframe{border:0;width:100%%;height:100%%;display:block}
 </style></head><body><iframe id="app" sandbox="allow-scripts"></iframe><script>
-window.__messages = []; window.__context = [];
+window.__messages = []; window.__context = []; window.__init = null; window.__sizes = [];
+window.__replies = {};
 var app = document.getElementById('app');
 function reply(id, result) { app.contentWindow.postMessage({jsonrpc: '2.0', id: id, result: result}, '*'); }
 window.addEventListener('message', function (e) {
   var m = e.data;
   if (e.source !== app.contentWindow || !m || m.jsonrpc !== '2.0') return;
+  if (m.id !== undefined && m.method === undefined) { window.__replies[m.id] = m; return; }
+  if (m.method === 'ui/initialize') window.__init = m.params;
   if (m.method === 'ui/initialize') reply(m.id, {protocolVersion: '2026-01-26',
       hostInfo: {name: 'test-host', version: '1'}, hostCapabilities: {},
       hostContext: {theme: %(theme)s, displayMode: 'inline', availableDisplayModes: ['inline', 'fullscreen']}});
-  else if (m.method === 'ui/notifications/initialized')
+  else if (m.method === 'ui/notifications/initialized') {
+    /* Streaming arguments first, as a host may send them; then the whole call. */
+    app.contentWindow.postMessage({jsonrpc: '2.0', method: 'ui/notifications/tool-input-partial',
+                                   params: {arguments: {kind: 'reports'}}}, '*');
     app.contentWindow.postMessage({jsonrpc: '2.0', method: 'ui/notifications/tool-input',
                                    params: {arguments: %(arguments)s}}, '*');
+  }
+  else if (m.method === 'ui/notifications/size-changed') window.__sizes.push(m.params);
   else if (m.method === 'tools/call')
     window.hostCall(m.params.name, m.params.arguments).then(function (r) {
       reply(m.id, {content: [{type: 'text', text: JSON.stringify(r)}], structuredContent: r}); });
@@ -150,6 +158,13 @@ def test_the_workbench_opens_beside_the_chat_follows_edits_and_takes_pins(scaffo
         assert "model query" in app.locator("#figs").inner_text()
         assert value.inner_text().strip(), "the KPI shows the query's number"
         assert report.locator("#kpi-revenue .tb-kpi-label").inner_text() == "Revenue"
+        # The handshake declares the modes the host may switch to, and the panel
+        # tells the host how big it wants to be (the report's height, at least).
+        init = page_.evaluate("window.__init")
+        assert init["appCapabilities"]["availableDisplayModes"] == ["inline", "fullscreen"]
+        page_.wait_for_function("window.__sizes.length > 0")
+        size = page_.evaluate("window.__sizes[window.__sizes.length - 1]")
+        assert size["width"] == 1200 and size["height"] > 300, size
 
         # 4. Live: the agent edits; the panel follows with no one touching it.
         extra = ('<p data-tb-figure="value" id="kpi-orders" data-tb-binding="totals" '
@@ -169,19 +184,27 @@ def test_the_workbench_opens_beside_the_chat_follows_edits_and_takes_pins(scaffo
         app.locator("#pinBtn").click()
         app.locator("#pinMsg", has_text="your agent was told").wait_for()
         [told] = page_.evaluate("window.__messages")
-        assert told["role"] == "user"
-        assert told["content"][0]["text"].startswith(
+        assert told["role"] == "user" and told["content"]["type"] == "text"   # one block
+        assert told["content"]["text"].startswith(
             f"Pinned on kpi-revenue in the draft of {PATH}: this looks off")
         assert page_.evaluate("window.__context")[0]["content"][0]["text"].endswith(
             f"selected figure kpi-revenue of the draft of {PATH}.")
         app.locator("#pins", has_text="should exclude refunds").wait_for()
+
+        # 6. Teardown is a request the panel answers; the poll stops with it.
+        page_.evaluate("""document.getElementById('app').contentWindow.postMessage(
+            {jsonrpc: '2.0', id: 9001, method: 'ui/resource-teardown', params: {}}, '*')""")
+        page_.wait_for_function("window.__replies[9001] !== undefined")
+        polls = sum(n == "workbench_view" for n, _ in calls)
+        page_.wait_for_timeout(4500)
+        assert sum(n == "workbench_view" for n, _ in calls) == polls, "the poll outlived teardown"
         assert errors == [] and requests == [], (errors, requests)
         page_.context.close()
     finally:
         browser.close()
         pw.stop()
 
-    # 6. Where the agent reads it: workbench_state on the draft, and resolve_pin.
+    # 7. Where the agent reads it: workbench_state on the draft, and resolve_pin.
     state = gw.gateway_workbench_state(report=PATH, draft=True)
     assert [(p["id"], p["note"]) for p in state["pins"]] == [
         ("kpi-revenue", "this looks off: should exclude refunds")]

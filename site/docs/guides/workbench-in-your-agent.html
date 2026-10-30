@@ -87,8 +87,10 @@ it before its next edit. Nothing to install: it is part of the gateway.</p>
 <li>An agent connected to the gateway (<code>tracebi mcp</code>, or the app's <code>/mcp</code>; see
   <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>).</li>
 <li>A host that shows MCP Apps (the <code>io.modelcontextprotocol/ui</code> extension).
-  Claude on the web and in the desktop app show them. Claude Code in the
-  terminal does not; see <a href="#without-mcp-apps">Without MCP Apps</a>.</li>
+  The MCP Apps specification lists ChatGPT, Claude, VS Code, Goose, Postman
+  and MCPJam among the hosts that render them. Claude Code is not one of
+  them: Claude Code users get a link instead; see
+  <a href="#without-mcp-apps">Without MCP Apps</a>.</li>
 </ul>
 <h2 id="what-you-see">What you see</h2>
 <p>The panel opens when the agent calls <code>preview_draft</code> (a report draft),
@@ -107,7 +109,8 @@ it before its next edit. Nothing to install: it is part of the gateway.</p>
 <p>It follows the agent: after every <code>write_draft_file</code> or build the page and
 the lists refresh by themselves, in a second or two. On a narrow panel the
 report comes first and the workbench under it; a wide one puts them side by
-side. It follows the host's light or dark theme. <strong>Expand</strong> asks the host for
+side. It tells the host how tall it would like to be, so an inline panel grows
+with the report. It follows the host's light or dark theme. <strong>Expand</strong> asks the host for
 the full window where it offers one; <strong>Open in the app</strong> opens the same
 report in TraceBi.</p>
 <h2 id="pin-a-note">Pin a note</h2>

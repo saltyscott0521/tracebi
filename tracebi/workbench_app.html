@@ -8,7 +8,8 @@
 <!--
   The workbench inside the agent (MCP Apps, ui://tracebi/workbench). The host
   renders this in a sandboxed frame and is its only line out: JSON-RPC over
-  postMessage (ui/initialize, tools/call, ui/message, ui/open-link). The report
+  postMessage (ui/initialize, tools/call, ui/message, ui/open-link,
+  ui/notifications/size-changed). The report
   itself sits in a second sandboxed frame inside it and talks to this page with
   tracebi.js's host bridge (figure clicks, its selection). This page shows no
   number of its own: every figure is the report's, drawn by the report.
@@ -93,7 +94,7 @@ textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
       <div class="errors" id="errors" role="alert"></div>
       <iframe id="page" title="The report" sandbox="allow-scripts" hidden></iframe>
     </main>
-    <aside class="rail" aria-label="Workbench">
+    <aside class="rail" id="rail" aria-label="Workbench">
       <section aria-labelledby="pin-h">
         <h2 id="pin-h">Pin a note for your agent</h2>
         <p class="muted" id="selected">Click a figure in the report to pin a note on it, or leave a note for the report.</p>
@@ -181,6 +182,12 @@ textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
     if (m.method === "ui/notifications/tool-input") targetFrom(params.arguments || {});
     else if (m.method === "ui/notifications/tool-result") { if (state.target) refresh(true); }
     else if (m.method === "ui/notifications/host-context-changed") applyContext(params);
+    else if (m.method === "ui/resource-teardown") {
+      if (state.timer) { clearInterval(state.timer); state.timer = null; }
+      state.target = null;
+    }
+    /* ui/notifications/tool-input-partial (arguments still streaming) is left
+     * alone: the panel opens on the complete tool-input. */
     if (m.id !== undefined) send({ jsonrpc: "2.0", id: m.id, result: {} });   /* ping, teardown */
   }
 
@@ -397,7 +404,7 @@ textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
         $("note").value = "";
         msg.textContent = "Pinned. Your agent reads it before its next edit.";
         refresh(true);
-        return request("ui/message", { role: "user", content: [{ type: "text", text: r.message }] })
+        return request("ui/message", { role: "user", content: { type: "text", text: r.message } })
           .then(function () { msg.textContent = "Pinned, and your agent was told."; })
           .catch(function () { msg.textContent = "Pinned. Ask your agent to address your pins."; });
       })
@@ -415,12 +422,35 @@ textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
 
   /* ── Start: the handshake, then wait for the tool call that opened us ── */
   if (!host) { waiting("Open this from an agent that shows MCP Apps."); return; }
+  /* What the panel would like to be: the header plus the taller of the report
+   * (its frame grows to the page) and the workbench beside it. A host with a
+   * flexible container sizes the panel to this. */
+  var lastSize = "";
+  function reportSize() {
+    var bar = document.querySelector(".bar"), narrow = window.matchMedia("(max-width: 760px)").matches;
+    var height = narrow ? document.documentElement.scrollHeight
+      : bar.offsetHeight + Math.max($("pageWrap").scrollHeight, $("rail").scrollHeight);
+    var size = { width: document.documentElement.scrollWidth, height: Math.ceil(height) };
+    var key = size.width + "x" + size.height;
+    if (key === lastSize) return;
+    lastSize = key;
+    notify("ui/notifications/size-changed", size);
+  }
+  function watchSize() {
+    reportSize();
+    if (typeof ResizeObserver === "undefined") return;
+    var ro = new ResizeObserver(reportSize);
+    [document.documentElement, $("pageWrap"), $("rail"), frame].forEach(function (el) { ro.observe(el); });
+  }
+
   request("ui/initialize", { protocolVersion: "2026-01-26",
                              appInfo: { name: "tracebi-workbench", version: "1" },
-                             appCapabilities: {} })
+                             /* The host switches only to modes the app declares. */
+                             appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] } })
     .then(function (r) {
       applyContext((r && r.hostContext) || {});
       notify("ui/notifications/initialized", {});
+      watchSize();
     })
     .catch(function () { /* a host that answers no handshake may still send the tool input */ });
 })();
