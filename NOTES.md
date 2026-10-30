@@ -4,6 +4,99 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-30 — tracebi.com, rebuilt for any reader (SITE-2)
+
+The owner asked for a full update of the marketing site: spectacular, modern,
+and understandable to a layman, not only to engineers.
+
+**The story, in plain words first.** Hero: "Reports where every number shows
+its work." Then the problem everyone has felt (the deck number that differs
+from the dashboard, the instant AI total nobody can check, the sign-off that
+means redoing the work); what TraceBi is in one sentence ("writes down how
+every number was made, so anyone can check it and nobody has to take it on
+faith"); three steps (bring your data in, say what the numbers mean, build
+reports that show their work); why it matters; who it is for. Then the proof,
+in this order: trace a number, live reports, agents, print, teams, open
+source, "for engineers", the FAQ, get started. Every technical term (transform,
+sink contract, model, `report.json`, `tracebi verify`, MCP) sits one layer
+down: a "For engineers" disclosure under each step, the engineers section, and
+links into `/docs/`. Plain substitutes on the surface: "cleanup step" for
+transform, "definition" for measure, "checks you choose" for a contract (the
+locked phrase "the table satisfied its contract" is used once, attributed).
+
+**The honesty choices.**
+- The check is described only as the manifesto words it: a number
+  *reproduces*, a file is *intact*. "It does not claim the number is correct,
+  and it does not check the cleanup step's logic" is said under the demo, in
+  the FAQ ("Does TraceBi tell me my numbers are right? No, and on purpose"),
+  in "What it doesn't claim" (with signed attestation: not yet) and the footer.
+- The trace demo is an illustration built from the sample's real manifest
+  (sources, `fact_holdings` 25 rows, 5 checks, the measure, the query, the
+  fingerprint `f1abefad…`), and says the buttons hash nothing. The verify
+  lines are from running `tracebi verify` on the sample: 38 figures, 37
+  reproduce, 1 unverifiable (the `report.py` chart); the page cites the
+  unverifiable one rather than hiding it.
+- "Agents can't fake a checked number" rather than "can't make numbers up":
+  an app.jsx page can draw free text the build does not check, so the true
+  claim is that a number with no query behind it gets no fingerprint and
+  cannot pass the check.
+- Agents: "they never write to your warehouse themselves: a change to the
+  cleanup runs only after an admin approves it, and each project decides
+  whether a person signs off before a report is published". Not "every change
+  waits for a person": `publish_draft` publishes directly where the folder
+  grants Publish. The four-step loop (propose, dry run, approve, git commit)
+  is labelled as the path of a proposed cleanup change, which is where it holds.
+- Data access: an agent "can query your definitions, and reads a source
+  database's tables only where a person has ticked them" (the allowlist
+  governs sources, not model queries).
+- The workbench capture is the real `ui://tracebi/workbench` panel running
+  against the reference workspace, hosted by a page playing the host's half
+  of the bridge as `test_workbench_app_journey` does, with a real pin made by
+  clicking the sector chart. The chat beside it is drawn by us, labelled
+  "Agent chat · illustration" in the image and the caption, with no vendor's
+  look. Hosts are named as the MCP Apps specification lists them.
+- The PDF is "a print of" the HTML and manifest, which are what the check
+  runs on (PRINT-TRACE's wording).
+- The planned Cloud is not mentioned: the brief listed no such section and the
+  page promises only what ships.
+
+**Proof, real.** `site/sample/` now holds `portfolio_showcase` (app.jsx,
+Signal; it replaces the old template build), `affordability` and
+`portfolio_dashboard`, built at cf38540 from the reference workspace, each
+with its manifest (`output_path` the bare name; each reads FILE INTACT). The
+captures in `assets/shots/` are those builds at 1440 × 900 (2×), light and
+dark, one with the trace drawer opened by clicking a KPI, one filtered to
+Software ($285.9M → $60M, the real recomputation); the workbench panel; and
+pages 1 and 4 of the dashboard's PDF. The live report loads in an iframe only
+when the reader asks (1.6 MB), so the page stays light.
+
+**Look.** The Signal theme's ground, ink and blue (#1f3fff) with its orange
+and green as accents, Geist and Geist Mono self-hosted (the same files the
+reports and the app use; the docs site loads them too, so neither page asks
+Google for anything any more). A gradient-and-grid hero, the showcase in a
+window that settles from a tilt as it scrolls in, a trace card that walks the
+five steps over the fair-value KPI, scroll reveals, a circular view-transition
+theme switch (a cross-fade where unsupported). Reduced motion: no tilt, no
+reveal, no walk; every state is shown at once. Light and dark both drawn;
+each screenshot pair is swapped by the theme, and the hidden one is lazy so it
+is never fetched.
+
+**Measured** (local server, no compression; production nginx gzips):
+`index.html` 91.5 KB (24 KB gzipped), fonts 58 KB, 150 KB before images;
+first screen loads one 52 KB AVIF. Lighthouse 12.8.2 (Chromium 141):
+mobile performance 98 to 100 across runs, accessibility, best practices and
+SEO 100; desktop 100 on all four. Off-screen sections use
+`content-visibility: auto` (mobile total blocking time 450 → 0 to 130 ms);
+print turns it off. No console errors and no request outside the page's own
+origin at 1440 and 390, light, dark and reduced motion.
+
+**Docs site.** `build_docs.py` takes the new tokens from the page (the token
+names are unchanged, so `docs.css` keeps working) and now declares Geist with
+`@font-face` instead of linking Google Fonts; `site/docs` regenerated.
+`assets/showcase.jpg` is gone (nothing references it); nginx caches `.avif`.
+
+Screenshots: `scratchpad/SITE-2/shots/`.
+
 ## 2026-10-30 — The library and Data pages feel instant and readable (DATA-UX)
 
 **Tests import the tree they live in.** The editable install points at the main

@@ -2,71 +2,102 @@
    The tokens below are extracted from site/index.html so the docs site and
    the landing page can never drift into two different blues. */
 :root{
-    /* TraceBi's own system — the web UI + report palette (navy ink, cool
-       blue-grey ground, a blue accent; green/amber/red reserved for verdicts). */
-    --paper:#eef2f8;
-    --paper-2:#e3ebf5;
+    /* The site's tokens: the Signal house theme's ground, ink and blue, in the
+       Geist family the app and every report use. site/build_docs.py copies
+       this block (through the dark one) into the docs site. */
+    --paper:#fafaf9;
+    --paper-2:#f2f2f0;
     --card:#ffffff;
-    --ink:#0a1628;
-    --ink-2:#2e4260;
-    --ink-soft:#5a6e88;
-    --rule:#dce4ef;
-    --rule-2:#e7eef7;
-    --accent:#2e74b5;      /* the TraceBi blue — brand highlight */
-    --brand:#091a55;       /* deep navy — solid nav / buttons */
-    --repro:#15803d;       /* verified / reproduces */
-    --repro-bg:#e4f1e8;
-    --altered:#b91c1c;     /* file altered / wrong */
-    --altered-bg:#f7e5e4;
-    --stale:#875312;       /* unverified / degraded */
-    --stale-bg:#f4ecdb;
+    --ink:#111113;
+    --ink-2:#3b3b41;
+    --ink-soft:#64646b;
+    --rule:#e4e4e1;
+    --rule-2:#ededea;
+    --accent:#1a35d6;
+    --accent-fill:#1f3fff;
+    --on-accent:#ffffff;
+    --accent-soft:#eef1ff;
+    --brand:#1f3fff;
+    --warm:#ff6b2b;
+    --mint:#00a676;
+    --repro:#05784f;
+    --repro-bg:#e3f4ec;
+    --altered:#b4232a;
+    --altered-bg:#fbe9e8;
+    --stale:#8a5a00;
+    --stale-bg:#fbf1dc;
+    --glow-a:rgba(31,63,255,.18);
+    --glow-b:rgba(255,107,43,.14);
+    --shadow:0 1px 2px rgba(17,17,19,.06),0 12px 32px -12px rgba(17,17,19,.18);
+    --shadow-lg:0 2px 4px rgba(17,17,19,.05),0 40px 80px -24px rgba(17,17,19,.28);
 
-    --sans:"Source Sans 3",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    --serif:"Source Sans 3",system-ui,sans-serif;
-    --mono:"Source Code Pro",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --serif:"Geist",system-ui,sans-serif;
+    --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 
-    --maxw:920px;
-    --measure:34rem;
-    --r:8px;
+    --maxw:1180px;
+    --measure:36rem;
+    --r:12px;
   }
-  :root:not([data-theme="light"]){
-    @media (prefers-color-scheme:dark){
-      --paper:#0d1623;
-      --paper-2:#131f30;
-      --card:#1a2a3e;
-      --ink:#dde8f5;
-      --ink-2:#b3c4db;
-      --ink-soft:#8199b8;
-      --rule:#2a3d54;
-      --rule-2:#223449;
-      --accent:#6aa9e0;
-      --brand:#6aa9e0;
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b0b0d;
+      --paper-2:#141417;
+      --card:#17171a;
+      --ink:#f2f2f0;
+      --ink-2:#c9c9cf;
+      --ink-soft:#9a9aa3;
+      --rule:#2a2a30;
+      --rule-2:#202025;
+      --accent:#9aa8ff;
+      --accent-fill:#5c74ff;
+      --on-accent:#05081f;
+      --accent-soft:#171c3a;
+      --brand:#7d90ff;
+      --warm:#ff8a55;
+      --mint:#34d399;
       --repro:#4ade80;
-      --repro-bg:#122c1d;
-      --altered:#f08579;
-      --altered-bg:#331a18;
-      --stale:#e0a94e;
-      --stale-bg:#2e2413;
+      --repro-bg:#10291c;
+      --altered:#ff8f86;
+      --altered-bg:#331716;
+      --stale:#f0b85a;
+      --stale-bg:#2d2412;
+      --glow-a:rgba(92,116,255,.26);
+      --glow-b:rgba(255,107,43,.12);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -12px rgba(0,0,0,.6);
+      --shadow-lg:0 2px 4px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.8);
     }
   }
   :root[data-theme="dark"]{
-    --paper:#0d1623;
-    --paper-2:#131f30;
-    --card:#1a2a3e;
-    --ink:#dde8f5;
-    --ink-2:#b3c4db;
-    --ink-soft:#8199b8;
-    --rule:#2a3d54;
-    --rule-2:#223449;
-    --accent:#6aa9e0;
-    --brand:#6aa9e0;
+    --paper:#0b0b0d;
+    --paper-2:#141417;
+    --card:#17171a;
+    --ink:#f2f2f0;
+    --ink-2:#c9c9cf;
+    --ink-soft:#9a9aa3;
+    --rule:#2a2a30;
+    --rule-2:#202025;
+    --accent:#9aa8ff;
+    --accent-fill:#5c74ff;
+    --on-accent:#05081f;
+    --accent-soft:#171c3a;
+    --brand:#7d90ff;
+    --warm:#ff8a55;
+    --mint:#34d399;
     --repro:#4ade80;
-    --repro-bg:#122c1d;
-    --altered:#f08579;
-    --altered-bg:#331a18;
-    --stale:#e0a94e;
-    --stale-bg:#2e2413;
+    --repro-bg:#10291c;
+    --altered:#ff8f86;
+    --altered-bg:#331716;
+    --stale:#f0b85a;
+    --stale-bg:#2d2412;
+    --glow-a:rgba(92,116,255,.26);
+    --glow-b:rgba(255,107,43,.12);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -12px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 4px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.8);
   }
+/* The landing page's own type, self-hosted beside it (site/assets/fonts). */
+@font-face{font-family:"Geist";src:url("../assets/fonts/geist.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("../assets/fonts/geist-mono.woff2") format("woff2");font-weight:100 900;font-display:swap}
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
