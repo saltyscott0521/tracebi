@@ -68,6 +68,55 @@ plot is judged again once a label outside takes room); the value axis asks
 for a tick per 56px, at least two. The PDF CLI line and `pdf_note` now say
 what the PDF carries instead of "carries no trace"; it is still not
 verifiable, and the HTML and manifest are what `verify` checks.
+## 2026-10-30 — Four small defects from the audit (QUICK-FIXES)
+
+**Compression and caching.** `GZipMiddleware` (minimum 1 KB) is outermost in
+the stack; `_SPAFiles` adds `Cache-Control: public, max-age=31536000,
+immutable` to a 200 or 304 under `assets/` only, because vite names every file
+there by its content hash. HTML, `/api`, `/r/` and `/built` keep no cache
+header. Measured on the reference workspace (curl, `Accept-Encoding: gzip`):
+the app JS 1,088,900 → 332,492 bytes; `/r/portfolio_model/portfolio_dashboard`
+1,970,551 → 617,950; `/api/reports` 6,170 → 1,515.
+
+**The measures list's "Shown as"** was a sample ("$1,234") right-aligned where
+a value would be; read as the measure's number. It is now the format in words,
+muted ("currency, whole"), its token in the title. A figure on that page is
+only ever a query result.
+
+**Scaffolds land where the reference says.** `new-model --from` writes the
+YAML form (`--python` keeps the old `.py`): `type: warehouse` when the
+connection is a DuckDB file that is the workspace's file-tier warehouse (what
+`tracebi init`'s `connections/warehouse.yaml` declares), else `connection:
+<name>`. `new-dashboard` binds one model and writes into its project folder,
+`reports/<model>/<name>/`; `--model` names it, a title `"<model>/<Name>"`
+names it too (the init AGENTS.md already taught that form), and with several
+models and neither it refuses naming them. A title with an explicit folder
+other than a model's is kept as given, and under `TRACEBI_LIBRARY_MOUNTS` the
+path is the author's. `new-report` is unchanged (the brief named the
+dashboard); it still writes `reports/<name>/` from the first model.
+
+**The reference's Data home shows no gaps of its own.** Per item:
+- `holdings_transform_pandas` is the pandas twin on purpose. It declares the
+  contract `holdings`, which `holdings_transform.contract.yaml` owns, the
+  existing rule `_contract_owners` already applied. `transforms_listing` now
+  names that `twin_of`; the graph reads a twin as in the flow ("the Python
+  form of holdings_transform").
+- `fact_holdings_by_sector` is wired: the portfolio model reads the sink view
+  as a fact with its own grain (`dim_book`, key `sector`) and one new measure,
+  `sector_issuers`. This reverses the 2026-10-25 VIEWS note ("No model reads it"): the
+  transform's own comment already said the model reads it, and now the
+  reference shows a model reading a sink view, with a journey step that the
+  view's fair value by sector equals the table's. Cost: two dimensions have a
+  `sector`, so Ask says "sector (issuer)".
+- The two "unread" files are a seed's raw material (`seed_billing.py` loads
+  `subscriptions.csv` into `billing.sqlite`; `fetch_housing.py` reads the NAR
+  history). `inputs_listing` adds `named_by_scripts` (a script in `inputs/`
+  that names the file, read as text like the transforms); the graph's rule
+  that a seed script is not a source now extends to its material. Not a
+  suppression flag: the files are read, by the scripts beside them.
+- The summary counted only nodes wired on both sides, so the Data home said 4
+  transforms while Lineage drew 5 (and 6 sources while Sources listed 8). It
+  now counts every node of a kind; `gaps` is beside.
 
 ## 2026-10-28 — Two showcases: the app lane and the editorial lane (SHOWCASES)
 

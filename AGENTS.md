@@ -98,7 +98,8 @@ a model points at it with
 `models/_connections/<name>.py`; a model reads `connections/<name>.yaml`
 first, then that.) `tracebi migrate connection models/_connections/<name>.py
 [--write]` converts one. Then `tracebi new-model "<Name>" --from <name> --tables a,b,c`
-drafts a star schema from column metadata only. Edit every line marked
+drafts a star schema from column metadata only, as `models/<name>.yaml` (`type: warehouse`
+from the workspace's warehouse, else `connection: <name>`). Edit every line marked
 `# DRAFT: review` before a report depends on it.
 
 The query engine's limits live in `tracebi.yaml` at the workspace root
@@ -309,7 +310,9 @@ register is the default (prose in a 68ch serif column, figures at the sheet's
 width, the hero on the accent): leave `style.css` empty or set only the accent
 pairs, never a hero colour of its own. Someone
 who *works in* it — checks it daily, switches views, drills in — gets a
-**dashboard**: `tracebi new-dashboard "<Name>"` writes an `app.jsx` with the
+**dashboard**: `tracebi new-dashboard "<Name>" --model <model>` writes
+`reports/<model>/<name>/` (`--model` is required with more than one model, or
+title it `"<model>/<Name>"`) with an `app.jsx` with the
 title, a KPI strip with a lead, a chart beside its ranking and a filterable
 detail, as `tracebi init`'s sample is; `--html` writes it as `template.html`
 (`brief`, then a `.tb-span-8` chart beside a `.tb-span-4` detail). Other report layouts:

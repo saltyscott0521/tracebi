@@ -398,7 +398,10 @@ def _presentation() -> dict:
                        "text-good, text-bad, chart-1..8) and the kit's tb-* classes.",
             "when": "app.jsx for dashboards people work in; template.html for briefs, "
                     "long-form, emailed and printed pages (they read with JavaScript off).",
-            "scaffold": "tracebi new-dashboard \"Name\" writes a dashboard app.jsx; "
+            "scaffold": "tracebi new-dashboard \"Name\" [--model NAME] writes a dashboard "
+                        "app.jsx into the model's project folder, reports/<model>/<name>/ "
+                        "(--model is required with more than one model; \"<model>/Name\" "
+                        "names it too); "
                         "--job overview|trend|leaderboard|scorecard|monitor|funnel picks "
                         "what it is for (trend and monitor need a time dimension; "
                         "scorecard shows every measure, up to four, with its trend; "
@@ -1900,8 +1903,9 @@ def describe(brief: bool = False) -> dict:
                    "other constructor fields, uppercase name. An existing "
                    "key is kept unless --force.",
             "then": "tracebi new-model \"<Name>\" --from <name> --tables a,b,c "
-                    "drafts a star schema from column metadata only (no row "
-                    "scan). A table named fact_* or with numeric non-key "
+                    "drafts models/<name>.yaml, a star schema from column metadata only (no row "
+                    "scan): type: warehouse from the workspace's warehouse, else "
+                    "connection: <name>. A table named fact_* or with numeric non-key "
                     "columns and *_id/*_key columns that match another "
                     "listed table's key is a fact; the rest are dimensions. "
                     "Edit every line marked # DRAFT: review.",

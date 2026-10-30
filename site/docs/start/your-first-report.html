@@ -126,7 +126,9 @@ figure reads, and numbers typed outside figures.</p>
 </code></pre>
 <p>This creates <code>reports/portfolio_book/</code> with <code>report.json</code> and <code>template.html</code>,
 bound to the first model it finds. Use <code>tracebi new-dashboard</code> instead for an
-<code>app.jsx</code> dashboard (<a href="../reference/app-jsx.html">app.jsx</a>).</p>
+<code>app.jsx</code> dashboard (<a href="../reference/app-jsx.html">app.jsx</a>): it lands in the project folder of the model
+it reads, <code>reports/&lt;model&gt;/&lt;name&gt;/</code>, and says which; with more than one model,
+name it with <code>--model &lt;name&gt;</code>.</p>
 <h3 id="2-declare-the-data">2. Declare the data</h3>
 <p>Each entry under <code>data</code> is a binding: a named query against a model. The build
 runs it once, fingerprints the result and records it in the trace.</p>
