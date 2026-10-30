@@ -6,6 +6,7 @@ verify refuses by name, because a draft is not a receipt.
 
 import http.server
 import json
+import shutil
 import socket
 import threading
 import time
@@ -115,7 +116,9 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     code, out = run_cli("new-dashboard", "Weekly", "--reports-dir",
                         str(scaffolded / "dash"))
     assert code == 0, out
-    dash = scaffolded / "dash" / "weekly"
+    # It reads the workspace's one model and lands in its project folder.
+    assert "sample_model" in out
+    dash = scaffolded / "dash" / "sample_model" / "weekly"
     assert "<Kpi lead" in (dash / "app.jsx").read_text()
     # The same bindings: a report and a dashboard read the same queries.
     assert (json.loads((plain / "report.json").read_text())["data"]
@@ -123,7 +126,8 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     assert not (dash / "template.html").exists()
     assert not (dash / "style.css").exists()
     assert not (dash / "script.js").exists()
-    code, out = run_cli("report", "build", "weekly", "--reports-dir", str(scaffolded / "dash"))
+    code, out = run_cli("report", "build", "sample_model/weekly", "--reports-dir",
+                        str(scaffolded / "dash"))
     assert code == 0, out
 
     code, out = run_cli("new-report", "Weekly Brief", "--layout", "brief")
@@ -167,13 +171,13 @@ def test_layout_recipes_scaffold_and_build(scaffolded):
     code, out = run_cli("new-dashboard", "Desk App", "--nav", "side", "--mode", "dark",
                         "--density", "compact", "--title-at", "nav")
     assert code == 0, out
-    app_dir = scaffolded / "reports" / "desk_app"
+    app_dir = scaffolded / "reports" / "sample_model" / "desk_app"
     decl = json.loads((app_dir / "report.json").read_text())
     assert decl["look"] == {"mode": "dark", "density": "compact"}
     assert "<aside" in (app_dir / "app.jsx").read_text()
-    code, out = run_cli("report", "build", "desk_app")
+    code, out = run_cli("report", "build", "sample_model/desk_app")
     assert code == 0, out
-    built = (scaffolded / "output" / "desk_app.html").read_text()
+    built = (scaffolded / "output" / "sample_model" / "desk_app.html").read_text()
     assert '<html lang="en" data-tb-app data-tb-mode="dark" data-tb-density="compact">' in built
 
     code, out = run_cli("context")
@@ -356,11 +360,13 @@ def test_dashboards_by_job(scaffolded, tmp_path, monkeypatch):
     assert code == 0, out
     code, out = run_cli("new-dashboard", "Regions Board", "--job", "leaderboard")
     assert code == 0, out
-    decl = json.loads((scaffolded / "reports" / "regions_board" / "report.json").read_text())
+    decl = json.loads((scaffolded / "reports" / "sample_model" / "regions_board" / "report.json")
+                      .read_text())
     assert decl["data"]["top10"]["query"]["limit"] == 10
-    code, out = run_cli("report", "build", "regions_board")
+    code, out = run_cli("report", "build", "sample_model/regions_board")
     assert code == 0, out
-    code, out = run_cli("verify", str(scaffolded / "output" / "regions_board.html.manifest.json"))
+    code, out = run_cli("verify", str(scaffolded / "output" / "sample_model"
+                                      / "regions_board.html.manifest.json"))
     assert code == 0, out
 
     code, out = run_cli("new-dashboard", "Sample Trend", "--job", "trend")
@@ -374,38 +380,38 @@ def test_dashboards_by_job(scaffolded, tmp_path, monkeypatch):
     assert code == 0, out
     code, out = run_cli("new-dashboard", "MRR Trend", "--job", "trend")
     assert code == 0, out
-    data = json.loads((saas / "reports" / "mrr_trend" / "report.json").read_text())["data"]
+    data = json.loads((saas / "reports" / "saas_model" / "mrr_trend" / "report.json").read_text())["data"]
     assert data["by_period"]["query"]["dimensions"] == ["dim_month.month"]
     assert data["latest"]["query"]["order_by"] == ["-dim_month.month"]
-    code, out = run_cli("report", "build", "mrr_trend")
+    code, out = run_cli("report", "build", "saas_model/mrr_trend")
     assert code == 0, out
     claims = {f["id"] for f in json.loads(
-        (saas / "output" / "mrr_trend.html.manifest.json").read_text())["figures"]}
+        (saas / "output" / "saas_model" / "mrr_trend.html.manifest.json").read_text())["figures"]}
     assert {"fig-spark-by_period-ending_mrr", "kpi-latest-period"} <= claims
 
     # A scorecard: every measure the fact runs (up to four), each a KPI with
     # its trend — and labels spell the business acronym (Ending MRR).
     code, out = run_cli("new-dashboard", "Scorecard", "--job", "scorecard")
     assert code == 0, out
-    data = json.loads((saas / "reports" / "scorecard" / "report.json").read_text())["data"]
+    data = json.loads((saas / "reports" / "saas_model" / "scorecard" / "report.json").read_text())["data"]
     assert len(data["totals"]["query"]["measures"]) == 4
     assert data["by_period"]["query"]["dimensions"] == ["dim_month.month"]
-    assert 'label="Ending MRR"' in (saas / "reports" / "scorecard" / "app.jsx").read_text()
-    code, out = run_cli("report", "build", "scorecard")
+    assert 'label="Ending MRR"' in (saas / "reports" / "saas_model" / "scorecard" / "app.jsx").read_text()
+    code, out = run_cli("report", "build", "saas_model/scorecard")
     assert code == 0, out
     claims = {f["id"] for f in json.loads(
-        (saas / "output" / "scorecard.html.manifest.json").read_text())["figures"]}
+        (saas / "output" / "saas_model" / "scorecard.html.manifest.json").read_text())["figures"]}
     assert {"fig-value-totals-ending_mrr", "fig-spark-by_period-customers"} <= claims
 
     # A monitor: the latest month of every measure and a watch list, lowest first.
     code, out = run_cli("new-dashboard", "Health", "--job", "monitor")
     assert code == 0, out
-    data = json.loads((saas / "reports" / "health" / "report.json").read_text())["data"]
+    data = json.loads((saas / "reports" / "saas_model" / "health" / "report.json").read_text())["data"]
     assert data["latest"]["query"]["order_by"] == ["-dim_month.month"]
     assert data["watch"]["query"]["order_by"] == ["ending_mrr"]
-    code, out = run_cli("report", "build", "health")
+    code, out = run_cli("report", "build", "saas_model/health")
     assert code == 0, out
-    code, out = run_cli("verify", str(saas / "output" / "health.html.manifest.json"))
+    code, out = run_cli("verify", str(saas / "output" / "saas_model" / "health.html.manifest.json"))
     assert code == 0, out
 
     # A funnel: count measures (not money, not rates) as stages, widest first,
@@ -418,19 +424,36 @@ def test_dashboards_by_job(scaffolded, tmp_path, monkeypatch):
     assert code == 0, out
     code, out = run_cli("new-dashboard", "Deal Funnel", "--job", "funnel")
     assert code == 0, out
-    decl = json.loads((sales / "reports" / "deal_funnel" / "report.json").read_text())
+    decl = json.loads((sales / "reports" / "sales_pipeline_model" / "deal_funnel" / "report.json").read_text())
     assert decl["data"]["stages"]["query"]["measures"] == [
         "closed_deals", "won_deals", "won_deals_conversion"]
     assert decl["measures"]["sales_pipeline_model"]["won_deals_conversion"]["ratio"] == [
         "won_deals", "closed_deals"]
-    code, out = run_cli("report", "build", "deal_funnel")
+    code, out = run_cli("report", "build", "sales_pipeline_model/deal_funnel")
     assert code == 0, out
-    built = (sales / "output" / "deal_funnel.html").read_text()
+    built = (sales / "output" / "sales_pipeline_model" / "deal_funnel.html").read_text()
     formats = json.loads(built.split('id="tracebi-formats" type="application/json">', 1)[1]
                          .split("</script>", 1)[0])
     assert formats["stages"]["won_deals_conversion"] == "percent"
-    code, out = run_cli("verify", str(sales / "output" / "deal_funnel.html.manifest.json"))
+    code, out = run_cli("verify", str(sales / "output" / "sales_pipeline_model" / "deal_funnel.html.manifest.json"))
     assert code == 0, out
+
+    # With a second model the dashboard's model is the author's to name:
+    # refused, naming both, until --model says which; then it lands there.
+    shutil.copy(saas / "models" / "saas_model.yaml", sales / "models" / "saas_model.yaml")
+    code, out = run_cli("new-dashboard", "Pipeline Board")
+    assert code != 0 and "saas_model" in out and "sales_pipeline_model" in out, out
+    assert "--model" in out
+    assert not (sales / "reports" / "pipeline_board").exists()
+    code, out = run_cli("new-dashboard", "Pipeline Board", "--model", "sales_pipeline_model")
+    assert code == 0, out
+    assert "model 'sales_pipeline_model'" in out and "sales_pipeline_model/pipeline_board" in out
+    assert (sales / "reports" / "sales_pipeline_model" / "pipeline_board" / "app.jsx").is_file()
+    # A title in the model's folder names the model as well.
+    code, out = run_cli("new-dashboard", "saas_model/Churn Board")
+    assert code == 0 and "model 'saas_model'" in out, out
+    assert json.loads((sales / "reports" / "saas_model" / "churn_board" / "report.json")
+                      .read_text())["data"]["totals"]["model"] == "saas_model"
 
 
 def test_a_fresh_projects_page_filter_recomputes_in_the_file(scaffolded):

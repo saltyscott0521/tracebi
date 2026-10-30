@@ -42,14 +42,17 @@ def test_connect_then_draft_a_model_that_loads(scaffolded, cli, monkeypatch):
         "--tables", "fact_sales,dim_customer,dim_product",
     )
     assert code == 0, out
-    model_text = (scaffolded / "models" / "sales.py").read_text(encoding="utf-8")
+    # The draft is the declarative form the reference models use, not Python.
+    assert not (scaffolded / "models" / "sales.py").exists()
+    model_text = (scaffolded / "models" / "sales.yaml").read_text(encoding="utf-8")
     assert "# DRAFT: review" in model_text
     assert str(db) not in model_text
-    assert "connection_file('wh', ROOT)" in model_text
+    assert "connection: wh" in model_text
+    assert "connection 'wh'" in out
 
     code, out = cli("list-models")
     assert code == 0, out
-    assert "models/sales.py" in out
+    assert "models/sales.yaml" in out
     assert "_connections" not in out
 
     model = get_model("sales")
@@ -67,3 +70,18 @@ def test_connect_then_draft_a_model_that_loads(scaffolded, cli, monkeypatch):
     ).to_pandas().set_index("dim_customer.name")
     assert float(by_name.loc["Ada", "amount"]) == 12.5
     assert float(by_name.loc["Bea", "amount"]) == 2.5
+
+
+def test_a_draft_from_the_workspace_warehouse_reads_type_warehouse(scaffolded, cli):
+    # `tracebi init` declares connections/warehouse.yaml over the file the
+    # transforms sink into; a draft from it reads the warehouse on any tier.
+    db = scaffolded / "data" / "warehouse.duckdb"
+    db.parent.mkdir(exist_ok=True)
+    _star(db)
+    code, out = cli("new-model", "Orders", "--from", "warehouse", "--tables", "fact_sales,dim_customer")
+    assert code == 0, out
+    assert "type: warehouse" in out
+    text = (scaffolded / "models" / "orders.yaml").read_text(encoding="utf-8")
+    assert "    type: warehouse" in text and "connection:" not in text
+    total = get_model("orders").query(fact="fact_sales", measures=["amount"]).to_pandas()
+    assert float(total["amount"].iloc[0]) == 15.0

@@ -78,7 +78,9 @@ tracebi new-report "Portfolio Book"
 
 This creates `reports/portfolio_book/` with `report.json` and `template.html`,
 bound to the first model it finds. Use `tracebi new-dashboard` instead for an
-`app.jsx` dashboard ([[app-jsx]]).
+`app.jsx` dashboard ([[app-jsx]]): it lands in the project folder of the model
+it reads, `reports/<model>/<name>/`, and says which; with more than one model,
+name it with `--model <name>`.
 
 ### 2. Declare the data
 

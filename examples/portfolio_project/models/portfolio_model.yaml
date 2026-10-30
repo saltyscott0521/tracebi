@@ -59,6 +59,11 @@ tables:
   - name: dim_flow_type
     connector: warehouse
     source: dim_flow_type
+  # A sink view (holdings_transform.sql), not a copy of rows: the model reads
+  # it as it reads a table, and it always agrees with the two tables it names.
+  - name: fact_holdings_by_sector
+    connector: warehouse
+    source: fact_holdings_by_sector
 
 # dimensions: the descriptive tables (key column, attributes to slice by)
 dimensions:
@@ -102,6 +107,12 @@ dimensions:
     key: flow_type_id
     description: What a cash flow was (a drawdown, interest, or a repayment)
     attributes: [flow_type]
+  # The view's own grain: one row per sector, so the sector is its key.
+  - name: dim_book
+    table: fact_holdings_by_sector
+    key: sector
+    description: The book by sector, as the sink view groups it (one row per sector)
+    attributes: [sector]
 
 # time_grains: a date attribute rolled up to a period, groupable like any
 # attribute (dim_date.month reads "2025-03")
@@ -131,6 +142,13 @@ facts:
       dim_issuer: issuer_id
       dim_date: flow_date
       dim_flow_type: flow_type_id
+  # The book by sector, read from the warehouse's sink view: the same fair
+  # value fact_holdings gives by dim_issuer.sector, plus a count of issuers.
+  - name: fact_holdings_by_sector
+    table: fact_holdings_by_sector
+    measures: [issuers, positions, fair_value]
+    foreign_keys:
+      dim_book: sector
 
 # measures: the named vocabulary reports ask for
 measures:
@@ -223,3 +241,8 @@ measures:
     column: cashflow_id
     agg: count
     description: Number of cash flows
+  - name: sector_issuers
+    column: issuers
+    agg: sum
+    description: Issuers in the sector (the book-by-sector view)
+    synonyms: [borrowers per sector]
