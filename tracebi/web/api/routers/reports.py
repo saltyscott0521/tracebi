@@ -281,14 +281,17 @@ def _writable_output_html(name: str):
     Same names ``tracebi report build`` uses. A probe file distinguishes
     "the disk refused" from a later render error, which must still raise.
     """
+    import tempfile
+
     path = _output_html(name)
     out_dir = os.path.dirname(path)
-    probe = os.path.join(out_dir, ".tracebi-write-probe")
+    # A probe of its own: builds in one folder run at once (Build all), and a
+    # shared name let one build delete another's probe, which then read as
+    # "not writable" and sent that build to the temp dir, out of the library.
     try:
         os.makedirs(out_dir, exist_ok=True)
-        with open(probe, "w", encoding="utf-8") as fh:
-            fh.write("")
-        os.unlink(probe)
+        with tempfile.NamedTemporaryFile(dir=out_dir, prefix=".tracebi-write-probe-"):
+            pass
     except OSError:
         return None
     return path
