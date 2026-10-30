@@ -27,6 +27,9 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ### Changed
 
+- **The library paints at once**: the state store keeps each build's last verdict (`tracebi_verdicts`, a new Alembic revision), a server just started reuses one whose inputs are unchanged, and `GET /api/desk?quick=1` re-runs nothing, returning any other verdict `pending` with the last answer and when it was computed; the app shows those as **Checking** (never green) while it re-checks in the background, and the glance says when the verdicts were **Checked**.
+- **Lineage gives the lanes the width**: a selected piece's passport floats over the map (× or Escape closes it), names break only after `_ . /` and end in an ellipsis, wires leave from the cards' edges across wider gutters, and each lens has a one-line legend above the lanes with its own empty state (Flow at rest says how to light a path).
+- **Schema canvases open readable**: a model's Schema tab and the Warehouse schema open at 90% or more on the selected table, else the fact (the Warehouse on its first group), with **Show all** one click away.
 - **Agents may read the reference workspace's source tables**: `connections/crm.yaml`, `billing.yaml` and `bank.yaml` list the tables `holdings_`, `saas_` and `wealth_transform` read under `agents:`, so an agent can propose a change to each. Where a `-- source:` line names a table agents may not read, `read_transform`'s `change` and the transform's passport (`agents.blocked`) say so and name the line, instead of offering a change.
 - **`propose_transform` reports SQL that does not parse first and alone**, without the dropped-table errors read from text it could not parse.
 - **`start_draft` of a published report or model starts from the published copy** over the gateway (`from_published` now defaults to that; `false` starts empty), and the hints that name `start_draft` pass the path and `from_published=true`. Starting a draft that exists says to `read_draft` it and `write_draft_file` over it.
@@ -66,6 +69,7 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ### Fixed
 
+- **Kept verdicts stay kept.** Live discovery's rescan recorded a model's file relative to the working directory, so a verdict's key changed every few seconds and each library load re-ran every build's queries; the key now uses the absolute path.
 - **Explore's filters list the dimensions.** On Ask's "Advanced: the query builder", the filter picker lists the joined dimensions' attributes (as Ask does) and then the fact's columns, so a carried filter such as "Sector: Consumer" shows as `dim_issuer.sector = Consumer`, not on the fact's first column.
 - **The kit's `fmt(value, mode)` takes every named format.** `fmt(v, "currency0")`, `"percent"`, `"comma"` and the rest format as the docs promise (through `tracebi.format`, the formatter `<EChart>` uses); before, only `"compact"` did anything.
 - **Charts print at their true size.** Printed (Ctrl+P, and `tracebi report build --format pdf`), every chart is drawn again once the page is laid out on paper, at its printed width, so its text prints at the page's own scale instead of about 0.6× (axis labels 4.9–5.6 pt before, 8.2 pt after, in the reference dashboard's PDF); an option-only `<EChart>` resizes then too. Each is drawn at screen width again after the print.

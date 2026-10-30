@@ -27,17 +27,20 @@ def _loaded_models() -> dict:
 
 
 @router.get("/desk")
-def desk(fresh: bool = False):
+def desk(fresh: bool = False, quick: bool = False):
     """Pins, exploration drafts, receipts that do not reproduce, sink status.
 
     Only reports the caller may view are listed. Each entry naming a
     ``report`` also carries its ``display_name``. A
     verdict is reused while nothing it was computed from has changed
     (:func:`tracebi.desk.verdict`); ``?fresh=1`` re-runs every one.
+    ``?quick=1`` re-runs none: what would be re-run comes back ``pending``
+    with the last recorded verdict and when it was computed, so the library
+    paints at once and asks again without it.
     """
     from tracebi.permissions import can
 
-    out = review(os.getcwd(), _loaded_models(), fresh=fresh)
+    out = review(os.getcwd(), _loaded_models(), fresh=fresh, quick=quick)
     names = {r["name"]: r["display_name"] for r in registry.list_reports()}
     # A report in a folder the caller may not view is not on their desk: not
     # its build, its cover, its numbers or its verdict (core invariant 5).

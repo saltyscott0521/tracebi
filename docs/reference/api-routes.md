@@ -99,7 +99,7 @@ folder).
 | `GET` | `/api/reports/{name}/cover` | viewer |
 | `GET` | `/api/runs` | viewer |
 | `GET` | `/api/runs/counts?kind=` | viewer |
-| `GET` | `/api/desk[?fresh=1]` | viewer |
+| `GET` | `/api/desk[?fresh=1\|quick=1]` | viewer |
 | `GET` | `/api/reports/{name}/download?format=xlsx\|html\|pdf` | analyst |
 | `GET` | `/api/reports/{name}/lineage` | viewer |
 | `GET` | `/api/reports/{name}/mermaid` | viewer |
@@ -115,7 +115,7 @@ folder).
 | `/cover` | The PNG of the last build's first screen, with an `ETag` of its write time (304 when unchanged). 404 when the build took none; it never builds. |
 | `/api/runs` | Run rows, newest first; `kind`, `target`, `limit`. Rows carry `display_name` beside `target` (a model publish carries its `label`; a pipeline run `null`). The HTML stays on disk; the row holds its path. A build row stores no verdict, so History shows the `/api/desk` re-check on a report's newest build and "Not checked" on older ones. |
 | `/api/runs/counts` | `[{kind, target, runs, failed}]` per target the caller may see. |
-| `/api/desk` | Only reports the caller may view: pins, drafts, verdicts, builds (each with `values` [{id, label, text, delta, spark}], its KPIs as built), sinks. Each verdict or build row has `computed_at` and `cached`. A verdict is kept while its manifest, its models and their warehouse (and certificate) are unchanged; `?fresh=1` re-runs all. |
+| `/api/desk` | Only reports the caller may view: pins, drafts, verdicts, builds (each with `values` [{id, label, text, delta, spark}], its KPIs as built), sinks. Each verdict or build row has `computed_at` and `cached`. A verdict is kept while its manifest, its models and their warehouse (and certificate) are unchanged, in the process and in the state store (`tracebi_verdicts`), so a server just started reuses one computed before it; `?fresh=1` re-runs all. `?quick=1` re-runs none: a verdict not kept for its current inputs comes back `pending` with the last recorded verdict and its `computed_at` (or `verdict: null`), is not offered as `open` nor listed in `verdicts`, and the library shows it as Checking, never green, until it asks again without `quick`. |
 | `/download` | `html`: the last build. `pdf`: a print of it by headless Chromium, with no trace. `xlsx`: the Excel renderer, which derives no [[number-formats]] and runs the report to do so. |
 | `/lineage` | Transform → tables → model → queries → figures, from the last build's manifest. `/mermaid` returns a diagram. |
 | `/source` | The files that define the report (the spec, or `report.json`, `template.html`, `style.css`, `script.js`, `report.py`), read-only, and only files discovery registered. |

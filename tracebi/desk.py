@@ -18,7 +18,7 @@ from typing import Any, Mapping, Optional
 
 
 def review(project_root: str, models: Optional[Mapping[str, Any]] = None,
-           fresh: bool = False) -> dict:
+           fresh: bool = False, quick: bool = False) -> dict:
     """The review list for *project_root*.
 
     ``open`` is the newest built artifact whose verdict is ``reproduces``,
@@ -28,10 +28,13 @@ def review(project_root: str, models: Optional[Mapping[str, Any]] = None,
     re-runs against; a missing model becomes an ``error`` verdict rather
     than an empty desk. Each verdict and build row carries ``computed_at``
     (when its re-run happened) and ``cached`` (whether this read reused it;
-    see :func:`verdict`). ``fresh`` re-runs every one.
+    see :func:`verdict`). ``fresh`` re-runs every one. ``quick`` re-runs
+    none: a verdict not kept for its current inputs comes back ``pending``,
+    carrying what the last re-check said and when (``computed_at``), or
+    nothing when there was none, for the caller to ask again without it.
     """
     root = os.path.abspath(project_root)
-    opened, verdicts, builds = _verdicts(root, models or {}, fresh)
+    opened, verdicts, builds = _verdicts(root, models or {}, fresh, quick)
     warehouse = os.path.join(root, "data", "warehouse.duckdb")
     return {
         "pins": _pins(root),
@@ -270,11 +273,12 @@ def _values(html_path: str) -> list[dict]:
 
 
 def _verdicts(
-    root: str, models: Mapping[str, Any], fresh: bool = False,
+    root: str, models: Mapping[str, Any], fresh: bool = False, quick: bool = False,
 ) -> tuple[Optional[dict], list[dict], list[dict]]:
     output = os.path.join(root, "output")
     if not os.path.isdir(output):
         return None, [], []
+    recorded = {} if fresh else _recorded()
     waiting: list[dict] = []
     builds: list[dict] = []
     opened: Optional[dict] = None
@@ -288,9 +292,11 @@ def _verdicts(
         path = os.path.join(output, name)
         report = name[: -len(suffix)]
         html_path = os.path.join(output, report + ".html")
-        checked = verdict(path, models, fresh=fresh)
+        checked = verdict(path, models, fresh=fresh, quick=quick, recorded=recorded)
         verdict_ = checked["verdict"]
         when = {"computed_at": checked["computed_at"], "cached": checked["cached"]}
+        if checked.get("pending"):
+            when["pending"] = True
         row = {
             "report": report,
             "verdict": verdict_,
@@ -306,6 +312,8 @@ def _verdicts(
                 **_face(path, html_path),
                 **when,
             })
+        if when.get("pending"):
+            continue           # not known yet: neither opened nor waiting
         if verdict_ == "reproduces":
             if os.path.isfile(html_path):
                 try:
@@ -340,8 +348,12 @@ def _verdicts(
 # read, as before. A re-run that hit an error (a locked warehouse, a timeout)
 # is not kept either, since it says nothing about the inputs.
 #
-# The cache is process-local: a second worker keeps its own and computes its
-# own verdicts. That costs it its first read and never serves it a stale one.
+# The cache is process-local; the state store keeps the newest verdict on each
+# receipt beside a digest of its key (tracebi_verdicts). A process that has not
+# computed one yet reuses a stored verdict whose digest matches, exactly as it
+# would its own; one whose digest does not match is only what the last re-check
+# said, which a ``quick`` read returns as ``pending`` (re-running nothing) so
+# the library paints at once and asks again for the rest.
 
 _VERDICT_CACHE_MAX = 256
 # manifest path -> (key, entry); least recently used first.
@@ -356,13 +368,17 @@ def invalidate() -> None:
 
 
 def verdict(manifest_path: str, models: Mapping[str, Any],
-            fresh: bool = False) -> dict:
+            fresh: bool = False, quick: bool = False,
+            recorded: Optional[Mapping[str, dict]] = None) -> dict:
     """The desk's verdict on the build whose receipt is *manifest_path*:
     ``{verdict, detail, computed_at, cached}``.
 
-    Reused while :func:`verdict_key` is unchanged and ``fresh`` is false;
-    otherwise re-run by :func:`tracebi.verify.verify_manifest` and kept when
-    the key allows. Never raises: an unreadable receipt is an ``error``.
+    Reused while :func:`verdict_key` is unchanged and ``fresh`` is false (kept
+    in this process, or in the state store: *recorded*, else read); otherwise
+    re-run by :func:`tracebi.verify.verify_manifest`, kept when the key allows
+    and recorded. ``quick`` never re-runs: what would be re-run comes back
+    with ``pending: True`` and the last recorded verdict, or ``verdict: None``.
+    Never raises: an unreadable receipt is an ``error``.
     """
     from datetime import datetime, timezone
 
@@ -388,6 +404,19 @@ def verdict(manifest_path: str, models: Mapping[str, Any],
                 if hit is not None and hit[0] == key:
                     _verdict_cache.move_to_end(path)
                     return {**hit[1], "cached": True}
+        stored = (recorded if recorded is not None else _recorded()).get(path) if not fresh else None
+        if key is not None and stored and stored.get("inputs") == _digest(key):
+            entry = {k: stored.get(k) for k in ("verdict", "detail", "computed_at")}
+            with _verdict_lock:
+                _verdict_cache[path] = (key, entry)
+                _verdict_cache.move_to_end(path)
+                while len(_verdict_cache) > _VERDICT_CACHE_MAX:
+                    _verdict_cache.popitem(last=False)
+            return {**entry, "cached": True}
+        if quick:
+            last = stored or {}
+            return {"verdict": last.get("verdict"), "detail": last.get("detail"),
+                    "computed_at": last.get("computed_at"), "cached": True, "pending": True}
         result = verify_manifest(manifest, models)
         entry = {"verdict": result.get("verdict") or "error",
                  "detail": result.get("verdict_detail")}
@@ -405,7 +434,37 @@ def verdict(manifest_path: str, models: Mapping[str, Any],
             _verdict_cache.move_to_end(path)
             while len(_verdict_cache) > _VERDICT_CACHE_MAX:
                 _verdict_cache.popitem(last=False)
+    _record(path, key, entry)
     return {**entry, "cached": False}
+
+
+def _digest(key: tuple) -> str:
+    """A stored stand-in for *key*: equal keys, equal digests."""
+    import hashlib
+
+    return hashlib.sha256(repr(key).encode("utf-8")).hexdigest()
+
+
+def _recorded() -> dict:
+    """The state store's kept verdicts, or none when it cannot be read."""
+    try:
+        from tracebi.state import recorded_verdicts
+
+        return recorded_verdicts()
+    except Exception:  # noqa: BLE001 — no store means computing, as before
+        return {}
+
+
+def _record(path: str, key: Optional[tuple], entry: dict) -> None:
+    """Keep *entry* in the state store. A store failure never fails a verdict."""
+    try:
+        from tracebi.state import record_verdict
+
+        detail = entry.get("detail")
+        record_verdict(path, _digest(key) if key is not None else None, entry["verdict"],
+                       None if detail is None else str(detail), entry["computed_at"])
+    except Exception:  # noqa: BLE001 — recording is an optimisation only
+        pass
 
 
 def cached_verdict(manifest_path: str, models: Mapping[str, Any]) -> Optional[dict]:
@@ -503,7 +562,10 @@ def verdict_key(manifest_path: str, manifest_stat: Optional[os.stat_result],
                     return None
                 stamps.append(stamp)
             # A model registered in memory has no file to stamp; the object
-            # stands in for it.
+            # stands in for it. Discovery may record a file relative to the
+            # working directory, then absolute after a rescan: one file.
+            if file:
+                file = os.path.abspath(file)
             parts.append((name, file, _stat_stamp(file) if file else id(model),
                           tuple(stamps)))
     except Exception:  # noqa: BLE001 — an input that cannot be stamped is not kept

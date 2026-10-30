@@ -24,11 +24,15 @@ import { Empty, ErrorDetail, Segmented, SkeletonCard } from '../components/Share
 // only is a gap: dashed, amber, its reason under its name.
 //
 // A lens repaints the same map for one question (?lens=): Coverage (the
-// default), Flow, Freshness, Trust, What agents see. Clicking a piece selects
-// it (?node=<id>) and the passport beside the map answers the same rows for
-// it; with nothing selected, the passport is the workspace's. ?lane= focuses one
+// default), Flow, Freshness, Trust, What agents see, each with its one-line
+// legend above the lanes (and what it says when it has nothing to show).
+// Clicking a piece selects it (?node=<id>) and the passport answers the same
+// rows for it: on a wide map it floats over the lanes, on the side away from
+// the piece, so the lanes keep their width (Escape or × closes it); with nothing
+// selected, the passport is the workspace's, under the map. ?lane= focuses one
 // lane. Hovering or focusing a piece lights its whole path. When the map
-// is narrower than its five lanes fit, they stack and no wire is drawn.
+// is narrower than its five lanes fit, they stack and no wire is drawn. A name
+// breaks only after _ . / and ends in an ellipsis; hover or focus says it whole.
 //
 // The graph's edge_facts are the edges DuckDB's parse proved: a SQL
 // transform's certificate says which source tables, files and warehouse
@@ -63,13 +67,33 @@ const LANES = [
 ]
 export const LANE_KEYS = LANES.map(l => l.key)
 
-// What each lens says under the map.
+// What each lens says above the map, in one line.
 const LEGEND = {
   coverage: [['ok', 'wired on both sides'], ['warn', 'a gap: read by nobody, run by nothing, or built from nothing']],
-  flow: 'Hover or focus any piece to light its whole path. The selected piece stays lit. Select a warehouse table a SQL transform wrote: green wires are the source tables and files its columns come from, as the parser read them.',
   freshness: [['ok', 'moved after everything upstream'], ['warn', 'older than what feeds it'], ['off', 'not moved here yet']],
-  trust: [['ok', 'checks passed · reproduces'], ['warn', 'changed since checked · snapshot · drifted'], ['bad', 'checks failed · error'], ['off', 'not a sink, nothing to check']],
-  access: 'Lit: what the gateway can read. Dark: not on any allowlist. Transforms are never read, only proposed.',
+  trust: [['ok', 'checks passed · reproduces'], ['warn', 'changed since checked · snapshot · drifted'], ['bad', 'checks failed · error'], ['off', 'nothing to check']],
+  access: [['ok', 'the gateway can read it'], ['off', 'dark: on no allowlist (a transform is only ever proposed)']],
+}
+
+// What a lens says when it has nothing to show, from the graph's own counts.
+function emptyOf(lens, graph) {
+  const s = graph.summary || {}
+  if (lens === 'freshness' && !graph.nodes.some(n => n.passport?.moved?.at)) {
+    return 'Nothing has moved yet: run a transform (Refresh data) and every piece it feeds dates from it.'
+  }
+  if (lens === 'trust' && !s.checks?.of) {
+    return 'No sink declares a contract yet: a transform\'s .contract.yaml gives the tables it writes checks to satisfy.'
+  }
+  if (lens === 'access' && !s.agents?.source_tables && !s.agents?.models && !s.agents?.reports) {
+    return 'Agents see nothing yet: tick the tables they may read on a source\'s Tables tab.'
+  }
+  return null
+}
+
+// Where a name may break: after an underscore, a dot or a slash, never inside a word.
+function breakable(text) {
+  if (typeof text !== 'string') return text
+  return text.split(/(?<=[_./])/).flatMap((part, i) => (i ? [<wbr key={i} />, part] : [part]))
 }
 
 const JUDGED = new Set(['written', 'built', 'snapshot'])
@@ -202,7 +226,7 @@ function Chips({ list, lens, map, sel, from, run, refOf, select, light, label })
           <button type="button" ref={refOf(k.id)} data-node={k.id} data-tone={runTone(k, lens, map, run)}
                   className={['mchip', k.gap && 'mchip--gap', sel === k.id && 'is-sel', from?.has(k.id) && 'is-from', dark(k, lens) && 'is-dark', runClass(k.id, run)].filter(Boolean).join(' ')}
                   data-run={run?.state[k.id]}
-                  aria-pressed={sel === k.id} title={k.gap ? k.gap.reason : k.sub || k.name}
+                  aria-pressed={sel === k.id} title={[k.label, k.gap ? k.gap.reason : k.sub].filter(Boolean).join(' · ')}
                   onClick={() => select(k.id)} onMouseEnter={() => light(k.id)} onMouseLeave={() => light('')}>
             <i className="mdot" aria-hidden="true" />{k.chip === 'view' && <span className="mchip__view">view</span>}<span className="mchip__nm">{k.label}</span>
           </button>
@@ -221,13 +245,13 @@ function Card({ n, kids, state, refOf, select, light }) {
            data-run={run?.state[n.id]}
            onMouseEnter={() => light(n.id)} onMouseLeave={() => light('')}
            onFocus={() => light(n.id)} onBlur={() => light('')}>
-        <button type="button" className="mcard__main" aria-pressed={sel === n.id} onClick={() => select(n.id)}>
+        <button type="button" className="mcard__main" aria-pressed={sel === n.id} onClick={() => select(n.id)} title={n.label}>
           <span className="mcard__t">
             <i className="mdot" aria-hidden="true" />
-            <span className="mcard__nm" title={n.label}>{n.label}</span>
+            <span className="mcard__nm">{breakable(n.label)}</span>
           </span>
           <span className="mcard__s">
-            {n.chip && !n.gap && <span className="mcard__chip">{n.chip}</span>}{n.gap ? n.gap.reason : n.sub}
+            {n.chip && !n.gap && <span className="mcard__chip">{n.chip}</span>}{breakable(n.gap ? n.gap.reason : n.sub)}
           </span>
         </button>
         {kids?.length > 0 && (
@@ -279,9 +303,10 @@ function Board({ graph, map, lens, sel, lane, run, select, light, hover }) {
 
   const refOf = useCallback(id => el => { if (el) nodes.current[id] = el; else delete nodes.current[id] }, [])
 
-  // Wires, from where each card or chip is now: right edge of one to the left
-  // edge of the next, as a gentle S. None when the lanes stack (the svg is
-  // hidden), and none inside a lane.
+  // Wires, from where each card or chip is now: the right edge of one's card
+  // to the left edge of the next's, at the chip's height, as a gentle S across
+  // the gutter between the lanes, so no wire runs under a card. None when the
+  // lanes stack (the svg is hidden), and none inside a lane.
   const draw = useCallback(() => {
     const host = boardRef.current
     const svg = svgRef.current
@@ -289,6 +314,7 @@ function Board({ graph, map, lens, sel, lane, run, select, light, hover }) {
     if (getComputedStyle(svg).display === 'none') { setPaths(p => (p.length ? [] : p)); return }
     const b = host.getBoundingClientRect()
     const el = id => nodes.current[id] || nodes.current[map.byId[id]?.parent]
+    const card = e => (e.closest('.mcard') || e).getBoundingClientRect()
     const next = []
     for (const [a, z] of map.edges) {
       const A = el(a)
@@ -296,9 +322,9 @@ function Board({ graph, map, lens, sel, lane, run, select, light, hover }) {
       if (!A || !Z || map.byId[a].lane >= map.byId[z].lane) continue
       const ra = A.getBoundingClientRect()
       const rz = Z.getBoundingClientRect()
-      const x1 = ra.right - b.left
+      const x1 = card(A).right - b.left
       const y1 = ra.top + ra.height / 2 - b.top
-      const x2 = rz.left - b.left
+      const x2 = card(Z).left - b.left
       const y2 = rz.top + rz.height / 2 - b.top
       const dx = Math.max(24, (x2 - x1) / 2)
       next.push({ key: `${a}>${z}`, a, z, d: `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}` })
@@ -311,9 +337,9 @@ function Board({ graph, map, lens, sel, lane, run, select, light, hover }) {
       if (!A || !Z || map.byId[a].lane >= map.byId[z].lane) continue
       const ra = A.getBoundingClientRect()
       const rz = Z.getBoundingClientRect()
-      const x1 = ra.right - b.left
+      const x1 = card(A).right - b.left
       const y1 = ra.top + ra.height / 2 - b.top
-      const x2 = rz.left - b.left
+      const x2 = card(Z).left - b.left
       const y2 = rz.top + rz.height / 2 - b.top
       const dx = Math.max(24, (x2 - x1) / 2)
       next.push({ key: `proven:${a}>${z}`, a, z, proven: true, d: `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}` })
@@ -387,11 +413,25 @@ function Summary({ summary, lens, stale }) {
   )
 }
 
-function Legend({ lens }) {
-  const l = LEGEND[lens]
+// The lens's one line above the lanes: its dots, or (Flow) what is lit and how
+// to light it, or what it says when it has nothing to show.
+function Legend({ lens, graph, map, sel, hover }) {
+  const empty = emptyOf(lens, graph)
+  if (empty) return <p className="map-legend map-legend--empty" data-legend={lens}>{empty}</p>
+  if (lens === 'flow') {
+    const focus = map.byId[hover || sel]
+    const proven = focus?.kind === 'table' && focus.id === sel && map.takesFrom(sel).size > 0
+    return (
+      <p className="map-legend" data-legend="flow" aria-live="polite">
+        {focus
+          ? <><span>Lit: everything that feeds <b>{focus.label}</b> and everything it feeds.</span>{proven && <span className="map-legend__item" data-tone="ok"><i className="mdot" aria-hidden="true" />green: the sources its columns come from, as the parser read them</span>}</>
+          : <span>Flow shows what feeds what. Hover, focus or select a piece to light its whole path; a table a SQL transform wrote also lights its sources in green.</span>}
+      </p>
+    )
+  }
   return (
-    <p className="map-legend">
-      {typeof l === 'string' ? l : l.map(([tone, text]) => (
+    <p className="map-legend" data-legend={lens}>
+      {LEGEND[lens].map(([tone, text]) => (
         <span key={tone} className="map-legend__item" data-tone={tone}><i className="mdot" aria-hidden="true" />{text}</span>
       ))}
     </p>
@@ -445,6 +485,13 @@ export function TheMap({ graph, focus }) {
     const pass = passRef.current
     if (id !== sel && pass && pass.getBoundingClientRect().top > window.innerHeight) pass.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [go, sel])
+  // Escape closes the passport (the selection), as its × does.
+  useEffect(() => {
+    if (embedded || !sel) return undefined
+    const esc = e => { if (e.key === 'Escape' && !e.defaultPrevented) go({ node: '', measure: '' }) }
+    document.addEventListener('keydown', esc)
+    return () => document.removeEventListener('keydown', esc)
+  }, [embedded, sel, go])
   const goTo = useCallback(id => {
     go({ node: id, lane: '', measure: '' })
     requestAnimationFrame(() => document.querySelector(`[data-node="${CSS.escape(id)}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
@@ -468,8 +515,8 @@ export function TheMap({ graph, focus }) {
       </div>
       <div className="map-frame"><div className={`map-wrap${embedded ? ' map-wrap--tab' : ''}`}>
         <div className="map">
+          <Legend lens={lens} graph={graph} map={map} sel={sel} hover={hover} />
           <Board graph={graph} map={map} lens={lens} sel={sel} lane={lane} run={run} select={select} light={setHover} hover={hover} />
-          <Legend lens={lens} />
         </div>
         {embedded ? (
           <>
@@ -483,7 +530,9 @@ export function TheMap({ graph, focus }) {
             )}
           </>
         ) : (
-          <aside className="pass" aria-label="Passport" ref={passRef}>
+          <aside className={['pass', node && 'pass--float', node && node.lane >= 3 && 'pass--left'].filter(Boolean).join(' ')}
+                 aria-label="Passport" ref={passRef}>
+            {node && <button type="button" className="dbx-close pass__close" onClick={() => go({ node: '', measure: '' })} aria-label="Close the passport">×</button>}
             {shown
               ? <NodePassport n={shown} byId={map.byId} onGo={goTo}
                               from={node.kind === 'table' ? [...map.takesFrom(node.id)].filter(id => map.byId[id].lane === 0) : null} />

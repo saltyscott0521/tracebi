@@ -175,8 +175,21 @@ export const useTablePreview = (model, table) =>
 export const useReports = () =>
   useQuery({ queryKey: ['reports'], queryFn: () => get('/reports') })
 
-export const useDesk = () =>
-  useQuery({ queryKey: ['desk'], queryFn: () => get('/desk') })
+// The desk paints from what is already known (?quick=1 re-runs nothing: each
+// verdict kept for its inputs, or the last recorded one marked pending), then
+// asks once more without it and updates in place.
+const deskPending = d => [...(d?.builds || []), ...(d?.verdicts || [])].some(r => r.pending)
+export const useDesk = () => {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: ['desk'],
+    queryFn: async () => {
+      const quick = await get('/desk?quick=1')
+      if (deskPending(quick)) get('/desk').then(full => qc.setQueryData(['desk'], full), () => {})
+      return quick
+    },
+  })
+}
 
 // A verdict is kept while its inputs are unchanged; Check again re-runs them all.
 export const fetchDeskFresh = () => get('/desk?fresh=1')

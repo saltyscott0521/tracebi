@@ -228,7 +228,7 @@ export default function Warehouses() {
         : view === 'table' ? <TableView schema={schema} warehouses={warehouses} /> : (
           <DataBrowser
             schema={schema} storeKey="warehouse" label="The warehouse's tables"
-            infoOf={infoOf}
+            infoOf={infoOf} opensOnGroup
             summary={<Summary warehouses={warehouses} schema={schema} />}
             groupView={(g, onSelect) => <GroupView g={g} onSelect={onSelect} />}
           />

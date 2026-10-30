@@ -6,7 +6,8 @@ import { checksWords } from './words'
 // the counts cannot disagree. The words are the artifact's chip (tracebi.js
 // _VERDICTS): Reproduces (green), Needs a look (amber: the source or the data
 // changed since the build, or its checks are stale), Does not reproduce (red),
-// Not checked (neutral); plus Draft and Never built where the app needs them,
+// Not checked (neutral); Checking (neutral: a re-check under way, its last
+// answer only words); plus Draft and Never built where the app needs them,
 // and Local: the reader's selection, recomputed in the page itself (the
 // report's own chip says the same).
 // Only a re-check that came back `reproduces` is ever green.
@@ -16,6 +17,7 @@ export const VERDICT_LABEL = {
   'needs-a-look': 'Needs a look',
   'does-not-reproduce': 'Does not reproduce',
   'not-checked': 'Not checked',
+  checking: 'Checking',
   draft: 'Draft',
   'never-built': 'Never built',
   local: 'Local',
@@ -66,6 +68,8 @@ function sourceChangedSince(report, build) {
  * is claimed. Returns `{ state, detail }`.
  *
  *   never built                                  → never-built
+ *   a re-check under way (the desk's `pending`)  → checking (never green: the
+ *                                                  last answer is only words)
  *   re-check did not reproduce                   → does-not-reproduce
  *   files saved since the build                  → needs-a-look ("Source changed …")
  *   data changed, re-check could not run, or a
@@ -76,6 +80,12 @@ function sourceChangedSince(report, build) {
  */
 export function verdictOf({ report, build, contracts, checkedAt }) {
   if (!build) return { state: 'never-built', detail: 'It has not been built yet.' }
+  if (build.pending) {
+    const last = build.verdict && build.computed_at
+      ? ` The last re-check, ${stamp(build.computed_at)}, said: ${VERDICT_LABEL[checkedVerdict(build.verdict, build.detail).state]}.`
+      : ''
+    return { state: 'checking', detail: `Re-running its recorded queries now.${last}` }
+  }
   const v = checkedVerdict(build.verdict, build.detail)
   if (v.state === 'does-not-reproduce') return v
   if (sourceChangedSince(report, build)) {
@@ -86,7 +96,8 @@ export function verdictOf({ report, build, contracts, checkedAt }) {
   if (stale.length) {
     return { state: 'needs-a-look', detail: `${checksWords({ status: 'stale' }).text}: ${stale.join(', ')} changed after the sink last satisfied its contract.` }
   }
-  return checkedAt ? { ...v, detail: `${v.detail} Checked ${stamp(checkedAt)}.` } : v
+  const at = checkedAt ?? build.computed_at
+  return at ? { ...v, detail: `${v.detail} Checked ${stamp(at)}.` } : v
 }
 
 /** The verdicts that ask a person to act. */

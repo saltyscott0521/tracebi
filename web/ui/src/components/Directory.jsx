@@ -155,19 +155,24 @@ const GLANCE = [
   ['needs-a-look', n => `${n} ${n === 1 ? 'needs' : 'need'} a look`],
   ['does-not-reproduce', n => `${n} ${n === 1 ? 'does' : 'do'} not reproduce`],
   ['not-checked', n => `${n} not checked`],
+  ['checking', n => `${n} checking`],
   ['never-built', n => `${n} never built`],
 ]
 
 /**
  * What *reports* hold at a glance, as pills: how many, how many of their last
  * builds reproduce, need a look, or were never built (in the words of the chip
- * each counts), when the newest was built and, when any has one, its schedule.
+ * each counts), when the oldest of those verdicts was computed (one may come
+ * from the state store, from before this server started), when the newest was
+ * built and, when any has one, its schedule.
  */
 export function Health({ reports, verdictFor, builds, known }) {
   const tally = {}
   reports.forEach(r => { const v = verdictFor(r); if (v) tally[v.state] = (tally[v.state] || 0) + 1 })
   const parts = GLANCE.filter(([state]) => tally[state] || ['reproduces', 'needs-a-look', 'never-built'].includes(state))
   const newest = newestBuild(reports, builds)
+  const checkedAt = reports.map(r => !builds?.[r.name]?.pending && builds?.[r.name]?.computed_at)
+    .filter(Boolean).sort()[0]
   const scheduled = [...new Set(reports.map(r => scheduleWords(r.schedule)?.short).filter(Boolean))]
   return (
     <div className="glance" role="group" aria-label="At a glance">
@@ -176,6 +181,7 @@ export function Health({ reports, verdictFor, builds, known }) {
       {known && parts.map(([state, say]) => (
         <span key={state} className={`glance__item glance__item--${tally[state] ? state : 'none'}`}>{say(tally[state] || 0)}</span>
       ))}
+      {known && checkedAt && <span className="glance__item">Checked <Time iso={checkedAt} /></span>}
       {newest && <span className="glance__item">Last built <Time iso={newest.built_at} /></span>}
       {scheduled.length === 1 && <span className="glance__item">Next: {scheduled[0]}</span>}
       {scheduled.length > 1 && <span className="glance__item">{count(scheduled.length, 'schedule')}</span>}
